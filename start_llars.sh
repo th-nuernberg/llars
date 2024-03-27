@@ -1,6 +1,5 @@
 #!/bin/sh
 # Lade Umgebungsvariablen
-
 source .env
 
 # Überprüfen, ob der Docker-Daemon läuft

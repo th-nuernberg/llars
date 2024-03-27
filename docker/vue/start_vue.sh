@@ -4,6 +4,6 @@
 cd /vue
 
 npm install
-
+# npm audit fix
 npm run dev -- --host
 # npm run dev --host

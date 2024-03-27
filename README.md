@@ -1,5 +1,5 @@
 # LLars
-
+Linguistic Logic Analysis and Review System
 
 
 ## Getting started

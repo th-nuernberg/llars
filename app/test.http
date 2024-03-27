@@ -1,0 +1,19 @@
+GET localhost:8081/
+###
+GET localhost:8081/health_check
+###
+POST http://localhost:8081/register
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "password1"
+}
+###
+POST http://localhost:8081/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "password1"
+}

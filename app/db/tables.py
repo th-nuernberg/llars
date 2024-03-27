@@ -1,10 +1,18 @@
 from . import db  # Importieren Sie db aus dem database-Paket
-
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    __tablename__ = 'users'
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(db.TEXT)
+    password_hash: Mapped[str] = mapped_column(db.TEXT)
 
-    def __repr__(self):
-        return '<User %r>' % self.username
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
 

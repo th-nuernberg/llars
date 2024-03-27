@@ -1,0 +1,47 @@
+version: '3'
+services:
+  backend-flask-service:
+    container_name: llars_flask_service
+    build:
+      context: .
+      dockerfile: docker/flask/Dockerfile-flask
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=${FLASK_ENV}
+      - FLASK_APP=/app/main.py
+    depends_on:
+      - frontend-vue-service
+      - db-maria-service
+
+  frontend-vue-service:
+    container_name: llars_frontend_service
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: docker/vue/Dockerfile-vue
+    ports:
+      - "5173:5173"
+
+  db-maria-service:
+    container_name: llars_db_service
+    build:
+      context: .
+      dockerfile: docker/db/Dockerfile-mariadb
+    env_file:
+      - .env
+    ports:
+      - "3310:3306"
+    volumes:
+      - llarsdb:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+
+volumes:
+  llarsdb:

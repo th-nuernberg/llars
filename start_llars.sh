@@ -3,6 +3,22 @@
 
 source .env
 
+# Überprüfen, ob der Docker-Daemon läuft
+if ! docker info >/dev/null 2>&1; then
+    echo "Docker-Daemon läuft nicht. Versuche zu starten..."
+    # Versuchen, Docker mit systemctl zu starten
+    open /Applications/Docker.app
+    sleep 5
+    # Überprüfen, ob der Start erfolgreich war
+    if ! docker info >/dev/null 2>&1; then
+        echo "Fehler beim Starten des Docker-Daemons. Bitte manuell überprüfen."
+        exit 1
+    fi
+    echo "Docker-Daemon erfolgreich gestartet."
+else
+    echo "Docker-Daemon läuft bereits."
+fi
+
 # Stoppen der Dienste
 echo "Stopping services..."
 if [ "$REMOVE_VOLUMES" = "True" ]; then

@@ -1,0 +1,12 @@
+# Basis-Image auswählen
+FROM mariadb:11.2.2
+LABEL authors="philippsteigerwald"
+
+# Umgebungsvariablen setzen
+#ENV MYSQL_ROOT_PASSWORD=meinPasswort
+#ENV MYSQL_DATABASE=ki_assistenz_db
+#ENV MYSQL_USER=ki_assistenz_user
+#ENV MYSQL_PASSWORD=ki_assistenz_pass
+
+# Standardport freigeben
+EXPOSE 3310

@@ -1,0 +1,29 @@
+# /docker/flask/Dockerfile-flask
+# syntax=docker/dockerfile:1
+
+# Verwenden eines offiziellen Python-Images als Basis
+FROM python:3.10-slim
+LABEL authors="philippsteigerwald"
+
+# Setzt das Arbeitsverzeichnis im Container
+WORKDIR /app
+
+# Kopiert die lokalen app-Dateien in das Container-Verzeichnis /app
+# COPY conversation_ranker/server/ /app/
+COPY app /app/
+COPY docker/flask/start_flask.sh scripts/
+RUN chmod +x scripts/start_flask.sh
+
+# RUN chmod 777 -R /app/data
+
+# Installiert die notwendigen Python-Pakete aus der flask_requirements.txt
+# COPY /docker/flask/flask_requirements.txt /app/
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Setzt die benötigten Umgebungsvariablen für Flask
+ENV FLASK_APP=main.py
+# ENV FLASK_RUN_HOST=0.0.0.0
+
+CMD ["scripts/start_flask.sh"]
+# CMD tail -f /dev/null
+# CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0", "--port=8080"]

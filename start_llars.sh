@@ -34,3 +34,5 @@ fi
 # Ausführen von Docker Compose mit --build
 echo "Ausführen von Docker Compose mit --build..."
 docker compose -p llars up --build  --remove-orphans
+echo "Compose Watch"
+docker compose watch

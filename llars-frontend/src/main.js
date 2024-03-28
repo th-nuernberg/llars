@@ -1,6 +1,11 @@
-import './assets/main.css'
-
 import { createApp } from 'vue'
+import router from './router/router.js';
 import App from './App.vue'
 
-createApp(App).mount('#app')
+const app = createApp(App)
+
+app.use(router);
+//app.component('food-items', FoodItems);
+//app.component('animal-collection', AnimalCollection);
+
+app.mount('#app')

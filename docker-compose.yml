@@ -25,6 +25,15 @@ services:
       dockerfile: docker/vue/Dockerfile-vue
     ports:
       - "5173:5173"
+    develop:
+      watch:
+        - action: sync
+          path: ./llars-frontend/src
+          target: /vue/src
+          ignore:
+            - node_modules/
+
+
 
   db-maria-service:
     container_name: llars_db_service

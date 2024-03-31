@@ -30,9 +30,24 @@ else
   echo "Services stopped."
 fi
 
-
 # Ausführen von Docker Compose mit --build
 echo "Ausführen von Docker Compose mit --build..."
-docker compose -p llars up --build  --remove-orphans
+docker compose -p llars up --build  --remove-orphans --detach
+echo "Waiting for services to start..."
+
+# Überprüfung, ob alle Container laufen
+while true; do
+    RUNNING_CONTAINERS=$(docker compose -p llars ps | grep 'Up' | wc -l)
+    TOTAL_CONTAINERS=$(docker compose -p llars config --services | wc -l)
+
+    if [ "$RUNNING_CONTAINERS" -eq "$TOTAL_CONTAINERS" ]; then
+        echo "Alle Container sind gestartet."
+        break
+    else
+        echo "Warte auf den Start der Container... ($RUNNING_CONTAINERS von $TOTAL_CONTAINERS sind bereit)"
+        sleep 5
+    fi
+done
+sleep 5
 echo "Compose Watch"
 docker compose watch

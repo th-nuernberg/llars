@@ -1,17 +1,30 @@
-import {createRouter, createWebHistory} from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 import AnimalCollection from "@/components/AnimalCollection.vue";
 import FoodItems from "@/components/FoodItems.vue";
 import Login from "@/components/Login.vue";
 
+const routes = [
+    { path: '/animals', component: AnimalCollection, meta: { requiresAuth: true } },
+    { path: '/food', component: FoodItems, meta: { requiresAuth: true } },
+    { path: '/login', component: Login, meta: { requiresAuth: false } },
+    { path: '/', redirect: '/login' }
+];
+
 const router = createRouter({
     history: createWebHistory(),
-    routes: [
-        { path: '/animals', component: AnimalCollection },
-        { path: '/food', component: FoodItems },
-        { path: '/login', component: Login},
-        { path: '/', redirect: '/login'}
-        //{ path: '/', redirect: '/animals',component: Login },
-    ]
+    routes
+});
+
+// Navigationswächter
+router.beforeEach((to, from, next) => {
+    const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+    const isAuthenticated = localStorage.getItem('token');
+
+    if (requiresAuth && !isAuthenticated) {
+        next('/login');
+    } else {
+        next();
+    }
 });
 
 export default router;

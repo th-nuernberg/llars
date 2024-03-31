@@ -10,3 +10,11 @@ export async function makePostRequestAsync(path, data) {
     throw error; // Rethrow, so you can catch it later
   });
 }
+
+export function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    router.push('/login');
+    // forceUpdate()
+    // eventBus.emit("auth-change", false, '')
+}

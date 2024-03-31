@@ -9,7 +9,7 @@ const router = createRouter({
         { path: '/animals', component: AnimalCollection },
         { path: '/food', component: FoodItems },
         { path: '/login', component: Login},
-        //{ path: '/', redirect: '/animals'}
+        { path: '/', redirect: '/login'}
         //{ path: '/', redirect: '/animals',component: Login },
     ]
 });

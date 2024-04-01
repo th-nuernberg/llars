@@ -10,7 +10,7 @@
     <v-row justify="center" align="center">
       <v-col cols="12" sm="6" md="3" v-for="item in items" :key="item.title">
         <v-card
-          class="d-flex align-center py-4 card-hover"
+          class="d-flex flex-column align-center py-4 card-hover"
           color="light-blue lighten-2"
           @click="navigateTo(item.route)"
           :elevation="item.elevation"
@@ -18,10 +18,9 @@
           @mouseleave="() => item.elevation = 1"
         >
           <v-icon large class="mx-2">{{ item.icon }}</v-icon>
-          <div>
-            <v-card-title class="text-h5 font-weight-bold">{{ item.title }}</v-card-title>
-            <v-card-text>{{ item.description }}</v-card-text>
-          </div>
+          <v-card-title class="text-h5 font-weight-bold">{{ item.title }}</v-card-title>
+          <v-card-text>{{ item.description }}</v-card-text>
+          <v-spacer></v-spacer>
         </v-card>
       </v-col>
     </v-row>
@@ -53,6 +52,7 @@ function navigateTo(route) {
 
 .card-hover {
   transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  height: 100%; /* Gleichmäßige Höhe für alle Karten */
 }
 
 .card-hover:hover {

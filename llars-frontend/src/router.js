@@ -4,8 +4,8 @@ import FoodItems from "@/components/FoodItems.vue";
 import Login from "@/components/Login.vue";
 
 const routes = [
-    { path: '/animals', component: AnimalCollection, meta: { requiresAuth: true } },
-    { path: '/food', component: FoodItems, meta: { requiresAuth: true } },
+    { path: '/overview', component: AnimalCollection, meta: { requiresAuth: true } },
+    { path: '/home', component: FoodItems, meta: { requiresAuth: true } },
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' }
 ];

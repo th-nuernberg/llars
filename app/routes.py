@@ -160,6 +160,23 @@ def get_email_thread(thread_id):
 
     return jsonify(thread_data), 200
 
+@data_blueprint.route('/email_threads', methods=['GET'])
+def list_email_threads():
+    # Alle EmailThreads aus der Datenbank holen
+    email_threads = EmailThread.query.all()
+
+    # Eine Liste von Dictionaries vorbereiten, die grundlegende Informationen zu jedem Thread enthalten
+    threads_list = [
+        {
+            'thread_id': thread.thread_id,
+            'chat_id': thread.chat_id,
+            'institut_id': thread.institut_id,
+            'subject': thread.subject
+        } for thread in email_threads
+    ]
+
+    return jsonify(threads_list), 200
+
 
 def configure_routes(app):
     app.register_blueprint(auth_blueprint)

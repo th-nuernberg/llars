@@ -1,13 +1,13 @@
 import { createRouter, createWebHistory } from "vue-router";
-import AnimalCollection from "@/components/AnimalCollection.vue";
-import FoodItems from "@/components/FoodItems.vue";
 import Login from "@/components/Login.vue";
+import Home from "@/components/Home.vue";
+import NotFound from "@/components/NotFound.vue";
 
 const routes = [
-    { path: '/overview', component: AnimalCollection, meta: { requiresAuth: true } },
-    { path: '/home', component: FoodItems, meta: { requiresAuth: true } },
+    { path: '/Home', component: Home, meta: { requiresAuth: true } },
     { path: '/login', component: Login, meta: { requiresAuth: false } },
-    { path: '/', redirect: '/login' }
+    { path: '/', redirect: '/login' },
+   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound } // 404 Route
 ];
 
 const router = createRouter({

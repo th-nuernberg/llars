@@ -3,7 +3,7 @@
     <v-row justify="center" align="center">
       <v-col cols="12" sm="8" md="4">
         <v-card class="elevation-12">
-          <v-toolbar color="primary" dark>
+          <v-toolbar color="teal lighten-4" dark>
             <v-toolbar-title>LLars Plattform Login</v-toolbar-title>
           </v-toolbar>
           <v-card-text>
@@ -25,7 +25,7 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="primary" @click="handleLogin">Login</v-btn>
+            <v-btn color="teal darken-4" @click="handleLogin">Login</v-btn>
           </v-card-actions>
           <v-alert v-if="errorMessage" type="error" class="ma-4">
             {{ errorMessage }}

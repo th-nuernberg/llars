@@ -7,17 +7,17 @@
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="12" sm="4" v-for="caseItem in cases" :key="caseItem.id">
-        <v-card class="mb-4 case-card" @click="navigateToCase(caseItem.id)">
+      <v-col cols="12" sm="4" v-for="emailThread in emailThreads" :key="emailThread.thread_id">
+        <v-card class="mb-4 case-card" @click="navigateToCase(emailThread.thread_id)">
           <v-chip
             class="category-chip"
-            :color="getCategoryColor(caseItem.category)"
+            color="grey lighten-2"
             small
           >
-            {{ caseItem.category }}
+            Default Kategorie
           </v-chip>
-          <v-card-title>{{ caseItem.title }}</v-card-title>
-          <v-card-text>{{ caseItem.description }}</v-card-text>
+          <v-card-title>{{ emailThread.subject }}</v-card-title>
+          <v-card-text>Chat ID: {{ emailThread.chat_id }}</v-card-text>
           <v-card-actions>
             <v-btn text color="primary">Bewerten</v-btn>
           </v-card-actions>
@@ -28,38 +28,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
 
 const router = useRouter();
+const emailThreads = ref([]);
 
-const cases = ref([
-  {
-    id: 1,
-    title: 'Fall 1',
-    description: 'Beschreibung von Fall 1...',
-    category: 'Jugend'
-  },
-  {
-    id: 2,
-    title: 'Fall 2',
-    description: 'Beschreibung von Fall 2...',
-    category: 'Eltern'
-  },
-  // Weitere Fälle...
-]);
+onMounted(async () => {
+  try {
+    const response = await axios.get('http://localhost:8081/api/email_threads');
+    emailThreads.value = response.data;
+  } catch (error) {
+    console.error('Error fetching email threads:', error);
+  }
+});
 
-function navigateToCase(caseId) {
-  router.push({ name: 'RankerDetail', params: { id: caseId } });
-}
-
-function getCategoryColor(category) {
-  const colors = {
-    Jugend: 'deep-purple lighten-3',
-    Eltern: 'light-green lighten-3',
-    // Weitere Kategorien und Farben...
-  };
-  return colors[category] || 'grey';
+function navigateToCase(threadId) {
+  router.push({ name: 'RankerDetail', params: { id: threadId } });
 }
 </script>
 

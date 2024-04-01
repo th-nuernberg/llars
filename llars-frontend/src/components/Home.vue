@@ -1,17 +1,17 @@
 <template>
   <v-container class="fill-height">
-    <v-row justify="center">
+    <v-row justify="center" class="mb-5">
       <v-col cols="12" class="text-center">
         <img src="@/assets/logo/llars-logo.png" alt="LLars Logo" height="100" class="mb-2">
         <h1>Welcome to LLars</h1>
         <div class="subtitle-1 mb-4">Your Rank, Label, Rate and FeatureGenerate Software!</div>
       </v-col>
     </v-row>
-    <v-row justify="center" align="center">
+    <v-row justify="center" align="center" class="mt-3">
       <v-col cols="12" sm="6" md="3" v-for="item in items" :key="item.title">
         <v-card
           class="d-flex flex-column align-center py-4 card-hover"
-          color="light-blue lighten-2"
+          color="teal-lighten-4"
           @click="navigateTo(item.route)"
           :elevation="item.elevation"
           @mouseover="() => item.elevation = 5"
@@ -52,10 +52,17 @@ function navigateTo(route) {
 
 .card-hover {
   transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  height: 100%; /* Gleichmäßige Höhe für alle Karten */
 }
 
 .card-hover:hover {
   transform: scale(1.05);
+}
+
+.mb-5 {
+  margin-bottom: 5rem;
+}
+
+.mt-3 {
+  margin-top: 3rem;
 }
 </style>

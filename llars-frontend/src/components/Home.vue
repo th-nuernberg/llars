@@ -13,9 +13,9 @@
           class="d-flex align-center py-4 card-hover"
           color="light-blue lighten-2"
           @click="navigateTo(item.route)"
-          :elevation="hovering ? 5 : 1"
-          @mouseover="hovering = true"
-          @mouseleave="hovering = false"
+          :elevation="item.elevation"
+          @mouseover="() => item.elevation = 5"
+          @mouseleave="() => item.elevation = 1"
         >
           <v-icon large class="mx-2">{{ item.icon }}</v-icon>
           <div>
@@ -33,14 +33,13 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const hovering = ref(false);
 
-const items = [
-  { title: 'Ranker', description: 'Detailierte Analyse und Ranking', route: '/ranker', icon: 'mdi-chart-line' },
-  { title: 'Rater', description: 'Bewerten Sie Ihre Daten', route: '/rater', icon: 'mdi-star' },
-  { title: 'Labler', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-tag-text-outline' },
-  { title: 'FeatureGenerator', description: 'Erzeugen Sie dynamisch Features', route: '/feature-generator', icon: 'mdi-cogs' }
-];
+const items = ref([
+  { title: 'Ranker', description: 'Detailierte Analyse und Ranking', route: '/ranker', icon: 'mdi-chart-line', elevation: 1 },
+  { title: 'Rater', description: 'Bewerten Sie Ihre Daten', route: '/rater', icon: 'mdi-star', elevation: 1 },
+  { title: 'Labler', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-tag-text-outline', elevation: 1 },
+  { title: 'FeatureGenerator', description: 'Erzeugen Sie dynamisch Features', route: '/feature-generator', icon: 'mdi-cogs', elevation: 1 }
+]);
 
 function navigateTo(route) {
   router.push(route);

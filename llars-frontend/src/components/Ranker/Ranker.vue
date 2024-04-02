@@ -18,9 +18,6 @@
           </v-chip>
           <v-card-title>{{ emailThread.subject }}</v-card-title>
           <v-card-text>Chat ID: {{ emailThread.chat_id }}</v-card-text>
-          <v-card-actions>
-            <v-btn text color="primary">Bewerten</v-btn>
-          </v-card-actions>
         </v-card>
       </v-col>
     </v-row>
@@ -28,8 +25,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import {ref, onMounted} from 'vue';
+import {useRouter} from 'vue-router';
 import axios from 'axios';
 
 const router = useRouter();
@@ -57,7 +54,7 @@ function navigateToCase(threadId) {
 }
 
 .case-card:hover {
-  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
 }
 

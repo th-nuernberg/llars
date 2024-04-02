@@ -3,23 +3,17 @@
     <v-row>
       <v-col cols="12" md="6">
         <h2>Features</h2>
-        <v-expansion-panels>
-          <v-expansion-panel v-for="(features, index) in groupedFeaturesByType" :key="index">
-            <v-expansion-panel-header>{{ features[0].type | translateFeatureType }}</v-expansion-panel-header>
-            <v-expansion-panel-content>
-              <v-list dense>
-                <v-list-item v-for="feature in features" :key="feature.model_name">
-                  <v-list-item-content>{{ feature.value }}</v-list-item-content>
-                  <v-list-item-action>
-                    <v-btn icon @click.stop="showModelInfo(feature)">
-                      <v-icon>mdi-information</v-icon>
-                    </v-btn>
-                  </v-list-item-action>
-                </v-list-item>
-              </v-list>
-            </v-expansion-panel-content>
-          </v-expansion-panel>
-        </v-expansion-panels>
+          <v-expansion-panels>
+            <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
+              <v-expansion-panel-header>{{ feature.type | translateFeatureType }}</v-expansion-panel-header>
+              <v-expansion-panel-content>
+                <div v-for="detail in feature.details" :key="detail.model_name">
+                  <p><strong>Modell:</strong> {{ detail.model_name }}</p>
+                  <p>{{ detail.value }}</p>
+                </div>
+              </v-expansion-panel-content>
+            </v-expansion-panel>
+          </v-expansion-panels>
       </v-col>
 
       <v-col cols="12" md="6">
@@ -46,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { useRoute } from 'vue-router';
 
@@ -83,6 +77,28 @@ function getMessageClass(sender) {
   // Hole die Farbe des Senders aus dem reaktiven Objekt
   return senderColors.value[sender];
 }
+
+const groupedFeatures = computed(() => {
+  const featureMap = new Map();
+  features.value.forEach(f => {
+    if (!featureMap.has(f.type)) {
+      featureMap.set(f.type, { type: f.type, details: [] });
+    }
+    featureMap.get(f.type).details.push({ model_name: f.model_name, value: f.value });
+  });
+  return Array.from(featureMap.values());
+});
+
+function translateFeatureType(type) {
+  const translations = {
+    abstract_summary: 'Abstrakte Fallzusammenfassung',
+    generated_category: 'Generierte Kategorie',
+    generated_subject: 'Generierter Betreff',
+    order_clarification: 'Ordnungsklärung',
+  };
+  return translations[type] || type;
+}
+
 </script>
 
 <style scoped>

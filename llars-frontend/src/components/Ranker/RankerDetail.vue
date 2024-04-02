@@ -3,17 +3,22 @@
     <v-row>
       <v-col cols="12" md="6">
         <h2>Features</h2>
-          <v-expansion-panels>
-            <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
-              <v-expansion-panel-header>{{ feature.type | translateFeatureType }}</v-expansion-panel-header>
-              <v-expansion-panel-content>
-                <div v-for="detail in feature.details" :key="detail.model_name">
-                  <p><strong>Modell:</strong> {{ detail.model_name }}</p>
-                  <p>{{ detail.value }}</p>
-                </div>
-              </v-expansion-panel-content>
-            </v-expansion-panel>
-          </v-expansion-panels>
+        <v-expansion-panels>
+          <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
+            <v-expansion-panel-title>
+              <div>{{ translateFeatureType(feature.type) }}</div>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <div v-for="detail in feature.details" :key="detail.model_name">
+                <p><strong>Modell:</strong> {{ detail.model_name }}</p>
+
+                <p>{{ detail.value }}</p>
+
+              </div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
+
       </v-col>
 
       <v-col cols="12" md="6">

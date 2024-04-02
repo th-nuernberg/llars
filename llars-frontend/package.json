@@ -12,6 +12,7 @@
     "roboto-fontface": "*",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0",
+    "vuedraggable": "^4.1.0",
     "vuetify": "^3.5.0"
   },
   "devDependencies": {

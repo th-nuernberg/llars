@@ -9,12 +9,14 @@
               <div>{{ translateFeatureType(feature.type) }}</div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <div v-for="detail in feature.details" :key="detail.model_name">
-                <p><strong>Modell:</strong> {{ detail.model_name }}</p>
-
-                <p>{{ detail.value }}</p>
-
-              </div>
+              <draggable v-model="feature.details" group="featureGroup" item-key="model_name">
+                <template #item="{element, index}">
+                  <div :key="element.model_name" :style="getItemStyle(index)">
+                    <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                    <p>{{ element.value }}</p>
+                  </div>
+                </template>
+              </draggable>
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
@@ -32,7 +34,7 @@
         >
             <div class="message-header">
               <span class="message-sender">{{ message.sender }}</span>
-              <span class="message-timestamp">{{ message.timestamp }}</span>
+              <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
             </div>
             <div class="message-body">
               <p>{{ message.content }}</p>
@@ -44,17 +46,20 @@
   </v-container>
 </template>
 
+
+
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { useRoute } from 'vue-router';
-
+import draggable from 'vuedraggable';
 
 
 const route = useRoute();
 const features = ref([]);
 const messages = ref([]);
 const senderColors = ref({}); // Verwende ein reaktives Objekt statt einer Map
+
 
 onMounted(async () => {
   try {
@@ -103,6 +108,30 @@ function translateFeatureType(type) {
   };
   return translations[type] || type;
 }
+
+function formatTimestamp(timestamp) {
+  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+  const date = new Date(timestamp);
+  const formattedDate = date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
+  return formattedDate;
+}
+
+const colors = ["#E8F5E9", "#C8E6C9", "#F1F8E9", "#DCEDC8 ", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
+function getItemStyle(index) {
+  const backgroundColor = getColor(index);
+  return {
+    padding: '10px',
+    borderRadius: '10px',
+    margin: '5px 0',
+    backgroundColor: `rgba(${parseInt(backgroundColor.slice(1, 3), 16)}, ${parseInt(backgroundColor.slice(3, 5), 16)}, ${parseInt(backgroundColor.slice(5, 7), 16)}, 0.8)`,
+    color: '#000'
+  };
+}
+
+function getColor(index) {
+  return colors[index % colors.length]; // Loop through the colors array
+}
+
 
 </script>
 

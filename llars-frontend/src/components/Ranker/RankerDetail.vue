@@ -11,7 +11,7 @@
             <v-expansion-panel-text>
               <draggable v-model="feature.details" group="featureGroup" item-key="model_name">
                 <template #item="{element, index}">
-                  <div :key="element.model_name" :style="getItemStyle(index)">
+                  <div :key="element.model_name" class="draggable-item">
                     <p><strong>Modell:</strong> {{ element.model_name }}</p>
                     <p>{{ element.value }}</p>
                   </div>
@@ -188,5 +188,12 @@ function getColor(index) {
 
 .message-body p {
   margin: 0;
+}
+
+.draggable-item {
+  background-color: #F0F4C3; /* Farbe */
+  border-radius: 33px 12px; /* unterschiedliche Radien */
+  padding: 15px; /* Innerer Abstand */
+  margin-bottom: 8px; /* Abstand unten */
 }
 </style>

@@ -59,6 +59,7 @@ const route = useRoute();
 const features = ref([]);
 const messages = ref([]);
 const senderColors = ref({}); // Verwende ein reaktives Objekt statt einer Map
+const groupedFeatures = ref([]);
 
 async function fetchEmailThreads(threadId) {
   try {
@@ -72,11 +73,28 @@ async function fetchEmailThreads(threadId) {
 
 onMounted(async () => {
   const threadData = await fetchEmailThreads(route.params.id);
+  //if (!threadData) return;
+
   if (threadData) {
     features.value = threadData.features;
     messages.value = threadData.messages;
     let lastSender = '';
     let currentColor = 'same-sender';
+  const featureMap = new Map();
+  features.value.forEach(f => {
+    if (!featureMap.has(f.type)) {
+      featureMap.set(f.type, {
+        type: f.type,
+        details: []
+      });
+    }
+    featureMap.get(f.type).details.push({
+      model_name: f.model_name,
+      value: f.value
+    });
+  });
+  groupedFeatures.value = Array.from(featureMap.values());
+
 
     messages.value.forEach(message => {
       if (message.sender !== lastSender) {
@@ -92,17 +110,6 @@ function getMessageClass(sender) {
   // Hole die Farbe des Senders aus dem reaktiven Objekt
   return senderColors.value[sender];
 }
-
-const groupedFeatures = computed(() => {
-  const featureMap = new Map();
-  features.value.forEach(f => {
-    if (!featureMap.has(f.type)) {
-      featureMap.set(f.type, { type: f.type, details: [] });
-    }
-    featureMap.get(f.type).details.push({ model_name: f.model_name, value: f.value });
-  });
-  return Array.from(featureMap.values());
-});
 
 function translateFeatureType(type) {
   const translations = {

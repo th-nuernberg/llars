@@ -60,26 +60,31 @@ const features = ref([]);
 const messages = ref([]);
 const senderColors = ref({}); // Verwende ein reaktives Objekt statt einer Map
 
+async function fetchEmailThreads(threadId) {
+  try {
+    const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching email threads:', error);
+    return null; // Rückgabe von null bei einem Fehler
+  }
+}
 
 onMounted(async () => {
-  try {
-    const response = await axios.get(`http://localhost:8081/api/email_threads/${route.params.id}`);
-    features.value = response.data.features;
-    messages.value = response.data.messages;
+  const threadData = await fetchEmailThreads(route.params.id);
+  if (threadData) {
+    features.value = threadData.features;
+    messages.value = threadData.messages;
     let lastSender = '';
     let currentColor = 'same-sender';
 
     messages.value.forEach(message => {
       if (message.sender !== lastSender) {
-        // Wechsle die Farbe, wenn sich der Sender ändert
         currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender';
         lastSender = message.sender;
       }
-      // Weise dem Sender die aktuelle Farbe zu
       senderColors.value[message.sender] = currentColor;
     });
-  } catch (error) {
-    console.error('Error fetching email threads:', error);
   }
 });
 

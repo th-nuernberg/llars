@@ -1,15 +1,16 @@
 <template>
   <v-container fluid>
-    <v-row>
+    <v-row fluid>
       <v-col cols="12" md="6">
         <h2>Features</h2>
+        <div class="email-thread">
         <v-expansion-panels>
           <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
             <v-expansion-panel-title>
               <div>{{ translateFeatureType(feature.type) }}</div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <draggable v-model="feature.details" group="featureGroup" item-key="model_name">
+              <draggable v-model="feature.details" group="featureGroup" item-key="model_name" @change="log">
                 <template #item="{element, index}">
                   <div :key="element.model_name" class="draggable-item">
                     <p><strong>Modell:</strong> {{ element.model_name }}</p>
@@ -20,11 +21,14 @@
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
-
+</div>
       </v-col>
 
-      <v-col cols="12" md="6">
+      <v-col cols="12" md="6"  class="fill-height">
         <h2>E-Mail Verlauf</h2>
+
+
+
         <div class="email-thread">
         <div
           v-for="message in messages"
@@ -43,36 +47,61 @@
         </div>
       </v-col>
     </v-row>
+     <v-spacer></v-spacer> <!-- Dies schiebt die Buttons nach unten -->
+
+    <v-card>
+      <v-col cols="12" class="text-center">
+        <v-btn @click="saveFeatures">Speichern</v-btn>
+        <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
+        <v-btn @click="navigateToNextCase">Nächster Fall</v-btn>
+      </v-col>
+    </v-card>
   </v-container>
 </template>
-
-
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
-import { useRoute } from 'vue-router';
+import {useRoute, useRouter} from 'vue-router';
 import draggable from 'vuedraggable';
 
 
 const route = useRoute();
+const router = useRouter();
 const features = ref([]);
 const messages = ref([]);
 const senderColors = ref({}); // Verwende ein reaktives Objekt statt einer Map
 const groupedFeatures = ref([]);
+// const id = Number(route.params.id);
+
+async function fetchFeatureRanking(threadId) {
+  try {
+    const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}/ranking`);
+    return response.data.rankings;
+  } catch (error) {
+    console.error('Error fetching feature ranking:', error);
+    return [];
+  }
+}
 
 async function fetchEmailThreads(threadId) {
   try {
     const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}`);
+    //console.log(response);
     return response.data;
   } catch (error) {
-    console.error('Error fetching email threads:', error);
+    //console.error('Error fetching email threads:', error);
     return null; // Rückgabe von null bei einem Fehler
   }
 }
 
+// Definiere Props, einschließlich 'id', falls benötigt
+
+
 onMounted(async () => {
   const threadData = await fetchEmailThreads(route.params.id);
+  const rankingData = await fetchFeatureRanking(route.params.id);
+  console.log(rankingData);
   //if (!threadData) return;
 
   if (threadData) {
@@ -81,19 +110,29 @@ onMounted(async () => {
     let lastSender = '';
     let currentColor = 'same-sender';
   const featureMap = new Map();
-  features.value.forEach(f => {
-    if (!featureMap.has(f.type)) {
-      featureMap.set(f.type, {
-        type: f.type,
-        details: []
-      });
-    }
-    featureMap.get(f.type).details.push({
-      model_name: f.model_name,
-      value: f.value
+rankingData.forEach(ranking => {
+  const featureDetail = {
+    feature_id: ranking.feature_id,
+    model_name: ranking.model_name,
+    value: ranking.value,
+    ranking: ranking.ranking,
+  };
+
+  if (!featureMap.has(ranking.feature_type)) {
+    featureMap.set(ranking.feature_type, {
+      type: ranking.feature_type,
+      details: []
     });
-  });
-  groupedFeatures.value = Array.from(featureMap.values());
+  }
+  featureMap.get(ranking.feature_type).details.push(featureDetail);
+});
+
+// Sortieren der Features innerhalb jeder Gruppe basierend auf dem Ranking
+featureMap.forEach((value, key) => {
+  value.details.sort((a, b) => a.ranking - b.ranking);
+});
+
+groupedFeatures.value = Array.from(featureMap.values());
 
 
     messages.value.forEach(message => {
@@ -144,14 +183,72 @@ function getColor(index) {
   return colors[index % colors.length]; // Loop through the colors array
 }
 
+async function saveFeatures() {
+  try {
+    const response = await axios.post('http://localhost:8081/api/save_ranking', {
+      features: groupedFeatures.value
+    });
+    console.log('Speichern erfolgreich:', response.data);
+    // Füge hier weitere Logik nach dem Speichern hinzu, z.B. eine Benachrichtigung anzeigen
+  } catch (error) {
+    console.error('Fehler beim Speichern der Features:', error);
+    // Behandle den Fehler, z.B. durch Anzeigen einer Fehlermeldung
+  }
+}
+
+function log(event) {
+  console.log('Element moved', event);
+  // Hier kannst du zusätzliche Logik implementieren,
+  // z.B. das aktualisierte Array an den Server senden
+}
+
+function navigateToPreviousCase() {
+  console.log('Navigating to case:', route.params.id)
+  const currentId = parseInt(route.params.id);
+  if (currentId > 1) {
+    console.log(currentId)
+    console.log(typeof currentId)
+    const previousId = currentId - 1;
+    router.push({ name: 'RankerDetail', params: { id: previousId } });
+  }
+}
+
+function navigateToNextCase() {
+  const currentId = parseInt(route.params.id);
+  const nextId = currentId + 1;
+  router.push({ name: 'RankerDetail', params: { id: nextId } });
+  //router.push({ path: '/Ranker' })
+  // router.push({ path: '/Ranker/2' })
+  // this.isMenuOpen = false
+  //vm.$forceUpdate();
+  //or in file components#this.$router.go(0);
+  // this.$router.go(0);
+  // location.reload();
+  // this.$forceUpdate();
+  // reloadPage();
+}
+
+function navigateToRanker() {
+  router.push({ name: 'Ranker' });
+}
+
+function reloadPage() {
+  location.reload();
+}
 
 </script>
 
 <style scoped>
 .email-thread {
-  max-height: 600px;
+  max-height: 500px;
   overflow-y: auto;
+  min-height: 100vh; /* Stellt sicher, dass der Container den gesamten Viewport einnimmt */
+  display: flex; /* Ermöglicht die Verwendung von Flexbox-Layout */
+  flex-direction: column; /* Orientiert die Kinder (Zeilen) vertikal */
+  position: relative; /* Wichtig für die Positionierung der Pseudo-Elemente */
 }
+
+
 
 .email-message {
   padding: 16px;
@@ -196,4 +293,17 @@ function getColor(index) {
   padding: 15px; /* Innerer Abstand */
   margin-bottom: 8px; /* Abstand unten */
 }
+
+.fill-height {
+  height: 100vh; /* Höhe des Viewports */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Verhindert das Scrollen des gesamten Layouts */
+}
+
+
+.row-height {
+  height: 100vh; /* oder jede andere Höhe */
+}
+
 </style>

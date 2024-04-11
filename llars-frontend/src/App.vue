@@ -12,7 +12,7 @@
       </v-btn>
     </v-app-bar>
     <v-main> <!-- v-main hinzugefügt, um den Content zu umschließen -->
-      <router-view></router-view>
+      <router-view :key="$route.fullPath"></router-view>
     </v-main>
   </v-app>
 </template>

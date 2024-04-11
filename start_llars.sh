@@ -51,4 +51,4 @@ done
 sleep 10
 echo "Compose Watch"
 docker compose watch
-# docker compose -p llars up # Attaching to LLars-Network output
+docker compose -p llars up # Attaching to LLars-Network output

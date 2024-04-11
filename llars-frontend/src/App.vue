@@ -1,26 +1,24 @@
 <template>
-  <div>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-      <!--<img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />-->
-      <div class="container-fluid">
-        <a class="navbar-brand" href="#">
-          <img src="./assets/llars-logo.png" alt="Logo" style="height: 30px; margin-right: 10px;">
-          LLars Plattform
-        </a>
-        <div class="d-flex justify-content-end">
-          <button class="btn btn-outline-danger" @click="logout">Logout</button>
-        </div>
-      </div>
-    </nav>
-    <v-app>
-
-    </v-app>
-    <router-view></router-view>
-  </div>
+  <v-app>
+    <v-app-bar app dark color="teal-lighten-4">
+      <v-app-bar-nav-icon></v-app-bar-nav-icon>
+      <v-toolbar-title @click="goHome" style="cursor: pointer;">
+        <img src="./assets/logo/llars-logo.png" alt="Logo" height="30" class="mr-2">
+        LLars Plattform
+      </v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-btn icon @click="logout">
+        <v-icon>mdi-logout</v-icon>
+      </v-btn>
+    </v-app-bar>
+    <v-main> <!-- v-main hinzugefügt, um den Content zu umschließen -->
+      <router-view :key="$route.fullPath"></router-view>
+    </v-main>
+  </v-app>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router';
+import {useRouter} from 'vue-router';
 
 const router = useRouter();
 
@@ -29,10 +27,8 @@ function logout() {
   localStorage.removeItem('username');
   router.push('/login');
 }
-</script>
 
-<style>
-.navbar {
-  margin-bottom: 20px;
+function goHome() {
+  router.push('/home');
 }
-</style>
+</script>

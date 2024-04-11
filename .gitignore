@@ -1,3 +1,4 @@
 .DS-Store
 .idea
 .env
+/llars-frontend/node_modules

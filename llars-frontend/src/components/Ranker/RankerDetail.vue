@@ -26,29 +26,29 @@
 
       <v-col cols="12" md="6"  class="fill-height">
         <h2>E-Mail Verlauf</h2>
-
-
-
-        <div class="email-thread">
-        <div
-          v-for="message in messages"
-          :key="message.message_id"
-          class="email-message"
-          :class="getMessageClass(message.sender)"
-        >
-            <div class="message-header">
-              <span class="message-sender">{{ message.sender }}</span>
-              <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-            </div>
-            <div class="message-body">
-              <p>{{ message.content }}</p>
-            </div>
+        <div class="email-thread-container">
+          <div class="email-thread">
+            <div
+                v-for="message in messages"
+                :key="message.message_id"
+                class="email-message"
+                :class="getMessageClass(message.sender)"
+              >
+              <div class="message-header">
+                <span class="message-sender">{{ message.sender }}</span>
+                <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
+              </div>
+              <div class="message-body">
+                <p>{{ message.content }}</p>
+              </div>
           </div>
+          </div>
+          <div class="fade-overlay top"></div>
+          <div class="fade-overlay bottom"></div>
         </div>
       </v-col>
     </v-row>
      <v-spacer></v-spacer> <!-- Dies schiebt die Buttons nach unten -->
-
     <v-card>
       <v-col cols="12" class="text-center">
         <v-btn @click="saveFeatures">Speichern</v-btn>
@@ -239,13 +239,38 @@ function reloadPage() {
 </script>
 
 <style scoped>
-.email-thread {
+
+
+.email-thread-container {
   max-height: 500px;
   overflow-y: auto;
   min-height: 100vh; /* Stellt sicher, dass der Container den gesamten Viewport einnimmt */
   display: flex; /* Ermöglicht die Verwendung von Flexbox-Layout */
   flex-direction: column; /* Orientiert die Kinder (Zeilen) vertikal */
   position: relative; /* Wichtig für die Positionierung der Pseudo-Elemente */
+}
+
+.fade-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px; /* Höhe des Überblendeffekts */
+  pointer-events: none; /* Verhindert, dass die Überlagerung Mausereignisse blockiert */
+}
+
+.fade-overlay.top {
+  top: 0;
+  background: linear-gradient(to bottom, white, transparent);
+}
+
+.fade-overlay.bottom {
+  bottom: 0;
+  background: linear-gradient(to top, white, transparent);
+}
+
+.email-thread {
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 

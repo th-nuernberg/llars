@@ -102,49 +102,37 @@ async function fetchEmailThreads(threadId) {
 
 onMounted(async () => {
   const threadData = await fetchEmailThreads(route.params.id);
-  const rankingData = await fetchFeatureRanking(route.params.id);
-  console.log(rankingData);
-  //if (!threadData) return;
+  features.value = threadData.features;
+  messages.value = threadData.messages;
+  let lastSender = '';
+  let currentColor = 'same-sender';
+  if (!threadData) return;
 
-  if (threadData) {
-    features.value = threadData.features;
-    messages.value = threadData.messages;
-    let lastSender = '';
-    let currentColor = 'same-sender';
   const featureMap = new Map();
-rankingData.forEach(ranking => {
-  const featureDetail = {
-    feature_id: ranking.feature_id,
-    model_name: ranking.model_name,
-    value: ranking.value,
-    ranking: ranking.ranking,
-  };
-
-  if (!featureMap.has(ranking.feature_type)) {
-    featureMap.set(ranking.feature_type, {
-      type: ranking.feature_type,
-      details: []
+  features.value.forEach(f => {
+    if (!featureMap.has(f.type)) {
+      featureMap.set(f.type, {
+        type: f.type,
+        details: []
+      });
+    }
+    featureMap.get(f.type).details.push({
+      model_name: f.model_name,
+      value: f.value
     });
-  }
-  featureMap.get(ranking.feature_type).details.push(featureDetail);
-});
+  });
 
-// Sortieren der Features innerhalb jeder Gruppe basierend auf dem Ranking
-featureMap.forEach((value, key) => {
-  value.details.sort((a, b) => a.ranking - b.ranking);
-});
+  groupedFeatures.value = Array.from(featureMap.values());
+  console.log(groupedFeatures.value);
 
-groupedFeatures.value = Array.from(featureMap.values());
-
-
-    messages.value.forEach(message => {
-      if (message.sender !== lastSender) {
-        currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender';
-        lastSender = message.sender;
-      }
-      senderColors.value[message.sender] = currentColor;
+  messages.value.forEach(message => {
+    if (message.sender !== lastSender) {
+      currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender';
+      lastSender = message.sender;
+    }
+    senderColors.value[message.sender] = currentColor;
     });
-  }
+
 });
 
 function getMessageClass(sender) {

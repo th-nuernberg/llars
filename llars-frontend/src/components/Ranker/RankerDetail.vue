@@ -97,9 +97,6 @@ async function fetchEmailThreads(threadId) {
   }
 }
 
-// Definiere Props, einschließlich 'id', falls benötigt
-
-
 onMounted(async () => {
   const threadData = await fetchEmailThreads(route.params.id);
   features.value = threadData.features;
@@ -173,18 +170,6 @@ function getColor(index) {
   return colors[index % colors.length]; // Loop through the colors array
 }
 
-async function saveFeatures() {
-  try {
-    const response = await axios.post('http://localhost:8081/api/save_ranking', {
-      features: groupedFeatures.value
-    });
-    console.log('Speichern erfolgreich:', response.data);
-    // Füge hier weitere Logik nach dem Speichern hinzu, z.B. eine Benachrichtigung anzeigen
-  } catch (error) {
-    console.error('Fehler beim Speichern der Features:', error);
-    // Behandle den Fehler, z.B. durch Anzeigen einer Fehlermeldung
-  }
-}
 
 function log(event) {
   console.log('Element moved', event);
@@ -193,11 +178,8 @@ function log(event) {
 }
 
 function navigateToPreviousCase() {
-  console.log('Navigating to case:', route.params.id)
   const currentId = parseInt(route.params.id);
   if (currentId > 1) {
-    console.log(currentId)
-    console.log(typeof currentId)
     const previousId = currentId - 1;
     router.push({ name: 'RankerDetail', params: { id: previousId } });
   }
@@ -226,14 +208,33 @@ async function fetchTotalCases() {
   }
 }
 
+async function saveFeatures() {
+  const threadId = route.params.id; // Oder wie auch immer Sie die thread_id erhalten
+  const rankingData = groupedFeatures.value.map((featureGroup, groupIndex) => ({
+    type: featureGroup.type,
+    details: featureGroup.details.map((detail, detailIndex) => ({
+      model_name: detail.model_name,
+      value: detail.value,
+      position: detailIndex, // Position des Features in der Gruppe
+      group_position: groupIndex // Position der Feature-Gruppe
+    }))
+  }));
+
+  try {
+    const response = await axios.post(`http://localhost:8081/api/save_ranking/${threadId}`, rankingData);
+    console.log('Speichern erfolgreich:', response.data);
+    // Weitere Aktionen nach erfolgreichem Speichern, z.B. eine Benachrichtigung anzeigen
+  } catch (error) {
+    console.error('Fehler beim Speichern des Rankings:', error);
+    // Behandlung von Fehlern, z.B. eine Fehlermeldung anzeigen
+  }
+}
+
+
 
 
 function navigateToRanker() {
   router.push({ name: 'Ranker' });
-}
-
-function reloadPage() {
-  location.reload();
 }
 
 </script>

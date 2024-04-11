@@ -177,6 +177,11 @@ def list_email_threads():
 
     return jsonify(threads_list), 200
 
+@data_blueprint.route('/save_ranking/<int:thread_id>', methods=['POST'])
+def save_ranking(thread_id):
+    data = request.get_json()
+    return jsonify(data), 200
+
 
 def configure_routes(app):
     app.register_blueprint(auth_blueprint)

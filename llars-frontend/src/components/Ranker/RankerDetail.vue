@@ -1,6 +1,6 @@
 <template>
   <v-container fluid>
-    <v-row fluid>
+    <v-row>
       <v-col cols="12" md="6">
         <h2>Features</h2>
         <div class="email-thread">
@@ -21,10 +21,12 @@
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
-</div>
+        <v-spacer></v-spacer>
+
+        </div>
       </v-col>
 
-      <v-col cols="12" md="6"  class="fill-height">
+      <v-col cols="12" md="6">
         <h2>E-Mail Verlauf</h2>
         <div class="email-thread-container">
           <div class="email-thread">
@@ -48,14 +50,15 @@
         </div>
       </v-col>
     </v-row>
-     <v-spacer></v-spacer> <!-- Dies schiebt die Buttons nach unten -->
-    <v-card>
-      <v-col cols="12" class="text-center">
+    <v-spacer></v-spacer> <!-- Dies schiebt die Buttons nach unten -->
+
+    <v-container fluid>
+      <v-col cols="12" class="button-class">
         <v-btn @click="saveFeatures">Speichern</v-btn>
         <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
         <v-btn @click="navigateToNextCase">Nächster Fall</v-btn>
       </v-col>
-    </v-card>
+    </v-container>
   </v-container>
 </template>
 
@@ -72,7 +75,6 @@ const features = ref([]);
 const messages = ref([]);
 const senderColors = ref({}); // Verwende ein reaktives Objekt statt einer Map
 const groupedFeatures = ref([]);
-// const id = Number(route.params.id);
 
 async function fetchFeatureRanking(threadId) {
   try {
@@ -213,20 +215,30 @@ function navigateToPreviousCase() {
   }
 }
 
-function navigateToNextCase() {
+async function navigateToNextCase() {
   const currentId = parseInt(route.params.id);
+  const totalCases = await fetchTotalCases(); // Angenommen, fetchTotalCases() ist eine Methode, die die Gesamtzahl der Fälle zurückgibt
   const nextId = currentId + 1;
-  router.push({ name: 'RankerDetail', params: { id: nextId } });
-  //router.push({ path: '/Ranker' })
-  // router.push({ path: '/Ranker/2' })
-  // this.isMenuOpen = false
-  //vm.$forceUpdate();
-  //or in file components#this.$router.go(0);
-  // this.$router.go(0);
-  // location.reload();
-  // this.$forceUpdate();
-  // reloadPage();
+
+  if (nextId <= totalCases) {
+    router.push({ name: 'RankerDetail', params: { id: nextId } });
+  } else {
+    console.log("Letzter Fall erreicht, kann nicht zum nächsten navigieren");
+    // Hier könnten Sie zusätzliche Logik hinzufügen, z.B. eine Benachrichtigung anzeigen
+  }
 }
+
+async function fetchTotalCases() {
+  try {
+    const response = await axios.get('http://localhost:8081/api/email_threads');
+    return response.data.length; // Die Gesamtzahl der Fälle entspricht der Länge des zurückgegebenen Arrays
+  } catch (error) {
+    console.error('Error fetching total number of cases:', error);
+    return 0; // Falls ein Fehler auftritt, gehen wir von 0 Fällen aus
+  }
+}
+
+
 
 function navigateToRanker() {
   router.push({ name: 'Ranker' });
@@ -239,12 +251,20 @@ function reloadPage() {
 </script>
 
 <style scoped>
+.button-class {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid #8AC007;
+  margin-top: 5px;
+  position: sticky;
 
+}
 
 .email-thread-container {
   max-height: 500px;
   overflow-y: auto;
-  min-height: 100vh; /* Stellt sicher, dass der Container den gesamten Viewport einnimmt */
+  min-height: 80vh; /* Stellt sicher, dass der Container den gesamten Viewport einnimmt */
   display: flex; /* Ermöglicht die Verwendung von Flexbox-Layout */
   flex-direction: column; /* Orientiert die Kinder (Zeilen) vertikal */
   position: relative; /* Wichtig für die Positionierung der Pseudo-Elemente */
@@ -254,7 +274,7 @@ function reloadPage() {
   position: absolute;
   left: 0;
   right: 0;
-  height: 20px; /* Höhe des Überblendeffekts */
+  height: 5px; /* Höhe des Überblendeffekts */
   pointer-events: none; /* Verhindert, dass die Überlagerung Mausereignisse blockiert */
 }
 
@@ -272,7 +292,6 @@ function reloadPage() {
   max-height: 100%;
   overflow-y: auto;
 }
-
 
 
 .email-message {
@@ -320,8 +339,8 @@ function reloadPage() {
 }
 
 .fill-height {
-  height: 100vh; /* Höhe des Viewports */
-  display: flex;
+  height: 20vh; /* Höhe des Viewports */
+  //display: flex;
   flex-direction: column;
   overflow: hidden; /* Verhindert das Scrollen des gesamten Layouts */
 }

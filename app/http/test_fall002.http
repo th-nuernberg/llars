@@ -1,0 +1,74 @@
+POST http://localhost:8081/api/email_threads
+Content-Type: application/json
+
+{
+    "type": "conversation",
+    "chat_id": 2,
+    "institut_id": 0,
+    "subject": "Hilfe",
+    "sender": "[KM]",
+    "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchender",
+      "content": "Liebe bke-Mitglieder,\n\nich bin neu hierauf dieser Seite, habe schon etwas in den Foren gestöbert, aber keine ganz passende Hilfe gefunden. Unser Problem:\nUnser Sohn, [Kind] Jahre, hat in Abständen von mehreren Wochen immer wieder Beträge zwischen 20 € und 200 € aus meinem Geldbeutel gestohlen. Ich habe jedesmal wenn ich es festgestellt habe (ich fürchte es war noch öfter), sehr ernste Gespräche über Geld, Geld erarbeiten, Vertrauen in der Familie und Konsequenzen für ihn... mit ihm geführt, alles Geld zuerst ganz genau weggeräumt, mit der Zeit dann leider nachlässiger. Mein Mann brüllt da nur herum, das hilft auch irgendwie nicht weiter. Mir fällt auf, dass das Stehlen in Zeiten geschieht, wo unser Sohn sich außerdem ganz cool zeigt, d.h. irgendwie unnahbar, und seine Reue wirkt so unecht. Als Begründung sagt er nur, dass er das Geld einfach haben wollte, ich weiß aber, dass er sich mit dem Sparen schwer tut und viel Geld  z.B. auf dem Volksfest oder zum Angeben vor Freunden verwendet. Zeitweilig habe ich ihm zusätzliche Hausarbeiten gegen Bezahlung angeboten. Jetzt war es heute wieder passiert. ich habe ihn tief enttäuscht für eine Auszeit in sein Zimmer geschickt und weiß nicht was ich machen soll. Wie kann ich ihn von diesem Verhalten wegbringen?\nVielen Dank schon im voraus für Ihre Mühe und Ihr Wissen!\n[KM]\n",
+      "timestamp": "2020-03-12 20:14:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Berater",
+      "content": "Sehr geehrte [KM],\n\nIch bin [FK], Diplom-Psychologin bei der bke-Elternberatung und habe Ihre Anfrage erhalten. \nSie haben darin beschrieben, dass ihr Sohn Sie, trotz Ihrer Versuche, ihm diesen schweren Verstoß begreiflich zu machen, mittlerweile mehrfach bestohlen hat.\n\nFür Eltern ist eine solche Erfahrung eine der schwierigsten und auch schlimmsten, denn das Vertrauen, das innerhalb der Familie herrscht, erhält durch ein solches Verhalten einen schweren Schaden.\nDies führt oft dazu, dass man als betroffene Eltern hofft, das Vertrauen durch Erklärungen schnellstmöglich wieder herstellen zu können. Als Eltern hofft man auf Einsicht beim Kind und versucht es sowohl in lauter als auch in sachlich-leiser Form. Das ist eine sehr verständliche elterliche Reaktion, wie ich immer wieder betone, wenn Eltern mir von einer solchen Krisensituation berichten.\n\nIch schlage vor, das Verhalten des Kindes, (im Fall Ihres [K] alten Sohnes könnte man ja auch schon von einem Jugendlichen reden) aus einer anderen Perspektive zu sehen, nämlich der des Kindes. Kinder und Jugendliche stellen durch ihr Verhalten die Grenzen, innerhalb derer sie sich bewegen, auf den Prüfstand.\n\nEinerseits kennen sie die innerfamiliären Regeln (auch das Verbot, sich das Eigentum anderer zu nehmen) sehr wohl. Sie überprüfen jedoch durch Verstöße gegen diese Regel deren Gültigkeit. Und diese Gültigkeit kann nicht durch Erinnern an diese Regel, sondern nur durch klares und konsequentes Verhalten durch die Eltern wieder hergestellt werden.\n\nDurch diese klaren und konsequenten Reaktionen der Eltern werden die Rahmenbedingungen und Strukturen geschaffen, die für Kinder und Jugendliche sehr wichtig sind.\n\nEinige Merkmale von konsequentem und klarem Reagieren sind wichtig und auch für andere Situationen, in denen es um Grenzverletzungen geht, verallgemeinerbar:\n\nEine wichtige Voraussetzung für das Funktionieren von Regeln ist, dass die Regeln sehr klar formuliert sind. Sie sollten von jedem Familienmitglied vertreten werden.\n\nWenn vom Kind gegen eine klare Regel verstoßen wird, wenn eine Grenze überschritten wird, dann ist es notwendig, dass von beiden Eltern eine erwartbare Konsequenz erfolgt.\n\nWas heißt das nun konkret für Sie?\n\nIhre Beschreibung enthielt sehr wohl Elemente, die der konsequenten Reaktion entsprechen. Die Konsequenz, dass jegliches Geld nicht mehr frei zugänglich ist, ist so eine Reaktion. Damit wird ihrem Sohn die Gültigkeit dieser (wichtigen) Regel deutlich, dass auch und gerade in Familien das Eigentum des anderen respektiert werden muss.\n\nAllerdings ist wichtig, dass beide Eltern gleich handeln.\n \nEs sollte Ihrem Sohn auch noch einmal deutlich gemacht werden, dass dies eine Reaktion auf sein Verhalten darstellt und so lange aufrechterhalten wird, bis Sie als Eltern gemeinschaftlich beschließen, dass Ihr Sohn Ihr Vertrauen wieder erhält – allerdings nur für eine Probezeit.\n\nDiese Probezeit dient dazu zu überprüfen, ob Ihr Sohn sein Verhalten verändert hat. Er muss in dieser Probezeit beweisen, dass er Ihr Vertrauen wieder verdient.\n\nEin weiterer wichtiger Punkt ist die Wiedergutmachung.\nEs sollte eine Möglichkeit gefunden werden, wie ihr Sohn den durch ihn entstandenen Schaden wieder gut machen kann.\nEine Möglichkeit wäre zum Beispiel, dass er so lange auf einen Teil des Taschengeldes verzichtet, bis der Betrag, über dessen Verlust Sie sicher sind, wieder ausgeglichen ist. Man kann auch über ausgleichende Tätigkeiten nachdenken, die aber meist auf die Dauer etwas schwieriger durchzusetzen sind. Sie haben ja auch beschrieben, dass Sie ihm angeboten haben zu arbeiten, um die Schulden sozusagen abzuarbeiten. Wobei mir unklar geblieben ist, ob Ihr Sohn dieses Angebot angenommen hatte?\n\nBevor er durch die Probezeit wieder eine Chance erhält und das Vertrauen zurückgewinnen kann, sollte es für ihn deutlich spürbar sein, \ndass sich etwas für ihn zum Negativen verkehrt hat. Es soll für ihn wichtig werden, sich innerhalb der Probezeit vertrauenswürdig zu zeigen. \nGehen Sie also nicht zu schnell wieder zur Normalität über.\n\nIch hoffe, Ihnen mit meinen Ausführungen, ein Stück weiter geholfen zu haben und wünsche Ihnen für die nächsten Schritte alles Gute und viel Erfolg.\n\nMit freundlichen Grüßen \n[FK]\nDiplompsychologin\n",
+      "timestamp": "2020-03-13 15:45:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchender",
+      "content": "Liebe [FK],\n\nherzlichen Dank für Ihre rasche Antwort. Darauf hatte ich nicht zu hoffen gewagt!\n\nIch möchte über ihre lange Antwort noch in Ruhe nachdenken, aber so viel vorab: [K] ist gestern und heute sehr lieb und bemüht, anscheinend merkt er doch etwas. Die Problematik Regeln in der Familie war mir schon geläufig, neu für mich sind auf alle Fälle Ihre Punkte zur Wiedergutmachung und vor allem das mit der Probezeit. Das war mir so nicht klar. Für wie lange macht es denn Sinn, eine Probezeit anzusetzen? Erneuert die sich dann immer wieder? Sie merken, mein Vertauen ist ziemlich angeknackst. Und ich bin mir nicht sicher, wie wir die Konsequenzen aus seinem Verhalten leben sollen. Einerseits lege ich viel Wert auf Vertrauen vorallem und gerade in der Familie, was ja auch mit selbständigem verantwortungsbewußtem Handeln (bei den Kindern im Rahmen ihrer altersgemäßen Möglichkeiten) einhergeht. Andererseits denke ich mir, wenn ich jetzt nicht eingreife, wo führt das dann hin? Und wie hart muß ich eingreifen? Daneben sind mir auch meine eigenen Schwächen bewußt, wie z.B. nicht über einen längeren Zeitraum streng sein zu können.\nWenn Sie mögen, würde ich mich über die eine oder andere Idee von Ihnen sehr freuen; die Klarheit in Ihrem Antwortschreiben hift mir schon gut weiter.\nNochmals herzlichen Dank!!!\nMit freundlichen Grüßen\nIhre [KM]\n",
+      "timestamp": "2020-03-18 22:10:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Berater",
+      "content": "Liebe [KM],\n\nin Ihrer Antwort finde ich den starken Wunsch und das Bemühen, \nsich für eine Lösung einzusetzen und die Dinge nicht auf sich beruhen zu lassen.\nDas ist ein ganz wichtiger Punkt, den ich deshalb am Beginn meiner Antwort noch einmal aufgreifen möchte.\n\nEs ist also notwenig, auf diesen Vorfall zu reagieren. Dies leitet über zu der Frage, die Sie aufgegriffen haben: Die Frage nach dem konkreten Wie.\n\nDies hat in meiner ersten Antwort an Sie leider gefehlt. Da habe ich auf grundsätzlichere Strukturen hingewiesen, die natürlich auch sehr hilfreich sind. \n\nDas konkrete Wie zeigt ein weiteres ganz wichtigen Grundprinzip im Umgang mit Kindern und Jugendlichen: die Echtheit. Das heißt, dass elterliche Maßnahmen und Interventionen nur wirksam sind, wenn die Eltern wirklich davon überzeugt sind, dass sie das für sie richtige tun. Alle Eltern haben Erfahrung damit, dass sie in ihren Kindern Wesen vor sich haben, die mit vielen kleinen Antennen ausgestattet zu sein scheinen, spezialisiert auf das elterliche Verhalten und dessen Interpretation.\n\nDeswegen sollte es besser keine Vorgaben geben zum Beispiel über die Zeitdauer der Probezeit. Es sollte im Ermessen der Eltern liegen, wann diese Probezeit anfängt, also wann die Zeit des Misstrauens beginnt und wann das Wegräumen von Bargeld etc. endet. Dies wäre eine Entscheidung, die von beiden Eltern über eine nicht zu kurze Zeit (mindestens 1-2 Wochen) übereinstimmend gefällt werden sollte.\nHier ist auch die Frage zu klären, wodurch Eltern ihr Misstrauen in der Zeit unterstützend zum Ausdruck bringen können.\nWas die Dauer der Probezeit betrifft, bietet sich vielleicht an, die Zeit etwas länger festzusetzen, vielleicht sogar erst einmal auf unbestimmte Dauer, denn von dem Bestehen dieser Probezeit hängt ja auch ab, ob wieder Normalität einkehrt.\nDem Jugendlichen könnten wöchentliche Rückmeldungen gegeben werden,\nob er das Ziel in der vergangenen Woche erreicht hat (also nichts weggekommen ist).\n\nIch würde an dieser Stelle raten, nicht zu schnell wieder zur Normalität überzugehen, auch wenn man es sich als Eltern insgeheim wünschen würde.\nJe eindrücklicher diese Erfahrung für Jugendliche ist, desto größer ist die Chance auf eine langfristige Verhaltensänderung.\n\nIch hoffe, meine Ergänzungen sind für Ihre Überlegungen hilfreich und nutzbringend.\n\nHerzliche Grüße von\n\n[FK]\n",
+      "timestamp": "2020-03-24 14:44:00"
+    },
+    {
+      "message_id": 5,
+      "sender": "Ratsuchender",
+      "content": "Liebe [FK],\n\nherzlichen Dank für Ihre Antwort! Ihre Ausführungen schaffen für uns wirklich weitere Klarheit bei unserem Problem. Mein Mann, der jetzt von einer längeren Dienstreise zurück ist, arbeitet nun mit mir zusammen und wir sind uns einig, dass wir dieses Verhalten unseres jüngeren Sohnes keinen Tag länger dulden werden. Wir sind an sich sehr harmoniebedürftige Menschen und es widerstrebt uns sehr, so hart vorgehen zu müssen, aber Ihre eindeutige Warnung, nicht zu schnell wieder zur Normalität zurückzukehren hat uns tief betroffen gemacht. Wir haben uns vorgenommen, den Mut und die notwendige Ausdauer für die notwendigen Maßnahmen aufzubringen.\n\nWenn wir dürfen, würden wir uns gerne nach einer Weile nochmal bei Ihnen melden oder vielleicht früher, wenn konkrete Fragen auftauchen. \n\nWenn Ihnen noch etwas zu uns einfällt, sind wir froh über weitere Anregungen von Ihnen.\n\nVielen herzlichen Dank für Ihre tatkräftige Hilfestellung!!!\nMit freundlichen Grüßen\n[KM]\n",
+      "timestamp": "2020-04-02 10:15:00"
+    },
+    {
+      "message_id": 6,
+      "sender": "Berater",
+      "content": "Liebe [KM],\n\nja, ich mache Ihnen gern das Angebot, dass Sie sich wieder melden können, nach einer Zeit, oder wenn noch Fragen aufkommen sollten.\nJetzt geht es erst einmal darum, das Gerüst der weiteren Vorgehensweise für Sie als Eltern konkret auszugestalten, so wie Sie es auch beschrieben haben.\nIhre Entschlossenheit dabei war unüberlesbar, die beste Voraussetzung für einen klaren Handlungsplan, der gerade in derartigen krisenhaften Situationen ganz wichtig ist.\n\nMit herzlichen Grüßen\n[FK]\n",
+      "timestamp": "2020-04-04 17:28:00"
+    }
+    ],
+    "generated_features": {
+        "Vicuna-13B": {
+            "abstract_summary": "Petra, die unter starker Angst vor COVID-19 leidet, kämpft mit der bevorstehenden Präsenzprüfung. Durch die Onlineberatung erlangt sie Strategien zur Angstbewältigung, informiert sich über Sicherheitsmaßnahmen und übt Entspannungstechniken, was zu einer erfolgreichen Prüfungsteilnahme führt.",
+            "generated_category": "Entwicklungsauffälligkeiten/seelische Probleme des jungen Menschen",
+            "generated_subject": "Angstbewältigung bei COVID-19",
+            "order_clarification": "Fokus auf Angstmanagement und Anpassung an Präsenzprüfungen in der Pandemie."
+        },
+        "Mixtral8x7B": {
+            "abstract_summary": "In einem dialogorientierten Prozess erarbeitet Petra mit ihrer Beraterin Strategien gegen ihre Angst vor Ansteckung und Prüfungen. Sie erkundet das Hygienekonzept ihrer Universität und findet Übungen, die ihr helfen, ihre Angst zu kontrollieren und erfolgreich an Prüfungen teilzunehmen.",
+            "generated_category": "Psychologische Beratung",
+            "generated_subject": "Umgang mit Prüfungsangst und COVID-19",
+            "order_clarification": "Strategien zur Angstreduktion und Vorbereitung auf Präsenzprüfungen."
+        },
+        "Solaris-13B": {
+            "abstract_summary": "Durch den Austausch mit der Beraterin identifiziert Petra ihre Angstursachen und entwickelt Bewältigungsstrategien. Sie erfährt Erfolge durch praktische Anwendung von Entspannungstechniken und angepasstem Lernplan, was ihre Angst reduziert und zur erfolgreichen Prüfungsteilnahme führt.",
+            "generated_category": "Seelische Gesundheit",
+            "generated_subject": "Strategien gegen Angst und Stressbewältigung",
+            "order_clarification": "Entwicklung von Bewältigungsstrategien für Angst und Stressmanagement."
+        },
+        "VagoSauerkraut-13B": {
+            "abstract_summary": "Petra überwindet ihre intensive Angst vor COVID-19 mit Hilfe der Onlineberatung, indem sie Sicherheitsprotokolle ihrer Universität erforscht und spezifische Entspannungsmethoden anwendet. Ihre zunehmende Selbstsicherheit ermöglicht erfolgreiche Prüfungsteilnahmen.",
+            "generated_category": "Angststörungen",
+            "generated_subject": "COVID-19-Angst und Selbsthilfestrategien",
+            "order_clarification": "Ermittlung und Anwendung von Selbsthilfestrategien zur Angstbewältigung."
+        }
+    }
+}

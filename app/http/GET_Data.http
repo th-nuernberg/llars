@@ -1,3 +1,6 @@
-GET localhost:8081/api/email_threads/2
 ###
 GET localhost:8081/api/email_threads
+###
+GET localhost:8081/api/email_threads/1
+###
+GET localhost:8081/api/email_threads/1/ranking

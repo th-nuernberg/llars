@@ -11,7 +11,8 @@
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
-    <v-main> <!-- v-main hinzugefügt, um den Content zu umschließen -->
+    <v-main>
+      <!-- v-main hinzugefügt, um den Content zu umschließen -->
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
   </v-app>
@@ -23,8 +24,19 @@ import {useRouter} from 'vue-router';
 const router = useRouter();
 
 function logout() {
+  // Entferne allgemeine Auth-Daten
   localStorage.removeItem('token');
   localStorage.removeItem('username');
+  localStorage.removeItem('api_key');
+
+  // Entferne alle gespeicherten Ranked-Feature-Daten
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('featureOrder_')) {
+      localStorage.removeItem(key);
+    }
+  });
+
+  // Weiterleitung zur Login-Seite
   router.push('/login');
 }
 

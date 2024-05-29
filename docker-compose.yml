@@ -1,4 +1,3 @@
-version: '3'
 services:
   backend-flask-service:
     container_name: llars_flask_service

@@ -25,7 +25,7 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="teal darken-4" @click="handleLogin">Login</v-btn>
+            <v-btn color="teal lighten-4" @click="handleLogin">Login</v-btn>
           </v-card-actions>
           <v-alert v-if="errorMessage" type="error" class="ma-4">
             {{ errorMessage }}
@@ -37,9 +37,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { makePostRequestAsync } from '../services/rest_functions.js';
+import {ref} from 'vue';
+import {useRouter} from 'vue-router';
+import {makePostRequestAsync} from '../services/rest_functions.js';
+import { jwtDecode } from "jwt-decode";
 
 const username = ref('');
 const password = ref('');
@@ -53,12 +54,22 @@ async function handleLogin() {
       password: password.value
     });
     if (response.data.access_token) {
+      // Speichern des Zugriffstokens und Benutzernamens im Local Storage
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('username', response.data.username);
-      router.push('/Home'); // oder eine andere Route, die der Benutzer nach dem Login sehen sollte
+
+      // Extrahieren des API-Schlüssels aus dem JWT-Token
+      const decoded = jwtDecode(response.data.access_token);
+      const apiKey = decoded.api_key;
+      localStorage.setItem('api_key', apiKey); // Speichern des API-Schlüssels im Local Storage
+
+      // Weiterleiten zur Home-Route oder einer anderen Route nach dem Login
+      router.push('/Home');
+    } else {
+      errorMessage.value = 'No access token received';
     }
   } catch (error) {
-    errorMessage.value = error.message || 'An error occurred during login';
+    errorMessage.value = error.response?.data?.error || 'An error occurred during login';
   }
 }
 </script>

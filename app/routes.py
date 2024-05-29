@@ -2,38 +2,46 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash
 from db.db import db
-from db.tables import User, EmailThread, Message, Feature, FeatureType, LLM
+from db.tables import User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking
+from uuid import uuid4
+import uuid
 from datetime import datetime
 import json
 
-# Authentifizierungs-Blueprint
 auth_blueprint = Blueprint('auth', __name__)
 data_blueprint = Blueprint('data', __name__)
 
+def is_valid_uuid(uuid_to_test, version=4):
+    try:
+        uuid_obj = uuid.UUID(uuid_to_test, version=version)
+        return str(uuid_obj) == uuid_to_test
+    except ValueError:
+        return False
+
 @auth_blueprint.route('/register', methods=['POST'])
 def register():
-    # print("register")
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
+    api_key = data.get('api_key', str(uuid4()))
 
-    # Check if username and password are provided
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
 
-    # Check if user already exists
+    if not api_key or not is_valid_uuid(api_key):
+        return jsonify({"error": "Invalid API key"}), 400
+
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "Username already exists"}), 409
 
-    # Create new user
     new_user = User(username=username)
     new_user.set_password(password)
+    new_user.api_key = api_key
 
-    # Add the new user to the database
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({"message": "User registered successfully"}), 201
+    return jsonify({"message": "User registered successfully", "api_key": api_key}), 201
 
 @auth_blueprint.route('/health_check', methods=['GET'])
 def health_check():
@@ -45,32 +53,31 @@ def login():
     username = data.get('username')
     password = data.get('password')
     user = User.query.filter_by(username=username).first()
-    if user and check_password_hash(user.password_hash, password):
-        # Create JWT token
-        access_token = create_access_token(identity=username)
-        # login_user(user=user)
-        return jsonify(access_token=access_token, username=username), 200
+
+    if user and user.check_password(password):
+        additional_claims = {"api_key": user.api_key}
+        access_token = create_access_token(identity=username, additional_claims=additional_claims)
+        return jsonify({
+            "access_token": access_token,
+            "username": username
+        }), 200
     else:
-        return jsonify({"error": "Invalid username or password"}), 401
+        return jsonify({"error": "Invalid credentials"}), 401
 
 @auth_blueprint.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
     return jsonify({"message": "Logged out successfully"}), 200
 
-
 @data_blueprint.route('/email_threads', methods=['POST'])
 def create_email_thread():
     data = request.get_json()
-
-    # Überprüfen, ob der Thread bereits existiert
     email_thread = EmailThread.query.filter_by(
         chat_id=data.get('chat_id'),
         institut_id=data.get('institut_id')
     ).first()
 
     if not email_thread:
-        # Erstellen eines neuen EmailThread-Eintrags, falls nicht vorhanden
         email_thread = EmailThread(
             chat_id=data.get('chat_id'),
             institut_id=data.get('institut_id'),
@@ -79,7 +86,6 @@ def create_email_thread():
         db.session.add(email_thread)
         db.session.commit()
 
-    # Hinzufügen von Nachrichten zum EmailThread, falls neu
     existing_message_ids = {msg.message_id for msg in email_thread.messages}
     for msg in data.get('messages', []):
         if msg.get('message_id') not in existing_message_ids:
@@ -91,9 +97,7 @@ def create_email_thread():
             )
             db.session.add(message)
 
-    # Hinzufügen von Features zum EmailThread, falls neu
     for model_name, features in data.get('generated_features', {}).items():
-        # Überprüfen, ob das LLM-Modell existiert; falls nicht, erstellen
         llm = LLM.query.filter_by(name=model_name).first()
         if not llm:
             llm = LLM(name=model_name)
@@ -101,14 +105,12 @@ def create_email_thread():
             db.session.commit()
 
         for feature_key, feature_value in features.items():
-            # Überprüfen, ob der FeatureType existiert; falls nicht, erstellen
             feature_type = FeatureType.query.filter_by(name=feature_key).first()
             if not feature_type:
                 feature_type = FeatureType(name=feature_key)
                 db.session.add(feature_type)
                 db.session.commit()
 
-            # Überprüfen, ob das Feature bereits existiert; falls nicht, hinzufügen
             existing_feature = Feature.query.filter_by(
                 thread_id=email_thread.thread_id,
                 type_id=feature_type.type_id,
@@ -128,15 +130,12 @@ def create_email_thread():
 
     return jsonify({'status': 'success', 'thread_id': email_thread.thread_id}), 201
 
-
 @data_blueprint.route('/email_threads/<int:thread_id>', methods=['GET'])
 def get_email_thread(thread_id):
-    # Einen spezifischen EmailThread anhand seiner ID finden
     email_thread = EmailThread.query.get(thread_id)
     if not email_thread:
         return jsonify({'error': 'Email thread not found'}), 404
 
-    # Datenstruktur für das Frontend vorbereiten
     thread_data = {
         'chat_id': email_thread.chat_id,
         'institut_id': email_thread.institut_id,
@@ -162,10 +161,8 @@ def get_email_thread(thread_id):
 
 @data_blueprint.route('/email_threads', methods=['GET'])
 def list_email_threads():
-    # Alle EmailThreads aus der Datenbank holen
     email_threads = EmailThread.query.all()
 
-    # Eine Liste von Dictionaries vorbereiten, die grundlegende Informationen zu jedem Thread enthalten
     threads_list = [
         {
             'thread_id': thread.thread_id,
@@ -179,8 +176,102 @@ def list_email_threads():
 
 @data_blueprint.route('/save_ranking/<int:thread_id>', methods=['POST'])
 def save_ranking(thread_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
     data = request.get_json()
-    return jsonify(data), 200
+
+    for feature_type in data:
+        type_name = feature_type['type']
+        for detail in feature_type['details']:
+            model_name = detail['model_name']
+            value = detail['value']
+            position = detail['position']
+
+            # Find the FeatureType ID
+            feature_type_entry = FeatureType.query.filter_by(name=type_name).first()
+            if not feature_type_entry:
+                return jsonify({'error': f'Feature type {type_name} not found'}), 404
+
+            # Find the LLM ID
+            llm_entry = LLM.query.filter_by(name=model_name).first()
+            if not llm_entry:
+                return jsonify({'error': f'LLM {model_name} not found'}), 404
+
+            # Find the feature_id for the given thread_id, feature_type_id, and llm_id
+            feature = Feature.query.filter_by(
+                thread_id=thread_id,
+                type_id=feature_type_entry.type_id,
+                llm_id=llm_entry.llm_id,
+                value=value
+            ).first()
+
+            if feature:
+                # Check if the ranking already exists
+                existing_ranking = UserFeatureRanking.query.filter_by(
+                    user_id=user.id,
+                    feature_id=feature.feature_id,
+                    type_id=feature_type_entry.type_id,
+                    llm_id=llm_entry.llm_id
+                ).first()
+
+                if existing_ranking:
+                    # Update the ranking value if it exists
+                    existing_ranking.ranking_value = position
+                else:
+                    # Create a new ranking entry
+                    new_ranking = UserFeatureRanking(
+                        user_id=user.id,
+                        feature_id=feature.feature_id,
+                        ranking_value=position,
+                        type_id=feature_type_entry.type_id,
+                        llm_id=llm_entry.llm_id
+                    )
+                    db.session.add(new_ranking)
+
+    db.session.commit()
+
+    return jsonify({'status': 'Ranking saved successfully'}), 201
+
+
+@data_blueprint.route('/email_threads/<int:thread_id>/current_ranking', methods=['GET'])
+def get_current_ranking(thread_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
+        Feature.thread_id == thread_id).all()
+
+    if not rankings:
+        return jsonify({'warning': 'No rankings found for the given thread and user', 'rankings': []}), 200
+
+    rankings_data = {}
+
+    for ranking in rankings:
+        feature_type_name = ranking.feature_type.name
+        if feature_type_name not in rankings_data:
+            rankings_data[feature_type_name] = []
+
+        rankings_data[feature_type_name].append({
+            'model_name': ranking.llm.name,
+            'value': ranking.feature.value,
+            'position': int(ranking.ranking_value)
+        })
+
+    formatted_rankings = [{'type': key, 'details': sorted(value, key=lambda x: x['position'])} for key, value in
+                          rankings_data.items()]
+
+    return jsonify(formatted_rankings), 200
 
 
 def configure_routes(app):

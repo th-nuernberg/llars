@@ -10,7 +10,7 @@
               <div>{{ translateFeatureType(feature.type) }}</div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <draggable v-model="feature.details" group="featureGroup" item-key="model_name" @change="log">
+              <draggable v-model="feature.details" group="featureGroup" item-key="model_name" @change="handleDragEnd">
                 <template #item="{element, index}">
                   <div :key="element.model_name" class="draggable-item">
                     <p><strong>Modell:</strong> {{ element.model_name }}</p>
@@ -22,7 +22,6 @@
           </v-expansion-panel>
         </v-expansion-panels>
         <v-spacer></v-spacer>
-
         </div>
       </v-col>
 
@@ -54,7 +53,7 @@
 
     <v-container fluid>
       <v-col cols="12" class="button-class">
-        <v-btn @click="saveFeatures">Speichern</v-btn>
+        <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
         <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
         <v-btn @click="navigateToNextCase">Nächster Fall</v-btn>
       </v-col>
@@ -63,50 +62,55 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
-import {useRoute, useRouter} from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import draggable from 'vuedraggable';
-
+import axios from 'axios';
 
 const route = useRoute();
 const router = useRouter();
 const features = ref([]);
 const messages = ref([]);
-const senderColors = ref({}); // Verwende ein reaktives Objekt statt einer Map
+const senderColors = ref({});
 const groupedFeatures = ref([]);
-
-async function fetchFeatureRanking(threadId) {
-  try {
-    const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}/ranking`);
-    return response.data.rankings;
-  } catch (error) {
-    console.error('Error fetching feature ranking:', error);
-    return [];
-  }
-}
+const localStorageKey = ref('');
 
 async function fetchEmailThreads(threadId) {
   try {
     const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}`);
-    //console.log(response);
     return response.data;
   } catch (error) {
-    //console.error('Error fetching email threads:', error);
+    console.error('Error fetching email threads:', error);
+    return null; // Rückgabe von null bei einem Fehler
+  }
+}
+
+async function fetchServerRanking(threadId) {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    console.log('API key:', api_key)
+    const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}/current_ranking`, {
+      headers: {
+        'Authorization': api_key
+      }
+    });
+    console.log('Server ranking:', response.data)
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching server ranking:', error);
     return null; // Rückgabe von null bei einem Fehler
   }
 }
 
 onMounted(async () => {
   const threadData = await fetchEmailThreads(route.params.id);
-  features.value = threadData.features;
-  messages.value = threadData.messages;
-  let lastSender = '';
-  let currentColor = 'same-sender';
   if (!threadData) return;
 
+  features.value = threadData.features;
+  messages.value = threadData.messages;
+
   const featureMap = new Map();
-  features.value.forEach(f => {
+  features.value.forEach((f, index) => {
     if (!featureMap.has(f.type)) {
       featureMap.set(f.type, {
         type: f.type,
@@ -115,25 +119,66 @@ onMounted(async () => {
     }
     featureMap.get(f.type).details.push({
       model_name: f.model_name,
-      value: f.value
+      value: f.value,
+      feature_id: f.feature_id,
+      position: index // include position
     });
   });
 
   groupedFeatures.value = Array.from(featureMap.values());
-  console.log(groupedFeatures.value);
 
+  // Set the localStorage key based on thread ID
+  localStorageKey.value = `featureOrder_${route.params.id}`;
+
+  // Load the saved order from LocalStorage
+  await loadFeatureOrder();
+
+  let lastSender = '';
+  let currentColor = 'same-sender';
   messages.value.forEach(message => {
     if (message.sender !== lastSender) {
       currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender';
       lastSender = message.sender;
     }
     senderColors.value[message.sender] = currentColor;
-    });
-
+  });
 });
 
+async function loadFeatureOrder() {
+  const savedOrder = localStorage.getItem(localStorageKey.value);
+  if (savedOrder) {
+    const orderedFeatures = JSON.parse(savedOrder);
+    applyFeatureOrder(orderedFeatures);
+  } else {
+    const serverRanking = await fetchServerRanking(route.params.id);
+    if (serverRanking && !serverRanking.warning) {
+      applyFeatureOrder(serverRanking);
+    }
+  }
+}
+
+function applyFeatureOrder(orderedFeatures) {
+  const featureMap = new Map();
+
+  // Create a map with empty arrays for each feature type
+  orderedFeatures.forEach(f => {
+    featureMap.set(f.type, {
+      type: f.type,
+      details: new Array(f.details.length)
+    });
+  });
+
+  // Populate the arrays with saved details in the correct positions
+  orderedFeatures.forEach(f => {
+    f.details.forEach(detail => {
+      featureMap.get(f.type).details[detail.position] = detail;
+    });
+  });
+
+  groupedFeatures.value = Array.from(featureMap.values());
+}
+
 function getMessageClass(sender) {
-  // Hole die Farbe des Senders aus dem reaktiven Objekt
   return senderColors.value[sender];
 }
 
@@ -148,13 +193,14 @@ function translateFeatureType(type) {
 }
 
 function formatTimestamp(timestamp) {
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+  const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
   const date = new Date(timestamp);
   const formattedDate = date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
   return formattedDate;
 }
 
-const colors = ["#E8F5E9", "#C8E6C9", "#F1F8E9", "#DCEDC8 ", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
+const colors = ["#E8F5E9", "#C8E6C9", "#F1F8E9", "#DCEDC8", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
+
 function getItemStyle(index) {
   const backgroundColor = getColor(index);
   return {
@@ -167,21 +213,31 @@ function getItemStyle(index) {
 }
 
 function getColor(index) {
-  return colors[index % colors.length]; // Loop through the colors array
+  return colors[index % colors.length];
 }
 
+function handleDragEnd() {
+  saveFeatureOrderToLocalStorage();
+}
 
-function log(event) {
-  console.log('Element moved', event);
-  // Hier kannst du zusätzliche Logik implementieren,
-  // z.B. das aktualisierte Array an den Server senden
+function saveFeatureOrderToLocalStorage() {
+  const orderedFeatures = groupedFeatures.value.map(group => ({
+    type: group.type,
+    details: group.details.map((detail, index) => ({
+      model_name: detail.model_name,
+      value: detail.value,
+      feature_id: detail.feature_id,
+      position: index // save the current position
+    }))
+  }));
+  localStorage.setItem(localStorageKey.value, JSON.stringify(orderedFeatures));
 }
 
 function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);
   if (currentId > 1) {
     const previousId = currentId - 1;
-    router.push({ name: 'RankerDetail', params: { id: previousId } });
+    router.push({name: 'RankerDetail', params: {id: previousId}});
   }
 }
 
@@ -191,10 +247,9 @@ async function navigateToNextCase() {
   const nextId = currentId + 1;
 
   if (nextId <= totalCases) {
-    router.push({ name: 'RankerDetail', params: { id: nextId } });
+    router.push({name: 'RankerDetail', params: {id: nextId}});
   } else {
     console.log("Letzter Fall erreicht, kann nicht zum nächsten navigieren");
-    // Hier könnten Sie zusätzliche Logik hinzufügen, z.B. eine Benachrichtigung anzeigen
   }
 }
 
@@ -208,33 +263,46 @@ async function fetchTotalCases() {
   }
 }
 
-async function saveFeatures() {
-  const threadId = route.params.id; // Oder wie auch immer Sie die thread_id erhalten
-  const rankingData = groupedFeatures.value.map((featureGroup, groupIndex) => ({
-    type: featureGroup.type,
-    details: featureGroup.details.map((detail, detailIndex) => ({
+function saveFeaturesServerSide() {
+  const api_key = localStorage.getItem('api_key'); // API Key aus dem localStorage beziehen
+  if (!api_key) {
+    alert('API key is missing');
+    return;
+  }
+
+  // Load the saved feature order from LocalStorage
+  const savedFeatureOrder = localStorage.getItem(`featureOrder_${route.params.id}`);
+  let orderedFeatures = groupedFeatures.value.map(group => ({
+    type: group.type,
+    details: group.details.map((detail, index) => ({
       model_name: detail.model_name,
       value: detail.value,
-      position: detailIndex, // Position des Features in der Gruppe
-      group_position: groupIndex // Position der Feature-Gruppe
+      position: index // include position
     }))
   }));
 
-  try {
-    const response = await axios.post(`http://localhost:8081/api/save_ranking/${threadId}`, rankingData);
-    console.log('Speichern erfolgreich:', response.data);
-    // Weitere Aktionen nach erfolgreichem Speichern, z.B. eine Benachrichtigung anzeigen
-  } catch (error) {
-    console.error('Fehler beim Speichern des Rankings:', error);
-    // Behandlung von Fehlern, z.B. eine Fehlermeldung anzeigen
+  if (savedFeatureOrder) {
+    orderedFeatures = JSON.parse(savedFeatureOrder);
   }
+
+  axios.post(`http://localhost:8081/api/save_ranking/${route.params.id}`, orderedFeatures, {
+    headers: {
+      'Authorization': api_key,
+      'Content-Type': 'application/json'
+    }
+  })
+    .then(response => {
+      console.log('Ranking saved successfully:', response.data);
+      alert('Ranking wurde erfolgreich gespeichert!');
+    })
+    .catch(error => {
+      console.error('Error saving ranking:', error);
+      alert('Fehler beim Speichern des Rankings.');
+    });
 }
 
-
-
-
 function navigateToRanker() {
-  router.push({ name: 'Ranker' });
+  router.push({name: 'Ranker'});
 }
 
 </script>
@@ -247,7 +315,6 @@ function navigateToRanker() {
   border: 1px solid #8AC007;
   margin-top: 5px;
   position: sticky;
-
 }
 
 .email-thread-container {
@@ -281,7 +348,6 @@ function navigateToRanker() {
   max-height: 100%;
   overflow-y: auto;
 }
-
 
 .email-message {
   padding: 16px;
@@ -329,11 +395,9 @@ function navigateToRanker() {
 
 .fill-height {
   height: 20vh; /* Höhe des Viewports */
-  //display: flex;
   flex-direction: column;
   overflow: hidden; /* Verhindert das Scrollen des gesamten Layouts */
 }
-
 
 .row-height {
   height: 100vh; /* oder jede andere Höhe */

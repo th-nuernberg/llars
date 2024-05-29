@@ -44,6 +44,18 @@ Content-Type: application/json
       "generated_category": "Psychologische Beratung",
       "generated_subject": "Eltern-Kind-Beziehung und Autonomieentwicklung",
       "order_clarification": "Detail der Analyse..."
+    },
+    "Mixtral-13B": {
+      "abstract_summary": "Eine weitere Analyse des Falls...",
+      "generated_category": "Psychologische Beratung",
+      "generated_subject": "Eltern-Kind-Beziehung und Autonomieentwicklung",
+      "order_clarification": "Detail der Analyse..."
+    },
+    "Sauerkraut-13B": {
+      "abstract_summary": "Eine weitere Analyse des Falls...",
+      "generated_category": "Psychologische Beratung",
+      "generated_subject": "Eltern-Kind-Beziehung und Autonomieentwicklung",
+      "order_clarification": "Detail der Analyse..."
     }
   }
 }

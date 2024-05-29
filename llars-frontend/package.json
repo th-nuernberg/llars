@@ -9,6 +9,7 @@
   "dependencies": {
     "@mdi/font": "7.0.96",
     "axios": "^1.6.8",
+    "jwt-decode": "^4.0.0",
     "roboto-fontface": "*",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0",
@@ -20,7 +21,7 @@
     "sass": "^1.71.1",
     "unplugin-fonts": "^1.1.1",
     "unplugin-vue-components": "^0.26.0",
-    "vite": "^5.1.5",
+    "vite": "^5.2.12",
     "vite-plugin-vuetify": "^2.0.3"
   }
 }

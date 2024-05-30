@@ -37,7 +37,13 @@ const emailThreads = ref([]);
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:8081/api/email_threads');
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get('http://localhost:8081/api/email_threads/rankings', {
+    headers: {
+      'Authorization': api_key,
+    }
+  });
+    console.log('Email threads:', response.data)
     emailThreads.value = response.data;
   } catch (error) {
     console.error('Error fetching email threads:', error);

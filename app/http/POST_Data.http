@@ -2,7 +2,7 @@ POST http://localhost:8081/api/email_threads
 Content-Type: application/json
 
 {
-  "type": "conversation",
+  "type": "ranking",
   "chat_id": 1,
   "institut_id": 0,
   "subject": "ungewöhnliches Thema",

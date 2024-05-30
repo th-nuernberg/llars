@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 import os
-from . import db  # Importieren Sie db aus dem database-Paket
+
+from . import db
 
 def configure_database(app):
     # Datenbankkonfiguration und Initialisierung
@@ -14,3 +15,17 @@ def configure_database(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        initialize_feature_function_types()
+
+def initialize_feature_function_types():
+    from .tables import FeatureFunctionType  # Importiere die Modelle hier, um zirkuläre Importe zu vermeiden
+
+    # Check if the feature function types are already in the database
+    if not FeatureFunctionType.query.filter_by(function_type_id=1).first():
+        ranking = FeatureFunctionType(function_type_id=1, name='ranking')
+        db.session.add(ranking)
+    if not FeatureFunctionType.query.filter_by(function_type_id=2).first():
+        rating = FeatureFunctionType(function_type_id=2, name='rating')
+        db.session.add(rating)
+
+    db.session.commit()

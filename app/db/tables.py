@@ -17,15 +17,23 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
 
+class FeatureFunctionType(db.Model):
+    __tablename__ = 'feature_function_types'
+    function_type_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    name = mapped_column(db.String(255), unique=True)
+
+
 class EmailThread(db.Model):
     __tablename__ = 'email_threads'
     thread_id = mapped_column(db.Integer, primary_key=True)
     chat_id = mapped_column(db.Integer)
     institut_id = mapped_column(db.Integer)
     subject = mapped_column(db.String(255))
+    function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
 
     messages = db.relationship('Message', backref='email_thread')
     features = db.relationship('Feature', backref='email_thread')
+    function_type = db.relationship('FeatureFunctionType', backref='email_threads')
 
 
 class Message(db.Model):

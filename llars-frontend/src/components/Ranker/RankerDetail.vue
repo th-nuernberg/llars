@@ -130,7 +130,12 @@ onMounted(async () => {
 
 async function fetchEmailThreads(threadId) {
   try {
-    const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}`);
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get(`http://localhost:8081/api/email_threads/rankings/${threadId}`, {
+      headers: {
+        'Authorization': api_key
+      }
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching email threads:', error);
@@ -248,7 +253,12 @@ async function navigateToNextCase() {
 
 async function fetchTotalCases() {
   try {
-    const response = await axios.get('http://localhost:8081/api/email_threads');
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get('http://localhost:8081/api/email_threads/rankings', {
+    headers: {
+      'Authorization': api_key,
+    }
+  });
     return response.data.length;
   } catch (error) {
     console.error('Error fetching total number of cases:', error);

@@ -10,16 +10,18 @@
                 <div>{{ translateFeatureType(feature.type) }}</div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <transition-group name="list" tag="div">
+                <transition-group name="fade" tag="div">
                   <draggable
                     v-model="feature.details"
                     group="featureGroup"
                     item-key="feature_id"
                     @change="handleDragEnd"
                     v-bind="dragOptions"
+                    ghost-class="ghost"
+                    fallback-class="fallbackStyleClass" :force-fallback="true"
                   >
                     <template #item="{ element }">
-                      <div :key="element.feature_id" class="draggable-item">
+                      <div :key="element.feature_id" class="draggable-item no-select">
                         <p><strong>Modell:</strong> {{ element.model_name }}</p>
                         <p>{{ element.value }}</p>
                       </div>
@@ -40,7 +42,7 @@
             <div
               v-for="message in messages"
               :key="message.message_id"
-              class="email-message"
+              class="email-message no-select"
               :class="getMessageClass(message.sender)"
             >
               <div class="message-header">
@@ -410,6 +412,17 @@ function navigateToRanker() {
   margin-bottom: 8px; /* Abstand unten */
 }
 
+.fallbackStyleClass {
+  background-color: #528dc6; /* Farbe */
+  border-radius: 33px 12px; /* unterschiedliche Radien */
+  padding: 15px; /* Innerer Abstand */
+  margin-bottom: 8px; /* Abstand unten */
+}
+
+.no-select {
+  user-select: none; /* Verhindert die Textauswahl */
+}
+
 .fill-height {
   height: 20vh; /* Höhe des Viewports */
   flex-direction: column;
@@ -427,5 +440,8 @@ function navigateToRanker() {
   opacity: 0;
   transform: translateY(30px);
 }
-
+.ghost {
+  opacity: 0.5;
+  background: #c8ebfb;
+}
 </style>

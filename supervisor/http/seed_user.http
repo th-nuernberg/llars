@@ -1,0 +1,19 @@
+GET http://backend-flask-service:8081/health_check
+###
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "password1"
+}
+###
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "a",
+  "password": "a",
+  "api_key": "db0fe35b-0d88-4d03-a774-12fbae54aa51"
+}
+###

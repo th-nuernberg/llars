@@ -32,7 +32,20 @@ services:
           ignore:
             - node_modules/
 
-
+  backend-supervisor-service:
+    container_name: llars_supervisor_service
+    build:
+      context: .
+      dockerfile: docker/supervisor/Dockerfile-supervisor
+    command: [ "/supervisor/start_supervisor.sh" ]
+    env_file:
+      - .env
+    #ports:
+    #  - "9001:9001"
+    depends_on:
+      - backend-flask-service
+      - db-maria-service
+      - frontend-vue-service
 
   db-maria-service:
     container_name: llars_db_service

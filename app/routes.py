@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash
 from db.db import db
-from db.tables import User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking
+from db.tables import User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking, FeatureFunctionType
 from uuid import uuid4
 import uuid
 from datetime import datetime
@@ -69,9 +69,29 @@ def login():
 def logout():
     return jsonify({"message": "Logged out successfully"}), 200
 
+
 @data_blueprint.route('/email_threads', methods=['POST'])
 def create_email_thread():
     data = request.get_json()
+
+    # Get and validate function_type from the request payload
+    function_type_input = data.get('type', '').lower()
+    valid_function_types = {
+        '1': 1,
+        '2': 2,
+        'ranking': 1,
+        'rating': 2,
+        'rank': 1,
+        'rate': 2,
+        'rankings': 1,
+        'ratings': 2
+    }
+
+    function_type_id = valid_function_types.get(function_type_input)
+
+    if not function_type_id:
+        return jsonify({"error": "Invalid function type"}), 400
+
     email_thread = EmailThread.query.filter_by(
         chat_id=data.get('chat_id'),
         institut_id=data.get('institut_id')
@@ -81,9 +101,14 @@ def create_email_thread():
         email_thread = EmailThread(
             chat_id=data.get('chat_id'),
             institut_id=data.get('institut_id'),
-            subject=data.get('subject')
+            subject=data.get('subject'),
+            function_type_id=function_type_id
         )
         db.session.add(email_thread)
+        db.session.commit()
+    else:
+        # Update function_type_id if email_thread already exists
+        email_thread.function_type_id = function_type_id
         db.session.commit()
 
     existing_message_ids = {msg.message_id for msg in email_thread.messages}
@@ -130,11 +155,24 @@ def create_email_thread():
 
     return jsonify({'status': 'success', 'thread_id': email_thread.thread_id}), 201
 
-@data_blueprint.route('/email_threads/<int:thread_id>', methods=['GET'])
-def get_email_thread(thread_id):
-    email_thread = EmailThread.query.get(thread_id)
+
+@data_blueprint.route('/email_threads/rankings/<int:thread_id>', methods=['GET'])
+def get_email_thread_for_rankings(thread_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    ranking_function_type = FeatureFunctionType.query.filter_by(name='ranking').first()
+    if not ranking_function_type:
+        return jsonify({'error': 'Ranking function type not found'}), 404
+
+    email_thread = EmailThread.query.filter_by(thread_id=thread_id, function_type_id=ranking_function_type.function_type_id).first()
     if not email_thread:
-        return jsonify({'error': 'Email thread not found'}), 404
+        return jsonify({'error': 'Email thread not found or not for ranking'}), 404
 
     thread_data = {
         'chat_id': email_thread.chat_id,
@@ -159,9 +197,64 @@ def get_email_thread(thread_id):
 
     return jsonify(thread_data), 200
 
-@data_blueprint.route('/email_threads', methods=['GET'])
-def list_email_threads():
-    email_threads = EmailThread.query.all()
+
+@data_blueprint.route('/email_threads/ratings/<int:thread_id>', methods=['GET'])
+def get_email_thread_for_ratings(thread_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
+    if not rating_function_type:
+        return jsonify({'error': 'Rating function type not found'}), 404
+
+    email_thread = EmailThread.query.filter_by(thread_id=thread_id, function_type_id=rating_function_type.function_type_id).first()
+    if not email_thread:
+        return jsonify({'error': 'Email thread not found or not for rating'}), 404
+
+    thread_data = {
+        'chat_id': email_thread.chat_id,
+        'institut_id': email_thread.institut_id,
+        'subject': email_thread.subject,
+        'messages': [
+            {
+                'message_id': msg.message_id,
+                'sender': msg.sender,
+                'content': msg.content,
+                'timestamp': msg.timestamp.isoformat()
+            } for msg in email_thread.messages
+        ],
+        'features': [
+            {
+                'model_name': feature.llm.name,
+                'type': feature.feature_type.name,
+                'value': feature.value
+            } for feature in email_thread.features
+        ]
+    }
+
+    return jsonify(thread_data), 200
+
+
+@data_blueprint.route('/email_threads/rankings', methods=['GET'])
+def list_email_threads_for_rankings():
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    ranking_function_type = FeatureFunctionType.query.filter_by(name='ranking').first()
+    if not ranking_function_type:
+        return jsonify({'error': 'Ranking function type not found'}), 404
+
+    email_threads = EmailThread.query.filter_by(function_type_id=ranking_function_type.function_type_id).all()
 
     threads_list = [
         {
@@ -173,6 +266,35 @@ def list_email_threads():
     ]
 
     return jsonify(threads_list), 200
+
+
+@data_blueprint.route('/email_threads/ratings', methods=['GET'])
+def list_email_threads_for_ratings():
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
+    if not rating_function_type:
+        return jsonify({'error': 'Rating function type not found'}), 404
+
+    email_threads = EmailThread.query.filter_by(function_type_id=rating_function_type.function_type_id).all()
+
+    threads_list = [
+        {
+            'thread_id': thread.thread_id,
+            'chat_id': thread.chat_id,
+            'institut_id': thread.institut_id,
+            'subject': thread.subject
+        } for thread in email_threads
+    ]
+
+    return jsonify(threads_list), 200
+
 
 @data_blueprint.route('/save_ranking/<int:thread_id>', methods=['POST'])
 def save_ranking(thread_id):

@@ -15,10 +15,12 @@
                     v-model="feature.details"
                     group="featureGroup"
                     item-key="feature_id"
-                    @change="handleDragEnd"
+                    @start="handleDragStart"
+                    @end="handleDragEnd"
                     v-bind="dragOptions"
                     ghost-class="ghost"
-                    fallback-class="fallbackStyleClass" :force-fallback="true"
+                    fallback-class="fallbackStyleClass"
+                    :force-fallback="true"
                   >
                     <template #item="{ element }">
                       <div :key="element.feature_id" class="draggable-item no-select">
@@ -235,7 +237,12 @@ function getColor(index) {
   return colors[index % colors.length];
 }
 
+function handleDragStart() {
+  document.body.classList.add("dragging");
+}
+
 function handleDragEnd() {
+  document.body.classList.remove("dragging");
   saveFeatureOrderToLocalStorage();
 }
 
@@ -410,6 +417,11 @@ function navigateToRanker() {
   border-radius: 33px 12px; /* unterschiedliche Radien */
   padding: 15px; /* Innerer Abstand */
   margin-bottom: 8px; /* Abstand unten */
+  cursor: grab; /* Cursor ändert sich zu einer Hand */
+}
+
+.draggable-item:active {
+  cursor: grabbing !important; /* Cursor ändert sich beim Greifen */
 }
 
 .fallbackStyleClass {
@@ -417,6 +429,7 @@ function navigateToRanker() {
   border-radius: 33px 12px; /* unterschiedliche Radien */
   padding: 15px; /* Innerer Abstand */
   margin-bottom: 8px; /* Abstand unten */
+  transform: rotate(1deg); /* Element wird leicht gedreht */
 }
 
 .no-select {
@@ -441,7 +454,11 @@ function navigateToRanker() {
   transform: translateY(30px);
 }
 .ghost {
-  opacity: 0.5;
+  opacity: 0.0;
   background: #c8ebfb;
+}
+
+body.dragging * {
+  cursor: grabbing !important;
 }
 </style>

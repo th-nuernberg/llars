@@ -4,24 +4,32 @@
       <v-col cols="12" md="6">
         <h2>Features</h2>
         <div class="email-thread">
-        <v-expansion-panels>
-          <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
-            <v-expansion-panel-title>
-              <div>{{ translateFeatureType(feature.type) }}</div>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <draggable v-model="feature.details" group="featureGroup" item-key="model_name" @change="handleDragEnd">
-                <template #item="{element, index}">
-                  <div :key="element.model_name" class="draggable-item">
-                    <p><strong>Modell:</strong> {{ element.model_name }}</p>
-                    <p>{{ element.value }}</p>
-                  </div>
-                </template>
-              </draggable>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
-        <v-spacer></v-spacer>
+          <v-expansion-panels>
+            <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
+              <v-expansion-panel-title>
+                <div>{{ translateFeatureType(feature.type) }}</div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <transition-group name="list" tag="div">
+                  <draggable
+                    v-model="feature.details"
+                    group="featureGroup"
+                    item-key="feature_id"
+                    @change="handleDragEnd"
+                    v-bind="dragOptions"
+                  >
+                    <template #item="{ element }">
+                      <div :key="element.feature_id" class="draggable-item">
+                        <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                        <p>{{ element.value }}</p>
+                      </div>
+                    </template>
+                  </draggable>
+                </transition-group>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+          <v-spacer></v-spacer>
         </div>
       </v-col>
 
@@ -30,11 +38,11 @@
         <div class="email-thread-container">
           <div class="email-thread">
             <div
-                v-for="message in messages"
-                :key="message.message_id"
-                class="email-message"
-                :class="getMessageClass(message.sender)"
-              >
+              v-for="message in messages"
+              :key="message.message_id"
+              class="email-message"
+              :class="getMessageClass(message.sender)"
+            >
               <div class="message-header">
                 <span class="message-sender">{{ message.sender }}</span>
                 <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
@@ -42,7 +50,7 @@
               <div class="message-body">
                 <p>{{ message.content }}</p>
               </div>
-          </div>
+            </div>
           </div>
           <div class="fade-overlay top"></div>
           <div class="fade-overlay bottom"></div>
@@ -74,6 +82,15 @@ const messages = ref([]);
 const senderColors = ref({});
 const groupedFeatures = ref([]);
 const localStorageKey = ref('');
+
+const dragOptions = ref({
+  animation: 200,
+  group: 'description',
+  disabled: false,
+  ghostClass: 'ghost',
+});
+
+const drag = ref(false);
 
 async function fetchEmailThreads(threadId) {
   try {
@@ -237,7 +254,7 @@ function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);
   if (currentId > 1) {
     const previousId = currentId - 1;
-    router.push({name: 'RankerDetail', params: {id: previousId}});
+    router.push({ name: 'RankerDetail', params: { id: previousId } });
   }
 }
 
@@ -247,7 +264,7 @@ async function navigateToNextCase() {
   const nextId = currentId + 1;
 
   if (nextId <= totalCases) {
-    router.push({name: 'RankerDetail', params: {id: nextId}});
+    router.push({ name: 'RankerDetail', params: { id: nextId } });
   } else {
     console.log("Letzter Fall erreicht, kann nicht zum nächsten navigieren");
   }
@@ -302,7 +319,7 @@ function saveFeaturesServerSide() {
 }
 
 function navigateToRanker() {
-  router.push({name: 'Ranker'});
+  router.push({ name: 'Ranker' });
 }
 
 </script>
@@ -401,6 +418,14 @@ function navigateToRanker() {
 
 .row-height {
   height: 100vh; /* oder jede andere Höhe */
+}
+
+.list-enter-active, .list-leave-active {
+  transition: all 0.5s ease;
+}
+.list-enter, .list-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
 }
 
 </style>

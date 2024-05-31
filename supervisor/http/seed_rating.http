@@ -1,0 +1,149 @@
+POST http://backend-flask-service:8081/api/email_threads
+Content-Type: application/json
+
+{
+  "type": "rating",
+  "chat_id": 1,
+  "institut_id": 0,
+  "subject": "ungewöhnliches Thema",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchender",
+      "content": "Guten Tag, und vielen Dank im Voraus, dass Sie sich die Zeit nehmen...",
+      "timestamp": "2022-11-08 14:15:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Berater",
+      "content": "Liebe Rapunzel, Sie haben mit Ihrem richtigen Namen unterschrieben...",
+      "timestamp": "2022-11-09 15:45:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchender",
+      "content": "Liebe bke-Anne-Sommer, herzlichen Dank für Ihre wertschätzende und hilfreiche Antwort...",
+      "timestamp": "2022-11-09 19:41:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Berater",
+      "content": "Liebe Rapunzel, ganz lieben Dank für Ihre wertschätzende und nette Antwortmail...",
+      "timestamp": "2022-11-11 11:38:00"
+    }
+  ],
+  "generated_features": {
+    "Vicuna-13B": {
+      "abstract_summary": "Eine Zusammenfassung der Diskussion...",
+      "generated_category": "Erziehungsberatung",
+      "generated_subject": "Umgang mit Wutanfällen bei Kleinkindern",
+      "order_clarification": "Eine Erläuterung der Reihenfolge..."
+    },
+    "Solaris-13B": {
+      "abstract_summary": "Eine weitere Analyse des Falls...",
+      "generated_category": "Psychologische Beratung",
+      "generated_subject": "Eltern-Kind-Beziehung und Autonomieentwicklung",
+      "order_clarification": "Detail der Analyse..."
+    }
+  }
+}
+###
+POST http://backend-flask-service:8081/api/email_threads
+Content-Type: application/json
+
+{
+  "type": "rating",
+  "chat_id": 10,
+  "institut_id": 0,
+  "subject": "Fühle mich extrem unsicher",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchender",
+      "content": "Hallo liebe Bke, \nIch weiß nicht ganz genau, ob ich mit meinem Anliegen bei Ihnen überhaupt richtig bin. Aber ich dachte ich probiere es einfach mal. Ich fühle mich aktuell einsam und überfordert und weiß nicht genau, was ich tun kann, damit es mir besser geht...",
+      "timestamp": "2020-05-28 11:50:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Berater",
+      "content": "Sehr geehrte Aline, \n \nich bin bke-Inga Sommer, Sozialpädagogin hier in der virtuellen Beratung...",
+      "timestamp": "2020-05-29 12:29:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchender",
+      "content": "Liebe Fr. Sommer, \n \nVielen Dank für Ihre nette Antwort. Ich versuche mal, die Situation anhand Ihrer Rückmeldung/Fragen etwas näher zu beschreiben...",
+      "timestamp": "2020-05-30 14:16:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Berater",
+      "content": "Liebe Aline, \n \nvielen Dank für Ihre Mail und dass Sie mir darin Ihre Situation noch einmal ein bisschen ausführlicher beschrieben haben...",
+      "timestamp": "2020-06-05 15:44:00"
+    }
+  ],
+  "generated_features": {
+    "Vicuna-13B": {
+      "abstract_summary": "Eine Zusammenfassung der Diskussion...",
+      "generated_category": "Erziehungsberatung",
+      "generated_subject": "Umgang mit Wutanfällen bei Kleinkindern",
+      "order_clarification": "Eine Erläuterung der Reihenfolge..."
+    },
+    "Solaris-13B": {
+      "abstract_summary": "Eine weitere Analyse des Falls...",
+      "generated_category": "Psychologische Beratung",
+      "generated_subject": "Eltern-Kind-Beziehung und Autonomieentwicklung",
+      "order_clarification": "Detail der Analyse..."
+    }
+  }
+}
+###
+POST http://backend-flask-service:8081/api/email_threads
+Content-Type: application/json
+
+{
+  "type": "rating",
+  "chat_id": 4,
+  "institut_id": 404,
+  "subject": "Technische Unterstützung benötigt",
+  "messages": [
+  {
+    "message_id": 1,
+    "sender": "Ratsuchender",
+    "content": "Liebe Berater,\n\nwir wohnen in einem kleinen Dorf. Hier gibt es praktisch nichts und deshalb bin ich auf die Idee gekommen, hier zu schreiben und nach Rat zu fragen...",
+    "timestamp": "2022-10-23 10:34:00"
+  },
+  {
+    "message_id": 2,
+    "sender": "Berater",
+    "content": "Sehr geehrte Ratsuchende Anna89,\n\nschön, dass Sie sich entschieden haben, hier an unsere Onlineberatung zu schreiben...",
+    "timestamp": "2022-10-24 17:44:00"
+  },
+  {
+    "message_id": 3,
+    "sender": "Ratsuchender",
+    "content": "Sehr geehrte Frau Müller,\ndanke für Ihre Nachricht und die ersten hilfreichen Tipps...",
+    "timestamp": "2022-10-31 09:54:00"
+  },
+  {
+    "message_id": 4,
+    "sender": "Berater",
+    "content": "Liebe Ratssuchende,\nich kann sehr gut mit Ihnen fühlen. Genau so fühlt es sich für viele an, wie Sie es formuliert haben...",
+    "timestamp": "2022-11-05 14:23:00"
+  }
+],
+  "generated_features": {
+    "Vicuna-13B": {
+      "abstract_summary": "Eine Zusammenfassung der Diskussion...",
+      "generated_category": "Erziehungsberatung",
+      "generated_subject": "Umgang mit Wutanfällen bei Kleinkindern",
+      "order_clarification": "Eine Erläuterung der Reihenfolge..."
+    },
+    "Solaris-13B": {
+      "abstract_summary": "Eine weitere Analyse des Falls...",
+      "generated_category": "Psychologische Beratung",
+      "generated_subject": "Eltern-Kind-Beziehung und Autonomieentwicklung",
+      "order_clarification": "Detail der Analyse..."
+    }
+  }
+}

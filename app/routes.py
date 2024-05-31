@@ -94,7 +94,8 @@ def create_email_thread():
 
     email_thread = EmailThread.query.filter_by(
         chat_id=data.get('chat_id'),
-        institut_id=data.get('institut_id')
+        institut_id=data.get('institut_id'),
+        function_type_id=function_type_id
     ).first()
 
     if not email_thread:
@@ -107,8 +108,7 @@ def create_email_thread():
         db.session.add(email_thread)
         db.session.commit()
     else:
-        # Update function_type_id if email_thread already exists
-        email_thread.function_type_id = function_type_id
+        email_thread.subject = data.get('subject')  # Update subject if email_thread already exists
         db.session.commit()
 
     existing_message_ids = {msg.message_id for msg in email_thread.messages}
@@ -154,6 +154,7 @@ def create_email_thread():
     db.session.commit()
 
     return jsonify({'status': 'success', 'thread_id': email_thread.thread_id}), 201
+
 
 
 @data_blueprint.route('/email_threads/rankings/<int:thread_id>', methods=['GET'])

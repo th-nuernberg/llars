@@ -83,7 +83,7 @@ const localStorageKey = ref('');
 
 onMounted(async () => {
   await loadFeatureDetail();
-  loadFromLocalStorage();
+  loadFromLocalStorageOrServer();
 });
 
 async function loadFeatureDetail(threadId = route.params.id, featureId = route.params.feature) {
@@ -93,7 +93,6 @@ async function loadFeatureDetail(threadId = route.params.id, featureId = route.p
   console.log(typeof featureDetail.feature.content);
   console.log(typeof featureDetail.feature);
   feature.value = featureDetail.feature;
-  //editableFeature.value = { ...feature.value }; // Ensure editableFeature includes feature_id
   messages.value = featureDetail.messages;
 
   localStorageKey.value = `featureRating_${route.params.id}_${feature.value.feature_id}`;
@@ -124,6 +123,43 @@ async function fetchFeatureDetail(threadId, featureId) {
   }
 }
 
+async function loadFromLocalStorageOrServer() {
+  const savedRatingData = localStorage.getItem(localStorageKey.value);
+  if (savedRatingData) {
+    console.log('Loading rating data from local storage:', savedRatingData);
+    const parsedRatingData = JSON.parse(savedRatingData);
+    selectedRating.value = parsedRatingData.rating_content;
+    editableFeature.value = parsedRatingData.edited_feature;
+  } else {
+    console.log('No saved rating data found in local storage, checking server');
+    const serverRatingData = await fetchRatingFromServer(route.params.id, feature.value.feature_id);
+    if (serverRatingData) {
+      selectedRating.value = serverRatingData.rating_content;
+      editableFeature.value = { ...feature.value, content: serverRatingData.edited_feature };
+    } else {
+      console.log('No saved rating data found on server');
+      selectedRating.value = null;
+      editableFeature.value = { ...feature.value };
+    }
+  }
+}
+
+
+async function fetchRatingFromServer(threadId, featureId) {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get(`http://localhost:8081/api/get_rating/${threadId}/${featureId}`, {
+      headers: {
+        'Authorization': api_key
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching rating from server:', error);
+    return null;
+  }
+}
+
 function getMessageClass(sender) {
   return senderColors.value[sender];
 }
@@ -139,7 +175,7 @@ function translateFeatureType(type) {
 }
 
 function formatTimestamp(timestamp) {
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+  const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
   const date = new Date(timestamp);
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
 }
@@ -157,20 +193,6 @@ function saveRatingToLocalStorage() {
   localStorage.setItem(localStorageKey.value, JSON.stringify(ratingData));
 }
 
-function loadFromLocalStorage() {
-  const savedRatingData = localStorage.getItem(localStorageKey.value);
-  if (savedRatingData) {
-    console.log('Loading rating data from local storage:', savedRatingData)
-    const parsedRatingData = JSON.parse(savedRatingData);
-    selectedRating.value = parsedRatingData.rating_content;
-    editableFeature.value = parsedRatingData.edited_feature;
-  }
-  else {
-    console.log('No saved rating data found in local storage');
-    editableFeature.value = { ...feature.value };
-  }
-}
-
 function saveFeaturesServerSide() {
   const api_key = localStorage.getItem('api_key');
   if (!api_key) {
@@ -179,13 +201,9 @@ function saveFeaturesServerSide() {
   }
   console.log('Saving editable server side:', editableFeature.value);
   console.log('Selected rating:', selectedRating.value);
-  let editableFeatureToServer = editableFeature.value
-  let selectedRatingToServer = selectedRating.value
-  console.log('Saving editable server side:', editableFeatureToServer.content);
-  console.log('Selected rating:', selectedRatingToServer);
   const ratingData = {
-    rating_content: selectedRatingToServer,
-    edited_feature: editableFeatureToServer.content
+    rating_content: selectedRating.value,
+    edited_feature: editableFeature.value.content
   };
 
   axios.post(`http://localhost:8081/api/save_rating/${route.params.id}/${feature.value.feature_id}`, ratingData, {
@@ -206,14 +224,14 @@ function saveFeaturesServerSide() {
 
 onBeforeRouteUpdate(async (to, from, next) => {
   await loadFeatureDetail(to.params.id, to.params.feature);
-  loadFromLocalStorage();
+  loadFromLocalStorageOrServer();
   next();
 });
 
 // Watch the editableFeature for changes and save to local storage immediately
 watch(editableFeature, () => {
   saveRatingToLocalStorage();
-}, { deep: true });
+}, {deep: true});
 
 </script>
 

@@ -36,6 +36,13 @@ function logout() {
     }
   });
 
+    // Entferne alle gespeicherten Ranked-Feature-Daten
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('featureRating_')) {
+      localStorage.removeItem(key);
+    }
+  });
+
   // Weiterleitung zur Login-Seite
   router.push('/login');
 }

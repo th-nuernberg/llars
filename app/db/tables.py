@@ -40,7 +40,6 @@ class EmailThread(db.Model):
     )
 
 
-
 class Message(db.Model):
     __tablename__ = 'messages'
     message_id = mapped_column(db.Integer, primary_key=True)
@@ -68,7 +67,7 @@ class Feature(db.Model):
     thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
     type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
     llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
-    value = mapped_column(db.TEXT)
+    content = mapped_column(db.TEXT)
 
     feature_type = db.relationship('FeatureType', backref='features')
     llm = db.relationship('LLM', backref='features')
@@ -79,7 +78,7 @@ class UserFeatureRanking(db.Model):
     ranking_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     feature_id = mapped_column(db.Integer, db.ForeignKey('features.feature_id'))
-    ranking_value = mapped_column(db.Float)
+    ranking_content = mapped_column(db.Float)
     type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
     llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
 
@@ -87,3 +86,14 @@ class UserFeatureRanking(db.Model):
     feature = db.relationship('Feature', backref='user_rankings')
     feature_type = db.relationship('FeatureType', backref='user_rankings')
     llm = db.relationship('LLM', backref='user_rankings')
+
+class UserFeatureRating(db.Model):
+    __tablename__ = 'user_feature_ratings'
+    rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+    feature_id = mapped_column(db.Integer, db.ForeignKey('features.feature_id'))
+    rating_content = mapped_column(db.Float)
+    edited_feature = mapped_column(db.TEXT)
+
+    user = db.relationship('User', backref='feature_ratings')
+    feature = db.relationship('Feature', backref='user_ratings')

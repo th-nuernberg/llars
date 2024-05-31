@@ -12,7 +12,7 @@
               <div v-for="feature in featureGroup.details" :key="feature.feature_id" class="feature-item">
                 <v-card class="mb-4" @click="navigateToFeatureDetail(featureGroup.type, feature.feature_id)">
                   <v-card-title>{{ feature.model_name }}</v-card-title>
-                  <v-card-text>{{ feature.value }}</v-card-text>
+                  <v-card-text>{{ feature.content }}</v-card-text>
                 </v-card>
               </div>
             </v-expansion-panel-text>
@@ -74,7 +74,7 @@ onMounted(async () => {
 
   features.value = threadData.features;
   messages.value = threadData.messages;
-
+  console.log('Features:', features.value);
   const featureMap = new Map();
   features.value.forEach((f, index) => {
     if (!featureMap.has(f.type)) {
@@ -85,7 +85,7 @@ onMounted(async () => {
     }
     featureMap.get(f.type).details.push({
       model_name: f.model_name,
-      value: f.value,
+      content: f.content,
       feature_id: f.feature_id,
       position: index
     });
@@ -201,7 +201,7 @@ function saveFeatureOrderToLocalStorage() {
     type: group.type,
     details: group.details.map((detail, index) => ({
       model_name: detail.model_name,
-      value: detail.value,
+      content: detail.content,
       feature_id: detail.feature_id,
       position: index
     }))
@@ -256,7 +256,7 @@ function saveFeaturesServerSide() {
     type: group.type,
     details: group.details.map((detail, index) => ({
       model_name: detail.model_name,
-      value: detail.value,
+      content: detail.content,
       position: index
     }))
   }));

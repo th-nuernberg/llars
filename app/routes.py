@@ -397,14 +397,14 @@ def save_ranking(thread_id):
                 ).first()
 
                 if existing_ranking:
-                    # Update the ranking value if it exists
-                    existing_ranking.ranking_value = position
+                    # Update the ranking content if it exists
+                    existing_ranking.ranking_content = position
                 else:
                     # Create a new ranking entry
                     new_ranking = UserFeatureRanking(
                         user_id=user.id,
                         feature_id=feature.feature_id,
-                        ranking_value=position,
+                        ranking_content=position,
                         type_id=feature_type_entry.type_id,
                         llm_id=llm_entry.llm_id
                     )
@@ -441,10 +441,10 @@ def get_current_ranking(thread_id):
         rankings_data[feature_type_name].append({
             'model_name': ranking.llm.name,
             'content': ranking.feature.content,
-            'position': int(ranking.ranking_value)
+            'position': int(ranking.ranking_content)
         })
 
-    formatted_rankings = [{'type': key, 'details': sorted(value, key=lambda x: x['position'])} for key, value in
+    formatted_rankings = [{'type': key, 'details': sorted(content, key=lambda x: x['position'])} for key, content in
                           rankings_data.items()]
 
     return jsonify(formatted_rankings), 200
@@ -490,23 +490,23 @@ def save_rating(thread_id, feature_id):
         return jsonify({'error': 'Invalid API key'}), 401
 
     data = request.get_json()
-    rating_value = data.get('rating_value')
+    rating_content = data.get('rating_content')
     edited_feature = data.get('edited_feature')
 
-    if rating_value is None or edited_feature is None:
-        return jsonify({'error': 'Rating value and edited feature are required'}), 400
+    if rating_content is None or edited_feature is None:
+        return jsonify({'error': 'Rating content and edited feature are required'}), 400
 
     # Find or create the feature rating
     feature_rating = UserFeatureRating.query.filter_by(user_id=user.id, feature_id=feature_id).first()
 
     if feature_rating:
-        feature_rating.rating_value = rating_value
+        feature_rating.rating_content = rating_content
         feature_rating.edited_feature = edited_feature
     else:
         new_rating = UserFeatureRating(
             user_id=user.id,
             feature_id=feature_id,
-            rating_value=rating_value,
+            rating_content=rating_content,
             edited_feature=edited_feature
         )
         db.session.add(new_rating)
@@ -532,7 +532,7 @@ def get_rating(thread_id, feature_id):
         return jsonify({'error': 'Rating not found'}), 404
 
     rating_data = {
-        'rating_value': feature_rating.rating_value,
+        'rating_content': feature_rating.rating_content,
         'edited_feature': feature_rating.edited_feature
     }
 

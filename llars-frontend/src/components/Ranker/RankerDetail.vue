@@ -24,7 +24,7 @@
                   <template #item="{ element }">
                     <div :key="element.feature_id" class="draggable-item no-select">
                       <p><strong>Modell:</strong> {{ element.model_name }}</p>
-                      <p>{{ element.value }}</p>
+                      <p>{{ element.content }}</p>
                     </div>
                   </template>
                 </draggable>
@@ -107,7 +107,7 @@ onMounted(async () => {
     }
     featureMap.get(f.type).details.push({
       model_name: f.model_name,
-      value: f.value,
+      content: f.content,
       feature_id: f.feature_id,
       position: index
     });
@@ -223,7 +223,7 @@ function saveFeatureOrderToLocalStorage() {
     type: group.type,
     details: group.details.map((detail, index) => ({
       model_name: detail.model_name,
-      value: detail.value,
+      content: detail.content,
       feature_id: detail.feature_id,
       position: index
     }))
@@ -278,7 +278,7 @@ function saveFeaturesServerSide() {
     type: group.type,
     details: group.details.map((detail, index) => ({
       model_name: detail.model_name,
-      value: detail.value,
+      content: detail.content,
       position: index
     }))
   }));

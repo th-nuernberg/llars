@@ -35,6 +35,11 @@ class EmailThread(db.Model):
     features = db.relationship('Feature', backref='email_thread')
     function_type = db.relationship('FeatureFunctionType', backref='email_threads')
 
+    __table_args__ = (
+        db.UniqueConstraint('chat_id', 'institut_id', 'function_type_id', name='_chat_institut_function_uc'),
+    )
+
+
 
 class Message(db.Model):
     __tablename__ = 'messages'

@@ -32,7 +32,7 @@
                   v-model="editableFeature.model_name"
                 ></v-text-field>
                 <v-textarea
-                  label="Feature Value"
+                  label="Feature Content"
                   v-model="editableFeature.content"
                 ></v-textarea>
                 <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
@@ -151,7 +151,7 @@ async function rateFeature(rating) {
 
 function saveRatingToLocalStorage() {
   const ratingData = {
-    rating_value: selectedRating.value,
+    rating_content: selectedRating.value,
     edited_feature: editableFeature.value
   };
   localStorage.setItem(localStorageKey.value, JSON.stringify(ratingData));
@@ -162,8 +162,12 @@ function loadFromLocalStorage() {
   if (savedRatingData) {
     console.log('Loading rating data from local storage:', savedRatingData)
     const parsedRatingData = JSON.parse(savedRatingData);
-    selectedRating.value = parsedRatingData.rating_value;
+    selectedRating.value = parsedRatingData.rating_content;
     editableFeature.value = parsedRatingData.edited_feature;
+  }
+  else {
+    console.log('No saved rating data found in local storage');
+    editableFeature.value = { ...feature.value };
   }
 }
 
@@ -173,10 +177,15 @@ function saveFeaturesServerSide() {
     alert('API key is missing');
     return;
   }
-
+  console.log('Saving editable server side:', editableFeature.value);
+  console.log('Selected rating:', selectedRating.value);
+  let editableFeatureToServer = editableFeature.value
+  let selectedRatingToServer = selectedRating.value
+  console.log('Saving editable server side:', editableFeatureToServer.content);
+  console.log('Selected rating:', selectedRatingToServer);
   const ratingData = {
-    rating_value: selectedRating.value,
-    edited_feature: editableFeature.value
+    rating_content: selectedRatingToServer,
+    edited_feature: editableFeatureToServer.content
   };
 
   axios.post(`http://localhost:8081/api/save_rating/${route.params.id}/${feature.value.feature_id}`, ratingData, {

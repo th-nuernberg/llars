@@ -6,7 +6,7 @@ echo "Waiting for Flask server to start..."
 while ! curl -s http://backend-flask-service:8081/health_check | grep -q "Server is running"
 do
   # echo "Waiting for the Flask server to become healthy..."
-  echo "Waiting for the Flask server to become healthy..."
+  # echo "Waiting for the Flask server to become healthy..."
   sleep 1
 done
 

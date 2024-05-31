@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend-flask-service:
     container_name: llars_flask_service
@@ -9,6 +11,7 @@ services:
     env_file:
       - .env
     environment:
+      - TZ=Europe/Berlin
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_APP=/app/main.py
     depends_on:
@@ -24,6 +27,8 @@ services:
       dockerfile: docker/vue/Dockerfile-vue
     ports:
       - "5173:5173"
+    environment:
+      - TZ=Europe/Berlin
     develop:
       watch:
         - action: sync
@@ -40,6 +45,8 @@ services:
     command: [ "/supervisor/start_supervisor.sh" ]
     env_file:
       - .env
+    environment:
+      - TZ=Europe/Berlin
     #ports:
     #  - "9001:9001"
     depends_on:
@@ -59,6 +66,7 @@ services:
     volumes:
       - llarsdb:/var/lib/mysql
     environment:
+      - TZ=Europe/Berlin
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}

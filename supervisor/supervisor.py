@@ -148,9 +148,9 @@ def process_files(file_paths):
 
 if __name__ == "__main__":
     file_paths = [
-        "http/seed_user.http",
-        "http/seed_ranking.http",
-        "http/seed_rating.http",
+        "http/seeder/seed_user.http",
+        "http/seeder/seed_ranking.http",
+        "http/seeder/seed_rating.http",
     ]
     process_files(file_paths)
 

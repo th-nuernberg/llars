@@ -6,7 +6,7 @@
         <v-card class="mb-4">
           <v-card-title>{{ feature.model_name }}</v-card-title>
           <v-card-subtitle>{{ translateFeatureType(feature.type) }}</v-card-subtitle>
-          <v-card-text>{{ feature.value }}</v-card-text>
+          <v-card-text>{{ feature.content }}</v-card-text>
         </v-card>
         <h3>Bewerten Sie dieses Feature</h3>
         <div class="likert-scale">
@@ -19,6 +19,27 @@
             {{ rating }}
           </v-btn>
         </div>
+        <div class="expandable-padding"></div>
+        <v-expansion-panels>
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              Feature bearbeiten
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <v-form>
+                <v-text-field
+                  label="Model Name"
+                  v-model="editableFeature.model_name"
+                ></v-text-field>
+                <v-textarea
+                  label="Feature Value"
+                  v-model="editableFeature.content"
+                ></v-textarea>
+                <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
+              </v-form>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
       </v-col>
       <v-col cols="12" md="6">
         <h2>E-Mail Verlauf</h2>
@@ -48,22 +69,34 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, watch } from 'vue';
+import { useRoute, onBeforeRouteUpdate } from 'vue-router';
 import axios from 'axios';
 
 const route = useRoute();
 const feature = ref({});
+const editableFeature = ref({});
 const messages = ref([]);
 const senderColors = ref({});
 const selectedRating = ref(null);
+const localStorageKey = ref('');
 
 onMounted(async () => {
-  const featureDetail = await fetchFeatureDetail(route.params.id, route.params.feature);
-  if (!featureDetail) return;
+  await loadFeatureDetail();
+  loadFromLocalStorage();
+});
 
+async function loadFeatureDetail(threadId = route.params.id, featureId = route.params.feature) {
+  const featureDetail = await fetchFeatureDetail(threadId, featureId);
+  if (!featureDetail) return;
+  console.log('Feature detail:', featureDetail);
+  console.log(typeof featureDetail.feature.content);
+  console.log(typeof featureDetail.feature);
   feature.value = featureDetail.feature;
+  //editableFeature.value = { ...feature.value }; // Ensure editableFeature includes feature_id
   messages.value = featureDetail.messages;
+
+  localStorageKey.value = `featureRating_${route.params.id}_${feature.value.feature_id}`;
 
   let lastSender = '';
   let currentColor = 'same-sender';
@@ -74,7 +107,7 @@ onMounted(async () => {
     }
     senderColors.value[message.sender] = currentColor;
   });
-});
+}
 
 async function fetchFeatureDetail(threadId, featureId) {
   try {
@@ -111,11 +144,68 @@ function formatTimestamp(timestamp) {
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
 }
 
-function rateFeature(rating) {
+async function rateFeature(rating) {
   selectedRating.value = rating;
-  console.log(`Feature rated with: ${rating}`);
-  // Hier können Sie den Code hinzufügen, um das Rating auf dem Server zu speichern
+  saveRatingToLocalStorage();
 }
+
+function saveRatingToLocalStorage() {
+  const ratingData = {
+    rating_value: selectedRating.value,
+    edited_feature: editableFeature.value
+  };
+  localStorage.setItem(localStorageKey.value, JSON.stringify(ratingData));
+}
+
+function loadFromLocalStorage() {
+  const savedRatingData = localStorage.getItem(localStorageKey.value);
+  if (savedRatingData) {
+    console.log('Loading rating data from local storage:', savedRatingData)
+    const parsedRatingData = JSON.parse(savedRatingData);
+    selectedRating.value = parsedRatingData.rating_value;
+    editableFeature.value = parsedRatingData.edited_feature;
+  }
+}
+
+function saveFeaturesServerSide() {
+  const api_key = localStorage.getItem('api_key');
+  if (!api_key) {
+    alert('API key is missing');
+    return;
+  }
+
+  const ratingData = {
+    rating_value: selectedRating.value,
+    edited_feature: editableFeature.value
+  };
+
+  axios.post(`http://localhost:8081/api/save_rating/${route.params.id}/${feature.value.feature_id}`, ratingData, {
+    headers: {
+      'Authorization': api_key,
+      'Content-Type': 'application/json'
+    }
+  })
+    .then(response => {
+      console.log('Rating saved successfully:', response.data);
+      alert('Rating wurde erfolgreich gespeichert!');
+    })
+    .catch(error => {
+      console.error('Error saving rating:', error);
+      alert('Fehler beim Speichern des Ratings.');
+    });
+}
+
+onBeforeRouteUpdate(async (to, from, next) => {
+  await loadFeatureDetail(to.params.id, to.params.feature);
+  loadFromLocalStorage();
+  next();
+});
+
+// Watch the editableFeature for changes and save to local storage immediately
+watch(editableFeature, () => {
+  saveRatingToLocalStorage();
+}, { deep: true });
+
 </script>
 
 <style scoped>
@@ -201,5 +291,9 @@ function rateFeature(rating) {
 .selected-rating {
   background-color: #1976d2 !important;
   color: white !important;
+}
+
+.expandable-padding {
+  padding-top: 20px;
 }
 </style>

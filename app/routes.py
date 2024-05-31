@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash
 from db.db import db
-from db.tables import User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking, FeatureFunctionType
+from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
+                       FeatureFunctionType, UserFeatureRating)
 from uuid import uuid4
 import uuid
 from datetime import datetime
@@ -134,7 +135,7 @@ def create_email_thread():
             db.session.add(llm)
             db.session.commit()
 
-        for feature_key, feature_value in features.items():
+        for feature_key, feature_content in features.items():
             feature_type = FeatureType.query.filter_by(name=feature_key).first()
             if not feature_type:
                 feature_type = FeatureType(name=feature_key)
@@ -152,7 +153,7 @@ def create_email_thread():
                     thread_id=email_thread.thread_id,
                     type_id=feature_type.type_id,
                     llm_id=llm.llm_id,
-                    value=feature_value
+                    content=feature_content
                 )
                 db.session.add(feature)
 
@@ -196,7 +197,7 @@ def get_email_thread_for_rankings(thread_id):
             {
                 'model_name': feature.llm.name,
                 'type': feature.feature_type.name,
-                'value': feature.value,
+                'content': feature.content,
                 'feature_id': feature.feature_id  # Include the feature_id here
             } for feature in email_thread.features
         ]
@@ -240,7 +241,7 @@ def get_email_thread_for_ratings(thread_id):
             {
                 'model_name': feature.llm.name,
                 'type': feature.feature_type.name,
-                'value': feature.value,
+                'content': feature.content,
                 'feature_id': feature.feature_id  # Include the feature_id here
             } for feature in email_thread.features
         ]
@@ -248,45 +249,6 @@ def get_email_thread_for_ratings(thread_id):
 
     return jsonify(thread_data), 200
 
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
-    if not rating_function_type:
-        return jsonify({'error': 'Rating function type not found'}), 404
-
-    email_thread = EmailThread.query.filter_by(thread_id=thread_id,
-                                               function_type_id=rating_function_type.function_type_id).first()
-    if not email_thread:
-        return jsonify({'error': 'Email thread not found or not for rating'}), 404
-
-    thread_data = {
-        'chat_id': email_thread.chat_id,
-        'institut_id': email_thread.institut_id,
-        'subject': email_thread.subject,
-        'messages': [
-            {
-                'message_id': msg.message_id,
-                'sender': msg.sender,
-                'content': msg.content,
-                'timestamp': msg.timestamp.isoformat()
-            } for msg in email_thread.messages
-        ],
-        'features': [
-            {
-                'model_name': feature.llm.name,
-                'type': feature.feature_type.name,
-                'value': feature.value
-            } for feature in email_thread.features
-        ]
-    }
-
-    return jsonify(thread_data), 200
 
 @data_blueprint.route('/email_threads/ratings/<int:thread_id>/<int:feature_id>', methods=['GET'])
 def get_feature_and_messages(thread_id, feature_id):
@@ -311,7 +273,7 @@ def get_feature_and_messages(thread_id, feature_id):
     feature_data = {
         'model_name': feature.llm.name,
         'type': feature.feature_type.name,
-        'value': feature.value,
+        'content': feature.content,
         'feature_id': feature.feature_id
     }
 
@@ -404,7 +366,7 @@ def save_ranking(thread_id):
         type_name = feature_type['type']
         for detail in feature_type['details']:
             model_name = detail['model_name']
-            value = detail['value']
+            content = detail['content']
             position = detail['position']
 
             # Find the FeatureType ID
@@ -422,7 +384,7 @@ def save_ranking(thread_id):
                 thread_id=thread_id,
                 type_id=feature_type_entry.type_id,
                 llm_id=llm_entry.llm_id,
-                value=value
+                content=content
             ).first()
 
             if feature:
@@ -478,7 +440,7 @@ def get_current_ranking(thread_id):
 
         rankings_data[feature_type_name].append({
             'model_name': ranking.llm.name,
-            'value': ranking.feature.value,
+            'content': ranking.feature.content,
             'position': int(ranking.ranking_value)
         })
 
@@ -516,6 +478,65 @@ def get_feature_type(identifier):
         if not feature_type:
             return jsonify({'error': f'Feature type name {identifier} not found'}), 404
         return jsonify({'type_id': feature_type.type_id}), 200
+
+@data_blueprint.route('/save_rating/<int:thread_id>/<int:feature_id>', methods=['POST'])
+def save_rating(thread_id, feature_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    data = request.get_json()
+    rating_value = data.get('rating_value')
+    edited_feature = data.get('edited_feature')
+
+    if rating_value is None or edited_feature is None:
+        return jsonify({'error': 'Rating value and edited feature are required'}), 400
+
+    # Find or create the feature rating
+    feature_rating = UserFeatureRating.query.filter_by(user_id=user.id, feature_id=feature_id).first()
+
+    if feature_rating:
+        feature_rating.rating_value = rating_value
+        feature_rating.edited_feature = edited_feature
+    else:
+        new_rating = UserFeatureRating(
+            user_id=user.id,
+            feature_id=feature_id,
+            rating_value=rating_value,
+            edited_feature=edited_feature
+        )
+        db.session.add(new_rating)
+
+    db.session.commit()
+
+    return jsonify({'status': 'Rating saved successfully'}), 201
+
+
+@data_blueprint.route('/get_rating/<int:thread_id>/<int:feature_id>', methods=['GET'])
+def get_rating(thread_id, feature_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    feature_rating = UserFeatureRating.query.filter_by(user_id=user.id, feature_id=feature_id).first()
+
+    if not feature_rating:
+        return jsonify({'error': 'Rating not found'}), 404
+
+    rating_data = {
+        'rating_value': feature_rating.rating_value,
+        'edited_feature': feature_rating.edited_feature
+    }
+
+    return jsonify(rating_data), 200
 
 
 def configure_routes(app):

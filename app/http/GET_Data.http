@@ -1,9 +1,0 @@
-###
-GET localhost:8081/api/email_threads
-###
-GET localhost:8081/api/email_threads/1
-###
-GET localhost:8081/api/email_threads/1/ranking
-###
-GET http://localhost:8081/api/email_threads/rankings
-Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51

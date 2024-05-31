@@ -3,22 +3,23 @@
     <v-row>
       <v-col cols="12">
         <h1>Rater Dashboard</h1>
-        <p>Bewerten Sie die Relevanz und Qualität der generierten Features für E-Mail-Verläufe.</p>
+        <p>Klicken Sie auf einen Fall, um ein Rating durchzuführen.</p>
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="12" sm="6" v-for="item in items" :key="item.id">
-        <v-card>
-          <v-card-title>{{ item.emailSubject }}</v-card-title>
-          <v-card-text>
-            <div>{{ item.emailExcerpt }}</div>
-            <div><strong>Feature:</strong> {{ item.generatedFeature }}</div>
-            <v-chip class="ma-2" color="blue" outlined>{{ item.featureType }}</v-chip>
-          </v-card-text>
-          <v-card-actions>
-            <v-btn text color="green" @click="rateItem(item, 'positive')">Gut</v-btn>
-            <v-btn text color="red" @click="rateItem(item, 'negative')">Schlecht</v-btn>
-          </v-card-actions>
+      <v-col cols="12" sm="4" v-for="emailThread in emailThreads" :key="emailThread.thread_id">
+        <v-card class="mb-4 case-card" @click="navigateToCase(emailThread.thread_id)">
+          <v-chip
+            class="category-chip"
+            color="grey lighten-2"
+            small
+          >
+            Default Kategorie
+          </v-chip>
+          <div class="card-content">
+            <v-card-title>{{ emailThread.subject }}</v-card-title>
+            <v-card-text class="chat-id">{{ 'Chat ID: ' + emailThread.chat_id }}</v-card-text>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -26,32 +27,80 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
 
-// Beispiel-Daten, die tatsächlich über eine API abgerufen werden sollten
-const items = ref([
-  {
-    id: 1,
-    emailSubject: 'Betreff der E-Mail',
-    emailExcerpt: 'Auszug aus dem E-Mail-Verlauf...',
-    generatedFeature: 'Automatisch generierte Zusammenfassung des Inhalts',
-    featureType: 'Zusammenfassung',
-  },
-  {
-    id: 2,
-    emailSubject: 'Betreff der E-Mail 2',
-    emailExcerpt: 'Auszug aus einem anderen E-Mail-Verlauf...',
-    generatedFeature: 'Automatisch generierter Betreff zum E-Mail-Verlauf',
-    featureType: 'Generierter Betreff',
-  },
-  // Weitere Einträge...
-]);
+const router = useRouter();
+const emailThreads = ref([]);
 
-function rateItem(item, rating) {
-  console.log(`Item ${item.id} rated as ${rating}`);
-  // Hier sollte die Bewertungsinformation an den Server gesendet werden
+onMounted(async () => {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get('http://localhost:8081/api/email_threads/ratings', {
+      headers: {
+        'Authorization': api_key,
+      }
+    });
+    console.log('Email threads:', response.data);
+    emailThreads.value = response.data;
+  } catch (error) {
+    console.error('Error fetching email threads:', error);
+  }
+});
+
+function navigateToCase(threadId) {
+  router.push({name: 'RaterDetail', params: {id: threadId}});
 }
 </script>
 
 <style scoped>
+.case-card {
+  position: relative;
+  transition: box-shadow 0.3s ease-in-out, transform 0.1s ease-in-out;
+  cursor: pointer;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.case-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.category-chip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border-radius: 12px 5px 12px 5px;
+  z-index: 1;
+}
+
+.card-content {
+  padding-top: 36px;
+  padding-right: 36px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.v-card-title {
+  font-size: 1rem;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.v-card-text {
+  margin-top: auto;
+}
+
+.chat-id {
+  align-self: auto;
+}
 </style>

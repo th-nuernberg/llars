@@ -9,15 +9,31 @@
           <v-card-text>{{ feature.content }}</v-card-text>
         </v-card>
         <h3>Bewerten Sie dieses Feature</h3>
-        <div class="likert-scale">
-          <v-btn
-            v-for="rating in 5"
-            :key="rating"
-            @click="rateFeature(rating)"
-            :class="{'selected-rating': rating === selectedRating}"
-          >
-            {{ rating }}
-          </v-btn>
+        <div class="likert-scale-container">
+          <span class="likert-label-text">Gut</span>
+          <div class="likert-scale">
+            <div
+              v-for="rating in 5"
+              :key="rating"
+              @click="rateFeature(rating)"
+              :class="['likert-option', {
+                'selected-rating': rating === selectedRating,
+                'size-1': rating === 1 || rating === 5,
+                'size-2': rating === 2 || rating === 4,
+                'size-3': rating === 3,
+                'green-tone': rating === 1 || rating === 2,
+                'purple-tone': rating === 4 || rating === 5,
+                'gray-tone': rating === 3
+              }]"
+            >
+              <span class="likert-circle">
+                <template v-if="rating === selectedRating">
+                  <v-icon>mdi-check</v-icon>
+                </template>
+              </span>
+            </div>
+          </div>
+          <span class="likert-label-text">Schlecht</span>
         </div>
         <div class="expandable-padding"></div>
         <v-expansion-panels>
@@ -89,9 +105,6 @@ onMounted(async () => {
 async function loadFeatureDetail(threadId = route.params.id, featureId = route.params.feature) {
   const featureDetail = await fetchFeatureDetail(threadId, featureId);
   if (!featureDetail) return;
-  console.log('Feature detail:', featureDetail);
-  console.log(typeof featureDetail.feature.content);
-  console.log(typeof featureDetail.feature);
   feature.value = featureDetail.feature;
   messages.value = featureDetail.messages;
 
@@ -126,24 +139,20 @@ async function fetchFeatureDetail(threadId, featureId) {
 async function loadFromLocalStorageOrServer() {
   const savedRatingData = localStorage.getItem(localStorageKey.value);
   if (savedRatingData) {
-    console.log('Loading rating data from local storage:', savedRatingData);
     const parsedRatingData = JSON.parse(savedRatingData);
     selectedRating.value = parsedRatingData.rating_content;
     editableFeature.value = parsedRatingData.edited_feature;
   } else {
-    console.log('No saved rating data found in local storage, checking server');
     const serverRatingData = await fetchRatingFromServer(route.params.id, feature.value.feature_id);
     if (serverRatingData) {
       selectedRating.value = serverRatingData.rating_content;
       editableFeature.value = { ...feature.value, content: serverRatingData.edited_feature };
     } else {
-      console.log('No saved rating data found on server');
       selectedRating.value = null;
       editableFeature.value = { ...feature.value };
     }
   }
 }
-
 
 async function fetchRatingFromServer(threadId, featureId) {
   try {
@@ -199,8 +208,6 @@ function saveFeaturesServerSide() {
     alert('API key is missing');
     return;
   }
-  console.log('Saving editable server side:', editableFeature.value);
-  console.log('Selected rating:', selectedRating.value);
   const ratingData = {
     rating_content: selectedRating.value,
     edited_feature: editableFeature.value.content
@@ -213,7 +220,6 @@ function saveFeaturesServerSide() {
     }
   })
     .then(response => {
-      console.log('Rating saved successfully:', response.data);
       alert('Rating wurde erfolgreich gespeichert!');
     })
     .catch(error => {
@@ -305,22 +311,142 @@ watch(editableFeature, () => {
   user-select: none;
 }
 
-.likert-scale {
+.likert-scale-container {
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
+  align-items: center;
   margin-top: 10px;
 }
 
-.likert-scale v-btn {
-  min-width: 40px;
+.likert-scale {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin: 0 20px;
+  gap: 4vh; /* Add padding between the options */
 }
 
-.selected-rating {
-  background-color: #1976d2 !important;
-  color: white !important;
+.likert-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.likert-circle {
+  border: 2.5px solid #C8E6C9;
+  border-radius: 50%;
+  margin-bottom: 4px;
+  transition: background-color 0.3s, border-color 0.3s, transform 0.3s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.size-1 .likert-circle {
+  width: 44px;
+  height: 44px;
+}
+
+.size-2 .likert-circle {
+  width: 36px;
+  height: 36px;
+}
+
+.size-3 .likert-circle {
+  width: 28px;
+  height: 28px;
+}
+
+.green-tone .likert-circle {
+  border-color: #66BB6A;
+}
+
+.purple-tone .likert-circle {
+  border-color: #AB47BC;
+}
+
+.gray-tone .likert-circle {
+  border-color: #BDBDBD;
+}
+
+.selected-rating.size-1 .likert-circle {
+  background-color: #66BB6A;
+  color: white;
+}
+
+.selected-rating.size-2 .likert-circle {
+  background-color: #66BB6A;
+  color: white;
+}
+
+.selected-rating.size-3 .likert-circle {
+  background-color: #BDBDBD;
+  color: white;
+}
+
+.selected-rating.size-4 .likert-circle {
+  background-color: #AB47BC;
+  color: white;
+}
+
+.selected-rating.size-5 .likert-circle {
+  background-color: #AB47BC;
+  color: white;
+}
+
+.likert-label {
+  color: #666;
+  font-size: 0.8rem;
+  margin-top: 8px; /* Adjust this value to align the labels horizontally */
+}
+
+.likert-label-text {
+  font-size: 1rem;
+  margin: 0 8vh;
+  font-weight: bold;
+}
+
+.selected-rating .likert-label {
+  color: inherit; /* Ensure the label color matches the circle color */
+}
+
+.likert-option:hover .likert-circle {
+  background-color: #E0F7FA;
+  border-color: #00ACC1;
+  transform: scale(1.1);
+}
+
+.green-tone .likert-label {
+  color: #66BB6A;
+}
+
+.purple-tone .likert-label {
+  color: #AB47BC;
+}
+
+.gray-tone .likert-label {
+  color: #BDBDBD;
+}
+
+.green-tone:hover .likert-circle {
+  background-color: #E8F5E9;
+  border-color: #66BB6A;
+}
+
+.purple-tone:hover .likert-circle {
+  background-color: #F3E5F5;
+  border-color: #AB47BC;
+}
+
+.gray-tone:hover .likert-circle {
+  background-color: #F5F5F5;
+  border-color: #BDBDBD;
 }
 
 .expandable-padding {
   padding-top: 20px;
 }
 </style>
+
+

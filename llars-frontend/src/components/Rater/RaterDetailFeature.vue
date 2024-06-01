@@ -28,7 +28,7 @@
             >
               <span class="likert-circle">
                 <template v-if="rating === selectedRating">
-                  <v-icon>mdi-check</v-icon>
+                  <v-icon class="white-icon">mdi-check</v-icon>
                 </template>
               </span>
             </div>
@@ -238,7 +238,6 @@ onBeforeRouteUpdate(async (to, from, next) => {
 watch(editableFeature, () => {
   saveRatingToLocalStorage();
 }, {deep: true});
-
 </script>
 
 <style scoped>
@@ -323,7 +322,7 @@ watch(editableFeature, () => {
   justify-content: space-around;
   align-items: center;
   margin: 0 20px;
-  gap: 4vh; /* Add padding between the options */
+  gap: 5vh; /* Add padding between the options */
 }
 
 .likert-option {
@@ -370,63 +369,22 @@ watch(editableFeature, () => {
   border-color: #BDBDBD;
 }
 
-.selected-rating.size-1 .likert-circle {
-  background-color: #66BB6A;
-  color: white;
+.selected-rating.green-tone .likert-circle {
+  background-color: #66BB6A; /* Füllt den Kreis mit grün */
 }
 
-.selected-rating.size-2 .likert-circle {
-  background-color: #66BB6A;
-  color: white;
+.selected-rating.purple-tone .likert-circle {
+  background-color: #AB47BC; /* Füllt den Kreis mit lila */
 }
 
-.selected-rating.size-3 .likert-circle {
-  background-color: #BDBDBD;
-  color: white;
-}
-
-.selected-rating.size-4 .likert-circle {
-  background-color: #AB47BC;
-  color: white;
-}
-
-.selected-rating.size-5 .likert-circle {
-  background-color: #AB47BC;
-  color: white;
-}
-
-.likert-label {
-  color: #666;
-  font-size: 0.8rem;
-  margin-top: 8px; /* Adjust this value to align the labels horizontally */
-}
-
-.likert-label-text {
-  font-size: 1rem;
-  margin: 0 8vh;
-  font-weight: bold;
-}
-
-.selected-rating .likert-label {
-  color: inherit; /* Ensure the label color matches the circle color */
+.selected-rating.gray-tone .likert-circle {
+  background-color: #BDBDBD; /* Füllt den Kreis mit grau */
 }
 
 .likert-option:hover .likert-circle {
   background-color: #E0F7FA;
   border-color: #00ACC1;
   transform: scale(1.1);
-}
-
-.green-tone .likert-label {
-  color: #66BB6A;
-}
-
-.purple-tone .likert-label {
-  color: #AB47BC;
-}
-
-.gray-tone .likert-label {
-  color: #BDBDBD;
 }
 
 .green-tone:hover .likert-circle {
@@ -444,9 +402,32 @@ watch(editableFeature, () => {
   border-color: #BDBDBD;
 }
 
+/* Neue Regeln für ausgewählte Punkte */
+.selected-rating .likert-circle:hover {
+  transform: scale(1.1);
+}
+
+.selected-rating.green-tone .likert-circle:hover {
+  background-color: #66BB6A; /* Bleibt grün */
+  border-color: #66BB6A;
+}
+
+.selected-rating.purple-tone .likert-circle:hover {
+  background-color: #AB47BC; /* Bleibt lila */
+  border-color: #AB47BC;
+}
+
+.selected-rating.gray-tone .likert-circle:hover {
+  background-color: #BDBDBD; /* Bleibt grau */
+  border-color: #BDBDBD;
+}
+
+
 .expandable-padding {
   padding-top: 20px;
 }
+
+.white-icon {
+  color: white;
+}
 </style>
-
-

@@ -3,6 +3,7 @@ import json
 import os
 from datetime import datetime
 from colorama import Fore, Style, init
+import time
 
 init(autoreset=True)
 
@@ -145,6 +146,21 @@ def process_files(file_paths):
         else:
             print_with_timestamp(f"Invalid path: {path}", Fore.RED)
 
+# def check_heatlh():
+    # execute_request('GET', 'http://backend-flask-service:8081/health_check')
+def check_heatlh(interval=10):
+    while True:
+        try:
+            response = requests.get('http://backend-flask-service:8081/health_check')
+            if response.status_code == 200:
+                pass
+                # print("Successfully processed notifications!")
+            else:
+                print(f"Error occurred: {response.status_code} - {response.text}")
+        except requests.RequestException as e:
+            print(f"An error occurred while making the request: {e}")
+
+        time.sleep(interval)  # Wartezeit vor der nächsten Anfrage
 
 if __name__ == "__main__":
     file_paths = [
@@ -155,6 +171,5 @@ if __name__ == "__main__":
     process_files(file_paths)
 
     print(f"{Fore.GREEN}{Style.BRIGHT}Successfully seeded data!{Style.RESET_ALL}")
+    check_heatlh()
 
-    while True:
-        pass

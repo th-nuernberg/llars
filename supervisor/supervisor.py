@@ -171,5 +171,5 @@ if __name__ == "__main__":
     process_files(file_paths)
 
     print(f"{Fore.GREEN}{Style.BRIGHT}Successfully seeded data!{Style.RESET_ALL}")
-    check_heatlh()
+    check_heatlh(60)
 

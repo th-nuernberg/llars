@@ -4,35 +4,35 @@
       <v-col cols="12" md="6">
         <h2>Features</h2>
         <div class="features-container">
-        <v-expansion-panels>
-          <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
-            <v-expansion-panel-title>
-              <div>{{ translateFeatureType(feature.type) }}</div>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <transition-group name="fade" tag="div">
-                <draggable
-                  v-model="feature.details"
-                  group="featureGroup"
-                  item-key="feature_id"
-                  @start="handleDragStart"
-                  @end="handleDragEnd"
-                  v-bind="dragOptions"
-                  ghost-class="ghost"
-                  fallback-class="fallbackStyleClass"
-                  :force-fallback="true"
-                >
-                  <template #item="{ element }">
-                    <div :key="element.feature_id" class="draggable-item no-select">
-                      <p><strong>Modell:</strong> {{ element.model_name }}</p>
-                      <p>{{ element.content }}</p>
-                    </div>
-                  </template>
-                </draggable>
-              </transition-group>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
+          <v-expansion-panels>
+            <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
+              <v-expansion-panel-title>
+                <div>{{ translateFeatureType(feature.type) }}</div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <transition-group name="fade" tag="div">
+                  <draggable
+                    v-model="feature.details"
+                    group="featureGroup"
+                    item-key="feature_id"
+                    @start="handleDragStart"
+                    @end="handleDragEnd"
+                    v-bind="dragOptions"
+                    ghost-class="ghost"
+                    fallback-class="fallbackStyleClass"
+                    :force-fallback="true"
+                  >
+                    <template #item="{ element }">
+                      <div :key="element.feature_id" class="draggable-item no-select">
+                        <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                        <div v-html="formatFeatureContent(feature.type, element.content)"></div>
+                      </div>
+                    </template>
+                  </draggable>
+                </transition-group>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </div>
       </v-col>
 
@@ -60,7 +60,9 @@
         </div>
       </v-col>
     </v-row>
+
     <v-spacer></v-spacer>
+
     <v-container fluid>
       <v-col cols="12" class="button-class">
         <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
@@ -207,9 +209,61 @@ function translateFeatureType(type) {
 }
 
 function formatTimestamp(timestamp) {
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+  const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
   const date = new Date(timestamp);
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
+}
+
+function formatFeatureContent(type, content) {
+  console.log('Formatting feature content:', type, content);
+  switch (type) {
+    case 'generated_subject':
+      try {
+        const subjectObj = JSON.parse(content);
+        return subjectObj.Betreff || content; // Return the extracted subject or the original content if parsing fails
+      } catch (error) {
+        console.error('Error parsing generated_subject JSON:', error);
+        return content; // Return the original content if parsing fails
+      }
+
+    case 'situation_summary':
+      try {
+        const summaryObj = JSON.parse(content);
+        let formattedContent = '<div class="situation-summary">';
+        for (const [key, values] of Object.entries(summaryObj)) {
+          const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+          formattedContent += `<p><strong>${capitalizedKey}:</strong></p>`;
+          formattedContent += '<ul>';
+          values.forEach(item => {
+            formattedContent += `<li>${item}</li>`;
+          });
+          formattedContent += '</ul>';
+        }
+        formattedContent += '</div>';
+
+        // Add CSS for indentation
+        formattedContent += `
+          <style>
+            .situation-summary ul {
+              padding-left: 20px;
+              margin-top: 5px;
+              margin-bottom: 15px;
+            }
+            .situation-summary p {
+              margin-bottom: 5px;
+            }
+          </style>
+        `;
+
+        return formattedContent;
+      } catch (error) {
+        console.error('Error parsing situation_summary JSON:', error);
+        return content;
+      }
+
+    default:
+      return content; // No formatting applied by default
+  }
 }
 
 function handleDragStart() {
@@ -238,7 +292,7 @@ function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);
   if (currentId > 1) {
     const previousId = currentId - 1;
-    router.push({ name: 'RankerDetail', params: { id: previousId } });
+    router.push({name: 'RankerDetail', params: {id: previousId}});
   }
 }
 
@@ -248,7 +302,7 @@ async function navigateToNextCase() {
   const nextId = currentId + 1;
 
   if (nextId <= totalCases) {
-    router.push({ name: 'RankerDetail', params: { id: nextId } });
+    router.push({name: 'RankerDetail', params: {id: nextId}});
   } else {
     console.log("Letzter Fall erreicht, kann nicht zum nächsten navigieren");
   }
@@ -258,10 +312,10 @@ async function fetchTotalCases() {
   try {
     const api_key = localStorage.getItem('api_key');
     const response = await axios.get('http://localhost:8081/api/email_threads/rankings', {
-    headers: {
-      'Authorization': api_key,
-    }
-  });
+      headers: {
+        'Authorization': api_key,
+      }
+    });
     return response.data.length;
   } catch (error) {
     console.error('Error fetching total number of cases:', error);

@@ -9,12 +9,17 @@ init(autoreset=True)
 
 shorten_output = True  # Set this to False if you do not want to shorten the data output
 show_timestamps = False  # Set this to False if you do not want to show timestamps
-localhost_replacement = "backend-flask-service"  # Variable for replacing 'localhost' in URLs
 
+# Dictionary to map file paths to the respective service
+file_service_mapping = {
+    "http/seeder/seed_user.http": "backend-flask-service",
+    "http/seeder/seed_ranking.http": "backend-flask-service",
+    "http/seeder/seed_rating.http": "backend-flask-service",
+    "http/seeder/output_ranking.http": "backend-flask-service",
+}
 
 def current_timestamp():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 
 def print_with_timestamp(message, color=Fore.RESET, end='\n'):
     if show_timestamps:
@@ -22,12 +27,10 @@ def print_with_timestamp(message, color=Fore.RESET, end='\n'):
     else:
         print(f"{color}{message}{Style.RESET_ALL}", end=end)
 
-
 def shorten_data(data):
     if len(data) > 70:
         return f"{data[:35]}...{data[-35:]}"
     return data
-
 
 def method_color(method):
     colors = {
@@ -38,7 +41,6 @@ def method_color(method):
     }
     return colors.get(method, Fore.RESET)
 
-
 def response_color(status_code):
     if 200 <= status_code < 300:
         return Fore.GREEN
@@ -47,12 +49,11 @@ def response_color(status_code):
     else:
         return Fore.RED
 
-
-def execute_request(method, url, headers=None, data=None):
+def execute_request(method, url, headers=None, data=None, service_replacement=None):
     try:
         # Replace 'localhost' in the URL if necessary
-        if 'localhost' in url:
-            url = url.replace('localhost', localhost_replacement)
+        if 'localhost' in url and service_replacement:
+            url = url.replace('localhost', service_replacement)
 
         method_str = f"{method}"
         print_with_timestamp(
@@ -86,7 +87,6 @@ def execute_request(method, url, headers=None, data=None):
     except requests.exceptions.RequestException as e:
         print_with_timestamp(f"An error occurred: {e}", Fore.RED)
 
-
 def parse_and_execute(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -102,7 +102,8 @@ def parse_and_execute(file_path):
             if method and url:
                 if data_lines:
                     data = '\n'.join(data_lines)
-                execute_request(method, url, headers, json.loads(data) if data else None)
+                service_replacement = file_service_mapping.get(file_path)
+                execute_request(method, url, headers, json.loads(data) if data else None, service_replacement)
             method, url = None, None
             headers, data_lines = {}, []
             is_data_section = False
@@ -129,47 +130,23 @@ def parse_and_execute(file_path):
     if method and url:
         if data_lines:
             data = '\n'.join(data_lines)
-        execute_request(method, url, headers, json.loads(data) if data else None)
+        service_replacement = file_service_mapping.get(file_path)
+        execute_request(method, url, headers, json.loads(data) if data else None, service_replacement)
 
-
-def process_files(file_paths):
-    for path in file_paths:
-        if os.path.isfile(path):
-            print_with_timestamp(f"Processing file: {path}", Fore.BLUE)
-            parse_and_execute(path)
-        elif os.path.isdir(path):
-            for root, _, files in os.walk(path):
+def process_files(file_service_mapping):
+    for file_path, service_replacement in file_service_mapping.items():
+        if os.path.isfile(file_path):
+            print_with_timestamp(f"Processing file: {file_path}", Fore.BLUE)
+            parse_and_execute(file_path)
+        elif os.path.isdir(file_path):
+            for root, _, files in os.walk(file_path):
                 for file in files:
-                    file_path = os.path.join(root, file)
-                    print_with_timestamp(f"Processing file: {file_path}", Fore.BLUE)
-                    parse_and_execute(file_path)
+                    file_path_full = os.path.join(root, file)
+                    print_with_timestamp(f"Processing file: {file_path_full}", Fore.BLUE)
+                    parse_and_execute(file_path_full)
         else:
-            print_with_timestamp(f"Invalid path: {path}", Fore.RED)
-
-# def check_heatlh():
-    # execute_request('GET', 'http://backend-flask-service:8081/health_check')
-def check_heatlh(interval=10):
-    while True:
-        try:
-            response = requests.get('http://backend-flask-service:8081/health_check')
-            if response.status_code == 200:
-                pass
-                # print("Successfully processed notifications!")
-            else:
-                print(f"Error occurred: {response.status_code} - {response.text}")
-        except requests.RequestException as e:
-            print(f"An error occurred while making the request: {e}")
-
-        time.sleep(interval)  # Wartezeit vor der nächsten Anfrage
+            print_with_timestamp(f"Invalid path: {file_path}", Fore.RED)
 
 if __name__ == "__main__":
-    file_paths = [
-        "http/seeder/seed_user.http",
-        "http/seeder/seed_ranking.http",
-        "http/seeder/seed_rating.http",
-    ]
-    process_files(file_paths)
-
+    process_files(file_service_mapping)
     print(f"{Fore.GREEN}{Style.BRIGHT}Successfully seeded data!{Style.RESET_ALL}")
-    check_heatlh(60)
-

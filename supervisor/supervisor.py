@@ -16,6 +16,7 @@ file_service_mapping = {
     "http/seeder/seed_ranking.http": "backend-flask-service",
     "http/seeder/seed_rating.http": "backend-flask-service",
     "http/seeder/output_ranking.http": "backend-flask-service",
+    "http/seeder/output": "backend-flask-service",
 }
 
 def current_timestamp():
@@ -87,6 +88,7 @@ def execute_request(method, url, headers=None, data=None, service_replacement=No
     except requests.exceptions.RequestException as e:
         print_with_timestamp(f"An error occurred: {e}", Fore.RED)
 
+
 def parse_and_execute(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -133,19 +135,49 @@ def parse_and_execute(file_path):
         service_replacement = file_service_mapping.get(file_path)
         execute_request(method, url, headers, json.loads(data) if data else None, service_replacement)
 
+
+def parse_and_execute_json(file_path, service_replacement=None):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+    # Define the endpoint to send the JSON data to
+    url = "http://localhost:8081/api/email_threads"
+
+    # Replace 'localhost' in the URL if necessary
+    if service_replacement:
+        url = url.replace('localhost', service_replacement)
+
+    # Set the headers for the request
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    # Execute the request
+    execute_request('POST', url, headers=headers, data=data)
+
 def process_files(file_service_mapping):
     for file_path, service_replacement in file_service_mapping.items():
         if os.path.isfile(file_path):
-            print_with_timestamp(f"Processing file: {file_path}", Fore.BLUE)
-            parse_and_execute(file_path)
+            if file_path.endswith('.json'):
+                print_with_timestamp(f"Processing JSON file: {file_path}", Fore.BLUE)
+                parse_and_execute_json(file_path, service_replacement)
+            else:
+                print_with_timestamp(f"Processing file: {file_path}", Fore.BLUE)
+                parse_and_execute(file_path)
         elif os.path.isdir(file_path):
             for root, _, files in os.walk(file_path):
                 for file in files:
                     file_path_full = os.path.join(root, file)
-                    print_with_timestamp(f"Processing file: {file_path_full}", Fore.BLUE)
-                    parse_and_execute(file_path_full)
+                    if file.endswith('.json'):
+                        print_with_timestamp(f"Processing JSON file: {file_path_full}", Fore.BLUE)
+                        parse_and_execute_json(file_path_full, service_replacement)
+                    else:
+                        print_with_timestamp(f"Processing file: {file_path_full}", Fore.BLUE)
+                        parse_and_execute(file_path_full)
         else:
             print_with_timestamp(f"Invalid path: {file_path}", Fore.RED)
+
+
 
 if __name__ == "__main__":
     process_files(file_service_mapping)

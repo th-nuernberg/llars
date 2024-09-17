@@ -3,6 +3,7 @@
     <v-row>
       <v-col cols="12" md="6">
         <h2>Features</h2>
+        <div class="features-container">
         <v-expansion-panels>
           <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
             <v-expansion-panel-title>
@@ -32,6 +33,7 @@
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
+        </div>
       </v-col>
 
       <v-col cols="12" md="6">
@@ -199,6 +201,7 @@ function translateFeatureType(type) {
     generated_category: 'Generierte Kategorie',
     generated_subject: 'Generierter Betreff',
     order_clarification: 'Ordnungsklärung',
+    situation_summary: 'Situationsbeschreibung'
   };
   return translations[type] || type;
 }
@@ -317,10 +320,16 @@ function saveFeaturesServerSide() {
 .email-thread-container {
   max-height: 500px;
   overflow-y: auto;
-  min-height: 80vh;
+  min-height: 70vh;
   display: flex;
   flex-direction: column;
   position: relative;
+}
+
+.features-container {
+  max-height: 500px;
+  overflow-y: auto;
+  min-height: 70vh;
 }
 
 .fade-overlay {

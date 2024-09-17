@@ -142,6 +142,7 @@ def create_email_thread():
                 db.session.add(feature_type)
                 db.session.commit()
 
+            # Store the entire feature content as JSON in the database
             existing_feature = Feature.query.filter_by(
                 thread_id=email_thread.thread_id,
                 type_id=feature_type.type_id,
@@ -153,7 +154,7 @@ def create_email_thread():
                     thread_id=email_thread.thread_id,
                     type_id=feature_type.type_id,
                     llm_id=llm.llm_id,
-                    content=feature_content
+                    content=json.dumps(feature_content)  # Store as JSON string
                 )
                 db.session.add(feature)
 

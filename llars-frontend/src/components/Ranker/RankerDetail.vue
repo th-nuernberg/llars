@@ -77,7 +77,7 @@
   </v-container>
     <v-spacer></v-spacer>
 
-  <v-container fluid class="button-container">
+  <v-container fluid>
     <v-row align="center" class="button-class">
       <!-- Chip auf der linken Seite -->
       <v-col cols="auto">
@@ -92,21 +92,21 @@
 
       <v-spacer></v-spacer>
 
-      <!-- Buttons auf der rechten Seite -->
-      <v-col cols="auto">
-        <v-btn @click="saveFeaturesServerSide">
-          <v-icon left>mdi-content-save</v-icon>
-          Speichern
-        </v-btn>
-        <v-btn @click="navigateToPreviousCase">
-          <v-icon left>mdi-arrow-left</v-icon>
-          Vorheriger Fall
-        </v-btn>
-        <v-btn @click="navigateToNextCase">
-          Nächster Fall
-          <v-icon right>mdi-arrow-right</v-icon>
-        </v-btn>
-      </v-col>
+<!-- Buttons auf der rechten Seite -->
+<v-col cols="auto">
+  <v-btn class="mr-2" @click="saveFeaturesServerSide">
+    <v-icon left>mdi-content-save</v-icon>
+    Speichern
+  </v-btn>
+  <v-btn class="mr-2" @click="navigateToPreviousCase">
+    <v-icon left>mdi-arrow-left</v-icon>
+    Vorheriger Fall
+  </v-btn>
+  <v-btn @click="navigateToNextCase">
+    Nächster Fall
+    <v-icon right>mdi-arrow-right</v-icon>
+  </v-btn>
+</v-col>
     </v-row>
   </v-container>
 </template>
@@ -124,7 +124,7 @@ const messages = ref([]);
 const senderColors = ref({});
 const groupedFeatures = ref([]);
 const localStorageKey = ref('');
-const ranked = ref(false);  // Füge diese Zeile hinzu
+const ranked = ref(false);
 
 const dragOptions = ref({
   animation: 200,
@@ -133,7 +133,7 @@ const dragOptions = ref({
   ghostClass: 'ghost',
 });
 
-// New function to load data for a specific case
+// Funktion zum Laden der Daten für einen spezifischen Fall
 const loadCaseData = async (caseId) => {
   const threadData = await fetchEmailThreads(caseId);
   if (!threadData) return;
@@ -141,7 +141,6 @@ const loadCaseData = async (caseId) => {
   ranked.value = threadData.ranked;
   features.value = threadData.features;
   messages.value = threadData.messages;
-
 
   const featureMap = new Map();
   features.value.forEach((f, index) => {
@@ -176,7 +175,7 @@ const loadCaseData = async (caseId) => {
   });
 };
 
-// Watch for changes in the route parameter
+// Beobachte Änderungen in den Routenparametern
 watch(() => route.params.id, (newId) => {
   loadCaseData(newId);
 }, { immediate: true });
@@ -185,26 +184,25 @@ onMounted(() => {
   loadCaseData(route.params.id);
 });
 
-
 function getColorForText(text) {
   const hash = hashCode(text);
 
-  // Base color: #F0F4C3 (240, 244, 195 in RGB)
-  const baseHue = 65; // Approximate hue of #F0F4C3
-  const baseSaturation = 68; // Approximate saturation of #F0F4C3
-  const baseLightness = 86; // Approximate lightness of #F0F4C3
+  // Basisfarbe
+  const baseHue = 65;
+  const baseSaturation = 68;
+  const baseLightness = 86;
 
-  // Generate variations
-  const hueVariation = (hash & 0xFF) % 21 - 10;  // -10 to +10
-  const saturationVariation = ((hash >> 8) & 0xFF) % 31 - 15;  // -15 to +15
-  const lightnessVariation = ((hash >> 16) & 0xFF) % 21 - 10;  // -10 to +10
+  // Variationen generieren
+  const hueVariation = (hash & 0xFF) % 21 - 10;
+  const saturationVariation = ((hash >> 8) & 0xFF) % 31 - 15;
+  const lightnessVariation = ((hash >> 16) & 0xFF) % 21 - 10;
 
-  // Apply variations
-  const hue = (baseHue + hueVariation + 360) % 360; // Ensure hue is 0-359
+  // Variationen anwenden
+  const hue = (baseHue + hueVariation + 360) % 360;
   const saturation = Math.max(40, Math.min(100, baseSaturation + saturationVariation));
   const lightness = Math.max(70, Math.min(95, baseLightness + lightnessVariation));
 
-  // Convert to HSL color string
+  // In HSL-Farbstring umwandeln
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
@@ -213,16 +211,16 @@ function hashCode(str) {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = hash & hash;
   }
   return hash;
 }
+
 function isLongContent(content) {
-  // Temporäres Element erstellen, um die Höhe zu berechnen
   const div = document.createElement('div');
   div.style.position = 'absolute';
   div.style.visibility = 'hidden';
-  div.style.width = '300px'; // Passe dies an die tatsächliche Breite deines Elements an
+  div.style.width = '300px';
   div.style.webkitBoxOrient = 'vertical';
   div.style.display = '-webkit-box';
   div.style.webkitLineClamp = '3';
@@ -230,7 +228,6 @@ function isLongContent(content) {
   div.innerHTML = formatFeatureContent('type', content);
   document.body.appendChild(div);
 
-  // Berechne, ob der Inhalt länger als 3 Zeilen ist
   const isLong = div.scrollHeight > div.clientHeight;
   document.body.removeChild(div);
   return isLong;
@@ -316,8 +313,6 @@ function translateFeatureType(type) {
   return translations[type] || type;
 }
 
-
-
 function formatTimestamp(timestamp) {
   const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
   const date = new Date(timestamp);
@@ -330,10 +325,10 @@ function formatFeatureContent(type, content) {
     case 'generated_subject':
       try {
         const subjectObj = JSON.parse(content);
-        return subjectObj.Betreff || content; // Return the extracted subject or the original content if parsing fails
+        return subjectObj.Betreff || content;
       } catch (error) {
         console.error('Error parsing generated_subject JSON:', error);
-        return content; // Return the original content if parsing fails
+        return content;
       }
 
     case 'situation_summary':
@@ -351,7 +346,6 @@ function formatFeatureContent(type, content) {
         }
         formattedContent += '</div>';
 
-        // Add CSS for indentation
         formattedContent += `
           <style>
             .situation-summary ul {
@@ -372,7 +366,7 @@ function formatFeatureContent(type, content) {
       }
 
     default:
-      return content; // No formatting applied by default
+      return content;
   }
 }
 
@@ -417,7 +411,6 @@ async function navigateToNextCase() {
     console.log("Letzter Fall erreicht, kann nicht zum nächsten navigieren");
   }
 }
-
 
 async function fetchTotalCases() {
   try {
@@ -464,23 +457,29 @@ function saveFeaturesServerSide() {
     .then(response => {
       console.log('Ranking saved successfully:', response.data);
       alert('Ranking wurde erfolgreich gespeichert!');
-      ranked.value = true; // Update the ranked status
+      ranked.value = true;
     })
     .catch(error => {
       console.error('Error saving ranking:', error);
       alert('Fehler beim Speichern des Rankings.');
     });
 }
-
 </script>
 
 <style scoped>
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
 .button-class {
   display: flex;
   align-items: center;
   padding: 10px;
-  background-color: #f5f5f5; /* Leichter Hintergrund */
-  border-top: 1px solid #ddd; /* Obere Umrandung */
+  background-color: #f5f5f5;
+  border-top: 1px solid #ddd;
   position: sticky;
   bottom: 0;
   z-index: 1;
@@ -493,7 +492,7 @@ function saveFeaturesServerSide() {
 .email-thread-container {
   max-height: 500px;
   overflow-y: auto;
-  min-height: 70vh;
+  min-height: 75vh;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -502,7 +501,7 @@ function saveFeaturesServerSide() {
 .features-container {
   max-height: 500px;
   overflow-y: auto;
-  min-height: 70vh;
+
 }
 
 .fade-overlay {
@@ -562,7 +561,6 @@ function saveFeaturesServerSide() {
 }
 
 .draggable-item {
-  /* background-color: #F0F4C3; */ /* Remove this line */
   border-radius: 33px 12px;
   padding: 15px;
   margin-bottom: 8px;
@@ -583,29 +581,28 @@ function saveFeaturesServerSide() {
 }
 
 .small-toggle-btn {
-  font-size: 7px; /* Noch kleinere Schriftgröße */
-  padding: 0; /* Kein Padding */
+  font-size: 7px;
+  padding: 0;
   min-width: unset;
-  width: 80px; /* Feste Breite */
-  height: 20px; /* Feste Höhe */
-  line-height: 20px; /* Zentrierter Text */
-  text-align: center; /* Zentriere den Text */
+  width: 80px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
   position: absolute;
   top: 5px;
   right: 5px;
-  overflow: hidden; /* Verhindert, dass der Text aus dem Button läuft */
-  text-overflow: ellipsis; /* Schneidet den Text ab, wenn er zu lang ist */
-  white-space: nowrap; /* Verhindert Zeilenumbruch */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .clamped-text {
   display: -webkit-box;
-  -webkit-line-clamp: 3; /* Zeigt bis zu 3 Zeilen an */
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 
 .fallbackStyleClass {
   background-color: #528dc6;
@@ -623,10 +620,17 @@ body.dragging * {
   cursor: grabbing !important;
 }
 
+.button-spacing {
+  margin-right: 8px;
+}
+
+/* Optional: Entfernen Sie den rechten Abstand vom letzten Button */
+.button-spacing:last-child {
+  margin-right: 0;
+}
+
 .ghost {
   opacity: 0.1;
   background: #c8ebfb;
 }
-
-
 </style>

@@ -22,27 +22,22 @@
                     fallback-class="fallbackStyleClass"
                     :force-fallback="true"
                   >
-<template #item="{ element }">
-  <div :key="element.feature_id" class="draggable-item no-select">
-    <div>
-      <v-btn
-        v-if="isLongContent(element.content)"
-        class="small-toggle-btn"
-        small
-        @click="toggleMinimize(element)">
-        {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-      </v-btn>
-    </div>
-    <!-- Zeige den formatierten Text im minimierten Zustand, aber begrenze ihn auf 3 Zeilen -->
-    <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-    <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-  </div>
-</template>
-
-
-
-
-
+                    <template #item="{ element }">
+                      <div :key="element.feature_id" class="draggable-item no-select">
+                        <div>
+                          <v-btn
+                            v-if="isLongContent(element.content)"
+                            class="small-toggle-btn"
+                            small
+                            @click="toggleMinimize(element)">
+                            {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                          </v-btn>
+                        </div>
+                        <!-- Zeige den formatierten Text im minimierten Zustand, aber begrenze ihn auf 3 Zeilen -->
+                        <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                        <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                      </div>
+                    </template>
                   </draggable>
                 </transition-group>
               </v-expansion-panel-text>

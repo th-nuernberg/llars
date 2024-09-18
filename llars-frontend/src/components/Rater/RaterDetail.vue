@@ -109,7 +109,7 @@ onMounted(async () => {
 async function fetchEmailThreads(threadId) {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`http://localhost:8081/api/email_threads/ratings/${threadId}`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}`, {
       headers: {
         'Authorization': api_key
       }
@@ -124,7 +124,7 @@ async function fetchEmailThreads(threadId) {
 async function fetchServerRanking(threadId) {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}/current_ranking`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/${threadId}/current_ranking`, {
       headers: {
         'Authorization': api_key
       }
@@ -232,7 +232,7 @@ async function navigateToNextCase() {
 async function fetchTotalCases() {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get('http://localhost:8081/api/email_threads/ratings', {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings`, {
       headers: {
         'Authorization': api_key,
       }
@@ -265,7 +265,7 @@ function saveFeaturesServerSide() {
     orderedFeatures = JSON.parse(savedFeatureOrder);
   }
 
-  axios.post(`http://localhost:8081/api/save_ranking/${route.params.id}`, orderedFeatures, {
+  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${route.params.id}`, orderedFeatures, {
     headers: {
       'Authorization': api_key,
       'Content-Type': 'application/json'
@@ -286,7 +286,7 @@ async function navigateToFeatureDetail(featureType, featureId) {
   const threadId = route.params.id;
   const api_key = localStorage.getItem('api_key');
   //console.log('Navigating to feature detail:', featureType, featureId, threadId)
-  const response = await axios.get(`http://localhost:8081/api/feature_type_mapping/${featureType}`, {
+  const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/feature_type_mapping/${featureType}`, {
       headers: {
         'Authorization': api_key
       }
@@ -294,7 +294,7 @@ async function navigateToFeatureDetail(featureType, featureId) {
   //console.log(response.data.type_id);
   const featureTypeId = response.data.type_id;
 
-  const response1 = await axios.get(`http://localhost:8081/api/email_threads/ratings/${threadId}`, {
+  const response1 = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}`, {
       headers: {
         'Authorization': api_key
       }

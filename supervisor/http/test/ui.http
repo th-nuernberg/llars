@@ -22,3 +22,5 @@ GET localhost:8081/api/feature_type_mapping/abstract_summary
 GET localhost:8081/api/get_rating/4/41
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
+GET http://localhost:8081/api/rankings/csv
+Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51

@@ -24,7 +24,7 @@
                   >
                   <template #item="{ element }">
                     <div :key="element.feature_id" class="draggable-item no-select">
-                      <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                      <!-- <p><strong>Modell:</strong> {{ element.model_name }}</p> -->
                       <v-btn class="small-toggle-btn" small @click="toggleMinimize(element)">
                         {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
                       </v-btn>

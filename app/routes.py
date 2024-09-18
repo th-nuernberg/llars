@@ -311,14 +311,22 @@ def list_email_threads_for_rankings():
 
     email_threads = EmailThread.query.filter_by(function_type_id=ranking_function_type.function_type_id).all()
 
-    threads_list = [
-        {
+    threads_list = []
+    for thread in email_threads:
+        # Check if the user has ranked features in this thread
+        user_rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
+            Feature.thread_id == thread.thread_id
+        ).first()
+
+        ranked = True if user_rankings else False
+
+        threads_list.append({
             'thread_id': thread.thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
-            'subject': thread.subject
-        } for thread in email_threads
-    ]
+            'subject': thread.subject,
+            'ranked': ranked
+        })
 
     return jsonify(threads_list), 200
 

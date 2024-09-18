@@ -22,12 +22,15 @@
                     fallback-class="fallbackStyleClass"
                     :force-fallback="true"
                   >
-                    <template #item="{ element }">
-                      <div :key="element.feature_id" class="draggable-item no-select">
-                        <p><strong>Modell:</strong> {{ element.model_name }}</p>
-                        <div v-html="formatFeatureContent(feature.type, element.content)"></div>
-                      </div>
-                    </template>
+                  <template #item="{ element }">
+                    <div :key="element.feature_id" class="draggable-item no-select">
+                      <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                      <v-btn class="small-toggle-btn" small @click="toggleMinimize(element)">
+                        {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                      </v-btn>
+                      <div v-if="!element.minimized" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                    </div>
+                  </template>
                   </draggable>
                 </transition-group>
               </v-expansion-panel-text>
@@ -102,20 +105,22 @@ onMounted(async () => {
   messages.value = threadData.messages;
 
   const featureMap = new Map();
-  features.value.forEach((f, index) => {
-    if (!featureMap.has(f.type)) {
-      featureMap.set(f.type, {
-        type: f.type,
-        details: []
-      });
-    }
-    featureMap.get(f.type).details.push({
-      model_name: f.model_name,
-      content: f.content,
-      feature_id: f.feature_id,
-      position: index
+features.value.forEach((f, index) => {
+  if (!featureMap.has(f.type)) {
+    featureMap.set(f.type, {
+      type: f.type,
+      details: []
     });
+  }
+  featureMap.get(f.type).details.push({
+    model_name: f.model_name,
+    content: f.content,
+    feature_id: f.feature_id,
+    position: index,
+    minimized: false // Zustand für minimiert/expandiert
   });
+});
+
 
   groupedFeatures.value = Array.from(featureMap.values());
   localStorageKey.value = `featureOrder_${route.params.id}`;
@@ -145,6 +150,10 @@ async function fetchEmailThreads(threadId) {
     console.error('Error fetching email threads:', error);
     return null;
   }
+}
+
+function toggleMinimize(element) {
+  element.minimized = !element.minimized;
 }
 
 async function fetchServerRanking(threadId) {
@@ -443,15 +452,40 @@ function saveFeaturesServerSide() {
 }
 
 .draggable-item {
-  background-color: #F0F4C3;
+  background-color: #F0F4C3; /* Ursprüngliches Grün */
   border-radius: 33px 12px;
   padding: 15px;
   margin-bottom: 8px;
   cursor: grab;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word; /* Lange Wörter umbrechen */
+  position: relative; /* Für die Positionierung des Buttons */
+}
+
+.draggable-item.expanded {
+  white-space: normal;
+  overflow: visible;
 }
 
 .draggable-item:active {
   cursor: grabbing !important;
+}
+
+.small-toggle-btn {
+  font-size: 7px; /* Noch kleinere Schriftgröße */
+  padding: 0; /* Kein Padding */
+  min-width: unset;
+  width: 80px; /* Feste Breite */
+  height: 20px; /* Feste Höhe */
+  line-height: 20px; /* Zentrierter Text */
+  text-align: center; /* Zentriere den Text */
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  overflow: hidden; /* Verhindert, dass der Text aus dem Button läuft */
+  text-overflow: ellipsis; /* Schneidet den Text ab, wenn er zu lang ist */
+  white-space: nowrap; /* Verhindert Zeilenumbruch */
 }
 
 .fallbackStyleClass {

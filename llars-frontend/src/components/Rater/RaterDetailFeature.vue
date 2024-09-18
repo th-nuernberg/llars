@@ -124,7 +124,7 @@ async function loadFeatureDetail(threadId = route.params.id, featureId = route.p
 async function fetchFeatureDetail(threadId, featureId) {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`http://localhost:8081/api/email_threads/ratings/${threadId}/${featureId}`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}/${featureId}`, {
       headers: {
         'Authorization': api_key
       }
@@ -157,7 +157,7 @@ async function loadFromLocalStorageOrServer() {
 async function fetchRatingFromServer(threadId, featureId) {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`http://localhost:8081/api/get_rating/${threadId}/${featureId}`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/get_rating/${threadId}/${featureId}`, {
       headers: {
         'Authorization': api_key
       }
@@ -213,7 +213,7 @@ function saveFeaturesServerSide() {
     edited_feature: editableFeature.value.content
   };
 
-  axios.post(`http://localhost:8081/api/save_rating/${route.params.id}/${feature.value.feature_id}`, ratingData, {
+  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_rating/${route.params.id}/${feature.value.feature_id}`, ratingData, {
     headers: {
       'Authorization': api_key,
       'Content-Type': 'application/json'

@@ -177,8 +177,22 @@ def process_files(file_service_mapping):
         else:
             print_with_timestamp(f"Invalid path: {file_path}", Fore.RED)
 
+def check_heatlh(interval=10):
+    while True:
+        try:
+            response = requests.get('http://backend-flask-service:8081/health_check')
+            if response.status_code == 200:
+                pass
+                # print("Successfully processed notifications!")
+            else:
+                print(f"Error occurred: {response.status_code} - {response.text}")
+        except requests.RequestException as e:
+            print(f"An error occurred while making the request: {e}")
+
+        time.sleep(interval)  # Wartezeit vor der nächsten Anfrage
 
 
 if __name__ == "__main__":
     process_files(file_service_mapping)
     print(f"{Fore.GREEN}{Style.BRIGHT}Successfully seeded data!{Style.RESET_ALL}")
+    check_heatlh(60)

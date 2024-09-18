@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid>
+   <v-container fluid>
     <v-row>
       <v-col cols="12" md="6">
         <h2>Features</h2>
@@ -24,8 +24,18 @@
                   >
                     <template #item="{ element }">
                       <div :key="element.feature_id" class="draggable-item no-select">
-                        <p><strong>Modell:</strong> {{ element.model_name }}</p>
-                        <div v-html="formatFeatureContent(feature.type, element.content)"></div>
+                        <div class="draggable-header">
+                          <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                          <v-checkbox
+                            v-model="element.collapsed"
+                            label="Minimieren"
+                            hide-details
+                            dense
+                          ></v-checkbox>
+                        </div>
+                        <div v-show="!element.collapsed" class="draggable-content">
+                          <div v-html="formatFeatureContent(feature.type, element.content)"></div>
+                        </div>
                       </div>
                     </template>
                   </draggable>
@@ -113,7 +123,8 @@ onMounted(async () => {
       model_name: f.model_name,
       content: f.content,
       feature_id: f.feature_id,
-      position: index
+      position: index,
+      collapsed: false // Add this line to initialize the collapsed state
     });
   });
 
@@ -448,6 +459,17 @@ function saveFeaturesServerSide() {
   padding: 15px;
   margin-bottom: 8px;
   cursor: grab;
+  transition: all 0.3s ease;
+}
+
+.draggable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.draggable-content {
+  margin-top: 10px;
 }
 
 .draggable-item:active {

@@ -22,8 +22,12 @@
                     fallback-class="fallbackStyleClass"
                     :force-fallback="true"
                   >
-                    <template #item="{ element }">
-                      <div :key="element.feature_id" class="draggable-item no-select">
+  <template #item="{ element }">
+    <div
+      :key="element.feature_id"
+      class="draggable-item no-select"
+      :style="{ backgroundColor: getColorForText(element.content) }"
+    >
                         <div>
                           <v-btn
                             v-if="isLongContent(element.content)"
@@ -144,6 +148,37 @@ onMounted(async () => {
   });
 });
 
+function getColorForText(text) {
+  const hash = hashCode(text);
+
+  // Base color: #F0F4C3 (240, 244, 195 in RGB)
+  const baseHue = 65; // Approximate hue of #F0F4C3
+  const baseSaturation = 68; // Approximate saturation of #F0F4C3
+  const baseLightness = 86; // Approximate lightness of #F0F4C3
+
+  // Generate variations
+  const hueVariation = (hash & 0xFF) % 21 - 10;  // -10 to +10
+  const saturationVariation = ((hash >> 8) & 0xFF) % 31 - 15;  // -15 to +15
+  const lightnessVariation = ((hash >> 16) & 0xFF) % 21 - 10;  // -10 to +10
+
+  // Apply variations
+  const hue = (baseHue + hueVariation + 360) % 360; // Ensure hue is 0-359
+  const saturation = Math.max(40, Math.min(100, baseSaturation + saturationVariation));
+  const lightness = Math.max(70, Math.min(95, baseLightness + lightnessVariation));
+
+  // Convert to HSL color string
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+}
+
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash;
+}
 function isLongContent(content) {
   // Temporäres Element erstellen, um die Höhe zu berechnen
   const div = document.createElement('div');
@@ -480,15 +515,15 @@ function saveFeaturesServerSide() {
 }
 
 .draggable-item {
-  background-color: #F0F4C3; /* Ursprüngliches Grün */
+  /* background-color: #F0F4C3; */ /* Remove this line */
   border-radius: 33px 12px;
   padding: 15px;
   margin-bottom: 8px;
   cursor: grab;
   overflow: hidden;
   text-overflow: ellipsis;
-  word-wrap: break-word; /* Lange Wörter umbrechen */
-  position: relative; /* Für die Positionierung des Buttons */
+  word-wrap: break-word;
+  position: relative;
 }
 
 .draggable-item.expanded {

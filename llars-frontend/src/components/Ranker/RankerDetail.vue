@@ -77,13 +77,22 @@
 
     <v-spacer></v-spacer>
 
-    <v-container fluid>
-      <v-col cols="12" class="button-class">
-        <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
-        <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
-        <v-btn @click="navigateToNextCase">Nächster Fall</v-btn>
-      </v-col>
-    </v-container>
+<v-container fluid>
+  <v-col cols="12" class="button-class">
+    <!-- Füge den Chip hier hinzu -->
+    <v-chip
+      class="category-chip"
+      :color="ranked ? 'green lighten-2' : 'red lighten-2'"
+      small
+    >
+      {{ ranked ? 'Ranked' : 'Not Ranked' }}
+    </v-chip>
+
+    <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
+    <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
+    <v-btn @click="navigateToNextCase">Nächster Fall</v-btn>
+  </v-col>
+</v-container>
   </v-container>
 </template>
 
@@ -107,13 +116,14 @@ const dragOptions = ref({
   disabled: false,
   ghostClass: 'ghost',
 });
-
+const ranked = ref(false);  // Füge diese Zeile hinzu
 onMounted(async () => {
   const threadData = await fetchEmailThreads(route.params.id);
   if (!threadData) return;
 
   features.value = threadData.features;
   messages.value = threadData.messages;
+  ranked.value = threadData.ranked;
 
   const featureMap = new Map();
   features.value.forEach((f, index) => {
@@ -416,7 +426,7 @@ function saveFeaturesServerSide() {
     orderedFeatures = JSON.parse(savedFeatureOrder);
   }
 
-  axios.post(`http://localhost:8081/api/save_ranking/${route.params.id}`, orderedFeatures, {
+  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${route.params.id}`, orderedFeatures, {
     headers: {
       'Authorization': api_key,
       'Content-Type': 'application/json'
@@ -425,12 +435,14 @@ function saveFeaturesServerSide() {
     .then(response => {
       console.log('Ranking saved successfully:', response.data);
       alert('Ranking wurde erfolgreich gespeichert!');
+      ranked.value = true; // Update the ranked status
     })
     .catch(error => {
       console.error('Error saving ranking:', error);
       alert('Fehler beim Speichern des Rankings.');
     });
 }
+
 </script>
 
 <style scoped>

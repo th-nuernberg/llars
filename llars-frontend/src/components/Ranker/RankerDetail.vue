@@ -73,7 +73,7 @@
 
     <v-spacer></v-spacer>
 
-    <v-container fluid>
+    <v-container fluid class="button-container">
       <v-col cols="12" class="button-class">
         <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
         <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
@@ -373,6 +373,16 @@ function saveFeaturesServerSide() {
 </script>
 
 <style scoped>
+
+.button-container {
+  position: sticky;
+  bottom: 0;
+  background-color: white; /* or any color that matches your design */
+  z-index: 1;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 .button-class {
   display: flex;
   justify-content: space-between;

@@ -311,7 +311,7 @@ async function navigateToNextCase() {
 async function fetchTotalCases() {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`, {
       headers: {
         'Authorization': api_key,
       }

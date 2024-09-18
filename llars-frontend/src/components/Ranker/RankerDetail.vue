@@ -81,14 +81,22 @@
     <v-row align="center" class="button-class">
       <!-- Chip auf der linken Seite -->
       <v-col cols="auto">
-        <v-chip
-          class="category-chip"
-          :color="ranked ? 'green lighten-2' : 'red lighten-2'"
-          small
-        >
-          {{ ranked ? 'Ranked' : 'Not Ranked' }}
-        </v-chip>
-      </v-col>
+  <template v-if="ranked === null">
+    <v-chip class="category-chip" color="grey lighten-2" small>
+      <v-progress-circular indeterminate size="16" width="2" color="grey darken-2" class="mr-2"></v-progress-circular>
+      Lädt...
+    </v-chip>
+  </template>
+  <template v-else>
+    <v-chip
+      class="category-chip"
+      :color="ranked ? 'green lighten-2' : 'red lighten-2'"
+      small
+    >
+      {{ ranked ? 'Ranked' : 'Not Ranked' }}
+    </v-chip>
+  </template>
+</v-col>
 
       <v-spacer></v-spacer>
 
@@ -124,7 +132,7 @@ const messages = ref([]);
 const senderColors = ref({});
 const groupedFeatures = ref([]);
 const localStorageKey = ref('');
-const ranked = ref(false);
+const ranked = ref(null);
 
 const dragOptions = ref({
   animation: 200,

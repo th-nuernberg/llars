@@ -478,15 +478,17 @@ function saveFeaturesServerSide() {
   display: flex;
   align-items: center;
   padding: 10px;
-  background-color: #f5f5f5;
+  background-color: #eafaf1; /* Sehr helles Grün */
   border-top: 1px solid #ddd;
   position: sticky;
   bottom: 0;
   z-index: 1;
 }
 
+
 .category-chip {
   margin-right: 8px;
+  border-radius: 12px 5px 12px 5px;
 }
 
 .email-thread-container {
@@ -501,7 +503,7 @@ function saveFeaturesServerSide() {
 .features-container {
   max-height: 500px;
   overflow-y: auto;
-
+  min-height: 75vh;
 }
 
 .fade-overlay {

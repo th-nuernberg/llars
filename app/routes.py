@@ -539,6 +539,50 @@ def get_rating(thread_id, feature_id):
 
     return jsonify(rating_data), 200
 
+import csv
+from io import StringIO
+from flask import Response
+
+@data_blueprint.route('/rankings/csv', methods=['GET'])
+def download_rankings_csv():
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Retrieve all user rankings
+    rankings = UserFeatureRanking.query.all()
+
+    # Create a string buffer to write the CSV data
+    csv_buffer = StringIO()
+    csv_writer = csv.writer(csv_buffer)
+
+    # Write CSV header
+    csv_writer.writerow(['User', 'Feature ID', 'LLM Name', 'Feature Type', 'Ranking Position'])
+
+    # Write data rows
+    for ranking in rankings:
+        user_name = ranking.user.username
+        llm_name = ranking.llm.name
+        feature_type_name = ranking.feature_type.name
+        ranking_position = ranking.ranking_content
+
+        csv_writer.writerow([user_name, ranking.feature_id, llm_name, feature_type_name, ranking_position])
+
+    # Get the CSV content from the buffer
+    csv_content = csv_buffer.getvalue()
+    csv_buffer.close()
+
+    # Create a response with the CSV content
+    return Response(
+        csv_content,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment;filename=rankings.csv'}
+    )
+
 
 def configure_routes(app):
     app.register_blueprint(auth_blueprint)

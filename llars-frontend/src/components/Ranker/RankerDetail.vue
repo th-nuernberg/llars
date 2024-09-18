@@ -1,5 +1,5 @@
 <template>
-   <v-container fluid>
+  <v-container fluid>
     <v-row>
       <v-col cols="12" md="6">
         <h2>Features</h2>
@@ -11,32 +11,24 @@
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <transition-group name="fade" tag="div">
-        <draggable
-          :list="feature.details"
-          group="featureGroup"
-          item-key="feature_id"
-          @start="handleDragStart"
-          @end="handleDragEnd"
-          :options="dragOptions"
-        >
-          <template #item="{ element }">
-            <div :key="element.feature_id" class="draggable-item no-select">
-              <div class="draggable-header">
-                <p><strong>Modell:</strong> {{ element.model_name }}</p>
-                <v-checkbox
-                  v-model="element.collapsed"
-                  label="Minimieren"
-                  hide-details
-                  dense
-                ></v-checkbox>
-              </div>
-              <div v-show="!element.collapsed" class="draggable-content">
-                <div v-html="formatFeatureContent(feature.type, element.content)"></div>
-              </div>
-            </div>
-          </template>
-        </draggable>
-
+                  <draggable
+                    v-model="feature.details"
+                    group="featureGroup"
+                    item-key="feature_id"
+                    @start="handleDragStart"
+                    @end="handleDragEnd"
+                    v-bind="dragOptions"
+                    ghost-class="ghost"
+                    fallback-class="fallbackStyleClass"
+                    :force-fallback="true"
+                  >
+                    <template #item="{ element }">
+                      <div :key="element.feature_id" class="draggable-item no-select">
+                        <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                        <div v-html="formatFeatureContent(feature.type, element.content)"></div>
+                      </div>
+                    </template>
+                  </draggable>
                 </transition-group>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -71,7 +63,7 @@
 
     <v-spacer></v-spacer>
 
-    <v-container fluid class="button-container">
+    <v-container fluid>
       <v-col cols="12" class="button-class">
         <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
         <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
@@ -121,8 +113,7 @@ onMounted(async () => {
       model_name: f.model_name,
       content: f.content,
       feature_id: f.feature_id,
-      position: index,
-      collapsed: false // Add this line to initialize the collapsed state
+      position: index
     });
   });
 
@@ -320,7 +311,7 @@ async function navigateToNextCase() {
 async function fetchTotalCases() {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings, {
       headers: {
         'Authorization': api_key,
       }
@@ -353,7 +344,7 @@ function saveFeaturesServerSide() {
     orderedFeatures = JSON.parse(savedFeatureOrder);
   }
 
-  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${route.params.id}`, orderedFeatures, {
+  axios.post(`http://localhost:8081/api/save_ranking/${route.params.id}`, orderedFeatures, {
     headers: {
       'Authorization': api_key,
       'Content-Type': 'application/json'
@@ -371,16 +362,6 @@ function saveFeaturesServerSide() {
 </script>
 
 <style scoped>
-
-.button-container {
-  position: sticky;
-  bottom: 0;
-  background-color: white; /* or any color that matches your design */
-  z-index: 1;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-
 .button-class {
   display: flex;
   justify-content: space-between;
@@ -467,17 +448,6 @@ function saveFeaturesServerSide() {
   padding: 15px;
   margin-bottom: 8px;
   cursor: grab;
-  transition: all 0.3s ease;
-}
-
-.draggable-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.draggable-content {
-  margin-top: 10px;
 }
 
 .draggable-item:active {

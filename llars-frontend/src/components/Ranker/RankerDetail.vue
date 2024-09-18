@@ -11,34 +11,32 @@
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <transition-group name="fade" tag="div">
-                  <draggable
-                    v-model="feature.details"
-                    group="featureGroup"
-                    item-key="feature_id"
-                    @start="handleDragStart"
-                    @end="handleDragEnd"
-                    v-bind="dragOptions"
-                    ghost-class="ghost"
-                    fallback-class="fallbackStyleClass"
-                    :force-fallback="true"
-                  >
-                    <template #item="{ element }">
-                      <div :key="element.feature_id" class="draggable-item no-select">
-                        <div class="draggable-header">
-                          <p><strong>Modell:</strong> {{ element.model_name }}</p>
-                          <v-checkbox
-                            v-model="element.collapsed"
-                            label="Minimieren"
-                            hide-details
-                            dense
-                          ></v-checkbox>
-                        </div>
-                        <div v-show="!element.collapsed" class="draggable-content">
-                          <div v-html="formatFeatureContent(feature.type, element.content)"></div>
-                        </div>
-                      </div>
-                    </template>
-                  </draggable>
+        <draggable
+          :list="feature.details"
+          group="featureGroup"
+          item-key="feature_id"
+          @start="handleDragStart"
+          @end="handleDragEnd"
+          :options="dragOptions"
+        >
+          <template #item="{ element }">
+            <div :key="element.feature_id" class="draggable-item no-select">
+              <div class="draggable-header">
+                <p><strong>Modell:</strong> {{ element.model_name }}</p>
+                <v-checkbox
+                  v-model="element.collapsed"
+                  label="Minimieren"
+                  hide-details
+                  dense
+                ></v-checkbox>
+              </div>
+              <div v-show="!element.collapsed" class="draggable-content">
+                <div v-html="formatFeatureContent(feature.type, element.content)"></div>
+              </div>
+            </div>
+          </template>
+        </draggable>
+
                 </transition-group>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -146,7 +144,7 @@ onMounted(async () => {
 async function fetchEmailThreads(threadId) {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`http://localhost:8081/api/email_threads/rankings/${threadId}`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings/${threadId}`, {
       headers: {
         'Authorization': api_key
       }
@@ -161,7 +159,7 @@ async function fetchEmailThreads(threadId) {
 async function fetchServerRanking(threadId) {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`http://localhost:8081/api/email_threads/${threadId}/current_ranking`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/${threadId}/current_ranking`, {
       headers: {
         'Authorization': api_key
       }
@@ -322,7 +320,7 @@ async function navigateToNextCase() {
 async function fetchTotalCases() {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get('http://localhost:8081/api/email_threads/rankings', {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`, {
       headers: {
         'Authorization': api_key,
       }
@@ -355,7 +353,7 @@ function saveFeaturesServerSide() {
     orderedFeatures = JSON.parse(savedFeatureOrder);
   }
 
-  axios.post(`http://localhost:8081/api/save_ranking/${route.params.id}`, orderedFeatures, {
+  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${route.params.id}`, orderedFeatures, {
     headers: {
       'Authorization': api_key,
       'Content-Type': 'application/json'

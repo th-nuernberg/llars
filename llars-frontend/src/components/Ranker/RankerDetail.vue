@@ -22,15 +22,27 @@
                     fallback-class="fallbackStyleClass"
                     :force-fallback="true"
                   >
-                  <template #item="{ element }">
-                    <div :key="element.feature_id" class="draggable-item no-select">
-                      <!-- <p><strong>Modell:</strong> {{ element.model_name }}</p> -->
-                      <v-btn class="small-toggle-btn" small @click="toggleMinimize(element)">
-                        {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-                      </v-btn>
-                      <div v-if="!element.minimized" v-html="formatFeatureContent(feature.type, element.content)"></div>
-                    </div>
-                  </template>
+<template #item="{ element }">
+  <div :key="element.feature_id" class="draggable-item no-select">
+    <div>
+      <v-btn
+        v-if="isLongContent(element.content)"
+        class="small-toggle-btn"
+        small
+        @click="toggleMinimize(element)">
+        {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+      </v-btn>
+    </div>
+    <!-- Zeige den formatierten Text im minimierten Zustand, aber begrenze ihn auf 3 Zeilen -->
+    <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+    <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+  </div>
+</template>
+
+
+
+
+
                   </draggable>
                 </transition-group>
               </v-expansion-panel-text>
@@ -105,22 +117,22 @@ onMounted(async () => {
   messages.value = threadData.messages;
 
   const featureMap = new Map();
-features.value.forEach((f, index) => {
-  if (!featureMap.has(f.type)) {
-    featureMap.set(f.type, {
-      type: f.type,
-      details: []
+  features.value.forEach((f, index) => {
+    if (!featureMap.has(f.type)) {
+      featureMap.set(f.type, {
+        type: f.type,
+        details: []
+      });
+    }
+    featureMap.get(f.type).details.push({
+      model_name: f.model_name,
+      content: f.content,
+      feature_id: f.feature_id,
+      position: index,
+      minimized: false, // Zustand für minimiert/expandiert
+      version: `Version ${featureMap.get(f.type).details.length + 1}` // Feste Version setzen
     });
-  }
-  featureMap.get(f.type).details.push({
-    model_name: f.model_name,
-    content: f.content,
-    feature_id: f.feature_id,
-    position: index,
-    minimized: false // Zustand für minimiert/expandiert
   });
-});
-
 
   groupedFeatures.value = Array.from(featureMap.values());
   localStorageKey.value = `featureOrder_${route.params.id}`;
@@ -136,6 +148,25 @@ features.value.forEach((f, index) => {
     senderColors.value[message.sender] = currentColor;
   });
 });
+
+function isLongContent(content) {
+  // Temporäres Element erstellen, um die Höhe zu berechnen
+  const div = document.createElement('div');
+  div.style.position = 'absolute';
+  div.style.visibility = 'hidden';
+  div.style.width = '300px'; // Passe dies an die tatsächliche Breite deines Elements an
+  div.style.webkitBoxOrient = 'vertical';
+  div.style.display = '-webkit-box';
+  div.style.webkitLineClamp = '3';
+  div.style.overflow = 'hidden';
+  div.innerHTML = formatFeatureContent('type', content);
+  document.body.appendChild(div);
+
+  // Berechne, ob der Inhalt länger als 3 Zeilen ist
+  const isLong = div.scrollHeight > div.clientHeight;
+  document.body.removeChild(div);
+  return isLong;
+}
 
 async function fetchEmailThreads(threadId) {
   try {
@@ -216,6 +247,8 @@ function translateFeatureType(type) {
   };
   return translations[type] || type;
 }
+
+
 
 function formatTimestamp(timestamp) {
   const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
@@ -487,6 +520,15 @@ function saveFeaturesServerSide() {
   text-overflow: ellipsis; /* Schneidet den Text ab, wenn er zu lang ist */
   white-space: nowrap; /* Verhindert Zeilenumbruch */
 }
+
+.clamped-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Zeigt bis zu 3 Zeilen an */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 .fallbackStyleClass {
   background-color: #528dc6;

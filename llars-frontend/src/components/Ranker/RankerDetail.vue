@@ -22,22 +22,22 @@
                     fallback-class="fallbackStyleClass"
                     :force-fallback="true"
                   >
-  <template #item="{ element }">
-    <div
-      :key="element.feature_id"
-      class="draggable-item no-select"
-      :style="{ backgroundColor: getColorForText(element.content) }"
-    >
+                    <template #item="{ element }">
+                      <div
+                        :key="element.feature_id"
+                        class="draggable-item no-select"
+                        :style="{ backgroundColor: getColorForText(element.content) }"
+                      >
                         <div>
                           <v-btn
                             v-if="isLongContent(element.content)"
                             class="small-toggle-btn"
                             small
-                            @click="toggleMinimize(element)">
+                            @click="toggleMinimize(element)"
+                          >
                             {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
                           </v-btn>
                         </div>
-                        <!-- Zeige den formatierten Text im minimierten Zustand, aber begrenze ihn auf 3 Zeilen -->
                         <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
                         <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
                       </div>
@@ -74,30 +74,45 @@
         </div>
       </v-col>
     </v-row>
-
+  </v-container>
     <v-spacer></v-spacer>
 
-<v-container fluid>
-  <v-col cols="12" class="button-class">
-    <!-- Füge den Chip hier hinzu -->
-    <v-chip
-      class="category-chip"
-      :color="ranked ? 'green lighten-2' : 'red lighten-2'"
-      small
-    >
-      {{ ranked ? 'Ranked' : 'Not Ranked' }}
-    </v-chip>
+  <v-container fluid class="button-container">
+    <v-row align="center" class="button-class">
+      <!-- Chip auf der linken Seite -->
+      <v-col cols="auto">
+        <v-chip
+          class="category-chip"
+          :color="ranked ? 'green lighten-2' : 'red lighten-2'"
+          small
+        >
+          {{ ranked ? 'Ranked' : 'Not Ranked' }}
+        </v-chip>
+      </v-col>
 
-    <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
-    <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
-    <v-btn @click="navigateToNextCase">Nächster Fall</v-btn>
-  </v-col>
-</v-container>
+      <v-spacer></v-spacer>
+
+      <!-- Buttons auf der rechten Seite -->
+      <v-col cols="auto">
+        <v-btn @click="saveFeaturesServerSide">
+          <v-icon left>mdi-content-save</v-icon>
+          Speichern
+        </v-btn>
+        <v-btn @click="navigateToPreviousCase">
+          <v-icon left>mdi-arrow-left</v-icon>
+          Vorheriger Fall
+        </v-btn>
+        <v-btn @click="navigateToNextCase">
+          Nächster Fall
+          <v-icon right>mdi-arrow-right</v-icon>
+        </v-btn>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import draggable from 'vuedraggable';
 import axios from 'axios';
@@ -109,6 +124,7 @@ const messages = ref([]);
 const senderColors = ref({});
 const groupedFeatures = ref([]);
 const localStorageKey = ref('');
+const ranked = ref(false);  // Füge diese Zeile hinzu
 
 const dragOptions = ref({
   animation: 200,
@@ -116,14 +132,16 @@ const dragOptions = ref({
   disabled: false,
   ghostClass: 'ghost',
 });
-const ranked = ref(false);  // Füge diese Zeile hinzu
-onMounted(async () => {
-  const threadData = await fetchEmailThreads(route.params.id);
+
+// New function to load data for a specific case
+const loadCaseData = async (caseId) => {
+  const threadData = await fetchEmailThreads(caseId);
   if (!threadData) return;
 
+  ranked.value = threadData.ranked;
   features.value = threadData.features;
   messages.value = threadData.messages;
-  ranked.value = threadData.ranked;
+
 
   const featureMap = new Map();
   features.value.forEach((f, index) => {
@@ -138,13 +156,13 @@ onMounted(async () => {
       content: f.content,
       feature_id: f.feature_id,
       position: index,
-      minimized: false, // Zustand für minimiert/expandiert
-      version: `Version ${featureMap.get(f.type).details.length + 1}` // Feste Version setzen
+      minimized: false,
+      version: `Version ${featureMap.get(f.type).details.length + 1}`
     });
   });
 
   groupedFeatures.value = Array.from(featureMap.values());
-  localStorageKey.value = `featureOrder_${route.params.id}`;
+  localStorageKey.value = `featureOrder_${caseId}`;
   await loadFeatureOrder();
 
   let lastSender = '';
@@ -156,7 +174,17 @@ onMounted(async () => {
     }
     senderColors.value[message.sender] = currentColor;
   });
+};
+
+// Watch for changes in the route parameter
+watch(() => route.params.id, (newId) => {
+  loadCaseData(newId);
+}, { immediate: true });
+
+onMounted(() => {
+  loadCaseData(route.params.id);
 });
+
 
 function getColorForText(text) {
   const hash = hashCode(text);
@@ -374,7 +402,7 @@ function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);
   if (currentId > 1) {
     const previousId = currentId - 1;
-    router.push({name: 'RankerDetail', params: {id: previousId}});
+    router.push({name: 'RankerDetail', params: {id: previousId.toString()}});
   }
 }
 
@@ -384,11 +412,12 @@ async function navigateToNextCase() {
   const nextId = currentId + 1;
 
   if (nextId <= totalCases) {
-    router.push({name: 'RankerDetail', params: {id: nextId}});
+    router.push({name: 'RankerDetail', params: {id: nextId.toString()}});
   } else {
     console.log("Letzter Fall erreicht, kann nicht zum nächsten navigieren");
   }
 }
+
 
 async function fetchTotalCases() {
   try {
@@ -448,11 +477,17 @@ function saveFeaturesServerSide() {
 <style scoped>
 .button-class {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
   padding: 10px;
-  border: 1px solid #8AC007;
-  margin-top: 5px;
+  background-color: #f5f5f5; /* Leichter Hintergrund */
+  border-top: 1px solid #ddd; /* Obere Umrandung */
   position: sticky;
+  bottom: 0;
+  z-index: 1;
+}
+
+.category-chip {
+  margin-right: 8px;
 }
 
 .email-thread-container {
@@ -592,4 +627,6 @@ body.dragging * {
   opacity: 0.1;
   background: #c8ebfb;
 }
+
+
 </style>

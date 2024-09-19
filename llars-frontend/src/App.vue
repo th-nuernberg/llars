@@ -7,21 +7,37 @@
         LLars Plattform
       </v-toolbar-title>
       <v-spacer></v-spacer>
+      <v-chip v-if="username" class="mr-2">
+        {{ username }}
+      </v-chip>
       <v-btn icon @click="logout">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
     <v-main>
-      <!-- v-main hinzugefügt, um den Content zu umschließen -->
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
   </v-app>
 </template>
 
 <script setup>
-import {useRouter} from 'vue-router';
+import { ref, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 const router = useRouter();
+const username = ref('');
+
+function updateUsername() {
+  username.value = localStorage.getItem('username') || '';
+}
+
+onMounted(() => {
+  updateUsername();
+});
+
+watch(() => router.currentRoute.value, () => {
+  updateUsername();
+}, { immediate: true });
 
 function logout() {
   // Entferne allgemeine Auth-Daten
@@ -31,19 +47,12 @@ function logout() {
 
   // Entferne alle gespeicherten Ranked-Feature-Daten
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('featureOrder_')) {
+    if (key.startsWith('featureOrder_') || key.startsWith('featureRating_')) {
       localStorage.removeItem(key);
     }
   });
 
-    // Entferne alle gespeicherten Ranked-Feature-Daten
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('featureRating_')) {
-      localStorage.removeItem(key);
-    }
-  });
-
-  // Weiterleitung zur Login-Seite
+  username.value = ''; // Setze den Benutzernamen zurück
   router.push('/login');
 }
 

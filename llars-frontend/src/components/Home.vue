@@ -28,6 +28,9 @@
               <v-card-text>{{ item.description }}</v-card-text>
             </div>
           </div>
+          <div v-if="item.disabled" class="lock-overlay">
+            <v-icon class="lock-icon" color="grey darken-3">mdi-lock</v-icon>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -60,7 +63,7 @@ function navigateTo(route) {
 .header {
   position: relative;
   z-index: 1;
-  padding-top: 64px; /* Platz für die Appbar reservieren */
+  padding-top: 64px;
 }
 
 .card-hover {
@@ -96,6 +99,8 @@ function navigateTo(route) {
   max-width: 300px;
   padding: 20px;
   flex-grow: 1;
+  position: relative;
+  overflow: hidden;
 }
 
 .card-content {
@@ -108,9 +113,8 @@ function navigateTo(route) {
   flex-grow: 1;
 }
 
-/* Style für deaktivierte Kacheln */
 .disabled-card {
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 .disabled-card:hover {
@@ -118,10 +122,41 @@ function navigateTo(route) {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Media Queries für kleine Bildschirme */
+.lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.disabled-card:hover .lock-overlay {
+  opacity: 1;
+}
+
+.lock-icon {
+  font-size: 48px;
+  animation: lockBounce 1s ease-in-out infinite;
+}
+
+@keyframes lockBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
 @media (max-width: 600px) {
   .header {
-    padding-top: 80px; /* Zusätzlicher Platz für die Appbar auf kleinen Bildschirmen */
+    padding-top: 80px;
   }
 }
 </style>

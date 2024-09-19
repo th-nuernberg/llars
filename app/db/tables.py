@@ -29,6 +29,7 @@ class EmailThread(db.Model):
     chat_id = mapped_column(db.Integer)
     institut_id = mapped_column(db.Integer)
     subject = mapped_column(db.String(255))
+    sender = mapped_column(db.String(255))  # Neues Feld für den Sender
     function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
 
     messages = db.relationship('Message', backref='email_thread')
@@ -38,6 +39,7 @@ class EmailThread(db.Model):
     __table_args__ = (
         db.UniqueConstraint('chat_id', 'institut_id', 'function_type_id', name='_chat_institut_function_uc'),
     )
+
 
 
 class Message(db.Model):

@@ -18,6 +18,7 @@
           </v-chip>
           <div class="card-content">
             <v-card-title>{{ emailThread.subject }}</v-card-title>
+            <v-card-text>{{emailThread.sender }}</v-card-text> <!-- Sender anzeigen -->
             <v-card-text class="chat-id">{{ 'Chat ID: ' + emailThread.chat_id }}</v-card-text>
           </div>
         </v-card>

@@ -98,6 +98,9 @@ def create_email_thread():
     if not function_type_id:
         return jsonify({"error": "Invalid function type"}), 400
 
+    # Get the sender, if not provided use an alias
+    sender = data.get('sender', 'Alias')
+
     email_thread = EmailThread.query.filter_by(
         chat_id=data.get('chat_id'),
         institut_id=data.get('institut_id'),
@@ -109,12 +112,14 @@ def create_email_thread():
             chat_id=data.get('chat_id'),
             institut_id=data.get('institut_id'),
             subject=data.get('subject'),
+            sender=sender,  # Store the sender
             function_type_id=function_type_id
         )
         db.session.add(email_thread)
         db.session.commit()
     else:
         email_thread.subject = data.get('subject')  # Update subject if email_thread already exists
+        email_thread.sender = sender  # Update the sender if email_thread already exists
         db.session.commit()
 
     existing_message_ids = {msg.message_id for msg in email_thread.messages}
@@ -334,6 +339,7 @@ def list_email_threads_for_rankings():
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject,
+            'sender': thread.sender,  # Hier wird der Sender hinzugefügt
             'ranked': ranked
         })
 

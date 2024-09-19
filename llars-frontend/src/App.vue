@@ -7,7 +7,13 @@
         LLars Plattform
       </v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-chip v-if="username" class="mr-2">
+      <v-chip
+        v-if="username"
+        class="mr-2 user-chip"
+        color="teal-darken-1"
+        text-color="white"
+        prepend-icon="mdi-account"
+      >
         {{ username }}
       </v-chip>
       <v-btn icon @click="logout">
@@ -60,3 +66,18 @@ function goHome() {
   router.push('/home');
 }
 </script>
+
+<style scoped>
+.user-chip {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: capitalize;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.user-chip:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+</style>

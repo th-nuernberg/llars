@@ -59,7 +59,8 @@ function navigateTo(route) {
 
 .header {
   position: relative;
-  z-index: 1; /* Stellt sicher, dass der Header immer über den Karten bleibt */
+  z-index: 1;
+  padding-top: 64px; /* Platz für die Appbar reservieren */
 }
 
 .card-hover {
@@ -109,11 +110,18 @@ function navigateTo(route) {
 
 /* Style für deaktivierte Kacheln */
 .disabled-card {
-  opacity: 0.6; /* Macht die Karte leicht transparent */
+  opacity: 0.6;
 }
 
 .disabled-card:hover {
-  transform: scale(1.01); /* Leichter Hover-Effekt */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Schwächerer Schatten */
+  transform: scale(1.01);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Media Queries für kleine Bildschirme */
+@media (max-width: 600px) {
+  .header {
+    padding-top: 80px; /* Zusätzlicher Platz für die Appbar auf kleinen Bildschirmen */
+  }
 }
 </style>

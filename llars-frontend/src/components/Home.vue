@@ -1,12 +1,15 @@
 <template>
   <v-container class="fill-height">
-    <v-row justify="center" class="mb-5">
+    <!-- Logo und Titelbereich -->
+    <v-row justify="center" class="header mb-5">
       <v-col cols="12" class="text-center">
         <img src="@/assets/logo/llars-logo.png" alt="LLars Logo" height="100" class="mb-2">
         <h1>Welcome to LLars</h1>
         <div class="subtitle-1 mb-4">Your Rank, Label, Rate and FeatureGenerate Software!</div>
       </v-col>
     </v-row>
+
+    <!-- Kartenbereich -->
     <v-row justify="center" align="stretch" class="cards-container mt-3">
       <v-col cols="12" sm="6" md="4" lg="3" v-for="item in items" :key="item.title" class="card-column d-flex">
         <v-card
@@ -52,6 +55,11 @@ function navigateTo(route) {
 <style>
 .fill-height {
   min-height: 100vh;
+}
+
+.header {
+  position: relative;
+  z-index: 1; /* Stellt sicher, dass der Header immer über den Karten bleibt */
 }
 
 .card-hover {

@@ -19,3 +19,27 @@ Content-Type: application/json
   "api_key": "db0fe35b-0d88-4d03-a774-12fbae54aa51"
 }
 ###
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "tester1",
+  "password": "llars_tester1"
+}
+###
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "tester2",
+  "password": "llars_tester2"
+}
+###
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "tester3",
+  "password": "llars_tester3"
+}
+###

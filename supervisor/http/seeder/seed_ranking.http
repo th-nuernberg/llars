@@ -1,11 +1,12 @@
-POST http://backend-flask-service:8081/api/email_threads
+POST http://localhost:8081/api/email_threads
 Content-Type: application/json
 
 {
   "type": "ranking",
-  "chat_id": 1,
+  "chat_id": 100,
   "institut_id": 0,
   "subject": "ungewöhnliches Thema",
+  "sender": "Neele",
   "messages": [
     {
       "message_id": 1,

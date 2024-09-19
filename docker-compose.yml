@@ -1,11 +1,24 @@
 services:
+  nginx-service:
+    container_name: llars_nginx_service
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile-nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-flask-service
+      - frontend-vue-service
+    environment:
+      - TZ=Europe/Berlin
+
   backend-flask-service:
     container_name: llars_flask_service
     build:
       context: .
       dockerfile: docker/flask/Dockerfile-flask
-    ports:
-      - "8081:8081"
+    expose:
+      - "8081"
     env_file:
       - .env
     environment:
@@ -23,8 +36,8 @@ services:
     build:
       context: .
       dockerfile: docker/vue/Dockerfile-vue
-    ports:
-      - "5173:5173"
+    expose:
+      - "5173"
     environment:
       - TZ=Europe/Berlin
     develop:
@@ -45,8 +58,6 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
-    #ports:
-    #  - "9001:9001"
     depends_on:
       - backend-flask-service
       - db-maria-service

@@ -163,7 +163,7 @@ const loadCaseData = async (caseId) => {
       content: f.content,
       feature_id: f.feature_id,
       position: index,
-      minimized: false,
+      minimized: true, // Standardmäßig minimiert setzen
       version: `Version ${featureMap.get(f.type).details.length + 1}`
     });
   });
@@ -182,6 +182,7 @@ const loadCaseData = async (caseId) => {
     senderColors.value[message.sender] = currentColor;
   });
 };
+
 
 // Beobachte Änderungen in den Routenparametern
 watch(() => route.params.id, (newId) => {
@@ -225,21 +226,13 @@ function hashCode(str) {
 }
 
 function isLongContent(content) {
-  const div = document.createElement('div');
-  div.style.position = 'absolute';
-  div.style.visibility = 'hidden';
-  div.style.width = '300px';
-  div.style.webkitBoxOrient = 'vertical';
-  div.style.display = '-webkit-box';
-  div.style.webkitLineClamp = '3';
-  div.style.overflow = 'hidden';
-  div.innerHTML = formatFeatureContent('type', content);
-  document.body.appendChild(div);
+  // Eine Annahme über die durchschnittliche Anzahl von Zeichen pro Zeile
+  const maxCharsPerLine = 80; // Beispielwert, abhängig von der CSS-Breite und Schriftart
 
-  const isLong = div.scrollHeight > div.clientHeight;
-  document.body.removeChild(div);
-  return isLong;
+  // Prüfe, ob der Inhalt die Schwelle für lange Inhalte überschreitet
+  return content.length > (maxCharsPerLine * 3); // Mehr als 3 Zeilen
 }
+
 
 async function fetchEmailThreads(threadId) {
   try {

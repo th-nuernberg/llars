@@ -566,6 +566,7 @@ import csv
 from io import StringIO
 from flask import Response
 
+
 @data_blueprint.route('/rankings/csv', methods=['GET'])
 def download_rankings_csv():
     api_key = request.headers.get('Authorization')
@@ -577,14 +578,15 @@ def download_rankings_csv():
         return jsonify({'error': 'Invalid API key'}), 401
 
     # Retrieve all user rankings
-    rankings = UserFeatureRanking.query.all()
+    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).all()
 
     # Create a string buffer to write the CSV data
     csv_buffer = StringIO()
     csv_writer = csv.writer(csv_buffer)
 
     # Write CSV header
-    csv_writer.writerow(['User', 'Feature ID', 'LLM Name', 'Feature Type', 'Ranking Position'])
+    csv_writer.writerow(
+        ['User', 'Feature ID', 'Thread ID', 'Chat ID', 'Institut ID', 'LLM Name', 'Feature Type', 'Ranking Position'])
 
     # Write data rows
     for ranking in rankings:
@@ -592,11 +594,18 @@ def download_rankings_csv():
         llm_name = ranking.llm.name
         feature_type_name = ranking.feature_type.name
         ranking_position = ranking.ranking_content
+        thread_id = ranking.feature.email_thread.thread_id
+        chat_id = ranking.feature.email_thread.chat_id
+        institut_id = ranking.feature.email_thread.institut_id  # Add institut_id to the output
 
-        csv_writer.writerow([user_name, ranking.feature_id, llm_name, feature_type_name, ranking_position])
+        csv_writer.writerow(
+            [user_name, ranking.feature_id, thread_id, chat_id, institut_id, llm_name, feature_type_name,
+             ranking_position])
 
-    # Get the CSV content from the buffer
+    # Get the CSV content from the buffer before closing it
     csv_content = csv_buffer.getvalue()
+
+    # Now close the buffer
     csv_buffer.close()
 
     # Create a response with the CSV content

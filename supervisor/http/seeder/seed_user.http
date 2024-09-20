@@ -59,3 +59,10 @@ Content-Type: application/json
   "password": "llars_tester3"
 }
 ###
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin"
+}

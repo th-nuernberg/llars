@@ -468,13 +468,14 @@ function saveFeaturesServerSide() {
 </script>
 
 <style scoped>
-
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.5s ease;
 }
+
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
+
 .button-class {
   display: flex;
   align-items: center;
@@ -485,7 +486,6 @@ function saveFeaturesServerSide() {
   bottom: 0;
   z-index: 1;
 }
-
 
 .category-chip {
   margin-right: 8px;
@@ -499,6 +499,7 @@ function saveFeaturesServerSide() {
   display: flex;
   flex-direction: column;
   position: relative;
+  background-color: white; /* Beige Hintergrund */
 }
 
 .features-container {
@@ -517,12 +518,12 @@ function saveFeaturesServerSide() {
 
 .fade-overlay.top {
   top: 0;
-  background: linear-gradient(to bottom, white, transparent);
+  background: linear-gradient(to bottom, white, transparent); /* Heller Verlauf */
 }
 
 .fade-overlay.bottom {
   bottom: 0;
-  background: linear-gradient(to top, white, transparent);
+  background: linear-gradient(to top, white, transparent); /* Heller Verlauf */
 }
 
 .email-thread {
@@ -537,11 +538,11 @@ function saveFeaturesServerSide() {
 }
 
 .same-sender {
-  background-color: #B2EBF2;
+  background-color: #f1efd5; /* Heller Grünton für Benutzer */
 }
 
 .different-sender {
-  background-color: #C8E6C9;
+  background-color: #b0ca97; /* Dunklerer Grünton für Berater */
 }
 
 .message-header {
@@ -552,15 +553,17 @@ function saveFeaturesServerSide() {
 
 .message-sender {
   font-weight: bold;
+  color: #2F4F4F; /* Dunkles Grau-Grün für den Text */
 }
 
 .message-timestamp {
-  color: #666;
+  color: #556B2F; /* Graugrüner Farbton für den Zeitstempel */
   font-size: 0.8rem;
 }
 
 .message-body p {
   margin: 0;
+  color: #2F4F4F; /* Einheitliche Textfarbe */
 }
 
 .draggable-item {

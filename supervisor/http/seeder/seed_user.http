@@ -64,5 +64,6 @@ Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "admin"
+  "password": "admin",
+  "api_key": "0b09e690-365b-4a55-b9b3-04c0614f773a"
 }

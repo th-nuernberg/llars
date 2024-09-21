@@ -4,7 +4,7 @@ Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 GET localhost:8081/api/email_threads/ratings
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
-GET localhost:8081/api/email_threads/rankings/1
+GET localhost:8081/api/email_threads/rankings/4
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
 GET localhost:8081/api/email_threads/ratings/4
@@ -22,5 +22,8 @@ GET localhost:8081/api/feature_type_mapping/abstract_summary
 GET localhost:8081/api/get_rating/4/41
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
-GET http://localhost:8081/api/rankings/csv
+GET http://localhost/api/api/rankings/csv
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
+###
+GET http://localhost/api/api/admin/user_ranking_stats
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a

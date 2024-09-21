@@ -41,6 +41,7 @@ import {ref} from 'vue';
 import {useRouter} from 'vue-router';
 import {makePostRequestAsync} from '../services/rest_functions.js';
 import { jwtDecode } from "jwt-decode";
+import { isAdmin } from '../services/admins'; // Importiere die Admin-Check Funktion
 
 const username = ref('');
 const password = ref('');
@@ -53,6 +54,7 @@ async function handleLogin() {
       username: username.value,
       password: password.value
     });
+
     if (response.data.access_token) {
       // Speichern des Zugriffstokens und Benutzernamens im Local Storage
       localStorage.setItem('token', response.data.access_token);
@@ -63,8 +65,14 @@ async function handleLogin() {
       const apiKey = decoded.api_key;
       localStorage.setItem('api_key', apiKey); // Speichern des API-Schlüssels im Local Storage
 
-      // Weiterleiten zur Home-Route oder einer anderen Route nach dem Login
-      router.push('/Home');
+      // Überprüfen, ob der Benutzer ein Admin ist
+      if (isAdmin(response.data.username)) {
+        // Weiterleitung zur Admin-Seite
+        router.push('/AdminDashboard');
+      } else {
+        // Weiterleitung zur normalen Benutzer-Homepage
+        router.push('/Home');
+      }
     } else {
       errorMessage.value = 'No access token received';
     }

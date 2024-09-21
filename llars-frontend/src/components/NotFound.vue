@@ -1,10 +1,23 @@
 <template>
   <div class="not-found-container">
-    <h1 class="not-found-title">Oops! 404</h1>
-    <p class="not-found-message">Entschuldigung, aber wir können die gesuchte Seite nicht finden.</p>
-    <img src="/api/placeholder/400/300" alt="404 Illustration" class="not-found-image" />
-    <p class="not-found-suggestion">Vielleicht möchten Sie zur Startseite zurückkehren?</p>
-    <button @click="goHome" class="home-button">Zur Startseite</button>
+    <div class="content">
+      <h1 class="title">404</h1>
+      <h2 class="subtitle">Oops! Seite nicht gefunden</h2>
+      <p class="message">Die von Ihnen gesuchte Seite scheint im Cyberspace verloren gegangen zu sein.</p>
+      <button @click="goHome" class="home-button">
+        Zur Startseite
+      </button>
+    </div>
+    <div class="animation-container">
+      <div class="astronaut">
+        <div class="astronaut-helmet"></div>
+        <div class="astronaut-body"></div>
+        <div class="astronaut-arm left"></div>
+        <div class="astronaut-arm right"></div>
+        <div class="astronaut-leg left"></div>
+        <div class="astronaut-leg right"></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -25,47 +38,140 @@ function goHome() {
   align-items: center;
   justify-content: center;
   height: 100vh;
-  text-align: center;
+  background-color: #ffffff;
+  color: #2F4F4F;
   font-family: Arial, sans-serif;
-  background-color: #f8f9fa;
 }
 
-.not-found-title {
-  font-size: 4rem;
-  color: #343a40;
-  margin-bottom: 0.5rem;
+.content {
+  text-align: center;
+  z-index: 1;
 }
 
-.not-found-message {
-  font-size: 1.25rem;
-  color: #6c757d;
+.title {
+  font-size: 8rem;
+  margin-bottom: 0;
+  color: #b0ca97;
+}
+
+.subtitle {
+  font-size: 2rem;
+  margin-top: 0;
+  color: #556B2F;
+}
+
+.message {
+  font-size: 1.2rem;
   margin-bottom: 2rem;
-}
-
-.not-found-image {
-  max-width: 100%;
-  height: auto;
-  margin-bottom: 2rem;
-}
-
-.not-found-suggestion {
-  font-size: 1.1rem;
-  color: #495057;
-  margin-bottom: 1rem;
+  color: #2F4F4F;
 }
 
 .home-button {
-  padding: 0.75rem 1.5rem;
+  padding: 10px 20px;
   font-size: 1rem;
-  color: #fff;
-  background-color: #007bff;
+  background-color: #f1efd5;
+  color: #2F4F4F;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s;
 }
 
 .home-button:hover {
-  background-color: #0056b3;
+  background-color: #b0ca97;
+}
+
+.animation-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.astronaut {
+  position: absolute;
+  width: 100px;
+  height: 150px;
+  left: 50%;
+  top: 50%;
+  animation: float 6s ease-in-out infinite;
+}
+
+.astronaut-helmet {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background-color: #f1efd5;
+  border-radius: 50%;
+  top: 0;
+  left: 20px;
+}
+
+.astronaut-body {
+  position: absolute;
+  width: 80px;
+  height: 100px;
+  background-color: #b0ca97;
+  border-radius: 40px;
+  top: 40px;
+  left: 10px;
+}
+
+.astronaut-arm {
+  position: absolute;
+  width: 20px;
+  height: 60px;
+  background-color: #b0ca97;
+  top: 60px;
+}
+
+.astronaut-arm.left {
+  left: 0;
+  transform: rotate(20deg);
+}
+
+.astronaut-arm.right {
+  right: 0;
+  transform: rotate(-20deg);
+}
+
+.astronaut-leg {
+  position: absolute;
+  width: 25px;
+  height: 80px;
+  background-color: #b0ca97;
+  bottom: 0;
+}
+
+.astronaut-leg.left {
+  left: 15px;
+}
+
+.astronaut-leg.right {
+  right: 15px;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 6rem;
+  }
+
+  .subtitle {
+    font-size: 1.5rem;
+  }
+
+  .message {
+    font-size: 1rem;
+  }
 }
 </style>

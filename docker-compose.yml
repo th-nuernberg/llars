@@ -26,8 +26,9 @@ services:
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_APP=/app/main.py
     depends_on:
-      - frontend-vue-service
-      - db-maria-service
+      db-maria-service:
+        condition: service_healthy
+
 
   frontend-vue-service:
     container_name: llars_frontend_service
@@ -80,6 +81,12 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 
 volumes:
   llarsdb:

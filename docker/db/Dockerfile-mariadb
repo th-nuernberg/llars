@@ -7,6 +7,9 @@ LABEL authors="philippsteigerwald"
 #ENV MYSQL_DATABASE=ki_assistenz_db
 #ENV MYSQL_USER=ki_assistenz_user
 #ENV MYSQL_PASSWORD=ki_assistenz_pass
+# Add healthcheck script
+COPY ./docker/db/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # Standardport freigeben
 EXPOSE 3310

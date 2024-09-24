@@ -10,6 +10,13 @@
                 <div>{{ translateFeatureType(feature.type) }}</div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
+                <div style="display: flex; justify-content: flex-end; padding-bottom: 10px">
+                  <v-tooltip class="mb-0" :text="getTooltipText(feature.type)" max-width="300px">
+                    <template v-slot:activator="{ props }">
+                      <v-icon v-bind="props">mdi-information-outline</v-icon>
+                    </template>
+                  </v-tooltip>
+                </div>
                 <transition-group name="fade" tag="div">
                   <draggable
                     v-model="feature.details"
@@ -183,6 +190,17 @@ const loadCaseData = async (caseId) => {
   });
 };
 
+function getTooltipText(type) {
+  const tooltips = {
+    abstract_summary: 'Diese Zusammenfassung gibt einen Überblick über den Fall.',
+    generated_category: 'Dies ist die generierte Kategorie des Falls.',
+    generated_subject: 'Das Feature "Generierter Betreff" beschreibt einen prägnanten und individuellen Betreff, der aus der ersten Nachricht der ratsuchenden Person generiert wurde.\n\nDer Betreff soll den Hauptinhalt der Anfrage klar und verständlich in maximal 6 Wörtern zusammenfassen, ohne unnötige Formalitäten oder zusätzliche Phrasen.\n\nDie Qualität des "Generierter Betreff" wird danach bewertet, wie gut es den Kerninhalt der Erstnachricht präzise und direkt wiedergibt. Ein guter Betreff ermöglicht es dem Beratungsteam, schnell einen Überblick über das Anliegen zu erhalten und effektiv darauf zu reagieren.',
+    order_clarification: 'Hier werden Unklarheiten in der Anfrage geklärt.',
+    situation_summary: 'Das Feature "Situationsbeschreibung" fasst die aktuelle Situation der ratsuchenden Person in den Bereichen sozial, beruflich und persönlich zusammen.\n\nDiese Zusammenfassungen basieren auf der bisherigen Kommunikation und sollen einen schnellen Überblick über die wichtigsten Themen der Beratung ermöglichen. Zusätzlich können relevante Aspekte in weiteren Feldern wie "zusätzlicher_aspekt" beschrieben werden.\n\nJeder Bereich wird durch Stichpunkte dargestellt, die aus maximal zwei Sätzen bestehen und die wichtigsten Informationen prägnant zusammenfassen.\n\nDie Qualität der "Situationsbeschreibung" wird danach bewertet, wie genau und umfassend sie die soziale, berufliche und persönliche Lage der ratsuchenden Person wiedergibt, ohne unnötige Formalitäten oder Ausschweifungen.',
+  };
+
+  return tooltips[type] || 'Allgemeine Informationen zum Feature.';
+}
 
 // Beobachte Änderungen in den Routenparametern
 watch(() => route.params.id, (newId) => {
@@ -638,5 +656,9 @@ body.dragging * {
 .ghost {
   opacity: 0.1;
   background: #c8ebfb;
+}
+
+.v-tooltip__content {
+  white-space: pre-line;
 }
 </style>

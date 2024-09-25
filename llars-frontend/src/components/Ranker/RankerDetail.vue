@@ -411,23 +411,62 @@ function saveFeatureOrderToLocalStorage() {
   localStorage.setItem(localStorageKey.value, JSON.stringify(orderedFeatures));
 }
 
-function navigateToPreviousCase() {
+async function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);
-  if (currentId > 1) {
-    const previousId = currentId - 1;
-    router.push({name: 'RankerDetail', params: {id: previousId.toString()}});
+  const rankingThreads = await fetchRankingThreads();
+
+  if (!rankingThreads || rankingThreads.length === 0) {
+    console.log("Keine Ranking-Threads verfügbar");
+    return;
   }
+
+  // Finde den aktuellen Thread in der Liste
+  const currentIndex = rankingThreads.findIndex(thread => thread.thread_id === currentId);
+
+  if (currentIndex === -1 || currentIndex === 0) {
+    console.log("Erster Ranking-Thread erreicht oder Thread nicht gefunden");
+    return;
+  }
+
+  // Navigiere zum vorherigen Ranking-Thread
+  const previousThread = rankingThreads[currentIndex - 1];
+  router.push({ name: 'RankerDetail', params: { id: previousThread.thread_id.toString() } });
 }
 
 async function navigateToNextCase() {
   const currentId = parseInt(route.params.id);
-  const totalCases = await fetchTotalCases();
-  const nextId = currentId + 1;
+  const rankingThreads = await fetchRankingThreads();
 
-  if (nextId <= totalCases) {
-    router.push({name: 'RankerDetail', params: {id: nextId.toString()}});
-  } else {
-    console.log("Letzter Fall erreicht, kann nicht zum nächsten navigieren");
+  if (!rankingThreads || rankingThreads.length === 0) {
+    console.log("Keine Ranking-Threads verfügbar");
+    return;
+  }
+
+  // Finde den aktuellen Thread in der Liste
+  const currentIndex = rankingThreads.findIndex(thread => thread.thread_id === currentId);
+
+  if (currentIndex === -1 || currentIndex === rankingThreads.length - 1) {
+    console.log("Letzter Ranking-Thread erreicht oder Thread nicht gefunden");
+    return;
+  }
+
+  // Navigiere zum nächsten Ranking-Thread
+  const nextThread = rankingThreads[currentIndex + 1];
+  router.push({ name: 'RankerDetail', params: { id: nextThread.thread_id.toString() } });
+}
+
+async function fetchRankingThreads() {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ranking_list`, {
+      headers: {
+        'Authorization': api_key,
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching ranking threads:', error);
+    return [];
   }
 }
 

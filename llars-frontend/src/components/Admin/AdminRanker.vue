@@ -12,7 +12,7 @@
             <div class="user-info d-flex flex-wrap justify-space-between align-center mb-2">
               <span class="username"><strong>{{ user.username }}</strong></span>
               <span class="thread-info">
-                Bearbeitete Threads: {{ user.ranked_threads_count }} / {{ calculateTotalThreads(user) }}
+                Bearbeitete Threads: {{ user.ranked_threads_count }} / {{ user.total_threads }}
                 ({{ calculateUnrankedThreads(user) }} unbearbeitet)
               </span>
               <v-btn
@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import {ref, onMounted, onUnmounted} from 'vue';
 import axios from 'axios';
 
 const userStats = ref([]);
@@ -81,20 +81,19 @@ const showThreadDetails = (user) => {
   dialogVisible.value = true;
 };
 
-const calculateTotalThreads = (user) => {
-  return user.total_rankable_features > 0 ? Math.ceil(user.total_rankable_features / 10) : 0;
-};
-
+// Berechnung der unbearbeiteten Threads
 const calculateUnrankedThreads = (user) => {
-  return calculateTotalThreads(user) - user.ranked_threads_count;
+  return user.total_threads - user.ranked_threads_count;
 };
 
+// Berechnung des Fortschritts für jeden Benutzer
 const calculateProgress = (user) => {
-  const totalThreads = calculateTotalThreads(user);
+  const totalThreads = user.total_threads;
   const progress = totalThreads > 0 ? (user.ranked_threads_count / totalThreads) * 100 : 0;
   return progress;
 };
 
+// Abrufen der Benutzerstatistiken von der API
 const fetchUserStats = async () => {
   const apiKey = localStorage.getItem('api_key');
 
@@ -120,11 +119,13 @@ const fetchUserStats = async () => {
   }
 };
 
+// Beim Laden der Komponente die Statistiken abrufen und Polling starten
 onMounted(() => {
   fetchUserStats();
   pollingInterval = setInterval(fetchUserStats, 10000);
 });
 
+// Beim Verlassen der Komponente das Polling stoppen
 onUnmounted(() => {
   clearInterval(pollingInterval);
 });
@@ -157,7 +158,7 @@ onUnmounted(() => {
 }
 
 .user-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .user-info {

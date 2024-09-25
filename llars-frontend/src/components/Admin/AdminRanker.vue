@@ -16,7 +16,7 @@
                 ({{ calculateUnrankedThreads(user) }} unbearbeitet)
               </span>
               <v-btn
-                v-if="user.ranked_threads_count > 0"
+                v-if="user.ranked_threads_count > 0 || user.unranked_threads.length > 0"
                 small
                 color="primary"
                 @click="showThreadDetails(user)"
@@ -47,8 +47,23 @@
       <v-card>
         <v-card-title>Thread Details für {{ selectedUser.username }}</v-card-title>
         <v-card-text>
+          <!-- Anzeige der bearbeiteten Threads -->
+          <v-subheader>Bearbeitete Threads</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.ranked_threads" :key="thread.thread_id">
+              <v-list-item-content>
+                <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
+                <v-list-item-subtitle>
+                  Thread ID: {{ thread.thread_id }} | Chat ID: {{ thread.chat_id }} | Institut ID: {{ thread.institut_id }}
+                </v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+
+          <!-- Anzeige der nicht bearbeiteten Threads -->
+          <v-subheader>Nicht bearbeitete Threads</v-subheader>
+          <v-list dense>
+            <v-list-item v-for="thread in selectedUser.unranked_threads" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
                 <v-list-item-subtitle>
@@ -68,7 +83,7 @@
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted} from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 const userStats = ref([]);
@@ -76,6 +91,7 @@ const dialogVisible = ref(false);
 const selectedUser = ref({});
 let pollingInterval = null;
 
+// Öffnet den Dialog und zeigt die Details des ausgewählten Benutzers an
 const showThreadDetails = (user) => {
   selectedUser.value = user;
   dialogVisible.value = true;

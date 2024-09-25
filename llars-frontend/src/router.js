@@ -8,6 +8,8 @@ import Rater from "@/components/Rater/Rater.vue";
 import RaterDetail from "@/components/Rater/RaterDetail.vue";
 import RaterDetailFeature from "@/components/Rater/RaterDetailFeature.vue";
 import AdminHome from "@/components/Admin/AdminHome.vue"; // Admin Dashboard
+import AdminRanker from "@/components/Admin/AdminRanker.vue";
+import HistoryGeneration from "@/components/HistoryGenerator/HistoryGeneration.vue";
 
 // Importiere die Admin-Check Funktion
 import { isAdmin } from '@/services/admins';
@@ -19,7 +21,11 @@ const routes = [
     { path: '/Rater', component: Rater, meta: { requiresAuth: true } },
     { path: '/Rater/:id', name:'RaterDetail', component: RaterDetail, props: true, meta: { requiresAuth: true } },
     { path: '/Rater/:id/:feature', name:'RaterDetailFeature', component: RaterDetailFeature, props: true, meta: { requiresAuth: true } },
+    {path : '/HistoryGeneration', component: HistoryGeneration, meta: { requiresAuth: true } },
+
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
+    { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
+
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },
     { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound } // 404 Route

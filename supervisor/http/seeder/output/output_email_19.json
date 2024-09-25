@@ -1,0 +1,218 @@
+{
+  "type": "ranking",
+  "chat_id": 19,
+  "institut_id": 0,
+  "subject": "hallo",
+  "sender": "[Nickname]",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "hmm hallo….\n\nalso hmm hab die adresse von einer freundin….\nhmm weiß eigendlich nich sogenau was ich schreiben soll….\nHmm weiß halt einfach nich wie ich anfangen soll….\n\nAlso hmm ich bin [junge Erwachsene] alt….\n\nGibt da so ein paar probleme die ich mit der familie habe , hmm und die mit mir hmm\nKann man nicht sagen ähm schreiben….\n\nNaja ist jetzt vielleicht ein bisschen wenig kann aber nicht mehr schreiben….\nVielleicht wenn ihr zeit habt oder so könnt ihr mal antworten. Hmm wenn ihr wollte…\n\nhmm\nbis vielleicht mal\n[Nickname]",
+      "timestamp": "2020-06-05 11:39:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Hallo [Nickname],\n\nich bin [bke-Beratername] von der bke-Jugendberatung und habe deine mail erhalten.\n\nDu hast recht, es ist oftmals schwierig einen Anfang zu finden.\nVor allem bei Schwierigkeiten, die einen belasten und beschäftigen.\nOder die man vielleicht auch schon lange mit sich herumträgt.\nDie einen bedrängt haben und vielleicht auch ein Stück einsam. \n\nDarüber zu sprechen oder zu schreiben ist ein wichtiger Schritt. Ein Anfang. Aber eben ein nicht so ganz einfacher.\nAber es lohnt sich, diesen Anfang zu machen.\nWo auch immer.\nBei einem Menschen, den man kennt oder vertraut\nOder eben hier in der Anonymität einer Onlineberatung.\n\nIch wünsche dir ganz viel Mut\nUnd grüße dich herzlich.\n\n[FK]",
+      "timestamp": "2020-06-05 16:10:00"
+    }
+  ],
+  "generated_features": {
+    "gpt-3.5-turbo": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende hat Probleme mit ihrer Familie, die sowohl von ihrer Seite als auch seitens der Familie bestehen.",
+          "Sie fühlt sich bedrängt, belastet und einsam aufgrund dieser Schwierigkeiten."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die Ratsuchende ist eine junge Erwachsene.",
+          "Sie empfindet Schwierigkeiten beim Beginn des Austauschs über ihre belastenden Themen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Familienkonflikte bei junger Erwachsener"
+      }
+    },
+    "gpt-4o": {
+      "situation_summary": {
+        "sozial": [
+          "Es gibt ungelöste Probleme innerhalb der Familie der ratsuchenden Person. Diese Probleme belasten die ratsuchende Person stark, was zu Kommunikationsschwierigkeiten führt."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person hat Schwierigkeiten, ihre Probleme klar zu formulieren und fühlt sich möglicherweise überwältigt von der Situation. Es fällt ihr schwer, den ersten Schritt in der Kommunikation zu machen und ihre Emotionen zu äußern."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Probleme mit der Familie"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Kommunikation über Probleme mit der Familie",
+          "Freundin hat die Adresse der Onlineberatung weitergegeben"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Junge Erwachsene",
+          "Fühlt sich bedrängt und einsam",
+          "Hat bereits länger mit Problemen zu kämpfen"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Familienprobleme und Anfangsschwierigkeiten"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Kommunikation mit Familie ist problematisch",
+          "Freundin empfohlen Onlineberatung"
+        ],
+        "beruflich": [
+          "Keine Angaben zur beruflichen Situation"
+        ],
+        "persönlich": [
+          "Junge Erwachsene",
+          "Schwierigkeiten, Probleme mit Familie zu benennen",
+          "Bedrückt und einsam",
+          "Schwierigkeiten, Anfang zu finden, um über Probleme zu sprechen oder zu schreiben"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Junge Erwachsene mit Familienproblemen"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person beschreibt Schwierigkeiten mit ihrer Familie, die sie jedoch nicht genauer beschreibt.",
+          "Sie beschreibt sich als junge Erwachsene, aber es ist unklar, ob sie die Beratung in diesem Zusammenhang nutzen möchte."
+        ],
+        "beruflich": [
+          "Keine Informationen über berufliche Probleme oder Ziele werden in den E-Mails angegeben."
+        ],
+        "persönlich": [
+          "Die ratsuchende Person beschreibt sich als einsam und belastet von Schwierigkeiten, die sie mit sich herumträgt.",
+          "Sie zeigt eine gewisse Vorsicht bei der Erwähnung ihrer Probleme und drückt den Wunsch aus, über sie zu sprechen oder zu schreiben."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Persönliche Probleme mit Familie und selbst"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende hat eine schwierige Beziehung zu ihrer Familie.",
+          "Sie fühlt sich einsam."
+        ],
+        "beruflich": [
+          "Keine Angaben zu beruflichen Problemen oder Belastungen.",
+          "Keine Angaben zu beruflichen Zielen oder Ambitionen."
+        ],
+        "persönlich": [
+          "Die Ratsuchende ist 19 Jahre alt.",
+          "Sie hat Schwierigkeiten, ihre Gefühle und Gedanken auszudrücken.",
+          "Sie möchte mit jemandem sprechen oder schreiben, um ihre Probleme zu besprechen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Verständigung mit der Familie und eigene Schwierigkeiten"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat Schwierigkeiten mit ihrer Familie.",
+          "Sie fühlt sich einsam und belastet.",
+          "Sie hat Schwierigkeiten, über ihre Probleme zu sprechen."
+        ],
+        "beruflich": [
+          "Keine Informationen vorhanden.",
+          "Keine Informationen vorhanden."
+        ],
+        "persönlich": [
+          "Die ratsuchende Person ist 18 Jahre alt.",
+          "Sie hat Schwierigkeiten, sich auszudrücken und ihre Gefühle zu formulieren."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die ratsuchende Person schreibt von einem Anfang zu finden und Mut zu haben."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Familienprobleme und Einsamkeit"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Hab die Adresse von einer Freundin"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Hab ein paar Probleme mit der Familie",
+          "Hab Probleme mit mir selbst"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Generierter prägnanter Betreff"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende Person ist [junge Erwachsene] alt und hat Probleme mit der Familie",
+          "Die Ratsuchende Person hat Schwierigkeiten, den Anfang zu finden, um über ihre Probleme zu sprechen"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die Ratsuchende Person empfindet ein Gefühl der Einsamkeit und Bedrängnis"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Familie und Isolation"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Familiäre Probleme, die noch nicht näher spezifiziert wurden",
+          "Eine gewisse Einsamkeit wurde erwähnt"
+        ],
+        "beruflich": [
+          "Keine Informationen in der E-Mail-Historie"
+        ],
+        "persönlich": [
+          "Die ratsuchende Person ist junge Erwachsene",
+          "Die ratsuchende Person fühlt sich belastet und bedrängt",
+          "Die ratsuchende Person hat Schwierigkeiten, über Probleme zu sprechen oder zu schreiben"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Junge Erwachsene mit Familienproblemen"
+      }
+    },
+    "Llama-3-SauerkrautLM-70b-Q4_K_S.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat Schwierigkeiten in der Kommunikation mit der Familie und fühlt sich belastet und einsam.",
+          "Die ratsuchende Person hat eine Freundin, an die sie sich wenden kann."
+        ],
+        "beruflich": [
+          "Keine expliziten beruflichen Schwierigkeiten wurden genannt."
+        ],
+        "persönlich": [
+          "Die ratsuchende Person fühlt sich unsicher und überfordert, wenn es um den Anfang der Kommunikation geht.",
+          "Die ratsuchende Person ist jung und hat Schwierigkeiten, sich zu äußern."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Probleme in der Familie und Schwierigkeiten mit Anfangen"
+      }
+    }
+  }
+}

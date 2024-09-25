@@ -1,0 +1,250 @@
+{
+  "type": "ranking",
+  "chat_id": 4,
+  "institut_id": 0,
+  "subject": "MobbingTina",
+  "sender": "Tina15",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo,\n\nich habe ein Problem in der Schule und weiß nicht, was ich machen soll. In meiner Klasse gibt es eine Gruppe von Schülern, die mich immer ärgern. Sie machen Witze über mich und lassen mich nicht mitmachen. Ich habe versucht, mit ihnen zu reden, aber es hilft nicht. Sie lachen mich aus und schreiben mir auch ziemlich doofe Chatnachrichten. Ich fühle mich oft allein und traurig deswegen.\n\nIch möchte das meinem Lehrer sagen, aber ich habe Angst, dass es dann noch schlimmer wird. Was, wenn die anderen mich dann noch mehr ärgern, weil ich zum Lehrer gegangen bin?\n\nIch weiß nicht, ob ich es meinen Eltern sagen soll. Vielleicht können sie mir helfen, aber ich möchte nicht, dass sie sich Sorgen machen.\n\nKannst du mir einen Rat geben, was ich tun soll? Ich möchte nur, dass das aufhört und ich mich in der Schule wieder wohl fühlen kann.\n\nDanke für deine Hilfe.\n\nViele Grüße,\nTina",
+      "timestamp": "2022-03-23 21:45:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Hallo Tina,\n\ndanke, dass du dich an uns gewendet hast. Es tut mir leid zu hören, dass du in der Schule eine schwierige Zeit durchmachst. Es ist richtig und gut, dass du nach Hilfe suchst. Ich heiße bke-Olga und bin Psychologin und berate hier in der Onlineberatung und auch an einer Beratungsstelle Jugendliche und Eltern, wenn es zuhause oder in der Schule Probleme gibt.\n\nZuerst möchte ich dir sagen, dass niemand das Recht hat, dich zu ärgern oder dich schlecht fühlen zu lassen. Du verdienst es, mit Respekt behandelt zu werden. Es ist mutig, dass du über dein Problem sprechen möchtest und hier schreibst.\n\nDeine Idee, mit deinem Lehrer über das zu reden, was dir mit den anderen Schülern passiert, finde ich sehr gut. Ich verstehe aber auch, dass du zögerst. Lehrer sind da, um dir zu helfen, und sie können Situationen in der Schule oft besser machen. Sie wissen auch, wie sie solche Dinge behandeln können, ohne dass es für dich peinlich wird. Hast du einen Lehrer, zu dem du das Vertrauen hast für ein Gespräch?\n\nWenn du Angst hast, direkt zu deinem Lehrer zu gehen, könntest du zuerst mit deinen Eltern sprechen. Vielleicht haben deine Eltern schon mitbekommen, dass dich etwas bedrückt und sind froh, wenn du ihnen den Grund erzählst. Deine Eltern lieben dich und möchten sicher, dass es dir gut geht. Sie können dir helfen, mit der Schule zu sprechen oder einen Plan zu machen, wie ihr das Problem lösen könnt. Und Eltern freuen sich, wenn du dich ihnen anvertrauen magst.\n\nVielleicht gibt es auch eine Vertrauensperson in der Schule oder einen Schulsozialarbeiter oder einen Beratungslehrer, mit dem du sprechen kannst? Manchmal gibt es an Schulen auch extra geschulte Schülerinnen, die dich zum Gespräch begleiten könnten…\n\nIch möchte dich ermutigen, dir Hilfe zu suchen. Du musst das nicht alleine durchstehen. Wenn du möchtest, können wir hier miteinander schreiben. Dann finden wir gemeinsam heraus, was du dir vorstellen kannst zu unternehmen. \n\nBitte lass mich wissen, wie ich dir am besten helfen kann. Du hast den ersten Schritt gemacht, indem du geschrieben hast, und das ist schon sehr stark von dir.\n\nMit unterstützenden Grüßen,\nbke-Olga",
+      "timestamp": "2022-03-24 11:14:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Beratende Person",
+      "content": "Hallo liebe Tina,\nleider habe ich von dir keine neue Nachricht bekommen. \nHast du einen Weg gefunden, wie du dir Unterstützung in der Schule oder von deinen Eltern holen kannst? Das würde mich sehr freuen.\nWenn du magst, dann schreibe mir wieder. Natürlich ist es auch in Ordnung, wenn du bei dir vor Ort Hilfe gefunden hast.\nWenn du magst, dann schaue dich gerne im Forum auf unserer Website um oder komme in einen Einzelchat. Du könntest auch zum Gruppenchat kommen, den es bei uns zum Thema Mobbing gibt. Vielleicht hilft es dir, direkte Antworten zu bekommen, ohne Wartezeit.\n\nDanke für deine Anfrage und alles Gute für dich\nbke-Olga",
+      "timestamp": "2022-03-30 00:00:00"
+    }
+  ],
+  "generated_features": {
+    "gpt-3.5-turbo": {
+      "situation_summary": {
+        "sozial": [
+          "Tina wird in der Schule von einer Gruppe Schülern geärgert und ausgeschlossen, was sie allein und traurig fühlen lässt.",
+          "Die Schüler machen Witze über Tina, lassen sie nicht mitmachen und schreiben ihr abfällige Chatnachrichten."
+        ],
+        "beruflich": [
+          "Tina erwägt, dem Lehrer von den Schwierigkeiten mit den Mitschülern zu berichten, hat jedoch Angst vor einer Verschlechterung der Situation.",
+          "Es wird empfohlen, Unterstützung von einem Lehrer, den Eltern oder anderen Vertrauenspersonen in der Schule zu suchen."
+        ],
+        "persönlich": [
+          "Tina fühlt sich in der Schule unwohl und wünscht sich, dass das Mobbing aufhört, um sich wieder wohl zu fühlen.",
+          "Sie ist unsicher, ob sie ihren Eltern von den Problemen erzählen soll, um Hilfe zu erhalten, ohne sie besorgt zu machen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Schulsituation: Mobbing durch Mitschüler"
+      }
+    },
+    "gpt-4o": {
+      "situation_summary": {
+        "sozial": [
+          "In der Schule wird Tina von einer Gruppe Schüler regelmäßig geärgert und ausgeschlossen. Die Schüler machen Witze über sie und schreiben ihr beleidigende Chatnachrichten.",
+          "Tina hat versucht, mit den Schülern zu reden, aber das Gespräch hat keine positiven Veränderungen gebracht. Stattdessen lachen die anderen Schüler sie aus."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Tina fühlt sich durch das Mobbing oft allein und traurig. Sie hat Angst, dass die Situation sich verschlimmern könnte, wenn sie dem Lehrer oder ihren Eltern davon erzählt.",
+          "Sie wünscht sich, dass das Mobbing aufhört und sie sich in der Schule wieder wohlfühlen kann."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die beratende Person hat Tina ermutigt, mit einem Lehrer oder ihren Eltern über das Problem zu sprechen. Eltern und Lehrer könnten zusammen einen Lösungsweg erarbeiten, um die Situation zu verbessern."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mobbing in der Schule"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Tina wird an ihrer Schule von einer Gruppe von Schülern gemobbt und fühlt sich allein und traurig",
+          "Tina ist unsicher, ob sie mit dem Lehrer oder ihren Eltern über das Problem sprechen soll, da sie Angst vor negativen Konsequenzen hat",
+          "Es wird erwähnt, dass Tina sich mit einer Vertrauensperson in der Schule oder einem Schulsozialarbeiter oder einem Beratungslehrer treffen könnte"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Tina zeigt Mut, indem sie sich Hilfe sucht und über ihr Problem schreibt"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Schülerin leidet unter Mobbing in der Schule"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Tina ist Mitglied einer Schule, in der sie von einer Gruppe von Mitschülern gemobbt wird.",
+          "Tina macht sich Sorgen darüber, wie ihre Mitschüler auf sie reagieren werden, wenn sie sich an einen Lehrer wenden.",
+          "Tina hat überlegt, mit ihren Eltern über das Problem zu sprechen, möchte sie aber nicht unnötig beunruhigen."
+        ],
+        "beruflich": [
+          "Tina ist Schülerin und hat keine beruflichen Verpflichtungen oder Probleme in diesem Zusammenhang."
+        ],
+        "persönlich": [
+          "Tina fühlt sich oft einsam und traurig wegen des Mobbings.",
+          "Tina hat gezeigt, dass sie bereit ist, Unterstützung in Anspruch zu nehmen und Hilfe zu suchen, indem sie sich an die Beratung gewandt hat."
+        ],
+        "hilfesuchend": [
+          "Tina sucht Rat, wie sie mit dem Mobbing umgehen und sich Unterstützung suchen kann.",
+          "Tina ist offen für weitere Unterstützung durch die Beratung, wie zum Beispiel das Schreiben gemeinsam mit dem Berater, das Teilnehmen am Forum oder an Einzelchats oder Gruppenchats."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Hilfe bei Schulmobbing"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Tina wird in der Schule von einer Gruppe von Schülern belästigt, die Witze über sie machen und sie nicht mitmachen lassen."
+        ],
+        "beruflich": [
+          "Tina hat Angst, mit ihrem Lehrer über das Problem zu sprechen, aus Angst, dass es noch schlimmer wird."
+        ],
+        "persönlich": [
+          "Tina fühlt sich oft allein und traurig, weil sie in der Schule belästigt wird."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Tina bedrückt von Schülern, die sie ärgern, und fragt nach Rat, was sie tun kann"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Tina wird von einer Gruppe von Schülern in der Schule geärgert und ausgegrenzt.",
+          "Tina hat Angst, sich an ihren Lehrer zu wenden, weil sie befürchtet, dass es noch schlimmer wird.",
+          "Tina hat Schwierigkeiten, sich an ihre Eltern zu wenden, weil sie sich Sorgen macht, dass sie sich Sorgen machen werden."
+        ],
+        "beruflich": [
+          "Tina hat Schwierigkeiten in der Schule, weil sie von der Gruppe geärgert wird und sich ausgegrenzt fühlt.",
+          "Tina möchte, dass das Problem gelöst wird, damit sie sich in der Schule wieder wohl fühlt."
+        ],
+        "persönlich": [
+          "Tina fühlt sich oft allein und traurig wegen der Situation in der Schule.",
+          "Tina möchte, dass das Problem gelöst wird, damit sie sich wieder selbstbewusst und sicher fühlt."
+        ],
+        "zusätzlicher_aspekt": [
+          "Tina hat Schwierigkeiten, sich zu entscheiden, ob sie sich an ihren Lehrer oder ihre Eltern wenden soll."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Schulprobleme und Mobbing durch Klassenkameraden"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Schüler ärgern Tina in der Schule",
+          "Tina fühlt sich allein und traurig in der Schule"
+        ],
+        "beruflich": [
+          "Tina hat Angst, zum Lehrer zu gehen",
+          "Tina möchte Hilfe",
+          "Tina will sich wieder wohl fühlen in der Schule"
+        ],
+        "persönlich": [
+          "Tina hat Angst",
+          "Tina möchte Unterstützung von Eltern und Lehrern"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Anleitung zum Erstellen präziser Betreffangaben für die Beratung"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Tina wird von einer Gruppe von Schülern in ihrer Schule ärgert, die Witze über sie machen und sie nicht mit einbeziehen.",
+          "Tina hat Angst, mit ihrem Lehrer über das Problem zu sprechen, da sie befürchtet, dass es noch schlimmer wird, wenn sie es tut."
+        ],
+        "beruflich": [
+          "Tina hat Probleme in der Schule, insbesondere mit Mobbing durch Mitschüler.",
+          "Tina ist unsicher, ob sie sich an einen Lehrer oder ihre Eltern wenden soll, um Unterstützung zu erhalten."
+        ],
+        "persönlich": [
+          "Tina fühlt sich oft allein und traurig aufgrund der Situation in der Schule.",
+          "Tina hat Angst, sich an ihre Eltern zu wenden, da sie befürchtet, dass sie sich Sorgen machen könnten."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Unterstützung bei Mobbing in der Schule"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Tina wird von einer Gruppe von Schülern in der Schule gemobbt",
+          "Sie wird mit Witzen und Chatnachrichten veräppelt",
+          "Sie fühlt sich oft einsam und traurig",
+          "Tina denkt über das Gespräch mit dem Lehrer nach",
+          "Sie zögert, mit den Eltern zu sprechen",
+          "Es gibt keine Hinweise auf Unterstützung durch Vertrauenspersonen oder Schulsozialarbeiter"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Tina ist bereit, Hilfe zu suchen",
+          "Sie ist mutig genug, um über das Problem zu sprechen",
+          "Es gibt keine Hinweise auf andere persönliche Probleme",
+          "Sie ist offen für weitere Unterstützung durch Beratungsdienste"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mobbing an Schule: Suche nach Hilfe bei Lehrer und Eltern"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Es gibt eine Gruppe von Schülern in der Schule, die Tina ärgern und Witze über sie machen",
+          "Tina hat versucht, mit den Schülern zu reden, aber sie lachen sie aus und schreiben ihr Chatnachrichten",
+          "Tina hat Angst, dass die Situation schlimmer wird, wenn sie sich einem Lehrer anvertraut"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Tina fühlt sich oft einsam und traurig",
+          "Tina hat sich an die Onlineberatung gewandt, um Rat zu bekommen, was sie tun soll"
+        ],
+        "hilfestellung": [
+          "Die Beratende Person schlägt vor, dass Tina mit einem Lehrer spricht",
+          "Die Beratende Person schlägt vor, dass Tina mit ihren Eltern spricht",
+          "Die Beratende Person ermutigt Tina, sich Hilfe zu suchen"
+        ],
+        "weitere_aspekte": [
+          "Tina wird ermutigt, weitere Hilfsangebote auf der Website der Onlineberatung zu nutzen"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Hilfe bei Schikane in der Schule"
+      }
+    },
+    "Llama-3-SauerkrautLM-70b-Q4_K_S.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Tina fühlt sich von einer Gruppe von Schülern in der Schule gemobbt und ausgeschlossen. Sie haben Angst, dass die Situation noch schlimmer wird, wenn sie zum Lehrer geht."
+        ],
+        "beruflich": [
+          "Tina hat Schwierigkeiten in der Schule, die sie nicht alleine lösen kann. Sie braucht Unterstützung von Lehrern oder anderen Erwachsenen."
+        ],
+        "persönlich": [
+          "Tina fühlt sich traurig und allein wegen der Situation in der Schule. Sie hat Angst, dass die anderen Schüler sie noch mehr ärgern, wenn sie zum Lehrer geht."
+        ],
+        "zusätzlicher_aspekt": [
+          "Tina hat noch nicht entschieden, ob sie ihren Eltern erzählen soll. Sie hat Angst, dass die Eltern sich Sorgen machen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mobbing in der Schule - wie kann ich mich schützen?"
+      }
+    }
+  }
+}

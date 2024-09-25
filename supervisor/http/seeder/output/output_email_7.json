@@ -1,0 +1,231 @@
+{
+  "type": "ranking",
+  "chat_id": 7,
+  "institut_id": 0,
+  "subject": "Freundschaften",
+  "sender": "Ianus14",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo ich habe seit einem geringen Zeitraum das Problem das ich dauerhaft denke meine freunde möchten nichts mehr mit mir zu tun haben ich habe sie aufgrund dieser sache auch schon befragt und sie meinen das alles in Ordnung wäre aber ich habe trotzdem noch das gefühl das sie nichts mehr mit mir machen möchten sie möchten sie auch noch mit mir verabreden wenn ich sie frage ich habe aber trotzdem das gefühl das etwas sei dazu habe ich noch sehr schlimme stimmungsschwankungen und meine laune wechselt sich minütlich zudem kommt es auch noch dazu das ich sachen wenn ich schlechte laune habe sehr persönlich nehme wie könnte ich dieses Problem lösen",
+      "timestamp": "2022-04-23 20:23:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Hallo lieber Ianus14,\n\nHerzlich Willkommen in der bke-Online-Beratung! Schön, dass du schreibst.\nMein Name ist bke-Felia, ich bin Psychologin und berate hier virtuell Jugendliche und Eltern. Sonst arbeite ich mit Familien in einer Erziehungsberatungsstelle. Du darfst mich gerne duzen, das ist hier so üblich. \n\nVielen Dank erstmal für deine Offenheit und dein Vertrauen und dass du es wagst, hier über deine Gefühle zu schreiben.\nIn deiner Mail beschreibst du, dass du dir seit kurzem viele Gedanken machst. Du denkst viel darüber nach, wie deine Freunde zu dir stehen. Und du erzählst auch, dass du versucht hast, mit deinen Freunden über deine Befürchtungen zu sprechen. Das finde ich richtig mutig, denn das war bestimmt nicht leicht.\nDu schreibst auch, dass du Stimmungsschwankungen hast und Dinge dann sehr persönlich nimmst. \n\nIch vermute mal, dass du dich fragst, ob sie dich noch mögen und ok finden. Kann das sein? \nIch verstehe sehr gut, dass dich das alles so beschäftigt. Auch andere Jugendliche kennen solche Gefühle, aber es ist ziemlich schwer zu besprechen und dann fühlt man sich hilflos mit sich selbst. \n\nMagst du mir mehr von dir erzählen? Wir könnten gemeinsam herausfinden, was dich belastet und was hinter deiner Sorge abgelehnt zu werden stecken könnte. Erzähle mir also gerne mehr von dir und deinem Alltag\nund wir finden gemeinsam ein paar Antworten auf deine Fragen.\n\nIch bin gespannt auf deine Nachricht.\nEine Rückmeldung von mir erhältst du immer schnellstmöglich. In der Regel versuche ich innerhalb von drei Tagen zu antworten.\n\nFür heute schicke ich dir liebe Grüße und wünsche dir einen guten Wochenstart!\n\nBis bald\nbke-Felia",
+      "timestamp": "2022-04-24 00:00:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Beratende Person",
+      "content": "Lieber Ianus14,\nschade, dass du bisher nicht geschrieben hast. Ich bin gerne weiterhin für dich da und höre dir zu. Vielleicht magst du ja doch noch erzählen, wie es dir gerade geht?\nWie auch immer du dich entscheidest, ich wünsche dir alles Gute und viel Mut für neue Gespräche.\nHerzliche Grüße\nbke-Felia",
+      "timestamp": "2022-04-30 00:00:00"
+    }
+  ],
+  "generated_features": {
+    "gpt-3.5-turbo": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende hat das Gefühl, dass ihre Freunde sich von ihr distanzieren, obwohl diese das Gegenteil behaupten.",
+          "Sie empfindet Unsicherheit und Zweifel bezüglich der Freundschaften und der Verabredungen mit ihren Freunden."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die Ratsuchende erlebt starke Stimmungsschwankungen, bei denen ihre Laune sich innerhalb von Minuten ändert.",
+          "In negativen Stimmungslagen nimmt sie persönliche Dinge besonders stark zu Herzen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Freundschaftszweifel und Stimmungsschwankungen"
+      }
+    },
+    "gpt-4o": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat das Gefühl, dass ihre Freunde nichts mehr mit ihr zu tun haben möchten, obwohl die Freunde auf Nachfrage versichert haben, dass alles in Ordnung ist.",
+          "Die ratsuchende Person kann sich weiterhin mit ihren Freunden verabreden, fühlt aber trotzdem, dass etwas nicht stimmt."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person hat sehr schlimme Stimmungsschwankungen, wobei sich die Laune minütlich ändert.",
+          "Die ratsuchende Person nimmt Dinge sehr persönlich, insbesondere wenn sie schlechte Laune hat."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Freundschaftsängste und Stimmungsschwankungen"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person berichtet über ein Problem mit ihrem Freundeskreis, in dem sie das Gefühl hat, nicht mehr erwünscht zu sein und sich Sorgen macht, dass ihre Freunde nichts mehr mit ihr zu tun haben möchten, obwohl diese versichern, dass alles in Ordnung ist",
+          "Die ratsuchende Person hat das Bedürfnis, Zeit mit ihren Freunden zu verbringen, aber hat das Gefühl, dass sie nicht eingeladen wird"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person berichtet über starke Stimmungsschwankungen und leichte Reizbarkeit",
+          "Die ratsuchende Person hat Schwierigkeiten, mit negativen Emotionen umzugehen und nimmt Dinge sehr persönlich",
+          "Die ratsuchende Person hat eine offene und ehrliche Kommunikationsweise, indem sie ihre Gefühle und Gedanken mitteilt"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Freunde und Stimmungsschwankungen"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat Bedenken hinsichtlich des Verhältnisses zu ihren Freunden",
+          "Die ratsuchende Person hat versucht, mit ihren Freunden über ihre Bedenken zu sprechen, aber fühlt sich unbehaglich",
+          "Die ratsuchende Person vermutet, dass ihre Freunde sie nicht mehr mögen"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person leidet unter starken Stimmungsschwankungen",
+          "Die ratsuchende Person nimmt persönliche Dinge sehr schnell auf, wenn sie schlechte Laune hat"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Freunde und Stimmungsschwankungen"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat Angst, dass ihre Freunde nichts mehr mit ihr zu tun haben und versucht, mit ihnen über ihre Befürchtungen zu sprechen.",
+          "Die Person hat Stimmungsschwankungen und nimmt persönliche Dinge sehr ernst."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person hat Angst, akzeptiert zu werden und hat Schwierigkeiten, Grenzen zu setzen.",
+          "Die Person hat Stimmungsschwankungen und nimmt persönliche Dinge sehr ernst."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die Person ist sich ihrer Schwierigkeiten bewusst und hat Schwierigkeiten, sich zu öffnen und um Hilfe zu bitten.",
+          "Die Person hat Angst, akzeptiert zu werden und hat Schwierigkeiten, Grenzen zu setzen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Betreff basierend auf der Erstnachricht"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person äußert Bedenken, dass ihre Freunde nichts mehr mit ihr zu tun haben und sie nicht mehr verabreden möchten.",
+          "Die ratsuchende Person ist sich unsicher, ob sie sich richtig versteht, was ihre Freunde denken und fühlen.",
+          "Die Freunde haben ihre Befürchtungen hinsichtlich der Beziehung abgetan, aber die ratsuchende Person bleibt überzeugt, dass etwas nicht stimmt."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person hat Stimmungsschwankungen und kann sich in bestimmten Situationen sehr emotional und persönlich fühlen.",
+          "Die ratsuchende Person hat Angst vor sozialen Interaktionen und ist unsicher, wie sie auf andere reagieren wird.",
+          "Die ratsuchende Person ist besorgt über die möglichen Auswirkungen ihrer emotionalen Reaktionen auf die Beziehung zu ihren Freunden und anderen Menschen.",
+          "Die ratsuchende Person benötigt Unterstützung und Ratschläge, um mit ihren Gefühlen umzugehen und sich besser aufzuführen."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die ratsuchende Person hat Schwierigkeiten, ihre Gefühle zu artikulieren und hat Angst davor, sich übermäßig emotional oder persönlich aufzuführen.",
+          "Die ratsuchende Person ist sich unsicher, wie sie auf die Situation reagieren soll und benötigt Unterstützung bei der Entscheidungsfindung."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Hilfe bei Vermeidung von Misstrauen und Stimmungsschwankungen bei Freundschaften"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Du denkst, dass deine Freunde nichts mehr mit dir zu tun haben möchten",
+          "Du hast versucht, mit deinen Freunden über deine Befürchtungen zu sprechen",
+          "Du fühlst dich hilflos mit sich selbst"
+        ],
+        "beruflich": [
+          "Keine Informationen zur beruflichen Situation"
+        ],
+        "persönlich": [
+          "Du hast Stimmungsschwankungen und nimmst Dinge dann sehr persönlich"
+        ],
+        "zusätzlicher_aspekt": [
+          "Du hast Angst, abgelehnt zu werden",
+          "Du hast Schwierigkeiten, neue Gespräche zu führen"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Hilfe bei ständigem Gefühl der Abgelehntheit durch Freunde"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Stimmungsschwankungen",
+          "persönliche Dinge nehmen zu",
+          "Hilflosigkeit mit sich selbst"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Ängste vor dem Verlust von Freundschaften",
+          "Schwere Stimmungsschwankungen",
+          "Persönliche Dinge werden sehr persönlich genommen"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Generierter prägnanter Betreff"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person berichtet über ein Problem, das Freunde möchten nichts mehr mit ihr zu tun haben",
+          "Sie hat ihre Freunde befragt, die ihr versichert haben, dass alles in Ordnung ist, aber sie zweifelt immer noch",
+          "Sie ist sich nicht sicher, ob sie ihre Freunde noch treffen soll, wenn sie sie fragt"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Sie hat starke Stimmungsschwankungen und einen unbeständigen Gemütszustand",
+          "Sie nimmt persönlich, was andere sagen oder tun, wenn sie schlechte Laune hat"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Ratsuchende Person hat Sorge um Freundschaften und Stimmungsschwankungen"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person ist besorgt, dass ihre Freunde nichts mehr mit ihr zu tun haben möchten.",
+          "Die ratsuchende Person hat ihre Freunde auf das Problem angesprochen, hat aber trotzdem das Gefühl, dass etwas nicht stimmt.",
+          "Die ratsuchende Person ist weiterhin besorgt, ob ihre Freunde sie noch mögen und ok finden."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person hat Stimmungsschwankungen und wechselnde Laune.",
+          "Die ratsuchende Person nimmt Dinge sehr persönlich, insbesondere wenn sie schlechte Laune hat."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Anhaltende Zweifel an Freundschaften und Stimmungsschwankungen"
+      }
+    },
+    "Llama-3-SauerkrautLM-70b-Q4_K_S.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat Schwierigkeiten, ihre Freunde zu verstehen und fürchtet, dass sie nicht mehr mit ihr zusammenarbeiten möchten",
+          "Die ratsuchende Person hat versucht, mit ihren Freunden über ihre Befürchtungen zu sprechen"
+        ],
+        "beruflich": [
+          "Keine beruflichen Aspekte wurden bisher genannt"
+        ],
+        "persönlich": [
+          "Die ratsuchende Person erlebt Stimmungsschwankungen und nimmt Dinge sehr persönlich",
+          "Die ratsuchende Person hat ein Problem, das Gefühl zu haben, dass ihre Freunde nicht mehr mit ihr zusammenarbeiten möchten",
+          "Die ratsuchende Person hat Schwierigkeiten, ihre Emotionen zu regulieren und sucht nach einer Lösung für ihr Problem"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Freunde distanzieren sich, eigenes Gefühl der Zurückweisung"
+      }
+    }
+  }
+}

@@ -1,0 +1,263 @@
+{
+  "type": "ranking",
+  "chat_id": 21,
+  "institut_id": 0,
+  "subject": "alles grad irgendwie doof",
+  "sender": "Mia",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo liebes bkeTeam,\n\nich weiß nicht, ob ich hier richtig bin. Aber mir gehts grad nicht so gut und ich hab euch zufällig auf Insta gesehen…\nvielleicht könnt ihr mir helfen?\n\nDas wäre richtig schön.\nMia",
+      "timestamp": "1970-01-01 00:00:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Hallo liebe Mia,\nDu bist hier ganz bestimmt richtig.\nIch bin bke-Frieda und deine Nachricht ist bei mir angekommen. Schön, dass du schreibst und dich traust, einfach mal nachzufragen.\nDu schreibst, dass es dir nicht so gut geht. Und du schreibst, dass du Hilfe suchst. Vielleicht hat dich der Satz viel Mut gekostet…? Oft denken wir ja, wir müssten alles alleine schaffen, aber das ist nicht wahr. Es ist genau richtig, dass du dir Hilfe suchst.\nMagst du mir ein wenig von dir erzählen, damit ich verstehe, was dich zu deiner Frage nach Hilfe bewegt hat?\nWir können hier gemeinsam nach Ideen suchen, wie du es schaffen kannst, dass es dir besser geht.\nIch bin für dich da und schreibe dir innerhalb von 2-3 Tagen zurück.\nIch freue mich auf eine Nachricht von dir.\n \nLiebe Grüße\nbke-Frieda",
+      "timestamp": "2023-11-30 19:25:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchende Person",
+      "content": "﻿Hallo Frieda,\ndankeschön, dass du schreibst. hhhhmmmm wo soll ich nur anfangen. Ich bin heute zuhause. Meiner Mutter habe ich nur gesagt, dass ich Bauchweh habe. Mein Vater ist eh grade unterwegs auf Dienstreise. Irgendwie mag ich gerade gar nicht mehr in die Schule gehen. Obwohl ich gut in der Schule bin und auch eigentlich Freundinnen habe. Aber es ist gerade alles irgendwie so anstrengend für mich mit ihnen und ich bin oft traurig… ich kann es schwer beschreiben. Manchmal sind sie so fies und ich glaube sie reden auch über mich, wenn ich nicht dabei bin. hmmmm… ich glaube ich vermisse meine beste Freundin aus der Grundschulzeit. Das war irgendwie anders.\nweißt du.\nich kann es schwer beschreiben.\nliebe Grüße\nMia",
+      "timestamp": "2023-12-01 10:34:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratende Person",
+      "content": "Liebe Mia, \nwie geht’s dir heute?\nSchön, dass du wieder geschrieben hast und mir mehr von dir erzählen magst.\n \nHabe ich dich richtig verstanden, du magst Schule und Lernen eigentlich? Was du anstrengend findest, sind deine Freundinnen? Du fühlst dich unwohl, weil du nicht weißt, was sie über dich denken? Sie sagen fiese Dinge zu dir. Ich kann mir sehr gut vorstellen, dass dich das verunsichert. Mir würde es bestimmt ähnlich gehen.\n \nHm, was könnte man da machen? \n \nWeißt du noch, wie das früher war mit deiner besten Freundin? Wenn es mal verschiedene Meinungen gab zwischen euch, wie habt ihr das geregelt? Wie hast du dich damals verhalten?\n \nVielleicht kannst du mal mit deiner Mutter reden, und ihr erzählen, was dir gerade Bauchweh macht? Manchmal kennen Mütter ja ähnliche Erfahrungen aus der eigenen Schulzeit.\n \nNatürlich könnte man auch zu den anderen Mädchen gehen\n- und einfach fragen, was sie gerade reden, \n- oder hallo sagen und zuhören, \n- oder sich vorher ein Thema oder eine Frage überlegen, die man stellen könnte…\n \nWas könntest du dir denn am leichtesten vorstellen auszuprobieren?\n \nOder liege ich mit meinen Ideen ganz daneben? Du hast noch andere Gründe, die es gerade so schwer machen? Vielleicht habe ich deine Situation noch nicht verstanden?\nIch freue mich sehr, wenn du mir mehr erzählen magst.\n \nLiebe Grüße und alles Gute\nbke-Frieda",
+      "timestamp": "2023-12-05 11:46:00"
+    }
+  ],
+  "generated_features": {
+    "gpt-3.5-turbo": {
+      "situation_summary": {
+        "sozial": [
+          "Mia fühlt sich in Bezug auf ihre Freundinnen in der Schule unwohl und findet es anstrengend, da sie vermutet, dass sie über sie reden und auch fiese Dinge sagen.",
+          "Mia vermisst ihre beste Freundin aus der Grundschulzeit und empfindet die aktuelle Situation mit ihren Freundinnen als unangenehm."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Mia fühlt sich oft traurig und unsicher in der Schulsituation, was durch das Verhalten ihrer Freundinnen verstärkt wird.",
+          "Sie hat Schwierigkeiten, ihre Emotionen und Gedanken bezüglich der aktuellen sozialen Situation in Worte zu fassen und empfindet es als herausfordernd, über ihre Gefühle zu sprechen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Schwierigkeiten in der Schule und mit Freundinnen"
+      }
+    },
+    "gpt-4o": {
+      "situation_summary": {
+        "sozial": [
+          "Mia hat Freundinnen in der Schule, fühlt sich aber oft von ihnen ausgeschlossen und ist unsicher, ob sie über sie reden. Dieses soziale Umfeld ist für sie momentan anstrengend und belastend.",
+          "Sie hat ihre beste Freundin aus der Grundschulzeit verloren und vermisst die frühere Freundschaft, die ihr damals Sicherheit gab."
+        ],
+        "beruflich": [
+          "Mia ist gut in der Schule, hat jedoch momentan keine Lust mehr, hinzugehen, obwohl sie das Lernen und die Schule an sich mag.",
+          "Der Stress mit ihren Freundinnen und die Unsicherheit über ihre Stellung in der Gruppe tragen zu ihrem Unwohlsein bezüglich der Schule bei."
+        ],
+        "persönlich": [
+          "Mia fühlt sich oft traurig und hat ihre Mutter angelogen, indem sie vorgab, Bauchweh zu haben, um nicht zur Schule gehen zu müssen.",
+          "Ihr Vater ist momentan auf Dienstreise, was möglicherweise zu einem Gefühl der Isolation beitragen könnte."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Schulstress und Freundinnenprobleme"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia hat eine unangenehme Beziehung zu ihren Mitschülerinnen und fühlt sich unwohl in ihrer Gegenwart",
+          "Mia vermisst ihre beste Freundin aus der Grundschulzeit",
+          "Mia ist unsicher, wie ihre Mitschülerinnen über sie denken, und fürchtet, dass sie hinter ihrem Rücken über sie reden"
+        ],
+        "beruflich": [
+          "Mia ist in der Schule gut und lernt gerne"
+        ],
+        "persönlich": [
+          "Mia ist zuhause und gibt vor, Bauchschmerzen zu haben, um nicht in die Schule gehen zu müssen",
+          "Mia ist oft traurig und fühlt sich anstrengend, was sie nicht näher beschreiben kann"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mia's Schulschwierigkeiten und Freundschaftsprobleme"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia hat Bauchweh und sagt ihrer Mutter, dass sie Schmerzen hat, während ihr Vater auf Dienstreise ist",
+          "Mia hat ein angespanntes Verhältnis zu ihren Freundinnen in der Schule, die sie fies behandeln und über sie reden",
+          "Mia vermisst ihre beste Freundin aus der Grundschulzeit"
+        ],
+        "beruflich": [
+          "Mia ist gut in der Schule und mag Lernen"
+        ],
+        "persönlich": [
+          "Mia hat Angst, in die Schule zu gehen",
+          "Mia hat Traurigkeitsschübe",
+          "Mia fällt es schwer, über ihre Gefühle zu sprechen"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mia's Unwohlsein in Schule und Freundeskreis"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia hat Schwierigkeiten mit ihren Freundinnen in der Schule, da sie sich von ihnen ausgegrenzt fühlt und sie über sie sprechen.",
+          "Mia hat Schwierigkeiten, ihre Gefühle und Bedürfnisse in der Schule auszudrücken und sich versteht fühlt.",
+          "Mia hat eine positive Beziehung zu ihrer Mutter, aber sie hat Schwierigkeiten, über ihre Gefühle mit ihr zu sprechen."
+        ],
+        "beruflich": [
+          "Mia ist gut in der Schule und hat eine positive Leistungsbeurteilung.",
+          "Mia hat Schwierigkeiten, ihre Interessen und Hobbys in der Schule auszudrücken und sich versteht fühlt.",
+          "Mia hat Schwierigkeiten, sich in der Schule zu konzentrieren und ihre Aufgaben zu erfüllen, da sie von ihren Freundinnen gestresst wird."
+        ],
+        "persönlich": [
+          "Mia hat starke Gefühle von Einsamkeit und Trauer, da sie ihre beste Freundin aus der Grundschulzeit vermisst.",
+          "Mia hat Schwierigkeiten, ihre Gefühle und Bedürfnisse auszudrücken und sich versteht fühlt.",
+          "Mia hat eine positive Beziehung zu ihrer Mutter, aber sie hat Schwierigkeiten, über ihre Gefühle mit ihr zu sprechen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Angst vor Schule und Freundinnen"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia versteht ihre Freundinnen als anstrengend und sie fühlt sich oft traurig.",
+          "Sie hat das Gefühl, dass ihre Freundinnen manchmal fies zu ihr sind und über sie sprechen, wenn sie nicht dabei ist.",
+          "Sie vermisst ihre beste Freundin aus der Grundschulzeit, die ihr Leben anders zu machen scheint.",
+          "Mia hat Schwierigkeiten, sich mit ihren Freundinnen auseinanderzusetzen und sie versteht sich selbst nicht gut.",
+          "Die Beziehung zu ihren Freundinnen ist angespannt und führt zu negativen Gefühlen in Mia."
+        ],
+        "beruflich": [
+          "Keine relevanten Informationen zu Mia's beruflichen Situation wurden in der E-Mail-Historie genannt."
+        ],
+        "persönlich": [
+          "Mia fühlt sich oft traurig und verunsichert, was durch die anstrengende Beziehung zu ihren Freundinnen verursacht wird.",
+          "Sie hat Schwierigkeiten, sich selbst zu verstehen und sich ihre Gefühle zu erklären.",
+          "Mia vermissen und sehnt sich nach einer positiven Beziehung zu einer Freundin, wie es mit ihrer alten Freundin aus der Grundschulzeit war.",
+          "Ihre Person ist in der aktuellen Situation von negativen Gefühlen wie Angst, Wut und Trauer geprägt."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die Beziehung zu ihren Eltern ist ebenfalls negativ beeinflusst, da Mia ihren Bauchweh nicht ernst nimmt und sie sich in ihrer Situation nicht unterstützt fühlt.",
+          "Mia hat Schwierigkeiten, über ihre Gefühle zu sprechen und ihre Probleme zu lösen, da sie Angst davor hat, abgelehnt zu werden oder ausgeschlossen zu sein.",
+          "Die Schule ist für Mia angespannt, da sie sich in der Schule nicht wohl fühlt und Angst davor hat, dass ihre Freundinnen sie ausgrenken oder beobachten."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mia ist traurig und hat Bauchweh"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia fühlt sich unwohl in ihrer Schulklasse und ist besorgt, dass ihre Freundinnen fies zu ihr sind.",
+          "Mia vermisst ihre beste Freundin aus der Grundschulzeit, die ihre Beziehung anders erlebt hat."
+        ],
+        "beruflich": [
+          "Mia ist gut in der Schule und hat Freunde.",
+          "Mia hat Anstrengungen in der Schule.",
+          "Mia fühlt sich unwohl in ihrer Schulklasse."
+        ],
+        "persönlich": [
+          "Mia ist traurig und verunsichert.",
+          "Mia hat Bauchweh und fühlt sich unwohl.",
+          "Mia hat eine schwierige Beziehung zu ihren Freundinnen in der Schule."
+        ],
+        "zusätzlicher_aspekt": [
+          "Mia hat möglicherweise Probleme mit Selbstwertgefühl oder sozialer Akzeptanz.",
+          "Mia hat möglicherweise Probleme mit emotionaler Stabilität oder Angst."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Generierter prägnanter Betreff"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Ratsuchende Person hat Schwierigkeiten mit Freundinnen in der Schule, fühlt sich unwohl und verunsichert durch negative Kommentare.",
+          "Ratsuchende Person hat eine enge Beziehung zu ihrer Mutter, die sie trösten und unterstützen kann.",
+          "Ratsuchende Person hat Schwierigkeiten, sich mit Situation zu konfrontieren und möchte Hilfe, um besser damit umgehen zu können."
+        ],
+        "beruflich": [
+          "Ratsuchende Person ist gut in der Schule, aber möchte nicht mehr dorthin gehen.",
+          "Ratsuchende Person hat Schwierigkeiten, mit Konflikten umzugehen und möchte lernen, wie man mit ihnen umgeht."
+        ],
+        "persönlich": [
+          "Ratsuchende Person hat Schwierigkeiten, ihre Gefühle und Bedürfnisse auszudrücken und möchte lernen, wie man sie besser versteht.",
+          "Ratsuchende Person hat eine tiefe Sehnsucht nach ihrer Kindheit und der Nähe zu ihrer besten Freundin."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Hilfe, ich brauche Unterstützung in der Schule"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia hat eine ungute Beziehung zu ihren Freundinnen",
+          "Sie fühlt sich unwohl in der Schule und vermisst ihre Grundschulzeit",
+          "Mia hat möglicherweise Angst, über ihre Gefühle zu sprechen, da sie ihrer Mutter gegenüber nur vorgibt, Bauchweh zu haben"
+        ],
+        "beruflich": [
+          "Mia ist gut in der Schule"
+        ],
+        "persönlich": [
+          "Mia hat Schwierigkeiten, ihre Gefühle zu beschreiben und auszudrücken",
+          "Sie ist oft traurig und möglicherweise unsicher, was die Meinung anderer über sie angeht"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mia’s Unwohlsein in Schule und Freundschaften"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia hat eine enge Beziehung zu ihrer Mutter, wohingegen sie ihr Verhältnis zu ihrem Vater als distanzierter beschreibt.",
+          "Sie hat eine schwierige Beziehung zu ihrer Peergroup in der Schule, die sie oft als fies und ausgrenzend erlebt.",
+          "Mia vermisst ihre beste Freundin aus der Grundschulzeit, mit der sie eine unbeschwertere Beziehung hatte."
+        ],
+        "beruflich": [
+          "Mia ist in der Schule und beschreibt, dass sie gut lernt und gute Noten hat."
+        ],
+        "persönlich": [
+          "Mia beschreibt, dass sie sich oft traurig und belastet fühlt und Schwierigkeiten hat, über ihre Gefühle zu sprechen.",
+          "Sie scheint ein gutes Selbstvertrauen in Bezug auf ihre schulischen Leistungen zu haben."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Mia's Schultrostigkeit und Freundschaftsprobleme"
+      }
+    },
+    "Llama-3-SauerkrautLM-70b-Q4_K_S.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Mia hat Schwierigkeiten mit Freundinnen in der Schule und fühlst sich unwohl, wenn sie nicht weiß, was sie über sie denken.",
+          "Mia vermisse ihre beste Freundin aus der Grundschulzeit und fühlt sich in der aktuellen Situation unbehaglich."
+        ],
+        "beruflich": [
+          "Mia hat Schwierigkeiten mit der Schule und fühlt sich unwohl, wenn sie nicht in die Schule gehen möchte."
+        ],
+        "persönlich": [
+          "Mia fühlt sich unwohl und traurig, wenn sie an ihre Freundinnen denkt und sich mit ihnen schwertun kann.",
+          "Mia hat Schwierigkeiten, ihre Gefühle zu beschreiben und sich jemandem anzuvertrauen."
+        ],
+        "zusätzlicher_aspekt": [
+          "Mia hat Schwierigkeiten, ihre Mutter über ihre wahren Gefühle aufzuklären und sich vor ihren Eltern zu öffnen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Probleme in der Schule und bei Freundinnen"
+      }
+    }
+  }
+}

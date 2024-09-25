@@ -1,0 +1,248 @@
+{
+  "type": "ranking",
+  "chat_id": 3,
+  "institut_id": 0,
+  "subject": "Bisexualität",
+  "sender": "Anders00",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Guten Abend, \n\nich habe mich in einen ehemaligen Schulfreund verliebt. Mit einem Mädchen hatte ich noch keine Beziehung aber ich denke, dass ich bisexuell bin. \n\nIch würde es meinen Eltern gerne sagen, aber für meinen Vater wird eine Welt zusammenbrechen, da es für ihn unvorstellbar ist, dass sein Sohn bi oder auch homosexuell ist! Was die Nachbarn, Freunde, Familie und Kollegen von ihm halten ist ihm sehr wichtig. \n\nSoll ich es meinen Eltern lieber nicht sagen? Unter Umständen ändern sich meine Gefühle ja auch wieder. \n\nEigentlich ist doch das wichtigste glücklich zu sein. Warum wird also immer so eine große Sache daraus gemacht wen man lieb und wen nicht? \n\nIch hoffe, das mir jemand einen Rat geben kann!",
+      "timestamp": "2022-04-27 21:11:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Lieber Anders,\ndeine Nachricht ist bei mir angekommen, ich bin Sozialpädagoge und arbeite neben der Beratung hier in der Onlineberatung an einer Familienberatungsstelle in einer größeren Stadt. Ich bin für dich da und wir können gemeinsam nach dem richtigen Weg für dich suchen.\n\nEs klingt so, als ob du in einer schwierigen Situation steckst. Durch deine Gefühle für deinen Schulfreund denkst du, dass deine sexuelle Orientierung eher bisexuell oder homosexuell ist.  Es ist verständlich, dass du dir Sorgen machst, es deinen Eltern zu erzählen. Wie werden sie reagieren? Du denkst, dass besonders dein Vater Schwierigkeiten damit haben könnte, das zu verstehen und zu akzeptieren.\n\nWenn du das Gefühl hast, dass das Risiko derzeit zu groß ist oder du unsicher über deine Gefühle bist, ist es möglicherweise ratsam, zu warten. Es gibt keine Eile, diese Dinge zu teilen. Es ist völlig in Ordnung, sich Zeit zu nehmen, um mehr über dich selbst zu erfahren und eine sichere Umgebung zu schaffen. Wie viele und welche Erfahrungen hast du bisher gemacht, wenn du dich jemanden anvertraut hast? \n\nDas Wichtigste ist, dass du auf dich selbst achtest und das tust, was für dich persönlich am besten ist. Wenn du dir deiner Gefühle sicher bist, wird es dir leichter fallen, über deine Gefühle zu reden. Vielleicht ist das der erste Schritt?\nWenn du das Gefühl hast, dass du bereit bist, dann kann der zweite Schritt kommen. Dann kannst du mit deinen Eltern sprechen und ihnen von deinen Gefühlen erzählen. Dazu könnte es hilfreich sein, das Gespräch zu einem geeigneten Zeitpunkt zu führen. Vielleicht kannst du das Gespräch mit jemandem beginnen, von dem du weißt, dass er dich unterstützt, sei es ein Freund, ein anderes Familienmitglied oder sogar ein Berater. Wenn du dich sicher und unterstützt fühlst, fällt dir das Gespräch leichter. Und im nächsten Schritt könntest du dann mit deinen Eltern reden.\n\nDu hast Recht, dass das Wichtigste ist, glücklich zu sein. Es ist bedauerlich, dass es in der Gesellschaft oft eine große Sache ist, wen man liebt. Es gibt aber auch viele unterstützende Gemeinschaften und Ressourcen, die dir helfen können, egal wie du dich entscheidest. Schaue dich gerne auch hier in der Onlineberatung um, zum Beispiel im Forum oder in den Gruppenchats.\n\nLetztlich ist es eine sehr persönliche Entscheidung und es gibt kein richtig oder falsch. Es kann hilfreich sein, mit Menschen zu sprechen, die ähnliche Erfahrungen gemacht haben, und professionelle Unterstützung in Betracht zu ziehen, um dir bei deinem Weg zu helfen.\nHier schicke ich dir noch Links für mehr Informationen: www.regenbogenportal.de oder www.queeresnetzwerk.bayern.\n\n\nIch hoffe, dass du die Unterstützung und die Antworten findest, die du suchst. Pass gut auf dich auf.\n\nViele Grüße\nbke-Heiner",
+      "timestamp": "2022-04-28 17:23:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Beratende Person",
+      "content": "Lieber Anders,\nvor einigen Wochen habe ich dir auf deine Mail eine Antwort geschrieben. Leider hast du dich nicht nochmal gemeldet. Ich hoffe sehr, du hast Antworten gefunden, die dir weiterhelfen. Wenn du magst, kannst du weiterhin unseren Kontakt für deine Fragen und Themen nutzen. Wenn du zurzeit keinen Bedarf hast, ist es völlig in Ordnung. \n\nIch wünsche dir alles Gute und viel Gespür für das Richtige bei all deinen Entscheidungen\n\nViele Grüße\nbke-Heiner",
+      "timestamp": "2022-05-29 00:00:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo Heiner,\ndanke dass du nachfragst.\nEs war gut, dass du mir damals geschrieben hast, ich soll erst mal sicher werden. Das Gespräch mit meinen Eltern habe ich dann verschoben. \nJetzt bin ich mir sicher, dass ich homosexuell bin.  Komisch, das hier so zu schreiben…aber das wird es einfacher machen, mit meinen Eltern zu reden. Ich glaube, dass meine Mum eh schon etwas bemerkt hat. Neulich war mein Freund bei uns und sie hat gesehen, wie wir uns umarmt haben. Naja, dachte ich dann, macht ja nichts. Irgendwann muss es ja rauskommen.\nWas denkst du? Soll ich erst mit meiner Mutter reden und dann später mit meinem Vater oder ist es besser, wenn ich es beiden gleichzeitig erzähle.\nIch brauche dazu deinen Rat.\nGruß Anders",
+      "timestamp": "2022-06-03 22:13:00"
+    }
+  ],
+  "generated_features": {
+    "gpt-3.5-turbo": {
+      "situation_summary": {
+        "sozial": [
+          "Anders ist in einer schwierigen Situation, da er sich seiner homosexuellen Orientierung bewusst ist und überlegt, es seinen Eltern zu offenbaren.",
+          "Anders' Vater wird voraussichtlich Schwierigkeiten haben, die sexuelle Orientierung seines Sohnes zu akzeptieren, da es ihm wichtig ist, was Nachbarn, Freunde, Familie und Kollegen denken."
+        ],
+        "beruflich": [
+          "Anders hat sich im Rahmen der psychosozialen Onlineberatung mit einem Sozialpädagogen über seine Gefühle ausgetauscht und Unterstützung erhalten, sich über seine sexuelle Orientierung klar zu werden."
+        ],
+        "persönlich": [
+          "Anders hat sich nach Überlegung sicher, dass er homosexuell ist, und plant, dies seiner Mutter und möglicherweise auch seinem Vater mitzuteilen, nachdem seine Mutter vermutlich bereits Anzeichen bemerkt hat."
+        ],
+        "zusätzlicher_aspekt": [
+          "Anders überlegt, ob er zuerst mit seiner Mutter sprechen sollte und später separat mit seinem Vater oder ob es besser wäre, es beiden gleichzeitig mitzuteilen, und bittet um Rat in dieser Angelegenheit."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Coming-out vor Eltern planen"
+      }
+    },
+    "gpt-4o": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat sich in einen ehemaligen Schulfreund verliebt und denkt, dass sie homosexuell ist.",
+          "Der Vater der ratsuchenden Person legt viel Wert auf die Meinung der Nachbarn, Freunde, Familie und Kollegen, was die Offenbarung ihrer sexuellen Orientierung erschwert."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person ist sich jetzt sicher, dass sie homosexuell ist, und empfindet das Schreiben darüber als hilfreich, um es den Eltern mitzuteilen.",
+          "Die Mutter der ratsuchenden Person hat möglicherweise bereits eine Ahnung über ihre sexuelle Orientierung, nachdem sie die ratsuchende Person und ihren Freund beim Umarmen gesehen hat."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Coming-out vor Eltern"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende Person hat sich noch nicht geoutet, aber plant es, indem sie mit ihren Eltern sprechen möchte.",
+          "Die Ratsuchende Person hat einen Freund, der bei ihnen zu Hause war und von ihrer Mutter gesehen wurde.",
+          "Die Ratsuchende Person denkt, dass ihre Mutter bereits etwas bemerkt hat."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die Ratsuchende Person ist sich sicher, dass sie homosexuell ist.",
+          "Die Ratsuchende Person hat eine positive Einstellung gegenüber dem Gespräch mit ihren Eltern.",
+          "Die Ratsuchende Person sucht Rat darüber, ob sie mit ihrer Mutter oder beiden Elternteilen gleichzeitig sprechen soll."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Ratsuche: Kommend-out bei Eltern"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat einen Freund und wurde möglicherweise von der Mutter beobachtet, wie sie sich umarmten",
+          "Es wird erwartet, dass die Mutter bereits Verdacht geschöpft hat"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person hat sich als homosexuell identifiziert",
+          "Sie hat sich Zeit genommen, sich ihrer sexuellen Orientierung sicher zu sein",
+          "Sie bereitet sich darauf vor, mit ihren Eltern über ihre sexuelle Orientierung zu sprechen"
+        ],
+        "Kommunikation": []
+      },
+      "generated_subject": {
+        "Betreff": "Beratung für Gespräch mit Eltern über homosexuelle Orientierung"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Angst vor der Reaktion der Familie vor allem des Vaters",
+          "Mögliche Veränderung im Verhalten der Mutter, da sie bereits ein Anzeichen dafür gesehen hat, dass Anders schwul ist, nachdem sie den Freund von Anders gesehen hat"
+        ],
+        "beruflich": [
+          "Keine direkten Informationen über die berufliche Situation"
+        ],
+        "persönlich": [
+          "Entschlossenheit, seine sexuelle Orientierung zu akzeptieren und mitzuteilen",
+          "Versuchen, die Situation mit seinen Eltern zu lösen, indem er sich auf sein Verhältnis zu seiner Mutter konzentriert"
+        ],
+        "zusätzlicher_aspekt": [
+          "Angst vor der Reaktion der Familie",
+          "Sorge um den Umgang mit dem Vater und mögliche Konsequenzen für seine Beziehung zu ihm"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Entschiedenheit bei der Kommunikation mit den Eltern zu deiner Homosexualität"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person ist in einem schwierigen sozialen Kontext, da sie sich Sorgen macht, wie ihre Eltern reagieren werden, insbesondere ihr Vater, wenn sie ihnen ihre sexuelle Orientierung mitteilt."
+        ],
+        "beruflich": [
+          "Keine relevante Informationen zur beruflichen Situation der ratsuchenden Person."
+        ],
+        "persönlich": [
+          "Die ratsuchende Person ist sich ihrer sexuellen Orientierung sicher und hat sich entschieden, es ihren Eltern zu erzählen. Sie hat sich bereits mit jemandem getroffen, der sie unterstützt, und ist bereit, die Situation zu besprechen."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die ratsuchende Person hat inzwischen den Kontakt zu seinem Freund aufgenommen und sich über die Reaktionen seiner Mutter informiert, die sie bereits bemerkt hatte, als sie sich umarmten."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Bewältigung von Angst und Unsicherheit bei der Offenlegung meiner sexuellen Orientierung"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende Person hat Schwierigkeiten mit der Offenlegung ihrer sexuellen Orientierung gegenüber ihren Eltern, insbesondere ihrem Vater.",
+          "Die Eltern reagieren wahrscheinlich mit Ablehnung, was für die Ratsuchende Person eine Herausforderung darstellt.",
+          "Die Ratsuchende Person hat sich entschieden, zunächst sicher zu werden und dann mit ihren Eltern zu sprechen."
+        ],
+        "beruflich": [
+          "Keine relevanten Informationen.",
+          "Keine relevanten Informationen."
+        ],
+        "persönlich": [
+          "Die Ratsuchende Person hat sich sicher über ihre sexuelle Orientierung geäußert und sich als homosexuell identifiziert.",
+          "Die Ratsuchende Person hat eine Beziehung zu einem männlichen Freund und hat die Absicht, mit seinen Eltern zu sprechen."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die Ratsuchende Person hat Bedenken hinsichtlich der Reaktion ihrer Eltern und der möglichen Konsequenzen für ihre soziale Umgebung."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Ermittlung eines geeigneten Zeitpunkts für die Offenlegung meiner Homosexualität gegenüber meiner Mutter und meinem Vater"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Stichpunkt zur sozialen Situation 1",
+          "Stichpunkt zur sozialen Situation 2"
+        ],
+        "beruflich": [
+          "Stichpunkt zur beruflichen Situation 1",
+          "Stichpunkt zur beruflichen Situation 2"
+        ],
+        "persönlich": [
+          "Stichpunkt zur persönlichen Situation 1",
+          "Stichpunkt zur persönlichen Situation 2"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Kann ich mit meinem Vater über meine sexuelle Orientierung sprechen, wenn er nicht akzeptierend ist?"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat sich nicht geoutet, aber ein Familienmitglied hat möglicherweise Anzeichen dafür wahrgenommen.",
+          "Die ratsuchende Person plant, sich bald zu outen und sucht Unterstützung bei der Vorgehensweise."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person ist sich ihrer sexuellen Orientierung sicher und hat sich entschieden, sich als homosexuell zu outen.",
+          "Die ratsuchende Person sucht Rat bei der Vorgehensweise, sich gegenüber ihren Eltern zu outen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Kommt heraus: Ich bin schwul und brauche Rat, wann und wie ich es meinen Eltern sage"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Mutter des Ratsuchenden scheint etwas bemerkt zu haben, da sie den Freund des Ratsuchenden gesehen hat, als er die Umarmung des Ratsuchenden erwidert hat",
+          "Die Mutter des Ratsuchenden könnte bereits eine Ahnung haben, dass ihr Sohn homosexuell ist"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Der Ratsuchende hat sich seiner sexuellen Orientierung bewusst und ist sich sicher, dass er homosexuell ist",
+          "Der Ratsuchende plant, mit seinen Eltern über seine sexuelle Orientierung zu sprechen",
+          "Der Ratsuchende sucht den Rat des Beratenden, ob er mit seiner Mutter oder mit beiden Elternteilen gleichzeitig über seine sexuelle Orientierung sprechen soll"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Soll Anders Eltern über Homosexualität informieren?"
+      }
+    },
+    "Llama-3-SauerkrautLM-70b-Q4_K_S.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Der Ratsuchende hat Schwierigkeiten, seine sexuelle Orientierung seinen Eltern zu offenbaren, insbesondere seinem Vater.",
+          "Er hat Angst vor der Reaktion seiner Eltern und vor den möglichen Konsequenzen.",
+          "Er hat Kontakt zu seiner Mutter, die möglicherweise bereits Verdacht geschöpft hat, dass er homosexuell ist."
+        ],
+        "beruflich": [
+          "Keine direkte Auswirkungen auf die Berufssituation sind erkennbar.",
+          "Es gibt keine Anzeichen dafür, dass die sexuelle Orientierung Auswirkungen auf die Karriere hat."
+        ],
+        "persönlich": [
+          "Der Ratsuchende hat seine sexuelle Orientierung als homosexuell identifiziert.",
+          "Er hat Schwierigkeiten, seine Gefühle seinen Eltern zu offenbaren.",
+          "Er hat Angst vor der Reaktion seiner Eltern und vor den möglichen Konsequenzen."
+        ],
+        "zusätzlicher_aspekt": [
+          "Er sucht Rat und Unterstützung, um seine sexuelle Orientierung seinen Eltern zu offenbaren.",
+          "Er hat Kontakt zu einer Online-Beratungsplattform, um Unterstützung zu erhalten."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Komme-out über sexuelle Orientierung an Eltern"
+      }
+    }
+  }
+}

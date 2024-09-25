@@ -3,7 +3,7 @@
     <!-- Titel und Einleitung -->
     <v-row>
       <v-col cols="12">
-        <v-card>
+        <v-card class="title-card">
           <v-card-title class="headline">Admin Dashboard</v-card-title>
           <v-card-subtitle>Wählen Sie ein Feature aus, um fortzufahren.</v-card-subtitle>
         </v-card>
@@ -57,14 +57,51 @@ function navigateToFeature(route) {
 <style scoped>
 .admin-home {
   margin-top: 20px;
+  background-color: #f4f8f9;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.title-card {
+  background-color: #b0ca97; /* Hauptfarbe für das Dashboard */
+  color: #fff;
+}
+
+.title-card .v-card-title {
+  color: #ffffff;
+}
+
+.title-card .v-card-subtitle {
+  color: #e6f2d5;
 }
 
 .feature-card {
+  background-color: #ffffff;
+  border: 1px solid #b0ca97; /* Rahmenfarbe anpassen */
+  border-radius: 8px;
   cursor: pointer;
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 .feature-card:hover {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  background-color: #e8f5e9; /* Leicht grünlicher Hintergrund beim Hover */
+}
+
+.feature-card .v-card-title {
+  color: #2f4f4f;
+}
+
+.feature-card .v-card-text {
+  color: #556b2f; /* Textfarbe für die Beschreibung */
+}
+
+.v-btn {
+  background-color: #b0ca97 !important;
+  color: #ffffff !important;
+}
+
+.v-btn:hover {
+  background-color: #81b68b !important; /* Leichte Farbänderung bei Hover */
 }
 </style>

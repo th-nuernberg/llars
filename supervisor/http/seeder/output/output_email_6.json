@@ -1,0 +1,258 @@
+{
+  "type": "ranking",
+  "chat_id": 6,
+  "institut_id": 0,
+  "subject": "Liebeskummer",
+  "sender": "traurigesonne",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo, ich habe lange überlegt, ob ich schreiben soll. Aber jetzt gehts mir so schlecht und deswegen schreib ich. Wer liest denn das? In der schule gibt es einen jungen und ich war so ein paar Wochen mit ihm zusammen. Dann hat er mit mir Schluss gemacht. Hat mir eine WhatsApp geschickt und gesagt er liebt mich nicht mehr sondern liebt eine andere. Dann habe ich auch noch herausgefunden das die andere meine beste Freundin ist und jetzt weiß ich nicht was ich machen soll. Ich fühle mich betrogen und glaube ich kann nie wieder glücklich sein. Ich liebe ihn eigentlich ja noch und meine Freundin konnte ich immer alles sagen. Aber nun hab ich niemanden mehr mit dem ich reden kann und der mich mag. Nichts macht mir Freude und ich weiß nicht was ich machen soll. Wie geht das Gefühl wieder weg und was soll ich machen. Kann mir jemand helfen? Danke traurigesonne",
+      "timestamp": "2019-09-27 22:17:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Liebe traurigesonne,\nschön, dass du uns in der Onlineberatung scheibst. Mein Name ist bke-Fabian, ich bin Psychologe und arbeite an einer Beratungsstelle für Familien und hier in der Onlineberatung berate ich Eltern und Jugendliche. Ich habe deine Nachricht erhalten und bin für dich da.\n\nIch kann mich sehr gut in deine Situation hineinversetzen. Du beschreibst es so treffend: …nun hab ich niemanden mehr mit dem ich reden kann und der mich mag. Dass dich das traurig macht, kann ich gut verstehen.\n\nDu fragst aber auch, was du machen könntest und wie das Gefühl wieder weggeht…das finde ich sehr mutig von dir. Du hast dich getraut zu schreiben. Ich glaube, das ist schon ein erster Schritt, mit dem du dir selbst helfen kannst. Sich seine Gefühle von der Seele schreiben ist eine erste Hilfe. \n\nBevor ich dir hier Tipps gebe, möchte ich dich einladen. Du kannst unseren Kontakt genau dafür nutzen, um dir die traurigen Gedanken von der Seele zu schreiben. \n\nVielleicht kann ich dir noch eine Idee mitgeben?\nWenn du dich in deinem Leben umschaust, vielleicht findest du jemanden, mit dem du es dir vorstellen kannst, mehr Kontakt zu haben? Erst mal nicht, um deine traurigen Gedanken mit demjenigen zu teilen, sondern einfach dafür, dass du nicht so alleine bist?\n\nDu kannst mir jederzeit schreiben, auch öfter hintereinander. Das ist ganz in Ordnung. Ich werde versuchen, dir so schnell wie möglich, aber auf jeden Fall innerhalb von vier Tagen zu antworten.\n\nGanz liebe Grüße schickt dir\nbke-Fabian",
+      "timestamp": "2019-09-28 14:23:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo,\nheute war ein besonders blöder Tag. Meine Freundin und ihr Freund sind alleine weggegangen und meine Freundin hat gesagt, ich soll sie in Ruhe lassen, ich störe nur.\nDas ist ganz schön gemein von ihr.\nIch bin soo traurig und könnte dauernd nur weinen. Wenn ich in der Schule bin, dann sehe ich sie und bekomme mit, wie sie miteinander Händchen halten und alleine sein wollen. Ganz schön blöd. Deshalb bin ich ziemlich fertig, weil ich das mitbekomme. Am liebsten würde ich in eine andere Klasse gehen, damit ich das nicht anschauen muss. Andere finden es auch komisch, glaube ich. Die Freunde von ihm wollen eigentlich mit ihm Fußball spielen oder was am Handy anschauen. \n\nHast du noch mehr Ideen, was ich machen könnte, damit es nicht mehr so weh tun?\nDanke.\ntraurigesonne",
+      "timestamp": "2019-10-01 17:45:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratende Person",
+      "content": "Liebe traurigesonne,\n\nich fühle ganz mit dir und überlege, was dir helfen könnte.\n\nVielleicht ist dein Gefühl, die beiden blöd zu finden, ja sogar hilfreich? Damit fällt es dir bestimmt leichter, dich abzugrenzen und auf dich zu achten. Dass es dich verletzt, ist das eine, das andere ist, dass du dich selbst schützt. Wenn du den beiden aus dem Weg gehst, dann bekommst du auch innerlich mehr Abstand. Vielleicht fällt es dir dann leichter an andere Dinge und Themen zu denken? \n\nWas machst DU eigentlich gerne? Womit beschäftigst du dich, wenn du dich entspannen willst oder dir etwas Gutes tun willst? Hast du eine Lieblingsbeschäftigung? \n\nMagst du mir ein bisschen erzählen?\n\n\nIch freu mich drauf\nLiebe Grüße\nBke-Fabian\n\nPS. Dein Name gefällt mir: traurigesonne. Das klingt für mich nicht nur nach traurig. Eine Sonne ist ja auch warm und strahlend. Oder? Was bringt dich zum Strahlen?",
+      "timestamp": "2019-10-04 16:55:00"
+    }
+  ],
+  "generated_features": {
+    "gpt-3.5-turbo": {
+      "situation_summary": {
+        "sozial": [
+          "Ratsuchende Person wurde von ihrem Freund verlassen, der sich in ihre beste Freundin verliebt hat, was zu einem doppelten Vertrauensbruch geführt hat.",
+          "Ratsuchende Person fühlt sich betrogen, allein gelassen und unsicher in Bezug auf soziale Beziehungen, da sie niemanden mehr zum Reden hat und sich isoliert fühlt."
+        ],
+        "beruflich": [
+          "Keine direkten beruflichen Informationen wurden durch die Ratsuchende Person bereitgestellt."
+        ],
+        "persönlich": [
+          "Ratsuchende Person ist stark von der aktuellen Situation betroffen und empfindet tiefe Traurigkeit, Unverständnis und Verletztheit.",
+          "Ratsuchende Person leidet unter dem Schmerz der Trennung, dem Gefühl der Zurückweisung und dem Verlust von Freundschaft und Vertrauen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Freundin mit Freund stört traurige Sonne"
+      }
+    },
+    "gpt-4o": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hatte eine Beziehung, die abrupt endete, da der Partner eine andere Person, die ehemalige beste Freundin der ratsuchenden Person, liebt.",
+          "Sie fühlt sich betrogen und isoliert, da sie niemanden mehr hat, mit dem sie ihre Gefühle teilen kann."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person empfindet tiefe Traurigkeit und erlebt häufige Weinkrämpfe aufgrund der aktuellen Situation.",
+          "Sie wird durch die Anwesenheit des Ex-Partners und der ehemaligen besten Freundin an der Schule stark belastet und überlegt, die Klasse zu wechseln, um dem auszuweichen."
+        ],
+        "emotionen_und_bewältigung": [
+          "Der Verlust der Beziehung und Freundschaft führt zu intensiven Gefühlen von Schmerz und Verrat.",
+          "Die ratsuchende Person sucht aktiv nach Wegen, um den emotionalen Schmerz zu lindern, und zeigt Interesse an Ratschlägen, wie sie mit der Situation umgehen kann."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Trennung und Freundschaftsverlust"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person ist in einer schwierigen sozialen Situation, nachdem ihr Freund mit ihr Schluss gemacht hat und sie herausgefunden hat, dass er mit ihrer besten Freundin zusammen ist",
+          "Die ratsuchende Person fühlt sich von ihrer Freundin verraten und allein gelassen, nachdem sie gebeten wurde, sie in Ruhe zu lassen und alleine mit ihrem Freund zu sein",
+          "Die ratsuchende Person ist traurig und hat Schwierigkeiten, die Situation in der Schule zu bewältigen, da sie die beiden oft gemeinsam sieht"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person ist traurig und weint oft",
+          "Die ratsuchende Person hat Schwierigkeiten, sich von der Situation abzugrenzen und sucht nach Möglichkeiten, damit besser umzugehen"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Betroffen durch Freundin und Ex-Freund"
+      }
+    },
+    "sauerkrautlm-mixtral-8x7b-instruct.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die beste Freundin und ein ehemaliger Freund sind zusammen",
+          "Die beste Freundin hat der ratsuchenden Person gesagt, sie soll sie in Ruhe lassen"
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person fühlt sich verletzt, weil die beste Freundin mit dem Ex-Freund zusammen ist",
+          "Die ratsuchende Person hatte eine Beziehung mit dem Freund ihrer besten Freundin, die nun beendet ist",
+          "Die ratsuchende Person hat keine engen sozialen Kontakte, mit denen sie über ihre Gefühle sprechen kann",
+          "Die ratsuchende Person fühlt sich einsam und hat Schwierigkeiten, Freude an Aktivitäten zu finden"
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Ratsuchende Person fühlt sich verletzt durch Freundeskreis"
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Beratende Person ermutigt die Ratsuchende, sich selbst zu schützen und Abstand zu den Personen zu nehmen, mit denen sie unglücklich ist.",
+          "Die Ratsuchende hat ein Problem mit ihrer Freundin und deren Freund, da sie sich durch ihre gemeinsamen Aktivitäten unwohl fühlt und sich getrennt fühlen lässt."
+        ],
+        "beruflich": [
+          "Es gibt keine Informationen über die berufliche Situation der Ratsuchenden Person, die für den Beratungsverlauf relevant sind."
+        ],
+        "persönlich": [
+          "Die Ratsuchende hat ein Problem mit Selbstverletzung durch negative Gedanken und fühlt sich unglücklich und isoliert.",
+          "Die Ratsuchende hat Schwierigkeiten, sich zu beschäftigen und findet keine Aktivitäten, die ihr helfen, sich zu entspannen.",
+          "Die Ratsuchende hat Schwierigkeiten, sich zu erinnern, was sie gerne tut und welche Aktivitäten sie vornehmen möchte, um sich zu entspannen."
+        ],
+        "zusätzlicher Aspekt": [
+          "Die Ratsuchende hat Schwierigkeiten, sich zu erinnern, was sie gerne tut und welche Aktivitäten sie vornehmen möchte, um sich zu entspannen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Schwierigkeiten nachdem mein Ex-Freund sich mit meiner besten Freundin zusammengetan hat, ich fühle mich betrogen und alleine."
+      }
+    },
+    "Llama-3.1-SauerkrautLM-8b-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende Person ist mit einer Freundin zusammen und beschreibt ein Gefühl der Betrübnis, weil die Freundin einen anderen Jungen begehrt und sich mit diesem treffen will."
+        ],
+        "beruflich": [
+          "Keine relevante Information zur beruflichen Situation der Ratsuchenden Person ist im E-Mail-Verkehr enthalten."
+        ],
+        "persönlich": [
+          "Die Ratsuchende Person ist traurig und fühlt sich alleine, weil sie sich nicht mit ihrer Freundin mehr treffen kann. Sie beschreibt ein Gefühl der Verletzung, weil ihre Freundin sich mit dem Jungen trifft, den sie selbst begehrt hatte."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die Ratsuchende Person ist verletzt und verliert die Kontrolle über ihre Situation, da sie sich nicht mehr mit ihrer Freundin treffen kann. Sie beschreibt ein Gefühl der Isolation und des Alleinseins."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Ratsuchende Person ist mit Gefühlen von Verrat und Verletzung konfrontiert."
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person ist in ihrer sozialen Umgebung stark von der Beziehung mit ihrer ehemaligen Freundin und deren Freund beeinflusst.",
+          "Sie hat Schwierigkeiten, die Situation zu bearbeiten und benötigt Unterstützung.",
+          "Sie fühlt sich betrogen und verletzt.",
+          "Sie hat Schwierigkeiten, mit anderen in Kontakt zu treten, da sie sich von anderen abgestoßen fühlt."
+        ],
+        "beruflich": [
+          "Die ratsuchende Person ist in der Schule und hat Schwierigkeiten, sich an die täglichen Situationen zu gewöhnen.",
+          "Sie fühlt sich von der Situation in der Schule überfordert.",
+          "Sie hat Schwierigkeiten, sich mit ihren Mitmenschen auseinanderzusetzen, da sie sich von anderen abgestoßen fühlt."
+        ],
+        "persönlich": [
+          "Die ratsuchende Person ist in einer emotionalen Krise, da sie sich von ihrer ehemaligen Freundin getrennt hat.",
+          "Sie hat Schwierigkeiten, mit ihrem Selbstwertgefühl umzugehen.",
+          "Sie benötigt Unterstützung, um ihre Gefühle zu bearbeiten und sich wieder selbst zu finden."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Verletzter Stolz und Gefühl der Rache"
+      }
+    },
+    "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die Ratsuchende ist in einer Beziehung mit einem Jungen, der sie dann wegen einer anderen Person verlassen hat.",
+          "Die andere Person ist die beste Freundin der Ratsuchenden, was die Situation kompliziert.",
+          "Die Ratsuchende fühlt sich betrogen und unglücklich."
+        ],
+        "beruflich": [
+          "Keine Informationen.",
+          "Keine Informationen."
+        ],
+        "persönlich": [
+          "Die Ratsuchende ist in ihrer emotionalen Gesundheit gefährdet.",
+          "Die Ratsuchende ist verletzt und glaubt, dass sie nie wieder glücklich sein wird.",
+          "Die Ratsuchende sucht Unterstützung, um mit ihren Gefühlen umzugehen."
+        ],
+        "zusätzlicher_aspekt": [
+          "Die Ratsuchende hat Schwierigkeiten, mit der Situation umzugehen, da sie sich nicht alleine fühlt.",
+          "Die Ratsuchende ist anfällig für Selbstzerstörung, da sie glaubt, dass sie niemanden mehr mag.",
+          "Die Ratsuchende hat Schwierigkeiten, ihre Gefühle von der Seele zu schreiben, da sie sich nicht traut."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Erstnachricht prägnant zusammenfassen"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q8_0.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person hat eine beste Freundin, die jetzt mit ihrem Ex-Freund zusammen ist.",
+          "Die ratsuchende Person fühlt sich von ihrer Freundin verraten und verlassen.",
+          "Die ratsuchende Person vermisst die Unterstützung und den Kontakt zu ihrer Freundin.",
+          "Die ratsuchende Person ist in der Schule mit der Situation konfrontiert und fühlt sich unwohl.",
+          "Die ratsuchende Person ist einsam und isoliert.",
+          "Die ratsuchende Person hat nicht das Gefühl, dass andere ihr Verständnis entgegenbringen."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person ist emotional verletzt und traurig.",
+          "Die ratsuchende Person sucht nach Möglichkeiten, um mit ihrer Traurigkeit umzugehen.",
+          "Die ratsuchende Person ist offen für Unterstützung und möchte sich nicht alleine fühlen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Ratsuchende Person erlebt Liebeskummer und Einsamkeit nach Beziehungsende"
+      }
+    },
+    "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Die ratsuchende Person fühlt sich von ihrer besten Freundin verraten, da diese jetzt mit ihrem Ex-Freund zusammen ist.",
+          "Die ratsuchende Person wird von ihren Klassenkameraden und den Freunden des Ex-Freundes ausgegrenzt.",
+          "Die ratsuchende Person ist in der Schule mit der Situation konfrontiert, was sie verletzt und traurig macht."
+        ],
+        "beruflich": [],
+        "persönlich": [
+          "Die ratsuchende Person ist traurig und weint oft.",
+          "Die ratsuchende Person hat Schwierigkeiten, das Gefühl der Verletzung zu überwinden, möchte jedoch, dass es aufhört zu wehtun.",
+          "Die ratsuchende Person sucht nach Ideen, um mit der Situation umzugehen und sich selbst zu schützen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "trauernde Jugendliche mit Freundesproblem"
+      }
+    },
+    "Llama-3-SauerkrautLM-70b-Q4_K_S.gguf": {
+      "situation_summary": {
+        "sozial": [
+          "Stichpunkt zur sozialen Situation 1: Die Ratsuchende Person fühlte sich betrogen und verlassen, nachdem ihr Ex-Freund mit ihrer besten Freundin zusammengegangen ist.",
+          "Stichpunkt zur sozialen Situation 2: Die Ratsuchende Person hat Schwierigkeiten, mit ihrer Freundin zu reden und fühlt sich isoliert."
+        ],
+        "beruflich": [
+          "Keine relevanten Informationen im Bereich Beruf"
+        ],
+        "persönlich": [
+          "Stichpunkt zur persönlichen Situation 1: Die Ratsuchende Person fühlt sich traurig und glaubt, sie könnte nie wieder glücklich sein.",
+          "Stichpunkt zur persönlichen Situation 2: Die Ratsuchende Person hat Schwierigkeiten, ihre Gefühle zu verarbeiten und sucht nach einer Möglichkeit, ihre traurigen Gedanken zu überwinden."
+        ],
+        "zusätzlicher_aspekt": [
+          "Stichpunkt zu einem weiteren relevanten Aspekt 1: Die Ratsuchende Person hat Schwierigkeiten, mit dem Verlust ihrer Freundin und ihres Ex-Freundes umzugehen."
+        ]
+      },
+      "generated_subject": {
+        "Betreff": "Verletzung durch Ex-Freund und beste Freundin"
+      }
+    }
+  }
+}

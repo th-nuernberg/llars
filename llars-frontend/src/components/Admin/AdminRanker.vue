@@ -8,8 +8,8 @@
     <!-- Legende und globale Auswahl -->
     <v-card class="mb-2 legend-card">
       <v-card-text class="py-2">
-        <v-row align="center" no-gutters>
-          <v-col cols="auto" class="mr-3">
+        <v-row align="center" no-gutters class="legend-row">
+          <v-col cols="auto" class="mr-3 checkbox-col">
             <v-checkbox
               v-model="selectAll"
               @change="toggleAllUsers"
@@ -18,16 +18,16 @@
               class="mt-0 pt-0"
             />
           </v-col>
-          <v-col cols="2" sm="1" class="text-center">
+          <v-col cols="2" sm="1" class="username-col">
             <strong>Benutzer</strong>
           </v-col>
-          <v-col cols="3" sm="2" class="text-center">
+          <v-col cols="3" sm="2" class="threads-col">
             <strong>Threads</strong>
           </v-col>
-          <v-col>
+          <v-col class="progress-col">
             <strong>Fortschritt</strong>
           </v-col>
-          <v-col cols="auto">
+          <v-col cols="auto" class="actions-col">
             <strong>Aktionen</strong>
           </v-col>
         </v-row>
@@ -37,8 +37,8 @@
     <!-- Benutzerkarten -->
     <v-card v-for="user in userStats" :key="user.username" class="mb-2 user-card">
       <v-card-text class="py-2">
-        <v-row align="center" no-gutters>
-          <v-col cols="auto" class="mr-3">
+        <v-row align="center" no-gutters class="user-row">
+          <v-col cols="auto" class="mr-3 checkbox-col">
             <v-checkbox
               v-model="selectedUsers"
               :value="user.username"
@@ -47,16 +47,16 @@
               class="mt-0 pt-0"
             />
           </v-col>
-          <v-col cols="2" sm="1">
+          <v-col cols="2" sm="1" class="username-col">
             <span class="username">{{ user.username }}</span>
           </v-col>
-          <v-col cols="3" sm="2">
+          <v-col cols="3" sm="2" class="threads-col">
             <span class="thread-info">
               {{ user.ranked_threads_count }} / {{ user.total_threads }}
               ({{ calculateUnrankedThreads(user) }})
             </span>
           </v-col>
-          <v-col>
+          <v-col class="progress-col">
             <v-progress-linear
               :model-value="calculateProgress(user)"
               height="20"
@@ -70,7 +70,7 @@
               </template>
             </v-progress-linear>
           </v-col>
-          <v-col cols="auto">
+          <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
             <v-btn
               v-if="user.ranked_threads_count > 0 || user.unranked_threads.length > 0"
               x-small
@@ -108,7 +108,7 @@
       </v-card-text>
     </v-card>
 
-    <!-- Thread Details Dialog bleibt unverändert -->
+    <!-- Thread Details Dialog -->
     <v-dialog v-model="dialogVisible" max-width="700px">
       <v-card>
         <v-card-title>Thread Details für {{ selectedUser.username }}</v-card-title>
@@ -247,8 +247,8 @@ onUnmounted(() => {
 });
 </script>
 
-
 <style scoped>
+
 .admin-dashboard {
   background-color: #ffffff;
   color: #2F4F4F;
@@ -278,6 +278,35 @@ onUnmounted(() => {
 
 .user-card:hover {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.legend-row,
+.user-row {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-col {
+  flex: 0 0 40px;
+}
+
+.username-col {
+  flex: 0 0 100px;
+}
+
+.threads-col {
+  flex: 0 0 150px;
+}
+
+.progress-col {
+  flex: 1;
+  padding-right: 16px;
+}
+
+.actions-col {
+  flex: 0 0 80px;
+  text-align: right;
+  padding-left: 16px;
 }
 
 .username, .thread-info {
@@ -315,13 +344,27 @@ onUnmounted(() => {
 }
 
 @media (max-width: 600px) {
-  .user-card .v-row {
+  .user-row {
     flex-wrap: wrap;
   }
 
-  .user-card .v-col {
-    padding-top: 2px;
-    padding-bottom: 2px;
+  .username-col,
+  .threads-col,
+  .progress-col,
+  .actions-col {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .progress-col {
+    flex-basis: 100%;
+    padding-right: 0;
+  }
+
+  .actions-col {
+    flex-basis: 100%;
+    text-align: left;
+    margin-top: 8px;
   }
 }
 </style>

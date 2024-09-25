@@ -634,6 +634,7 @@ def get_user_ranking_stats():
 
     for user in User.query.all():
         ranked_threads_list = []
+        unranked_threads_list = []
         total_ranked_threads = 0
 
         # Iteriere nur über die Email Threads mit function_type_id = 1
@@ -647,10 +648,20 @@ def get_user_ranking_stats():
                 Feature.thread_id == thread.thread_id
             ).count()
 
-            # Wenn alle Features eines Threads gerankt wurden, zähle den Thread als vollständig gerankt
             if ranked_features_count == total_features_in_thread and total_features_in_thread > 0:
+                # Wenn alle Features eines Threads gerankt wurden, zähle den Thread als vollständig gerankt
                 total_ranked_threads += 1
                 ranked_threads_list.append({
+                    'thread_id': thread.thread_id,
+                    'chat_id': thread.chat_id,
+                    'institut_id': thread.institut_id,
+                    'subject': thread.subject,
+                    'ranked_features_count': ranked_features_count,
+                    'total_features_in_thread': total_features_in_thread
+                })
+            else:
+                # Wenn der Benutzer diesen Thread noch nicht vollständig gerankt hat
+                unranked_threads_list.append({
                     'thread_id': thread.thread_id,
                     'chat_id': thread.chat_id,
                     'institut_id': thread.institut_id,
@@ -664,10 +675,12 @@ def get_user_ranking_stats():
             'username': user.username,
             'ranked_threads_count': total_ranked_threads,  # Anzahl der vollständig gerankten Threads
             'total_threads': total_threads,  # Gesamtzahl der relevanten Threads (mit function_type_id = 1)
-            'ranked_threads': ranked_threads_list  # Liste der vollständig gerankten Threads
+            'ranked_threads': ranked_threads_list,  # Liste der vollständig gerankten Threads
+            'unranked_threads': unranked_threads_list  # Liste der unvollständig gerankten/unbearbeiteten Threads
         })
 
     return jsonify(user_stats), 200
+
 
 
 def configure_routes(app):

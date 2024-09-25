@@ -1,59 +1,42 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col cols="12">
-        <v-card>
-          <v-card-title class="headline">Admin Dashboard</v-card-title>
-          <v-card-subtitle>Übersicht der Benutzeraktivitäten</v-card-subtitle>
-        </v-card>
-      </v-col>
-    </v-row>
+  <v-container class="admin-dashboard">
+    <v-card class="mb-6 title-card">
+      <v-card-title class="headline">Admin Dashboard</v-card-title>
+      <v-card-subtitle>Übersicht der Benutzeraktivitäten</v-card-subtitle>
+    </v-card>
 
-    <!-- Benutzerfortschritt und Tabelle -->
-    <v-row>
-      <v-col cols="12">
-        <v-card>
-          <v-card-title>Benutzerfortschritt und E-Mail-Thread-Statistiken</v-card-title>
+    <v-row justify="center">
+      <v-col cols="12" md="10" lg="8">
+        <v-card v-for="user in userStats" :key="user.username" class="mb-4 user-card">
           <v-card-text>
-            <v-data-table
-              :headers="headers"
-              :items="userStats"
-              item-key="username"
-              class="elevation-1"
-              :loading="loading"
+            <div class="user-info d-flex flex-wrap justify-space-between align-center mb-2">
+              <span class="username"><strong>{{ user.username }}</strong></span>
+              <span class="thread-info">
+                Bearbeitete Threads: {{ user.ranked_threads_count }} / {{ calculateTotalThreads(user) }}
+                ({{ calculateUnrankedThreads(user) }} unbearbeitet)
+              </span>
+              <v-btn
+                v-if="user.ranked_threads_count > 0"
+                small
+                color="primary"
+                @click="showThreadDetails(user)"
+              >
+                Details anzeigen
+              </v-btn>
+              <span v-else class="no-threads">Keine bearbeiteten Threads</span>
+            </div>
+            <v-progress-linear
+              :model-value="calculateProgress(user)"
+              height="25"
+              rounded
+              color="#b0ca97"
+              background-color="#f1efd5"
+              class="progress-bar"
             >
-              <!-- Fortschrittsanzeige über die gesamte Breite -->
-              <template v-slot:item.progress="{ item }">
-                <div class="progress-row">
-                  <strong>{{ Math.round(calculateProgress(item)) }}%</strong>
-                  <v-progress-linear
-                    :model-value="calculateProgress(item)"
-                    height="25"
-                    rounded
-                    color="#b0ca97"
-                    class="progress-bar"
-                  />
-                </div>
+              <template v-slot:default="{ value }">
+                <strong>{{ Math.round(value) }}%</strong>
               </template>
-
-              <!-- Bearbeitete und Unbearbeitete Threads -->
-              <template v-slot:item.ranked_threads="{ item }">
-                {{ item.ranked_threads_count }} / {{ calculateTotalThreads(item) }} ({{ calculateUnrankedThreads(item) }} unbearbeitet)
-              </template>
-
-              <!-- Details anzeigen Button -->
-              <template v-slot:item.details="{ item }">
-                <v-btn
-                  v-if="item.ranked_threads_count > 0"
-                  small
-                  color="primary"
-                  @click="showThreadDetails(item)"
-                >
-                  Details anzeigen
-                </v-btn>
-                <span v-else>Keine bearbeiteten Threads</span>
-              </template>
-            </v-data-table>
+            </v-progress-linear>
           </v-card-text>
         </v-card>
       </v-col>
@@ -88,44 +71,30 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
-// Tabellenspalten-Konfiguration
-const headers = [
-  { text: 'Benutzername', value: 'username' },
-  { text: 'Fortschritt', value: 'progress', sortable: false },
-  { text: 'Bearbeitete Threads / Gesamt', value: 'ranked_threads', sortable: false },
-  { text: 'Details', value: 'details', sortable: false },
-];
-
 const userStats = ref([]);
-const loading = ref(true);
 const dialogVisible = ref(false);
 const selectedUser = ref({});
 let pollingInterval = null;
 
-// Zeige die Details der bearbeiteten Threads an
 const showThreadDetails = (user) => {
   selectedUser.value = user;
   dialogVisible.value = true;
 };
 
-// Berechne die gesamte Anzahl der zu bearbeitenden Threads
 const calculateTotalThreads = (user) => {
   return user.total_rankable_features > 0 ? Math.ceil(user.total_rankable_features / 10) : 0;
 };
 
-// Berechne die Anzahl der unbearbeiteten Threads
 const calculateUnrankedThreads = (user) => {
   return calculateTotalThreads(user) - user.ranked_threads_count;
 };
 
-// Berechne den Fortschritt basierend auf der Anzahl der bearbeiteten Threads
 const calculateProgress = (user) => {
   const totalThreads = calculateTotalThreads(user);
   const progress = totalThreads > 0 ? (user.ranked_threads_count / totalThreads) * 100 : 0;
   return progress;
 };
 
-// Hole Benutzerstatistiken von der API
 const fetchUserStats = async () => {
   const apiKey = localStorage.getItem('api_key');
 
@@ -148,22 +117,14 @@ const fetchUserStats = async () => {
     }
   } catch (error) {
     console.error('Fehler beim Laden der Benutzerstatistiken:', error);
-  } finally {
-    loading.value = false;
   }
 };
 
-// Starte das Polling
 onMounted(() => {
   fetchUserStats();
-
-  // Polling alle 10 Sekunden
-  pollingInterval = setInterval(() => {
-    fetchUserStats();
-  }, 10000); // 10 Sekunden Intervall
+  pollingInterval = setInterval(fetchUserStats, 10000);
 });
 
-// Stoppe das Polling bei der Zerstörung der Komponente
 onUnmounted(() => {
   clearInterval(pollingInterval);
 });
@@ -189,6 +150,30 @@ onUnmounted(() => {
   color: #556B2F;
 }
 
+.user-card {
+  border: 1px solid #b0ca97;
+  border-radius: 8px;
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+.user-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.user-info {
+  font-size: 0.9rem;
+}
+
+.username {
+  font-size: 1.1rem;
+  margin-right: 1rem;
+}
+
+.thread-info {
+  color: #556B2F;
+  margin-right: 1rem;
+}
+
 .v-btn {
   background-color: #b0ca97 !important;
   color: #2F4F4F !important;
@@ -200,26 +185,27 @@ onUnmounted(() => {
 }
 
 .v-progress-linear {
-  background-color: #f1efd5 !important;
-  width: 100%; /* Volle Breite */
+  border-radius: 4px;
 }
 
-.v-progress-linear__determinate {
-  background-color: #b0ca97 !important;
+.v-progress-linear >>> .v-progress-linear__content {
+  color: #2F4F4F;
+  font-weight: bold;
 }
 
-.v-data-table {
-  background-color: #ffffff;
+.no-threads {
+  color: #999;
+  font-style: italic;
 }
 
-.v-data-table th {
-  background-color: #b0ca97 !important;
-  color: #2F4F4F !important;
-}
+@media (max-width: 600px) {
+  .user-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-.progress-row {
-  display: flex;
-  flex-direction: column;
-  width: 100%; /* Volle Breite */
+  .username, .thread-info, .v-btn {
+    margin-bottom: 0.5rem;
+  }
 }
 </style>

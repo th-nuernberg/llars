@@ -14,7 +14,7 @@ show_timestamps = False  # Set this to False if you do not want to show timestam
 file_service_mapping = {
     "http/seeder/seed_user.http": "backend-flask-service",
     # "http/seeder/seed_ranking.http": "backend-flask-service",
-    "http/seeder/seed_rating.http": "backend-flask-service",
+    # "http/seeder/seed_rating.http": "backend-flask-service",
     # "http/seeder/output_ranking.http": "backend-flask-service",
     "http/seeder/output": "backend-flask-service",
 }

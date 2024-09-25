@@ -618,47 +618,38 @@ def download_rankings_csv():
 
 @data_blueprint.route('/admin/user_ranking_stats', methods=['GET'])
 def get_user_ranking_stats():
-    # Hole den API-Schlüssel aus den Headern
     api_key = request.headers.get('Authorization')
 
-    # Überprüfe, ob der API-Schlüssel vorhanden ist
     if not api_key:
         return jsonify({'error': 'API key is missing'}), 401
 
-    # Überprüfe, ob der API-Schlüssel gültig ist und einem Benutzer zugeordnet werden kann
     admin_user = User.query.filter_by(api_key=api_key).first()
     if not admin_user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Korrekte Berechnung der gesamten rankbaren Features über alle Threads hinweg
-    total_rankable_features = db.session.query(Feature).count()
-
     user_stats = []
 
-    # Alle Benutzer durchlaufen und zählen, wie viele Threads sie komplett gerankt haben
+    # Hole die Anzahl der gesamten Email Threads mit function_type_id = 1
+    total_threads = db.session.query(EmailThread).filter_by(function_type_id=1).count()
+
     for user in User.query.all():
-        # Anzahl der gerankten Threads für den Benutzer (d.h. wie viele unterschiedliche thread_ids)
-        ranked_thread_ids = db.session.query(Feature.thread_id).join(UserFeatureRanking).filter(
-            UserFeatureRanking.user_id == user.id
-        ).distinct().all()
-
-        # Berechne die Anzahl der gerankten Threads
-        ranked_threads_count = len(ranked_thread_ids)
-
         ranked_threads_list = []
-        for thread_id in ranked_thread_ids:
-            thread = EmailThread.query.filter_by(thread_id=thread_id[0]).first()
+        total_ranked_threads = 0
 
-            if thread:
-                # Zähle die Features in diesem Thread
-                total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
+        # Iteriere nur über die Email Threads mit function_type_id = 1
+        for thread in EmailThread.query.filter_by(function_type_id=1).all():
+            # Zähle alle Features in diesem Thread
+            total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
 
-                # Zähle, wie viele Features in diesem Thread vom Benutzer gerankt wurden
-                ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
-                    UserFeatureRanking.user_id == user.id,
-                    Feature.thread_id == thread.thread_id
-                ).count()
+            # Zähle die Anzahl der vom Benutzer gerankten Features in diesem Thread
+            ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
+                UserFeatureRanking.user_id == user.id,
+                Feature.thread_id == thread.thread_id
+            ).count()
 
+            # Wenn alle Features eines Threads gerankt wurden, zähle den Thread als vollständig gerankt
+            if ranked_features_count == total_features_in_thread and total_features_in_thread > 0:
+                total_ranked_threads += 1
                 ranked_threads_list.append({
                     'thread_id': thread.thread_id,
                     'chat_id': thread.chat_id,
@@ -668,16 +659,15 @@ def get_user_ranking_stats():
                     'total_features_in_thread': total_features_in_thread
                 })
 
-        # Statistiken für den Benutzer zusammenstellen
+        # Füge die Statistiken für diesen Benutzer hinzu
         user_stats.append({
             'username': user.username,
-            'ranked_threads_count': ranked_threads_count,  # Anzahl der gerankten Threads
-            'total_rankable_features': total_rankable_features,
-            'ranked_threads': ranked_threads_list
+            'ranked_threads_count': total_ranked_threads,  # Anzahl der vollständig gerankten Threads
+            'total_threads': total_threads,  # Gesamtzahl der relevanten Threads (mit function_type_id = 1)
+            'ranked_threads': ranked_threads_list  # Liste der vollständig gerankten Threads
         })
 
     return jsonify(user_stats), 200
-
 
 
 def configure_routes(app):

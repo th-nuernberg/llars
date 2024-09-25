@@ -1,33 +1,65 @@
 <template>
-  <v-container class="admin-dashboard">
-    <v-card class="mb-6 title-card">
-      <v-card-title class="headline">Admin Dashboard</v-card-title>
+  <v-container class="admin-dashboard" fluid>
+    <v-card class="mb-4 title-card">
+      <v-card-title class="text-h5">Admin Dashboard</v-card-title>
       <v-card-subtitle>Übersicht der Benutzeraktivitäten</v-card-subtitle>
     </v-card>
 
-    <v-row justify="center">
-      <v-col cols="12" md="10" lg="8">
-        <v-card v-for="user in userStats" :key="user.username" class="mb-4 user-card">
-          <v-card-text>
-            <div class="user-info d-flex flex-wrap justify-space-between align-center mb-2">
-              <span class="username"><strong>{{ user.username }}</strong></span>
-              <span class="thread-info">
-                Bearbeitete Threads: {{ user.ranked_threads_count }} / {{ user.total_threads }}
-                ({{ calculateUnrankedThreads(user) }} unbearbeitet)
-              </span>
-              <v-btn
-                v-if="user.ranked_threads_count > 0 || user.unranked_threads.length > 0"
-                small
-                color="primary"
-                @click="showThreadDetails(user)"
-              >
-                Details anzeigen
-              </v-btn>
-              <span v-else class="no-threads">Keine bearbeiteten Threads</span>
-            </div>
+    <!-- Legende und globale Auswahl -->
+    <v-card class="mb-2 legend-card">
+      <v-card-text class="py-2">
+        <v-row align="center" no-gutters>
+          <v-col cols="auto" class="mr-3">
+            <v-checkbox
+              v-model="selectAll"
+              @change="toggleAllUsers"
+              hide-details
+              dense
+              class="mt-0 pt-0"
+            />
+          </v-col>
+          <v-col cols="2" sm="1" class="text-center">
+            <strong>Benutzer</strong>
+          </v-col>
+          <v-col cols="3" sm="2" class="text-center">
+            <strong>Threads</strong>
+          </v-col>
+          <v-col>
+            <strong>Fortschritt</strong>
+          </v-col>
+          <v-col cols="auto">
+            <strong>Aktionen</strong>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- Benutzerkarten -->
+    <v-card v-for="user in userStats" :key="user.username" class="mb-2 user-card">
+      <v-card-text class="py-2">
+        <v-row align="center" no-gutters>
+          <v-col cols="auto" class="mr-3">
+            <v-checkbox
+              v-model="selectedUsers"
+              :value="user.username"
+              hide-details
+              dense
+              class="mt-0 pt-0"
+            />
+          </v-col>
+          <v-col cols="2" sm="1">
+            <span class="username">{{ user.username }}</span>
+          </v-col>
+          <v-col cols="3" sm="2">
+            <span class="thread-info">
+              {{ user.ranked_threads_count }} / {{ user.total_threads }}
+              ({{ calculateUnrankedThreads(user) }})
+            </span>
+          </v-col>
+          <v-col>
             <v-progress-linear
               :model-value="calculateProgress(user)"
-              height="25"
+              height="20"
               rounded
               color="#b0ca97"
               background-color="#f1efd5"
@@ -37,12 +69,46 @@
                 <strong>{{ Math.round(value) }}%</strong>
               </template>
             </v-progress-linear>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+          </v-col>
+          <v-col cols="auto">
+            <v-btn
+              v-if="user.ranked_threads_count > 0 || user.unranked_threads.length > 0"
+              x-small
+              color="primary"
+              @click="showThreadDetails(user)"
+            >
+              Details
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
 
-    <!-- Thread Details Dialog -->
+    <!-- Globale Fortschrittsanzeige -->
+    <v-card v-if="selectedUsers.length > 0" class="mt-4 global-progress-card">
+      <v-card-text class="py-2">
+        <v-row no-gutters align="center">
+          <v-col cols="auto" class="mr-3">
+            <span class="text-subtitle-2">Gesamtfortschritt:</span>
+          </v-col>
+          <v-col>
+            <v-progress-linear
+              :model-value="calculateGlobalProgress()"
+              height="24"
+              rounded
+              color="#b0ca97"
+              background-color="#f1efd5"
+            >
+              <template v-slot:default="{ value }">
+                <strong>{{ Math.round(value) }}%</strong>
+              </template>
+            </v-progress-linear>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- Thread Details Dialog bleibt unverändert -->
     <v-dialog v-model="dialogVisible" max-width="700px">
       <v-card>
         <v-card-title>Thread Details für {{ selectedUser.username }}</v-card-title>
@@ -83,12 +149,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 const userStats = ref([]);
 const dialogVisible = ref(false);
 const selectedUser = ref({});
+const selectedUsers = ref([]);
+const selectAll = ref(false);
 let pollingInterval = null;
 
 // Öffnet den Dialog und zeigt die Details des ausgewählten Benutzers an
@@ -109,6 +177,24 @@ const calculateProgress = (user) => {
   return progress;
 };
 
+// Berechnung des globalen Fortschritts für ausgewählte Benutzer
+const calculateGlobalProgress = () => {
+  if (selectedUsers.value.length === 0) return 0;
+
+  let totalProgress = 0;
+  let count = 0;
+
+  selectedUsers.value.forEach((username) => {
+    const user = userStats.value.find((u) => u.username === username);
+    if (user) {
+      totalProgress += calculateProgress(user);
+      count++;
+    }
+  });
+
+  return count > 0 ? totalProgress / count : 0;
+};
+
 // Abrufen der Benutzerstatistiken von der API
 const fetchUserStats = async () => {
   const apiKey = localStorage.getItem('api_key');
@@ -121,8 +207,8 @@ const fetchUserStats = async () => {
   try {
     const response = await axios.get('/api/api/admin/user_ranking_stats', {
       headers: {
-        'Authorization': apiKey
-      }
+        Authorization: apiKey,
+      },
     });
 
     if (Array.isArray(response.data)) {
@@ -134,6 +220,20 @@ const fetchUserStats = async () => {
     console.error('Fehler beim Laden der Benutzerstatistiken:', error);
   }
 };
+
+// Umschalten der Auswahl aller Benutzer
+const toggleAllUsers = () => {
+  if (selectAll.value) {
+    selectedUsers.value = userStats.value.map((user) => user.username);
+  } else {
+    selectedUsers.value = [];
+  }
+};
+
+// Beobachten von Änderungen an der Auswahl und Aktualisieren der Checkbox "Alle auswählen"
+watch(selectedUsers, (newValue) => {
+  selectAll.value = newValue.length === userStats.value.length;
+});
 
 // Beim Laden der Komponente die Statistiken abrufen und Polling starten
 onMounted(() => {
@@ -147,6 +247,7 @@ onUnmounted(() => {
 });
 </script>
 
+
 <style scoped>
 .admin-dashboard {
   background-color: #ffffff;
@@ -154,41 +255,40 @@ onUnmounted(() => {
   font-family: Arial, sans-serif;
 }
 
-.title-card {
+.title-card, .legend-card {
   background-color: #b0ca97;
 }
 
 .title-card .v-card__title {
   color: #ffffff;
-  font-size: 2.5rem;
+  padding: 12px 16px 4px;
 }
 
-.title-card .v-card__subtitle {
+.title-card .v-card__subtitle,
+.legend-card .v-card__text {
   color: #556B2F;
+  padding: 0 16px 12px;
 }
 
 .user-card {
   border: 1px solid #b0ca97;
-  border-radius: 8px;
+  border-radius: 4px;
   transition: box-shadow 0.3s ease-in-out;
 }
 
 .user-card:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.user-info {
-  font-size: 0.9rem;
-}
-
-.username {
-  font-size: 1.1rem;
-  margin-right: 1rem;
+.username, .thread-info {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .thread-info {
   color: #556B2F;
-  margin-right: 1rem;
 }
 
 .v-btn {
@@ -210,19 +310,18 @@ onUnmounted(() => {
   font-weight: bold;
 }
 
-.no-threads {
-  color: #999;
-  font-style: italic;
+.global-progress-card {
+  background-color: #f1efd5;
 }
 
 @media (max-width: 600px) {
-  .user-info {
-    flex-direction: column;
-    align-items: flex-start;
+  .user-card .v-row {
+    flex-wrap: wrap;
   }
 
-  .username, .thread-info, .v-btn {
-    margin-bottom: 0.5rem;
+  .user-card .v-col {
+    padding-top: 2px;
+    padding-bottom: 2px;
   }
 }
 </style>

@@ -10,11 +10,18 @@ import RaterDetailFeature from "@/components/Rater/RaterDetailFeature.vue";
 import AdminHome from "@/components/Admin/AdminHome.vue"; // Admin Dashboard
 import AdminRanker from "@/components/Admin/AdminRanker.vue";
 import HistoryGeneration from "@/components/HistoryGenerator/HistoryGeneration.vue";
+import Impressum from "@/components/Orga/Impressum.vue";
+import Datenschutz from "@/components/Orga/Datenschutz.vue";
+import Kontakt from "@/components/Orga/Kontakt.vue";
 
 // Importiere die Admin-Check Funktion
 import { isAdmin } from '@/services/admins';
 
 const routes = [
+    { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
+    { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
+    { path: '/Kontakt', component: Kontakt, meta: { requiresAuth: false } },
+
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
     { path: '/Ranker', component: Ranker, meta: { requiresAuth: true } },
     { path: '/Ranker/:id', name:'RankerDetail', component: RankerDetail, props: true, meta: { requiresAuth: true } },

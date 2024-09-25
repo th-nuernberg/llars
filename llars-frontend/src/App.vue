@@ -20,9 +20,32 @@
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
+
     <v-main>
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
+
+    <!-- Footer hinzufügen -->
+    <v-footer app dark color="teal-lighten-4" height="30" class="px-4 footer">
+      <v-row no-gutters align="center" justify="space-between">
+        <v-col cols="auto">
+          <span class="copyright">
+            © {{ new Date().getFullYear() }} LLars Plattform
+          </span>
+        </v-col>
+
+        <v-col cols="auto">
+          <span
+            v-for="(link, index) in links"
+            :key="link"
+            class="footer-link"
+            @click="navigateTo(link)"
+          >
+            {{ link }}
+          </span>
+        </v-col>
+      </v-row>
+    </v-footer>
   </v-app>
 </template>
 
@@ -32,6 +55,7 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const username = ref('');
+const links = ref(['Impressum', 'Datenschutz', 'Kontakt']); // Footer Links
 
 function updateUsername() {
   username.value = localStorage.getItem('username') || '';
@@ -65,6 +89,20 @@ function logout() {
 function goHome() {
   router.push('/home');
 }
+
+function navigateTo(link) {
+  switch (link) {
+    case 'Impressum':
+      router.push('/impressum');
+      break;
+    case 'Datenschutz':
+      router.push('/datenschutz');
+      break;
+    case 'Kontakt':
+      router.push('/kontakt');
+      break;
+  }
+}
 </script>
 
 <style scoped>
@@ -79,5 +117,23 @@ function goHome() {
 .user-chip:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   transform: translateY(-1px);
+}
+
+.footer {
+  font-size: 0.75rem;
+}
+
+.copyright {
+  color: white;
+}
+
+.footer-link {
+  color: white;
+  cursor: pointer;
+  margin-left: 1rem;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
 }
 </style>

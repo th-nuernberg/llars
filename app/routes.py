@@ -682,6 +682,35 @@ def get_user_ranking_stats():
     return jsonify(user_stats), 200
 
 
+@data_blueprint.route('/email_threads/ranking_list', methods=['GET'])
+def list_ranking_threads():
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Hole alle Threads mit function_type_id = 1 (Ranking)
+    ranking_function_type = FeatureFunctionType.query.filter_by(name='ranking').first()
+    if not ranking_function_type:
+        return jsonify({'error': 'Ranking function type not found'}), 404
+
+    # Nur Ranking-Threads zurückgeben
+    email_threads = EmailThread.query.filter_by(function_type_id=ranking_function_type.function_type_id).all()
+
+    threads_list = [
+        {
+            'thread_id': thread.thread_id,
+            'chat_id': thread.chat_id,
+            'institut_id': thread.institut_id,
+            'subject': thread.subject
+        } for thread in email_threads
+    ]
+
+    return jsonify(threads_list), 200
+
 
 def configure_routes(app):
     app.register_blueprint(auth_blueprint)

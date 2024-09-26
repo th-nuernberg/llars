@@ -45,7 +45,7 @@ const router = useRouter();
 
 const items = ref([
   { title: 'Ranker', description: 'Detailierte Analyse und Ranking', route: '/ranker', icon: 'mdi-chart-line', elevation: 1, disabled: false },
-  { title: 'Verlauf Generierung', description: 'Erzeugung von Mail Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-email-outline', elevation: 1, disabled: false },
+  { title: 'Verlauf Generierung', description: 'Erzeugung von Mail Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-email-outline', elevation: 1, disabled: true },
   { title: 'Rater', description: 'Bewerten Sie Ihre Daten', route: '/rater', icon: 'mdi-star', elevation: 1, disabled: true },
   { title: 'Labler', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-tag-text-outline', elevation: 1, disabled: true }
 ]);

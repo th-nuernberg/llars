@@ -7,7 +7,6 @@
 
         <h3>E-Mail</h3>
         <p>E-Mail: info [at] e-beratungsinstitut . de</p>
-        <p>E-Mail: llars [at] e-beratungsinstitut . de</p>
 
         <h3>Telefon</h3>
         <p>Telefon: +49 911 5880-2580</p>
@@ -18,7 +17,6 @@
 
         <h3>Postadresse</h3>
         <p>
-          LLARS Projekt<br>
           Institut für E-Beratung<br>
           Technische Hochschule Nürnberg<br>
           Keßlerplatz 12<br>

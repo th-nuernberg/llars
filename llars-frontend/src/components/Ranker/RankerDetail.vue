@@ -565,7 +565,7 @@ function saveFeaturesServerSide() {
   position: absolute;
   left: 0;
   right: 0;
-  height: 5px;
+  height: 2px;
   pointer-events: none;
 }
 
@@ -587,6 +587,7 @@ function saveFeaturesServerSide() {
   padding: 16px;
   margin-bottom: 10px;
   border-radius: 10px;
+  box-shadow: 0px 1px 2px rgba(0,0,0,0.1);
 }
 
 .same-sender {
@@ -627,6 +628,7 @@ function saveFeaturesServerSide() {
   text-overflow: ellipsis;
   word-wrap: break-word;
   position: relative;
+  box-shadow: 0px 1px 2px rgba(0,0,0,0.1);
 }
 
 .draggable-item.expanded {

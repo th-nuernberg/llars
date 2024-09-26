@@ -1,9 +1,10 @@
 <template>
-  <v-container fluid>
+  <v-container fluid class="pa-0">
     <v-row>
+      <!-- Feature-Bereich -->
       <v-col cols="12" md="6">
-        <h2>Features</h2>
-        <div class="features-container">
+        <h2 class="mb-2">Features</h2>
+        <div class="features-container ">
           <v-expansion-panels>
             <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
               <v-expansion-panel-title>
@@ -57,9 +58,10 @@
         </div>
       </v-col>
 
-      <v-col cols="12" md="6">
-        <h2>E-Mail Verlauf</h2>
-        <div class="email-thread-container">
+      <!-- E-Mail Verlauf -->
+      <v-col cols="12" md="6" class="d-flex flex-column">
+        <h2 class="mb-2">E-Mail Verlauf</h2>
+        <div class="email-thread-container flex-grow-1">
           <div class="email-thread">
             <div
               v-for="message in messages"
@@ -81,50 +83,47 @@
         </div>
       </v-col>
     </v-row>
-  </v-container>
-    <v-spacer></v-spacer>
 
-  <v-container fluid>
-    <v-row align="center" class="button-class">
-      <!-- Chip auf der linken Seite -->
-      <v-col cols="auto">
-  <template v-if="ranked === null">
-    <v-chip class="category-chip" color="grey lighten-2" small>
-      <v-progress-circular indeterminate size="16" width="2" color="grey darken-2" class="mr-2"></v-progress-circular>
-      Lädt...
-    </v-chip>
-  </template>
-  <template v-else>
-    <v-chip
-      class="category-chip"
-      :color="ranked ? 'green lighten-2' : 'red lighten-2'"
-      small
-    >
-      {{ ranked ? 'Ranked' : 'Not Ranked' }}
-    </v-chip>
-  </template>
-</v-col>
+    <!-- Button-Leiste -->
+    <v-row class="button-class">
+      <v-col>
+        <template v-if="ranked === null">
+          <v-chip class="category-chip" color="grey lighten-2" small>
+            <v-progress-circular indeterminate size="16" width="2" color="grey darken-2" class="mr-2"></v-progress-circular>
+            Lädt...
+          </v-chip>
+        </template>
+        <template v-else>
+          <v-chip
+            class="category-chip"
+            :color="ranked ? 'green lighten-2' : 'red lighten-2'"
+            small
+          >
+            {{ ranked ? 'Ranked' : 'Not Ranked' }}
+          </v-chip>
+        </template>
+      </v-col>
 
       <v-spacer></v-spacer>
 
-<!-- Buttons auf der rechten Seite -->
-<v-col cols="auto">
-  <v-btn class="mr-2" @click="saveFeaturesServerSide">
-    <v-icon left>mdi-content-save</v-icon>
-    Speichern
-  </v-btn>
-  <v-btn class="mr-2" @click="navigateToPreviousCase">
-    <v-icon left>mdi-arrow-left</v-icon>
-    Vorheriger Fall
-  </v-btn>
-  <v-btn @click="navigateToNextCase">
-    Nächster Fall
-    <v-icon right>mdi-arrow-right</v-icon>
-  </v-btn>
-</v-col>
+      <v-col cols="auto">
+        <v-btn class="mr-2" @click="saveFeaturesServerSide">
+          <v-icon left>mdi-content-save</v-icon>
+          Speichern
+        </v-btn>
+        <v-btn class="mr-2" @click="navigateToPreviousCase">
+          <v-icon left>mdi-arrow-left</v-icon>
+          Vorheriger Fall
+        </v-btn>
+        <v-btn @click="navigateToNextCase">
+          Nächster Fall
+          <v-icon right>mdi-arrow-right</v-icon>
+        </v-btn>
+      </v-col>
     </v-row>
   </v-container>
 </template>
+
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
@@ -534,14 +533,12 @@ function saveFeaturesServerSide() {
 }
 
 .button-class {
-  display: flex;
-  align-items: center;
-  padding: 10px;
-  background-color: #eafaf1; /* Sehr helles Grün */
-  border-top: 1px solid #ddd;
   position: sticky;
   bottom: 0;
-  z-index: 1;
+  padding: 1vh;
+  background-color: #eafaf1;
+  border-top: 1px solid #ddd;
+  margin-top: 1vh;
 }
 
 .category-chip {
@@ -550,19 +547,18 @@ function saveFeaturesServerSide() {
 }
 
 .email-thread-container {
-  max-height: 500px;
   overflow-y: auto;
-  min-height: 75vh;
   display: flex;
   flex-direction: column;
   position: relative;
   background-color: white; /* Beige Hintergrund */
 }
 
-.features-container {
-  max-height: 500px;
+.features-container,
+.email-thread-container {
   overflow-y: auto;
-  min-height: 75vh;
+  flex-grow: 1;
+  max-height: 75vh;
 }
 
 .fade-overlay {
@@ -584,7 +580,6 @@ function saveFeaturesServerSide() {
 }
 
 .email-thread {
-  max-height: 100%;
   overflow-y: auto;
 }
 

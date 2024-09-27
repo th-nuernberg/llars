@@ -557,8 +557,8 @@ function saveFeaturesServerSide() {
 .features-container,
 .email-thread-container {
   overflow-y: auto;
-  flex-grow: 1;
   max-height: 75vh;
+  min-height: 74vh;
 }
 
 .fade-overlay {

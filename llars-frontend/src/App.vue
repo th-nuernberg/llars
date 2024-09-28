@@ -1,6 +1,7 @@
 <template>
   <v-app>
-    <v-app-bar app dark color="teal-lighten-4">
+    <!-- Normale Benutzer AppBar -->
+    <v-app-bar v-if="!isAdminUser" app dark color="primary"> <!-- Primärfarbe verwendet -->
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
       <v-toolbar-title @click="goHome" style="cursor: pointer;">
         <img src="./assets/logo/llars-logo.png" alt="Logo" height="30" class="mr-2">
@@ -10,7 +11,7 @@
       <v-chip
         v-if="username"
         class="mr-2 user-chip"
-        color="teal-darken-1"
+        color="secondary"
         text-color="white"
         prepend-icon="mdi-account"
       >
@@ -21,12 +22,33 @@
       </v-btn>
     </v-app-bar>
 
+    <!-- Admin Benutzer AppBar -->
+    <v-app-bar v-else app dark color="primary"> <!-- Primärfarbe verwendet -->
+      <v-app-bar-nav-icon></v-app-bar-nav-icon>
+      <v-toolbar-title @click="goAdminHome" style="cursor: pointer;">
+        <img src="./assets/logo/llars-logo.png" alt="Admin Logo" height="30" class="mr-2">
+        Admin Dashboard
+      </v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-chip
+        v-if="username"
+        class="mr-2 user-chip"
+        color="admin"
+        text-color="white"
+        prepend-icon="mdi-shield-account"
+      >
+        Admin: {{ username }}
+      </v-chip>
+      <v-btn icon @click="logout">
+        <v-icon>mdi-logout</v-icon>
+      </v-btn>
+    </v-app-bar>
+
     <v-main>
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
 
-    <!-- Footer hinzufügen -->
-    <v-footer app dark color="teal-lighten-4" height="30" class="px-4 footer">
+    <v-footer app dark color="primary" height="30" class="px-4 footer"> <!-- Primärfarbe verwendet -->
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
           <span class="copyright">
@@ -52,13 +74,17 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { isAdmin } from '@/services/admins';
 
 const router = useRouter();
 const username = ref('');
+const isAdminUser = ref(false); // Neu hinzugefügt, um den Admin-Status zu speichern
 const links = ref(['Impressum', 'Datenschutz', 'Kontakt']); // Footer Links
 
 function updateUsername() {
-  username.value = localStorage.getItem('username') || '';
+  const user = localStorage.getItem('username') || '';
+  username.value = user;
+  isAdminUser.value = isAdmin(user); // Prüfen, ob der Benutzer ein Admin ist
 }
 
 onMounted(() => {
@@ -70,24 +96,26 @@ watch(() => router.currentRoute.value, () => {
 }, { immediate: true });
 
 function logout() {
-  // Entferne allgemeine Auth-Daten
   localStorage.removeItem('token');
   localStorage.removeItem('username');
   localStorage.removeItem('api_key');
 
-  // Entferne alle gespeicherten Ranked-Feature-Daten
   Object.keys(localStorage).forEach(key => {
     if (key.startsWith('featureOrder_') || key.startsWith('featureRating_')) {
       localStorage.removeItem(key);
     }
   });
 
-  username.value = ''; // Setze den Benutzernamen zurück
+  username.value = '';
   router.push('/login');
 }
 
 function goHome() {
   router.push('/home');
+}
+
+function goAdminHome() {
+  router.push('/AdminDashboard');
 }
 
 function navigateTo(link) {

@@ -536,9 +536,12 @@ function saveFeaturesServerSide() {
   position: sticky;
   bottom: 0;
   padding: 1vh;
-  background-color: #eafaf1;
   border-top: 1px solid #ddd;
   margin-top: 1vh;
+}
+
+.button-class {
+  background-color: #d6f6db;
 }
 
 .category-chip {

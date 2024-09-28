@@ -1,8 +1,8 @@
 <template>
   <v-container fluid class="pa-0">
-    <v-row>
+    <v-row no-gutters>
       <!-- Feature-Bereich -->
-      <v-col :cols="emailPaneExpanded ? 12 : 12" :md="emailPaneExpanded ? 6 : 12">
+      <v-col :cols="emailPaneExpanded ? 12 : 11" :md="emailPaneExpanded ? 6 : 11">
         <h2 class="mb-2">Features</h2>
         <div class="features-container">
           <v-expansion-panels>
@@ -122,7 +122,7 @@
       <v-col v-if="emailPaneExpanded" cols="6" class="d-flex flex-column email-pane">
         <h2 class="mb-2">
           E-Mail Verlauf
-          <v-btn icon small @click="toggleEmailPane">
+          <v-btn icon small @click="toggleEmailPane" class="custom-collapse-btn">
             <v-icon>mdi-chevron-right</v-icon>
           </v-btn>
         </h2>
@@ -147,10 +147,13 @@
           <div class="fade-overlay bottom"></div>
         </div>
       </v-col>
-      <v-col v-else cols="auto" class="email-pane-toggle">
-        <v-btn icon small @click="toggleEmailPane">
-          <v-icon>mdi-chevron-left</v-icon>
-        </v-btn>
+
+      <v-col v-else class="email-pane-toggle">
+        <div class="email-pane-collapsed">
+          <v-btn class="expand-btn" @click="toggleEmailPane">
+            <v-icon>mdi-chevron-left</v-icon>
+          </v-btn>
+        </div>
       </v-col>
     </v-row>
 
@@ -193,6 +196,7 @@
     </v-row>
   </v-container>
 </template>
+
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
@@ -864,21 +868,54 @@ body.dragging * {
   margin-top: 10px;
 }
 
+.email-pane {
+  transition: width 0.3s ease;
+}
+
 .email-pane-toggle {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100%;
   background-color: #f5f5f5;
-  min-width: 40px;
+  width: 40px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
 }
 
-.email-pane {
-  transition: width 0.3s ease;
+.email-pane-collapsed {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
 }
 
 .email-pane-toggle {
   transition: width 0.3s ease;
 }
 
+.custom-collapse-btn {
+  position: relative;
+  right: -15px;
+  background-color: #ccc;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.expand-btn {
+  width: 35px;
+  height: 100%;
+  background-color: #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 0;
+}
 </style>

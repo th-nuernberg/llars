@@ -11,48 +11,53 @@
                 <div>{{ translateFeatureType(feature.type) }}</div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div style="display: flex; justify-content: flex-end; padding-bottom: 10px">
-                  <v-tooltip class="mb-0" :text="getTooltipText(feature.type)" max-width="300px">
-                    <template v-slot:activator="{ props }">
-                      <v-icon v-bind="props">mdi-information-outline</v-icon>
-                    </template>
-                  </v-tooltip>
-                </div>
-                <transition-group name="fade" tag="div">
-                  <draggable
-                    v-model="feature.details"
-                    group="featureGroup"
-                    item-key="feature_id"
-                    @start="handleDragStart"
-                    @end="handleDragEnd"
-                    v-bind="dragOptions"
-                    ghost-class="ghost"
-                    fallback-class="fallbackStyleClass"
-                    :force-fallback="true"
-                  >
-                    <template #item="{ element }">
-                      <div
-                        :key="element.feature_id"
-                        class="draggable-item no-select"
-                        :style="{ backgroundColor: getColorForText(element.content) }"
-                      >
-                        <div>
-                          <v-btn
-                            v-if="isLongContent(element.content)"
-                            class="small-toggle-btn"
-                            small
-                            @click="toggleMinimize(element)"
-                          >
-                            {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-                          </v-btn>
-                        </div>
-                        <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-                        <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-                      </div>
-                    </template>
-                  </draggable>
-                </transition-group>
-              </v-expansion-panel-text>
+  <div style="display: flex; justify-content: space-around;">
+    <!-- Gut Bucket -->
+      <div class="bucket good-bucket">
+      <h3>Gut</h3>
+        <draggable v-model="feature.goodList" class="list-group bucket-content" group="featureGroup" item-key="id">
+          <template #item="{ element }">
+            <div class="list-group-item item" v-html="formatFeatureContent(feature.type, element.content)"></div>
+          </template>
+        </draggable>
+      </div>
+
+    <!-- Mittel Bucket -->
+    <div class="bucket average-bucket">
+      <h3>Mittel</h3>
+      <draggable v-model="feature.averageList" class="list-group bucket-content" group="featureGroup" item-key="id">
+        <template #item="{ element }">
+          <div class="list-group-item item" v-html="formatFeatureContent(feature.type, element.content)"></div>
+        </template>
+      </draggable>
+    </div>
+
+    <!-- Schlecht Bucket -->
+    <div class="bucket bad-bucket">
+      <h3>Schlecht</h3>
+      <draggable v-model="feature.badList" class="list-group bucket-content" group="featureGroup" item-key="id">
+        <template #item="{ element }">
+          <div class="list-group-item item" v-html="formatFeatureContent(feature.type, element.content)"></div>
+        </template>
+      </draggable>
+    </div>
+
+
+  </div>
+
+  <!-- Neutraler Bucket -->
+<div class="neutral-bucket-container">
+  <h3>Neutral</h3>
+  <draggable v-model="feature.neutralList" class="neutral-list-group" group="featureGroup" item-key="id">
+    <template #item="{ element }">
+      <div class="neutral-item" v-html="formatFeatureContent(feature.type, element.content)"></div>
+    </template>
+  </draggable>
+</div>
+
+
+</v-expansion-panel-text>
+
             </v-expansion-panel>
           </v-expansion-panels>
         </div>
@@ -158,21 +163,25 @@ const loadCaseData = async (caseId) => {
 
   const featureMap = new Map();
   features.value.forEach((f, index) => {
-    if (!featureMap.has(f.type)) {
-      featureMap.set(f.type, {
-        type: f.type,
-        details: []
-      });
-    }
-    featureMap.get(f.type).details.push({
-      model_name: f.model_name,
-      content: f.content,
-      feature_id: f.feature_id,
-      position: index,
-      minimized: true, // Standardmäßig minimiert setzen
-      version: `Version ${featureMap.get(f.type).details.length + 1}`
+  if (!featureMap.has(f.type)) {
+    featureMap.set(f.type, {
+      type: f.type,
+      goodList: [],
+      averageList: [],
+      badList: [],
+      neutralList: []
     });
+  }
+
+  featureMap.get(f.type).neutralList.push({
+    model_name: f.model_name,
+    content: f.content,
+    feature_id: f.feature_id,
+    position: index,
+    minimized: true,
   });
+});
+
 
   groupedFeatures.value = Array.from(featureMap.values());
   localStorageKey.value = `featureOrder_${caseId}`;
@@ -699,5 +708,85 @@ body.dragging * {
 
 .v-tooltip__content {
   white-space: pre-line;
+}
+.buckets-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 20px 10px 0;
+}
+
+.bucket {
+  flex: 1;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 8px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Abgemilderte Farbgebung für die Buckets */
+.good-bucket {
+  background-color: #e8f5e9; /* Leicht grünlich */
+  border: 1px solid #a5d6a7;
+}
+
+.average-bucket {
+  background-color: #fffde7; /* Leicht gelblich */
+  border: 1px solid #fff59d;
+}
+
+.bad-bucket {
+  background-color: #ffebee; /* Leicht rötlich */
+  border: 1px solid #ef9a9a;
+}
+
+.bucket-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* Stil für die Listenelemente */
+.item {
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: grab;
+}
+
+/* Neutraler Bucket */
+.neutral-bucket-container {
+  background-color: #f5f5f5; /* Leicht grauer Hintergrund */
+  min-height: 150px;
+  border: 1px solid #bdbdbd;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 30px;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+.neutral-list-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.neutral-item {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  background-color: #bbdefb;
+  width: 100px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: grab;
 }
 </style>

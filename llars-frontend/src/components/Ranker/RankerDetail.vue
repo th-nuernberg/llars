@@ -817,7 +817,6 @@ body.dragging * {
 }
 
 /* Neutraler Bucket */
-/* Neutraler Bucket */
 .neutral-bucket-container {
   background-color: #f5f5f5;
   min-height: 150px;
@@ -829,7 +828,7 @@ body.dragging * {
 
 .neutral-list-group {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column; /* Vertikale Ausrichtung */
   gap: 10px;
 }
 
@@ -841,10 +840,10 @@ body.dragging * {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   cursor: grab;
   position: relative;
-  width: 100px;
-  flex-grow: 1;
-  text-align: center;
+  width: 100%;
+  text-align: left;
 }
+
 .toggle-btn-container {
   text-align: right;
   margin-top: 10px;

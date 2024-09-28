@@ -80,12 +80,13 @@ const neutralList = ref([
 </script>
 
 <style scoped>
-/* Stile für die Buckets */
+/* Zusätzlicher Abstand oben */
 .buckets-container {
   display: flex;
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 30px;
+  padding: 20px 10px 0;
 }
 
 .bucket {
@@ -99,20 +100,20 @@ const neutralList = ref([
   justify-content: space-between;
 }
 
-/* Farbgebung für die einzelnen Buckets */
+/* Abgemilderte Farbgebung für die Buckets */
 .good-bucket {
-  background-color: #e0f2f1; /* Leicht grünlich */
-  border: 1px solid #4caf50;
+  background-color: #e8f5e9; /* Leicht grünlich */
+  border: 1px solid #a5d6a7;
 }
 
 .average-bucket {
   background-color: #fffde7; /* Leicht gelblich */
-  border: 1px solid #ffeb3b;
+  border: 1px solid #fff59d;
 }
 
 .bad-bucket {
   background-color: #ffebee; /* Leicht rötlich */
-  border: 1px solid #f44336;
+  border: 1px solid #ef9a9a;
 }
 
 .bucket-content {
@@ -134,12 +135,14 @@ const neutralList = ref([
 
 /* Neutraler Bucket */
 .neutral-bucket-container {
-  background-color: #fff9c4; /* Leicht gelber Hintergrund */
+  background-color: #f5f5f5; /* Leicht grauer Hintergrund */
   min-height: 150px;
-  border: 1px solid #ffeb3b;
+  border: 1px solid #bdbdbd;
   padding: 10px;
   border-radius: 8px;
   margin-top: 30px;
+  margin-left: 10px;
+  margin-right: 10px;
 }
 
 .neutral-list-group {

@@ -4,60 +4,115 @@
       <!-- Feature-Bereich -->
       <v-col cols="12" md="6">
         <h2 class="mb-2">Features</h2>
-        <div class="features-container ">
+        <div class="features-container">
           <v-expansion-panels>
             <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
               <v-expansion-panel-title>
                 <div>{{ translateFeatureType(feature.type) }}</div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-  <div style="display: flex; justify-content: space-around;">
-    <!-- Gut Bucket -->
-      <div class="bucket good-bucket">
-      <h3>Gut</h3>
-        <draggable v-model="feature.goodList" class="list-group bucket-content" group="featureGroup" item-key="id">
-          <template #item="{ element }">
-            <div class="list-group-item item" v-html="formatFeatureContent(feature.type, element.content)"></div>
-          </template>
-        </draggable>
-      </div>
+                <div style="display: flex; justify-content: space-around;">
+                  <!-- Gut Bucket -->
+                  <div class="bucket good-bucket">
+                    <h3>Gut</h3>
+                    <draggable v-model="feature.goodList" class="list-group bucket-content" group="featureGroup" item-key="id">
+                      <template #item="{ element }">
+                        <div class="list-group-item item">
+                          <!-- Inhalt basierend auf minimierter Ansicht -->
+                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <!-- Umschalt-Button für Minimierung -->
+                          <div class="toggle-btn-container">
+                            <v-btn
+                              v-if="isLongContent(element.content)"
+                              class="small-toggle-btn"
+                              small
+                              @click="toggleMinimize(element)"
+                            >
+                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                            </v-btn>
+                          </div>
+                        </div>
+                      </template>
+                    </draggable>
+                  </div>
 
-    <!-- Mittel Bucket -->
-    <div class="bucket average-bucket">
-      <h3>Mittel</h3>
-      <draggable v-model="feature.averageList" class="list-group bucket-content" group="featureGroup" item-key="id">
-        <template #item="{ element }">
-          <div class="list-group-item item" v-html="formatFeatureContent(feature.type, element.content)"></div>
-        </template>
-      </draggable>
-    </div>
+                  <!-- Mittel Bucket -->
+                  <div class="bucket average-bucket">
+                    <h3>Mittel</h3>
+                    <draggable v-model="feature.averageList" class="list-group bucket-content" group="featureGroup" item-key="id">
+                      <template #item="{ element }">
+                        <div class="list-group-item item">
+                          <!-- Inhalt basierend auf minimierter Ansicht -->
+                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <!-- Umschalt-Button für Minimierung -->
+                          <div class="toggle-btn-container">
+                            <v-btn
+                              v-if="isLongContent(element.content)"
+                              class="small-toggle-btn"
+                              small
+                              @click="toggleMinimize(element)"
+                            >
+                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                            </v-btn>
+                          </div>
+                        </div>
+                      </template>
+                    </draggable>
+                  </div>
 
-    <!-- Schlecht Bucket -->
-    <div class="bucket bad-bucket">
-      <h3>Schlecht</h3>
-      <draggable v-model="feature.badList" class="list-group bucket-content" group="featureGroup" item-key="id">
-        <template #item="{ element }">
-          <div class="list-group-item item" v-html="formatFeatureContent(feature.type, element.content)"></div>
-        </template>
-      </draggable>
-    </div>
+                  <!-- Schlecht Bucket -->
+                  <div class="bucket bad-bucket">
+                    <h3>Schlecht</h3>
+                    <draggable v-model="feature.badList" class="list-group bucket-content" group="featureGroup" item-key="id">
+                      <template #item="{ element }">
+                        <div class="list-group-item item">
+                          <!-- Inhalt basierend auf minimierter Ansicht -->
+                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <!-- Umschalt-Button für Minimierung -->
+                          <div class="toggle-btn-container">
+                            <v-btn
+                              v-if="isLongContent(element.content)"
+                              class="small-toggle-btn"
+                              small
+                              @click="toggleMinimize(element)"
+                            >
+                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                            </v-btn>
+                          </div>
+                        </div>
+                      </template>
+                    </draggable>
+                  </div>
+                </div>
 
-
-  </div>
-
-  <!-- Neutraler Bucket -->
-<div class="neutral-bucket-container">
-  <h3>Neutral</h3>
-  <draggable v-model="feature.neutralList" class="neutral-list-group" group="featureGroup" item-key="id">
-    <template #item="{ element }">
-      <div class="neutral-item" v-html="formatFeatureContent(feature.type, element.content)"></div>
-    </template>
-  </draggable>
-</div>
-
-
-</v-expansion-panel-text>
-
+                <!-- Neutraler Bucket -->
+                <div class="neutral-bucket-container">
+                  <h3>Neutral</h3>
+                  <draggable v-model="feature.neutralList" class="neutral-list-group" group="featureGroup" item-key="id">
+                    <template #item="{ element }">
+                      <div class="neutral-item">
+                        <!-- Inhalt basierend auf minimierter Ansicht -->
+                        <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                        <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                        <!-- Umschalt-Button für Minimierung -->
+                        <div class="toggle-btn-container">
+                          <v-btn
+                            v-if="isLongContent(element.content)"
+                            class="small-toggle-btn"
+                            small
+                            @click="toggleMinimize(element)"
+                          >
+                            {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                          </v-btn>
+                        </div>
+                      </div>
+                    </template>
+                  </draggable>
+                </div>
+              </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
         </div>
@@ -751,7 +806,6 @@ body.dragging * {
   justify-content: flex-start;
 }
 
-/* Stil für die Listenelemente */
 .item {
   padding: 15px;
   margin-bottom: 10px;
@@ -759,18 +813,18 @@ body.dragging * {
   background-color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   cursor: grab;
+  position: relative;
 }
 
 /* Neutraler Bucket */
+/* Neutraler Bucket */
 .neutral-bucket-container {
-  background-color: #f5f5f5; /* Leicht grauer Hintergrund */
+  background-color: #f5f5f5;
   min-height: 150px;
   border: 1px solid #bdbdbd;
   padding: 10px;
   border-radius: 8px;
   margin-top: 30px;
-  margin-left: 10px;
-  margin-right: 10px;
 }
 
 .neutral-list-group {
@@ -780,13 +834,19 @@ body.dragging * {
 }
 
 .neutral-item {
-  padding: 10px;
+  padding: 15px;
   margin-bottom: 10px;
   border-radius: 5px;
-  background-color: #bbdefb;
-  width: 100px;
-  text-align: center;
+  background-color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   cursor: grab;
+  position: relative;
+  width: 100px;
+  flex-grow: 1;
+  text-align: center;
+}
+.toggle-btn-container {
+  text-align: right;
+  margin-top: 10px;
 }
 </style>

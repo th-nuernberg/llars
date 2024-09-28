@@ -2,7 +2,7 @@
   <v-container fluid class="pa-0">
     <v-row>
       <!-- Feature-Bereich -->
-      <v-col cols="12" md="6">
+      <v-col :cols="emailPaneExpanded ? 12 : 12" :md="emailPaneExpanded ? 6 : 12">
         <h2 class="mb-2">Features</h2>
         <div class="features-container">
           <v-expansion-panels>
@@ -119,8 +119,13 @@
       </v-col>
 
       <!-- E-Mail Verlauf -->
-      <v-col cols="12" md="6" class="d-flex flex-column">
-        <h2 class="mb-2">E-Mail Verlauf</h2>
+      <v-col v-if="emailPaneExpanded" cols="6" class="d-flex flex-column email-pane">
+        <h2 class="mb-2">
+          E-Mail Verlauf
+          <v-btn icon small @click="toggleEmailPane">
+            <v-icon>mdi-chevron-right</v-icon>
+          </v-btn>
+        </h2>
         <div class="email-thread-container flex-grow-1">
           <div class="email-thread">
             <div
@@ -141,6 +146,11 @@
           <div class="fade-overlay top"></div>
           <div class="fade-overlay bottom"></div>
         </div>
+      </v-col>
+      <v-col v-else cols="auto" class="email-pane-toggle">
+        <v-btn icon small @click="toggleEmailPane">
+          <v-icon>mdi-chevron-left</v-icon>
+        </v-btn>
       </v-col>
     </v-row>
 
@@ -184,7 +194,6 @@
   </v-container>
 </template>
 
-
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -199,6 +208,12 @@ const senderColors = ref({});
 const groupedFeatures = ref([]);
 const localStorageKey = ref('');
 const ranked = ref(null);
+
+const emailPaneExpanded = ref(true);
+
+const toggleEmailPane = () => {
+  emailPaneExpanded.value = !emailPaneExpanded.value;
+};
 
 const dragOptions = ref({
   animation: 200,
@@ -848,4 +863,22 @@ body.dragging * {
   text-align: right;
   margin-top: 10px;
 }
+
+.email-pane-toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  background-color: #f5f5f5;
+  min-width: 40px;
+}
+
+.email-pane {
+  transition: width 0.3s ease;
+}
+
+.email-pane-toggle {
+  transition: width 0.3s ease;
+}
+
 </style>

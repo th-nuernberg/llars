@@ -3,7 +3,7 @@
     <v-row justify="center" align="center">
       <v-col cols="12" sm="8" md="4">
         <v-card class="elevation-12">
-          <v-toolbar color="teal lighten-4" dark>
+          <v-toolbar color="primary" dark>
             <v-toolbar-title>LLars Plattform Login</v-toolbar-title>
           </v-toolbar>
           <v-card-text>
@@ -12,6 +12,7 @@
                 label="Username"
                 prepend-icon="mdi-account"
                 v-model="username"
+                color="primary"
                 required
               ></v-text-field>
               <v-text-field
@@ -19,13 +20,15 @@
                 prepend-icon="mdi-lock"
                 v-model="password"
                 type="password"
+                color="primary"
                 required
+                @keyup.enter="handleLogin"
               ></v-text-field>
             </v-form>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="teal lighten-4" @click="handleLogin">Login</v-btn>
+            <v-btn color="secondary" @click="handleLogin">Login</v-btn>
           </v-card-actions>
           <v-alert v-if="errorMessage" type="error" class="ma-4">
             {{ errorMessage }}
@@ -40,8 +43,8 @@
 import {ref} from 'vue';
 import {useRouter} from 'vue-router';
 import {makePostRequestAsync} from '../services/rest_functions.js';
-import { jwtDecode } from "jwt-decode";
-import { isAdmin } from '../services/admins'; // Importiere die Admin-Check Funktion
+import {jwtDecode} from "jwt-decode";
+import {isAdmin} from '../services/admins';
 
 const username = ref('');
 const password = ref('');
@@ -56,21 +59,16 @@ async function handleLogin() {
     });
 
     if (response.data.access_token) {
-      // Speichern des Zugriffstokens und Benutzernamens im Local Storage
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('username', response.data.username);
 
-      // Extrahieren des API-Schlüssels aus dem JWT-Token
       const decoded = jwtDecode(response.data.access_token);
       const apiKey = decoded.api_key;
-      localStorage.setItem('api_key', apiKey); // Speichern des API-Schlüssels im Local Storage
+      localStorage.setItem('api_key', apiKey);
 
-      // Überprüfen, ob der Benutzer ein Admin ist
       if (isAdmin(response.data.username)) {
-        // Weiterleitung zur Admin-Seite
         router.push('/AdminDashboard');
       } else {
-        // Weiterleitung zur normalen Benutzer-Homepage
         router.push('/Home');
       }
     } else {

@@ -1,5 +1,5 @@
 <template>
-  <v-container class="fill-height">
+  <v-container class="home-container">
     <!-- Logo und Titelbereich -->
     <v-row justify="center" class="header mb-5">
       <v-col cols="12" class="text-center">
@@ -9,25 +9,24 @@
       </v-col>
     </v-row>
 
-    <!-- Kartenbereich -->
-    <v-row justify="center" align="stretch" class="cards-container mt-3">
-      <v-col cols="12" sm="6" md="4" lg="3" v-for="item in items" :key="item.title" class="card-column d-flex">
+    <!-- Feature Cards -->
+    <v-row class="equal-size-cards">
+      <v-col v-for="item in items" :key="item.title" cols="12" sm="6" class="d-flex card-col">
         <v-card
-          class="card-hover custom-card d-flex flex-column align-center justify-center"
-          color="teal-lighten-4"
-          :elevation="item.elevation"
+          class="mb-4 feature-card d-flex flex-column"
+          :color="item.disabled ? 'grey lighten-2' : 'primary'"
+          dark
           @click="item.disabled ? null : navigateTo(item.route)"
+          :elevation="item.elevation"
           @mouseover="() => item.elevation = item.disabled ? 2 : 5"
           @mouseleave="() => item.elevation = 1"
           :class="{ 'disabled-card': item.disabled }"
         >
-          <div class="d-flex align-center card-content">
-            <v-icon large class="mx-2" style="font-size: 50px;">{{ item.icon }}</v-icon>
-            <div class="text-content">
-              <v-card-title class="text-h5 font-weight-bold">{{ item.title }}</v-card-title>
-              <v-card-text>{{ item.description }}</v-card-text>
-            </div>
+          <div class="icon-container flex-grow-0">
+            <v-icon large class="icon-center" color="white">{{ item.icon }}</v-icon>
           </div>
+          <v-card-title class="text-h5 flex-grow-0">{{ item.title }}</v-card-title>
+          <v-card-text class="flex-grow-1">{{ item.description }}</v-card-text>
           <div v-if="item.disabled" class="lock-overlay">
             <v-icon class="lock-icon" color="grey darken-3">mdi-lock</v-icon>
           </div>
@@ -38,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -53,11 +52,41 @@ const items = ref([
 function navigateTo(route) {
   router.push(route);
 }
+
+onMounted(() => {
+  equalizeCardSizes();
+  window.addEventListener('resize', equalizeCardSizes);
+});
+
+function equalizeCardSizes() {
+  const cardCols = document.querySelectorAll('.card-col');
+  let maxWidth = 0;
+  let maxHeight = 0;
+
+  // Reset sizes and find the maximum natural width and height
+  cardCols.forEach(col => {
+    col.style.width = '';
+    col.style.height = '';
+    const width = col.offsetWidth;
+    const height = col.offsetHeight;
+    if (width > maxWidth) maxWidth = width;
+    if (height > maxHeight) maxHeight = height;
+  });
+
+  // Set all cards to the maximum width and height
+  cardCols.forEach(col => {
+    col.style.width = `${maxWidth}px`;
+    col.style.height = `${maxHeight}px`;
+  });
+}
 </script>
 
-<style>
-.fill-height {
-  min-height: 100vh;
+<style scoped>
+.home-container {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 8px;
+  max-width: 1200px; /* Adjust this value as needed */
 }
 
 .header {
@@ -66,55 +95,54 @@ function navigateTo(route) {
   padding-top: 64px;
 }
 
-.card-hover {
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-}
-
-.card-hover:hover {
-  transform: scale(1.05);
-}
-
-.mb-5 {
-  margin-bottom: 5rem;
-}
-
-.mt-3 {
-  margin-top: 3rem;
-}
-
-.cards-container {
+.equal-size-cards {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 20px;
 }
 
-.card-column {
+.card-col {
   display: flex;
+  justify-content: center;
   padding: 10px;
 }
 
-.custom-card {
-  width: 100%;
-  max-width: 300px;
+.feature-card {
+  background-color: #ffffff;
+  border: 1px solid var(--v-primary-base);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.3s ease, background-color 0.3s ease;
+  text-align: center;
   padding: 20px;
-  flex-grow: 1;
-  position: relative;
-  overflow: hidden;
-}
-
-.card-content {
+  height: 100%;
   width: 100%;
-  justify-content: center;
+  display: flex;
+  flex-direction: column;
 }
 
-.text-content {
-  text-align: left;
+.feature-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  background-color: var(--v-secondary-lighten-4);
+}
+
+.icon-container {
+  margin-bottom: 16px;
+}
+
+.feature-card .v-card-title {
+  color: white;
+  margin-top: 10px;
+}
+
+.feature-card .v-card-text {
+  color: white;
   flex-grow: 1;
 }
 
 .disabled-card {
   opacity: 0.8;
+  background-color: grey lighten-2;
 }
 
 .disabled-card:hover {
@@ -157,6 +185,10 @@ function navigateTo(route) {
 @media (max-width: 600px) {
   .header {
     padding-top: 80px;
+  }
+
+  .card-col {
+    flex-basis: 100%;
   }
 }
 </style>

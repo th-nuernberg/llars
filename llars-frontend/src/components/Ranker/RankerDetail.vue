@@ -443,6 +443,7 @@ async function fetchServerRanking(threadId) {
         'Authorization': api_key
       }
     });
+    console.log('Server ranking:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching server ranking:', error);

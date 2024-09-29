@@ -468,12 +468,14 @@ def get_current_ranking(thread_id):
         feature_data = {
             'model_name': ranking.llm.name,
             'content': ranking.feature.content,
-            'position': int(ranking.ranking_content)
+            'position': int(ranking.ranking_content),
+            'feature_id': ranking.feature_id,
+            'bucket': ranking.bucket  # Bucket hinzufügen
         }
 
         rankings_data[ranking.bucket].append(feature_data)
 
-    # Combine the features in the correct order
+    # Füge die Features in der richtigen Reihenfolge zusammen
     formatted_rankings = (
         [{'type': 'Gut', 'details': sorted(rankings_data['Gut'], key=lambda x: x['position'])}] +
         [{'type': 'Mittel', 'details': sorted(rankings_data['Mittel'], key=lambda x: x['position'])}] +

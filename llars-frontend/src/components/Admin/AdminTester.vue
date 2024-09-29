@@ -8,6 +8,7 @@
         class="list-group bucket-content"
         group="bucket"
         item-key="id"
+        @end="saveToLocalStorage"
       >
         <template #item="{ element }">
           <div class="list-group-item item">{{ element.name }}</div>
@@ -23,6 +24,7 @@
         class="list-group bucket-content"
         group="bucket"
         item-key="id"
+        @end="saveToLocalStorage"
       >
         <template #item="{ element }">
           <div class="list-group-item item">{{ element.name }}</div>
@@ -38,6 +40,7 @@
         class="list-group bucket-content"
         group="bucket"
         item-key="id"
+        @end="saveToLocalStorage"
       >
         <template #item="{ element }">
           <div class="list-group-item item">{{ element.name }}</div>
@@ -54,6 +57,7 @@
       class="neutral-list-group"
       group="bucket"
       item-key="id"
+      @end="saveToLocalStorage"
     >
       <template #item="{ element }">
         <div class="neutral-item">{{ element.name }}</div>
@@ -63,13 +67,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import draggable from 'vuedraggable';
 
+// Initiale Daten
 const goodList = ref([]);
 const averageList = ref([]);
 const badList = ref([]);
-
 const neutralList = ref([
   { name: "John 1", id: 0 },
   { name: "Joao 2", id: 1 },
@@ -77,6 +81,36 @@ const neutralList = ref([
   { name: "Jonny 4", id: 3 },
   { name: "Guisepe 5", id: 4 }
 ]);
+
+const STORAGE_KEY = 'bucket_data';
+
+// Daten in den LocalStorage speichern
+function saveToLocalStorage() {
+  const data = {
+    goodList: goodList.value,
+    averageList: averageList.value,
+    badList: badList.value,
+    neutralList: neutralList.value
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// Daten aus dem LocalStorage laden
+function loadFromLocalStorage() {
+  const savedData = localStorage.getItem(STORAGE_KEY);
+  if (savedData) {
+    const parsedData = JSON.parse(savedData);
+    goodList.value = parsedData.goodList || [];
+    averageList.value = parsedData.averageList || [];
+    badList.value = parsedData.badList || [];
+    neutralList.value = parsedData.neutralList || [];
+  }
+}
+
+// Daten beim Laden der Komponente aus dem LocalStorage abrufen
+onMounted(() => {
+  loadFromLocalStorage();
+});
 </script>
 
 <style scoped>

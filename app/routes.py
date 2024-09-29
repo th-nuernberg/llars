@@ -392,6 +392,7 @@ def save_ranking(thread_id):
             model_name = detail['model_name']
             content = detail['content']
             position = detail['position']
+            bucket = detail['bucket']  # Bucket Information
 
             # Find the FeatureType ID
             feature_type_entry = FeatureType.query.filter_by(name=type_name).first()
@@ -421,14 +422,16 @@ def save_ranking(thread_id):
                 ).first()
 
                 if existing_ranking:
-                    # Update the ranking content if it exists
+                    # Update the ranking content and bucket if it exists
                     existing_ranking.ranking_content = position
+                    existing_ranking.bucket = bucket
                 else:
-                    # Create a new ranking entry
+                    # Create a new ranking entry with the bucket information
                     new_ranking = UserFeatureRanking(
                         user_id=user.id,
                         feature_id=feature.feature_id,
                         ranking_content=position,
+                        bucket=bucket,  # Save the bucket
                         type_id=feature_type_entry.type_id,
                         llm_id=llm_entry.llm_id
                     )
@@ -455,21 +458,27 @@ def get_current_ranking(thread_id):
     if not rankings:
         return jsonify({'warning': 'No rankings found for the given thread and user', 'rankings': []}), 200
 
-    rankings_data = {}
+    rankings_data = {
+        'Gut': [],
+        'Mittel': [],
+        'Schlecht': []
+    }
 
     for ranking in rankings:
-        feature_type_name = ranking.feature_type.name
-        if feature_type_name not in rankings_data:
-            rankings_data[feature_type_name] = []
-
-        rankings_data[feature_type_name].append({
+        feature_data = {
             'model_name': ranking.llm.name,
             'content': ranking.feature.content,
             'position': int(ranking.ranking_content)
-        })
+        }
 
-    formatted_rankings = [{'type': key, 'details': sorted(content, key=lambda x: x['position'])} for key, content in
-                          rankings_data.items()]
+        rankings_data[ranking.bucket].append(feature_data)
+
+    # Combine the features in the correct order
+    formatted_rankings = (
+        [{'type': 'Gut', 'details': sorted(rankings_data['Gut'], key=lambda x: x['position'])}] +
+        [{'type': 'Mittel', 'details': sorted(rankings_data['Mittel'], key=lambda x: x['position'])}] +
+        [{'type': 'Schlecht', 'details': sorted(rankings_data['Schlecht'], key=lambda x: x['position'])}]
+    )
 
     return jsonify(formatted_rankings), 200
 

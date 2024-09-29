@@ -293,7 +293,9 @@ const loadCaseData = async (caseId) => {
     const threadData = await fetchEmailThreads(caseId);
     if (!threadData) return;
 
+    // Setze den Status, ob dieser Thread geranked wurde
     ranked.value = threadData.ranked;
+
     features.value = threadData.features;
 
     // Erstelle ein Feature-Map, um die Features nach Typ zu gruppieren
@@ -330,6 +332,9 @@ const loadCaseData = async (caseId) => {
   const threadData = await fetchEmailThreads(caseId);
   if (threadData) {
     messages.value = threadData.messages;
+
+    // Setze den Status des Rankings basierend auf den aktuellen Daten vom Server
+    ranked.value = threadData.ranked;
   }
 
   // Aktualisiere die Farben der Nachrichten im E-Mail-Verlauf
@@ -343,8 +348,6 @@ const loadCaseData = async (caseId) => {
     senderColors.value[message.sender] = currentColor;
   });
 };
-
-
 
 onMounted(() => {
   const caseId = route.params.id;
@@ -462,6 +465,8 @@ async function loadFeatureOrder() {
 
 function applyFeatureOrder(orderedFeatures) {
   const featureMap = new Map();
+
+  // Überprüfe, ob die Struktur korrekt ist
   orderedFeatures.forEach(f => {
     if (!featureMap.has(f.type)) {
       featureMap.set(f.type, {
@@ -475,7 +480,8 @@ function applyFeatureOrder(orderedFeatures) {
 
     f.details.forEach(detail => {
       const featureGroup = featureMap.get(f.type);
-      // Überprüfe, in welchen Bucket das Feature gehört
+
+      // Verteile die Features basierend auf dem Bucket
       if (detail.bucket === 'Gut') {
         featureGroup.goodList.push(detail);
       } else if (detail.bucket === 'Mittel') {
@@ -488,8 +494,10 @@ function applyFeatureOrder(orderedFeatures) {
     });
   });
 
+  // Ordne die Features der groupedFeatures zu
   groupedFeatures.value = Array.from(featureMap.values());
 }
+
 
 
 

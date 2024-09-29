@@ -11,108 +11,125 @@
                 <div>{{ translateFeatureType(feature.type) }}</div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div style="display: flex; justify-content: space-around;">
-                  <!-- Gut Bucket -->
-                  <div class="bucket good-bucket">
-                    <h3>Gut</h3>
-                    <draggable v-model="feature.goodList" class="list-group bucket-content" group="featureGroup" item-key="id">
-                      <template #item="{ element }">
-                        <div class="list-group-item item">
-                          <!-- Inhalt basierend auf minimierter Ansicht -->
-                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-                          <!-- Umschalt-Button für Minimierung -->
-                          <div class="toggle-btn-container">
-                            <v-btn
-                              v-if="isLongContent(element.content)"
-                              class="small-toggle-btn"
-                              small
-                              @click="toggleMinimize(element)"
-                            >
-                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-                            </v-btn>
-                          </div>
-                        </div>
-                      </template>
-                    </draggable>
-                  </div>
+  <div style="display: flex; justify-content: space-around;">
+    <!-- Gut Bucket -->
+    <div class="bucket good-bucket">
+      <h3>Gut</h3>
+      <draggable
+        v-model="feature.goodList"
+        class="list-group bucket-content"
+        group="featureGroup"
+        item-key="id"
+         @end="saveToLocalStorage(route.params.id)"
+      >
+        <template #item="{ element }">
+          <div class="list-group-item item">
+            <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+            <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+            <div class="toggle-btn-container">
+              <v-btn
+                v-if="isLongContent(element.content)"
+                class="small-toggle-btn"
+                small
+                @click="toggleMinimize(element)"
+              >
+                {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+              </v-btn>
+            </div>
+          </div>
+        </template>
+      </draggable>
+    </div>
 
-                  <!-- Mittel Bucket -->
-                  <div class="bucket average-bucket">
-                    <h3>Mittel</h3>
-                    <draggable v-model="feature.averageList" class="list-group bucket-content" group="featureGroup" item-key="id">
-                      <template #item="{ element }">
-                        <div class="list-group-item item">
-                          <!-- Inhalt basierend auf minimierter Ansicht -->
-                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-                          <!-- Umschalt-Button für Minimierung -->
-                          <div class="toggle-btn-container">
-                            <v-btn
-                              v-if="isLongContent(element.content)"
-                              class="small-toggle-btn"
-                              small
-                              @click="toggleMinimize(element)"
-                            >
-                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-                            </v-btn>
-                          </div>
-                        </div>
-                      </template>
-                    </draggable>
-                  </div>
+    <!-- Mittel Bucket -->
+    <div class="bucket average-bucket">
+      <h3>Mittel</h3>
+      <draggable
+        v-model="feature.averageList"
+        class="list-group bucket-content"
+        group="featureGroup"
+        item-key="id"
+         @end="saveToLocalStorage(route.params.id)"
+      >
+        <template #item="{ element }">
+          <div class="list-group-item item">
+            <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+            <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+            <div class="toggle-btn-container">
+              <v-btn
+                v-if="isLongContent(element.content)"
+                class="small-toggle-btn"
+                small
+                @click="toggleMinimize(element)"
+              >
+                {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+              </v-btn>
+            </div>
+          </div>
+        </template>
+      </draggable>
+    </div>
 
-                  <!-- Schlecht Bucket -->
-                  <div class="bucket bad-bucket">
-                    <h3>Schlecht</h3>
-                    <draggable v-model="feature.badList" class="list-group bucket-content" group="featureGroup" item-key="id">
-                      <template #item="{ element }">
-                        <div class="list-group-item item">
-                          <!-- Inhalt basierend auf minimierter Ansicht -->
-                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-                          <!-- Umschalt-Button für Minimierung -->
-                          <div class="toggle-btn-container">
-                            <v-btn
-                              v-if="isLongContent(element.content)"
-                              class="small-toggle-btn"
-                              small
-                              @click="toggleMinimize(element)"
-                            >
-                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-                            </v-btn>
-                          </div>
-                        </div>
-                      </template>
-                    </draggable>
-                  </div>
-                </div>
+    <!-- Schlecht Bucket -->
+    <div class="bucket bad-bucket">
+      <h3>Schlecht</h3>
+      <draggable
+        v-model="feature.badList"
+        class="list-group bucket-content"
+        group="featureGroup"
+        item-key="id"
+         @end="saveToLocalStorage(route.params.id)"
+      >
+        <template #item="{ element }">
+          <div class="list-group-item item">
+            <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+            <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+            <div class="toggle-btn-container">
+              <v-btn
+                v-if="isLongContent(element.content)"
+                class="small-toggle-btn"
+                small
+                @click="toggleMinimize(element)"
+              >
+                {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+              </v-btn>
+            </div>
+          </div>
+        </template>
+      </draggable>
+    </div>
+  </div>
 
-                <!-- Neutraler Bucket -->
-                <div class="neutral-bucket-container">
-                  <h3>Neutral</h3>
-                  <draggable v-model="feature.neutralList" class="neutral-list-group" group="featureGroup" item-key="id">
-                    <template #item="{ element }">
-                      <div class="neutral-item">
-                        <!-- Inhalt basierend auf minimierter Ansicht -->
-                        <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-                        <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-                        <!-- Umschalt-Button für Minimierung -->
-                        <div class="toggle-btn-container">
-                          <v-btn
-                            v-if="isLongContent(element.content)"
-                            class="small-toggle-btn"
-                            small
-                            @click="toggleMinimize(element)"
-                          >
-                            {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-                          </v-btn>
-                        </div>
-                      </div>
-                    </template>
-                  </draggable>
-                </div>
-              </v-expansion-panel-text>
+  <!-- Neutraler Bucket -->
+  <div class="neutral-bucket-container">
+    <h3>Neutral</h3>
+    <draggable
+      v-model="feature.neutralList"
+      class="neutral-list-group"
+      group="featureGroup"
+      item-key="id"
+       @end="saveToLocalStorage(route.params.id)"
+    >
+      <template #item="{ element }">
+        <div class="neutral-item">
+          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+          <div class="toggle-btn-container">
+            <v-btn
+              v-if="isLongContent(element.content)"
+              class="small-toggle-btn"
+              small
+              @click="toggleMinimize(element)"
+            >
+              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+            </v-btn>
+          </div>
+        </div>
+      </template>
+    </draggable>
+  </div>
+</v-expansion-panel-text>
+
             </v-expansion-panel>
           </v-expansion-panels>
         </div>
@@ -226,41 +243,96 @@ const dragOptions = ref({
   ghostClass: 'ghost',
 });
 
+// Der Key für LocalStorage
+const STORAGE_KEY = 'rankerDetail_data';
+
+// Speichern in LocalStorage mit threadId
+function saveToLocalStorage(threadId) {
+  const key = `${STORAGE_KEY}_${threadId}`;
+  const data = groupedFeatures.value.map(group => ({
+    type: group.type,
+    goodList: group.goodList,
+    averageList: group.averageList,
+    badList: group.badList,
+    neutralList: group.neutralList,
+  }));
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+// Daten aus LocalStorage laden mit threadId
+function loadFromLocalStorage(threadId) {
+  const key = `${STORAGE_KEY}_${threadId}`;
+  const savedData = localStorage.getItem(key);
+
+  if (savedData) {
+    const parsedData = JSON.parse(savedData);
+    groupedFeatures.value = parsedData.map(group => ({
+      type: group.type,
+      goodList: group.goodList || [],
+      averageList: group.averageList || [],
+      badList: group.badList || [],
+      neutralList: group.neutralList || []
+    }));
+    return true;  // Daten wurden aus LocalStorage geladen
+  }
+  return false;  // Keine Daten im LocalStorage gefunden
+}
+
+// Funktion zum Laden der Daten für einen spezifischen Fall
 // Funktion zum Laden der Daten für einen spezifischen Fall
 const loadCaseData = async (caseId) => {
-  const threadData = await fetchEmailThreads(caseId);
-  if (!threadData) return;
+  let dataLoadedFromLocalStorage = false;
 
-  ranked.value = threadData.ranked;
-  features.value = threadData.features;
-  messages.value = threadData.messages;
-
-  const featureMap = new Map();
-  features.value.forEach((f, index) => {
-  if (!featureMap.has(f.type)) {
-    featureMap.set(f.type, {
-      type: f.type,
-      goodList: [],
-      averageList: [],
-      badList: [],
-      neutralList: []
-    });
+  // Prüfe zuerst, ob es Daten im LocalStorage gibt
+  if (loadFromLocalStorage(caseId)) {
+    dataLoadedFromLocalStorage = true;
   }
 
-  featureMap.get(f.type).neutralList.push({
-    model_name: f.model_name,
-    content: f.content,
-    feature_id: f.feature_id,
-    position: index,
-    minimized: true,
-  });
-});
+  // Wenn keine Daten im LocalStorage sind oder sie unvollständig sind, rufe die Daten vom Server ab
+  if (!dataLoadedFromLocalStorage) {
+    const threadData = await fetchEmailThreads(caseId);
+    if (!threadData) return;
 
+    ranked.value = threadData.ranked;
+    features.value = threadData.features;
 
-  groupedFeatures.value = Array.from(featureMap.values());
-  localStorageKey.value = `featureOrder_${caseId}`;
-  await loadFeatureOrder();
+    // Erstelle ein Feature-Map, um die Features nach Typ zu gruppieren
+    const featureMap = new Map();
+    features.value.forEach((f, index) => {
+      if (!featureMap.has(f.type)) {
+        featureMap.set(f.type, {
+          type: f.type,
+          goodList: [],
+          averageList: [],
+          badList: [],
+          neutralList: []
+        });
+      }
 
+      // Platziere das Feature initial in der Neutral-Liste
+      featureMap.get(f.type).neutralList.push({
+        model_name: f.model_name,
+        content: f.content,
+        feature_id: f.feature_id,
+        position: index,
+        minimized: true,
+      });
+    });
+
+    groupedFeatures.value = Array.from(featureMap.values());
+    localStorageKey.value = `featureOrder_${caseId}`;
+
+    // Speichern der vom Server abgerufenen Daten im LocalStorage
+    saveToLocalStorage(caseId);
+  }
+
+  // Stelle sicher, dass die Nachrichten immer aktuell sind, indem sie vom Server geladen werden
+  const threadData = await fetchEmailThreads(caseId);
+  if (threadData) {
+    messages.value = threadData.messages;
+  }
+
+  // Aktualisiere die Farben der Nachrichten im E-Mail-Verlauf
   let lastSender = '';
   let currentColor = 'same-sender';
   messages.value.forEach(message => {
@@ -271,6 +343,17 @@ const loadCaseData = async (caseId) => {
     senderColors.value[message.sender] = currentColor;
   });
 };
+
+
+
+onMounted(() => {
+  const caseId = route.params.id;
+  if (caseId) {
+    loadCaseData(caseId);  // Lade zuerst aus LocalStorage, dann (falls nötig) vom Server
+  }
+});
+
+
 
 function getTooltipText(type) {
   const tooltips = {
@@ -288,10 +371,6 @@ function getTooltipText(type) {
 watch(() => route.params.id, (newId) => {
   loadCaseData(newId);
 }, { immediate: true });
-
-onMounted(() => {
-  loadCaseData(route.params.id);
-});
 
 function getColorForText(text) {
   const hash = hashCode(text);
@@ -384,20 +463,35 @@ async function loadFeatureOrder() {
 function applyFeatureOrder(orderedFeatures) {
   const featureMap = new Map();
   orderedFeatures.forEach(f => {
-    featureMap.set(f.type, {
-      type: f.type,
-      details: new Array(f.details.length)
-    });
-  });
+    if (!featureMap.has(f.type)) {
+      featureMap.set(f.type, {
+        type: f.type,
+        goodList: [],
+        averageList: [],
+        badList: [],
+        neutralList: []
+      });
+    }
 
-  orderedFeatures.forEach(f => {
     f.details.forEach(detail => {
-      featureMap.get(f.type).details[detail.position] = detail;
+      const featureGroup = featureMap.get(f.type);
+      // Überprüfe, in welchen Bucket das Feature gehört
+      if (detail.bucket === 'Gut') {
+        featureGroup.goodList.push(detail);
+      } else if (detail.bucket === 'Mittel') {
+        featureGroup.averageList.push(detail);
+      } else if (detail.bucket === 'Schlecht') {
+        featureGroup.badList.push(detail);
+      } else {
+        featureGroup.neutralList.push(detail);
+      }
     });
   });
 
   groupedFeatures.value = Array.from(featureMap.values());
 }
+
+
 
 function getMessageClass(sender) {
   return senderColors.value[sender];
@@ -421,7 +515,7 @@ function formatTimestamp(timestamp) {
 }
 
 function formatFeatureContent(type, content) {
-  console.log('Formatting feature content:', type, content);
+  // console.log('Formatting feature content:', type, content);
   switch (type) {
     case 'generated_subject':
       try {
@@ -574,21 +668,37 @@ function saveFeaturesServerSide() {
     return;
   }
 
-  const savedFeatureOrder = localStorage.getItem(`featureOrder_${route.params.id}`);
-  let orderedFeatures = groupedFeatures.value.map(group => ({
-    type: group.type,
-    details: group.details.map((detail, index) => ({
-      model_name: detail.model_name,
-      content: detail.content,
-      position: index
-    }))
-  }));
+  const threadId = route.params.id;
 
-  if (savedFeatureOrder) {
-    orderedFeatures = JSON.parse(savedFeatureOrder);
-  }
+  // Erstelle ein Objekt, das die Buckets enthält
+  let orderedFeatures = groupedFeatures.value.map(group => {
+    return {
+      type: group.type,
+      details: [
+        ...group.goodList.map((detail, index) => ({
+          model_name: detail.model_name,
+          content: detail.content,
+          position: index,
+          bucket: 'Gut' // Bucket-Information für "Gut"
+        })),
+        ...group.averageList.map((detail, index) => ({
+          model_name: detail.model_name,
+          content: detail.content,
+          position: index,
+          bucket: 'Mittel' // Bucket-Information für "Mittel"
+        })),
+        ...group.badList.map((detail, index) => ({
+          model_name: detail.model_name,
+          content: detail.content,
+          position: index,
+          bucket: 'Schlecht' // Bucket-Information für "Schlecht"
+        }))
+      ]
+    };
+  });
 
-  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${route.params.id}`, orderedFeatures, {
+  // Senden der Daten an den Server
+  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${threadId}`, orderedFeatures, {
     headers: {
       'Authorization': api_key,
       'Content-Type': 'application/json'
@@ -604,6 +714,7 @@ function saveFeaturesServerSide() {
       alert('Fehler beim Speichern des Rankings.');
     });
 }
+
 </script>
 
 <style scoped>

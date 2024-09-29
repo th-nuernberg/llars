@@ -101,7 +101,7 @@ function logout() {
   localStorage.removeItem('api_key');
 
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('featureOrder_') || key.startsWith('featureRating_')) {
+    if (key.startsWith('featureOrder_') || key.startsWith('featureRating_')|| key.startsWith('rankerDetail_data_')) {
       localStorage.removeItem(key);
     }
   });

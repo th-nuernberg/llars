@@ -39,8 +39,16 @@ POST http://backend-flask-service:8081/register
 Content-Type: application/json
 
 {
-  "username": "tester1",
-  "password": "llars_tester1"
+  "username": "bke_dana",
+  "password": "micivionterm"
+}
+###
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "bke_maria",
+  "password": "cernistinsto"
 }
 ###
 POST http://backend-flask-service:8081/register

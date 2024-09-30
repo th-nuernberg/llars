@@ -452,30 +452,34 @@ def get_current_ranking(thread_id):
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
+    # Holen Sie alle Rankings für den gegebenen Thread und Benutzer
     rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
         Feature.thread_id == thread_id).all()
 
     if not rankings:
         return jsonify({'warning': 'No rankings found for the given thread and user', 'rankings': []}), 200
 
+    # Datenstruktur für die Rankings
     rankings_data = {
         'Gut': [],
         'Mittel': [],
         'Schlecht': []
     }
 
+    # Iteriere durch die Rankings und füge den FeatureType hinzu
     for ranking in rankings:
         feature_data = {
             'model_name': ranking.llm.name,
             'content': ranking.feature.content,
             'position': int(ranking.ranking_content),
             'feature_id': ranking.feature_id,
-            'bucket': ranking.bucket  # Bucket hinzufügen
+            'bucket': ranking.bucket,
+            'type': ranking.feature_type.name  # Hinzufügen des FeatureTypes (z.B. situation_summary)
         }
 
         rankings_data[ranking.bucket].append(feature_data)
 
-    # Füge die Features in der richtigen Reihenfolge zusammen
+    # Füge die Features in der richtigen Reihenfolge und nach Bucket gruppiert zusammen
     formatted_rankings = (
         [{'type': 'Gut', 'details': sorted(rankings_data['Gut'], key=lambda x: x['position'])}] +
         [{'type': 'Mittel', 'details': sorted(rankings_data['Mittel'], key=lambda x: x['position'])}] +
@@ -483,6 +487,7 @@ def get_current_ranking(thread_id):
     )
 
     return jsonify(formatted_rankings), 200
+
 
 
 @data_blueprint.route('/feature_type_mapping', methods=['GET'])

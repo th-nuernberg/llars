@@ -34,7 +34,7 @@ Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 GET http://localhost/api/api/email_threads/rankings/1
 Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 ###
-GET http://localhost/api/api/email_threads/1/current_ranking
+GET http://localhost/api/api/email_threads/24/current_ranking
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
 POST http://llars.informatik.fh-nuernberg.de/api/login

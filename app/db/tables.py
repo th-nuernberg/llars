@@ -81,14 +81,15 @@ class UserFeatureRanking(db.Model):
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     feature_id = mapped_column(db.Integer, db.ForeignKey('features.feature_id'))
     ranking_content = mapped_column(db.Float)
-    type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
+    type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))  # Neuer Typ
     llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
     bucket = mapped_column(db.String(20))  # Neuer Bucket (z.B. 'Gut', 'Mittel', 'Schlecht')
 
     user = db.relationship('User', backref='feature_rankings')
     feature = db.relationship('Feature', backref='user_rankings')
-    feature_type = db.relationship('FeatureType', backref='user_rankings')
+    feature_type = db.relationship('FeatureType', backref='user_rankings')  # Verknüpfung mit dem FeatureType
     llm = db.relationship('LLM', backref='user_rankings')
+
 
 
 class UserFeatureRating(db.Model):

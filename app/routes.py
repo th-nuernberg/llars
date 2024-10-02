@@ -417,7 +417,7 @@ def save_ranking(thread_id):
                 existing_ranking = UserFeatureRanking.query.filter_by(
                     user_id=user.id,
                     feature_id=feature.feature_id,
-                    type_id=feature_type_entry.type_id,
+                    type_id=feature_type_entry.type_id,  # Stelle sicher, dass der Typ jetzt auch gespeichert wird
                     llm_id=llm_entry.llm_id
                 ).first()
 
@@ -432,7 +432,7 @@ def save_ranking(thread_id):
                         feature_id=feature.feature_id,
                         ranking_content=position,
                         bucket=bucket,  # Save the bucket
-                        type_id=feature_type_entry.type_id,
+                        type_id=feature_type_entry.type_id,  # Speichere den Feature-Typ
                         llm_id=llm_entry.llm_id
                     )
                     db.session.add(new_ranking)
@@ -459,32 +459,54 @@ def get_current_ranking(thread_id):
     if not rankings:
         return jsonify({'warning': 'No rankings found for the given thread and user', 'rankings': []}), 200
 
-    # Datenstruktur für die Rankings
-    rankings_data = {
-        'Gut': [],
-        'Mittel': [],
-        'Schlecht': []
-    }
+    # Holen Sie alle Feature-Typen aus der Datenbank
+    feature_types = FeatureType.query.all()
 
-    # Iteriere durch die Rankings und füge den FeatureType hinzu
+    # Dynamisch die Datenstruktur für die Rankings basierend auf den Feature-Typen aufbauen
+    rankings_data = {feature_type.name: {"goodList": [], "averageList": [], "badList": [], "neutralList": []} for feature_type in feature_types}
+
+    # Iteriere durch die Rankings und sortiere sie in die entsprechenden Buckets
     for ranking in rankings:
         feature_data = {
             'model_name': ranking.llm.name,
             'content': ranking.feature.content,
-            'position': int(ranking.ranking_content),
             'feature_id': ranking.feature_id,
-            'bucket': ranking.bucket,
-            'type': ranking.feature_type.name  # Hinzufügen des FeatureTypes (z.B. situation_summary)
+            'position': int(ranking.ranking_content),
+            'minimized': True  # Beispielwert, du kannst dies nach Bedarf ändern
         }
 
-        rankings_data[ranking.bucket].append(feature_data)
+        # Bestimme den Feature-Typ (dynamisch basierend auf dem Ranking)
+        feature_type = ranking.feature_type.name
 
-    # Füge die Features in der richtigen Reihenfolge und nach Bucket gruppiert zusammen
-    formatted_rankings = (
-        [{'type': 'Gut', 'details': sorted(rankings_data['Gut'], key=lambda x: x['position'])}] +
-        [{'type': 'Mittel', 'details': sorted(rankings_data['Mittel'], key=lambda x: x['position'])}] +
-        [{'type': 'Schlecht', 'details': sorted(rankings_data['Schlecht'], key=lambda x: x['position'])}]
-    )
+        # Ordne die Feature-Daten dem richtigen Bucket und Typ zu
+        if feature_type in rankings_data:
+            if ranking.bucket == 'Gut':
+                rankings_data[feature_type]['goodList'].append(feature_data)
+            elif ranking.bucket == 'Mittel':
+                rankings_data[feature_type]['averageList'].append(feature_data)
+            elif ranking.bucket == 'Schlecht':
+                rankings_data[feature_type]['badList'].append(feature_data)
+            else:
+                rankings_data[feature_type]['neutralList'].append(feature_data)
+
+    # Sortiere die Listen innerhalb der Buckets nach der Position
+    for feature_type, data in rankings_data.items():
+        data['goodList'] = sorted(data['goodList'], key=lambda x: x['position'])
+        data['averageList'] = sorted(data['averageList'], key=lambda x: x['position'])
+        data['badList'] = sorted(data['badList'], key=lambda x: x['position'])
+        data['neutralList'] = sorted(data['neutralList'], key=lambda x: x['position'])
+
+    # Die finale Ausgabe im dynamischen Format
+    formatted_rankings = [
+        {
+            "type": feature_type,
+            "goodList": data["goodList"],
+            "averageList": data["averageList"],
+            "badList": data["badList"],
+            "neutralList": data["neutralList"]
+        }
+        for feature_type, data in rankings_data.items()
+    ]
 
     return jsonify(formatted_rankings), 200
 

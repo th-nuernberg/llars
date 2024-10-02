@@ -281,13 +281,20 @@ function loadFromLocalStorage(threadId) {
 // Funktion zum Laden der Daten für einen spezifischen Fall
 // Funktion zum Laden der Daten für einen spezifischen Fall
 const loadCaseData = async (caseId) => {
+  let dataLoadedFromLocalStorage = false;
 
-  loadFromLocalStorage(caseId);
+  // Prüfe zuerst, ob es Daten im LocalStorage gibt
+  if (loadFromLocalStorage(caseId)) {
+    dataLoadedFromLocalStorage = true;
+  }
+
   // Wenn keine Daten im LocalStorage sind oder sie unvollständig sind, rufe die Daten vom Server ab
-  if (loadFromLocalStorage) {
+  if (!dataLoadedFromLocalStorage) {
     const threadData = await fetchEmailThreads(caseId);
     if (!threadData) return;
-    console.log('Thread data:', threadData);
+
+    const serverRanking = await fetchServerRanking(caseId);
+
     // Setze den Status, ob dieser Thread geranked wurde
     ranked.value = threadData.ranked;
 
@@ -296,7 +303,6 @@ const loadCaseData = async (caseId) => {
     // Erstelle ein Feature-Map, um die Features nach Typ zu gruppieren
     const featureMap = new Map();
     features.value.forEach((f, index) => {
-      // console.log('Feature type:', f.type);
       if (!featureMap.has(f.type)) {
         featureMap.set(f.type, {
           type: f.type,
@@ -317,16 +323,26 @@ const loadCaseData = async (caseId) => {
       });
     });
 
+    // Überschreibe die neutralen Listen, goodList, etc. mit den Server-Rankings, wenn vorhanden
+    serverRanking.forEach(serverGroup => {
+      if (featureMap.has(serverGroup.type)) {
+        featureMap.get(serverGroup.type).goodList = serverGroup.goodList || [];
+        featureMap.get(serverGroup.type).averageList = serverGroup.averageList || [];
+        featureMap.get(serverGroup.type).badList = serverGroup.badList || [];
+        featureMap.get(serverGroup.type).neutralList = serverGroup.neutralList || [];
+      }
+    });
+
     groupedFeatures.value = Array.from(featureMap.values());
+    console.log('Grouped features:', groupedFeatures.value);
     localStorageKey.value = `featureOrder_${caseId}`;
-    console.log(fetchServerRanking(caseId));
+
     // Speichern der vom Server abgerufenen Daten im LocalStorage
-    //saveToLocalStorage(caseId);
+    saveToLocalStorage(caseId);
   }
 
   // Stelle sicher, dass die Nachrichten immer aktuell sind, indem sie vom Server geladen werden
   const threadData = await fetchEmailThreads(caseId);
-  console.log('Thread data:', threadData);
   if (threadData) {
     messages.value = threadData.messages;
 
@@ -354,7 +370,6 @@ onMounted(() => {
 });
 
 
-
 function getTooltipText(type) {
   const tooltips = {
     abstract_summary: 'Diese Zusammenfassung gibt einen Überblick über den Fall.',
@@ -370,7 +385,7 @@ function getTooltipText(type) {
 // Beobachte Änderungen in den Routenparametern
 watch(() => route.params.id, (newId) => {
   loadCaseData(newId);
-}, { immediate: true });
+}, {immediate: true});
 
 function getColorForText(text) {
   const hash = hashCode(text);
@@ -497,8 +512,6 @@ function applyFeatureOrder(orderedFeatures) {
 }
 
 
-
-
 function getMessageClass(sender) {
   return senderColors.value[sender];
 }
@@ -577,7 +590,7 @@ function handleDragStart() {
 
 function handleDragEnd() {
   document.body.classList.remove("dragging");
-  //saveFeatureOrderToLocalStorage();
+  saveFeatureOrderToLocalStorage();
 }
 
 function saveFeatureOrderToLocalStorage() {
@@ -612,7 +625,7 @@ async function navigateToPreviousCase() {
 
   // Navigiere zum vorherigen Ranking-Thread
   const previousThread = rankingThreads[currentIndex - 1];
-  router.push({ name: 'RankerDetail', params: { id: previousThread.thread_id.toString() } });
+  router.push({name: 'RankerDetail', params: {id: previousThread.thread_id.toString()}});
 }
 
 async function navigateToNextCase() {
@@ -634,7 +647,7 @@ async function navigateToNextCase() {
 
   // Navigiere zum nächsten Ranking-Thread
   const nextThread = rankingThreads[currentIndex + 1];
-  router.push({ name: 'RankerDetail', params: { id: nextThread.thread_id.toString() } });
+  router.push({name: 'RankerDetail', params: {id: nextThread.thread_id.toString()}});
 }
 
 async function fetchRankingThreads() {
@@ -790,7 +803,7 @@ function saveFeaturesServerSide() {
   padding: 16px;
   margin-bottom: 10px;
   border-radius: 10px;
-  box-shadow: 0px 1px 2px rgba(0,0,0,0.1);
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .same-sender {
@@ -831,7 +844,7 @@ function saveFeaturesServerSide() {
   text-overflow: ellipsis;
   word-wrap: break-word;
   position: relative;
-  box-shadow: 0px 1px 2px rgba(0,0,0,0.1);
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .draggable-item.expanded {
@@ -900,6 +913,7 @@ body.dragging * {
 .v-tooltip__content {
   white-space: pre-line;
 }
+
 .buckets-container {
   display: flex;
   justify-content: space-between;

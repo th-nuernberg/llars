@@ -630,24 +630,24 @@ def download_rankings_csv():
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Retrieve all user rankings and sort them by FeatureType and then by Bucket
-    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(Feature.type_id,
+    # Retrieve all user rankings and sort them by FeatureType, Thread ID, and then by Bucket
+    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(Feature.type_id, Feature.thread_id,
                                                                                  UserFeatureRanking.bucket,
                                                                                  UserFeatureRanking.ranking_content).all()
 
-    # Prepare a dictionary to hold rankings by feature type
+    # Prepare a dictionary to hold rankings by feature type and thread
     feature_type_rankings = {}
 
-    # Group rankings by feature type
+    # Group rankings by feature type and thread
     for ranking in rankings:
-        feature_type_name = ranking.feature_type.name
-        if feature_type_name not in feature_type_rankings:
-            feature_type_rankings[feature_type_name] = {
+        key = (ranking.feature_type.name, ranking.feature.email_thread.thread_id)
+        if key not in feature_type_rankings:
+            feature_type_rankings[key] = {
                 'Gut': [],
                 'Mittel': [],
                 'Schlecht': []
             }
-        feature_type_rankings[feature_type_name][ranking.bucket].append(ranking)
+        feature_type_rankings[key][ranking.bucket].append(ranking)
 
     # Create a string buffer to write the CSV data
     csv_buffer = StringIO()
@@ -655,28 +655,29 @@ def download_rankings_csv():
 
     # Write CSV header
     csv_writer.writerow([
-        'Feature Type', 'Complete Feature Ranking', 'Bucket', 'User', 'Feature ID', 'Thread ID',
+        'Thread ID', 'Feature Type', 'Complete Feature Ranking', 'Bucket', 'Bucket Position', 'User', 'Feature ID',
         'Chat ID', 'Institut ID', 'LLM Name'
     ])
 
-    # Iterate over each feature type to generate the complete ranking
-    for feature_type_name, bucket_rankings in feature_type_rankings.items():
+    # Iterate over each feature type and thread to generate the complete ranking
+    for (feature_type_name, thread_id), bucket_rankings in feature_type_rankings.items():
         complete_ranking_position = 1
 
-        # First, go through the "Gut" bucket
+        # Go through the buckets in order
         for bucket in ['Gut', 'Mittel', 'Schlecht']:
             # Sort the features within the bucket by their ranking_content
             bucket_rankings[bucket].sort(key=lambda x: x.ranking_content)
 
-            # Assign a complete ranking based on the bucket order and ranking within the bucket
-            for ranking in bucket_rankings[bucket]:
+            # Assign a complete ranking and bucket position within the thread and feature type
+            for bucket_position, ranking in enumerate(bucket_rankings[bucket], start=1):
                 csv_writer.writerow([
+                    thread_id,  # The Thread ID
                     feature_type_name,  # The type of the feature (e.g., situation_summary)
-                    complete_ranking_position,  # The complete ranking across all buckets for this type
+                    complete_ranking_position,  # The complete ranking across all buckets for this type and thread
                     bucket,  # The bucket the feature belongs to
+                    bucket_position,  # Position within the bucket
                     ranking.user.username,  # Username of the person who ranked the feature
                     ranking.feature_id,  # The ID of the feature
-                    ranking.feature.email_thread.thread_id,  # The thread ID to which the feature belongs
                     ranking.feature.email_thread.chat_id,  # The chat ID associated with the thread
                     ranking.feature.email_thread.institut_id,  # The institution ID
                     ranking.llm.name  # The LLM that generated the feature

@@ -456,9 +456,6 @@ def get_current_ranking(thread_id):
     rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
         Feature.thread_id == thread_id).all()
 
-    if not rankings:
-        return jsonify({'warning': 'No rankings found for the given thread and user', 'rankings': []}), 200
-
     # Holen Sie alle Feature-Typen aus der Datenbank
     feature_types = FeatureType.query.all()
 
@@ -489,12 +486,31 @@ def get_current_ranking(thread_id):
             else:
                 rankings_data[feature_type]['neutralList'].append(feature_data)
 
+    # Holen Sie alle Features für den Thread, die noch nicht vom Benutzer gerankt wurden
+    ranked_feature_ids = [ranking.feature_id for ranking in rankings]
+    all_features = Feature.query.filter_by(thread_id=thread_id).all()
+
+    for feature in all_features:
+        if feature.feature_id not in ranked_feature_ids:
+            feature_data = {
+                'model_name': feature.llm.name,
+                'content': feature.content,
+                'feature_id': feature.feature_id,
+                'position': None,  # Ungerankte Features haben keine Position
+                'minimized': True  # Beispielwert, du kannst dies nach Bedarf ändern
+            }
+
+            # Ordne das Feature dem neutralen Bucket des entsprechenden Feature-Typs zu
+            feature_type = feature.feature_type.name
+            if feature_type in rankings_data:
+                rankings_data[feature_type]['neutralList'].append(feature_data)
+
     # Sortiere die Listen innerhalb der Buckets nach der Position
     for feature_type, data in rankings_data.items():
-        data['goodList'] = sorted(data['goodList'], key=lambda x: x['position'])
-        data['averageList'] = sorted(data['averageList'], key=lambda x: x['position'])
-        data['badList'] = sorted(data['badList'], key=lambda x: x['position'])
-        data['neutralList'] = sorted(data['neutralList'], key=lambda x: x['position'])
+        data['goodList'] = sorted(data['goodList'], key=lambda x: x['position'] if x['position'] is not None else float('inf'))
+        data['averageList'] = sorted(data['averageList'], key=lambda x: x['position'] if x['position'] is not None else float('inf'))
+        data['badList'] = sorted(data['badList'], key=lambda x: x['position'] if x['position'] is not None else float('inf'))
+        data['neutralList'] = sorted(data['neutralList'], key=lambda x: x['position'] if x['position'] is not None else float('inf'))
 
     # Die finale Ausgabe im dynamischen Format
     formatted_rankings = [
@@ -509,7 +525,6 @@ def get_current_ranking(thread_id):
     ]
 
     return jsonify(formatted_rankings), 200
-
 
 
 @data_blueprint.route('/feature_type_mapping', methods=['GET'])
@@ -616,34 +631,62 @@ def download_rankings_csv():
         return jsonify({'error': 'Invalid API key'}), 401
 
     # Retrieve all user rankings
-    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).all()
+    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(UserFeatureRanking.bucket, UserFeatureRanking.ranking_content).all()
+
+    # Sort rankings into Buckets: Gut, Mittel, Schlecht
+    sorted_rankings = {
+        'Gut': [],
+        'Mittel': [],
+        'Schlecht': []
+    }
+
+    for ranking in rankings:
+        sorted_rankings[ranking.bucket].append(ranking)
+
+    # Create a global ranking list (sorted by Bucket and then by ranking within the Bucket)
+    global_ranking_list = []
+    global_rank = 1
+
+    # Iterate through each bucket and assign the ranks within the bucket
+    for bucket in ['Gut', 'Mittel', 'Schlecht']:
+        sorted_rankings[bucket].sort(key=lambda x: x.ranking_content)  # Sort within each bucket by ranking_content
+        for position, ranking in enumerate(sorted_rankings[bucket], start=1):
+            global_ranking_list.append({
+                'global_rank': global_rank,
+                'bucket': bucket,
+                'bucket_position': position,
+                'user_name': ranking.user.username,
+                'feature_id': ranking.feature_id,
+                'thread_id': ranking.feature.email_thread.thread_id,
+                'chat_id': ranking.feature.email_thread.chat_id,
+                'institut_id': ranking.feature.email_thread.institut_id,
+                'llm_name': ranking.llm.name,
+                'feature_type_name': ranking.feature_type.name,
+                'ranking_position': ranking.ranking_content
+            })
+            global_rank += 1
 
     # Create a string buffer to write the CSV data
     csv_buffer = StringIO()
     csv_writer = csv.writer(csv_buffer)
 
     # Write CSV header
-    csv_writer.writerow(
-        ['User', 'Feature ID', 'Thread ID', 'Chat ID', 'Institut ID', 'LLM Name', 'Feature Type', 'Ranking Position'])
+    csv_writer.writerow([
+        'Global Rank', 'Bucket', 'Bucket Position', 'User', 'Feature ID', 'Thread ID',
+        'Chat ID', 'Institut ID', 'LLM Name', 'Feature Type', 'Ranking Position'
+    ])
 
     # Write data rows
-    for ranking in rankings:
-        user_name = ranking.user.username
-        llm_name = ranking.llm.name
-        feature_type_name = ranking.feature_type.name
-        ranking_position = ranking.ranking_content
-        thread_id = ranking.feature.email_thread.thread_id
-        chat_id = ranking.feature.email_thread.chat_id
-        institut_id = ranking.feature.email_thread.institut_id  # Add institut_id to the output
-
-        csv_writer.writerow(
-            [user_name, ranking.feature_id, thread_id, chat_id, institut_id, llm_name, feature_type_name,
-             ranking_position])
+    for ranking in global_ranking_list:
+        csv_writer.writerow([
+            ranking['global_rank'], ranking['bucket'], ranking['bucket_position'],
+            ranking['user_name'], ranking['feature_id'], ranking['thread_id'],
+            ranking['chat_id'], ranking['institut_id'], ranking['llm_name'],
+            ranking['feature_type_name'], ranking['ranking_position']
+        ])
 
     # Get the CSV content from the buffer before closing it
     csv_content = csv_buffer.getvalue()
-
-    # Now close the buffer
     csv_buffer.close()
 
     # Create a response with the CSV content

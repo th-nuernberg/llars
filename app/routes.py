@@ -630,41 +630,24 @@ def download_rankings_csv():
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Retrieve all user rankings
-    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(UserFeatureRanking.bucket, UserFeatureRanking.ranking_content).all()
+    # Retrieve all user rankings and sort them by FeatureType and then by Bucket
+    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(Feature.type_id,
+                                                                                 UserFeatureRanking.bucket,
+                                                                                 UserFeatureRanking.ranking_content).all()
 
-    # Sort rankings into Buckets: Gut, Mittel, Schlecht
-    sorted_rankings = {
-        'Gut': [],
-        'Mittel': [],
-        'Schlecht': []
-    }
+    # Prepare a dictionary to hold rankings by feature type
+    feature_type_rankings = {}
 
+    # Group rankings by feature type
     for ranking in rankings:
-        sorted_rankings[ranking.bucket].append(ranking)
-
-    # Create a global ranking list (sorted by Bucket and then by ranking within the Bucket)
-    global_ranking_list = []
-    global_rank = 1
-
-    # Iterate through each bucket and assign the ranks within the bucket
-    for bucket in ['Gut', 'Mittel', 'Schlecht']:
-        sorted_rankings[bucket].sort(key=lambda x: x.ranking_content)  # Sort within each bucket by ranking_content
-        for position, ranking in enumerate(sorted_rankings[bucket], start=1):
-            global_ranking_list.append({
-                'global_rank': global_rank,
-                'bucket': bucket,
-                'bucket_position': position,
-                'user_name': ranking.user.username,
-                'feature_id': ranking.feature_id,
-                'thread_id': ranking.feature.email_thread.thread_id,
-                'chat_id': ranking.feature.email_thread.chat_id,
-                'institut_id': ranking.feature.email_thread.institut_id,
-                'llm_name': ranking.llm.name,
-                'feature_type_name': ranking.feature_type.name,
-                'ranking_position': ranking.ranking_content
-            })
-            global_rank += 1
+        feature_type_name = ranking.feature_type.name
+        if feature_type_name not in feature_type_rankings:
+            feature_type_rankings[feature_type_name] = {
+                'Gut': [],
+                'Mittel': [],
+                'Schlecht': []
+            }
+        feature_type_rankings[feature_type_name][ranking.bucket].append(ranking)
 
     # Create a string buffer to write the CSV data
     csv_buffer = StringIO()
@@ -672,18 +655,33 @@ def download_rankings_csv():
 
     # Write CSV header
     csv_writer.writerow([
-        'Global Rank', 'Bucket', 'Bucket Position', 'User', 'Feature ID', 'Thread ID',
-        'Chat ID', 'Institut ID', 'LLM Name', 'Feature Type', 'Ranking Position'
+        'Feature Type', 'Complete Feature Ranking', 'Bucket', 'User', 'Feature ID', 'Thread ID',
+        'Chat ID', 'Institut ID', 'LLM Name'
     ])
 
-    # Write data rows
-    for ranking in global_ranking_list:
-        csv_writer.writerow([
-            ranking['global_rank'], ranking['bucket'], ranking['bucket_position'],
-            ranking['user_name'], ranking['feature_id'], ranking['thread_id'],
-            ranking['chat_id'], ranking['institut_id'], ranking['llm_name'],
-            ranking['feature_type_name'], ranking['ranking_position']
-        ])
+    # Iterate over each feature type to generate the complete ranking
+    for feature_type_name, bucket_rankings in feature_type_rankings.items():
+        complete_ranking_position = 1
+
+        # First, go through the "Gut" bucket
+        for bucket in ['Gut', 'Mittel', 'Schlecht']:
+            # Sort the features within the bucket by their ranking_content
+            bucket_rankings[bucket].sort(key=lambda x: x.ranking_content)
+
+            # Assign a complete ranking based on the bucket order and ranking within the bucket
+            for ranking in bucket_rankings[bucket]:
+                csv_writer.writerow([
+                    feature_type_name,  # The type of the feature (e.g., situation_summary)
+                    complete_ranking_position,  # The complete ranking across all buckets for this type
+                    bucket,  # The bucket the feature belongs to
+                    ranking.user.username,  # Username of the person who ranked the feature
+                    ranking.feature_id,  # The ID of the feature
+                    ranking.feature.email_thread.thread_id,  # The thread ID to which the feature belongs
+                    ranking.feature.email_thread.chat_id,  # The chat ID associated with the thread
+                    ranking.feature.email_thread.institut_id,  # The institution ID
+                    ranking.llm.name  # The LLM that generated the feature
+                ])
+                complete_ranking_position += 1
 
     # Get the CSV content from the buffer before closing it
     csv_content = csv_buffer.getvalue()

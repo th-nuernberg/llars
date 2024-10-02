@@ -281,18 +281,13 @@ function loadFromLocalStorage(threadId) {
 // Funktion zum Laden der Daten für einen spezifischen Fall
 // Funktion zum Laden der Daten für einen spezifischen Fall
 const loadCaseData = async (caseId) => {
-  let dataLoadedFromLocalStorage = false;
 
-  // Prüfe zuerst, ob es Daten im LocalStorage gibt
-  if (loadFromLocalStorage(caseId)) {
-    dataLoadedFromLocalStorage = true;
-  }
-
+  loadFromLocalStorage(caseId);
   // Wenn keine Daten im LocalStorage sind oder sie unvollständig sind, rufe die Daten vom Server ab
-  if (!dataLoadedFromLocalStorage) {
+  if (loadFromLocalStorage) {
     const threadData = await fetchEmailThreads(caseId);
     if (!threadData) return;
-
+    console.log('Thread data:', threadData);
     // Setze den Status, ob dieser Thread geranked wurde
     ranked.value = threadData.ranked;
 
@@ -301,6 +296,7 @@ const loadCaseData = async (caseId) => {
     // Erstelle ein Feature-Map, um die Features nach Typ zu gruppieren
     const featureMap = new Map();
     features.value.forEach((f, index) => {
+      // console.log('Feature type:', f.type);
       if (!featureMap.has(f.type)) {
         featureMap.set(f.type, {
           type: f.type,
@@ -323,13 +319,14 @@ const loadCaseData = async (caseId) => {
 
     groupedFeatures.value = Array.from(featureMap.values());
     localStorageKey.value = `featureOrder_${caseId}`;
-
+    console.log(fetchServerRanking(caseId));
     // Speichern der vom Server abgerufenen Daten im LocalStorage
-    saveToLocalStorage(caseId);
+    //saveToLocalStorage(caseId);
   }
 
   // Stelle sicher, dass die Nachrichten immer aktuell sind, indem sie vom Server geladen werden
   const threadData = await fetchEmailThreads(caseId);
+  console.log('Thread data:', threadData);
   if (threadData) {
     messages.value = threadData.messages;
 
@@ -580,7 +577,7 @@ function handleDragStart() {
 
 function handleDragEnd() {
   document.body.classList.remove("dragging");
-  saveFeatureOrderToLocalStorage();
+  //saveFeatureOrderToLocalStorage();
 }
 
 function saveFeatureOrderToLocalStorage() {

@@ -75,3 +75,30 @@ Content-Type: application/json
   "password": "admin",
   "api_key": "0b09e690-365b-4a55-b9b3-04c0614f773a"
 }
+###
+# POST https://llars.e-beratungsinstitut.de/api/register
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "ieb_vanessa",
+  "password": "toralvamplech"
+}
+###
+# POST https://llars.e-beratungsinstitut.de/api/register
+POST http://backend-flask-service:8081/register
+Content-Type: application/json
+
+{
+  "username": "ieb_franziska",
+  "password": "kirchmasoosphie"
+}
+###
+# POST https://llars.e-beratungsinstitut.de/api/register
+POST https://llars.e-beratungsinstitut.de/api/register
+Content-Type: application/json
+
+{
+  "username": "ieb_michelle",
+  "password": "ikasicherllea"
+}

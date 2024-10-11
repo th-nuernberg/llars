@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identi
 from werkzeug.security import check_password_hash
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
-                       FeatureFunctionType, UserFeatureRating)
+                       FeatureFunctionType, UserFeatureRating, UserMailRating)
 from uuid import uuid4
 import uuid
 from datetime import datetime
@@ -85,12 +85,15 @@ def create_email_thread():
     valid_function_types = {
         '1': 1,
         '2': 2,
+        '3': 3,  # Neue Zahl für mail_rating hinzugefügt
         'ranking': 1,
         'rating': 2,
+        'mail_rating': 3,  # Neue Bezeichnung für mail_rating hinzugefügt
         'rank': 1,
         'rate': 2,
         'rankings': 1,
-        'ratings': 2
+        'ratings': 2,
+        'mail_ratings': 3  # Neue Bezeichnung für mail_rating im Plural
     }
 
     function_type_id = valid_function_types.get(function_type_input)
@@ -764,7 +767,7 @@ def get_user_ranking_stats():
     return jsonify(user_stats), 200
 
 
-@data_blueprint.route('/email_threads/ranking_list', methods=['GET'])
+@data_blueprint.route('/email_threads/feature_ranking_list', methods=['GET'])
 def list_ranking_threads():
     api_key = request.headers.get('Authorization')
     if not api_key:
@@ -792,6 +795,138 @@ def list_ranking_threads():
     ]
 
     return jsonify(threads_list), 200
+
+@data_blueprint.route('/email_threads/mail_ratings', methods=['GET'])
+def list_email_threads_for_mail_ratings():
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
+    if not mail_rating_function_type:
+        return jsonify({'error': 'Mail Rating function type not found'}), 404
+
+    # Holen Sie alle Threads mit function_type_id = 3 (Mail Rating)
+    email_threads = EmailThread.query.filter_by(function_type_id=mail_rating_function_type.function_type_id).all()
+
+    threads_list = [
+        {
+            'thread_id': thread.thread_id,
+            'chat_id': thread.chat_id,
+            'institut_id': thread.institut_id,
+            'subject': thread.subject,
+            'sender': thread.sender
+        } for thread in email_threads
+    ]
+
+    return jsonify(threads_list), 200
+
+
+@data_blueprint.route('/email_threads/generations/<int:thread_id>', methods=['GET'])
+def get_email_thread_details(thread_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Hole den E-Mail-Thread basierend auf der thread_id
+    email_thread = EmailThread.query.filter_by(thread_id=thread_id).first()
+    if not email_thread:
+        return jsonify({'error': 'Email thread not found'}), 404
+
+    # Hole alle Nachrichten in diesem E-Mail-Thread
+    messages = Message.query.filter_by(thread_id=email_thread.thread_id).all()
+
+    if not messages:
+        return jsonify({'error': 'No messages found for this thread'}), 404
+
+    # Erstelle eine Liste von Nachrichten, die zurückgegeben werden soll
+    messages_data = [
+        {
+            'message_id': msg.message_id,
+            'sender': msg.sender,
+            'content': msg.content,
+            'timestamp': msg.timestamp.isoformat()  # Konvertiere das Datum in ISO-Format
+        } for msg in messages
+    ]
+
+    return jsonify({'messages': messages_data}), 200
+
+
+@data_blueprint.route('/email_threads/mail_ratings/<int:thread_id>', methods=['POST'])
+def save_mail_rating(thread_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    data = request.get_json()
+
+    rating_score = data.get('rating_score')
+    feedback = data.get('feedback', '')
+    notes = data.get('notes', '')  # Notizen des Benutzers
+
+    if rating_score is None:
+        return jsonify({'error': 'Rating score is required'}), 400
+
+    # Prüfen, ob es schon ein Rating für diesen Thread und User gibt
+    existing_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
+
+    if existing_rating:
+        # Update the existing rating
+        existing_rating.rating_score = rating_score
+        existing_rating.feedback = feedback
+        existing_rating.notes = notes
+    else:
+        # Create a new mail rating entry
+        new_mail_rating = UserMailRating(
+            user_id=user.id,
+            thread_id=thread_id,
+            rating_score=rating_score,
+            feedback=feedback,
+            notes=notes  # Speichere die Notizen des Benutzers
+        )
+        db.session.add(new_mail_rating)
+
+    db.session.commit()
+
+    return jsonify({'status': 'Mail rating saved successfully'}), 201
+
+@data_blueprint.route('/email_threads/mail_ratings/<int:thread_id>', methods=['GET'])
+def get_mail_rating(thread_id):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Prüfen, ob ein Mail Rating für den Benutzer und den Thread existiert
+    mail_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
+
+    if not mail_rating:
+        return jsonify({'error': 'Mail rating not found'}), 404
+
+    # Bereite die Daten für das Rating auf
+    rating_data = {
+        'rating_score': mail_rating.rating_score,
+        'feedback': mail_rating.feedback,
+        'notes': mail_rating.notes,  # Notizen des Benutzers
+        'timestamp': mail_rating.timestamp.isoformat()
+    }
+
+    return jsonify(rating_data), 200
 
 
 def configure_routes(app):

@@ -1,0 +1,33 @@
+{
+  "type": "mail_rating",
+  "chat_id": 101,
+  "institut_id": 0,
+  "subject": "Schwierigkeiten im Studium",
+  "sender": "Marie",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo,\n\nIch studiere im dritten Semester und habe große Probleme, mit dem Druck umzugehen. Ich bin oft sehr gestresst und habe das Gefühl, dass ich meinen Aufgaben nicht mehr gerecht werde. Haben Sie vielleicht Tipps, wie ich besser mit dem Stress umgehen kann?\n\nVielen Dank im Voraus.\nMarie",
+      "timestamp": "2023-02-10 10:23:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Liebe Marie,\n\nEs tut mir leid zu hören, dass du mit Stress zu kämpfen hast. Das Studium kann in der Tat eine sehr fordernde Zeit sein. Es gibt jedoch einige Strategien, die dir helfen könnten. Versuche, dir Pausen im Alltag zu gönnen und Aufgaben in kleinere Schritte zu unterteilen. Zudem könnten Entspannungsübungen wie Meditation oder Atemtechniken hilfreich sein.\n\nFalls du das Gefühl hast, dass der Druck zu groß wird, scheue dich nicht, auch professionelle Hilfe in Anspruch zu nehmen.\n\nAlles Gute und viele Grüße,\nbke-Leonie",
+      "timestamp": "2023-02-10 15:45:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo Leonie,\n\nDanke für deine schnelle Antwort! Ich habe schon einmal von Atemtechniken gehört, aber noch nie wirklich ausprobiert. Gibt es bestimmte Übungen, die du empfehlen kannst? Ich bin oft sehr nervös vor Prüfungen und hoffe, dass ich durch diese Methoden etwas ruhiger werden kann.\n\nLiebe Grüße,\nMarie",
+      "timestamp": "2023-02-11 09:12:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratende Person",
+      "content": "Liebe Marie,\n\nJa, es gibt einige einfache Atemübungen, die dir helfen können. Eine Möglichkeit ist die 4-7-8-Atmung: Du atmest 4 Sekunden lang ein, hältst den Atem für 7 Sekunden an und atmest dann 8 Sekunden lang aus. Diese Technik kann sehr beruhigend wirken, insbesondere vor stressigen Situationen.\n\nProbiere es doch einmal aus und lass mich wissen, ob es dir hilft.\n\nLiebe Grüße,\nbke-Leonie",
+      "timestamp": "2023-02-11 12:30:00"
+    }
+  ]
+}

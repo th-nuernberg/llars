@@ -1,0 +1,39 @@
+{
+  "type": "mail_rating",
+  "chat_id": 103,
+  "institut_id": 2,
+  "subject": "Konflikte mit den Eltern",
+  "sender": "Lukas",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo,\n\nich habe seit einiger Zeit immer wieder Streit mit meinen Eltern. Sie verstehen einfach nicht, dass ich mein eigenes Leben führen möchte. Sie kontrollieren ständig, was ich tue, und kritisieren alles, was nicht nach ihren Vorstellungen läuft. Ich weiß nicht mehr, wie ich damit umgehen soll und es macht mich wirklich wütend.\n\nWas kann ich tun, damit sie mich endlich in Ruhe lassen?\n\nLiebe Grüße,\nLukas",
+      "timestamp": "2023-04-15 14:42:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Lieber Lukas,\n\nes ist verständlich, dass du frustriert bist. Es kann sehr belastend sein, wenn man das Gefühl hat, ständig kontrolliert zu werden, besonders in einem Alter, in dem man mehr Unabhängigkeit möchte. Ein wichtiger Schritt könnte sein, ruhig und sachlich mit deinen Eltern über deine Gefühle zu sprechen. Es könnte ihnen nicht bewusst sein, wie sehr dich ihr Verhalten belastet.\n\nHast du schon einmal versucht, ihnen zu erklären, dass du eigene Entscheidungen treffen möchtest? Vielleicht könntest du konkrete Beispiele nennen, bei denen du dir mehr Vertrauen wünschst.\n\nIch hoffe, dass du einen Weg findest, ihnen klarzumachen, wie du dich fühlst.\n\nLiebe Grüße,\nbke-Niklas",
+      "timestamp": "2023-04-16 09:35:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo Niklas,\n\nvielen Dank für deine Antwort. Ja, ich habe es schon mehrmals versucht, aber sie wollen einfach nicht zuhören. Es endet immer in einem Streit. Sie denken, sie wissen, was das Beste für mich ist, und ich fühle mich oft wie ein kleines Kind behandelt. Das ist wirklich frustrierend.\n\nHast du vielleicht Tipps, wie ich das Gespräch ruhiger und konstruktiver gestalten kann?\n\nLiebe Grüße,\nLukas",
+      "timestamp": "2023-04-16 19:21:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratende Person",
+      "content": "Lieber Lukas,\n\nes klingt, als wäre es wirklich eine schwierige Situation. Es könnte helfen, das Gespräch in einem Moment zu beginnen, in dem die Stimmung neutral ist, nicht während eines Streits. Versuche, Ich-Botschaften zu verwenden, um zu erklären, wie du dich fühlst, ohne sie direkt anzugreifen. Zum Beispiel: 'Ich fühle mich oft überfordert, wenn ich das Gefühl habe, dass ihr mir nicht zutraut, meine eigenen Entscheidungen zu treffen.'\n\nVielleicht könntest du auch vorschlagen, dass ihr zusammen Regeln für eure Kommunikation aufstellt, um Missverständnisse zu vermeiden. Es ist wichtig, dass beide Seiten gehört werden.\n\nIch hoffe, das hilft dir weiter!\n\nLiebe Grüße,\nbke-Niklas",
+      "timestamp": "2023-04-17 10:05:00"
+    },
+    {
+      "message_id": 5,
+      "sender": "Ratsuchende Person",
+      "content": "Hallo Niklas,\n\nvielen Dank für die Tipps. Ich werde es beim nächsten Gespräch versuchen, ruhig zu bleiben und auf meine Worte zu achten. Vielleicht hilft es ja, wenn ich ihnen das auf eine andere Weise erkläre.\n\nIch melde mich, wenn es Neuigkeiten gibt!\n\nLiebe Grüße,\nLukas",
+      "timestamp": "2023-04-18 14:12:00"
+    }
+  ]
+}

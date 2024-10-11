@@ -10,6 +10,7 @@ import RaterDetailFeature from "@/components/Rater/RaterDetailFeature.vue";
 import AdminHome from "@/components/Admin/AdminHome.vue"; // Admin Dashboard
 import AdminRanker from "@/components/Admin/AdminRanker.vue";
 import HistoryGeneration from "@/components/HistoryGenerator/HistoryGeneration.vue";
+import HistoryGenerationDetail from "@/components/HistoryGenerator/HistoryGenerationDetail.vue";
 import Impressum from "@/components/Orga/Impressum.vue";
 import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
@@ -29,7 +30,8 @@ const routes = [
     { path: '/Rater', component: Rater, meta: { requiresAuth: true } },
     { path: '/Rater/:id', name:'RaterDetail', component: RaterDetail, props: true, meta: { requiresAuth: true } },
     { path: '/Rater/:id/:feature', name:'RaterDetailFeature', component: RaterDetailFeature, props: true, meta: { requiresAuth: true } },
-    {path : '/HistoryGeneration', component: HistoryGeneration, meta: { requiresAuth: true } },
+    { path : '/HistoryGeneration', name: 'HistoryGenerator', component: HistoryGeneration, meta: { requiresAuth: true } },
+    { path : '/HistoryGeneration/:id', name:'HistoryGenerationDetail', component: HistoryGenerationDetail, props: true, meta: { requiresAuth: true } },
 
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route

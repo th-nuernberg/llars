@@ -1,6 +1,6 @@
 <template>
   <v-container fluid class="pa-0">
-    <v-row no-gutters>
+    <v-row>
       <!-- Feature-Bereich -->
       <v-col :cols="emailPaneExpanded ? 12 : 11" :md="emailPaneExpanded ? 6 : 11">
         <h2 class="mb-2">Features</h2>
@@ -11,94 +11,94 @@
                 <div>{{ translateFeatureType(feature.type) }}</div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-  <div style="display: flex; justify-content: space-around;">
-    <!-- Gut Bucket -->
-    <div class="bucket good-bucket">
-      <h3>Gut</h3>
-      <draggable
-        v-model="feature.goodList"
-        class="list-group bucket-content"
-        group="featureGroup"
-        item-key="id"
-         @end="saveToLocalStorage(route.params.id)"
-      >
-        <template #item="{ element }">
-          <div class="list-group-item item">
-            <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-            <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-            <div class="toggle-btn-container">
-              <v-btn
-                v-if="isLongContent(element.content)"
-                class="small-toggle-btn"
-                small
-                @click="toggleMinimize(element)"
-              >
-                {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-              </v-btn>
-            </div>
-          </div>
-        </template>
-      </draggable>
-    </div>
+                <div style="display: flex; justify-content: space-around;">
+                  <!-- Gut Bucket -->
+                  <div class="bucket good-bucket">
+                    <h3>Gut</h3>
+                    <draggable
+                      v-model="feature.goodList"
+                      class="list-group bucket-content"
+                      group="featureGroup"
+                      item-key="id"
+                       @end="saveToLocalStorage(route.params.id)"
+                    >
+                      <template #item="{ element }">
+                        <div class="list-group-item item">
+                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div class="toggle-btn-container">
+                            <v-btn
+                              v-if="isLongContent(element.content)"
+                              class="small-toggle-btn"
+                              small
+                              @click="toggleMinimize(element)"
+                            >
+                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                            </v-btn>
+                          </div>
+                        </div>
+                      </template>
+                    </draggable>
+                  </div>
 
-    <!-- Mittel Bucket -->
-    <div class="bucket average-bucket">
-      <h3>Mittel</h3>
-      <draggable
-        v-model="feature.averageList"
-        class="list-group bucket-content"
-        group="featureGroup"
-        item-key="id"
-         @end="saveToLocalStorage(route.params.id)"
-      >
-        <template #item="{ element }">
-          <div class="list-group-item item">
-            <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-            <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-            <div class="toggle-btn-container">
-              <v-btn
-                v-if="isLongContent(element.content)"
-                class="small-toggle-btn"
-                small
-                @click="toggleMinimize(element)"
-              >
-                {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-              </v-btn>
-            </div>
-          </div>
-        </template>
-      </draggable>
-    </div>
+                  <!-- Mittel Bucket -->
+                  <div class="bucket average-bucket">
+                    <h3>Mittel</h3>
+                    <draggable
+                      v-model="feature.averageList"
+                      class="list-group bucket-content"
+                      group="featureGroup"
+                      item-key="id"
+                       @end="saveToLocalStorage(route.params.id)"
+                    >
+                      <template #item="{ element }">
+                        <div class="list-group-item item">
+                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div class="toggle-btn-container">
+                            <v-btn
+                              v-if="isLongContent(element.content)"
+                              class="small-toggle-btn"
+                              small
+                              @click="toggleMinimize(element)"
+                            >
+                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                            </v-btn>
+                          </div>
+                        </div>
+                      </template>
+                    </draggable>
+                  </div>
 
-    <!-- Schlecht Bucket -->
-    <div class="bucket bad-bucket">
-      <h3>Schlecht</h3>
-      <draggable
-        v-model="feature.badList"
-        class="list-group bucket-content"
-        group="featureGroup"
-        item-key="id"
-         @end="saveToLocalStorage(route.params.id)"
-      >
-        <template #item="{ element }">
-          <div class="list-group-item item">
-            <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
-            <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
-            <div class="toggle-btn-container">
-              <v-btn
-                v-if="isLongContent(element.content)"
-                class="small-toggle-btn"
-                small
-                @click="toggleMinimize(element)"
-              >
-                {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-              </v-btn>
-            </div>
-          </div>
-        </template>
-      </draggable>
-    </div>
-  </div>
+                  <!-- Schlecht Bucket -->
+                  <div class="bucket bad-bucket">
+                    <h3>Schlecht</h3>
+                    <draggable
+                      v-model="feature.badList"
+                      class="list-group bucket-content"
+                      group="featureGroup"
+                      item-key="id"
+                       @end="saveToLocalStorage(route.params.id)"
+                    >
+                      <template #item="{ element }">
+                        <div class="list-group-item item">
+                          <div v-if="element.minimized" class="clamped-text" v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div v-else v-html="formatFeatureContent(feature.type, element.content)"></div>
+                          <div class="toggle-btn-container">
+                            <v-btn
+                              v-if="isLongContent(element.content)"
+                              class="small-toggle-btn"
+                              small
+                              @click="toggleMinimize(element)"
+                            >
+                              {{ element.minimized ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+                            </v-btn>
+                          </div>
+                        </div>
+                      </template>
+                    </draggable>
+                  </div>
+                </div>
 
   <!-- Neutraler Bucket -->
   <div class="neutral-bucket-container">
@@ -175,7 +175,7 @@
     </v-row>
 
     <!-- Button-Leiste -->
-    <v-row class="button-class">
+    <v-row class="button-class mt-auto">
       <v-col>
         <template v-if="ranked === null">
           <v-chip class="category-chip" color="grey lighten-2" small>
@@ -653,7 +653,7 @@ async function navigateToNextCase() {
 async function fetchRankingThreads() {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ranking_list`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/feature_ranking_list`, {
       headers: {
         'Authorization': api_key,
       }

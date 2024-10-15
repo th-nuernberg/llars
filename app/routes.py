@@ -619,7 +619,6 @@ def save_rating(thread_id, feature_id):
 
     return jsonify({'status': 'Rating saved successfully'}), 201
 
-
 @data_blueprint.route('/get_rating/<int:thread_id>/<int:feature_id>', methods=['GET'])
 def get_rating(thread_id, feature_id):
     api_key = request.headers.get('Authorization')
@@ -884,7 +883,7 @@ def get_email_thread_details(thread_id):
     return jsonify({'messages': messages_data}), 200
 
 
-@data_blueprint.route('/email_threads/mail_ratings/<int:thread_id>', methods=['POST'])
+@data_blueprint.route('/email_threads/save_mail_rating/<int:thread_id>', methods=['POST'])
 def save_mail_rating(thread_id):
     api_key = request.headers.get('Authorization')
 
@@ -897,36 +896,33 @@ def save_mail_rating(thread_id):
 
     data = request.get_json()
 
-    # Die Daten, die vom Client gesendet werden (Bewertung, Feedback und Notizen)
+    # Values sent from the client
     rating_score = data.get('rating_score')
-    feedback = data.get('feedback', '')  # Textfeld für Feedback
-    notes = data.get('notes', '')  # Textfeld für Notizen
+    feedback = data.get('feedback', '')
 
     if rating_score is None:
         return jsonify({'error': 'Rating score is required'}), 400
 
-    # Prüfen, ob es schon eine Bewertung für diesen Thread und User gibt
+    # Check if there's already a rating for this thread and user
     existing_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
 
     if existing_rating:
-        # Aktualisiere bestehende Bewertung, Feedback und Notizen
+        # Update the existing rating and feedback
         existing_rating.rating_score = rating_score
         existing_rating.feedback = feedback
-        existing_rating.notes = notes
     else:
-        # Erstelle eine neue Bewertung und speichere Feedback und Notizen
+        # Create a new mail rating with feedback
         new_mail_rating = UserMailRating(
             user_id=user.id,
             thread_id=thread_id,
             rating_score=rating_score,
-            feedback=feedback,
-            notes=notes
+            feedback=feedback
         )
         db.session.add(new_mail_rating)
 
     db.session.commit()
 
-    return jsonify({'status': 'Mail rating saved successfully'}), 201
+    return jsonify({'status': 'Mail rating and feedback saved successfully'}), 201
 
 
 @data_blueprint.route('/email_threads/mail_ratings/<int:thread_id>', methods=['GET'])
@@ -949,7 +945,6 @@ def get_mail_rating(thread_id):
     rating_data = {
         'rating_score': mail_rating.rating_score,
         'feedback': mail_rating.feedback,
-        'notes': mail_rating.notes,  # Notizen des Benutzers
         'timestamp': mail_rating.timestamp.isoformat()
     }
 

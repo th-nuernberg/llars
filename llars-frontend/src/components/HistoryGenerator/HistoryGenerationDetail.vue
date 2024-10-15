@@ -54,9 +54,9 @@
           <span class="likert-label-text">Schlecht</span>
         </div>
 
-        <!-- Textfeld für Gedanken oder Notizen -->
+        <!-- Textfeld für Feedback -->
         <v-textarea
-          v-model="thoughts"
+          v-model="feedback"
           label="Ihre Gedanken oder Notizen"
           rows="5"
           outlined
@@ -118,7 +118,7 @@ const route = useRoute();
 const router = useRouter();
 const messages = ref([]);
 const selectedRating = ref(null); // Selected rating for the Likert scale
-const thoughts = ref(''); // User's thoughts or notes
+const feedback = ref('');
 const ratedStatus = ref(null); // Status whether the thread has been rated
 
 // Fetch email thread details on component mount
@@ -135,21 +135,6 @@ onMounted(async () => {
     });
     // Set the messages from the API response
     messages.value = response.data.messages;
-
-    // API request to check if this thread has been rated
-    const ratingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mail_ratings/${threadId}`, {
-      headers: {
-        'Authorization': api_key,
-      },
-    });
-
-    if (ratingResponse.data) {
-      ratedStatus.value = true;
-      selectedRating.value = ratingResponse.data.rating_score;
-      thoughts.value = ratingResponse.data.feedback;
-    } else {
-      ratedStatus.value = false;
-    }
   } catch (error) {
     console.error('Error fetching email thread details or rating status:', error);
   }
@@ -179,8 +164,11 @@ async function saveRatingServerSide() {
 
   try {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/save_mail_rating/${threadId}`,
-      { thoughts: thoughts.value, rating_score: selectedRating.value },
+      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mail_rating/${threadId}`,
+      {
+        rating_score: selectedRating.value,
+        feedback: feedback.value
+      },
       {
         headers: {
           'Authorization': api_key,
@@ -189,15 +177,14 @@ async function saveRatingServerSide() {
       }
     );
     console.log('Rating saved:', response.data);
-    alert('Rating und Gedanken wurden erfolgreich gespeichert!');
+    alert('Rating und Feedback wurden erfolgreich gespeichert!');
     ratedStatus.value = true; // Mark as rated
   } catch (error) {
     console.error('Error saving rating:', error);
-    alert('Fehler beim Speichern des Ratings.');
+    alert('Fehler beim Speichern des Ratings und Feedbacks.');
   }
 }
 
-// Navigate to the previous case
 // Navigate to the previous case
 async function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);

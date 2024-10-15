@@ -67,13 +67,14 @@ Content-Type: application/json
   "password": "llars_tester3"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/register_admin
 Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "admin",
-  "api_key": "0b09e690-365b-4a55-b9b3-04c0614f773a"
+  "password": "llars_admin789",
+  "api_key": "0b09e690-365b-4a55-b9b3-04c0614f773a",
+  "admin_registration_key": "73525abb-3336-4553-8e54-751c9c1b965c"
 }
 ###
 # POST https://llars.e-beratungsinstitut.de/api/register

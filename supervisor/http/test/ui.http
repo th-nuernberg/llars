@@ -51,11 +51,10 @@ Content-Type: application/json
   "password": "a"
 }
 ###
-POST http://localhost/api/login
+POST http://localhost/api/register
 Content-Type: application/json
 
 {
-  "username": "a",
-  "password": "a"
+  "username": "b",
+  "password": "b"
 }
-###

@@ -198,15 +198,17 @@ async function saveRatingServerSide() {
 }
 
 // Navigate to the previous case
+// Navigate to the previous case
 async function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);
-  const caseList = await fetchCaseList();
+  const caseList = await fetchCaseList(); // Fetch the list of email threads
 
   if (!caseList || caseList.length === 0) {
     console.log("Keine Fälle verfügbar");
     return;
   }
 
+  // Finde den aktuellen Fall in der Liste
   const currentIndex = caseList.findIndex(c => c.thread_id === currentId);
 
   if (currentIndex === -1 || currentIndex === 0) {
@@ -214,6 +216,7 @@ async function navigateToPreviousCase() {
     return;
   }
 
+  // Navigiere zum vorherigen Fall
   const previousCase = caseList[currentIndex - 1];
   router.push({name: 'HistoryGeneratorDetail', params: {id: previousCase.thread_id.toString()}});
 }
@@ -221,13 +224,14 @@ async function navigateToPreviousCase() {
 // Navigate to the next case
 async function navigateToNextCase() {
   const currentId = parseInt(route.params.id);
-  const caseList = await fetchCaseList();
+  const caseList = await fetchCaseList(); // Fetch the list of email threads
 
   if (!caseList || caseList.length === 0) {
     console.log("Keine Fälle verfügbar");
     return;
   }
 
+  // Finde den aktuellen Fall in der Liste
   const currentIndex = caseList.findIndex(c => c.thread_id === currentId);
 
   if (currentIndex === -1 || currentIndex === caseList.length - 1) {
@@ -235,9 +239,11 @@ async function navigateToNextCase() {
     return;
   }
 
+  // Navigiere zum nächsten Fall
   const nextCase = caseList[currentIndex + 1];
   router.push({name: 'HistoryGeneratorDetail', params: {id: nextCase.thread_id.toString()}});
 }
+
 
 // Fetch list of cases
 async function fetchCaseList() {

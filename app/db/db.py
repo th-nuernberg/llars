@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import os
+from sqlalchemy import text
 
 from . import db
 migrate = Migrate()  # Initialisiere Flask-Migrate
@@ -24,6 +25,10 @@ def configure_database(app):
     with app.app_context():
         db.create_all()
         initialize_feature_function_types()
+        seed_user_groups()  # Hier wird die neue Funktion für das Seeden der User-Gruppen aufgerufen
+        # db.session.execute(text("UPDATE users SET group_id = 1 WHERE group_id IS NULL"))
+        # db.session.commit()
+
 
 def initialize_feature_function_types():
     from .tables import FeatureFunctionType  # Importiere die Modelle hier, um zirkuläre Importe zu vermeiden
@@ -40,3 +45,17 @@ def initialize_feature_function_types():
         db.session.add(mail_rating)
 
     db.session.commit()
+
+def seed_user_groups():
+    from .tables import UserGroup  # Importiere das UserGroup Model
+
+    # Prüfen, ob die Gruppen bereits existieren
+    if not UserGroup.query.filter_by(name='Standard').first():
+        standard_group = UserGroup(name='Standard')
+        db.session.add(standard_group)
+    if not UserGroup.query.filter_by(name='Admin').first():
+        admin_group = UserGroup(name='Admin')
+        db.session.add(admin_group)
+
+    db.session.commit()
+    print("User groups seeded successfully.")

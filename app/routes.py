@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identi
 from werkzeug.security import check_password_hash
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
-                       FeatureFunctionType, UserFeatureRating, UserMailRating)
+                       FeatureFunctionType, UserFeatureRating, UserMailRating, UserGroup)
 from uuid import uuid4
 import uuid
 from datetime import datetime
@@ -21,12 +21,22 @@ def is_valid_uuid(uuid_to_test, version=4):
         return False
 
 
+def get_or_create_default_group():
+    default_group = UserGroup.query.filter_by(name="Standard").first()
+    if not default_group:
+        default_group = UserGroup(name="Standard")
+        db.session.add(default_group)
+        db.session.commit()
+    return default_group
+
+
 @auth_blueprint.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
     api_key = data.get('api_key', str(uuid4()))
+    group_name = data.get('group')
 
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
@@ -41,10 +51,24 @@ def register():
     new_user.set_password(password)
     new_user.api_key = api_key
 
+    # Assign user to a group
+    if group_name:
+        group = UserGroup.query.filter_by(name=group_name).first()
+        if not group:
+            return jsonify({"error": f"Group '{group_name}' does not exist"}), 400
+    else:
+        group = get_or_create_default_group()
+
+    new_user.group = group
+
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({"message": "User registered successfully", "api_key": api_key}), 201
+    return jsonify({
+        "message": "User registered successfully",
+        "api_key": api_key,
+        "group": group.name
+    }), 201
 
 
 @auth_blueprint.route('/health_check', methods=['GET'])
@@ -863,6 +887,7 @@ def get_email_thread_details(thread_id):
 @data_blueprint.route('/email_threads/mail_ratings/<int:thread_id>', methods=['POST'])
 def save_mail_rating(thread_id):
     api_key = request.headers.get('Authorization')
+
     if not api_key:
         return jsonify({'error': 'API key is missing'}), 401
 
@@ -872,35 +897,37 @@ def save_mail_rating(thread_id):
 
     data = request.get_json()
 
+    # Die Daten, die vom Client gesendet werden (Bewertung, Feedback und Notizen)
     rating_score = data.get('rating_score')
-    feedback = data.get('feedback', '')
-    notes = data.get('notes', '')  # Notizen des Benutzers
+    feedback = data.get('feedback', '')  # Textfeld für Feedback
+    notes = data.get('notes', '')  # Textfeld für Notizen
 
     if rating_score is None:
         return jsonify({'error': 'Rating score is required'}), 400
 
-    # Prüfen, ob es schon ein Rating für diesen Thread und User gibt
+    # Prüfen, ob es schon eine Bewertung für diesen Thread und User gibt
     existing_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
 
     if existing_rating:
-        # Update the existing rating
+        # Aktualisiere bestehende Bewertung, Feedback und Notizen
         existing_rating.rating_score = rating_score
         existing_rating.feedback = feedback
         existing_rating.notes = notes
     else:
-        # Create a new mail rating entry
+        # Erstelle eine neue Bewertung und speichere Feedback und Notizen
         new_mail_rating = UserMailRating(
             user_id=user.id,
             thread_id=thread_id,
             rating_score=rating_score,
             feedback=feedback,
-            notes=notes  # Speichere die Notizen des Benutzers
+            notes=notes
         )
         db.session.add(new_mail_rating)
 
     db.session.commit()
 
     return jsonify({'status': 'Mail rating saved successfully'}), 201
+
 
 @data_blueprint.route('/email_threads/mail_ratings/<int:thread_id>', methods=['GET'])
 def get_mail_rating(thread_id):
@@ -927,6 +954,91 @@ def get_mail_rating(thread_id):
     }
 
     return jsonify(rating_data), 200
+
+@data_blueprint.route('/admin/change_user_group', methods=['POST'])
+def change_user_group():
+    api_key = request.headers.get('Authorization')
+
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    # Verifiziere den Admin-User
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    if admin_user.group.name != 'Admin':
+        return jsonify({'error': 'You do not have permission to change user groups'}), 403
+
+    data = request.get_json()
+    username = data.get('username')
+    new_group_name = data.get('new_group')
+
+    if not username or not new_group_name:
+        return jsonify({'error': 'Username and new group are required'}), 400
+
+    # Finde den User
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Finde die neue Gruppe
+    new_group = UserGroup.query.filter_by(name=new_group_name).first()
+    if not new_group:
+        return jsonify({'error': f"Group '{new_group_name}' does not exist"}), 404
+
+    # Update die Gruppe des Benutzers
+    user.group = new_group
+    db.session.commit()
+
+    return jsonify({'message': f"User '{username}' has been moved to group '{new_group_name}'"}), 200
+
+
+def get_or_create_admin_group():
+    admin_group = UserGroup.query.filter_by(name="Admin").first()
+    if not admin_group:
+        admin_group = UserGroup(name="Admin")
+        db.session.add(admin_group)
+        db.session.commit()
+    return admin_group
+
+
+@auth_blueprint.route('/register_admin', methods=['POST'])
+def register_admin():
+    HARD_CODED_ADMIN_API_KEY = "73525abb-3336-4553-8e54-751c9c1b965c"
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    api_key = data.get('api_key', str(uuid4()))
+    admin_registration_key = data.get('admin_registration_key')
+
+    # Überprüfen, ob der übergebene Registrierungsschlüssel korrekt ist
+    if admin_registration_key != HARD_CODED_ADMIN_API_KEY:
+        return jsonify({"error": "Unauthorized. Invalid admin registration key."}), 403
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({"error": "Username already exists"}), 409
+
+    new_user = User(username=username)
+    new_user.set_password(password)
+    new_user.api_key = api_key
+
+    # Admin-Gruppe zuweisen
+    admin_group = get_or_create_admin_group()
+    new_user.group = admin_group
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Admin user registered successfully",
+        "api_key": api_key,
+        "group": new_user.group.name
+    }), 201
+
 
 
 def configure_routes(app):

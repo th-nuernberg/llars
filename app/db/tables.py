@@ -120,7 +120,6 @@ class UserMailRating(db.Model):
     thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
     rating_score = mapped_column(db.Float)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
     feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
-    notes = mapped_column(db.TEXT)  # Neues Feld für die Notizen des Benutzers
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='mail_ratings')

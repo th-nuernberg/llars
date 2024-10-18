@@ -833,18 +833,21 @@ def list_email_threads_for_mail_ratings():
     if not mail_rating_function_type:
         return jsonify({'error': 'Mail Rating function type not found'}), 404
 
-    # Holen Sie alle Threads mit function_type_id = 3 (Mail Rating)
     email_threads = EmailThread.query.filter_by(function_type_id=mail_rating_function_type.function_type_id).all()
 
-    threads_list = [
-        {
+    threads_list = []
+    for thread in email_threads:
+        # Überprüfe, ob ein Rating für diesen E-Mail-Thread existiert
+        mail_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).first()
+
+        threads_list.append({
             'thread_id': thread.thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject,
-            'sender': thread.sender
-        } for thread in email_threads
-    ]
+            'sender': thread.sender,
+            'rated': bool(mail_rating)  # True, wenn ein Rating existiert, False sonst
+        })
 
     return jsonify(threads_list), 200
 

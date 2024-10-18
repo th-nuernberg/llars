@@ -11,10 +11,10 @@
         <v-card class="mb-4 case-card" @click="navigateToCase(emailThread.thread_id)">
           <v-chip
             class="category-chip"
-            :color="emailThread.generated ? 'blue lighten-2' : 'grey lighten-2'"
+            :color="emailThread.rated ? 'green lighten-2' : 'grey lighten-2'"
             small
           >
-            {{ emailThread.generated ? 'Generated' : 'Not Generated' }}
+            {{ emailThread.rated ? 'Rated' : 'Not Rated' }}
           </v-chip>
           <div class="card-content">
             <v-card-title>{{ emailThread.subject }}</v-card-title>
@@ -43,14 +43,14 @@ onMounted(async () => {
         'Authorization': api_key,
       },
     });
-    emailThreads.value = response.data;
+    emailThreads.value = response.data; // `rated` wird hier gesetzt
   } catch (error) {
     console.error('Error fetching email threads:', error);
   }
 });
 
 function navigateToCase(threadId) {
-  router.push({ name: 'HistoryGenerationDetail', params: { id: threadId } });
+  router.push({name: 'HistoryGenerationDetail', params: {id: threadId}});
 }
 </script>
 

@@ -67,21 +67,13 @@
     <!-- Leiste am unteren Rand -->
     <v-row class="bottom-bar mt-auto">
       <v-col>
-        <template v-if="ratedStatus === null">
-          <v-chip class="category-chip" color="grey lighten-2" small>
-            <v-progress-circular indeterminate size="16" width="2" color="grey darken-2" class="mr-2"></v-progress-circular>
-            Lädt...
-          </v-chip>
-        </template>
-        <template v-else>
-          <v-chip
-            class="category-chip"
-            :color="ratedStatus ? 'green lighten-2' : 'red lighten-2'"
-            small
-          >
-            {{ ratedStatus ? 'Rated' : 'Not Rated' }}
-          </v-chip>
-        </template>
+        <v-chip
+          class="category-chip"
+          :color="ratedStatus ? 'green lighten-2' : 'grey lighten-2'"
+          small
+        >
+          {{ ratedStatus ? 'Rated' : 'Not Rated' }}
+        </v-chip>
       </v-col>
 
       <v-spacer></v-spacer>
@@ -107,6 +99,7 @@
     </v-row>
   </v-container>
 </template>
+
 
 <script setup>
 import { ref, onMounted } from 'vue';
@@ -135,10 +128,27 @@ onMounted(async () => {
     });
     // Set the messages from the API response
     messages.value = response.data.messages;
+
+    // Check if the user has already rated the thread
+    const mailRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mail_ratings/${threadId}`, {
+      headers: {
+        'Authorization': api_key,
+      }
+    });
+
+    if (mailRatingResponse.data) {
+      // If the mail rating exists, set the data accordingly
+      selectedRating.value = mailRatingResponse.data.rating_score;
+      feedback.value = mailRatingResponse.data.feedback;
+      ratedStatus.value = true;
+    } else {
+      ratedStatus.value = false;
+    }
   } catch (error) {
     console.error('Error fetching email thread details or rating status:', error);
   }
 });
+
 
 // Format timestamp for display
 function formatTimestamp(timestamp) {
@@ -205,10 +215,9 @@ async function navigateToPreviousCase() {
 
   // Navigiere zum vorherigen Fall
   const previousCase = caseList[currentIndex - 1];
-  router.push({name: 'HistoryGeneratorDetail', params: {id: previousCase.thread_id.toString()}});
+  router.push({name: 'HistoryGenerationDetail', params: {id: previousCase.thread_id}});
 }
 
-// Navigate to the next case
 async function navigateToNextCase() {
   const currentId = parseInt(route.params.id);
   const caseList = await fetchCaseList(); // Fetch the list of email threads
@@ -228,8 +237,9 @@ async function navigateToNextCase() {
 
   // Navigiere zum nächsten Fall
   const nextCase = caseList[currentIndex + 1];
-  router.push({name: 'HistoryGeneratorDetail', params: {id: nextCase.thread_id.toString()}});
+  router.push({name: 'HistoryGenerationDetail', params: {id: nextCase.thread_id}});
 }
+
 
 
 // Fetch list of cases
@@ -323,7 +333,6 @@ function navigateToOverview() {
   background: linear-gradient(to top, white, transparent);
 }
 
-/* Likert Scale Styling */
 .likert-scale-container {
   display: flex;
   justify-content: center;
@@ -395,10 +404,24 @@ function navigateToOverview() {
   background-color: #BDBDBD;
 }
 
+/* Updated hover styles */
 .likert-option:hover .likert-circle {
-  background-color: #E0F7FA;
-  border-color: #00ACC1;
   transform: scale(1.1);
+}
+
+.green-tone:hover .likert-circle {
+  background-color: #68c66b;
+  border-color: #54a356;
+}
+
+.purple-tone:hover .likert-circle {
+  background-color: #bb55c1;
+  border-color: #8e4a9a;
+}
+
+.gray-tone:hover .likert-circle {
+  background-color: #d3d3d3;
+  border-color: #515151;
 }
 
 /* Bottom Bar Styling */

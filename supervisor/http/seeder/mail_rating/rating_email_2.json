@@ -1,33 +1,45 @@
 {
   "type": "mail_rating",
-  "chat_id": 101,
+  "chat_id": 102,
   "institut_id": 0,
-  "subject": "Schwierigkeiten im Studium",
-  "sender": "Marie",
+  "subject": "Verlust meines Vaters",
+  "sender": "Laura",
   "messages": [
     {
       "message_id": 1,
       "sender": "Ratsuchende Person",
-      "content": "Hallo,\n\nIch studiere im dritten Semester und habe große Probleme, mit dem Druck umzugehen. Ich bin oft sehr gestresst und habe das Gefühl, dass ich meinen Aufgaben nicht mehr gerecht werde. Haben Sie vielleicht Tipps, wie ich besser mit dem Stress umgehen kann?\n\nVielen Dank im Voraus.\nMarie",
-      "timestamp": "2023-02-10 10:23:00"
+      "content": "Hallo, \n\nich weiß nicht genau, ob ich hier richtig bin, aber ich dachte, ich versuche es einfach. Mein Vater ist vor zwei Monaten plötzlich gestorben, und ich weiß nicht, wie ich damit umgehen soll. Ich bin 16 und habe das Gefühl, dass sich alles verändert hat. Früher war ich immer fröhlich und habe viel mit Freunden unternommen, aber jetzt will ich am liebsten nur noch alleine sein. Meine Mutter versucht, stark für uns beide zu sein, aber ich merke, dass es auch für sie schwer ist. Ich weiß nicht, wie ich mit ihr darüber reden soll, weil ich sie nicht noch trauriger machen möchte. Es fühlt sich so an, als würde ein Teil von mir fehlen, und ich weiß nicht, wie ich damit umgehen kann. \n\nIch hoffe, es ist okay, dass ich das hier teile. \n\nLiebe Grüße, \nLaura",
+      "timestamp": "2023-05-01 16:45:00"
     },
     {
       "message_id": 2,
       "sender": "Beratende Person",
-      "content": "Liebe Marie,\n\nEs tut mir leid zu hören, dass du mit Stress zu kämpfen hast. Das Studium kann in der Tat eine sehr fordernde Zeit sein. Es gibt jedoch einige Strategien, die dir helfen könnten. Versuche, dir Pausen im Alltag zu gönnen und Aufgaben in kleinere Schritte zu unterteilen. Zudem könnten Entspannungsübungen wie Meditation oder Atemtechniken hilfreich sein.\n\nFalls du das Gefühl hast, dass der Druck zu groß wird, scheue dich nicht, auch professionelle Hilfe in Anspruch zu nehmen.\n\nAlles Gute und viele Grüße,\nbke-Leonie",
-      "timestamp": "2023-02-10 15:45:00"
+      "content": "Liebe Laura, \n\nvielen Dank, dass du den Mut gefunden hast, dich an uns zu wenden. Es tut mir sehr leid, von deinem Verlust zu hören. Der Tod eines geliebten Menschen, vor allem eines Elternteils, kann eine der schwierigsten Erfahrungen sein, die man durchmacht. Deine Gefühle sind vollkommen verständlich – es ist ganz normal, dass du dich zurückziehst und nicht weißt, wie du mit der Situation umgehen sollst. Jeder trauert auf seine eigene Weise, und es gibt keinen 'richtigen' oder 'falschen' Weg, mit Trauer umzugehen. \n\nEs ist auch verständlich, dass du dir Sorgen um deine Mutter machst. Du möchtest sie nicht noch trauriger machen, aber vielleicht könnte es helfen, wenn ihr beide über eure Gefühle sprecht. Manchmal hilft es, zu wissen, dass man nicht alleine mit der Trauer ist. Es kann aber auch hilfreich sein, deine Gedanken und Gefühle mit jemandem außerhalb der Familie zu teilen, wie zum Beispiel einem Freund oder einem Berater. \n\nIch bin hier, um dir zu helfen, wenn du darüber reden möchtest. Du musst das nicht alleine durchstehen. \n\nLiebe Grüße, \nbke-Inga Sommer",
+      "timestamp": "2023-05-02 10:15:00"
     },
     {
       "message_id": 3,
       "sender": "Ratsuchende Person",
-      "content": "Hallo Leonie,\n\nDanke für deine schnelle Antwort! Ich habe schon einmal von Atemtechniken gehört, aber noch nie wirklich ausprobiert. Gibt es bestimmte Übungen, die du empfehlen kannst? Ich bin oft sehr nervös vor Prüfungen und hoffe, dass ich durch diese Methoden etwas ruhiger werden kann.\n\nLiebe Grüße,\nMarie",
-      "timestamp": "2023-02-11 09:12:00"
+      "content": "Liebe Frau Sommer, \n\nvielen Dank für Ihre Antwort. Es ist irgendwie beruhigend zu wissen, dass meine Gefühle normal sind, auch wenn ich mich immer noch so verloren fühle. Ich habe noch nicht wirklich mit meiner Mutter über meine Trauer gesprochen. Sie scheint immer beschäftigt zu sein, und ich will nicht, dass sie sich noch mehr Sorgen macht. Manchmal fühle ich mich so, als müsste ich für sie stark sein, aber das fällt mir schwer. \n\nIch habe auch versucht, mit meinen Freunden zu reden, aber ich habe das Gefühl, dass sie mich nicht verstehen. Einige von ihnen meiden das Thema komplett, weil sie nicht wissen, was sie sagen sollen, und das macht es noch schwieriger. Ich habe das Gefühl, dass sich seit dem Tod meines Vaters alles verändert hat – nichts fühlt sich mehr normal an. \n\nIch weiß nicht, wie ich wieder glücklich sein kann. \n\nLiebe Grüße, \nLaura",
+      "timestamp": "2023-05-03 19:30:00"
     },
     {
       "message_id": 4,
       "sender": "Beratende Person",
-      "content": "Liebe Marie,\n\nJa, es gibt einige einfache Atemübungen, die dir helfen können. Eine Möglichkeit ist die 4-7-8-Atmung: Du atmest 4 Sekunden lang ein, hältst den Atem für 7 Sekunden an und atmest dann 8 Sekunden lang aus. Diese Technik kann sehr beruhigend wirken, insbesondere vor stressigen Situationen.\n\nProbiere es doch einmal aus und lass mich wissen, ob es dir hilft.\n\nLiebe Grüße,\nbke-Leonie",
-      "timestamp": "2023-02-11 12:30:00"
+      "content": "Liebe Laura, \n\nes ist vollkommen verständlich, dass du dich verloren fühlst. Der Verlust eines Elternteils ist eine so einschneidende Erfahrung, und es kann eine Weile dauern, bis man herausfindet, wie man damit umgehen kann. Deine Gefühle sind weder falsch noch ungewöhnlich, und es ist gut, dass du dir Raum gibst, diese zu spüren, auch wenn es schwer ist. \n\nEs klingt, als ob du versuchst, stark für deine Mutter zu sein, aber auch du brauchst Raum, um deine Trauer zu verarbeiten. Vielleicht wäre es gut, einen Moment zu finden, in dem ihr beide in Ruhe sprechen könnt. Es kann manchmal befreiend sein, die eigenen Gefühle zu teilen, auch wenn es schwer fällt. Deine Mutter trauert sicher auch, aber das bedeutet nicht, dass sie nicht für dich da sein kann. \n\nWas deine Freunde betrifft, ist es nicht ungewöhnlich, dass sie nicht wissen, wie sie mit der Situation umgehen sollen. Viele Menschen fühlen sich unsicher, wenn es um Trauer geht, und manchmal ist es einfacher, das Thema zu vermeiden. Vielleicht hilft es, ihnen zu sagen, dass es dir wichtig ist, dass sie einfach zuhören, auch wenn sie nicht genau wissen, was sie sagen sollen. \n\nDu wirst nicht für immer traurig bleiben, auch wenn es sich jetzt so anfühlt. Es braucht Zeit, und das ist in Ordnung. Du musst diesen Weg nicht alleine gehen. \n\nLiebe Grüße, \nbke-Inga Sommer",
+      "timestamp": "2023-05-04 14:10:00"
+    },
+    {
+      "message_id": 5,
+      "sender": "Ratsuchende Person",
+      "content": "Liebe Frau Sommer, \n\ndanke, dass Sie mir das Gefühl geben, dass es okay ist, traurig zu sein. Ich habe versucht, mit meiner Mutter zu sprechen, aber es war irgendwie schwierig. Wir haben beide angefangen zu weinen, und dann haben wir das Thema gewechselt. Ich glaube, wir haben beide Angst, uns der Trauer zu stellen. Es fühlt sich an, als ob das nur alles schlimmer machen würde. \n\nWas meine Freunde angeht, werde ich versuchen, ihnen zu sagen, dass es mir hilft, wenn sie einfach zuhören, auch wenn sie nicht wissen, was sie sagen sollen. Ich glaube, ich erwarte oft, dass sie mir eine Lösung geben, aber vielleicht ist das gar nicht das, was ich brauche. \n\nIch weiß, dass es Zeit braucht, aber manchmal frage ich mich, ob es jemals wieder besser wird. Der Gedanke, ohne meinen Vater weiterzumachen, ist so schwer. Aber Ihre Nachrichten haben mir schon ein bisschen geholfen, und dafür bin ich wirklich dankbar. \n\nLiebe Grüße, \nLaura",
+      "timestamp": "2023-05-05 21:20:00"
+    },
+    {
+      "message_id": 6,
+      "sender": "Beratende Person",
+      "content": "Liebe Laura, \n\nes ist gut, dass du versucht hast, mit deiner Mutter zu sprechen. Es ist völlig in Ordnung, dass es nicht beim ersten Mal perfekt funktioniert. Trauer ist etwas, das wir Schritt für Schritt verarbeiten, und manchmal braucht es mehrere Anläufe, um wirklich darüber zu sprechen. Das Weinen zeigt, dass ihr beide fühlt, und das ist ein wichtiger Teil des Heilungsprozesses. Ihr könnt euch Zeit lassen, um gemeinsam darüber zu reden. \n\nEs freut mich, dass du erkannt hast, dass es vielleicht nicht immer eine Lösung braucht, sondern einfach jemanden, der da ist und zuhört. Es kann sehr entlastend sein, wenn man merkt, dass man nicht allein ist, auch wenn andere nicht genau wissen, was sie sagen sollen. \n\nJa, es wird mit der Zeit besser. Der Schmerz wird nicht über Nacht verschwinden, aber mit jedem Tag wirst du ein bisschen mehr lernen, mit dem Verlust umzugehen. Du bist nicht alleine in diesem Prozess, und es ist wichtig, dass du weiterhin darüber sprichst und dir Unterstützung holst, wenn du sie brauchst. \n\nIch bin gerne weiter für dich da, wann immer du schreiben möchtest. \n\nLiebe Grüße, \nbke-Inga Sommer",
+      "timestamp": "2023-05-06 11:45:00"
     }
   ]
 }

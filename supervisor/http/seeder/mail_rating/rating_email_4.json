@@ -1,39 +1,33 @@
 {
   "type": "mail_rating",
-  "chat_id": 103,
-  "institut_id": 2,
-  "subject": "Konflikte mit den Eltern",
-  "sender": "Lukas",
+  "chat_id": 104,
+  "institut_id": 0,
+  "subject": "Trennung und Scheidung",
+  "sender": "Miriam",
   "messages": [
     {
       "message_id": 1,
       "sender": "Ratsuchende Person",
-      "content": "Hallo,\n\nich habe seit einiger Zeit immer wieder Streit mit meinen Eltern. Sie verstehen einfach nicht, dass ich mein eigenes Leben führen möchte. Sie kontrollieren ständig, was ich tue, und kritisieren alles, was nicht nach ihren Vorstellungen läuft. Ich weiß nicht mehr, wie ich damit umgehen soll und es macht mich wirklich wütend.\n\nWas kann ich tun, damit sie mich endlich in Ruhe lassen?\n\nLiebe Grüße,\nLukas",
-      "timestamp": "2023-04-15 14:42:00"
+      "content": "Ich weiß wirklich nicht mehr, was ich tun soll. Die Situation mit meinem Mann belastet mich sehr, und ich habe niemanden, mit dem ich darüber sprechen kann. Bitte helfen Sie mir.\n\nEs ist jetzt fünf Monate her, dass er gesagt hat, er will sich trennen. Am Anfang dachte ich noch, es sei nur eine vorübergehende Krise, aber jetzt sieht es so aus, als sei er fest entschlossen. Wir haben zwei Kinder, die bei mir leben, und ich weiß einfach nicht, wie ich mit der ganzen Situation umgehen soll. Er sagt, er will das Beste für die Kinder, aber ich sehe, wie sehr sie darunter leiden, dass er nicht mehr bei uns ist. Unsere Kommunikation ist schwierig, er wird oft wütend, wenn wir über die Trennung oder das Sorgerecht sprechen.\n\nIch versuche, stark für die Kinder zu sein, aber ich fühle mich völlig überfordert. Ich kann nachts nicht schlafen und habe ständig das Gefühl, dass alles auf mir lastet. Die finanzielle Situation ist auch nicht einfach, da ich nur in Teilzeit arbeite und wir immer noch versuchen, die Aufteilung des gemeinsamen Eigentums zu regeln. Es ist, als ob alles auseinanderbricht, und ich finde keine Lösung.\n\nIch weiß, dass ich Unterstützung brauche, aber ich weiß nicht, wo ich anfangen soll. Können Sie mir bitte helfen?",
+      "timestamp": "2023-07-01 14:00:00"
     },
     {
       "message_id": 2,
       "sender": "Beratende Person",
-      "content": "Lieber Lukas,\n\nes ist verständlich, dass du frustriert bist. Es kann sehr belastend sein, wenn man das Gefühl hat, ständig kontrolliert zu werden, besonders in einem Alter, in dem man mehr Unabhängigkeit möchte. Ein wichtiger Schritt könnte sein, ruhig und sachlich mit deinen Eltern über deine Gefühle zu sprechen. Es könnte ihnen nicht bewusst sein, wie sehr dich ihr Verhalten belastet.\n\nHast du schon einmal versucht, ihnen zu erklären, dass du eigene Entscheidungen treffen möchtest? Vielleicht könntest du konkrete Beispiele nennen, bei denen du dir mehr Vertrauen wünschst.\n\nIch hoffe, dass du einen Weg findest, ihnen klarzumachen, wie du dich fühlst.\n\nLiebe Grüße,\nbke-Niklas",
-      "timestamp": "2023-04-16 09:35:00"
+      "content": "Liebe Miriam,\n\nvielen Dank, dass Sie den Mut gefunden haben, sich an uns zu wenden. Es tut mir sehr leid zu hören, wie belastend die Situation für Sie gerade ist. Eine Trennung ist immer schwer, und es ist verständlich, dass Sie sich momentan überfordert fühlen, besonders wenn Kinder involviert sind und die Kommunikation mit Ihrem Mann so schwierig ist.\n\nSie tun bereits sehr viel, indem Sie für Ihre Kinder da sind und versuchen, stark zu bleiben, aber es ist wichtig, dass auch Sie Unterstützung erhalten. Es klingt so, als ob Sie sowohl emotional als auch praktisch Hilfe benötigen, um mit der Situation umzugehen. Haben Sie jemanden in Ihrem Umfeld, dem Sie sich anvertrauen können, sei es Freunde oder Familie? Manchmal kann es schon helfen, die eigenen Gedanken und Gefühle mit anderen zu teilen, die einen unterstützen können.\n\nWas Ihre finanzielle Situation betrifft, gibt es auch Stellen, die Sie unterstützen können, wenn es um Unterhaltsfragen oder rechtliche Angelegenheiten geht. Sie müssen diese Last nicht allein tragen. Vielleicht wäre es auch eine Möglichkeit, sich rechtlich beraten zu lassen, um Klarheit über das Sorgerecht und die Aufteilung des Eigentums zu bekommen.\n\nEs ist auch völlig in Ordnung, sich überfordert zu fühlen. Manchmal können Gespräche mit einem professionellen Berater helfen, diese Gefühle zu ordnen und Strategien zu entwickeln, wie Sie Schritt für Schritt vorgehen können. Ich bin gerne bereit, Sie dabei zu unterstützen, wenn Sie möchten.\n\nLiebe Grüße,\nbke-Inga Sommer",
+      "timestamp": "2023-07-02 10:30:00"
     },
     {
       "message_id": 3,
       "sender": "Ratsuchende Person",
-      "content": "Hallo Niklas,\n\nvielen Dank für deine Antwort. Ja, ich habe es schon mehrmals versucht, aber sie wollen einfach nicht zuhören. Es endet immer in einem Streit. Sie denken, sie wissen, was das Beste für mich ist, und ich fühle mich oft wie ein kleines Kind behandelt. Das ist wirklich frustrierend.\n\nHast du vielleicht Tipps, wie ich das Gespräch ruhiger und konstruktiver gestalten kann?\n\nLiebe Grüße,\nLukas",
-      "timestamp": "2023-04-16 19:21:00"
+      "content": "Liebe Frau Sommer,\n\nvielen Dank für Ihre liebe Antwort. Es tut gut, von Ihnen zu hören, dass es in Ordnung ist, sich so zu fühlen, wie ich mich fühle. Ich habe tatsächlich einige Freunde, mit denen ich ab und zu rede, aber ich merke, dass ich ihnen nicht alles sagen kann. Sie haben selbst Familien und ich will sie nicht mit meinen Problemen belasten.\n\nWas Sie über rechtliche Unterstützung sagen, ist wahrscheinlich richtig. Ich habe mir immer vorgenommen, mich darum zu kümmern, aber ich habe Angst vor den Gesprächen mit meinem Mann und dem, was daraus folgen könnte. Er reagiert immer sehr gereizt, wenn ich das Thema Geld oder Sorgerecht anspreche. Ich möchte vermeiden, dass das zu einem Kampf wird, vor allem wegen der Kinder.\n\nAber Sie haben recht, es wäre wahrscheinlich gut, Klarheit in diesen Bereichen zu bekommen, damit ich nicht ständig das Gefühl habe, auf wackeligem Boden zu stehen. Ich werde darüber nachdenken, ob ich einen Anwalt kontaktieren sollte. Haben Sie vielleicht Tipps, wie ich solche Gespräche mit meinem Mann weniger konfrontativ gestalten kann? Ich möchte keinen Streit, aber ich habe das Gefühl, dass wir uns immer wieder in die gleichen Konflikte verstricken.\n\nLiebe Grüße,\nMiriam",
+      "timestamp": "2023-07-03 15:45:00"
     },
     {
       "message_id": 4,
       "sender": "Beratende Person",
-      "content": "Lieber Lukas,\n\nes klingt, als wäre es wirklich eine schwierige Situation. Es könnte helfen, das Gespräch in einem Moment zu beginnen, in dem die Stimmung neutral ist, nicht während eines Streits. Versuche, Ich-Botschaften zu verwenden, um zu erklären, wie du dich fühlst, ohne sie direkt anzugreifen. Zum Beispiel: 'Ich fühle mich oft überfordert, wenn ich das Gefühl habe, dass ihr mir nicht zutraut, meine eigenen Entscheidungen zu treffen.'\n\nVielleicht könntest du auch vorschlagen, dass ihr zusammen Regeln für eure Kommunikation aufstellt, um Missverständnisse zu vermeiden. Es ist wichtig, dass beide Seiten gehört werden.\n\nIch hoffe, das hilft dir weiter!\n\nLiebe Grüße,\nbke-Niklas",
-      "timestamp": "2023-04-17 10:05:00"
-    },
-    {
-      "message_id": 5,
-      "sender": "Ratsuchende Person",
-      "content": "Hallo Niklas,\n\nvielen Dank für die Tipps. Ich werde es beim nächsten Gespräch versuchen, ruhig zu bleiben und auf meine Worte zu achten. Vielleicht hilft es ja, wenn ich ihnen das auf eine andere Weise erkläre.\n\nIch melde mich, wenn es Neuigkeiten gibt!\n\nLiebe Grüße,\nLukas",
-      "timestamp": "2023-04-18 14:12:00"
+      "content": "Liebe Miriam,\n\nich kann gut verstehen, dass Sie die Gespräche mit Ihrem Mann scheuen, besonders wenn er in der Vergangenheit oft gereizt reagiert hat. Es ist wichtig, in diesen Gesprächen ruhig und sachlich zu bleiben, auch wenn es schwerfällt. Eine Möglichkeit könnte sein, klare Vereinbarungen zu treffen, wann und wie ihr über solche Themen sprecht – vielleicht bei einem Treffen, das nur dafür vorgesehen ist. Das kann helfen, den Druck aus dem Alltag zu nehmen und das Gespräch auf einen neutraleren Boden zu verlagern.\n\nManchmal kann es auch hilfreich sein, eine dritte Person dabei zu haben, die das Gespräch moderiert. Es gibt Mediationen, die speziell darauf ausgelegt sind, bei Trennungsgesprächen zu unterstützen und Konflikte zu entschärfen. So kann vermieden werden, dass die Kommunikation eskaliert.\n\nWas Ihre Ängste betrifft, so sind sie verständlich. Ein Anwalt könnte Ihnen helfen, Ihre Rechte zu klären und Ihnen Sicherheit zu geben, ohne dass Sie das Gefühl haben, alles allein bewältigen zu müssen. Oft hilft es schon, zu wissen, woran man ist.\n\nFalls Sie sich für eine Mediation oder juristische Unterstützung entscheiden, kann ich Ihnen gern weitere Informationen dazu geben. Sie haben bereits einen großen Schritt getan, indem Sie sich hier Unterstützung gesucht haben, und ich bin sicher, dass Sie auch den nächsten Schritt meistern werden.\n\nLiebe Grüße,\nbke-Inga Sommer",
+      "timestamp": "2023-07-04 12:10:00"
     }
   ]
 }

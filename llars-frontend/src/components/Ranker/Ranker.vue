@@ -11,7 +11,7 @@
         <v-card class="mb-4 case-card" @click="navigateToCase(emailThread.thread_id)">
           <v-chip
             class="category-chip"
-            :color="emailThread.ranked ? 'green lighten-2' : 'red lighten-2'"
+            :color="emailThread.ranked ? 'green lighten-2' : 'grey lighten-2'"
             small
           >
             {{ emailThread.ranked ? 'Ranked' : 'Not Ranked' }}

@@ -1,4 +1,4 @@
-POST http://localhost:8081/api/email_threads
+POST http://localhost/api/email_threads
 Content-Type: application/json
 
 {
@@ -27,7 +27,7 @@ Content-Type: application/json
       "timestamp": "2022-11-09 19:41:00"
     },
     {
-      "message_id": 4,
+      "message_id": 5,
       "sender": "Berater",
       "content": "Liebe Rapunzel, ganz lieben Dank für Ihre wertschätzende und nette Antwortmail...",
       "timestamp": "2022-11-11 11:38:00"

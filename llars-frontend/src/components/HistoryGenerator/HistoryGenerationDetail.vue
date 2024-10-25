@@ -6,7 +6,7 @@
         <div class="email-thread-container">
           <div class="email-thread">
             <div
-              v-for="message in messages"
+              v-for="(message, index) in messages"
               :key="message.message_id"
               class="email-message no-select"
               :class="getMessageClass(message.sender)"
@@ -16,8 +16,12 @@
                 <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
               </div>
               <div class="message-body">
-                <p>{{ message.content }}</p>
-              </div>
+  <p>{{ message.content }}</p>
+  <div class="message-rating no-background">
+    <v-icon @click="rateMessage(index, 'up')" :color="message.rating === 'up' ? 'green' : ''" small>mdi-thumb-up-outline</v-icon>
+    <v-icon @click="rateMessage(index, 'down')" :color="message.rating === 'down' ? 'red' : ''" small>mdi-thumb-down-outline</v-icon>
+  </div>
+</div>
             </div>
           </div>
           <div class="fade-overlay top"></div>
@@ -27,32 +31,21 @@
 
       <v-col cols="12" md="6">
         <h3>Bewerten Sie den Verlauf</h3>
-        <div class="likert-scale-container">
-          <span class="likert-label-text">Gut</span>
-          <div class="likert-scale">
-            <div
-              v-for="rating in 5"
-              :key="rating"
-              @click="rateThread(rating)"
-              :class="['likert-option', {
-                'selected-rating': rating === selectedRating,
-                'size-1': rating === 1 || rating === 5,
-                'size-2': rating === 2 || rating === 4,
-                'size-3': rating === 3,
-                'green-tone': rating === 1 || rating === 2,
-                'purple-tone': rating === 4 || rating === 5,
-                'gray-tone': rating === 3
-              }]"
-            >
-              <span class="likert-circle">
-                <template v-if="rating === selectedRating">
-                  <v-icon class="white-icon">mdi-check</v-icon>
-                </template>
-              </span>
-            </div>
-          </div>
-          <span class="likert-label-text">Schlecht</span>
-        </div>
+
+        <!-- Kohärenz und Logik -->
+        <h4>1. Kohärenz und Logik</h4>
+        <p>Ist der Gesprächsverlauf inhaltlich sinnvoll? Gibt es Brüche in der Logik oder Unstimmigkeiten? Gibt es Halluzinationen?</p>
+        <LikertScale v-model="ratings.coherence" />
+
+        <!-- Beratungsqualität -->
+        <h4>2. Beratungsqualität</h4>
+        <p>Ist die Antwort gut strukturiert und verständlich? Zeigt sich die beratende Person empathisch, wertschätzend und kongruent? Setzt die beratende Person gezielt Beratungstechniken ein, um das Anliegen systematisch zu bearbeiten und Lösungen zu entwickeln?</p>
+        <LikertScale v-model="ratings.quality" />
+
+        <!-- Gesamtbewertung -->
+        <h4>3. Gesamtbewertung</h4>
+        <p>Ist der Fall in seiner Gesamtheit realistisch? Stimmen die Interaktionen und die behandelten Themen mit dem typischen Verlauf eines echten Beratungsprozesses überein?</p>
+        <LikertScale v-model="ratings.overall" />
 
         <!-- Textfeld für Feedback -->
         <v-textarea
@@ -105,14 +98,19 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import LikertScale from '../parts/LikertScale.vue';
 
 // Setup route, router and data variables
 const route = useRoute();
 const router = useRouter();
 const messages = ref([]);
-const selectedRating = ref(null); // Selected rating for the Likert scale
+const ratings = ref({
+  coherence: null,
+  quality: null,
+  overall: null
+});
 const feedback = ref('');
-const ratedStatus = ref(null); // Status whether the thread has been rated
+const ratedStatus = ref(null);
 
 // Fetch email thread details on component mount
 onMounted(async () => {
@@ -126,8 +124,11 @@ onMounted(async () => {
         'Authorization': api_key,
       },
     });
-    // Set the messages from the API response
-    messages.value = response.data.messages;
+    // Set the messages from the API response and initialize ratings
+    messages.value = response.data.messages.map(message => ({
+      ...message,
+      rating: null // Initialize rating for each message
+    }));
 
     // Check if the user has already rated the thread
     const mailRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mail_ratings/${threadId}`, {
@@ -138,9 +139,22 @@ onMounted(async () => {
 
     if (mailRatingResponse.data) {
       // If the mail rating exists, set the data accordingly
-      selectedRating.value = mailRatingResponse.data.rating_score;
+      ratings.value = {
+        coherence: mailRatingResponse.data.coherence_rating,
+        quality: mailRatingResponse.data.quality_rating,
+        overall: mailRatingResponse.data.overall_rating
+      };
       feedback.value = mailRatingResponse.data.feedback;
       ratedStatus.value = true;
+
+      // Set individual message ratings if available
+      if (mailRatingResponse.data.message_ratings) {
+        mailRatingResponse.data.message_ratings.forEach((rating, index) => {
+          if (messages.value[index]) {
+            messages.value[index].rating = rating;
+          }
+        });
+      }
     } else {
       ratedStatus.value = false;
     }
@@ -148,7 +162,6 @@ onMounted(async () => {
     console.error('Error fetching email thread details or rating status:', error);
   }
 });
-
 
 // Format timestamp for display
 function formatTimestamp(timestamp) {
@@ -162,9 +175,9 @@ function getMessageClass(sender) {
   return sender === 'Ratsuchende Person' ? 'same-sender' : 'different-sender';
 }
 
-// Handle Likert scale rating
-function rateThread(rating) {
-  selectedRating.value = rating;
+// Rate individual messages
+function rateMessage(index, rating) {
+  messages.value[index].rating = messages.value[index].rating === rating ? null : rating;
 }
 
 // Save rating and thoughts to the server
@@ -176,8 +189,11 @@ async function saveRatingServerSide() {
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mail_rating/${threadId}`,
       {
-        rating_score: selectedRating.value,
-        feedback: feedback.value
+        coherence_rating: ratings.value.coherence,
+        quality_rating: ratings.value.quality,
+        overall_rating: ratings.value.overall,
+        feedback: feedback.value,
+        message_ratings: messages.value.map(message => message.rating)
       },
       {
         headers: {
@@ -437,8 +453,34 @@ function navigateToOverview() {
   margin-right: 8px;
   border-radius: 12px 5px 12px 5px;
 }
-
-.v-btn {
-  margin-right: 10px;
+.message-rating.no-background {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
+
+.message-rating .v-icon {
+  cursor: pointer;
+  font-size: 1.2em;
+  color: #757575; /* Dezentere Standardfarbe */
+  transition: color 0.3s, transform 0.3s; /* Weicher Übergang für Hover-Effekte */
+  margin-right: 8px; /* Abstand zwischen den Icons */
+}
+
+.message-rating .mdi-thumb-down-outline {
+  margin-right: 0; /* Letztes Icon hat keinen rechten Abstand */
+}
+
+.message-rating .v-icon:hover {
+  transform: scale(1.15); /* Vergrößern bei Hover */
+}
+
+.message-rating .mdi-thumb-up-outline:hover {
+  color: rgba(102, 187, 106, 0.58); /* Leichtes Grün bei Hover */
+}
+
+.message-rating .mdi-thumb-down-outline:hover {
+  color: rgba(229, 115, 115, 0.61); /* Leichtes Rot bei Hover */
+}
+
 </style>

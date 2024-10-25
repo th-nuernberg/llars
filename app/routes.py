@@ -247,7 +247,6 @@ def get_email_thread_for_rankings(thread_id):
     return jsonify(thread_data), 200
 
 
-
 @data_blueprint.route('/email_threads/ratings/<int:thread_id>', methods=['GET'])
 def get_email_thread_for_ratings(thread_id):
     api_key = request.headers.get('Authorization')
@@ -1040,5 +1039,5 @@ def register_admin():
 
 
 def configure_routes(app):
-    app.register_blueprint(auth_blueprint)
+    app.register_blueprint(auth_blueprint, url_prefix='/auth')
     app.register_blueprint(data_blueprint, url_prefix='/api')

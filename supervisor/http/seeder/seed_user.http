@@ -2,7 +2,7 @@ GET http://localhost:8081/
 ###
 GET http://localhost:8081/health_check
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -10,7 +10,7 @@ Content-Type: application/json
   "password": "password1"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -19,7 +19,7 @@ Content-Type: application/json
   "api_key": "db0fe35b-0d88-4d03-a774-12fbae54aa51"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -27,7 +27,7 @@ Content-Type: application/json
   "password": "kia_demo_mr"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -35,7 +35,7 @@ Content-Type: application/json
   "password": "kia_demo_jb"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -43,7 +43,7 @@ Content-Type: application/json
   "password": "micivionterm"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -51,7 +51,7 @@ Content-Type: application/json
   "password": "cernistinsto"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -59,7 +59,7 @@ Content-Type: application/json
   "password": "llars_tester2"
 }
 ###
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -67,7 +67,7 @@ Content-Type: application/json
   "password": "llars_tester3"
 }
 ###
-POST http://backend-flask-service:8081/register_admin
+POST http://backend-flask-service:8081/auth/register_admin
 Content-Type: application/json
 
 {
@@ -78,7 +78,7 @@ Content-Type: application/json
 }
 ###
 # POST https://llars.e-beratungsinstitut.de/api/register
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -87,7 +87,7 @@ Content-Type: application/json
 }
 ###
 # POST https://llars.e-beratungsinstitut.de/api/register
-POST http://backend-flask-service:8081/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
@@ -96,7 +96,7 @@ Content-Type: application/json
 }
 ###
 # POST https://llars.e-beratungsinstitut.de/api/register
-POST https://llars.e-beratungsinstitut.de/api/register
+POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {

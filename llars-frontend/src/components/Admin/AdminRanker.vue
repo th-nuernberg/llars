@@ -205,7 +205,7 @@ const fetchUserStats = async () => {
   }
 
   try {
-    const response = await axios.get('/api/api/admin/user_ranking_stats', {
+    const response = await axios.get('/api/admin/user_ranking_stats', {
       headers: {
         Authorization: apiKey,
       },

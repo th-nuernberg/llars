@@ -42,7 +42,7 @@
 <script setup>
 import {ref} from 'vue';
 import {useRouter} from 'vue-router';
-import {makePostRequestAsync} from '../services/rest_functions.js';
+import axios from 'axios';
 import {jwtDecode} from "jwt-decode";
 import {isAdmin} from '../services/admins';
 
@@ -53,7 +53,7 @@ const router = useRouter();
 
 async function handleLogin() {
   try {
-    const response = await makePostRequestAsync('/login', {
+    const response = await axios.post('/auth/login', {
       username: username.value,
       password: password.value
     });

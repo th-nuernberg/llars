@@ -22,28 +22,28 @@ GET localhost:8081/api/feature_type_mapping/abstract_summary
 GET localhost:8081/api/get_rating/4/41
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
-GET http://localhost/api/api/rankings/csv
+GET http://localhost/api/rankings/csv
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
 GET https://llars.e-beratungsinstitut.de/api/api/rankings/csv
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
-GET http://localhost/api/api/admin/user_ranking_stats
+GET http://localhost/api/admin/user_ranking_stats
 Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 ###
-GET http://localhost/api/api/email_threads/feature_ranking_list
+GET http://localhost/api/email_threads/feature_ranking_list
 Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 ###
-GET http://localhost/api/api/email_threads/rankings/1
+GET http://localhost/api/email_threads/rankings/1
 Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 ###
-GET http://localhost/api/api/email_threads/24/current_ranking
+GET http://localhost/api/email_threads/24/current_ranking
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
-GET http://localhost/api/api/email_threads/mail_ratings
+GET http://localhost/api/email_threads/mail_ratings
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
-POST http://llars.informatik.fh-nuernberg.de/api/login
+POST http://localhost/auth/login
 Content-Type: application/json
 
 {
@@ -58,3 +58,6 @@ Content-Type: application/json
   "username": "b",
   "password": "b"
 }
+###
+GET http://localhost/auth/health_check
+###

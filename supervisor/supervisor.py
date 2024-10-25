@@ -182,7 +182,7 @@ def process_files(file_service_mapping):
 def check_heatlh(interval=10):
     while True:
         try:
-            response = requests.get('http://backend-flask-service:8081/health_check')
+            response = requests.get('http://backend-flask-service:8081/auth/health_check')
             if response.status_code == 200:
                 pass
                 # print("Successfully processed notifications!")

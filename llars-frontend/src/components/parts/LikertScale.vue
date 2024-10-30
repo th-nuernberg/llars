@@ -34,7 +34,11 @@ const props = defineProps(['modelValue']);
 const emit = defineEmits(['update:modelValue']);
 
 function selectRating(rating) {
-  emit('update:modelValue', rating);
+ if (rating === props.modelValue) {
+    emit('update:modelValue', null);  // Zurücksetzen auf null, wenn der gleiche Wert erneut ausgewählt wird
+  } else {
+    emit('update:modelValue', rating);  // Den neuen Wert setzen
+  }
 }
 </script>
 

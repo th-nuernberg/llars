@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash
@@ -819,7 +821,7 @@ def list_ranking_threads():
     return jsonify(threads_list), 200
 
 @data_blueprint.route('/email_threads/mail_ratings', methods=['GET'])
-def list_email_threads_for_mail_ratings():
+def list_email_threads_for_mail_ratings(thread_id=None):
     api_key = request.headers.get('Authorization')
     if not api_key:
         return jsonify({'error': 'API key is missing'}), 401
@@ -832,12 +834,22 @@ def list_email_threads_for_mail_ratings():
     if not mail_rating_function_type:
         return jsonify({'error': 'Mail Rating function type not found'}), 404
 
+
+    # Abrufen aller E-Mail-Threads für die Bewertungen
     email_threads = EmailThread.query.filter_by(function_type_id=mail_rating_function_type.function_type_id).all()
 
     threads_list = []
     for thread in email_threads:
-        # Überprüfe, ob ein Rating für diesen E-Mail-Thread existiert
         mail_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).first()
+        rating_status = "Not Rated"
+        if mail_rating:
+            if (mail_rating.coherence_rating is not None and
+                    mail_rating.quality_rating is not None and
+                    mail_rating.overall_rating is not None and
+                    mail_rating.plausibility_rating is not None):
+                rating_status = "Rated"
+            else:
+                rating_status = "Partly Rated"
 
         threads_list.append({
             'thread_id': thread.thread_id,
@@ -845,10 +857,11 @@ def list_email_threads_for_mail_ratings():
             'institut_id': thread.institut_id,
             'subject': thread.subject,
             'sender': thread.sender,
-            'rated': bool(mail_rating)  # True, wenn ein Rating existiert, False sonst
+            'rating_status': rating_status,
         })
 
     return jsonify(threads_list), 200
+
 
 
 @data_blueprint.route('/email_threads/generations/<int:thread_id>', methods=['GET'])
@@ -899,25 +912,35 @@ def save_mail_rating(thread_id):
     data = request.get_json()
 
     # Values sent from the client
-    rating_score = data.get('rating_score')
+    plausibility_rating = data.get('plausibility_rating')
+    coherence_rating = data.get('coherence_rating')
+    quality_rating = data.get('quality_rating')
+    overall_rating = data.get('overall_rating')
     feedback = data.get('feedback', '')
 
-    if rating_score is None:
-        return jsonify({'error': 'Rating score is required'}), 400
+    logging.info(plausibility_rating)
+    #if rating_score is None:
+        #return jsonify({'error': 'Rating score is required'}), 400
 
     # Check if there's already a rating for this thread and user
     existing_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
 
     if existing_rating:
         # Update the existing rating and feedback
-        existing_rating.rating_score = rating_score
+        existing_rating.plausibility_rating = plausibility_rating
+        existing_rating.coherence_rating = coherence_rating
+        existing_rating.quality_rating = quality_rating
+        existing_rating.overall_rating = overall_rating
         existing_rating.feedback = feedback
     else:
         # Create a new mail rating with feedback
         new_mail_rating = UserMailRating(
             user_id=user.id,
             thread_id=thread_id,
-            rating_score=rating_score,
+            plausibility_rating=plausibility_rating,
+            coherence_rating=coherence_rating,
+            quality_rating=quality_rating,
+            overall_rating=overall_rating,
             feedback=feedback
         )
         db.session.add(new_mail_rating)
@@ -940,14 +963,26 @@ def get_mail_rating(thread_id):
     # Prüfen, ob ein Mail Rating für den Benutzer und den Thread existiert
     mail_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
 
-    if not mail_rating:
-        return jsonify({'error': 'Mail rating not found'}), 404
+
+    rating_status = "Not Rated"
+    if mail_rating:
+        if (mail_rating.coherence_rating is not None and
+                mail_rating.quality_rating is not None and
+                mail_rating.overall_rating is not None and
+                mail_rating.plausibility_rating is not None):
+            rating_status = "Rated"
+        else:
+            rating_status = "Partly Rated"
 
     # Bereite die Daten für das Rating auf
     rating_data = {
-        'rating_score': mail_rating.rating_score,
-        'feedback': mail_rating.feedback,
-        'timestamp': mail_rating.timestamp.isoformat()
+        'rating': {
+                'plausibility_rating': mail_rating.plausibility_rating if mail_rating else None,
+                'coherence_rating': mail_rating.coherence_rating if mail_rating else None,
+                'quality_rating': mail_rating.quality_rating if mail_rating else None,
+                'overall_rating': mail_rating.overall_rating if mail_rating else None,
+                'feedback': mail_rating.feedback if mail_rating else None
+            }
     }
 
     return jsonify(rating_data), 200

@@ -118,7 +118,10 @@ class UserMailRating(db.Model):
     rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
-    rating_score = mapped_column(db.Float)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
+    plausibility_rating = mapped_column(db.Integer)
+    coherence_rating = mapped_column(db.Integer)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
+    quality_rating = mapped_column(db.Integer)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
+    overall_rating = mapped_column(db.Integer)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
     feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 

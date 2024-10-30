@@ -4,11 +4,10 @@
     <v-row justify="center" class="header mb-5">
       <v-col cols="12" class="text-center">
         <img src="@/assets/logo/llars-logo.png" alt="LLars Logo" height="100" class="mb-2">
-        <h1>Welcome to LLars</h1>
-        <div class="subtitle-1 mb-4">Your Rank, Label, Rate and FeatureGenerate Software!</div>
+        <h1 class="header-title">Willkommen bei LLars</h1>
+        <div class="subtitle-text mb-4">Your Rank, Label, Rate and FeatureGenerate Software!</div>
       </v-col>
     </v-row>
-
     <!-- Feature Cards -->
     <v-row class="equal-size-cards">
       <v-col v-for="item in items" :key="item.title" cols="12" sm="6" class="d-flex card-col">
@@ -191,4 +190,17 @@ function equalizeCardSizes() {
     flex-basis: 100%;
   }
 }
+
+.header-title {
+  color: #333333; /* Dunkles Grau */
+  font-family: Arial, sans-serif; /* Beispiel-Schriftart */
+  font-weight: bold;
+}
+
+.subtitle-text {
+  color: #555555; /* Ein etwas helleres Grau als das Header */
+  font-family: 'Verdana', sans-serif; /* Beispiel-Schriftart */
+  font-size: 1.1rem;
+}
+
 </style>

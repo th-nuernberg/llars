@@ -3,10 +3,16 @@
     <!-- Normale Benutzer AppBar -->
     <v-app-bar v-if="!isAdminUser" app dark color="primary"> <!-- Primärfarbe verwendet -->
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
-      <v-toolbar-title @click="goHome" style="cursor: pointer;">
-        <img src="./assets/logo/llars-logo.png" alt="Logo" height="30" class="mr-2">
-        LLars Plattform
-      </v-toolbar-title>
+        <v-toolbar-title  @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
+          <v-row no-gutters align="center">
+            <v-col cols="auto">
+              <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
+            </v-col>
+            <v-col cols="auto" class="toolbar-text-wrapper">
+              <span class="toolbar-text">LLars Plattform</span>
+            </v-col>
+          </v-row>
+        </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-chip
         v-if="username"
@@ -25,9 +31,9 @@
     <!-- Admin Benutzer AppBar -->
     <v-app-bar v-else app dark color="primary"> <!-- Primärfarbe verwendet -->
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
-      <v-toolbar-title @click="goAdminHome" style="cursor: pointer;">
-        <img src="./assets/logo/llars-logo.png" alt="Admin Logo" height="30" class="mr-2">
-        Admin Dashboard
+      <v-toolbar-title @click="goAdminHome" style="cursor: pointer; display: flex; align-items: center;">
+        <img src="./assets/logo/llars-logo.png" alt="Logo" height="20" class="mr-2 logo-image">
+        <span class="toolbar-text">Admin Dashboard</span>
       </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-chip
@@ -164,4 +170,26 @@ function navigateTo(link) {
 .footer-link:hover {
   text-decoration: underline;
 }
+
+
+.logo-image {
+  /* Hier können Sie das Bild anpassen */
+  transform: translateY(0px);  /* Vertikale Position */
+  margin-top: 9px;            /* Zusätzlicher Abstand von oben */
+  margin-right: 15px;
+  /* height: 20px; */         /* Falls Sie die Höhe per CSS steuern möchten */
+}
+
+.toolbar-text-wrapper {
+  align-self: center; /* Passt die vertikale Ausrichtung unabhängig an */
+  margin-top: 2px; /* Verschiebung nach Bedarf anpassen */
+}
+
+.toolbar-text {
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: white;
+}
+
 </style>

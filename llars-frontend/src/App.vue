@@ -195,7 +195,7 @@ function navigateTo(link) {
   font-size: 1.25rem;
   font-weight: 500;
   letter-spacing: 0.1px;
-  color: white;
+  color: #f8f8f8;
 }
 
 </style>

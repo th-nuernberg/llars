@@ -31,9 +31,15 @@
     <!-- Admin Benutzer AppBar -->
     <v-app-bar v-else app dark color="primary"> <!-- Primärfarbe verwendet -->
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
-      <v-toolbar-title @click="goAdminHome" style="cursor: pointer; display: flex; align-items: center;">
-        <img src="./assets/logo/llars-logo.png" alt="Logo" height="20" class="mr-2 logo-image">
-        <span class="toolbar-text">Admin Dashboard</span>
+      <v-toolbar-title @click="goAdminHome" style="display: flex; align-items: center; cursor: pointer;">
+        <v-row no-gutters align="center">
+          <v-col cols="auto">
+            <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
+          </v-col>
+          <v-col cols="auto" class="toolbar-text-wrapper">
+            <span class="toolbar-text">Admin Dashboard</span>
+          </v-col>
+        </v-row>
       </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-chip

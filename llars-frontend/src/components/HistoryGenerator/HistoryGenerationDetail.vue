@@ -32,18 +32,23 @@
       <v-col cols="12" md="6">
         <h3>Bewerten Sie den Verlauf</h3>
 
+        <!-- Plausibilität -->
+        <h4>1. Plausibilität</h4>
+        <p>Ist der Gesprächsverlauf plausibel? ?</p>
+        <LikertScale v-model="ratings.plausibility" />
+
         <!-- Kohärenz und Logik -->
-        <h4>1. Kohärenz und Logik</h4>
+        <h4>2. Kohärenz und Logik</h4>
         <p>Ist der Gesprächsverlauf inhaltlich sinnvoll? Gibt es Brüche in der Logik oder Unstimmigkeiten? Gibt es Halluzinationen?</p>
         <LikertScale v-model="ratings.coherence" />
 
         <!-- Beratungsqualität -->
-        <h4>2. Beratungsqualität</h4>
+        <h4>3. Beratungsqualität</h4>
         <p>Ist die Antwort gut strukturiert und verständlich? Zeigt sich die beratende Person empathisch, wertschätzend und kongruent? Setzt die beratende Person gezielt Beratungstechniken ein, um das Anliegen systematisch zu bearbeiten und Lösungen zu entwickeln?</p>
         <LikertScale v-model="ratings.quality" />
 
         <!-- Gesamtbewertung -->
-        <h4>3. Gesamtbewertung</h4>
+        <h4>4. Gesamtbewertung</h4>
         <p>Ist der Fall in seiner Gesamtheit realistisch? Stimmen die Interaktionen und die behandelten Themen mit dem typischen Verlauf eines echten Beratungsprozesses überein?</p>
         <LikertScale v-model="ratings.overall" />
 
@@ -62,10 +67,10 @@
       <v-col>
         <v-chip
           class="category-chip"
-          :color="ratedStatus ? 'green lighten-2' : 'grey lighten-2'"
+          :color="ratedStatus === 'Rated' ? 'green lighten-2' : ratedStatus === 'Partly Rated' ? 'orange lighten-2' : 'grey lighten-2'"
           small
         >
-          {{ ratedStatus ? 'Rated' : 'Not Rated' }}
+          {{ratedStatus}}
         </v-chip>
       </v-col>
 
@@ -105,6 +110,7 @@ const route = useRoute();
 const router = useRouter();
 const messages = ref([]);
 const ratings = ref({
+  plausibility: null,
   coherence: null,
   quality: null,
   overall: null
@@ -140,12 +146,13 @@ onMounted(async () => {
     if (mailRatingResponse.data) {
       // If the mail rating exists, set the data accordingly
       ratings.value = {
-        coherence: mailRatingResponse.data.coherence_rating,
-        quality: mailRatingResponse.data.quality_rating,
-        overall: mailRatingResponse.data.overall_rating
+        plausibility: mailRatingResponse.data.rating.plausibility_rating,
+        coherence: mailRatingResponse.data.rating.coherence_rating,
+        quality: mailRatingResponse.data.rating.quality_rating,
+        overall: mailRatingResponse.data.rating.overall_rating
       };
-      feedback.value = mailRatingResponse.data.feedback;
-      ratedStatus.value = true;
+      feedback.value = mailRatingResponse.data.rating.feedback;
+      ratedStatus.value = calculateRatedStatus();
 
       // Set individual message ratings if available
       if (mailRatingResponse.data.message_ratings) {
@@ -156,7 +163,7 @@ onMounted(async () => {
         });
       }
     } else {
-      ratedStatus.value = false;
+      ratedStatus.value = 'Not Rated';
     }
   } catch (error) {
     console.error('Error fetching email thread details or rating status:', error);
@@ -168,6 +175,20 @@ function formatTimestamp(timestamp) {
   const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
   const date = new Date(timestamp);
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
+}
+
+
+function calculateRatedStatus() {
+  const ratingValues = Object.values(ratings.value);
+  const filledRatings = ratingValues.filter(value => value !== null).length;
+
+  if (filledRatings === 4) {
+    return 'Rated';
+  } else if (filledRatings > 0) {
+    return 'Partly Rated';
+  } else {
+    return 'Not Rated';
+  }
 }
 
 // Get class based on sender (to differentiate between user and other messages)
@@ -184,11 +205,12 @@ function rateMessage(index, rating) {
 async function saveRatingServerSide() {
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
-
+  console.log(ratings.value)
   try {
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mail_rating/${threadId}`,
       {
+        plausibility_rating: ratings.value.plausibility_rating,
         coherence_rating: ratings.value.coherence,
         quality_rating: ratings.value.quality,
         overall_rating: ratings.value.overall,
@@ -204,7 +226,7 @@ async function saveRatingServerSide() {
     );
     console.log('Rating saved:', response.data);
     alert('Rating und Feedback wurden erfolgreich gespeichert!');
-    ratedStatus.value = true; // Mark as rated
+    ratedStatus.value = calculateRatedStatus(); // Mark as rated / partly rated
   } catch (error) {
     console.error('Error saving rating:', error);
     alert('Fehler beim Speichern des Ratings und Feedbacks.');

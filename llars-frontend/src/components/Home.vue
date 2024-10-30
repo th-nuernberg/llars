@@ -3,9 +3,9 @@
     <!-- Logo und Titelbereich -->
     <v-row justify="center" class="header mb-5">
       <v-col cols="12" class="text-center">
-        <img src="@/assets/logo/llars-logo.png" alt="LLars Logo" height="100" class="mb-2">
+        <img src="@/assets/logo/llars-logo.png" alt="LLars Logo" height="120" class="mb-2">
         <h1 class="header-title">Willkommen bei LLars</h1>
-        <div class="subtitle-text mb-4">Your Rank, Label, Rate and FeatureGenerate Software!</div>
+        <div class="subtitle-text mb-4">Ihre Plattform für Ranking, Labeling, Rating und Mail-Generierung!</div>
       </v-col>
     </v-row>
     <!-- Feature Cards -->
@@ -42,10 +42,10 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const items = ref([
-  { title: 'Ranker', description: 'Detailierte Analyse und Ranking', route: '/ranker', icon: 'mdi-chart-line', elevation: 1, disabled: false },
-  { title: 'Verlauf Generierung', description: 'Erzeugung von Mail Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-email-outline', elevation: 1, disabled: false },
-  { title: 'Rater', description: 'Bewerten Sie Ihre Daten', route: '/rater', icon: 'mdi-star', elevation: 1, disabled: true },
-  { title: 'Labler', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-tag-text-outline', elevation: 1, disabled: true }
+  { title: 'Ranking', description: 'Ranken Sie Ihre Daten', route: '/ranker', icon: 'mdi-chart-bar-stacked', elevation: 1, disabled: false },
+  { title: 'Verlaufserstellung', description: 'Erzeugung von Mail-Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-timeline-text-outline', elevation: 1, disabled: false },
+  { title: 'Rating', description: 'Raten Sie Ihre Daten', route: '/rater', icon: 'mdi-star-outline', elevation: 1, disabled: true },
+  { title: 'Labeling', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-label-outline', elevation: 1, disabled: true }
 ]);
 
 function navigateTo(route) {
@@ -82,7 +82,6 @@ function equalizeCardSizes() {
 
 <style scoped>
 .home-container {
-  margin-top: 20px;
   padding: 16px;
   border-radius: 8px;
   max-width: 1200px; /* Adjust this value as needed */
@@ -132,12 +131,19 @@ function equalizeCardSizes() {
 .feature-card .v-card-title {
   color: white;
   margin-top: 10px;
+  font-family: Arial, sans-serif; /* Gleiche Schriftart wie die Überschrift */
+  font-weight: bold; /* Optional: Bold für Titel in Cards */
+  color: #f8f8f8;
 }
 
 .feature-card .v-card-text {
   color: white;
   flex-grow: 1;
+  font-family: Arial, sans-serif; /* Gleiche Schriftart wie die Überschrift */
+  font-size: 0.9rem; /* Optional: Anpassen der Schriftgröße */
+    color: #f8f8f8;
 }
+
 
 .disabled-card {
   opacity: 0.8;

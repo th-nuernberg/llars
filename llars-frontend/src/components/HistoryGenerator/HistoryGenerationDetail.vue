@@ -210,7 +210,7 @@ async function saveRatingServerSide() {
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mail_rating/${threadId}`,
       {
-        plausibility_rating: ratings.value.plausibility_rating,
+        plausibility_rating: ratings.value.plausibility,
         coherence_rating: ratings.value.coherence,
         quality_rating: ratings.value.quality,
         overall_rating: ratings.value.overall,

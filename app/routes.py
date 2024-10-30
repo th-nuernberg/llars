@@ -843,7 +843,12 @@ def list_email_threads_for_mail_ratings(thread_id=None):
         mail_rating = UserMailRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).first()
         rating_status = "Not Rated"
         if mail_rating:
-            if (mail_rating.coherence_rating is not None and
+            if (mail_rating.coherence_rating is  None and
+                    mail_rating.quality_rating is None and
+                    mail_rating.overall_rating  is None and
+                    mail_rating.plausibility_rating is None):
+                rating_status = "Not Rated" # In case all likert scales get unmarked
+            elif (mail_rating.coherence_rating is not None and
                     mail_rating.quality_rating is not None and
                     mail_rating.overall_rating is not None and
                     mail_rating.plausibility_rating is not None):

@@ -1,8 +1,8 @@
 <template>
-  <v-container fluid>
+  <v-container fluid class="main-container">
     <v-row>
       <v-col cols="12" md="6">
-        <h2>E-Mail Verlauf</h2>
+
         <div class="email-thread-container">
           <div class="email-thread">
             <div
@@ -16,12 +16,12 @@
                 <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
               </div>
               <div class="message-body">
-  <p>{{ message.content }}</p>
-  <div class="message-rating no-background">
-    <v-icon @click="rateMessage(index, 'up')" :color="message.rating === 'up' ? 'green' : ''" small>mdi-thumb-up-outline</v-icon>
-    <v-icon @click="rateMessage(index, 'down')" :color="message.rating === 'down' ? 'red' : ''" small>mdi-thumb-down-outline</v-icon>
-  </div>
-</div>
+                <p>{{ message.content }}</p>
+                <div class="message-rating no-background">
+                  <v-icon @click="rateMessage(index, 'up')" :color="message.rating === 'up' ? 'green' : ''" small>mdi-thumb-up-outline</v-icon>
+                  <v-icon @click="rateMessage(index, 'down')" :color="message.rating === 'down' ? 'red' : ''" small>mdi-thumb-down-outline</v-icon>
+                </div>
+              </div>
             </div>
           </div>
           <div class="fade-overlay top"></div>
@@ -30,39 +30,43 @@
       </v-col>
 
       <v-col cols="12" md="6">
-        <h3>Bewerten Sie den Verlauf</h3>
+        <div class="rating-section">
+          <div class="rating-category">
+            <h4>1. Plausibilität</h4>
+            <p>Wie realistisch und nachvollziehbar ist der Gesprächsverlauf? Entsprechen die Reaktionen und Interaktionen einem natürlichen Kommunikationsmuster?</p>
+            <LikertScale v-model="ratings.plausibility" />
+          </div>
 
-        <!-- Plausibilität -->
-        <h4>1. Plausibilität</h4>
-        <p>Ist der Gesprächsverlauf plausibel? ?</p>
-        <LikertScale v-model="ratings.plausibility" />
+          <div class="rating-category">
+            <h4>2. Kohärenz und Logik</h4>
+            <p>Ist der Gesprächsverlauf inhaltlich sinnvoll? Gibt es Brüche in der Logik oder Unstimmigkeiten? Gibt es Halluzinationen?</p>
+            <LikertScale v-model="ratings.coherence" />
+          </div>
 
-        <!-- Kohärenz und Logik -->
-        <h4>2. Kohärenz und Logik</h4>
-        <p>Ist der Gesprächsverlauf inhaltlich sinnvoll? Gibt es Brüche in der Logik oder Unstimmigkeiten? Gibt es Halluzinationen?</p>
-        <LikertScale v-model="ratings.coherence" />
+          <div class="rating-category">
+            <h4>3. Beratungsqualität</h4>
+            <p>Ist die Antwort gut strukturiert und verständlich? Zeigt sich die beratende Person empathisch, wertschätzend und kongruent? Setzt die beratende Person gezielt Beratungstechniken ein, um das Anliegen systematisch zu bearbeiten und Lösungen zu entwickeln?</p>
+            <LikertScale v-model="ratings.quality" />
+          </div>
 
-        <!-- Beratungsqualität -->
-        <h4>3. Beratungsqualität</h4>
-        <p>Ist die Antwort gut strukturiert und verständlich? Zeigt sich die beratende Person empathisch, wertschätzend und kongruent? Setzt die beratende Person gezielt Beratungstechniken ein, um das Anliegen systematisch zu bearbeiten und Lösungen zu entwickeln?</p>
-        <LikertScale v-model="ratings.quality" />
+          <div class="rating-category">
+            <h4>4. Gesamtbewertung</h4>
+            <p>Ist der Fall in seiner Gesamtheit realistisch? Stimmen die Interaktionen und die behandelten Themen mit dem typischen Verlauf eines echten Beratungsprozesses überein?</p>
+            <LikertScale v-model="ratings.overall" />
+          </div>
 
-        <!-- Gesamtbewertung -->
-        <h4>4. Gesamtbewertung</h4>
-        <p>Ist der Fall in seiner Gesamtheit realistisch? Stimmen die Interaktionen und die behandelten Themen mit dem typischen Verlauf eines echten Beratungsprozesses überein?</p>
-        <LikertScale v-model="ratings.overall" />
-
-        <!-- Textfeld für Feedback -->
-        <v-textarea
-          v-model="feedback"
-          label="Ihre Gedanken oder Notizen"
-          rows="5"
-          outlined
-        ></v-textarea>
+          <v-textarea
+            v-model="feedback"
+            label="Ihre Gedanken oder Notizen"
+            rows="5"
+            outlined
+            class="mt-4"
+          ></v-textarea>
+        </div>
       </v-col>
     </v-row>
 
-    <!-- Leiste am unteren Rand -->
+    <!-- Bottom bar with added margin -->
     <v-row class="bottom-bar mt-auto">
       <v-col>
         <v-chip
@@ -303,10 +307,18 @@ function navigateToOverview() {
 </script>
 
 <style scoped>
+/* Main container setup */
+.main-container {
+  min-height: calc(100vh - 150px); /* Adjust for app footer */
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px; /* Space for bottom bar */
+}
+
+/* Email thread container adjustments */
 .email-thread-container {
-  max-height: 500px;
+  height: calc(100vh - 25vh); /* Adjust to match rating section */
   overflow-y: auto;
-  min-height: 75vh;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -442,7 +454,6 @@ function navigateToOverview() {
   background-color: #BDBDBD;
 }
 
-/* Updated hover styles */
 .likert-option:hover .likert-circle {
   transform: scale(1.1);
 }
@@ -462,13 +473,54 @@ function navigateToOverview() {
   border-color: #515151;
 }
 
+/* Rating section styling */
+.rating-section {
+  height: calc(100vh - 25vh); /* Adjust to match rating section */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: white;
+  margin-top: 2px;
+}
+
+.rating-category {
+  background-color: #f5f5f5;
+  padding: 20px;
+  margin-bottom: 24px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.rating-category:hover {
+  background-color: #eeeeee;
+}
+
+.rating-category h4 {
+  color: #2F4F4F;
+  margin-bottom: 12px;
+  font-size: 1.1em;
+}
+
+.rating-category p {
+  color: #4a4a4a;
+  margin-bottom: 16px;
+  line-height: 1.5;
+  font-size: 0.95em;
+}
+
+
 /* Bottom Bar Styling */
 .bottom-bar {
-  position: sticky;
+  position: fixed;
   bottom: 0;
-  padding: 1vh;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  margin-bottom: 20px;
   border-top: 1px solid #ddd;
   background-color: #d6f6db;
+  z-index: 100;
 }
 
 .category-chip {
@@ -504,5 +556,7 @@ function navigateToOverview() {
 .message-rating .mdi-thumb-down-outline:hover {
   color: rgba(229, 115, 115, 0.61); /* Leichtes Rot bei Hover */
 }
+
+
 
 </style>

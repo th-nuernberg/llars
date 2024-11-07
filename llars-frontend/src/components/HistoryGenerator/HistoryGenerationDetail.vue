@@ -132,6 +132,7 @@ const feedback = ref('');
 // for comparison tee see if there are unsaved changes
 const initial_rating = ref(null)
 const initial_feedback = ref(null)
+const initial_messages = ref([]);
 
 const ratedStatus = ref(null);
 const hasUnsavedChanges = ref(false)
@@ -200,8 +201,12 @@ onMounted(async () => {
 
     // set the from the db retrieved values as initial values, in order for comparision if the value changed
     initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
-    initial_feedback.value = feedback.value
-    loadRatingsFromLocalStorage();
+    initial_feedback.value = JSON.parse(JSON.stringify(feedback.value));
+    initial_messages.value = JSON.parse(JSON.stringify(messages.value));
+    console.log("message_ratings", initial_messages.value)
+    loadMailHistoryRatingsFromLocalStorage();
+    loadMessageRatingsFromLocalStorage();
+
   } catch (error) {
     console.error('Error fetching email thread details or rating status:', error);
   }
@@ -231,7 +236,7 @@ function calculateRatedStatus() {
 
 
 //Check Local Storage for changes
-function loadRatingsFromLocalStorage() {
+function loadMailHistoryRatingsFromLocalStorage() {
   const savedData = JSON.parse(localStorage.getItem(`ratings_${threadId}`));
   if (savedData) {
     ratings.value = savedData.ratings;
@@ -241,9 +246,22 @@ function loadRatingsFromLocalStorage() {
   }
 }
 
+function loadMessageRatingsFromLocalStorage() {
+  const savedMessageRatings = JSON.parse(localStorage.getItem(`messageRatings_${threadId}`));
+  if (savedMessageRatings) {
+    savedMessageRatings.forEach(savedRating => {
+      const message = messages.value.find(msg => msg.message_id === savedRating.message_id);
+      if (message) {
+        message.rating = savedRating.rating;
+      }
+    });
+    console.log("Nachrichtenbewertungen aus Local Storage geladen:", messages.value);
+  }
+}
 
 // Funktion zum Speichern der Bewertungen in den Local Storage
-function saveRatingsToLocalStorage() {
+function saveMailhistoryRatingsToLocalStorage() {
+  if (feedback.value === ""){feedback.value = null}
   const dataToSave = {
     ratings: ratings.value,
     feedback: feedback.value
@@ -252,12 +270,14 @@ function saveRatingsToLocalStorage() {
   console.log("Änderungen wurden im LocalStorage gespeichert")
 }
 
-// Überwachung der Bewertungsänderungen
+
+
+
 watch(
   [ratings, feedback],
   () => {
     console.log("Bewertung oder Feedback wurde geändert, speichere in Local Storage...");
-    saveRatingsToLocalStorage();
+    saveMailhistoryRatingsToLocalStorage();
     hasUnsavedChanges.value = check_for_changes();
   },
   { deep: true }
@@ -265,15 +285,15 @@ watch(
 
 
 function check_for_changes() {
-  const data_from_storage = JSON.parse(localStorage.getItem(`ratings_${threadId}`));
+  // Vergleicht die aktuellen Daten mit den ursprünglichen Local Storage-Werten
 
-  if (!data_from_storage) return false;
-
-  // Vergleiche die aktuellen Daten mit den ursprünglichen Local Storage-Werten
   return (
-    JSON.stringify(initial_rating.value) !== JSON.stringify(data_from_storage.ratings) ||
-    initial_feedback.value !== data_from_storage.feedback
-  );
+  initial_rating.value.plausibility !== ratings.value.plausibility ||
+  initial_rating.value.coherence !== ratings.value.coherence ||
+  initial_rating.value.quality !== ratings.value.quality ||
+  initial_rating.value.overall!== ratings.value.overall ||
+  initial_feedback.value !== feedback.value
+);
 }
 
 
@@ -335,6 +355,7 @@ async function saveRatingServerSide() {
     ratedStatus.value = calculateRatedStatus(); // Markiere als bewertet
     hasUnsavedChanges.value = false; // Setzt die Anzeige ungesicherter Änderungen zurück
     localStorage.removeItem(`ratings_${threadId}`); // Löscht Local Storage nach Speichern
+    localStorage.removeItem(`messageRatings_${threadId}`);
   } catch (error) {
     console.error('Error saving rating:', error);
     alert('Fehler beim Speichern des Ratings und Feedbacks.');

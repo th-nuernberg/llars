@@ -143,39 +143,52 @@ onMounted(async () => {
   const api_key = localStorage.getItem('api_key');
 
   try {
-    // API request to get the email thread details
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadId}`, {
+    // API request to get the email thread details / the messages
+    const thread_messages = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadId}`, {
       headers: {
         'Authorization': api_key,
       },
     });
-    // Set the messages from the API response and initialize ratings
-    messages.value = response.data.messages.map(message => ({
-      ...message,
-      rating: null // Initialize rating for each message
-    }));
+
+    //api request to get the message rating of a thread
+    const message_ratings = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/message_ratings/${threadId}`, {
+      headers: {
+        'Authorization': api_key,
+      },
+    });
+
+    // putting the messages and the ratings together
+    messages.value = thread_messages.data.messages.map(message => {
+      const ratingObj = message_ratings.data.find(rating => rating.message_id === message.message_id);
+      return {
+        ...message,
+        rating: ratingObj ? ratingObj.rating : null // Setze Bewertung auf null, wenn keine vorhanden ist
+      };
+    });
+    console.log("Combined Messages with Ratings:", messages.value);
+
 
     // Check if the user has already rated the thread
-    const mailRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mail_ratings/${threadId}`, {
+    const mailhistoryRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mail_ratings/${threadId}`, {
       headers: {
         'Authorization': api_key,
       }
     });
 
-    if (mailRatingResponse.data) {
+    if (mailhistoryRatingResponse.data) {
       // If the mail rating exists, set the data accordingly
       ratings.value = {
-        plausibility: mailRatingResponse.data.rating.plausibility_rating,
-        coherence: mailRatingResponse.data.rating.coherence_rating,
-        quality: mailRatingResponse.data.rating.quality_rating,
-        overall: mailRatingResponse.data.rating.overall_rating
+        plausibility: mailhistoryRatingResponse.data.rating.plausibility_rating,
+        coherence: mailhistoryRatingResponse.data.rating.coherence_rating,
+        quality: mailhistoryRatingResponse.data.rating.quality_rating,
+        overall: mailhistoryRatingResponse.data.rating.overall_rating
       };
-      feedback.value = mailRatingResponse.data.rating.feedback;
+      feedback.value = mailhistoryRatingResponse.data.rating.feedback;
       ratedStatus.value = calculateRatedStatus();
 
       // Set individual message ratings if available
-      if (mailRatingResponse.data.message_ratings) {
-        mailRatingResponse.data.message_ratings.forEach((rating, index) => {
+      if (mailhistoryRatingResponse.data.message_ratings) {
+        mailhistoryRatingResponse.data.message_ratings.forEach((rating, index) => {
           if (messages.value[index]) {
             messages.value[index].rating = rating;
           }
@@ -184,6 +197,8 @@ onMounted(async () => {
     } else {
       ratedStatus.value = 'Not Rated';
     }
+
+    // set the from the db retrieved values as initial values, in order for comparision if the value changed
     initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
     initial_feedback.value = feedback.value
     loadRatingsFromLocalStorage();
@@ -198,6 +213,7 @@ function formatTimestamp(timestamp) {
   const date = new Date(timestamp);
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
 }
+
 
 
 function calculateRatedStatus() {
@@ -275,17 +291,17 @@ function rateMessage(index, rating) {
 async function saveRatingServerSide() {
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
-  console.log(ratings.value)
+
   try {
+    // Zuerst die allgemeinen Bewertungen speichern
     const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mail_rating/${threadId}`,
+      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
       {
         plausibility_rating: ratings.value.plausibility,
         coherence_rating: ratings.value.coherence,
         quality_rating: ratings.value.quality,
         overall_rating: ratings.value.overall,
         feedback: feedback.value,
-        message_ratings: messages.value.map(message => message.rating)
       },
       {
         headers: {
@@ -294,9 +310,29 @@ async function saveRatingServerSide() {
         }
       }
     );
-    console.log('Rating saved:', response.data);
+    console.log('Mail Rating saved:', response.data);
+
+    // Jetzt die Bewertungen für jede Nachricht speichern
+    const messageRatings = messages.value.map(message => ({
+      message_id: message.message_id,
+      rating: message.rating // Wenn kein Rating vorhanden ist, wird null übermittelt
+    }));
+
+    // API request to save message ratings
+    const messageRatingResponse = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_message_ratings/${threadId}`,
+      { message_ratings: messageRatings },
+      {
+        headers: {
+          'Authorization': api_key,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    console.log('Message Ratings saved:', messageRatingResponse.data);
+
     alert('Rating und Feedback wurden erfolgreich gespeichert!');
-    ratedStatus.value = calculateRatedStatus(); // Mark as rated / partly rated
+    ratedStatus.value = calculateRatedStatus(); // Markiere als bewertet
     hasUnsavedChanges.value = false; // Setzt die Anzeige ungesicherter Änderungen zurück
     localStorage.removeItem(`ratings_${threadId}`); // Löscht Local Storage nach Speichern
   } catch (error) {
@@ -304,6 +340,7 @@ async function saveRatingServerSide() {
     alert('Fehler beim Speichern des Ratings und Feedbacks.');
   }
 }
+
 
 // Navigate to the previous case
 async function navigateToPreviousCase() {

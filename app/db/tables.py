@@ -113,19 +113,28 @@ class UserFeatureRating(db.Model):
     feature = db.relationship('Feature', backref='user_ratings')
 
 
-class UserMailRating(db.Model):
+class UserMailHistoryRating(db.Model):
     __tablename__ = 'user_mail_ratings'
     rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
-    plausibility_rating = mapped_column(db.Integer)
-    coherence_rating = mapped_column(db.Integer)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
-    quality_rating = mapped_column(db.Integer)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
-    overall_rating = mapped_column(db.Integer)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
+    plausibility_rating = mapped_column(db.Integer, nullable=True)
+    coherence_rating = mapped_column(db.Integer, nullable=True)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
+    quality_rating = mapped_column(db.Integer, nullable=True)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
+    overall_rating = mapped_column(db.Integer, nullable=True)  # Die Bewertung als numerischer Wert (z.B. 1 bis 5)
     feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='mail_ratings')
     email_thread = db.relationship('EmailThread', backref='mail_ratings')
 
+
+class UserMessageRating(db.Model):
+    __tablename__ = 'user_message_ratings'
+    msg_rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    message_id = mapped_column(db.Integer, db.ForeignKey('messages.message_id'))
+    rating = mapped_column(db.String(4), nullable=True)
+    timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 

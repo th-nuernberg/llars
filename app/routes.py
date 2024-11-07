@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup)
+from sqlalchemy import func
 from uuid import uuid4
 import uuid
 from datetime import datetime
@@ -841,8 +842,10 @@ def list_email_threads_for_mail_ratings(thread_id=None):
 
     threads_list = []
     for thread in email_threads:
-        mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).first()
+        mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
+            UserMailHistoryRating.timestamp.desc()).first()
         rating_status = "Not Rated"
+
         if mail_rating:
             if (mail_rating.coherence_rating is  None and
                     mail_rating.quality_rating is None and
@@ -916,7 +919,26 @@ def get_email_thread_message_ratings(thread_id):
         return jsonify({'error': 'Invalid API key'}), 401
 
     # Load Ratings of messages
-    msg_ratings = UserMessageRating.query.filter_by(user_id=user.id, thread_id=thread_id)
+    ## Unterabfrage, um den neuesten Timestamp pro message_id zu ermitteln
+    subquery = db.session.query(
+        UserMessageRating.message_id,
+        func.max(UserMessageRating.timestamp).label('latest_timestamp')
+    ).filter_by(
+        user_id=user.id,
+        thread_id=thread_id
+    ).group_by(
+        UserMessageRating.message_id
+    ).subquery()
+
+    ## Hauptabfrage, die den entsprechenden Datensatz für jede message_id mit dem neuesten Timestamp auswählt
+    msg_ratings = db.session.query(UserMessageRating).join(
+        subquery,
+        (UserMessageRating.message_id == subquery.c.message_id) &
+        (UserMessageRating.timestamp == subquery.c.latest_timestamp)
+    ).filter(
+        UserMessageRating.user_id == user.id,
+        UserMessageRating.thread_id == thread_id
+    ).all()
 
     rating_list = [
         {
@@ -951,34 +973,31 @@ def save_mail_rating(thread_id):
     overall_rating = data.get('overall_rating')
     feedback = data.get('feedback', '')
 
-    logging.info(plausibility_rating)
+    if plausibility_rating is None and coherence_rating is None and quality_rating is None and overall_rating is None and feedback is None:
+        existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
+            UserMailHistoryRating.timestamp.desc()).first()
 
-    # Check if there's already a rating for this thread and user
-    existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
+        if not existing_rating:
+            return jsonify({'status': 'Message ratings saved successfully'}), 201
 
-    if existing_rating:
-        # Update the existing rating and feedback
-        existing_rating.plausibility_rating = plausibility_rating
-        existing_rating.coherence_rating = coherence_rating
-        existing_rating.quality_rating = quality_rating
-        existing_rating.overall_rating = overall_rating
-        existing_rating.feedback = feedback
-    else:
-        # Create a new mail rating with feedback
-        new_mail_rating = UserMailHistoryRating(
-            user_id=user.id,
-            thread_id=thread_id,
-            plausibility_rating=plausibility_rating,
-            coherence_rating=coherence_rating,
-            quality_rating=quality_rating,
-            overall_rating=overall_rating,
-            feedback=feedback
-        )
-        db.session.add(new_mail_rating)
+
+    # Create a new mail rating with feedback
+    new_mail_rating = UserMailHistoryRating(
+        user_id=user.id,
+        thread_id=thread_id,
+        plausibility_rating=plausibility_rating,
+        coherence_rating=coherence_rating,
+        quality_rating=quality_rating,
+        overall_rating=overall_rating,
+        feedback=feedback
+    )
+    db.session.add(new_mail_rating)
 
     db.session.commit()
 
     return jsonify({'status': 'Mail rating and feedback saved successfully'}), 201
+
+
 
 
 @data_blueprint.route('/email_threads/save_message_ratings/<int:thread_id>', methods=['POST'])
@@ -1001,24 +1020,27 @@ def save_message_ratings(thread_id):
         rating = rating_data.get('rating')
 
         # Prüfen, ob bereits eine Bewertung für diese Nachricht und diesen Benutzer existiert
-        existing_message_rating = UserMessageRating.query.filter_by(user_id=user.id, thread_id=thread_id, message_id=message_id).first()
+        existing_message_rating = (
+            UserMessageRating.query
+            .filter_by(user_id=user.id, thread_id=thread_id, message_id=message_id)
+            .order_by(UserMessageRating.timestamp.desc())
+            .first()
+        )
 
         if existing_message_rating:
-            # Falls eine Bewertung existiert, aktualisieren
-            if existing_message_rating.rating != rating:
-                existing_message_rating.rating = rating
-                existing_message_rating.timestamp = datetime.now()
-        else:
-            # Falls keine Bewertung existiert, neue Bewertung anlegen. Wenn die Message nicht bewertet wurde, wird kein Eintrag erstellt
-            if rating is None:
+            # Falls eine Bewertung existiert und diese sich nicht geändert hat, wird diese Übersprungen
+            if existing_message_rating.rating == rating:
                 continue
-            new_message_rating = UserMessageRating(
-                user_id=user.id,
-                thread_id=thread_id,
-                message_id=message_id,
-                rating=rating
-            )
-            db.session.add(new_message_rating)
+        elif rating is None: # wenn es keine Bewertung gab, und die neue null ist, wird diese Ebenfalls übersprungen
+            continue
+
+        new_message_rating = UserMessageRating(
+            user_id=user.id,
+            thread_id=thread_id,
+            message_id=message_id,
+            rating=rating
+        )
+        db.session.add(new_message_rating)
 
     # Änderungen in der Datenbank speichern
     db.session.commit()
@@ -1038,18 +1060,8 @@ def get_mail_rating(thread_id):
         return jsonify({'error': 'Invalid API key'}), 401
 
     # Prüfen, ob ein Mail Rating für den Benutzer und den Thread existiert
-    mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).first()
+    mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(UserMailHistoryRating.timestamp.desc()).first()
 
-
-    rating_status = "Not Rated"
-    if mail_rating:
-        if (mail_rating.coherence_rating is not None and
-                mail_rating.quality_rating is not None and
-                mail_rating.overall_rating is not None and
-                mail_rating.plausibility_rating is not None):
-            rating_status = "Rated"
-        else:
-            rating_status = "Partly Rated"
 
     # Bereite die Daten für das Rating auf
     rating_data = {

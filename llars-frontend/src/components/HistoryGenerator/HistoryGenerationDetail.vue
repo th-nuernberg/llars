@@ -76,8 +76,15 @@
         >
           {{ratedStatus}}
         </v-chip>
+        <v-chip
+          v-if="hasUnsavedChanges"
+          class="category-chip"
+          color="red lighten-2"
+          small
+        >
+          Ungespeicherte Änderungen
+        </v-chip>
       </v-col>
-
       <v-spacer></v-spacer>
 
       <v-col cols="auto">
@@ -104,13 +111,14 @@
 
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import LikertScale from '../parts/LikertScale.vue';
 
 // Setup route, router and data variables
 const route = useRoute();
+const threadId = route.params.id;
 const router = useRouter();
 const messages = ref([]);
 const ratings = ref({
@@ -120,11 +128,18 @@ const ratings = ref({
   overall: null
 });
 const feedback = ref('');
+
+// for comparison tee see if there are unsaved changes
+const initial_rating = ref(null)
+const initial_feedback = ref(null)
+
 const ratedStatus = ref(null);
+const hasUnsavedChanges = ref(false)
+
 
 // Fetch email thread details on component mount
 onMounted(async () => {
-  const threadId = route.params.id;
+  //const threadId = route.params.id;
   const api_key = localStorage.getItem('api_key');
 
   try {
@@ -169,6 +184,9 @@ onMounted(async () => {
     } else {
       ratedStatus.value = 'Not Rated';
     }
+    initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
+    initial_feedback.value = feedback.value
+    loadRatingsFromLocalStorage();
   } catch (error) {
     console.error('Error fetching email thread details or rating status:', error);
   }
@@ -194,6 +212,54 @@ function calculateRatedStatus() {
     return 'Not Rated';
   }
 }
+
+
+//Check Local Storage for changes
+function loadRatingsFromLocalStorage() {
+  const savedData = JSON.parse(localStorage.getItem(`ratings_${threadId}`));
+  if (savedData) {
+    ratings.value = savedData.ratings;
+    feedback.value = savedData.feedback;
+    console.log("Ratings wurden aus dem Local Storage geladen")
+    hasUnsavedChanges.value = check_for_changes();
+  }
+}
+
+
+// Funktion zum Speichern der Bewertungen in den Local Storage
+function saveRatingsToLocalStorage() {
+  const dataToSave = {
+    ratings: ratings.value,
+    feedback: feedback.value
+  };
+  localStorage.setItem(`ratings_${threadId}`, JSON.stringify(dataToSave));
+  console.log("Änderungen wurden im LocalStorage gespeichert")
+}
+
+// Überwachung der Bewertungsänderungen
+watch(
+  [ratings, feedback],
+  () => {
+    console.log("Bewertung oder Feedback wurde geändert, speichere in Local Storage...");
+    saveRatingsToLocalStorage();
+    hasUnsavedChanges.value = check_for_changes();
+  },
+  { deep: true }
+);
+
+
+function check_for_changes() {
+  const data_from_storage = JSON.parse(localStorage.getItem(`ratings_${threadId}`));
+
+  if (!data_from_storage) return false;
+
+  // Vergleiche die aktuellen Daten mit den ursprünglichen Local Storage-Werten
+  return (
+    JSON.stringify(initial_rating.value) !== JSON.stringify(data_from_storage.ratings) ||
+    initial_feedback.value !== data_from_storage.feedback
+  );
+}
+
 
 // Get class based on sender (to differentiate between user and other messages)
 function getMessageClass(sender) {
@@ -231,6 +297,8 @@ async function saveRatingServerSide() {
     console.log('Rating saved:', response.data);
     alert('Rating und Feedback wurden erfolgreich gespeichert!');
     ratedStatus.value = calculateRatedStatus(); // Mark as rated / partly rated
+    hasUnsavedChanges.value = false; // Setzt die Anzeige ungesicherter Änderungen zurück
+    localStorage.removeItem(`ratings_${threadId}`); // Löscht Local Storage nach Speichern
   } catch (error) {
     console.error('Error saving rating:', error);
     alert('Fehler beim Speichern des Ratings und Feedbacks.');

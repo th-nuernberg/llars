@@ -111,7 +111,7 @@
 
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import LikertScale from '../parts/LikertScale.vue';
@@ -140,18 +140,22 @@ const hasUnsavedChanges = ref(false)
 
 // Fetch email thread details on component mount
 onMounted(async () => {
+  await initializeWebsiteComponent()
+});
+
+async function initializeWebsiteComponent()
+{
   //const threadId = route.params.id;
   const api_key = localStorage.getItem('api_key');
-
   try {
-    // API request to get the email thread details / the messages
+    // API request to get the email thread details /  messages of mail history
     const thread_messages = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadId}`, {
       headers: {
         'Authorization': api_key,
       },
     });
 
-    //api request to get the message rating of a thread
+    //api request to get rating of each message
     const message_ratings = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/message_ratings/${threadId}`, {
       headers: {
         'Authorization': api_key,
@@ -169,13 +173,14 @@ onMounted(async () => {
     console.log("Combined Messages with Ratings:", messages.value);
 
 
-    // Check if the user has already rated the thread
-    const mailhistoryRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mail_ratings/${threadId}`, {
+    // get the rating of mail history
+    const mailhistoryRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings/${threadId}`, {
       headers: {
         'Authorization': api_key,
       }
     });
 
+    // Check if the user has already rated the thread
     if (mailhistoryRatingResponse.data) {
       // If the mail rating exists, set the data accordingly
       ratings.value = {
@@ -187,30 +192,26 @@ onMounted(async () => {
       feedback.value = mailhistoryRatingResponse.data.rating.feedback;
       ratedStatus.value = calculateRatedStatus();
 
-      // Set individual message ratings if available
-      if (mailhistoryRatingResponse.data.message_ratings) {
-        mailhistoryRatingResponse.data.message_ratings.forEach((rating, index) => {
-          if (messages.value[index]) {
-            messages.value[index].rating = rating;
-          }
-        });
-      }
+    // set rating status to none if no rating is found
     } else {
       ratedStatus.value = 'Not Rated';
     }
 
-    // set the from the db retrieved values as initial values, in order for comparision if the value changed
+    // set the db retrieved values as initial values, in order for comparison if changes occurred
     initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
     initial_feedback.value = JSON.parse(JSON.stringify(feedback.value));
     initial_messages.value = JSON.parse(JSON.stringify(messages.value));
-    console.log("message_ratings", initial_messages.value)
+
+    // load ratings from local storage
     loadMailHistoryRatingsFromLocalStorage();
     loadMessageRatingsFromLocalStorage();
 
+    hasUnsavedChanges.value = check_for_changes()
   } catch (error) {
     console.error('Error fetching email thread details or rating status:', error);
   }
-});
+}
+
 
 // Format timestamp for display
 function formatTimestamp(timestamp) {
@@ -220,7 +221,7 @@ function formatTimestamp(timestamp) {
 }
 
 
-
+// calculates if mail history got rated (does not take the message rating into account)
 function calculateRatedStatus() {
   const ratingValues = Object.values(ratings.value);
   const filledRatings = ratingValues.filter(value => value !== null).length;
@@ -234,8 +235,7 @@ function calculateRatedStatus() {
   }
 }
 
-
-//Check Local Storage for changes
+// Load changes of mail history ratings from local storage
 function loadMailHistoryRatingsFromLocalStorage() {
   const savedData = JSON.parse(localStorage.getItem(`ratings_${threadId}`));
   if (savedData) {
@@ -246,10 +246,15 @@ function loadMailHistoryRatingsFromLocalStorage() {
   }
 }
 
+// Load changes of message ratings from local storage
 function loadMessageRatingsFromLocalStorage() {
+  // retrieve data from local storage
   const savedMessageRatings = JSON.parse(localStorage.getItem(`messageRatings_${threadId}`));
+
+  // check if data got retrieved
   if (savedMessageRatings) {
     savedMessageRatings.forEach(savedRating => {
+      // if yes set the individual rating of each message
       const message = messages.value.find(msg => msg.message_id === savedRating.message_id);
       if (message) {
         message.rating = savedRating.rating;
@@ -259,7 +264,7 @@ function loadMessageRatingsFromLocalStorage() {
   }
 }
 
-// Funktion zum Speichern der Bewertungen in den Local Storage
+// save local changes of mail history rating into local storage
 function saveMailhistoryRatingsToLocalStorage() {
   if (feedback.value === ""){feedback.value = null}
   const dataToSave = {
@@ -271,8 +276,19 @@ function saveMailhistoryRatingsToLocalStorage() {
 }
 
 
+// save local changes of message rating into local storage
+function saveMessageRatingsToLocalStorage() {
+  const messageRatingsToSave = messages.value.map(message => ({
+    message_id: message.message_id,
+    rating: message.rating
+  }));
 
+  // save ratings and message id into local storage
+  localStorage.setItem(`messageRatings_${threadId}`, JSON.stringify(messageRatingsToSave));
+  console.log("Nachrichtenbewertungen im Local Storage gespeichert:", messageRatingsToSave);
+}
 
+// Observes for mail history ratings and feedback
 watch(
   [ratings, feedback],
   () => {
@@ -284,16 +300,25 @@ watch(
 );
 
 
-function check_for_changes() {
-  // Vergleicht die aktuellen Daten mit den ursprünglichen Local Storage-Werten
 
-  return (
-  initial_rating.value.plausibility !== ratings.value.plausibility ||
-  initial_rating.value.coherence !== ratings.value.coherence ||
-  initial_rating.value.quality !== ratings.value.quality ||
-  initial_rating.value.overall!== ratings.value.overall ||
-  initial_feedback.value !== feedback.value
-);
+function check_for_changes() {
+  // did changes occur in mail history rating or feedback?
+  if(initial_rating.value.plausibility !== ratings.value.plausibility ||
+      initial_rating.value.coherence !== ratings.value.coherence ||
+      initial_rating.value.quality !== ratings.value.quality ||
+      initial_rating.value.overall !== ratings.value.overall ||
+      initial_feedback.value !== feedback.value)
+    return true;
+
+  // occurred changes in the ratings of the message rating?
+  for(let i = 0; i < initial_messages.value.length; i++)
+  {
+    if(initial_messages.value[i].rating !== messages.value[i].rating)
+    {
+      return true;
+    }
+  }
+  return false
 }
 
 
@@ -305,15 +330,17 @@ function getMessageClass(sender) {
 // Rate individual messages
 function rateMessage(index, rating) {
   messages.value[index].rating = messages.value[index].rating === rating ? null : rating;
+  saveMessageRatingsToLocalStorage()
+  hasUnsavedChanges.value = check_for_changes()
 }
 
-// Save rating and thoughts to the server
+// Save ratings of history and messages to the server
 async function saveRatingServerSide() {
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
 
   try {
-    // Zuerst die allgemeinen Bewertungen speichern
+    // savng mail history ratings
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
       {
@@ -332,7 +359,7 @@ async function saveRatingServerSide() {
     );
     console.log('Mail Rating saved:', response.data);
 
-    // Jetzt die Bewertungen für jede Nachricht speichern
+    // save message ratings
     const messageRatings = messages.value.map(message => ({
       message_id: message.message_id,
       rating: message.rating // Wenn kein Rating vorhanden ist, wird null übermittelt
@@ -352,15 +379,16 @@ async function saveRatingServerSide() {
     console.log('Message Ratings saved:', messageRatingResponse.data);
 
     alert('Rating und Feedback wurden erfolgreich gespeichert!');
-    ratedStatus.value = calculateRatedStatus(); // Markiere als bewertet
-    hasUnsavedChanges.value = false; // Setzt die Anzeige ungesicherter Änderungen zurück
-    localStorage.removeItem(`ratings_${threadId}`); // Löscht Local Storage nach Speichern
+    localStorage.removeItem(`ratings_${threadId}`); // remove the local changes from local storage
     localStorage.removeItem(`messageRatings_${threadId}`);
+    initializeWebsiteComponent() //reload website
+
   } catch (error) {
     console.error('Error saving rating:', error);
     alert('Fehler beim Speichern des Ratings und Feedbacks.');
   }
 }
+
 
 
 // Navigate to the previous case
@@ -414,7 +442,7 @@ async function navigateToNextCase() {
 async function fetchCaseList() {
   try {
     const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mail_ratings`, {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings`, {
       headers: {
         'Authorization': api_key,
       }

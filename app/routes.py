@@ -622,6 +622,7 @@ def save_rating(thread_id, feature_id):
 
     return jsonify({'status': 'Rating saved successfully'}), 201
 
+
 @data_blueprint.route('/get_rating/<int:thread_id>/<int:feature_id>', methods=['GET'])
 def get_rating(thread_id, feature_id):
     api_key = request.headers.get('Authorization')
@@ -822,7 +823,7 @@ def list_ranking_threads():
 
     return jsonify(threads_list), 200
 
-@data_blueprint.route('/email_threads/mail_ratings', methods=['GET'])
+@data_blueprint.route('/email_threads/mailhistory_ratings', methods=['GET'])
 def list_email_threads_for_mail_ratings(thread_id=None):
     api_key = request.headers.get('Authorization')
     if not api_key:
@@ -950,16 +951,13 @@ def get_email_thread_message_ratings(thread_id):
     return jsonify(rating_list), 200
 
 
-
-
-
+# Route to save the ratings and feedback of the whole
 @data_blueprint.route('/email_threads/save_mailhistory_rating/<int:thread_id>', methods=['POST'])
 def save_mail_rating(thread_id):
+    # Authorization
     api_key = request.headers.get('Authorization')
-
     if not api_key:
         return jsonify({'error': 'API key is missing'}), 401
-
     user = User.query.filter_by(api_key=api_key).first()
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
@@ -973,15 +971,27 @@ def save_mail_rating(thread_id):
     overall_rating = data.get('overall_rating')
     feedback = data.get('feedback', '')
 
-    if plausibility_rating is None and coherence_rating is None and quality_rating is None and overall_rating is None and feedback is None:
-        existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
-            UserMailHistoryRating.timestamp.desc()).first()
+    # retrieve most recent mail history rating
+    existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
+        UserMailHistoryRating.timestamp.desc()).first()
 
-        if not existing_rating:
+    # check if any likert scale got rated or a feedback was written.
+    if plausibility_rating is None and coherence_rating is None and quality_rating is None and overall_rating is None and feedback is None:
+        # if not, check if a existing rating got "deleted". If yes, save values of new version as null in the db, else skip
+        if not existing_rating: # skip because no rating of the history happened
             return jsonify({'status': 'Message ratings saved successfully'}), 201
 
+    # if a rating already exists, check if changes occurred
+    if existing_rating:
+        if(existing_rating.plausibility_rating == plausibility_rating
+            and existing_rating.coherence_rating == coherence_rating
+            and existing_rating.quality_rating == quality_rating
+            and existing_rating.overall_rating == overall_rating
+            and existing_rating.feedback == feedback):
+            return jsonify({'status': 'Message ratings saved successfully'}), 201
 
-    # Create a new mail rating with feedback
+    # Changes happened, or it is the first rating
+    # Create a new mail rating with feedback and save it into the db with current timestamp
     new_mail_rating = UserMailHistoryRating(
         user_id=user.id,
         thread_id=thread_id,
@@ -998,28 +1008,27 @@ def save_mail_rating(thread_id):
     return jsonify({'status': 'Mail rating and feedback saved successfully'}), 201
 
 
-
-
+# Route for saving the rating of each message (up or down) from the generated mail historys
 @data_blueprint.route('/email_threads/save_message_ratings/<int:thread_id>', methods=['POST'])
 def save_message_ratings(thread_id):
+    # authorization
     api_key = request.headers.get('Authorization')
-
     if not api_key:
         return jsonify({'error': 'API key is missing'}), 401
-
     user = User.query.filter_by(api_key=api_key).first()
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
+    # retrieve data send from user
     data = request.get_json()
     message_ratings = data.get('message_ratings', [])
 
-    # Loop durch alle übermittelten Bewertungen für Nachrichten
+    # Loop through all message ratings send from user
     for rating_data in message_ratings:
         message_id = rating_data.get('message_id')
         rating = rating_data.get('rating')
 
-        # Prüfen, ob bereits eine Bewertung für diese Nachricht und diesen Benutzer existiert
+        # check if the most recent message rating of this user is equal to the one send (avoiding duplicates in the db)
         existing_message_rating = (
             UserMessageRating.query
             .filter_by(user_id=user.id, thread_id=thread_id, message_id=message_id)
@@ -1028,12 +1037,14 @@ def save_message_ratings(thread_id):
         )
 
         if existing_message_rating:
-            # Falls eine Bewertung existiert und diese sich nicht geändert hat, wird diese Übersprungen
+            # check if the new message rating is a duplicate of the most recent in db. If yes skip this message (applies for null values too)
             if existing_message_rating.rating == rating:
                 continue
-        elif rating is None: # wenn es keine Bewertung gab, und die neue null ist, wird diese Ebenfalls übersprungen
+        elif rating is None: # if message didnt get ratet and no rating for this message existed in the db --> skip
             continue
 
+        # either first rating for the message, or a change occured.
+        # create and safe new entry into the db with current time stamp
         new_message_rating = UserMessageRating(
             user_id=user.id,
             thread_id=thread_id,
@@ -1042,28 +1053,27 @@ def save_message_ratings(thread_id):
         )
         db.session.add(new_message_rating)
 
-    # Änderungen in der Datenbank speichern
+    # commit all changes to the db
     db.session.commit()
-
     return jsonify({'status': 'Message ratings saved successfully'}), 201
 
 
-
-@data_blueprint.route('/email_threads/mail_ratings/<int:thread_id>', methods=['GET'])
+# get the most recent mail history ratings of the user
+@data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
 def get_mail_rating(thread_id):
+    # authorization
     api_key = request.headers.get('Authorization')
     if not api_key:
         return jsonify({'error': 'API key is missing'}), 401
-
     user = User.query.filter_by(api_key=api_key).first()
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Prüfen, ob ein Mail Rating für den Benutzer und den Thread existiert
+    # retrieve the most recent mail history(thread) rating of user
     mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(UserMailHistoryRating.timestamp.desc()).first()
 
 
-    # Bereite die Daten für das Rating auf
+    # prepare data for json format (if no rating found use null values)
     rating_data = {
         'rating': {
                 'plausibility_rating': mail_rating.plausibility_rating if mail_rating else None,
@@ -1073,8 +1083,8 @@ def get_mail_rating(thread_id):
                 'feedback': mail_rating.feedback if mail_rating else None
             }
     }
-
     return jsonify(rating_data), 200
+
 
 @data_blueprint.route('/admin/change_user_group', methods=['POST'])
 def change_user_group():

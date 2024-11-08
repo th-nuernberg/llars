@@ -114,7 +114,7 @@ class UserFeatureRating(db.Model):
 
 
 class UserMailHistoryRating(db.Model):
-    __tablename__ = 'user_mail_ratings'
+    __tablename__ = 'user_mailhistory_ratings'
     rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))

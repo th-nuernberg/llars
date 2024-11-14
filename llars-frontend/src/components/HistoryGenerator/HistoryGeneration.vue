@@ -9,17 +9,31 @@
     <v-row>
       <v-col cols="12" sm="4" v-for="emailThread in emailThreads" :key="emailThread.thread_id">
         <v-card class="mb-4 case-card" @click="navigateToCase(emailThread.thread_id)">
+          <!-- Rating Status Chip (oben rechts) -->
           <v-chip
-            class="category-chip"
+            class="category-chip right-aligned-chip rating-status-chip"
             :color="emailThread.rating_status === 'Rated' ? 'green lighten-2' : emailThread.rating_status === 'Partly Rated' ? 'orange lighten-2' : 'grey lighten-2'"
             small
           >
-            {{ emailThread.rating_status}}
+            {{ emailThread.rating_status }}
           </v-chip>
+
           <div class="card-content">
             <v-card-title>{{ emailThread.subject }}</v-card-title>
             <v-card-text>{{ emailThread.sender }}</v-card-text>
-            <v-card-text class="chat-id">{{ 'Chat ID: ' + emailThread.chat_id }}</v-card-text>
+
+            <!-- Footer-Bereich für Chat ID und Unsaved Changes Chip -->
+            <div class="card-footer">
+              <v-card-text class="chat-id">{{ 'Chat ID: ' + emailThread.chat_id }}</v-card-text>
+              <v-chip
+                v-if="checkUnsavedChanges(emailThread.thread_id)"
+                color="red lighten-2"
+                class="category-chip right-aligned-chip"
+                small
+              >
+                !
+              </v-chip>
+            </div>
           </div>
         </v-card>
       </v-col>
@@ -50,7 +64,12 @@ onMounted(async () => {
 });
 
 function navigateToCase(threadId) {
-  router.push({name: 'HistoryGenerationDetail', params: {id: threadId}});
+  router.push({ name: 'HistoryGenerationDetail', params: { id: threadId } });
+}
+
+function checkUnsavedChanges(thread_id) {
+  const hasUnsavedChanges = localStorage.getItem(`unsaved_changes_${thread_id}`);
+  return !!hasUnsavedChanges;
 }
 </script>
 
@@ -69,12 +88,25 @@ function navigateToCase(threadId) {
   transform: translateY(-2px);
 }
 
-.category-chip {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+.category-chip{
   border-radius: 12px 5px 12px 5px;
   z-index: 1;
+}
+
+/* Gleiche rechte Ausrichtung für beide Chips */
+.right-aligned-chip {
+  position: absolute;
+  right: 8px;
+}
+
+.rating-status-chip{
+  top: 8px;
+}
+
+
+/* Position für Unsaved Changes Chip unten rechts */
+.unsaved-changes-chip {
+  bottom: 20px;
 }
 
 .card-content {
@@ -86,21 +118,14 @@ function navigateToCase(threadId) {
   justify-content: space-between;
 }
 
-.v-card-title {
-  font-size: 1rem;
-  white-space: normal;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.v-card-text {
-  margin-top: auto;
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Vertikale Zentrierung */
+  padding-top: 8px;
 }
 
 .chat-id {
-  align-self: auto;
+  /* optional: Styling für die Chat ID */
 }
 </style>

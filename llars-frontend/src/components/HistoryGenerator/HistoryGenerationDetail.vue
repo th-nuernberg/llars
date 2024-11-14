@@ -308,16 +308,21 @@ function check_for_changes() {
       initial_rating.value.quality !== ratings.value.quality ||
       initial_rating.value.overall !== ratings.value.overall ||
       initial_feedback.value !== feedback.value)
+  {
+    localStorage.setItem(`unsaved_changes_${threadId}`, JSON.stringify(true));
     return true;
+  }
 
   // occurred changes in the ratings of the message rating?
   for(let i = 0; i < initial_messages.value.length; i++)
   {
     if(initial_messages.value[i].rating !== messages.value[i].rating)
     {
+      localStorage.setItem(`unsaved_changes_${threadId}`, JSON.stringify(true))
       return true;
     }
   }
+  localStorage.removeItem(`unsaved_changes_${threadId}`)
   return false
 }
 

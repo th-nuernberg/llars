@@ -31,28 +31,32 @@
 
       <v-col cols="12" md="6">
         <div class="rating-section">
-          <div class="rating-category">
-            <h4>1. Plausibilität</h4>
-            <p>Wie realistisch und nachvollziehbar ist der Gesprächsverlauf? Entsprechen die Reaktionen und Interaktionen einem natürlichen Kommunikationsmuster?</p>
-            <LikertScale v-model="ratings.plausibility" />
+          <div class="rating-category" id="rating-category-coherence">
+            <h4>1. Kohärenz und Logik ratsuchenden Person</h4>
+            <p>Entsprechen die Reaktionen und Interaktionen einem natürlichen Kommunikationsmuster? Stehen die Texte in einem inhaltlichen Zusammenhang zueinander? Gibt es Brüche oder Unstimmigkeiten? Wird auf die Antwort des jeweilig anderen eingegangen und auch neue inhaltliche Aspekte generiert oder wird „stoisch“ immer das gleiche wiederholt? Gibt es Halluzinationen?</p>
+        </div>
+
+          <div class="rating-category sub-rating-category" id="rating-category-coherence-client">
+            <h4>a) ratsuchende Person</h4>
+            <LikertScale v-model="ratings.client_coherence" :disabled="isDisabled.client_coherence" />
           </div>
 
-          <div class="rating-category">
-            <h4>2. Kohärenz und Logik</h4>
-            <p>Ist der Gesprächsverlauf inhaltlich sinnvoll? Gibt es Brüche in der Logik oder Unstimmigkeiten? Gibt es Halluzinationen?</p>
-            <LikertScale v-model="ratings.coherence" />
+          <div class="rating-category sub-rating-category" id="rating-category-coherence-counsellor">
+            <h4>a) beratende Person</h4>
+            <LikertScale v-model="ratings.counsellor_coherence" :disabled="isDisabled.counsellor_coherence"  />
           </div>
 
-          <div class="rating-category">
-            <h4>3. Beratungsqualität</h4>
+
+          <div class="rating-category" id="rating-category-quality">
+            <h4>2. Beratungsqualität</h4>
             <p>Ist die Antwort gut strukturiert und verständlich? Zeigt sich die beratende Person empathisch, wertschätzend und kongruent? Setzt die beratende Person gezielt Beratungstechniken ein, um das Anliegen systematisch zu bearbeiten und Lösungen zu entwickeln?</p>
-            <LikertScale v-model="ratings.quality" />
+            <LikertScale v-model="ratings.quality" :disabled="isDisabled.quality" />
           </div>
 
-          <div class="rating-category">
-            <h4>4. Gesamtbewertung</h4>
-            <p>Ist der Fall in seiner Gesamtheit realistisch? Stimmen die Interaktionen und die behandelten Themen mit dem typischen Verlauf eines echten Beratungsprozesses überein?</p>
-            <LikertScale v-model="ratings.overall" />
+          <div class="rating-category" id="rating-category-overall">
+            <h4>3. Gesamtbewertung</h4>
+            <p>Ist der Fall in seiner Gesamtheit authentisch und realistisch? Eignet sich der Fall hinsichtlich Thema und Fachlichkeit als gutes Beispiel für Onlineberatung? </p>
+            <BinaryLikertScale v-model="ratings.overall" :disabled="isDisabled.overall"/>
           </div>
 
           <v-textarea
@@ -115,6 +119,7 @@ import { ref, onMounted, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import LikertScale from '../parts/LikertScale.vue';
+import BinaryLikertScale from "@/components/parts/BinaryLikertScale.vue";
 
 // Setup route, router and data variables
 const route = useRoute();
@@ -122,8 +127,8 @@ const threadId = route.params.id;
 const router = useRouter();
 const messages = ref([]);
 const ratings = ref({
-  plausibility: null,
-  coherence: null,
+  counsellor_coherence: null,
+  client_coherence: null,
   quality: null,
   overall: null
 });
@@ -137,6 +142,12 @@ const initial_messages = ref([]);
 const ratedStatus = ref(null);
 const hasUnsavedChanges = ref(false)
 
+const isDisabled = ref({
+  counsellor_coherence: false,
+  client_coherence: false,
+  quality: false,
+  overall: false
+})
 
 // Fetch email thread details on component mount
 onMounted(async () => {
@@ -183,19 +194,37 @@ async function initializeWebsiteComponent()
     // Check if the user has already rated the thread
     if (mailhistoryRatingResponse.data) {
       // If the mail rating exists, set the data accordingly
-      ratings.value = {
-        plausibility: mailhistoryRatingResponse.data.rating.plausibility_rating,
-        coherence: mailhistoryRatingResponse.data.rating.coherence_rating,
+      let temp_rating ={ // for avoiding bugs cause of 0 value
+        counsellor_coherence: mailhistoryRatingResponse.data.rating.counsellor_coherence_rating,
+        client_coherence: mailhistoryRatingResponse.data.rating.client_coherence_rating,
         quality: mailhistoryRatingResponse.data.rating.quality_rating,
         overall: mailhistoryRatingResponse.data.rating.overall_rating
+      }
+
+      // If Values are saved as 0 in the db, use null for the frontend. 0 stands for a disabled scal
+
+      Object.keys(temp_rating).forEach(key => {
+        if (temp_rating[key] === 0) {
+          temp_rating[key] = null;
+        }
+      });
+
+      ratings.value = {
+        counsellor_coherence: temp_rating.counsellor_coherence,
+        client_coherence: temp_rating.client_coherence,
+        quality: temp_rating.quality,
+        overall: temp_rating.overall
       };
+
+
       feedback.value = mailhistoryRatingResponse.data.rating.feedback;
-      ratedStatus.value = calculateRatedStatus();
+      ratedStatus.value = mailhistoryRatingResponse.data.rating.rating_status;
 
     // set rating status to none if no rating is found
     } else {
       ratedStatus.value = 'Not Rated';
     }
+    console.log(` Ist rated? ${ratedStatus.value}`)
 
     // set the db retrieved values as initial values, in order for comparison if changes occurred
     initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
@@ -220,20 +249,6 @@ function formatTimestamp(timestamp) {
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
 }
 
-
-// calculates if mail history got rated (does not take the message rating into account)
-function calculateRatedStatus() {
-  const ratingValues = Object.values(ratings.value);
-  const filledRatings = ratingValues.filter(value => value !== null).length;
-
-  if (filledRatings === 4) {
-    return 'Rated';
-  } else if (filledRatings > 0) {
-    return 'Partly Rated';
-  } else {
-    return 'Not Rated';
-  }
-}
 
 // Load changes of mail history ratings from local storage
 function loadMailHistoryRatingsFromLocalStorage() {
@@ -290,9 +305,24 @@ function saveMessageRatingsToLocalStorage() {
 
 // Observes for mail history ratings and feedback
 watch(
-  [ratings, feedback],
+  [ratings],
   () => {
-    console.log("Bewertung oder Feedback wurde geändert, speichere in Local Storage...");
+    console.log("Bewertung wurde geändert, speichere in Local Storage...");
+
+
+    saveMailhistoryRatingsToLocalStorage();
+    hasUnsavedChanges.value = check_for_changes();
+    updateLikertActivationStatus()
+  },
+  { deep: true }
+);
+
+watch(
+  [feedback],
+  () => {
+    console.log("Feedback wurde geändert, speichere in Local Storage...");
+
+
     saveMailhistoryRatingsToLocalStorage();
     hasUnsavedChanges.value = check_for_changes();
   },
@@ -300,13 +330,51 @@ watch(
 );
 
 
+function updateLikertActivationStatus() {
+  // Hilfsfunktion zum Hinzufügen und Entfernen der "disabled"-Klassen
+  function toggleClassForDiv(elementId, shouldDisable) {
+    const div = document.getElementById(elementId);
+    if (shouldDisable) {
+      div.classList.add('disabled');
+    } else {
+      div.classList.remove('disabled');
+    }
+  }
+
+  const shouldDisableCounsellorCoherence = ratings.value.client_coherence > 2
+  toggleClassForDiv('rating-category-coherence-counsellor', shouldDisableCounsellorCoherence);
+
+  const shouldDisableClientCoherence = ratings.value.counsellor_coherence > 2
+  toggleClassForDiv('rating-category-coherence-client', shouldDisableClientCoherence);
+
+  const shouldDisableQuality = ratings.value.counsellor_coherence > 2 || ratings.value.client_coherence > 2;
+  toggleClassForDiv('rating-category-quality', shouldDisableQuality || shouldDisableClientCoherence || shouldDisableCounsellorCoherence);
+
+  // Wenn der Wert von quality >= 2, deaktivieren wir "rating-category-overall"
+  const shouldDisableOverall = ratings.value.quality > 2;
+  toggleClassForDiv('rating-category-overall', shouldDisableQuality || shouldDisableOverall || shouldDisableClientCoherence || shouldDisableCounsellorCoherence);
+
+  isDisabled.value.counsellor_coherence = checkIfDisabled('rating-category-coherence-counsellor')
+  isDisabled.value.client_coherence = checkIfDisabled('rating-category-coherence-client')
+  isDisabled.value.quality = checkIfDisabled('rating-category-quality')
+  isDisabled.value.overall = checkIfDisabled('rating-category-overall')
+}
+
+
+
+function checkIfDisabled(elementID) {
+  const element = document.getElementById(elementID);
+
+  return element.classList.contains('disabled')
+
+}
 
 function check_for_changes() {
   // did changes occur in mail history rating or feedback?
-  if(initial_rating.value.plausibility !== ratings.value.plausibility ||
-      initial_rating.value.coherence !== ratings.value.coherence ||
-      initial_rating.value.quality !== ratings.value.quality ||
-      initial_rating.value.overall !== ratings.value.overall ||
+  if(initial_rating.value.counsellor_coherence !== ratings.value.counsellor_coherence||
+    initial_rating.value.client_coherence !== ratings.value.client_coherence ||
+    initial_rating.value.quality !== ratings.value.quality  ||
+    initial_rating.value.overall !== ratings.value.overall ||
       initial_feedback.value !== feedback.value)
   {
     localStorage.setItem(`unsaved_changes_${threadId}`, JSON.stringify(true));
@@ -343,18 +411,27 @@ function rateMessage(index, rating) {
 async function saveRatingServerSide() {
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
+  const temp = {
+    counsellor_coherence_rating: ratings.value.counsellor_coherence,
+    client_coherence_rating: ratings.value.client_coherence,
+    quality_rating: ratings.value.quality,
+    overall_rating: ratings.value.overall,
+    feedback: feedback.value
+  }
+  if(checkIfDisabled("rating-category-coherence-client"))
+    temp.client_coherence_rating = 0;
+  if(checkIfDisabled("rating-category-coherence-counsellor"))
+    temp.counsellor_coherence_rating = 0;
+  if(checkIfDisabled("rating-category-quality"))
+    temp.quality_rating = 0;
+  if(checkIfDisabled("rating-category-overall"))
+    temp.overall_rating = 0;
 
   try {
-    // savng mail history ratings
+    // saving mail history ratings
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
-      {
-        plausibility_rating: ratings.value.plausibility,
-        coherence_rating: ratings.value.coherence,
-        quality_rating: ratings.value.quality,
-        overall_rating: ratings.value.overall,
-        feedback: feedback.value,
-      },
+      temp,
       {
         headers: {
           'Authorization': api_key,
@@ -386,7 +463,7 @@ async function saveRatingServerSide() {
     alert('Rating und Feedback wurden erfolgreich gespeichert!');
     localStorage.removeItem(`ratings_${threadId}`); // remove the local changes from local storage
     localStorage.removeItem(`messageRatings_${threadId}`);
-    initializeWebsiteComponent() //reload website
+    await initializeWebsiteComponent() //reload website
 
   } catch (error) {
     console.error('Error saving rating:', error);
@@ -716,6 +793,14 @@ function navigateToOverview() {
   color: rgba(229, 115, 115, 0.61); /* Leichtes Rot bei Hover */
 }
 
+.disabled {
+    opacity: 0.5;
+    background-color: rgba(0, 0, 0, 0.1);
+    cursor: not-allowed;
+  }
 
+.sub-rating-category{
+  margin-left: 10%;
+}
 
 </style>

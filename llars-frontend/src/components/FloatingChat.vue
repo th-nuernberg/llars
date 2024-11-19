@@ -82,9 +82,21 @@ const simulateBotResponse = () => {
     <div class="chat-messages" ref="chatContainer">
       <div v-for="message in messages"
            :key="message.id"
-           :class="['message', message.sender]">
-        <div class="message-content">{{ message.content }}</div>
-        <div class="message-timestamp">{{ message.timestamp }}</div>
+           :class="['message-container', message.sender]">
+        <template v-if="message.sender === 'bot'">
+          <div class="avatar-wrapper">
+          <div class="message-avatar-background"></div>
+          <img
+            src="@/assets/llars_the_bear/llars_transparent.png"
+            alt="LLars Logo"
+            class="message-avatar"
+          >
+        </div>
+        </template>
+        <div class="message">
+          <div class="message-content">{{ message.content }}</div>
+          <div class="message-timestamp">{{ message.timestamp }}</div>
+        </div>
       </div>
     </div>
 
@@ -132,32 +144,32 @@ const simulateBotResponse = () => {
 }
 
 .chat-header {
-  padding: 8px 16px; /* Padding oben/unten reduziert */
+  padding: 8px 16px;
   background: #b0ca97;
   color: white;
   border-radius: 12px 12px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px; /* Feste Höhe für den Header */
+  height: 60px;
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  gap: 12px; /* Mehr Abstand zwischen Logo und Text */
+  gap: 12px;
 }
 
 .chat-logo {
-  height: 40px; /* Logo deutlich größer */
+  height: 40px;
   width: auto;
   object-fit: contain;
-  margin-left: -4px; /* Optischer Ausgleich */
+  margin-left: -4px;
 }
 
 .chat-header h3 {
   margin: 0;
-  font-size: 1.2rem; /* Etwas größere Schrift */
+  font-size: 1.2rem;
   font-weight: 500;
 }
 
@@ -170,6 +182,47 @@ const simulateBotResponse = () => {
   gap: 0.8rem;
 }
 
+.message-container {
+  display: flex;
+  align-items: flex-end; /* Changed from flex-start to flex-end */
+  gap: 8px;
+  max-width: 100%;
+}
+
+.message-container.user {
+  flex-direction: row-reverse;
+}
+
+.avatar-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 36px;
+  height: 36px;
+  align-self: flex-end; /* Verschiebt nur den Avatar nach unten */
+  margin-bottom: -10px; /* Feinjustierung der Position */
+}
+
+.message-avatar {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  position: absolute;
+  z-index: 2;
+  margin-top: 2px;
+  margin-right: 1px;
+}
+
+.message-avatar-background {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  background-color: #ededed;
+  border-radius: 50%;
+  z-index: 1;
+}
+
 .message {
   max-width: 80%;
   padding: 0.8rem;
@@ -177,15 +230,13 @@ const simulateBotResponse = () => {
   position: relative;
 }
 
-.message.user {
-  align-self: flex-end;
+.message-container.user .message {
   background: #b0ca97;
   color: white;
   border-bottom-right-radius: 0.2rem;
 }
 
-.message.bot {
-  align-self: flex-start;
+.message-container.bot .message {
   background: #f1f1f1;
   color: black;
   border-bottom-left-radius: 0.2rem;

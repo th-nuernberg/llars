@@ -60,6 +60,8 @@
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
 
+    <FloatingChat /> <!-- Hier wird der Chat eingefügt -->
+
     <v-footer app dark color="primary" height="30" class="px-4 footer"> <!-- Primärfarbe verwendet -->
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
@@ -87,6 +89,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { isAdmin } from '@/services/admins';
+import FloatingChat from './components/FloatingChat.vue';
 
 const router = useRouter();
 const username = ref('');

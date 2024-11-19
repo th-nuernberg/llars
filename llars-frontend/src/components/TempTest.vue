@@ -1,8 +1,7 @@
-<!-- SocketDemo.vue -->
 <template>
   <div class="container mx-auto p-4">
     <div class="mb-4">
-      <h2 class="text-xl font-bold">Socket.IO Connection Status:</h2>
+      <h2 class="text-xl font-bold">Chat with AI Assistant</h2>
       <p :class="connectionStatusClass">{{ connectionStatus }}</p>
     </div>
 
@@ -12,28 +11,38 @@
           v-model="message"
           type="text"
           class="border rounded p-2 flex-grow"
-          placeholder="Enter message"
-          @keyup.enter="sendMessage"
+          placeholder="Ask me anything..."
+          @keyup.enter="sendChatMessage"
+          :disabled="isProcessing"
         />
         <button
-          @click="sendMessage"
-          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          @click="sendChatMessage"
+          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
+          :disabled="isProcessing"
         >
-          Send
+          {{ isProcessing ? 'Processing...' : 'Send' }}
         </button>
       </div>
 
-      <div class="border rounded p-4 max-h-96 overflow-y-auto">
-        <h3 class="font-bold mb-2">Message History:</h3>
-        <ul class="space-y-2">
+      <div class="border rounded p-4 max-h-96 overflow-y-auto" ref="chatContainer">
+        <ul class="space-y-4">
           <li
             v-for="(msg, index) in messages"
             :key="index"
-            class="p-2 rounded"
-            :class="msg.type === 'sent' ? 'bg-blue-100' : 'bg-gray-100'"
+            class="p-3 rounded"
+            :class="getMessageClass(msg)"
           >
-            <span class="font-bold">{{ msg.type === 'sent' ? 'You' : 'Server' }}:</span>
-            {{ msg.content }}
+            <div class="flex items-start gap-2">
+              <span class="font-bold min-w-[50px]">
+                {{ msg.type === 'sent' ? 'You:' : 'AI:' }}
+              </span>
+              <div class="flex-grow">
+                <p class="whitespace-pre-wrap">{{ msg.content }}</p>
+                <div v-if="msg.streaming" class="mt-1">
+                  <span class="animate-pulse">▪▪▪</span>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
       </div>
@@ -42,7 +51,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { io } from 'socket.io-client'
 
 export default {
@@ -51,6 +60,8 @@ export default {
     const connected = ref(false)
     const message = ref('')
     const messages = ref([])
+    const isProcessing = ref(false)
+    const chatContainer = ref(null)
 
     const connectionStatus = computed(() =>
       connected.value ? 'Connected' : 'Disconnected'
@@ -61,6 +72,23 @@ export default {
       'text-red-500': !connected.value
     }))
 
+    const getMessageClass = (msg) => ({
+      'bg-blue-100': msg.type === 'sent',
+      'bg-gray-100': msg.type === 'received',
+      'opacity-70': msg.streaming
+    })
+
+    const scrollToBottom = async () => {
+      await nextTick()
+      if (chatContainer.value) {
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+      }
+    }
+
+    watch(messages, () => {
+      scrollToBottom()
+    }, { deep: true })
+
     const initializeSocket = () => {
       socket.value = io('http://localhost:80', {
         path: '/socket.io/',
@@ -69,29 +97,49 @@ export default {
 
       socket.value.on('connect', () => {
         connected.value = true
-        addMessage('Connected to server', 'received')
       })
 
       socket.value.on('disconnect', () => {
         connected.value = false
-        addMessage('Disconnected from server', 'received')
       })
 
-      socket.value.on('message', (msg) => {
-        addMessage(msg, 'received')
+      socket.value.on('welcome', (msg) => {
+        addMessage(msg.message, 'received')
+      })
+
+      socket.value.on('chat_response', (data) => {
+        if (!data.complete) {
+          if (messages.value.length > 0 && messages.value[messages.value.length - 1].streaming) {
+            messages.value[messages.value.length - 1].content += data.content
+          } else {
+            addMessage(data.content, 'received', true)
+          }
+        } else {
+          const lastMessage = messages.value[messages.value.length - 1]
+          if (lastMessage && lastMessage.streaming) {
+            lastMessage.streaming = false
+          }
+          isProcessing.value = false
+        }
       })
     }
 
-    const sendMessage = () => {
-      if (!message.value.trim() || !socket.value?.connected) return
+  const sendChatMessage = () => {
+    if (!message.value.trim() || !socket.value?.connected || isProcessing.value) return
 
-      socket.value.emit('message', message.value)
-      addMessage(message.value, 'sent')
-      message.value = ''
+    if (message.value.toLowerCase().includes('mock chat')) {
+      socket.value.emit('mock_chat', { message: message.value })
+    } else {
+      socket.value.emit('chat_message', { message: message.value })
     }
 
-    const addMessage = (content, type) => {
-      messages.value.push({ content, type })
+    addMessage(message.value, 'sent')
+    isProcessing.value = true
+    message.value = ''
+  }
+
+    const addMessage = (content, type, streaming = false) => {
+      messages.value.push({ content, type, streaming })
     }
 
     onMounted(() => {
@@ -110,7 +158,10 @@ export default {
       connectionStatusClass,
       message,
       messages,
-      sendMessage
+      isProcessing,
+      chatContainer,
+      sendChatMessage,
+      getMessageClass
     }
   }
 }

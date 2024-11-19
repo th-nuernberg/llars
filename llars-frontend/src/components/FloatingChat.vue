@@ -1,53 +1,104 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { io } from 'socket.io-client'
 
 const messages = ref([])
 const newMessage = ref('')
 const chatContainer = ref(null)
 const isChatOpen = ref(false)
+const socket = ref(null)
+const isProcessing = ref(false)
 
-// Beispiel-Nachrichten zum Testen
+// Beispiel-Nachrichten
 messages.value = [
   {
     id: 1,
     content: 'Hallo! Wie kann ich dir helfen?',
     sender: 'bot',
-    timestamp: new Date().toLocaleTimeString()
+    timestamp: new Date().toLocaleTimeString(),
+    streaming: false
   }
 ]
 
+// Funktionen
 const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value
 }
 
 const sendMessage = () => {
-  if (!newMessage.value.trim()) return
+  if (!newMessage.value.trim() || isProcessing.value) return
 
+  // Nachricht des Benutzers hinzufügen
   messages.value.push({
     id: messages.value.length + 1,
     content: newMessage.value,
     sender: 'user',
-    timestamp: new Date().toLocaleTimeString()
+    timestamp: new Date().toLocaleTimeString(),
+    streaming: false
   })
 
-  setTimeout(() => {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-  }, 100)
-
+  const userMessage = newMessage.value.trim().toLowerCase()
   newMessage.value = ''
-  simulateBotResponse()
+  isProcessing.value = true
+
+  if (userMessage.includes('mock chat')) {
+    socket.value.emit('mock_chat', { message: userMessage })
+  } else {
+    socket.value.emit('chat_message', { message: userMessage })
+    simulateBotResponse()
+  }
 }
 
+const addMessage = (content, sender, streaming = false) => {
+  messages.value.push({
+    id: messages.value.length + 1,
+    content,
+    sender,
+    timestamp: new Date().toLocaleTimeString(),
+    streaming
+  })
+}
+
+// Bot-Simulation
 const simulateBotResponse = () => {
   setTimeout(() => {
-    messages.value.push({
-      id: messages.value.length + 1,
-      content: 'Dies ist eine Beispiel-Antwort vom Bot.',
-      sender: 'bot',
-      timestamp: new Date().toLocaleTimeString()
-    })
+    addMessage('Dies ist eine Beispiel-Antwort vom Bot.', 'bot', false)
+    isProcessing.value = false
   }, 1000)
 }
+
+// Socket.io-Initialisierung
+onMounted(() => {
+  socket.value = io('http://localhost:80', {
+    path: '/socket.io/',
+    transports: ['websocket']
+  })
+
+  socket.value.on('connect', () => console.log('Socket connected'))
+  socket.value.on('disconnect', () => console.log('Socket disconnected'))
+
+  socket.value.on('chat_response', (data) => {
+    const lastMessage = messages.value[messages.value.length - 1]
+    if (!data.complete) {
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.content += data.content
+      } else {
+        addMessage(data.content, 'bot', true)
+      }
+    } else {
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.streaming = false
+      }
+      isProcessing.value = false
+    }
+  })
+})
+
+onUnmounted(() => {
+  if (socket.value) {
+    socket.value.disconnect()
+  }
+})
 </script>
 
 <template>
@@ -85,16 +136,17 @@ const simulateBotResponse = () => {
            :class="['message-container', message.sender]">
         <template v-if="message.sender === 'bot'">
           <div class="avatar-wrapper">
-          <div class="message-avatar-background"></div>
-          <img
-            src="@/assets/llars_the_bear/llars_transparent.png"
-            alt="LLars Logo"
-            class="message-avatar"
-          >
-        </div>
+            <div class="message-avatar-background"></div>
+            <img
+              src="@/assets/llars_the_bear/llars_transparent.png"
+              alt="LLars Logo"
+              class="message-avatar"
+            >
+          </div>
         </template>
         <div class="message">
           <div class="message-content">{{ message.content }}</div>
+          <div v-if="message.streaming" class="stream-indicator">▪▪▪</div>
           <div class="message-timestamp">{{ message.timestamp }}</div>
         </div>
       </div>
@@ -184,7 +236,7 @@ const simulateBotResponse = () => {
 
 .message-container {
   display: flex;
-  align-items: flex-end; /* Changed from flex-start to flex-end */
+  align-items: flex-end;
   gap: 8px;
   max-width: 100%;
 }
@@ -200,8 +252,6 @@ const simulateBotResponse = () => {
   position: relative;
   width: 36px;
   height: 36px;
-  align-self: flex-end; /* Verschiebt nur den Avatar nach unten */
-  margin-bottom: -10px; /* Feinjustierung der Position */
 }
 
 .message-avatar {
@@ -210,8 +260,6 @@ const simulateBotResponse = () => {
   object-fit: contain;
   position: absolute;
   z-index: 2;
-  margin-top: 2px;
-  margin-right: 1px;
 }
 
 .message-avatar-background {
@@ -246,6 +294,18 @@ const simulateBotResponse = () => {
   font-size: 0.7rem;
   opacity: 0.7;
   margin-top: 0.3rem;
+}
+
+.stream-indicator {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .chat-input {

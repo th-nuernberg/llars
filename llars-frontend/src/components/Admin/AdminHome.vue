@@ -39,6 +39,11 @@ const features = ref([
     route: '/AdminRanker'
   },
   {
+    title: 'Verlauf Generierung',
+    description: 'Bewertung von erzeugten Mail Verläufen',
+    route: '/AdminHistoryGenerator'
+  },
+  {
     title: 'Rater',
     description: 'Bewertung von Benutzerinhalten und E-Mail-Threads',
     route: '/admin/rater'

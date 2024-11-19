@@ -47,12 +47,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
-// Watcher: Setzt modelValue zurück, wenn disabled aktiv wird
-watch(() => props.disabled, (newVal) => {
-  if (newVal) {
-    emit('update:modelValue', null);
-  }
-});
 
 // Option auswählen, wenn nicht disabled
 function selectOption(value) {

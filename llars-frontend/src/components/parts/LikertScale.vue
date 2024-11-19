@@ -37,12 +37,6 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue']);
 
-// Setzt modelValue auf null, wenn disabled auf true wechselt
-watch(() => props.disabled, (newVal) => {
-  if (newVal) {
-    emit('update:modelValue', null);
-  }
-});
 
 function selectRating(rating) {
   if (props.disabled) return; // Keine Aktion, wenn disabled aktiv ist

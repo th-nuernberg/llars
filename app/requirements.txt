@@ -9,3 +9,4 @@ Flask-Migrate
 flask-socketio==5.3.6
 eventlet==0.33.3
 openai==1.54.5
+requests==2.31.0

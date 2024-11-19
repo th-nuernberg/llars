@@ -1,108 +1,4 @@
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { io } from 'socket.io-client'
-
-const messages = ref([])
-const newMessage = ref('')
-const chatContainer = ref(null)
-const isChatOpen = ref(false)
-const socket = ref(null)
-const isProcessing = ref(false)
-
-// Beispiel-Nachrichten
-messages.value = [
-  {
-    id: 1,
-    content: 'Hallo! Wie kann ich dir helfen?',
-    sender: 'bot',
-    timestamp: new Date().toLocaleTimeString(),
-    streaming: false
-  }
-]
-
-// Funktionen
-const toggleChat = () => {
-  isChatOpen.value = !isChatOpen.value
-}
-
-const sendMessage = () => {
-  if (!newMessage.value.trim() || isProcessing.value) return
-
-  // Nachricht des Benutzers hinzufügen
-  messages.value.push({
-    id: messages.value.length + 1,
-    content: newMessage.value,
-    sender: 'user',
-    timestamp: new Date().toLocaleTimeString(),
-    streaming: false
-  })
-
-  const userMessage = newMessage.value.trim().toLowerCase()
-  newMessage.value = ''
-  isProcessing.value = true
-
-  if (userMessage.includes('mock chat')) {
-    socket.value.emit('mock_chat', { message: userMessage })
-  } else {
-    socket.value.emit('chat_message', { message: userMessage })
-    simulateBotResponse()
-  }
-}
-
-const addMessage = (content, sender, streaming = false) => {
-  messages.value.push({
-    id: messages.value.length + 1,
-    content,
-    sender,
-    timestamp: new Date().toLocaleTimeString(),
-    streaming
-  })
-}
-
-// Bot-Simulation
-const simulateBotResponse = () => {
-  setTimeout(() => {
-    addMessage('Dies ist eine Beispiel-Antwort vom Bot.', 'bot', false)
-    isProcessing.value = false
-  }, 1000)
-}
-
-// Socket.io-Initialisierung
-onMounted(() => {
-  socket.value = io('http://localhost:80', {
-    path: '/socket.io/',
-    transports: ['websocket']
-  })
-
-  socket.value.on('connect', () => console.log('Socket connected'))
-  socket.value.on('disconnect', () => console.log('Socket disconnected'))
-
-  socket.value.on('chat_response', (data) => {
-    const lastMessage = messages.value[messages.value.length - 1]
-    if (!data.complete) {
-      if (lastMessage && lastMessage.streaming) {
-        lastMessage.content += data.content
-      } else {
-        addMessage(data.content, 'bot', true)
-      }
-    } else {
-      if (lastMessage && lastMessage.streaming) {
-        lastMessage.streaming = false
-      }
-      isProcessing.value = false
-    }
-  })
-})
-
-onUnmounted(() => {
-  if (socket.value) {
-    socket.value.disconnect()
-  }
-})
-</script>
-
 <template>
-  <!-- Chat Toggle Button -->
   <div class="chat-toggle" @click="toggleChat">
     <v-btn
       icon
@@ -114,7 +10,6 @@ onUnmounted(() => {
     </v-btn>
   </div>
 
-  <!-- Floating Chat Window -->
   <div class="chat-window" :class="{ 'chat-open': isChatOpen }">
     <div class="chat-header">
       <div class="header-content">
@@ -145,7 +40,21 @@ onUnmounted(() => {
           </div>
         </template>
         <div class="message">
-          <div class="message-content">{{ message.content }}</div>
+          <div class="message-content">
+            <transition-group
+              name="fade-in"
+              tag="span"
+              appear
+            >
+              <span
+                v-for="(word, index) in message.content.split(' ')"
+                :key="`${message.id}-${index}`"
+                class="word"
+              >
+                {{ word }}
+              </span>
+            </transition-group>
+          </div>
           <div v-if="message.streaming" class="stream-indicator">▪▪▪</div>
           <div class="message-timestamp">{{ message.timestamp }}</div>
         </div>
@@ -166,6 +75,119 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { io } from 'socket.io-client'
+
+const messages = ref([])
+const newMessage = ref('')
+const chatContainer = ref(null)
+const isChatOpen = ref(false)
+const socket = ref(null)
+const isProcessing = ref(false)
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTo({
+        top: chatContainer.value.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  });
+};
+
+messages.value = [
+  {
+    id: 1,
+    content: 'Hallo! Wie kann ich dir helfen?',
+    sender: 'bot',
+    timestamp: new Date().toLocaleTimeString(),
+    streaming: false
+  }
+];
+
+const toggleChat = () => {
+  isChatOpen.value = !isChatOpen.value;
+  if (isChatOpen.value) {
+    nextTick(() => scrollToBottom());
+  }
+};
+
+const sendMessage = () => {
+  if (!newMessage.value.trim() || isProcessing.value) return;
+
+  // Benutzer-Nachricht hinzufügen
+  messages.value.push({
+    id: messages.value.length + 1,
+    content: newMessage.value,
+    sender: 'user',
+    timestamp: new Date().toLocaleTimeString(),
+    streaming: false
+  });
+  scrollToBottom();
+
+  const userMessage = newMessage.value.trim();
+  newMessage.value = '';
+  isProcessing.value = true;
+
+  // Nachricht an den Flask-Server senden
+  socket.value.emit('chat_stream', { message: userMessage });
+};
+
+const addMessage = (content, sender, streaming = false) => {
+  messages.value.push({
+    id: messages.value.length + 1,
+    content,
+    sender,
+    timestamp: new Date().toLocaleTimeString(),
+    streaming
+  });
+  scrollToBottom();
+};
+
+// Verbindung zu Socket.IO herstellen
+onMounted(() => {
+  socket.value = io('http://localhost:80', {
+    path: '/socket.io/',
+    transports: ['websocket'],
+    headers: {
+        'Content-Type': 'application/json; charset=utf-8'
+    }
+  });
+
+  socket.value.on('connect', () => console.log('Socket connected'));
+  socket.value.on('disconnect', () => console.log('Socket disconnected'));
+
+  // Gestreamte Antworten empfangen
+  socket.value.on('chat_response', (data) => {
+    const lastMessage = messages.value[messages.value.length - 1];
+
+    if (!data.complete) {
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.content += data.content; // Stream hinzufügen
+        scrollToBottom();
+      } else {
+        addMessage(data.content, 'bot', true); // Neue Nachricht starten
+      }
+    } else {
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.streaming = false;
+      }
+      isProcessing.value = false;
+      scrollToBottom();
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (socket.value) {
+    socket.value.disconnect();
+  }
+});
+</script>
+
 
 <style scoped>
 .chat-toggle {
@@ -232,6 +254,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
+  scroll-behavior: smooth;
 }
 
 .message-container {
@@ -288,6 +311,31 @@ onUnmounted(() => {
   background: #f1f1f1;
   color: black;
   border-bottom-left-radius: 0.2rem;
+}
+
+.message-content {
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.word {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.fade-in-enter-active,
+.fade-in-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.fade-in-enter-from,
+.fade-in-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.fade-in-move {
+  transition: transform 0.4s ease;
 }
 
 .message-timestamp {

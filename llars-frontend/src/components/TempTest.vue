@@ -1,168 +1,108 @@
-<template>
-  <div class="container mx-auto p-4">
-    <div class="mb-4">
-      <h2 class="text-xl font-bold">Chat with AI Assistant</h2>
-      <p :class="connectionStatusClass">{{ connectionStatus }}</p>
-    </div>
-
-    <div class="space-y-4">
-      <div class="flex gap-2">
-        <input
-          v-model="message"
-          type="text"
-          class="border rounded p-2 flex-grow"
-          placeholder="Ask me anything..."
-          @keyup.enter="sendChatMessage"
-          :disabled="isProcessing"
-        />
-        <button
-          @click="sendChatMessage"
-          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
-          :disabled="isProcessing"
-        >
-          {{ isProcessing ? 'Processing...' : 'Send' }}
-        </button>
-      </div>
-
-      <div class="border rounded p-4 max-h-96 overflow-y-auto" ref="chatContainer">
-        <ul class="space-y-4">
-          <li
-            v-for="(msg, index) in messages"
-            :key="index"
-            class="p-3 rounded"
-            :class="getMessageClass(msg)"
-          >
-            <div class="flex items-start gap-2">
-              <span class="font-bold min-w-[50px]">
-                {{ msg.type === 'sent' ? 'You:' : 'AI:' }}
-              </span>
-              <div class="flex-grow">
-                <p class="whitespace-pre-wrap">{{ msg.content }}</p>
-                <div v-if="msg.streaming" class="mt-1">
-                  <span class="animate-pulse">▪▪▪</span>
-                </div>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</template>
-
-<script>
-import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
+<script setup>
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { io } from 'socket.io-client'
 
-export default {
-  setup() {
-    const socket = ref(null)
-    const connected = ref(false)
-    const message = ref('')
-    const messages = ref([])
-    const isProcessing = ref(false)
-    const chatContainer = ref(null)
+const messages = ref([])
+const newMessage = ref('')
+const chatContainer = ref(null)
+const isChatOpen = ref(false)
+const socket = ref(null)
+const isProcessing = ref(false)
 
-    const connectionStatus = computed(() =>
-      connected.value ? 'Connected' : 'Disconnected'
-    )
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTo({
+        top: chatContainer.value.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  });
+};
 
-    const connectionStatusClass = computed(() => ({
-      'text-green-500': connected.value,
-      'text-red-500': !connected.value
-    }))
+messages.value = [
+  {
+    id: 1,
+    content: 'Hallo! Wie kann ich dir helfen?',
+    sender: 'bot',
+    timestamp: new Date().toLocaleTimeString(),
+    streaming: false
+  }
+];
 
-    const getMessageClass = (msg) => ({
-      'bg-blue-100': msg.type === 'sent',
-      'bg-gray-100': msg.type === 'received',
-      'opacity-70': msg.streaming
-    })
+const toggleChat = () => {
+  isChatOpen.value = !isChatOpen.value;
+  if (isChatOpen.value) {
+    nextTick(() => scrollToBottom());
+  }
+};
 
-    const scrollToBottom = async () => {
-      await nextTick()
-      if (chatContainer.value) {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+const sendMessage = () => {
+  if (!newMessage.value.trim() || isProcessing.value) return;
+
+  // Benutzer-Nachricht hinzufügen
+  messages.value.push({
+    id: messages.value.length + 1,
+    content: newMessage.value,
+    sender: 'user',
+    timestamp: new Date().toLocaleTimeString(),
+    streaming: false
+  });
+  scrollToBottom();
+
+  const userMessage = newMessage.value.trim();
+  newMessage.value = '';
+  isProcessing.value = true;
+
+  // Nachricht an den Flask-Server senden
+  socket.value.emit('chat_stream', { message: userMessage });
+};
+
+const addMessage = (content, sender, streaming = false) => {
+  messages.value.push({
+    id: messages.value.length + 1,
+    content,
+    sender,
+    timestamp: new Date().toLocaleTimeString(),
+    streaming
+  });
+  scrollToBottom();
+};
+
+// Verbindung zu Socket.IO herstellen
+onMounted(() => {
+  socket.value = io('http://localhost:80', {
+    path: '/socket.io/',
+    transports: ['websocket']
+  });
+
+  socket.value.on('connect', () => console.log('Socket connected'));
+  socket.value.on('disconnect', () => console.log('Socket disconnected'));
+
+  // Gestreamte Antworten empfangen
+  socket.value.on('chat_response', (data) => {
+    const lastMessage = messages.value[messages.value.length - 1];
+
+    if (!data.complete) {
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.content += data.content; // Stream hinzufügen
+        scrollToBottom();
+      } else {
+        addMessage(data.content, 'bot', true); // Neue Nachricht starten
       }
-    }
-
-    watch(messages, () => {
-      scrollToBottom()
-    }, { deep: true })
-
-    const initializeSocket = () => {
-      socket.value = io('http://localhost:80', {
-        path: '/socket.io/',
-        transports: ['websocket']
-      })
-
-      socket.value.on('connect', () => {
-        connected.value = true
-      })
-
-      socket.value.on('disconnect', () => {
-        connected.value = false
-      })
-
-      socket.value.on('welcome', (msg) => {
-        addMessage(msg.message, 'received')
-      })
-
-      socket.value.on('chat_response', (data) => {
-        if (!data.complete) {
-          if (messages.value.length > 0 && messages.value[messages.value.length - 1].streaming) {
-            messages.value[messages.value.length - 1].content += data.content
-          } else {
-            addMessage(data.content, 'received', true)
-          }
-        } else {
-          const lastMessage = messages.value[messages.value.length - 1]
-          if (lastMessage && lastMessage.streaming) {
-            lastMessage.streaming = false
-          }
-          isProcessing.value = false
-        }
-      })
-    }
-
-  const sendChatMessage = () => {
-    if (!message.value.trim() || !socket.value?.connected || isProcessing.value) return
-
-    if (message.value.toLowerCase().includes('mock chat')) {
-      socket.value.emit('mock_chat', { message: message.value })
     } else {
-      socket.value.emit('chat_message', { message: message.value })
-    }
-
-    addMessage(message.value, 'sent')
-    isProcessing.value = true
-    message.value = ''
-  }
-
-    const addMessage = (content, type, streaming = false) => {
-      messages.value.push({ content, type, streaming })
-    }
-
-    onMounted(() => {
-      initializeSocket()
-    })
-
-    onUnmounted(() => {
-      if (socket.value) {
-        socket.value.disconnect()
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.streaming = false;
       }
-    })
-
-    return {
-      connected,
-      connectionStatus,
-      connectionStatusClass,
-      message,
-      messages,
-      isProcessing,
-      chatContainer,
-      sendChatMessage,
-      getMessageClass
+      isProcessing.value = false;
+      scrollToBottom();
     }
+  });
+});
+
+onUnmounted(() => {
+  if (socket.value) {
+    socket.value.disconnect();
   }
-}
+});
 </script>

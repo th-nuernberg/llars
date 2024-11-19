@@ -87,6 +87,22 @@ services:
       timeout: 10s
       retries: 5
 
+  ssh-proxy-service:
+    container_name: kia_docker_ssh_proxy_service
+    profiles:
+      - backend
+    build:
+      context: .
+      dockerfile: docker/ssh_proxy/Dockerfile-ssh-proxy
+    ports:
+      - "8093:8093"
+    environment:
+      - PROXY_REMOTE_USER=${PROXY_REMOTE_USER}
+      - PROXY_REMOTE_HOST=${PROXY_REMOTE_HOST}
+      - PROXY_REMOTE_PORT=${PROXY_REMOTE_PORT}
+      - PROXY_LOCAL_PORT=${PROXY_LOCAL_PORT}
+    command: [ "/scripts/start_ssh_proxy.sh" ]
+
 
 volumes:
   llarsdb:

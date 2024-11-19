@@ -16,6 +16,8 @@ import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import AdminTester from "@/components/Admin/AdminTester.vue";
 
+import ChatWidget from "@/components/ChatWidget.vue";
+
 // Importiere die Admin-Check Funktion
 import { isAdmin } from '@/services/admins';
 
@@ -39,7 +41,10 @@ const routes = [
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },
-    { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound } // 404 Route
+    { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
+
+    { path: '/chat', component: ChatWidget, meta: { requiresAuth: true } }
+
 ];
 
 const router = createRouter({

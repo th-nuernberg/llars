@@ -25,7 +25,7 @@ Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 GET http://localhost/api/rankings/csv
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
-GET https://llars.e-beratungsinstitut.de/api/api/rankings/csv
+GET https://llars.e-beratungsinstitut.de/api/rankings/csv
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 ###
 GET http://localhost/api/admin/user_ranking_stats

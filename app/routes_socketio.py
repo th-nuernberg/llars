@@ -2,6 +2,9 @@ from flask_socketio import emit, join_room, leave_room
 from flask import request
 from openai import OpenAI
 import os
+import json
+import requests
+import logging
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY', "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"))
 import os
@@ -20,39 +23,6 @@ def configure_socket_routes(socketio):
     @socketio.on('disconnect')
     def handle_disconnect():
         print(f'Client {request.sid} disconnected')
-
-    @socketio.on('chat_message')
-    def handle_chat_message(data):
-        user_message = data.get('message', '')
-        client_id = request.sid
-
-        # Start streaming response
-        response = client.chat.completions.create(model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": user_message}],
-        stream=True)
-
-        # Stream the response
-        collected_chunks = []
-        collected_messages = []
-
-        for chunk in response:
-            chunk_message = chunk.choices[0].delta
-            collected_chunks.append(chunk_message)
-
-            # Extract the content from the chunk if it exists
-            if 'content' in chunk_message:
-                content = chunk_message['content']
-                collected_messages.append(content)
-                emit('chat_response', {
-                    'content': content,
-                    'complete': False
-                }, room=client_id)
-
-        # Send complete message flag
-        emit('chat_response', {
-            'content': ''.join(collected_messages),
-            'complete': True
-        }, room=client_id)
 
     @socketio.on('mock_chat')
     def handle_mock_chat(data):
@@ -75,3 +45,101 @@ def configure_socket_routes(socketio):
             'content': response,
             'complete': True
         }, room=client_id)
+
+    @socketio.on("chat_stream")
+    def handle_chat_stream(data):
+        ssh_container = "kia_docker_ssh_proxy_service"
+        ssh_container_port = "8093"
+
+        user_message = data.get("message", "").encode('utf-8').decode('utf-8')
+        temperature = data.get("temperature", 0.7)
+        system_prompt = """[INST]Du bist LLars, ein KI-Assistent und Maskottchen für das LLars-Projekt. 
+
+        Stil:
+        - Freundlich und prägnant
+        - Fokus auf akkurate, relevante Informationen  
+        - Bei Bedarf Nachfragen zum Projekt stellen
+        - Interesse an Nutzererfahrungen zeigen
+
+        Fähigkeiten:
+        - Fragen zum LLars-Projekt und dessen Funktionen beantworten
+        - Bei projektbezogenen Aufgaben unterstützen
+        - Relevante Fragen zu Nutzererfahrungen stellen
+        - Sachliche, fundierte Antworten geben
+
+        Du wirst nicht:
+        - Informationen über das Projekt erfinden
+        - Übermäßig lange Antworten geben 
+        - Emotionen oder physische Erfahrungen vortäuschen
+        - Sensible Projektdetails teilen[/INST]"""
+
+        formatted_input = f"<s>{system_prompt}[INST] {user_message} [/INST]"
+
+        payload = {
+            "inputs": formatted_input,
+            "parameters": {
+                "temperature": temperature,
+                "max_new_tokens": 1000,
+                "top_p": 0.95,
+                "top_k": 50,
+                "repetition_penalty": 1.1,
+                "do_sample": True,
+                "return_full_text": False,
+                "stop": ["[INST]", "</s>"]
+            }
+        }
+
+        try:
+            logging.info(f"Starting streaming for client {request.sid}")
+            with requests.post(
+                    f"http://{ssh_container}:{ssh_container_port}/generate_stream",
+                    json=payload,
+                    stream=True,
+                    timeout=30,
+                    headers={'Content-Type': 'application/json; charset=utf-8'}
+            ) as response:
+                response.encoding = 'utf-8'
+                if response.status_code == 200:
+                    for line in response.iter_lines(decode_unicode=True):
+                        if line and line.startswith("data:"):
+                            try:
+                                # Remove "data:" prefix and parse JSON
+                                json_data = json.loads(line[5:])
+
+                                # Check for final generated text
+                                if json_data.get("generated_text"):
+                                    emit("chat_response", {
+                                        "content": json_data["generated_text"],
+                                        "complete": True
+                                    }, room=request.sid)
+                                    break
+
+                                # Extract token text from nested structure
+                                if "token" in json_data and "text" in json_data["token"]:
+                                    content = json_data["token"]["text"].encode('utf-8').decode('utf-8')
+                                    emit("chat_response", {
+                                        "content": content,
+                                        "complete": False
+                                    }, room=request.sid)
+
+                            except json.JSONDecodeError:
+                                logging.warning(f"Failed to parse JSON: {line}")
+                                continue
+
+                    emit("chat_response", {
+                        "content": "",
+                        "complete": True
+                    }, room=request.sid)
+                else:
+                    logging.error(f"Streaming failed: {response.status_code} - {response.text}")
+                    emit("chat_response", {
+                        "content": "Error during streaming.",
+                        "complete": True
+                    }, room=request.sid)
+        except requests.RequestException as e:
+            logging.error(f"Request exception: {e}")
+            emit("chat_response", {
+                "content": "Error: Unable to stream response.",
+                "complete": True
+            }, room=request.sid)
+

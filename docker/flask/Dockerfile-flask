@@ -8,6 +8,19 @@ LABEL authors="philippsteigerwald"
 # Setzt das Arbeitsverzeichnis im Container
 WORKDIR /app
 
+# Installiert curl und notwendige Systembibliotheken
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installiert websocat
+RUN curl -L https://github.com/vi/websocat/releases/download/v1.8.0/websocat.x86_64-unknown-linux-musl \
+    -o /usr/local/bin/websocat && \
+    chmod +x /usr/local/bin/websocat
+
+
+
 # Kopiert die lokalen app-Dateien in das Container-Verzeichnis /app
 # COPY conversation_ranker/server/ /app/
 COPY app /app/

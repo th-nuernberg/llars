@@ -793,6 +793,64 @@ def get_user_ranking_stats():
 
     return jsonify(user_stats), 200
 
+@data_blueprint.route('/admin/user_HistoryGeneration_stats', methods=['GET'])
+def get_user_HistoryGeneration_stats():
+    api_key = request.headers.get('Authorization')
+
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    user_stats = []
+    mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
+    if not mail_rating_function_type:
+        return jsonify({'error': 'Mail rating function type is missing'}), 401
+
+    mail_rating_function_type = mail_rating_function_type.function_type_id
+    total_threads = db.session.query(EmailThread).filter_by(function_type_id=mail_rating_function_type).count()
+
+    for user in User.query.all():
+        rated_threads_list = []
+        not_rated_threads_list = []
+        partly_rated_threads_list = []
+        total_rated_threads = 0
+        total_partly_rated_threads = 0
+        total_not_rated_threads = 0
+
+        for thread in EmailThread.query.filter_by(function_type_id=mail_rating_function_type).all():
+            mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
+                UserMailHistoryRating.timestamp.desc()).first()
+
+            if mail_rating:
+                if mail_rating.rating_status == 'Partly Rated':
+                    total_partly_rated_threads += 1
+                    partly_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject,})
+                elif mail_rating.rating_status == 'Rated':
+                    total_not_rated_threads += 1
+                    rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
+                else:
+                    total_not_rated_threads += 1
+                    not_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
+            else:
+                total_not_rated_threads += 1
+                not_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
+
+        user_stats.append({
+            'username': user.username,
+            'total_threads': total_threads,
+            'rated_threads': total_rated_threads,
+            'not_rated_threads': total_not_rated_threads,
+            'partly_rated_threads': total_partly_rated_threads,
+            'rated_threads_list': rated_threads_list,
+            'not_rated_threads_list': not_rated_threads_list,
+            'partly_rated_threads_list': partly_rated_threads_list
+        })
+
+    return jsonify(user_stats), 200
+
 
 @data_blueprint.route('/email_threads/feature_ranking_list', methods=['GET'])
 def list_ranking_threads():

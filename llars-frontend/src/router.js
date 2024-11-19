@@ -18,6 +18,8 @@ import AdminTester from "@/components/Admin/AdminTester.vue";
 
 import ChatWidget from "@/components/ChatWidget.vue";
 
+import TempTestPage from "@/components/TempTest.vue";
+
 // Importiere die Admin-Check Funktion
 import { isAdmin } from '@/services/admins';
 
@@ -43,7 +45,9 @@ const routes = [
     { path: '/', redirect: '/login' },
     { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
 
-    { path: '/chat', component: ChatWidget, meta: { requiresAuth: true } }
+    { path: '/chat', component: ChatWidget, meta: { requiresAuth: true } },
+
+    { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
 
 ];
 

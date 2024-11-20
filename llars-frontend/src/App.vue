@@ -1,18 +1,18 @@
 <template>
   <v-app>
     <!-- Normale Benutzer AppBar -->
-    <v-app-bar v-if="!isAdminUser" app dark color="primary"> <!-- Primärfarbe verwendet -->
+    <v-app-bar v-if="!isAdminUser" app dark color="primary">
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
-        <v-toolbar-title  @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
-          <v-row no-gutters align="center">
-            <v-col cols="auto">
-              <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
-            </v-col>
-            <v-col cols="auto" class="toolbar-text-wrapper">
-              <span class="toolbar-text">LLars Plattform</span>
-            </v-col>
-          </v-row>
-        </v-toolbar-title>
+      <v-toolbar-title @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
+        <v-row no-gutters align="center">
+          <v-col cols="auto">
+            <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
+          </v-col>
+          <v-col cols="auto" class="toolbar-text-wrapper">
+            <span class="toolbar-text">LLars Plattform</span>
+          </v-col>
+        </v-row>
+      </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-chip
         v-if="username"
@@ -29,7 +29,7 @@
     </v-app-bar>
 
     <!-- Admin Benutzer AppBar -->
-    <v-app-bar v-else app dark color="primary"> <!-- Primärfarbe verwendet -->
+    <v-app-bar v-else app dark color="primary">
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
       <v-toolbar-title @click="goAdminHome" style="display: flex; align-items: center; cursor: pointer;">
         <v-row no-gutters align="center">
@@ -60,9 +60,10 @@
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
 
-    <FloatingChat /> <!-- Hier wird der Chat eingefügt -->
+    <!-- Chatbot wird nur angezeigt, wenn Benutzer eingeloggt ist -->
+    <FloatingChat v-if="username" />
 
-    <v-footer app dark color="primary" height="30" class="px-4 footer"> <!-- Primärfarbe verwendet -->
+    <v-footer app dark color="primary" height="30" class="px-4 footer">
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
           <span class="copyright">
@@ -85,6 +86,7 @@
   </v-app>
 </template>
 
+
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -93,17 +95,49 @@ import FloatingChat from './components/FloatingChat.vue';
 
 const router = useRouter();
 const username = ref('');
-const isAdminUser = ref(false); // Neu hinzugefügt, um den Admin-Status zu speichern
-const links = ref(['Impressum', 'Datenschutz', 'Kontakt']); // Footer Links
+const isAdminUser = ref(false);
+const links = ref(['Impressum', 'Datenschutz', 'Kontakt']);
+
+// Funktion zum Prüfen und Löschen alter Chat-Nachrichten
+const cleanupOldChatMessages = () => {
+  try {
+    const chatData = localStorage.getItem('chat_messages');
+    if (chatData) {
+      // Prüfen ob es einen Zeitstempel gibt
+      const storedTimestamp = localStorage.getItem('chat_messages_timestamp');
+      const currentTime = new Date().getTime();
+
+      if (!storedTimestamp) {
+        // Wenn kein Zeitstempel existiert, aktuellen setzen
+        localStorage.setItem('chat_messages_timestamp', currentTime.toString());
+        return;
+      }
+
+      // Prüfen ob die Nachrichten älter als 24 Stunden sind
+      const timestampDiff = currentTime - parseInt(storedTimestamp);
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+
+      if (timestampDiff > oneDayInMs) {
+        // Chat-Nachrichten und Zeitstempel löschen wenn älter als 24 Stunden
+        localStorage.removeItem('chat_messages');
+        localStorage.removeItem('chat_messages_timestamp');
+      }
+    }
+  } catch (error) {
+    console.error('Error cleaning up chat messages:', error);
+  }
+};
 
 function updateUsername() {
   const user = localStorage.getItem('username') || '';
   username.value = user;
-  isAdminUser.value = isAdmin(user); // Prüfen, ob der Benutzer ein Admin ist
+  isAdminUser.value = isAdmin(user);
 }
 
 onMounted(() => {
   updateUsername();
+  // Beim Mounten alte Nachrichten prüfen
+  cleanupOldChatMessages();
 });
 
 watch(() => router.currentRoute.value, () => {
@@ -115,8 +149,15 @@ function logout() {
   localStorage.removeItem('username');
   localStorage.removeItem('api_key');
 
+  // Chat-bezogene Daten löschen
+  localStorage.removeItem('chat_messages');
+  localStorage.removeItem('chat_messages_timestamp');
+
+  // Andere Feature-bezogene Daten löschen
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('featureOrder_') || key.startsWith('featureRating_')|| key.startsWith('rankerDetail_data_')) {
+    if (key.startsWith('featureOrder_') ||
+        key.startsWith('featureRating_') ||
+        key.startsWith('rankerDetail_data_')) {
       localStorage.removeItem(key);
     }
   });

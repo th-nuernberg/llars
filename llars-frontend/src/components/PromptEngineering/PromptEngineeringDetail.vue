@@ -38,6 +38,23 @@
 
       <!-- Sidebar - Tools -->
       <v-col cols="3" class="sidebar">
+        <!-- Template Selection Card -->
+        <v-card class="mb-4">
+          <v-card-title>Templates</v-card-title>
+          <v-card-text>
+            <v-btn
+              block
+              color="primary"
+              @click="showTemplateDialog = true"
+              class="mb-4"
+            >
+              <v-icon left>mdi-file-document-multiple</v-icon>
+              Template laden
+            </v-btn>
+          </v-card-text>
+        </v-card>
+
+        <!-- New Block Card -->
         <v-card class="mb-4">
           <v-card-title>Neuer Baustein</v-card-title>
           <v-card-text>
@@ -62,6 +79,7 @@
           </v-card-text>
         </v-card>
 
+        <!-- Actions Card -->
         <v-card>
           <v-card-title>Aktionen</v-card-title>
           <v-card-text>
@@ -100,14 +118,67 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Template Selection Dialog -->
+    <v-dialog v-model="showTemplateDialog" max-width="600">
+      <v-card>
+        <v-card-title>Template auswählen</v-card-title>
+        <v-card-text>
+          <v-list>
+            <v-list-item
+              v-for="template in templates"
+              :key="template.id"
+              @click="loadTemplate(template.id)"
+            >
+              <v-list-item-title>{{ template.name }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" @click="showTemplateDialog = false">Abbrechen</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
-import {ref, onMounted, computed} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import draggable from 'vuedraggable';
+
+const templates = [
+  {
+    id: 'standard',
+    name: 'Standard Prompt Template',
+    blocks: [
+      { name: 'LLM Role Definition', content: 'Defines the role of the LLM in a specific situation.' },
+      { name: 'Context', content: 'Provides contextual information and specific requirements to ensure appropriate responses.' },
+      { name: 'Task Definition', content: 'Describes what the language model is supposed to do.' },
+      { name: 'Input Format', content: 'Explains the structure of the input data.' },
+      { name: 'Output Format', content: 'Explains the expected output format.' },
+      { name: 'Avoid Formalities', content: 'Specifies wording to be avoided.' },
+      { name: 'Data', content: 'The data to be processed should be inserted into this section in the formatting specified above.' },
+      { name: 'Role Reminder', content: 'Reminds the model of its role during the task.' },
+      { name: 'Task Reminder', content: 'Reminds the model of the specific task to maintain focus and goal orientation.' }
+    ]
+  },
+  {
+    id: 'concise',
+    name: 'Concise Mode Template',
+    blocks: [
+      { name: 'Mode Definition', content: 'Claude is operating in Concise Mode. In this mode, Claude aims to reduce its output tokens while maintaining its helpfulness, quality, completeness, and accuracy.' },
+      { name: 'Response Guidelines', content: 'Claude provides answers to questions without much unneeded preamble or postamble. It focuses on addressing the specific query or task at hand, avoiding tangential information unless helpful for understanding or completing the request. If it decides to create a list, Claude focuses on key information instead of comprehensive enumeration.' },
+      { name: 'Tone and Style', content: 'Claude maintains a helpful tone while avoiding excessive pleasantries or redundant offers of assistance.' },
+      { name: 'Evidence and Detail', content: 'Claude provides relevant evidence and supporting details when substantiation is helpful for factuality and understanding of its response. For numerical data, Claude includes specific figures when important to the answer\'s accuracy.' },
+      { name: 'Output Quality', content: 'For code, artifacts, written content, or other generated outputs, Claude maintains the exact same level of quality, completeness, and functionality as when NOT in Concise Mode. There should be no impact to these output types.' },
+      { name: 'Quality Assurance', content: 'Claude does not compromise on completeness, correctness, appropriateness, or helpfulness for the sake of brevity.' },
+      { name: 'Flexibility', content: 'If the human requests a long or detailed response, Claude will set aside Concise Mode constraints and provide a more comprehensive answer. If the human appears frustrated with Claude\'s conciseness, repeatedly requests longer or more detailed responses, or directly asks about changes in Claude\'s response style, Claude informs them that it\'s currently in Concise Mode and explains that Concise Mode can be turned off via Claude\'s UI if desired. Besides these scenarios, Claude does not mention Concise Mode.' }
+    ]
+  }
+];
 
 const route = useRoute();
 const router = useRouter();
@@ -118,6 +189,7 @@ const blocks = ref([]);
 const newBlockName = ref('');
 const isFormValid = ref(false);
 const showPreview = ref(false);
+const showTemplateDialog = ref(false);
 
 const rules = {
   required: (value) => !!value || 'Pflichtfeld',
@@ -129,6 +201,20 @@ const compiledPrompt = computed(() => {
     .filter(content => content.trim())
     .join('\n\n');
 });
+
+function loadTemplate(templateId) {
+  const template = templates.find(t => t.id === templateId);
+  if (template) {
+    // Ask for confirmation if there are existing blocks
+    if (blocks.value.length > 0) {
+      if (!confirm('Bestehende Blöcke werden ersetzt. Fortfahren?')) {
+        return;
+      }
+    }
+    blocks.value = [...template.blocks];
+  }
+  showTemplateDialog.value = false;
+}
 
 async function fetchPrompt() {
   try {

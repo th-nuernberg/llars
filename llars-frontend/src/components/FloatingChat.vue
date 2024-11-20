@@ -10,7 +10,20 @@
     </v-btn>
   </div>
 
-  <div class="chat-window" :class="{ 'chat-open': isChatOpen }">
+  <div
+    class="chat-window"
+    :class="{ 'chat-open': isChatOpen }"
+    :style="{
+      width: `${windowWidth}px`,
+      transform: `translateX(${isChatOpen ? 0 : windowWidth + 20}px)`
+    }"
+  >
+    <!-- Resize Handle -->
+    <div
+      class="resize-handle"
+      @mousedown="startResize"
+    ></div>
+
     <div class="chat-header">
       <div class="header-content">
         <img
@@ -42,7 +55,6 @@
         <div class="message">
           <div class="message-content">
             <template v-if="enableTypewriterAnimation">
-              <!-- Mit Schreibmaschinenanimation -->
               <transition-group
                 :name="`fade-letter-${animationSpeed}`"
                 tag="span"
@@ -58,7 +70,6 @@
               </transition-group>
             </template>
             <template v-else>
-              <!-- Ohne Schreibmaschinenanimation -->
               <span>{{ message.content }}</span>
             </template>
           </div>
@@ -93,12 +104,37 @@ const chatContainer = ref(null);
 const isChatOpen = ref(false);
 const socket = ref(null);
 const isProcessing = ref(false);
-
-// Aktivierung der Schreibmaschinenanimation
 const enableTypewriterAnimation = ref(true);
-
-// Dynamische Animationsgeschwindigkeit
 const animationSpeed = ref('medium');
+
+// Neue Refs für die Resize-Funktionalität
+const windowWidth = ref(350); // Standardbreite
+const isResizing = ref(false);
+const minWidth = 350; // Minimale Breite
+const maxWidth = 800; // Maximale Breite
+
+const startResize = (e) => {
+  isResizing.value = true;
+  const startX = e.clientX;
+  const startWidth = windowWidth.value;
+
+  const handleMouseMove = (e) => {
+    if (!isResizing.value) return;
+
+    const difference = e.clientX - startX;
+    const newWidth = Math.min(Math.max(startWidth + difference, minWidth), maxWidth);
+    windowWidth.value = newWidth;
+  };
+
+  const handleMouseUp = () => {
+    isResizing.value = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+};
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -144,7 +180,7 @@ const sendMessage = () => {
   newMessage.value = '';
   isProcessing.value = true;
 
-  socket.value.emit('chat_stream', { message: userMessage });
+  socket.value.emit('chat_stream', {message: userMessage});
 };
 
 const addMessage = (content, sender, streaming = false) => {
@@ -177,7 +213,7 @@ onMounted(() => {
     path: '/socket.io/',
     transports: ['websocket'],
     headers: {
-        'Content-Type': 'application/json; charset=utf-8'
+      'Content-Type': 'application/json; charset=utf-8'
     }
   });
 
@@ -225,20 +261,33 @@ onUnmounted(() => {
   position: fixed;
   bottom: 100px;
   right: 20px;
-  width: 350px;
   height: 500px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  transform: translateX(400px);
   transition: transform 0.3s ease;
   z-index: 998;
 }
 
-.chat-window.chat-open {
-  transform: translateX(0);
+/* Resize Handle Styles */
+.resize-handle {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  background: transparent;
+}
+
+.resize-handle:hover {
+  background: rgba(176, 202, 151, 0.2);
+}
+
+.resize-handle:active {
+  background: rgba(176, 202, 151, 0.4);
 }
 
 .chat-header {
@@ -299,6 +348,7 @@ onUnmounted(() => {
   position: relative;
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
 }
 
 .message-avatar {
@@ -343,7 +393,7 @@ onUnmounted(() => {
 }
 
 .letter {
-  display: inline; /* Zeichen direkt nebeneinander */
+  display: inline;
   margin: 0;
   padding: 0;
 }
@@ -385,8 +435,12 @@ onUnmounted(() => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .chat-input {

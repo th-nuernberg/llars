@@ -121,7 +121,7 @@ const startResize = (e) => {
   const handleMouseMove = (e) => {
     if (!isResizing.value) return;
 
-    const difference = e.clientX - startX;
+    const difference = startX - e.clientX;
     const newWidth = Math.min(Math.max(startWidth + difference, minWidth), maxWidth);
     windowWidth.value = newWidth;
   };

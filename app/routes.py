@@ -6,7 +6,8 @@ from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identi
 from werkzeug.security import check_password_hash
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
-                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup)
+                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
+                       UserGroup, UserPrompt, UserPromptShare)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
@@ -1169,6 +1170,223 @@ def register_admin():
         "api_key": api_key,
         "group": new_user.group.name
     }), 201
+
+from flask_jwt_extended import jwt_required
+
+@data_blueprint.route('/prompts', methods=['POST'])
+def save_user_prompt():
+    """
+    Route zum Speichern eines neuen Prompts für den angemeldeten Benutzer.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    data = request.get_json()
+    prompt_name = data.get('name')
+    prompt_content = data.get('content')
+
+    if not prompt_name or not prompt_content:
+        return jsonify({'error': 'Prompt name and content are required'}), 400
+
+    # Prüfen, ob ein Prompt mit dem gleichen Namen bereits existiert
+    existing_prompt = UserPrompt.query.filter_by(user_id=user.id, name=prompt_name).first()
+    if existing_prompt:
+        return jsonify({'error': f'A prompt with the name "{prompt_name}" already exists'}), 409
+
+    # Neuen Prompt speichern
+    new_prompt = UserPrompt(
+        user_id=user.id,
+        name=prompt_name,
+        content=prompt_content
+    )
+    db.session.add(new_prompt)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Prompt saved successfully',
+        'prompt': {
+            'id': new_prompt.prompt_id,
+            'name': new_prompt.name,
+            'content': new_prompt.content,
+            'created_at': new_prompt.created_at.isoformat(),
+            'updated_at': new_prompt.updated_at.isoformat()
+        }
+    }), 201
+
+
+@data_blueprint.route('/prompts', methods=['GET'])
+def get_user_prompts():
+    """
+    Route zum Abrufen aller Prompts des angemeldeten Benutzers.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Alle Prompts des Benutzers abrufen
+    user_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
+
+    # Rückgabe der Prompts als JSON
+    prompts_data = [
+        {
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'content': prompt.content,
+            'created_at': prompt.created_at.isoformat(),
+            'updated_at': prompt.updated_at.isoformat()
+        }
+        for prompt in user_prompts
+    ]
+
+    return jsonify({'prompts': prompts_data}), 200
+
+@data_blueprint.route('/prompts/<int:prompt_id>', methods=['GET'])
+def get_user_prompt(prompt_id):
+    """
+    Route zum Abrufen eines einzelnen Prompts für den Benutzer.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
+    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    if not prompt:
+        return jsonify({'error': 'Prompt not found or you do not have permission to view it'}), 404
+
+    return jsonify({
+        'id': prompt.prompt_id,
+        'name': prompt.name,
+        'content': prompt.content,
+        'created_at': prompt.created_at.isoformat(),
+        'updated_at': prompt.updated_at.isoformat(),
+    }), 200
+
+@data_blueprint.route('/prompts/<int:prompt_id>', methods=['PUT'])
+def update_user_prompt(prompt_id):
+    """
+    Route zum Aktualisieren eines Prompts für den Benutzer.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
+    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    if not prompt:
+        return jsonify({'error': 'Prompt not found or you do not have permission to edit it'}), 404
+
+    data = request.get_json()
+    content = data.get('content')
+
+    if not isinstance(content, dict):
+        return jsonify({'error': 'Content must be a valid JSON object'}), 400
+
+    # Prompt-Inhalt aktualisieren
+    prompt.content = content
+    prompt.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Prompt updated successfully',
+        'prompt': {
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'content': prompt.content,
+            'updated_at': prompt.updated_at.isoformat(),
+        }
+    }), 200
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/share', methods=['POST'])
+def share_prompt(prompt_id):
+    """
+    Route zum Freigeben eines Prompts für einen anderen Benutzer.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    data = request.get_json()
+    shared_with_username = data.get('shared_with')
+
+    if not shared_with_username:
+        return jsonify({'error': 'Username to share with is required'}), 400
+
+    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
+    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    if not prompt:
+        return jsonify({'error': 'Prompt not found or you do not have permission to share it'}), 404
+
+    # Zielbenutzer abrufen
+    shared_with_user = User.query.filter_by(username=shared_with_username).first()
+    if not shared_with_user:
+        return jsonify({'error': f'User "{shared_with_username}" not found'}), 404
+
+    # Prüfen, ob das Prompt bereits freigegeben wurde
+    existing_share = UserPromptShare.query.filter_by(prompt_id=prompt_id, shared_with_user_id=shared_with_user.id).first()
+    if existing_share:
+        return jsonify({'error': f'Prompt is already shared with "{shared_with_username}"'}), 409
+
+    # Freigabe erstellen
+    new_share = UserPromptShare(prompt_id=prompt_id, shared_with_user_id=shared_with_user.id)
+    db.session.add(new_share)
+    db.session.commit()
+
+    return jsonify({'message': f'Prompt shared with "{shared_with_username}" successfully'}), 201
+
+
+@data_blueprint.route('/prompts/shared', methods=['GET'])
+def get_shared_prompts():
+    """
+    Route zum Abrufen aller für den Benutzer freigegebenen Prompts.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Freigegebene Prompts abrufen
+    shared_prompts = UserPrompt.query.join(UserPromptShare).filter(UserPromptShare.shared_with_user_id == user.id).all()
+
+    # Freigegebene Prompts formatieren
+    prompts_data = [
+        {
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'content': prompt.content,
+            'owner': prompt.user.username,
+            'shared_at': share.created_at.isoformat() if hasattr(share, 'created_at') else None
+        }
+        for prompt in shared_prompts
+        for share in prompt.shared_users if share.shared_with_user_id == user.id
+    ]
+
+    return jsonify({'shared_prompts': prompts_data}), 200
 
 
 

@@ -103,3 +103,11 @@ Content-Type: application/json
   "username": "ieb_michelle",
   "password": "ikasicherllea"
 }
+###
+POST http://backend-flask-service:8081/auth/register
+Content-Type: application/json
+
+{
+  "username": "steigerwald",
+  "password": "llarsundkia"
+}

@@ -98,6 +98,7 @@
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { io } from 'socket.io-client';
 
+const STORAGE_KEY = 'chat_messages';
 const messages = ref([]);
 const newMessage = ref('');
 const chatContainer = ref(null);
@@ -115,7 +116,6 @@ const maxWidth = 800; // Maximale Breite
 
 const startResize = (e) => {
   isResizing.value = true;
-  // Füge Klasse zum Body hinzu, die Text-Selektion verhindert
   document.body.classList.add('resizing');
   const startX = e.clientX;
   const startWidth = windowWidth.value;
@@ -130,7 +130,6 @@ const startResize = (e) => {
 
   const handleMouseUp = () => {
     isResizing.value = false;
-    // Entferne Klasse vom Body wenn Resize beendet
     document.body.classList.remove('resizing');
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
@@ -139,7 +138,6 @@ const startResize = (e) => {
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', handleMouseUp);
 };
-
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -152,15 +150,48 @@ const scrollToBottom = () => {
   });
 };
 
-messages.value = [
-  {
-    id: 1,
-    content: 'Hallo! Wie kann ich dir helfen?',
-    sender: 'bot',
-    timestamp: new Date().toLocaleTimeString(),
-    streaming: false
+// Funktion zum Laden der Nachrichten aus dem localStorage
+const loadMessages = () => {
+  try {
+    const savedMessages = localStorage.getItem(STORAGE_KEY);
+    if (savedMessages) {
+      messages.value = JSON.parse(savedMessages);
+    } else {
+      // Wenn keine gespeicherten Nachrichten vorhanden sind, füge die Begrüßungsnachricht hinzu
+      messages.value = [
+        {
+          id: 1,
+          content: 'Hallo! Wie kann ich dir helfen?',
+          sender: 'bot',
+          timestamp: new Date().toLocaleTimeString(),
+          streaming: false
+        }
+      ];
+      // Speichere die initiale Nachricht
+      saveMessages();
+    }
+  } catch (error) {
+    console.error('Error loading messages from localStorage:', error);
+    messages.value = [
+      {
+        id: 1,
+        content: 'Hallo! Wie kann ich dir helfen?',
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString(),
+        streaming: false
+      }
+    ];
   }
-];
+};
+
+// Funktion zum Speichern der Nachrichten im localStorage
+const saveMessages = () => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.value));
+  } catch (error) {
+    console.error('Error saving messages to localStorage:', error);
+  }
+};
 
 const toggleChat = () => {
   isChatOpen.value = !isChatOpen.value;
@@ -172,13 +203,16 @@ const toggleChat = () => {
 const sendMessage = () => {
   if (!newMessage.value.trim() || isProcessing.value) return;
 
-  messages.value.push({
+  const messageObj = {
     id: messages.value.length + 1,
     content: newMessage.value,
     sender: 'user',
     timestamp: new Date().toLocaleTimeString(),
     streaming: false
-  });
+  };
+
+  messages.value.push(messageObj);
+  saveMessages(); // Speichern nach dem Hinzufügen der Nachricht
   scrollToBottom();
 
   const userMessage = newMessage.value.trim();
@@ -189,13 +223,16 @@ const sendMessage = () => {
 };
 
 const addMessage = (content, sender, streaming = false) => {
-  messages.value.push({
+  const messageObj = {
     id: messages.value.length + 1,
     content,
     sender,
     timestamp: new Date().toLocaleTimeString(),
     streaming
-  });
+  };
+
+  messages.value.push(messageObj);
+  saveMessages(); // Speichern nach dem Hinzufügen der Nachricht
 
   if (enableTypewriterAnimation.value) {
     adjustAnimationSpeed(content.length);
@@ -214,6 +251,8 @@ const adjustAnimationSpeed = (length) => {
 };
 
 onMounted(() => {
+  loadMessages(); // Lade gespeicherte Nachrichten beim Mounten
+
   socket.value = io('http://localhost:80', {
     path: '/socket.io/',
     transports: ['websocket'],
@@ -231,6 +270,7 @@ onMounted(() => {
     if (!data.complete) {
       if (lastMessage && lastMessage.streaming) {
         lastMessage.content += data.content;
+        saveMessages(); // Speichern nach dem Update der streaming Nachricht
         if (enableTypewriterAnimation.value) {
           adjustAnimationSpeed(data.content.length);
         }
@@ -240,6 +280,7 @@ onMounted(() => {
     } else {
       if (lastMessage && lastMessage.streaming) {
         lastMessage.streaming = false;
+        saveMessages(); // Speichern nach Beendigung des Streamings
       }
       isProcessing.value = false;
       scrollToBottom();

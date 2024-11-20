@@ -115,6 +115,8 @@ const maxWidth = 800; // Maximale Breite
 
 const startResize = (e) => {
   isResizing.value = true;
+  // Füge Klasse zum Body hinzu, die Text-Selektion verhindert
+  document.body.classList.add('resizing');
   const startX = e.clientX;
   const startWidth = windowWidth.value;
 
@@ -128,6 +130,8 @@ const startResize = (e) => {
 
   const handleMouseUp = () => {
     isResizing.value = false;
+    // Entferne Klasse vom Body wenn Resize beendet
+    document.body.classList.remove('resizing');
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   };
@@ -135,6 +139,7 @@ const startResize = (e) => {
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', handleMouseUp);
 };
+
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -446,5 +451,13 @@ onUnmounted(() => {
 .chat-input {
   padding: 12px;
   border-top: 1px solid #eee;
+}
+
+:global(.resizing) {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  cursor: ew-resize !important;
 }
 </style>

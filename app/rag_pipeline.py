@@ -142,9 +142,6 @@ class RAGPipeline:
 
             # Add context to system prompt
             enriched_prompt = f"""
-            {system_prompt}
-
-            Relevanter Kontext aus der Dokumentation:
             {context}
             """
 

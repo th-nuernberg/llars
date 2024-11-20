@@ -41,19 +41,26 @@
         </template>
         <div class="message">
           <div class="message-content">
-            <transition-group
-              name="fade-in"
-              tag="span"
-              appear
-            >
-              <span
-                v-for="(word, index) in message.content.split(' ')"
-                :key="`${message.id}-${index}`"
-                class="word"
+            <template v-if="enableTypewriterAnimation">
+              <!-- Mit Schreibmaschinenanimation -->
+              <transition-group
+                :name="`fade-letter-${animationSpeed}`"
+                tag="span"
+                appear
               >
-                {{ word }}
-              </span>
-            </transition-group>
+                <span
+                  v-for="(char, index) in message.content.split('')"
+                  :key="`${message.id}-${index}`"
+                  class="letter"
+                >
+                  {{ char }}
+                </span>
+              </transition-group>
+            </template>
+            <template v-else>
+              <!-- Ohne Schreibmaschinenanimation -->
+              <span>{{ message.content }}</span>
+            </template>
           </div>
           <div v-if="message.streaming" class="stream-indicator">▪▪▪</div>
           <div class="message-timestamp">{{ message.timestamp }}</div>
@@ -77,15 +84,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { io } from 'socket.io-client'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { io } from 'socket.io-client';
 
-const messages = ref([])
-const newMessage = ref('')
-const chatContainer = ref(null)
-const isChatOpen = ref(false)
-const socket = ref(null)
-const isProcessing = ref(false)
+const messages = ref([]);
+const newMessage = ref('');
+const chatContainer = ref(null);
+const isChatOpen = ref(false);
+const socket = ref(null);
+const isProcessing = ref(false);
+
+// Aktivierung der Schreibmaschinenanimation
+const enableTypewriterAnimation = ref(true);
+
+// Dynamische Animationsgeschwindigkeit
+const animationSpeed = ref('medium');
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -118,7 +131,6 @@ const toggleChat = () => {
 const sendMessage = () => {
   if (!newMessage.value.trim() || isProcessing.value) return;
 
-  // Benutzer-Nachricht hinzufügen
   messages.value.push({
     id: messages.value.length + 1,
     content: newMessage.value,
@@ -132,7 +144,6 @@ const sendMessage = () => {
   newMessage.value = '';
   isProcessing.value = true;
 
-  // Nachricht an den Flask-Server senden
   socket.value.emit('chat_stream', { message: userMessage });
 };
 
@@ -144,10 +155,23 @@ const addMessage = (content, sender, streaming = false) => {
     timestamp: new Date().toLocaleTimeString(),
     streaming
   });
+
+  if (enableTypewriterAnimation.value) {
+    adjustAnimationSpeed(content.length);
+  }
   scrollToBottom();
 };
 
-// Verbindung zu Socket.IO herstellen
+const adjustAnimationSpeed = (length) => {
+  if (length > 50) {
+    animationSpeed.value = 'fast';
+  } else if (length > 20) {
+    animationSpeed.value = 'medium';
+  } else {
+    animationSpeed.value = 'slow';
+  }
+};
+
 onMounted(() => {
   socket.value = io('http://localhost:80', {
     path: '/socket.io/',
@@ -160,16 +184,17 @@ onMounted(() => {
   socket.value.on('connect', () => console.log('Socket connected'));
   socket.value.on('disconnect', () => console.log('Socket disconnected'));
 
-  // Gestreamte Antworten empfangen
   socket.value.on('chat_response', (data) => {
     const lastMessage = messages.value[messages.value.length - 1];
 
     if (!data.complete) {
       if (lastMessage && lastMessage.streaming) {
-        lastMessage.content += data.content; // Stream hinzufügen
-        scrollToBottom();
+        lastMessage.content += data.content;
+        if (enableTypewriterAnimation.value) {
+          adjustAnimationSpeed(data.content.length);
+        }
       } else {
-        addMessage(data.content, 'bot', true); // Neue Nachricht starten
+        addMessage(data.content, 'bot', true);
       }
     } else {
       if (lastMessage && lastMessage.streaming) {
@@ -187,7 +212,6 @@ onUnmounted(() => {
   }
 });
 </script>
-
 
 <style scoped>
 .chat-toggle {
@@ -318,24 +342,33 @@ onUnmounted(() => {
   word-wrap: break-word;
 }
 
-.word {
-  display: inline-block;
-  margin-right: 4px;
+.letter {
+  display: inline; /* Zeichen direkt nebeneinander */
+  margin: 0;
+  padding: 0;
 }
 
-.fade-in-enter-active,
-.fade-in-leave-active {
-  transition: opacity 0.4s ease, transform 0.4s ease;
+.fade-letter-slow-enter-active {
+  animation: fade-in 0.5s ease-out;
 }
 
-.fade-in-enter-from,
-.fade-in-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
+.fade-letter-medium-enter-active {
+  animation: fade-in 0.3s ease-out;
 }
 
-.fade-in-move {
-  transition: transform 0.4s ease;
+.fade-letter-fast-enter-active {
+  animation: fade-in 0.15s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(-1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-timestamp {

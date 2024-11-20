@@ -10,7 +10,12 @@
     </v-row>
     <!-- Feature Cards -->
     <v-row class="equal-size-cards">
-      <v-col v-for="item in items" :key="item.title" cols="12" sm="6" class="d-flex card-col">
+      <v-col
+        v-for="item in items.filter(item => !item.hide)"
+        :key="item.title"
+        cols="12" sm="6"
+        class="d-flex card-col"
+      >
         <v-card
           class="mb-4 feature-card d-flex flex-column"
           :color="item.disabled ? 'grey lighten-2' : 'primary'"
@@ -42,10 +47,11 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const items = ref([
-  { title: 'Ranking', description: 'Ranken Sie Ihre Daten', route: '/ranker', icon: 'mdi-chart-bar-stacked', elevation: 1, disabled: false },
-  { title: 'Verlaufserstellung', description: 'Erzeugung von Mail-Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-timeline-text-outline', elevation: 1, disabled: false },
-  { title: 'Rating', description: 'Raten Sie Ihre Daten', route: '/rater', icon: 'mdi-star-outline', elevation: 1, disabled: true },
-  { title: 'Labeling', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-label-outline', elevation: 1, disabled: true }
+  { title: 'Ranking', description: 'Ranken Sie Ihre Daten', route: '/ranker', icon: 'mdi-chart-bar-stacked', elevation: 1, disabled: false, hide: false },
+  { title: 'Verlaufserstellung', description: 'Erzeugung von Mail-Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-timeline-text-outline', elevation: 1, disabled: false, hide: false },
+  { title: 'Rating', description: 'Raten Sie Ihre Daten', route: '/rater', icon: 'mdi-star-outline', elevation: 1, disabled: true, hide: true },
+  { title: 'Labeling', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-label-outline', elevation: 1, disabled: true, hide: false },
+  { title: 'Prompt Engineering', description: "Entwerfen von Prompts", route: '/promptengineering', icon: 'mdi-text-search', elevation: 1, disabled: false, hide: false}
 ]);
 
 function navigateTo(route) {
@@ -79,6 +85,7 @@ function equalizeCardSizes() {
   });
 }
 </script>
+
 
 <style scoped>
 .home-container {

@@ -138,3 +138,22 @@ class UserMessageRating(db.Model):
     rating = mapped_column(db.String(4), nullable=True)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
+class UserPrompt(db.Model):
+    __tablename__ = 'user_prompts'
+    prompt_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)  # Eindeutige ID für jedes Prompt
+    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))  # Verknüpfung mit einem User
+    name = mapped_column(db.String(255), nullable=False)  # Name des Prompts, vom User festgelegt
+    content = mapped_column(db.JSON, nullable=False)  # Prompt-Inhalt im JSON-Format
+    created_at = mapped_column(db.DateTime, default=datetime.utcnow)  # Zeitpunkt der Erstellung
+    updated_at = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Zeitpunkt der letzten Aktualisierung
+
+    user = db.relationship('User', backref='prompts')  # Beziehung zu einem User
+
+class UserPromptShare(db.Model):
+    __tablename__ = 'user_prompt_shares'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    prompt_id = mapped_column(db.Integer, db.ForeignKey('user_prompts.prompt_id'))
+    shared_with_user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+
+    prompt = db.relationship('UserPrompt', backref='shared_users')
+    shared_with_user = db.relationship('User', backref='shared_prompts')

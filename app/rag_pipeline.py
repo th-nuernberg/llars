@@ -64,7 +64,7 @@ class RAGPipeline:
                     self.vectorstore = Chroma(
                         collection_name=self.collection_name,
                         persist_directory=self.vectorstore_dir,
-                        embedding=self.embeddings  # Use "embedding" instead of "embedding_function"
+                        embedding_function=self.embeddings  # Use "embedding" instead of "embedding_function"
                     )
                     num_docs = len(self.vectorstore.get())
                     logging.info(f"Successfully loaded vector store with {num_docs} documents")

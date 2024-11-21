@@ -794,6 +794,64 @@ def get_user_ranking_stats():
 
     return jsonify(user_stats), 200
 
+@data_blueprint.route('/admin/user_HistoryGeneration_stats', methods=['GET'])
+def get_user_HistoryGeneration_stats():
+    api_key = request.headers.get('Authorization')
+
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    user_stats = []
+    mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
+    if not mail_rating_function_type:
+        return jsonify({'error': 'Mail rating function type is missing'}), 401
+
+    mail_rating_function_type = mail_rating_function_type.function_type_id
+    total_threads = db.session.query(EmailThread).filter_by(function_type_id=mail_rating_function_type).count()
+
+    for user in User.query.all():
+        rated_threads_list = []
+        not_rated_threads_list = []
+        partly_rated_threads_list = []
+        total_rated_threads = 0
+        total_partly_rated_threads = 0
+        total_not_rated_threads = 0
+
+        for thread in EmailThread.query.filter_by(function_type_id=mail_rating_function_type).all():
+            mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
+                UserMailHistoryRating.timestamp.desc()).first()
+
+            if mail_rating:
+                if mail_rating.rating_status == 'Partly Rated':
+                    total_partly_rated_threads += 1
+                    partly_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject,})
+                elif mail_rating.rating_status == 'Rated':
+                    total_not_rated_threads += 1
+                    rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
+                else:
+                    total_not_rated_threads += 1
+                    not_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
+            else:
+                total_not_rated_threads += 1
+                not_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
+
+        user_stats.append({
+            'username': user.username,
+            'total_threads': total_threads,
+            'rated_threads': total_rated_threads,
+            'not_rated_threads': total_not_rated_threads,
+            'partly_rated_threads': total_partly_rated_threads,
+            'rated_threads_list': rated_threads_list,
+            'not_rated_threads_list': not_rated_threads_list,
+            'partly_rated_threads_list': partly_rated_threads_list
+        })
+
+    return jsonify(user_stats), 200
+
 
 @data_blueprint.route('/email_threads/feature_ranking_list', methods=['GET'])
 def list_ranking_threads():
@@ -846,21 +904,11 @@ def list_email_threads_for_mail_ratings(thread_id=None):
     for thread in email_threads:
         mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
             UserMailHistoryRating.timestamp.desc()).first()
-        rating_status = "Not Rated"
 
         if mail_rating:
-            if (mail_rating.coherence_rating is  None and
-                    mail_rating.quality_rating is None and
-                    mail_rating.overall_rating  is None and
-                    mail_rating.plausibility_rating is None):
-                rating_status = "Not Rated" # In case all likert scales get unmarked
-            elif (mail_rating.coherence_rating is not None and
-                    mail_rating.quality_rating is not None and
-                    mail_rating.overall_rating is not None and
-                    mail_rating.plausibility_rating is not None):
-                rating_status = "Rated"
-            else:
-                rating_status = "Partly Rated"
+            rating_status = mail_rating.rating_status
+        else: rating_status = "Not Rated"
+
 
         threads_list.append({
             'thread_id': thread.thread_id,
@@ -966,41 +1014,51 @@ def save_mail_rating(thread_id):
     data = request.get_json()
 
     # Values sent from the client
-    plausibility_rating = data.get('plausibility_rating')
-    coherence_rating = data.get('coherence_rating')
-    quality_rating = data.get('quality_rating')
-    overall_rating = data.get('overall_rating')
-    feedback = data.get('feedback', '')
+    client_data = {
+    "counsellor_coherence_rating" : data.get('counsellor_coherence_rating'),
+    "client_coherence_rating" : data.get('client_coherence_rating'),
+    "quality_rating" : data.get('quality_rating'),
+    "overall_rating" : data.get('overall_rating')}
+    feedback = data.get('feedback')
 
     # retrieve most recent mail history rating
     existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
         UserMailHistoryRating.timestamp.desc()).first()
 
     # check if any likert scale got rated or a feedback was written.
-    if plausibility_rating is None and coherence_rating is None and quality_rating is None and overall_rating is None and feedback is None:
+    if client_data["counsellor_coherence_rating"] is None and client_data["client_coherence_rating"] is None and client_data["quality_rating"] is None and client_data["overall_rating"] is None and feedback is None:
         # if not, check if a existing rating got "deleted". If yes, save values of new version as null in the db, else skip
         if not existing_rating: # skip because no rating of the history happened
             return jsonify({'status': 'Message ratings saved successfully'}), 201
 
     # if a rating already exists, check if changes occurred
     if existing_rating:
-        if(existing_rating.plausibility_rating == plausibility_rating
-            and existing_rating.coherence_rating == coherence_rating
-            and existing_rating.quality_rating == quality_rating
-            and existing_rating.overall_rating == overall_rating
+        if(existing_rating.counsellor_coherence_rating == client_data["counsellor_coherence_rating"]
+            and existing_rating.client_coherence_rating == client_data["client_coherence_rating"]
+            and existing_rating.quality_rating == client_data["quality_rating"]
+            and existing_rating.overall_rating == client_data["overall_rating"]
             and existing_rating.feedback == feedback):
-            return jsonify({'status': 'Message ratings saved successfully'}), 201
+            return jsonify({'status': 'History ratings saved successfully'}), 201
+
+    filled_ratings_counter = 0
+    for key, value in client_data.items():
+        if value is not None:
+            filled_ratings_counter += 1
+
+    rating_status = "Not Rated" if filled_ratings_counter == 0 else "Rated"
+    if 0 < filled_ratings_counter < 4: rating_status = "Partly Rated"
 
     # Changes happened, or it is the first rating
     # Create a new mail rating with feedback and save it into the db with current timestamp
     new_mail_rating = UserMailHistoryRating(
         user_id=user.id,
         thread_id=thread_id,
-        plausibility_rating=plausibility_rating,
-        coherence_rating=coherence_rating,
-        quality_rating=quality_rating,
-        overall_rating=overall_rating,
-        feedback=feedback
+        counsellor_coherence_rating=client_data["counsellor_coherence_rating"],
+        client_coherence_rating=client_data["client_coherence_rating"],
+        quality_rating=client_data["quality_rating"],
+        overall_rating=client_data["overall_rating"],
+        feedback=feedback,
+        rating_status=rating_status
     )
     db.session.add(new_mail_rating)
 
@@ -1077,11 +1135,12 @@ def get_mail_rating(thread_id):
     # prepare data for json format (if no rating found use null values)
     rating_data = {
         'rating': {
-                'plausibility_rating': mail_rating.plausibility_rating if mail_rating else None,
-                'coherence_rating': mail_rating.coherence_rating if mail_rating else None,
+                'counsellor_coherence_rating': mail_rating.counsellor_coherence_rating if mail_rating else None,
+                'client_coherence_rating': mail_rating.client_coherence_rating if mail_rating else None,
                 'quality_rating': mail_rating.quality_rating if mail_rating else None,
                 'overall_rating': mail_rating.overall_rating if mail_rating else None,
-                'feedback': mail_rating.feedback if mail_rating else None
+                'feedback': mail_rating.feedback if mail_rating else None,
+                'rating_status': mail_rating.rating_status if mail_rating else 'Not Rated'
             }
     }
     return jsonify(rating_data), 200

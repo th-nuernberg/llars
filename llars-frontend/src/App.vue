@@ -108,12 +108,31 @@ watch(() => router.currentRoute.value, () => {
 }, { immediate: true });
 
 function logout() {
+  // Prüfen, ob es unsichere Änderungen gibt
+  if (containsLocalStorageItemWithString('hasUnsaved_ratingChanges_')) {
+    const confirmLogout = window.confirm(
+      'Es gibt ungesicherte Änderungen. Möchten Sie wirklich ausloggen?'
+    );
+
+    if (!confirmLogout) {
+      // Abbrechen, wenn der Benutzer das Logout ablehnt
+      return;
+    }
+  }
+
   localStorage.removeItem('token');
   localStorage.removeItem('username');
   localStorage.removeItem('api_key');
 
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('featureOrder_') || key.startsWith('featureRating_')|| key.startsWith('rankerDetail_data_')) {
+  Object.keys(localStorage).forEach((key) => {
+    if (
+      key.startsWith('featureOrder_') ||
+      key.startsWith('featureRating_') ||
+      key.startsWith('rankerDetail_data_') ||
+      key.startsWith('hasUnsaved_ratingChanges_') ||
+      key.startsWith('local_rating_changes_') ||
+      key.startsWith('local_messageRating_changes')
+    ) {
       localStorage.removeItem(key);
     }
   });
@@ -121,6 +140,18 @@ function logout() {
   username.value = '';
   router.push('/login');
 }
+
+function containsLocalStorageItemWithString(string) {
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i); // Holen des Keys an Index i
+        if (key.includes(string)) {
+            return true; // Ein Item mit dem String im Namen wurde gefunden
+        }
+    }
+    return false; // Kein Item mit dem String im Namen
+}
+
+
 
 function goHome() {
   router.push('/home');

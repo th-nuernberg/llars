@@ -1291,6 +1291,16 @@ def get_user_prompt(prompt_id):
     # Besitzer-Informationen hinzufügen
     owner = prompt.user.username
 
+    # Liste der Benutzer mit denen das Prompt geteilt wurde abrufen
+    # (nur wenn der aktuelle Benutzer der Besitzer ist)
+    shared_with = []
+    if prompt.user_id == user.id:
+        shared_users = db.session.query(User.username)\
+            .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id)\
+            .filter(UserPromptShare.prompt_id == prompt_id)\
+            .all()
+        shared_with = [user[0] for user in shared_users]
+
     return jsonify({
         'id': prompt.prompt_id,
         'name': prompt.name,
@@ -1298,7 +1308,8 @@ def get_user_prompt(prompt_id):
         'created_at': prompt.created_at.isoformat(),
         'updated_at': prompt.updated_at.isoformat(),
         'is_shared': is_shared,
-        'owner': owner
+        'owner': owner,
+        'shared_with': shared_with  # Liste der Benutzernamen
     }), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['PUT'])

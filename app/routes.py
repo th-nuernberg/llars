@@ -1396,8 +1396,14 @@ def get_shared_prompts():
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Freigegebene Prompts abrufen
-    shared_prompts = UserPrompt.query.join(UserPromptShare).filter(UserPromptShare.shared_with_user_id == user.id).all()
+    # Freigegebene Prompts mit Sharing-Zeitstempel abrufen
+    shared_prompts = db.session.query(
+        UserPrompt, UserPromptShare.created_at.label('shared_at')
+    ).join(
+        UserPromptShare, UserPrompt.prompt_id == UserPromptShare.prompt_id
+    ).filter(
+        UserPromptShare.shared_with_user_id == user.id
+    ).all()
 
     # Freigegebene Prompts formatieren
     prompts_data = [
@@ -1406,10 +1412,9 @@ def get_shared_prompts():
             'name': prompt.name,
             'content': prompt.content,
             'owner': prompt.user.username,
-            'shared_at': share.created_at.isoformat() if hasattr(share, 'created_at') else None
+            'shared_at': shared_at.isoformat() if shared_at else None
         }
-        for prompt in shared_prompts
-        for share in prompt.shared_users if share.shared_with_user_id == user.id
+        for prompt, shared_at in shared_prompts
     ]
 
     return jsonify({'shared_prompts': prompts_data}), 200

@@ -7,40 +7,59 @@
         <p>Wählen Sie ein Prompt aus, um es zu bearbeiten oder zu teilen.</p>
 
         <!-- Meine Prompts -->
-  <h2 class="text-h5 mb-4">Meine Prompts</h2>
-  <v-row>
-    <v-col cols="12" sm="6" v-for="prompt in prompts" :key="prompt.id">
-      <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
-        <v-card-title>{{ prompt.name }}</v-card-title>
-        <v-card-subtitle>
-          Erstellt: {{ formatDate(prompt.created_at) }}
-          <template v-if="prompt.shared_with && prompt.shared_with.length > 0">
-            <v-divider class="my-2"></v-divider>
-            <div class="d-flex align-center">
-              <v-icon size="small" color="info" class="mr-1">mdi-share-variant</v-icon>
-              Geteilt mit: {{ prompt.shared_with.join(', ') }}
-            </div>
+        <h2 class="text-h5 mb-4">Meine Prompts</h2>
+        <v-row>
+          <template v-if="prompts.length > 0">
+            <v-col cols="12" sm="6" v-for="prompt in prompts" :key="prompt.id">
+              <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
+                <div class="d-flex flex-column card-content">
+                  <v-card-title class="text-truncate">{{ prompt.name }}</v-card-title>
+                  <v-card-subtitle>
+                    <div class="mb-2">Erstellt: {{ formatDate(prompt.created_at) }}</div>
+                    <template v-if="prompt.shared_with && prompt.shared_with.length > 0">
+                      <v-divider></v-divider>
+                      <div class="d-flex align-center mt-2">
+                        <v-icon size="small" color="info" class="mr-1">mdi-share-variant</v-icon>
+                        <span class="text-truncate">
+                          Geteilt mit: {{ prompt.shared_with.join(', ') }}
+                        </span>
+                      </div>
+                    </template>
+                  </v-card-subtitle>
+                </div>
+              </v-card>
+            </v-col>
           </template>
-        </v-card-subtitle>
-      </v-card>
-    </v-col>
-  </v-row>
+          <v-col v-else cols="12">
+            <div class="text-center text-grey my-4">
+              Sie haben noch keine Prompts erstellt. Nutzen Sie das Formular rechts, um Ihr erstes Prompt anzulegen.
+            </div>
+          </v-col>
+        </v-row>
 
         <!-- Mit mir geteilte Prompts -->
         <h2 class="text-h5 mb-4 mt-6">Mit mir geteilte Prompts</h2>
         <v-row>
-          <v-col cols="12" sm="6" v-for="prompt in sharedPrompts" :key="prompt.id">
-            <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
-              <v-card-title>{{ prompt.name }}</v-card-title>
-              <v-card-subtitle>
-                Geteilt von: {{ prompt.owner }}<br>
-                Geteilt am: {{ formatDate(prompt.shared_at) }}
-              </v-card-subtitle>
-            </v-card>
+          <template v-if="sharedPrompts.length > 0">
+            <v-col cols="12" sm="6" v-for="prompt in sharedPrompts" :key="prompt.id">
+              <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
+                <div class="d-flex flex-column card-content">
+                  <v-card-title class="text-truncate">{{ prompt.name }}</v-card-title>
+                  <v-card-subtitle>
+                    <div>Geteilt von: {{ prompt.owner }}</div>
+                    <div>Geteilt am: {{ formatDate(prompt.shared_at) }}</div>
+                  </v-card-subtitle>
+                </div>
+              </v-card>
+            </v-col>
+          </template>
+          <v-col v-else cols="12">
+            <div class="text-center text-grey my-4">
+              Bisher wurden keine Prompts mit Ihnen geteilt.
+            </div>
           </v-col>
         </v-row>
       </v-col>
-
       <!-- Rechte Seite: Menü zum Anlegen eines neuen Prompts -->
       <v-col cols="12" md="4">
         <v-card>
@@ -210,10 +229,36 @@ onMounted(async () => {
 .case-card {
   cursor: pointer;
   transition: box-shadow 0.3s ease-in-out, transform 0.1s ease-in-out;
+  height: 105px; /* Fixe Höhe für alle Karten */
 }
 
 .case-card:hover {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
+}
+
+.card-content {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Sicherstellen, dass der Titel nur eine Zeile einnimmt */
+.v-card-title {
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Sicherstellen, dass die Sharing-Information bei Überlauf abgeschnitten wird */
+.v-card-subtitle {
+  overflow: hidden;
+}
+
+/* Text-Overflow für geteilte Benutzer */
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

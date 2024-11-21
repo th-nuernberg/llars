@@ -291,6 +291,7 @@ const showPreview = ref(false);
 const showTemplateDialog = ref(false);
 
 const sharedUsers = ref([]);
+const owner = ref('');
 
 const rules = {
   required: (value) => !!value || 'Pflichtfeld',
@@ -348,7 +349,6 @@ async function savePrompt() {
   }
 }
 
-// Erweiterte fetchPrompt Funktion
 async function fetchPrompt() {
   try {
     const api_key = localStorage.getItem('api_key');
@@ -362,6 +362,7 @@ async function fetchPrompt() {
     promptName.value = response.data.name;
     isSharedPrompt.value = response.data.is_shared;
     sharedUsers.value = response.data.shared_with || [];
+    owner.value = response.data.owner || ''; // Setze den Besitzer
 
     if (response.data.content?.blocks) {
       blocks.value = Object.entries(response.data.content.blocks)

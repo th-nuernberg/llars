@@ -6,13 +6,27 @@
         <h1>Prompt Engineering</h1>
         <p>Wählen Sie ein Prompt aus, um es zu bearbeiten oder zu teilen.</p>
 
+        <!-- Meine Prompts -->
+        <h2 class="text-h5 mb-4">Meine Prompts</h2>
         <v-row>
           <v-col cols="12" sm="6" v-for="prompt in prompts" :key="prompt.id">
             <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
               <v-card-title>{{ prompt.name }}</v-card-title>
-              <v-card-text>
-                <p><strong>Erstellt von:</strong> {{ prompt.owner }}</p>
-              </v-card-text>
+              <v-card-subtitle>Erstellt: {{ formatDate(prompt.created_at) }}</v-card-subtitle>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <!-- Mit mir geteilte Prompts -->
+        <h2 class="text-h5 mb-4 mt-6">Mit mir geteilte Prompts</h2>
+        <v-row>
+          <v-col cols="12" sm="6" v-for="prompt in sharedPrompts" :key="prompt.id">
+            <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
+              <v-card-title>{{ prompt.name }}</v-card-title>
+              <v-card-subtitle>
+                Geteilt von: {{ prompt.owner }}<br>
+                Geteilt am: {{ formatDate(prompt.shared_at) }}
+              </v-card-subtitle>
             </v-card>
           </v-col>
         </v-row>
@@ -41,6 +55,8 @@
                 :disabled="!isFormValid"
                 color="primary"
                 @click="savePrompt"
+                class="mt-4"
+                block
               >
                 Prompt anlegen
               </v-btn>
@@ -62,6 +78,7 @@ const router = useRouter();
 
 // Prompts State
 const prompts = ref([]);
+const sharedPrompts = ref([]);
 
 // Form State
 const newPrompt = ref({ name: '' });
@@ -71,7 +88,18 @@ const rules = {
   required: (value) => !!value || 'Pflichtfeld',
 };
 
-// API Call zum Abrufen aller Prompts
+// Formatiert das Datum für die Anzeige
+function formatDate(dateString) {
+  return new Date(dateString).toLocaleString('de-DE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// API Call zum Abrufen aller eigenen Prompts
 async function fetchPrompts() {
   try {
     const api_key = localStorage.getItem('api_key');
@@ -86,6 +114,21 @@ async function fetchPrompts() {
   }
 }
 
+// API Call zum Abrufen aller geteilten Prompts
+async function fetchSharedPrompts() {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts/shared`, {
+      headers: {
+        'Authorization': api_key,
+      },
+    });
+    sharedPrompts.value = response.data.shared_prompts || [];
+  } catch (error) {
+    console.error('Fehler beim Abrufen der geteilten Prompts:', error);
+  }
+}
+
 // API Call zum Speichern eines neuen Prompts
 async function savePrompt() {
   try {
@@ -96,7 +139,7 @@ async function savePrompt() {
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts`,
       {
         name: newPrompt.value.name,
-        content: '{}', // Standard leeres JSON
+        content: { blocks: {} }, // Leere Blocks-Struktur
       },
       {
         headers: {
@@ -131,6 +174,7 @@ async function savePrompt() {
     sharedWith.value = '';
   } catch (error) {
     console.error('Fehler beim Speichern des Prompts:', error);
+    alert(error.response?.data?.error || 'Fehler beim Speichern des Prompts');
   }
 }
 
@@ -140,7 +184,9 @@ function navigateToPromptDetail(promptId) {
 }
 
 // Prompts laden, wenn die Komponente gemountet wird
-onMounted(fetchPrompts);
+onMounted(async () => {
+  await Promise.all([fetchPrompts(), fetchSharedPrompts()]);
+});
 </script>
 
 <style scoped>

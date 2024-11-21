@@ -216,6 +216,37 @@ function loadTemplate(templateId) {
   showTemplateDialog.value = false;
 }
 
+async function savePrompt() {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    // Create content object with blocks and their positions
+    const content = {
+      blocks: blocks.value.reduce((acc, block, index) => {
+        acc[block.name] = {
+          content: block.content,
+          position: index
+        };
+        return acc;
+      }, {})
+    };
+
+    await axios.put(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}`,
+      {content},
+      {
+        headers: {
+          Authorization: api_key,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    alert('Prompt wurde erfolgreich gespeichert!');
+  } catch (error) {
+    console.error('Fehler beim Speichern des Prompts:', error);
+    alert('Fehler beim Speichern des Prompts.');
+  }
+}
+
 async function fetchPrompt() {
   try {
     const api_key = localStorage.getItem('api_key');
@@ -227,11 +258,19 @@ async function fetchPrompt() {
     );
 
     promptName.value = response.data.name;
-    if (response.data.content && typeof response.data.content === 'object') {
-      blocks.value = Object.entries(response.data.content).map(([key, value]) => ({
-        name: key,
-        content: value
-      }));
+    if (response.data.content?.blocks) {
+      // Convert the blocks object back to array and sort by position
+      blocks.value = Object.entries(response.data.content.blocks)
+        .map(([name, data]) => ({
+          name,
+          content: data.content,
+          position: data.position
+        }))
+        .sort((a, b) => a.position - b.position)
+        .map(({ name, content }) => ({
+          name,
+          content
+        }));
     }
   } catch (error) {
     console.error('Fehler beim Abrufen des Prompts:', error);
@@ -250,31 +289,6 @@ function removeBlock(index) {
 
 function previewPrompt() {
   showPreview.value = true;
-}
-
-async function savePrompt() {
-  try {
-    const api_key = localStorage.getItem('api_key');
-    const content = blocks.value.reduce((acc, block, index) => {
-      acc[`${index + 1}_${block.name}`] = block.content;
-      return acc;
-    }, {});
-
-    await axios.put(
-      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}`,
-      {content},
-      {
-        headers: {
-          Authorization: api_key,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    alert('Prompt wurde erfolgreich gespeichert!');
-  } catch (error) {
-    console.error('Fehler beim Speichern des Prompts:', error);
-    alert('Fehler beim Speichern des Prompts.');
-  }
 }
 
 onMounted(fetchPrompt);

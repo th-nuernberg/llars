@@ -121,6 +121,9 @@ const isFormValid = ref(false);
 const rules = {
   required: (value) => !!value || 'Pflichtfeld',
 };
+// API Call zum Speichern eines neuen Prompts
+// Füge diese ref hinzu:
+const newPromptForm = ref(null);
 
 // Formatiert das Datum für die Anzeige
 function formatDate(dateString) {
@@ -163,7 +166,7 @@ async function fetchSharedPrompts() {
   }
 }
 
-// API Call zum Speichern eines neuen Prompts
+// Aktualisierte savePrompt Funktion
 async function savePrompt() {
   try {
     const api_key = localStorage.getItem('api_key');
@@ -210,9 +213,10 @@ async function savePrompt() {
     // Aktualisiertes Prompt zur Liste hinzufügen
     prompts.value.push(newPromptData);
 
-    // Felder zurücksetzen
+    // Felder zurücksetzen und Formular zurücksetzen
     newPrompt.value.name = '';
     sharedWith.value = '';
+    newPromptForm.value?.reset(); // Formular zurücksetzen
   } catch (error) {
     console.error('Fehler beim Speichern des Prompts:', error);
     alert(error.response?.data?.error || 'Fehler beim Speichern des Prompts');

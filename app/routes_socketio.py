@@ -1,15 +1,10 @@
 from flask_socketio import emit, join_room, leave_room
 from flask import request
-from openai import OpenAI
-import os
 import json
 import requests
 import logging
 from rag_pipeline import RAGPipeline
 
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY', "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"))
-import os
-import asyncio
 
 logging.basicConfig(level=logging.INFO)
 

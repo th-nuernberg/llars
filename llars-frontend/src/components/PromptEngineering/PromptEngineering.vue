@@ -7,15 +7,24 @@
         <p>Wählen Sie ein Prompt aus, um es zu bearbeiten oder zu teilen.</p>
 
         <!-- Meine Prompts -->
-        <h2 class="text-h5 mb-4">Meine Prompts</h2>
-        <v-row>
-          <v-col cols="12" sm="6" v-for="prompt in prompts" :key="prompt.id">
-            <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
-              <v-card-title>{{ prompt.name }}</v-card-title>
-              <v-card-subtitle>Erstellt: {{ formatDate(prompt.created_at) }}</v-card-subtitle>
-            </v-card>
-          </v-col>
-        </v-row>
+  <h2 class="text-h5 mb-4">Meine Prompts</h2>
+  <v-row>
+    <v-col cols="12" sm="6" v-for="prompt in prompts" :key="prompt.id">
+      <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
+        <v-card-title>{{ prompt.name }}</v-card-title>
+        <v-card-subtitle>
+          Erstellt: {{ formatDate(prompt.created_at) }}
+          <template v-if="prompt.shared_with && prompt.shared_with.length > 0">
+            <v-divider class="my-2"></v-divider>
+            <div class="d-flex align-center">
+              <v-icon size="small" color="info" class="mr-1">mdi-share-variant</v-icon>
+              Geteilt mit: {{ prompt.shared_with.join(', ') }}
+            </div>
+          </template>
+        </v-card-subtitle>
+      </v-card>
+    </v-col>
+  </v-row>
 
         <!-- Mit mir geteilte Prompts -->
         <h2 class="text-h5 mb-4 mt-6">Mit mir geteilte Prompts</h2>
@@ -149,8 +158,11 @@ async function savePrompt() {
       }
     );
 
-    // Prompt zur Liste hinzufügen
-    prompts.value.push(response.data.prompt);
+    // Prompt-Objekt mit leerer shared_with Liste erstellen
+    const newPromptData = {
+      ...response.data.prompt,
+      shared_with: []
+    };
 
     // Falls "Mit Benutzer teilen" ausgefüllt wurde
     if (sharedWith.value) {
@@ -166,8 +178,12 @@ async function savePrompt() {
           },
         }
       );
+      newPromptData.shared_with.push(sharedWith.value);
       alert(`Prompt wurde erfolgreich mit ${sharedWith.value} geteilt.`);
     }
+
+    // Aktualisiertes Prompt zur Liste hinzufügen
+    prompts.value.push(newPromptData);
 
     // Felder zurücksetzen
     newPrompt.value.name = '';
@@ -177,6 +193,7 @@ async function savePrompt() {
     alert(error.response?.data?.error || 'Fehler beim Speichern des Prompts');
   }
 }
+
 
 // Navigation zu Prompt-Detail
 function navigateToPromptDetail(promptId) {

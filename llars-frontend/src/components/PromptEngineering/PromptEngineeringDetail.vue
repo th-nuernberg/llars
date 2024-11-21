@@ -122,6 +122,31 @@
             </v-btn>
           </v-card-text>
         </v-card>
+          <!-- In der Sidebar, nach der Actions Card -->
+  <v-card class="mt-4" v-if="!isSharedPrompt">
+    <v-card-title>Prompt teilen</v-card-title>
+    <v-card-text>
+      <v-form ref="shareForm" v-model="isShareFormValid">
+        <v-text-field
+          v-model="shareWithUser"
+          label="Benutzername"
+          :rules="[rules.required]"
+          dense
+          class="mb-2"
+          placeholder="Mit Benutzer teilen"
+        ></v-text-field>
+        <v-btn
+          block
+          color="info"
+          :disabled="!isShareFormValid"
+          @click="sharePrompt"
+        >
+          <v-icon left>mdi-share</v-icon>
+          Teilen
+        </v-btn>
+      </v-form>
+    </v-card-text>
+  </v-card>
       </v-col>
     </v-row>
 
@@ -267,6 +292,7 @@ async function savePrompt() {
   }
 }
 
+// Erweiterte fetchPrompt Funktion
 async function fetchPrompt() {
   try {
     const api_key = localStorage.getItem('api_key');
@@ -278,6 +304,9 @@ async function fetchPrompt() {
     );
 
     promptName.value = response.data.name;
+    // Prüfen ob es ein geteiltes Prompt ist
+    isSharedPrompt.value = response.data.is_shared;
+
     if (response.data.content?.blocks) {
       // Convert the blocks object back to array and sort by position
       blocks.value = Object.entries(response.data.content.blocks)
@@ -329,6 +358,38 @@ async function downloadPrompt() {
   } catch (error) {
     console.error('Fehler beim Herunterladen des Prompts:', error);
     alert('Fehler beim Herunterladen des Prompts.');
+  }
+}
+
+// Neue Refs für das Sharing
+const shareWithUser = ref('');
+const isShareFormValid = ref(false);
+const isSharedPrompt = ref(false);
+
+
+
+// Neue Funktion zum Teilen des Prompts
+async function sharePrompt() {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}/share`,
+      {
+        shared_with: shareWithUser.value
+      },
+      {
+        headers: {
+          'Authorization': api_key,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    alert(`Prompt wurde erfolgreich mit ${shareWithUser.value} geteilt!`);
+    shareWithUser.value = ''; // Feld zurücksetzen
+  } catch (error) {
+    console.error('Fehler beim Teilen des Prompts:', error);
+    alert(error.response?.data?.error || 'Fehler beim Teilen des Prompts');
   }
 }
 

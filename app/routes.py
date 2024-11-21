@@ -1371,6 +1371,10 @@ def share_prompt(prompt_id):
     if not shared_with_username:
         return jsonify({'error': 'Username to share with is required'}), 400
 
+    # Prüfen, ob der Benutzer versucht, das Prompt mit sich selbst zu teilen
+    if shared_with_username == user.username:
+        return jsonify({'error': 'You cannot share a prompt with yourself'}), 400
+
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
     if not prompt:
@@ -1392,6 +1396,7 @@ def share_prompt(prompt_id):
     db.session.commit()
 
     return jsonify({'message': f'Prompt shared with "{shared_with_username}" successfully'}), 201
+
 
 
 @data_blueprint.route('/prompts/shared', methods=['GET'])

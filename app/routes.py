@@ -1485,6 +1485,50 @@ def download_prompt_json(prompt_id):
     return response
 
 
+@data_blueprint.route('/prompts/<int:prompt_id>/rename', methods=['PUT'])
+def rename_prompt(prompt_id):
+    """
+    Route zum Umbenennen eines Prompts.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
+    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    if not prompt:
+        return jsonify({'error': 'Prompt not found or you do not have permission to rename it'}), 404
+
+    data = request.get_json()
+    new_name = data.get('name')
+
+    if not new_name:
+        return jsonify({'error': 'New name is required'}), 400
+
+    # Prüfen, ob bereits ein Prompt mit diesem Namen existiert
+    existing_prompt = UserPrompt.query.filter_by(user_id=user.id, name=new_name).first()
+    if existing_prompt and existing_prompt.prompt_id != prompt_id:
+        return jsonify({'error': f'A prompt with the name "{new_name}" already exists'}), 409
+
+    # Prompt umbenennen
+    prompt.name = new_name
+    prompt.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Prompt renamed successfully',
+        'prompt': {
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'updated_at': prompt.updated_at.isoformat()
+        }
+    }), 200
+
+
 def configure_routes(app):
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
     app.register_blueprint(data_blueprint, url_prefix='/api')

@@ -147,6 +147,40 @@
       </v-form>
     </v-card-text>
   </v-card>
+            <v-card class="mt-4">
+      <v-card-title class="d-flex align-center">
+        <span>Geteilt mit</span>
+        <v-spacer></v-spacer>
+        <v-chip
+          small
+          :color="sharedUsers.length > 0 ? 'info' : 'grey'"
+          class="ml-2"
+        >
+          {{ sharedUsers.length }}
+        </v-chip>
+      </v-card-title>
+      <v-card-text>
+        <template v-if="sharedUsers.length > 0">
+          <v-list dense>
+            <v-list-item
+              v-for="user in sharedUsers"
+              :key="user"
+              class="px-0"
+            >
+              <v-list-item-icon class="mr-2">
+                <v-icon small color="info">mdi-account</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>{{ user }}</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </template>
+        <div v-else class="text-center text-grey">
+          Dieses Prompt wurde noch nicht geteilt
+        </div>
+      </v-card-text>
+    </v-card>
       </v-col>
     </v-row>
 
@@ -236,6 +270,8 @@ const isFormValid = ref(false);
 const showPreview = ref(false);
 const showTemplateDialog = ref(false);
 
+const sharedUsers = ref([]);
+
 const rules = {
   required: (value) => !!value || 'Pflichtfeld',
 };
@@ -304,11 +340,10 @@ async function fetchPrompt() {
     );
 
     promptName.value = response.data.name;
-    // Prüfen ob es ein geteiltes Prompt ist
     isSharedPrompt.value = response.data.is_shared;
+    sharedUsers.value = response.data.shared_with || [];
 
     if (response.data.content?.blocks) {
-      // Convert the blocks object back to array and sort by position
       blocks.value = Object.entries(response.data.content.blocks)
         .map(([name, data]) => ({
           name,
@@ -366,9 +401,6 @@ const shareWithUser = ref('');
 const isShareFormValid = ref(false);
 const isSharedPrompt = ref(false);
 
-
-
-// Neue Funktion zum Teilen des Prompts
 async function sharePrompt() {
   try {
     const api_key = localStorage.getItem('api_key');
@@ -384,6 +416,9 @@ async function sharePrompt() {
         },
       }
     );
+
+    // Nach erfolgreichem Teilen die Prompt-Daten neu laden
+    await fetchPrompt();
 
     alert(`Prompt wurde erfolgreich mit ${shareWithUser.value} geteilt!`);
     shareWithUser.value = ''; // Feld zurücksetzen

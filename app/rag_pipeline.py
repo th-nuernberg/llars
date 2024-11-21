@@ -52,6 +52,7 @@ class RAGPipeline:
         current_docs_hash = self._get_docs_hash()
         model_info_path = os.path.join(self.vectorstore_dir, "model_info.json")
 
+        # Versuche existierenden Vectorstore zu laden
         if os.path.exists(self.vectorstore_dir) and os.path.exists(docs_hash_path) and os.path.exists(model_info_path):
             with open(docs_hash_path, "r") as f:
                 saved_docs_hash = json.load(f).get("hash")
@@ -59,55 +60,62 @@ class RAGPipeline:
                 saved_model = json.load(f).get("model_name")
 
             if saved_docs_hash == current_docs_hash and saved_model == self.model_name:
-                logging.info(f"Loading existing vector store for model {self.model_name} from {self.vectorstore_dir}")
+                logging.info("Versuche existierenden Vectorstore zu laden...")
                 try:
                     self.vectorstore = Chroma(
                         collection_name=self.collection_name,
                         persist_directory=self.vectorstore_dir,
-                        embedding_function=self.embeddings  # Use "embedding" instead of "embedding_function"
+                        embedding_function=self.embeddings
                     )
-                    num_docs = len(self.vectorstore.get())
-                    logging.info(f"Successfully loaded vector store with {num_docs} documents")
-                    return num_docs
+                    logging.info("Vectorstore erfolgreich geladen")
+                    return
                 except Exception as e:
-                    logging.error(f"Error loading existing vectorstore: {str(e)}")
+                    logging.error(f"Fehler beim Laden des Vectorstores: {str(e)}")
 
-        logging.info(f"Creating new vector store for model {self.model_name} in {self.vectorstore_dir}")
+        # Neuen Vectorstore erstellen
+        logging.info(f"Erstelle neuen Vectorstore für {self.model_name}")
         if self.vectorstore:
             self.delete_index()
 
+        # Dokumente laden
         documents = []
+        loaded_files = 0
+        logging.info("Starte Dokumentenverarbeitung...")
+
         for root, _, files in os.walk(self.docs_dir):
             for file in files:
                 if file.endswith(('.txt', '.md', '.pdf')):
                     file_path = os.path.join(root, file)
-                    documents.extend(self.load_document(file_path))
+                    loaded_docs = self.load_document(file_path)
+                    documents.extend(loaded_docs)
+                    loaded_files += 1
 
         if not documents:
-            logging.warning("No documents loaded.")
+            logging.warning("Keine Dokumente gefunden")
             return 0
 
+        # Dokumente splitten
         splits = self.text_splitter.split_documents(documents)
-        logging.info(f"Processing {len(splits)} document chunks")
+        logging.info(f"Verarbeite {loaded_files} Dateien mit insgesamt {len(splits)} Chunks")
 
         try:
-            # Create client with persistence
             self.vectorstore = Chroma.from_documents(
                 documents=splits,
                 collection_name=self.collection_name,
                 persist_directory=self.vectorstore_dir,
-                embedding=self.embeddings  # Use "embedding" here
+                embedding=self.embeddings
             )
-            # Save hashes after successful creation
+
+            # Hash speichern
             with open(docs_hash_path, "w") as f:
                 json.dump({"hash": current_docs_hash}, f)
             with open(model_info_path, "w") as f:
                 json.dump({"model_name": self.model_name}, f)
 
-            logging.info(f"Successfully created vector store with {len(splits)} chunks")
-            return len(splits)
+            logging.info(f"Vectorstore erfolgreich erstellt und {len(splits)} Chunks indexiert")
+            return 0
         except Exception as e:
-            logging.error(f"Error creating vectorstore: {str(e)}")
+            logging.error(f"Fehler beim Erstellen des Vectorstores: {str(e)}")
             raise
 
     def load_document(self, file_path):

@@ -411,27 +411,27 @@ function rateMessage(index, rating) {
 async function saveRatingServerSide() {
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
-  const temp = {
+  const formatted_rating = {
     counsellor_coherence_rating: ratings.value.counsellor_coherence,
     client_coherence_rating: ratings.value.client_coherence,
     quality_rating: ratings.value.quality,
     overall_rating: ratings.value.overall,
     feedback: feedback.value
   }
-  if(checkIfDisabled("rating-category-coherence-client"))
-    temp.client_coherence_rating = 0;
-  if(checkIfDisabled("rating-category-coherence-counsellor"))
-    temp.counsellor_coherence_rating = 0;
-  if(checkIfDisabled("rating-category-quality"))
-    temp.quality_rating = 0;
-  if(checkIfDisabled("rating-category-overall"))
-    temp.overall_rating = 0;
+  if(checkIfDisabled("rating-category-coherence-client") && formatted_rating.client_coherence_rating === null)
+    formatted_rating.client_coherence_rating = 0;
+  if(checkIfDisabled("rating-category-coherence-counsellor") && formatted_rating.counsellor_coherence_rating === null)
+    formatted_rating.counsellor_coherence_rating = 0;
+  if(checkIfDisabled("rating-category-quality") && formatted_rating.quality_rating === null)
+    formatted_rating.quality_rating = 0;
+  if(checkIfDisabled("rating-category-overall") && formatted_rating.overall_rating === null)
+    formatted_rating.overall_rating = 0;
 
   try {
     // saving mail history ratings
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
-      temp,
+      formatted_rating,
       {
         headers: {
           'Authorization': api_key,
@@ -446,7 +446,6 @@ async function saveRatingServerSide() {
       message_id: message.message_id,
       rating: message.rating // Wenn kein Rating vorhanden ist, wird null übermittelt
     }));
-
     // API request to save message ratings
     const messageRatingResponse = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_message_ratings/${threadId}`,

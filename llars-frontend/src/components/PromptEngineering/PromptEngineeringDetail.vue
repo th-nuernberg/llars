@@ -3,8 +3,49 @@
     <v-row no-gutters style="height: 100%">
       <!-- Main Content Area - Blocks -->
       <v-col cols="9" class="pr-4">
-        <h1 class="text-h4 mb-6">
-          {{ promptName }}
+        <div class="d-flex align-center mb-6">
+          <template v-if="isEditing">
+            <v-text-field
+              v-model="editedName"
+              :rules="[rules.required]"
+              dense
+              hide-details
+              class="mr-2"
+              style="max-width: 300px"
+              @keyup.enter="saveName"
+            ></v-text-field>
+            <v-btn
+              icon
+              color="success"
+              small
+              class="mr-1"
+              @click="saveName"
+            >
+              <v-icon>mdi-check</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              color="error"
+              small
+              @click="cancelEdit"
+            >
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </template>
+          <template v-else>
+            <h1 class="text-h4">
+              {{ promptName }}
+              <v-btn
+                icon
+                small
+                class="ml-2"
+                @click="startEdit"
+                v-if="!isSharedPrompt"
+              >
+                <v-icon>mdi-pencil</v-icon>
+              </v-btn>
+            </h1>
+          </template>
           <v-chip
             v-if="isSharedPrompt"
             color="info"
@@ -13,7 +54,7 @@
           >
             Geteilt von {{ owner }}
           </v-chip>
-        </h1>
+        </div>
         <div class="blocks-container">
           <draggable
             v-model="blocks"
@@ -293,6 +334,14 @@ const showTemplateDialog = ref(false);
 const sharedUsers = ref([]);
 const owner = ref('');
 
+// Neue Refs für das Sharing
+const shareWithUser = ref('');
+const isShareFormValid = ref(false);
+const isSharedPrompt = ref(false);
+
+const isEditing = ref(false);
+const editedName = ref('');
+
 const rules = {
   required: (value) => !!value || 'Pflichtfeld',
 };
@@ -417,10 +466,6 @@ async function downloadPrompt() {
   }
 }
 
-// Neue Refs für das Sharing
-const shareWithUser = ref('');
-const isShareFormValid = ref(false);
-const isSharedPrompt = ref(false);
 
 async function sharePrompt() {
   try {
@@ -446,6 +491,43 @@ async function sharePrompt() {
   } catch (error) {
     console.error('Fehler beim Teilen des Prompts:', error);
     alert(error.response?.data?.error || 'Fehler beim Teilen des Prompts');
+  }
+}
+
+
+function startEdit() {
+  editedName.value = promptName.value;
+  isEditing.value = true;
+}
+
+function cancelEdit() {
+  editedName.value = '';
+  isEditing.value = false;
+}
+
+async function saveName() {
+  if (!editedName.value.trim()) {
+    return;
+  }
+
+  try {
+    const api_key = localStorage.getItem('api_key');
+    await axios.put(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}/rename`,
+      { name: editedName.value },
+      {
+        headers: {
+          Authorization: api_key,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    promptName.value = editedName.value;
+    isEditing.value = false;
+  } catch (error) {
+    console.error('Fehler beim Umbenennen des Prompts:', error);
+    alert(error.response?.data?.error || 'Fehler beim Umbenennen des Prompts');
   }
 }
 

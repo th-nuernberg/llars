@@ -1249,10 +1249,12 @@ def get_user_prompts():
 
     return jsonify({'prompts': prompts_data}), 200
 
+
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['GET'])
 def get_user_prompt(prompt_id):
     """
     Route zum Abrufen eines einzelnen Prompts für den Benutzer.
+    Berücksichtigt sowohl eigene als auch geteilte Prompts.
     """
     api_key = request.headers.get('Authorization')
     if not api_key:
@@ -1262,10 +1264,24 @@ def get_user_prompt(prompt_id):
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
-    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    # Prompt abrufen (eigene und geteilte)
+    prompt = UserPrompt.query.filter(
+        (UserPrompt.prompt_id == prompt_id) &
+        ((UserPrompt.user_id == user.id) |  # Eigene Prompts
+         (UserPrompt.prompt_id.in_(  # Geteilte Prompts
+             db.session.query(UserPromptShare.prompt_id)
+             .filter_by(shared_with_user_id=user.id)
+         )))
+    ).first()
+
     if not prompt:
         return jsonify({'error': 'Prompt not found or you do not have permission to view it'}), 404
+
+    # Überprüfen, ob es ein geteiltes Prompt ist
+    is_shared = prompt.user_id != user.id
+
+    # Besitzer-Informationen hinzufügen
+    owner = prompt.user.username
 
     return jsonify({
         'id': prompt.prompt_id,
@@ -1273,6 +1289,8 @@ def get_user_prompt(prompt_id):
         'content': prompt.content,
         'created_at': prompt.created_at.isoformat(),
         'updated_at': prompt.updated_at.isoformat(),
+        'is_shared': is_shared,
+        'owner': owner
     }), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['PUT'])
@@ -1388,6 +1406,59 @@ def get_shared_prompts():
 
     return jsonify({'shared_prompts': prompts_data}), 200
 
+
+@data_blueprint.route('/prompts/<int:prompt_id>/download', methods=['GET'])
+def download_prompt_json(prompt_id):
+    """
+    Route zum Herunterladen eines Prompts als formatierte JSON-Datei.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
+    prompt = UserPrompt.query.filter(
+        (UserPrompt.prompt_id == prompt_id) &
+        ((UserPrompt.user_id == user.id) |
+         (UserPrompt.prompt_id.in_(
+             db.session.query(UserPromptShare.prompt_id)
+             .filter_by(shared_with_user_id=user.id)
+         )))
+    ).first()
+
+    if not prompt:
+        return jsonify({'error': 'Prompt not found or you do not have permission to access it'}), 404
+
+    # Formatierte JSON erstellen
+    formatted_content = {}
+
+    if isinstance(prompt.content, dict) and 'blocks' in prompt.content:
+        # Sortiere die Blöcke nach ihrer Position
+        blocks_sorted = sorted(
+            prompt.content['blocks'].items(),
+            key=lambda x: x[1].get('position', float('inf'))
+        )
+
+        # Erstelle das formatierte Dictionary
+        formatted_content = {
+            block_name: block_data['content']
+            for block_name, block_data in blocks_sorted
+        }
+
+    # JSON-Response mit Download-Header
+    response = Response(
+        json.dumps(formatted_content, indent=4, ensure_ascii=False),
+        mimetype='application/json',
+        headers={
+            'Content-Disposition': f'attachment; filename=prompt_{prompt.name}.json'
+        }
+    )
+
+    return response
 
 
 def configure_routes(app):

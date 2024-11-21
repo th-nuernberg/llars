@@ -31,48 +31,82 @@
       </v-card-text>
     </v-card>
 
-    <!-- Benutzerkarten -->
     <v-card v-for="user in userStats" :key="user.username" class="mb-2 user-card">
-      <v-card-text class="py-2">
-        <v-row align="center" no-gutters class="user-row">
-          <v-col cols="2" sm="1" class="username-col">
-            <span class="username">{{ user.username }}</span>
-          </v-col>
-          <v-col cols="3" sm="2" class="threads-col">
-            <span class="thread-info">{{ user.rated_threads }}</span>
-          </v-col>
-          <v-col cols="3" sm="2" class="threads-col">
-            <span class="thread-info">{{ user.partly_rated_threads }}</span>
-          </v-col>
-          <v-col cols="3" sm="2" class="threads-col">
-            <span class="thread-info">{{ user.not_rated_threads }}</span>
-          </v-col>
-          <v-col class="progress-col">
-            <v-progress-linear
-              :model-value="calculateProgress(user)"
-              height="20"
-              rounded
-              color="#b0ca97"
-              background-color="#f1efd5"
-              class="progress-bar"
+  <v-card-text class="py-2">
+    <v-row align="center" no-gutters class="user-row">
+      <!-- Benutzername -->
+      <v-col cols="2" sm="1" class="username-col">
+        <span class="username">{{ user.username }}</span>
+      </v-col>
+
+      <!-- Bewertete Threads -->
+      <v-col cols="3" sm="2" class="threads-col">
+        <span class="thread-info">{{ user.rated_threads }}</span>
+      </v-col>
+
+      <!-- Teilweise bewertete Threads -->
+      <v-col cols="3" sm="2" class="threads-col">
+        <span class="thread-info">{{ user.partly_rated_threads }}</span>
+      </v-col>
+
+      <!-- Nicht bewertete Threads -->
+      <v-col cols="3" sm="2" class="threads-col">
+        <span class="thread-info">{{ user.not_rated_threads }}</span>
+      </v-col>
+
+      <!-- Fortschrittsbalken -->
+      <v-col class="progress-col">
+        <div class="progress-bar-wrapper">
+          <!-- Bewertete Threads (grün) -->
+          <div
+            :style="{ width: `${user.ratedPercentage}%` }"
+            class="progress-bar progress-bar-rated"
+          >
+            <span
+              v-if="user.ratedPercentage > 5"
+              class="progress-label progress-label-rated"
             >
-              <template v-slot:default="{ value }">
-                <strong>{{ Math.round(value) }}%</strong>
-              </template>
-            </v-progress-linear>
-          </v-col>
-          <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
-            <v-btn
-              x-small
-              color="primary"
-              @click="showThreadDetails(user)"
+              {{ Math.round(user.ratedPercentage) }}%
+            </span>
+          </div>
+
+          <!-- Teilweise bewertete Threads (gelb) -->
+          <div
+            :style="{ width: `${user.partlyRatedPercentage}%`, left: `${user.ratedPercentage}%` }"
+            class="progress-bar progress-bar-partly-rated"
+          >
+            <span
+              v-if="user.partlyRatedPercentage > 5"
+              class="progress-label progress-label-partly-rated"
             >
-              Details
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+              {{ Math.round(user.partlyRatedPercentage) }}%
+            </span>
+          </div>
+
+          <!-- Nicht bewertete Threads (rot) -->
+          <div
+            :style="{ width: `${user.unratedPercentage}%`, left: `${user.ratedPercentage + user.partlyRatedPercentage}%` }"
+            class="progress-bar progress-bar-not-rated"
+          >
+            <span
+              v-if="user.unratedPercentage > 5"
+              class="progress-label progress-label-not-rated"
+            >
+              {{ Math.round(user.unratedPercentage) }}%
+            </span>
+          </div>
+        </div>
+      </v-col>
+
+      <!-- Details Button -->
+      <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
+        <v-btn x-small color="primary" @click="showThreadDetails(user)">
+          Details
+        </v-btn>
+      </v-col>
+    </v-row>
+  </v-card-text>
+</v-card>
 
     <!-- Thread Details Dialog -->
     <v-dialog v-model="dialogVisible" max-width="700px">
@@ -136,10 +170,16 @@ const showThreadDetails = (user) => {
 };
 
 // Berechnung des Fortschritts für jeden Benutzer
-const calculateProgress = (user) => {
-  const totalThreads = user.total_threads;
-  const progress = totalThreads > 0 ? (user.rated_threads / totalThreads) * 100 : 0;
-  return progress;
+const calculateProgressSections = (total_threads, rated_threads, partly_rated_threads) => {
+  const ratedPercentage = (rated_threads / total_threads) * 100 || 0;
+  const partlyRatedPercentage = (partly_rated_threads / total_threads) * 100 || 0;
+  const unratedPercentage = 100 - ratedPercentage - partlyRatedPercentage;
+
+  return {
+    ratedPercentage,
+    partlyRatedPercentage,
+    unratedPercentage,
+  };
 };
 
 // Abrufen der Benutzerstatistiken von der API
@@ -159,7 +199,20 @@ const fetchUserStats = async () => {
     });
 
     if (Array.isArray(response.data)) {
-      userStats.value = response.data;
+      userStats.value = response.data.map(user => {
+        // Berechnung der Prozentwerte für den Fortschritt
+        const progressSections = calculateProgressSections(
+          user.total_threads,
+          user.rated_threads,
+          user.partly_rated_threads
+        );
+
+        // Rückgabe des erweiterten Objekts
+        return {
+          ...user,
+          ...progressSections, // Fügt ratedPercentage, partlyRatedPercentage und unratedPercentage hinzu
+        };
+      });
     } else {
       console.error('Unerwartetes Format der API-Antwort:', response.data);
     }
@@ -265,6 +318,58 @@ onMounted(() => {
   color: #2F4F4F;
   font-weight: bold;
 }
+
+/* Fortschrittsbalken Wrapper */
+.progress-bar-wrapper {
+  position: relative;
+  height: 20px;
+  background-color: #f1efd5; /* Hintergrundfarbe der Progressbar */
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Allgemeine Balken */
+.progress-bar {
+  height: 100%;
+  position: absolute;
+}
+
+/* Farben der Balken */
+.progress-bar-rated {
+  background-color: #e9f5ea; /* Grün für bewertete Threads */
+}
+
+.progress-bar-partly_rated {
+  background-color: #f7ebd9; /* Gelb für teilweise bewertete Threads */
+}
+
+.progress-bar-not-rated {
+  background-color: #f3f3f3; /* Rot für nicht bewertete Threads */
+}
+
+/* Prozentzahlen (Labels) */
+.progress-label {
+  font-size: 12px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+/* Farben der Prozentzahlen */
+.progress-label-rated{
+  color: #4aae4d;
+}
+
+.progress-label-partly-rated {
+  color: #ff9c12;
+}
+
+.progress-label-not-rated {
+  color: #a1a1a1;
+}
+
 
 .global-progress-card {
   background-color: #f1efd5;

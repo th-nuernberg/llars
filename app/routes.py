@@ -829,7 +829,7 @@ def get_user_HistoryGeneration_stats():
                     total_partly_rated_threads += 1
                     partly_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject,})
                 elif mail_rating.rating_status == 'Rated':
-                    total_not_rated_threads += 1
+                    total_rated_threads += 1
                     rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
                 else:
                     total_not_rated_threads += 1

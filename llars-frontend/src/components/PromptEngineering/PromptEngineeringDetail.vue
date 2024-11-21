@@ -3,21 +3,41 @@
     <v-row no-gutters style="height: 100%">
       <!-- Main Content Area - Blocks -->
       <v-col cols="9" class="pr-4">
-        <h1 class="text-h4 mb-6">{{ promptName }}</h1>
+        <h1 class="text-h4 mb-6">
+          {{ promptName }}
+          <v-chip
+            v-if="isSharedPrompt"
+            color="info"
+            small
+            class="ml-2"
+          >
+            Geteilt von {{ owner }}
+          </v-chip>
+        </h1>
         <div class="blocks-container">
           <draggable
             v-model="blocks"
             class="blocks-list"
             item-key="name"
             handle=".drag-handle"
+            :disabled="isSharedPrompt"
           >
             <template #item="{ element, index }">
               <v-card class="mb-4">
                 <v-card-title class="d-flex align-center">
-                  <v-icon class="drag-handle mr-2 cursor-move">mdi-drag</v-icon>
+                  <v-icon
+                    class="mr-2"
+                    :class="{ 'cursor-move': !isSharedPrompt, 'drag-handle': !isSharedPrompt }"
+                  >
+                    {{ isSharedPrompt ? 'mdi-text' : 'mdi-drag' }}
+                  </v-icon>
                   {{ element.name }}
                   <v-spacer></v-spacer>
-                  <v-btn icon @click="removeBlock(index)">
+                  <v-btn
+                    icon
+                    @click="removeBlock(index)"
+                    v-if="!isSharedPrompt"
+                  >
                     <v-icon color="error">mdi-delete</v-icon>
                   </v-btn>
                 </v-card-title>
@@ -28,6 +48,7 @@
                     hide-details
                     rows="4"
                     class="prompt-textarea"
+                    :readonly="isSharedPrompt"
                   ></v-textarea>
                 </v-card-text>
               </v-card>
@@ -38,8 +59,8 @@
 
       <!-- Sidebar - Tools -->
       <v-col cols="3" class="sidebar">
-        <!-- Template Selection Card -->
-        <v-card class="mb-4">
+        <!-- Template Selection Card - nur für nicht geteilte Prompts -->
+        <v-card class="mb-4" v-if="!isSharedPrompt">
           <v-card-title>Templates</v-card-title>
           <v-card-text>
             <v-btn
@@ -54,8 +75,8 @@
           </v-card-text>
         </v-card>
 
-        <!-- New Block Card -->
-        <v-card class="mb-4">
+        <!-- New Block Card - nur für nicht geteilte Prompts -->
+        <v-card class="mb-4" v-if="!isSharedPrompt">
           <v-card-title>Neuer Baustein</v-card-title>
           <v-card-text>
             <v-form ref="newBlockForm" v-model="isFormValid">
@@ -83,7 +104,9 @@
         <v-card>
           <v-card-title>Aktionen</v-card-title>
           <v-card-text>
+            <!-- Speichern-Button nur für nicht geteilte Prompts -->
             <v-btn
+              v-if="!isSharedPrompt"
               block
               color="success"
               class="mb-2"
@@ -92,29 +115,30 @@
               <v-icon left>mdi-content-save</v-icon>
               Speichern
             </v-btn>
+
             <v-btn
               block
               color="info"
+              class="mb-2"
               @click="previewPrompt"
             >
               <v-icon left>mdi-eye</v-icon>
               Vorschau
             </v-btn>
-            <!-- In der Actions Card, nach dem Vorschau Button -->
+
             <v-btn
               block
               color="secondary"
-              class="mt-2"
+              class="mb-2"
               @click="downloadPrompt"
             >
               <v-icon left>mdi-download</v-icon>
               Als JSON herunterladen
             </v-btn>
-            <!-- In der Actions Card, nach dem Download Button -->
+
             <v-btn
               block
               color="grey"
-              class="mt-2"
               @click="goBack"
             >
               <v-icon left>mdi-arrow-left</v-icon>
@@ -122,65 +146,61 @@
             </v-btn>
           </v-card-text>
         </v-card>
-          <!-- In der Sidebar, nach der Actions Card -->
-  <v-card class="mt-4" v-if="!isSharedPrompt">
-    <v-card-title>Prompt teilen</v-card-title>
-    <v-card-text>
-      <v-form ref="shareForm" v-model="isShareFormValid">
-        <v-text-field
-          v-model="shareWithUser"
-          label="Benutzername"
-          :rules="[rules.required]"
-          dense
-          class="mb-2"
-          placeholder="Mit Benutzer teilen"
-        ></v-text-field>
-        <v-btn
-          block
-          color="info"
-          :disabled="!isShareFormValid"
-          @click="sharePrompt"
-        >
-          <v-icon left>mdi-share</v-icon>
-          Teilen
-        </v-btn>
-      </v-form>
-    </v-card-text>
-  </v-card>
-            <v-card class="mt-4">
-      <v-card-title class="d-flex align-center">
-        <span>Geteilt mit</span>
-        <v-spacer></v-spacer>
-        <v-chip
-          small
-          :color="sharedUsers.length > 0 ? 'info' : 'grey'"
-          class="ml-2"
-        >
-          {{ sharedUsers.length }}
-        </v-chip>
-      </v-card-title>
-      <v-card-text>
-        <template v-if="sharedUsers.length > 0">
-          <v-list dense>
-            <v-list-item
-              v-for="user in sharedUsers"
-              :key="user"
-              class="px-0"
-            >
-              <v-list-item-icon class="mr-2">
-                <v-icon small color="info">mdi-account</v-icon>
-              </v-list-item-icon>
-              <v-list-item-content>
-                <v-list-item-title>{{ user }}</v-list-item-title>
-              </v-list-item-content>
-            </v-list-item>
-          </v-list>
-        </template>
-        <div v-else class="text-center text-grey">
-          Dieses Prompt wurde noch nicht geteilt
-        </div>
-      </v-card-text>
-    </v-card>
+
+        <!-- Share Card - nur für eigene, nicht geteilte Prompts -->
+        <v-card class="mt-4" v-if="!isSharedPrompt">
+          <v-card-title>Prompt teilen</v-card-title>
+          <v-card-text>
+            <v-form ref="shareForm" v-model="isShareFormValid">
+              <v-text-field
+                v-model="shareWithUser"
+                label="Benutzername"
+                :rules="[rules.required]"
+                dense
+                class="mb-2"
+                placeholder="Mit Benutzer teilen"
+              ></v-text-field>
+              <v-btn
+                block
+                color="info"
+                :disabled="!isShareFormValid"
+                @click="sharePrompt"
+              >
+                <v-icon left>mdi-share</v-icon>
+                Teilen
+              </v-btn>
+            </v-form>
+
+            <!-- Shared Users List -->
+            <template v-if="sharedUsers.length > 0">
+              <v-divider class="my-3"></v-divider>
+              <div class="text-subtitle-2 mb-2">
+                Geteilt mit:
+                <v-chip
+                  small
+                  color="info"
+                  class="ml-2"
+                >
+                  {{ sharedUsers.length }}
+                </v-chip>
+              </div>
+              <v-list dense>
+                <v-list-item
+                  v-for="user in sharedUsers"
+                  :key="user"
+                  class="px-0"
+                >
+                  <v-list-item-icon class="mr-2">
+                    <v-icon small color="info">mdi-account</v-icon>
+                  </v-list-item-icon>
+                  <v-list-item-content>
+                    <v-list-item-title>{{ user }}</v-list-item-title>
+                  </v-list-item-content>
+                </v-list-item>
+              </v-list>
+            </template>
+          </v-card-text>
+        </v-card>
       </v-col>
     </v-row>
 

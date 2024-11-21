@@ -154,6 +154,7 @@ class UserPromptShare(db.Model):
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     prompt_id = mapped_column(db.Integer, db.ForeignKey('user_prompts.prompt_id'))
     shared_with_user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+    created_at = mapped_column(db.DateTime, default=datetime.utcnow)  # Zeitstempel hinzugefügt
 
     prompt = db.relationship('UserPrompt', backref='shared_users')
     shared_with_user = db.relationship('User', backref='shared_prompts')

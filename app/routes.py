@@ -1045,7 +1045,7 @@ def save_mail_rating(thread_id):
             filled_ratings_counter += 1
 
     rating_status = "Not Rated" if filled_ratings_counter == 0 else "Rated"
-    if 0 <= filled_ratings_counter < 4: rating_status = "Partly Rated"
+    if 0 < filled_ratings_counter < 4: rating_status = "Partly Rated"
 
     # Changes happened, or it is the first rating
     # Create a new mail rating with feedback and save it into the db with current timestamp

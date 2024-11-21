@@ -196,14 +196,16 @@
           <v-card-title>Prompt teilen</v-card-title>
           <v-card-text>
             <v-form ref="shareForm" v-model="isShareFormValid">
-              <v-text-field
-                v-model="shareWithUser"
-                label="Benutzername"
-                :rules="[rules.required]"
-                dense
-                class="mb-2"
-                placeholder="Mit Benutzer teilen"
-              ></v-text-field>
+            <v-text-field
+              v-model="shareWithUser"
+              label="Benutzername"
+
+              dense
+              class="mb-2"
+              placeholder="Mit Benutzer teilen"
+            />
+              <!-- :rules="[rules.required]" -->
+              <!-- @keyup.enter="sharePrompt" -->
               <v-btn
                 block
                 color="info"

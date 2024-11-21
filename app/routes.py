@@ -1232,23 +1232,31 @@ def get_user_prompts():
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Alle Prompts des Benutzers abrufen
+    # Alle Prompts des Benutzers abrufen inkl. Sharing-Informationen
     user_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
 
-    # Rückgabe der Prompts als JSON
-    prompts_data = [
-        {
+    # Rückgabe der Prompts als JSON mit Sharing-Informationen
+    prompts_data = []
+    for prompt in user_prompts:
+        # Sharing-Informationen abrufen
+        shared_users = db.session.query(User.username) \
+            .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id) \
+            .filter(UserPromptShare.prompt_id == prompt.prompt_id) \
+            .all()
+
+        shared_with = [user[0] for user in shared_users]
+
+        prompt_data = {
             'id': prompt.prompt_id,
             'name': prompt.name,
             'content': prompt.content,
             'created_at': prompt.created_at.isoformat(),
-            'updated_at': prompt.updated_at.isoformat()
+            'updated_at': prompt.updated_at.isoformat(),
+            'shared_with': shared_with  # Liste der Benutzernamen
         }
-        for prompt in user_prompts
-    ]
+        prompts_data.append(prompt_data)
 
     return jsonify({'prompts': prompts_data}), 200
-
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['GET'])
 def get_user_prompt(prompt_id):

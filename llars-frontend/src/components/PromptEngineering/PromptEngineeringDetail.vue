@@ -470,7 +470,7 @@ onMounted(fetchPrompt);
 
 <style scoped>
 .blocks-container {
-  height: calc(100vh - 120px);
+  height: calc(100vh - 15vh);
   overflow-y: auto;
   padding-right: 16px;
 }
@@ -482,7 +482,7 @@ onMounted(fetchPrompt);
 }
 
 .sidebar {
-  height: calc(100vh - 32px);
+  height: calc(100vh - 15vh);
   overflow-y: auto;
   position: sticky;
   top: 16px;

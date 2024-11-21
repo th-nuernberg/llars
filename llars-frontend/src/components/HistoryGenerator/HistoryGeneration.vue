@@ -68,7 +68,7 @@ function navigateToCase(threadId) {
 }
 
 function checkUnsavedChanges(thread_id) {
-  const hasUnsavedChanges = localStorage.getItem(`unsaved_changes_${thread_id}`);
+  const hasUnsavedChanges = localStorage.getItem(`hasUnsaved_ratingChanges_${thread_id}`);
   return !!hasUnsavedChanges;
 }
 </script>

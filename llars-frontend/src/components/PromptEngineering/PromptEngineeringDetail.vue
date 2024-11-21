@@ -100,6 +100,26 @@
               <v-icon left>mdi-eye</v-icon>
               Vorschau
             </v-btn>
+            <!-- In der Actions Card, nach dem Vorschau Button -->
+            <v-btn
+              block
+              color="secondary"
+              class="mt-2"
+              @click="downloadPrompt"
+            >
+              <v-icon left>mdi-download</v-icon>
+              Als JSON herunterladen
+            </v-btn>
+            <!-- In der Actions Card, nach dem Download Button -->
+            <v-btn
+              block
+              color="grey"
+              class="mt-2"
+              @click="goBack"
+            >
+              <v-icon left>mdi-arrow-left</v-icon>
+              Zurück zur Übersicht
+            </v-btn>
           </v-card-text>
         </v-card>
       </v-col>
@@ -276,6 +296,44 @@ async function fetchPrompt() {
     console.error('Fehler beim Abrufen des Prompts:', error);
     alert('Fehler beim Laden des Prompts.');
   }
+}
+
+async function downloadPrompt() {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios({
+      url: `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}/download`,
+      method: 'GET',
+      headers: {
+        'Authorization': api_key
+      },
+      responseType: 'blob' // Wichtig für den Download
+    });
+
+    // Erstelle einen Blob aus der Response
+    const blob = new Blob([response.data], { type: 'application/json' });
+
+    // Erstelle einen temporären Link zum Download
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${promptName.value}.json`; // Verwendet den Prompt-Namen für die Datei
+
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error('Fehler beim Herunterladen des Prompts:', error);
+    alert('Fehler beim Herunterladen des Prompts.');
+  }
+}
+
+function goBack() {
+  router.push('/promptengineering');
 }
 
 function addBlock() {

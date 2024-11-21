@@ -3,58 +3,62 @@
     <v-row no-gutters style="height: 100%">
       <!-- Main Content Area - Blocks -->
       <v-col cols="9" class="pr-4">
-        <div class="d-flex align-center mb-6">
-          <template v-if="isEditing">
-            <v-text-field
-              v-model="editedName"
-              :rules="[rules.required]"
-              dense
-              hide-details
-              class="mr-2"
-              style="max-width: 300px"
-              @keyup.enter="saveName"
-            ></v-text-field>
-            <v-btn
-              icon
-              color="success"
+        <div class="prompt-title-container">
+          <div class="d-flex align-center">
+            <template v-if="isEditing">
+              <v-text-field
+                v-model="editedName"
+                :rules="[rules.required]"
+                hide-details
+                class="prompt-edit-field text-h4"
+                @keyup.enter="saveName"
+              ></v-text-field>
+              <div class="edit-actions">
+                <v-btn
+                  text
+                  x-small
+                  color="success"
+                  class="edit-btn mr-1"
+                  @click="saveName"
+                >
+                  <v-icon small>mdi-check</v-icon>
+                </v-btn>
+                <v-btn
+                  text
+                  x-small
+                  color="error"
+                  class="edit-btn"
+                  @click="cancelEdit"
+                >
+                  <v-icon small>mdi-close</v-icon>
+                </v-btn>
+              </div>
+            </template>
+            <template v-else>
+              <div class="prompt-title-wrapper">
+                <h1 class="text-h4 prompt-title">{{ promptName }}</h1>
+                <v-btn
+                  text
+                  x-small
+                  class="edit-title-btn ml-2"
+                  @click="startEdit"
+                  v-if="!isSharedPrompt"
+                >
+                  <v-icon small>mdi-pencil</v-icon>
+                </v-btn>
+              </div>
+            </template>
+            <v-chip
+              v-if="isSharedPrompt"
+              color="info"
               small
-              class="mr-1"
-              @click="saveName"
+              class="ml-2"
             >
-              <v-icon>mdi-check</v-icon>
-            </v-btn>
-            <v-btn
-              icon
-              color="error"
-              small
-              @click="cancelEdit"
-            >
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
-          </template>
-          <template v-else>
-            <h1 class="text-h4">
-              {{ promptName }}
-              <v-btn
-                icon
-                small
-                class="ml-2"
-                @click="startEdit"
-                v-if="!isSharedPrompt"
-              >
-                <v-icon>mdi-pencil</v-icon>
-              </v-btn>
-            </h1>
-          </template>
-          <v-chip
-            v-if="isSharedPrompt"
-            color="info"
-            small
-            class="ml-2"
-          >
-            Geteilt von {{ owner }}
-          </v-chip>
+              Geteilt von {{ owner }}
+            </v-chip>
+          </div>
         </div>
+
         <div class="blocks-container">
           <draggable
             v-model="blocks"
@@ -100,7 +104,7 @@
 
       <!-- Sidebar - Tools -->
       <v-col cols="3" class="sidebar">
-        <!-- Template Selection Card - nur für nicht geteilte Prompts -->
+        <!-- Template Selection Card -->
         <v-card class="mb-4" v-if="!isSharedPrompt">
           <v-card-title>Templates</v-card-title>
           <v-card-text>
@@ -116,7 +120,7 @@
           </v-card-text>
         </v-card>
 
-        <!-- New Block Card - nur für nicht geteilte Prompts -->
+        <!-- New Block Card -->
         <v-card class="mb-4" v-if="!isSharedPrompt">
           <v-card-title>Neuer Baustein</v-card-title>
           <v-card-text>
@@ -145,7 +149,6 @@
         <v-card>
           <v-card-title>Aktionen</v-card-title>
           <v-card-text>
-            <!-- Speichern-Button nur für nicht geteilte Prompts -->
             <v-btn
               v-if="!isSharedPrompt"
               block
@@ -188,7 +191,7 @@
           </v-card-text>
         </v-card>
 
-        <!-- Share Card - nur für eigene, nicht geteilte Prompts -->
+        <!-- Share Card -->
         <v-card class="mt-4" v-if="!isSharedPrompt">
           <v-card-title>Prompt teilen</v-card-title>
           <v-card-text>
@@ -585,5 +588,80 @@ onMounted(fetchPrompt);
   background: #f5f5f5;
   padding: 16px;
   border-radius: 4px;
+}
+
+/* Neue Styles für den Prompt-Titel */
+.prompt-title-container {
+  position: relative;
+  padding: 8px 0;
+  margin-bottom: 24px;
+}
+
+.prompt-title-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.prompt-title {
+  margin: 0;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.87);
+  line-height: 1.2;
+}
+
+.edit-title-btn {
+  opacity: 0.2;
+  transition: opacity 0.2s ease;
+  min-width: 24px !important;
+  width: 24px;
+  height: 24px !important;
+  padding: 0 !important;
+}
+
+.prompt-title-wrapper:hover .edit-title-btn {
+  opacity: 0.7;
+}
+
+.edit-title-btn:hover {
+  opacity: 1 !important;
+}
+
+.prompt-edit-field {
+  max-width: 500px;
+  font-size: 2rem !important;
+  font-weight: 500;
+}
+
+.prompt-edit-field :deep(.v-input__slot) {
+  min-height: unset !important;
+  padding: 0 8px !important;
+  background-color: transparent !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 4px;
+}
+
+.prompt-edit-field :deep(.v-text-field__slot input) {
+  padding: 4px 0;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.edit-actions {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.edit-btn {
+  min-width: 24px !important;
+  width: 24px;
+  height: 24px !important;
+  padding: 0 !important;
+}
+
+.edit-btn:hover {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 </style>

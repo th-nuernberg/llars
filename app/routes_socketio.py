@@ -56,7 +56,7 @@ def configure_socket_routes(socketio):
 
     @socketio.on("chat_stream")
     def handle_chat_stream(data):
-        ssh_container = "kia_docker_ssh_proxy_service"
+        ssh_container = "llars_docker_ssh_proxy_service"
         ssh_container_port = "8093"
 
         user_message = data.get("message", "").encode('utf-8').decode('utf-8')

@@ -46,8 +46,14 @@
                 <div class="d-flex flex-column card-content">
                   <v-card-title class="text-truncate">{{ prompt.name }}</v-card-title>
                   <v-card-subtitle>
-                    <div>Geteilt von: {{ prompt.owner }}</div>
-                    <div>Geteilt am: {{ formatDate(prompt.shared_at) }}</div>
+                    <div class="mb-2">Geteilt am: {{ formatDate(prompt.shared_at) }}</div>
+                    <v-divider></v-divider>
+                    <div class="d-flex align-center mt-2">
+                      <v-icon size="small" color="info" class="mr-1">mdi-account</v-icon>
+                      <span class="text-truncate">
+                        Geteilt von: {{ prompt.owner }}
+                      </span>
+                    </div>
                   </v-card-subtitle>
                 </div>
               </v-card>

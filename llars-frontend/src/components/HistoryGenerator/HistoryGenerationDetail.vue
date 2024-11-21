@@ -252,7 +252,7 @@ function formatTimestamp(timestamp) {
 
 // Load changes of mail history ratings from local storage
 function loadMailHistoryRatingsFromLocalStorage() {
-  const savedData = JSON.parse(localStorage.getItem(`ratings_${threadId}`));
+  const savedData = JSON.parse(localStorage.getItem(`local_rating_changes_${threadId}`));
   if (savedData) {
     ratings.value = savedData.ratings;
     feedback.value = savedData.feedback;
@@ -264,7 +264,7 @@ function loadMailHistoryRatingsFromLocalStorage() {
 // Load changes of message ratings from local storage
 function loadMessageRatingsFromLocalStorage() {
   // retrieve data from local storage
-  const savedMessageRatings = JSON.parse(localStorage.getItem(`messageRatings_${threadId}`));
+  const savedMessageRatings = JSON.parse(localStorage.getItem(`local_messageRating_changes_${threadId}`));
 
   // check if data got retrieved
   if (savedMessageRatings) {
@@ -286,7 +286,7 @@ function saveMailhistoryRatingsToLocalStorage() {
     ratings: ratings.value,
     feedback: feedback.value
   };
-  localStorage.setItem(`ratings_${threadId}`, JSON.stringify(dataToSave));
+  localStorage.setItem(`local_rating_changes_${threadId}`, JSON.stringify(dataToSave));
   console.log("Änderungen wurden im LocalStorage gespeichert")
 }
 
@@ -299,7 +299,7 @@ function saveMessageRatingsToLocalStorage() {
   }));
 
   // save ratings and message id into local storage
-  localStorage.setItem(`messageRatings_${threadId}`, JSON.stringify(messageRatingsToSave));
+  localStorage.setItem(`local_messageRating_changes_${threadId}`, JSON.stringify(messageRatingsToSave));
   console.log("Nachrichtenbewertungen im Local Storage gespeichert:", messageRatingsToSave);
 }
 
@@ -377,7 +377,7 @@ function check_for_changes() {
     initial_rating.value.overall !== ratings.value.overall ||
       initial_feedback.value !== feedback.value)
   {
-    localStorage.setItem(`unsaved_changes_${threadId}`, JSON.stringify(true));
+    localStorage.setItem(`hasUnsaved_ratingChanges_${threadId}`, JSON.stringify(true));
     return true;
   }
 
@@ -386,11 +386,11 @@ function check_for_changes() {
   {
     if(initial_messages.value[i].rating !== messages.value[i].rating)
     {
-      localStorage.setItem(`unsaved_changes_${threadId}`, JSON.stringify(true))
+      localStorage.setItem(`hasUnsaved_ratingChanges_${threadId}`, JSON.stringify(true))
       return true;
     }
   }
-  localStorage.removeItem(`unsaved_changes_${threadId}`)
+  localStorage.removeItem(`hasUnsaved_ratingChanges_${threadId}`)
   return false
 }
 
@@ -461,8 +461,8 @@ async function saveRatingServerSide() {
     console.log('Message Ratings saved:', messageRatingResponse.data);
 
     alert('Rating und Feedback wurden erfolgreich gespeichert!');
-    localStorage.removeItem(`ratings_${threadId}`); // remove the local changes from local storage
-    localStorage.removeItem(`messageRatings_${threadId}`);
+    localStorage.removeItem(`local_rating_changes_${threadId}`); // remove the local changes from local storage
+    localStorage.removeItem(`local_messageRating_changes_${threadId}`);
     await initializeWebsiteComponent() //reload website
 
   } catch (error) {

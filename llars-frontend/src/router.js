@@ -21,6 +21,7 @@ import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngine
 
 // Importiere die Admin-Check Funktion
 import { isAdmin } from '@/services/admins';
+import AdminHistoryGenerator from "@/components/Admin/AdminHistoryGenerator.vue";
 
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
@@ -40,6 +41,7 @@ const routes = [
 
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
+    { path: '/AdminHistoryGenerator', component: AdminHistoryGenerator, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },

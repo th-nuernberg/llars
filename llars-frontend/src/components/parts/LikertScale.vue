@@ -13,7 +13,8 @@
           'size-3': rating === 3,
           'green-tone': rating === 1 || rating === 2,
           'purple-tone': rating === 4 || rating === 5,
-          'gray-tone': rating === 3
+          'gray-tone': rating === 3,
+          'disabled-rating': disabled
         }]"
       >
         <span class="likert-circle">
@@ -28,22 +29,28 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, watch } from 'vue';
 
-const props = defineProps(['modelValue']);
+const props = defineProps({
+  modelValue: { type: Number, default: null },
+  disabled: { type: Boolean, default: false } // Neues Prop für das Disabled-Flag
+});
 const emit = defineEmits(['update:modelValue']);
 
+
 function selectRating(rating) {
- if (rating === props.modelValue) {
-    emit('update:modelValue', null);  // Zurücksetzen auf null, wenn der gleiche Wert erneut ausgewählt wird
+  if (props.disabled) return; // Keine Aktion, wenn disabled aktiv ist
+
+  if (rating === props.modelValue) {
+    emit('update:modelValue', null); // Zurücksetzen auf null
   } else {
-    emit('update:modelValue', rating);  // Den neuen Wert setzen
+    emit('update:modelValue', rating); // Den neuen Wert setzen
   }
 }
 </script>
 
-<style scoped>
 
+<style scoped>
 .likert-scale-container {
   display: flex;
   justify-content: center;
@@ -64,6 +71,12 @@ function selectRating(rating) {
   flex-direction: column;
   align-items: center;
   cursor: pointer;
+  transition: opacity 0.3s, cursor 0.3s;
+}
+
+.disabled-rating {
+  cursor: not-allowed;
+  opacity: 0.5; /* Inaktiver Stil */
 }
 
 .likert-circle {
@@ -134,5 +147,5 @@ function selectRating(rating) {
   background-color: #d3d3d3;
   border-color: #515151;
 }
-
 </style>
+

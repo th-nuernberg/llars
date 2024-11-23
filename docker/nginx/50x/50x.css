@@ -1,0 +1,123 @@
+/* Grundlegende Stile */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #fdfcfa;
+    color: #2F4F4F;
+}
+
+/* App-Bar (Header) */
+.app-bar {
+    display: flex;
+    align-items: center;
+    background-color: #b0ca97; /* Verwende deine 'primary' Farbe */
+    color: white;
+    padding: 0 16px;
+    height: 64px;
+}
+
+.nav-icon {
+    width: 24px;
+    height: 24px;
+    background-image: url('nav-icon.svg'); /* Optional: Füge ein Navigationsicon hinzu */
+    background-size: contain;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.toolbar-title {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-left: 16px;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.logo-image {
+    margin-right: 15px;
+}
+
+.toolbar-text {
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    color: #f8f8f8;
+}
+
+.spacer {
+    flex: 1;
+}
+
+/* Hauptinhalt */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 94px); /* Höhe abzüglich Header und Footer */
+}
+
+.error-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.title {
+    font-size: 2.5rem;
+    color: #2F4F4F;
+    margin-bottom: 1rem;
+}
+
+.message {
+    font-size: 1.2rem;
+    color: #2F4F4F;
+    margin-bottom: 2rem;
+}
+
+.home-button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background-color: #b0ca97; /* Ähnlich zu den Grüntönen in deinen Dateien */
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.home-button:hover {
+    background-color: #98b77b;
+}
+
+/* Footer */
+.footer {
+    height: 30px;
+    background-color: #b0ca97; /* Verwende deine 'primary' Farbe */
+    color: white;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 0.75rem;
+}
+
+.footer-content {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.footer-links .footer-link {
+    margin-left: 1rem;
+    cursor: pointer;
+}
+
+.footer-link:hover {
+    text-decoration: underline;
+}

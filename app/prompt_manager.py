@@ -87,17 +87,6 @@ class PromptManager:
                       current_message: str,
                       chat_history: List[Dict[str, str]] = None,
                       rag_context: str = "") -> str:
-        """
-        Erstellt das vollständige Prompt für das Modell.
-
-        Args:
-            current_message: Aktuelle Nachricht des Nutzers
-            chat_history: Liste der vorherigen Chat-Nachrichten
-            rag_context: Zusätzlicher Kontext aus der RAG-Pipeline
-
-        Returns:
-            Formatiertes Prompt für das Modell
-        """
         # Konvertiere Chat-Historie in Message-Objekte
         messages = []
         if chat_history:
@@ -107,9 +96,6 @@ class PromptManager:
                     content=msg.get('content', '')
                 ))
 
-        # Füge aktuelle Nachricht hinzu
-        messages.append(Message(role="user", content=current_message))
-
         # Formatiere Chat-Historie
         formatted_history, truncated = self._format_chat_history(messages, rag_context)
 
@@ -118,12 +104,12 @@ class PromptManager:
 
         # Baue finales Prompt
         prompt_parts = [
-            f"<s>[INST]{self.system_prompt}",
-            f"\nRelevanter Kontext aus der Wissensbasis:\n{rag_context}" if rag_context else "",
-            "\nVorheriger Chatverlauf:\n" + formatted_history if formatted_history else "",
-            "[/INST]",
-            "Verstanden, ich werde dir als LLars helfen.</s>",
-            f"[INST]{current_message}[/INST]"
+            f"<s>[INST]\n{self.system_prompt}",
+            f"\n\nRelevanter Kontext aus der Wissensbasis:\n{rag_context}" if rag_context else "",
+            f"\n\nVorheriger Chatverlauf:\n{formatted_history}" if formatted_history else "",
+            "\n[/INST]\n</s>",
+            f"<s>[INST]\n{current_message}\n[/INST]"
         ]
 
         return "".join(prompt_parts)
+

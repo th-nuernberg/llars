@@ -253,7 +253,7 @@ const adjustAnimationSpeed = (length) => {
 onMounted(() => {
   loadMessages(); // Lade gespeicherte Nachrichten beim Mounten
 
-  socket.value = io('http://localhost:80', {
+  socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
     path: '/socket.io/',
     transports: ['websocket'],
     headers: {

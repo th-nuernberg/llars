@@ -50,6 +50,9 @@ services:
           target: /vue/src
           ignore:
             - node_modules/
+    depends_on:
+      - backend-supervisor-service
+      - ssh-proxy-service
 
   backend-supervisor-service:
     container_name: llars_supervisor_service
@@ -64,7 +67,6 @@ services:
     depends_on:
       - backend-flask-service
       - db-maria-service
-      - frontend-vue-service
 
   db-maria-service:
     container_name: llars_db_service

@@ -190,7 +190,8 @@ const adjustAnimationSpeed = (length) => {
 onMounted(() => {
   loadMessages();
 
-  socket.value = io('http://localhost:80', {
+  // Verbesserte Socket.io Initialisierung mit Umgebungsvariable
+  socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
     path: '/socket.io/',
     transports: ['websocket'],
     headers: {

@@ -11,6 +11,8 @@
     "axios": "^1.6.8",
     "jwt-decode": "^4.0.0",
     "roboto-fontface": "*",
+    "socket.io-client": "^4.8.1",
+    "uuid": "^11.0.3",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0",
     "vuedraggable": "^4.1.0",

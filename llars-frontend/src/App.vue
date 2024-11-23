@@ -60,8 +60,8 @@
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
 
-    <!-- Chatbot wird nur angezeigt, wenn Benutzer eingeloggt ist -->
-    <FloatingChat v-if="username" />
+    <!-- Chatbot wird nur angezeigt, wenn Benutzer eingeloggt ist und ENABLE_CHAT true ist -->
+    <FloatingChat v-if="username && ENABLE_CHAT" />
 
     <v-footer app dark color="primary" height="30" class="px-4 footer">
       <v-row no-gutters align="center" justify="space-between">
@@ -86,12 +86,14 @@
   </v-app>
 </template>
 
-
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { isAdmin } from '@/services/admins';
 import FloatingChat from './components/FloatingChat.vue';
+
+// Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
+const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
 
 const router = useRouter();
 const username = ref('');
@@ -103,22 +105,18 @@ const cleanupOldChatMessages = () => {
   try {
     const chatData = localStorage.getItem('chat_messages');
     if (chatData) {
-      // Prüfen ob es einen Zeitstempel gibt
       const storedTimestamp = localStorage.getItem('chat_messages_timestamp');
       const currentTime = new Date().getTime();
 
       if (!storedTimestamp) {
-        // Wenn kein Zeitstempel existiert, aktuellen setzen
         localStorage.setItem('chat_messages_timestamp', currentTime.toString());
         return;
       }
 
-      // Prüfen ob die Nachrichten älter als 24 Stunden sind
       const timestampDiff = currentTime - parseInt(storedTimestamp);
       const oneDayInMs = 24 * 60 * 60 * 1000;
 
       if (timestampDiff > oneDayInMs) {
-        // Chat-Nachrichten und Zeitstempel löschen wenn älter als 24 Stunden
         localStorage.removeItem('chat_messages');
         localStorage.removeItem('chat_messages_timestamp');
       }
@@ -136,28 +134,24 @@ function updateUsername() {
 
 onMounted(() => {
   updateUsername();
-  // Beim Mounten alte Nachrichten prüfen
   cleanupOldChatMessages();
 });
 
 watch(() => router.currentRoute.value, () => {
   updateUsername();
-}, { immediate: true });
+}, {immediate: true});
 
 function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('username');
   localStorage.removeItem('api_key');
-
-  // Chat-bezogene Daten löschen
   localStorage.removeItem('chat_messages');
   localStorage.removeItem('chat_messages_timestamp');
 
-  // Andere Feature-bezogene Daten löschen
   Object.keys(localStorage).forEach(key => {
     if (key.startsWith('featureOrder_') ||
-        key.startsWith('featureRating_') ||
-        key.startsWith('rankerDetail_data_')) {
+      key.startsWith('featureRating_') ||
+      key.startsWith('rankerDetail_data_')) {
       localStorage.removeItem(key);
     }
   });
@@ -221,18 +215,15 @@ function navigateTo(link) {
   text-decoration: underline;
 }
 
-
 .logo-image {
-  /* Hier können Sie das Bild anpassen */
-  transform: translateY(0px);  /* Vertikale Position */
-  margin-top: 9px;            /* Zusätzlicher Abstand von oben */
+  transform: translateY(0px);
+  margin-top: 9px;
   margin-right: 15px;
-  /* height: 20px; */         /* Falls Sie die Höhe per CSS steuern möchten */
 }
 
 .toolbar-text-wrapper {
-  align-self: center; /* Passt die vertikale Ausrichtung unabhängig an */
-  margin-top: 2px; /* Verschiebung nach Bedarf anpassen */
+  align-self: center;
+  margin-top: 2px;
 }
 
 .toolbar-text {
@@ -241,5 +232,4 @@ function navigateTo(link) {
   letter-spacing: 0.1px;
   color: #f8f8f8;
 }
-
 </style>

@@ -16,7 +16,7 @@ import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import AdminTester from "@/components/Admin/AdminTester.vue";
 
-import ChatWidget from "@/components/ChatWidget.vue";
+import Chat from "@/components/Chat.vue";
 
 import TempTestPage from "@/components/TempTest.vue";
 
@@ -45,7 +45,7 @@ const routes = [
     { path: '/', redirect: '/login' },
     { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
 
-    { path: '/chat', component: ChatWidget, meta: { requiresAuth: true } },
+    { path: '/chat', component: Chat, meta: { requiresAuth: true } },
 
     { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
 

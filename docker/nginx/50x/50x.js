@@ -1,7 +1,13 @@
 // Configuration for retry attempts
-const RETRY_INTERVAL = 5000; // 5 seconds between attempts
-const MAX_RETRIES = 10;      // Maximum number of attempts
-let retryCount = 0;
+const PHASE_1_DURATION = 2 * 60 * 1000;  // 2 minutes in milliseconds
+const PHASE_2_DURATION = 5 * 60 * 1000;  // 5 minutes in milliseconds
+const PHASE_3_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+const PHASE_1_INTERVAL = 5000;   // 5 seconds
+const PHASE_2_INTERVAL = 10000;  // 10 seconds
+const PHASE_3_INTERVAL = 30000;  // 30 seconds
+
+let startTime = 0;
 let retryTimeout;
 
 // Main navigation functions
@@ -20,6 +26,28 @@ function navigateTo(link) {
         case 'Kontakt':
             window.location.href = '/kontakt';
             break;
+    }
+}
+
+// Function to determine current retry interval based on elapsed time
+function getCurrentInterval() {
+    const elapsedTime = Date.now() - startTime;
+
+    if (elapsedTime <= PHASE_1_DURATION) {
+        return PHASE_1_INTERVAL;
+    } else if (elapsedTime <= PHASE_2_DURATION) {
+        return PHASE_2_INTERVAL;
+    } else if (elapsedTime <= PHASE_3_DURATION) {
+        return PHASE_3_INTERVAL;
+    }
+    return null; // Signal to stop retrying
+}
+
+// Function to remove loading animation
+function removeLoadingAnimation() {
+    const spinner = document.querySelector('.spinner');
+    if (spinner) {
+        spinner.style.display = 'none';
     }
 }
 
@@ -44,16 +72,26 @@ function checkConnection() {
 
 // Function for retry attempts
 function retryConnection() {
-    retryCount++;
+    const interval = getCurrentInterval();
 
-    if (retryCount < MAX_RETRIES) {
-        retryTimeout = setTimeout(checkConnection, RETRY_INTERVAL);
-    } else {
-        window.location.reload(); // Simply reload the page after max retries
+    if (interval === null) {
+        console.log('Maximum retry time reached');
+        removeLoadingAnimation();
+        return;
     }
+
+    retryTimeout = setTimeout(checkConnection, interval);
 }
 
 // Start the first connection attempt
 document.addEventListener('DOMContentLoaded', () => {
+    startTime = Date.now();
     checkConnection();
+});
+
+// Cleanup function to prevent memory leaks
+window.addEventListener('beforeunload', () => {
+    if (retryTimeout) {
+        clearTimeout(retryTimeout);
+    }
 });

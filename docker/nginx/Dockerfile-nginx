@@ -1,8 +1,15 @@
-# docker/nginx/Dockerfile-nginx
 FROM nginx:alpine
 
+# Copy the files with a flattened structure
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx/50x/50x.html /usr/share/nginx/html/50x.html
-COPY docker/nginx/50x/50x.css /usr/share/nginx/html/50x.css
-COPY docker/nginx/50x/50x.js /usr/share/nginx/html/50x.js
-COPY docker/nginx/50x/assets /usr/share/nginx/html/assets
+COPY docker/nginx/50x/50x.css /usr/share/nginx/html/50x-assets/50x.css
+COPY docker/nginx/50x/50x.js /usr/share/nginx/html/50x-assets/50x.js
+COPY docker/nginx/50x/assets /usr/share/nginx/html/50x-assets/assets
+
+# Set permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html \
+    && chmod -R 755 /usr/share/nginx/html \
+    && chmod 644 /usr/share/nginx/html/*.html \
+    && chmod 644 /usr/share/nginx/html/50x-assets/*.css \
+    && chmod 644 /usr/share/nginx/html/50x-assets/*.js

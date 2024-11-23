@@ -16,6 +16,10 @@ import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import AdminTester from "@/components/Admin/AdminTester.vue";
 
+import Chat from "@/components/Chat.vue";
+
+import TempTestPage from "@/components/TempTest.vue";
+
 import PromptEngineering from "@/components/PromptEngineering/PromptEngineering.vue";
 import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngineeringDetail.vue";
 
@@ -46,7 +50,12 @@ const routes = [
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },
-    { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound } // 404 Route
+    { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
+
+    { path: '/chat', component: Chat, meta: { requiresAuth: true } },
+
+    { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
+
 ];
 
 const router = createRouter({

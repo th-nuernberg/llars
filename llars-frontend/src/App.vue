@@ -1,18 +1,18 @@
 <template>
   <v-app>
     <!-- Normale Benutzer AppBar -->
-    <v-app-bar v-if="!isAdminUser" app dark color="primary"> <!-- Primärfarbe verwendet -->
+    <v-app-bar v-if="!isAdminUser" app dark color="primary">
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
-        <v-toolbar-title  @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
-          <v-row no-gutters align="center">
-            <v-col cols="auto">
-              <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
-            </v-col>
-            <v-col cols="auto" class="toolbar-text-wrapper">
-              <span class="toolbar-text">LLars Plattform</span>
-            </v-col>
-          </v-row>
-        </v-toolbar-title>
+      <v-toolbar-title @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
+        <v-row no-gutters align="center">
+          <v-col cols="auto">
+            <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
+          </v-col>
+          <v-col cols="auto" class="toolbar-text-wrapper">
+            <span class="toolbar-text">LLars Plattform</span>
+          </v-col>
+        </v-row>
+      </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-chip
         v-if="username"
@@ -60,7 +60,10 @@
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
 
-    <v-footer app dark color="primary" height="30" class="px-4 footer"> <!-- Primärfarbe verwendet -->
+    <!-- Chatbot wird nur angezeigt, wenn Benutzer eingeloggt ist und ENABLE_CHAT true ist -->
+    <FloatingChat v-if="username && ENABLE_CHAT" />
+
+    <v-footer app dark color="primary" height="30" class="px-4 footer">
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
           <span class="copyright">
@@ -87,11 +90,41 @@
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { isAdmin } from '@/services/admins';
+import FloatingChat from './components/FloatingChat.vue';
+
+// Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
+const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
 
 const router = useRouter();
 const username = ref('');
-const isAdminUser = ref(false); // Neu hinzugefügt, um den Admin-Status zu speichern
-const links = ref(['Impressum', 'Datenschutz', 'Kontakt']); // Footer Links
+const isAdminUser = ref(false);
+const links = ref(['Impressum', 'Datenschutz', 'Kontakt']);
+
+// Funktion zum Prüfen und Löschen alter Chat-Nachrichten
+const cleanupOldChatMessages = () => {
+  try {
+    const chatData = localStorage.getItem('chat_messages');
+    if (chatData) {
+      const storedTimestamp = localStorage.getItem('chat_messages_timestamp');
+      const currentTime = new Date().getTime();
+
+      if (!storedTimestamp) {
+        localStorage.setItem('chat_messages_timestamp', currentTime.toString());
+        return;
+      }
+
+      const timestampDiff = currentTime - parseInt(storedTimestamp);
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+
+      if (timestampDiff > oneDayInMs) {
+        localStorage.removeItem('chat_messages');
+        localStorage.removeItem('chat_messages_timestamp');
+      }
+    }
+  } catch (error) {
+    console.error('Error cleaning up chat messages:', error);
+  }
+};
 
 function updateUsername() {
   const user = localStorage.getItem('username') || '';
@@ -101,11 +134,12 @@ function updateUsername() {
 
 onMounted(() => {
   updateUsername();
+  cleanupOldChatMessages();
 });
 
 watch(() => router.currentRoute.value, () => {
   updateUsername();
-}, { immediate: true });
+}, {immediate: true});
 
 function logout() {
   // Prüfen, ob es unsichere Änderungen gibt
@@ -123,6 +157,8 @@ function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('username');
   localStorage.removeItem('api_key');
+  localStorage.removeItem('chat_messages');
+  localStorage.removeItem('chat_messages_timestamp');
 
   Object.keys(localStorage).forEach((key) => {
     if (
@@ -208,18 +244,15 @@ function navigateTo(link) {
   text-decoration: underline;
 }
 
-
 .logo-image {
-  /* Hier können Sie das Bild anpassen */
-  transform: translateY(0px);  /* Vertikale Position */
-  margin-top: 9px;            /* Zusätzlicher Abstand von oben */
+  transform: translateY(0px);
+  margin-top: 9px;
   margin-right: 15px;
-  /* height: 20px; */         /* Falls Sie die Höhe per CSS steuern möchten */
 }
 
 .toolbar-text-wrapper {
-  align-self: center; /* Passt die vertikale Ausrichtung unabhängig an */
-  margin-top: 2px; /* Verschiebung nach Bedarf anpassen */
+  align-self: center;
+  margin-top: 2px;
 }
 
 .toolbar-text {
@@ -228,5 +261,4 @@ function navigateTo(link) {
   letter-spacing: 0.1px;
   color: #f8f8f8;
 }
-
 </style>

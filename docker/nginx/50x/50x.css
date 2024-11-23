@@ -1,0 +1,276 @@
+/* Grundlegende Stile */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #fdfcfa;
+    color: #2F4F4F;
+}
+
+/* App-Bar (Header) */
+.app-bar {
+    display: flex;
+    align-items: center;
+    background-color: #b0ca97;
+    color: white;
+    padding: 0 16px;
+    height: 64px;
+    position: relative;
+    z-index: 2;
+}
+
+.nav-icon {
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.toolbar-title {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-left: 16px;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.logo-image {
+    margin-right: 15px;
+}
+
+.toolbar-text {
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    color: #f8f8f8;
+}
+
+.spacer {
+    flex: 1;
+}
+
+/* Hauptinhalt */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 94px);
+    position: relative;
+    z-index: 1;
+}
+
+.error-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.title {
+    font-size: 2.5rem;
+    color: #2F4F4F;
+    margin-bottom: 2rem;
+}
+
+/* Loader Animation */
+.loader {
+    margin-top: 2rem;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #b0ca97;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Footer */
+.footer {
+    height: 30px;
+    background-color: #b0ca97;
+    color: white;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 0.75rem;
+    position: relative;
+    z-index: 2;
+}
+
+.footer-content {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.footer-links .footer-link {
+    margin-left: 1rem;
+    cursor: pointer;
+}
+
+.footer-link:hover {
+    text-decoration: underline;
+}
+
+/* Animated Background */
+.paint-strokes {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+.paint-strokes div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    filter: blur(20px);
+    mix-blend-mode: multiply;
+}
+
+/* Left side - Light green tones */
+.paint-strokes div:nth-child(1) {
+    background: rgba(226, 234, 218, 0.5);
+    top: -50%;
+    left: -90%;
+    width: 120%;
+    height: 180%;
+    transform: rotate(-15deg);
+    border-radius: 65% 35% 70% 30% / 55% 45% 60% 40%;
+    animation: floatStrokeLeft1 45s ease-in-out infinite;
+}
+
+.paint-strokes div:nth-child(2) {
+    background: rgba(234, 238, 229, 0.4);
+    top: -40%;
+    left: -95%;
+    width: 130%;
+    height: 160%;
+    transform: rotate(-25deg);
+    border-radius: 55% 45% 60% 40% / 45% 55% 65% 35%;
+    animation: floatStrokeLeft2 52s ease-in-out infinite;
+}
+
+.paint-strokes div:nth-child(3) {
+    background: rgba(220, 230, 215, 0.45);
+    bottom: -60%;
+    left: -85%;
+    width: 110%;
+    height: 140%;
+    transform: rotate(-20deg);
+    border-radius: 60% 40% 65% 35% / 35% 65% 45% 55%;
+    animation: floatStrokeLeft3 48s ease-in-out infinite;
+}
+
+.paint-strokes div:nth-child(4) {
+    background: rgba(228, 235, 223, 0.35);
+    bottom: -50%;
+    left: -90%;
+    width: 125%;
+    height: 150%;
+    transform: rotate(-30deg);
+    border-radius: 70% 30% 50% 50% / 50% 50% 70% 30%;
+    animation: floatStrokeLeft4 50s ease-in-out infinite;
+}
+
+/* Right side - Light beige tones */
+.paint-strokes div:nth-child(5) {
+    background: rgba(242, 236, 228, 0.5);
+    top: -50%;
+    right: -90%;
+    width: 120%;
+    height: 170%;
+    transform: rotate(15deg);
+    border-radius: 45% 55% 40% 60% / 40% 60% 70% 30%;
+    animation: floatStrokeRight1 47s ease-in-out infinite;
+}
+
+.paint-strokes div:nth-child(6) {
+    background: rgba(238, 233, 225, 0.4);
+    top: -40%;
+    right: -95%;
+    width: 130%;
+    height: 160%;
+    transform: rotate(25deg);
+    border-radius: 40% 60% 55% 45% / 60% 40% 50% 50%;
+    animation: floatStrokeRight2 53s ease-in-out infinite;
+}
+
+.paint-strokes div:nth-child(7) {
+    background: rgba(240, 235, 228, 0.45);
+    bottom: -60%;
+    right: -85%;
+    width: 115%;
+    height: 150%;
+    transform: rotate(20deg);
+    border-radius: 35% 65% 45% 55% / 55% 45% 60% 40%;
+    animation: floatStrokeRight3 49s ease-in-out infinite;
+}
+
+.paint-strokes div:nth-child(8) {
+    background: rgba(235, 230, 222, 0.35);
+    bottom: -50%;
+    right: -90%;
+    width: 125%;
+    height: 140%;
+    transform: rotate(30deg);
+    border-radius: 45% 55% 35% 65% / 65% 35% 55% 45%;
+    animation: floatStrokeRight4 51s ease-in-out infinite;
+}
+
+/* Background animations */
+@keyframes floatStrokeLeft1 {
+    0%, 100% { transform: rotate(-15deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(-12deg) translate(3%, 2%) scale(1.05); }
+}
+
+@keyframes floatStrokeLeft2 {
+    0%, 100% { transform: rotate(-25deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(-22deg) translate(2%, -2%) scale(1.03); }
+}
+
+@keyframes floatStrokeLeft3 {
+    0%, 100% { transform: rotate(-20deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(-18deg) translate(4%, 3%) scale(1.04); }
+}
+
+@keyframes floatStrokeLeft4 {
+    0%, 100% { transform: rotate(-30deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(-27deg) translate(2%, -3%) scale(1.06); }
+}
+
+@keyframes floatStrokeRight1 {
+    0%, 100% { transform: rotate(15deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(12deg) translate(-3%, 2%) scale(1.05); }
+}
+
+@keyframes floatStrokeRight2 {
+    0%, 100% { transform: rotate(25deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(22deg) translate(-2%, -2%) scale(1.03); }
+}
+
+@keyframes floatStrokeRight3 {
+    0%, 100% { transform: rotate(20deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(18deg) translate(-4%, 3%) scale(1.04); }
+}
+
+@keyframes floatStrokeRight4 {
+    0%, 100% { transform: rotate(30deg) translate(0, 0) scale(1); }
+    50% { transform: rotate(27deg) translate(-2%, -3%) scale(1.06); }
+}

@@ -1,0 +1,504 @@
+<template>
+  <div class="chat-toggle" @click="toggleChat">
+    <v-btn
+      icon
+      color="primary"
+      size="large"
+      elevation="4"
+    >
+      <v-icon>{{ isChatOpen ? 'mdi-close' : 'mdi-message' }}</v-icon>
+    </v-btn>
+  </div>
+
+  <div
+    class="chat-window"
+    :class="{ 'chat-open': isChatOpen }"
+    :style="{
+      width: `${windowWidth}px`,
+      transform: `translateX(${isChatOpen ? 0 : windowWidth + 20}px)`
+    }"
+  >
+    <!-- Resize Handle -->
+    <div
+      class="resize-handle"
+      @mousedown="startResize"
+    ></div>
+
+    <div class="chat-header">
+      <div class="header-content">
+        <img
+          src="@/assets/llars_the_bear/llars_transparent.png"
+          alt="LLars Logo"
+          class="chat-logo"
+        >
+        <h3>LLars</h3>
+      </div>
+      <v-btn icon size="small" @click="toggleChat">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </div>
+
+    <div class="chat-messages" ref="chatContainer">
+      <div v-for="message in messages"
+           :key="message.id"
+           :class="['message-container', message.sender]">
+        <template v-if="message.sender === 'bot'">
+          <div class="avatar-wrapper">
+            <div class="message-avatar-background"></div>
+            <img
+              src="@/assets/llars_the_bear/llars_transparent.png"
+              alt="LLars Logo"
+              class="message-avatar"
+            >
+          </div>
+        </template>
+        <div class="message">
+          <div class="message-content">
+            <template v-if="enableTypewriterAnimation">
+              <transition-group
+                :name="`fade-letter-${animationSpeed}`"
+                tag="span"
+                appear
+              >
+                <span
+                  v-for="(char, index) in message.content.split('')"
+                  :key="`${message.id}-${index}`"
+                  class="letter"
+                >
+                  {{ char }}
+                </span>
+              </transition-group>
+            </template>
+            <template v-else>
+              <span>{{ message.content }}</span>
+            </template>
+          </div>
+          <div v-if="message.streaming" class="stream-indicator">▪▪▪</div>
+          <div class="message-timestamp">{{ message.timestamp }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input">
+      <v-text-field
+        v-model="newMessage"
+        @keyup.enter="sendMessage"
+        placeholder="Schreibe eine Nachricht..."
+        variant="outlined"
+        density="compact"
+        hide-details
+        append-inner-icon="mdi-send"
+        @click:append-inner="sendMessage"
+      ></v-text-field>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { io } from 'socket.io-client';
+
+const STORAGE_KEY = 'chat_messages';
+const messages = ref([]);
+const newMessage = ref('');
+const chatContainer = ref(null);
+const isChatOpen = ref(false);
+const socket = ref(null);
+const isProcessing = ref(false);
+const enableTypewriterAnimation = ref(true);
+const animationSpeed = ref('medium');
+
+// Neue Refs für die Resize-Funktionalität
+const windowWidth = ref(350); // Standardbreite
+const isResizing = ref(false);
+const minWidth = 350; // Minimale Breite
+const maxWidth = 800; // Maximale Breite
+
+const startResize = (e) => {
+  isResizing.value = true;
+  document.body.classList.add('resizing');
+  const startX = e.clientX;
+  const startWidth = windowWidth.value;
+
+  const handleMouseMove = (e) => {
+    if (!isResizing.value) return;
+
+    const difference = startX - e.clientX;
+    const newWidth = Math.min(Math.max(startWidth + difference, minWidth), maxWidth);
+    windowWidth.value = newWidth;
+  };
+
+  const handleMouseUp = () => {
+    isResizing.value = false;
+    document.body.classList.remove('resizing');
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+};
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTo({
+        top: chatContainer.value.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  });
+};
+
+// Funktion zum Laden der Nachrichten aus dem localStorage
+const loadMessages = () => {
+  try {
+    const savedMessages = localStorage.getItem(STORAGE_KEY);
+    if (savedMessages) {
+      messages.value = JSON.parse(savedMessages);
+    } else {
+      // Wenn keine gespeicherten Nachrichten vorhanden sind, füge die Begrüßungsnachricht hinzu
+      messages.value = [
+        {
+          id: 1,
+          content: 'Hallo! Wie kann ich dir helfen?',
+          sender: 'bot',
+          timestamp: new Date().toLocaleTimeString(),
+          streaming: false
+        }
+      ];
+      // Speichere die initiale Nachricht
+      saveMessages();
+    }
+  } catch (error) {
+    console.error('Error loading messages from localStorage:', error);
+    messages.value = [
+      {
+        id: 1,
+        content: 'Hallo! Wie kann ich dir helfen?',
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString(),
+        streaming: false
+      }
+    ];
+  }
+};
+
+// Funktion zum Speichern der Nachrichten im localStorage
+const saveMessages = () => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.value));
+  } catch (error) {
+    console.error('Error saving messages to localStorage:', error);
+  }
+};
+
+const toggleChat = () => {
+  isChatOpen.value = !isChatOpen.value;
+  if (isChatOpen.value) {
+    nextTick(() => scrollToBottom());
+  }
+};
+
+const sendMessage = () => {
+  if (!newMessage.value.trim() || isProcessing.value) return;
+
+  const messageObj = {
+    id: messages.value.length + 1,
+    content: newMessage.value,
+    sender: 'user',
+    timestamp: new Date().toLocaleTimeString(),
+    streaming: false
+  };
+
+  messages.value.push(messageObj);
+  saveMessages(); // Speichern nach dem Hinzufügen der Nachricht
+  scrollToBottom();
+
+  const userMessage = newMessage.value.trim();
+  newMessage.value = '';
+  isProcessing.value = true;
+
+  socket.value.emit('chat_stream', {message: userMessage});
+};
+
+const addMessage = (content, sender, streaming = false) => {
+  const messageObj = {
+    id: messages.value.length + 1,
+    content,
+    sender,
+    timestamp: new Date().toLocaleTimeString(),
+    streaming
+  };
+
+  messages.value.push(messageObj);
+  saveMessages(); // Speichern nach dem Hinzufügen der Nachricht
+
+  if (enableTypewriterAnimation.value) {
+    adjustAnimationSpeed(content.length);
+  }
+  scrollToBottom();
+};
+
+const adjustAnimationSpeed = (length) => {
+  if (length > 50) {
+    animationSpeed.value = 'fast';
+  } else if (length > 20) {
+    animationSpeed.value = 'medium';
+  } else {
+    animationSpeed.value = 'slow';
+  }
+};
+
+onMounted(() => {
+  loadMessages(); // Lade gespeicherte Nachrichten beim Mounten
+
+  socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
+    path: '/socket.io/',
+    transports: ['websocket'],
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8'
+    }
+  });
+
+  socket.value.on('connect', () => console.log('Socket connected'));
+  socket.value.on('disconnect', () => console.log('Socket disconnected'));
+
+  socket.value.on('chat_response', (data) => {
+    const lastMessage = messages.value[messages.value.length - 1];
+
+    if (!data.complete) {
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.content += data.content;
+        saveMessages(); // Speichern nach dem Update der streaming Nachricht
+        if (enableTypewriterAnimation.value) {
+          adjustAnimationSpeed(data.content.length);
+        }
+      } else {
+        addMessage(data.content, 'bot', true);
+      }
+    } else {
+      if (lastMessage && lastMessage.streaming) {
+        lastMessage.streaming = false;
+        saveMessages(); // Speichern nach Beendigung des Streamings
+      }
+      isProcessing.value = false;
+      scrollToBottom();
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (socket.value) {
+    socket.value.disconnect();
+  }
+});
+</script>
+
+<style scoped>
+.chat-toggle {
+  position: fixed;
+  bottom: 40px;
+  right: 20px;
+  z-index: 999;
+}
+
+.chat-window {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  height: 500px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+  z-index: 998;
+}
+
+/* Resize Handle Styles */
+.resize-handle {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  background: transparent;
+}
+
+.resize-handle:hover {
+  background: rgba(176, 202, 151, 0.2);
+}
+
+.resize-handle:active {
+  background: rgba(176, 202, 151, 0.4);
+}
+
+.chat-header {
+  padding: 8px 16px;
+  background: #b0ca97;
+  color: white;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  margin-left: -4px;
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  scroll-behavior: smooth;
+}
+
+.message-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.message-container.user {
+  flex-direction: row-reverse;
+}
+
+.avatar-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.message-avatar {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  position: absolute;
+  z-index: 2;
+}
+
+.message-avatar-background {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  background-color: #ededed;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.message {
+  max-width: 80%;
+  padding: 0.8rem;
+  border-radius: 1rem;
+  position: relative;
+}
+
+.message-container.user .message {
+  background: #b0ca97;
+  color: white;
+  border-bottom-right-radius: 0.2rem;
+}
+
+.message-container.bot .message {
+  background: #f1f1f1;
+  color: black;
+  border-bottom-left-radius: 0.2rem;
+}
+
+.message-content {
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.letter {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.fade-letter-slow-enter-active {
+  animation: fade-in 0.5s ease-out;
+}
+
+.fade-letter-medium-enter-active {
+  animation: fade-in 0.3s ease-out;
+}
+
+.fade-letter-fast-enter-active {
+  animation: fade-in 0.15s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(-1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-timestamp {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 0.3rem;
+}
+
+.stream-indicator {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.chat-input {
+  padding: 12px;
+  border-top: 1px solid #eee;
+}
+
+:global(.resizing) {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  cursor: ew-resize !important;
+}
+</style>

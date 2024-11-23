@@ -3,6 +3,7 @@ from flask import request
 import json
 import requests
 import logging
+import random
 from prompt_manager import PromptManager
 from rag_pipeline import RAGPipeline
 
@@ -104,20 +105,89 @@ def configure_socket_routes(socketio, verbose=True):
     def handle_chat_stream(data):
         ssh_container = "llars_docker_ssh_proxy_service"
         ssh_container_port = "8093"
-
-        user_message = data.get("message", "").encode('utf-8').decode('utf-8')
-        temperature = data.get("temperature", 0.6)
         client_id = request.sid
 
-        # Füge User Message zur Historie hinzu
-        chat_manager.add_to_history(client_id, "user", user_message)
+        # Error Messages
+        ERROR_MESSAGES = [
+            "Tut mir leid, ich mache gerade ein kurzes Nickerchen. Versuche es in ein paar Minuten noch einmal!",
+            "Oh je, meine Gehirnzellen streiken gerade. Ich brauche einen Moment zum Aufwärmen.",
+            "Hmm, scheint als hätte ich gerade eine kleine Denkpause. Gleich bin ich wieder fit!",
+            "Entschuldige, ich bin gerade in einer wichtigen Meditation. Komme gleich zurück!",
+            "Ups, meine neuronalen Netze haben sich verheddert. Gib mir kurz Zeit zum Entwirren.",
+            "Sorry, ich musste kurz einen Bärenschlaf machen. Bin gleich wieder da!",
+            "Meine KI-Synapsen brauchen einen Moment zum Synchronisieren. Gleich geht's weiter!",
+            "Technische Pause - ich sortiere gerade meine Gedanken. Bin in Kürze wieder für dich da!",
+            "Da hat wohl jemand meinen Stecker gezogen. Keine Sorge, ich bin gleich wieder online!",
+            "Zeit für eine kurze Verschnaufpause. Ich sammle neue Energie für unsere Unterhaltung!"
+        ]
+
+        def send_error_message():
+            """Hilfsfunktion zum Senden von Fehlermeldungen mit Stream-Simulation"""
+            error_msg = random.choice(ERROR_MESSAGES)
+            retry_msg = "Versuche es einfach in ein paar Minuten noch einmal."
+
+            # Teile die Hauptfehlermeldung in Chunks auf
+            chunks = []
+            current_chunk = ""
+            words = error_msg.split()
+
+            for word in words:
+                if len(current_chunk) < 10:
+                    current_chunk += word + " "
+                else:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = word + " "
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+
+            # Sende die Chunks mit Verzögerung
+            for chunk in chunks:
+                emit("chat_response", {
+                    "content": chunk + " ",
+                    "complete": False,
+                    "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+                }, room=client_id)
+                socketio.sleep(0.1)  # 300ms Verzögerung zwischen den Chunks
+
+            # Kurze Pause vor der Retry-Nachricht
+            socketio.sleep(0.5)
+
+            # Sende Retry-Nachricht
+            retry_chunks = retry_msg.split()
+            for word in retry_chunks:
+                emit("chat_response", {
+                    "content": word + " ",
+                    "complete": False,
+                    "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+                }, room=client_id)
+                socketio.sleep(0.2)  # 200ms Verzögerung für die Retry-Nachricht
+
+            # Abschließende Nachricht als complete
+            emit("chat_response", {
+                "content": "",
+                "complete": True,
+                "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+            }, room=client_id)
+
+            # Füge zur Chat-Historie hinzu (auch hier 'bot' statt 'system')
+            chat_manager.add_to_history(client_id, "bot", f"{error_msg} {retry_msg}")
 
         try:
+            user_message = data.get("message", "").encode('utf-8').decode('utf-8')
+            temperature = data.get("temperature", 0.6)
+
+            # Füge User Message zur Historie hinzu
+            chat_manager.add_to_history(client_id, "user", user_message)
+
             # Hole RAG Kontext
             rag_context = ""
             if chat_manager.rag_pipeline:
-                rag_context = chat_manager.rag_pipeline.enrich_prompt(user_message, "")
-                logging.info(f"RAG context retrieved: {len(rag_context)} chars")
+                try:
+                    rag_context = chat_manager.rag_pipeline.enrich_prompt(user_message, "")
+                    logging.info(f"RAG context retrieved: {len(rag_context)} chars")
+                except Exception as e:
+                    logging.error(f"RAG pipeline error: {e}")
+                    # Fahre ohne RAG-Kontext fort
 
             # Hole Chat-Historie
             chat_history = chat_manager.get_chat_history(client_id)
@@ -150,63 +220,48 @@ def configure_socket_routes(socketio, verbose=True):
                 }
             }
 
-            # Sammle die komplette Antwort für die Historie
-            complete_response = []
+            response = requests.post(
+                f"http://{ssh_container}:{ssh_container_port}/generate_stream",
+                json=payload,
+                stream=True,
+                timeout=30,
+                headers={'Content-Type': 'application/json; charset=utf-8'}
+            )
 
-            with requests.post(
-                    f"http://{ssh_container}:{ssh_container_port}/generate_stream",
-                    json=payload,
-                    stream=True,
-                    timeout=30,
-                    headers={'Content-Type': 'application/json; charset=utf-8'}
-            ) as response:
-                response.encoding = 'utf-8'
-                if response.status_code == 200:
-                    for line in response.iter_lines(decode_unicode=True):
-                        if line and line.startswith("data:"):
-                            try:
-                                json_data = json.loads(line[5:])
+            response.encoding = 'utf-8'
+            if response.status_code == 200:
+                for line in response.iter_lines(decode_unicode=True):
+                    if line and line.startswith("data:"):
+                        try:
+                            json_data = json.loads(line[5:])
 
-                                if json_data.get("generated_text"):
-                                    final_text = json_data["generated_text"]
-                                    complete_response.append(final_text)
-                                    # Füge vollständige Antwort zur Historie hinzu
-                                    chat_manager.add_to_history(client_id, "assistant", final_text)
-                                    emit("chat_response", {
-                                        "content": final_text,
-                                        "complete": True
-                                    }, room=client_id)
-                                    break
+                            if json_data.get("generated_text"):
+                                final_text = json_data["generated_text"]
+                                chat_manager.add_to_history(client_id, "assistant", final_text)
+                                emit("chat_response", {
+                                    "content": final_text,
+                                    "complete": True
+                                }, room=client_id)
+                                break
 
-                                if "token" in json_data and "text" in json_data["token"]:
-                                    content = json_data["token"]["text"].encode('utf-8').decode('utf-8')
-                                    complete_response.append(content)
-                                    emit("chat_response", {
-                                        "content": content,
-                                        "complete": False
-                                    }, room=client_id)
+                            if "token" in json_data and "text" in json_data["token"]:
+                                content = json_data["token"]["text"].encode('utf-8').decode('utf-8')
+                                emit("chat_response", {
+                                    "content": content,
+                                    "complete": False
+                                }, room=client_id)
 
-                            except json.JSONDecodeError:
-                                logging.warning(f"Failed to parse JSON: {line}")
-                                continue
-
-                    emit("chat_response", {
-                        "content": "",
-                        "complete": True
-                    }, room=client_id)
-                else:
-                    error_msg = "Error during streaming."
-                    chat_manager.add_to_history(client_id, "system", error_msg)
-                    emit("chat_response", {
-                        "content": error_msg,
-                        "complete": True
-                    }, room=client_id)
+                        except json.JSONDecodeError:
+                            logging.warning(f"Failed to parse JSON: {line}")
+                            continue
+            else:
+                logging.error(f"Error response from LLM service: {response.status_code}")
+                send_error_message()
 
         except requests.RequestException as e:
-            error_msg = "Error: Unable to stream response."
-            chat_manager.add_to_history(client_id, "system", error_msg)
             logging.error(f"Request exception: {e}")
-            emit("chat_response", {
-                "content": error_msg,
-                "complete": True
-            }, room=client_id)
+            send_error_message()
+
+        except Exception as e:
+            logging.error(f"Unexpected error: {e}")
+            send_error_message()

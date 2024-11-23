@@ -91,17 +91,20 @@ const scrollToBottom = () => {
 };
 
 // Funktion zum Laden der Nachrichten aus dem localStorage
+// Funktion zum Laden der Nachrichten aus dem localStorage
 const loadMessages = () => {
   try {
     const savedMessages = localStorage.getItem(STORAGE_KEY);
+    const username = localStorage.getItem('username') || 'Gast';
+
     if (savedMessages) {
       messages.value = JSON.parse(savedMessages);
     } else {
-      // Wenn keine gespeicherten Nachrichten vorhanden sind, füge die Begrüßungsnachricht hinzu
+      // Personalisierte Begrüßungsnachricht
       messages.value = [
         {
           id: 1,
-          content: 'Hallo! Wie kann ich dir helfen?',
+          content: `Hallo ${username}! Wie kann ich dir helfen?`,
           sender: 'bot',
           timestamp: new Date().toLocaleTimeString(),
           streaming: false
@@ -112,10 +115,11 @@ const loadMessages = () => {
     }
   } catch (error) {
     console.error('Error loading messages from localStorage:', error);
+    const username = localStorage.getItem('username') || 'Gast';
     messages.value = [
       {
         id: 1,
-        content: 'Hallo! Wie kann ich dir helfen?',
+        content: `Hallo ${username}! Wie kann ich dir helfen?`,
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString(),
         streaming: false

@@ -106,7 +106,7 @@ def configure_socket_routes(socketio, verbose=True):
         ssh_container_port = "8093"
 
         user_message = data.get("message", "").encode('utf-8').decode('utf-8')
-        temperature = data.get("temperature", 0.7)
+        temperature = data.get("temperature", 0.6)
         client_id = request.sid
 
         # Füge User Message zur Historie hinzu

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Service Temporarily Unavailable</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Absolute Pfade für externe Styles -->
+    <link rel="stylesheet" href="50x.css">
+    <!-- Optional: Favicon -->
+    <link rel="icon" type="image/png" href="assets/llars-logo.png">
+</head>
+<body>
+    <header class="app-bar">
+        <div class="nav-icon"></div>
+        <div class="toolbar-title" onclick="goHome()">
+            <div class="logo-container">
+                <img src="assets/llars-logo.png" alt="Logo" height="26" class="logo-image">
+                <span class="toolbar-text">LLars Plattform</span>
+            </div>
+        </div>
+        <div class="spacer"></div>
+    </header>
+
+    <main class="main-content">
+        <div class="error-container">
+            <h1 class="title">Service Temporarily Unavailable</h1>
+            <p class="message">Unsere Website ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.</p>
+            <button class="home-button" onclick="goHome()">Zur Startseite</button>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <span class="copyright">
+                © <script>document.write(new Date().getFullYear());</script> LLars Plattform
+            </span>
+            <div class="footer-links">
+                <span class="footer-link" onclick="navigateTo('Impressum')">Impressum</span>
+                <span class="footer-link" onclick="navigateTo('Datenschutz')">Datenschutz</span>
+                <span class="footer-link" onclick="navigateTo('Kontakt')">Kontakt</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Absolute Pfade für externe Scripts -->
+    <script src="50x.js"></script>
+</body>
+</html>

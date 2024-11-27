@@ -4,9 +4,10 @@ from pyexpat.errors import messages
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash
+
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
-                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup)
+                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
@@ -825,10 +826,10 @@ def get_user_HistoryGeneration_stats():
                 UserMailHistoryRating.timestamp.desc()).first()
 
             if mail_rating:
-                if mail_rating.rating_status == 'Partly Rated':
+                if mail_rating.rating_status == 'In Progress':
                     total_partly_rated_threads += 1
                     partly_rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject,})
-                elif mail_rating.rating_status == 'Rated':
+                elif mail_rating.rating_status == 'Done':
                     total_rated_threads += 1
                     rated_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
                 else:
@@ -906,7 +907,7 @@ def list_email_threads_for_mail_ratings(thread_id=None):
 
         if mail_rating:
             rating_status = mail_rating.rating_status
-        else: rating_status = "Not Rated"
+        else: rating_status = "Not Started"
 
 
         threads_list.append({
@@ -1013,53 +1014,89 @@ def save_mail_rating(thread_id):
     data = request.get_json()
 
     # Values sent from the client
-    client_data = {
-    "counsellor_coherence_rating" : data.get('counsellor_coherence_rating'),
-    "client_coherence_rating" : data.get('client_coherence_rating'),
-    "quality_rating" : data.get('quality_rating'),
-    "overall_rating" : data.get('overall_rating')}
-    feedback = data.get('feedback')
+    try:
+        client_data = {
+            "counsellor_coherence_rating": data.get('counsellor_coherence_rating'),
+            "client_coherence_rating": data.get('client_coherence_rating'),
+            "quality_rating": data.get('quality_rating'),
+            "overall_rating": data.get('overall_rating')}
+        consulting_category_id = data.get("consulting_category_id")
+        consulting_category_notes = data.get("consulting_category_notes")
+        consider_category_for_status = data.get("consider_category_for_status")
+        feedback = data.get('feedback')
+    except:
+        return jsonify({'error': 'Data not valid'}), 400
 
-    # retrieve most recent mail history rating
+    # retrieve most recent mail history rating and category
     existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
         UserMailHistoryRating.timestamp.desc()).first()
 
-    # check if any likert scale got rated or a feedback was written.
-    if client_data["counsellor_coherence_rating"] is None and client_data["client_coherence_rating"] is None and client_data["quality_rating"] is None and client_data["overall_rating"] is None and feedback is None:
+    existing_category_selection = UserMailHistoryRating.query.filter_by(user_id=user.id,thread_id=thread_id,
+                                    consulting_category_id=consulting_category_id).order_by(
+                                    UserConsultingCategorySelection.timestamp.desc()).first()
+
+    has_rating_changes = False
+    has_category_changes = False
+    # check if any likert scale got rated, a category got chosen or a feedback was written.
+    if (client_data["counsellor_coherence_rating"] is None and client_data["client_coherence_rating"] is None and
+            client_data["quality_rating"] is None and client_data["overall_rating"] is None and feedback is None and consulting_category_notes is None and consider_category_for_status is None):
         # if not, check if a existing rating got "deleted". If yes, save values of new version as null in the db, else skip
-        if not existing_rating: # skip because no rating of the history happened
+        if (not existing_rating) or (not existing_category_selection): # skip because no rating of the history happened
             return jsonify({'status': 'Message ratings saved successfully'}), 201
 
-    # if a rating already exists, check if changes occurred
+
+        # if a rating or category already exists, check if changes occurred
     if existing_rating:
-        if(existing_rating.counsellor_coherence_rating == client_data["counsellor_coherence_rating"]
+        has_rating_changes = not (existing_rating.counsellor_coherence_rating == client_data["counsellor_coherence_rating"]
             and existing_rating.client_coherence_rating == client_data["client_coherence_rating"]
             and existing_rating.quality_rating == client_data["quality_rating"]
             and existing_rating.overall_rating == client_data["overall_rating"]
-            and existing_rating.feedback == feedback):
-            return jsonify({'status': 'History ratings saved successfully'}), 201
+            and existing_rating.feedback == feedback)
 
-    filled_ratings_counter = 0
+    if existing_rating:
+        has_category_changes = not (existing_category_selection.consulting_category_id == consulting_category_id
+                and existing_category_selection.notes == consulting_category_notes)
+
+    if not has_rating_changes and not has_category_changes:
+        return jsonify({'status': 'Message ratings saved successfully'}), 201
+
+    # logic to determine the rating/progression status
+    max_values_to_fill = 4
+    filled_values_counter = 0
+
+    if consider_category_for_status:
+        max_values_to_fill += 1
+        if consulting_category_id:
+            filled_values_counter += 1
+
     for key, value in client_data.items():
         if value is not None:
-            filled_ratings_counter += 1
+            filled_values_counter += 1
 
-    rating_status = "Not Rated" if filled_ratings_counter == 0 else "Rated"
-    if 0 < filled_ratings_counter < 4: rating_status = "Partly Rated"
+    rating_status = "Not Started" if filled_values_counter == 0 else "Done"
+    if 0 < filled_values_counter < 4: rating_status = "In Progress"
 
-    # Changes happened, or it is the first rating
-    # Create a new mail rating with feedback and save it into the db with current timestamp
-    new_mail_rating = UserMailHistoryRating(
-        user_id=user.id,
-        thread_id=thread_id,
-        counsellor_coherence_rating=client_data["counsellor_coherence_rating"],
-        client_coherence_rating=client_data["client_coherence_rating"],
-        quality_rating=client_data["quality_rating"],
-        overall_rating=client_data["overall_rating"],
-        feedback=feedback,
-        rating_status=rating_status
-    )
-    db.session.add(new_mail_rating)
+    # Changes happened in rating, or it is the first rating
+    if has_rating_changes:
+        # Create a new mail rating with feedback and save it into the db with current timestamp
+        new_mail_rating = UserMailHistoryRating(
+            user_id=user.id,
+            thread_id=thread_id,
+            counsellor_coherence_rating=client_data["counsellor_coherence_rating"],
+            client_coherence_rating=client_data["client_coherence_rating"],
+            quality_rating=client_data["quality_rating"],
+            overall_rating=client_data["overall_rating"],
+            feedback=feedback,
+            rating_status=rating_status
+        )
+        db.session.add(new_mail_rating)
+    if has_category_changes:
+        new_selected_category = UserConsultingCategorySelection(
+            user_id=user.id,
+            thread_id=thread_id,
+            consulting_category_id=consulting_category_id,
+            notes=consulting_category_notes,
+        )
 
     db.session.commit()
 
@@ -1116,6 +1153,32 @@ def save_message_ratings(thread_id):
     return jsonify({'status': 'Message ratings saved successfully'}), 201
 
 
+@data_blueprint.route('/email_threads/consulting_category_types', methods=['GET'])
+def get_consulting_category_types():
+    # authorization
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    consulting_categories_types = ConsultingCategoryType.query.all()
+
+    if not consulting_categories_types:
+        return jsonify({'error': 'No consulting category types found'}), 401
+
+    response = []
+    for consulting_category_type in consulting_categories_types:
+        response.append({
+            "id": consulting_category_type.id,
+            "name": consulting_category_type.name,
+            "description": consulting_category_type.description,
+        })
+    return jsonify({'consulting_category_types': response}), 200
+
+
+
 # get the most recent mail history ratings of the user
 @data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
 def get_mail_rating(thread_id):
@@ -1129,6 +1192,11 @@ def get_mail_rating(thread_id):
 
     # retrieve the most recent mail history(thread) rating of user
     mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(UserMailHistoryRating.timestamp.desc()).first()
+    selected_consulting_category = UserConsultingCategorySelection.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(UserConsultingCategorySelection.timestamp.desc()).first()
+    if selected_consulting_category:
+        consulting_category = ConsultingCategoryType.query.filter_by(id=selected_consulting_category.consulting_category_type_id).first()
+    else: consulting_category = None
+
 
 
     # prepare data for json format (if no rating found use null values)
@@ -1139,8 +1207,12 @@ def get_mail_rating(thread_id):
                 'quality_rating': mail_rating.quality_rating if mail_rating else None,
                 'overall_rating': mail_rating.overall_rating if mail_rating else None,
                 'feedback': mail_rating.feedback if mail_rating else None,
-                'rating_status': mail_rating.rating_status if mail_rating else 'Not Rated'
-            }
+                'rating_status': mail_rating.rating_status if mail_rating else 'Not Started'
+            },
+        "consulting_category":{
+            "consulting_category_type_id": consulting_category.consulting_category_type_id if consulting_category else None,
+            "consulting_category_note": consulting_category.notes if consulting_category else None,
+        }
     }
     return jsonify(rating_data), 200
 

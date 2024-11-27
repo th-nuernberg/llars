@@ -1,3 +1,5 @@
+from unittest.mock import DEFAULT
+
 from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import Mapped, mapped_column
@@ -70,6 +72,23 @@ class FeatureType(db.Model):
     __tablename__ = 'feature_types'
     type_id = mapped_column(db.Integer, primary_key=True)
     name = mapped_column(db.String(255), unique=True)
+
+
+class ConsultingCategoryType(db.Model):
+    __tablename__ = 'consulting_category_types'
+    id = mapped_column(db.Integer, primary_key=True)
+    name = mapped_column(db.String(255), unique=True)
+    description = mapped_column(db.String(255))
+
+
+class UserConsultingCategorySelection(db.Model):
+    __tablename__ = 'user_consulting_category_selection'
+    id = mapped_column(db.Integer, primary_key=True)
+    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    consulting_category_type_id = mapped_column(db.Integer, db.ForeignKey('consulting_category_types.id'))
+    notes = mapped_column(db.String(255))
+    timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
 
 class Feature(db.Model):

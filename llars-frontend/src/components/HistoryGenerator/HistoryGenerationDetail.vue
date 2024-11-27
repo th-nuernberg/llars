@@ -59,6 +59,9 @@
             <BinaryLikertScale v-model="ratings.overall" :disabled="isDisabled.overall"/>
           </div>
 
+          <CategorySelection
+            @category-selected="handleCategorySelection"
+          />
           <v-textarea
             v-model="feedback"
             label="Ihre Gedanken oder Notizen"
@@ -120,6 +123,7 @@ import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import LikertScale from '../parts/LikertScale.vue';
 import BinaryLikertScale from "@/components/parts/BinaryLikertScale.vue";
+import CategorySelection from '../parts/CategorySelection.vue';
 
 // Setup route, router and data variables
 const route = useRoute();
@@ -133,6 +137,9 @@ const ratings = ref({
   overall: null
 });
 const feedback = ref('');
+
+const selectedCategoryId = ref(null);
+const categoryNotes = ref('');
 
 // for comparison tee see if there are unsaved changes
 const initial_rating = ref(null)
@@ -241,6 +248,10 @@ async function initializeWebsiteComponent()
   }
 }
 
+function handleCategorySelection(selectedCategory) {
+  selectedCategoryId.value = selectedCategory.categoryId;
+  categoryNotes.value = selectedCategory.categoryNotes;
+}
 
 // Format timestamp for display
 function formatTimestamp(timestamp) {

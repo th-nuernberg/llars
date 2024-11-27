@@ -12,15 +12,16 @@
     <!-- Kategorie Auswahl Dialog -->
     <v-dialog v-model="categoryDialog" max-width="600px">
       <v-card>
-        <v-card-title>Fall Kategorie auswählen</v-card-title>
+        <v-card-title class="popup-header">Fall Kategorie auswählen</v-card-title>
         <v-card-text>
           <!-- Radiobutton Gruppe für Kategorien -->
-          <v-radio-group v-model="selectedCategoryId">
+          <v-radio-group v-model="currentSelectedCategoryId">
             <v-radio
               v-for="category in consultingCategories"
               :key="category.id"
-              :label="`${category.name}`"
               :value="category.id"
+              class="radio-option"
+              @click="toggleCategorySelection(category)"
             >
               <template v-slot:label>
                 <div>
@@ -33,7 +34,7 @@
 
           <!-- Anmerkungsfeld -->
           <v-textarea
-            v-model="categoryNotes"
+            v-model="currentCategoryNotes"
             label="Anmerkungen zur Fallkategorie"
             rows="3"
             outlined
@@ -42,13 +43,14 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="cancelCategorySelection" color="grey lighten-1">
+          <v-btn @click="cancelCategorySelection" color="grey lighten-2">
             Abbrechen
+
           </v-btn>
           <v-btn
             @click="saveCategorySelection"
             color="primary"
-            :disabled="!selectedCategoryId"
+            background-color="green lighen2"
           >
             Speichern
           </v-btn>
@@ -65,25 +67,55 @@ import axios from 'axios';
 // Referenzen für Kategorieauswahl
 const consultingCategories = ref([]);
 const categoryDialog = ref(false);
-const selectedCategoryId = ref(null);
+const currentSelectedCategoryId = ref(null);
 const selectedCategory = ref(null);
-const categoryNotes = ref('');
+const currentCategoryNotes = ref('');
 
-// Methode zum Öffnen des Dialogs und Laden der Kategorien
+const props = defineProps({
+  initialCategoryId: {
+    type: Number,
+    default: null
+  },
+  initialCategoryNotes: {
+    type: String,
+    default: ''
+  }
+});
+
 async function openCategoryDialog() {
   const api_key = localStorage.getItem('api_key');
 
   try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/consulting_category_types`,
-      {
-        headers: {
-          'Authorization': api_key,
+    // Wenn noch keine Kategorien geladen wurden, API-Aufruf
+    if (consultingCategories.value.length === 0) {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/consulting_category_types`,
+        {
+          headers: {
+            'Authorization': api_key,
+          }
         }
-      }
-    );
+      );
 
-    consultingCategories.value = response.data.consulting_category_types;
+      consultingCategories.value = response.data.consulting_category_types;
+    }
+
+    // Wenn eine initiale Kategorie-ID übergeben wurde
+    if (props.initialCategoryId) {
+      const initialCategory = consultingCategories.value.find(
+        category => category.id === props.initialCategoryId
+      );
+
+      if (initialCategory) {
+        selectedCategory.value = {
+          ...initialCategory,
+          notes: props.initialCategoryNotes
+        };
+        currentSelectedCategoryId.value = initialCategory.id;
+        currentCategoryNotes.value = props.initialCategoryNotes;
+      }
+    }
+
     categoryDialog.value = true;
   } catch (error) {
     console.error('Fehler beim Laden der Kategorien:', error);
@@ -91,18 +123,50 @@ async function openCategoryDialog() {
   }
 }
 
+// Beim initialen Mounting prüfen
+onMounted(() => {
+  if (props.initialCategoryId) {
+    const initialCategory = consultingCategories.value.find(
+      category => category.id === props.initialCategoryId
+    );
+
+    if (initialCategory) {
+      selectedCategory.value = {
+        ...initialCategory,
+        notes: props.initialCategoryNotes
+      };
+    }
+  }
+});
+
+
+// Methode zum Togglen der Kategorieauswahl
+function toggleCategorySelection(category) {
+  if (currentSelectedCategoryId.value === category.id) {
+    currentSelectedCategoryId.value = null;
+  }
+}
+
 // Methode zum Speichern der Kategorieauswahl
 function saveCategorySelection() {
-  // Finden der ausgewählten Kategorie
-  selectedCategory.value = consultingCategories.value.find(
-    category => category.id === selectedCategoryId.value
-  );
+  if (currentSelectedCategoryId.value) {
+    // Finden der ausgewählten Kategorie
+    selectedCategory.value = consultingCategories.value.find(
+      category => category.id === currentSelectedCategoryId.value
+    );
 
-  // Emit-Event oder direkte Speicherung, je nach Ihrer Architektur
+    // Notizen zur Kategorie hinzufügen
+    selectedCategory.value.notes = currentCategoryNotes.value;
+  } else {
+    // Wenn keine Kategorie ausgewählt, auf initial setzen
+    selectedCategory.value = null;
+  }
+
+  // Emit-Event oder direkte Speicherung
   emit('category-selected', {
-    categoryId: selectedCategoryId.value,
-    categoryName: selectedCategory.value.name,
-    categoryNotes: categoryNotes.value
+    categoryId: selectedCategory.value ? selectedCategory.value.id : null,
+    categoryName: selectedCategory.value ? selectedCategory.value.name : null,
+    categoryNotes: selectedCategory.value ? selectedCategory.value.notes : null
   });
 
   // Dialog schließen
@@ -112,9 +176,23 @@ function saveCategorySelection() {
 // Methode zum Abbrechen der Auswahl
 function cancelCategorySelection() {
   categoryDialog.value = false;
-  selectedCategoryId.value = null;
+  // Zurücksetzen auf den vorherigen Zustand
+  currentSelectedCategoryId.value = selectedCategory.value ? selectedCategory.value.id : null;
+  currentCategoryNotes.value = selectedCategory.value ? selectedCategory.value.notes || '' : '';
 }
 
 // Optional: Emit für übergeordnete Komponente
 const emit = defineEmits(['category-selected']);
 </script>
+
+<style>
+.radio-option {
+  margin-bottom: 12px; /* Abstand nach unten */
+}
+
+.popup-header{
+  color: #2F4F4F;
+  margin-bottom: 12px;
+  font-size: 1.1em;
+}
+</style>

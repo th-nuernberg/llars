@@ -1031,31 +1031,43 @@ def save_mail_rating(thread_id):
     existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
         UserMailHistoryRating.timestamp.desc()).first()
 
-    existing_category_selection = UserMailHistoryRating.query.filter_by(user_id=user.id,thread_id=thread_id,
+    existing_category_selection = UserConsultingCategorySelection.query.filter_by(user_id=user.id,thread_id=thread_id,
                                     consulting_category_id=consulting_category_id).order_by(
                                     UserConsultingCategorySelection.timestamp.desc()).first()
 
     has_rating_changes = False
     has_category_changes = False
     # check if any likert scale got rated, a category got chosen or a feedback was written.
-    if (client_data["counsellor_coherence_rating"] is None and client_data["client_coherence_rating"] is None and
-            client_data["quality_rating"] is None and client_data["overall_rating"] is None and feedback is None and consulting_category_notes is None and consider_category_for_status is None):
-        # if not, check if a existing rating got "deleted". If yes, save values of new version as null in the db, else skip
-        if (not existing_rating) or (not existing_category_selection): # skip because no rating of the history happened
+    if all(v is None for v in [
+        client_data["counsellor_coherence_rating"],
+        client_data["client_coherence_rating"],
+        client_data["quality_rating"],
+        client_data["overall_rating"],
+        feedback,
+        consulting_category_notes
+    ]) and consider_category_for_status is None: # skip because no rating of the history happened
             return jsonify({'status': 'Message ratings saved successfully'}), 201
 
 
         # if a rating or category already exists, check if changes occurred
     if existing_rating:
-        has_rating_changes = not (existing_rating.counsellor_coherence_rating == client_data["counsellor_coherence_rating"]
-            and existing_rating.client_coherence_rating == client_data["client_coherence_rating"]
-            and existing_rating.quality_rating == client_data["quality_rating"]
-            and existing_rating.overall_rating == client_data["overall_rating"]
-            and existing_rating.feedback == feedback)
+        has_rating_changes = not (
+                existing_rating.counsellor_coherence_rating == client_data["counsellor_coherence_rating"] and
+                existing_rating.client_coherence_rating == client_data["client_coherence_rating"] and
+                existing_rating.quality_rating == client_data["quality_rating"] and
+                existing_rating.overall_rating == client_data["overall_rating"] and
+                existing_rating.feedback == feedback
+        )
+    else:
+        has_rating_changes = True  # Es ist eine neue Bewertung
 
-    if existing_rating:
-        has_category_changes = not (existing_category_selection.consulting_category_id == consulting_category_id
-                and existing_category_selection.notes == consulting_category_notes)
+    if existing_category_selection:
+        has_category_changes = not (
+                existing_category_selection.consulting_category_id == consulting_category_id and
+                existing_category_selection.notes == consulting_category_notes
+        )
+    else:
+        has_category_changes = True  # Es ist eine neue Kategorieauswahl
 
     if not has_rating_changes and not has_category_changes:
         return jsonify({'status': 'Message ratings saved successfully'}), 201

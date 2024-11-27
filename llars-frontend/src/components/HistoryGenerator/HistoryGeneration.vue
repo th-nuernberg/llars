@@ -12,7 +12,7 @@
           <!-- Rating Status Chip (oben rechts) -->
           <v-chip
             class="category-chip right-aligned-chip rating-status-chip"
-            :color="emailThread.rating_status === 'Rated' ? 'green lighten-2' : emailThread.rating_status === 'Partly Rated' ? 'orange lighten-2' : 'grey lighten-2'"
+            :color="emailThread.rating_status === 'Done' ? 'green lighten-2' : emailThread.rating_status === 'In Progress' ? 'orange lighten-2' : 'grey lighten-2'"
             small
           >
             {{ emailThread.rating_status }}

@@ -65,6 +65,7 @@
       :initial-category-id="selectedCategoryId"
       :initial-category-notes="categoryNotes"
       @category-selected="handleCategorySelection"
+      class="CategorySelectionButton"
       />
     </v-row>
 
@@ -84,7 +85,7 @@
       <v-col>
         <v-chip
           class="category-chip"
-          :color="ratedStatus === 'Rated' ? 'green lighten-2' : ratedStatus === 'Partly Rated' ? 'orange lighten-2' : 'grey lighten-2'"
+          :color="ratedStatus === 'Done' ? 'green lighten-2' : ratedStatus === 'In Progress' ? 'orange lighten-2' : 'grey lighten-2'"
           small
         >
           {{ratedStatus}}
@@ -142,7 +143,7 @@ const ratings = ref({
   quality: null,
   overall: null
 });
-const feedback = ref('');
+const feedback = ref(null);
 
 const selectedCategoryId = ref(null);
 const categoryNotes = ref(null);
@@ -242,14 +243,13 @@ async function initializeWebsiteComponent()
     } else {
       ratedStatus.value = 'Not Rated';
     }
-    console.log(` Ist rated? ${ratedStatus.value}`)
 
     // set the db retrieved values as initial values, in order for comparison if changes occurred
     initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
     initial_feedback.value = JSON.parse(JSON.stringify(feedback.value));
     initial_messages.value = JSON.parse(JSON.stringify(messages.value));
-    initialSelectedCategoryId.value = JSON.parse(JSON.stringify(selectedCategoryId))
-    initialCategoryNotes.value = JSON.parse(JSON.stringify(categoryNotes))
+    initialSelectedCategoryId.value = JSON.parse(JSON.stringify(selectedCategoryId.value))
+    initialCategoryNotes.value = JSON.parse(JSON.stringify(categoryNotes.value))
 
     // load ratings from local storage
     loadMailHistoryRatingsFromLocalStorage();
@@ -264,7 +264,7 @@ async function initializeWebsiteComponent()
 function handleCategorySelection(selectedCategory) {
   selectedCategoryId.value = selectedCategory.categoryId;
   categoryNotes.value = selectedCategory.categoryNotes;
-  console.log("Test Kategory", selectedCategoryId.value)
+  console.log("Test ID", selectedCategoryId.value)
   console.log("Test Kategory", categoryNotes.value)
 }
 
@@ -405,8 +405,8 @@ function check_for_changes() {
     initial_rating.value.quality !== ratings.value.quality  ||
     initial_rating.value.overall !== ratings.value.overall ||
     initial_feedback.value !== feedback.value ||
-    initialSelectedCategoryId !== selectedCategoryId.value ||
-    initialCategoryNotes !== categoryNotes.value)
+    initialSelectedCategoryId.value !== selectedCategoryId.value ||
+    initialCategoryNotes.value !== categoryNotes.value)
   {
     localStorage.setItem(`hasUnsaved_ratingChanges_${threadId}`, JSON.stringify(true));
     return true;
@@ -440,7 +440,6 @@ function rateMessage(index, rating) {
 
 // Save ratings of history and messages to the server
 async function saveRatingServerSide() {
-  console.log('Crash Test1:')
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
   const rating_and_category = {
@@ -453,23 +452,33 @@ async function saveRatingServerSide() {
     consulting_category_notes: categoryNotes.value,
     consider_category_for_status: true
   }
-  console.log('Crash Test2:');
-  if(checkIfDisabled("rating-category-coherence-client") && rating_and_category.client_coherence_rating === null)
-    rating_and_category.client_coherence_rating = 0;
+  if(checkIfDisabled("rating-category-coherence-client"))
+  {
+    if (rating_and_category.client_coherence_rating === null)
+      rating_and_category.client_coherence_rating = 0;
     rating_and_category.consider_category_for_status = false;
-  if(checkIfDisabled("rating-category-coherence-counsellor") && rating_and_category.counsellor_coherence_rating === null)
-    rating_and_category.counsellor_coherence_rating = 0;
+  }
+  if(checkIfDisabled("rating-category-coherence-counsellor"))
+  {
+    if(rating_and_category.counsellor_coherence_rating === null)
+      rating_and_category.counsellor_coherence_rating = 0;
     rating_and_category.consider_category_for_status = false;
-  if(checkIfDisabled("rating-category-quality") && rating_and_category.quality_rating === null)
-    rating_and_category.quality_rating = 0;
+  }
+
+  if(checkIfDisabled("rating-category-quality"))
+  {
+    if(rating_and_category.quality_rating === null)
+      rating_and_category.quality_rating = 0;
     rating_and_category.consider_category_for_status = false;
-  if(checkIfDisabled("rating-category-overall") && rating_and_category.overall_rating === null)
-    rating_and_category.overall_rating = 0;
+  }
+  if(checkIfDisabled("rating-category-overall"))
+  {
+    if(rating_and_category.overall_rating === null)
+      rating_and_category.overall_rating = 0;
     rating_and_category.consider_category_for_status = false;
-  console.log('Crash Test3:')
+  }
   try {
     // saving mail history ratings
-    console.log('data to server: ', categoryNotes);
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
       rating_and_category,

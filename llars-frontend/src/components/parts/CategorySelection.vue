@@ -78,6 +78,7 @@ const consultingCategories = ref([]);
 const categoryDialog = ref(false);
 const currentSelectedCategoryId = ref(null);
 const selectedCategory = ref(null);
+const CategoryNotes = ref(null)
 const currentCategoryNotes = ref(null);
 
 // Watcher für Props
@@ -96,15 +97,17 @@ watch([() => props.initialCategoryId, () => props.initialCategoryNotes],
 
       if (initialCategory) {
         selectedCategory.value = {
-          ...initialCategory,
-          notes: newCategoryNotes || ''
+          ...initialCategory
         };
         currentSelectedCategoryId.value = initialCategory.id;
       }
     }
 
-    // Notes immer setzen, unabhängig von Kategorie
-    currentCategoryNotes.value = newCategoryNotes || '';
+    // Notes
+    if(newCategoryNotes){
+      CategoryNotes.value = newCategoryNotes;
+    }
+    currentCategoryNotes.value = newCategoryNotes || null;
   },
   { immediate: true }
 );
@@ -155,7 +158,7 @@ function saveCategorySelection() {
     );
 
     // Notizen zur Kategorie hinzufügen
-    selectedCategory.value.notes = trimmedNotes;
+    CategoryNotes.value = trimmedNotes;
   } else {
     // Wenn keine Kategorie ausgewählt, trotzdem Notes speichern
     selectedCategory.value = null;
@@ -176,7 +179,7 @@ function cancelCategorySelection() {
   categoryDialog.value = false;
   // Zurücksetzen auf den vorherigen Zustand
   currentSelectedCategoryId.value = selectedCategory.value ? selectedCategory.value.id : null;
-  currentCategoryNotes.value = selectedCategory.value ? selectedCategory.value.notes : null;
+  currentCategoryNotes.value = CategoryNotes.value ? CategoryNotes.value : null;
 }
 
 // Optional: Emit für übergeordnete Komponente

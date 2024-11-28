@@ -45,7 +45,6 @@
           <v-spacer></v-spacer>
           <v-btn @click="cancelCategorySelection" color="grey lighten-2">
             Abbrechen
-
           </v-btn>
           <v-btn
             @click="saveCategorySelection"
@@ -79,9 +78,9 @@ const consultingCategories = ref([]);
 const categoryDialog = ref(false);
 const currentSelectedCategoryId = ref(null);
 const selectedCategory = ref(null);
-const currentCategoryNotes = ref('');
+const currentCategoryNotes = ref(null);
 
-// Wichtigste Änderung: Watcher für Props
+// Watcher für Props
 watch([() => props.initialCategoryId, () => props.initialCategoryNotes],
   async ([newCategoryId, newCategoryNotes]) => {
     // Stelle sicher, dass Kategorien geladen sind
@@ -89,7 +88,7 @@ watch([() => props.initialCategoryId, () => props.initialCategoryNotes],
       await loadCategories();
     }
 
-    // Finde die Kategorie basierend auf der ID
+    // Behandle Kategorien UND Notes separat
     if (newCategoryId) {
       const initialCategory = consultingCategories.value.find(
         category => category.id === newCategoryId
@@ -101,12 +100,15 @@ watch([() => props.initialCategoryId, () => props.initialCategoryNotes],
           notes: newCategoryNotes || ''
         };
         currentSelectedCategoryId.value = initialCategory.id;
-        currentCategoryNotes.value = newCategoryNotes || '';
       }
     }
+
+    // Notes immer setzen, unabhängig von Kategorie
+    currentCategoryNotes.value = newCategoryNotes || '';
   },
   { immediate: true }
 );
+
 
 async function loadCategories() {
   const api_key = localStorage.getItem('api_key');
@@ -136,7 +138,6 @@ async function openCategoryDialog() {
   categoryDialog.value = true;
 }
 
-// Restliche Methoden bleiben gleich
 function toggleCategorySelection(category) {
   if (currentSelectedCategoryId.value === category.id) {
     currentSelectedCategoryId.value = null;
@@ -144,6 +145,9 @@ function toggleCategorySelection(category) {
 }
 
 function saveCategorySelection() {
+  // Behandle Notes separat von Category
+  const trimmedNotes = currentCategoryNotes.value ? currentCategoryNotes.value.trim() : null;
+
   if (currentSelectedCategoryId.value) {
     // Finden der ausgewählten Kategorie
     selectedCategory.value = consultingCategories.value.find(
@@ -151,17 +155,17 @@ function saveCategorySelection() {
     );
 
     // Notizen zur Kategorie hinzufügen
-    selectedCategory.value.notes = currentCategoryNotes.value;
+    selectedCategory.value.notes = trimmedNotes;
   } else {
-    // Wenn keine Kategorie ausgewählt, auf initial setzen
+    // Wenn keine Kategorie ausgewählt, trotzdem Notes speichern
     selectedCategory.value = null;
   }
 
-  // Emit-Event oder direkte Speicherung
+  // Emit-Event mit allen Informationen
   emit('category-selected', {
     categoryId: selectedCategory.value ? selectedCategory.value.id : null,
     categoryName: selectedCategory.value ? selectedCategory.value.name : null,
-    categoryNotes: selectedCategory.value ? selectedCategory.value.notes : null
+    categoryNotes: trimmedNotes // Sendet null für leere/nur Whitespace Strings
   });
 
   // Dialog schließen
@@ -172,7 +176,7 @@ function cancelCategorySelection() {
   categoryDialog.value = false;
   // Zurücksetzen auf den vorherigen Zustand
   currentSelectedCategoryId.value = selectedCategory.value ? selectedCategory.value.id : null;
-  currentCategoryNotes.value = selectedCategory.value ? selectedCategory.value.notes || '' : '';
+  currentCategoryNotes.value = selectedCategory.value ? selectedCategory.value.notes : null;
 }
 
 // Optional: Emit für übergeordnete Komponente
@@ -184,7 +188,7 @@ const emit = defineEmits(['category-selected']);
   margin-bottom: 12px; /* Abstand nach unten */
 }
 
-.popup-header{
+.popup-header {
   color: #2F4F4F;
   margin-bottom: 12px;
   font-size: 1.1em;

@@ -152,7 +152,7 @@ const initial_rating = ref(null)
 const initial_feedback = ref(null)
 const initial_messages = ref([]);
 const initialSelectedCategoryId = ref(null);
-const initial_categoryNotes = ref(null)
+const initialCategoryNotes = ref(null)
 
 const ratedStatus = ref(null);
 const hasUnsavedChanges = ref(false)
@@ -249,7 +249,7 @@ async function initializeWebsiteComponent()
     initial_feedback.value = JSON.parse(JSON.stringify(feedback.value));
     initial_messages.value = JSON.parse(JSON.stringify(messages.value));
     initialSelectedCategoryId.value = JSON.parse(JSON.stringify(selectedCategoryId))
-    initial_categoryNotes.value = JSON.parse(JSON.stringify(categoryNotes))
+    initialCategoryNotes.value = JSON.parse(JSON.stringify(categoryNotes))
 
     // load ratings from local storage
     loadMailHistoryRatingsFromLocalStorage();
@@ -284,7 +284,7 @@ function loadMailHistoryRatingsFromLocalStorage() {
     feedback.value = savedData.feedback;
     selectedCategoryId.value= savedData.category_id;
     categoryNotes.value = savedData.category_notes;
-    console.log("Ratings wurden aus dem Local Storage geladen")
+    console.log("Ratings wurden aus dem Local Storage geladen", categoryNotes.value)
     hasUnsavedChanges.value = check_for_changes();
   }
 }
@@ -405,8 +405,8 @@ function check_for_changes() {
     initial_rating.value.quality !== ratings.value.quality  ||
     initial_rating.value.overall !== ratings.value.overall ||
     initial_feedback.value !== feedback.value ||
-    initialSelectedCategoryId !== selectedCategoryId ||
-    initial_categoryNotes !== categoryNotes)
+    initialSelectedCategoryId !== selectedCategoryId.value ||
+    initialCategoryNotes !== categoryNotes.value)
   {
     localStorage.setItem(`hasUnsaved_ratingChanges_${threadId}`, JSON.stringify(true));
     return true;

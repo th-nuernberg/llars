@@ -61,13 +61,12 @@
 
           <v-row align="center">
     <v-spacer></v-spacer> <!-- Fügt flexiblen Raum hinzu -->
-    <CategorySelection
-      :initial-category-id="consulting_category_id"
-      :initial-category-notes="consulting_category_notes"
+      <CategorySelection
+      :initial-category-id="selectedCategoryId"
+      :initial-category-notes="categoryNotes"
       @category-selected="handleCategorySelection"
-      class="CategorySelectionButton"
-    />
-  </v-row>
+      />
+    </v-row>
 
           <v-textarea
             v-model="feedback"
@@ -209,6 +208,7 @@ async function initializeWebsiteComponent()
 
     // Check if the user has already rated the thread
     if (mailhistoryRatingResponse.data) {
+      console.log("API Daten:", mailhistoryRatingResponse.data)
       // If the mail rating exists, set the data accordingly
       let temp_rating ={ // for avoiding bugs cause of 0 value
         counsellor_coherence: mailhistoryRatingResponse.data.rating.counsellor_coherence_rating,
@@ -264,6 +264,7 @@ async function initializeWebsiteComponent()
 function handleCategorySelection(selectedCategory) {
   selectedCategoryId.value = selectedCategory.categoryId;
   categoryNotes.value = selectedCategory.categoryNotes;
+  console.log("Test Kategory", selectedCategoryId.value)
   console.log("Test Kategory", categoryNotes.value)
 }
 
@@ -281,8 +282,8 @@ function loadMailHistoryRatingsFromLocalStorage() {
   if (savedData) {
     ratings.value = savedData.ratings;
     feedback.value = savedData.feedback;
-    selectedCategoryId.value= savedData.category_id
-    categoryNotes.value = savedData.category_notes
+    selectedCategoryId.value= savedData.category_id;
+    categoryNotes.value = savedData.category_notes;
     console.log("Ratings wurden aus dem Local Storage geladen")
     hasUnsavedChanges.value = check_for_changes();
   }
@@ -439,6 +440,7 @@ function rateMessage(index, rating) {
 
 // Save ratings of history and messages to the server
 async function saveRatingServerSide() {
+  console.log('Crash Test1:')
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
   const rating_and_category = {
@@ -451,6 +453,7 @@ async function saveRatingServerSide() {
     consulting_category_notes: categoryNotes.value,
     consider_category_for_status: true
   }
+  console.log('Crash Test2:');
   if(checkIfDisabled("rating-category-coherence-client") && rating_and_category.client_coherence_rating === null)
     rating_and_category.client_coherence_rating = 0;
     rating_and_category.consider_category_for_status = false;
@@ -463,9 +466,10 @@ async function saveRatingServerSide() {
   if(checkIfDisabled("rating-category-overall") && rating_and_category.overall_rating === null)
     rating_and_category.overall_rating = 0;
     rating_and_category.consider_category_for_status = false;
-
+  console.log('Crash Test3:')
   try {
     // saving mail history ratings
+    console.log('data to server: ', categoryNotes);
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
       rating_and_category,

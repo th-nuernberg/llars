@@ -61,15 +61,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
-
-// Referenzen für Kategorieauswahl
-const consultingCategories = ref([]);
-const categoryDialog = ref(false);
-const currentSelectedCategoryId = ref(null);
-const selectedCategory = ref(null);
-const currentCategoryNotes = ref('');
 
 const props = defineProps({
   initialCategoryId: {
@@ -82,72 +75,74 @@ const props = defineProps({
   }
 });
 
-async function openCategoryDialog() {
-  const api_key = localStorage.getItem('api_key');
+const consultingCategories = ref([]);
+const categoryDialog = ref(false);
+const currentSelectedCategoryId = ref(null);
+const selectedCategory = ref(null);
+const currentCategoryNotes = ref('');
 
-  try {
-    // Wenn noch keine Kategorien geladen wurden, API-Aufruf
+// Wichtigste Änderung: Watcher für Props
+watch([() => props.initialCategoryId, () => props.initialCategoryNotes],
+  async ([newCategoryId, newCategoryNotes]) => {
+    // Stelle sicher, dass Kategorien geladen sind
     if (consultingCategories.value.length === 0) {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/consulting_category_types`,
-        {
-          headers: {
-            'Authorization': api_key,
-          }
-        }
-      );
-
-      consultingCategories.value = response.data.consulting_category_types;
+      await loadCategories();
     }
 
-    // Wenn eine initiale Kategorie-ID übergeben wurde
-    if (props.initialCategoryId) {
+    // Finde die Kategorie basierend auf der ID
+    if (newCategoryId) {
       const initialCategory = consultingCategories.value.find(
-        category => category.id === props.initialCategoryId
+        category => category.id === newCategoryId
       );
 
       if (initialCategory) {
         selectedCategory.value = {
           ...initialCategory,
-          notes: props.initialCategoryNotes
+          notes: newCategoryNotes || ''
         };
         currentSelectedCategoryId.value = initialCategory.id;
-        currentCategoryNotes.value = props.initialCategoryNotes;
+        currentCategoryNotes.value = newCategoryNotes || '';
       }
     }
+  },
+  { immediate: true }
+);
 
-    categoryDialog.value = true;
+async function loadCategories() {
+  const api_key = localStorage.getItem('api_key');
+  try {
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/consulting_category_types`,
+      {
+        headers: {
+          'Authorization': api_key,
+        }
+      }
+    );
+
+    consultingCategories.value = response.data.consulting_category_types;
   } catch (error) {
     console.error('Fehler beim Laden der Kategorien:', error);
     alert('Fehler beim Laden der Kategorien');
   }
 }
 
-// Beim initialen Mounting prüfen
-onMounted(() => {
-  if (props.initialCategoryId) {
-    const initialCategory = consultingCategories.value.find(
-      category => category.id === props.initialCategoryId
-    );
-
-    if (initialCategory) {
-      selectedCategory.value = {
-        ...initialCategory,
-        notes: props.initialCategoryNotes
-      };
-    }
+async function openCategoryDialog() {
+  // Lade Kategorien, falls noch nicht geladen
+  if (consultingCategories.value.length === 0) {
+    await loadCategories();
   }
-});
 
+  categoryDialog.value = true;
+}
 
-// Methode zum Togglen der Kategorieauswahl
+// Restliche Methoden bleiben gleich
 function toggleCategorySelection(category) {
   if (currentSelectedCategoryId.value === category.id) {
     currentSelectedCategoryId.value = null;
   }
 }
 
-// Methode zum Speichern der Kategorieauswahl
 function saveCategorySelection() {
   if (currentSelectedCategoryId.value) {
     // Finden der ausgewählten Kategorie
@@ -173,7 +168,6 @@ function saveCategorySelection() {
   categoryDialog.value = false;
 }
 
-// Methode zum Abbrechen der Auswahl
 function cancelCategorySelection() {
   categoryDialog.value = false;
   // Zurücksetzen auf den vorherigen Zustand

@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
-                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection)
+                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare)
 from sqlalchemy import func

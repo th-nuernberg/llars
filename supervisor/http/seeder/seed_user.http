@@ -6,16 +6,16 @@ POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
-  "username": "user1",
-  "password": "password1"
+  "username": "dev_user_1",
+  "password": "zinumusu"
 }
 ###
 POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json
 
 {
-  "username": "a",
-  "password": "a",
+  "username": "dev_user_2",
+  "password": "locolore",
   "api_key": "db0fe35b-0d88-4d03-a774-12fbae54aa51"
 }
 ###
@@ -102,4 +102,12 @@ Content-Type: application/json
 {
   "username": "ieb_michelle",
   "password": "ikasicherllea"
+}
+###
+POST http://backend-flask-service:8081/auth/register
+Content-Type: application/json
+
+{
+  "username": "steigerwald",
+  "password": "llarsundkia"
 }

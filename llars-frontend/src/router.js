@@ -16,6 +16,13 @@ import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import AdminTester from "@/components/Admin/AdminTester.vue";
 
+import Chat from "@/components/Chat.vue";
+
+import TempTestPage from "@/components/TempTest.vue";
+
+import PromptEngineering from "@/components/PromptEngineering/PromptEngineering.vue";
+import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngineeringDetail.vue";
+
 // Importiere die Admin-Check Funktion
 import { isAdmin } from '@/services/admins';
 import AdminHistoryGenerator from "@/components/Admin/AdminHistoryGenerator.vue";
@@ -33,6 +40,8 @@ const routes = [
     { path: '/Rater/:id/:feature', name:'RaterDetailFeature', component: RaterDetailFeature, props: true, meta: { requiresAuth: true } },
     { path : '/HistoryGeneration', name: 'HistoryGenerator', component: HistoryGeneration, meta: { requiresAuth: true } },
     { path : '/HistoryGeneration/:id', name:'HistoryGenerationDetail', component: HistoryGenerationDetail, props: true, meta: { requiresAuth: true } },
+    { path: '/PromptEngineering', name: 'PromptEngineering', component: PromptEngineering, meta: { requiresAuth: true } },
+    { path : '/PromptEngineering/:id', name:'PromptEngineeringDetail', component: PromptEngineeringDetail, props: true, meta: { requiresAuth: true } },
 
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
@@ -41,7 +50,12 @@ const routes = [
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },
-    { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound } // 404 Route
+    { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
+
+    { path: '/chat', component: Chat, meta: { requiresAuth: true } },
+
+    { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
+
 ];
 
 const router = createRouter({

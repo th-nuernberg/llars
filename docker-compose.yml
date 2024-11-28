@@ -19,6 +19,8 @@ services:
       dockerfile: docker/flask/Dockerfile-flask
     expose:
       - "8081"
+    volumes:
+      - model_volume:/app/storage
     env_file:
       - .env
     environment:
@@ -48,6 +50,9 @@ services:
           target: /vue/src
           ignore:
             - node_modules/
+    depends_on:
+      - backend-supervisor-service
+      - ssh-proxy-service
 
   backend-supervisor-service:
     container_name: llars_supervisor_service
@@ -62,7 +67,6 @@ services:
     depends_on:
       - backend-flask-service
       - db-maria-service
-      - frontend-vue-service
 
   db-maria-service:
     container_name: llars_db_service
@@ -83,10 +87,28 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
-      interval: 30s
-      timeout: 10s
+      start_period: 20s
+      interval: 5s
+      timeout: 5s
       retries: 5
+
+  ssh-proxy-service:
+    container_name: llars_docker_ssh_proxy_service
+    profiles:
+      - backend
+    build:
+      context: .
+      dockerfile: docker/ssh_proxy/Dockerfile-ssh-proxy
+    ports:
+      - "8093:8093"
+    environment:
+      - PROXY_REMOTE_USER=${PROXY_REMOTE_USER}
+      - PROXY_REMOTE_HOST=${PROXY_REMOTE_HOST}
+      - PROXY_REMOTE_PORT=${PROXY_REMOTE_PORT}
+      - PROXY_LOCAL_PORT=${PROXY_LOCAL_PORT}
+    command: [ "/scripts/start_ssh_proxy.sh" ]
 
 
 volumes:
   llarsdb:
+  model_volume:

@@ -8,22 +8,31 @@ LABEL authors="philippsteigerwald"
 # Setzt das Arbeitsverzeichnis im Container
 WORKDIR /app
 
-# Kopiert die lokalen app-Dateien in das Container-Verzeichnis /app
-# COPY conversation_ranker/server/ /app/
+# Installiert curl und notwendige Systembibliotheken
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installiert websocat
+RUN curl -L https://github.com/vi/websocat/releases/download/v1.8.0/websocat.x86_64-unknown-linux-musl \
+    -o /usr/local/bin/websocat && \
+    chmod +x /usr/local/bin/websocat
+
+# Erstellt das Verzeichnis für die Modelle
+RUN mkdir -p /app/models
+
+# Kopiert die requirements.txt und installiert nur die Abhängigkeiten
+COPY app/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Kopiert den Rest des Codes
 COPY app /app/
 COPY docker/flask/start_flask.sh scripts/
 RUN chmod +x scripts/start_flask.sh
 
-# RUN chmod 777 -R /app/data
-
-# Installiert die notwendigen Python-Pakete aus der flask_requirements.txt
-# COPY /docker/flask/flask_requirements.txt /app/
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
 # Setzt die benötigten Umgebungsvariablen für Flask
 ENV FLASK_APP=main.py
-# ENV FLASK_RUN_HOST=0.0.0.0
 
+# Definiert den Startbefehl für den Container
 CMD ["scripts/start_flask.sh"]
-# CMD tail -f /dev/null
-# CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0", "--port=8080"]

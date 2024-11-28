@@ -19,34 +19,37 @@
 
         <h3>Welche Daten werden erhoben und warum?</h3>
         <p>
-          Wenn Sie unsere Website besuchen, werden automatisch einige Daten erfasst, wie zum Beispiel Ihre IP-Adresse und welche Seiten Sie besuchen. Diese Daten helfen uns zu verstehen, wie unsere Website genutzt wird, und sie helfen uns, die Website zu verbessern.
+          Wenn Sie unsere Website besuchen, werden automatisch einige Daten erfasst, wie zum Beispiel Ihre IP-Adresse und die besuchten Seiten. Diese Daten helfen uns, die Nutzung der Website zu analysieren und sie kontinuierlich zu verbessern.
+        </p>
+        <p>
+          Zusätzlich nutzen wir die Daten, die Sie freiwillig zur Verfügung stellen, um sie im Rahmen des Forschungsprojekts LLars zu evaluieren. LLars ist eine Software, die zur Bewertung und Analyse von KI-generierten Inhalten entwickelt wurde. Alle erfassten Daten werden ausschließlich für wissenschaftliche Forschungszwecke genutzt und anonymisiert verarbeitet, soweit dies möglich ist.
         </p>
 
         <h3>Wer bekommt meine Daten?</h3>
         <p>
-          Ihre Daten werden nur intern von uns verwendet. Wir geben sie nicht an Dritte weiter, es sei denn, es ist gesetzlich vorgeschrieben oder Sie haben uns dafür ausdrücklich Ihre Zustimmung gegeben.
+          Ihre Daten werden intern für die Forschung und Entwicklung im Rahmen des LLars-Projekts verwendet. Sie werden nicht an Dritte weitergegeben, es sei denn, eine Weitergabe ist gesetzlich erforderlich oder Sie haben uns Ihre ausdrückliche Zustimmung gegeben.
         </p>
         <p>
-          Die Server für dieses Projekt sind auf Maschinen der Technischen Hochschule Nürnberg gehostet. Es wurde ein Vertrag über Auftragsverarbeitung abgeschlossen, um die Datenschutzkonformität sicherzustellen.
+          Die Server für dieses Projekt werden auf Maschinen der Technischen Hochschule Nürnberg gehostet, und es wurde ein Vertrag über Auftragsverarbeitung abgeschlossen, um die Datenschutzkonformität sicherzustellen.
         </p>
 
         <h3>Wie werden meine Daten geschützt?</h3>
         <p>
-          Wir ergreifen Maßnahmen, um Ihre Daten zu schützen und sicher aufzubewahren. Dazu gehören technische Sicherheitsmaßnahmen wie Verschlüsselung und sichere Passwörter.
+          Wir ergreifen Maßnahmen, um Ihre Daten zu schützen und sicher aufzubewahren. Dazu gehören technische Sicherheitsvorkehrungen wie Verschlüsselung und sichere Passwörter.
         </p>
 
         <h3>Was sind meine Auskunftsrechte?</h3>
         <p>
-          Sie haben das Recht zu erfahren, welche Daten wir über Sie gespeichert haben, und Sie können verlangen, dass wir diese Daten korrigieren oder löschen. Kontaktieren Sie uns einfach über die oben angegebenen Kontaktinformationen, wenn Sie Ihre Rechte ausüben möchten.
+          Sie haben das Recht zu erfahren, welche Daten wir über Sie gespeichert haben, und Sie können verlangen, dass diese Daten korrigiert oder gelöscht werden. Kontaktieren Sie uns über die oben genannten Kontaktinformationen, um Ihre Rechte wahrzunehmen.
         </p>
 
         <h3>Änderungen an dieser Datenschutzerklärung</h3>
         <p>
-          Wir können diese Datenschutzerklärung von Zeit zu Zeit aktualisieren. Wenn sich etwas ändert, werden wir die Änderungen auf unserer Website veröffentlichen.
+          Diese Datenschutzerklärung kann gelegentlich aktualisiert werden. Änderungen werden auf unserer Website veröffentlicht.
         </p>
 
         <p>
-          Darüber hinaus gilt die <a href="https://www.th-nuernberg.de/datenschutz/" target="_blank">Datenschutzerklärung der TH Nürnberg</a>.
+          Zusätzlich gilt die <a href="https://www.th-nuernberg.de/datenschutz/" target="_blank">Datenschutzerklärung der TH Nürnberg</a>.
         </p>
       </v-col>
     </v-row>

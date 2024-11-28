@@ -9,13 +9,19 @@
       </button>
     </div>
     <div class="animation-container">
-      <div class="astronaut">
-        <div class="astronaut-helmet"></div>
-        <div class="astronaut-body"></div>
-        <div class="astronaut-arm left"></div>
-        <div class="astronaut-arm right"></div>
-        <div class="astronaut-leg left"></div>
-        <div class="astronaut-leg right"></div>
+      <div class="polar-bear">
+        <div class="polar-bear-head">
+          <div class="polar-bear-ear left"></div>
+          <div class="polar-bear-ear right"></div>
+          <div class="polar-bear-snout"></div>
+          <div class="polar-bear-eye left"></div>
+          <div class="polar-bear-eye right"></div>
+        </div>
+        <div class="polar-bear-body"></div>
+        <div class="polar-bear-arm left"></div>
+        <div class="polar-bear-arm right"></div>
+        <div class="polar-bear-leg left"></div>
+        <div class="polar-bear-leg right"></div>
       </div>
     </div>
   </div>
@@ -89,67 +95,117 @@ function goHome() {
   z-index: 0;
 }
 
-.astronaut {
+.polar-bear {
   position: absolute;
-  width: 100px;
-  height: 150px;
+  width: 160px;
+  height: 200px;
   left: 50%;
   top: 50%;
   animation: float 6s ease-in-out infinite;
 }
 
-.astronaut-helmet {
+.polar-bear-head {
   position: absolute;
-  width: 60px;
-  height: 60px;
-  background-color: #f1efd5;
-  border-radius: 50%;
+  width: 100px;
+  height: 80px;
+  background-color: white;
+  border-radius: 50px;
   top: 0;
-  left: 20px;
+  left: 30px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.astronaut-body {
+.polar-bear-ear {
   position: absolute;
-  width: 80px;
-  height: 100px;
-  background-color: #b0ca97;
-  border-radius: 40px;
-  top: 40px;
+  width: 30px;
+  height: 30px;
+  background-color: white;
+  border-radius: 50%;
+  top: -10px;
+}
+
+.polar-bear-ear.left {
   left: 10px;
 }
 
-.astronaut-arm {
-  position: absolute;
-  width: 20px;
-  height: 60px;
-  background-color: #b0ca97;
-  top: 60px;
+.polar-bear-ear.right {
+  right: 10px;
 }
 
-.astronaut-arm.left {
+.polar-bear-eye {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: #2F4F4F;
+  border-radius: 50%;
+  top: 35px;
+}
+
+.polar-bear-eye.left {
+  left: 30px;
+}
+
+.polar-bear-eye.right {
+  right: 30px;
+}
+
+.polar-bear-snout {
+  position: absolute;
+  width: 40px;
+  height: 25px;
+  background-color: #2F4F4F;
+  border-radius: 20px;
+  bottom: 15px;
+  left: 30px;
+}
+
+.polar-bear-body {
+  position: absolute;
+  width: 120px;
+  height: 140px;
+  background-color: white;
+  border-radius: 60px;
+  top: 60px;
+  left: 20px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.polar-bear-arm {
+  position: absolute;
+  width: 30px;
+  height: 80px;
+  background-color: white;
+  border-radius: 15px;
+  top: 80px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.polar-bear-arm.left {
   left: 0;
   transform: rotate(20deg);
 }
 
-.astronaut-arm.right {
+.polar-bear-arm.right {
   right: 0;
   transform: rotate(-20deg);
 }
 
-.astronaut-leg {
+.polar-bear-leg {
   position: absolute;
-  width: 25px;
-  height: 80px;
-  background-color: #b0ca97;
+  width: 35px;
+  height: 70px;
+  background-color: white;
+  border-radius: 17px;
   bottom: 0;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.astronaut-leg.left {
-  left: 15px;
+.polar-bear-leg.left {
+  left: 25px;
 }
 
-.astronaut-leg.right {
-  right: 15px;
+.polar-bear-leg.right {
+  right: 25px;
 }
 
 @keyframes float {
@@ -173,5 +229,15 @@ function goHome() {
   .message {
     font-size: 1rem;
   }
+
+.polar-bear {
+  position: relative;
+  margin-left: 50px;
+  width: 160px;
+  height: 200px;
+  top: 150px;
+  animation: float 8s ease-in-out infinite;
+}
+
 }
 </style>

@@ -2,3 +2,5 @@
 .idea
 .env
 /llars-frontend/node_modules
+/app/rag_docs
+/docker/ssh_proxy/id_rsa

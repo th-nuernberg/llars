@@ -111,6 +111,7 @@ def logout():
 
 
 @data_blueprint.route('/email_threads', methods=['POST'])
+@data_blueprint.route('/email_threads', methods=['POST'])
 def create_email_thread():
     data = request.get_json()
 
@@ -159,14 +160,25 @@ def create_email_thread():
         email_thread.sender = sender  # Update the sender if email_thread already exists
         db.session.commit()
 
-    existing_message_ids = {msg.message_id for msg in email_thread.messages}
     for msg in data.get('messages', []):
-        if msg.get('message_id') not in existing_message_ids:
+        # Convert timestamp string to datetime object
+        msg_timestamp = datetime.strptime(msg.get('timestamp'), '%Y-%m-%d %H:%M:%S')
+        msg_content = msg.get('content')
+
+        # Check for existing message with same timestamp and content
+        existing_message = Message.query.filter_by(
+            thread_id=email_thread.thread_id,
+            timestamp=msg_timestamp,
+            content=msg_content
+        ).first()
+
+        # If no duplicate found, add the new message
+        if not existing_message:
             message = Message(
                 thread_id=email_thread.thread_id,
                 sender=msg.get('sender'),
-                content=msg.get('content'),
-                timestamp=datetime.strptime(msg.get('timestamp'), '%Y-%m-%d %H:%M:%S')
+                content=msg_content,
+                timestamp=msg_timestamp
             )
             db.session.add(message)
 

@@ -24,7 +24,7 @@ class RAGPipeline:
         os.makedirs(self.vectorstore_dir, exist_ok=True)
 
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,
+            chunk_size=1000,
             chunk_overlap=200,
             separators=["\n\n", "\n", " ", ""]
         )

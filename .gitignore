@@ -3,4 +3,5 @@
 .env
 /llars-frontend/node_modules
 /app/rag_docs
+/app/rag_docs_old
 /docker/ssh_proxy/id_rsa

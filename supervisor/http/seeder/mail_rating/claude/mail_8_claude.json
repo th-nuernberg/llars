@@ -1,0 +1,33 @@
+{
+  "type": "mail_rating",
+  "chat_id": 208,
+  "institut_id": 0,
+  "subject": "Konzentrationsprobleme meines Sohnes",
+  "sender": "Maria",
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchende Person",
+      "content": "Liebes bke-Team,\nich schreibe Ihnen, weil ich große Sorgen um meinen 9-jährigen Sohn habe. Tim sitzt stundenlang vor den Hausaufgaben und kommt trotzdem nicht voran. Er träumt dann vor sich hin, malt Kreise auf sein Heft oder schaut aus dem Fenster. In der Schule ist es ähnlich - die Lehrerin sagt, er sei oft abwesend und würde dem Unterricht nicht folgen.\nSeine Noten werden immer schlechter, obwohl er ein kluger Junge ist. Wenn ich mit ihm übe, merke ich, dass er den Stoff eigentlich versteht. Aber sobald er alleine arbeiten soll, scheint er wie blockiert. Am schlimmsten ist es bei Mathematik, da sitzt er manchmal zwei Stunden an drei Aufgaben.\nIch habe schon alles Mögliche versucht - feste Lernzeiten eingeführt, Pausen gemacht, ihn motiviert und gelobt. Nichts scheint zu helfen. Wenn ich ihn frage, warum er nicht bei der Sache bleibt, zuckt er nur mit den Schultern und sagt \"weiß nicht\".\nDie Lehrerin hat jetzt angedeutet, dass er vielleicht ADHS haben könnte und wir das abklären lassen sollten. Aber ich bin skeptisch - er kann sich bei seinen Computerspielen oder beim Lego bauen stundenlang konzentrieren.\nWas meinen Sie dazu? Soll ich mit ihm zum Arzt gehen oder gibt es andere Möglichkeiten, ihm zu helfen?\nViele Grüße,\nMaria B.",
+      "timestamp": "2023-03-05 18:23:00"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratende Person",
+      "content": "Liebe Maria,\n\nherzlich willkommen in der bke-Online-Beratung! Ich bin bke-Marcus, Psychologe und berate hier virtuell Eltern und Jugendliche. In einer Erziehungsberatungsstelle arbeite ich zudem mit Familien. Du darfst mich gerne duzen, das ist hier so üblich.\n\nVielen Dank für dein Vertrauen und dass du dich mit deinen Sorgen um Tim an uns wendest. Die Situation, die du beschreibst, ist für euch beide sehr belastend. Es ist verständlich, dass du nach Erklärungen und Lösungen suchst, wenn dein kluger Junge plötzlich solche Schwierigkeiten in der Schule hat.\n\nDeine Beobachtung, dass Tim sich bei bestimmten Aktivitäten wie Computerspielen oder Lego durchaus konzentrieren kann, ist sehr wichtig. Das spricht dafür, dass er grundsätzlich zu Konzentration und Ausdauer fähig ist. Allerdings können Konzentrationsprobleme viele verschiedene Ursachen haben:\n- Überforderung oder Unterforderung\n- Emotionale Belastungen\n- Lernblockaden\n- Wahrnehmungs- oder Verarbeitungsschwierigkeiten\n- Oder auch ADHS, das sich bei manchen Kindern nur in bestimmten Situationen zeigt\n\nUm dir besser helfen zu können, würde ich gerne mehr über Tims Situation erfahren:\n- Seit wann beobachtest du diese Schwierigkeiten?\n- Gab es Veränderungen in seinem Leben (Familie, Schule, Freunde)?\n- Wie geht es ihm sonst in der Schule? Hat er Freunde? Geht er gerne hin?\n- Gibt es Fächer oder Situationen, in denen es besser kläppt?\n\nFür den Moment möchte ich dir einige erste Ideen mitgeben:\n\n1. Lernstruktur anpassen:\n- Kürzere Arbeitseinheiten (20-30 Minuten)\n- Mehr Bewegungspausen\n- Ablenkungen minimieren\n- Schwierige Aufgaben auf die Zeit legen, wo er noch fit ist\n\n2. Stärken nutzen:\n- An seinen Interessen anknüpfen\n- Erfolgserlebnisse schaffen\n- Auch außerschulische Aktivitäten wertschätzen\n\n3. Druck reduzieren:\n- Verständnis zeigen für seine Schwierigkeiten\n- Nicht zu viel auf einmal erwarten\n- Positive Rückmeldungen geben\n\nWas den Vorschlag der Lehrerin betrifft: Eine diagnostische Abklärung beim Kinderarzt oder in einer spezialisierten Praxis könnte hilfreich sein - nicht um ein \"Etikett\" zu bekommen, sondern um besser zu verstehen, wo genau die Schwierigkeiten liegen und welche Unterstützung Tim braucht.\n\nParallel dazu gibt es noch andere Möglichkeiten:\n- Eine Lerntherapie könnte Tim helfen, bessere Strategien zu entwickeln\n- Eine Erziehungsberatungsstelle kann euch beide unterstützen\n- Ein Gespräch mit der Schulpsychologin könnte neue Perspektiven eröffnen\n\nEs ist wichtig, dass Tim spürt: Die Erwachsenen suchen nach Wegen, ihm zu helfen, und er ist nicht \"schuld\" an seinen Schwierigkeiten.\n\nIch würde mich freuen, wenn du mir zurückschreibst und wir gemeinsam überlegen können, welcher Weg für Tim der beste sein könnte. Eine Antwort von mir erhältst du in der Regel innerhalb von 2-3 Tagen.\n\nHerzliche Grüße\nbke-Marcus",
+      "timestamp": "2023-03-06 10:45:00"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchende Person",
+      "content": "",
+      "timestamp": "2023-03-07 21:10:00"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratende Person",
+      "content": "",
+      "timestamp": "2023-03-08 14:20:00"
+    }
+  ]
+}

@@ -59,6 +59,16 @@
             <BinaryLikertScale v-model="ratings.overall" :disabled="isDisabled.overall"/>
           </div>
 
+          <v-row align="center">
+    <v-spacer></v-spacer> <!-- Fügt flexiblen Raum hinzu -->
+      <CategorySelection
+      :initial-category-id="selectedCategoryId"
+      :initial-category-notes="categoryNotes"
+      @category-selected="handleCategorySelection"
+      class="CategorySelectionButton"
+      />
+    </v-row>
+
           <v-textarea
             v-model="feedback"
             label="Ihre Gedanken oder Notizen"
@@ -75,7 +85,7 @@
       <v-col>
         <v-chip
           class="category-chip"
-          :color="ratedStatus === 'Rated' ? 'green lighten-2' : ratedStatus === 'Partly Rated' ? 'orange lighten-2' : 'grey lighten-2'"
+          :color="ratedStatus === 'Done' ? 'green lighten-2' : ratedStatus === 'In Progress' ? 'orange lighten-2' : 'grey lighten-2'"
           small
         >
           {{ratedStatus}}
@@ -120,6 +130,7 @@ import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import LikertScale from '../parts/LikertScale.vue';
 import BinaryLikertScale from "@/components/parts/BinaryLikertScale.vue";
+import CategorySelection from '../parts/CategorySelection.vue';
 
 // Setup route, router and data variables
 const route = useRoute();
@@ -132,12 +143,17 @@ const ratings = ref({
   quality: null,
   overall: null
 });
-const feedback = ref('');
+const feedback = ref(null);
+
+const selectedCategoryId = ref(null);
+const categoryNotes = ref(null);
 
 // for comparison tee see if there are unsaved changes
 const initial_rating = ref(null)
 const initial_feedback = ref(null)
 const initial_messages = ref([]);
+const initialSelectedCategoryId = ref(null);
+const initialCategoryNotes = ref(null)
 
 const ratedStatus = ref(null);
 const hasUnsavedChanges = ref(false)
@@ -193,6 +209,7 @@ async function initializeWebsiteComponent()
 
     // Check if the user has already rated the thread
     if (mailhistoryRatingResponse.data) {
+      console.log("API Daten:", mailhistoryRatingResponse.data)
       // If the mail rating exists, set the data accordingly
       let temp_rating ={ // for avoiding bugs cause of 0 value
         counsellor_coherence: mailhistoryRatingResponse.data.rating.counsellor_coherence_rating,
@@ -215,6 +232,8 @@ async function initializeWebsiteComponent()
         quality: temp_rating.quality,
         overall: temp_rating.overall
       };
+      selectedCategoryId.value = mailhistoryRatingResponse.data.consulting_category.consulting_category_type_id
+      categoryNotes.value = mailhistoryRatingResponse.data.consulting_category.consulting_category_note
 
 
       feedback.value = mailhistoryRatingResponse.data.rating.feedback;
@@ -224,12 +243,13 @@ async function initializeWebsiteComponent()
     } else {
       ratedStatus.value = 'Not Rated';
     }
-    console.log(` Ist rated? ${ratedStatus.value}`)
 
     // set the db retrieved values as initial values, in order for comparison if changes occurred
     initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
     initial_feedback.value = JSON.parse(JSON.stringify(feedback.value));
     initial_messages.value = JSON.parse(JSON.stringify(messages.value));
+    initialSelectedCategoryId.value = JSON.parse(JSON.stringify(selectedCategoryId.value))
+    initialCategoryNotes.value = JSON.parse(JSON.stringify(categoryNotes.value))
 
     // load ratings from local storage
     loadMailHistoryRatingsFromLocalStorage();
@@ -241,6 +261,12 @@ async function initializeWebsiteComponent()
   }
 }
 
+function handleCategorySelection(selectedCategory) {
+  selectedCategoryId.value = selectedCategory.categoryId;
+  categoryNotes.value = selectedCategory.categoryNotes;
+  console.log("Test ID", selectedCategoryId.value)
+  console.log("Test Kategory", categoryNotes.value)
+}
 
 // Format timestamp for display
 function formatTimestamp(timestamp) {
@@ -256,7 +282,9 @@ function loadMailHistoryRatingsFromLocalStorage() {
   if (savedData) {
     ratings.value = savedData.ratings;
     feedback.value = savedData.feedback;
-    console.log("Ratings wurden aus dem Local Storage geladen")
+    selectedCategoryId.value= savedData.category_id;
+    categoryNotes.value = savedData.category_notes;
+    console.log("Ratings wurden aus dem Local Storage geladen", categoryNotes.value)
     hasUnsavedChanges.value = check_for_changes();
   }
 }
@@ -284,7 +312,9 @@ function saveMailhistoryRatingsToLocalStorage() {
   if (feedback.value === ""){feedback.value = null}
   const dataToSave = {
     ratings: ratings.value,
-    feedback: feedback.value
+    feedback: feedback.value,
+    category_id: selectedCategoryId.value,
+    category_notes: categoryNotes.value
   };
   localStorage.setItem(`local_rating_changes_${threadId}`, JSON.stringify(dataToSave));
   console.log("Änderungen wurden im LocalStorage gespeichert")
@@ -305,10 +335,9 @@ function saveMessageRatingsToLocalStorage() {
 
 // Observes for mail history ratings and feedback
 watch(
-  [ratings],
+  [ratings, selectedCategoryId, categoryNotes],
   () => {
     console.log("Bewertung wurde geändert, speichere in Local Storage...");
-
 
     saveMailhistoryRatingsToLocalStorage();
     hasUnsavedChanges.value = check_for_changes();
@@ -375,7 +404,9 @@ function check_for_changes() {
     initial_rating.value.client_coherence !== ratings.value.client_coherence ||
     initial_rating.value.quality !== ratings.value.quality  ||
     initial_rating.value.overall !== ratings.value.overall ||
-      initial_feedback.value !== feedback.value)
+    initial_feedback.value !== feedback.value ||
+    initialSelectedCategoryId.value !== selectedCategoryId.value ||
+    initialCategoryNotes.value !== categoryNotes.value)
   {
     localStorage.setItem(`hasUnsaved_ratingChanges_${threadId}`, JSON.stringify(true));
     return true;
@@ -411,27 +442,46 @@ function rateMessage(index, rating) {
 async function saveRatingServerSide() {
   const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
-  const formatted_rating = {
+  const rating_and_category = {
     counsellor_coherence_rating: ratings.value.counsellor_coherence,
     client_coherence_rating: ratings.value.client_coherence,
     quality_rating: ratings.value.quality,
     overall_rating: ratings.value.overall,
-    feedback: feedback.value
+    feedback: feedback.value,
+    consulting_category_id: selectedCategoryId.value,
+    consulting_category_notes: categoryNotes.value,
+    consider_category_for_status: true
   }
-  if(checkIfDisabled("rating-category-coherence-client") && formatted_rating.client_coherence_rating === null)
-    formatted_rating.client_coherence_rating = 0;
-  if(checkIfDisabled("rating-category-coherence-counsellor") && formatted_rating.counsellor_coherence_rating === null)
-    formatted_rating.counsellor_coherence_rating = 0;
-  if(checkIfDisabled("rating-category-quality") && formatted_rating.quality_rating === null)
-    formatted_rating.quality_rating = 0;
-  if(checkIfDisabled("rating-category-overall") && formatted_rating.overall_rating === null)
-    formatted_rating.overall_rating = 0;
+  if(checkIfDisabled("rating-category-coherence-client"))
+  {
+    if (rating_and_category.client_coherence_rating === null)
+      rating_and_category.client_coherence_rating = 0;
+    rating_and_category.consider_category_for_status = false;
+  }
+  if(checkIfDisabled("rating-category-coherence-counsellor"))
+  {
+    if(rating_and_category.counsellor_coherence_rating === null)
+      rating_and_category.counsellor_coherence_rating = 0;
+    rating_and_category.consider_category_for_status = false;
+  }
 
+  if(checkIfDisabled("rating-category-quality"))
+  {
+    if(rating_and_category.quality_rating === null)
+      rating_and_category.quality_rating = 0;
+    rating_and_category.consider_category_for_status = false;
+  }
+  if(checkIfDisabled("rating-category-overall"))
+  {
+    if(rating_and_category.overall_rating === null)
+      rating_and_category.overall_rating = 0;
+    rating_and_category.consider_category_for_status = false;
+  }
   try {
     // saving mail history ratings
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
-      formatted_rating,
+      rating_and_category,
       {
         headers: {
           'Authorization': api_key,
@@ -800,6 +850,9 @@ function navigateToOverview() {
 
 .sub-rating-category{
   margin-left: 10%;
+}
+.CategorySelectionButton{
+  margin-right: 2.5%;
 }
 
 </style>

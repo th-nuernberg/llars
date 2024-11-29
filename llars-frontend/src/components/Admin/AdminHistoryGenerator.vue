@@ -13,13 +13,13 @@
             <strong>Benutzer</strong>
           </v-col>
           <v-col cols="3" sm="2" class="threads-col">
-            <strong>Rated</strong>
+            <strong>Done</strong>
           </v-col>
           <v-col cols="3" sm="2" class="threads-col">
-            <strong>Partly Rated</strong>
+            <strong>In Progress</strong>
           </v-col>
           <v-col cols="3" sm="2" class="threads-col">
-            <strong>Not Rated</strong>
+            <strong>Not Started</strong>
           </v-col>
           <v-col class="progress-col">
             <strong>Gesamtfortschritt</strong>
@@ -41,17 +41,17 @@
 
       <!-- Bewertete Threads -->
       <v-col cols="3" sm="2" class="threads-col">
-        <span class="thread-info">{{ user.rated_threads }}</span>
+        <span class="thread-info">{{ user.done_threads }}</span>
       </v-col>
 
       <!-- Teilweise bewertete Threads -->
       <v-col cols="3" sm="2" class="threads-col">
-        <span class="thread-info">{{ user.partly_rated_threads }}</span>
+        <span class="thread-info">{{ user.in_progress_threads }}</span>
       </v-col>
 
       <!-- Nicht bewertete Threads -->
       <v-col cols="3" sm="2" class="threads-col">
-        <span class="thread-info">{{ user.not_rated_threads }}</span>
+        <span class="thread-info">{{ user.not_started_threads }}</span>
       </v-col>
 
       <!-- Fortschrittsbalken -->
@@ -59,40 +59,40 @@
         <div class="progress-bar-wrapper">
           <!-- Bewertete Threads (grün) -->
           <div
-            :style="{ width: `${user.ratedPercentage}%` }"
-            class="progress-bar progress-bar-rated"
+            :style="{ width: `${user.donePercentage}%` }"
+            class="progress-bar progress-bar-done"
           >
             <span
-              v-if="user.ratedPercentage > 5"
-              class="progress-label progress-label-rated"
+              v-if="user.donePercentage > 5"
+              class="progress-label progress-label-done"
             >
-              {{ Math.round(user.ratedPercentage) }}%
+              {{ Math.round(user.donePercentage) }}%
             </span>
           </div>
 
           <!-- Teilweise bewertete Threads (gelb) -->
           <div
-            :style="{ width: `${user.partlyRatedPercentage}%`, left: `${user.ratedPercentage}%` }"
-            class="progress-bar progress-bar-partly-rated"
+            :style="{ width: `${user.inProgressPercentage}%`, left: `${user.donePercentage}%` }"
+            class="progress-bar progress-bar-in-progress"
           >
             <span
-              v-if="user.partlyRatedPercentage > 5"
-              class="progress-label progress-label-partly-rated"
+              v-if="user.inProgressPercentage > 5"
+              class="progress-label progress-label-in-progress"
             >
-              {{ Math.round(user.partlyRatedPercentage) }}%
+              {{ Math.round(user.inProgressPercentage) }}%
             </span>
           </div>
 
           <!-- Nicht bewertete Threads (rot) -->
           <div
-            :style="{ width: `${user.unratedPercentage}%`, left: `${user.ratedPercentage + user.partlyRatedPercentage}%` }"
-            class="progress-bar progress-bar-not-rated"
+            :style="{ width: `${user.notStartedPercentage}%`, left: `${user.donePercentage + user.inProgressPercentage}%` }"
+            class="progress-bar progress-bar-not-started"
           >
             <span
-              v-if="user.unratedPercentage > 5"
-              class="progress-label progress-label-not-rated"
+              v-if="user.notStartedPercentage > 5"
+              class="progress-label progress-label-not-started"
             >
-              {{ Math.round(user.unratedPercentage) }}%
+              {{ Math.round(user.notStartedPercentage) }}%
             </span>
           </div>
         </div>
@@ -116,7 +116,7 @@
           <!-- Anzeige der bewerteten Threads -->
           <v-subheader>Bewertete Threads</v-subheader>
           <v-list dense>
-            <v-list-item v-for="thread in selectedUser.rated_threads_list" :key="thread.thread_id">
+            <v-list-item v-for="thread in selectedUser.done_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
                 <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
@@ -127,7 +127,7 @@
           <!-- Anzeige der teils bewerteten Threads -->
           <v-subheader>Teilweise bewertete Threads</v-subheader>
           <v-list dense>
-            <v-list-item v-for="thread in selectedUser.partly_rated_threads_list" :key="thread.thread_id">
+            <v-list-item v-for="thread in selectedUser.in_progress_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
                 <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
@@ -138,7 +138,7 @@
           <!-- Anzeige der nicht bewerteten Threads -->
           <v-subheader>Nicht bewertete Threads</v-subheader>
           <v-list dense>
-            <v-list-item v-for="thread in selectedUser.not_rated_threads_list" :key="thread.thread_id">
+            <v-list-item v-for="thread in selectedUser.not_started_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
                 <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
@@ -170,15 +170,15 @@ const showThreadDetails = (user) => {
 };
 
 // Berechnung des Fortschritts für jeden Benutzer
-const calculateProgressSections = (total_threads, rated_threads, partly_rated_threads) => {
-  const ratedPercentage = (rated_threads / total_threads) * 100 || 0;
-  const partlyRatedPercentage = (partly_rated_threads / total_threads) * 100 || 0;
-  const unratedPercentage = 100 - ratedPercentage - partlyRatedPercentage;
+const calculateProgressSections = (total_threads, done_threads, in_progress_threads) => {
+  const donePercentage = (done_threads / total_threads) * 100 || 0;
+  const inProgresPercentage = (in_progress_threads / total_threads) * 100 || 0;
+  const notStartedPercentage = 100 - donePercentage - inProgresPercentage;
 
   return {
-    ratedPercentage,
-    partlyRatedPercentage,
-    unratedPercentage,
+    donePercentage: donePercentage,
+    inProgressPercentage: inProgresPercentage,
+    notStartedPercentage,
   };
 };
 
@@ -203,14 +203,14 @@ const fetchUserStats = async () => {
         // Berechnung der Prozentwerte für den Fortschritt
         const progressSections = calculateProgressSections(
           user.total_threads,
-          user.rated_threads,
-          user.partly_rated_threads
+          user.done_threads,
+          user.in_progress_threads
         );
 
         // Rückgabe des erweiterten Objekts
         return {
           ...user,
-          ...progressSections, // Fügt ratedPercentage, partlyRatedPercentage und unratedPercentage hinzu
+          ...progressSections,
         };
       });
     } else {
@@ -335,15 +335,15 @@ onMounted(() => {
 }
 
 /* Farben der Balken */
-.progress-bar-rated {
+.progress-bar-done {
   background-color: #e9f5ea; /* Grün für bewertete Threads */
 }
 
-.progress-bar-partly_rated {
+.progress-bar-in_progress {
   background-color: #f7ebd9; /* Gelb für teilweise bewertete Threads */
 }
 
-.progress-bar-not-rated {
+.progress-bar-not-started {
   background-color: #f3f3f3; /* Rot für nicht bewertete Threads */
 }
 
@@ -358,15 +358,15 @@ onMounted(() => {
 }
 
 /* Farben der Prozentzahlen */
-.progress-label-rated{
+.progress-label-done{
   color: #4aae4d;
 }
 
-.progress-label-partly-rated {
+.progress-label-in-progress {
   color: #ff9c12;
 }
 
-.progress-label-not-rated {
+.progress-label-not-started {
   color: #a1a1a1;
 }
 

@@ -25,6 +25,7 @@ def configure_database(app):
     with app.app_context():
         db.create_all()
         initialize_feature_function_types()
+        initialize_consulting_category_types()
         seed_user_groups()  # Hier wird die neue Funktion für das Seeden der User-Gruppen aufgerufen
         # db.session.execute(text("UPDATE users SET group_id = 1 WHERE group_id IS NULL"))
         # db.session.commit()
@@ -45,6 +46,81 @@ def initialize_feature_function_types():
         db.session.add(mail_rating)
 
     db.session.commit()
+
+def initialize_consulting_category_types():
+    from .tables import ConsultingCategoryType
+    if not ConsultingCategoryType.query.filter_by(id=1).first():
+        category = ConsultingCategoryType(
+            id=1,
+            name='Unversorgtheit des jungen Menschen',
+            description='Ausfall der Bezugspersonen wegen Krankheit, stationärer Unterbringung, Inhaftierung, Tod; unbegleitet eingereiste Minderjährige',)
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=2).first():
+        category = ConsultingCategoryType(
+            id=2,
+            name='Unzureichende Förderung / Betreuung / Versorgung des jungen Menschen in der Familie',
+            description='soziale, gesundheitliche, wirtschaftliche Probleme', )
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=3).first():
+        category = ConsultingCategoryType(
+            id=3,
+            name='Gefährdung des Kindeswohls',
+            description='Vernachlässigung, körperliche, psychische, sexuelle Gewalt in der Familie', )
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=4).first():
+        category = ConsultingCategoryType(
+            id=4,
+            name='Eingeschränkte Erziehungskompetenz der Eltern/Personensorgeberechtigten',
+            description='Erziehungsunsicherheit, pädagogische Überforderung, unangemessene Verwöhnung',)
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=5).first():
+        category = ConsultingCategoryType(
+            id=5,
+            name='Belastungen des jungen Menschen durch Problemlagen der Eltern ',
+            description='Suchtverhalten, geistige oder seelische Behinderung', )
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=6).first():
+        category = ConsultingCategoryType(
+            id=6,
+            name='Belastungen des jungen Menschen durch familiäre Konflikte',
+            description='Partnerkonflikte, Trennung und Scheidung, Umgangs- / Sorgerechtsstreitigkeiten, Eltern- / Stiefeltern-Kind-Konflikte, migrationsbedingte Konfliktlagen', )
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=7).first():
+        category = ConsultingCategoryType(
+            id=7,
+            name='Auffälligkeiten im sozialen Verhalten (dissoziales Verhalten) des jungen Menschen',
+            description='Gehemmtheit, Isolation, Geschwisterrivalität, Weglaufen, Aggressivität, Drogen- / Alkoholkonsum, Delinquenz / Straftat',)
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=8).first():
+        category = ConsultingCategoryType(
+            id=8,
+            name='Entwicklungsauffälligkeiten/seelische Probleme des jungen Menschen ',
+            description='Entwicklungsrückstand, Ängste, Zwänge, selbst verletzendes Verhalten, suizidale Tendenzen', )
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=9).first():
+        category = ConsultingCategoryType(
+            id=9,
+            name='Schulische / berufliche Probleme des jungen Menschen',
+            description='Schwierigkeiten mit Leistungsanforderungen, Konzentrationsprobleme (ADS, Hyperaktivität), schulvermeidendes Verhalten (Schwänzen), Hochbegabung', )
+        db.session.add(category)
+
+    if not ConsultingCategoryType.query.filter_by(id=10).first():
+        category = ConsultingCategoryType(
+            id=10,
+            name='Sonstiges',
+            description=None, )
+        db.session.add(category)
+
+    db.session.commit()
+
 
 def seed_user_groups():
     from .tables import UserGroup  # Importiere das UserGroup Model

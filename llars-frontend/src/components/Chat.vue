@@ -167,15 +167,24 @@ const adjustAnimationSpeed = (length) => {
 onMounted(() => {
   loadMessages();
 
+  const username = localStorage.getItem('username') || 'Gast';
+
   socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
     path: '/socket.io/',
     transports: ['websocket'],
+    query: { username: username }, // Username hier einfügen
     headers: {
       'Content-Type': 'application/json; charset=utf-8'
     }
   });
 
-  socket.value.on('connect', () => console.log('Socket connected'));
+    socket.value.on('connect', () => {
+    console.log('Socket connected');
+    // Existierende Nachrichten ans Backend senden
+    messages.value.forEach(msg => {
+      chat_manager.add_to_history(socket.value.id, msg.sender, msg.content);
+    });
+  });
   socket.value.on('disconnect', () => console.log('Socket disconnected'));
 
   socket.value.on('chat_response', (data) => {

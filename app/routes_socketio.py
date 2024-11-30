@@ -94,15 +94,20 @@ def configure_socket_routes(socketio, verbose=True):
     def handle_connect():
         client_id = request.sid
         username = request.args.get('username', 'Gast')
-        initial_message = f"Hallo {username}! Wie kann ich dir helfen?"
-        # Add initial message to chat history
-        chat_manager.add_to_history(client_id, 'bot', initial_message)
-        # Send initial message to client
-        emit('chat_response', {
-            'content': initial_message,
-            'complete': True,
-            'sender': 'bot'
-        }, room=client_id)
+
+        # Prüfen ob bereits Chat-Historie existiert
+        existing_history = chat_manager.get_chat_history(client_id)
+
+        if not existing_history:
+            # Nur wenn keine Historie existiert, initiale Nachricht senden
+            initial_message = f"Hallo {username}! Wie kann ich dir helfen?"
+            chat_manager.add_to_history(client_id, 'bot', initial_message)
+            emit('chat_response', {
+                'content': initial_message,
+                'complete': True,
+                'sender': 'bot'
+            }, room=client_id)
+
         logging.info(f'Client {client_id} connected')
 
     @socketio.on('disconnect')
@@ -118,12 +123,69 @@ def configure_socket_routes(socketio, verbose=True):
 
         # Error Messages
         ERROR_MESSAGES = [
-            # ... [Error messages list] ...
+            "Tut mir leid, ich mache gerade ein kurzes Nickerchen. Versuche es in ein paar Minuten noch einmal!",
+            "Oh je, meine Gehirnzellen streiken gerade. Ich brauche einen Moment zum Aufwärmen.",
+            "Hmm, scheint als hätte ich gerade eine kleine Denkpause. Gleich bin ich wieder fit!",
+            "Entschuldige, ich bin gerade in einer wichtigen Meditation. Komme gleich zurück!",
+            "Ups, meine neuronalen Netze haben sich verheddert. Gib mir kurz Zeit zum Entwirren.",
+            "Sorry, ich musste kurz einen Bärenschlaf machen. Bin gleich wieder da!",
+            "Meine KI-Synapsen brauchen einen Moment zum Synchronisieren. Gleich geht's weiter!",
+            "Technische Pause - ich sortiere gerade meine Gedanken. Bin in Kürze wieder für dich da!",
+            "Da hat wohl jemand meinen Stecker gezogen. Keine Sorge, ich bin gleich wieder online!",
+            "Zeit für eine kurze Verschnaufpause. Ich sammle neue Energie für unsere Unterhaltung!"
         ]
 
         def send_error_message():
-            """Helper function to send error messages with stream simulation"""
-            # ... [Error handling code] ...
+            """Hilfsfunktion zum Senden von Fehlermeldungen mit Stream-Simulation"""
+            error_msg = random.choice(ERROR_MESSAGES)
+            retry_msg = "Versuche es einfach in ein paar Minuten noch einmal."
+
+            # Teile die Hauptfehlermeldung in Chunks auf
+            chunks = []
+            current_chunk = ""
+            words = error_msg.split()
+
+            for word in words:
+                if len(current_chunk) < 10:
+                    current_chunk += word + " "
+                else:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = word + " "
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+
+            # Sende die Chunks mit Verzögerung
+            for chunk in chunks:
+                emit("chat_response", {
+                    "content": chunk + " ",
+                    "complete": False,
+                    "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+                }, room=client_id)
+                socketio.sleep(0.1)  # 300ms Verzögerung zwischen den Chunks
+
+            # Kurze Pause vor der Retry-Nachricht
+            socketio.sleep(0.5)
+
+            # Sende Retry-Nachricht
+            retry_chunks = retry_msg.split()
+            for word in retry_chunks:
+                emit("chat_response", {
+                    "content": word + " ",
+                    "complete": False,
+                    "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+                }, room=client_id)
+                socketio.sleep(0.2)  # 200ms Verzögerung für die Retry-Nachricht
+
+            # Abschließende Nachricht als complete
+            emit("chat_response", {
+                "content": "",
+                "complete": True,
+                "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+            }, room=client_id)
+
+            # Füge zur Chat-Historie hinzu (auch hier 'bot' statt 'system')
+            chat_manager.add_to_history(client_id, "bot", f"{error_msg} {retry_msg}")
+
 
         try:
             user_message = data.get("message", "").encode('utf-8').decode('utf-8')

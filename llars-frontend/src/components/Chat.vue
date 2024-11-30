@@ -172,19 +172,23 @@ onMounted(() => {
   socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
     path: '/socket.io/',
     transports: ['websocket'],
-    query: { username: username }, // Username hier einfügen
+    query: { username: username },
     headers: {
       'Content-Type': 'application/json; charset=utf-8'
     }
   });
 
-    socket.value.on('connect', () => {
+  socket.value.on('connect', () => {
     console.log('Socket connected');
-    // Existierende Nachrichten ans Backend senden
-    messages.value.forEach(msg => {
-      chat_manager.add_to_history(socket.value.id, msg.sender, msg.content);
+    // Sende die komplette Chat-Historie als ein Event
+    socket.value.emit('sync_history', {
+      messages: messages.value.map(msg => ({
+        sender: msg.sender,
+        content: msg.content
+      }))
     });
   });
+
   socket.value.on('disconnect', () => console.log('Socket disconnected'));
 
   socket.value.on('chat_response', (data) => {

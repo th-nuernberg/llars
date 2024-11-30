@@ -109,5 +109,6 @@ Content-Type: application/json
 
 {
   "username": "steigerwald",
-  "password": "neele"
+  "password": "neele",
+  "api_key": "14fb4237-35c7-4ad4-9df1-002379a16d0e"
 }

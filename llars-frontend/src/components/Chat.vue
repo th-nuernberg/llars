@@ -90,45 +90,22 @@ const scrollToBottom = () => {
   });
 };
 
-// Funktion zum Laden der Nachrichten aus dem localStorage
-// Funktion zum Laden der Nachrichten aus dem localStorage
+// Function to load messages from localStorage
 const loadMessages = () => {
   try {
     const savedMessages = localStorage.getItem(STORAGE_KEY);
-    const username = localStorage.getItem('username') || 'Gast';
-
     if (savedMessages) {
       messages.value = JSON.parse(savedMessages);
     } else {
-      // Personalisierte Begrüßungsnachricht
-      messages.value = [
-        {
-          id: 1,
-          content: `Hallo ${username}! Wie kann ich dir helfen?`,
-          sender: 'bot',
-          timestamp: new Date().toLocaleTimeString(),
-          streaming: false
-        }
-      ];
-      // Speichere die initiale Nachricht
-      saveMessages();
+      messages.value = [];
     }
   } catch (error) {
     console.error('Error loading messages from localStorage:', error);
-    const username = localStorage.getItem('username') || 'Gast';
-    messages.value = [
-      {
-        id: 1,
-        content: `Hallo ${username}! Wie kann ich dir helfen?`,
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString(),
-        streaming: false
-      }
-    ];
+    messages.value = [];
   }
 };
 
-// Funktion zum Speichern der Nachrichten im localStorage
+// Function to save messages to localStorage
 const saveMessages = () => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.value));
@@ -156,7 +133,7 @@ const sendMessage = () => {
   newMessage.value = '';
   isProcessing.value = true;
 
-  socket.value.emit('chat_stream', {message: userMessage});
+  socket.value.emit('chat_stream', { message: userMessage });
 };
 
 const addMessage = (content, sender, streaming = false) => {
@@ -190,7 +167,6 @@ const adjustAnimationSpeed = (length) => {
 onMounted(() => {
   loadMessages();
 
-  // Verbesserte Socket.io Initialisierung mit Umgebungsvariable
   socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
     path: '/socket.io/',
     transports: ['websocket'],
@@ -206,7 +182,7 @@ onMounted(() => {
     const lastMessage = messages.value[messages.value.length - 1];
 
     if (!data.complete) {
-      if (lastMessage && lastMessage.streaming) {
+      if (lastMessage && lastMessage.streaming && lastMessage.sender === 'bot') {
         lastMessage.content += data.content;
         saveMessages();
         if (enableTypewriterAnimation.value) {
@@ -216,9 +192,11 @@ onMounted(() => {
         addMessage(data.content, 'bot', true);
       }
     } else {
-      if (lastMessage && lastMessage.streaming) {
+      if (lastMessage && lastMessage.streaming && lastMessage.sender === 'bot') {
         lastMessage.streaming = false;
         saveMessages();
+      } else {
+        addMessage(data.content, 'bot', false);
       }
       isProcessing.value = false;
       scrollToBottom();

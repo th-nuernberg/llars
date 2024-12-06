@@ -50,6 +50,7 @@
           <v-text-field
             v-model="newMessage"
             @keyup.enter="sendMessage"
+            @input="onInputChange"
             placeholder="Schreibe eine Nachricht..."
             variant="outlined"
             :loading="isProcessing"
@@ -60,6 +61,20 @@
             append-inner-icon="mdi-send"
             @click:append-inner="sendMessage"
           ></v-text-field>
+
+          <!-- Command Suggestion Menu -->
+          <div v-if="showCommandMenu" class="command-menu">
+            <v-list dense>
+              <v-list-item
+                v-for="(command, index) in filteredCommands"
+                :key="index"
+                @click="selectCommand(command)"
+              >
+                <v-list-item-title>{{ command }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </div>
+
         </div>
       </v-col>
     </v-row>
@@ -67,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import { io } from 'socket.io-client';
 
 const STORAGE_KEY = 'chat_messages';
@@ -78,6 +93,14 @@ const socket = ref(null);
 const isProcessing = ref(false);
 const enableTypewriterAnimation = ref(true);
 const animationSpeed = ref('medium');
+
+// Command Menu States
+const showCommandMenu = ref(false);
+const availableCommands = ref(['/help', '/clear']);
+const filteredCommands = computed(() => {
+  const input = newMessage.value.trim();
+  return availableCommands.value.filter(cmd => cmd.startsWith(input));
+});
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -116,6 +139,14 @@ const saveMessages = () => {
 
 const sendMessage = () => {
   if (!newMessage.value.trim() || isProcessing.value) return;
+
+  // Handle Commands
+  if (newMessage.value.startsWith('/')) {
+    handleCommand(newMessage.value.trim());
+    newMessage.value = '';
+    showCommandMenu.value = false;
+    return;
+  }
 
   const messageObj = {
     id: messages.value.length + 1,
@@ -161,6 +192,36 @@ const adjustAnimationSpeed = (length) => {
     animationSpeed.value = 'medium';
   } else {
     animationSpeed.value = 'slow';
+  }
+};
+
+// Handle Input Change for Command Menu
+const onInputChange = () => {
+  if (newMessage.value.startsWith('/')) {
+    showCommandMenu.value = true;
+  } else {
+    showCommandMenu.value = false;
+  }
+};
+
+// Handle Command Selection
+const selectCommand = (command) => {
+  newMessage.value = command + ' ';
+  showCommandMenu.value = false;
+};
+
+// Handle Commands
+const handleCommand = (command) => {
+  switch (command) {
+    case '/help':
+      addMessage('Verfügbare Befehle:\n/help - Zeigt diese Hilfe an\n/clear - Löscht den Chatverlauf', 'bot');
+      break;
+    case '/clear':
+      messages.value = [];
+      saveMessages();
+      break;
+    default:
+      addMessage(`Unbekannter Befehl: ${command}`, 'bot');
   }
 };
 
@@ -387,12 +448,60 @@ onUnmounted(() => {
   padding: 16px 24px;
   background: white;
   border-top: 1px solid #eee;
+  position: relative;
 }
 
 .chat-input-field {
   max-width: 1200px;
   margin: 0 auto;
 }
+
+/* Command Menu Styles */
+.command-menu {
+  position: absolute;
+  bottom: 60px; /* Adjust according to the height of your input field */
+  left: calc(24px + 20px); /* Slightly shifted to the right */
+  right: calc(24px - 10px); /* More compact spacing */
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Softer shadow for better contrast */
+  border-radius: 8px;
+  z-index: 10;
+  padding: 8px; /* Adds a bit of padding inside */
+  border: 1px solid #e0e0e0; /* Subtle border for better distinction */
+}
+
+.command-menu .v-list {
+  padding: 0;
+  margin: 0;
+}
+
+.command-menu .v-list-item {
+  cursor: pointer;
+  padding: 6px 12px; /* Makes items more compact */
+  font-size: 0.9rem; /* Slightly smaller font for compact look */
+  border-radius: 4px; /* Slight rounding for better aesthetics */
+}
+
+.command-menu .v-list-item:hover {
+  background-color: #f9f9f9; /* Subtle hover effect */
+  color: #4caf50; /* Accent color to match the rest of the UI */
+}
+
+/* Command Menu Responsiveness */
+@media (max-width: 600px) {
+  .command-menu {
+    left: 16px;
+    right: 16px;
+    bottom: 50px;
+    padding: 6px;
+  }
+
+  .command-menu .v-list-item {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+  }
+}
+
 
 /* Responsive Design */
 @media (min-width: 960px) {

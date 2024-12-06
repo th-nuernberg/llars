@@ -32,7 +32,7 @@
       <v-col cols="12" md="6">
         <div class="rating-section">
           <div class="rating-category" id="rating-category-coherence">
-            <h4>1. Kohärenz und Logik ratsuchenden Person</h4>
+            <h4>1. Kohärenz und Logik</h4>
             <p>Entsprechen die Reaktionen und Interaktionen einem natürlichen Kommunikationsmuster? Stehen die Texte in einem inhaltlichen Zusammenhang zueinander? Gibt es Brüche oder Unstimmigkeiten? Wird auf die Antwort des jeweilig anderen eingegangen und auch neue inhaltliche Aspekte generiert oder wird „stoisch“ immer das gleiche wiederholt? Gibt es Halluzinationen?</p>
         </div>
 

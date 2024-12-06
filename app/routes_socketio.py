@@ -94,12 +94,13 @@ def configure_socket_routes(socketio, verbose=True):
     def handle_connect():
         client_id = request.sid
         username = request.args.get('username', 'Gast')
+        logging.info(f'Client {client_id} connected')
 
-        # Prüfen ob bereits Chat-Historie existiert
+        # Get existing chat history for the client
         existing_history = chat_manager.get_chat_history(client_id)
 
+        # Only send welcome message if there's no existing history
         if not existing_history:
-            # Nur wenn keine Historie existiert, initiale Nachricht senden
             initial_message = f"Hallo {username}! Wie kann ich dir helfen?"
             chat_manager.add_to_history(client_id, 'bot', initial_message)
             emit('chat_response', {
@@ -107,8 +108,6 @@ def configure_socket_routes(socketio, verbose=True):
                 'complete': True,
                 'sender': 'bot'
             }, room=client_id)
-
-        logging.info(f'Client {client_id} connected')
 
     @socketio.on('disconnect')
     def handle_disconnect():
@@ -159,9 +158,9 @@ def configure_socket_routes(socketio, verbose=True):
                 emit("chat_response", {
                     "content": chunk + " ",
                     "complete": False,
-                    "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+                    "sender": "bot"
                 }, room=client_id)
-                socketio.sleep(0.1)  # 300ms Verzögerung zwischen den Chunks
+                socketio.sleep(0.1)
 
             # Kurze Pause vor der Retry-Nachricht
             socketio.sleep(0.5)
@@ -172,20 +171,19 @@ def configure_socket_routes(socketio, verbose=True):
                 emit("chat_response", {
                     "content": word + " ",
                     "complete": False,
-                    "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+                    "sender": "bot"
                 }, room=client_id)
-                socketio.sleep(0.2)  # 200ms Verzögerung für die Retry-Nachricht
+                socketio.sleep(0.2)
 
             # Abschließende Nachricht als complete
             emit("chat_response", {
                 "content": "",
                 "complete": True,
-                "sender": "bot"  # Änderung hier: 'system' zu 'bot'
+                "sender": "bot"
             }, room=client_id)
 
-            # Füge zur Chat-Historie hinzu (auch hier 'bot' statt 'system')
+            # Füge zur Chat-Historie hinzu
             chat_manager.add_to_history(client_id, "bot", f"{error_msg} {retry_msg}")
-
 
         try:
             user_message = data.get("message", "").encode('utf-8').decode('utf-8')
@@ -222,7 +220,6 @@ def configure_socket_routes(socketio, verbose=True):
                     logging.info(f"RAG context retrieved: {len(rag_context)} chars")
                 except Exception as e:
                     logging.error(f"RAG pipeline error: {e}")
-                    # Proceed without RAG context
 
             # Get Chat History
             chat_history = chat_manager.get_chat_history(client_id)

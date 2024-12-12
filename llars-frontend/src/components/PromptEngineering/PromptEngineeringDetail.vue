@@ -99,19 +99,19 @@
                 </v-card-title>
                 <v-card-text>
                   <div class="textarea-container">
-<v-textarea
-  v-model="element.content"
-  outlined
-  hide-details
-  rows="4"
-  class="prompt-textarea"
-  :readonly="!hasEditPermission"
-  :data-block-id="element.name"
-  @input="value => handleTextChange(element.name, value)"
-  @click="updateCursorPosition($event.target, element.name)"
-  @keyup="updateCursorPosition($event.target, element.name)"
-  @select="updateCursorPosition($event.target, element.name)"
-></v-textarea>
+                    <v-textarea
+                      v-model="element.content"
+                      outlined
+                      hide-details
+                      rows="4"
+                      class="prompt-textarea"
+                      :readonly="!hasEditPermission"
+                      :data-block-id="element.name"
+                      @input="value => handleTextChange(element.name, value)"
+                      @click="updateCursorPosition($event.target, element.name)"
+                      @keyup="updateCursorPosition($event.target, element.name)"
+                      @select="updateCursorPosition($event.target, element.name)"
+                    ></v-textarea>
                     <!-- Remote Cursors für diesen Block -->
                     <div
                       v-for="cursor in getCursorsForBlock(element.name)"
@@ -919,6 +919,20 @@ const getCursorsForBlock = (blockId) => {
   color: white;
   white-space: nowrap;
   transform: translateX(-50%);
+  opacity: 1;
+  animation: fadeOut 5s forwards;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .prompt-textarea {

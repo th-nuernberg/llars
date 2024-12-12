@@ -746,6 +746,13 @@ function calculateCursorPosition(cursor) {
     const textWidth = measureElement.getBoundingClientRect().width;
     document.body.removeChild(measureElement);
 
+    // Calculate the width of three characters for adjustment
+    const threeCharWidth = measureElement.textContent = 'AAA';
+    measureElement.textContent = 'AAA';
+    document.body.appendChild(measureElement);
+    const adjustmentWidth = measureElement.getBoundingClientRect().width / 3; // Average per character
+    document.body.removeChild(measureElement);
+
     // Calculate positions
     const lineHeight = parseFloat(textareaStyles.lineHeight);
     const scrollTop = textarea.scrollTop;
@@ -753,9 +760,9 @@ function calculateCursorPosition(cursor) {
     const paddingLeft = parseFloat(textareaStyles.paddingLeft) || 0;
     const borderTop = parseFloat(textareaStyles.borderTopWidth) || 0;
 
-    // Calculate final position, only adding essential padding
+    // Calculate final position, adjusting for three characters
     const top = (currentLine * lineHeight) - scrollTop + paddingTop + borderTop;
-    const left = textWidth + paddingLeft + wrapperPaddingLeft; // Removed the +12px offset
+    const left = textWidth - (1 * adjustmentWidth) + paddingLeft + wrapperPaddingLeft;
 
     return {
       position: 'absolute',
@@ -767,6 +774,7 @@ function calculateCursorPosition(cursor) {
     return { left: '0px', top: '0px' };
   }
 }
+
 
 // Update the template section where cursors are rendered:
 const getCursorsForBlock = (blockId) => {

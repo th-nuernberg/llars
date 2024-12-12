@@ -1,67 +1,88 @@
-// collaborative.js
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { io } from 'socket.io-client';
 
 export function useCollaborativeEditing(promptId, blocks) {
-  const socket = io(`${import.meta.env.VITE_API_BASE_URL}`);
+  const socket = ref(null);
   const collaborators = ref([]);
   const cursors = ref({});
 
+  const initSocket = () => {
+    socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`);
+
+    socket.value.emit('join_prompt', {
+      promptId,
+      username: localStorage.getItem('username') || 'Anonymous'
+    });
+
+    socket.value.on('collaborator_joined', (data) => {
+      collaborators.value = data.collaborators;
+    });
+
+    socket.value.on('collaborator_left', (data) => {
+      collaborators.value = data.collaborators;
+    });
+
+    socket.value.on('cursor_update', (data) => {
+      if (data.userId !== socket.value.id) {
+        cursors.value[data.userId] = data;
+      }
+    });
+
+    socket.value.on('content_update', (data) => {
+      if (data.userId !== socket.value.id) {
+        const block = blocks.value.find(b => b.name === data.blockId);
+        if (block) {
+          block.content = data.content;
+        }
+      }
+    });
+  };
+
   const updateCursorPosition = (textareaEl, blockId) => {
-    if (!textareaEl) return;
+    if (!textareaEl || !socket.value) return;
+
     const position = textareaEl.selectionStart;
     const cursorData = {
       blockId,
       position,
-      userId: socket.id,
+      userId: socket.value.id,
       timestamp: Date.now()
     };
-    socket.emit('cursor_move', { promptId, ...cursorData });
+
+    socket.value.emit('cursor_move', { promptId, ...cursorData });
   };
 
-  const handleCursorUpdate = (data) => {
-    if (data.userId === socket.id) return;
-    cursors.value[data.userId] = data;
-  };
+  const handleTextChange = (blockId, content) => {
+    if (!socket.value) return;
 
-  const handleTextChange = (blockId, newContent) => {
-    socket.emit('content_change', {
+    socket.value.emit('content_change', {
       promptId,
       blockId,
-      content: newContent,
+      content,
+      userId: socket.value.id,
       timestamp: Date.now()
     });
   };
 
-  const handleIncomingChange = (data) => {
-    const block = blocks.value.find(b => b.name === data.blockId);
-    if (block) {
-      block.content = data.content;
+  // Listen for changes in blocks
+  watch(blocks, (newBlocks) => {
+    if (socket.value) {
+      socket.value.emit('blocks_update', {
+        promptId,
+        blocks: newBlocks,
+        timestamp: Date.now()
+      });
     }
-  };
-
-  const joinSession = () => {
-    socket.emit('join_prompt', { promptId });
-  };
-
-  const handleCollaboratorJoin = (data) => {
-    collaborators.value = data.collaborators;
-  };
+  }, { deep: true });
 
   onMounted(() => {
-    socket.on('cursor_update', handleCursorUpdate);
-    socket.on('content_update', handleIncomingChange);
-    socket.on('collaborator_joined', handleCollaboratorJoin);
-    socket.on('collaborator_left', handleCollaboratorJoin);
-    joinSession();
+    initSocket();
   });
 
   onUnmounted(() => {
-    socket.off('cursor_update', handleCursorUpdate);
-    socket.off('content_update', handleIncomingChange);
-    socket.off('collaborator_joined', handleCollaboratorJoin);
-    socket.off('collaborator_left', handleCollaboratorJoin);
-    socket.disconnect();
+    if (socket.value) {
+      socket.value.disconnect();
+    }
   });
 
   return {
@@ -71,4 +92,3 @@ export function useCollaborativeEditing(promptId, blocks) {
     handleTextChange
   };
 }
-

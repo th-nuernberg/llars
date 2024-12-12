@@ -1,5 +1,5 @@
 # routes_socketio.py
-from flask_socketio import emit
+from flask_socketio import emit, join_room, leave_room
 from flask import request
 import json
 import requests
@@ -7,6 +7,7 @@ import logging
 import random
 from prompt_manager import PromptManager
 from rag_pipeline import RAGPipeline
+from datetime import datetime
 
 # Enhanced logging format
 logging.basicConfig(
@@ -87,8 +88,66 @@ class ChatManager:
         logging.info("=" * 120 + "\n")
 
 
+class CollaborativeManager:
+    def __init__(self):
+        self.active_prompts = {}  # Speichert aktive Prompts und deren Collaborators
+        self.user_rooms = {}  # Speichert, in welchen Räumen sich ein User befindet
+        self.cursor_positions = {}  # Speichert Cursor-Positionen
+
+    def join_prompt(self, prompt_id, user_id, username):
+        room_id = f"prompt_{prompt_id}"
+        if room_id not in self.active_prompts:
+            self.active_prompts[room_id] = {
+                'collaborators': {},
+                'content': {}
+            }
+
+        self.active_prompts[room_id]['collaborators'][user_id] = {
+            'username': username,
+            'joined_at': datetime.now().isoformat()
+        }
+
+        if user_id not in self.user_rooms:
+            self.user_rooms[user_id] = set()
+        self.user_rooms[user_id].add(room_id)
+
+        return list(self.active_prompts[room_id]['collaborators'].values())
+
+    def leave_prompt(self, prompt_id, user_id):
+        room_id = f"prompt_{prompt_id}"
+        if room_id in self.active_prompts:
+            if user_id in self.active_prompts[room_id]['collaborators']:
+                del self.active_prompts[room_id]['collaborators'][user_id]
+
+            if user_id in self.user_rooms:
+                self.user_rooms[user_id].remove(room_id)
+
+            # Lösche Cursor-Position
+            if user_id in self.cursor_positions:
+                del self.cursor_positions[user_id]
+
+            return list(self.active_prompts[room_id]['collaborators'].values())
+        return []
+
+    def update_cursor(self, prompt_id, user_id, block_id, position):
+        self.cursor_positions[user_id] = {
+            'prompt_id': prompt_id,
+            'block_id': block_id,
+            'position': position,
+            'timestamp': datetime.now().isoformat()
+        }
+        return self.cursor_positions[user_id]
+
+    def get_collaborators(self, prompt_id):
+        room_id = f"prompt_{prompt_id}"
+        if room_id in self.active_prompts:
+            return list(self.active_prompts[room_id]['collaborators'].values())
+        return []
+
+
 def configure_socket_routes(socketio, verbose=True):
     chat_manager = ChatManager(verbose=verbose)
+    collab_manager = CollaborativeManager()
 
     @socketio.on('connect')
     def handle_connect():
@@ -109,8 +168,99 @@ def configure_socket_routes(socketio, verbose=True):
                 'sender': 'bot'
             }, room=client_id)
 
+    @socketio.on('join_prompt')
+    def handle_join_prompt(data):
+        prompt_id = data['promptId']
+        username = data.get('username', 'Anonymous')
+        user_id = request.sid
+        room = f"prompt_{prompt_id}"
+
+        join_room(room)
+        collaborators = collab_manager.join_prompt(prompt_id, user_id, username)
+
+        # Informiere alle im Raum über den neuen Collaborator
+        emit('collaborator_joined', {
+            'collaborators': collaborators,
+            'joinedUser': username
+        }, room=room)
+
+        logging.info(f"User {username} joined prompt {prompt_id}")
+
+    @socketio.on('leave_prompt')
+    def handle_leave_prompt(data):
+        prompt_id = data['promptId']
+        user_id = request.sid
+        room = f"prompt_{prompt_id}"
+
+        collaborators = collab_manager.leave_prompt(prompt_id, user_id)
+        leave_room(room)
+
+        # Informiere andere über das Verlassen
+        emit('collaborator_left', {
+            'collaborators': collaborators,
+            'leftUserId': user_id
+        }, room=room)
+
+    @socketio.on('cursor_move')
+    def handle_cursor_move(data):
+        prompt_id = data['promptId']
+        block_id = data['blockId']
+        position = data['position']
+        user_id = request.sid
+        room = f"prompt_{prompt_id}"
+
+        cursor_data = collab_manager.update_cursor(prompt_id, user_id, block_id, position)
+
+        # Sende Cursor-Position an alle anderen im Raum
+        emit('cursor_update', {
+            'userId': user_id,
+            **cursor_data
+        }, room=room, include_self=False)
+
+    @socketio.on('content_change')
+    def handle_content_change(data):
+        prompt_id = data['promptId']
+        block_id = data['blockId']
+        content = data['content']
+        user_id = request.sid
+        room = f"prompt_{prompt_id}"
+
+        # Speichere die Änderung in der Datenbank
+        try:
+            # Hier müsstest du deine Datenbanklogik implementieren
+            # update_prompt_content(prompt_id, block_id, content)
+
+            # Broadcaste die Änderung an alle anderen im Raum
+            emit('content_update', {
+                'blockId': block_id,
+                'content': content,
+                'userId': user_id,
+                'timestamp': datetime.now().isoformat()
+            }, room=room, include_self=False)
+
+        except Exception as e:
+            logging.error(f"Error updating content: {str(e)}")
+            emit('error', {
+                'message': 'Failed to save changes'
+            }, room=request.sid)
+
+    # Erweitere den bestehenden disconnect handler
     @socketio.on('disconnect')
     def handle_disconnect():
+        user_id = request.sid
+
+        # Verlasse alle aktiven Prompt-Räume
+        if user_id in collab_manager.user_rooms:
+            for room in collab_manager.user_rooms[user_id].copy():
+                prompt_id = room.split('_')[1]  # Extract prompt_id from room name
+                collaborators = collab_manager.leave_prompt(prompt_id, user_id)
+
+                emit('collaborator_left', {
+                    'collaborators': collaborators,
+                    'leftUserId': user_id
+                }, room=room)
+
+        # Bestehende Chat-Cleanup-Logik
         chat_manager.clear_history(request.sid)
         logging.info(f'Client {request.sid} disconnected')
 

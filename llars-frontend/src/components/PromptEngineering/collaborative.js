@@ -52,17 +52,20 @@ export function useCollaborativeEditing(promptId, blocks) {
     socket.value.emit('cursor_move', { promptId, ...cursorData });
   };
 
-  const handleTextChange = (blockId, content) => {
-    if (!socket.value) return;
+const handleTextChange = (blockId, content) => {
+  if (!socket.value) return;
 
-    socket.value.emit('content_change', {
-      promptId,
-      blockId,
-      content,
-      userId: socket.value.id,
-      timestamp: Date.now()
-    });
-  };
+  // Stellen Sie sicher, dass nur der String-Wert gesendet wird
+  const textContent = typeof content === 'object' ? content.target?.value : content;
+
+  socket.value.emit('content_change', {
+    promptId,
+    blockId,
+    content: textContent,
+    userId: socket.value.id,
+    timestamp: Date.now()
+  });
+};
 
   // Listen for changes in blocks
   watch(blocks, (newBlocks) => {

@@ -53,7 +53,7 @@
                   x-small
                   class="edit-title-btn ml-2"
                   @click="startEdit"
-                  v-if="!isSharedPrompt"
+                  v-if="hasEditPermission"
                 >
                   <v-icon small>mdi-pencil</v-icon>
                 </v-btn>
@@ -76,48 +76,48 @@
             class="blocks-list"
             item-key="name"
             handle=".drag-handle"
-            :disabled="isSharedPrompt"
+            :disabled="!hasEditPermission"
           >
             <template #item="{ element, index }">
               <v-card class="mb-4">
                 <v-card-title class="d-flex align-center">
                   <v-icon
                     class="mr-2"
-                    :class="{ 'cursor-move': !isSharedPrompt, 'drag-handle': !isSharedPrompt }"
+                    :class="{ 'cursor-move': hasEditPermission, 'drag-handle': hasEditPermission }"
                   >
-                    {{ isSharedPrompt ? 'mdi-text' : 'mdi-drag' }}
+                    {{ hasEditPermission ? 'mdi-drag' : 'mdi-text' }}
                   </v-icon>
                   {{ element.name }}
                   <v-spacer></v-spacer>
                   <v-btn
                     icon
                     @click="removeBlock(index)"
-                    v-if="!isSharedPrompt"
+                    v-if="hasEditPermission"
                   >
                     <v-icon color="error">mdi-delete</v-icon>
                   </v-btn>
                 </v-card-title>
                 <v-card-text>
                   <div class="textarea-container">
-                    <v-textarea
-                      v-model="element.content"
-                      outlined
-                      hide-details
-                      rows="4"
-                      class="prompt-textarea"
-                      :readonly="isSharedPrompt && !hasEditPermission"
-                      :data-block-id="element.name"
-                      @input="handleTextChange(element.name, $event)"
-                      @click="updateCursorPosition($event.target, element.name)"
-                      @keyup="updateCursorPosition($event.target, element.name)"
-                      @select="updateCursorPosition($event.target, element.name)"
-                    ></v-textarea>
+<v-textarea
+  v-model="element.content"
+  outlined
+  hide-details
+  rows="4"
+  class="prompt-textarea"
+  :readonly="!hasEditPermission"
+  :data-block-id="element.name"
+  @input="value => handleTextChange(element.name, value)"
+  @click="updateCursorPosition($event.target, element.name)"
+  @keyup="updateCursorPosition($event.target, element.name)"
+  @select="updateCursorPosition($event.target, element.name)"
+></v-textarea>
                     <!-- Remote Cursors für diesen Block -->
                     <div
                       v-for="cursor in getCursorsForBlock(element.name)"
                       :key="cursor.userId"
                       class="remote-cursor"
-                      :style="calculateCursorPosition(cursor, $event)"
+                      :style="calculateCursorPosition(cursor)"
                     >
                       <div class="cursor-label" :style="{ backgroundColor: getCursorColor(cursor.userId) }">
                         {{ getUsernameFromId(cursor.userId) }}
@@ -129,21 +129,13 @@
               </v-card>
             </template>
           </draggable>
-            <div
-    v-for="cursor in cursors"
-    :key="cursor.userId"
-    class="remote-cursor"
-    :style="getCursorPosition(cursor)"
-  >
-    <div class="cursor-label">{{ cursor.userId }}</div>
-  </div>
         </div>
       </v-col>
 
       <!-- Sidebar - Tools -->
       <v-col cols="3" class="sidebar">
         <!-- Template Selection Card -->
-        <v-card class="mb-4" v-if="!isSharedPrompt">
+        <v-card class="mb-4" v-if="hasEditPermission">
           <v-card-title>Templates</v-card-title>
           <v-card-text>
             <v-btn
@@ -159,7 +151,7 @@
         </v-card>
 
         <!-- New Block Card -->
-        <v-card class="mb-4" v-if="!isSharedPrompt">
+        <v-card class="mb-4" v-if="hasEditPermission">
           <v-card-title>Neuer Baustein</v-card-title>
           <v-card-text>
             <v-form ref="newBlockForm" v-model="isFormValid">
@@ -188,7 +180,7 @@
           <v-card-title>Aktionen</v-card-title>
           <v-card-text>
             <v-btn
-              v-if="!isSharedPrompt"
+              v-if="hasEditPermission"
               block
               color="success"
               class="mb-2"
@@ -220,7 +212,7 @@
 
             <!-- New Upload Button -->
             <v-btn
-              v-if="!isSharedPrompt"
+              v-if="hasEditPermission"
               block
               color="primary"
               class="mb-2"
@@ -249,7 +241,7 @@
         </v-card>
 
         <!-- Share Card -->
-        <v-card class="mt-4" v-if="!isSharedPrompt">
+        <v-card class="mt-4" v-if="hasEditPermission">
           <v-card-title>Prompt teilen</v-card-title>
           <v-card-text>
             <v-form ref="shareForm" v-model="isShareFormValid">
@@ -273,92 +265,34 @@
 
             <!-- Shared Users List -->
             <template v-if="sharedUsers.length > 0">
-  <v-divider class="my-3"></v-divider>
-  <div class="text-subtitle-2 mb-2">
-    Geteilt mit:
-    <v-chip
-      small
-      color="info"
-      class="ml-2"
-    >
-      {{ sharedUsers.length }}
-    </v-chip>
-  </div>
-  <v-list density="compact">
-    <v-list-item
-      v-for="user in sharedUsers"
-      :key="user"
-      :value="user"
-    >
-      <template v-slot:prepend>
-        <v-icon size="small" color="info">mdi-account</v-icon>
-      </template>
-      {{ user }}
-    </v-list-item>
-  </v-list>
-</template>
+              <v-divider class="my-3"></v-divider>
+              <div class="text-subtitle-2 mb-2">
+                Geteilt mit:
+                <v-chip
+                  small
+                  color="info"
+                  class="ml-2"
+                >
+                  {{ sharedUsers.length }}
+                </v-chip>
+              </div>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="user in sharedUsers"
+                  :key="user"
+                  :value="user"
+                >
+                  <template v-slot:prepend>
+                    <v-icon size="small" color="info">mdi-account</v-icon>
+                  </template>
+                  {{ user }}
+                </v-list-item>
+              </v-list>
+            </template>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
-
-    <!-- Preview Dialog -->
-    <v-dialog v-model="showPreview" max-width="800">
-      <v-card>
-        <v-card-title>Vorschau</v-card-title>
-        <v-card-text>
-          <pre class="preview-content">{{ compiledPrompt }}</pre>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="primary" @click="showPreview = false">Schließen</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Template Selection Dialog -->
-    <v-dialog v-model="showTemplateDialog" max-width="600">
-      <v-card>
-        <v-card-title>Template auswählen</v-card-title>
-        <v-card-text>
-          <v-list>
-            <v-list-item
-              v-for="template in templates"
-              :key="template.id"
-              @click="loadTemplate(template.id)"
-            >
-              <v-list-item-title>{{ template.name }}</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="primary" @click="showTemplateDialog = false">Abbrechen</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Upload Confirmation Dialog -->
-    <v-dialog v-model="showUploadDialog" max-width="500">
-      <v-card>
-        <v-card-title>JSON importieren</v-card-title>
-        <v-card-text>
-          Wie möchten Sie die Blöcke aus der JSON-Datei importieren?
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="error" @click="cancelUpload">
-            Abbrechen
-          </v-btn>
-          <v-btn color="warning" @click="mergeBlocks">
-            Zu bestehenden hinzufügen
-          </v-btn>
-          <v-btn color="primary" @click="replaceBlocks">
-            Bestehende ersetzen
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
@@ -534,6 +468,13 @@ async function fetchPrompt() {
           content
         }));
     }
+    console.log({
+  currentUser: localStorage.getItem('username'),
+  owner: owner.value,
+  isShared: isSharedPrompt.value,
+  sharedUsers: sharedUsers.value,
+  hasPermission: hasEditPermission.value
+});
   } catch (error) {
     console.error('Fehler beim Abrufen des Prompts:', error);
     alert('Fehler beim Laden des Prompts.');
@@ -716,8 +657,12 @@ function cancelUpload() {
 onMounted(fetchPrompt);
 
 const hasEditPermission = computed(() => {
-  if (!isSharedPrompt.value) return true;
   const currentUser = localStorage.getItem('username');
+  if (!isSharedPrompt.value) {
+    // Wenn es kein geteilter Prompt ist, darf nur der Besitzer editieren
+    return owner.value === currentUser;
+  }
+  // Bei einem geteilten Prompt dürfen Besitzer und geteilte User editieren
   return owner.value === currentUser || sharedUsers.value.includes(currentUser);
 });
 

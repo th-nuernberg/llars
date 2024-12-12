@@ -180,6 +180,25 @@
               Als JSON herunterladen
             </v-btn>
 
+            <!-- New Upload Button -->
+            <v-btn
+              v-if="!isSharedPrompt"
+              block
+              color="primary"
+              class="mb-2"
+              @click="$refs.fileInput.click()"
+            >
+              <v-icon left>mdi-upload</v-icon>
+              JSON hochladen
+            </v-btn>
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".json"
+              style="display: none"
+              @change="handleFileUpload"
+            >
+
             <v-btn
               block
               color="grey"
@@ -196,16 +215,13 @@
           <v-card-title>Prompt teilen</v-card-title>
           <v-card-text>
             <v-form ref="shareForm" v-model="isShareFormValid">
-            <v-text-field
-              v-model="shareWithUser"
-              label="Benutzername"
-
-              dense
-              class="mb-2"
-              placeholder="Mit Benutzer teilen"
-            />
-              <!-- :rules="[rules.required]" -->
-              <!-- @keyup.enter="sharePrompt" -->
+              <v-text-field
+                v-model="shareWithUser"
+                label="Benutzername"
+                dense
+                class="mb-2"
+                placeholder="Mit Benutzer teilen"
+              />
               <v-btn
                 block
                 color="info"
@@ -285,6 +301,28 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Upload Confirmation Dialog -->
+    <v-dialog v-model="showUploadDialog" max-width="500">
+      <v-card>
+        <v-card-title>JSON importieren</v-card-title>
+        <v-card-text>
+          Wie möchten Sie die Blöcke aus der JSON-Datei importieren?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="error" @click="cancelUpload">
+            Abbrechen
+          </v-btn>
+          <v-btn color="warning" @click="mergeBlocks">
+            Zu bestehenden hinzufügen
+          </v-btn>
+          <v-btn color="primary" @click="replaceBlocks">
+            Bestehende ersetzen
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -339,7 +377,6 @@ const showTemplateDialog = ref(false);
 const sharedUsers = ref([]);
 const owner = ref('');
 
-// Neue Refs für das Sharing
 const shareWithUser = ref('');
 const isShareFormValid = ref(false);
 const isSharedPrompt = ref(false);
@@ -357,6 +394,11 @@ const compiledPrompt = computed(() => {
     .filter(content => content.trim())
     .join('\n\n');
 });
+
+// Neue Refs für das Hochladen
+const fileInput = ref(null);
+const showUploadDialog = ref(false);
+const uploadedBlocks = ref(null);
 
 function loadTemplate(templateId) {
   const template = templates.find(t => t.id === templateId);
@@ -416,7 +458,7 @@ async function fetchPrompt() {
     promptName.value = response.data.name;
     isSharedPrompt.value = response.data.is_shared;
     sharedUsers.value = response.data.shared_with || [];
-    owner.value = response.data.owner || ''; // Setze den Besitzer
+    owner.value = response.data.owner || '';
 
     if (response.data.content?.blocks) {
       blocks.value = Object.entries(response.data.content.blocks)
@@ -446,23 +488,18 @@ async function downloadPrompt() {
       headers: {
         'Authorization': api_key
       },
-      responseType: 'blob' // Wichtig für den Download
+      responseType: 'blob'
     });
 
-    // Erstelle einen Blob aus der Response
     const blob = new Blob([response.data], { type: 'application/json' });
-
-    // Erstelle einen temporären Link zum Download
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${promptName.value}.json`; // Verwendet den Prompt-Namen für die Datei
+    link.download = `${promptName.value}.json`;
 
-    // Trigger download
     document.body.appendChild(link);
     link.click();
 
-    // Cleanup
     window.URL.revokeObjectURL(url);
     document.body.removeChild(link);
   } catch (error) {
@@ -470,7 +507,6 @@ async function downloadPrompt() {
     alert('Fehler beim Herunterladen des Prompts.');
   }
 }
-
 
 async function sharePrompt() {
   try {
@@ -488,17 +524,15 @@ async function sharePrompt() {
       }
     );
 
-    // Nach erfolgreichem Teilen die Prompt-Daten neu laden
     await fetchPrompt();
 
     alert(`Prompt wurde erfolgreich mit ${shareWithUser.value} geteilt!`);
-    shareWithUser.value = ''; // Feld zurücksetzen
+    shareWithUser.value = '';
   } catch (error) {
     console.error('Fehler beim Teilen des Prompts:', error);
     alert(error.response?.data?.error || 'Fehler beim Teilen des Prompts');
   }
 }
-
 
 function startEdit() {
   editedName.value = promptName.value;
@@ -553,6 +587,71 @@ function previewPrompt() {
   showPreview.value = true;
 }
 
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = JSON.parse(e.target.result);
+
+        // Prüfen, ob die Struktur content.blocks existiert
+        if (content?.content?.blocks) {
+          uploadedBlocks.value = Object.entries(content.content.blocks)
+            .map(([name, data]) => ({
+              name,
+              content: data.content,
+              position: data.position
+            }))
+            .sort((a, b) => a.position - b.position)
+            .map(({ name, content }) => ({
+              name,
+              content
+            }));
+        } else {
+          // Falls nicht vorhanden, alle Top-Level-Keys als Blöcke interpretieren
+          const keys = Object.keys(content);
+          uploadedBlocks.value = keys.map((key, index) => ({
+            name: key,
+            content: content[key],
+            position: index
+          }));
+        }
+
+        showUploadDialog.value = true;
+      } catch (error) {
+        alert('Fehler beim Parsen der JSON-Datei: ' + error.message);
+      }
+    };
+    reader.readAsText(file);
+  } catch (error) {
+    console.error('Fehler beim Lesen der Datei:', error);
+    alert('Fehler beim Lesen der Datei.');
+  }
+  event.target.value = '';
+}
+
+function mergeBlocks() {
+  if (!uploadedBlocks.value) return;
+  blocks.value = [...blocks.value, ...uploadedBlocks.value];
+  uploadedBlocks.value = null;
+  showUploadDialog.value = false;
+}
+
+function replaceBlocks() {
+  if (!uploadedBlocks.value) return;
+  blocks.value = [...uploadedBlocks.value];
+  uploadedBlocks.value = null;
+  showUploadDialog.value = false;
+}
+
+function cancelUpload() {
+  uploadedBlocks.value = null;
+  showUploadDialog.value = false;
+}
+
 onMounted(fetchPrompt);
 </script>
 
@@ -592,7 +691,6 @@ onMounted(fetchPrompt);
   border-radius: 4px;
 }
 
-/* Neue Styles für den Prompt-Titel */
 .prompt-title-container {
   position: relative;
   padding: 8px 0;

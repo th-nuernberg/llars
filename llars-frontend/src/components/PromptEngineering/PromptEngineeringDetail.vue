@@ -5,6 +5,17 @@
       <v-col cols="9" class="pr-4">
         <div class="prompt-title-container">
           <div class="d-flex align-center">
+            <div class="collaborators-list" v-if="collaborators.length > 0">
+              <v-chip
+                v-for="collaborator in collaborators"
+                :key="collaborator.username"
+                small
+                class="mr-2"
+                color="primary"
+              >
+                {{ collaborator.username }}
+              </v-chip>
+            </div>
             <template v-if="isEditing">
               <v-text-field
                 v-model="editedName"
@@ -87,18 +98,45 @@
                   </v-btn>
                 </v-card-title>
                 <v-card-text>
-                  <v-textarea
-                    v-model="element.content"
-                    outlined
-                    hide-details
-                    rows="4"
-                    class="prompt-textarea"
-                    :readonly="isSharedPrompt"
-                  ></v-textarea>
+                  <div class="textarea-container">
+                    <v-textarea
+                      v-model="element.content"
+                      outlined
+                      hide-details
+                      rows="4"
+                      class="prompt-textarea"
+                      :readonly="isSharedPrompt && !hasEditPermission"
+                      :data-block-id="element.name"
+                      @input="handleTextChange(element.name, $event)"
+                      @click="updateCursorPosition($event.target, element.name)"
+                      @keyup="updateCursorPosition($event.target, element.name)"
+                      @select="updateCursorPosition($event.target, element.name)"
+                    ></v-textarea>
+                    <!-- Remote Cursors für diesen Block -->
+                    <div
+                      v-for="cursor in getCursorsForBlock(element.name)"
+                      :key="cursor.userId"
+                      class="remote-cursor"
+                      :style="calculateCursorPosition(cursor, $event)"
+                    >
+                      <div class="cursor-label" :style="{ backgroundColor: getCursorColor(cursor.userId) }">
+                        {{ getUsernameFromId(cursor.userId) }}
+                      </div>
+                      <div class="cursor-line" :style="{ backgroundColor: getCursorColor(cursor.userId) }"></div>
+                    </div>
+                  </div>
                 </v-card-text>
               </v-card>
             </template>
           </draggable>
+            <div
+    v-for="cursor in cursors"
+    :key="cursor.userId"
+    class="remote-cursor"
+    :style="getCursorPosition(cursor)"
+  >
+    <div class="cursor-label">{{ cursor.userId }}</div>
+  </div>
         </div>
       </v-col>
 
@@ -235,32 +273,30 @@
 
             <!-- Shared Users List -->
             <template v-if="sharedUsers.length > 0">
-              <v-divider class="my-3"></v-divider>
-              <div class="text-subtitle-2 mb-2">
-                Geteilt mit:
-                <v-chip
-                  small
-                  color="info"
-                  class="ml-2"
-                >
-                  {{ sharedUsers.length }}
-                </v-chip>
-              </div>
-              <v-list dense>
-                <v-list-item
-                  v-for="user in sharedUsers"
-                  :key="user"
-                  class="px-0"
-                >
-                  <v-list-item-icon class="mr-2">
-                    <v-icon small color="info">mdi-account</v-icon>
-                  </v-list-item-icon>
-                  <v-list-item-content>
-                    <v-list-item-title>{{ user }}</v-list-item-title>
-                  </v-list-item-content>
-                </v-list-item>
-              </v-list>
-            </template>
+  <v-divider class="my-3"></v-divider>
+  <div class="text-subtitle-2 mb-2">
+    Geteilt mit:
+    <v-chip
+      small
+      color="info"
+      class="ml-2"
+    >
+      {{ sharedUsers.length }}
+    </v-chip>
+  </div>
+  <v-list density="compact">
+    <v-list-item
+      v-for="user in sharedUsers"
+      :key="user"
+      :value="user"
+    >
+      <template v-slot:prepend>
+        <v-icon size="small" color="info">mdi-account</v-icon>
+      </template>
+      {{ user }}
+    </v-list-item>
+  </v-list>
+</template>
           </v-card-text>
         </v-card>
       </v-col>
@@ -329,8 +365,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useCollaborativeEditing } from './collaborative';
 import axios from 'axios';
 import draggable from 'vuedraggable';
+const blocks = ref([]);
+
+
+
 
 const templates = [
   {
@@ -366,9 +407,12 @@ const templates = [
 const route = useRoute();
 const router = useRouter();
 const promptId = route.params.id;
+const { collaborators, cursors, updateCursorPosition, handleTextChange } =
+  useCollaborativeEditing(promptId, blocks);
+
 
 const promptName = ref('');
-const blocks = ref([]);
+
 const newBlockName = ref('');
 const isFormValid = ref(false);
 const showPreview = ref(false);
@@ -394,6 +438,23 @@ const compiledPrompt = computed(() => {
     .filter(content => content.trim())
     .join('\n\n');
 });
+
+function getCursorPosition(cursor) {
+  // Finde den Block anhand der cursor.blockId
+  const blockIndex = blocks.value.findIndex(b => b.name === cursor.blockId);
+  if (blockIndex === -1) {
+    return {}; // Keine Position, wenn Block nicht gefunden
+  }
+
+  // Hier könntest du logischerweise die genaue Position im Text berechnen.
+  // Für ein funktionierendes Minimum kann man erstmal einen statischen Wert zurückgeben.
+  return {
+    position: 'relative',
+    top: `${blockIndex * 30}px`,
+    left: '10px'
+  };
+}
+
 
 // Neue Refs für das Hochladen
 const fileInput = ref(null);
@@ -653,6 +714,67 @@ function cancelUpload() {
 }
 
 onMounted(fetchPrompt);
+
+const hasEditPermission = computed(() => {
+  if (!isSharedPrompt.value) return true;
+  const currentUser = localStorage.getItem('username');
+  return owner.value === currentUser || sharedUsers.value.includes(currentUser);
+});
+
+// Cursor Management
+const cursorColors = {};
+const getRandomColor = () => {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+    '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
+const getCursorColor = (userId) => {
+  if (!cursorColors[userId]) {
+    cursorColors[userId] = getRandomColor();
+  }
+  return cursorColors[userId];
+};
+
+const getUsernameFromId = (userId) => {
+  const collab = collaborators.value.find(c => c.userId === userId);
+  return collab ? collab.username : 'Unbekannt';
+};
+
+const getCursorsForBlock = (blockId) => {
+  return Object.values(cursors.value).filter(cursor => cursor.blockId === blockId);
+};
+
+const calculateCursorPosition = (cursor, textarea) => {
+  if (!textarea) return { left: '0px', top: '0px' };
+
+  const text = textarea.value.substring(0, cursor.position);
+  const lines = text.split('\n');
+  const currentLine = lines.length - 1;
+  const currentLineText = lines[currentLine];
+
+  // Erstelle ein temporäres Element zur Textmessung
+  const measureElement = document.createElement('div');
+  measureElement.style.cssText = window.getComputedStyle(textarea).cssText;
+  measureElement.style.height = 'auto';
+  measureElement.style.position = 'absolute';
+  measureElement.style.visibility = 'hidden';
+  measureElement.style.whiteSpace = 'pre-wrap';
+  measureElement.textContent = currentLineText;
+
+  document.body.appendChild(measureElement);
+  const textWidth = measureElement.clientWidth;
+  document.body.removeChild(measureElement);
+
+  const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight);
+
+  return {
+    left: `${textWidth}px`,
+    top: `${currentLine * lineHeight}px`
+  };
+};
 </script>
 
 <style scoped>
@@ -763,5 +885,29 @@ onMounted(fetchPrompt);
 
 .edit-btn:hover {
   background-color: rgba(0, 0, 0, 0.04);
+}
+
+.remote-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.cursor-line {
+  width: 2px;
+  height: 20px;
+  position: absolute;
+}
+
+.cursor-label {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: white;
+  white-space: nowrap;
+  transform: translateX(-50%);
 }
 </style>

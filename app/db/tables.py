@@ -4,6 +4,7 @@ from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
+from enum import Enum
 
 class UserGroup(db.Model):
     __tablename__ = 'user_groups'
@@ -52,7 +53,6 @@ class EmailThread(db.Model):
     )
 
 
-
 class Message(db.Model):
     __tablename__ = 'messages'
     message_id = mapped_column(db.Integer, primary_key=True)
@@ -60,6 +60,7 @@ class Message(db.Model):
     sender = mapped_column(db.String(255))
     content = mapped_column(db.TEXT)
     timestamp = mapped_column(db.DateTime)
+    generated_by = mapped_column(db.String(255), default="Human")
 
 
 class LLM(db.Model):
@@ -131,6 +132,45 @@ class UserFeatureRating(db.Model):
     user = db.relationship('User', backref='feature_ratings')
     feature = db.relationship('Feature', backref='user_ratings')
 
+class ScenarioRoles(Enum):
+    VIEWER = 'Viewer'
+    RATER = 'Rater'
+
+class ProgressionStatus(Enum):
+    NOT_STARTED = 'Not Started'
+    PROGRESSING = 'Progressing'
+    DONE = 'Done'
+
+class RatingScenarios(db.Model):
+    __tablename__ = 'rating_scenarios'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
+    begin_date = mapped_column(db.DateTime, default=datetime.utcnow)
+    end_time = mapped_column(db.DateTime, default=datetime.utcnow)
+    timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+
+class ScenarioUsers(db.Model):
+    __tablename__ = 'scenario_users'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
+    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+    role = mapped_column(db.Enum(ScenarioRoles))
+
+class ScenarioThreads(db.Model):
+    __tablename__ = 'scenario_threads'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
+    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+
+
+class ScenarioThreadDistribution(db.Model):
+    __tablename__ = 'scenario_thread_distribution'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
+    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    status = mapped_column(db.Enum(ProgressionStatus))
+
 
 class UserMailHistoryRating(db.Model):
     __tablename__ = 'user_mailhistory_ratings'
@@ -142,7 +182,6 @@ class UserMailHistoryRating(db.Model):
     quality_rating = mapped_column(db.Integer, nullable=True)
     overall_rating = mapped_column(db.Integer, nullable=True)
     feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
-    rating_status = mapped_column(db.TEXT, nullable=False, default='Not Rated')
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='mail_ratings')

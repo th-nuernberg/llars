@@ -6,7 +6,8 @@ from unicodedata import category
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash
-
+from . import data_blueprint
+from . import auth_blueprint
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
@@ -18,9 +19,6 @@ from uuid import uuid4
 import uuid
 from datetime import datetime
 import json
-
-auth_blueprint = Blueprint('auth', __name__)
-data_blueprint = Blueprint('data', __name__)
 
 
 def is_valid_uuid(uuid_to_test, version=4):
@@ -164,6 +162,7 @@ def create_email_thread():
         # Convert timestamp string to datetime object
         msg_timestamp = datetime.strptime(msg.get('timestamp'), '%Y-%m-%d %H:%M:%S')
         msg_content = msg.get('content')
+        msg_author = msg.get('author')
 
         # Check for existing message with same timestamp and content
         existing_message = Message.query.filter_by(
@@ -178,7 +177,8 @@ def create_email_thread():
                 thread_id=email_thread.thread_id,
                 sender=msg.get('sender'),
                 content=msg_content,
-                timestamp=msg_timestamp
+                timestamp=msg_timestamp,
+                generated_by=msg_author if msg_author else "Human"
             )
             db.session.add(message)
 
@@ -1712,6 +1712,4 @@ def rename_prompt(prompt_id):
     }), 200
 
 
-def configure_routes(app):
-    app.register_blueprint(auth_blueprint, url_prefix='/auth')
-    app.register_blueprint(data_blueprint, url_prefix='/api')
+

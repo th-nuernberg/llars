@@ -204,7 +204,7 @@ def configure_socket_routes(socketio, verbose=True):
     @socketio.on('cursor_move')
     def handle_cursor_move(data):
         prompt_id = data['promptId']
-        block_id = data['blockId']
+        block_id = data['block_id']
         position = data['position']
         user_id = request.sid
         room = f"prompt_{prompt_id}"
@@ -220,7 +220,7 @@ def configure_socket_routes(socketio, verbose=True):
     @socketio.on('content_change')
     def handle_content_change(data):
         prompt_id = data['promptId']
-        block_id = data['blockId']
+        block_id = data['block_id']
         content = data['content']
         user_id = request.sid
         room = f"prompt_{prompt_id}"
@@ -232,7 +232,7 @@ def configure_socket_routes(socketio, verbose=True):
 
             # Broadcaste die Änderung an alle anderen im Raum
             emit('content_update', {
-                'blockId': block_id,
+                'block_id': block_id,
                 'content': content,
                 'userId': user_id,
                 'timestamp': datetime.now().isoformat()

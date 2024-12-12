@@ -26,11 +26,12 @@ export function useCollaborativeEditing(promptId, blocks) {
       if (data.userId !== socket.value.id) {
         cursors.value[data.userId] = data;
       }
+      // console.log('cursors', cursors.value);
     });
 
     socket.value.on('content_update', (data) => {
       if (data.userId !== socket.value.id) {
-        const block = blocks.value.find(b => b.name === data.blockId);
+        const block = blocks.value.find(b => b.name === data.block_id);
         if (block) {
           block.content = data.content;
         }
@@ -38,12 +39,12 @@ export function useCollaborativeEditing(promptId, blocks) {
     });
   };
 
-  const updateCursorPosition = (textareaEl, blockId) => {
+  const updateCursorPosition = (textareaEl, block_id) => {
     if (!textareaEl || !socket.value) return;
 
     const position = textareaEl.selectionStart;
     const cursorData = {
-      blockId,
+      block_id,
       position,
       userId: socket.value.id,
       timestamp: Date.now()
@@ -52,7 +53,7 @@ export function useCollaborativeEditing(promptId, blocks) {
     socket.value.emit('cursor_move', { promptId, ...cursorData });
   };
 
-const handleTextChange = (blockId, content) => {
+const handleTextChange = (block_id, content) => {
   if (!socket.value) return;
 
   // Stellen Sie sicher, dass nur der String-Wert gesendet wird
@@ -60,7 +61,7 @@ const handleTextChange = (blockId, content) => {
 
   socket.value.emit('content_change', {
     promptId,
-    blockId,
+    block_id,
     content: textContent,
     userId: socket.value.id,
     timestamp: Date.now()

@@ -374,8 +374,8 @@ const compiledPrompt = computed(() => {
 });
 
 function getCursorPosition(cursor) {
-  // Finde den Block anhand der cursor.blockId
-  const blockIndex = blocks.value.findIndex(b => b.name === cursor.blockId);
+  // Finde den Block anhand der cursor.block_id
+  const blockIndex = blocks.value.findIndex(b => b.name === cursor.block_id);
   if (blockIndex === -1) {
     return {}; // Keine Position, wenn Block nicht gefunden
   }
@@ -688,37 +688,90 @@ const getUsernameFromId = (userId) => {
   return collab ? collab.username : 'Unbekannt';
 };
 
+function calculateCursorPosition(cursor) {
+  try {
+    // Find the textarea element for this block
+    const textareaEl = document.querySelector(`[data-block-id="${cursor.block_id}"]`);
+    if (!textareaEl) {
+      console.warn('Textarea element not found for block:', cursor.block_id);
+      return { left: '0px', top: '0px' };
+    }
+
+    // Get the actual textarea within the Vuetify component
+    const textarea = textareaEl.querySelector('textarea');
+    if (!textarea) {
+      console.warn('Textarea not found within component');
+      return { left: '0px', top: '0px' };
+    }
+
+    // Get Vuetify's inner container padding
+    const inputWrapper = textarea.closest('.v-input__slot');
+    const wrapperStyles = inputWrapper ? window.getComputedStyle(inputWrapper) : null;
+    const wrapperPaddingLeft = wrapperStyles ? parseFloat(wrapperStyles.paddingLeft) || 0 : 0;
+
+    // Get the text content up to the cursor position
+    const text = textarea.value || '';
+    const cursorPosition = Math.min(cursor.position, text.length);
+    const textUpToCursor = text.substring(0, cursorPosition);
+    const lines = textUpToCursor.split('\n');
+    const currentLine = lines.length - 1;
+    const currentLineStart = textUpToCursor.lastIndexOf('\n') + 1;
+    const currentLineText = text.substring(currentLineStart, cursorPosition);
+
+    // Create a hidden measurement div with the same styling as the textarea
+    const measureElement = document.createElement('div');
+    const textareaStyles = window.getComputedStyle(textarea);
+
+    // Copy all relevant text styles
+    measureElement.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      white-space: pre;
+      overflow: hidden;
+      font-family: ${textareaStyles.fontFamily};
+      font-size: ${textareaStyles.fontSize};
+      letter-spacing: ${textareaStyles.letterSpacing};
+      line-height: ${textareaStyles.lineHeight};
+      text-transform: ${textareaStyles.textTransform};
+      border-style: ${textareaStyles.borderStyle};
+      border-width: ${textareaStyles.borderWidth};
+      padding-left: ${textareaStyles.paddingLeft};
+      padding-top: ${textareaStyles.paddingTop};
+      width: auto;
+    `;
+
+    // Measure the text width up to the cursor
+    measureElement.textContent = currentLineText;
+    document.body.appendChild(measureElement);
+    const textWidth = measureElement.getBoundingClientRect().width;
+    document.body.removeChild(measureElement);
+
+    // Calculate positions
+    const lineHeight = parseFloat(textareaStyles.lineHeight);
+    const scrollTop = textarea.scrollTop;
+    const paddingTop = parseFloat(textareaStyles.paddingTop) || 0;
+    const paddingLeft = parseFloat(textareaStyles.paddingLeft) || 0;
+    const borderTop = parseFloat(textareaStyles.borderTopWidth) || 0;
+
+    // Calculate final position, only adding essential padding
+    const top = (currentLine * lineHeight) - scrollTop + paddingTop + borderTop;
+    const left = textWidth + paddingLeft + wrapperPaddingLeft; // Removed the +12px offset
+
+    return {
+      position: 'absolute',
+      left: `${left}px`,
+      top: `${top}px`
+    };
+  } catch (error) {
+    console.error('Error calculating cursor position:', error);
+    return { left: '0px', top: '0px' };
+  }
+}
+
+// Update the template section where cursors are rendered:
 const getCursorsForBlock = (blockId) => {
-  return Object.values(cursors.value).filter(cursor => cursor.blockId === blockId);
-};
-
-const calculateCursorPosition = (cursor, textarea) => {
-  if (!textarea) return { left: '0px', top: '0px' };
-
-  const text = textarea.value.substring(0, cursor.position);
-  const lines = text.split('\n');
-  const currentLine = lines.length - 1;
-  const currentLineText = lines[currentLine];
-
-  // Erstelle ein temporäres Element zur Textmessung
-  const measureElement = document.createElement('div');
-  measureElement.style.cssText = window.getComputedStyle(textarea).cssText;
-  measureElement.style.height = 'auto';
-  measureElement.style.position = 'absolute';
-  measureElement.style.visibility = 'hidden';
-  measureElement.style.whiteSpace = 'pre-wrap';
-  measureElement.textContent = currentLineText;
-
-  document.body.appendChild(measureElement);
-  const textWidth = measureElement.clientWidth;
-  document.body.removeChild(measureElement);
-
-  const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight);
-
-  return {
-    left: `${textWidth}px`,
-    top: `${currentLine * lineHeight}px`
-  };
+  if (!cursors.value) return [];
+  return Object.values(cursors.value).filter(cursor => cursor.block_id === blockId);
 };
 </script>
 
@@ -832,6 +885,10 @@ const calculateCursorPosition = (cursor, textarea) => {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
+.textarea-container {
+  position: relative;
+}
+
 .remote-cursor {
   position: absolute;
   pointer-events: none;
@@ -854,5 +911,12 @@ const calculateCursorPosition = (cursor, textarea) => {
   color: white;
   white-space: nowrap;
   transform: translateX(-50%);
+}
+
+.prompt-textarea {
+  position: relative;
+  font-family: 'Roboto Mono', monospace;
+  width: 100%;
+  box-sizing: border-box;
 }
 </style>

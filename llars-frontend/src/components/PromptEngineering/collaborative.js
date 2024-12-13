@@ -24,13 +24,14 @@ export function useCollaborativeEditing(promptId, blocks) {
     });
 
     socket.value.on('cursor_update', (data) => {
-      if (data.userId !== socket.value.id) {
-        cursors.value[data.userId] = data;
+      if (data.user_id !== socket.value.id) {
+        cursors.value[data.user_id] = data;
       }
+      console.log("received cursorData", data);
     });
 
     socket.value.on('content_update', (data) => {
-      if (data.userId !== socket.value.id) {
+      if (data.user_id !== socket.value.id) {
         const block = blocks.value.find(b => b.name === data.block_id);
         if (block) {
           const lastPosition = lastCursorPositions.value[data.block_id];
@@ -106,10 +107,13 @@ export function useCollaborativeEditing(promptId, blocks) {
     if (!textareaEl || !socket.value) return;
 
     const position = textareaEl.selectionStart;
+    const username = localStorage.getItem('username') || 'Anonymous'; // Username aus localStorage holen
+
     const cursorData = {
       block_id,
       position,
       userId: socket.value.id,
+      username, // Username hinzufügen
       timestamp: Date.now()
     };
 
@@ -118,7 +122,7 @@ export function useCollaborativeEditing(promptId, blocks) {
       start: textareaEl.selectionStart,
       end: textareaEl.selectionEnd
     };
-
+    console.log("sent cursorData", cursorData);
     socket.value.emit('cursor_move', { promptId, ...cursorData });
   };
 
@@ -131,7 +135,7 @@ export function useCollaborativeEditing(promptId, blocks) {
       promptId,
       block_id,
       content: textContent,
-      userId: socket.value.id,
+      user_id: socket.value.id,
       timestamp: Date.now()
     });
   };

@@ -115,14 +115,14 @@
                     <!-- Remote Cursors für diesen Block -->
                     <div
                       v-for="cursor in getCursorsForBlock(element.name)"
-                      :key="cursor.userId"
+                      :key="cursor.user_id"
                       class="remote-cursor"
                       :style="calculateCursorPosition(cursor)"
                     >
-                      <div class="cursor-label" :style="{ backgroundColor: getCursorColor(cursor.userId) }">
-                        {{ getUsernameFromId(cursor.userId) }}
+                      <div class="cursor-label" :style="{ backgroundColor: getCursorColor(cursor.user_id) }">
+                        {{ getUsernameFromId(cursor.user_id) }}
                       </div>
-                      <div class="cursor-line" :style="{ backgroundColor: getCursorColor(cursor.userId) }"></div>
+                      <div class="cursor-line" :style="{ backgroundColor: getCursorColor(cursor.user_id) }"></div>
                     </div>
                   </div>
                 </v-card-text>
@@ -683,15 +683,15 @@ const getRandomColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-const getCursorColor = (userId) => {
-  if (!cursorColors[userId]) {
-    cursorColors[userId] = getRandomColor();
+const getCursorColor = (user_id) => {
+  if (!cursorColors[user_id]) {
+    cursorColors[user_id] = getRandomColor();
   }
-  return cursorColors[userId];
+  return cursorColors[user_id];
 };
 
-const getUsernameFromId = (userId) => {
-  const collab = collaborators.value.find(c => c.userId === userId);
+const getUsernameFromId = (user_id) => {
+  const collab = collaborators.value.find(c => c.user_id === user_id);
   return collab ? collab.username : 'Unbekannt';
 };
 

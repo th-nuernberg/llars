@@ -5,9 +5,9 @@
       <v-col cols="9" class="pr-4">
         <div class="prompt-title-container">
           <div class="d-flex align-center">
-            <div class="collaborators-list" v-if="collaborators.length > 0">
+            <div class="collaborators-list" v-if="otherCollaborators.length > 0">
               <v-chip
-                v-for="collaborator in collaborators"
+                v-for="collaborator in otherCollaborators"
                 :key="collaborator.username"
                 small
                 class="mr-2"
@@ -655,6 +655,13 @@ function cancelUpload() {
 }
 
 onMounted(fetchPrompt);
+
+const otherCollaborators = computed(() => {
+  const currentUser = localStorage.getItem('username');
+  return collaborators.value.filter(collaborator =>
+    collaborator.username !== currentUser
+  );
+});
 
 const hasEditPermission = computed(() => {
   const currentUser = localStorage.getItem('username');

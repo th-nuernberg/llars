@@ -1,27 +1,362 @@
 import logging
 from numbers import Number
 from pyexpat.errors import messages
+from sre_constants import error
 from unicodedata import category
-from . import data_blueprint
+from . import data_blueprint, auth_blueprint
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash
+from werkzeug.exceptions import BadRequest
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
-                       ConsultingCategoryType, UserConsultingCategorySelection)
+                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
 from datetime import datetime
 import json
+import random
 
 
 
+@data_blueprint.route('/admin/scenarios', methods=['GET'])
+def get_scenario_list():
+    # Authorization
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
 
-@data_blueprint.route('/scenarios', methods=['GET'])
-def get_scenarios():
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    scenarios = RatingScenarios.query.all()
+
+    if not scenarios:
+        return jsonify({'error': 'No scenarios available'}), 401
+
+    formatted_scenarios = {
+        'scenarios': []
+    }
+
+    for scenario in scenarios:
+        func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
+        formatted_scenario = {
+            'id': scenario.id,
+            'name': scenario.scenario_name,
+            'function_type_id': scenario.function_type_id,
+            'function_type_name': func_type if func_type else None,
+            'begin_date': scenario.begin_date,
+            'end_date': scenario.end_date,
+        }
+        formatted_scenarios['scenarios'].append(formatted_scenario)
+
+    return jsonify({'scenarios': formatted_scenarios}), 200
+
+
+@data_blueprint.route('/admin/scenarios/<int:scenario_id>', methods=['GET'])
+def get_scenario_details(scenario_id=None):
     pass
+
+
+@data_blueprint.route('/admin/create_scenarios', methods=['POST'])
+def create_scenario():
+    # Authorization
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    try:
+        data = request.get_json()
+    except:
+        return jsonify({'error': 'Invalid JSON'}), 400
+    client_data = {
+        "scenario_name": data.get('scenario_name'),
+        "func_type_id": data.get('function_type_id'),
+        "begin": data.get('begin'),
+        "end": data.get('quality_rating'),
+        "rater": data.get('rater'),
+        "viewer" : data.get("viewer"),
+        "threads": data.get('threads')
+    }
+
+    for value in client_data:
+        if value is None:
+            return jsonify({'error': 'Missing obligatory value'}), 400
+
+    ### check values ###
+    # function type
+    function_type_id = FeatureFunctionType.query.filter_by(function_type_id=data.get('function_type_id')).first().id
+    if function_type_id is None:
+        return jsonify({'error': 'Invalid function type'}), 400
+
+    #datetime
+    try:
+        begin = datetime.fromisoformat(data.get('begin'))
+        end = datetime.fromisoformat(data.get('end'))
+    except ValueError:
+        return jsonify({'error': 'Timestamp format is invalid'}), 400
+
+    ## new scenario
+    new_scenario = RatingScenarios(
+        scenario_name=client_data['scenario_name'],
+        function_type_id=function_type_id,
+        begin=begin,
+        end=end,
+    )
+
+    rater_error_list = []
+    viewer_error_list = []
+    new_scenario_users = []
+    seen_user = set()
+
+    # For Raters
+    if not isinstance(client_data['rater'], list):
+        return jsonify({'error': 'rater is not a list'}), 400
+    for user_id in client_data['rater']:
+        if not isinstance(user_id, int):
+            continue
+        user = User.query.filter_by(id=user_id).first()
+        if user is None:
+            rater_error_list.append(user_id)
+            continue
+        if user.id in seen_user:
+            continue
+        new_scenario_users.append({"id": user.id, "role": "Rater" })
+        seen_user.add(user.id)
+
+    # For Viewers
+    if not isinstance(client_data['viewer'], list):
+        return jsonify({'error': 'viewer is not a list'}), 400
+    for user_id in client_data['viewer']:
+        if not isinstance(user_id, int):
+            continue
+        user = User.query.filter_by(id=user_id).first()
+        if user is None:
+            viewer_error_list.append(user_id)
+            continue
+        if user.id in seen_user:
+            continue
+        new_scenario_users.append({"id": user.id, "role": "Viewer"})
+        seen_user.add(user.id)
+
+    #threads
+    thread_error_list = []
+    threads_for_scenario = []
+    if not isinstance(client_data['threads'], list):
+        return jsonify({'error': 'threads is not a list'}), 400
+    for thread_id in client_data['threads']:
+        if not isinstance(thread_id, int):
+            continue
+        thread = EmailThread.query.filter_by(id=thread_id, function_type_id=function_type_id).first()
+        if thread is None:
+            thread_error_list.append(thread_id)
+            continue
+        threads_for_scenario.append(thread.scenario_thread_id)
+    # make the lists unique
+    threads_for_scenario = list(set(threads_for_scenario))
+
+    ### add to db
+    try:
+        # add scenario
+        db.session.add(new_scenario)
+        # add users to scenario
+        scenario_rater = []
+        for new_scenario_user in new_scenario_users:
+            new_scenario_user = ScenarioUsers(
+                scenario_id=new_scenario.id,
+                user_id=new_scenario_user["id"],
+                role=new_scenario_user["role"],
+            )
+            db.session.add(new_scenario_user)
+            if new_scenario_user["role"] == "Rater":
+                scenario_rater.append(new_scenario_user.id)
+
+        # add threads to scenario
+        scenario_threads = []
+        for thread_id in threads_for_scenario:
+            new_scenario_thread= ScenarioThreads(thread_id=thread_id, scenario_id=new_scenario.id)
+            db.session.add(new_scenario_thread)
+            scenario_threads.append(new_scenario_thread.id)
+
+
+        # add thread distribution
+        user_threads = distribute_threads_to_users(scenario_threads, scenario_rater)
+        for key, value in user_threads.items():
+            db.session.add(ScenarioThreadDistribution(
+                scenario_id=new_scenario.id,
+                scenario_thread_id=value,
+                scenario_user_id=key,
+            ))
+
+        db.session.commit()
+
+    except:
+        db.session.rollback()
+        return jsonify({'error': 'Scenario couldn\'t be added'}), 500
+
+    return_msg = {
+        'notification': 'successfully created scenarios',
+        'not_found_users': viewer_error_list + rater_error_list,
+        'not_found_threads': thread_error_list,
+    }
+    return jsonify(return_msg), 200
+
+
+@data_blueprint.route('/admin/edit_scenario', methods=['POST'])
+def edit_scenario():
+    # Authorization
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # get the data
+    try:
+        data = request.get_json()
+    except:
+        return jsonify({'error': 'JSON not valid'}), 400
+
+    client_data = {
+        "id": data.get('id'),
+        "name": data.get('new_name'),
+        "begin": data.get('new_begin'),
+        "end": data.get('new_end')
+    }
+    # validate the data
+    if not client_data['id'] or ( not isinstance(client_data['id'], int) ) :
+        return jsonify({'error': 'id of scenario is missing or invalid'}), 400
+
+    # if no value to change is given, use the given value of db for the update clause
+    scenario = RatingScenarios.query.filter_by(id=client_data['id']).first()
+    if not client_data['name']:
+        client_data['name'] = scenario.scenario_name
+    if not client_data['begin']:
+        client_data['begin'] = scenario.begin_date
+    else:
+        client_data['begin'] = datetime.fromisoformat(client_data['begin'])
+    if not client_data['end']:
+        client_data['end'] = scenario.end_date
+    else:
+        client_data['begin'] = datetime.fromisoformat(client_data['begin'])
+
+    # update changes to db
+    try:
+        scenario.update(name=client_data['name'], begin=client_data['begin'], end=client_data['end'])
+        db.session.commit()
+    except:
+        db.session.rollback()
+        return jsonify({'error': 'Scenario couldn\'t be updated'}), 500
+
+    return jsonify({'message': 'Scenario edited successfully'}), 200
+
+
+
+@auth_blueprint.route('/admin/add_threads_to_scenario', methods=['POST'])
+def add_threads_to_scenario():
+    # Authorization
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    try:
+        data = request.get_json()
+    except BadRequest:
+        return jsonify({'error': 'Invalid JSON format'}), 400
+
+    # Validate scenario_id
+    scenario_id = data.get('scenario_id')
+    if scenario_id is None or not isinstance(scenario_id, int):
+        return jsonify({'error': 'Scenario id is missing or invalid'}), 400
+
+    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+    if not scenario:
+        return jsonify({'error': 'Scenario not found'}), 404
+
+    # Validate threads
+    threads = data.get('thread_ids')
+    if not threads or not all(isinstance(thread_id, int) for thread_id in threads):
+        return jsonify({'error': 'List of thread ids is missing or contains invalid entries'}), 400
+
+    validated_threads = []
+    failed_threads = []
+    for thread_id in threads:
+        thread = EmailThread.query.filter_by(id=thread_id).first()
+        if thread is None:
+            failed_threads.append(thread_id)
+        else:
+            validated_threads.append(thread.thread_id)
+
+    # Add threads and distribute
+    try:
+        thread_scenarios = []
+        for thread_id in validated_threads:
+            new_scenario_thread = ScenarioThreads(scenario_id=scenario.id, thread_id=thread_id)
+            db.session.add(new_scenario_thread)
+            thread_scenarios.append(new_scenario_thread.id)
+
+        scenario_users_ids = [
+            user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter_by(
+                scenario_id=scenario.id, role=ScenarioRoles.RATER).all()
+        ]
+
+        if not thread_scenarios or not scenario_users_ids:
+            return jsonify({'error': 'No threads or users available for distribution'}), 400
+
+        user_threads = distribute_threads_to_users(thread_scenarios, scenario_users_ids)
+        for user_id, thread_ids in user_threads.items():
+            for thread_id in thread_ids:
+                db.session.add(ScenarioThreadDistribution(
+                    scenario_id=scenario.id,
+                    scenario_thread_id=thread_id,
+                    scenario_user_id=user_id,
+                ))
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error while adding threads to scenario: {e}")
+        return jsonify({'error': 'An error occurred while adding the threads to the db'}), 500
+
+    return jsonify({'message': 'Successfully added threads to the db', 'not_found_threads': failed_threads}), 200
+
+
+
+
+########################################################################################################################
+# Helper Functions
+########################################################################################################################
+
+def distribute_threads_to_users(thread_ids, user_ids):
+    if not thread_ids or not user_ids:
+        return {}
+    # Randomize the thread IDs to ensure a random distribution
+    random.shuffle(thread_ids)
+    random.shuffle(user_ids)
+
+    # Create a dictionary to store the distribution
+    user_threads = {user_id: [] for user_id in user_ids}
+
+    # Distribute the threads round-robin style
+    for i, thread_id in enumerate(thread_ids):
+        user_id = user_ids[i % len(user_ids)]
+        user_threads[user_id].append(thread_id)
+
+    return user_threads
+
+

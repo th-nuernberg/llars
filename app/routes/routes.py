@@ -10,8 +10,8 @@ from . import data_blueprint
 from . import auth_blueprint
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
-                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
-                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
+                       FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
+                       FeatureFunctionType, UserFeatureRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
                        ConsultingCategoryType, UserConsultingCategorySelection)
 from sqlalchemy import func
@@ -86,20 +86,24 @@ def health_check():
 
 @auth_blueprint.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    user = User.query.filter_by(username=username).first()
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        user = User.query.filter_by(username=username).first()
 
-    if user and user.check_password(password):
-        additional_claims = {"api_key": user.api_key}
-        access_token = create_access_token(identity=username, additional_claims=additional_claims)
-        return jsonify({
-            "access_token": access_token,
-            "username": username
-        }), 200
-    else:
-        return jsonify({"error": "Invalid credentials"}), 401
+        if user and user.check_password(password):
+            additional_claims = {"api_key": user.api_key}
+            access_token = create_access_token(identity=username, additional_claims=additional_claims)
+            return jsonify({
+                "access_token": access_token,
+                "username": username
+            }), 200
+        else:
+            return jsonify({"error": "Invalid credentials"}), 401
+    except Exception as e:
+        logging.exception(e)
+        return jsonify({"error": str(e)}), 500
 
 
 @auth_blueprint.route('/logout', methods=['POST'])
@@ -108,7 +112,8 @@ def logout():
     return jsonify({"message": "Logged out successfully"}), 200
 
 
-@data_blueprint.route('/email_threads', methods=['POST'])
+
+
 @data_blueprint.route('/email_threads', methods=['POST'])
 def create_email_thread():
     data = request.get_json()
@@ -377,13 +382,13 @@ def list_email_threads_for_rankings():
     for thread in email_threads:
         # Check if the user has ranked features in this thread
         user_rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
-            Feature.thread_id == thread.thread_id
+            Feature.scenario_thread_id == thread.scenario_thread_id
         ).first()
 
         ranked = True if user_rankings else False
 
         threads_list.append({
-            'thread_id': thread.thread_id,
+            'thread_id': thread.scenario_thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject,
@@ -412,7 +417,7 @@ def list_email_threads_for_ratings():
 
     threads_list = [
         {
-            'thread_id': thread.thread_id,
+            'thread_id': thread.scenario_thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject
@@ -502,7 +507,7 @@ def get_current_ranking(thread_id):
 
     # Holen Sie alle Rankings für den gegebenen Thread und Benutzer
     rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
-        Feature.thread_id == thread_id).all()
+        Feature.scenario_thread_id == thread_id).all()
 
     # Holen Sie alle Feature-Typen aus der Datenbank
     feature_types = FeatureType.query.all()
@@ -679,8 +684,8 @@ def download_rankings_csv():
         return jsonify({'error': 'Invalid API key'}), 401
 
     # Retrieve all user rankings and sort them by FeatureType, Thread ID, and then by Bucket
-    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(Feature.thread_id, Feature.type_id,
-                                                                                 UserFeatureRanking.user_id,
+    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(Feature.scenario_thread_id, Feature.type_id,
+                                                                                 UserFeatureRanking.scenario_user_id,
                                                                                  UserFeatureRanking.bucket,
                                                                                  UserFeatureRanking.ranking_content).all()
 
@@ -770,19 +775,19 @@ def get_user_ranking_stats():
         # Iteriere nur über die Email Threads mit function_type_id = 1
         for thread in EmailThread.query.filter_by(function_type_id=1).all():
             # Zähle alle Features in diesem Thread
-            total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
+            total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.scenario_thread_id).count()
 
             # Zähle die Anzahl der vom Benutzer gerankten Features in diesem Thread
             ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
-                UserFeatureRanking.user_id == user.id,
-                Feature.thread_id == thread.thread_id
+                UserFeatureRanking.scenario_user_id == user.id,
+                Feature.scenario_thread_id == thread.scenario_thread_id
             ).count()
 
             if ranked_features_count == total_features_in_thread and total_features_in_thread > 0:
                 # Wenn alle Features eines Threads gerankt wurden, zähle den Thread als vollständig gerankt
                 total_ranked_threads += 1
                 ranked_threads_list.append({
-                    'thread_id': thread.thread_id,
+                    'thread_id': thread.scenario_thread_id,
                     'chat_id': thread.chat_id,
                     'institut_id': thread.institut_id,
                     'subject': thread.subject,
@@ -792,7 +797,7 @@ def get_user_ranking_stats():
             else:
                 # Wenn der Benutzer diesen Thread noch nicht vollständig gerankt hat
                 unranked_threads_list.append({
-                    'thread_id': thread.thread_id,
+                    'thread_id': thread.scenario_thread_id,
                     'chat_id': thread.chat_id,
                     'institut_id': thread.institut_id,
                     'subject': thread.subject,
@@ -811,63 +816,7 @@ def get_user_ranking_stats():
 
     return jsonify(user_stats), 200
 
-@data_blueprint.route('/admin/user_HistoryGeneration_stats', methods=['GET'])
-def get_user_HistoryGeneration_stats():
-    api_key = request.headers.get('Authorization')
 
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    user_stats = []
-    mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
-    if not mail_rating_function_type:
-        return jsonify({'error': 'Mail rating function type is missing'}), 401
-
-    mail_rating_function_type = mail_rating_function_type.function_type_id
-    total_threads = db.session.query(EmailThread).filter_by(function_type_id=mail_rating_function_type).count()
-
-    for user in User.query.all():
-        done_threads_list = []
-        not_started_threads_list = []
-        in_progress_threads_list = []
-        total_done_threads = 0
-        total_in_progress_threads = 0
-        total_not_started_threads = 0
-
-        for thread in EmailThread.query.filter_by(function_type_id=mail_rating_function_type).all():
-            mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
-                UserMailHistoryRating.timestamp.desc()).first()
-
-            if mail_rating:
-                if mail_rating.rating_status == 'In Progress':
-                    total_in_progress_threads += 1
-                    in_progress_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject,})
-                elif mail_rating.rating_status == 'Done':
-                    total_done_threads += 1
-                    done_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
-                else:
-                    total_not_started_threads += 1
-                    not_started_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
-            else:
-                total_not_started_threads += 1
-                not_started_threads_list.append({'thread_id': thread.thread_id, "subject": thread.subject, })
-
-        user_stats.append({
-            'username': user.username,
-            'total_threads': total_threads,
-            'done_threads': total_done_threads,
-            'not_started_threads': total_not_started_threads,
-            'in_progress_threads': total_in_progress_threads,
-            'done_threads_list': done_threads_list,
-            'not_started_threads_list': not_started_threads_list,
-            'in_progress_threads_list': in_progress_threads_list
-        })
-
-    return jsonify(user_stats), 200
 
 
 @data_blueprint.route('/email_threads/feature_ranking_list', methods=['GET'])
@@ -890,7 +839,7 @@ def list_ranking_threads():
 
     threads_list = [
         {
-            'thread_id': thread.thread_id,
+            'thread_id': thread.scenario_thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject
@@ -899,306 +848,15 @@ def list_ranking_threads():
 
     return jsonify(threads_list), 200
 
-@data_blueprint.route('/email_threads/mailhistory_ratings', methods=['GET'])
-def list_email_threads_for_mail_ratings(thread_id=None):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
-    if not mail_rating_function_type:
-        return jsonify({'error': 'Mail Rating function type not found'}), 404
-
-
-    # Abrufen aller E-Mail-Threads für die Bewertungen
-    email_threads = EmailThread.query.filter_by(function_type_id=mail_rating_function_type.function_type_id).all()
-
-    threads_list = []
-    for thread in email_threads:
-        mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
-            UserMailHistoryRating.timestamp.desc()).first()
-
-        if mail_rating:
-            rating_status = mail_rating.rating_status
-        else: rating_status = "Not Started"
-
-
-        threads_list.append({
-            'thread_id': thread.thread_id,
-            'chat_id': thread.chat_id,
-            'institut_id': thread.institut_id,
-            'subject': thread.subject,
-            'sender': thread.sender,
-            'rating_status': rating_status,
-        })
-
-    return jsonify(threads_list), 200
 
 
 
-@data_blueprint.route('/email_threads/generations/<int:thread_id>', methods=['GET'])
-def get_email_thread_details(thread_id):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    # Hole den E-Mail-Thread basierend auf der thread_id
-    email_thread = EmailThread.query.filter_by(thread_id=thread_id).first()
-    if not email_thread:
-        return jsonify({'error': 'Email thread not found'}), 404
-
-    # Hole alle Nachrichten in diesem E-Mail-Thread
-    messages = Message.query.filter_by(thread_id=email_thread.thread_id).all()
-
-    if not messages:
-        return jsonify({'error': 'No messages found for this thread'}), 404
-
-    # Erstelle eine Liste von Nachrichten, die zurückgegeben werden soll
-    messages_data = [
-        {
-            'message_id': msg.message_id,
-            'sender': msg.sender,
-            'content': msg.content,
-            'timestamp': msg.timestamp.isoformat()  # Konvertiere das Datum in ISO-Format
-        } for msg in messages
-    ]
-
-    return jsonify({'messages': messages_data}), 200
-
-
-# Get the user ratings for the messages of a thread
-@data_blueprint.route('/email_threads/message_ratings/<int:thread_id>', methods=['GET'])
-def get_email_thread_message_ratings(thread_id):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    # Load Ratings of messages
-    ## Unterabfrage, um den neuesten Timestamp pro message_id zu ermitteln
-    subquery = db.session.query(
-        UserMessageRating.message_id,
-        func.max(UserMessageRating.timestamp).label('latest_timestamp')
-    ).filter_by(
-        user_id=user.id,
-        thread_id=thread_id
-    ).group_by(
-        UserMessageRating.message_id
-    ).subquery()
-
-    ## Hauptabfrage, die den entsprechenden Datensatz für jede message_id mit dem neuesten Timestamp auswählt
-    msg_ratings = db.session.query(UserMessageRating).join(
-        subquery,
-        (UserMessageRating.message_id == subquery.c.message_id) &
-        (UserMessageRating.timestamp == subquery.c.latest_timestamp)
-    ).filter(
-        UserMessageRating.user_id == user.id,
-        UserMessageRating.thread_id == thread_id
-    ).all()
-
-    rating_list = [
-        {
-            'message_id': msg_rating.message_id,
-            'rating': msg_rating.rating,
-        } for msg_rating in msg_ratings
-    ]
-
-    return jsonify(rating_list), 200
-
-
-# Route to save the ratings and feedback of the whole
-@data_blueprint.route('/email_threads/save_mailhistory_rating/<int:thread_id>', methods=['POST'])
-def save_mail_rating(thread_id):
-    # Authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    data = request.get_json()
-
-    # Values sent from the client
-    try:
-        client_data = {
-            "counsellor_coherence_rating": data.get('counsellor_coherence_rating'),
-            "client_coherence_rating": data.get('client_coherence_rating'),
-            "quality_rating": data.get('quality_rating'),
-            "overall_rating": data.get('overall_rating')}
-        selected_consulting_category_id = data.get("consulting_category_id")
-        consulting_category_notes = data.get("consulting_category_notes")
-        consider_category_for_status = data.get("consider_category_for_status", False)
-        feedback = data.get('feedback')
-    except:
-        return jsonify({'error': 'Data not valid'}), 400
-
-
-    # check if category id exists
-    if isinstance(selected_consulting_category_id, int) and selected_consulting_category_id > 0:
-        consulting_category_type = ConsultingCategoryType.query.filter_by(id=selected_consulting_category_id).first()
-        if not consulting_category_type:
-            return jsonify({'error': 'Consulting category does not exist'}), 404
-    elif selected_consulting_category_id is None:
-        consulting_category_type = None
-    else:
-        return jsonify({'error': 'invalid consulting category id'}), 400
-
-    # retrieve most recent mail history rating and category
-    existing_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
-        UserMailHistoryRating.timestamp.desc()).first()
-
-    existing_category_selection = UserConsultingCategorySelection.query.filter_by(user_id=user.id,
-                                                                                  thread_id=thread_id).order_by(
-                                    UserConsultingCategorySelection.timestamp.desc()).first()
-
-    # check if any likert scale got rated, a category got chosen or a feedback was written.
-    is_category_filled = consulting_category_type is not None or consulting_category_notes is not None
-    if all(v is None for v in [
-        client_data["counsellor_coherence_rating"],
-        client_data["client_coherence_rating"],
-        client_data["quality_rating"],
-        client_data["overall_rating"],
-        feedback,
-        consulting_category_type,
-        consulting_category_notes,
-    ]) and not existing_category_selection and not existing_rating: # skip because no rating of the history happened
-            return jsonify({'status': ' Ratings and Category saved successfully'}), 201
-
-    # logic to determine the rating/progression status
-    max_values_to_fill = 4
-    filled_values_counter = 0
-
-    if consider_category_for_status:
-        max_values_to_fill += 1
-        if consulting_category_type is not None:
-            filled_values_counter += 1
-
-    for key, value in client_data.items():
-        if value is not None:
-            filled_values_counter += 1
-
-    if filled_values_counter == 0:
-        rating_status = "Not Started"
-    elif filled_values_counter < max_values_to_fill:
-        rating_status = "In Progress"
-    else:
-        rating_status = "Done"
-
-    # if a rating or category already exists, check if changes occurred
-    if existing_rating:
-        has_rating_changes = not (
-                existing_rating.counsellor_coherence_rating == client_data["counsellor_coherence_rating"] and
-                existing_rating.client_coherence_rating == client_data["client_coherence_rating"] and
-                existing_rating.quality_rating == client_data["quality_rating"] and
-                existing_rating.overall_rating == client_data["overall_rating"] and
-                existing_rating.feedback == feedback and
-                existing_rating.rating_status == rating_status
-        )
-    else:
-        has_rating_changes = True  # Es ist eine neue Bewertung
-
-    if existing_category_selection:
-        has_category_changes = not (
-                existing_category_selection.consulting_category_type_id == selected_consulting_category_id and
-                existing_category_selection.notes == consulting_category_notes
-        )
-    else:
-        has_category_changes = is_category_filled # Es ist eine neue Kategorieauswahl, wurden auch Werte ausgefüllt?
-
-    if not has_rating_changes and not has_category_changes:
-        return jsonify({'status': 'Message ratings saved successfully'}), 201
 
 
 
-    # Changes happened in rating, or it is the first rating
-    if has_rating_changes:
-        # Create a new mail rating with feedback and save it into the db with current timestamp
-        new_mail_rating = UserMailHistoryRating(
-            user_id=user.id,
-            thread_id=thread_id,
-            counsellor_coherence_rating=client_data["counsellor_coherence_rating"],
-            client_coherence_rating=client_data["client_coherence_rating"],
-            quality_rating=client_data["quality_rating"],
-            overall_rating=client_data["overall_rating"],
-            feedback=feedback,
-            rating_status=rating_status
-        )
-        db.session.add(new_mail_rating)
-
-    if has_category_changes:
-        new_selected_category = UserConsultingCategorySelection(
-            user_id=user.id,
-            thread_id=thread_id,
-            consulting_category_type_id=selected_consulting_category_id,
-            notes=consulting_category_notes,
-        )
-        db.session.add(new_selected_category)
-
-    db.session.commit()
-
-    return jsonify({'status': 'Mail rating and feedback saved successfully'}), 201
 
 
-# Route for saving the rating of each message (up or down) from the generated mail historys
-@data_blueprint.route('/email_threads/save_message_ratings/<int:thread_id>', methods=['POST'])
-def save_message_ratings(thread_id):
-    # authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
 
-    # retrieve data send from user
-    data = request.get_json()
-    message_ratings = data.get('message_ratings', [])
-
-    # Loop through all message ratings send from user
-    for rating_data in message_ratings:
-        message_id = rating_data.get('message_id')
-        rating = rating_data.get('rating')
-
-        # check if the most recent message rating of this user is equal to the one send (avoiding duplicates in the db)
-        existing_message_rating = (
-            UserMessageRating.query
-            .filter_by(user_id=user.id, thread_id=thread_id, message_id=message_id)
-            .order_by(UserMessageRating.timestamp.desc())
-            .first()
-        )
-
-        if existing_message_rating:
-            # check if the new message rating is a duplicate of the most recent in db. If yes skip this message (applies for null values too)
-            if existing_message_rating.rating == rating:
-                continue
-        elif rating is None: # if message didnt get ratet and no rating for this message existed in the db --> skip
-            continue
-
-        # either first rating for the message, or a change occured.
-        # create and safe new entry into the db with current time stamp
-        new_message_rating = UserMessageRating(
-            user_id=user.id,
-            thread_id=thread_id,
-            message_id=message_id,
-            rating=rating
-        )
-        db.session.add(new_message_rating)
-
-    # commit all changes to the db
-    db.session.commit()
-    return jsonify({'status': 'Message ratings saved successfully'}), 201
 
 
 @data_blueprint.route('/email_threads/consulting_category_types', methods=['GET'])
@@ -1227,42 +885,7 @@ def get_consulting_category_types():
 
 
 
-# get the most recent mail history ratings of the user
-@data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
-def get_mail_rating(thread_id):
-    # authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
 
-    # retrieve the most recent mail history(thread) rating of user
-    mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(UserMailHistoryRating.timestamp.desc()).first()
-    selected_consulting_category = UserConsultingCategorySelection.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(UserConsultingCategorySelection.timestamp.desc()).first()
-    if selected_consulting_category:
-        consulting_category = ConsultingCategoryType.query.filter_by(id=selected_consulting_category.consulting_category_type_id).first()
-    else: consulting_category = None
-
-
-
-    # prepare data for json format (if no rating found use null values)
-    rating_data = {
-        'rating': {
-                'counsellor_coherence_rating': mail_rating.counsellor_coherence_rating if mail_rating else None,
-                'client_coherence_rating': mail_rating.client_coherence_rating if mail_rating else None,
-                'quality_rating': mail_rating.quality_rating if mail_rating else None,
-                'overall_rating': mail_rating.overall_rating if mail_rating else None,
-                'feedback': mail_rating.feedback if mail_rating else None,
-                'rating_status': mail_rating.rating_status if mail_rating else 'Not Started'
-            },
-        "consulting_category":{
-            "consulting_category_type_id": consulting_category.id if consulting_category else None,
-            "consulting_category_note": selected_consulting_category.notes if selected_consulting_category else None,
-        }
-    }
-    return jsonify(rating_data), 200
 
 
 @data_blueprint.route('/admin/change_user_group', methods=['POST'])
@@ -1453,7 +1076,7 @@ def get_user_prompt(prompt_id):
     # Prompt abrufen (eigene und geteilte)
     prompt = UserPrompt.query.filter(
         (UserPrompt.prompt_id == prompt_id) &
-        ((UserPrompt.user_id == user.id) |  # Eigene Prompts
+        ((UserPrompt.scenario_user_id == user.id) |  # Eigene Prompts
          (UserPrompt.prompt_id.in_(  # Geteilte Prompts
              db.session.query(UserPromptShare.prompt_id)
              .filter_by(shared_with_user_id=user.id)
@@ -1464,7 +1087,7 @@ def get_user_prompt(prompt_id):
         return jsonify({'error': 'Prompt not found or you do not have permission to view it'}), 404
 
     # Überprüfen, ob es ein geteiltes Prompt ist
-    is_shared = prompt.user_id != user.id
+    is_shared = prompt.scenario_user_id != user.id
 
     # Besitzer-Informationen hinzufügen
     owner = prompt.user.username
@@ -1472,7 +1095,7 @@ def get_user_prompt(prompt_id):
     # Liste der Benutzer mit denen das Prompt geteilt wurde abrufen
     # (nur wenn der aktuelle Benutzer der Besitzer ist)
     shared_with = []
-    if prompt.user_id == user.id:
+    if prompt.scenario_user_id == user.id:
         shared_users = db.session.query(User.username)\
             .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id)\
             .filter(UserPromptShare.prompt_id == prompt_id)\
@@ -1630,7 +1253,7 @@ def download_prompt_json(prompt_id):
     # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
     prompt = UserPrompt.query.filter(
         (UserPrompt.prompt_id == prompt_id) &
-        ((UserPrompt.user_id == user.id) |
+        ((UserPrompt.scenario_user_id == user.id) |
          (UserPrompt.prompt_id.in_(
              db.session.query(UserPromptShare.prompt_id)
              .filter_by(shared_with_user_id=user.id)

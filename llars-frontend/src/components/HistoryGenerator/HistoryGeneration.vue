@@ -12,10 +12,10 @@
           <!-- Rating Status Chip (oben rechts) -->
           <v-chip
             class="category-chip right-aligned-chip rating-status-chip"
-            :color="emailThread.rating_status === 'Done' ? 'green lighten-2' : emailThread.rating_status === 'In Progress' ? 'orange lighten-2' : 'grey lighten-2'"
+            :color="emailThread.progression_status === 'Done' ? 'green lighten-2' : emailThread.progression_status === 'In Progress' ? 'orange lighten-2' : 'grey lighten-2'"
             small
           >
-            {{ emailThread.rating_status }}
+            {{ emailThread.progression_status }}
           </v-chip>
 
           <div class="card-content">
@@ -57,7 +57,7 @@ onMounted(async () => {
         'Authorization': api_key,
       },
     });
-    emailThreads.value = response.data;
+    emailThreads.value = response.data.threads;
   } catch (error) {
     console.error('Error fetching email threads:', error);
   }

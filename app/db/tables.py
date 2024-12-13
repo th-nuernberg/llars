@@ -138,12 +138,13 @@ class ScenarioRoles(Enum):
 
 class ProgressionStatus(Enum):
     NOT_STARTED = 'Not Started'
-    PROGRESSING = 'Progressing'
+    PROGRESSING = 'In Progressing'
     DONE = 'Done'
 
 class RatingScenarios(db.Model):
     __tablename__ = 'rating_scenarios'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_name = mapped_column(db.String(255))
     function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
     begin_date = mapped_column(db.DateTime, default=datetime.utcnow)
     end_time = mapped_column(db.DateTime, default=datetime.utcnow)
@@ -161,15 +162,18 @@ class ScenarioThreads(db.Model):
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    thread = db.relationship('EmailThread', backref='scenario_threads')
 
 
 class ScenarioThreadDistribution(db.Model):
     __tablename__ = 'scenario_thread_distribution'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
-    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
-    status = mapped_column(db.Enum(ProgressionStatus))
+    scenario_user_id = mapped_column(db.Integer, db.ForeignKey('scenario_users.id'))
+    scenario_thread_id = mapped_column(db.Integer, db.ForeignKey('scenario_threads.id'))
+    scenario_thread = db.relationship('ScenarioThreads', backref='distributions')
+    scenario_user = db.relationship('ScenarioUsers', backref='thread_distributions')
+
 
 
 class UserMailHistoryRating(db.Model):
@@ -182,6 +186,7 @@ class UserMailHistoryRating(db.Model):
     quality_rating = mapped_column(db.Integer, nullable=True)
     overall_rating = mapped_column(db.Integer, nullable=True)
     feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
+    status = mapped_column(db.Enum(ProgressionStatus), default=ProgressionStatus.NOT_STARTED)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='mail_ratings')

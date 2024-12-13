@@ -198,7 +198,7 @@ def configure_socket_routes(socketio, verbose=True):
         # Informiere andere über das Verlassen
         emit('collaborator_left', {
             'collaborators': collaborators,
-            'leftUserId': user_id
+            'leftuser_id': user_id
         }, room=room)
 
     @socketio.on('cursor_move')
@@ -213,7 +213,6 @@ def configure_socket_routes(socketio, verbose=True):
 
         # Sende Cursor-Position an alle anderen im Raum
         emit('cursor_update', {
-            'userId': user_id,
             **cursor_data
         }, room=room, include_self=False)
 
@@ -234,7 +233,7 @@ def configure_socket_routes(socketio, verbose=True):
             emit('content_update', {
                 'block_id': block_id,
                 'content': content,
-                'userId': user_id,
+                'user_id': user_id,
                 'timestamp': datetime.now().isoformat()
             }, room=room, include_self=False)
 
@@ -257,7 +256,7 @@ def configure_socket_routes(socketio, verbose=True):
 
                 emit('collaborator_left', {
                     'collaborators': collaborators,
-                    'leftUserId': user_id
+                    'leftuser_id': user_id
                 }, room=room)
 
         # Bestehende Chat-Cleanup-Logik

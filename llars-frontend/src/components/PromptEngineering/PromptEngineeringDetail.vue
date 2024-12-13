@@ -11,7 +11,7 @@
                 :key="collaborator.username"
                 small
                 class="mr-2"
-                color="primary"
+                :style="{ backgroundColor: getCursorColor(collaborator.user_id), color: 'white' }"
               >
                 {{ collaborator.username }}
               </v-chip>
@@ -673,8 +673,10 @@ const hasEditPermission = computed(() => {
   return owner.value === currentUser || sharedUsers.value.includes(currentUser);
 });
 
-// Cursor Management
-const cursorColors = {};
+// Moved cursorColors to the component scope to be accessible for both chips and cursors
+const cursorColors = ref({});
+
+// Updated getRandomColor to ensure consistent colors
 const getRandomColor = () => {
   const colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
@@ -683,11 +685,12 @@ const getRandomColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
+// Updated getCursorColor to use ref
 const getCursorColor = (user_id) => {
-  if (!cursorColors[user_id]) {
-    cursorColors[user_id] = getRandomColor();
+  if (!cursorColors.value[user_id]) {
+    cursorColors.value[user_id] = getRandomColor();
   }
-  return cursorColors[user_id];
+  return cursorColors.value[user_id];
 };
 
 const getUsernameFromId = (user_id) => {

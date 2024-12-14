@@ -714,6 +714,35 @@ async function handleFileUpload(event) {
   event.target.value = '';
 }
 
+async function unsharePrompt(username) {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}/unshare`,
+      { unshare_with: username },
+      {
+        headers: {
+          Authorization: api_key,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // Erfolgsmeldung anzeigen
+    alert(`Prompt wurde erfolgreich für ${username} entfernt.`);
+
+    // Aktualisiere die Liste der geteilten Benutzer
+    const index = sharedUsers.value.indexOf(username);
+    if (index > -1) {
+      sharedUsers.value.splice(index, 1);
+    }
+  } catch (error) {
+    console.error('Fehler beim Entfernen der Freigabe:', error);
+    alert(error.response?.data?.error || 'Fehler beim Entfernen der Freigabe.');
+  }
+}
+
+
 function mergeBlocks() {
   if (!uploadedBlocks.value) return;
   blocks.value = [...blocks.value, ...uploadedBlocks.value];

@@ -1503,8 +1503,16 @@ def update_user_prompt(prompt_id):
     if not user:
         return jsonify({'error': 'Invalid API key'}), 401
 
-    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
-    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
+    prompt = UserPrompt.query.filter(
+        (UserPrompt.prompt_id == prompt_id) &
+        ((UserPrompt.user_id == user.id) |  # Eigene Prompts
+         (UserPrompt.prompt_id.in_(  # Geteilte Prompts
+             db.session.query(UserPromptShare.prompt_id)
+             .filter_by(shared_with_user_id=user.id)
+         )))
+    ).first()
+
     if not prompt:
         return jsonify({'error': 'Prompt not found or you do not have permission to edit it'}), 404
 
@@ -1574,6 +1582,50 @@ def share_prompt(prompt_id):
     db.session.commit()
 
     return jsonify({'message': f'Prompt shared with "{shared_with_username}" successfully'}), 201
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/unshare', methods=['POST'])
+def unshare_prompt(prompt_id):
+    """
+    Route zum Entfernen der Freigabe eines Prompts für einen Benutzer.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    data = request.get_json()
+    unshare_with_username = data.get('unshare_with')
+
+    if not unshare_with_username:
+        return jsonify({'error': 'Username to unshare with is required'}), 400
+
+    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
+    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    if not prompt:
+        return jsonify({'error': 'Prompt not found or you do not have permission to unshare it'}), 404
+
+    # Zielbenutzer abrufen
+    unshare_with_user = User.query.filter_by(username=unshare_with_username).first()
+    if not unshare_with_user:
+        return jsonify({'error': f'User "{unshare_with_username}" not found'}), 404
+
+    # Freigabe entfernen
+    share = UserPromptShare.query.filter_by(
+        prompt_id=prompt_id,
+        shared_with_user_id=unshare_with_user.id
+    ).first()
+
+    if not share:
+        return jsonify({'error': f'Prompt is not shared with "{unshare_with_username}"'}), 404
+
+    db.session.delete(share)
+    db.session.commit()
+
+    return jsonify({'message': f'Prompt sharing removed for "{unshare_with_username}" successfully'}), 200
 
 
 

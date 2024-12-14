@@ -1,3 +1,4 @@
+// collaborative.js
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { io } from 'socket.io-client';
 
@@ -6,6 +7,7 @@ export function useCollaborativeEditing(promptId, blocks) {
   const collaborators = ref([]);
   const cursors = ref({});
   const lastCursorPositions = ref({});
+  const isBlockUpdateFromServer = ref(false);
 
   const initSocket = () => {
     socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`);
@@ -27,7 +29,6 @@ export function useCollaborativeEditing(promptId, blocks) {
       if (data.user_id !== socket.value.id) {
         cursors.value[data.user_id] = data;
       }
-      console.log("received cursorData", data);
     });
 
     socket.value.on('content_update', (data) => {
@@ -39,7 +40,6 @@ export function useCollaborativeEditing(promptId, blocks) {
             const oldContent = block.content;
             const newContent = data.content;
 
-            // Calculate the new cursor position based on content changes
             const newPosition = calculateNewCursorPosition(
               oldContent,
               newContent,
@@ -47,10 +47,8 @@ export function useCollaborativeEditing(promptId, blocks) {
               lastPosition.end
             );
 
-            // Update the content
             block.content = data.content;
 
-            // Restore cursor position after Vue updates the DOM
             setTimeout(() => {
               const textarea = document.querySelector(`[data-block-id="${data.block_id}"]`)?.querySelector('textarea');
               if (textarea) {
@@ -64,17 +62,27 @@ export function useCollaborativeEditing(promptId, blocks) {
         }
       }
     });
+
+    // Add new listener for block updates
+    socket.value.on('blocks_update', (data) => {
+      if (data.user_id !== socket.value.id) {
+        isBlockUpdateFromServer.value = true;
+        blocks.value = data.blocks;
+        setTimeout(() => {
+          isBlockUpdateFromServer.value = false;
+        }, 0);
+      }
+    });
   };
 
+  // Existing helper functions...
   const calculateNewCursorPosition = (oldContent, newContent, oldStart, oldEnd) => {
-    // Find the common prefix length
     let prefixLength = 0;
     const minLength = Math.min(oldContent.length, newContent.length);
     while (prefixLength < minLength && oldContent[prefixLength] === newContent[prefixLength]) {
       prefixLength++;
     }
 
-    // Find the common suffix length
     let suffixLength = 0;
     while (
       suffixLength < minLength - prefixLength &&
@@ -83,20 +91,16 @@ export function useCollaborativeEditing(promptId, blocks) {
       suffixLength++;
     }
 
-    // Calculate the change in length
     const lengthDiff = newContent.length - oldContent.length;
 
-    // Adjust cursor position based on where the change occurred
     let newStart = oldStart;
     let newEnd = oldEnd;
 
     if (oldStart > prefixLength) {
-      // Cursor is after the change
       newStart += lengthDiff;
       newEnd += lengthDiff;
     }
 
-    // Ensure positions are within bounds
     newStart = Math.max(0, Math.min(newStart, newContent.length));
     newEnd = Math.max(0, Math.min(newEnd, newContent.length));
 
@@ -107,22 +111,21 @@ export function useCollaborativeEditing(promptId, blocks) {
     if (!textareaEl || !socket.value) return;
 
     const position = textareaEl.selectionStart;
-    const username = localStorage.getItem('username') || 'Anonymous'; // Username aus localStorage holen
+    const username = localStorage.getItem('username') || 'Anonymous';
 
     const cursorData = {
       block_id,
       position,
-      userId: socket.value.id,
-      username, // Username hinzufügen
+      user_id: socket.value.id,
+      username,
       timestamp: Date.now()
     };
 
-    // Save the current cursor position
     lastCursorPositions.value[block_id] = {
       start: textareaEl.selectionStart,
       end: textareaEl.selectionEnd
     };
-    console.log("sent cursorData", cursorData);
+
     socket.value.emit('cursor_move', { promptId, ...cursorData });
   };
 
@@ -140,14 +143,20 @@ export function useCollaborativeEditing(promptId, blocks) {
     });
   };
 
+  // Add blocks update handler
+  const handleBlocksUpdate = (newBlocks) => {
+    if (!socket.value || isBlockUpdateFromServer.value) return;
+
+    socket.value.emit('blocks_update', {
+      promptId,
+      blocks: newBlocks,
+      user_id: socket.value.id,
+      timestamp: Date.now()
+    });
+  };
+
   watch(blocks, (newBlocks) => {
-    if (socket.value) {
-      socket.value.emit('blocks_update', {
-        promptId,
-        blocks: newBlocks,
-        timestamp: Date.now()
-      });
-    }
+    handleBlocksUpdate(newBlocks);
   }, { deep: true });
 
   onMounted(() => {
@@ -164,6 +173,7 @@ export function useCollaborativeEditing(promptId, blocks) {
     collaborators,
     cursors,
     updateCursorPosition,
-    handleTextChange
+    handleTextChange,
+    isBlockUpdateFromServer
   };
 }

@@ -216,6 +216,20 @@ def configure_socket_routes(socketio, verbose=True):
             **cursor_data
         }, room=room, include_self=False)
 
+    @socketio.on('blocks_update')
+    def handle_blocks_update(data):
+        prompt_id = data['promptId']
+        blocks = data['blocks']
+        user_id = request.sid
+        room = f"prompt_{prompt_id}"
+
+        # Broadcast the blocks update to all other users in the room
+        emit('blocks_update', {
+            'blocks': blocks,
+            'user_id': user_id,
+            'timestamp': datetime.now().isoformat()
+        }, room=room, include_self=False)
+
     @socketio.on('content_change')
     def handle_content_change(data):
         prompt_id = data['promptId']

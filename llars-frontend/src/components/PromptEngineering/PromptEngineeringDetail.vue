@@ -249,21 +249,20 @@
               style="display: none"
               @change="handleFileUpload"
             >
-            <v-dialog v-model="showUploadDialog" max-width="500">
-  <v-card>
-    <v-card-title>JSON importieren</v-card-title>
-    <v-card-text>
-      Wie möchten Sie die Blöcke aus der JSON-Datei importieren?
-    </v-card-text>
-    <v-card-actions>
-      <v-spacer></v-spacer>
-      <v-btn color="error" @click="cancelUpload">Abbrechen</v-btn>
-      <v-btn color="warning" @click="mergeBlocks">Zu bestehenden hinzufügen</v-btn>
-      <v-btn color="primary" @click="replaceBlocks">Bestehende ersetzen</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
-
+            <v-dialog v-model="showUploadDialog">
+            <v-card>
+              <v-card-title>JSON importieren</v-card-title>
+              <v-card-text>
+                Wie möchten Sie die Blöcke aus der JSON-Datei importieren?
+              </v-card-text>
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn color="error" @click="cancelUpload">Abbrechen</v-btn>
+                <v-btn color="warning" @click="mergeBlocks">Zu bestehenden hinzufügen</v-btn>
+                <v-btn color="primary" @click="replaceBlocks">Bestehende ersetzen</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
             <v-btn
               block
               color="grey"

@@ -149,6 +149,27 @@
             </v-btn>
           </v-card-text>
         </v-card>
+        <v-dialog v-model="showTemplateDialog" max-width="600">
+  <v-card>
+    <v-card-title>Template auswählen</v-card-title>
+    <v-card-text>
+      <v-list>
+        <v-list-item
+          v-for="template in templates"
+          :key="template.id"
+          @click="loadTemplate(template.id)"
+        >
+          <v-list-item-title>{{ template.name }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-card-text>
+    <v-card-actions>
+      <v-spacer></v-spacer>
+      <v-btn color="primary" @click="showTemplateDialog = false">Abbrechen</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
+
 
         <!-- New Block Card -->
         <v-card class="mb-4" v-if="hasEditPermission">
@@ -228,6 +249,20 @@
               style="display: none"
               @change="handleFileUpload"
             >
+            <v-dialog v-model="showUploadDialog" max-width="500">
+  <v-card>
+    <v-card-title>JSON importieren</v-card-title>
+    <v-card-text>
+      Wie möchten Sie die Blöcke aus der JSON-Datei importieren?
+    </v-card-text>
+    <v-card-actions>
+      <v-spacer></v-spacer>
+      <v-btn color="error" @click="cancelUpload">Abbrechen</v-btn>
+      <v-btn color="warning" @click="mergeBlocks">Zu bestehenden hinzufügen</v-btn>
+      <v-btn color="primary" @click="replaceBlocks">Bestehende ersetzen</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
 
             <v-btn
               block
@@ -239,7 +274,19 @@
             </v-btn>
           </v-card-text>
         </v-card>
-
+    <!-- Preview Dialog -->
+    <v-dialog v-model="showPreview" max-width="800">
+      <v-card>
+        <v-card-title>Vorschau</v-card-title>
+        <v-card-text>
+          <pre class="preview-content">{{ compiledPrompt }}</pre>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" @click="showPreview = false">Schließen</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
         <!-- Share Card -->
         <v-card class="mt-4" v-if="hasEditPermission">
           <v-card-title>Prompt teilen</v-card-title>

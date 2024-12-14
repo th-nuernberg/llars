@@ -196,7 +196,7 @@
           </v-card-text>
         </v-card>
 
-        <!-- Actions Card -->
+       <!-- Actions Card -->
         <v-card>
           <v-card-title>Aktionen</v-card-title>
           <v-card-text>
@@ -287,56 +287,87 @@
       </v-card>
     </v-dialog>
         <!-- Share Card -->
-        <v-card class="mt-4" v-if="hasEditPermission">
-          <v-card-title>Prompt teilen</v-card-title>
-          <v-card-text>
-            <v-form ref="shareForm" v-model="isShareFormValid">
-              <v-text-field
-                v-model="shareWithUser"
-                label="Benutzername"
-                dense
-                class="mb-2"
-                placeholder="Mit Benutzer teilen"
-              />
-              <v-btn
-                block
-                color="info"
-                :disabled="!isShareFormValid"
-                @click="sharePrompt"
-              >
-                <v-icon left>mdi-share</v-icon>
-                Teilen
-              </v-btn>
-            </v-form>
+<!-- Share Card -->
+<v-card class="mt-4" v-if="owner === currentUser">
+  <v-card-title>Prompt teilen</v-card-title>
+  <v-card-text>
+    <v-form ref="shareForm" v-model="isShareFormValid">
+      <v-text-field
+        v-model="shareWithUser"
+        label="Benutzername"
+        dense
+        class="mb-2"
+        placeholder="Mit Benutzer teilen"
+      />
+      <v-btn
+        block
+        color="info"
+        :disabled="!isShareFormValid"
+        @click="sharePrompt"
+      >
+        <v-icon left>mdi-share</v-icon>
+        Teilen
+      </v-btn>
+    </v-form>
 
-            <!-- Shared Users List -->
-            <template v-if="sharedUsers.length > 0">
-              <v-divider class="my-3"></v-divider>
-              <div class="text-subtitle-2 mb-2">
-                Geteilt mit:
-                <v-chip
-                  small
-                  color="info"
-                  class="ml-2"
-                >
-                  {{ sharedUsers.length }}
-                </v-chip>
-              </div>
-              <v-list density="compact">
-                <v-list-item
-                  v-for="user in sharedUsers"
-                  :key="user"
-                  :value="user"
-                >
-                  <template v-slot:prepend>
-                    <v-icon size="small" color="info">mdi-account</v-icon>
-                  </template>
-                  {{ user }}
-                </v-list-item>
-              </v-list>
-            </template>
-          </v-card-text>
-        </v-card>
+    <!-- Shared Users List -->
+    <template v-if="sharedUsers.length > 0">
+      <v-divider class="my-3"></v-divider>
+      <div class="text-subtitle-2 mb-2">
+        Geteilt mit:
+        <v-chip
+          small
+          color="info"
+          class="ml-2"
+        >
+          {{ sharedUsers.length }}
+        </v-chip>
+      </div>
+      <v-list density="compact">
+        <v-list-item
+          v-for="user in sharedUsers"
+          :key="user"
+          :value="user"
+        >
+          <template v-slot:prepend>
+            <v-icon size="small" color="info">mdi-account</v-icon>
+          </template>
+          {{ user }}
+          <template v-slot:append>
+            <v-btn
+              icon="mdi-delete"
+              size="small"
+              color="error"
+              variant="text"
+              @click="unsharePrompt(user)"
+            >
+              <v-icon size="small">mdi-delete</v-icon>
+            </v-btn>
+          </template>
+        </v-list-item>
+      </v-list>
+    </template>
+  </v-card-text>
+</v-card>
+
+<!-- Read-only Shared Users List for shared users -->
+<v-card class="mt-4" v-else-if="sharedUsers.length > 0">
+  <v-card-title>Geteilt mit</v-card-title>
+  <v-card-text>
+    <v-list density="compact">
+      <v-list-item
+        v-for="user in sharedUsers"
+        :key="user"
+        :value="user"
+      >
+        <template v-slot:prepend>
+          <v-icon size="small" color="info">mdi-account</v-icon>
+        </template>
+        {{ user }}
+      </v-list-item>
+    </v-list>
+  </v-card-text>
+</v-card>
       </v-col>
     </v-row>
   </v-container>
@@ -389,6 +420,8 @@ const router = useRouter();
 const promptId = route.params.id;
 const { collaborators, cursors, updateCursorPosition, handleTextChange } =
   useCollaborativeEditing(promptId, blocks);
+// Füge diese computed property zu den anderen computed properties hinzu
+const currentUser = computed(() => localStorage.getItem('username'));
 
 
 const promptName = ref('');

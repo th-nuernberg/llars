@@ -19,7 +19,7 @@
 <script setup>
 import {ref, onMounted, onUnmounted, reactive} from 'vue';
 import {io} from 'socket.io-client';
-
+// TODO: Use yjs, y-websocket, y-websocket-server
 const socket = ref(null);
 const inputText = ref('');
 const roomInfo = ref(null);

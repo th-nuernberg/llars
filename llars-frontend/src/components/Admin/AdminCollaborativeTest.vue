@@ -24,6 +24,7 @@ const socket = ref(null);
 const inputText = ref('');
 const roomInfo = ref(null);
 const userId = ref(null);
+const username = localStorage.getItem('username');
 
 const onTextChanged = () => {
   if (socket.value) {
@@ -94,7 +95,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (socket.value) {
     // Raum verlassen
-    socket.value.emit('leave_eng', {room: 'room1'});
+    socket.value.emit('leave_eng');
 
     // Verbindung trennen
     socket.value.disconnect();

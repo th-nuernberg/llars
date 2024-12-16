@@ -94,7 +94,7 @@ def configure_websocket_prompt_eng(socketio):
         logging.info(f"Text update in room {room}: {text}")
         emit('text_update', {'newText': text}, to=room)
 
-    @socketio.on('disconnect')
+    @socketio.on('leave_eng')
     def handle_disconnect():
         """Handle user disconnection."""
         user_id = request.sid
@@ -104,3 +104,4 @@ def configure_websocket_prompt_eng(socketio):
         logging.info(f"User {user_id} disconnected")
 
     return room_manager  # Optionally return room manager for external access
+

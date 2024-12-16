@@ -14,7 +14,9 @@ import HistoryGenerationDetail from "@/components/HistoryGenerator/HistoryGenera
 import Impressum from "@/components/Orga/Impressum.vue";
 import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
+
 import AdminTester from "@/components/Admin/AdminTester.vue";
+import AdminCollaborativeTest from "@/components/Admin/AdminCollaborativeTest.vue";
 
 import Chat from "@/components/Chat.vue";
 
@@ -47,6 +49,7 @@ const routes = [
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminHistoryGenerator', component: AdminHistoryGenerator, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
+    { path: '/AdminCollaborativeTest', component: AdminCollaborativeTest, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },

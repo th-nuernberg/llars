@@ -53,6 +53,12 @@ const features = ref([
     description: 'Test Seite',
     route: '/AdminTester'
   }
+  ,
+  {
+    title: 'Collaborative Test',
+    description: 'Test Seite',
+    route: '/AdminCollaborativeTest'
+  }
 ]);
 
 // Navigationsfunktion

@@ -7,7 +7,8 @@ Content-Type: application/json
 
 {
   "username": "dev_user_1",
-  "password": "zinumusu"
+  "password": "zinumusu",
+  "api_key": "e304823e-1d35-46ef-94cf-7c654d642dac"
 }
 ###
 POST http://backend-flask-service:8081/auth/register
@@ -74,6 +75,16 @@ Content-Type: application/json
   "username": "admin",
   "password": "llars_admin789",
   "api_key": "0b09e690-365b-4a55-b9b3-04c0614f773a",
+  "admin_registration_key": "73525abb-3336-4553-8e54-751c9c1b965c"
+}
+###
+POST http://backend-flask-service:8081/auth/register_admin
+Content-Type: application/json
+
+{
+  "username": "admin2",
+  "password": "llars_admin321",
+  "api_key": "0db8a774-dbff-4361-930c-a47173f5ffce",
   "admin_registration_key": "73525abb-3336-4553-8e54-751c9c1b965c"
 }
 ###

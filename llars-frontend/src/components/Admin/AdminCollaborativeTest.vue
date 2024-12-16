@@ -11,57 +11,51 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { io } from 'socket.io-client';
 
-const socket = io(`${import.meta.env.VITE_API_BASE_URL}`);
+const socket = ref(null);
 const inputText = ref('');
 
-// Funktion, um den Text zu ändern
 const onTextChanged = () => {
-  // Sende den neuen Text an den Server
-  console.log('Text wird an Server gesendet:', inputText.value);
-  console.log('Raum:', 'room1');
-  console.log('inputText:', inputText);
-  socket.emit('update_text', { newText: inputText.value, room: 'room1' });
+  if (socket.value) {
+    socket.value.emit('update_text', { newText: inputText.value, room: 'room1' });
+  }
 };
 
-// Socket.IO-Event-Listener
 onMounted(() => {
-  // Verbindungsereignis senden, um den Client zu verbinden
-  socket.emit('connect_prompt_eng', () => {
+  socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`);
+
+  socket.value.emit('connect_prompt_eng', () => {
     console.log('Verbindung zu WebSocket erfolgreich');
   });
 
-  // Event, das auf die Antwort des Servers wartet
-  socket.on('connection_response', (data) => {
+  socket.value.on('connection_response', (data) => {
     console.log('Serverantwort:', data);
-    // Optional: Text aus der Serverantwort setzen
   });
 
-
-  // Senden des Payloads beim Joinen des Raums
-  socket.emit('join_eng', { room: 'room1' }, () => {
-  console.log('Client hat sich dem Raum angeschlossen');
+  socket.value.emit('join_eng', { room: 'room1' }, () => {
+    console.log('Client hat sich dem Raum angeschlossen');
   });
 
-  // Event, das Textaktualisierungen vom Server empfängt
-  socket.on('text_update', (data) => {
-    console.log('Text vom Server erhalten:', data);
-    if (data.newText) {
-      inputText.value = data.newText;
-      console.log('Text wurde aktualisiert:', inputText.value);
-    }
-  });
+socket.value.on('text_update', (data) => {
+  console.log('Full data received:', data);
+  console.log('New text:', data.newText);
+  console.log('Current input text before update:', inputText.value);
+
+  if (data.newText !== undefined) {
+    inputText.value = data.newText;
+
+    console.log('Input text after update:', inputText.value);
+  } else {
+    console.warn('No newText found in update');
+  }
+});
 });
 
-// Aufräumarbeiten, wenn die Komponente unmontiert wird
 onUnmounted(() => {
-  socket.off('connection_response');
+  if (socket.value) {
+    socket.value.disconnect();
+  }
 });
-
 </script>
-
-<style scoped>
-/* Hier kannst du Stil hinzufügen */
-</style>

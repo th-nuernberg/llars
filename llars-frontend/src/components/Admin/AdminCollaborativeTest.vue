@@ -1,43 +1,56 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import * as Y from 'yjs'
-import { WebrtcProvider } from 'y-webrtc'
 import { QuillBinding } from 'y-quill'
 import Quill from 'quill'
 import QuillCursors from 'quill-cursors'
+import { io } from 'socket.io-client'
 import 'quill/dist/quill.snow.css'
 
 Quill.register('modules/cursors', QuillCursors)
 
 const editorRef = ref(null)
 let ydoc = null
-let provider = null
 let editor = null
 let binding = null
-
+let socket = null
+const roomId = 'demo-room'
 const isConnected = ref(true)
 
-const toggleConnection = () => {
-  if (provider) {
-    if (provider.shouldConnect) {
-      provider.disconnect()
-      isConnected.value = false
-    } else {
-      provider.connect()
-      isConnected.value = true
-    }
-  }
+const initializeSocketConnection = () => {
+  socket = io(import.meta.env.VITE_API_BASE_URL)
+
+  socket.on('connect', () => {
+    console.log('Connected to server')
+    socket.emit('join_room', roomId)
+  })
+
+  socket.on('update_document', (update) => {
+    // Empfange Updates vom Server
+    const uint8Array = new Uint8Array(update)
+    Y.applyUpdate(ydoc, uint8Array)
+  })
 }
 
 onMounted(() => {
   // Initialize Yjs document
   ydoc = new Y.Doc()
 
-  // Initialize WebRTC provider
-  provider = new WebrtcProvider('quill-demo-room', ydoc)
+  // Initialize Socket.IO connection
+  initializeSocketConnection()
 
   // Get shared text type
   const ytext = ydoc.getText('quill')
+
+  // Listen for document updates
+  ydoc.on('update', (update) => {
+    console.log('Update received:', update)
+    // Sende Updates an den Server
+    socket.emit('document_update', {
+      room: roomId,
+      update: Array.from(update)
+    })
+  })
 
   // Initialize Quill editor
   editor = new Quill(editorRef.value, {
@@ -57,34 +70,19 @@ onMounted(() => {
   })
 
   // Bind Quill to Yjs
-  binding = new QuillBinding(ytext, editor, provider.awareness)
-
-  // Optional: Set user information
-  provider.awareness.setLocalStateField('user', {
-    name: 'User ' + Math.floor(Math.random() * 100),
-    color: '#' + Math.floor(Math.random()*16777215).toString(16)
-  })
+  binding = new QuillBinding(ytext, editor)
 })
 
 onUnmounted(() => {
   // Clean up
   if (binding) binding.destroy()
-  if (provider) provider.destroy()
   if (ydoc) ydoc.destroy()
+  if (socket) socket.disconnect()
 })
 </script>
 
 <template>
   <div class="collaborative-editor">
-    <button @click="toggleConnection">
-      {{ isConnected ? 'Disconnect' : 'Connect' }}
-    </button>
-
-    <div class="editor-info">
-      <p>This is a collaborative editor using Yjs and Quill</p>
-      <p>The content of this editor is shared with every client in the same room</p>
-    </div>
-
     <div ref="editorRef" class="editor"></div>
   </div>
 </template>
@@ -95,10 +93,6 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-}
-
-.editor-info {
-  margin: 20px 0;
 }
 
 .editor {

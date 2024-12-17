@@ -17,19 +17,53 @@ let socket = null
 const roomId = 'demo-room'
 const isConnected = ref(true)
 
+const getUserInfo = () => {
+  return {
+    name: localStorage.getItem('username') || 'Anonymous',
+    color: '#' + Math.floor(Math.random()*16777215).toString(16) // Zufällige Farbe
+  }
+}
+
 const initializeSocketConnection = () => {
   socket = io(import.meta.env.VITE_API_BASE_URL)
 
   socket.on('connect', () => {
     console.log('Connected to server')
     socket.emit('join_room', roomId)
+
+    // Sende initiale Benutzerinformation
+    socket.emit('set_user_info', {
+      room: roomId,
+      user: getUserInfo()
+    })
   })
 
   socket.on('update_document', (update) => {
-    // Empfange Updates vom Server
     const uint8Array = new Uint8Array(update)
     Y.applyUpdate(ydoc, uint8Array)
   })
+
+  // Empfange Cursor-Updates
+  socket.on('cursor_update', (cursorInfo) => {
+    if (editor && cursorInfo.userId !== socket.id) {
+      const cursors = editor.getModule('cursors')
+      cursors.createCursor(cursorInfo.userId, cursorInfo.name, cursorInfo.color)
+      cursors.moveCursor(cursorInfo.userId, cursorInfo.range)
+    }
+  })
+}
+
+const updateCursorPosition = (range) => {
+  if (socket && editor) {
+    const userInfo = getUserInfo()
+    socket.emit('cursor_update', {
+      room: roomId,
+      userId: socket.id,
+      name: userInfo.name,
+      color: userInfo.color,
+      range: range
+    })
+  }
 }
 
 onMounted(() => {
@@ -44,8 +78,6 @@ onMounted(() => {
 
   // Listen for document updates
   ydoc.on('update', (update) => {
-    console.log('Update received:', update)
-    // Sende Updates an den Server
     socket.emit('document_update', {
       room: roomId,
       update: Array.from(update)
@@ -71,6 +103,13 @@ onMounted(() => {
 
   // Bind Quill to Yjs
   binding = new QuillBinding(ytext, editor)
+
+  // Cursor-Position-Tracking
+  editor.on('selection-change', (range) => {
+    if (range) {
+      updateCursorPosition(range)
+    }
+  })
 })
 
 onUnmounted(() => {

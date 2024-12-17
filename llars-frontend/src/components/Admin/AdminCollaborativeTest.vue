@@ -1,3 +1,12 @@
+<template>
+  <div class="collaborative-editor">
+    <div v-for="(block, index) in blocks" :key="block.id" class="editor-block">
+      <h3>{{ block.name }}</h3>
+      <div :ref="el => editorsRef[index] = el" class="editor"></div>
+    </div>
+  </div>
+</template>
+
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import * as Y from 'yjs'
@@ -9,13 +18,19 @@ import 'quill/dist/quill.snow.css'
 
 Quill.register('modules/cursors', QuillCursors)
 
-const editorRef = ref(null)
-let ydoc = null
-let editor = null
-let binding = null
-let socket = null
-const roomId = 'demo-room'
+const blocks = ref([
+  { id: 'block1', name: 'Block 1', content: '' },
+  { id: 'block2', name: 'Block 2', content: '' }
+])
+
+const editorsRef = ref([])
 const isConnected = ref(true)
+const roomId = 'demo-room'
+
+let ydoc = null
+let editors = []
+let bindings = []
+let socket = null
 
 const getUserInfo = () => {
   return {
@@ -43,8 +58,8 @@ const initializeSocketConnection = () => {
   })
 
   socket.on('cursor_update', (cursorInfo) => {
-    if (editor && cursorInfo.userId !== socket.id) {
-      const cursors = editor.getModule('cursors')
+    if (editors[cursorInfo.blockId] && cursorInfo.userId !== socket.id) {
+      const cursors = editors[cursorInfo.blockId].getModule('cursors')
       const existingCursor = cursors.cursors().find(cursor => cursor.id === cursorInfo.userId)
 
       if (!existingCursor) {
@@ -63,18 +78,21 @@ const initializeSocketConnection = () => {
   })
 
   socket.on('user_disconnected', (userId) => {
-    if (editor) {
-      const cursors = editor.getModule('cursors')
-      cursors.removeCursor(userId)
-    }
+    editors.forEach(editor => {
+      if (editor) {
+        const cursors = editor.getModule('cursors')
+        cursors.removeCursor(userId)
+      }
+    })
   })
 }
 
-const updateCursorPosition = (range) => {
-  if (socket && editor) {
+const updateCursorPosition = (blockId, range) => {
+  if (socket && editors[blockId]) {
     const userInfo = getUserInfo()
     socket.emit('cursor_update', {
       room: roomId,
+      blockId: blockId,
       userId: socket.id,
       name: userInfo.name,
       color: userInfo.color,
@@ -86,7 +104,44 @@ const updateCursorPosition = (range) => {
 onMounted(() => {
   ydoc = new Y.Doc()
   initializeSocketConnection()
-  const ytext = ydoc.getText('quill')
+
+  // Initialize each editor
+  blocks.value.forEach((block, index) => {
+    const ytext = ydoc.getText(`block-${block.id}`)
+
+    editors[block.id] = new Quill(editorsRef.value[index], {
+      modules: {
+        cursors: {
+          transformOnTextChange: true,
+          hideDelayMs: 2000,
+          hideSpeedMs: 300,
+          selectionChangeSource: 'api'
+        },
+        toolbar: [
+          ['bold', 'italic', 'underline']
+        ],
+        history: {
+          userOnly: true
+        }
+      },
+      placeholder: `Start editing ${block.name}...`,
+      theme: 'snow'
+    })
+
+    editors[block.id].root.style.fontSize = '18px'
+    editors[block.id].root.style.lineHeight = '1.6'
+
+    bindings[block.id] = new QuillBinding(ytext, editors[block.id])
+
+    editors[block.id].on('selection-change', (range, oldRange, source) => {
+      updateCursorPosition(block.id, range)
+    })
+
+    // Sync initial content
+    ytext.observe(event => {
+      block.content = editors[block.id].root.innerHTML
+    })
+  })
 
   ydoc.on('update', (update) => {
     socket.emit('document_update', {
@@ -94,48 +149,15 @@ onMounted(() => {
       update: Array.from(update)
     })
   })
-
-  editor = new Quill(editorRef.value, {
-    modules: {
-      cursors: {
-        transformOnTextChange: true,
-        hideDelayMs: 2000,
-        hideSpeedMs: 300,
-        selectionChangeSource: 'api'
-      },
-      toolbar: [
-        ['bold', 'italic', 'underline']
-      ],
-      history: {
-        userOnly: true
-      }
-    },
-    placeholder: 'Start collaborating...',
-    theme: 'snow'
-  })
-
-  editor.root.style.fontSize = '18px'
-  editor.root.style.lineHeight = '1.6'
-
-  binding = new QuillBinding(ytext, editor)
-
-  editor.on('selection-change', (range, oldRange, source) => {
-    updateCursorPosition(range)
-  })
 })
 
 onUnmounted(() => {
-  if (binding) binding.destroy()
+  bindings.forEach(binding => binding && binding.destroy())
   if (ydoc) ydoc.destroy()
   if (socket) socket.disconnect()
 })
 </script>
 
-<template>
-  <div class="collaborative-editor">
-    <div ref="editorRef" class="editor"></div>
-  </div>
-</template>
 
 <style scoped>
 .collaborative-editor {
@@ -143,14 +165,20 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  position: relative;
+}
+
+.editor-block {
+  margin-bottom: 30px;
+}
+
+.editor-block h3 {
+  margin-bottom: 10px;
 }
 
 .editor {
-  min-height: 500px;
+  min-height: 200px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  position: relative;
 }
 
 /* Cursor Module Styles */

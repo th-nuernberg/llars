@@ -45,8 +45,27 @@ const initializeSocketConnection = () => {
   socket.on('cursor_update', (cursorInfo) => {
     if (editor && cursorInfo.userId !== socket.id) {
       const cursors = editor.getModule('cursors')
-      cursors.createCursor(cursorInfo.userId, cursorInfo.name, cursorInfo.color)
-      cursors.moveCursor(cursorInfo.userId, cursorInfo.range)
+      const existingCursor = cursors.cursors().find(cursor => cursor.id === cursorInfo.userId)
+
+      if (!existingCursor) {
+        cursors.createCursor(cursorInfo.userId, cursorInfo.name, cursorInfo.color)
+      }
+
+      if (cursorInfo.range) {
+        cursors.moveCursor(cursorInfo.userId, cursorInfo.range)
+        if (cursorInfo.range.length > 0) {
+          cursors.toggleFlag(cursorInfo.userId, true)
+        }
+      } else {
+        cursors.removeCursor(cursorInfo.userId)
+      }
+    }
+  })
+
+  socket.on('user_disconnected', (userId) => {
+    if (editor) {
+      const cursors = editor.getModule('cursors')
+      cursors.removeCursor(userId)
     }
   })
 }
@@ -65,16 +84,10 @@ const updateCursorPosition = (range) => {
 }
 
 onMounted(() => {
-  // Initialize Yjs document
   ydoc = new Y.Doc()
-
-  // Initialize Socket.IO connection
   initializeSocketConnection()
-
-  // Get shared text type
   const ytext = ydoc.getText('quill')
 
-  // Listen for document updates
   ydoc.on('update', (update) => {
     socket.emit('document_update', {
       room: roomId,
@@ -82,10 +95,14 @@ onMounted(() => {
     })
   })
 
-  // Initialize Quill editor with larger font
   editor = new Quill(editorRef.value, {
     modules: {
-      cursors: true,
+      cursors: {
+        transformOnTextChange: true,
+        hideDelayMs: 2000,
+        hideSpeedMs: 300,
+        selectionChangeSource: 'api'
+      },
       toolbar: [
         ['bold', 'italic', 'underline']
       ],
@@ -97,23 +114,17 @@ onMounted(() => {
     theme: 'snow'
   })
 
-  // Set default font size
   editor.root.style.fontSize = '18px'
   editor.root.style.lineHeight = '1.6'
 
-  // Bind Quill to Yjs
   binding = new QuillBinding(ytext, editor)
 
-  // Cursor-Position-Tracking
-  editor.on('selection-change', (range) => {
-    if (range) {
-      updateCursorPosition(range)
-    }
+  editor.on('selection-change', (range, oldRange, source) => {
+    updateCursorPosition(range)
   })
 })
 
 onUnmounted(() => {
-  // Clean up
   if (binding) binding.destroy()
   if (ydoc) ydoc.destroy()
   if (socket) socket.disconnect()
@@ -132,25 +143,75 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+  position: relative;
 }
 
 .editor {
   min-height: 500px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  position: relative;
 }
 
-/* Zusätzliche Styles für größere Schrift */
+/* Cursor Module Styles */
+:deep(.ql-container) {
+  position: relative;
+}
+
+:deep(.ql-cursors) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+:deep(.ql-cursor) {
+  position: absolute;
+  z-index: 2;
+}
+
+:deep(.ql-cursor-selections) {
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+:deep(.ql-cursor-caret-container) {
+  position: absolute;
+  margin-left: -1px;
+  z-index: 2;
+}
+
+:deep(.ql-cursor-flag) {
+  position: absolute;
+  top: -16px;
+  background: white;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: white;
+  z-index: 3;
+}
+
+/* Editor Styles */
 :deep(.ql-editor) {
   font-size: 18px !important;
   line-height: 1.6 !important;
+  position: relative;
 }
 
 :deep(.ql-editor p) {
   margin-bottom: 1em;
 }
 
-/* Größere Toolbar-Icons */
+/* Toolbar Styles */
+:deep(.ql-toolbar.ql-snow) {
+  position: relative;
+  z-index: 4;
+}
+
 :deep(.ql-toolbar.ql-snow .ql-formats) {
   margin-right: 15px;
 }

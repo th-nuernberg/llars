@@ -20,7 +20,7 @@ const isConnected = ref(true)
 const getUserInfo = () => {
   return {
     name: localStorage.getItem('username') || 'Anonymous',
-    color: '#' + Math.floor(Math.random()*16777215).toString(16) // Zufällige Farbe
+    color: '#' + Math.floor(Math.random()*16777215).toString(16)
   }
 }
 
@@ -31,7 +31,6 @@ const initializeSocketConnection = () => {
     console.log('Connected to server')
     socket.emit('join_room', roomId)
 
-    // Sende initiale Benutzerinformation
     socket.emit('set_user_info', {
       room: roomId,
       user: getUserInfo()
@@ -43,7 +42,6 @@ const initializeSocketConnection = () => {
     Y.applyUpdate(ydoc, uint8Array)
   })
 
-  // Empfange Cursor-Updates
   socket.on('cursor_update', (cursorInfo) => {
     if (editor && cursorInfo.userId !== socket.id) {
       const cursors = editor.getModule('cursors')
@@ -84,14 +82,12 @@ onMounted(() => {
     })
   })
 
-  // Initialize Quill editor
+  // Initialize Quill editor with larger font
   editor = new Quill(editorRef.value, {
     modules: {
       cursors: true,
       toolbar: [
-        [{ header: [1, 2, false] }],
-        ['bold', 'italic', 'underline'],
-        ['image', 'code-block']
+        ['bold', 'italic', 'underline']
       ],
       history: {
         userOnly: true
@@ -100,6 +96,10 @@ onMounted(() => {
     placeholder: 'Start collaborating...',
     theme: 'snow'
   })
+
+  // Set default font size
+  editor.root.style.fontSize = '18px'
+  editor.root.style.lineHeight = '1.6'
 
   // Bind Quill to Yjs
   binding = new QuillBinding(ytext, editor)
@@ -138,5 +138,31 @@ onUnmounted(() => {
   min-height: 500px;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+/* Zusätzliche Styles für größere Schrift */
+:deep(.ql-editor) {
+  font-size: 18px !important;
+  line-height: 1.6 !important;
+}
+
+:deep(.ql-editor p) {
+  margin-bottom: 1em;
+}
+
+/* Größere Toolbar-Icons */
+:deep(.ql-toolbar.ql-snow .ql-formats) {
+  margin-right: 15px;
+}
+
+:deep(.ql-toolbar.ql-snow button) {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+}
+
+:deep(.ql-toolbar.ql-snow button svg) {
+  width: 20px;
+  height: 20px;
 }
 </style>

@@ -21,7 +21,7 @@
                 rows="4"
                 class="prompt-textarea"
                 :data-block-id="block.name"
-                @input="value => handleTextChange(block.name, value)"
+                @update:model-value="value => handleTextChange(block.name, value)"
               ></v-textarea>
             </div>
           </v-card-text>
@@ -48,8 +48,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import { io } from 'socket.io-client';
+import {ref, onMounted, onUnmounted} from 'vue';
+import {io} from 'socket.io-client';
 
 const socket = ref(null);
 const blocks = ref([]);
@@ -57,12 +57,14 @@ const roomInfo = ref(null);
 const userId = ref(null);
 
 const username = localStorage.getItem('username');
-const promptId = 1; // Would typically come from route.params.id
+const promptId = 1; // Würde normalerweise aus den route params stammen
 const roomId = `room_${promptId}`;
 
 const handleTextChange = (blockId, newContent) => {
+  console.log('blockid:', blockId);
+  console.log('newContent:', newContent); // Jetzt wird der komplette Text übermittelt
   if (socket.value) {
-    socket.value.emit('text_update', {
+    socket.value.emit('pe_text_update', {
       blockId,
       content: newContent,
       room: roomId,
@@ -72,41 +74,39 @@ const handleTextChange = (blockId, newContent) => {
 };
 
 const processReceivedContent = (content) => {
-  if (!content?.blocks) return;
+  if (!content || !content.blocks) return;
 
-  // Convert blocks object to array and sort by position
-  const blocksArray = Object.entries(content.blocks).map(([name, data]) => ({
+  console.log('Processing received content:', content);
+
+  const blocksObject = content.blocks;
+  const blocksArray = Object.entries(blocksObject).map(([name, blockData]) => ({
     name,
-    content: data.content,
-    position: data.position
-  })).sort((a, b) => a.position - b.position);
+    content: blockData.content,
+    position: blockData.position
+  }));
 
+  blocksArray.sort((a, b) => a.position - b.position);
   blocks.value = blocksArray;
 };
 
 onMounted(() => {
-  // Initialize socket connection
   socket.value = io(import.meta.env.VITE_API_BASE_URL);
 
-  // Connect to server
-  socket.value.emit('pe_connect', { username }, () => {
+  socket.value.emit('pe_connect', {username}, () => {
     console.log('WebSocket connection established');
   });
 
-  // Handle connection response
   socket.value.on('pe_connected', (data) => {
     console.log('Connected to server:', data);
     userId.value = data.user_id;
   });
 
-  // Join room
   socket.value.on('connect', () => {
-    socket.value.emit('pe_join_room', { room: roomId, prompt_id: promptId }, () => {
+    socket.value.emit('pe_join_room', {room: roomId, prompt_id: promptId}, () => {
       console.log('Joined room:', roomId);
     });
   });
 
-  // Handle room join confirmation and initial data
   socket.value.on('pe_joined_room', (data) => {
     console.log('Received room data:', data);
     if (data.content) {
@@ -118,14 +118,9 @@ onMounted(() => {
     };
   });
 
-  // Handle text updates åΩfrom other users
   socket.value.on('pe_text_update', (data) => {
-    if (data.userId !== userId.value) {
-      const block = blocks.value.find(b => b.name === data.blockId);
-      if (block) {
-        block.content = data.content;
-      }
-    }
+    console.log('Received updated content:', data);
+    processReceivedContent(data);
   });
 });
 

@@ -118,8 +118,8 @@ onMounted(() => {
     };
   });
 
-  // Handle text updates from other users
-  socket.value.on('text_update', (data) => {
+  // Handle text updates åΩfrom other users
+  socket.value.on('pe_text_update', (data) => {
     if (data.userId !== userId.value) {
       const block = blocks.value.find(b => b.name === data.blockId);
       if (block) {

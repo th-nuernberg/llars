@@ -1,78 +1,40 @@
 import json
 from flask import request
-from flask_socketio import emit, join_room, leave_room
-from typing import Dict, Set, List
-
-document_updates: Dict[str, List[bytes]] = {}
-room_participants: Dict[str, Set[str]] = {}
-user_cursors: Dict[str, Dict] = {}  # Speichert Cursor-Positionen pro Raum
+from flask_socketio import SocketIO, emit, send, join_room, leave_room
+import logging
+from db.db import db
+from pe_rooms import PeRooms
 
 
 def configure_websocket_prompt_eng(socketio):
-    @socketio.on('connect')
-    def handle_connect():
-        print(f"Client connected: {request.sid}")
+    """
+    Configure WebSocket routes for collaborative prompt editing.
+    """
 
-    @socketio.on('disconnect')
-    def handle_disconnect():
-        print(f"Client disconnected: {request.sid}")
-        for room in room_participants:
-            if request.sid in room_participants[room]:
-                room_participants[room].remove(request.sid)
-                # Entferne Cursor-Information
-                if room in user_cursors and request.sid in user_cursors[room]:
-                    del user_cursors[room][request.sid]
+    pe_rooms = PeRooms(db)
 
-    @socketio.on('join_room')
-    def handle_join_room(room):
-        join_room(room)
-        if room not in room_participants:
-            room_participants[room] = set()
-        room_participants[room].add(request.sid)
+    @socketio.on('pe_connect')
+    def handle_connect(data):
+        """Handle client connection to WebSocket."""
+        user_id = data.get('user_id')  # entspricht dem Client-seitigen { user_id: user }
+        s_id = request.sid
+        logging.info(f"Client connected with user ID {user_id}, socket ID {s_id}")
+        emit('pe_connected', {
+            'message': 'Connected successfully',
+            'user_id': user_id,
+            'sid': s_id
+        })
 
-        if room not in document_updates:
-            document_updates[room] = []
+    @socketio.on('pe_join_room')
+    def handle_join_room(data):
+        prompt_id = data.get('prompt_id')
+        user_id = request.sid
+        logging.info(f"User {user_id} joined room for prompt {prompt_id}")
+        room_data, room_id = pe_rooms.join_room(prompt_id, user_id)
+        if room_data:
+            join_room(room_id)
+            emit('pe_joined_room', {
+                'room': room_id,
+                'content': room_data['content']
+            }, room=room_id)
 
-        for update in document_updates[room]:
-            emit('update_document', list(update), to=request.sid)
-
-        # Sende existierende Cursor-Positionen
-        if room in user_cursors:
-            for userId, cursorInfo in user_cursors[room].items():
-                if userId != request.sid:
-                    emit('cursor_update', cursorInfo, to=request.sid)
-
-        print(f"Client {request.sid} joined room: {room}")
-
-    @socketio.on('set_user_info')
-    def handle_user_info(data):
-        room = data['room']
-        if room not in user_cursors:
-            user_cursors[room] = {}
-        user_cursors[room][request.sid] = {
-            'userId': request.sid,
-            'name': data['user']['name'],
-            'color': data['user']['color']
-        }
-
-    @socketio.on('cursor_update')
-    def handle_cursor_update(data):
-        room = data['room']
-        if room not in user_cursors:
-            user_cursors[room] = {}
-
-        # Aktualisiere Cursor-Information
-        user_cursors[room][request.sid] = data
-
-        # Sende an alle anderen im Raum
-        emit('cursor_update', data, to=room, skip_sid=request.sid)
-
-    @socketio.on('document_update')
-    def handle_document_update(data):
-        room = data['room']
-        update = bytes(data['update'])
-
-        if room in document_updates:
-            document_updates[room].append(update)
-
-        emit('update_document', list(update), to=room, skip_sid=request.sid)

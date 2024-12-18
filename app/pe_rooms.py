@@ -152,3 +152,13 @@ class PeRooms:
             self.db.session.rollback()
             print(f"Error saving to database: {e}")
             return False
+
+
+    def update_room_content(self, room_id: str, content: Dict) -> bool:
+        if room_id not in self.rooms:
+            return False
+        if 'blocks' not in content:
+            content['blocks'] = {}
+        self.rooms[room_id]['content'] = content
+        self.rooms[room_id]['last_updated'] = datetime.utcnow()
+        return True

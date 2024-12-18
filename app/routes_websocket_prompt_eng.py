@@ -1,3 +1,4 @@
+# websocket.py
 import json
 from flask import request
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -14,13 +15,12 @@ def configure_websocket_prompt_eng(socketio):
 
     @socketio.on('pe_connect')
     def handle_connect(data):
-        """Handle client connection to WebSocket."""
-        user_id = data.get('user_id')  # Client übergibt user_id optional
+        user_id = data.get('user_id')  # optional
         s_id = request.sid
         logging.info(f"Client connected with user ID {user_id}, socket ID {s_id}")
         emit('pe_connected', {
             'message': 'Connected successfully',
-            'user_id': s_id,  # Wir nutzen hier einfach s_id als user_id
+            'user_id': s_id,
             'sid': s_id
         })
 
@@ -45,35 +45,72 @@ def configure_websocket_prompt_eng(socketio):
         block_id = data.get('blockId')
         new_content = data.get('content')
 
-        # Raumdaten holen
         room_data = pe_rooms.get_room_data(room_id)
         if not room_data:
             return
 
-        # Bisherige Inhalte holen
+        # Aktuelle Inhalte holen
         content = room_data.get('content', {})
         if 'blocks' not in content:
             content['blocks'] = {}
 
-        # Block aktualisieren oder anlegen
-        # Wenn der Block bereits existiert, wird nur der Inhalt aktualisiert
-        # Ist er neu, wird er hinzugefügt
+        # Block aktualisieren (falls bereits existiert) oder neu anlegen
         if block_id in content['blocks']:
             content['blocks'][block_id]['content'] = new_content
         else:
-            # Falls der Block neu ist, fügen wir ihn mit default-Werten an.
-            # Die Position könnte hier z. B. die nächste freie Position sein,
-            # oder du bestimmst sie anderweitig.
             new_position = len(content['blocks'])
             content['blocks'][block_id] = {
                 'content': new_content,
                 'position': new_position
             }
 
-        # Raumcontent aktualisieren
         pe_rooms.update_room_content(room_id, content)
 
-        # Nach dem Update ist der Raumcontent in room_data['content'] bereits aktualisiert
-        # Jetzt senden wir den kompletten Content an alle im Raum
+        # An alle im Raum senden (außer dem Absender)
         emit('pe_text_update', room_data['content'], room=room_id, include_self=False)
 
+    @socketio.on('pe_update_blocks')
+    def handle_update_blocks(data):
+        """
+        Erwartetes Datenformat:
+        {
+          "room": "room_1",
+          "updates": {
+            "AvoidFormalities": { "new_position": 1, "content": "Neuer Inhalt" },
+            "Context": { "new_position": 2 },
+            "NewBlock": { "new_position": 3, "content": "Dies ist ein neuer Block" }
+          }
+        }
+        """
+        user_id = request.sid
+        room_id = data.get('room')
+        updates = data.get('updates', {})
+
+        room_data = pe_rooms.get_room_data(room_id)
+        if not room_data:
+            return
+
+        # Bestehende Inhalte laden
+        content = room_data.get('content', {})
+        old_blocks = content.get('blocks', {})
+
+        new_blocks = {}
+        # Durch die Updates iterieren
+        for block_name, block_update in updates.items():
+            new_pos = block_update.get('new_position')
+            # Wenn kein Inhalt mitgeschickt, alten Inhalt beibehalten oder leer
+            new_content = block_update.get('content', old_blocks.get(block_name, {}).get('content', ''))
+
+            new_blocks[block_name] = {
+                'content': new_content,
+                'position': new_pos
+            }
+
+        # Alte Blöcke, die nicht mehr in updates sind, entfallen automatisch
+        content['blocks'] = new_blocks
+
+        # Raum aktualisieren
+        pe_rooms.update_room_content(room_id, content)
+
+        # Aktualisierte Inhalte an alle im Raum senden
+        emit('pe_blocks_updated', room_data['content'], room=room_id, include_self=False)

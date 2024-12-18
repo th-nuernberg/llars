@@ -3,7 +3,7 @@ from typing import Dict, Set, Optional
 from db.tables import UserPrompt, User
 from flask_sqlalchemy import SQLAlchemy
 import logging
-
+import json
 
 class PeRooms:
     def __init__(self, db: SQLAlchemy):
@@ -30,10 +30,18 @@ class PeRooms:
         if not prompt:
             return None
 
+        # Sicherstellen, dass prompt.content ein Dictionary ist
+        content = prompt.content
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except:
+                content = {}
+
         self.rooms[room_id] = {
             'prompt_id': prompt_id,
             'name': prompt.name,
-            'content': prompt.content,
+            'content': content,
             'users': set(),
             'created_at': datetime.utcnow(),
             'last_updated': datetime.utcnow(),
@@ -59,7 +67,7 @@ class PeRooms:
         self.rooms[room_id]['users'].add(user_id)
         self.user_rooms[user_id] = room_id
         self.rooms[room_id]['last_updated'] = datetime.utcnow()
-        logging.info(f"User {user_id} joined room {room_id}, room info: {self.rooms}")
+        logging.info(f"User {user_id} joined room {room_id}, room info: {self.rooms[room_id]}")
         return self.rooms[room_id], room_id
 
     def leave_room(self, user_id: str) -> tuple[bool, str, set]:
@@ -113,8 +121,7 @@ class PeRooms:
 
     def update_room_content(self, room_id: str, content: Dict) -> bool:
         """
-        Update the content of a room.
-        Returns True if update was successful.
+        Update the content of a room and mark last_updated.
         """
         if room_id not in self.rooms:
             return False
@@ -126,7 +133,6 @@ class PeRooms:
     def save_room_to_db(self, room_id: str) -> bool:
         """
         Save the current room content to the database.
-        Returns True if save was successful.
         """
         if room_id not in self.rooms:
             return False
@@ -138,7 +144,7 @@ class PeRooms:
             return False
 
         try:
-            prompt.content = room['content']
+            prompt.content = json.dumps(room['content'])
             prompt.updated_at = datetime.utcnow()
             self.db.session.commit()
             return True

@@ -32,6 +32,7 @@
                 </v-card-title>
                 <v-card-text class="pa-4">
                   <div class="textarea-container">
+                    <!-- Hier fügen wir das Focus-Event hinzu -->
                     <v-textarea
                       v-model="element.content"
                       outlined
@@ -40,6 +41,7 @@
                       class="prompt-textarea"
                       :data-block-id="element.name"
                       @update:model-value="value => handleTextChange(element.name, value)"
+                      @focus="handleCursorUpdate(element.name)"
                     ></v-textarea>
                   </div>
                 </v-card-text>
@@ -77,7 +79,6 @@
           </v-card-text>
         </v-card>
 
-        <!-- Add Block Button -->
         <v-btn
           color="primary"
           block
@@ -87,7 +88,6 @@
           Neuen Block hinzufügen
         </v-btn>
 
-        <!-- Room Info -->
         <v-card class="room-info" v-if="roomInfo">
           <v-card-title class="text-subtitle-1">
             Room Information
@@ -144,14 +144,12 @@ const loadingBlocks = ref(true);
 const showDeleteDialog = ref(false);
 const blockToDelete = ref(null);
 
-// Beispielsweise könnte promptId über die Route ausgelesen werden.
 const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
 
-// Farbenverwaltung
 const cursorColors = ref({});
 const usedColors = ref(new Set());
 
@@ -164,38 +162,28 @@ const availableColors = [
 ];
 
 function getUnusedColor() {
-  // Filtere bereits verwendete Farben heraus
   const unusedColors = availableColors.filter(color => !usedColors.value.has(color));
-
-  // Wenn alle Farben verwendet wurden, erstelle neue Farbtöne
   if (unusedColors.length === 0) {
     const baseColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-    // Modifiziere den Farbton leicht
     const hslColor = hexToHSL(baseColor);
-    hslColor.h = (hslColor.h + 20) % 360; // Verschiebe den Farbton
+    hslColor.h = (hslColor.h + 20) % 360;
     return HSLToHex(hslColor.h, hslColor.s, hslColor.l);
   }
-
   return unusedColors[Math.floor(Math.random() * unusedColors.length)];
 }
 
-// Hilfsfunktionen für Farbkonvertierung
 function hexToHSL(hex) {
-  // Entferne das #
   hex = hex.replace(/#/g, '');
-
-  // Konvertiere zu RGB
   const r = parseInt(hex.substring(0, 2), 16) / 255;
   const g = parseInt(hex.substring(2, 4), 16) / 255;
   const b = parseInt(hex.substring(4, 6), 16) / 255;
 
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h, s, l = (max + min) / 2;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s;
+  let l = (max + min) / 2;
 
-  if (max === min) {
-    h = s = 0;
-  } else {
+  if (max === min) { h = s = 0; }
+  else {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
@@ -234,10 +222,8 @@ function getCursorColor(user_id) {
   return cursorColors.value[user_id];
 }
 
-// Verbesserte otherUsers computed property
 const otherUsers = computed(() => {
   if (!roomInfo.value || !roomInfo.value.users) return [];
-
   return Object.entries(roomInfo.value.users)
     .filter(([id]) => id !== userId.value)
     .map(([id, username]) => ({
@@ -246,7 +232,6 @@ const otherUsers = computed(() => {
     }));
 });
 
-// Verbesserte updateUserList Funktion
 function updateUserList(users) {
   console.log('Updating user list:', users);
   if (roomInfo.value) {
@@ -257,12 +242,9 @@ function updateUserList(users) {
   }
 }
 
-// Diese Funktion baut das "updates"-Objekt aus dem aktuellen Stand der blocks auf.
-// Dabei werden die Positionen 1-basiert oder 0-basiert gezählt. Wir nehmen hier 1-basiert an.
 function buildUpdatesObject() {
   const updates = {};
   blocks.value.forEach((block, idx) => {
-    // Stelle sicher, dass wir den Inhalt mit übergeben, um konsistente Daten zu halten.
     updates[block.name] = {
       new_position: idx,
       content: block.content
@@ -272,11 +254,6 @@ function buildUpdatesObject() {
 }
 
 const handleTextChange = (blockId, newContent) => {
-  // Hier werden Texteingaben verarbeitet.
-  // Statt bei jedem Tastendruck zu senden, könntest du auch Debouncing nutzen.
-  // Da wir aber die komplette Logik über pe_update_blocks steuern wollen,
-  // schicken wir Textupdates separat oder aktualisieren periodisch.
-  // Für das Beispiel lassen wir pe_text_update erstmal weiterlaufen.
   if (socket.value) {
     socket.value.emit('pe_text_update', {
       blockId,
@@ -287,8 +264,6 @@ const handleTextChange = (blockId, newContent) => {
   }
 };
 
-// Diese Methode wird aufgerufen, wenn die Reihenfolge (oder die Anzahl) der Blöcke sich ändert.
-// Wir senden dann über pe_update_blocks den kompletten neuen Stand.
 function handleBlockReorder() {
   if (socket.value) {
     const updates = buildUpdatesObject();
@@ -299,34 +274,37 @@ function handleBlockReorder() {
   }
 }
 
-// Block hinzufügen
+// Neue Methode zum Senden des Cursor Updates bei Klick in ein Textfeld
+function handleCursorUpdate(blockId) {
+  if (socket.value) {
+    socket.value.emit('pe_cursor_update', {
+      room: roomId.value,
+      block_id: blockId,
+      position: 0 // Hier nur ein Platzhalterwert, es geht um den Klick-Event
+    });
+  }
+}
+
 function addBlockPrompt() {
   const blockName = prompt('Name des neuen Blocks?');
   if (!blockName) return;
-
-  // Prüfen ob der Name bereits existiert
   const existing = blocks.value.find(b => b.name === blockName);
   if (existing) {
     alert('Ein Block mit diesem Namen existiert bereits!');
     return;
   }
-
   blocks.value.push({
     name: blockName,
     content: ''
   });
-
-  // Sobald sich die Blöcke geändert haben, schicken wir ein Update.
   handleBlockReorder();
 }
 
-// Dialog zum Löschen öffnen
 function openDeleteDialog(index) {
   blockToDelete.value = index;
   showDeleteDialog.value = true;
 }
 
-// Bestätigung zum Löschen
 function confirmDelete() {
   if (blockToDelete.value !== null) {
     blocks.value.splice(blockToDelete.value, 1);
@@ -336,12 +314,6 @@ function confirmDelete() {
   }
 }
 
-// Block entfernen (wird jetzt über den Dialog aufgerufen)
-function removeBlock(index) {
-  openDeleteDialog(index);
-}
-
-// Inhalt vom Server verarbeiten
 function processReceivedContent(content) {
   if (!content || !content.blocks) return;
   const blocksObject = content.blocks;
@@ -350,7 +322,6 @@ function processReceivedContent(content) {
     content: blockData.content,
     position: blockData.position
   }));
-
   blocksArray.sort((a, b) => a.position - b.position);
   blocks.value = blocksArray;
   loadingBlocks.value = false;
@@ -359,7 +330,6 @@ function processReceivedContent(content) {
 onMounted(() => {
   socket.value = io(import.meta.env.VITE_API_BASE_URL + '/pe');
 
-  // Verbindung herstellen
   socket.value.emit('pe_connect', { username }, () => {
     console.log('WebSocket connection established');
   });
@@ -388,20 +358,15 @@ onMounted(() => {
 
   socket.value.on('pe_text_update', (data) => {
     console.log('Received updated text content:', data);
-    // Aktualisiere nur Inhalte, wenn sich was geändert hat.
-    // Hier bekommst du das komplette content-Objekt. Aktualisiere die Blöcke:
     processReceivedContent(data);
-    // Aktualisiere RoomInfo falls nötig
     if (data.users) {
       roomInfo.value.users = data.users;
     }
   });
 
-  // Neuer Listener für aktualisierte Blocks nach pe_update_blocks
   socket.value.on('pe_blocks_updated', (data) => {
     console.log('Received blocks updated content:', data);
     processReceivedContent(data);
-    // Aktualisiere RoomInfo falls nötig
     if (data.users) {
       roomInfo.value.users = data.users;
     }
@@ -409,12 +374,17 @@ onMounted(() => {
 
   socket.value.on('pe_user_left', (data) => {
     console.log('User left room:', data);
-    // Entferne die Farbe des Benutzers aus den verwendeten Farben
     if (cursorColors.value[data.user_id]) {
       usedColors.value.delete(cursorColors.value[data.user_id]);
       delete cursorColors.value[data.user_id];
     }
     updateUserList(data.users);
+  });
+
+  // Neuer Listener für Cursor-Updates
+  socket.value.on('pe_cursor_updated', (data) => {
+    console.log('Cursor updated:', data);
+    // Hier wird aktuell nichts gerendert, nur geloggt.
   });
 });
 

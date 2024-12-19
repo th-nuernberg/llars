@@ -25,7 +25,7 @@
                     variant="text"
                     density="comfortable"
                     color="grey-darken-1"
-                    @click="removeBlock(index)"
+                    @click="openDeleteDialog(index)"
                     class="delete-btn"
                   >
                   </v-btn>
@@ -99,6 +99,34 @@
         </v-card>
       </div>
     </div>
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="showDeleteDialog" max-width="400">
+      <v-card>
+        <v-card-title class="text-h6 pa-4">
+          Block löschen
+        </v-card-title>
+        <v-card-text class="pa-4">
+          Möchten Sie diesen Block wirklich löschen?
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey-darken-1"
+            variant="text"
+            @click="showDeleteDialog = false"
+          >
+            Abbrechen
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="tonal"
+            @click="confirmDelete"
+          >
+            Löschen
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -113,6 +141,8 @@ const blocks = ref([]);
 const roomInfo = ref(null);
 const userId = ref(null);
 const loadingBlocks = ref(true);
+const showDeleteDialog = ref(false);
+const blockToDelete = ref(null);
 
 // Beispielsweise könnte promptId über die Route ausgelesen werden.
 const route = useRoute();
@@ -290,10 +320,25 @@ function addBlockPrompt() {
   handleBlockReorder();
 }
 
-// Block entfernen
+// Dialog zum Löschen öffnen
+function openDeleteDialog(index) {
+  blockToDelete.value = index;
+  showDeleteDialog.value = true;
+}
+
+// Bestätigung zum Löschen
+function confirmDelete() {
+  if (blockToDelete.value !== null) {
+    blocks.value.splice(blockToDelete.value, 1);
+    handleBlockReorder();
+    showDeleteDialog.value = false;
+    blockToDelete.value = null;
+  }
+}
+
+// Block entfernen (wird jetzt über den Dialog aufgerufen)
 function removeBlock(index) {
-  blocks.value.splice(index, 1);
-  handleBlockReorder();
+  openDeleteDialog(index);
 }
 
 // Inhalt vom Server verarbeiten

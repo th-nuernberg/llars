@@ -13,11 +13,26 @@ def configure_websocket_prompt_eng(socketio):
 
     pe_rooms = PeRooms(db)
 
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        user_id = request.sid
+        success, room_id, remaining_users = pe_rooms.leave_room(user_id)
+        if success:
+            logging.info(f"User {user_id} disconnected and was removed from room {room_id}.")
+            # Hier könnten Sie auch ein Event senden, um den verbleibenden Benutzern mitzuteilen,
+            # dass der User den Raum verlassen hat.
+            emit('pe_user_left', {
+                'room': room_id,
+                'users': [{'id': uid, 'username': uname} for uid, uname in remaining_users.items()]
+            }, room=room_id)
+
     @socketio.on('pe_connect')
     def handle_connect(data):
-        user_id = data.get('user_id')  # optional
+        username = data.get('username', 'Unknown')
         s_id = request.sid
-        logging.info(f"Client connected with user ID {user_id}, socket ID {s_id}")
+        # Username zuordnen
+        pe_rooms.usernames[s_id] = username
+        logging.info(f"Client connected with username {username}, socket ID {s_id}")
         emit('pe_connected', {
             'message': 'Connected successfully',
             'user_id': s_id,
@@ -28,14 +43,16 @@ def configure_websocket_prompt_eng(socketio):
     def handle_join_room(data):
         prompt_id = data.get('prompt_id')
         user_id = request.sid
-        logging.info(f"User {user_id} joined room for prompt {prompt_id}")
+        logging.info(f"User {user_id} attempts to join room for prompt {prompt_id}")
         room_data, room_id = pe_rooms.join_room(prompt_id, user_id)
         if room_data:
             join_room(room_id)
+            # Nutzerliste extrahieren
+            users_list = [{'id': u_id, 'username': uname} for u_id, uname in room_data['users'].items()]
             emit('pe_joined_room', {
                 'room': room_id,
                 'content': room_data['content'],
-                'users': list(room_data['users'])
+                'users': users_list
             }, room=room_id)
 
     @socketio.on('pe_text_update')
@@ -48,6 +65,7 @@ def configure_websocket_prompt_eng(socketio):
         room_data = pe_rooms.get_room_data(room_id)
         if not room_data:
             return
+        logging.info(f"Room Data: {room_data}")
 
         # Aktuelle Inhalte holen
         content = room_data.get('content', {})
@@ -87,6 +105,7 @@ def configure_websocket_prompt_eng(socketio):
         updates = data.get('updates', {})
 
         room_data = pe_rooms.get_room_data(room_id)
+        logging.info(f"Room Data: {room_data}")
         if not room_data:
             return
 

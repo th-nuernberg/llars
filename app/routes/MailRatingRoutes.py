@@ -96,7 +96,6 @@ def list_email_threads_for_mail_ratings():
                 db.session.query(UserMailHistoryRating)
                 .filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
                 UserMailHistoryRating.timestamp.desc()).first()
-                .first()
             )
 
             # Determine progression status
@@ -140,6 +139,7 @@ def get_mail_rating(thread_id):
         # retrieve the most recent mail history(thread) rating of user
         mail_rating = UserMailHistoryRating.query.filter_by(user_id=user.id, thread_id=thread_id).order_by(
             UserMailHistoryRating.timestamp.desc()).first()
+
         selected_consulting_category = UserConsultingCategorySelection.query.filter_by(user_id=user.id,
                                                                                        thread_id=thread_id).order_by(
             UserConsultingCategorySelection.timestamp.desc()).first()

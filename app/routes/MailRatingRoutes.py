@@ -94,7 +94,8 @@ def list_email_threads_for_mail_ratings():
             # Check for existing UserMailHistoryRating for the user and thread
             mail_rating = (
                 db.session.query(UserMailHistoryRating)
-                .filter_by(user_id=user.id, thread_id=thread.thread_id)
+                .filter_by(user_id=user.id, thread_id=thread.thread_id).order_by(
+                UserMailHistoryRating.timestamp.desc()).first()
                 .first()
             )
 

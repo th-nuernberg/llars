@@ -123,18 +123,83 @@ const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
 
 // Farbenverwaltung
 const cursorColors = ref({});
+const usedColors = ref(new Set());
 
-function getRandomColor() {
-  const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-    '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
+// Erweiterte Farbliste für mehr Variationen
+const availableColors = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
+  '#D4A5A5', '#9B59B6', '#3498DB', '#2ECC71', '#E74C3C',
+  '#F1C40F', '#8E44AD', '#16A085', '#E67E22', '#2C3E50',
+  '#27AE60', '#D35400', '#7F8C8D', '#C0392B', '#1ABC9C'
+];
+
+function getUnusedColor() {
+  // Filtere bereits verwendete Farben heraus
+  const unusedColors = availableColors.filter(color => !usedColors.value.has(color));
+
+  // Wenn alle Farben verwendet wurden, erstelle neue Farbtöne
+  if (unusedColors.length === 0) {
+    const baseColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+    // Modifiziere den Farbton leicht
+    const hslColor = hexToHSL(baseColor);
+    hslColor.h = (hslColor.h + 20) % 360; // Verschiebe den Farbton
+    return HSLToHex(hslColor.h, hslColor.s, hslColor.l);
+  }
+
+  return unusedColors[Math.floor(Math.random() * unusedColors.length)];
+}
+
+// Hilfsfunktionen für Farbkonvertierung
+function hexToHSL(hex) {
+  // Entferne das #
+  hex = hex.replace(/#/g, '');
+
+  // Konvertiere zu RGB
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+
+  return { h, s: s * 100, l: l * 100 };
+}
+
+function HSLToHex(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+
+  const toHex = n => {
+    const hex = Math.round(255 * n).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
 function getCursorColor(user_id) {
   if (!cursorColors.value[user_id]) {
-    cursorColors.value[user_id] = getRandomColor();
+    const newColor = getUnusedColor();
+    cursorColors.value[user_id] = newColor;
+    usedColors.value.add(newColor);
   }
   return cursorColors.value[user_id];
 }
@@ -299,6 +364,11 @@ onMounted(() => {
 
   socket.value.on('pe_user_left', (data) => {
     console.log('User left room:', data);
+    // Entferne die Farbe des Benutzers aus den verwendeten Farben
+    if (cursorColors.value[data.user_id]) {
+      usedColors.value.delete(cursorColors.value[data.user_id]);
+      delete cursorColors.value[data.user_id];
+    }
     updateUserList(data.users);
   });
 });

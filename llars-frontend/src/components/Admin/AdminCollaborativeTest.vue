@@ -1,87 +1,112 @@
 <template>
   <div class="container">
-    <!-- Neue Collaborators-List oben -->
-    <div class="collaborators-container d-flex align-center mb-4" v-if="otherUsers.length > 0">
-      <div class="collaborators-list d-flex align-center">
-        <span class="mr-2">Aktuell im Raum:</span>
-        <v-chip
-          v-for="(collaborator, index) in otherUsers"
-          :key="collaborator.id"
-          small
-          class="mr-2"
-          :style="{ backgroundColor: getCursorColor(collaborator.id), color: 'white' }"
+    <div class="main-layout">
+      <!-- Main Content Area -->
+      <div class="content-area">
+        <!-- Blocks Container -->
+        <div class="blocks-container">
+          <draggable
+            v-model="blocks"
+            class="blocks-list"
+            item-key="name"
+            handle=".drag-handle"
+            @change="handleBlockReorder"
+          >
+            <template #item="{ element, index }">
+              <v-card class="block-card mb-4">
+                <v-card-title class="d-flex align-center pa-4">
+                  <v-icon class="mr-2 cursor-move drag-handle text-grey-darken-1">
+                    mdi-drag
+                  </v-icon>
+                  {{ element.name }}
+                  <v-spacer></v-spacer>
+                  <v-btn
+                    icon="mdi-delete"
+                    variant="text"
+                    density="comfortable"
+                    color="grey-darken-1"
+                    @click="removeBlock(index)"
+                    class="delete-btn"
+                  >
+                  </v-btn>
+                </v-card-title>
+                <v-card-text class="pa-4">
+                  <div class="textarea-container">
+                    <v-textarea
+                      v-model="element.content"
+                      outlined
+                      hide-details
+                      rows="4"
+                      class="prompt-textarea"
+                      :data-block-id="element.name"
+                      @update:model-value="value => handleTextChange(element.name, value)"
+                    ></v-textarea>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </template>
+          </draggable>
+
+          <v-skeleton-loader
+            v-if="loadingBlocks && blocks.length === 0"
+            type="article"
+            class="mb-4"
+          ></v-skeleton-loader>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <!-- Collaborators List -->
+        <v-card class="mb-4 collaborators-card">
+          <v-card-title class="text-subtitle-1">
+            Aktuell im Raum
+          </v-card-title>
+          <v-card-text>
+            <div class="collaborators-list">
+              <v-chip
+                v-for="collaborator in otherUsers"
+                :key="collaborator.id"
+                small
+                class="mb-2 mr-2"
+                :style="{ backgroundColor: getCursorColor(collaborator.id), color: 'white' }"
+              >
+                {{ collaborator.username }}
+              </v-chip>
+            </div>
+          </v-card-text>
+        </v-card>
+
+        <!-- Add Block Button -->
+        <v-btn
+          color="primary"
+          block
+          class="mb-4"
+          @click="addBlockPrompt"
         >
-          {{ collaborator.username }}
-        </v-chip>
+          Neuen Block hinzufügen
+        </v-btn>
+
+        <!-- Room Info -->
+        <v-card class="room-info" v-if="roomInfo">
+          <v-card-title class="text-subtitle-1">
+            Room Information
+          </v-card-title>
+          <v-card-text>
+            <p>Room ID: {{ roomInfo.room }}</p>
+            <p>Connected Users: {{ Object.keys(roomInfo.users || {}).length }}</p>
+          </v-card-text>
+        </v-card>
       </div>
     </div>
-
-    <!-- Blocks Container -->
-    <div class="blocks-container">
-      <v-btn color="primary" class="mb-2" @click="addBlockPrompt">Neuen Block hinzufügen</v-btn>
-
-      <draggable
-        v-model="blocks"
-        class="blocks-list"
-        item-key="name"
-        handle=".drag-handle"
-        @change="handleBlockReorder"
-      >
-        <template #item="{ element, index }">
-          <v-card class="mb-4">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2 cursor-move drag-handle">
-                mdi-drag
-              </v-icon>
-              {{ element.name }}
-              <v-spacer></v-spacer>
-              <v-btn icon @click="removeBlock(index)" class="ml-2">
-                <v-icon color="error">mdi-delete</v-icon>
-              </v-btn>
-            </v-card-title>
-            <v-card-text>
-              <div class="textarea-container">
-                <v-textarea
-                  v-model="element.content"
-                  outlined
-                  hide-details
-                  rows="4"
-                  class="prompt-textarea"
-                  :data-block-id="element.name"
-                  @update:model-value="value => handleTextChange(element.name, value)"
-                ></v-textarea>
-              </div>
-            </v-card-text>
-          </v-card>
-        </template>
-      </draggable>
-
-      <v-skeleton-loader
-        v-if="loadingBlocks && blocks.length === 0"
-        type="article"
-        class="mb-4"
-      ></v-skeleton-loader>
-
-    </div>
-
-    <!-- Room Info -->
-    <v-card class="room-info mt-4" v-if="roomInfo">
-      <v-card-title>
-        Room Information
-      </v-card-title>
-      <v-card-text>
-        <p>Room ID: {{ roomInfo.room }}</p>
-        <p>Connected Users: {{ Object.keys(roomInfo.users || {}).length }}</p>
-      </v-card-text>
-    </v-card>
   </div>
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted, computed} from 'vue';
-import {io} from 'socket.io-client';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { io } from 'socket.io-client';
 import draggable from 'vuedraggable';
-import {useRoute} from 'vue-router';
+import { useRoute } from 'vue-router';
 
 const socket = ref(null);
 const blocks = ref([]);
@@ -225,7 +250,7 @@ onMounted(() => {
   socket.value = io(import.meta.env.VITE_API_BASE_URL + '/pe');
 
   // Verbindung herstellen
-  socket.value.emit('pe_connect', {username}, () => {
+  socket.value.emit('pe_connect', { username }, () => {
     console.log('WebSocket connection established');
   });
 
@@ -235,7 +260,7 @@ onMounted(() => {
   });
 
   socket.value.on('connect', () => {
-    socket.value.emit('pe_join_room', {room: roomId.value, prompt_id: promptId.value}, () => {
+    socket.value.emit('pe_join_room', { room: roomId.value, prompt_id: promptId.value }, () => {
       console.log('Joined room:', roomId.value);
     });
   });
@@ -271,10 +296,11 @@ onMounted(() => {
       roomInfo.value.users = data.users;
     }
   });
+
   socket.value.on('pe_user_left', (data) => {
-  console.log('User left room:', data);
-  updateUserList(data.users);
-});
+    console.log('User left room:', data);
+    updateUserList(data.users);
+  });
 });
 
 onUnmounted(() => {
@@ -287,13 +313,36 @@ onUnmounted(() => {
 
 <style scoped>
 .container {
-  padding: 16px;
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
-.blocks-container {
-  height: calc(100vh - 200px);
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  height: calc(100vh - 48px);
+}
+
+.content-area {
   overflow-y: auto;
   padding-right: 16px;
+}
+
+.sidebar {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.block-card {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.block-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .textarea-container {
@@ -304,28 +353,29 @@ onUnmounted(() => {
   font-family: 'Roboto Mono', monospace;
   width: 100%;
   box-sizing: border-box;
+  border-radius: 4px;
 }
 
-.room-info {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  width: 300px;
-  z-index: 100;
-}
-
-.drag-handle {
-  cursor: move;
-}
-
-/* Neue Collaborators-List Styles */
-.collaborators-container {
-  display: flex;
-  align-items: center;
+.collaborators-card {
+  border-radius: 8px;
 }
 
 .collaborators-list {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.delete-btn {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+}
+
+.drag-handle {
+  cursor: move;
 }
 </style>

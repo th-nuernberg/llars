@@ -3,6 +3,7 @@ from unittest.mock import DEFAULT
 from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from enum import Enum
 
@@ -138,7 +139,7 @@ class ScenarioRoles(Enum):
 
 class ProgressionStatus(Enum):
     NOT_STARTED = 'Not Started'
-    PROGRESSING = 'In Progressing'
+    PROGRESSING = 'Progressing'
     DONE = 'Done'
 
 class RatingScenarios(db.Model):
@@ -146,8 +147,8 @@ class RatingScenarios(db.Model):
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_name = mapped_column(db.String(255))
     function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
-    begin_date = mapped_column(db.DateTime, default=datetime.utcnow)
-    end_time = mapped_column(db.DateTime, default=datetime.utcnow)
+    begin = mapped_column(db.DateTime, default=datetime.utcnow)
+    end = mapped_column(db.DateTime, default=datetime.utcnow)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
 class ScenarioUsers(db.Model):
@@ -157,12 +158,22 @@ class ScenarioUsers(db.Model):
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     role = mapped_column(db.Enum(ScenarioRoles))
 
+    # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'scenario_id', name='uix_user_szenario'),
+    )
+
 class ScenarioThreads(db.Model):
     __tablename__ = 'scenario_threads'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
     thread = db.relationship('EmailThread', backref='scenario_threads')
+
+    # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
+    __table_args__ = (
+        db.UniqueConstraint('thread_id', 'scenario_id', name='uix_thread_szenario'),
+    )
 
 
 class ScenarioThreadDistribution(db.Model):

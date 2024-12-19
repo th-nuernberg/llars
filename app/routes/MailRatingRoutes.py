@@ -1,3 +1,4 @@
+import traceback
 from venv import logger
 import logging
 from . import data_blueprint, auth_blueprint
@@ -9,16 +10,18 @@ from werkzeug.exceptions import BadRequest
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
-                       FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
                        ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles, ProgressionStatus)
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
 from sqlalchemy.orm import joinedload
 from uuid import uuid4
 import uuid
 from datetime import datetime
 import json
 import random
+
+from .HelperFunctions import get_user_threads, can_access_thread
+
 
 # Get the Thread for the Rating
 @data_blueprint.route('/email_threads/generations/<int:thread_id>', methods=['GET'])
@@ -38,7 +41,7 @@ def get_email_thread_details(thread_id):
             return jsonify({'error': 'Email thread not found'}), 404
 
         # Hole alle Nachrichten in diesem E-Mail-Thread
-        messages = Message.query.filter_by(thread_id=email_thread.scenario_thread_id).all()
+        messages = Message.query.filter_by(thread_id=email_thread.thread_id).all()
 
         if not messages:
             return jsonify({'error': 'No messages found for this thread'}), 404
@@ -49,13 +52,14 @@ def get_email_thread_details(thread_id):
                 'message_id': msg.message_id,
                 'sender': msg.sender,
                 'content': msg.content,
-                'timestamp': msg.timestamp.isoformat()  # Konvertiere das Datum in ISO-Format
+                'timestamp': msg.timestamp.isoformat()
             } for msg in messages
         ]
 
         return jsonify({'messages': messages_data}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(e)
+        return jsonify({"error": "Internal Server Error"}), 500
 
 
 # get meta_data of all assigned threads
@@ -76,23 +80,16 @@ def list_email_threads_for_mail_ratings():
         if not mail_rating_function_type:
             return jsonify({'error': 'Mail Rating function type not found'}), 404
 
-        # Liste der Threads des Benutzers in Szenarien mit der Funktion_type_id = 3
-        user_threads = (
-            db.session.query(ScenarioThreadDistribution)
-            .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
-            .join(ScenarioThreads, ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
-            .join(EmailThread, ScenarioThreads.thread_id == EmailThread.thread_id)
-            .filter(
-                ScenarioUsers.user_id == user.id,
-                EmailThread.function_type_id == mail_rating_function_type
-            )
-            .options(joinedload(ScenarioThreadDistribution.scenario_thread).joinedload(ScenarioThreads.thread))
-            .all()
-        )
+        # get all threads the user is supposed to see
+        accessible_threads = get_user_threads(user.id, mail_rating_function_type)
 
-        threads_list = []
-        for user_thread in user_threads:
-            thread = user_thread.scenario_thread.thread
+        threads_list = [] # this is for returning
+        seen_threads = set() # Avoiding duplicate Threads
+        for thread in accessible_threads:
+            #check for duplicates
+            if thread.thread_id in seen_threads:
+                continue
+            seen_threads.add(thread.thread_id)
 
             # Check for existing UserMailHistoryRating for the user and thread
             mail_rating = (
@@ -134,21 +131,9 @@ def get_mail_rating(thread_id):
             return jsonify({'error': 'Invalid API key'}), 401
 
 
-        # check if the user is allowed to see the thread
-        ##### Check if a scenario exists where the user is assigned to the thread
-        scenario_user_entry = (db.session.query(ScenarioUsers)
-                               .join(ScenarioThreadDistribution,
-                                     ScenarioUsers.id == ScenarioThreadDistribution.scenario_user_id)
-                               .join(ScenarioThreads,
-                                     ScenarioThreads.id == ScenarioThreadDistribution.scenario_thread_id)
-                               .filter(
-            ScenarioUsers.user_id == user.id,
-            ScenarioThreads.thread_id == thread_id
-        )
-                               .first())
-
-        if not scenario_user_entry:
-            return jsonify({"message": "Unauthorized: User is not assigned to this thread."}), 401
+        # check if user can access thread
+        if not can_access_thread(user.id, thread_id, 3):
+            return jsonify({'error': 'Access denied'}), 401
 
         ### Start of Logik ###
         # retrieve the most recent mail history(thread) rating of user
@@ -181,7 +166,8 @@ def get_mail_rating(thread_id):
         return jsonify(rating_data), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(e)
+        return jsonify({"error": "Internal Server Error"}), 500
 
 
 
@@ -197,21 +183,11 @@ def save_mail_rating(thread_id):
         user = User.query.filter_by(api_key=api_key).first()
         if not user:
             return jsonify({'error': 'Invalid API key'}), 401
-        # check if the user is allowed to see the thread
-        ##### Check if a scenario exists where the user is assigned to the thread
-        scenario_user_entry = (db.session.query(ScenarioUsers)
-                               .join(ScenarioThreadDistribution,
-                                     ScenarioUsers.id == ScenarioThreadDistribution.scenario_user_id)
-                               .join(ScenarioThreads,
-                                     ScenarioThreads.id == ScenarioThreadDistribution.scenario_thread_id)
-                               .filter(
-            ScenarioUsers.user_id == user.id,
-            ScenarioThreads.thread_id == thread_id
-        )
-                               .first())
 
-        if not scenario_user_entry:
-            return jsonify({"message": "Unauthorized: User is not assigned to this thread."}), 401
+
+        # check if user can access thread
+        if not can_access_thread(user.id, thread_id, 3):
+            return jsonify({'error': 'Access denied'}), 401
 
         ### Start of Logik ###
         data = request.get_json()
@@ -274,11 +250,11 @@ def save_mail_rating(thread_id):
                 filled_values_counter += 1
 
         if filled_values_counter == 0:
-            rating_status = "Not Started"
+            rating_status = ProgressionStatus.NOT_STARTED
         elif filled_values_counter < max_values_to_fill:
-            rating_status = "In Progress"
+            rating_status = ProgressionStatus.PROGRESSING
         else:
-            rating_status = "Done"
+            rating_status = ProgressionStatus.DONE
 
         # if a rating or category already exists, check if changes occurred
         if existing_rating:
@@ -288,7 +264,7 @@ def save_mail_rating(thread_id):
                     existing_rating.quality_rating == client_data["quality_rating"] and
                     existing_rating.overall_rating == client_data["overall_rating"] and
                     existing_rating.feedback == feedback and
-                    existing_rating.rating_status == rating_status
+                    existing_rating.status == rating_status
             )
         else:
             has_rating_changes = True  # Es ist eine neue Bewertung
@@ -315,7 +291,7 @@ def save_mail_rating(thread_id):
                 quality_rating=client_data["quality_rating"],
                 overall_rating=client_data["overall_rating"],
                 feedback=feedback,
-                rating_status=rating_status
+                status=rating_status
             )
             db.session.add(new_mail_rating)
 
@@ -332,8 +308,9 @@ def save_mail_rating(thread_id):
 
         return jsonify({'status': 'Mail rating and feedback saved successfully'}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        logger.error(e)
+        logger.error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 
 
@@ -350,21 +327,10 @@ def get_email_thread_message_ratings(thread_id):
         if not user:
             return jsonify({'error': 'Invalid API key'}), 401
 
-        # check if the user is allowed to see the thread
-        ##### Check if a scenario exists where the user is assigned to the thread
-        scenario_user_entry = (db.session.query(ScenarioUsers)
-                               .join(ScenarioThreadDistribution,
-                                     ScenarioUsers.id == ScenarioThreadDistribution.scenario_user_id)
-                               .join(ScenarioThreads,
-                                     ScenarioThreads.id == ScenarioThreadDistribution.scenario_thread_id)
-                               .filter(
-            ScenarioUsers.user_id == user.id,
-            ScenarioThreads.thread_id == thread_id
-        )
-                               .first())
 
-        if not scenario_user_entry:
-            return jsonify({"message": "Unauthorized: User is not assigned to this thread."}), 401
+        # check if user can access thread
+        if not can_access_thread(user.id, thread_id, 3):
+                return jsonify({'error': 'Access denied'}), 401
 
         ### Start of Logik ###
         # Load Ratings of messages
@@ -385,8 +351,8 @@ def get_email_thread_message_ratings(thread_id):
             (UserMessageRating.message_id == subquery.c.message_id) &
             (UserMessageRating.timestamp == subquery.c.latest_timestamp)
         ).filter(
-            UserMessageRating.scenario_user_id == user.id,
-            UserMessageRating.scenario_thread_id == thread_id
+            UserMessageRating.user_id == user.id,
+            UserMessageRating.thread_id == thread_id
         ).all()
 
         rating_list = [
@@ -399,7 +365,8 @@ def get_email_thread_message_ratings(thread_id):
         return jsonify(rating_list), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(e)
+        return jsonify({"error": "Internal Server Error"}), 500
 
 # Route for saving the rating of each message (up or down) from the generated mail historys
 @data_blueprint.route('/email_threads/save_message_ratings/<int:thread_id>', methods=['POST'])
@@ -413,21 +380,9 @@ def save_message_ratings(thread_id):
         if not user:
             return jsonify({'error': 'Invalid API key'}), 401
 
-        # check if the user is allowed to see the thread
-        ##### Check if a scenario exists where the user is assigned to the thread
-        scenario_user_entry = (db.session.query(ScenarioUsers)
-                               .join(ScenarioThreadDistribution,
-                                     ScenarioUsers.id == ScenarioThreadDistribution.scenario_user_id)
-                               .join(ScenarioThreads,
-                                     ScenarioThreads.id == ScenarioThreadDistribution.scenario_thread_id)
-                               .filter(
-            ScenarioUsers.user_id == user.id,
-            ScenarioThreads.thread_id == thread_id
-        )
-                               .first())
-
-        if not scenario_user_entry:
-            return jsonify({"message": "Unauthorized: User is not assigned to this thread."}), 401
+        # check if user can access thread
+        if not can_access_thread(user.id, thread_id, 3):
+            return jsonify({'error': 'Access denied'}), 401
 
         ### Start of Logik ###
 
@@ -469,7 +424,8 @@ def save_message_ratings(thread_id):
         db.session.commit()
         return jsonify({'status': 'Message ratings saved successfully'}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(e)
+        return jsonify({"error": "Internal Server Error"}), 500
 
 # Shows the admin Panel of every MailHistoryRating
 @data_blueprint.route('/admin/user_HistoryGeneration_stats', methods=['GET'])
@@ -495,9 +451,9 @@ def get_user_HistoryGeneration_stats():
         for user in User.query.all():
             done_threads_list = []
             not_started_threads_list = []
-            in_progress_threads_list = []
+            progressing_threads_list = []
             total_done_threads = 0
-            total_in_progress_threads = 0
+            total_progressing_threads = 0
             total_not_started_threads = 0
 
             for thread in EmailThread.query.filter_by(function_type_id=mail_rating_function_type).all():
@@ -507,8 +463,8 @@ def get_user_HistoryGeneration_stats():
 
                 if mail_rating:
                     if mail_rating.status == ProgressionStatus.PROGRESSING:
-                        total_in_progress_threads += 1
-                        in_progress_threads_list.append(
+                        total_progressing_threads += 1
+                        progressing_threads_list.append(
                             {'thread_id': thread.scenario_thread_id, "subject": thread.subject, })
                     elif mail_rating.status == ProgressionStatus.DONE:
                         total_done_threads += 1
@@ -527,15 +483,16 @@ def get_user_HistoryGeneration_stats():
                 'total_threads': total_threads,
                 'done_threads': total_done_threads,
                 'not_started_threads': total_not_started_threads,
-                'in_progress_threads': total_in_progress_threads,
+                'progressing_threads': total_progressing_threads,
                 'done_threads_list': done_threads_list,
                 'not_started_threads_list': not_started_threads_list,
-                'in_progress_threads_list': in_progress_threads_list
+                'progressing_threads_list': progressing_threads_list
             })
 
         return jsonify(user_stats), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(e)
+        return jsonify({"error": "Internal Server Error"}), 500
 
 
 
@@ -563,9 +520,9 @@ def get_scenario_HistoryGeneration_stats(scenario_id):
         for user in db.session.query(ScenarioUsers).filter_by(scenario_id=scenario_id).all():
             done_threads_list = []
             not_started_threads_list = []
-            in_progress_threads_list = []
+            progressing_threads_list = []
             total_done_threads = 0
-            total_in_progress_threads = 0
+            total_progressing_threads = 0
             total_not_started_threads = 0
 
             for scenario_thread in threads_in_scenario:
@@ -578,8 +535,8 @@ def get_scenario_HistoryGeneration_stats(scenario_id):
 
                 if mail_rating:
                     if mail_rating.status == ProgressionStatus.PROGRESSING:
-                        total_in_progress_threads += 1
-                        in_progress_threads_list.append({
+                        total_progressing_threads += 1
+                        progressing_threads_list.append({
                             'thread_id': thread.thread_id,
                             'subject': thread.subject
                         })
@@ -601,13 +558,14 @@ def get_scenario_HistoryGeneration_stats(scenario_id):
                 'total_threads': len(threads_in_scenario),
                 'done_threads': total_done_threads,
                 'not_started_threads': total_not_started_threads,
-                'in_progress_threads': total_in_progress_threads,
+                'progressing_threads': total_progressing_threads,
                 'done_threads_list': done_threads_list,
                 'not_started_threads_list': not_started_threads_list,
-                'in_progress_threads_list': in_progress_threads_list
+                'progressing_threads_list': progressing_threads_list
             })
 
         return jsonify({'user_stats': user_stats}), 200
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(e)
+        return jsonify({"error": "Internal Server Error"}), 500

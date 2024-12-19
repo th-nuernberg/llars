@@ -46,7 +46,7 @@
 
       <!-- Teilweise bewertete Threads -->
       <v-col cols="3" sm="2" class="threads-col">
-        <span class="thread-info">{{ user.in_progress_threads }}</span>
+        <span class="thread-info">{{ user.progressing_threads }}</span>
       </v-col>
 
       <!-- Nicht bewertete Threads -->
@@ -72,20 +72,20 @@
 
           <!-- Teilweise bewertete Threads (gelb) -->
           <div
-            :style="{ width: `${user.inProgressPercentage}%`, left: `${user.donePercentage}%` }"
-            class="progress-bar progress-bar-in-progress"
+            :style="{ width: `${user.progressingPercentage}%`, left: `${user.donePercentage}%` }"
+            class="progress-bar progress-bar-progressing"
           >
             <span
-              v-if="user.inProgressPercentage > 5"
-              class="progress-label progress-label-in-progress"
+              v-if="user.progressingPercentage > 5"
+              class="progress-label progress-label-progressing"
             >
-              {{ Math.round(user.inProgressPercentage) }}%
+              {{ Math.round(user.progressingPercentage) }}%
             </span>
           </div>
 
           <!-- Nicht bewertete Threads (rot) -->
           <div
-            :style="{ width: `${user.notStartedPercentage}%`, left: `${user.donePercentage + user.inProgressPercentage}%` }"
+            :style="{ width: `${user.notStartedPercentage}%`, left: `${user.donePercentage + user.progressingPercentage}%` }"
             class="progress-bar progress-bar-not-started"
           >
             <span
@@ -127,7 +127,7 @@
           <!-- Anzeige der teils bewerteten Threads -->
           <v-subheader>Teilweise bewertete Threads</v-subheader>
           <v-list dense>
-            <v-list-item v-for="thread in selectedUser.in_progress_threads_list" :key="thread.thread_id">
+            <v-list-item v-for="thread in selectedUser.progressing_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
                 <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
@@ -170,14 +170,14 @@ const showThreadDetails = (user) => {
 };
 
 // Berechnung des Fortschritts für jeden Benutzer
-const calculateProgressSections = (total_threads, done_threads, in_progress_threads) => {
+const calculateProgressSections = (total_threads, done_threads, progressing_threads) => {
   const donePercentage = (done_threads / total_threads) * 100 || 0;
-  const inProgresPercentage = (in_progress_threads / total_threads) * 100 || 0;
+  const inProgresPercentage = (progressing_threads / total_threads) * 100 || 0;
   const notStartedPercentage = 100 - donePercentage - inProgresPercentage;
 
   return {
     donePercentage: donePercentage,
-    inProgressPercentage: inProgresPercentage,
+    progressingPercentage: inProgresPercentage,
     notStartedPercentage,
   };
 };
@@ -204,7 +204,7 @@ const fetchUserStats = async () => {
         const progressSections = calculateProgressSections(
           user.total_threads,
           user.done_threads,
-          user.in_progress_threads
+          user.progressing_threads
         );
 
         // Rückgabe des erweiterten Objekts
@@ -339,7 +339,7 @@ onMounted(() => {
   background-color: #e9f5ea; /* Grün für bewertete Threads */
 }
 
-.progress-bar-in_progress {
+.progress-bar-progressing {
   background-color: #f7ebd9; /* Gelb für teilweise bewertete Threads */
 }
 
@@ -362,7 +362,7 @@ onMounted(() => {
   color: #4aae4d;
 }
 
-.progress-label-in-progress {
+.progress-label-progressing {
   color: #ff9c12;
 }
 

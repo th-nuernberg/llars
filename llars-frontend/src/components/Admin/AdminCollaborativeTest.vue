@@ -1,5 +1,21 @@
 <template>
   <div class="container">
+    <!-- Neue Collaborators-List oben -->
+    <div class="collaborators-container d-flex align-center mb-4" v-if="otherUsers.length > 0">
+      <div class="collaborators-list d-flex align-center">
+        <span class="mr-2">Aktuell im Raum:</span>
+        <v-chip
+          v-for="(collaborator, index) in otherUsers"
+          :key="collaborator.id"
+          small
+          class="mr-2"
+          :style="{ backgroundColor: getCursorColor(collaborator.id), color: 'white' }"
+        >
+          {{ collaborator.name }}
+        </v-chip>
+      </div>
+    </div>
+
     <!-- Blocks Container -->
     <div class="blocks-container">
       <v-btn color="primary" class="mb-2" @click="addBlockPrompt">Neuen Block hinzufügen</v-btn>
@@ -14,9 +30,7 @@
         <template #item="{ element, index }">
           <v-card class="mb-4">
             <v-card-title class="d-flex align-center">
-              <v-icon
-                class="mr-2 cursor-move drag-handle"
-              >
+              <v-icon class="mr-2 cursor-move drag-handle">
                 mdi-drag
               </v-icon>
               {{ element.name }}
@@ -57,17 +71,17 @@
       </v-card-title>
       <v-card-text>
         <p>Room ID: {{ roomInfo.room }}</p>
-        <p>Connected Users: {{ roomInfo.users?.length || 0 }}</p>
+        <p>Connected Users: {{ Object.keys(roomInfo.users || {}).length }}</p>
       </v-card-text>
     </v-card>
   </div>
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted, computed, watch} from 'vue';
+import {ref, onMounted, onUnmounted, computed} from 'vue';
 import {io} from 'socket.io-client';
 import draggable from 'vuedraggable';
-import { useRoute } from 'vue-router';
+import {useRoute} from 'vue-router';
 
 const socket = ref(null);
 const blocks = ref([]);
@@ -80,7 +94,33 @@ const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 
-const username = localStorage.getItem('username');
+const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
+
+// Farbenverwaltung
+const cursorColors = ref({});
+
+function getRandomColor() {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+    '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function getCursorColor(user_id) {
+  if (!cursorColors.value[user_id]) {
+    cursorColors.value[user_id] = getRandomColor();
+  }
+  return cursorColors.value[user_id];
+}
+
+// Computed zum Anzeigen der anderen Nutzer im Raum
+const otherUsers = computed(() => {
+  if (!roomInfo.value || !roomInfo.value.users) return [];
+  return Object.entries(roomInfo.value.users)
+    .filter(([id, name]) => name !== username) // optional: den eigenen Nutzer ausblenden
+    .map(([id, name]) => ({id, name}));
+});
 
 // Diese Funktion baut das "updates"-Objekt aus dem aktuellen Stand der blocks auf.
 // Dabei werden die Positionen 1-basiert oder 0-basiert gezählt. Wir nehmen hier 1-basiert an.
@@ -151,8 +191,8 @@ function removeBlock(index) {
   handleBlockReorder();
 }
 
-// Diese Funktion verarbeitet die empfangenen Inhalte vom Server
-const processReceivedContent = (content) => {
+// Inhalt vom Server verarbeiten
+function processReceivedContent(content) {
   if (!content || !content.blocks) return;
   const blocksObject = content.blocks;
   const blocksArray = Object.entries(blocksObject).map(([name, blockData]) => ({
@@ -164,10 +204,10 @@ const processReceivedContent = (content) => {
   blocksArray.sort((a, b) => a.position - b.position);
   blocks.value = blocksArray;
   loadingBlocks.value = false;
-};
+}
 
 onMounted(() => {
-  socket.value = io(import.meta.env.VITE_API_BASE_URL+'/pe');
+  socket.value = io(import.meta.env.VITE_API_BASE_URL + '/pe');
 
   // Verbindung herstellen
   socket.value.emit('pe_connect', {username}, () => {
@@ -192,7 +232,7 @@ onMounted(() => {
     }
     roomInfo.value = {
       room: data.room,
-      users: data.users || []
+      users: data.users || {}
     };
   });
 
@@ -201,12 +241,20 @@ onMounted(() => {
     // Aktualisiere nur Inhalte, wenn sich was geändert hat.
     // Hier bekommst du das komplette content-Objekt. Aktualisiere die Blöcke:
     processReceivedContent(data);
+    // Aktualisiere RoomInfo falls nötig
+    if (data.users) {
+      roomInfo.value.users = data.users;
+    }
   });
 
   // Neuer Listener für aktualisierte Blocks nach pe_update_blocks
   socket.value.on('pe_blocks_updated', (data) => {
     console.log('Received blocks updated content:', data);
     processReceivedContent(data);
+    // Aktualisiere RoomInfo falls nötig
+    if (data.users) {
+      roomInfo.value.users = data.users;
+    }
   });
 });
 
@@ -249,5 +297,16 @@ onUnmounted(() => {
 
 .drag-handle {
   cursor: move;
+}
+
+/* Neue Collaborators-List Styles */
+.collaborators-container {
+  display: flex;
+  align-items: center;
+}
+
+.collaborators-list {
+  display: flex;
+  align-items: center;
 }
 </style>

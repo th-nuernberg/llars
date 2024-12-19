@@ -13,6 +13,7 @@ class PeRooms:
         #   'name': str,
         #   'content': dict,
         #   'users': { sid: username },
+        #   'cursors': { sid: { 'block_id': str, 'position': int } }, # NEU hinzugefügt
         #   'created_at': datetime,
         #   'last_updated': datetime,
         #   'owner_id': user_id
@@ -49,7 +50,8 @@ class PeRooms:
             'prompt_id': prompt_id,
             'name': prompt.name,
             'content': content,
-            'users': {},  # Jetzt ein Dictionary
+            'users': {},
+            'cursors': {},  # NEU: Initialisiere Cursor-Dictionary
             'created_at': datetime.utcnow(),
             'last_updated': datetime.utcnow(),
             'owner_id': prompt.user_id
@@ -74,10 +76,14 @@ class PeRooms:
         self.rooms[room_id]['users'][user_id] = username
         self.user_rooms[user_id] = room_id
         self.rooms[room_id]['last_updated'] = datetime.utcnow()
+
+        # User bekommt beim Joinen noch keinen Cursor gesetzt, könnte man optional tun.
+        # self.rooms[room_id]['cursors'][user_id] = {'block_id': None, 'position': 0}
+
         logging.info(f"User {user_id} joined room {room_id} as {username}, room info: {self.rooms[room_id]}")
         return self.rooms[room_id], room_id
 
-    def leave_room(self, user_id: str) -> tuple[bool, str, set]:
+    def leave_room(self, user_id: str) -> tuple[bool, str, dict]:
         """
         Remove a user from their current room.
         Returns tuple of (success, room_id, remaining_users).
@@ -89,6 +95,9 @@ class PeRooms:
         # Benutzer entfernen
         if user_id in self.rooms[room_id]['users']:
             del self.rooms[room_id]['users'][user_id]
+        # Auch den Cursor entfernen
+        if user_id in self.rooms[room_id]['cursors']:
+            del self.rooms[room_id]['cursors'][user_id]
 
         remaining_users = self.rooms[room_id]['users']
         del self.user_rooms[user_id]
@@ -112,7 +121,7 @@ class PeRooms:
             if user_id in self.user_rooms:
                 del self.user_rooms[user_id]
 
-        # Delete the room
+        # Raum löschen
         del self.rooms[room_id]
         return True
 
@@ -162,12 +171,20 @@ class PeRooms:
             print(f"Error saving to database: {e}")
             return False
 
-
-    def update_room_content(self, room_id: str, content: Dict) -> bool:
+    def update_cursor_position(self, room_id: str, user_id: str, block_id: str, position: int) -> bool:
+        """
+        Update the cursor position for a given user in a room.
+        """
         if room_id not in self.rooms:
             return False
-        if 'blocks' not in content:
-            content['blocks'] = {}
-        self.rooms[room_id]['content'] = content
+
+        # Sicherstellen, dass der User in diesem Raum ist
+        if user_id not in self.rooms[room_id]['users']:
+            return False
+
+        self.rooms[room_id]['cursors'][user_id] = {
+            'block_id': block_id,
+            'position': position
+        }
         self.rooms[room_id]['last_updated'] = datetime.utcnow()
         return True

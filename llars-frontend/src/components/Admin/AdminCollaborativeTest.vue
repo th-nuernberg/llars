@@ -167,7 +167,7 @@ const processReceivedContent = (content) => {
 };
 
 onMounted(() => {
-  socket.value = io(import.meta.env.VITE_API_BASE_URL);
+  socket.value = io(import.meta.env.VITE_API_BASE_URL+'/pe');
 
   // Verbindung herstellen
   socket.value.emit('pe_connect', {username}, () => {

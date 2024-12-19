@@ -15,8 +15,8 @@
             <template #item="{ element, index }">
               <v-card class="block-card mb-4">
                 <v-card-title class="d-flex align-center pa-4">
-                  <v-icon class="mr-2 cursor-move drag-handle text-grey-darken-1">
-                    mdi-drag
+                  <v-icon class="mr-2 cursor-move drag-handle text-grey-darken-1" size="small">
+                    mdi-drag-horizontal-variant
                   </v-icon>
                   {{ element.name }}
                   <v-spacer></v-spacer>

@@ -11,7 +11,7 @@
           class="mr-2"
           :style="{ backgroundColor: getCursorColor(collaborator.id), color: 'white' }"
         >
-          {{ collaborator.name }}
+          {{ collaborator.username }}
         </v-chip>
       </div>
     </div>
@@ -114,13 +114,28 @@ function getCursorColor(user_id) {
   return cursorColors.value[user_id];
 }
 
-// Computed zum Anzeigen der anderen Nutzer im Raum
+// Verbesserte otherUsers computed property
 const otherUsers = computed(() => {
   if (!roomInfo.value || !roomInfo.value.users) return [];
+
   return Object.entries(roomInfo.value.users)
-    .filter(([id, name]) => name !== username) // optional: den eigenen Nutzer ausblenden
-    .map(([id, name]) => ({id, name}));
+    .filter(([id]) => id !== userId.value)
+    .map(([id, username]) => ({
+      id,
+      username: typeof username === 'object' ? username.username : username
+    }));
 });
+
+// Verbesserte updateUserList Funktion
+function updateUserList(users) {
+  console.log('Updating user list:', users);
+  if (roomInfo.value) {
+    roomInfo.value = {
+      ...roomInfo.value,
+      users: users
+    };
+  }
+}
 
 // Diese Funktion baut das "updates"-Objekt aus dem aktuellen Stand der blocks auf.
 // Dabei werden die Positionen 1-basiert oder 0-basiert gezählt. Wir nehmen hier 1-basiert an.
@@ -256,11 +271,15 @@ onMounted(() => {
       roomInfo.value.users = data.users;
     }
   });
+  socket.value.on('pe_user_left', (data) => {
+  console.log('User left room:', data);
+  updateUserList(data.users);
+});
 });
 
 onUnmounted(() => {
   if (socket.value) {
-    socket.value.emit('leave_eng');
+    socket.value.emit('pe_leave_room');
     socket.value.disconnect();
   }
 });

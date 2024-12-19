@@ -19,9 +19,10 @@ def configure_websocket_prompt_eng(socketio):
         user_id = request.sid
         success, room_id, remaining_users = pe_rooms.leave_room(user_id)
         if success:
+            # Physisch den Socket-Room verlassen
+            leave_room(room_id)
             logging.info(f"User {user_id} disconnected and was removed from room {room_id}.")
-            # Hier könnten Sie auch ein Event senden, um den verbleibenden Benutzern mitzuteilen,
-            # dass der User den Raum verlassen hat.
+            # Anderen Benutzern im Raum Bescheid geben
             emit('pe_user_left', {
                 'room': room_id,
                 'users': [{'id': uid, 'username': uname} for uid, uname in remaining_users.items()]
@@ -54,6 +55,20 @@ def configure_websocket_prompt_eng(socketio):
                 'room': room_id,
                 'content': room_data['content'],
                 'users': users_list
+            }, room=room_id, namespace=namespace)
+
+    @socketio.on('pe_leave_room', namespace=namespace)
+    def handle_leave_room():
+        user_id = request.sid
+        success, room_id, remaining_users = pe_rooms.leave_room(user_id)
+        if success:
+            # Physisch den Socket-Room verlassen
+            leave_room(room_id)
+            logging.info(f"User {user_id} left room {room_id}")
+            # Anderen Benutzern im Raum Bescheid geben
+            emit('pe_user_left', {
+                'room': room_id,
+                'users': [{'id': uid, 'username': uname} for uid, uname in remaining_users.items()]
             }, room=room_id, namespace=namespace)
 
     @socketio.on('pe_text_update', namespace=namespace)

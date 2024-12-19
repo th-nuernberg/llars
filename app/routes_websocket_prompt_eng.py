@@ -51,10 +51,13 @@ def configure_websocket_prompt_eng(socketio):
             join_room(room_id)
             # Nutzerliste extrahieren
             users_list = [{'id': u_id, 'username': uname} for u_id, uname in room_data['users'].items()]
+            # Cursorinformationen hinzufügen
+            cursors = room_data.get('cursors', {})
             emit('pe_joined_room', {
                 'room': room_id,
                 'content': room_data['content'],
-                'users': users_list
+                'users': users_list,
+                'cursors': cursors
             }, room=room_id, namespace=namespace)
 
     @socketio.on('pe_leave_room', namespace=namespace)
@@ -145,5 +148,35 @@ def configure_websocket_prompt_eng(socketio):
 
         # Raum aktualisieren
         pe_rooms.update_room_content(room_id, content)
+
         # Aktualisierte Inhalte an alle im Raum senden
         emit('pe_blocks_updated', room_data['content'], room=room_id, include_self=False, namespace=namespace)
+
+    # NEUER EVENT: Cursor Update
+    @socketio.on('pe_cursor_update', namespace=namespace)
+    def handle_cursor_update(data):
+        """
+        Erwartetes Datenformat:
+        {
+          "room": "room_1",
+          "block_id": "Block123",
+          "position": 15
+        }
+        """
+        user_id = request.sid
+        room_id = data.get('room')
+        block_id = data.get('block_id')
+        position = data.get('position', 0)
+
+        if not room_id or not block_id:
+            return
+
+        success = pe_rooms.update_cursor_position(room_id, user_id, block_id, position)
+        if not success:
+            return
+
+        # Aktualisierte Cursor-Infos an alle anderen User im Raum senden
+        room_data = pe_rooms.get_room_data(room_id)
+        emit('pe_cursor_updated', {
+            'cursors': room_data['cursors']
+        }, room=room_id, include_self=False, namespace=namespace)

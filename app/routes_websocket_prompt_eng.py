@@ -9,11 +9,12 @@ from pe_rooms import PeRooms
 def configure_websocket_prompt_eng(socketio):
     """
     Configure WebSocket routes for collaborative prompt editing.
+    Uses the namespace '/prompt-engineering' for all routes.
     """
-
+    namespace = '/pe'
     pe_rooms = PeRooms(db)
 
-    @socketio.on('disconnect')
+    @socketio.on('disconnect', namespace=namespace)
     def handle_disconnect():
         user_id = request.sid
         success, room_id, remaining_users = pe_rooms.leave_room(user_id)
@@ -24,9 +25,9 @@ def configure_websocket_prompt_eng(socketio):
             emit('pe_user_left', {
                 'room': room_id,
                 'users': [{'id': uid, 'username': uname} for uid, uname in remaining_users.items()]
-            }, room=room_id)
+            }, room=room_id, namespace=namespace)
 
-    @socketio.on('pe_connect')
+    @socketio.on('pe_connect', namespace=namespace)
     def handle_connect(data):
         username = data.get('username', 'Unknown')
         s_id = request.sid
@@ -37,9 +38,9 @@ def configure_websocket_prompt_eng(socketio):
             'message': 'Connected successfully',
             'user_id': s_id,
             'sid': s_id
-        })
+        }, namespace=namespace)
 
-    @socketio.on('pe_join_room')
+    @socketio.on('pe_join_room', namespace=namespace)
     def handle_join_room(data):
         prompt_id = data.get('prompt_id')
         user_id = request.sid
@@ -53,9 +54,9 @@ def configure_websocket_prompt_eng(socketio):
                 'room': room_id,
                 'content': room_data['content'],
                 'users': users_list
-            }, room=room_id)
+            }, room=room_id, namespace=namespace)
 
-    @socketio.on('pe_text_update')
+    @socketio.on('pe_text_update', namespace=namespace)
     def handle_text_update(data):
         user_id = request.sid
         room_id = data.get('room')
@@ -83,11 +84,10 @@ def configure_websocket_prompt_eng(socketio):
             }
 
         pe_rooms.update_room_content(room_id, content)
-
         # An alle im Raum senden (außer dem Absender)
-        emit('pe_text_update', room_data['content'], room=room_id, include_self=False)
+        emit('pe_text_update', room_data['content'], room=room_id, include_self=False, namespace=namespace)
 
-    @socketio.on('pe_update_blocks')
+    @socketio.on('pe_update_blocks', namespace=namespace)
     def handle_update_blocks(data):
         """
         Erwartetes Datenformat:
@@ -130,6 +130,5 @@ def configure_websocket_prompt_eng(socketio):
 
         # Raum aktualisieren
         pe_rooms.update_room_content(room_id, content)
-
         # Aktualisierte Inhalte an alle im Raum senden
-        emit('pe_blocks_updated', room_data['content'], room=room_id, include_self=False)
+        emit('pe_blocks_updated', room_data['content'], room=room_id, include_self=False, namespace=namespace)

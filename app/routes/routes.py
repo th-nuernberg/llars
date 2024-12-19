@@ -382,13 +382,13 @@ def list_email_threads_for_rankings():
     for thread in email_threads:
         # Check if the user has ranked features in this thread
         user_rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
-            Feature.scenario_thread_id == thread.scenario_thread_id
+            Feature.thread_id == thread.thread_id
         ).first()
 
         ranked = True if user_rankings else False
 
         threads_list.append({
-            'thread_id': thread.scenario_thread_id,
+            'thread_id': thread.thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject,
@@ -417,7 +417,7 @@ def list_email_threads_for_ratings():
 
     threads_list = [
         {
-            'thread_id': thread.scenario_thread_id,
+            'thread_id': thread.thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject
@@ -507,7 +507,7 @@ def get_current_ranking(thread_id):
 
     # Holen Sie alle Rankings für den gegebenen Thread und Benutzer
     rankings = UserFeatureRanking.query.filter_by(user_id=user.id).join(Feature).filter(
-        Feature.scenario_thread_id == thread_id).all()
+        Feature.thread_id == thread_id).all()
 
     # Holen Sie alle Feature-Typen aus der Datenbank
     feature_types = FeatureType.query.all()
@@ -684,8 +684,8 @@ def download_rankings_csv():
         return jsonify({'error': 'Invalid API key'}), 401
 
     # Retrieve all user rankings and sort them by FeatureType, Thread ID, and then by Bucket
-    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(Feature.scenario_thread_id, Feature.type_id,
-                                                                                 UserFeatureRanking.scenario_user_id,
+    rankings = UserFeatureRanking.query.join(Feature).join(EmailThread).order_by(Feature.thread_id, Feature.type_id,
+                                                                                 UserFeatureRanking.user_id,
                                                                                  UserFeatureRanking.bucket,
                                                                                  UserFeatureRanking.ranking_content).all()
 
@@ -775,19 +775,19 @@ def get_user_ranking_stats():
         # Iteriere nur über die Email Threads mit function_type_id = 1
         for thread in EmailThread.query.filter_by(function_type_id=1).all():
             # Zähle alle Features in diesem Thread
-            total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.scenario_thread_id).count()
+            total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
 
             # Zähle die Anzahl der vom Benutzer gerankten Features in diesem Thread
             ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
-                UserFeatureRanking.scenario_user_id == user.id,
-                Feature.scenario_thread_id == thread.scenario_thread_id
+                UserFeatureRanking.user_id == user.id,
+                Feature.thread_id == thread.thread_id
             ).count()
 
             if ranked_features_count == total_features_in_thread and total_features_in_thread > 0:
                 # Wenn alle Features eines Threads gerankt wurden, zähle den Thread als vollständig gerankt
                 total_ranked_threads += 1
                 ranked_threads_list.append({
-                    'thread_id': thread.scenario_thread_id,
+                    'thread_id': thread.thread_id,
                     'chat_id': thread.chat_id,
                     'institut_id': thread.institut_id,
                     'subject': thread.subject,
@@ -797,7 +797,7 @@ def get_user_ranking_stats():
             else:
                 # Wenn der Benutzer diesen Thread noch nicht vollständig gerankt hat
                 unranked_threads_list.append({
-                    'thread_id': thread.scenario_thread_id,
+                    'thread_id': thread.thread_id,
                     'chat_id': thread.chat_id,
                     'institut_id': thread.institut_id,
                     'subject': thread.subject,
@@ -839,7 +839,7 @@ def list_ranking_threads():
 
     threads_list = [
         {
-            'thread_id': thread.scenario_thread_id,
+            'thread_id': thread.thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
             'subject': thread.subject
@@ -1076,7 +1076,7 @@ def get_user_prompt(prompt_id):
     # Prompt abrufen (eigene und geteilte)
     prompt = UserPrompt.query.filter(
         (UserPrompt.prompt_id == prompt_id) &
-        ((UserPrompt.scenario_user_id == user.id) |  # Eigene Prompts
+        ((UserPrompt.user_id == user.id) |  # Eigene Prompts
          (UserPrompt.prompt_id.in_(  # Geteilte Prompts
              db.session.query(UserPromptShare.prompt_id)
              .filter_by(shared_with_user_id=user.id)
@@ -1087,7 +1087,7 @@ def get_user_prompt(prompt_id):
         return jsonify({'error': 'Prompt not found or you do not have permission to view it'}), 404
 
     # Überprüfen, ob es ein geteiltes Prompt ist
-    is_shared = prompt.scenario_user_id != user.id
+    is_shared = prompt.user_id != user.id
 
     # Besitzer-Informationen hinzufügen
     owner = prompt.user.username
@@ -1095,7 +1095,7 @@ def get_user_prompt(prompt_id):
     # Liste der Benutzer mit denen das Prompt geteilt wurde abrufen
     # (nur wenn der aktuelle Benutzer der Besitzer ist)
     shared_with = []
-    if prompt.scenario_user_id == user.id:
+    if prompt.user_id == user.id:
         shared_users = db.session.query(User.username)\
             .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id)\
             .filter(UserPromptShare.prompt_id == prompt_id)\
@@ -1253,7 +1253,7 @@ def download_prompt_json(prompt_id):
     # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
     prompt = UserPrompt.query.filter(
         (UserPrompt.prompt_id == prompt_id) &
-        ((UserPrompt.scenario_user_id == user.id) |
+        ((UserPrompt.user_id == user.id) |
          (UserPrompt.prompt_id.in_(
              db.session.query(UserPromptShare.prompt_id)
              .filter_by(shared_with_user_id=user.id)

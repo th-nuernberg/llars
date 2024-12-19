@@ -8,8 +8,18 @@ import json
 class PeRooms:
     def __init__(self, db: SQLAlchemy):
         self.db = db
-        self.rooms: Dict[str, Dict] = {}  # Stores active rooms
-        self.user_rooms: Dict[str, str] = {}  # Maps user_id to room_id
+        # rooms[room_id] = {
+        #   'prompt_id': int,
+        #   'name': str,
+        #   'content': dict,
+        #   'users': { sid: username },
+        #   'created_at': datetime,
+        #   'last_updated': datetime,
+        #   'owner_id': user_id
+        # }
+        self.rooms: Dict[str, Dict] = {}
+        self.user_rooms: Dict[str, str] = {}  # Maps user_id (sid) to room_id
+        self.usernames: Dict[str, str] = {}    # Maps sid to username
 
     def _generate_room_id(self, prompt_id: int) -> str:
         """Generate a room ID based on the prompt ID."""
@@ -21,16 +31,13 @@ class PeRooms:
         Loads the prompt data from the database.
         """
         room_id = self._generate_room_id(prompt_id)
-
         if room_id in self.rooms:
             return self.rooms[room_id]
 
-        # Load prompt from database
         prompt = UserPrompt.query.get(prompt_id)
         if not prompt:
             return None
 
-        # Sicherstellen, dass prompt.content ein Dictionary ist
         content = prompt.content
         if isinstance(content, str):
             try:
@@ -42,7 +49,7 @@ class PeRooms:
             'prompt_id': prompt_id,
             'name': prompt.name,
             'content': content,
-            'users': set(),
+            'users': {},  # Jetzt ein Dictionary
             'created_at': datetime.utcnow(),
             'last_updated': datetime.utcnow(),
             'owner_id': prompt.user_id
@@ -63,11 +70,11 @@ class PeRooms:
             if not room_data:
                 return None, ''
 
-        # Add user to room
-        self.rooms[room_id]['users'].add(user_id)
+        username = self.usernames.get(user_id, "Unknown User")  # Falls kein Username vorhanden
+        self.rooms[room_id]['users'][user_id] = username
         self.user_rooms[user_id] = room_id
         self.rooms[room_id]['last_updated'] = datetime.utcnow()
-        logging.info(f"User {user_id} joined room {room_id}, room info: {self.rooms[room_id]}")
+        logging.info(f"User {user_id} joined room {room_id} as {username}, room info: {self.rooms[room_id]}")
         return self.rooms[room_id], room_id
 
     def leave_room(self, user_id: str) -> tuple[bool, str, set]:
@@ -76,16 +83,17 @@ class PeRooms:
         Returns tuple of (success, room_id, remaining_users).
         """
         if user_id not in self.user_rooms:
-            return False, '', set()
+            return False, '', {}
 
         room_id = self.user_rooms[user_id]
+        # Benutzer entfernen
+        if user_id in self.rooms[room_id]['users']:
+            del self.rooms[room_id]['users'][user_id]
 
-        # Remove user from room
-        self.rooms[room_id]['users'].remove(user_id)
         remaining_users = self.rooms[room_id]['users']
         del self.user_rooms[user_id]
 
-        # Close room if empty
+        # Raum schließen, wenn keine User mehr
         if not remaining_users:
             self.close_room(room_id)
 
@@ -99,8 +107,8 @@ class PeRooms:
         if room_id not in self.rooms:
             return False
 
-        # Remove all users from the room
-        for user_id in list(self.rooms[room_id]['users']):
+        # Alle User entfernen
+        for user_id in list(self.rooms[room_id]['users'].keys()):
             if user_id in self.user_rooms:
                 del self.user_rooms[user_id]
 
@@ -125,7 +133,8 @@ class PeRooms:
         """
         if room_id not in self.rooms:
             return False
-
+        if 'blocks' not in content:
+            content['blocks'] = {}
         self.rooms[room_id]['content'] = content
         self.rooms[room_id]['last_updated'] = datetime.utcnow()
         return True

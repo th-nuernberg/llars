@@ -156,11 +156,22 @@ def configure_websocket_prompt_eng(socketio):
     @socketio.on('pe_cursor_update', namespace=namespace)
     def handle_cursor_update(data):
         """
-        Erwartetes Datenformat:
+        Expected data format:
         {
           "room": "room_1",
           "block_id": "Block123",
           "position": 15
+        }
+        Returns cursor data with format:
+        {
+          cursors: {
+            "user_sid": {
+              "block_id": "BlockName",
+              "position": 0,
+              "username": "User's Name",
+              "sid": "user_sid"
+            }
+          }
         }
         """
         user_id = request.sid
@@ -175,7 +186,7 @@ def configure_websocket_prompt_eng(socketio):
         if not success:
             return
 
-        # Aktualisierte Cursor-Infos an alle anderen User im Raum senden
+        # Send updated cursor info to all other users in the room
         room_data = pe_rooms.get_room_data(room_id)
         emit('pe_cursor_updated', {
             'cursors': room_data['cursors']

@@ -13,14 +13,14 @@ class PeRooms:
         #   'name': str,
         #   'content': dict,
         #   'users': { sid: username },
-        #   'cursors': { sid: { 'block_id': str, 'position': int } }, # NEU hinzugefügt
+        #   'cursors': { sid: { 'block_id': str, 'position': int, 'username': str, 'sid': str } },
         #   'created_at': datetime,
         #   'last_updated': datetime,
         #   'owner_id': user_id
         # }
         self.rooms: Dict[str, Dict] = {}
         self.user_rooms: Dict[str, str] = {}  # Maps user_id (sid) to room_id
-        self.usernames: Dict[str, str] = {}    # Maps sid to username
+        self.usernames: Dict[str, str] = {}  # Maps sid to username
 
     def _generate_room_id(self, prompt_id: int) -> str:
         """Generate a room ID based on the prompt ID."""
@@ -174,17 +174,22 @@ class PeRooms:
     def update_cursor_position(self, room_id: str, user_id: str, block_id: str, position: int) -> bool:
         """
         Update the cursor position for a given user in a room.
+        Now includes username and sid in cursor data.
         """
         if room_id not in self.rooms:
             return False
 
-        # Sicherstellen, dass der User in diesem Raum ist
+        # Ensure user is in this room
         if user_id not in self.rooms[room_id]['users']:
             return False
 
+        username = self.usernames.get(user_id, "Unknown User")
+
         self.rooms[room_id]['cursors'][user_id] = {
             'block_id': block_id,
-            'position': position
+            'position': position,
+            'username': username,
+            'sid': user_id  # Include the socket ID
         }
         self.rooms[room_id]['last_updated'] = datetime.utcnow()
         return True

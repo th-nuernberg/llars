@@ -1,5 +1,14 @@
 <template>
   <div class="container">
+    <!-- Notification Snackbar -->
+    <v-snackbar
+      v-model="showNotification"
+      :timeout="notificationTimeout"
+      :color="notificationColor"
+    >
+      {{ notificationMessage }}
+    </v-snackbar>
+
     <div class="main-layout">
       <!-- Main Content Area -->
       <div class="content-area">
@@ -96,6 +105,15 @@
           Prompt speichern
         </v-btn>
 
+        <v-btn
+          color="info"
+          block
+          class="mb-4"
+          @click="openPreviewModal"
+        >
+          Vorschau
+        </v-btn>
+
         <v-card class="room-info" v-if="roomInfo">
           <v-card-title class="text-subtitle-1">
             Room Information
@@ -136,6 +154,26 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+        <v-dialog v-model="showPreviewModal" max-width="800">
+      <v-card>
+        <v-card-title class="text-h6 pa-4">
+          Vorschau
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <div v-html="formattedPreviewText"></div>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            variant="text"
+            @click="showPreviewModal = false"
+          >
+            Schließen
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -153,6 +191,8 @@ const userId = ref(null);
 const loadingBlocks = ref(true);
 const showDeleteDialog = ref(false);
 const blockToDelete = ref(null);
+
+const showPreviewModal = ref(false);
 
 const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
@@ -238,6 +278,23 @@ function getUsernameColor(user_name) {
     usedColors.value.add(newColor);
   }
   return cursorColors.value[user_name];
+}
+
+const showNotification = ref(false);
+const notificationMessage = ref('');
+const notificationColor = ref('success');
+const notificationTimeout = ref(3000);
+
+function showSuccessNotification(message) {
+  notificationMessage.value = message;
+  notificationColor.value = 'success';
+  showNotification.value = true;
+}
+
+function showErrorNotification(message) {
+  notificationMessage.value = message;
+  notificationColor.value = 'error';
+  showNotification.value = true;
 }
 
 const otherUsers = computed(() => {
@@ -415,9 +472,10 @@ onUnmounted(() => {
 
 async function savePrompt() {
   try {
-    const apiKey = localStorage.getItem('api_key');  // Get the user's API key from local storage
+    const apiKey = localStorage.getItem('api_key');
     if (!apiKey) {
       console.error('API key not found');
+      showErrorNotification('API-Schlüssel nicht gefunden');
       return;
     }
 
@@ -434,14 +492,14 @@ async function savePrompt() {
 
     if (response.ok) {
       console.log('Prompt saved successfully');
-      // Show a success message to the user
+      showSuccessNotification('Prompt erfolgreich gespeichert');
     } else {
       console.error('Error saving prompt:', response.statusText);
-      // Show an error message to the user
+      showErrorNotification('Fehler beim Speichern des Prompts');
     }
   } catch (error) {
     console.error('Error saving prompt:', error);
-    // Show an error message to the user
+    showErrorNotification('Fehler beim Speichern des Prompts');
   }
 }
 
@@ -454,6 +512,18 @@ function buildBlocksObject() {
     };
   });
   return blocksObject;
+}
+
+
+const formattedPreviewText = computed(() => {
+  return blocks.value
+    .map(block => block.content)
+    .join('\n\n')
+    .replace(/\n/g, '<br>');
+});
+
+function openPreviewModal() {
+  showPreviewModal.value = true;
 }
 
 </script>

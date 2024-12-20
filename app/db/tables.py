@@ -157,6 +157,7 @@ class ScenarioUsers(db.Model):
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     role = mapped_column(db.Enum(ScenarioRoles))
+    user = db.relationship('User', backref='scenario_users')
 
     # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
     __table_args__ = (

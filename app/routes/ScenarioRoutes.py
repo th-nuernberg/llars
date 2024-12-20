@@ -2,6 +2,7 @@ import logging
 from numbers import Number
 from pyexpat.errors import messages
 from sre_constants import error
+from tokenize import group
 from unicodedata import category
 from . import data_blueprint, auth_blueprint
 from flask import Blueprint, jsonify, request
@@ -22,6 +23,7 @@ from datetime import datetime
 import json
 import random
 
+from ..db.tables import ProgressionStatus
 
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
@@ -60,25 +62,79 @@ def get_scenario_list():
 
 
 @data_blueprint.route('/admin/scenarios/<int:scenario_id>', methods=['GET'])
-def get_scenario_details(scenario_id=None): # TODO
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
+def get_scenario_details(scenario_id=None): #
+    try:
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
 
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
 
-    if not scenario_id:
-        return jsonify({'error': 'Scenario id is missing'}), 401
+        # check if scenario id is valid
+        if not scenario_id:
+            return jsonify({'error': 'Scenario id is missing'}), 401
 
-    scenario_users = ScenarioUsers.query.filter_by(scenario_id=scenario_id).all
+        scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+        if not scenario:
+            return jsonify({'error': 'Scenario does not exist'}), 401
 
-    sceanrio_details = {
-        'scenario_id': scenario_id,
-        'scenario': 2
-    }
-    pass
+        func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
+
+        # get all users
+        scenario_users = (db.session.query(ScenarioUsers).join(User, ScenarioUsers.user_id == User.id)
+                          .filter(scenario_id=scenario_id).all)
+
+        # divide the users into the roles
+        scenario_raters = []
+        scenario_viewers = []
+        for scenario_user in scenario_users:
+            if scenario_user.role == ScenarioRoles.RATER:
+                scenario_raters.append(
+                    {
+                        'user_id': scenario_user.user_id,
+                        'username': scenario_user.user.username,
+                        'role': scenario_user.role.value,
+                    }
+                )
+
+            if scenario_user.role == ScenarioRoles.VIEWER:
+                scenario_viewers.append(
+                    {
+                        'user_id': scenario_user.user_id,
+                        'username': scenario_user.user.username,
+                        'role': scenario_user.role.value,
+                    }
+                )
+
+        # get all the threads of the scenario
+        scenario_threads = (db.session.query(ScenarioThreads).join(EmailThread,
+                                                                   EmailThread.thread_id == ScenarioThreadDistribution.thread_id)
+                            .filter(ScenarioThreads.scenario_id == scenario_id).all())
+        threads = []
+        for scenario_thread in scenario_threads:
+            threads.append({
+                'thread_id': scenario_thread.thread_id,
+                'subject': scenario_thread.thread.subject,
+            })
+
+        scenario_details = {
+            'scenario_id': scenario_id,
+            'scenario_name': scenario.scenario_name,
+            'function_type_id': scenario.function_type_id,
+            'func_type': func_type,
+            'begin_date': scenario.begin_date,
+            'end_date': scenario.end_date,
+            'threads': threads,
+            'raters': scenario_raters,
+            'viewers': scenario_viewers,
+        }
+        return jsonify(scenario_details), 200
+    except Exception as e:
+        logging.exception(e)
+        return jsonify({'error': "Internal Server Error"}), 500
 
 
 
@@ -374,6 +430,80 @@ def add_threads_to_scenario():
 
 
 
+@data_blueprint.route('/admin/get_function_types', methods=['GET'])
+def get_function_types():
+    try:
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
+
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
+
+        feature_function_types = FeatureFunctionType.query.all()
+        function_types = []
+        for feature_function_type in feature_function_types:
+            function_types.append({
+                'id': feature_function_type.id,
+                'name': feature_function_type.name,
+            })
+
+        return jsonify(function_types), 200
+
+    except Exception as e:
+        logging.error(e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
+@data_blueprint.route('/admin/get_users', methods=['GET'])
+def get_users_types():
+    try:
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
+
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
+
+        db_users = (db.session.query(User).join(UserGroup, User.group_id == UserGroup.id)
+                 .filter(UserGroup.name != "Admin").all())
+
+        users = []
+        for db_user in db_users:
+            users.append({
+                'id': db_user.id,
+                'name': db_user.name,
+            })
+        return jsonify(users), 200
+
+    except Exception as e:
+        logging.error(e)
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
+@data_blueprint.route('/admin/get_threads/<int:function_type_id', methods=['GET'])
+def get_users_types(function_type_id):
+    try:
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
+
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
+
+
+
+
+
+    except Exception as e:
+        logging.error(e)
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 ########################################################################################################################
 # Helper Functions

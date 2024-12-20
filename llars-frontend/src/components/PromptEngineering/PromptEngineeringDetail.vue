@@ -127,20 +127,117 @@
           JSON herunterladen
         </v-btn>
 
-                <v-btn
-          color="secondary"
+        <v-btn
+          color="primary"
           block
           class="mb-4"
+          @click="$refs.fileInput.click()"
         >
           <v-icon left>mdi-upload</v-icon>
           JSON hochladen
-          <input
-            type="file"
-            style="display: none;"
-            accept=".json"
-            @change="uploadJSON"
-          >
         </v-btn>
+        <input
+          type="file"
+          ref="fileInput"
+          accept=".json"
+          style="display: none"
+          @change="handleFileUpload"
+        />
+
+        <v-btn
+          block
+          color="grey"
+          @click="goBack"
+        >
+          <v-icon left>mdi-arrow-left</v-icon>
+          Zurück zur Übersicht
+        </v-btn>
+
+        <!-- Share Card für Owner -->
+        <v-card class="mt-4" v-if="isOwner">
+          <v-card-title class="text-subtitle-1">
+            Prompt teilen
+          </v-card-title>
+          <v-card-text>
+            <v-text-field
+              v-model="shareWithUser"
+              label="Benutzername"
+              density="comfortable"
+              class="mb-4"
+              placeholder="Mit Benutzer teilen"
+              hide-details
+            />
+            <v-btn
+              block
+              color="info"
+              class="mb-4"
+              :disabled="!shareWithUser"
+              @click="sharePrompt"
+            >
+              <v-icon left>mdi-share</v-icon>
+              Teilen
+            </v-btn>
+
+            <!-- Liste der geteilten Benutzer -->
+            <template v-if="sharedUsers.length > 0">
+              <v-divider class="my-4"></v-divider>
+              <div class="d-flex align-center mb-2">
+                <span class="text-subtitle-2">Geteilt mit:</span>
+                <v-chip
+                  size="small"
+                  color="info"
+                  class="ml-2"
+                >
+                  {{ sharedUsers.length }}
+                </v-chip>
+              </div>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="user in sharedUsers"
+                  :key="user"
+                  :value="user"
+                >
+                  <template v-slot:prepend>
+                    <v-icon size="small" color="info">mdi-account</v-icon>
+                  </template>
+                  {{ user }}
+                  <template v-slot:append>
+                    <v-btn
+                      icon="mdi-delete"
+                      size="small"
+                      color="error"
+                      variant="text"
+                      @click="unsharePrompt(user)"
+                    >
+                      <v-icon size="small">mdi-delete</v-icon>
+                    </v-btn>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </template>
+          </v-card-text>
+        </v-card>
+
+        <!-- Read-only Share Card für geteilte Benutzer -->
+        <v-card class="mt-4" v-else-if="sharedUsers.length > 0">
+          <v-card-title class="text-subtitle-1">
+            Geteilt mit
+          </v-card-title>
+          <v-card-text>
+            <v-list density="compact">
+              <v-list-item
+                v-for="user in sharedUsers"
+                :key="user"
+                :value="user"
+              >
+                <template v-slot:prepend>
+                  <v-icon size="small" color="info">mdi-account</v-icon>
+                </template>
+                {{ user }}
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+        </v-card>
 
         <v-card class="room-info" v-if="roomInfo">
           <v-card-title class="text-subtitle-1">
@@ -152,6 +249,7 @@
           </v-card-text>
         </v-card>
       </div>
+
     </div>
 
     <!-- Delete Confirmation Dialog -->
@@ -210,7 +308,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import {io} from 'socket.io-client';
 import draggable from 'vuedraggable';
-import {useRoute} from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+
 
 const socket = ref(null);
 const blocks = ref([]);
@@ -223,10 +322,16 @@ const blockToDelete = ref(null);
 const showPreviewModal = ref(false);
 
 const route = useRoute();
+const router = useRouter();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
+
+const shareWithUser = ref('');
+const sharedUsers = ref([]);
+const owner = ref('');
+const isSharedPrompt = ref(false);
 
 // Farbmanagement nach Usernames
 const cursorColors = ref({});
@@ -489,6 +594,7 @@ onMounted(() => {
     console.log('Cursor updated:', data);
     // Hier wird aktuell nichts weitergemacht.
   });
+  fetchPromptDetails()
 });
 
 onUnmounted(() => {
@@ -572,28 +678,125 @@ function downloadJSON() {
   URL.revokeObjectURL(url);
 }
 
-function uploadJSON(event) {
+async function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const jsonString = e.target.result;
-    try {
-      const jsonData = JSON.parse(jsonString);
-      const blocksArray = Object.entries(jsonData).map(([name, content]) => ({
-        name,
-        content,
-      }));
-      blocks.value = blocksArray;
-      handleBlockReorder();
-      showSuccessNotification('JSON erfolgreich hochgeladen');
-    } catch (error) {
-      console.error('Error parsing JSON:', error);
-      showErrorNotification('Fehler beim Parsen der JSON-Datei');
+  try {
+    const fileContent = await file.text();
+    const jsonData = JSON.parse(fileContent);
+
+    // Convert JSON data to blocks format
+    const newBlocks = Object.entries(jsonData).map(([name, content], index) => ({
+      name,
+      content,
+      position: index
+    }));
+
+    // Update blocks
+    blocks.value = newBlocks;
+
+    // Trigger block reorder to sync with other users
+    handleBlockReorder();
+
+    showSuccessNotification('JSON erfolgreich importiert');
+  } catch (error) {
+    console.error('Error parsing JSON file:', error);
+    showErrorNotification('Fehler beim Parsen der JSON-Datei');
+  }
+
+  // Reset file input
+  event.target.value = '';
+}
+
+function goBack() {
+  router.push('/promptengineering');
+}
+
+const isOwner = computed(() => {
+  const currentUser = localStorage.getItem('username');
+  return owner.value === currentUser;
+});
+
+// Neue Funktionen für das Teilen
+async function sharePrompt() {
+  try {
+    const apiKey = localStorage.getItem('api_key');
+    const response = await fetch(`/api/prompts/${promptId.value}/share`, {
+      method: 'POST',
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        shared_with: shareWithUser.value
+      })
+    });
+
+    if (response.ok) {
+      await fetchPromptDetails(); // Funktion zum Neuladen der Prompt-Details
+      showSuccessNotification(`Prompt wurde erfolgreich mit ${shareWithUser.value} geteilt!`);
+      shareWithUser.value = '';
+    } else {
+      const errorData = await response.json();
+      showErrorNotification(errorData.error || 'Fehler beim Teilen des Prompts');
     }
-  };
-  reader.readAsText(file);
+  } catch (error) {
+    console.error('Error sharing prompt:', error);
+    showErrorNotification('Fehler beim Teilen des Prompts');
+  }
+}
+
+async function unsharePrompt(username) {
+  try {
+    const apiKey = localStorage.getItem('api_key');
+    const response = await fetch(`/api/prompts/${promptId.value}/unshare`, {
+      method: 'POST',
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        unshare_with: username
+      })
+    });
+
+    if (response.ok) {
+      const index = sharedUsers.value.indexOf(username);
+      if (index > -1) {
+        sharedUsers.value.splice(index, 1);
+      }
+      showSuccessNotification(`Freigabe für ${username} wurde aufgehoben`);
+    } else {
+      const errorData = await response.json();
+      showErrorNotification(errorData.error || 'Fehler beim Aufheben der Freigabe');
+    }
+  } catch (error) {
+    console.error('Error unsharing prompt:', error);
+    showErrorNotification('Fehler beim Aufheben der Freigabe');
+  }
+}
+
+async function fetchPromptDetails() {
+  console.log('Fetching prompt details...');
+  try {
+    const apiKey = localStorage.getItem('api_key');
+    const response = await fetch(`/api/prompts/${promptId.value}`, {
+      headers: {
+        'Authorization': apiKey
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      owner.value = data.owner || '';
+      isSharedPrompt.value = data.is_shared || false;
+      sharedUsers.value = data.shared_with || [];
+    }
+  } catch (error) {
+    console.error('Error fetching prompt details:', error);
+    showErrorNotification('Fehler beim Laden der Prompt-Details');
+  }
 }
 
 </script>

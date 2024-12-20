@@ -519,34 +519,69 @@ function confirmDelete() {
 }
 
 function processReceivedContent(content) {
-  if (!content || !content.blocks) return;
-  const blocksObject = content.blocks;
-  const blocksArray = Object.entries(blocksObject).map(([name, blockData]) => ({
-    name,
-    content: blockData.content,
-    position: blockData.position
-  }));
-  blocksArray.sort((a, b) => a.position - b.position);
+  // Wenn kein Content vorhanden ist, early return
+  if (!content) return;
+
+  // Wenn content.blocks existiert, verwende die alte Logik
+  if (content.blocks) {
+    const blocksArray = Object.entries(content.blocks).map(([name, blockData]) => ({
+      name,
+      content: blockData.content,
+      position: blockData.position
+    }));
+    blocksArray.sort((a, b) => a.position - b.position);
+    blocks.value = blocksArray;
+    loadingBlocks.value = false;
+    return;
+  }
+
+  // Neue Logik für die direkte Content-Struktur
+  const blocksArray = Object.entries(content).map(([name, blockData], index) => {
+    // Prüfe, ob blockData ein Objekt mit content ist oder direkt der content
+    const content = blockData.content || blockData;
+    return {
+      name,
+      content: content,
+      position: index // Fallback position wenn keine definiert ist
+    };
+  });
+
+  // Sortiere nach Position, falls vorhanden
+  blocksArray.sort((a, b) => {
+    if (a.position !== undefined && b.position !== undefined) {
+      return a.position - b.position;
+    }
+    return 0;
+  });
+
   blocks.value = blocksArray;
   loadingBlocks.value = false;
+
+  // Debug-Ausgabe
+  console.log('Processed blocks:', blocks.value);
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Initialize socket connection
   socket.value = io(import.meta.env.VITE_API_BASE_URL + '/pe');
 
-  socket.value.emit('pe_connect', {username}, () => {
-    console.log('WebSocket connection established');
+  // Setup event handlers before connecting
+  socket.value.on('connect', () => {
+    console.log('Socket connected');
+    // After socket connects, establish user connection
+    socket.value.emit('pe_connect', { username }, (response) => {
+      console.log('User connection established:', response);
+      // Only after user is connected, join the room
+      socket.value.emit('pe_join_room', {
+        room: roomId.value,
+        prompt_id: promptId.value
+      });
+    });
   });
 
   socket.value.on('pe_connected', (data) => {
     console.log('Connected to server:', data);
     userId.value = data.user_id;
-  });
-
-  socket.value.on('connect', () => {
-    socket.value.emit('pe_join_room', {room: roomId.value, prompt_id: promptId.value}, () => {
-      console.log('Joined room:', roomId.value);
-    });
   });
 
   socket.value.on('pe_joined_room', (data) => {
@@ -564,7 +599,10 @@ onMounted(() => {
     console.log('Received updated text content:', data);
     processReceivedContent(data);
     if (data.users) {
-      roomInfo.value.users = data.users;
+      roomInfo.value = {
+        ...roomInfo.value,
+        users: data.users
+      };
     }
   });
 
@@ -572,29 +610,45 @@ onMounted(() => {
     console.log('Received blocks updated content:', data);
     processReceivedContent(data);
     if (data.users) {
-      roomInfo.value.users = data.users;
+      roomInfo.value = {
+        ...roomInfo.value,
+        users: data.users
+      };
     }
   });
 
   socket.value.on('pe_user_left', (data) => {
     console.log('User left room:', data);
-    // Finde den Benutzer, der den Raum verlassen hat
-    const leavingUser = roomInfo.value.users.find(u => u.id === data.user_id);
-    if (leavingUser) {
-      const leavingUsername = leavingUser.username;
-      if (cursorColors.value[leavingUsername]) {
-        usedColors.value.delete(cursorColors.value[leavingUsername]);
-        delete cursorColors.value[leavingUsername];
+    if (roomInfo.value && roomInfo.value.users) {
+      const leavingUser = roomInfo.value.users.find(u => u.id === data.user_id);
+      if (leavingUser) {
+        const leavingUsername = leavingUser.username;
+        if (cursorColors.value[leavingUsername]) {
+          usedColors.value.delete(cursorColors.value[leavingUsername]);
+          delete cursorColors.value[leavingUsername];
+        }
       }
+      updateUserList(data.users);
     }
-    updateUserList(data.users);
   });
 
   socket.value.on('pe_cursor_updated', (data) => {
     console.log('Cursor updated:', data);
-    // Hier wird aktuell nichts weitergemacht.
+    // Handle cursor updates if needed
   });
-  fetchPromptDetails()
+
+  socket.value.on('disconnect', () => {
+    console.log('Socket disconnected');
+    loadingBlocks.value = true;
+  });
+
+  socket.value.on('error', (error) => {
+    console.error('Socket error:', error);
+    showErrorNotification('Verbindungsfehler aufgetreten');
+  });
+
+  // Fetch initial prompt details
+  await fetchPromptDetails();
 });
 
 onUnmounted(() => {

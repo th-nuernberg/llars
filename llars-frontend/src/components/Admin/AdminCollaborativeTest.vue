@@ -32,7 +32,6 @@
                 </v-card-title>
                 <v-card-text class="pa-4">
                   <div class="textarea-container">
-                    <!-- Hier fügen wir das Focus-Event hinzu -->
                     <v-textarea
                       v-model="element.content"
                       outlined
@@ -71,7 +70,7 @@
                 :key="collaborator.id"
                 small
                 class="mb-2 mr-2"
-                :style="{ backgroundColor: getCursorColor(collaborator.id), color: 'white' }"
+                :style="{ backgroundColor: getUsernameColor(collaborator.username), color: 'white' }"
               >
                 {{ collaborator.username }}
               </v-chip>
@@ -94,7 +93,7 @@
           </v-card-title>
           <v-card-text>
             <p>Room ID: {{ roomInfo.room }}</p>
-            <p>Connected Users: {{ Object.keys(roomInfo.users || {}).length }}</p>
+            <p>Connected Users: {{ roomInfo.users ? roomInfo.users.length : 0 }}</p>
           </v-card-text>
         </v-card>
       </div>
@@ -132,9 +131,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { io } from 'socket.io-client';
+import {io} from 'socket.io-client';
 import draggable from 'vuedraggable';
-import { useRoute } from 'vue-router';
+import {useRoute} from 'vue-router';
 
 const socket = ref(null);
 const blocks = ref([]);
@@ -150,27 +149,16 @@ const roomId = computed(() => `room_${promptId.value}`);
 
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
 
+// Farbmanagement nach Usernames
 const cursorColors = ref({});
 const usedColors = ref(new Set());
 
-// Erweiterte Farbliste für mehr Variationen
 const availableColors = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
   '#D4A5A5', '#9B59B6', '#3498DB', '#2ECC71', '#E74C3C',
   '#F1C40F', '#8E44AD', '#16A085', '#E67E22', '#2C3E50',
   '#27AE60', '#D35400', '#7F8C8D', '#C0392B', '#1ABC9C'
 ];
-
-function getUnusedColor() {
-  const unusedColors = availableColors.filter(color => !usedColors.value.has(color));
-  if (unusedColors.length === 0) {
-    const baseColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-    const hslColor = hexToHSL(baseColor);
-    hslColor.h = (hslColor.h + 20) % 360;
-    return HSLToHex(hslColor.h, hslColor.s, hslColor.l);
-  }
-  return unusedColors[Math.floor(Math.random() * unusedColors.length)];
-}
 
 function hexToHSL(hex) {
   hex = hex.replace(/#/g, '');
@@ -182,19 +170,26 @@ function hexToHSL(hex) {
   let h, s;
   let l = (max + min) / 2;
 
-  if (max === min) { h = s = 0; }
-  else {
+  if (max === min) {
+    h = s = 0;
+  } else {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
     }
     h *= 60;
   }
 
-  return { h, s: s * 100, l: l * 100 };
+  return {h, s: s * 100, l: l * 100};
 }
 
 function HSLToHex(h, s, l) {
@@ -213,23 +208,32 @@ function HSLToHex(h, s, l) {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
-function getCursorColor(user_id) {
-  if (!cursorColors.value[user_id]) {
+function getUnusedColor() {
+  const unusedColors = availableColors.filter(color => !usedColors.value.has(color));
+  if (unusedColors.length === 0) {
+    const baseColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+    const hslColor = hexToHSL(baseColor);
+    hslColor.h = (hslColor.h + 20) % 360;
+    return HSLToHex(hslColor.h, hslColor.s, hslColor.l);
+  }
+  return unusedColors[Math.floor(Math.random() * unusedColors.length)];
+}
+
+function getUsernameColor(user_name) {
+  console.log('Getting color for user:', user_name);
+  if (!cursorColors.value[user_name]) {
     const newColor = getUnusedColor();
-    cursorColors.value[user_id] = newColor;
+    cursorColors.value[user_name] = newColor;
     usedColors.value.add(newColor);
   }
-  return cursorColors.value[user_id];
+  return cursorColors.value[user_name];
 }
 
 const otherUsers = computed(() => {
   if (!roomInfo.value || !roomInfo.value.users) return [];
-  return Object.entries(roomInfo.value.users)
-    .filter(([id]) => id !== userId.value)
-    .map(([id, username]) => ({
-      id,
-      username: typeof username === 'object' ? username.username : username
-    }));
+  // roomInfo.value.users ist jetzt ein Array von Objekten {id, username}
+  // Filtere den eigenen User heraus
+  return roomInfo.value.users.filter(u => u.id !== userId.value);
 });
 
 function updateUserList(users) {
@@ -274,13 +278,12 @@ function handleBlockReorder() {
   }
 }
 
-// Neue Methode zum Senden des Cursor Updates bei Klick in ein Textfeld
 function handleCursorUpdate(blockId) {
   if (socket.value) {
     socket.value.emit('pe_cursor_update', {
       room: roomId.value,
       block_id: blockId,
-      position: 0 // Hier nur ein Platzhalterwert, es geht um den Klick-Event
+      position: 0
     });
   }
 }
@@ -330,7 +333,7 @@ function processReceivedContent(content) {
 onMounted(() => {
   socket.value = io(import.meta.env.VITE_API_BASE_URL + '/pe');
 
-  socket.value.emit('pe_connect', { username }, () => {
+  socket.value.emit('pe_connect', {username}, () => {
     console.log('WebSocket connection established');
   });
 
@@ -340,7 +343,7 @@ onMounted(() => {
   });
 
   socket.value.on('connect', () => {
-    socket.value.emit('pe_join_room', { room: roomId.value, prompt_id: promptId.value }, () => {
+    socket.value.emit('pe_join_room', {room: roomId.value, prompt_id: promptId.value}, () => {
       console.log('Joined room:', roomId.value);
     });
   });
@@ -352,7 +355,7 @@ onMounted(() => {
     }
     roomInfo.value = {
       room: data.room,
-      users: data.users || {}
+      users: data.users || []
     };
   });
 
@@ -374,17 +377,21 @@ onMounted(() => {
 
   socket.value.on('pe_user_left', (data) => {
     console.log('User left room:', data);
-    if (cursorColors.value[data.user_id]) {
-      usedColors.value.delete(cursorColors.value[data.user_id]);
-      delete cursorColors.value[data.user_id];
+    // Finde den Benutzer, der den Raum verlassen hat
+    const leavingUser = roomInfo.value.users.find(u => u.id === data.user_id);
+    if (leavingUser) {
+      const leavingUsername = leavingUser.username;
+      if (cursorColors.value[leavingUsername]) {
+        usedColors.value.delete(cursorColors.value[leavingUsername]);
+        delete cursorColors.value[leavingUsername];
+      }
     }
     updateUserList(data.users);
   });
 
-  // Neuer Listener für Cursor-Updates
   socket.value.on('pe_cursor_updated', (data) => {
     console.log('Cursor updated:', data);
-    // Hier wird aktuell nichts gerendert, nur geloggt.
+    // Hier wird aktuell nichts weitergemacht.
   });
 });
 

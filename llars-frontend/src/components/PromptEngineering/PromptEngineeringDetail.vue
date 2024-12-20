@@ -93,6 +93,7 @@
           class="mb-4"
           @click="addBlockPrompt"
         >
+          <v-icon left>mdi-plus</v-icon>
           Neuen Block hinzufügen
         </v-btn>
 
@@ -102,6 +103,7 @@
           class="mb-4"
           @click="savePrompt"
         >
+          <v-icon left>mdi-content-save</v-icon>
           Prompt speichern
         </v-btn>
 
@@ -111,7 +113,33 @@
           class="mb-4"
           @click="openPreviewModal"
         >
+          <v-icon left>mdi-eye</v-icon>
           Vorschau
+        </v-btn>
+
+        <v-btn
+          color="secondary"
+          block
+          class="mb-4"
+          @click="downloadJSON"
+        >
+          <v-icon left>mdi-download</v-icon>
+          JSON herunterladen
+        </v-btn>
+
+                <v-btn
+          color="secondary"
+          block
+          class="mb-4"
+        >
+          <v-icon left>mdi-upload</v-icon>
+          JSON hochladen
+          <input
+            type="file"
+            style="display: none;"
+            accept=".json"
+            @change="uploadJSON"
+          >
         </v-btn>
 
         <v-card class="room-info" v-if="roomInfo">
@@ -524,6 +552,48 @@ const formattedPreviewText = computed(() => {
 
 function openPreviewModal() {
   showPreviewModal.value = true;
+}
+
+function downloadJSON() {
+  const jsonData = blocks.value.reduce((data, block) => {
+    data[block.name] = block.content;
+    return data;
+  }, {});
+
+  const jsonString = JSON.stringify(jsonData, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'prompt_data.json';
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function uploadJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const jsonString = e.target.result;
+    try {
+      const jsonData = JSON.parse(jsonString);
+      const blocksArray = Object.entries(jsonData).map(([name, content]) => ({
+        name,
+        content,
+      }));
+      blocks.value = blocksArray;
+      handleBlockReorder();
+      showSuccessNotification('JSON erfolgreich hochgeladen');
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      showErrorNotification('Fehler beim Parsen der JSON-Datei');
+    }
+  };
+  reader.readAsText(file);
 }
 
 </script>

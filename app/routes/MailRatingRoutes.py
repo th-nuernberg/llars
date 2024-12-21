@@ -559,6 +559,8 @@ def get_scenario_HistoryGeneration_stats(scenario_id):
                     .filter(ScenarioThreads.scenario_id == scenario_id)
                     .all()
                 )
+            if not user_threads:
+                user_threads = []
 
             for user_thread in user_threads:
                 thread = user_thread.thread

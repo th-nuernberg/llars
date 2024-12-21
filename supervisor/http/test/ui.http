@@ -91,7 +91,7 @@ Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
   "id": 1,
   "new_name": "Corrected",
   "new_begin": "2024-12-01T08:00:00",
-  "new_end": "2024-12-30T08:00:00"
+  "new_end": "2025-12-30T08:00:00"
 }
 
 ###
@@ -103,3 +103,38 @@ Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
   "scenario_id": 1,
   "thread_ids": [34, 35]
 }
+
+
+###
+GET http://localhost/api/admin/get_threads_from_function_type/3
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+
+###
+GET http://localhost/api/admin/get_users
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+###
+GET http://localhost/api/admin/get_function_types
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+###
+GET http://localhost/api/admin/scenarios
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+###
+GET http://localhost/api/admin/scenarios/1
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+###
+GET http://localhost/api/admin/user_HistoryGeneration_stats/1
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+
+
+

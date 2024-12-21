@@ -78,7 +78,7 @@ def list_email_threads_for_mail_ratings():
         # get function type
         mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first().function_type_id
         if not mail_rating_function_type:
-            return jsonify({'error': 'Mail Rating function type not found'}), 404
+            return jsonify({'error': 'Mail Rating function type not found'}), 500
 
         # get all threads the user is supposed to see
         accessible_threads = get_user_threads(user.id, mail_rating_function_type)
@@ -210,7 +210,7 @@ def save_mail_rating(thread_id):
             consulting_category_type = ConsultingCategoryType.query.filter_by(
                 id=selected_consulting_category_id).first()
             if not consulting_category_type:
-                return jsonify({'error': 'Consulting category does not exist'}), 404
+                return jsonify({'error': 'Consulting category does not exist'}), 400
         elif selected_consulting_category_id is None:
             consulting_category_type = None
         else:
@@ -499,26 +499,43 @@ def get_user_HistoryGeneration_stats():
 
 @data_blueprint.route('/admin/user_HistoryGeneration_stats/<int:scenario_id>', methods=['GET'])
 def get_scenario_HistoryGeneration_stats(scenario_id):
+    # Authorization
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # check if scenario id is valid
+    if not scenario_id:
+        return jsonify({'error': 'Scenario id is missing'}), 400
+
+    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+    if not scenario:
+        return jsonify({'error': 'Scenario does not exist'}), 404
+
     try:
         # Validate if scenario has function_type_id = 3
         scenario_function_type = (
-            db.session.query(FeatureFunctionType)
-            .join(ScenarioThreads, FeatureFunctionType.function_type_id == ScenarioThreads.scenario_id)
-            .filter(ScenarioThreads.scenario_id == scenario_id, FeatureFunctionType.name == 'mail_rating')
+            db.session.query(RatingScenarios)
+            .join(FeatureFunctionType, FeatureFunctionType.function_type_id == RatingScenarios.function_type_id)
+            .filter(RatingScenarios.id == scenario_id, FeatureFunctionType.name == 'mail_rating')
             .first()
         )
 
         if not scenario_function_type or scenario_function_type.function_type_id != 3:
             return jsonify({'error': 'Scenario does not have function_type_id = 3'}), 400
 
-        user_stats = []
-        threads_in_scenario = (
-            db.session.query(ScenarioThreads)
-            .filter_by(scenario_id=scenario_id)
-            .all()
-        )
+        rater_stats = []
+        viewer_stats = []
 
-        for user in db.session.query(ScenarioUsers).filter_by(scenario_id=scenario_id).all():
+
+        scenario_users = (db.session.query(ScenarioUsers).join(User, ScenarioUsers.user_id == User.id)
+        .filter(ScenarioUsers.scenario_id == scenario_id).all())
+
+        for scenario_user in scenario_users:
             done_threads_list = []
             not_started_threads_list = []
             progressing_threads_list = []
@@ -526,11 +543,28 @@ def get_scenario_HistoryGeneration_stats(scenario_id):
             total_progressing_threads = 0
             total_not_started_threads = 0
 
-            for scenario_thread in threads_in_scenario:
-                thread = scenario_thread.thread
+            if scenario_user.role == ScenarioRoles.RATER:
+                user_threads = (
+                    db.session.query(ScenarioThreads)
+                    .join(ScenarioThreadDistribution,
+                          ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
+                    .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
+                    .filter(ScenarioThreads.scenario_id == scenario_id,
+                            ScenarioUsers.user_id == scenario_user.user_id)
+                    .all()
+                )
+            else:
+                user_threads = (
+                    db.session.query(ScenarioThreads)
+                    .filter(ScenarioThreads.scenario_id == scenario_id)
+                    .all()
+                )
+
+            for user_thread in user_threads:
+                thread = user_thread.thread
                 mail_rating = (
                     db.session.query(UserMailHistoryRating)
-                    .filter_by(user_id=user.user_id, thread_id=thread.thread_id)
+                    .filter_by(user_id=scenario_user.user_id, thread_id=thread.thread_id).order_by(UserMailHistoryRating.timestamp.desc())
                     .first()
                 )
 
@@ -554,18 +588,23 @@ def get_scenario_HistoryGeneration_stats(scenario_id):
                         'subject': thread.subject
                     })
 
-            user_stats.append({
-                'username': user.user.username,
-                'total_threads': len(threads_in_scenario),
+            new_data = {
+                'username': scenario_user.user.username,
+                'total_threads': len(user_threads),
                 'done_threads': total_done_threads,
                 'not_started_threads': total_not_started_threads,
                 'progressing_threads': total_progressing_threads,
                 'done_threads_list': done_threads_list,
                 'not_started_threads_list': not_started_threads_list,
                 'progressing_threads_list': progressing_threads_list
-            })
+            }
 
-        return jsonify({'user_stats': user_stats}), 200
+            if scenario_user.role == ScenarioRoles.RATER:
+                rater_stats.append(new_data)
+            elif scenario_user.role == ScenarioRoles.VIEWER:
+                viewer_stats.append(new_data)
+
+        return jsonify({'rater_stats': rater_stats, "viewer_stats": viewer_stats}), 200
 
     except Exception as e:
         logger.error(e)

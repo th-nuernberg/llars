@@ -15,7 +15,7 @@ from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, Us
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
-                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles)
+                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles, ProgressionStatus)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
@@ -23,7 +23,6 @@ from datetime import datetime
 import json
 import random
 
-from ..db.tables import ProgressionStatus
 
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
@@ -53,12 +52,12 @@ def get_scenario_list():
             'name': scenario.scenario_name,
             'function_type_id': scenario.function_type_id,
             'function_type_name': func_type if func_type else None,
-            'begin_date': scenario.begin_date,
-            'end_date': scenario.end_date,
+            'begin_date': scenario.begin,
+            'end_date': scenario.end,
         }
         formatted_scenarios['scenarios'].append(formatted_scenario)
 
-    return jsonify({'scenarios': formatted_scenarios}), 200
+    return jsonify(formatted_scenarios), 200
 
 
 @data_blueprint.route('/admin/scenarios/<int:scenario_id>', methods=['GET'])
@@ -75,17 +74,17 @@ def get_scenario_details(scenario_id=None): #
 
         # check if scenario id is valid
         if not scenario_id:
-            return jsonify({'error': 'Scenario id is missing'}), 401
+            return jsonify({'error': 'Scenario id is missing'}), 400
 
         scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
         if not scenario:
-            return jsonify({'error': 'Scenario does not exist'}), 401
+            return jsonify({'error': 'Scenario does not exist'}), 404
 
         func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
 
         # get all users
         scenario_users = (db.session.query(ScenarioUsers).join(User, ScenarioUsers.user_id == User.id)
-                          .filter(scenario_id=scenario_id).all)
+                          .filter(ScenarioUsers.scenario_id == scenario_id).all())
 
         # divide the users into the roles
         scenario_raters = []
@@ -110,14 +109,17 @@ def get_scenario_details(scenario_id=None): #
                 )
 
         # get all the threads of the scenario
-        scenario_threads = (db.session.query(ScenarioThreads).join(EmailThread,
-                                                                   EmailThread.thread_id == ScenarioThreadDistribution.thread_id)
+        scenario_threads = (db.session.query(ScenarioThreads)
+                            .join(EmailThread, EmailThread.thread_id == ScenarioThreads.thread_id)
                             .filter(ScenarioThreads.scenario_id == scenario_id).all())
         threads = []
         for scenario_thread in scenario_threads:
             threads.append({
                 'thread_id': scenario_thread.thread_id,
                 'subject': scenario_thread.thread.subject,
+                'chat_id':  scenario_thread.thread.chat_id,
+                'institut_id':  scenario_thread.thread.institut_id,
+                'sender':  scenario_thread.thread.sender,
             })
 
         scenario_details = {
@@ -125,8 +127,8 @@ def get_scenario_details(scenario_id=None): #
             'scenario_name': scenario.scenario_name,
             'function_type_id': scenario.function_type_id,
             'func_type': func_type,
-            'begin_date': scenario.begin_date,
-            'end_date': scenario.end_date,
+            'begin_date': scenario.begin,
+            'end_date': scenario.end,
             'threads': threads,
             'raters': scenario_raters,
             'viewers': scenario_viewers,
@@ -446,7 +448,7 @@ def get_function_types():
         function_types = []
         for feature_function_type in feature_function_types:
             function_types.append({
-                'id': feature_function_type.id,
+                'function_type_id': feature_function_type.function_type_id,
                 'name': feature_function_type.name,
             })
 
@@ -458,7 +460,7 @@ def get_function_types():
 
 
 @data_blueprint.route('/admin/get_users', methods=['GET'])
-def get_users_types():
+def get_users():
     try:
         # Authorization
         api_key = request.headers.get('Authorization')
@@ -476,7 +478,7 @@ def get_users_types():
         for db_user in db_users:
             users.append({
                 'id': db_user.id,
-                'name': db_user.name,
+                'name': db_user.username,
             })
         return jsonify(users), 200
 
@@ -485,8 +487,8 @@ def get_users_types():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 
-@data_blueprint.route('/admin/get_threads/<int:function_type_id', methods=['GET'])
-def get_users_types(function_type_id):
+@data_blueprint.route('/admin/get_threads_from_function_type/<int:function_type_id>', methods=['GET'])
+def get_threads(function_type_id):
     try:
         # Authorization
         api_key = request.headers.get('Authorization')
@@ -497,10 +499,23 @@ def get_users_types(function_type_id):
         if not admin_user:
             return jsonify({'error': 'Invalid API key'}), 401
 
+        validated_function_type = FeatureFunctionType.query.filter_by(function_type_id=function_type_id).first()
 
+        if validated_function_type is None:
+            return jsonify({'error': 'Function type not found'}), 404
 
+        db_threads = EmailThread.query.filter_by(function_type_id=validated_function_type.function_type_id).all()
+        threads = []
+        for thread in db_threads:
+            threads.append({
+                'thread_id': thread.thread_id,
+                'chat_id': thread.chat_id,
+                'institut_id': thread.institut_id,
+                'subject': thread.subject,
+                'sender': thread.sender,
+            })
 
-
+        return jsonify(threads), 200
     except Exception as e:
         logging.error(e)
         return jsonify({'error': 'Internal Server Error'}), 500

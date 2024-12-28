@@ -1,6 +1,6 @@
 GET http://localhost:8081/
 ###
-GET http://localhost:8081/health_check
+GET http://localhost:8081/auth/health_check
 ###
 POST http://backend-flask-service:8081/auth/register
 Content-Type: application/json

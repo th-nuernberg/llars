@@ -1,5 +1,6 @@
-// socketHandlers.js
+// websocket.js
 const Y = require('yjs');
+const { logRoomsAndUsers, printYDoc } = require('./utils');
 
 // Wir verwalten hier die YDocs im Speicher
 const ydocs = new Map();
@@ -67,10 +68,13 @@ function setupSocketHandlers(io) {
     socket.on('document_update', (data) => {
       const { room, update } = data;
       const doc = getOrCreateDoc(room);
+      console.log(`[+] Document update in room "${room} from ${socket.id}`);
 
       // Wende Änderungen an und sende sie an andere Clients im Raum
       Y.applyUpdate(doc, update);
       socket.to(room).emit('document_update', update);
+      console.log(`[+] Document update sent to room "${room}"`);
+      printYDoc(doc);
     });
 
     socket.on('disconnect', () => {
@@ -85,24 +89,6 @@ function setupSocketHandlers(io) {
 /**
  * Logge alle aktuellen Räume und die Benutzer, die sich in diesen Räumen befinden.
  */
-function logRoomsAndUsers(io) {
-  const rooms = io.sockets.adapter.rooms;
-  const sids = io.sockets.adapter.sids; // Sockets und ihre Räume
-  console.log(`🔍 Current rooms and users:`);
-
-  rooms.forEach((value, room) => {
-    // Räume ohne zugehörige Sockets (eigene Räume der Sockets) überspringen
-    if (sids.has(room)) return;
-
-    // Benutzer im Raum ermitteln
-    const users = Array.from(value).map((socketId) => {
-      const socket = io.sockets.sockets.get(socketId);
-      return socket ? socket.id : 'unknown';
-    });
-
-    console.log(`Room "${room}" has ${users.length} user(s): ${users.join(', ')}`);
-  });
-}
 
 
 module.exports = setupSocketHandlers;

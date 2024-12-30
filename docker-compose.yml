@@ -130,6 +130,13 @@ services:
       - TZ=Europe/Berlin
       - BASE_URL=${VITE_API_BASE_URL}
       - PORT=8082
+    develop:
+      watch:
+        - action: sync
+          path: ./yjs-server
+          target: /yjs-server
+          ignore:
+            - node_modules/
     depends_on:
       - db-maria-service
 

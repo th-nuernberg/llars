@@ -1,16 +1,19 @@
 <template>
   <div class="editor-container">
-    <!-- Editor blocks will be rendered in order based on their position -->
     <div v-for="block in sortedBlocks" :key="block.id" class="editor-block">
       <h3>{{ block.title }}</h3>
-      <!-- Each editor needs a unique container -->
       <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
+    </div>
+    <!-- Debug-Ausgabe -->
+    <div class="debug-info">
+      <h4>Debug Information:</h4>
+      <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import * as Y from 'yjs';
 import { QuillBinding } from 'y-quill';
@@ -18,9 +21,8 @@ import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import { io } from 'socket.io-client';
 import 'quill/dist/quill.snow.css';
-import printYDoc from "@/components/PromptEngineering/utils";
 
-// Register the cursors module with Quill
+// Register QuillCursors
 Quill.register('modules/cursors', QuillCursors);
 
 const route = useRoute();
@@ -28,80 +30,30 @@ const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
 
-// State management
+// State Management
 const blocks = ref([]);
-const editorsMap = ref(new Map()); // Stores references to editor DOM elements
-const editors = ref(new Map()); // Stores Quill instances
-const bindings = ref(new Map()); // Stores Y-Quill bindings
+const editorsMap = ref(new Map());
+const editors = ref(new Map());
+const bindings = ref(new Map());
 
-// Reference to our Yjs document and socket connection
+// Yjs document and socket
 let ydoc = null;
 let socket = null;
 
-// Sort blocks by position
+// Sortiere Blöcke nach Position
 const sortedBlocks = computed(() => {
   return [...blocks.value].sort((a, b) => a.position - b.position);
 });
 
-// Store editor DOM element references
-const setEditorRef = (el, blockId) => {
-  if (el) {
-    editorsMap.value.set(blockId, el);
-  }
-};
-
-// Initialize a Quill editor for a block
-const initializeEditor = (block) => {
-  const editorElement = editorsMap.value.get(block.id);
-  if (!editorElement || editors.value.has(block.id)) return;
-
-  // Get the YText instance for this block
-  const ytext = ydoc.getText(`block-${block.id}`);
-
-  // Create Quill editor
-  const editor = new Quill(editorElement, {
-    modules: {
-      cursors: {
-        transformOnTextChange: true,
-        hideDelayMs: 2000,
-        hideSpeedMs: 300,
-      },
-      toolbar: [
-        ['bold', 'italic', 'underline'],
-        ['clean']
-      ],
-    },
-    theme: 'snow',
-    placeholder: `Start editing ${block.title}...`,
-  });
-
-  // Create binding between Yjs and Quill
-  const binding = new QuillBinding(ytext, editor);
-
-  // Store references
-  editors.value.set(block.id, editor);
-  bindings.value.set(block.id, binding);
-
-  // Handle cursor updates
-  editor.on('selection-change', (range) => {
-    if (range && socket) {
-      socket.emit('cursor_update', {
-        room: roomId.value,
-        blockId: block.id,
-        range,
-        username
-      });
-    }
-  });
-};
-
-// Process the YDoc structure into our blocks array
+// Verarbeite das YDoc und extrahiere die Blöcke
 const processYDoc = () => {
+  console.log('Processing YDoc...');
   const blocksMap = ydoc.getMap('blocks');
-  const processedBlocks = [];
+  const newBlocks = [];
 
   blocksMap.forEach((value, key) => {
-    processedBlocks.push({
+    console.log('Processing block:', key);
+    newBlocks.push({
       id: key,
       title: value.get('title'),
       position: value.get('position'),
@@ -109,11 +61,66 @@ const processYDoc = () => {
     });
   });
 
-  blocks.value = processedBlocks;
+  console.log('Processed blocks:', newBlocks);
+  blocks.value = newBlocks;
 };
 
-// Initialize socket connection
+// Initialisiere einen Editor für einen Block
+const initializeEditor = async (block) => {
+  console.log('Initializing editor for block:', block.id);
+
+  // Warte auf das nächste Tick, damit der DOM aktualisiert ist
+  await nextTick();
+
+  const editorElement = editorsMap.value.get(block.id);
+  if (!editorElement || editors.value.has(block.id)) {
+    console.log('Editor already exists or element not found');
+    return;
+  }
+
+  // Hole den YText für diesen Block
+  const blocksMap = ydoc.getMap('blocks');
+  const blockMap = blocksMap.get(block.id);
+  const ytext = blockMap.get('content');
+
+  console.log('Creating Quill editor...');
+  const editor = new Quill(editorElement, {
+    modules: {
+      cursors: true,
+      toolbar: [
+        ['bold', 'italic', 'underline'],
+        ['clean']
+      ],
+      history: {
+        userOnly: true
+      }
+    },
+    theme: 'snow',
+    placeholder: `Start editing ${block.title}...`
+  });
+
+  // Erstelle die Binding zwischen Yjs und Quill
+  const binding = new QuillBinding(ytext, editor);
+
+  // Speichere die Referenzen
+  editors.value.set(block.id, editor);
+  bindings.value.set(block.id, binding);
+
+  console.log('Editor initialized for block:', block.id);
+};
+
+// Speichere Editor-DOM-Referenzen
+const setEditorRef = (el, blockId) => {
+  if (el) {
+    console.log('Setting editor ref for:', blockId);
+    editorsMap.value.set(blockId, el);
+  }
+};
+
+// Initialisiere Socket-Verbindung
 const initializeSocket = () => {
+  console.log('Initializing socket connection...');
+
   socket = io(import.meta.env.VITE_API_BASE_URL, {
     path: '/collab/socket.io/'
   });
@@ -127,22 +134,9 @@ const initializeSocket = () => {
   });
 
   socket.on('update_document', (update) => {
+    console.log('Received document update');
     Y.applyUpdate(ydoc, new Uint8Array(update));
-    printYDoc(ydoc);
-
-  });
-
-  socket.on('cursor_updated', ({ userId, blockId, range, username: remoteUsername }) => {
-    const editor = editors.value.get(blockId);
-    if (editor && userId !== socket.id) {
-      const cursors = editor.getModule('cursors');
-      if (range) {
-        cursors.createCursor(userId, remoteUsername, getRandomColor());
-        cursors.moveCursor(userId, range);
-      } else {
-        cursors.removeCursor(userId);
-      }
-    }
+    processYDoc();
   });
 
   socket.on('disconnect', () => {
@@ -150,37 +144,46 @@ const initializeSocket = () => {
   });
 };
 
-// Helper function to generate random colors for cursors
-const getRandomColor = () => {
-  return `#${Math.floor(Math.random()*16777215).toString(16)}`;
-};
+// Beobachte Änderungen an den Blöcken
+watch(blocks, async (newBlocks) => {
+  console.log('Blocks changed:', newBlocks);
+  for (const block of newBlocks) {
+    if (!editors.value.has(block.id)) {
+      await initializeEditor(block);
+    }
+  }
+}, {deep: true});
 
-// Lifecycle hooks
-onMounted(() => {
-  // Initialize Yjs document
+onMounted(async () => {
+  console.log('Component mounted');
+
+  // Initialisiere Yjs document
   ydoc = new Y.Doc();
 
-  // Initialize socket connection
+  // Initialisiere Socket
   initializeSocket();
 
-  // Set up Yjs update handling
+  // Setze YDoc-Update-Handler
   ydoc.on('update', (update) => {
+    console.log('Local YDoc update');
     processYDoc();
-    if (socket && socket.connected) {
+    if (socket?.connected) {
       socket.emit('document_update', {
         room: roomId.value,
         update: Array.from(update)
       });
     }
   });
-
-  // Watch for changes in blocks and initialize editors
-  blocks.value.forEach(initializeEditor);
 });
 
 onUnmounted(() => {
-  // Clean up
+  console.log('Component unmounting');
+
+  // Cleanup
   bindings.value.forEach(binding => binding.destroy());
+  editorsMap.value.clear();
+  editors.value.clear();
+  bindings.value.clear();
   socket?.disconnect();
   ydoc?.destroy();
 });
@@ -211,20 +214,26 @@ onUnmounted(() => {
   background: #fff;
 }
 
-/* Quill editor styles */
-:deep(.ql-toolbar) {
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
+/* Debug Info */
+.debug-info {
+  margin-top: 20px;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 4px;
 }
 
+.debug-info pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Quill Styles */
 :deep(.ql-container) {
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
+  font-size: 16px;
 }
 
 :deep(.ql-editor) {
   min-height: 100px;
-  font-size: 16px;
-  line-height: 1.6;
+  padding: 15px;
 }
 </style>

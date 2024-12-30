@@ -106,6 +106,7 @@ function setupSocketHandlers(io) {
       const fullState = Y.encodeStateAsUpdate(doc);
       socket.emit('update_document', fullState);
       console.log(`[+] Sent full document state to ${socket.id}`);
+      printYDoc(doc);//
 
       // 5) Schicke dem neu verbundenen Client auch die aktuellen Cursors & Userliste
       socket.emit('room_state', {
@@ -130,22 +131,33 @@ function setupSocketHandlers(io) {
      *  - Broadcastet an alle anderen Clients im selben Raum
      */
     socket.on('document_update', (data) => {
-      const { room, update } = data;
-      console.log(`[+] Document update in room "${room}" from ${socket.id}`);
+  const { room, update } = data;
+  console.log(`[+] Document update in room "${room}" from ${socket.id}`);
 
-      // 1) Hole/erzeuge den Doc
-      const doc = getOrCreateDoc(room);
+  // Hole das Doc
+  const doc = getOrCreateDoc(room);
 
-      // 2) Anwenden
-      Y.applyUpdate(doc, update);
+  try {
+    // Wichtig: Konvertiere das Array zurück in ein Uint8Array
+    const uint8Update = new Uint8Array(update);
 
-      // 3) Schicke das Update an alle anderen im Raum
-      socket.to(room).emit('document_update', { update });
+    // Wende das Update an
+    Y.applyUpdate(doc, uint8Update);
 
-      // Debug-Ausgabe
-      console.log(`[+] Document update broadcasted in room "${room}"`);
-      printYDoc(doc);
+    // Debug: Zeige den aktuellen Zustand
+    const blocksMap = doc.getMap('blocks');
+    blocksMap.forEach((value, key) => {
+      const content = value.get('content');
+      console.log(`Block ${key} content after update:`, content?.toString());
     });
+
+    // Sende das Update an alle anderen Clients
+    socket.to(room).emit('document_update', { update });
+
+  } catch (error) {
+    console.error('Error applying update:', error);
+  }
+});
 
     /**
      * cursor_update:

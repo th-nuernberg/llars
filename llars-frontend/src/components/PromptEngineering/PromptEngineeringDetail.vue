@@ -69,7 +69,6 @@ const processYDoc = () => {
 const initializeEditor = async (block) => {
   console.log('Initializing editor for block:', block.id);
 
-  // Warte auf das nächste Tick, damit der DOM aktualisiert ist
   await nextTick();
 
   const editorElement = editorsMap.value.get(block.id);
@@ -81,7 +80,18 @@ const initializeEditor = async (block) => {
   // Hole den YText für diesen Block
   const blocksMap = ydoc.getMap('blocks');
   const blockMap = blocksMap.get(block.id);
-  const ytext = blockMap.get('content');
+  if (!blockMap) {
+    console.error('Block map not found:', block.id);
+    return;
+  }
+
+  let ytext = blockMap.get('content');
+
+  // Wichtig: Stelle sicher, dass wir einen gültigen YText haben
+  if (!ytext) {
+    ytext = new Y.Text();
+    blockMap.set('content', ytext);
+  }
 
   console.log('Creating Quill editor...');
   const editor = new Quill(editorElement, {
@@ -102,11 +112,50 @@ const initializeEditor = async (block) => {
   // Erstelle die Binding zwischen Yjs und Quill
   const binding = new QuillBinding(ytext, editor);
 
+  // Füge einen Text-Change Handler hinzu, um sicherzustellen, dass Änderungen erkannt werden
+  editor.on('text-change', (delta, oldDelta, source) => {
+  if (source === 'user') {
+    // Führe die Änderung in einer Transaktion aus
+    ydoc.transact(() => {
+      // Hole die aktuelle YMap und den YText
+      const blocksMap = ydoc.getMap('blocks');
+      const blockMap = blocksMap.get(block.id);
+      const ytext = blockMap.get('content');
+
+      // Aktualisiere den YText explizit
+      ytext.delete(0, ytext.length);
+      ytext.insert(0, editor.getText());
+
+      // Erstelle ein Update
+      const update = Y.encodeStateAsUpdate(ydoc);
+
+      if (socket?.connected) {
+        console.log('Sending update to server...', {
+          blockId: block.id,
+          newContent: editor.getText(),
+          ytextContent: ytext.toString(),
+          updateSize: update.length
+        });
+
+        socket.emit('document_update', {
+          room: roomId.value,
+          update: Array.from(update)
+        });
+      }
+    });
+  }
+});
+
   // Speichere die Referenzen
   editors.value.set(block.id, editor);
   bindings.value.set(block.id, binding);
 
-  console.log('Editor initialized for block:', block.id);
+  // Log den initialen Zustand
+  console.log('Editor initialized:', {
+    blockId: block.id,
+    ytextContent: ytext.toString(),
+    editorContent: editor.getText()
+  });
 };
 
 // Speichere Editor-DOM-Referenzen
@@ -152,7 +201,7 @@ watch(blocks, async (newBlocks) => {
       await initializeEditor(block);
     }
   }
-}, {deep: true});
+}, { deep: true });
 
 onMounted(async () => {
   console.log('Component mounted');
@@ -164,16 +213,37 @@ onMounted(async () => {
   initializeSocket();
 
   // Setze YDoc-Update-Handler
-  ydoc.on('update', (update) => {
-    console.log('Local YDoc update');
-    processYDoc();
-    if (socket?.connected) {
-      socket.emit('document_update', {
-        room: roomId.value,
-        update: Array.from(update)
-      });
-    }
+// Setze YDoc-Update-Handler
+ydoc.on('update', (update, origin, doc) => {
+  console.log('YDoc update detected:', {
+    updateSize: update.length,
+    origin,
+    hasLocalChange: update.transaction?.local
   });
+
+  // Zeige den aktuellen Zustand des YDoc
+  const blocksMap = doc.getMap('blocks');
+  blocksMap.forEach((value, key) => {
+    const content = value.get('content');
+    console.log(`Block ${key} content:`, content?.toString());
+  });
+
+  processYDoc();
+
+  // Sende nur lokale Änderungen an den Server
+  if (update.transaction?.local && socket?.connected) {
+    const fullState = Y.encodeStateAsUpdate(doc);
+    console.log('Sending update to server:', {
+      updateSize: fullState.length,
+      currentState: doc.getMap('blocks').toJSON()
+    });
+
+    socket.emit('document_update', {
+      room: roomId.value,
+      update: Array.from(fullState)
+    });
+  }
+});
 });
 
 onUnmounted(() => {

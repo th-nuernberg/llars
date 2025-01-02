@@ -1,5 +1,4 @@
-// yjs-server/testDB.js (Beispieldatei zum Testen)
-// yjs-server/testDB.js (Beispieldatei zum Testen)
+// db/testDB.js (Beispieldatei zum Testen)
 const pool = require('./db');
 
 async function testDBConnection() {

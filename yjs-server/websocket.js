@@ -112,7 +112,7 @@ function setupSocketHandlers(io) {
     socket.on('sync_update', (data) => {
       const { room, update } = data;
       const doc = getOrCreateDoc(room);
-      
+      printYDoc(doc);
       try {
         const uint8Update = new Uint8Array(update);
         Y.applyUpdate(doc, uint8Update);

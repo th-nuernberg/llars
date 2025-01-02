@@ -130,6 +130,11 @@ services:
       - TZ=Europe/Berlin
       - BASE_URL=${VITE_API_BASE_URL}
       - PORT=8082
+      - MYSQL_HOST=db-maria-service
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
     develop:
       watch:
         - action: sync

@@ -3,7 +3,7 @@ const Y = require('yjs');
 const { logRoomsAndUsers, printYDoc } = require('./utils');
 
 /**
- * Yjs-Dokumente für jede Room-Id (ähnlich wie in deinem Beispiel).
+ * Yjs-Dokumente für jede Room-Id
  * Map: roomName -> Y.Doc
  */
 const ydocs = new Map();
@@ -21,13 +21,12 @@ const rooms = {};
 /**
  * getOrCreateDoc(roomName):
  * Erstellt ein neues Y.Doc, falls noch nicht vorhanden.
- * Initialisiert beispielhafte Blöcke, damit wir Startwerte haben.
+ * Initialisiert beispielhafte Blöcke mit Startwerten.
  */
 function getOrCreateDoc(roomName) {
   if (!ydocs.has(roomName)) {
     const doc = new Y.Doc();
 
-    // Beispiel-Inhalt, so wie in deinem Code
     doc.transact(() => {
       const blocksMap = doc.getMap('blocks');
 
@@ -86,38 +85,38 @@ function setupSocketHandlers(io) {
      *  - User tritt einem bestimmten Raum bei
      *  - Wir holen/erstellen den Y.Doc
      *  - Wir speichern den User in rooms[room].users
-     *  - Wir schicken dem neuen User den aktuellen Yjs-Stand
+     *  - Wir schicken dem neuen User den aktuellen Yjs-Stand (snapshot_document)
      */
     socket.on('join_room', (data) => {
       const { username, room } = data;
       console.log(`User "${username}" joined room "${room}"`);
 
-      // 1) Raum (im Sinne von socket.io) beitreten
+      // 1) Socket.io-Raum beitreten
       socket.join(room);
 
-      // 2) Hole den Y.Doc für diesen Raum
+      // 2) Yjs-Dokument holen
       const doc = getOrCreateDoc(room);
 
-      // 3) Update unsere Room-Verwaltung (users)
+      // 3) Update unserer Room-Verwaltung
       const roomObj = getOrCreateRoom(room);
       roomObj.users[socket.id] = username;
 
-      // 4) Schicke dem neu verbundenen Client den aktuellen Doc-State
+      // 4) Sende den vollständigen State an den neu verbundenen Client
       const fullState = Y.encodeStateAsUpdate(doc);
-      socket.emit('update_document', fullState);
+      socket.emit('snapshot_document', fullState);
       console.log(`[+] Sent full document state to ${socket.id}`);
-      printYDoc(doc);//
+      printYDoc(doc);
 
-      // 5) Schicke dem neu verbundenen Client auch die aktuellen Cursors & Userliste
+      // 5) Schicke dem neuen Client auch die aktuellen Cursors & Userliste
       socket.emit('room_state', {
         users: roomObj.users,
         cursors: roomObj.cursors
       });
 
-      // Optional: Informiere andere im Raum, dass jemand neu reingekommen ist
+      // Optional: andere im Raum informieren
       socket.to(room).emit('user_joined', {
         userId: socket.id,
-        username: username
+        username
       });
 
       // Logge Räume und Benutzer
@@ -125,50 +124,46 @@ function setupSocketHandlers(io) {
     });
 
     /**
-     * document_update:
+     * sync_update:
      *  - Empfängt ein Y-Update (Uint8Array) vom Client
      *  - Wendet das Update an unserem Doc an
      *  - Broadcastet an alle anderen Clients im selben Raum
      */
-    socket.on('document_update', (data) => {
-  const { room, update } = data;
-  console.log(`[+] Document update in room "${room}" from ${socket.id}`);
+    socket.on('sync_update', (data) => {
+      const { room, update } = data;
+      console.log(`[+] sync_update in room "${room}" from ${socket.id}`);
 
-  // Hole das Doc
-  const doc = getOrCreateDoc(room);
+      const doc = getOrCreateDoc(room);
+      try {
+        // Array zurück in ein Uint8Array
+        const uint8Update = new Uint8Array(update);
 
-  try {
-    // Wichtig: Konvertiere das Array zurück in ein Uint8Array
-    const uint8Update = new Uint8Array(update);
+        // Update anwenden
+        Y.applyUpdate(doc, uint8Update);
 
-    // Wende das Update an
-    Y.applyUpdate(doc, uint8Update);
+        // Debug: Aktuellen Zustand im Server-Log zeigen
+        const blocksMap = doc.getMap('blocks');
+        blocksMap.forEach((value, key) => {
+          const content = value.get('content');
+          console.log(`Block ${key} content after update:`, content?.toString());
+        });
 
-    // Debug: Zeige den aktuellen Zustand
-    const blocksMap = doc.getMap('blocks');
-    blocksMap.forEach((value, key) => {
-      const content = value.get('content');
-      console.log(`Block ${key} content after update:`, content?.toString());
+        // Sende das Update an alle anderen im Raum
+        socket.to(room).emit('sync_update', { update });
+      } catch (error) {
+        console.error('Error applying update:', error);
+      }
     });
-
-    // Sende das Update an alle anderen Clients
-    socket.to(room).emit('document_update', { update });
-
-  } catch (error) {
-    console.error('Error applying update:', error);
-  }
-});
 
     /**
      * cursor_update:
-     *  - Aktualisiert die Cursor-Position des Users in 'rooms[room].cursors[socket.id]'
+     *  - Aktualisiert die Cursor-Position des Users
      *  - Broadcastet die neuen Cursor-Daten an alle im Raum
      */
     socket.on('cursor_update', (data) => {
       const { room, block_id, position } = data;
       const roomObj = getOrCreateRoom(room);
 
-      // Speichere Cursor
       const username = roomObj.users[socket.id] || 'Unknown';
       roomObj.cursors[socket.id] = {
         block_id,
@@ -176,21 +171,15 @@ function setupSocketHandlers(io) {
         username
       };
 
-      // An alle anderen im Raum senden (inkl. dem, der es geschickt hat,
-      // falls du in der UI zeigen willst, wo der eigene Cursor ist –
-      // aber meistens macht man `to(room).emit(...)` exklusiv ohne self).
       io.in(room).emit('cursor_updated', { cursors: roomObj.cursors });
     });
 
     /**
      * request_room_state:
-     *  - Falls ein Client irgendwann nochmal den kompletten Zustand abrufen möchte
-     *    (User-Liste, Cursor-Liste, etc.).
+     *  - Schickt dem anfragenden Client nochmals die User- und Cursor-Liste
      */
     socket.on('request_room_state', (room) => {
       const roomObj = getOrCreateRoom(room);
-
-      // Schicke den kompletten Room-Zustand (Users, Cursors)
       socket.emit('room_state', {
         users: roomObj.users,
         cursors: roomObj.cursors
@@ -199,22 +188,20 @@ function setupSocketHandlers(io) {
 
     /**
      * leave_room:
-     *  - Benutzer verlässt den Raum (auf eigenen Wunsch)
+     *  - Benutzer verlässt den Raum
      */
     socket.on('leave_room', (room) => {
       socket.leave(room);
       const roomObj = rooms[room];
       if (roomObj) {
-        // User aus dem Raum-Objekt entfernen
         delete roomObj.users[socket.id];
         delete roomObj.cursors[socket.id];
 
-        // Den anderen Bescheid geben
         io.in(room).emit('user_left', {
           userId: socket.id
         });
 
-        // Wenn keine User mehr im Raum, könnte man den Raum aus 'rooms' und 'ydocs' entfernen
+        // Falls Raum leer, löschen
         if (Object.keys(roomObj.users).length === 0) {
           delete rooms[room];
           ydocs.delete(room);
@@ -226,24 +213,21 @@ function setupSocketHandlers(io) {
     /**
      * disconnect:
      *  - Wird aufgerufen, wenn ein Client seine Verbindung kappt.
-     *    Dann entfernen wir ihn aus allen Räumen, in denen er ist.
      */
     socket.on('disconnect', () => {
       console.log(`[-] Client disconnected: ${socket.id}`);
 
-      // Gehe alle Rooms durch und entferne den Nutzer daraus
+      // Entferne den Nutzer aus allen Räumen, in denen er war
       for (const [roomName, roomObj] of Object.entries(rooms)) {
         if (roomObj.users[socket.id]) {
-          // 1) User entfernen
           delete roomObj.users[socket.id];
           delete roomObj.cursors[socket.id];
 
-          // 2) Broadcasten, dass er weg ist
           io.in(roomName).emit('user_left', {
             userId: socket.id
           });
 
-          // 3) Falls Raum jetzt leer, räumen wir auf
+          // Falls Raum leer
           if (Object.keys(roomObj.users).length === 0) {
             delete rooms[roomName];
             ydocs.delete(roomName);
@@ -251,12 +235,9 @@ function setupSocketHandlers(io) {
         }
       }
 
-      // Nochmal: Logge Räume und Benutzer
       logRoomsAndUsers(io);
     });
   });
 }
 
 module.exports = setupSocketHandlers;
-
-

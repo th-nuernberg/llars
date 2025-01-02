@@ -1,3 +1,4 @@
+<!-- PromptEnginnering.vue -->
 <template>
   <div class="editor-container">
     <div v-for="block in sortedBlocks" :key="block.id" class="editor-block">
@@ -86,8 +87,6 @@ const initializeEditor = async (block) => {
   }
 
   let ytext = blockMap.get('content');
-
-  // Wichtig: Stelle sicher, dass wir einen gültigen YText haben
   if (!ytext) {
     ytext = new Y.Text();
     blockMap.set('content', ytext);
@@ -112,45 +111,42 @@ const initializeEditor = async (block) => {
   // Erstelle die Binding zwischen Yjs und Quill
   const binding = new QuillBinding(ytext, editor);
 
-  // Füge einen Text-Change Handler hinzu, um sicherzustellen, dass Änderungen erkannt werden
+  // Text-Change Handler, um sicherzustellen, dass Änderungen erkannt werden
   editor.on('text-change', (delta, oldDelta, source) => {
-  if (source === 'user') {
-    // Führe die Änderung in einer Transaktion aus
-    ydoc.transact(() => {
-      // Hole die aktuelle YMap und den YText
-      const blocksMap = ydoc.getMap('blocks');
-      const blockMap = blocksMap.get(block.id);
-      const ytext = blockMap.get('content');
+    if (source === 'user') {
+      // Führe die Änderung in einer Transaktion aus
+      ydoc.transact(() => {
+        // Hole das YText-Objekt für den aktuellen Block
+        const blocksMap = ydoc.getMap('blocks');
+        const blockMap = blocksMap.get(block.id);
+        const ytext = blockMap.get('content');
 
-      // Aktualisiere den YText explizit
-      ytext.delete(0, ytext.length);
-      ytext.insert(0, editor.getText());
+        // Setze den gesamten Text neu (Beispielhaft)
+        ytext.delete(0, ytext.length);
+        ytext.insert(0, editor.getText());
 
-      // Erstelle ein Update
-      const update = Y.encodeStateAsUpdate(ydoc);
+        // Erstelle ein Update und schicke es an den Server
+        const update = Y.encodeStateAsUpdate(ydoc);
+        if (socket?.connected) {
+          console.log('Sending sync_update to server...', {
+            blockId: block.id,
+            newContent: editor.getText(),
+            updateSize: update.length
+          });
 
-      if (socket?.connected) {
-        console.log('Sending update to server...', {
-          blockId: block.id,
-          newContent: editor.getText(),
-          ytextContent: ytext.toString(),
-          updateSize: update.length
-        });
+          socket.emit('sync_update', {
+            room: roomId.value,
+            update: Array.from(update)
+          });
+        }
+      });
+    }
+  });
 
-        socket.emit('document_update', {
-          room: roomId.value,
-          update: Array.from(update)
-        });
-      }
-    });
-  }
-});
-
-  // Speichere die Referenzen
+  // Speichere Referenzen
   editors.value.set(block.id, editor);
   bindings.value.set(block.id, binding);
 
-  // Log den initialen Zustand
   console.log('Editor initialized:', {
     blockId: block.id,
     ytextContent: ytext.toString(),
@@ -182,8 +178,16 @@ const initializeSocket = () => {
     });
   });
 
-  socket.on('update_document', (update) => {
-    console.log('Received document update');
+  // Event A: snapshot_document -> Erhalte den kompletten State vom Server
+  socket.on('snapshot_document', (fullUpdate) => {
+    console.log('Received snapshot_document');
+    Y.applyUpdate(ydoc, new Uint8Array(fullUpdate));
+    processYDoc();
+  });
+
+  // Event B: sync_update -> Erhalte ein Delta/Update von anderen Clients
+  socket.on('sync_update', ({ update }) => {
+    console.log('Received sync_update (delta)');
     Y.applyUpdate(ydoc, new Uint8Array(update));
     processYDoc();
   });
@@ -194,63 +198,55 @@ const initializeSocket = () => {
 };
 
 // Beobachte Änderungen an den Blöcken
-watch(blocks, async (newBlocks) => {
-  console.log('Blocks changed:', newBlocks);
-  for (const block of newBlocks) {
-    if (!editors.value.has(block.id)) {
-      await initializeEditor(block);
+watch(
+  blocks,
+  async (newBlocks) => {
+    console.log('Blocks changed:', newBlocks);
+    for (const block of newBlocks) {
+      if (!editors.value.has(block.id)) {
+        await initializeEditor(block);
+      }
     }
-  }
-}, { deep: true });
+  },
+  { deep: true }
+);
 
 onMounted(async () => {
   console.log('Component mounted');
 
-  // Initialisiere Yjs document
+  // Initialisiere Yjs-Dokument
   ydoc = new Y.Doc();
 
   // Initialisiere Socket
   initializeSocket();
 
-  // Setze YDoc-Update-Handler
-// Setze YDoc-Update-Handler
-ydoc.on('update', (update, origin, doc) => {
-  console.log('YDoc update detected:', {
-    updateSize: update.length,
-    origin,
-    hasLocalChange: update.transaction?.local
-  });
-
-  // Zeige den aktuellen Zustand des YDoc
-  const blocksMap = doc.getMap('blocks');
-  blocksMap.forEach((value, key) => {
-    const content = value.get('content');
-    console.log(`Block ${key} content:`, content?.toString());
-  });
-
-  processYDoc();
-
-  // Sende nur lokale Änderungen an den Server
-  if (update.transaction?.local && socket?.connected) {
-    const fullState = Y.encodeStateAsUpdate(doc);
-    console.log('Sending update to server:', {
-      updateSize: fullState.length,
-      currentState: doc.getMap('blocks').toJSON()
+  // Wenn das YDoc lokale Änderungen erfährt, schicke inkrementelle Updates
+  ydoc.on('update', (update, origin, doc) => {
+    // Debug
+    console.log('YDoc update detected:', {
+      updateSize: update.length,
+      origin,
+      isLocal: update.transaction?.local
     });
 
-    socket.emit('document_update', {
-      room: roomId.value,
-      update: Array.from(fullState)
-    });
-  }
-});
+    // Aktualisiere lokale Blocks
+    processYDoc();
+
+    // Nur bei lokalen Änderungen an den Server schicken (zweiter Sicherheitsmechanismus)
+    if (update.transaction?.local && socket?.connected) {
+      const fullState = Y.encodeStateAsUpdate(doc);
+      socket.emit('sync_update', {
+        room: roomId.value,
+        update: Array.from(fullState)
+      });
+    }
+  });
 });
 
 onUnmounted(() => {
   console.log('Component unmounting');
-
   // Cleanup
-  bindings.value.forEach(binding => binding.destroy());
+  bindings.value.forEach((binding) => binding.destroy());
   editorsMap.value.clear();
   editors.value.clear();
   bindings.value.clear();

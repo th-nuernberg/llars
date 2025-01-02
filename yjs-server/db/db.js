@@ -1,4 +1,4 @@
-// yjs-server/db.js
+// db/db.js
 const mysql = require('mysql2/promise');
 
 // Hole die Werte aus den Umgebungsvariablen

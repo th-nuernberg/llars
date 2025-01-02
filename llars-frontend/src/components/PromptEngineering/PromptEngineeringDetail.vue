@@ -1,6 +1,33 @@
 <!-- PromptEngineering.vue -->
 <template>
   <div class="editor-container">
+    <!-- Button zum Öffnen des "Add Block"-Dialogs -->
+    <button @click="showAddBlockDialog = true" class="add-block-button">
+      Neuen Block hinzufügen
+    </button>
+
+    <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
+    <div v-if="showAddBlockDialog" class="dialog-overlay">
+      <div class="dialog-box">
+        <h3>Neuen Block erstellen</h3>
+        <input
+          v-model="newBlockName"
+          @keyup.enter="createBlock"
+          type="text"
+          placeholder="Blockname"
+          class="block-input"
+        />
+        <div class="dialog-buttons">
+          <button @click="createBlock">Erstellen</button>
+          <button @click="closeAddBlockDialog">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snackbar -->
+    <div v-if="showSnackbar" class="snackbar">
+      {{ snackbarMessage }}
+    </div>
     <div class="users-list">
       <h3>Online Users:</h3>
       <div v-for="(user, id) in users" :key="id" class="user-item">
@@ -30,8 +57,9 @@ import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import { io } from 'socket.io-client';
 import 'quill/dist/quill.snow.css';
+import printYDoc from "@/components/PromptEngineering/utils";
 
-// Register QuillCursors
+// QuillCursors-Registrierung
 Quill.register('modules/cursors', QuillCursors);
 
 const route = useRoute();
@@ -47,9 +75,81 @@ const bindings = ref(new Map());
 const cursorsModules = ref(new Map());
 const users = ref({});
 
-// Yjs document and socket
 let ydoc = null;
 let socket = null;
+
+// Fürs Hinzufügen neuer Blöcke
+const showAddBlockDialog = ref(false);
+const newBlockName = ref('');
+
+// Snackbar
+const showSnackbar = ref(false);
+const snackbarMessage = ref('');
+
+// Methode zum Schließen von Dialog und Löschen des Eingabefelds
+const closeAddBlockDialog = () => {
+  showAddBlockDialog.value = false;
+  newBlockName.value = '';
+};
+
+// Methode zum Erstellen eines neuen Blocks
+const createBlock = () => {
+  const blockName = newBlockName.value.trim();
+  if (!blockName) return; // Leere Eingabe ignorieren
+
+  if (!ydoc) return;
+
+  ydoc.transact(() => {
+    const blocksMap = ydoc.getMap('blocks');
+
+    // Falls der Name schon existiert, könnte man einen Hinweis anzeigen
+    // oder automatisch etwas anhängen, damit es eindeutig wird.
+    if (blocksMap.has(blockName)) {
+      showSnackbar.value = true;
+      snackbarMessage.value = `Block "${blockName}" existiert bereits!`;
+      return;
+    }
+
+    // Position herausfinden (höchste vorhandene + 1)
+    let maxPosition = 0;
+    blocksMap.forEach((blockMap) => {
+      const pos = blockMap.get('position');
+      if (pos > maxPosition) {
+        maxPosition = pos;
+      }
+    });
+
+    // Neuen Block anlegen
+    const newBlockMap = new Y.Map();
+    newBlockMap.set('title', blockName);
+    newBlockMap.set('position', maxPosition + 1);
+
+    // Leerer Y.Text
+    const ytext = new Y.Text();
+    newBlockMap.set('content', ytext);
+    console.log("Erstelle neuen Block");
+
+    // In blocksMap einfügen
+    blocksMap.set(blockName, newBlockMap);
+  });
+  printYDoc(ydoc);
+
+  // Snackbar anzeigen
+  snackbarMessage.value = `Block "${blockName}" wurde hinzugefügt!`;
+  showSnackbar.value = true;
+
+  // Dialog schließen
+  closeAddBlockDialog();
+};
+
+// Snackbar nach 3 Sek. ausblenden
+watch(showSnackbar, (val) => {
+  if (val) {
+    setTimeout(() => {
+      showSnackbar.value = false;
+    }, 3000);
+  }
+});
 
 // Debounce Funktion für Cursor Updates
 const debounce = (fn, delay) => {
@@ -438,4 +538,64 @@ onUnmounted(() => {
   pointer-events: none;
   opacity: 0.3;
 }
+.add-block-button {
+  margin-bottom: 20px;
+  padding: 8px 12px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.dialog-box {
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+  min-width: 300px;
+}
+
+.block-input {
+  width: 100%;
+  margin: 10px 0;
+  padding: 8px;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.snackbar {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #323232;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  animation: fadein 0.5s;
+  z-index: 999;
+}
+
+@keyframes fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 </style>

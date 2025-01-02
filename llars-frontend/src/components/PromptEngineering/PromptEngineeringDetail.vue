@@ -94,14 +94,23 @@ const handleSelectionChange = (blockId) => {
         } : null
       });
     }
-  }, 50); // 50ms Debounce
+  }, 50);
+
 
   return (range, oldRange, source) => {
     if (source === 'user') {
+      if (!range) {
+        // Entferne Cursor, wenn der Benutzer keinen Bereich mehr ausgewählt hat
+        const cursorsModule = cursorsModules.value.get(blockId);
+        if (cursorsModule) {
+          cursorsModule.removeCursor(socket.id); // Eigenen Cursor entfernen
+        }
+      }
       debouncedEmit(range);
     }
   };
 };
+
 
 // Initialisiere einen Editor für einen Block
 const initializeEditor = async (block) => {
@@ -192,23 +201,44 @@ const setEditorRef = (el, blockId) => {
 
 // Verbesserte Cursor-Aktualisierung mit korrekter Positionsberechnung
 const updateCursor = (userId, cursor) => {
+  // 1) Wenn cursor === null, entfernen wir den Cursor in allen Blöcken
+  if (!cursor) {
+    // Dieser Nutzer hat gar keinen Cursor mehr
+    cursorsModules.value.forEach((cursorsModule) => {
+      cursorsModule.removeCursor(userId);
+    });
+    return; // direkt abbrechen
+  }
+
+  // 2) Wenn range === null, nur den Cursor in dem spezifischen Block entfernen
   const { blockId, range, username, color } = cursor;
   const cursorsModule = cursorsModules.value.get(blockId);
   const editor = editors.value.get(blockId);
 
-  if (cursorsModule && editor && range) {
-    // Stelle sicher, dass der Cursor existiert
+  if (!range) {
+    // Null-Range => Cursor entfernen
+    if (cursorsModule) {
+      cursorsModule.removeCursor(userId);
+    }
+    return; // abbrechen
+  }
+
+  // 3) Falls es eine gültige Range gibt => Cursor aktualisieren
+  if (cursorsModule && editor) {
+    // Cursor ggf. neu anlegen
     if (!cursorsModule.cursors().find(c => c.id === userId)) {
       cursorsModule.createCursor(userId, username, color);
     }
 
-    // Aktualisiere die Position mit korrekter Range-Transformation
-    const transformedRange = editor.getLength() < range.index ?
-      { index: editor.getLength(), length: 0 } : range;
+    // Range transformieren (falls index zu groß ist)
+    const transformedRange = editor.getLength() < range.index
+      ? { index: editor.getLength(), length: 0 }
+      : range;
 
     cursorsModule.moveCursor(userId, transformedRange);
   }
 };
+
 
 // Socket Initialisierung mit verbessertem Cursor-Handling
 const initializeSocket = () => {
@@ -254,9 +284,10 @@ const initializeSocket = () => {
   socket.on('user_left', ({ userId }) => {
     delete users.value[userId];
     cursorsModules.value.forEach(cursorsModule => {
-      cursorsModule.removeCursor(userId);
+      cursorsModule.removeCursor(userId); // Entferne Cursor des Benutzers
     });
   });
+
 
   socket.on('cursor_updated', ({ userId, cursor }) => {
     nextTick(() => updateCursor(userId, cursor));

@@ -1,11 +1,19 @@
-<!-- PromptEnginnering.vue -->
+<!-- PromptEngineering.vue -->
 <template>
   <div class="editor-container">
+    <div class="users-list">
+      <h3>Online Users:</h3>
+      <div v-for="(user, id) in users" :key="id" class="user-item">
+        <span class="user-dot" :style="{ backgroundColor: user.color }"></span>
+        {{ user.username }}
+      </div>
+    </div>
+
     <div v-for="block in sortedBlocks" :key="block.id" class="editor-block">
       <h3>{{ block.title }}</h3>
       <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
     </div>
-    <!-- Debug-Ausgabe -->
+        <!-- Debug-Ausgabe -->
     <div class="debug-info">
       <h4>Debug Information:</h4>
       <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
@@ -36,24 +44,32 @@ const blocks = ref([]);
 const editorsMap = ref(new Map());
 const editors = ref(new Map());
 const bindings = ref(new Map());
+const cursorsModules = ref(new Map());
+const users = ref({});
 
 // Yjs document and socket
 let ydoc = null;
 let socket = null;
+
+// Debounce Funktion für Cursor Updates
+const debounce = (fn, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
 
 // Sortiere Blöcke nach Position
 const sortedBlocks = computed(() => {
   return [...blocks.value].sort((a, b) => a.position - b.position);
 });
 
-// Verarbeite das YDoc und extrahiere die Blöcke
 const processYDoc = () => {
-  console.log('Processing YDoc...');
   const blocksMap = ydoc.getMap('blocks');
   const newBlocks = [];
 
   blocksMap.forEach((value, key) => {
-    console.log('Processing block:', key);
     newBlocks.push({
       id: key,
       title: value.get('title'),
@@ -62,23 +78,40 @@ const processYDoc = () => {
     });
   });
 
-  console.log('Processed blocks:', newBlocks);
   blocks.value = newBlocks;
+};
+
+// Handler für Cursor-Bewegungen mit verbesserter Positionsberechnung
+const handleSelectionChange = (blockId) => {
+  const debouncedEmit = debounce((range) => {
+    if (socket?.connected) {
+      socket.emit('cursor_update', {
+        room: roomId.value,
+        blockId,
+        range: range ? {
+          index: range.index,
+          length: range.length
+        } : null
+      });
+    }
+  }, 50); // 50ms Debounce
+
+  return (range, oldRange, source) => {
+    if (source === 'user') {
+      debouncedEmit(range);
+    }
+  };
 };
 
 // Initialisiere einen Editor für einen Block
 const initializeEditor = async (block) => {
-  console.log('Initializing editor for block:', block.id);
-
   await nextTick();
 
   const editorElement = editorsMap.value.get(block.id);
   if (!editorElement || editors.value.has(block.id)) {
-    console.log('Editor already exists or element not found');
     return;
   }
 
-  // Hole den YText für diesen Block
   const blocksMap = ydoc.getMap('blocks');
   const blockMap = blocksMap.get(block.id);
   if (!blockMap) {
@@ -92,10 +125,15 @@ const initializeEditor = async (block) => {
     blockMap.set('content', ytext);
   }
 
-  console.log('Creating Quill editor...');
+  // Quill Editor mit angepassten Cursor-Einstellungen
   const editor = new Quill(editorElement, {
     modules: {
-      cursors: true,
+      cursors: {
+        transformOnTextChange: true,
+        hideDelayMs: 5000,
+        hideSpeedMs: 500,
+        selectionChangeSource: 'api'  // Wichtig für korrekte Cursor-Synchronisation
+      },
       toolbar: [
         ['bold', 'italic', 'underline'],
         ['clean']
@@ -108,32 +146,31 @@ const initializeEditor = async (block) => {
     placeholder: `Start editing ${block.title}...`
   });
 
-  // Erstelle die Binding zwischen Yjs und Quill
-  const binding = new QuillBinding(ytext, editor);
+  // Speichere Referenz zum Cursors Module
+  const cursorsModule = editor.getModule('cursors');
+  cursorsModules.value.set(block.id, cursorsModule);
 
-  // Text-Change Handler, um sicherzustellen, dass Änderungen erkannt werden
+  // Binding zwischen Yjs und Quill mit korrekter Cursor-Transformation
+  const binding = new QuillBinding(ytext, editor, null, {
+    preserveCursor: true  // Wichtig für korrekte Cursor-Position bei Updates
+  });
+
+  // Selection Change Handler für Cursor Updates
+  editor.on('selection-change', handleSelectionChange(block.id));
+
+  // Text Change Handler mit verbesserter Synchronisation
   editor.on('text-change', (delta, oldDelta, source) => {
     if (source === 'user') {
-      // Führe die Änderung in einer Transaktion aus
       ydoc.transact(() => {
-        // Hole das YText-Objekt für den aktuellen Block
         const blocksMap = ydoc.getMap('blocks');
         const blockMap = blocksMap.get(block.id);
         const ytext = blockMap.get('content');
 
-        // Setze den gesamten Text neu (Beispielhaft)
-        ytext.delete(0, ytext.length);
-        ytext.insert(0, editor.getText());
+        // Wende Delta direkt an statt Text neu zu setzen
+        ytext.applyDelta(delta);
 
-        // Erstelle ein Update und schicke es an den Server
         const update = Y.encodeStateAsUpdate(ydoc);
         if (socket?.connected) {
-          console.log('Sending sync_update to server...', {
-            blockId: block.id,
-            newContent: editor.getText(),
-            updateSize: update.length
-          });
-
           socket.emit('sync_update', {
             room: roomId.value,
             update: Array.from(update)
@@ -143,31 +180,43 @@ const initializeEditor = async (block) => {
     }
   });
 
-  // Speichere Referenzen
   editors.value.set(block.id, editor);
   bindings.value.set(block.id, binding);
-
-  console.log('Editor initialized:', {
-    blockId: block.id,
-    ytextContent: ytext.toString(),
-    editorContent: editor.getText()
-  });
 };
 
-// Speichere Editor-DOM-Referenzen
 const setEditorRef = (el, blockId) => {
   if (el) {
-    console.log('Setting editor ref for:', blockId);
     editorsMap.value.set(blockId, el);
   }
 };
 
-// Initialisiere Socket-Verbindung
-const initializeSocket = () => {
-  console.log('Initializing socket connection...');
+// Verbesserte Cursor-Aktualisierung mit korrekter Positionsberechnung
+const updateCursor = (userId, cursor) => {
+  const { blockId, range, username, color } = cursor;
+  const cursorsModule = cursorsModules.value.get(blockId);
+  const editor = editors.value.get(blockId);
 
+  if (cursorsModule && editor && range) {
+    // Stelle sicher, dass der Cursor existiert
+    if (!cursorsModule.cursors().find(c => c.id === userId)) {
+      cursorsModule.createCursor(userId, username, color);
+    }
+
+    // Aktualisiere die Position mit korrekter Range-Transformation
+    const transformedRange = editor.getLength() < range.index ?
+      { index: editor.getLength(), length: 0 } : range;
+
+    cursorsModule.moveCursor(userId, transformedRange);
+  }
+};
+
+// Socket Initialisierung mit verbessertem Cursor-Handling
+const initializeSocket = () => {
   socket = io(import.meta.env.VITE_API_BASE_URL, {
-    path: '/collab/socket.io/'
+    path: '/collab/socket.io/',
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000
   });
 
   socket.on('connect', () => {
@@ -178,18 +227,39 @@ const initializeSocket = () => {
     });
   });
 
-  // Event A: snapshot_document -> Erhalte den kompletten State vom Server
   socket.on('snapshot_document', (fullUpdate) => {
-    console.log('Received snapshot_document');
     Y.applyUpdate(ydoc, new Uint8Array(fullUpdate));
     processYDoc();
   });
 
-  // Event B: sync_update -> Erhalte ein Delta/Update von anderen Clients
   socket.on('sync_update', ({ update }) => {
-    console.log('Received sync_update (delta)');
     Y.applyUpdate(ydoc, new Uint8Array(update));
     processYDoc();
+  });
+
+  socket.on('room_state', (state) => {
+    users.value = state.users;
+    // Aktualisiere alle Cursors mit Verzögerung
+    nextTick(() => {
+      Object.entries(state.cursors).forEach(([userId, cursor]) => {
+        updateCursor(userId, cursor);
+      });
+    });
+  });
+
+  socket.on('user_joined', ({ userId, username, color }) => {
+    users.value[userId] = { username, color };
+  });
+
+  socket.on('user_left', ({ userId }) => {
+    delete users.value[userId];
+    cursorsModules.value.forEach(cursorsModule => {
+      cursorsModule.removeCursor(userId);
+    });
+  });
+
+  socket.on('cursor_updated', ({ userId, cursor }) => {
+    nextTick(() => updateCursor(userId, cursor));
   });
 
   socket.on('disconnect', () => {
@@ -197,11 +267,10 @@ const initializeSocket = () => {
   });
 };
 
-// Beobachte Änderungen an den Blöcken
+// Watch und Lifecycle Hooks
 watch(
   blocks,
   async (newBlocks) => {
-    console.log('Blocks changed:', newBlocks);
     for (const block of newBlocks) {
       if (!editors.value.has(block.id)) {
         await initializeEditor(block);
@@ -212,29 +281,14 @@ watch(
 );
 
 onMounted(async () => {
-  console.log('Component mounted');
-
-  // Initialisiere Yjs-Dokument
   ydoc = new Y.Doc();
-
-  // Initialisiere Socket
   initializeSocket();
 
-  // Wenn das YDoc lokale Änderungen erfährt, schicke inkrementelle Updates
-  ydoc.on('update', (update, origin, doc) => {
-    // Debug
-    console.log('YDoc update detected:', {
-      updateSize: update.length,
-      origin,
-      isLocal: update.transaction?.local
-    });
-
-    // Aktualisiere lokale Blocks
+  ydoc.on('update', (update) => {
     processYDoc();
 
-    // Nur bei lokalen Änderungen an den Server schicken (zweiter Sicherheitsmechanismus)
     if (update.transaction?.local && socket?.connected) {
-      const fullState = Y.encodeStateAsUpdate(doc);
+      const fullState = Y.encodeStateAsUpdate(ydoc);
       socket.emit('sync_update', {
         room: roomId.value,
         update: Array.from(fullState)
@@ -244,12 +298,11 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  console.log('Component unmounting');
-  // Cleanup
-  bindings.value.forEach((binding) => binding.destroy());
+  bindings.value.forEach(binding => binding.destroy());
   editorsMap.value.clear();
   editors.value.clear();
   bindings.value.clear();
+  cursorsModules.value.clear();
   socket?.disconnect();
   ydoc?.destroy();
 });
@@ -260,6 +313,26 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+}
+
+.users-list {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+}
+
+.user-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
 }
 
 .editor-block {
@@ -273,14 +346,6 @@ onUnmounted(() => {
   color: #333;
 }
 
-.editor {
-  min-height: 150px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
-}
-
-/* Debug Info */
 .debug-info {
   margin-top: 20px;
   padding: 10px;
@@ -293,7 +358,14 @@ onUnmounted(() => {
   word-wrap: break-word;
 }
 
-/* Quill Styles */
+
+.editor {
+  min-height: 150px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+}
+
 :deep(.ql-container) {
   font-size: 16px;
 }
@@ -301,5 +373,38 @@ onUnmounted(() => {
 :deep(.ql-editor) {
   min-height: 100px;
   padding: 15px;
+}
+
+:deep(.ql-cursor) {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+:deep(.ql-cursor-flag) {
+  display: inline-flex;
+  align-items: center;
+  position: absolute;
+  padding: 3px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: white;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  z-index: 1;
+}
+
+:deep(.ql-cursor-caret) {
+  position: absolute;
+  margin-top: -1px;
+  width: 2px;
+}
+
+:deep(.ql-cursor-selection) {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.3;
 }
 </style>

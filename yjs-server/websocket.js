@@ -1,3 +1,4 @@
+// websocket.js
 const Y = require('yjs');
 const { logRoomsAndUsers, printYDoc } = require('./utils');
 
@@ -122,25 +123,38 @@ function setupSocketHandlers(io) {
     });
     
     socket.on('cursor_update', (data) => {
-      const { room, blockId, range } = data;
-      const roomObj = getOrCreateRoom(room);
-      const user = roomObj.users[socket.id];
-      
-      if (user) {
-        roomObj.cursors[socket.id] = {
-          blockId,
-          range,
-          username: user.username,
-          color: user.color
-        };
-        
-        // Broadcast nur an andere Clients im Raum
-        socket.to(room).emit('cursor_updated', {
-          userId: socket.id,
-          cursor: roomObj.cursors[socket.id]
-        });
-      }
-    });
+  const { room, blockId, range } = data;
+  const roomObj = getOrCreateRoom(room);
+  const user = roomObj.users[socket.id];
+
+  if (user) {
+    if (range === null) {
+      // 1) Entferne den Cursor-Eintrag auf dem Server
+      delete roomObj.cursors[socket.id];
+
+      // 2) Broadcaste an andere Clients, dass dieser User keinen Cursor mehr hat
+      socket.to(room).emit('cursor_updated', {
+        userId: socket.id,
+        cursor: null   // <-- Wichtig: cursor=null signalisiert Entfernung
+      });
+    } else {
+      // Ansonsten: Normaler Cursor-Eintrag
+      roomObj.cursors[socket.id] = {
+        blockId,
+        range,
+        username: user.username,
+        color: user.color
+      };
+
+      // An die anderen Clients broadcasten
+      socket.to(room).emit('cursor_updated', {
+        userId: socket.id,
+        cursor: roomObj.cursors[socket.id]
+      });
+    }
+  }
+});
+
     
     socket.on('request_room_state', (room) => {
       const roomObj = getOrCreateRoom(room);

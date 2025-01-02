@@ -1,4 +1,3 @@
-// websocket.js
 const Y = require('yjs');
 const { logRoomsAndUsers, printYDoc } = require('./utils');
 
@@ -9,27 +8,32 @@ const { logRoomsAndUsers, printYDoc } = require('./utils');
 const ydocs = new Map();
 
 /**
- * Raum-Verwaltung
+ * Raum-Verwaltung mit erweiterter Awareness
  * Struktur:
  * rooms[roomName] = {
- *   users: { [socketId]: username },
- *   cursors: { [socketId]: { block_id, position, username } }
+ *   users: { [socketId]: { username, color } },
+ *   cursors: { [socketId]: { blockId, range, username, color } }
  * };
  */
 const rooms = {};
 
-/**
- * getOrCreateDoc(roomName):
- * Erstellt ein neues Y.Doc, falls noch nicht vorhanden.
- * Initialisiert beispielhafte Blöcke mit Startwerten.
- */
+// Farbpalette für neue Benutzer
+const COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+  '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
+];
+
+function getRandomColor() {
+  return COLORS[Math.floor(Math.random() * COLORS.length)];
+}
+
 function getOrCreateDoc(roomName) {
   if (!ydocs.has(roomName)) {
     const doc = new Y.Doc();
-
+    
     doc.transact(() => {
       const blocksMap = doc.getMap('blocks');
-
+      
       // Block 1
       const llmRoleDefMap = new Y.Map();
       llmRoleDefMap.set('title', 'LLM Role Definition');
@@ -38,7 +42,7 @@ function getOrCreateDoc(roomName) {
       llmRoleContent.insert(0, 'Defines the role...');
       llmRoleDefMap.set('content', llmRoleContent);
       blocksMap.set('LLM Role Definition', llmRoleDefMap);
-
+      
       // Block 2
       const contextMap = new Y.Map();
       contextMap.set('title', 'Context');
@@ -48,136 +52,96 @@ function getOrCreateDoc(roomName) {
       contextMap.set('content', contextContent);
       blocksMap.set('Context', contextMap);
     });
-
+    
     ydocs.set(roomName, doc);
   }
-
+  
   return ydocs.get(roomName);
 }
 
-/**
- * getOrCreateRoom(roomName):
- * Legt einen neuen Eintrag in 'rooms' an, falls er nicht existiert.
- */
 function getOrCreateRoom(roomName) {
   if (!rooms[roomName]) {
     rooms[roomName] = {
-      users: {},    // socketId -> username
-      cursors: {}   // socketId -> { block_id, position, username }
+      users: {},    // socketId -> { username, color }
+      cursors: {}   // socketId -> { blockId, range, username, color }
     };
   }
   return rooms[roomName];
 }
 
-/**
- * setupSocketHandlers:
- * Richtet alle Socket.IO-Events ein.
- */
 function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log(`[+] Client connected: ${socket.id}`);
-
-    // Optional: Logge aktuelle Räume und ihre Mitglieder
-    logRoomsAndUsers(io);
-
-    /**
-     * join_room:
-     *  - User tritt einem bestimmten Raum bei
-     *  - Wir holen/erstellen den Y.Doc
-     *  - Wir speichern den User in rooms[room].users
-     *  - Wir schicken dem neuen User den aktuellen Yjs-Stand (snapshot_document)
-     */
+    
     socket.on('join_room', (data) => {
       const { username, room } = data;
       console.log(`User "${username}" joined room "${room}"`);
-
-      // 1) Socket.io-Raum beitreten
+      
       socket.join(room);
-
-      // 2) Yjs-Dokument holen
       const doc = getOrCreateDoc(room);
-
-      // 3) Update unserer Room-Verwaltung
       const roomObj = getOrCreateRoom(room);
-      roomObj.users[socket.id] = username;
-
-      // 4) Sende den vollständigen State an den neu verbundenen Client
+      
+      // Weise dem Benutzer eine Farbe zu
+      const userColor = getRandomColor();
+      roomObj.users[socket.id] = {
+        username,
+        color: userColor
+      };
+      
+      // Sende den vollständigen State
       const fullState = Y.encodeStateAsUpdate(doc);
       socket.emit('snapshot_document', fullState);
-      console.log(`[+] Sent full document state to ${socket.id}`);
-      printYDoc(doc);
-
-      // 5) Schicke dem neuen Client auch die aktuellen Cursors & Userliste
+      
+      // Sende dem neuen Client die aktuellen Cursors & Userliste
       socket.emit('room_state', {
         users: roomObj.users,
         cursors: roomObj.cursors
       });
-
-      // Optional: andere im Raum informieren
+      
+      // Informiere andere über den neuen Benutzer
       socket.to(room).emit('user_joined', {
         userId: socket.id,
-        username
+        username,
+        color: userColor
       });
-
-      // Logge Räume und Benutzer
+      
       logRoomsAndUsers(io);
     });
-
-    /**
-     * sync_update:
-     *  - Empfängt ein Y-Update (Uint8Array) vom Client
-     *  - Wendet das Update an unserem Doc an
-     *  - Broadcastet an alle anderen Clients im selben Raum
-     */
+    
     socket.on('sync_update', (data) => {
       const { room, update } = data;
-      console.log(`[+] sync_update in room "${room}" from ${socket.id}`);
-
       const doc = getOrCreateDoc(room);
+      
       try {
-        // Array zurück in ein Uint8Array
         const uint8Update = new Uint8Array(update);
-
-        // Update anwenden
         Y.applyUpdate(doc, uint8Update);
-
-        // Debug: Aktuellen Zustand im Server-Log zeigen
-        const blocksMap = doc.getMap('blocks');
-        blocksMap.forEach((value, key) => {
-          const content = value.get('content');
-          console.log(`Block ${key} content after update:`, content?.toString());
-        });
-
-        // Sende das Update an alle anderen im Raum
         socket.to(room).emit('sync_update', { update });
       } catch (error) {
         console.error('Error applying update:', error);
       }
     });
-
-    /**
-     * cursor_update:
-     *  - Aktualisiert die Cursor-Position des Users
-     *  - Broadcastet die neuen Cursor-Daten an alle im Raum
-     */
+    
     socket.on('cursor_update', (data) => {
-      const { room, block_id, position } = data;
+      const { room, blockId, range } = data;
       const roomObj = getOrCreateRoom(room);
-
-      const username = roomObj.users[socket.id] || 'Unknown';
-      roomObj.cursors[socket.id] = {
-        block_id,
-        position,
-        username
-      };
-
-      io.in(room).emit('cursor_updated', { cursors: roomObj.cursors });
+      const user = roomObj.users[socket.id];
+      
+      if (user) {
+        roomObj.cursors[socket.id] = {
+          blockId,
+          range,
+          username: user.username,
+          color: user.color
+        };
+        
+        // Broadcast nur an andere Clients im Raum
+        socket.to(room).emit('cursor_updated', {
+          userId: socket.id,
+          cursor: roomObj.cursors[socket.id]
+        });
+      }
     });
-
-    /**
-     * request_room_state:
-     *  - Schickt dem anfragenden Client nochmals die User- und Cursor-Liste
-     */
+    
     socket.on('request_room_state', (room) => {
       const roomObj = getOrCreateRoom(room);
       socket.emit('room_state', {
@@ -185,59 +149,41 @@ function setupSocketHandlers(io) {
         cursors: roomObj.cursors
       });
     });
-
-    /**
-     * leave_room:
-     *  - Benutzer verlässt den Raum
-     */
+    
     socket.on('leave_room', (room) => {
-      socket.leave(room);
-      const roomObj = rooms[room];
-      if (roomObj) {
-        delete roomObj.users[socket.id];
-        delete roomObj.cursors[socket.id];
-
-        io.in(room).emit('user_left', {
-          userId: socket.id
-        });
-
-        // Falls Raum leer, löschen
-        if (Object.keys(roomObj.users).length === 0) {
-          delete rooms[room];
-          ydocs.delete(room);
-        }
-      }
-      console.log(`[+] User ${socket.id} left room "${room}"`);
+      handleUserLeave(socket, room);
     });
-
-    /**
-     * disconnect:
-     *  - Wird aufgerufen, wenn ein Client seine Verbindung kappt.
-     */
+    
     socket.on('disconnect', () => {
       console.log(`[-] Client disconnected: ${socket.id}`);
-
-      // Entferne den Nutzer aus allen Räumen, in denen er war
-      for (const [roomName, roomObj] of Object.entries(rooms)) {
-        if (roomObj.users[socket.id]) {
-          delete roomObj.users[socket.id];
-          delete roomObj.cursors[socket.id];
-
-          io.in(roomName).emit('user_left', {
-            userId: socket.id
-          });
-
-          // Falls Raum leer
-          if (Object.keys(roomObj.users).length === 0) {
-            delete rooms[roomName];
-            ydocs.delete(roomName);
-          }
-        }
-      }
-
-      logRoomsAndUsers(io);
+      
+      // Entferne den Nutzer aus allen Räumen
+      Object.keys(rooms).forEach(roomName => {
+        handleUserLeave(socket, roomName);
+      });
     });
   });
+}
+
+function handleUserLeave(socket, room) {
+  socket.leave(room);
+  const roomObj = rooms[room];
+  
+  if (roomObj) {
+    delete roomObj.users[socket.id];
+    delete roomObj.cursors[socket.id];
+    
+    // Informiere andere Benutzer
+    socket.to(room).emit('user_left', {
+      userId: socket.id
+    });
+    
+    // Räume den Raum auf, wenn er leer ist
+    if (Object.keys(roomObj.users).length === 0) {
+      delete rooms[room];
+      ydocs.delete(room);
+    }
+  }
 }
 
 module.exports = setupSocketHandlers;

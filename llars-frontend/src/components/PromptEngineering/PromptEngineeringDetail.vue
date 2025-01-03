@@ -3,6 +3,7 @@
   <div class="layout-container">
     <sidebar
       :users="users"
+      :blocks="blocks"
       @showAddBlockDialog="showAddBlockDialog = true"
     />
 

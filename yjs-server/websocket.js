@@ -1,5 +1,6 @@
 // websocket.js
 const Y = require('yjs');
+const pool = require('./db/db'); // Verbindung zur Datenbank
 const { logRoomsAndUsers, printYDoc } = require('./utils');
 
 /**
@@ -20,7 +21,7 @@ const rooms = {};
 
 // Farbpalette für neue Benutzer
 const COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
   '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
 ];
 
@@ -28,36 +29,86 @@ function getRandomColor() {
   return COLORS[Math.floor(Math.random() * COLORS.length)];
 }
 
-function getOrCreateDoc(roomName) {
-  if (!ydocs.has(roomName)) {
-    const doc = new Y.Doc();
-    
-    doc.transact(() => {
-      const blocksMap = doc.getMap('blocks');
-      
-      // Block 1
-      const llmRoleDefMap = new Y.Map();
-      llmRoleDefMap.set('title', 'LLM Role Definition');
-      llmRoleDefMap.set('position', 1);
-      const llmRoleContent = new Y.Text();
-      llmRoleContent.insert(0, 'Defines the role...');
-      llmRoleDefMap.set('content', llmRoleContent);
-      blocksMap.set('LLM Role Definition', llmRoleDefMap);
-      
-      // Block 2
-      const contextMap = new Y.Map();
-      contextMap.set('title', 'Context');
-      contextMap.set('position', 2);
-      const contextContent = new Y.Text();
-      contextContent.insert(0, 'Provides contextual info...');
-      contextMap.set('content', contextContent);
-      blocksMap.set('Context', contextMap);
-    });
-    
-    ydocs.set(roomName, doc);
+// Funktion: Y.Doc zu JSON
+function ydocToJson(doc) {
+  const update = Y.encodeStateAsUpdate(doc);
+  return JSON.stringify(Array.from(update));
+}
+
+// Funktion: JSON zu Y.Doc
+function jsonToYdoc(jsonString) {
+  const update = new Uint8Array(JSON.parse(jsonString));
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, update);
+  return doc;
+}
+
+/**
+ * Speichert das Y.Doc in der Datenbank für das gegebene prompt_id (= roomName).
+ * - Falls bereits ein Eintrag existiert → UPDATE
+ * - Falls nicht → INSERT
+ *
+ * @param {string|number} roomName  Raum-Name, in deinem Fall = prompt_id
+ * @param {Y.Doc} doc              Das Yjs-Dokument
+ * @param {string} name            Optionaler Prompt-Name
+ * @param {number|null} userId     ID des Besitzers (kann auch null sein)
+ */
+async function saveYdocToDB(roomName, doc, name, userId) {
+  // Entferne den Präfix "room_" aus der Raum-ID (falls vorhanden)
+  const roomId = parseInt(roomName.replace(/^room_/, ''), 10);
+  const jsonString = ydocToJson(doc);
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT prompt_id FROM user_prompts WHERE prompt_id = ?',
+      [roomId]
+    );
+
+    if (rows.length > 0) {
+      // Existiert bereits → UPDATE
+      await pool.query(
+        `UPDATE user_prompts
+         SET content = ?, updated_at = NOW()
+         WHERE prompt_id = ?`,
+        [jsonString, roomId]
+      );
+    } else {
+      // Noch nicht vorhanden → INSERT
+      await pool.query(
+        `INSERT INTO user_prompts (prompt_id, user_id, name, content, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NOW(), NOW())`,
+        [roomId, userId, name || 'Untitled', jsonString]
+      );
+    }
+
+    console.log(`Y.Doc für Raum ${roomName} (prompt_id=${roomId}) gespeichert.`);
+  } catch (err) {
+    console.error(`Fehler beim Speichern des Y.Doc für Raum ${roomName}:`, err);
   }
-  
-  return ydocs.get(roomName);
+}
+
+/**
+ * Lädt das Y.Doc aus der Datenbank für das gegebene prompt_id (= roomName).
+ * Gibt ein neues Y.Doc zurück, falls keins gefunden wurde.
+ *
+ * @param {string|number} roomName
+ * @returns {Y.Doc}
+ */
+async function loadYdocFromDB(roomName) {
+  try {
+    const roomId = parseInt(roomName.replace(/^room_/, ''), 10);
+    const [rows] = await pool.query(
+      'SELECT content FROM user_prompts WHERE prompt_id = ?',
+      [roomId]
+    );
+
+    if (rows.length > 0 && rows[0].content) {
+      return jsonToYdoc(rows[0].content);
+    }
+  } catch (err) {
+    console.error(`Fehler beim Laden des Y.Doc für Raum ${roomName}:`, err);
+  }
+  return new Y.Doc();
 }
 
 function getOrCreateRoom(roomName) {
@@ -73,129 +124,127 @@ function getOrCreateRoom(roomName) {
 function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log(`[+] Client connected: ${socket.id}`);
-    
-    socket.on('join_room', (data) => {
-      const { username, room } = data;
+
+    socket.on('join_room', async (data) => {
+      const { username, room, userId } = data; // userId hinzugefügt
       console.log(`User "${username}" joined room "${room}"`);
-      
+
       socket.join(room);
-      const doc = getOrCreateDoc(room);
+      let doc = ydocs.get(room);
+
+      // Lade Y.Doc aus der Datenbank, wenn es noch nicht im Speicher ist
+      if (!doc) {
+        doc = await loadYdocFromDB(room);
+        ydocs.set(room, doc);
+      }
+
       const roomObj = getOrCreateRoom(room);
-      
+
       // Weise dem Benutzer eine Farbe zu
       const userColor = getRandomColor();
       roomObj.users[socket.id] = {
         username,
         color: userColor
       };
-      
-      // Sende den vollständigen State
+
+      // Sende den vollständigen State (Schnappschuss)
       const fullState = Y.encodeStateAsUpdate(doc);
       socket.emit('snapshot_document', fullState);
-      
+
       // Sende dem neuen Client die aktuellen Cursors & Userliste
       socket.emit('room_state', {
         users: roomObj.users,
         cursors: roomObj.cursors
       });
-      
+
       // Informiere andere über den neuen Benutzer
       socket.to(room).emit('user_joined', {
         userId: socket.id,
         username,
         color: userColor
       });
-      
+
       logRoomsAndUsers(io);
     });
-    
+
     socket.on('sync_update', (data) => {
       const { room, update } = data;
-      const doc = getOrCreateDoc(room);
-      printYDoc(doc);
+      const doc = ydocs.get(room);
       try {
         const uint8Update = new Uint8Array(update);
         Y.applyUpdate(doc, uint8Update);
+        // Optional: Debug-Ausgabe
+        printYDoc(doc);
+
+        // Weiterleiten an alle anderen Clients im Raum
         socket.to(room).emit('sync_update', { update });
       } catch (error) {
         console.error('Error applying update:', error);
       }
     });
-    
+
     socket.on('cursor_update', (data) => {
-  const { room, blockId, range } = data;
-  const roomObj = getOrCreateRoom(room);
-  const user = roomObj.users[socket.id];
-
-  if (user) {
-    if (range === null) {
-      // 1) Entferne den Cursor-Eintrag auf dem Server
-      delete roomObj.cursors[socket.id];
-
-      // 2) Broadcaste an andere Clients, dass dieser User keinen Cursor mehr hat
-      socket.to(room).emit('cursor_updated', {
-        userId: socket.id,
-        cursor: null   // <-- Wichtig: cursor=null signalisiert Entfernung
-      });
-    } else {
-      // Ansonsten: Normaler Cursor-Eintrag
-      roomObj.cursors[socket.id] = {
-        blockId,
-        range,
-        username: user.username,
-        color: user.color
-      };
-
-      // An die anderen Clients broadcasten
-      socket.to(room).emit('cursor_updated', {
-        userId: socket.id,
-        cursor: roomObj.cursors[socket.id]
-      });
-    }
-  }
-});
-
-    
-    socket.on('request_room_state', (room) => {
+      const { room, blockId, range } = data;
       const roomObj = getOrCreateRoom(room);
-      socket.emit('room_state', {
-        users: roomObj.users,
-        cursors: roomObj.cursors
-      });
+      const user = roomObj.users[socket.id];
+
+      if (user) {
+        if (range === null) {
+          // Entferne den Cursor-Eintrag
+          delete roomObj.cursors[socket.id];
+          socket.to(room).emit('cursor_updated', { userId: socket.id, cursor: null });
+        } else {
+          // Aktualisiere den Cursor-Eintrag
+          roomObj.cursors[socket.id] = {
+            blockId,
+            range,
+            username: user.username,
+            color: user.color
+          };
+          socket.to(room).emit('cursor_updated', {
+            userId: socket.id,
+            cursor: roomObj.cursors[socket.id]
+          });
+        }
+      }
     });
-    
+
     socket.on('leave_room', (room) => {
       handleUserLeave(socket, room);
     });
-    
+
     socket.on('disconnect', () => {
       console.log(`[-] Client disconnected: ${socket.id}`);
-      
+
       // Entferne den Nutzer aus allen Räumen
-      Object.keys(rooms).forEach(roomName => {
+      Object.keys(rooms).forEach((roomName) => {
         handleUserLeave(socket, roomName);
       });
     });
   });
 }
 
-function handleUserLeave(socket, room) {
+async function handleUserLeave(socket, room) {
   socket.leave(room);
   const roomObj = rooms[room];
-  
+
   if (roomObj) {
     delete roomObj.users[socket.id];
     delete roomObj.cursors[socket.id];
-    
+
     // Informiere andere Benutzer
-    socket.to(room).emit('user_left', {
-      userId: socket.id
-    });
-    
+    socket.to(room).emit('user_left', { userId: socket.id });
+
     // Räume den Raum auf, wenn er leer ist
     if (Object.keys(roomObj.users).length === 0) {
+      const doc = ydocs.get(room);
+      if (doc) {
+        // Beispiel: Raum-Name als Prompt-Name speichern
+        // Wenn du einen anderen Namen willst, kannst du das anpassen
+        await saveYdocToDB(room, doc, `Room ${room}`, null);
+        ydocs.delete(room);
+      }
       delete rooms[room];
-      ydocs.delete(room);
     }
   }
 }

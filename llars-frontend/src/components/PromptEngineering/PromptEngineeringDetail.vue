@@ -1,6 +1,7 @@
 <!-- PromptEngineering.vue -->
 <template>
   <div class="editor-container">
+    <h1 class="prompt-title">{{ promptName }}</h1>
     <!-- Button zum Öffnen des "Add Block"-Dialogs -->
     <button @click="showAddBlockDialog = true" class="add-block-button">
       Neuen Block hinzufügen
@@ -66,6 +67,7 @@ const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
+const promptName = ref('');
 
 // State Management
 const blocks = ref([]);
@@ -147,6 +149,23 @@ const createBlock = () => {
   closeAddBlockDialog();
 };
 
+const fetchPromptDetails = async () => {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId.value}`,
+      {
+        headers: {
+          'Authorization': api_key
+        }
+      }
+    );
+    const data = await response.json();
+    promptName.value = data.name;
+  } catch (error) {
+    console.error('Fehler beim Laden der Prompt-Details:', error);
+  }
+};
 // Snackbar nach 3 Sek. ausblenden
 watch(
   blocks,
@@ -439,6 +458,7 @@ watch(
 );
 
 onMounted(async () => {
+  await fetchPromptDetails();
   ydoc = new Y.Doc();
   initializeSocket();
 

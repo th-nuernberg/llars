@@ -111,6 +111,7 @@ def logout():
 
 
 @data_blueprint.route('/email_threads', methods=['POST'])
+@data_blueprint.route('/email_threads', methods=['POST'])
 def create_email_thread():
     data = request.get_json()
 
@@ -1373,30 +1374,13 @@ def save_user_prompt():
     # Prüfen, ob ein Prompt mit dem gleichen Namen bereits existiert
     existing_prompt = UserPrompt.query.filter_by(user_id=user.id, name=prompt_name).first()
     if existing_prompt:
-        # Wenn der Prompt bereits existiert, Version inkrementieren
-        existing_prompt.version += 1
-        existing_prompt.content = prompt_content
-        existing_prompt.updated_at = datetime.utcnow()
-        db.session.commit()
-
-        return jsonify({
-            'message': 'Prompt updated successfully',
-            'prompt': {
-                'id': existing_prompt.prompt_id,
-                'name': existing_prompt.name,
-                'content': existing_prompt.content,
-                'version': existing_prompt.version,
-                'created_at': existing_prompt.created_at.isoformat(),
-                'updated_at': existing_prompt.updated_at.isoformat()
-            }
-        }), 200
+        return jsonify({'error': f'A prompt with the name "{prompt_name}" already exists'}), 409
 
     # Neuen Prompt speichern
     new_prompt = UserPrompt(
         user_id=user.id,
         name=prompt_name,
-        content=prompt_content,
-        version=1  # Version beim ersten Erstellen auf 1 setzen
+        content=prompt_content
     )
     db.session.add(new_prompt)
     db.session.commit()
@@ -1407,7 +1391,6 @@ def save_user_prompt():
             'id': new_prompt.prompt_id,
             'name': new_prompt.name,
             'content': new_prompt.content,
-            'version': new_prompt.version,
             'created_at': new_prompt.created_at.isoformat(),
             'updated_at': new_prompt.updated_at.isoformat()
         }

@@ -12,7 +12,20 @@
 
       <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
       <div v-if="showAddBlockDialog" class="dialog-overlay">
-        <!-- Dialog content remains the same -->
+                <div class="dialog-box">
+          <h3>Neuen Block erstellen</h3>
+          <input
+            v-model="newBlockName"
+            @keyup.enter="createBlock"
+            type="text"
+            placeholder="Blockname"
+            class="block-input"
+          />
+          <div class="dialog-buttons">
+            <button @click="createBlock">Erstellen</button>
+            <button @click="closeAddBlockDialog">Abbrechen</button>
+          </div>
+        </div>
       </div>
 
       <!-- Snackbar -->

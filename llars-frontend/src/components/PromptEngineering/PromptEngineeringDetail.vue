@@ -95,22 +95,19 @@ const closeAddBlockDialog = () => {
 // Methode zum Erstellen eines neuen Blocks
 const createBlock = () => {
   const blockName = newBlockName.value.trim();
-  if (!blockName) return; // Leere Eingabe ignorieren
+  if (!blockName) return;
 
   if (!ydoc) return;
 
   ydoc.transact(() => {
     const blocksMap = ydoc.getMap('blocks');
 
-    // Falls der Name schon existiert, könnte man einen Hinweis anzeigen
-    // oder automatisch etwas anhängen, damit es eindeutig wird.
     if (blocksMap.has(blockName)) {
       showSnackbar.value = true;
       snackbarMessage.value = `Block "${blockName}" existiert bereits!`;
       return;
     }
 
-    // Position herausfinden (höchste vorhandene + 1)
     let maxPosition = 0;
     blocksMap.forEach((blockMap) => {
       const pos = blockMap.get('position');
@@ -127,29 +124,50 @@ const createBlock = () => {
     // Leerer Y.Text
     const ytext = new Y.Text();
     newBlockMap.set('content', ytext);
-    console.log("Erstelle neuen Block");
 
     // In blocksMap einfügen
     blocksMap.set(blockName, newBlockMap);
+
+    // Explizit ein Update an den Server senden
+    const update = Y.encodeStateAsUpdate(ydoc);
+    if (socket?.connected) {
+      socket.emit('sync_update', {
+        room: roomId.value,
+        update: Array.from(update)
+      });
+    }
   });
+
+  // Debug-Ausgabe
+  console.log("Neuer Block erstellt und synchronisiert");
   printYDoc(ydoc);
 
-  // Snackbar anzeigen
   snackbarMessage.value = `Block "${blockName}" wurde hinzugefügt!`;
   showSnackbar.value = true;
-
-  // Dialog schließen
   closeAddBlockDialog();
 };
 
 // Snackbar nach 3 Sek. ausblenden
-watch(showSnackbar, (val) => {
-  if (val) {
-    setTimeout(() => {
-      showSnackbar.value = false;
-    }, 3000);
-  }
-});
+watch(
+  blocks,
+  async (newBlocks) => {
+    for (const block of newBlocks) {
+      if (!editors.value.has(block.id)) {
+        await initializeEditor(block);
+
+        // Nach der Initialisierung eines neuen Blocks explizit den State synchronisieren
+        const update = Y.encodeStateAsUpdate(ydoc);
+        if (socket?.connected) {
+          socket.emit('sync_update', {
+            room: roomId.value,
+            update: Array.from(update)
+          });
+        }
+      }
+    }
+  },
+  { deep: true }
+);
 
 // Debounce Funktion für Cursor Updates
 const debounce = (fn, delay) => {
@@ -232,6 +250,15 @@ const initializeEditor = async (block) => {
   if (!ytext) {
     ytext = new Y.Text();
     blockMap.set('content', ytext);
+
+    // Wenn ein neuer ytext erstellt wurde, sofort synchronisieren
+    const update = Y.encodeStateAsUpdate(ydoc);
+    if (socket?.connected) {
+      socket.emit('sync_update', {
+        room: roomId.value,
+        update: Array.from(update)
+      });
+    }
   }
 
   // Quill Editor mit angepassten Cursor-Einstellungen

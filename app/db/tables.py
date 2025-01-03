@@ -167,7 +167,11 @@ class UserPrompt(db.Model):
     created_at = mapped_column(db.DateTime, default=datetime.utcnow)  # Zeitpunkt der Erstellung
     updated_at = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Zeitpunkt der letzten Aktualisierung
 
+    version = mapped_column(db.Integer, nullable=False, default=1)  # Standardmäßig Version 1
+
+    # Beziehung zu einem User
     user = db.relationship('User', backref='prompts')  # Beziehung zu einem User
+
 
 class UserPromptShare(db.Model):
     __tablename__ = 'user_prompt_shares'

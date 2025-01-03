@@ -34,7 +34,7 @@
             <button @click="showPreview = false" class="close-button">×</button>
           </div>
           <div class="preview-body">
-            <div v-for="block in blocks" :key="block.id" class="preview-block">
+            <div v-for="block in sortedBlocks" :key="block.id" class="preview-block">
               <h4>{{ block.title }}</h4>
               <p>{{ getBlockContent(block) }}</p>
             </div>
@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue'; // computed hinzufügen
 
 const props = defineProps({
   users: {
@@ -63,8 +63,12 @@ defineEmits(['showAddBlockDialog']);
 
 const showPreview = ref(false);
 
+// Neue computed property für sortierte Blöcke
+const sortedBlocks = computed(() => {
+  return [...props.blocks].sort((a, b) => a.position - b.position);
+});
+
 const getBlockContent = (block) => {
-  // Wenn block.content ein Y.Text Objekt ist, konvertieren wir es zu einem String
   if (block.content && typeof block.content.toString === 'function') {
     return block.content.toString();
   }

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+sleep 2
 cd /yjs-server
 
 npm install

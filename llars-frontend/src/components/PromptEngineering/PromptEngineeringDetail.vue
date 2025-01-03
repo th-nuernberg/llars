@@ -21,8 +21,8 @@
             class="block-input"
           />
           <div class="dialog-buttons">
-            <button @click="createBlock">Erstellen</button>
-            <button @click="closeAddBlockDialog">Abbrechen</button>
+            <button class="success-button" @click="createBlock">Erstellen</button>
+            <button class="cancel-button" @click="closeAddBlockDialog">Abbrechen</button>
           </div>
         </div>
       </div>
@@ -33,11 +33,12 @@
           <h3>Block "{{ blockToDelete?.title }}" löschen?</h3>
           <p>Soll der Block wirklich entfernt werden?</p>
           <div class="dialog-buttons">
-            <button @click="confirmDeleteBlock">Löschen</button>
-            <button @click="closeDeleteBlockDialog">Abbrechen</button>
+            <button class="danger-button" @click="confirmDeleteBlock">Löschen</button>
+            <button class="cancel-button" @click="closeDeleteBlockDialog">Abbrechen</button>
           </div>
         </div>
       </div>
+
 
       <!-- Snackbar -->
       <div v-if="showSnackbar" class="snackbar">
@@ -750,9 +751,24 @@ onUnmounted(() => {
 
 .dialog-box {
   background: white;
-  padding: 20px;
-  border-radius: 6px;
-  min-width: 300px;
+  padding: 24px;
+  border-radius: 8px;
+  min-width: 320px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dialog-box h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.dialog-box p {
+  margin: 0 0 20px 0;
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .block-input {
@@ -766,6 +782,45 @@ onUnmounted(() => {
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* Button-Grundstil - kann bei Bedarf angepasst werden */
+.dialog-buttons button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Für "Abbrechen"-Button (neutral/grau) */
+.dialog-buttons .cancel-button {
+  background-color: #999;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+.dialog-buttons .cancel-button:hover {
+  background-color: #777;
+}
+
+/* Für "Erstellen"/"Hinzufügen" (grün) */
+.dialog-buttons .success-button {
+  background-color: #4caf50;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+.dialog-buttons .success-button:hover {
+  background-color: #43a047;
+}
+
+/* Für "Löschen" (rot) */
+.dialog-buttons .danger-button {
+  background-color: #e74c3c;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+.dialog-buttons .danger-button:hover {
+  background-color: #c0392b;
+}
+
 
 .snackbar {
   position: fixed;

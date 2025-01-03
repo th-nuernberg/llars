@@ -1,50 +1,47 @@
 <!-- PromptEngineering.vue -->
 <template>
-  <div class="editor-container">
-    <h1 class="prompt-title">{{ promptName }}</h1>
-    <!-- Button zum Öffnen des "Add Block"-Dialogs -->
-    <button @click="showAddBlockDialog = true" class="add-block-button">
-      Neuen Block hinzufügen
-    </button>
+  <div class="layout-container">
+    <sidebar
+      :users="users"
+      @showAddBlockDialog="showAddBlockDialog = true"
+    />
 
-    <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
-    <div v-if="showAddBlockDialog" class="dialog-overlay">
-      <div class="dialog-box">
-        <h3>Neuen Block erstellen</h3>
-        <input
-          v-model="newBlockName"
-          @keyup.enter="createBlock"
-          type="text"
-          placeholder="Blockname"
-          class="block-input"
-        />
-        <div class="dialog-buttons">
-          <button @click="createBlock">Erstellen</button>
-          <button @click="closeAddBlockDialog">Abbrechen</button>
+    <div class="main-content">
+      <h1 class="prompt-title">{{ promptName }}</h1>
+
+      <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
+      <div v-if="showAddBlockDialog" class="dialog-overlay">
+        <div class="dialog-box">
+          <h3>Neuen Block erstellen</h3>
+          <input
+            v-model="newBlockName"
+            @keyup.enter="createBlock"
+            type="text"
+            placeholder="Blockname"
+            class="block-input"
+          />
+          <div class="dialog-buttons">
+            <button @click="createBlock">Erstellen</button>
+            <button @click="closeAddBlockDialog">Abbrechen</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Snackbar -->
-    <div v-if="showSnackbar" class="snackbar">
-      {{ snackbarMessage }}
-    </div>
-    <div class="users-list">
-      <h3>Online Users:</h3>
-      <div v-for="(user, id) in users" :key="id" class="user-item">
-        <span class="user-dot" :style="{ backgroundColor: user.color }"></span>
-        {{ user.username }}
+      <!-- Snackbar -->
+      <div v-if="showSnackbar" class="snackbar">
+        {{ snackbarMessage }}
       </div>
-    </div>
 
-    <div v-for="block in sortedBlocks" :key="block.id" class="editor-block">
-      <h3>{{ block.title }}</h3>
-      <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
-    </div>
-        <!-- Debug-Ausgabe -->
-    <div class="debug-info">
-      <h4>Debug Information:</h4>
-      <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
+      <div v-for="block in sortedBlocks" :key="block.id" class="editor-block">
+        <h3>{{ block.title }}</h3>
+        <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
+      </div>
+
+      <!-- Debug-Ausgabe -->
+      <div class="debug-info">
+        <h4>Debug Information:</h4>
+        <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
+      </div>
     </div>
   </div>
 </template>
@@ -59,6 +56,7 @@ import QuillCursors from 'quill-cursors';
 import { io } from 'socket.io-client';
 import 'quill/dist/quill.snow.css';
 import printYDoc from "@/components/PromptEngineering/utils";
+import sidebar from "@/components/PromptEngineering/sidebar.vue";
 
 // QuillCursors-Registrierung
 Quill.register('modules/cursors', QuillCursors);
@@ -643,6 +641,27 @@ onUnmounted(() => {
 @keyframes fadein {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 250px; /* Entspricht der Sidebar-Breite */
+  padding: 20px;
+  max-width: calc(100% - 250px);
+}
+
+.prompt-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #eee;
 }
 
 </style>

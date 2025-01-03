@@ -1,4 +1,3 @@
-<!-- PromptEngineering.vue -->
 <template>
   <div class="layout-container">
     <sidebar
@@ -12,7 +11,7 @@
 
       <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
       <div v-if="showAddBlockDialog" class="dialog-overlay">
-                <div class="dialog-box">
+        <div class="dialog-box">
           <h3>Neuen Block erstellen</h3>
           <input
             v-model="newBlockName"
@@ -24,6 +23,18 @@
           <div class="dialog-buttons">
             <button @click="createBlock">Erstellen</button>
             <button @click="closeAddBlockDialog">Abbrechen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dialog-Fenster zum Löschen eines Blocks -->
+      <div v-if="showDeleteBlockDialog" class="dialog-overlay">
+        <div class="dialog-box">
+          <h3>Block "{{ blockToDelete?.title }}" löschen?</h3>
+          <p>Soll der Block wirklich entfernt werden?</p>
+          <div class="dialog-buttons">
+            <button @click="confirmDeleteBlock">Löschen</button>
+            <button @click="closeDeleteBlockDialog">Abbrechen</button>
           </div>
         </div>
       </div>
@@ -45,6 +56,9 @@
             <div class="editor-header">
               <div class="drag-handle">⋮⋮</div>
               <h3>{{ block.title }}</h3>
+
+              <!-- Delete-Button (öffnet den Löschdialog) -->
+              <div class="delete-button" @click="openDeleteBlockDialog(block)">✕</div>
             </div>
             <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
           </div>
@@ -101,22 +115,81 @@ const newBlockName = ref('');
 const showSnackbar = ref(false);
 const snackbarMessage = ref('');
 
-// Methode zum Schließen von Dialog und Löschen des Eingabefelds
+// Für das Löschen von Blöcken
+const showDeleteBlockDialog = ref(false);
+const blockToDelete = ref(null);
+
+/**
+ * Dialog schließen und Eingabefeld (für neuen Block) zurücksetzen
+ */
 const closeAddBlockDialog = () => {
   showAddBlockDialog.value = false;
   newBlockName.value = '';
 };
 
-// Methode zum Erstellen eines neuen Blocks
+/**
+ * Dialog für das Löschen schließen
+ */
+const closeDeleteBlockDialog = () => {
+  showDeleteBlockDialog.value = false;
+  blockToDelete.value = null;
+};
+
+/**
+ * Methode zum Öffnen des Dialogs für das Löschen eines Blocks
+ */
+const openDeleteBlockDialog = (block) => {
+  blockToDelete.value = block; // gemerkter Block, der gelöscht werden soll
+  showDeleteBlockDialog.value = true;
+};
+
+/**
+ * Bestätigte Löschung des Blocks
+ */
+const confirmDeleteBlock = () => {
+  if (!blockToDelete.value || !ydoc) {
+    closeDeleteBlockDialog();
+    return;
+  }
+
+  const blockId = blockToDelete.value.id;
+
+  // Y.Doc Update
+  ydoc.transact(() => {
+    const blocksMap = ydoc.getMap('blocks');
+    if (blocksMap.has(blockId)) {
+      blocksMap.delete(blockId);
+
+      // Synchronisiere Update
+      const update = Y.encodeStateAsUpdate(ydoc);
+      if (socket?.connected) {
+        socket.emit('sync_update', {
+          room: roomId.value,
+          update: Array.from(update)
+        });
+      }
+    }
+  });
+
+  snackbarMessage.value = `Block "${blockToDelete.value.title}" wurde gelöscht!`;
+  showSnackbar.value = true;
+
+  // Dialog schließen
+  closeDeleteBlockDialog();
+};
+
+/**
+ * Methode zum Erstellen eines neuen Blocks
+ */
 const createBlock = () => {
   const blockName = newBlockName.value.trim();
   if (!blockName) return;
-
   if (!ydoc) return;
 
   ydoc.transact(() => {
     const blocksMap = ydoc.getMap('blocks');
 
+    // Prüfen, ob der Blockname schon existiert
     if (blocksMap.has(blockName)) {
       showSnackbar.value = true;
       snackbarMessage.value = `Block "${blockName}" existiert bereits!`;
@@ -162,6 +235,9 @@ const createBlock = () => {
   closeAddBlockDialog();
 };
 
+/**
+ * Prompt Details laden
+ */
 const fetchPromptDetails = async () => {
   try {
     const api_key = localStorage.getItem('api_key');
@@ -201,16 +277,9 @@ watch(
   { deep: true }
 );
 
-// Debounce Funktion für Cursor Updates
-const debounce = (fn, delay) => {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  };
-};
-
-// Sortiere Blöcke nach Position
+/**
+ * Sortierte Liste der Blocks
+ */
 const sortedBlocks = computed({
   get: () => {
     return [...blocks.value].sort((a, b) => a.position - b.position);
@@ -248,13 +317,17 @@ const sortedBlocks = computed({
   }
 });
 
+/**
+ * Wird aufgerufen, wenn ein Drag beendet wurde
+ */
 const onDragEnd = () => {
-  // The v-model on draggable will automatically update sortedBlocks
-  // which will trigger the setter above
   snackbarMessage.value = 'Block order updated!';
   showSnackbar.value = true;
 };
 
+/**
+ * Alle Blocks in das lokale Array `blocks` laden
+ */
 const processYDoc = () => {
   const blocksMap = ydoc.getMap('blocks');
   const newBlocks = [];
@@ -271,21 +344,35 @@ const processYDoc = () => {
   blocks.value = newBlocks;
 };
 
-// Handler für Cursor-Bewegungen mit verbesserter Positionsberechnung
+/**
+ * Debounce-Funktion für Cursor-Updates
+ */
+const debounce = (fn, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
+
+/**
+ * Cursor-Positionen aktualisieren (z.B. wenn User tippt)
+ */
 const handleSelectionChange = (blockId) => {
   const debouncedEmit = debounce((range) => {
     if (socket?.connected) {
       socket.emit('cursor_update', {
         room: roomId.value,
         blockId,
-        range: range ? {
-          index: range.index,
-          length: range.length
-        } : null
+        range: range
+          ? {
+              index: range.index,
+              length: range.length
+            }
+          : null
       });
     }
   }, 50);
-
 
   return (range, oldRange, source) => {
     if (source === 'user') {
@@ -293,7 +380,7 @@ const handleSelectionChange = (blockId) => {
         // Entferne Cursor, wenn der Benutzer keinen Bereich mehr ausgewählt hat
         const cursorsModule = cursorsModules.value.get(blockId);
         if (cursorsModule) {
-          cursorsModule.removeCursor(socket.id); // Eigenen Cursor entfernen
+          cursorsModule.removeCursor(socket.id);
         }
       }
       debouncedEmit(range);
@@ -301,8 +388,9 @@ const handleSelectionChange = (blockId) => {
   };
 };
 
-
-// Initialisiere einen Editor für einen Block
+/**
+ * Editor für einen Block initialisieren
+ */
 const initializeEditor = async (block) => {
   await nextTick();
 
@@ -340,7 +428,7 @@ const initializeEditor = async (block) => {
         transformOnTextChange: true,
         hideDelayMs: 5000,
         hideSpeedMs: 500,
-        selectionChangeSource: 'api'  // Wichtig für korrekte Cursor-Synchronisation
+        selectionChangeSource: 'api'
       },
       toolbar: [
         ['bold', 'italic', 'underline'],
@@ -358,23 +446,21 @@ const initializeEditor = async (block) => {
   const cursorsModule = editor.getModule('cursors');
   cursorsModules.value.set(block.id, cursorsModule);
 
-  // Binding zwischen Yjs und Quill mit korrekter Cursor-Transformation
+  // Binding zwischen Yjs und Quill
   const binding = new QuillBinding(ytext, editor, null, {
-    preserveCursor: true  // Wichtig für korrekte Cursor-Position bei Updates
+    preserveCursor: true
   });
 
-  // Selection Change Handler für Cursor Updates
+  // Selection-Change-Handler
   editor.on('selection-change', handleSelectionChange(block.id));
 
-  // Text Change Handler mit verbesserter Synchronisation
+  // Text-Change-Handler
   editor.on('text-change', (delta, oldDelta, source) => {
     if (source === 'user') {
       ydoc.transact(() => {
         const blocksMap = ydoc.getMap('blocks');
         const blockMap = blocksMap.get(block.id);
         const ytext = blockMap.get('content');
-
-        // Wende Delta direkt an statt Text neu zu setzen
         ytext.applyDelta(delta);
 
         const update = Y.encodeStateAsUpdate(ydoc);
@@ -392,21 +478,25 @@ const initializeEditor = async (block) => {
   bindings.value.set(block.id, binding);
 };
 
+/**
+ * Speichert die Editor-Referenz
+ */
 const setEditorRef = (el, blockId) => {
   if (el) {
     editorsMap.value.set(blockId, el);
   }
 };
 
-// Verbesserte Cursor-Aktualisierung mit korrekter Positionsberechnung
+/**
+ * Cursor aktualisieren (z.B. von anderen Usern)
+ */
 const updateCursor = (userId, cursor) => {
   // 1) Wenn cursor === null, entfernen wir den Cursor in allen Blöcken
   if (!cursor) {
-    // Dieser Nutzer hat gar keinen Cursor mehr
     cursorsModules.value.forEach((cursorsModule) => {
       cursorsModule.removeCursor(userId);
     });
-    return; // direkt abbrechen
+    return;
   }
 
   // 2) Wenn range === null, nur den Cursor in dem spezifischen Block entfernen
@@ -415,21 +505,18 @@ const updateCursor = (userId, cursor) => {
   const editor = editors.value.get(blockId);
 
   if (!range) {
-    // Null-Range => Cursor entfernen
     if (cursorsModule) {
       cursorsModule.removeCursor(userId);
     }
-    return; // abbrechen
+    return;
   }
 
   // 3) Falls es eine gültige Range gibt => Cursor aktualisieren
   if (cursorsModule && editor) {
-    // Cursor ggf. neu anlegen
     if (!cursorsModule.cursors().find(c => c.id === userId)) {
       cursorsModule.createCursor(userId, username, color);
     }
 
-    // Range transformieren (falls index zu groß ist)
     const transformedRange = editor.getLength() < range.index
       ? { index: editor.getLength(), length: 0 }
       : range;
@@ -438,8 +525,9 @@ const updateCursor = (userId, cursor) => {
   }
 };
 
-
-// Socket Initialisierung mit verbessertem Cursor-Handling
+/**
+ * Socket Initialisierung
+ */
 const initializeSocket = () => {
   socket = io(import.meta.env.VITE_API_BASE_URL, {
     path: '/collab/socket.io/',
@@ -468,7 +556,6 @@ const initializeSocket = () => {
 
   socket.on('room_state', (state) => {
     users.value = state.users;
-    // Aktualisiere alle Cursors mit Verzögerung
     nextTick(() => {
       Object.entries(state.cursors).forEach(([userId, cursor]) => {
         updateCursor(userId, cursor);
@@ -483,10 +570,9 @@ const initializeSocket = () => {
   socket.on('user_left', ({ userId }) => {
     delete users.value[userId];
     cursorsModules.value.forEach(cursorsModule => {
-      cursorsModule.removeCursor(userId); // Entferne Cursor des Benutzers
+      cursorsModule.removeCursor(userId);
     });
   });
-
 
   socket.on('cursor_updated', ({ userId, cursor }) => {
     nextTick(() => updateCursor(userId, cursor));
@@ -497,7 +583,9 @@ const initializeSocket = () => {
   });
 };
 
-// Watch und Lifecycle Hooks
+/**
+ * Watch und Lifecycle Hooks
+ */
 watch(
   blocks,
   async (newBlocks) => {
@@ -588,7 +676,6 @@ onUnmounted(() => {
   white-space: pre-wrap;
   word-wrap: break-word;
 }
-
 
 .editor {
   min-height: 150px;
@@ -730,6 +817,7 @@ onUnmounted(() => {
   margin-bottom: 10px;
 }
 
+/* Drag-Handle */
 .drag-handle {
   cursor: move;
   padding: 5px;
@@ -741,11 +829,25 @@ onUnmounted(() => {
   color: #333;
 }
 
+/* Card-Styling */
 .editor-block {
   margin-bottom: 30px;
   padding: 15px;
   background: #fff;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Delete-Button im Block */
+.delete-button {
+  margin-left: auto;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #999;
+  transition: color 0.2s;
+}
+
+.delete-button:hover {
+  color: #e74c3c;
 }
 </style>

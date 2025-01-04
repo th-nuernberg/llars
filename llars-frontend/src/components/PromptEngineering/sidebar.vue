@@ -14,14 +14,23 @@
         </div>
       </div>
 
+      <!-- Buttons für Aktionen -->
+      <!-- Neuen Block hinzufügen -->
       <button @click="$emit('showAddBlockDialog')" class="action-button add-block-button">
         <span class="button-icon">➕</span>
         Neuen Block hinzufügen
       </button>
 
+      <!-- Vorschau anzeigen -->
       <button @click="showPreview = true" class="action-button preview-button">
         <span class="button-icon">👁</span>
         Vorschau anzeigen
+      </button>
+
+      <!-- Download Prompt Button -->
+      <button @click="downloadPrompt" class="action-button download-button">
+        <span class="button-icon">⬇️</span>
+        Download Prompt
       </button>
     </div>
 
@@ -73,6 +82,48 @@ const getBlockContent = (block) => {
     return block.content.toString();
   }
   return '';
+};
+
+// Füge diese Funktion im script setup-Bereich hinzu
+const downloadPrompt = () => {
+  // Erstelle ein Objekt aus den sortierten Blöcken
+  const promptData = {};
+
+  sortedBlocks.value.forEach(block => {
+    // Hole den Inhalt des Blocks und entferne zusätzliche Leerzeichen/Zeilenumbrüche am Anfang und Ende
+    const content = getBlockContent(block).trim();
+
+    // Füge den Block zum promptData Objekt hinzu
+    promptData[block.title] = content;
+  });
+
+  // Konvertiere das Objekt zu einem formatierten JSON-String
+  const jsonStr = JSON.stringify(promptData, null, 2);
+
+  // Erstelle einen Blob mit dem JSON-Inhalt
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+
+  // Erstelle eine URL für den Blob
+  const url = window.URL.createObjectURL(blob);
+
+  // Erstelle ein unsichtbares <a> Element für den Download
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'prompt.json'; // Name der Datei, die heruntergeladen wird
+
+  // Füge das Element zum DOM hinzu und klicke es programmatisch
+  document.body.appendChild(a);
+  a.click();
+
+  // Cleanup: Entferne das Element und die URL
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+};
+
+// Optional: Füge einen erfolgreichen Download-Hinweis hinzu
+const showDownloadSuccess = () => {
+  // Hier könntest du eine Benachrichtigung hinzufügen, dass der Download erfolgreich war
+  console.log('Prompt erfolgreich heruntergeladen');
 };
 </script>
 
@@ -270,5 +321,24 @@ const getBlockContent = (block) => {
   height: 8px;
   border-radius: 50%;
   margin-right: 8px;
+}
+
+.download-button {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #673ab7;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.download-button:hover {
+  background-color: #5e35b1;
 }
 </style>

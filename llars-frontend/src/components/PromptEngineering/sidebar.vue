@@ -259,12 +259,27 @@ const showDownloadSuccess = () => {
   white-space: pre-wrap;
 }
 
+.action-button {
+  width: 100%;
+  padding: 8px 12px;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  min-height: 40px; /* Einheitliche Höhe für alle Buttons */
+}
+
 .button-icon {
   font-size: 1.2em;
   line-height: 1;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
 }
 
-/* Spezifische Farben für die Buttons */
 .add-block-button {
   background-color: #4caf50;
 }
@@ -281,20 +296,14 @@ const showDownloadSuccess = () => {
   background-color: #1976d2;
 }
 
-.add-block-button {
-  width: 100%;
-  padding: 8px 12px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.download-button {
+  background-color: #673ab7;
 }
 
-.add-block-button:hover {
-  background-color: #45a049;
+.download-button:hover {
+  background-color: #5e35b1;
 }
+
 
 .users-list {
   background-color: white;

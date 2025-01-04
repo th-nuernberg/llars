@@ -4,9 +4,12 @@
     <sidebar
       :users="users"
       :blocks="blocks"
+      :promptId="currentPrompt.id"
+      :sharedWith="currentPrompt.shared_with"
+      :isOwner="isOwner"
+      @unshare="handleUnshare"
       @showAddBlockDialog="showAddBlockDialog = true"
     />
-
     <div class="main-content">
       <h1 class="prompt-title">{{ promptName }}</h1>
 
@@ -89,14 +92,26 @@ import draggable from 'vuedraggable';
 import printYDoc from "@/components/PromptEngineering/utils";
 import sidebar from "@/components/PromptEngineering/sidebar.vue";
 
-// QuillCursors-Registrierung
 Quill.register('modules/cursors', QuillCursors);
 
 const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
-const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
+
+// Der aktuell eingeloggte Benutzername
+const localUsername = localStorage.getItem('username') || 'Unbekannter Benutzer';
+
+// **NEU**: Hier definierst du eine reactive Variable für isOwner
+const isOwner = ref(false);
+
 const promptName = ref('');
+
+const currentPrompt = ref({
+  id: null,
+  name: '',
+  shared_with: [],
+  owner: '' // Optional: Wenn du den Besitzer auch lokal speichern möchtest
+});
 
 // State Management
 const blocks = ref([]);
@@ -250,7 +265,8 @@ const createBlock = () => {
 /**
  * Prompt Details laden
  */
-const fetchPromptDetails = async () => {
+
+async function fetchPromptDetails() {
   try {
     const api_key = localStorage.getItem('api_key');
     const response = await fetch(
@@ -262,11 +278,24 @@ const fetchPromptDetails = async () => {
       }
     );
     const data = await response.json();
-    promptName.value = data.name;
+
+    if (response.ok) {
+      // Prompt-Daten lokal ablegen
+      currentPrompt.value.id = data.id;
+      currentPrompt.value.name = data.name;
+      currentPrompt.value.shared_with = data.shared_with || [];
+      currentPrompt.value.owner = data.owner;  // Falls das Backend 'owner' schickt
+      promptName.value = data.name;
+
+      // **NEU**: Jetzt setzen wir isOwner (true/false)
+      isOwner.value = (localUsername === data.owner);
+    } else {
+      console.error('Fehler beim Laden der Prompt-Details:', data.error);
+    }
   } catch (error) {
     console.error('Fehler beim Laden der Prompt-Details:', error);
   }
-};
+}
 // Snackbar nach 3 Sek. ausblenden
 
 /**
@@ -567,7 +596,7 @@ const initializeSocket = () => {
     console.log('Connected to server');
     socket.emit('join_room', {
       room: roomId.value,
-      username
+      username: localUsername
     });
   });
 
@@ -624,6 +653,11 @@ watch(
   },
   { deep: true }
 );
+
+function handleUnshare(username) {
+  // Entfernter User wird lokal aus der shared_with-Liste gelöscht
+  currentPrompt.value.shared_with = currentPrompt.value.shared_with.filter(u => u !== username);
+}
 
 onMounted(async () => {
   await fetchPromptDetails();

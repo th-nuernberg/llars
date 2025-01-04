@@ -257,21 +257,37 @@ const fetchPromptDetails = async () => {
   }
 };
 // Snackbar nach 3 Sek. ausblenden
+
+/**
+ * Watch und Lifecycle Hooks
+ */
 watch(
-  blocks,
-  async (newBlocks) => {
+  () => blocks.value,
+  async (newBlocks, oldBlocks) => {
+    // Cleanup alte Editoren für gelöschte Blöcke
+    if (oldBlocks) {
+      const deletedBlocks = oldBlocks.filter(
+        oldBlock => !newBlocks.find(newBlock => newBlock.id === oldBlock.id)
+      );
+
+      deletedBlocks.forEach(block => {
+        const binding = bindings.value.get(block.id);
+        if (binding) {
+          binding.destroy();
+          bindings.value.delete(block.id);
+        }
+
+        editors.value.delete(block.id);
+        editorsMap.value.delete(block.id);
+        cursorsModules.value.delete(block.id);
+      });
+    }
+
+    // Initialisiere neue Editoren
     for (const block of newBlocks) {
       if (!editors.value.has(block.id)) {
+        await nextTick(); // Warte auf DOM-Update
         await initializeEditor(block);
-
-        // Nach der Initialisierung eines neuen Blocks explizit den State synchronisieren
-        const update = Y.encodeStateAsUpdate(ydoc);
-        if (socket?.connected) {
-          socket.emit('sync_update', {
-            room: roomId.value,
-            update: Array.from(update)
-          });
-        }
       }
     }
   },

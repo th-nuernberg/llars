@@ -4,7 +4,6 @@
     <div class="sidebar-content">
       <v-spacer></v-spacer>
 
-
       <!-- Online Users Liste -->
       <div class="users-list">
         <h3>Online Users:</h3>
@@ -15,21 +14,30 @@
       </div>
 
       <!-- Buttons für Aktionen -->
+
+      <!-- Zurück-Button -->
+      <button
+        @click="goToOverview"
+        class="action-button back-button">
+        <v-icon class="button-icon">mdi-arrow-left</v-icon>
+        Zur Übersicht
+      </button>
+
       <!-- Neuen Block hinzufügen -->
       <button @click="$emit('showAddBlockDialog')" class="action-button add-block-button">
-        <span class="button-icon">➕</span>
-        Neuen Block hinzufügen
+        <v-icon class="button-icon"> mdi-plus</v-icon>
+        Neuer Block
       </button>
 
       <!-- Vorschau anzeigen -->
       <button @click="showPreview = true" class="action-button preview-button">
-        <span class="button-icon">👁</span>
+        <v-icon class="button-icon"> mdi-eye</v-icon>
         Vorschau anzeigen
       </button>
 
       <!-- Download Prompt Button -->
       <button @click="downloadPrompt" class="action-button download-button">
-        <span class="button-icon">⬇️</span>
+        <v-icon class="button-icon">mdi-download</v-icon>
         Download Prompt
       </button>
     </div>
@@ -40,7 +48,9 @@
         <div class="preview-content">
           <div class="preview-header">
             <h3>Vorschau</h3>
-            <button @click="showPreview = false" class="close-button">×</button>
+            <button @click="showPreview = false" class="close-button">
+              <v-icon>mdi-close</v-icon>
+            </button>
           </div>
           <div class="preview-body">
             <div v-for="block in sortedBlocks" :key="block.id" class="preview-block">
@@ -56,6 +66,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'; // computed hinzufügen
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
   users: {
@@ -67,6 +78,8 @@ const props = defineProps({
     required: true
   }
 });
+
+const router = useRouter();
 
 defineEmits(['showAddBlockDialog']);
 
@@ -120,10 +133,9 @@ const downloadPrompt = () => {
   document.body.removeChild(a);
 };
 
-// Optional: Füge einen erfolgreichen Download-Hinweis hinzu
-const showDownloadSuccess = () => {
-  // Hier könntest du eine Benachrichtigung hinzufügen, dass der Download erfolgreich war
-  console.log('Prompt erfolgreich heruntergeladen');
+
+const goToOverview = () => {
+  router.push('/promptengineering');
 };
 </script>
 
@@ -144,25 +156,6 @@ const showDownloadSuccess = () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.preview-button {
-  width: 100%;
-  padding: 8px 12px;
-  background-color: #2196f3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.preview-button:hover {
-  background-color: #1976d2;
 }
 
 .preview-icon {
@@ -215,7 +208,7 @@ const showDownloadSuccess = () => {
 .close-button {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 16px;
   cursor: pointer;
   padding: 8px;
   color: #666;
@@ -229,7 +222,7 @@ const showDownloadSuccess = () => {
 }
 
 .close-button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  color: #e74c3c;
 }
 
 .preview-block {
@@ -264,7 +257,7 @@ const showDownloadSuccess = () => {
   padding: 8px 12px;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 16px 4px 16px 4px;
   cursor: pointer;
   transition: background-color 0.2s;
   display: flex;
@@ -304,6 +297,13 @@ const showDownloadSuccess = () => {
   background-color: #5e35b1;
 }
 
+.back-button {
+  background-color: #9e9e9e; /* leichtes Grau oder was du möchtest */
+}
+.back-button:hover {
+  background-color: #7e7e7e;
+}
+
 
 .users-list {
   background-color: white;
@@ -332,22 +332,4 @@ const showDownloadSuccess = () => {
   margin-right: 8px;
 }
 
-.download-button {
-  width: 100%;
-  padding: 8px 12px;
-  background-color: #673ab7;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.download-button:hover {
-  background-color: #5e35b1;
-}
 </style>

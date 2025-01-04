@@ -813,28 +813,32 @@ onUnmounted(() => {
 .dialog-buttons button {
   padding: 8px 14px;
   border: none;
-  border-radius: 4px;
+  border-radius: 16px 4px 16px 4px;  /* Wie in der Sidebar */
   cursor: pointer;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Für "Abbrechen"-Button (neutral/grau) */
 .dialog-buttons .cancel-button {
-  background-color: #999;
+  background-color: #9e9e9e;  /* Gleiche Farbe wie back-button */
   color: #fff;
   transition: background-color 0.2s;
 }
 .dialog-buttons .cancel-button:hover {
-  background-color: #777;
+  background-color: #7e7e7e;
 }
 
 /* Für "Erstellen"/"Hinzufügen" (grün) */
 .dialog-buttons .success-button {
-  background-color: #4caf50;
+  background-color: #4caf50;  /* Gleiche Farbe wie add-block-button */
   color: #fff;
   transition: background-color 0.2s;
 }
 .dialog-buttons .success-button:hover {
-  background-color: #43a047;
+  background-color: #45a049;
 }
 
 /* Für "Löschen" (rot) */

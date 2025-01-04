@@ -273,35 +273,36 @@ const goToOverview = () => {
   align-items: center;
 }
 
+.back-button {
+  background-color: #b0ca97;  /* Heller Beige-Ton passend zum Schema */
+}
+
+.back-button:hover {
+  background-color: #9bb582;  /* slightly darker */
+}
+
 .add-block-button {
-  background-color: #4caf50;
+  background-color: #81b68b;  /* secondary color */
 }
 
 .add-block-button:hover {
-  background-color: #45a049;
+  background-color: #6ca077;  /* slightly darker */
 }
 
 .preview-button {
-  background-color: #2196f3;
+  background-color: #b0ca97;  /* primary color */
 }
 
 .preview-button:hover {
-  background-color: #1976d2;
+  background-color: #9bb582;  /* slightly darker */
 }
 
 .download-button {
-  background-color: #673ab7;
+  background-color: #92b199;  /* Mix zwischen primary und secondary */
 }
 
 .download-button:hover {
-  background-color: #5e35b1;
-}
-
-.back-button {
-  background-color: #9e9e9e; /* leichtes Grau oder was du möchtest */
-}
-.back-button:hover {
-  background-color: #7e7e7e;
+  background-color: #7d9c84;  /* slightly darker */
 }
 
 

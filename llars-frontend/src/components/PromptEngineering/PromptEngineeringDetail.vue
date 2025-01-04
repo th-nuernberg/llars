@@ -1,3 +1,4 @@
+<!-- PromptEngineering/PromptEngineeringDetail.vue -->
 <template>
   <div class="layout-container">
     <sidebar
@@ -116,6 +117,17 @@ const newBlockName = ref('');
 const showSnackbar = ref(false);
 const snackbarMessage = ref('');
 
+const showSnackbarMessage = (message) => {
+  snackbarMessage.value = message;
+  showSnackbar.value = true;
+
+  // Setze die Sichtbarkeit nach der Animationsdauer auf false
+  setTimeout(() => {
+    showSnackbar.value = false;
+  }, 3000); // Dauer muss mit der Gesamtdauer der Animation (CSS) übereinstimmen
+};
+
+
 // Für das Löschen von Blöcken
 const showDeleteBlockDialog = ref(false);
 const blockToDelete = ref(null);
@@ -172,8 +184,8 @@ const confirmDeleteBlock = () => {
     }
   });
 
-  snackbarMessage.value = `Block "${blockToDelete.value.title}" wurde gelöscht!`;
-  showSnackbar.value = true;
+  showSnackbarMessage(`Block "${blockToDelete.value.title}" wurde gelöscht!`);
+
 
   // Dialog schließen
   closeDeleteBlockDialog();
@@ -192,8 +204,8 @@ const createBlock = () => {
 
     // Prüfen, ob der Blockname schon existiert
     if (blocksMap.has(blockName)) {
-      showSnackbar.value = true;
-      snackbarMessage.value = `Block "${blockName}" existiert bereits!`;
+      showSnackbarMessage(`Block "${blockName}" existiert bereits!`);
+
       return;
     }
 
@@ -231,8 +243,7 @@ const createBlock = () => {
   console.log("Neuer Block erstellt und synchronisiert");
   printYDoc(ydoc);
 
-  snackbarMessage.value = `Block "${blockName}" wurde hinzugefügt!`;
-  showSnackbar.value = true;
+  showSnackbarMessage(`Block "${blockName}" wurde hinzugefügt!`);
   closeAddBlockDialog();
 };
 
@@ -338,8 +349,7 @@ const sortedBlocks = computed({
  * Wird aufgerufen, wenn ein Drag beendet wurde
  */
 const onDragEnd = () => {
-  snackbarMessage.value = 'Block order updated!';
-  showSnackbar.value = true;
+  showSnackbarMessage(`Block-Reihenfolge aktualisiert!`);
 };
 
 /**
@@ -840,15 +850,39 @@ onUnmounted(() => {
 
 .snackbar {
   position: fixed;
-  bottom: 30px;
+  bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
   background: #323232;
   color: white;
-  padding: 10px 20px;
-  border-radius: 4px;
-  animation: fadein 0.5s;
-  z-index: 999;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  animation: snackbar 3s ease-in-out forwards;
+}
+
+@keyframes snackbar {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
 }
 
 @keyframes fadein {

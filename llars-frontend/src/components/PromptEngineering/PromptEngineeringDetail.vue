@@ -4,7 +4,11 @@
     <sidebar
       :users="users"
       :blocks="blocks"
+      :prompt-id="Number(promptId)"
+      :is-owner="promptOwner === username"
+      :shared-with="sharedWithUsers"
       @showAddBlockDialog="showAddBlockDialog = true"
+      @refreshPromptDetails="fetchPromptDetails()"
     />
 
     <div class="main-content">
@@ -105,6 +109,9 @@ const editors = ref(new Map());
 const bindings = ref(new Map());
 const cursorsModules = ref(new Map());
 const users = ref({});
+
+const promptOwner = ref('');
+const sharedWithUsers = ref([]);
 
 let ydoc = null;
 let socket = null;
@@ -262,11 +269,20 @@ const fetchPromptDetails = async () => {
       }
     );
     const data = await response.json();
-    promptName.value = data.name;
+
+    if (response.ok) {
+      promptName.value = data.name;
+      // --- Hier neu:
+      promptOwner.value = data.owner;
+      sharedWithUsers.value = data.shared_with || [];
+    } else {
+      console.error('Fehler beim Abrufen der Prompt-Details:', data.error);
+    }
   } catch (error) {
     console.error('Fehler beim Laden der Prompt-Details:', error);
   }
 };
+
 // Snackbar nach 3 Sek. ausblenden
 
 /**

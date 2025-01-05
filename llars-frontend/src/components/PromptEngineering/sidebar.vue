@@ -42,6 +42,40 @@
       </button>
     </div>
 
+    <!-- Prompt-Sharing -->
+    <div class="sharing-section">
+      <h3>Geteilt mit:</h3>
+      <ul class="shared-users-list">
+        <!-- Auflistung der User, mit denen geteilt ist -->
+        <li v-for="user in sharedWith" :key="user" class="shared-user-item">
+          {{ user }}
+          <!-- Nur zeigen, wenn Owner -->
+          <button
+            v-if="isOwner"
+            @click="unsharePromptWithUser(user)"
+            class="unshare-button"
+          >
+            ✕
+          </button>
+        </li>
+      </ul>
+
+      <!-- Nur zeigen, wenn Owner -->
+      <div v-if="isOwner" class="share-form">
+        <input
+          v-model="userToShare"
+          type="text"
+          placeholder="Username eingeben..."
+          class="share-input"
+        />
+        <button @click="sharePromptWithUser" class="share-button">
+          Teilen
+        </button>
+      </div>
+      <!-- Anzeige von Fehlern -->
+      <p v-if="shareError" class="error-message">{{ shareError }}</p>
+    </div>
+
     <!-- Preview Modal mit Teleport -->
     <Teleport to="body">
       <div v-if="showPreview" class="preview-modal">
@@ -76,12 +110,114 @@ const props = defineProps({
   blocks: {
     type: Array,
     required: true
+  },
+  // --- neu:
+  promptId: {
+    type: Number,
+    required: true
+  },
+  isOwner: {
+    type: Boolean,
+    default: false
+  },
+  sharedWith: {
+    type: Array,
+    default: () => []
   }
 });
 
+
 const router = useRouter();
 
-defineEmits(['showAddBlockDialog']);
+// Ganz oben im <script setup>:
+const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails']);
+
+// Im sidebar.vue
+// wenn share/unshare erfolgreich war:
+emit('refreshPromptDetails');
+
+// Eingabefeld für Username:
+const userToShare = ref('');
+const shareError = ref('');
+
+// SHARE
+const sharePromptWithUser = async () => {
+  if (!props.isOwner) return; // Sicherheitshalber
+  if (!userToShare.value.trim()) return;
+
+  try {
+    const apiKey = localStorage.getItem('api_key');
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${props.promptId}/share`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          shared_with: userToShare.value.trim()
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      // z.B. 404, 409, etc.
+      shareError.value = data.error || 'Fehler beim Teilen';
+    } else {
+      // Erfolg => Liste aktualisieren
+      userToShare.value = '';
+      shareError.value = '';
+
+      // Option 1: Prompt-Details neu laden
+      // emit('refreshPromptDetails');
+      // Option 2: sharedWith lokal updaten
+      // props.sharedWith.push(shared_with_username);
+
+      // Besser: Hol die aktuellen Prompt-Daten neu
+      emit('refreshPromptDetails');
+    }
+  } catch (error) {
+    shareError.value = error.message;
+  }
+};
+
+// UNSHARE
+const unsharePromptWithUser = async (usernameToRemove) => {
+  if (!props.isOwner) return;
+
+  try {
+    const apiKey = localStorage.getItem('api_key');
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${props.promptId}/unshare`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          unshare_with: usernameToRemove
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      shareError.value = data.error || 'Fehler beim Entfernen der Freigabe';
+    } else {
+      shareError.value = '';
+
+      // Prompt-Details neu laden
+      emit('refreshPromptDetails');
+    }
+  } catch (error) {
+    shareError.value = error.message;
+  }
+};
+
+
 
 const showPreview = ref(false);
 
@@ -332,5 +468,87 @@ const goToOverview = () => {
   border-radius: 50%;
   margin-right: 8px;
 }
+
+/* Styling für Sharing Section */
+.sharing-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-top: 20px;
+}
+
+.sharing-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.shared-users-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.shared-user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 0.9rem;
+}
+
+.unshare-button {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.unshare-button:hover {
+  background-color: #f0f0f0;
+  color: #e74c3c;
+}
+
+.share-form {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.share-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.share-button {
+  background-color: #81b68b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.share-button:hover {
+  background-color: #6ca077;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+/* Neue computed property für sortierte Blöcke */
 
 </style>

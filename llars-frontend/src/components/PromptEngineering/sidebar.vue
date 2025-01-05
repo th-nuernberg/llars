@@ -42,28 +42,6 @@
       </button>
     </div>
 
-    <!-- NEU: Bereich "Geteilt mit" -->
-    <div class="shared-list" v-if="sharedWith && sharedWith.length > 0">
-      <h3>Geteilt mit:</h3>
-        <div
-          v-for="username in sharedWith"
-          :key="username"
-          class="shared-user-item"
-        >
-          <span>{{ username }}</span>
-
-          <!-- Button nur anzeigen, wenn man der Owner ist -->
-          <button
-            v-if="isOwner"
-            @click="unsharePrompt(username)"
-            class="unshare-button"
-          >
-            <v-icon>mdi-close</v-icon>
-          </button>
-        </div>
-    </div>
-    <!-- ENDE NEU -->
-
     <!-- Preview Modal mit Teleport -->
     <Teleport to="body">
       <div v-if="showPreview" class="preview-modal">
@@ -87,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineProps, defineEmits } from 'vue';
+import { ref, computed } from 'vue'; // computed hinzufügen
 import { useRouter } from 'vue-router';
 
 const props = defineProps({
@@ -98,31 +76,16 @@ const props = defineProps({
   blocks: {
     type: Array,
     required: true
-  },
-  // NEU: Prompt-Id und "sharedWith" als Props
-  promptId: {
-    type: Number,
-    required: true
-  },
-  sharedWith: {
-    type: Array,
-    required: false,
-    default: () => []
-  },
-    isOwner: {
-    type: Boolean,
-    required: false,
-    default: false
   }
 });
 
-const emit = defineEmits(['showAddBlockDialog', 'unshare']);
-
 const router = useRouter();
+
+defineEmits(['showAddBlockDialog']);
+
 const showPreview = ref(false);
 
-
-// Computed property für sortierte Blöcke
+// Neue computed property für sortierte Blöcke
 const sortedBlocks = computed(() => {
   return [...props.blocks].sort((a, b) => a.position - b.position);
 });
@@ -134,60 +97,45 @@ const getBlockContent = (block) => {
   return '';
 };
 
+// Füge diese Funktion im script setup-Bereich hinzu
 const downloadPrompt = () => {
+  // Erstelle ein Objekt aus den sortierten Blöcken
   const promptData = {};
 
   sortedBlocks.value.forEach(block => {
+    // Hole den Inhalt des Blocks und entferne zusätzliche Leerzeichen/Zeilenumbrüche am Anfang und Ende
     const content = getBlockContent(block).trim();
+
+    // Füge den Block zum promptData Objekt hinzu
     promptData[block.title] = content;
   });
 
+  // Konvertiere das Objekt zu einem formatierten JSON-String
   const jsonStr = JSON.stringify(promptData, null, 2);
+
+  // Erstelle einen Blob mit dem JSON-Inhalt
   const blob = new Blob([jsonStr], { type: 'application/json' });
+
+  // Erstelle eine URL für den Blob
   const url = window.URL.createObjectURL(blob);
+
+  // Erstelle ein unsichtbares <a> Element für den Download
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'prompt.json';
+  a.download = 'prompt.json'; // Name der Datei, die heruntergeladen wird
+
+  // Füge das Element zum DOM hinzu und klicke es programmatisch
   document.body.appendChild(a);
   a.click();
+
+  // Cleanup: Entferne das Element und die URL
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 };
 
+
 const goToOverview = () => {
   router.push('/promptengineering');
-};
-
-// NEU: Methode zum Unshare
-const unsharePrompt = async (usernameToUnshare) => {
-  try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${props.promptId}/unshare`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': api_key
-        },
-        body: JSON.stringify({
-          unshare_with: usernameToUnshare
-        })
-      }
-    );
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Fehler beim Unsharen:', data.error || response.statusText);
-      return;
-    }
-
-    // Wenn erfolgreich, emitte ein Event zum Parent
-    emit('unshare', usernameToUnshare);
-
-  } catch (error) {
-    console.error('Fehler beim Aufruf von /unshare:', error);
-  }
 };
 </script>
 
@@ -314,7 +262,7 @@ const unsharePrompt = async (usernameToUnshare) => {
   transition: background-color 0.2s;
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 40px; /* Einheitliche Höhe für alle Buttons */
 }
 
 .button-icon {
@@ -326,38 +274,38 @@ const unsharePrompt = async (usernameToUnshare) => {
 }
 
 .back-button {
-  background-color: #b0ca97;
+  background-color: #b0ca97;  /* Heller Beige-Ton passend zum Schema */
 }
 
 .back-button:hover {
-  background-color: #9bb582;
+  background-color: #9bb582;  /* slightly darker */
 }
 
 .add-block-button {
-  background-color: #81b68b;
+  background-color: #81b68b;  /* secondary color */
 }
 
 .add-block-button:hover {
-  background-color: #6ca077;
+  background-color: #6ca077;  /* slightly darker */
 }
 
 .preview-button {
-  background-color: #b0ca97;
+  background-color: #b0ca97;  /* primary color */
 }
 
 .preview-button:hover {
-  background-color: #9bb582;
+  background-color: #9bb582;  /* slightly darker */
 }
 
 .download-button {
-  background-color: #92b199;
+  background-color: #92b199;  /* Mix zwischen primary und secondary */
 }
 
 .download-button:hover {
-  background-color: #7d9c84;
+  background-color: #7d9c84;  /* slightly darker */
 }
 
-/* Online Users styles */
+
 .users-list {
   background-color: white;
   border-radius: 8px;
@@ -385,45 +333,4 @@ const unsharePrompt = async (usernameToUnshare) => {
   margin-right: 8px;
 }
 
-/* NEU: Shared-list styles */
-.shared-list {
-  margin-top: 20px;
-  background-color: white;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.shared-list h3 {
-  margin: 0 0 15px 0;
-  font-size: 1rem;
-  color: #333;
-}
-
-.shared-user-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-}
-
-.unshare-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #666;
-  font-size: 1rem;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-}
-
-.unshare-button:hover {
-  color: #e74c3c;
-}
 </style>

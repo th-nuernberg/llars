@@ -3,6 +3,13 @@
   <div class="sidebar">
     <div class="sidebar-content">
       <v-spacer></v-spacer>
+      <!-- Zurück-Button -->
+      <button
+        @click="goToOverview"
+        class="action-button back-button">
+        <v-icon class="button-icon">mdi-arrow-left</v-icon>
+        Zur Übersicht
+      </button>
 
       <!-- Online Users Liste -->
       <div class="users-list">
@@ -14,15 +21,6 @@
       </div>
 
       <!-- Buttons für Aktionen -->
-
-      <!-- Zurück-Button -->
-      <button
-        @click="goToOverview"
-        class="action-button back-button">
-        <v-icon class="button-icon">mdi-arrow-left</v-icon>
-        Zur Übersicht
-      </button>
-
       <!-- Vorschau anzeigen -->
       <button @click="showPreview = true" class="action-button preview-button">
         <v-icon class="button-icon"> mdi-eye</v-icon>

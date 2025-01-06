@@ -19,7 +19,7 @@
                     <template v-if="prompt.shared_with && prompt.shared_with.length > 0">
                       <v-divider></v-divider>
                       <div class="d-flex align-center mt-2">
-                        <v-icon size="small" color="info" class="mr-1">mdi-share-variant</v-icon>
+                        <v-icon size="small" color="#dac081" class="mr-1">mdi-share-variant</v-icon>
                         <span class="text-truncate">
                           Geteilt mit: {{ prompt.shared_with.join(', ') }}
                         </span>
@@ -49,7 +49,7 @@
                     <div class="mb-2">Geteilt am: {{ formatDate(prompt.shared_at) }}</div>
                     <v-divider></v-divider>
                     <div class="d-flex align-center mt-2">
-                      <v-icon size="small" color="info" class="mr-1">mdi-account</v-icon>
+                      <v-icon size="small" color="#dac081" class="mr-1">mdi-account</v-icon>
                       <span class="text-truncate">
                         Geteilt von: {{ prompt.owner }}
                       </span>

@@ -40,6 +40,18 @@
         <v-icon class="button-icon">mdi-download</v-icon>
         Download Prompt
       </button>
+
+      <button @click="triggerJsonUpload" class="action-button upload-button">
+        <v-icon class="button-icon">mdi-upload</v-icon>
+        Prompt hochladen
+      </button>
+      <input
+        type="file"
+        ref="jsonFileInput"
+        style="display: none"
+        accept=".json"
+        @change="handleJsonFileUpload"
+      />
     </div>
 
     <!-- Besitzer anzeigen, falls nicht der Owner -->
@@ -108,6 +120,8 @@
 import { ref, computed } from 'vue'; // computed hinzufügen
 import { useRouter } from 'vue-router';
 
+const jsonFileInput = ref(null); // Referenz auf den unsichtbaren <input type="file">
+
 const props = defineProps({
   users: {
     type: Object,
@@ -150,6 +164,31 @@ emit('refreshPromptDetails');
 const userToShare = ref('');
 const shareError = ref('');
 
+//UPLOAD
+const triggerJsonUpload = () => {
+  if (jsonFileInput.value) {
+    jsonFileInput.value.click();
+  }
+};
+
+const handleJsonFileUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const fileContent = await file.text(); // Dateiinhalt als String
+    const jsonData = JSON.parse(fileContent); // als Objekt parsen
+
+    // JSON-Keys = Blocknamen, Values = Blockinhalte
+    // -> an Parent-Komponente weitergeben (oder hier direkt verarbeiten)
+    emit('uploadBlocksFromJson', jsonData);
+    // Nach dem Upload den file-input zurücksetzen, damit man jederzeit neu hochladen kann
+    event.target.value = '';
+  } catch (error) {
+    console.error('Fehler beim JSON-Upload:', error);
+    // ggf. shareError.value o.Ä. befüllen oder Snackbar anzeigen
+  }
+};
 // SHARE
 const sharePromptWithUser = async () => {
   if (!props.isOwner) return; // Sicherheitshalber
@@ -454,6 +493,14 @@ const goToOverview = () => {
 
 .download-button:hover {
   background-color: #7d9c84;  /* slightly darker */
+}
+
+.upload-button {
+  background-color: #D1BC8A; /* oder eine andere Farbe */
+}
+
+.upload-button:hover {
+  background-color: #aa9768;
 }
 
 

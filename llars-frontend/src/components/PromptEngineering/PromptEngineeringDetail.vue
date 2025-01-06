@@ -10,6 +10,7 @@
       :owner="promptOwner"
       @showAddBlockDialog="showAddBlockDialog = true"
       @refreshPromptDetails="fetchPromptDetails()"
+      @uploadBlocksFromJson="handleJsonUpload"
     />
 
     <div class="main-content">
@@ -200,6 +201,70 @@ const confirmDeleteBlock = () => {
   // Dialog schließen
   closeDeleteBlockDialog();
 };
+
+// ...
+const handleJsonUpload = (jsonData) => {
+  // jsonData ist z.B.:
+  // {
+  //   "Erster Block": "Inhalt des Ersten Blocks",
+  //   "Zweiter Block": "Inhalt des zweiten Blocks",
+  //   "Dritter Block": "..."
+  // }
+
+  if (!ydoc) return;
+
+  ydoc.transact(() => {
+    const blocksMap = ydoc.getMap('blocks');
+
+    // Position herausfinden, um neu hinzuzufügen (nächste freie Position)
+    let maxPosition = 0;
+    blocksMap.forEach((blockMap) => {
+      const pos = blockMap.get('position');
+      if (pos > maxPosition) {
+        maxPosition = pos;
+      }
+    });
+
+    // Iteriere über die Keys und Values
+    Object.entries(jsonData).forEach(([blockName, blockContent], idx) => {
+      // Prüfen, ob Name existiert
+      if (blocksMap.has(blockName)) {
+        // Du kannst entweder:
+        // - Überschreiben
+        // - Neuen Namen anhängen (z.B. blockName + "_1")
+        // - Überspringen
+        // Hier: Wir überspringen einfach oder du zeigst eine Snackbar.
+        showSnackbarMessage(`Block "${blockName}" existiert bereits! Übersprungen.`);
+        return;
+      }
+
+      const newBlockMap = new Y.Map();
+      newBlockMap.set('title', blockName);
+      newBlockMap.set('position', maxPosition + idx + 1);
+
+      // Y.Text anlegen
+      const ytext = new Y.Text();
+      // Den Blocktext hineinschreiben
+      ytext.insert(0, blockContent);
+
+      newBlockMap.set('content', ytext);
+
+      blocksMap.set(blockName, newBlockMap);
+    });
+
+    // Alle Updates werden in einem Rutsch gesendet
+    const update = Y.encodeStateAsUpdate(ydoc);
+    if (socket?.connected) {
+      socket.emit('sync_update', {
+        room: roomId.value,
+        update: Array.from(update)
+      });
+    }
+  });
+
+  showSnackbarMessage('JSON-Datei erfolgreich verarbeitet!');
+};
+
 
 /**
  * Methode zum Erstellen eines neuen Blocks

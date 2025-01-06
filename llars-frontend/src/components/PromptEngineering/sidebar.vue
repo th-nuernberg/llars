@@ -23,16 +23,16 @@
         Zur Übersicht
       </button>
 
-      <!-- Neuen Block hinzufügen -->
-      <button @click="$emit('showAddBlockDialog')" class="action-button add-block-button">
-        <v-icon class="button-icon"> mdi-plus</v-icon>
-        Neuer Block
-      </button>
-
       <!-- Vorschau anzeigen -->
       <button @click="showPreview = true" class="action-button preview-button">
         <v-icon class="button-icon"> mdi-eye</v-icon>
         Vorschau anzeigen
+      </button>
+
+      <!-- Neuen Block hinzufügen -->
+      <button @click="$emit('showAddBlockDialog')" class="action-button add-block-button">
+        <v-icon class="button-icon"> mdi-plus</v-icon>
+        Neuer Block
       </button>
 
       <!-- Download Prompt Button -->
@@ -475,14 +475,6 @@ const goToOverview = () => {
   background-color: #9bb582;  /* slightly darker */
 }
 
-.add-block-button {
-  background-color: #81b68b;  /* secondary color */
-}
-
-.add-block-button:hover {
-  background-color: #6ca077;  /* slightly darker */
-}
-
 .preview-button {
   background-color: #b0ca97;  /* primary color */
 }
@@ -491,12 +483,20 @@ const goToOverview = () => {
   background-color: #9bb582;  /* slightly darker */
 }
 
+.add-block-button {
+  background-color: #81b68b;  /* secondary color */
+}
+
+.add-block-button:hover {
+  background-color: #6ca077;  /* slightly darker */
+}
+
 .download-button {
-  background-color: #92b199;  /* Mix zwischen primary und secondary */
+  background-color: #D1BC8A;  /* Mix zwischen primary und secondary */
 }
 
 .download-button:hover {
-  background-color: #7d9c84;  /* slightly darker */
+  background-color: #aa9768;  /* slightly darker */
 }
 
 .upload-button {

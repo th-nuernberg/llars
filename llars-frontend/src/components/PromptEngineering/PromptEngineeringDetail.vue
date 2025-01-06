@@ -7,6 +7,7 @@
       :prompt-id="Number(promptId)"
       :is-owner="promptOwner === username"
       :shared-with="sharedWithUsers"
+      :owner="promptOwner"
       @showAddBlockDialog="showAddBlockDialog = true"
       @refreshPromptDetails="fetchPromptDetails()"
     />

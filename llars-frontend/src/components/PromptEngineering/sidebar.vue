@@ -42,6 +42,12 @@
       </button>
     </div>
 
+    <!-- Besitzer anzeigen, falls nicht der Owner -->
+    <div v-if="!isOwner && owner" class="owner-info">
+      <h3>Besitzer:</h3>
+      <p class="owner-name">{{ owner }}</p>
+    </div>
+
     <!-- Prompt-Sharing -->
     <div class="sharing-section">
       <h3>Geteilt mit:</h3>
@@ -105,26 +111,30 @@ import { useRouter } from 'vue-router';
 const props = defineProps({
   users: {
     type: Object,
-    required: true
+    required: true,
   },
   blocks: {
     type: Array,
-    required: true
+    required: true,
   },
-  // --- neu:
   promptId: {
     type: Number,
-    required: true
+    required: true,
   },
   isOwner: {
     type: Boolean,
-    default: false
+    default: false,
   },
   sharedWith: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
+  owner: {
+    type: String, // Neuer Prop-Typ
+    required: true,
+  },
 });
+
 
 
 const router = useRouter();
@@ -143,7 +153,7 @@ const shareError = ref('');
 // SHARE
 const sharePromptWithUser = async () => {
   if (!props.isOwner) return; // Sicherheitshalber
-  if (!userToShare.value.trim()) return;
+  // if (!userToShare.value.trim()) return;
 
   try {
     const apiKey = localStorage.getItem('api_key');
@@ -183,10 +193,15 @@ const sharePromptWithUser = async () => {
   }
 };
 
+const clearShareError = () => {
+  setTimeout(() => {
+    shareError.value = '';
+  }, 15000); // 15 Sekunden
+};
+
 // UNSHARE
 const unsharePromptWithUser = async (usernameToRemove) => {
-  if (!props.isOwner) return;
-
+  if (!props.isOwner) return; // Sicherheitshalber
   try {
     const apiKey = localStorage.getItem('api_key');
     const response = await fetch(
@@ -195,27 +210,27 @@ const unsharePromptWithUser = async (usernameToRemove) => {
         method: 'POST',
         headers: {
           'Authorization': apiKey,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          unshare_with: usernameToRemove
-        })
+          unshare_with: usernameToRemove, // Sende den Benutzer, der entfernt werden soll
+        }),
       }
     );
 
     const data = await response.json();
     if (!response.ok) {
       shareError.value = data.error || 'Fehler beim Entfernen der Freigabe';
+      clearShareError();
     } else {
       shareError.value = '';
-
-      // Prompt-Details neu laden
-      emit('refreshPromptDetails');
+      emit('refreshPromptDetails'); // Prompt-Details neu laden
     }
   } catch (error) {
     shareError.value = error.message;
   }
 };
+
 
 
 
@@ -550,5 +565,24 @@ const goToOverview = () => {
 }
 
 /* Neue computed property für sortierte Blöcke */
+
+.owner-info {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-top: 20px;
+}
+
+.owner-info h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  color: #333;
+}
+
+.owner-name {
+  font-size: 0.9rem;
+  color: #666;
+}
 
 </style>

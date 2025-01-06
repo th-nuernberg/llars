@@ -40,6 +40,19 @@
         <v-icon class="button-icon">mdi-download</v-icon>
         Download Prompt
       </button>
+
+      <button @click="triggerJsonUpload" class="action-button upload-button">
+        <v-icon class="button-icon">mdi-upload</v-icon>
+        Upload Prompt
+      </button>
+
+      <input
+        type="file"
+        ref="jsonFileInput"
+        style="display: none"
+        accept=".json"
+        @change="handleJsonFileUpload"
+      />
     </div>
 
     <!-- Besitzer anzeigen, falls nicht der Owner -->
@@ -108,6 +121,8 @@
 import { ref, computed } from 'vue'; // computed hinzufügen
 import { useRouter } from 'vue-router';
 
+const jsonFileInput = ref(null); // Referenz auf den unsichtbaren <input type="file">
+
 const props = defineProps({
   users: {
     type: Object,
@@ -149,6 +164,34 @@ emit('refreshPromptDetails');
 // Eingabefeld für Username:
 const userToShare = ref('');
 const shareError = ref('');
+
+//UPLOAD
+const triggerJsonUpload = () => {
+  if (jsonFileInput.value) {
+    jsonFileInput.value.click();
+  }
+};
+
+// sidebar.vue <script setup>:
+const handleJsonFileUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const fileContent = await file.text();
+    const jsonData = JSON.parse(fileContent);
+
+    // Stopp! Nicht direkt handleJsonUpload aufrufen,
+    // sondern dem Parent nur "wir haben JSON data!" signalisieren:
+    emit('uploadJsonFileSelected', jsonData);
+
+    // Input zurücksetzen:
+    event.target.value = '';
+  } catch (error) {
+    console.error('Fehler beim JSON-Upload:', error);
+    // evtl. Snackbar anzeigen
+  }
+};
 
 // SHARE
 const sharePromptWithUser = async () => {
@@ -454,6 +497,14 @@ const goToOverview = () => {
 
 .download-button:hover {
   background-color: #7d9c84;  /* slightly darker */
+}
+
+.upload-button {
+  background-color: #D1BC8A; /* oder eine andere Farbe */
+}
+
+.upload-button:hover {
+  background-color: #aa9768;
 }
 
 

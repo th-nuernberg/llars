@@ -15,6 +15,7 @@ class RAGPipeline:
     def __init__(self, docs_dir="docs", collection_name="llars_docs", storage_dir="/app/storage"):
         self.docs_dir = docs_dir
         self.model_name = "intfloat/multilingual-e5-large-instruct"
+        self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
         self.collection_name = f"{collection_name}_{self.model_name.replace('/', '_')}"
         self.model_dir = os.path.join(storage_dir, "models")
         self.vectorstore_dir = os.path.join(storage_dir, "vectorstore", self.model_name.replace('/', '_'))

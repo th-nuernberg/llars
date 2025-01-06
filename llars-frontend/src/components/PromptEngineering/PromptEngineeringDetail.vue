@@ -73,7 +73,7 @@
       </draggable>
 
       <!-- Debug-Ausgabe -->
-      <div class="debug-info">
+      <div v-if="isDevelopment" class="debug-info">
         <h4>Debug Information:</h4>
         <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
       </div>
@@ -93,6 +93,8 @@ import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
 import printYDoc from "@/components/PromptEngineering/utils";
 import sidebar from "@/components/PromptEngineering/sidebar.vue";
+
+const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
 // QuillCursors-Registrierung
 Quill.register('modules/cursors', QuillCursors);

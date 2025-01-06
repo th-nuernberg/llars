@@ -2,7 +2,7 @@
   <v-app>
     <!-- Normale Benutzer AppBar -->
     <v-app-bar v-if="!isAdminUser" app dark color="primary">
-      <v-app-bar-nav-icon></v-app-bar-nav-icon>
+      <!--<v-app-bar-nav-icon></v-app-bar-nav-icon>-->
       <v-toolbar-title @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
         <v-row no-gutters align="center">
           <v-col cols="auto">
@@ -30,7 +30,7 @@
 
     <!-- Admin Benutzer AppBar -->
     <v-app-bar v-else app dark color="primary"> <!-- Primärfarbe verwendet -->
-      <v-app-bar-nav-icon></v-app-bar-nav-icon>
+      <!--<v-app-bar-nav-icon></v-app-bar-nav-icon>-->
       <v-toolbar-title @click="goAdminHome" style="display: flex; align-items: center; cursor: pointer;">
         <v-row no-gutters align="center">
           <v-col cols="auto">

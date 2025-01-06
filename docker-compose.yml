@@ -41,8 +41,6 @@ services:
 
   frontend-vue-service:
     container_name: llars_frontend_service
-    env_file:
-      - .env
     build:
       context: .
       dockerfile: docker/vue/Dockerfile-vue
@@ -50,6 +48,8 @@ services:
       - "5173"
     environment:
       - TZ=Europe/Berlin
+      - VITE_API_BASE_URL=${BASE_URL}
+      - VITE_PROJECT_STATE=${PROJECT_STATE}
     develop:
       watch:
         - action: sync

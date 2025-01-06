@@ -7,8 +7,10 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend-flask-service
-      - frontend-vue-service
+      backend-flask-service:
+        condition: service_healthy
+      frontend-vue-service:
+        condition: service_healthy
     environment:
       - TZ=Europe/Berlin
 
@@ -30,12 +32,15 @@ services:
     depends_on:
       db-maria-service:
         condition: service_healthy
-
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 1800s   # 30 Minuten maximale Startzeit
+      interval: 10s         # Häufige Checks
+      timeout: 10s
+      retries: 180         # Viele Retries (entspricht 30min bei 10s Interval)
 
   frontend-vue-service:
     container_name: llars_frontend_service
-    env_file:
-      - .env
     build:
       context: .
       dockerfile: docker/vue/Dockerfile-vue
@@ -43,6 +48,8 @@ services:
       - "5173"
     environment:
       - TZ=Europe/Berlin
+      - VITE_API_BASE_URL=${BASE_URL}
+      - VITE_PROJECT_STATE=${PROJECT_STATE}
     develop:
       watch:
         - action: sync
@@ -53,6 +60,12 @@ services:
     depends_on:
       - backend-supervisor-service
       - ssh-proxy-service
+    healthcheck:
+      test: [ "CMD", "/usr/local/bin/healthcheck.sh" ]
+      start_period: 2s
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend-supervisor-service:
     container_name: llars_supervisor_service
@@ -107,6 +120,30 @@ services:
       - PROXY_REMOTE_PORT=${PROXY_REMOTE_PORT}
       - PROXY_LOCAL_PORT=${PROXY_LOCAL_PORT}
     command: [ "/scripts/start_ssh_proxy.sh" ]
+
+  yjs-service:
+    container_name: llars_yjs_service
+    build:
+      context: .
+      dockerfile: docker/yjs-server/Dockerfile-yjs
+    environment:
+      - TZ=Europe/Berlin
+      - BASE_URL=${VITE_API_BASE_URL}
+      - PORT=8082
+      - MYSQL_HOST=db-maria-service
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+    develop:
+      watch:
+        - action: sync
+          path: ./yjs-server
+          target: /yjs-server
+          ignore:
+            - node_modules/
+    depends_on:
+      - db-maria-service
 
 
 volumes:

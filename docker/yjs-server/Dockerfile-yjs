@@ -1,0 +1,18 @@
+# 1. Offizielles Node-Image als Grundlage:
+FROM node:23-bookworm
+LABEL authors="philippsteigerwald"
+# 2. Arbeitsverzeichnis erstellen und setzen
+
+WORKDIR /yjs-server
+RUN mkdir /scripts
+COPY docker/yjs-server/start_yjs.sh /scripts/
+RUN chmod +x /scripts/start_yjs.sh
+# 3. package.json & package-lock.json ins Docker-Image kopieren
+
+COPY yjs-server /yjs-server/
+
+# 6. Port freigeben (falls gewünscht, hier beispielhaft 3000)
+# EXPOSE 8082
+
+# 7. Startbefehl
+CMD ["/bin/bash", "/scripts/start_yjs.sh"]

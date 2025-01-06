@@ -1,21 +1,16 @@
-# Use an official Node runtime as the base image
-FROM node
+FROM node:23-bookworm
 LABEL authors="philippsteigerwald"
 
-# Set the working directory in the container to /app
 WORKDIR /vue
+
+COPY docker/vue/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN mkdir /scripts
-COPY docker/vue/start_vue.sh /scripts/
-
-# Copy the conversation-ranker directory to the working directory in the container
+COPY docker/vue/start_vue.sh /scripts/start_vue.sh
 COPY llars-frontend /vue/
-# Make the script executable
-RUN chmod +x /scripts/start_vue.sh
-# Copy the rest of the application to the working directory
-# COPY ../conversation-ranker .
 
-# Make port 5000 available to the world outside this container
+RUN chmod +x /usr/local/bin/healthcheck.sh && \
+   chmod +x /scripts/start_vue.sh
+
 EXPOSE 5173
 
-# Run the start_ranker.sh script when the container launches
 CMD ["/scripts/start_vue.sh"]

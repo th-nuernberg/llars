@@ -43,8 +43,9 @@
 
       <button @click="triggerJsonUpload" class="action-button upload-button">
         <v-icon class="button-icon">mdi-upload</v-icon>
-        Prompt hochladen
+        Upload Prompt
       </button>
+
       <input
         type="file"
         ref="jsonFileInput"
@@ -171,24 +172,27 @@ const triggerJsonUpload = () => {
   }
 };
 
+// sidebar.vue <script setup>:
 const handleJsonFileUpload = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
   try {
-    const fileContent = await file.text(); // Dateiinhalt als String
-    const jsonData = JSON.parse(fileContent); // als Objekt parsen
+    const fileContent = await file.text();
+    const jsonData = JSON.parse(fileContent);
 
-    // JSON-Keys = Blocknamen, Values = Blockinhalte
-    // -> an Parent-Komponente weitergeben (oder hier direkt verarbeiten)
-    emit('uploadBlocksFromJson', jsonData);
-    // Nach dem Upload den file-input zurücksetzen, damit man jederzeit neu hochladen kann
+    // Stopp! Nicht direkt handleJsonUpload aufrufen,
+    // sondern dem Parent nur "wir haben JSON data!" signalisieren:
+    emit('uploadJsonFileSelected', jsonData);
+
+    // Input zurücksetzen:
     event.target.value = '';
   } catch (error) {
     console.error('Fehler beim JSON-Upload:', error);
-    // ggf. shareError.value o.Ä. befüllen oder Snackbar anzeigen
+    // evtl. Snackbar anzeigen
   }
 };
+
 // SHARE
 const sharePromptWithUser = async () => {
   if (!props.isOwner) return; // Sicherheitshalber

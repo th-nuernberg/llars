@@ -10,7 +10,7 @@
       :owner="promptOwner"
       @showAddBlockDialog="showAddBlockDialog = true"
       @refreshPromptDetails="fetchPromptDetails()"
-      @uploadBlocksFromJson="handleJsonUpload"
+      @uploadJsonFileSelected="onJsonFileSelected"
     />
 
     <div class="main-content">
@@ -45,6 +45,25 @@
           </div>
         </div>
       </div>
+
+      <!-- Dialog-Fenster für die Wahl, ob Blocks überschrieben oder angehängt werden -->
+      <div v-if="showUploadChoiceDialog" class="dialog-overlay">
+      <div class="dialog-box">
+        <h3>JSON-Blocks hochladen</h3>
+        <p>Sollen die vorhandenen Blöcke überschrieben oder neue Blocks nur angehängt werden?</p>
+        <div class="dialog-buttons">
+          <button class="danger-button" @click="overrideJsonBlocks">
+            Überschreiben
+          </button>
+          <button class="success-button" @click="appendJsonBlocks">
+            Anhängen
+          </button>
+          <button class="cancel-button" @click="cancelJsonUpload">
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>
 
 
       <!-- Snackbar -->
@@ -203,20 +222,51 @@ const confirmDeleteBlock = () => {
 };
 
 // ...
-const handleJsonUpload = (jsonData) => {
-  // jsonData ist z.B.:
-  // {
-  //   "Erster Block": "Inhalt des Ersten Blocks",
-  //   "Zweiter Block": "Inhalt des zweiten Blocks",
-  //   "Dritter Block": "..."
-  // }
+const showUploadChoiceDialog = ref(false);
+const pendingJsonData = ref(null);
 
+// Wenn die Sidebar ein JSON-Objekt gemeldet hat
+const onJsonFileSelected = (jsonData) => {
+  pendingJsonData.value = jsonData;
+  showUploadChoiceDialog.value = true;
+};
+
+// Methode: Alle Blöcke entfernen und neue aus pendingJsonData einfügen
+const overrideJsonBlocks = () => {
+  if (!pendingJsonData.value) return;
+
+  // 1) Vorhandene Blocks löschen
+  if (ydoc) {
+    ydoc.transact(() => {
+      const blocksMap = ydoc.getMap('blocks');
+      blocksMap.forEach((val, key) => {
+        blocksMap.delete(key);
+      });
+      // (optional) Sync-Update senden
+      const update = Y.encodeStateAsUpdate(ydoc);
+      if (socket?.connected) {
+        socket.emit('sync_update', {
+          room: roomId.value,
+          update: Array.from(update)
+        });
+      }
+    });
+  }
+
+  // 2) Neue Blocks anlegen (existiert schon als handleJsonUpload):
+  handleJsonUpload(pendingJsonData.value);
+
+  // Dialog schließen
+  showUploadChoiceDialog.value = false;
+  pendingJsonData.value = null;
+};
+
+const handleJsonUpload = (jsonData) => {
   if (!ydoc) return;
 
   ydoc.transact(() => {
     const blocksMap = ydoc.getMap('blocks');
 
-    // Position herausfinden, um neu hinzuzufügen (nächste freie Position)
     let maxPosition = 0;
     blocksMap.forEach((blockMap) => {
       const pos = blockMap.get('position');
@@ -225,15 +275,10 @@ const handleJsonUpload = (jsonData) => {
       }
     });
 
-    // Iteriere über die Keys und Values
+    // Iteriere über Keys und Values im jsonData
     Object.entries(jsonData).forEach(([blockName, blockContent], idx) => {
-      // Prüfen, ob Name existiert
+      // Existiert der Block schon?
       if (blocksMap.has(blockName)) {
-        // Du kannst entweder:
-        // - Überschreiben
-        // - Neuen Namen anhängen (z.B. blockName + "_1")
-        // - Überspringen
-        // Hier: Wir überspringen einfach oder du zeigst eine Snackbar.
         showSnackbarMessage(`Block "${blockName}" existiert bereits! Übersprungen.`);
         return;
       }
@@ -242,17 +287,14 @@ const handleJsonUpload = (jsonData) => {
       newBlockMap.set('title', blockName);
       newBlockMap.set('position', maxPosition + idx + 1);
 
-      // Y.Text anlegen
+      // Neuen Text anlegen
       const ytext = new Y.Text();
-      // Den Blocktext hineinschreiben
       ytext.insert(0, blockContent);
-
       newBlockMap.set('content', ytext);
 
       blocksMap.set(blockName, newBlockMap);
     });
 
-    // Alle Updates werden in einem Rutsch gesendet
     const update = Y.encodeStateAsUpdate(ydoc);
     if (socket?.connected) {
       socket.emit('sync_update', {
@@ -264,6 +306,25 @@ const handleJsonUpload = (jsonData) => {
 
   showSnackbarMessage('JSON-Datei erfolgreich verarbeitet!');
 };
+
+
+// Methode: Vorhandene Blöcke behalten und nur neue hinzufügen
+const appendJsonBlocks = () => {
+  if (!pendingJsonData.value) return;
+  // Einfach die vorhandene Methode "handleJsonUpload" nutzen
+  handleJsonUpload(pendingJsonData.value);
+
+  // Dialog schließen
+  showUploadChoiceDialog.value = false;
+  pendingJsonData.value = null;
+};
+
+// Falls der User sich umentscheidet
+const cancelJsonUpload = () => {
+  showUploadChoiceDialog.value = false;
+  pendingJsonData.value = null;
+};
+
 
 
 /**

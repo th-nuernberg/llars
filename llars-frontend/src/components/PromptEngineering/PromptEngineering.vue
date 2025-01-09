@@ -1,3 +1,5 @@
+# PromptEngineering.vue
+# PromptEngineering.vue
 <template>
   <v-container fluid>
     <v-row>
@@ -11,8 +13,16 @@
         <v-row>
           <template v-if="prompts.length > 0">
             <v-col cols="12" sm="6" v-for="prompt in prompts" :key="prompt.id">
-              <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
-                <div class="d-flex flex-column card-content">
+              <v-card class="mb-4 case-card">
+                <div class="card-actions">
+                  <button @click.stop="deletePrompt(prompt)" class="delete-button">
+                    <v-icon size="small">mdi-close</v-icon>
+                  </button>
+                  <button @click.stop="openRenameDialog(prompt)" class="edit-button">
+                    <v-icon size="small">mdi-pencil</v-icon>
+                  </button>
+                </div>
+                <div class="d-flex flex-column card-content" @click="navigateToPromptDetail(prompt.id)">
                   <v-card-title class="text-truncate">{{ prompt.name }}</v-card-title>
                   <v-card-subtitle>
                     <div class="mb-2">Erstellt: {{ formatDate(prompt.created_at) }}</div>
@@ -66,6 +76,7 @@
           </v-col>
         </v-row>
       </v-col>
+
       <!-- Rechte Seite: Menü zum Anlegen eines neuen Prompts -->
       <v-col cols="12" md="4">
         <v-card>
@@ -99,6 +110,41 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Dialog zum Umbenennen eines Prompts -->
+    <v-dialog v-model="showRenameDialog" max-width="500px">
+      <v-card>
+        <v-card-title>Prompt umbenennen</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="renamePromptName"
+            label="Neuer Name"
+            :rules="[rules.required]"
+            required
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="closeRenameDialog">Abbrechen</v-btn>
+          <v-btn color="primary" @click="renamePrompt">Speichern</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog zum Löschen bestätigen -->
+    <v-dialog v-model="showDeleteDialog" max-width="500px">
+      <v-card>
+        <v-card-title>Prompt löschen</v-card-title>
+        <v-card-text>
+          Möchten Sie dieses Prompt wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="closeDeleteDialog">Abbrechen</v-btn>
+          <v-btn color="error" @click="confirmDeletePrompt">Löschen</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -121,8 +167,14 @@ const isFormValid = ref(false);
 const rules = {
   required: (value) => !!value || 'Pflichtfeld',
 };
+
+// Dialog States
+const showRenameDialog = ref(false);
+const showDeleteDialog = ref(false);
+const renamePromptName = ref('');
+const selectedPrompt = ref(null);
+
 // API Call zum Speichern eines neuen Prompts
-// Füge diese ref hinzu:
 const newPromptForm = ref(null);
 
 // Formatiert das Datum für die Anzeige
@@ -166,6 +218,94 @@ async function fetchSharedPrompts() {
   }
 }
 
+// Öffnet den Dialog zum Umbenennen
+function openRenameDialog(prompt) {
+  selectedPrompt.value = prompt;
+  renamePromptName.value = prompt.name;
+  showRenameDialog.value = true;
+}
+
+// Schließt den Dialog zum Umbenennen
+function closeRenameDialog() {
+  showRenameDialog.value = false;
+  renamePromptName.value = '';
+  selectedPrompt.value = null;
+}
+
+// API Call zum Umbenennen eines Prompts
+async function renamePrompt() {
+  if (!selectedPrompt.value || !renamePromptName.value) return;
+
+  try {
+    const api_key = localStorage.getItem('api_key');
+    await axios.put(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${selectedPrompt.value.id}/rename`,
+      { name: renamePromptName.value },
+      {
+        headers: {
+          'Authorization': api_key,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // Aktualisiere den Prompt in der Liste
+    const prompt = prompts.value.find(p => p.id === selectedPrompt.value.id);
+    if (prompt) {
+      prompt.name = renamePromptName.value;
+    }
+
+    closeRenameDialog();
+  } catch (error) {
+    console.error('Fehler beim Umbenennen des Prompts:', error);
+    alert(error.response?.data?.error || 'Fehler beim Umbenennen des Prompts');
+  }
+}
+
+// Öffnet den Dialog zum Löschen
+function deletePrompt(prompt) {
+  selectedPrompt.value = prompt;
+  showDeleteDialog.value = true;
+}
+
+// Schließt den Dialog zum Löschen
+function closeDeleteDialog() {
+  showDeleteDialog.value = false;
+  selectedPrompt.value = null;
+}
+
+// API Call zum Löschen eines Prompts
+async function confirmDeletePrompt() {
+  if (!selectedPrompt.value) return;
+
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.delete(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${selectedPrompt.value.id}`,
+      {
+        headers: {
+          'Authorization': api_key,
+        },
+      }
+    );
+
+    if (response.status === 200 || response.status === 204) {
+      // Entferne den Prompt aus der Liste
+      prompts.value = prompts.value.filter(p => p.id !== selectedPrompt.value.id);
+      closeDeleteDialog();
+      // Optional: Erfolgsbenachrichtigung anzeigen
+      alert('Prompt wurde erfolgreich gelöscht');
+    }
+  } catch (error) {
+    console.error('Fehler beim Löschen des Prompts:', error);
+    // Zeige spezifische Fehlermeldung vom Server oder generische Meldung
+    const errorMessage = error.response?.data?.error || 'Fehler beim Löschen des Prompts';
+    alert(errorMessage);
+  } finally {
+    selectedPrompt.value = null;
+  }
+}
+
 // Aktualisierte savePrompt Funktion
 async function savePrompt() {
   try {
@@ -176,7 +316,7 @@ async function savePrompt() {
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts`,
       {
         name: newPrompt.value.name,
-        content: { blocks: {} }, // Leere Blocks-Struktur
+        content: { blocks: {} },
       },
       {
         headers: {
@@ -216,13 +356,12 @@ async function savePrompt() {
     // Felder zurücksetzen und Formular zurücksetzen
     newPrompt.value.name = '';
     sharedWith.value = '';
-    newPromptForm.value?.reset(); // Formular zurücksetzen
+    newPromptForm.value?.reset();
   } catch (error) {
     console.error('Fehler beim Speichern des Prompts:', error);
     alert(error.response?.data?.error || 'Fehler beim Speichern des Prompts');
   }
 }
-
 
 // Navigation zu Prompt-Detail
 function navigateToPromptDetail(promptId) {
@@ -236,20 +375,44 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.case-card {
+/* NEU */
+.delete-button,
+.edit-button {
+  padding: 4px;
+  color: grey;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
   cursor: pointer;
-  transition: box-shadow 0.3s ease-in-out, transform 0.1s ease-in-out;
-  height: 105px; /* Fixe Höhe für alle Karten */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
 }
 
-.case-card:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+.delete-button:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #e74c3c;
 }
 
-.card-content {
-  height: 100%;
-  overflow: hidden;
+.edit-button:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #6ca077;
+}
+
+/* Zusätzlich für bessere Positionierung */
+.card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 2px;
+  border-radius: 4px;
 }
 
 /* Sicherstellen, dass der Titel nur eine Zeile einnimmt */

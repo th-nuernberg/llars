@@ -68,7 +68,7 @@ GET http://localhost/api/prompts
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
 
 ###
-POST http://localhost/api/admin/create_scenarios
+POST http://localhost/api/admin/create_scenario
 Content-Type: application/json
 Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 

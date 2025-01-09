@@ -1,3 +1,5 @@
+# routes.py
+
 import logging
 from numbers import Number
 from pyexpat.errors import messages
@@ -1762,6 +1764,34 @@ def rename_prompt(prompt_id):
             'updated_at': prompt.updated_at.isoformat()
         }
     }), 200
+
+@data_blueprint.route('/prompts/<int:prompt_id>', methods=['DELETE'])
+def delete_prompt(prompt_id):
+    """
+    Route zum Löschen eines Prompts.
+    """
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Prompt abrufen und prüfen, ob es dem Benutzer gehört
+    prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
+    if not prompt:
+        return jsonify({'error': 'Prompt not found or you do not have permission to delete it'}), 404
+
+    # Freigaben für das Prompt entfernen
+    UserPromptShare.query.filter_by(prompt_id=prompt_id).delete()
+
+    # Prompt löschen
+    db.session.delete(prompt)
+    db.session.commit()
+
+    return jsonify({'message': 'Prompt deleted successfully'}), 200
+
 
 
 def configure_routes(app):

@@ -4,6 +4,8 @@ from pyexpat.errors import messages
 from sre_constants import error
 from tokenize import group
 from unicodedata import category
+
+
 from . import data_blueprint, auth_blueprint
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
@@ -45,8 +47,20 @@ def get_scenario_list():
         'scenarios': []
     }
 
+    current_time = datetime.utcnow()
     for scenario in scenarios:
         func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
+
+        if current_time > scenario.begin and current_time < scenario.end:
+            status =  'aktiv'
+        elif current_time > scenario.end and current_time > scenario.begin:
+            status = 'beendet'
+        elif current_time < scenario.begin and current_time < scenario.end:
+            status = 'ausstehend'
+        else:
+            status = 'Fehlerhafte Start/Endzeit'
+
+
         formatted_scenario = {
             'scenario_id': scenario.id,
             'name': scenario.scenario_name,
@@ -54,8 +68,22 @@ def get_scenario_list():
             'function_type_name': func_type if func_type else None,
             'begin_date': scenario.begin,
             'end_date': scenario.end,
+            'status': status,
         }
         formatted_scenarios['scenarios'].append(formatted_scenario)
+
+        status_order = {
+            'ausstehend': 2,
+            'aktiv': 1,
+            'beendet': 3,
+            'Fehlerhafte Start/Endzeit': 0
+        }
+
+        # Sort the scenarios based on the status order
+        formatted_scenarios['scenarios'] = sorted(
+            formatted_scenarios['scenarios'],
+            key=lambda x: status_order.get(x['status'], 99)
+        )
 
     return jsonify(formatted_scenarios), 200
 
@@ -140,7 +168,7 @@ def get_scenario_details(scenario_id=None): #
 
 
 
-@data_blueprint.route('/admin/create_scenarios', methods=['POST']) # TODO: Gedanken zu Zeitzonen machen
+@data_blueprint.route('/admin/create_scenario', methods=['POST']) # TODO: Gedanken zu Zeitzonen machen
 def create_scenario():
     # Authorization
     api_key = request.headers.get('Authorization')
@@ -394,7 +422,9 @@ def add_threads_to_scenario():
         if thread is None:
             failed_threads.append(thread_id)
         else:
-            validated_threads.append(thread.thread_id)
+            # check if thread already belongs to scenario (no duplicates allowed in db)
+            if not ScenarioThreads.query.filter_by(thread_id=thread_id, function_type_id=scenario.function_type_id, scenario_id=scenario_id).first():
+                validated_threads.append(thread.thread_id)
 
     # Add threads and distribute
     try:

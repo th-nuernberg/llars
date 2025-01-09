@@ -1792,7 +1792,20 @@ def delete_prompt(prompt_id):
 
     return jsonify({'message': 'Prompt deleted successfully'}), 200
 
+@data_blueprint.route('/users/check/<username>', methods=['GET'])
+def check_user_exists(username):
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
 
+    requesting_user = User.query.filter_by(api_key=api_key).first()
+    if not requesting_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return jsonify({'exists': True}), 200
+    return jsonify({'exists': False}), 404
 
 def configure_routes(app):
     app.register_blueprint(auth_blueprint, url_prefix='/auth')

@@ -1,18 +1,33 @@
-# PromptEngineering.vue
-# PromptEngineering.vue
+<!-- PromptEngineering/PromptEngineering.vue -->
 <template>
   <v-container fluid>
-    <v-row>
-      <!-- Linke Seite: Kacheln für bestehende Prompts -->
-      <v-col cols="12" md="8">
+    <!-- Header mit Titel und Button -->
+    <v-row class="mb-6 align-center">
+      <v-col cols="12" sm="8">
         <h1>Prompt Engineering</h1>
         <p>Wählen Sie ein Prompt aus, um es zu bearbeiten oder zu teilen.</p>
+      </v-col>
+      <v-col cols="12" sm="4" class="d-flex justify-end">
+        <v-btn
+          color="primary"
+          class="prompt-create-button"
+          @click="showCreateDialog = true"
+          style="border-radius: 16px 4px 16px 4px"
+        >
+          <v-icon class="mr-2">mdi-plus</v-icon>
+          Neues Prompt erstellen
+        </v-btn>
+      </v-col>
+    </v-row>
 
+    <v-row>
+      <!-- Hauptinhalt -->
+      <v-col cols="12">
         <!-- Meine Prompts -->
         <h2 class="text-h5 mb-4">Meine Prompts</h2>
         <v-row>
           <template v-if="prompts.length > 0">
-            <v-col cols="12" sm="6" v-for="prompt in prompts" :key="prompt.id">
+            <v-col cols="12" sm="6" md="4" v-for="prompt in prompts" :key="prompt.id">
               <v-card class="mb-4 case-card">
                 <div class="card-actions">
                   <button @click.stop="deletePrompt(prompt)" class="delete-button">
@@ -42,7 +57,7 @@
           </template>
           <v-col v-else cols="12">
             <div class="text-center text-grey my-4">
-              Sie haben noch keine Prompts erstellt. Nutzen Sie das Formular rechts, um Ihr erstes Prompt anzulegen.
+              Sie haben noch keine Prompts erstellt. Nutzen Sie den Button oben rechts, um Ihr erstes Prompt anzulegen.
             </div>
           </v-col>
         </v-row>
@@ -51,7 +66,7 @@
         <h2 class="text-h5 mb-4 mt-6">Mit mir geteilte Prompts</h2>
         <v-row>
           <template v-if="sharedPrompts.length > 0">
-            <v-col cols="12" sm="6" v-for="prompt in sharedPrompts" :key="prompt.id">
+            <v-col cols="12" sm="6" md="4" v-for="prompt in sharedPrompts" :key="prompt.id">
               <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
                 <div class="d-flex flex-column card-content">
                   <v-card-title class="text-truncate">{{ prompt.name }}</v-card-title>
@@ -76,21 +91,9 @@
           </v-col>
         </v-row>
       </v-col>
-
-      <!-- Rechte Seite: Menü zum Anlegen eines neuen Prompts -->
-      <!-- Rechte Seite: Button zum Anlegen eines neuen Prompts -->
-<v-col cols="12" md="4">
-  <v-btn
-    color="primary"
-    class="prompt-create-button"
-    @click="showCreateDialog = true"
-    style="border-radius: 16px 4px 16px 4px"
-  >
-    <v-icon class="mr-2">mdi-plus</v-icon>
-    Neues Prompt erstellen
-  </v-btn>
-</v-col>
     </v-row>
+
+    <!-- Dialog zum Erstellen eines neuen Prompts -->
     <div v-if="showCreateDialog" class="dialog-overlay">
       <div class="dialog-box">
         <h3>Neues Prompt erstellen</h3>
@@ -103,7 +106,7 @@
             required
           />
 
-          <!-- Neuer User Input Bereich -->
+          <!-- User Input Bereich -->
           <div class="share-section">
             <label class="share-label">Mit Benutzern teilen:</label>
             <div class="selected-users">
@@ -142,6 +145,7 @@
         </form>
       </div>
     </div>
+
     <!-- Dialog zum Umbenennen eines Prompts -->
     <v-dialog v-model="showRenameDialog" max-width="500px">
       <v-card>

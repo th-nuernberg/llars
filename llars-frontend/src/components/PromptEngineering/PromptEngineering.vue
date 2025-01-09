@@ -412,11 +412,40 @@ async function savePrompt() {
 function removeUser(user) {
   selectedUsers.value = selectedUsers.value.filter(u => u !== user);
 }
-function addUser() {
-  const user = currentUser.value.trim();
-  if (user && !selectedUsers.value.includes(user)) {
-    selectedUsers.value.push(user);
-    currentUser.value = ''; // Input leeren
+// Zuerst fügen wir eine neue Funktion zur Überprüfung des Usernamens hinzu
+async function checkUserExists(username) {
+  try {
+    const api_key = localStorage.getItem('api_key');
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/api/users/check/${username}`,
+      {
+        headers: {
+          'Authorization': api_key
+        }
+      }
+    );
+    return response.status === 200;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Dann aktualisieren wir die addUser Funktion
+async function addUser() {
+  const username = currentUser.value.trim();
+  if (username && !selectedUsers.value.includes(username)) {
+    try {
+      const userExists = await checkUserExists(username);
+      if (userExists) {
+        selectedUsers.value.push(username);
+        currentUser.value = ''; // Input leeren
+      } else {
+        alert(`Der Benutzer "${username}" existiert nicht.`);
+      }
+    } catch (error) {
+      console.error('Fehler bei der Benutzerüberprüfung:', error);
+      alert('Fehler bei der Überprüfung des Benutzers.');
+    }
   }
 }
 

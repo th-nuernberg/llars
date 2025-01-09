@@ -78,39 +78,70 @@
       </v-col>
 
       <!-- Rechte Seite: Menü zum Anlegen eines neuen Prompts -->
-      <v-col cols="12" md="4">
-        <v-card>
-          <v-card-title>Neues Prompt anlegen</v-card-title>
-          <v-card-text>
-            <v-form ref="newPromptForm" v-model="isFormValid">
-              <v-text-field
-                v-model="newPrompt.name"
-                label="Prompt Name"
-                :rules="[rules.required]"
-                required
-              ></v-text-field>
-
-              <v-text-field
-                v-model="sharedWith"
-                label="Mit Benutzer teilen (Optional)"
-                hint="Benutzername eingeben"
-              ></v-text-field>
-
-              <v-btn
-                :disabled="!isFormValid"
-                color="primary"
-                @click="savePrompt"
-                class="mt-4"
-                block
-              >
-                Prompt anlegen
-              </v-btn>
-            </v-form>
-          </v-card-text>
-        </v-card>
-      </v-col>
+      <!-- Rechte Seite: Button zum Anlegen eines neuen Prompts -->
+<v-col cols="12" md="4">
+  <v-btn
+    color="primary"
+    class="prompt-create-button"
+    @click="showCreateDialog = true"
+    style="border-radius: 16px 4px 16px 4px"
+  >
+    <v-icon class="mr-2">mdi-plus</v-icon>
+    Neues Prompt erstellen
+  </v-btn>
+</v-col>
     </v-row>
+    <div v-if="showCreateDialog" class="dialog-overlay">
+      <div class="dialog-box">
+        <h3>Neues Prompt erstellen</h3>
+        <form @submit.prevent="savePrompt">
+          <input
+            v-model="newPrompt.name"
+            type="text"
+            placeholder="Prompt Name"
+            class="block-input"
+            required
+          />
 
+          <!-- Neuer User Input Bereich -->
+          <div class="share-section">
+            <label class="share-label">Mit Benutzern teilen:</label>
+            <div class="selected-users">
+              <div v-for="user in selectedUsers" :key="user" class="user-chip">
+                {{ user }}
+                <button
+                  type="button"
+                  class="remove-user-btn"
+                  @click="removeUser(user)"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <input
+              v-model="currentUser"
+              @keydown.enter.prevent="addUser"
+              type="text"
+              placeholder="Benutzername eingeben und Enter drücken"
+              class="block-input"
+            />
+          </div>
+
+          <div class="dialog-buttons">
+            <button type="button" class="cancel-button" @click="closeCreateDialog">
+              Abbrechen
+            </button>
+            <button
+              type="submit"
+              class="success-button"
+              :disabled="!newPrompt.name"
+            >
+              Erstellen
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
     <!-- Dialog zum Umbenennen eines Prompts -->
     <v-dialog v-model="showRenameDialog" max-width="500px">
       <v-card>
@@ -159,10 +190,11 @@ const router = useRouter();
 // Prompts State
 const prompts = ref([]);
 const sharedPrompts = ref([]);
+const selectedUsers = ref([]);
+const currentUser = ref('');
 
 // Form State
 const newPrompt = ref({ name: '' });
-const sharedWith = ref('');
 const isFormValid = ref(false);
 const rules = {
   required: (value) => !!value || 'Pflichtfeld',
@@ -307,7 +339,11 @@ async function confirmDeletePrompt() {
 }
 
 // Aktualisierte savePrompt Funktion
+// Aktualisierte savePrompt Funktion
+// Aktualisierte savePrompt Funktion
 async function savePrompt() {
+  if (!newPrompt.value.name) return;
+
   try {
     const api_key = localStorage.getItem('api_key');
 
@@ -326,40 +362,57 @@ async function savePrompt() {
       }
     );
 
-    // Prompt-Objekt mit leerer shared_with Liste erstellen
+    const promptId = response.data.prompt.id;
     const newPromptData = {
       ...response.data.prompt,
       shared_with: []
     };
 
-    // Falls "Mit Benutzer teilen" ausgefüllt wurde
-    if (sharedWith.value) {
-      await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${response.data.prompt.id}/share`,
-        {
-          shared_with: sharedWith.value,
-        },
-        {
-          headers: {
-            'Authorization': api_key,
-            'Content-Type': 'application/json',
-          },
+    // Mit allen ausgewählten Usern teilen
+    if (selectedUsers.value.length > 0) {
+      for (const user of selectedUsers.value) {
+        try {
+          await axios.post(
+            `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}/share`,
+            { shared_with: user },
+            {
+              headers: {
+                'Authorization': api_key,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          newPromptData.shared_with.push(user);
+        } catch (shareError) {
+          console.error(`Fehler beim Teilen mit ${user}:`, shareError);
+          alert(`Fehler beim Teilen mit ${user}: ${shareError.response?.data?.error || 'Unbekannter Fehler'}`);
         }
-      );
-      newPromptData.shared_with.push(sharedWith.value);
-      alert(`Prompt wurde erfolgreich mit ${sharedWith.value} geteilt.`);
+      }
     }
 
     // Aktualisiertes Prompt zur Liste hinzufügen
     prompts.value.push(newPromptData);
 
-    // Felder zurücksetzen und Formular zurücksetzen
-    newPrompt.value.name = '';
-    sharedWith.value = '';
-    newPromptForm.value?.reset();
+    // Dialog schließen und Erfolgsmeldung anzeigen
+    closeCreateDialog();
+    alert('Prompt wurde erfolgreich erstellt' +
+      (newPromptData.shared_with.length > 0
+        ? ` und mit ${newPromptData.shared_with.join(', ')} geteilt`
+        : ''));
+
   } catch (error) {
     console.error('Fehler beim Speichern des Prompts:', error);
     alert(error.response?.data?.error || 'Fehler beim Speichern des Prompts');
+  }
+}
+function removeUser(user) {
+  selectedUsers.value = selectedUsers.value.filter(u => u !== user);
+}
+function addUser() {
+  const user = currentUser.value.trim();
+  if (user && !selectedUsers.value.includes(user)) {
+    selectedUsers.value.push(user);
+    currentUser.value = ''; // Input leeren
   }
 }
 
@@ -372,9 +425,39 @@ function navigateToPromptDetail(promptId) {
 onMounted(async () => {
   await Promise.all([fetchPrompts(), fetchSharedPrompts()]);
 });
+
+// Am Anfang zu den anderen refs hinzufügen:
+const showCreateDialog = ref(false);
+
+// Neue Methode zum Schließen des Create-Dialogs
+function closeCreateDialog() {
+  showCreateDialog.value = false;
+  newPrompt.value.name = '';
+  selectedUsers.value = [];
+  currentUser.value = '';
+}
+
+// Modifizieren wir die savePrompt Funktion
+
 </script>
 
 <style scoped>
+.case-card {
+  cursor: pointer;
+  transition: box-shadow 0.3s ease-in-out, transform 0.1s ease-in-out;
+  position: relative;
+  height: 105px; /* Fixe Höhe für alle Karten */
+}
+
+.case-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.card-content {
+  height: 100%;
+  overflow: hidden;
+}
 /* NEU */
 .delete-button,
 .edit-button {
@@ -433,5 +516,136 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Zum bestehenden <style> hinzufügen */
+.prompt-create-button {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.dialog-box {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  min-width: 320px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dialog-box h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.block-input {
+  width: 100%;
+  margin: 10px 0;
+  padding: 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dialog-buttons button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 16px 4px 16px 4px;
+  cursor: pointer;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog-buttons .cancel-button {
+  background-color: #9e9e9e;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+
+.dialog-buttons .cancel-button:hover {
+  background-color: #7e7e7e;
+}
+
+.dialog-buttons .success-button {
+  background-color: #81b68b;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+
+.dialog-buttons .success-button:hover {
+  background-color: #6ca077;
+}
+
+.dialog-buttons .success-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.share-section {
+  margin: 15px 0;
+}
+
+.share-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.selected-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  min-height: 35px;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  background-color: #81b68b;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 16px 4px 16px 4px;
+  font-size: 0.9rem;
+}
+
+.remove-user-btn {
+  background: none;
+  border: none;
+  color: white;
+  margin-left: 8px;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-user-btn:hover {
+  color: #e74c3c;
 }
 </style>

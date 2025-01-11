@@ -20,6 +20,7 @@ file_service_mapping = {
     "http/seeder/test_output": "backend-flask-service",
     "http/seeder/mail_rating/4o": "backend-flask-service",
     "http/seeder/mail_rating/claude": "backend-flask-service",
+    "http/seeder/mail_rating/opensource": "backend-flask-service",
 }
 
 def current_timestamp():

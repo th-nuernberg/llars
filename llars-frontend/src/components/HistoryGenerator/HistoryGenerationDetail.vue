@@ -16,7 +16,7 @@
                 <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
               </div>
               <div class="message-body">
-                <p>{{ message.content }}</p>
+                <div v-html="formatContent(message.content)"></div>
                 <div class="message-rating no-background">
                   <v-icon @click="rateMessage(index, 'up')" :color="message.rating === 'up' ? 'green' : ''" small>mdi-thumb-up-outline</v-icon>
                   <v-icon @click="rateMessage(index, 'down')" :color="message.rating === 'down' ? 'red' : ''" small>mdi-thumb-down-outline</v-icon>
@@ -131,6 +131,7 @@ import axios from 'axios';
 import LikertScale from '../parts/LikertScale.vue';
 import BinaryLikertScale from "@/components/parts/BinaryLikertScale.vue";
 import CategorySelection from '../parts/CategorySelection.vue';
+import DOMPurify from 'dompurify';
 
 // Setup route, router and data variables
 const route = useRoute();
@@ -165,6 +166,25 @@ const isDisabled = ref({
   overall: false
 })
 
+function formatContent(content) {
+  if (!content) return '';
+
+  // Zeilenumbrüche zu <br> konvertieren
+  const sanitizedContent = content.replace(/\n/g, '<br>');
+
+  // Bereinigen und nur erlaubte Tags behalten
+  const cleanContent = DOMPurify.sanitize(sanitizedContent, {
+    ALLOWED_TAGS: ['br', 'a'], // Nur <br> und <a> erlauben
+    ALLOWED_ATTR: ['href'], // Nur href-Attribute erlauben
+  });
+
+  // Alle entfernten Tags als reinen Text darstellen
+  return cleanContent.replace(/<(iframe|script|embed|object)[^>]*>.*?<\/\1>/gi, (match) => {
+    return DOMPurify.sanitize(match, { ALLOWED_TAGS: [] }); // Entferne alles Gefährliche und behandle es als Text
+  });
+}
+
+
 // Fetch email thread details on component mount
 onMounted(async () => {
   await initializeWebsiteComponent()
@@ -181,7 +201,7 @@ async function initializeWebsiteComponent()
         'Authorization': api_key,
       },
     });
-
+    console.log("Email Thread Messages:", thread_messages.data.messages);
     //api request to get rating of each message
     const message_ratings = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/message_ratings/${threadId}`, {
       headers: {
@@ -649,6 +669,14 @@ function navigateToOverview() {
   margin: 0;
   color: #2F4F4F;
 }
+
+.message-body {
+  margin: 0;
+  word-wrap: break-word; /* Lange Wörter umbrechen */
+  overflow-wrap: break-word; /* Sicherstellen, dass es auf allen Browsern funktioniert */
+  white-space: pre-wrap; /* Erlaubt Zeilenumbrüche und behandelt Leerzeichen */
+}
+
 
 .fade-overlay {
   position: absolute;

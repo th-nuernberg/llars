@@ -9,6 +9,7 @@
   "dependencies": {
     "@mdi/font": "7.0.96",
     "axios": "^1.6.8",
+    "dompurify": "^3.2.3",
     "jwt-decode": "^4.0.0",
     "quill": "^2.0.3",
     "quill-cursors": "^4.0.3",

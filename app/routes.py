@@ -113,32 +113,28 @@ def logout():
 
 
 @data_blueprint.route('/email_threads', methods=['POST'])
-@data_blueprint.route('/email_threads', methods=['POST'])
 def create_email_thread():
     data = request.get_json()
 
-    # Get and validate function_type from the request payload
     function_type_input = data.get('type', '').lower()
     valid_function_types = {
         '1': 1,
         '2': 2,
-        '3': 3,  # Neue Zahl für mail_rating hinzugefügt
+        '3': 3,
         'ranking': 1,
         'rating': 2,
-        'mail_rating': 3,  # Neue Bezeichnung für mail_rating hinzugefügt
+        'mail_rating': 3,
         'rank': 1,
         'rate': 2,
         'rankings': 1,
         'ratings': 2,
-        'mail_ratings': 3  # Neue Bezeichnung für mail_rating im Plural
+        'mail_ratings': 3
     }
 
     function_type_id = valid_function_types.get(function_type_input)
-
     if not function_type_id:
         return jsonify({"error": "Invalid function type"}), 400
 
-    # Get the sender, if not provided use an alias
     sender = data.get('sender', 'Alias')
 
     email_thread = EmailThread.query.filter_by(
@@ -152,35 +148,34 @@ def create_email_thread():
             chat_id=data.get('chat_id'),
             institut_id=data.get('institut_id'),
             subject=data.get('subject'),
-            sender=sender,  # Store the sender
+            sender=sender,
             function_type_id=function_type_id
         )
         db.session.add(email_thread)
         db.session.commit()
     else:
-        email_thread.subject = data.get('subject')  # Update subject if email_thread already exists
-        email_thread.sender = sender  # Update the sender if email_thread already exists
+        email_thread.subject = data.get('subject')
+        email_thread.sender = sender
         db.session.commit()
 
     for msg in data.get('messages', []):
-        # Convert timestamp string to datetime object
         msg_timestamp = datetime.strptime(msg.get('timestamp'), '%Y-%m-%d %H:%M:%S')
         msg_content = msg.get('content')
+        generated_by = msg.get('generated_by', 'human')  # Standardwert setzen
 
-        # Check for existing message with same timestamp and content
         existing_message = Message.query.filter_by(
             thread_id=email_thread.thread_id,
             timestamp=msg_timestamp,
             content=msg_content
         ).first()
 
-        # If no duplicate found, add the new message
         if not existing_message:
             message = Message(
                 thread_id=email_thread.thread_id,
                 sender=msg.get('sender'),
                 content=msg_content,
-                timestamp=msg_timestamp
+                timestamp=msg_timestamp,
+                generated_by=generated_by
             )
             db.session.add(message)
 
@@ -215,7 +210,6 @@ def create_email_thread():
                 db.session.add(feature)
 
     db.session.commit()
-
     return jsonify({'status': 'success', 'thread_id': email_thread.thread_id}), 201
 
 

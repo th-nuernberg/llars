@@ -62,6 +62,7 @@ class Message(db.Model):
     sender = mapped_column(db.String(255))
     content = mapped_column(db.TEXT)
     timestamp = mapped_column(db.DateTime)
+    generated_by = mapped_column(db.String(255), default="human")
 
 
 class LLM(db.Model):

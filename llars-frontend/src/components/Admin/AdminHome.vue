@@ -40,13 +40,7 @@
 
       <!-- Create Button Column -->
       <v-col cols="12" md="4" class="d-flex justify-end">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-plus"
-          @click="showCreateDialog = true"
-        >
-          Szenario Erstellen
-        </v-btn>
+        <CreateScenarioDialog/>
       </v-col>
     </v-row>
 
@@ -101,7 +95,7 @@
 
     <!-- Create Scenario Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="800px">
-      <create-scenario-dialog @close="showCreateDialog = false" />
+      <CreateScenarioDialog :dialog="showCreateDialog" @close="showCreateDialog = false" />
     </v-dialog>
   </v-container>
 </template>

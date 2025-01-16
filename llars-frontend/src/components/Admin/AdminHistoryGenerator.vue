@@ -157,7 +157,13 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+
+const route = useRoute();
+const router = useRouter();
+
+const scenario_id = route.params.id;
 
 const userStats = ref([]);
 const dialogVisible = ref(false);
@@ -192,7 +198,7 @@ const fetchUserStats = async () => {
   }
 
   try {
-    const response = await axios.get('/api/admin/user_HistoryGeneration_stats', {
+    const response = await axios.get(`/api/admin/user_HistoryGeneration_stats/${scenario_id}`, {
       headers: {
         Authorization: apiKey,
       },

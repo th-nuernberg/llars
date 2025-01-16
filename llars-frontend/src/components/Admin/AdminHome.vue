@@ -38,7 +38,7 @@
 
       <!-- Create Button Column -->
       <v-col cols="12" md="4" class="d-flex justify-end">
-        <CreateScenarioDialog/>
+        <CreateScenarioDialog @scenarioCreated="handleScenarioCreated" />
       </v-col>
     </v-row>
 
@@ -56,45 +56,57 @@
               <th>Aktionen</th>
             </tr>
           </thead>
-          <tbody>
-            <tr
-              v-for="scenario in filteredScenarios"
-              :key="scenario.scenario_id"
-              class="scenario-row"
-            >
-              <td>{{ scenario.name }}</td>
-              <td>{{ getFunctionTypeName(scenario.function_type_name) }}</td>
-              <td>{{ formatDate(scenario.begin_date) }}</td>
-              <td>{{ formatDate(scenario.end_date) }}</td>
-              <td>
-                <v-chip
-                  :color="getStatusColor(scenario.status)"
-                  :text-color="getStatusTextColor(scenario.status)"
-                  size="small"
-                >
-                  {{ scenario.status }}
-                </v-chip>
-              </td>
-              <td>
-                <v-btn
-                  density="comfortable"
-                  variant="flat"
-                  class="details-btn"
-                  @click="navigateToDetails(scenario)"
-                >
-                  Detailansicht
-                </v-btn>
-              </td>
-            </tr>
-          </tbody>
+          <tbody v-if="filteredScenarios.length > 0">
+  <tr
+    v-for="scenario in filteredScenarios"
+    :key="scenario.scenario_id"
+    class="scenario-row"
+    @click="navigateToStats(scenario)"
+  >
+    <td>{{ scenario.name }}</td>
+    <td>{{ getFunctionTypeName(scenario.function_type_name) }}</td>
+    <td>{{ formatDate(scenario.begin_date) }}</td>
+    <td>{{ formatDate(scenario.end_date) }}</td>
+    <td>
+      <v-chip
+        :color="getStatusColor(scenario.status)"
+        :text-color="getStatusTextColor(scenario.status)"
+        size="small"
+      >
+        {{ scenario.status }}
+      </v-chip>
+    </td>
+    <td>
+      <v-btn
+        density="comfortable"
+        variant="flat"
+        class="details-btn"
+        @click.stop="navigateToDetails(scenario)"
+      >
+        Detailansicht
+      </v-btn>
+      <v-btn
+        density="compact"
+        icon="mdi-delete-outline"
+        variant="flat"
+        class="delete-btn"
+        @click.stop="deleteScenario(scenario)"
+      ></v-btn>
+    </td>
+  </tr>
+</tbody>
+<tbody v-else>
+  <tr>
+    <td colspan="6" class="text-center">
+      Keine Szenarien verfügbar. Erstellen Sie ein neues Szenario, um zu beginnen.
+    </td>
+  </tr>
+</tbody>
         </v-table>
       </v-card-text>
     </v-card>
 
-    <!-- Create Scenario Dialog -->
-    <v-dialog v-model="showCreateDialog" max-width="800px">
-      <CreateScenarioDialog :dialog="showCreateDialog" @close="showCreateDialog = false" />
-    </v-dialog>
+
   </v-container>
 </template>
 
@@ -120,12 +132,14 @@ const statusOptions = [
 
 // Computed property for filtered scenarios
 const filteredScenarios = computed(() => {
+  if (!scenarios.value.length) return []; // Return empty array if no scenarios
+
   return scenarios.value.filter(scenario => {
-    // Apply name search filter
+    if (!scenario || !scenario.name) return false; // Skip invalid scenarios
+
     const matchesSearch = scenario.name.toLowerCase()
       .includes(searchQuery.value.toLowerCase());
 
-    // Apply status filter
     const matchesStatus = statusFilter.value === 'all' ||
       scenario.status === statusFilter.value;
 
@@ -141,11 +155,19 @@ const fetchScenarios = async () => {
         'Authorization': localStorage.getItem('api_key')
       }
     });
-    scenarios.value = response.data.scenarios;
+
+    // Sicherstellen, dass eine Liste zurückkommt
+    scenarios.value = Array.isArray(response.data.scenarios)
+      ? response.data.scenarios
+      : [];
   } catch (error) {
     console.error('Error fetching scenarios:', error);
+
+    // Leere Liste als Fallback verwenden
+    scenarios.value = [];
   }
 };
+
 
 // Format date helper
 const formatDate = (dateString) => {
@@ -182,17 +204,63 @@ const getStatusTextColor = (status) => {
 
 // Navigation function
 const navigateToDetails = (scenario) => {
+  alert("Testungssterone");
+  const routeMap = {
+
+  };
+
+  const baseRoute = routeMap[scenario.function_type_name];
+  if (baseRoute) {
+    //router.push(`${baseRoute}/scenario/${scenario.scenario_id}`);
+  }
+};
+
+
+
+const navigateToStats = (scenario) => {
   const routeMap = {
     'mail_rating': '/AdminHistoryGenerator',
     'rating': '/admin/rater',
     'ranking': '/AdminRanker'
   };
 
+
   const baseRoute = routeMap[scenario.function_type_name];
   if (baseRoute) {
-    router.push(`${baseRoute}/scenario/${scenario.scenario_id}`);
+    router.push(`${baseRoute}/${scenario.scenario_id}`);
+    router.push({ name: 'AdminHistoryGenerator', params: { id: scenario.scenario_id } });
   }
 };
+
+
+// Navigation function
+const deleteScenario = async (scenario) => {
+  try {
+    const confirmation = confirm("Sind Sie sicher, dass Sie das Szenario löschen möchten?");
+        if (!confirmation) return;
+
+    const scenarioId = scenario.scenario_id
+     await axios.delete(`/api/admin/delete_scenario/${scenarioId}`, {
+      headers: {
+        'Authorization': localStorage.getItem('api_key')
+      }
+    });
+
+    alert(`Szenario ${scenario.name} wurde erfolgreich gelöscht!`)
+    await fetchScenarios();
+  }
+  catch (error){
+    console.error("Fehler beim Erstellen des Szenarios:", error);
+    alert("Szenario konnte nicht gelöscht werden")
+  }
+
+};
+
+
+// Wenn ein Szenario erstellt wurde
+const handleScenarioCreated = () => {
+      fetchScenarios()
+    }
 
 onMounted(() => {
   fetchScenarios();
@@ -252,5 +320,18 @@ onMounted(() => {
 .details-btn:hover {
   background-color: #9db888 !important;
   box-shadow: 0 2px 8px rgba(176, 202, 151, 0.4);
+}
+
+.delete-btn {
+  margin-left: 1em;
+}
+.delete-btn:hover {
+  color: red;
+}
+
+.v-table .text-center {
+  color: #9e9e9e;
+  font-style: italic;
+  padding: 16px;
 }
 </style>

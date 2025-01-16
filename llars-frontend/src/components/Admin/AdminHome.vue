@@ -105,8 +105,6 @@
         </v-table>
       </v-card-text>
     </v-card>
-
-
   </v-container>
 </template>
 
@@ -115,12 +113,13 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import CreateScenarioDialog from "@/components/parts/CreateScenarioDialog.vue";
+//import ScenarioDetailsDialog from "@/components/parts/ScenarioDetailsDialog.vue";
 
 const router = useRouter();
 const scenarios = ref([]);
 const searchQuery = ref('');
 const statusFilter = ref('aktiv'); // Default filter set to 'aktiv'
-const showCreateDialog = ref(false); // Controls visibility of the dialog
+
 
 // Define status options for the filter dropdown
 const statusOptions = [
@@ -202,17 +201,8 @@ const getStatusTextColor = (status) => {
   return status === 'beendet' ? 'white' : 'black';
 };
 
-// Navigation function
 const navigateToDetails = (scenario) => {
-  alert("Testungssterone");
-  const routeMap = {
-
-  };
-
-  const baseRoute = routeMap[scenario.function_type_name];
-  if (baseRoute) {
-    //router.push(`${baseRoute}/scenario/${scenario.scenario_id}`);
-  }
+//TODO
 };
 
 

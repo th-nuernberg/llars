@@ -21,7 +21,6 @@
           variant="outlined"
           density="comfortable"
           hide-details
-          @update:model-value="filterScenarios"
         ></v-text-field>
       </v-col>
 
@@ -34,7 +33,6 @@
           variant="outlined"
           density="comfortable"
           hide-details
-          @update:model-value="filterScenarios"
         ></v-select>
       </v-col>
 

@@ -41,7 +41,7 @@ def get_scenario_list():
     scenarios = RatingScenarios.query.all()
 
     if not scenarios:
-        return jsonify({'error': 'No scenarios available'}), 401
+        return jsonify({'scenarios': ['No scenarios available']}), 200
 
     formatted_scenarios = {
         'scenarios': []

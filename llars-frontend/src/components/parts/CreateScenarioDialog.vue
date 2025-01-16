@@ -223,7 +223,7 @@
 </template>
 
 <script>
-import {ref, reactive, onMounted, computed} from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import axios from 'axios';
 
 export default {
@@ -247,28 +247,48 @@ export default {
     });
 
     const formData = reactive({
-    scenarioName: '',
-    selectedCategory: null,
-    startDate: null,
-    endDate: null,
-    userRoles: {},
-    selectedThreads: []
+      scenarioName: '',
+      selectedCategory: null,
+      startDate: null,
+      endDate: null,
+      userRoles: {},
+      selectedThreads: []
     });
 
-  const isFormValid = computed(() => {
-  const raters = Object.entries(formData.userRoles).filter(([, role]) => role.rater).map(([id]) => Number(id));
-  const viewers = Object.entries(formData.userRoles).filter(([, role]) => role.viewer).map(([id]) => Number(id));
+    const errors = reactive({
+      scenarioName: '',
+      selectedCategory: '',
+      startDate: '',
+      endDate: '',
+      userRoles: '',
+      selectedThreads: ''
+    });
 
-  // Bedingungen prüfen
-  return formData.scenarioName &&
-         formData.selectedCategory &&
-         formData.startDate &&
-         formData.endDate &&
-         raters.length > 0 &&
-         viewers.length > 0 &&
-         formData.selectedThreads.length > 0;
-});
+    const isFormValid = computed(() => {
+      return (
+        formData.scenarioName &&
+        formData.selectedCategory &&
+        formData.startDate &&
+        formData.endDate &&
+        Object.entries(formData.userRoles).some(([, role]) => role.rater) &&
+        formData.selectedThreads.length > 0
+      );
+    });
 
+    const validateForm = () => {
+      errors.scenarioName = formData.scenarioName ? '' : 'Bitte einen Szenario Namen angeben.';
+      errors.selectedCategory = formData.selectedCategory ? '' : 'Bitte eine Kategorie auswählen.';
+      errors.startDate = formData.startDate ? '' : 'Bitte ein Startdatum auswählen.';
+      errors.endDate = formData.endDate ? '' : 'Bitte ein Enddatum auswählen.';
+      errors.userRoles = Object.entries(formData.userRoles).some(([, role]) => role.rater)
+        ? ''
+        : 'Bitte mindestens einen Rater auswählen.';
+      errors.selectedThreads = formData.selectedThreads.length > 0
+        ? ''
+        : 'Bitte mindestens einen Thread auswählen.';
+
+      return Object.values(errors).every((error) => error === '');
+    };
 
     const formatDate = (dateStr) => {
       if (!dateStr) return '';
@@ -345,24 +365,21 @@ export default {
       }
     };
 
-
     const fetchUsers = async () => {
       try {
-    const response = await axios.get("/api/admin/get_users", getAuthHeaders());
-    state.users = response.data;
-    // Initialisiere die userRoles für jeden Nutzer mit viewer und rater als false
-    state.users.forEach(user => {
-      formData.userRoles[user.id] = {
-        viewer: false,
-        rater: false
-      };
-    });
-  } catch (error) {
-    console.error("Fehler beim Laden der User:", error);
-    handleApiError(error);
-  }
-};
-
+        const response = await axios.get("/api/admin/get_users", getAuthHeaders());
+        state.users = response.data;
+        state.users.forEach(user => {
+          formData.userRoles[user.id] = {
+            viewer: false,
+            rater: false
+          };
+        });
+      } catch (error) {
+        console.error("Fehler beim Laden der User:", error);
+        handleApiError(error);
+      }
+    };
 
     const fetchThreads = async (categoryId) => {
       if (!categoryId) {
@@ -391,16 +408,13 @@ export default {
       await fetchThreads(newCategoryId);
     };
 
-const handleCheckboxChange = (userId, role) => {
-  // Wenn 'viewer' aktiviert wird, setze 'rater' auf false und umgekehrt
-  if (role === 'viewer') {
-    // Wenn 'viewer' ausgewählt wird, 'rater' deaktivieren
-    formData.userRoles[userId].rater = false;
-  } else if (role === 'rater') {
-    // Wenn 'rater' ausgewählt wird, 'viewer' deaktivieren
-    formData.userRoles[userId].viewer = false;
-  }
-};
+    const handleCheckboxChange = (userId, role) => {
+      if (role === 'viewer') {
+        formData.userRoles[userId].rater = false;
+      } else if (role === 'rater') {
+        formData.userRoles[userId].viewer = false;
+      }
+    };
 
     const handleApiError = (error) => {
       if (error.response?.status === 401) {
@@ -427,96 +441,52 @@ const handleCheckboxChange = (userId, role) => {
       state.threads = [];
       threadFilter.from = null;
       threadFilter.to = null;
+      Object.keys(errors).forEach((key) => errors[key] = '');
     };
 
     const submitScenario = async () => {
-  // Validierung der Eingabefelder
-  if (!formData.scenarioName) {
-    alert("Bitte einen Szenario Namen angeben.");
-    return;
-  }
+      if (!validateForm()) {
+        return;
+      }
 
-  if (!formData.selectedCategory) {
-    alert("Bitte eine Kategorie auswählen.");
-    return;
-  }
+      const raters = Object.entries(formData.userRoles)
+        .filter(([, role]) => role.rater)
+        .map(([id]) => Number(id));
 
-  if (!formData.startDate || !formData.endDate) {
-    alert("Bitte ein Start- und Enddatum auswählen.");
-    return;
-  }
+      const startDateISO = new Date(formData.startDate).toISOString().substring(0, 19);
+      const endDateISO = new Date(formData.endDate).toISOString().substring(0, 19);
 
-  // Überprüfe, ob mindestens ein Rater ausgewählt wurde
-  const raters = Object.entries(formData.userRoles)
-    .filter(([, role]) => role.rater) // Nur Benutzer mit der 'rater' Rolle
-    .map(([id]) => Number(id));
+      const payload = {
+        scenario_name: formData.scenarioName,
+        function_type_id: formData.selectedCategory,
+        begin: startDateISO,
+        end: endDateISO,
+        viewer: [],
+        rater: raters,
+        threads: formData.selectedThreads
+      };
 
-  if (raters.length === 0) {
-    alert("Bitte mindestens einen Rater auswählen.");
-    return;
-  }
+      try {
+        const confirmation = confirm("Sind Sie sicher, dass Sie das Szenario speichern möchten?");
+        if (!confirmation) return;
 
-  // Überprüfe, ob mindestens ein Viewer ausgewählt wurde
-  const viewers = Object.entries(formData.userRoles)
-    .filter(([, role]) => role.viewer) // Nur Benutzer mit der 'viewer' Rolle
-    .map(([id]) => Number(id));
-
-  if (viewers.length === 0) {
-    alert("Bitte mindestens einen Viewer auswählen.");
-    return;
-  }
-
-  // Überprüfe, ob Threads ausgewählt wurden
-  if (formData.selectedThreads.length === 0) {
-    alert("Bitte mindestens einen Thread auswählen.");
-    return;
-  }
-
-  // Threads als Liste von IDs verarbeiten
-  const threadIds = Object.values(formData.selectedThreads);
-
-  // Überprüfe, ob Threads ausgewählt wurden
-  if (formData.selectedThreads.length === 0) {
-    alert("Bitte mindestens einen Thread auswählen.");
-    return;
-  }
-
-  // Datum in ISO-Format umwandeln
-  const startDateISO = new Date(formData.startDate).toISOString().substring(0,19);
-  const endDateISO = new Date(formData.endDate).toISOString().substring(0,19);
-
-  const payload = {
-    scenario_name: formData.scenarioName,
-    function_type_id: formData.selectedCategory,
-    begin: startDateISO,
-    end: endDateISO,
-    viewer: viewers,
-    rater: raters,
-    threads: threadIds
-  };
-
-  try {
-    const confirmation = confirm("Sind Sie sicher, dass Sie das Szenario speichern möchten?");
-    if (!confirmation) return;
-
-    console.log(payload);
-    console.log(JSON.stringify(payload))
-    // Sende die Anfrage zum Erstellen des Szenarios
-    await axios.post("/api/admin/create_scenario", payload, getAuthHeaders());
-    alert("Szenario erfolgreich erstellt!");
-    closeDialog();
-  } catch (error) {
-    console.error("Fehler beim Erstellen des Szenarios:", error);
-    alert(`Fehler beim Erstellen des Szenarios: ${error.message}`);
-    handleApiError(error);
-  }
-};
-
-
+        console.log(payload);
+        await axios.post("/api/admin/create_scenario", payload, getAuthHeaders());
+        alert("Szenario erfolgreich erstellt!");
+        closeDialog();
+      } catch (error) {
+        console.error("Fehler beim Erstellen des Szenarios:", error);
+        alert(`Fehler beim Erstellen des Szenarios: ${error.message}`);
+        handleApiError(error);
+      }
+    };
 
     onMounted(async () => {
-      await fetchCategories();
-      await fetchUsers();
+      try {
+        await Promise.all([fetchCategories(), fetchUsers()]);
+      } catch (error) {
+        console.error("Fehler beim Initialisieren der Daten:", error);
+      }
     });
 
     return {
@@ -534,7 +504,8 @@ const handleCheckboxChange = (userId, role) => {
       submitScenario,
       datePickerProps,
       formatDate,
-      isFormValid
+      isFormValid,
+      errors
     };
   }
 };

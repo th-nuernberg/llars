@@ -151,6 +151,11 @@ class RatingScenarios(db.Model):
     end = mapped_column(db.DateTime, default=datetime.utcnow)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
+    # Definiere die Beziehungen mit Cascade-Option
+    scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete")
+    scenario_threads = db.relationship('ScenarioThreads', backref='rating_scenario', cascade="all, delete")
+    scenario_thread_distribution = db.relationship('ScenarioThreadDistribution', backref='rating_scenario', cascade="all, delete")
+
 class ScenarioUsers(db.Model):
     __tablename__ = 'scenario_users'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)

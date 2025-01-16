@@ -212,6 +212,9 @@ def create_scenario():
     except ValueError:
         return jsonify({'error': 'Timestamp format is invalid'}), 400
 
+    if end < begin:
+        return jsonify({'error': 'End date must be before begin'}), 400
+
     ## new scenario
     new_scenario = RatingScenarios(
         scenario_name=client_data['scenario_name'],
@@ -329,6 +332,35 @@ def create_scenario():
         'not_found_threads': thread_error_list,
     }
     return jsonify(return_msg), 200
+
+
+@data_blueprint.route('/admin/delete_scenario/<int:scenario_id>', methods=['DELETE'])
+def delete_scenario(scenario_id):
+    # Authorization
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
+
+    admin_user = User.query.filter_by(api_key=api_key).first()
+    if not admin_user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Versuche, das Szenario zu finden
+    scenario = RatingScenarios.query.get(scenario_id)
+
+    # Wenn das Szenario nicht gefunden wurde, gib einen Fehler zurück
+    if not scenario:
+        return jsonify({'error': 'Scenario not found'}), 404
+
+    # Lösche das Szenario und alle zugehörigen Datensätze
+    try:
+        db.session.delete(scenario)  # Lösche das Szenario
+        db.session.commit()  # Bestätige die Änderungen
+        return jsonify({"message": "Scenario and associated records deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()  # Bei Fehlern rollback
+        return jsonify({"error": str(e)}), 500
+
 
 
 @data_blueprint.route('/admin/edit_scenario', methods=['POST']) # TODO: Gedanken zu Zeitzonen machen

@@ -14,6 +14,7 @@
         <v-card-text>
           <v-text-field
             v-model="formData.scenarioName"
+            :error-messages="errors.scenarioName"
             label="Szenario Name"
             outlined
             density="comfortable"
@@ -23,6 +24,7 @@
           <v-select
             v-model="formData.selectedCategory"
             :items="categoryItems"
+            :error-messages="errors.selectedCategory"
             label="Kategorie"
             outlined
             density="comfortable"
@@ -43,6 +45,7 @@
                   <v-text-field
                     :model-value="formatDate(formData.startDate)"
                     label="Startdatum"
+                    :error-messages="errors.startDate"
                     readonly
                     v-bind="props"
                     prepend-icon="mdi-calendar"
@@ -72,12 +75,13 @@
                   <v-text-field
                     :model-value="formatDate(formData.endDate)"
                     label="Enddatum"
+                    :error-messages="errors.endDate"
                     readonly
                     v-bind="props"
                     prepend-icon="mdi-calendar"
                     outlined
                     density="comfortable"
-                ></v-text-field>
+                  ></v-text-field>
                 </template>
                 <v-date-picker
                   v-model="formData.endDate"
@@ -92,59 +96,56 @@
           </v-row>
 
           <v-expansion-panels>
-            <v-expansion-panel>
-    <v-expansion-panel-title>Nutzer</v-expansion-panel-title>
-    <v-expansion-panel-text>
-      <v-row>
-        <v-col
-          v-for="user in state.users"
-          :key="user.id"
-          cols="12"
-          sm="6"
-          md="4"
-        >
-          <v-card outlined class="user-card" density="compact">
-            <v-card-item>
-              <div class="text-subtitle-1 mb-1">{{ user.name }}</div>
-              <div class="text-caption text-grey">ID: {{ user.id }}</div>
+            <!-- Nutzer Panel -->
+            <v-expansion-panel :class="{ 'error-panel': errors.raters }">
+              <v-expansion-panel-title>
+                Nutzer
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-row>
+                  <v-col
+                    v-for="user in state.users"
+                    :key="user.id"
+                    cols="12"
+                    sm="6"
+                    md="4"
+                  >
+                    <v-card outlined class="user-card" density="compact">
+                      <v-card-item>
+                        <div class="text-subtitle-1 mb-1">{{user.name}}</div>
+                        <div class="text-caption text-grey">ID: {{user.id}}</div>
 
-              <!-- Checkboxen nebeneinander -->
-              <v-row class="d-flex align-center">
-                <v-col cols="auto">
-                  <v-checkbox
-                    v-model="formData.userRoles[user.id].viewer"
-                    label="Viewer"
-                    density="compact"
-                    hide-details
-                    @change="handleCheckboxChange(user.id, 'viewer')"
-                  ></v-checkbox>
-                </v-col>
-                <v-col cols="auto">
-                  <v-checkbox
-                    v-model="formData.userRoles[user.id].rater"
-                    label="Rater"
-                    density="compact"
-                    hide-details
-                    @change="handleCheckboxChange(user.id, 'rater')"
-                  ></v-checkbox>
-                </v-col>
-              </v-row>
-            </v-card-item>
-          </v-card>
-        </v-col>
-      </v-row>
-    </v-expansion-panel-text>
-  </v-expansion-panel>
+                        <v-row class="d-flex align-center">
+                          <v-col cols="auto">
+                            <v-checkbox
+                              v-model="formData.userRoles[user.id].viewer"
+                              label="Viewer"
+                              density="compact"
+                              hide-details
+                              @change="handleCheckboxChange(user.id, 'viewer')"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              v-model="formData.userRoles[user.id].rater"
+                              label="Rater"
+                              density="compact"
+                              hide-details
+                              @change="handleCheckboxChange(user.id, 'rater')"
+                            ></v-checkbox>
+                          </v-col>
+                        </v-row>
+                      </v-card-item>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
 
-            <v-expansion-panel>
+            <!-- Threads Panel -->
+            <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }">
               <v-expansion-panel-title>
                 Threads
-                <v-progress-circular
-                  v-if="state.isLoadingThreads"
-                  indeterminate
-                  size="20"
-                  class="ml-2"
-                ></v-progress-circular>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-row>
@@ -167,6 +168,29 @@
                     ></v-text-field>
                   </v-col>
                 </v-row>
+                <v-row class="select-all-row">
+                  <v-col>
+                    <v-btn
+                      class="select-all-btn"
+                      color="primary"
+                      prepend-icon="mdi-check"
+                      @click="selectAllFilteredThreads"
+                  >
+                    Alle anwählen
+                  </v-btn>
+                  </v-col>
+                  <v-col>
+                    <v-btn
+                      class="select-all-btn"
+                      color="primary"
+                      prepend-icon="mdi-alpha-x-box-outline"
+                      @click="deselectAllFilteredThreads"
+                    >
+                    Alle abwählen
+                  </v-btn>
+                  </v-col>
+
+                </v-row>
                 <div v-if="state.threads.length > 0">
                   <v-row>
                     <v-col
@@ -183,11 +207,11 @@
                       >
                         <v-card-item>
                           <div class="d-flex align-center mb-1">
-                            <div class="text-subtitle-1 text-truncate">{{ thread.subject }}</div>
+                            <div class="text-subtitle-1 text-truncate">{{thread.subject}}</div>
                           </div>
                           <div class="d-flex justify-space-between align-center mb-1">
-                            <div class="text-caption text-grey">Thread-ID: {{ thread.thread_id }}</div>
-                            <div class="text-caption">{{ thread.sender }}</div>
+                            <div class="text-caption text-grey">Thread-ID: {{thread.thread_id}}</div>
+                            <div class="text-caption">{{thread.sender}}</div>
                           </div>
                           <v-checkbox
                             v-model="formData.selectedThreads"
@@ -215,7 +239,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn @click="closeDialog" color="red">Abbrechen</v-btn>
-          <v-btn @click="submitScenario" :disabled="!isFormValid" color="green">Anlegen</v-btn>
+          <v-btn @click="validateAndSubmitScenario" color="green">Anlegen</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -223,13 +247,13 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, computed } from 'vue';
+import {ref, reactive, onMounted, computed,} from 'vue';
 import axios from 'axios';
 
 export default {
   name: 'ScenarioDialog',
 
-  setup() {
+  setup(props, {emit}) {
     const dialogState = reactive({
       showCreateDialog: false
     });
@@ -264,31 +288,42 @@ export default {
       selectedThreads: ''
     });
 
-    const isFormValid = computed(() => {
-      return (
-        formData.scenarioName &&
-        formData.selectedCategory &&
-        formData.startDate &&
-        formData.endDate &&
-        Object.entries(formData.userRoles).some(([, role]) => role.rater) &&
-        formData.selectedThreads.length > 0
-      );
-    });
 
     const validateForm = () => {
-      errors.scenarioName = formData.scenarioName ? '' : 'Bitte einen Szenario Namen angeben.';
-      errors.selectedCategory = formData.selectedCategory ? '' : 'Bitte eine Kategorie auswählen.';
-      errors.startDate = formData.startDate ? '' : 'Bitte ein Startdatum auswählen.';
-      errors.endDate = formData.endDate ? '' : 'Bitte ein Enddatum auswählen.';
-      errors.userRoles = Object.entries(formData.userRoles).some(([, role]) => role.rater)
-        ? ''
-        : 'Bitte mindestens einen Rater auswählen.';
-      errors.selectedThreads = formData.selectedThreads.length > 0
-        ? ''
-        : 'Bitte mindestens einen Thread auswählen.';
+      errors.scenarioName = formData.scenarioName ? "" : "Bitte geben Sie einen Szenario Namen an.";
+      errors.selectedCategory = formData.selectedCategory ? "" : "Bitte wählen Sie eine Kategorie aus.";
+      errors.startDate = formData.startDate ? "" : "Bitte wählen Sie ein Startdatum aus.";
+      errors.endDate = formData.endDate ? "" : "Bitte wählen Sie ein Enddatum aus.";
 
-      return Object.values(errors).every((error) => error === '');
+      // Überprüfen, ob das Startdatum nach dem Enddatum liegt
+      if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+        errors.startDate = "Das Startdatum darf nicht nach dem Enddatum liegen.";
+        errors.endDate = "Das Enddatum darf nicht vor dem Startdatum liegen.";
+      }
+
+      const raters = Object.entries(formData.userRoles).filter(([, role]) => role.rater).map(([id]) => Number(id));
+      errors.raters = raters.length > 0 ? "" : "Bitte wählen Sie mindestens einen Rater aus.";
+
+      errors.selectedThreads = formData.selectedThreads.length > 0 ? "" : "Bitte wählen Sie mindestens einen Thread aus.";
+
+      return !Object.values(errors).some((error) => error);
     };
+
+    const selectAllFilteredThreads = () => {
+  // Sicherstellen, dass `filteredThreads` und `formData.selectedThreads` existieren
+  if (!Array.isArray(filteredThreads.value) || filteredThreads.value.length === 0) {
+    formData.selectedThreads = []; // Leeren, falls keine gefilterten Threads vorhanden sind
+    return;
+  }
+
+  // Alle Thread-IDs aus `filteredThreads` in `formData.selectedThreads` hinzufügen
+  formData.selectedThreads = filteredThreads.value.map(thread => thread.thread_id);
+};
+
+    const deselectAllFilteredThreads = () => {
+  // Alle ausgewählten Threads abwählen, indem das Array leer gesetzt wird
+  formData.selectedThreads = [];
+};
 
     const formatDate = (dateStr) => {
       if (!dateStr) return '';
@@ -436,34 +471,44 @@ export default {
       formData.selectedCategory = null;
       formData.startDate = null;
       formData.endDate = null;
-      formData.userRoles = {};
       formData.selectedThreads = [];
-      state.threads = [];
+
+      // Sicherstellen, dass das 'userRoles' Objekt korrekt zurückgesetzt wird
+      formData.userRoles = Object.fromEntries(
+        state.users.map(user => [user.id, {viewer: false, rater: false}])
+      );
+
+      // Leeren des 'threads' Arrays
+      state.threads.splice(0, state.threads.length);  // Verwende 'splice', um das Array reaktiv zu leeren
+
       threadFilter.from = null;
       threadFilter.to = null;
-      Object.keys(errors).forEach((key) => errors[key] = '');
+
+      // Fehler zurücksetzen
+      Object.keys(errors).forEach((key) => {
+        errors[key] = '';
+      });
     };
 
-    const submitScenario = async () => {
+    const validateAndSubmitScenario = async () => {
       if (!validateForm()) {
         return;
       }
 
-      const raters = Object.entries(formData.userRoles)
-        .filter(([, role]) => role.rater)
-        .map(([id]) => Number(id));
-
+      const raters = Object.entries(formData.userRoles).filter(([, role]) => role.rater).map(([id]) => Number(id));
+      const viewers = Object.entries(formData.userRoles).filter(([, role]) => role.viewer).map(([id]) => Number(id));
       const startDateISO = new Date(formData.startDate).toISOString().substring(0, 19);
       const endDateISO = new Date(formData.endDate).toISOString().substring(0, 19);
+      const threadIds = Object.values(formData.selectedThreads);
 
       const payload = {
         scenario_name: formData.scenarioName,
         function_type_id: formData.selectedCategory,
         begin: startDateISO,
         end: endDateISO,
-        viewer: [],
         rater: raters,
-        threads: formData.selectedThreads
+        threads: threadIds,
+        viewer: viewers
       };
 
       try {
@@ -473,6 +518,7 @@ export default {
         console.log(payload);
         await axios.post("/api/admin/create_scenario", payload, getAuthHeaders());
         alert("Szenario erfolgreich erstellt!");
+        emit('scenarioCreated');
         closeDialog();
       } catch (error) {
         console.error("Fehler beim Erstellen des Szenarios:", error);
@@ -501,11 +547,12 @@ export default {
       closeDialog,
       handleCategoryChange,
       handleCheckboxChange,
-      submitScenario,
+      validateAndSubmitScenario,
       datePickerProps,
       formatDate,
-      isFormValid,
-      errors
+      errors,
+      selectAllFilteredThreads,
+      deselectAllFilteredThreads
     };
   }
 };
@@ -538,5 +585,19 @@ export default {
 
 .d-flex.align-center {
   justify-content: flex-start;
+}
+
+.error-panel {
+  border: 1px solid red;
+  background-color: #ffe6e6;
+}
+
+.v-alert {
+  margin-top: 10px;
+}
+
+
+.select-all-row {
+  margin-bottom: 2em;
 }
 </style>

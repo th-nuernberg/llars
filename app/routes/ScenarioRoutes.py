@@ -5,7 +5,6 @@ from sre_constants import error
 from tokenize import group
 from unicodedata import category
 
-
 from . import data_blueprint, auth_blueprint
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
@@ -420,77 +419,129 @@ def edit_scenario():
 
 @data_blueprint.route('/admin/add_threads_to_scenario', methods=['POST'])
 def add_threads_to_scenario():
-    # Authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
     try:
-        data = request.get_json()
-    except BadRequest:
-        return jsonify({'error': 'Invalid JSON format'}), 400
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
 
-    # Validate scenario_id
-    scenario_id = data.get('scenario_id')
-    if scenario_id is None or not isinstance(scenario_id, int):
-        return jsonify({'error': 'Scenario id is missing or invalid'}), 400
+        try:
+            data = request.get_json()
+        except BadRequest:
+            return jsonify({'error': 'Invalid JSON format'}), 400
 
-    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
-    if not scenario:
-        return jsonify({'error': 'Scenario not found'}), 404
+        # Validate scenario_id
+        scenario_id = data.get('scenario_id')
+        if scenario_id is None or not isinstance(scenario_id, int):
+            return jsonify({'error': 'Scenario id is missing or invalid'}), 400
 
-    # Validate threads
-    threads = data.get('thread_ids')
-    if not threads or not all(isinstance(thread_id, int) for thread_id in threads):
-        return jsonify({'error': 'List of thread ids is missing or contains invalid entries'}), 400
+        scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+        if not scenario:
+            return jsonify({'error': 'Scenario not found'}), 404
 
-    validated_threads = []
-    failed_threads = []
-    for thread_id in threads:
-        thread = EmailThread.query.filter_by(thread_id=thread_id, function_type_id=scenario.function_type_id).first()
-        if thread is None:
-            failed_threads.append(thread_id)
-        else:
-            # check if thread already belongs to scenario (no duplicates allowed in db)
-            if not ScenarioThreads.query.filter_by(thread_id=thread_id, function_type_id=scenario.function_type_id, scenario_id=scenario_id).first():
-                validated_threads.append(thread.thread_id)
+        # Validate threads
+        threads = data.get('thread_ids')
+        if not threads or not all(isinstance(thread_id, int) for thread_id in threads):
+            return jsonify({'error': 'List of thread ids is missing or contains invalid entries'}), 400
 
-    # Add threads and distribute
+        validated_threads = []
+        failed_threads = []
+        for thread_id in threads:
+            thread = EmailThread.query.filter_by(thread_id=thread_id,
+                                                 function_type_id=scenario.function_type_id).first()
+            if thread is None:
+                failed_threads.append(thread_id)
+            else:
+                # check if thread already belongs to scenario (no duplicates allowed in db)
+                if not ScenarioThreads.query.filter_by(thread_id=thread_id,
+                                                       scenario_id=scenario_id).first():
+                    validated_threads.append(thread.thread_id)
+
+        # Add threads and distribute
+        try:
+            thread_scenarios = []
+            for thread_id in validated_threads:
+                new_scenario_thread = ScenarioThreads(scenario_id=scenario.id, thread_id=thread_id)
+                db.session.add(new_scenario_thread)
+                db.session.flush()
+                thread_scenarios.append(new_scenario_thread.id)
+
+            scenario_users_ids = [
+                user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter_by(
+                    scenario_id=scenario.id, role=ScenarioRoles.RATER).all()
+            ]
+
+            if not thread_scenarios or not scenario_users_ids:
+                return jsonify({'error': 'No threads or users available for distribution'}), 400
+
+            user_threads = distribute_threads_to_users(thread_scenarios, scenario_users_ids)
+            for user_id, thread_ids in user_threads.items():
+                for thread_id in thread_ids:
+                    db.session.add(ScenarioThreadDistribution(
+                        scenario_id=scenario.id,
+                        scenario_thread_id=thread_id,
+                        scenario_user_id=user_id,
+                    ))
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error while adding threads to scenario: {e}")
+            return jsonify({'error': 'An error occurred while adding the threads to the db'}), 500
+
+        return jsonify({'message': 'Successfully added threads to the db', 'not_found_threads': failed_threads}), 200
+    except Exception as e:
+        logging.error(e)
+        logging.exception(e)
+        return jsonify({'error': "internal Server errror"}), 500
+
+
+@data_blueprint.route('/admin/add_viewers_to_scenario', methods=['POST'])
+def add_viewers_to_scenario():
     try:
-        thread_scenarios = []
-        for thread_id in validated_threads:
-            new_scenario_thread = ScenarioThreads(scenario_id=scenario.id, thread_id=thread_id)
-            db.session.add(new_scenario_thread)
-            db.session.flush()
-            thread_scenarios.append(new_scenario_thread.id)
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
 
-        scenario_users_ids = [
-            user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter_by(
-                scenario_id=scenario.id, role=ScenarioRoles.RATER).all()
-        ]
+        try:
+            data = request.get_json()
+        except BadRequest:
+            return jsonify({'error': 'Invalid JSON format'}), 400
 
-        if not thread_scenarios or not scenario_users_ids:
-            return jsonify({'error': 'No threads or users available for distribution'}), 400
+        # Validate scenario_id
+        scenario_id = data.get('scenario_id')
+        if scenario_id is None or not isinstance(scenario_id, int):
+            return jsonify({'error': 'Scenario id is missing or invalid'}), 400
 
-        user_threads = distribute_threads_to_users(thread_scenarios, scenario_users_ids)
-        for user_id, thread_ids in user_threads.items():
-            for thread_id in thread_ids:
-                db.session.add(ScenarioThreadDistribution(
-                    scenario_id=scenario.id,
-                    scenario_thread_id=thread_id,
-                    scenario_user_id=user_id,
-                ))
+        scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+        if not scenario:
+            return jsonify({'error': 'Scenario not found'}), 404
 
-        db.session.commit()
+        viewers = data.get('user_ids')
+        if not viewers or not all(isinstance(user_id, int) for user_id in viewers):
+            return jsonify({'error': 'List of viewers is missing or contains invalid entries'}), 400
+
+        for viewer_id in viewers:
+            scenario_user = ScenarioUsers.query.filter_by(user_id=viewer_id, scenario_id=scenario_id).first()
+            if not scenario_user: # only add new users to scenario
+                db.session.add(ScenarioUsers(user_id=viewer_id, scenario_id=scenario_id, role=ScenarioRoles.VIEWER))
+                db.session.commit()
+            else:
+                scenario_user.role = ScenarioRoles.VIEWER
+                db.session.commit()
+
+        return jsonify({'message': 'Successfully added viewers to the db'}), 200
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error while adding threads to scenario: {e}")
-        return jsonify({'error': 'An error occurred while adding the threads to the db'}), 500
-
-    return jsonify({'message': 'Successfully added threads to the db', 'not_found_threads': failed_threads}), 200
+        logging.error(e)
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 
 

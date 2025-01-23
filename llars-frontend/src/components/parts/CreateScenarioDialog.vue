@@ -312,7 +312,7 @@ export default {
     const selectAllFilteredThreads = () => {
   // Sicherstellen, dass `filteredThreads` und `formData.selectedThreads` existieren
   if (!Array.isArray(filteredThreads.value) || filteredThreads.value.length === 0) {
-    formData.selectedThreads = []; // Leeren, falls keine gefilterten Threads vorhanden sind
+    formData.selectedThreads = [];
     return;
   }
 

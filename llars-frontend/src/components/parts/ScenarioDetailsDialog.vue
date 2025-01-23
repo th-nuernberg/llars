@@ -372,6 +372,7 @@ export default {
         scenario_id: null,
         scenario_name: '',
         func_type: '',
+        function_type_id: null,
         begin_date: '',
         end_date: '',
         threads: [],
@@ -380,22 +381,43 @@ export default {
       },
       selectedThreads: [],
       selectedViewers: [],
-      availableThreads: [], // This should be populated from your API
-      availableUsers: [],   // This should be populated from your API
+      availableThreads: [],
+      availableUsers: [],
       errors: {}
     }
   },
 
   computed: {
     filteredAvailableThreads() {
-      if (!this.threadFilter.from && !this.threadFilter.to) return this.availableThreads
+      // Filter threads excluding already added threads
+      const existingThreadIds = this.editedScenario.threads.map(t => t.thread_id);
+      let filtered = this.availableThreads.filter(thread =>
+        !existingThreadIds.includes(thread.thread_id)
+      );
 
-      return this.availableThreads.filter(thread => {
-        const id = thread.thread_id
-        const fromOk = !this.threadFilter.from || id >= this.threadFilter.from
-        const toOk = !this.threadFilter.to || id <= this.threadFilter.to
-        return fromOk && toOk
-      })
+      // Apply additional thread ID filtering
+      if (this.threadFilter.from || this.threadFilter.to) {
+        filtered = filtered.filter(thread => {
+          const id = thread.thread_id;
+          const fromOk = !this.threadFilter.from || id >= this.threadFilter.from;
+          const toOk = !this.threadFilter.to || id <= this.threadFilter.to;
+          return fromOk && toOk;
+        });
+      }
+
+      return filtered;
+    },
+
+    filteredAvailableUsers() {
+      // Filter users excluding already added viewers and raters
+      const existingUserIds = [
+        ...this.editedScenario.viewers.map(v => v.user_id),
+        ...this.editedScenario.raters.map(r => r.user_id)
+      ];
+
+      return this.availableUsers.filter(user =>
+        !existingUserIds.includes(user.id)
+      );
     }
   },
 
@@ -438,6 +460,34 @@ export default {
       }
     },
 
+    async loadAvailableThreads() {
+      if (!this.editedScenario.function_type_id) return;
+
+      try {
+        const response = await axios.get(`/api/admin/get_threads_from_function_type/${this.editedScenario.function_type_id}`, {
+          headers: {
+            'Authorization': localStorage.getItem('api_key')
+          }
+        });
+        this.availableThreads =  response.data;
+      } catch (error) {
+        console.error('Error loading available threads:', error);
+      }
+    },
+
+    async loadAvailableUsers() {
+      try {
+        const response = await axios.get('/api/admin/get_users', {
+          headers: {
+            'Authorization': localStorage.getItem('api_key')
+          }
+        });
+        this.availableUsers = response.data;
+      } catch (error) {
+        console.error('Error loading available users:', error);
+      }
+    },
+
     async saveChanges() {
       try {
         // Prepare the update payload
@@ -476,22 +526,28 @@ export default {
       }
     },
 
-    openThreadSelectionDialog() {
-      this.threadSelectionDialog = true
-      // Load available threads here
+    async openThreadSelectionDialog() {
+      this.threadSelectionDialog = true;
+      await this.loadAvailableThreads();
     },
+
 
     async addThreadsToScenario() {
       try {
-        await axios.post('/api/admin/add_threads_to_scenario', {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        const threads = Object.values(this.selectedThreads)
+        const payload = {
             scenario_id: this.scenarioId,
-            thread_ids: this.selectedThreads
-          })
-        })
+            thread_ids: threads
+          };
+        console.log("Threads: ", payload)
+        await axios.post('/api/admin/add_threads_to_scenario',
+          payload,
+          {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': localStorage.getItem('api_key')
+          }
+        });
 
         this.threadSelectionDialog = false
         this.selectedThreads = []
@@ -502,23 +558,27 @@ export default {
       }
     },
 
-    openViewerSelectionDialog() {
+    async openViewerSelectionDialog() {
       this.viewerSelectionDialog = true
-      // Load available users here
+      await this.loadAvailableUsers();
     },
 
     async addViewersToScenario() {
       try {
-        // This is the suggested API endpoint format for adding viewers
-        await axios.post('/api/admin/add_viewers_to_scenario', {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        const payload = {
             scenario_id: this.scenarioId,
-            user_ids: this.selectedViewers
+            user_ids: Object.values(this.selectedViewers)
+          }
+        // This is the suggested API endpoint format for adding viewers
+
+        await axios.post('/api/admin/add_viewers_to_scenario',
+          payload,
+          {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': localStorage.getItem('api_key')
+          }
           })
-        })
 
         this.viewerSelectionDialog = false
         this.selectedViewers = []
@@ -527,6 +587,16 @@ export default {
         console.error('Error adding viewers:', error)
         // Handle error appropriately
       }
+    },
+
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
     }
   }
 }

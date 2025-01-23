@@ -77,22 +77,22 @@
       </v-chip>
     </td>
     <td>
-      <v-btn
-        density="comfortable"
-        variant="flat"
-        class="details-btn"
-        @click.stop="navigateToDetails(scenario)"
-      >
-        Detailansicht
-      </v-btn>
-      <v-btn
-        density="compact"
-        icon="mdi-delete-outline"
-        variant="flat"
-        class="delete-btn"
-        @click.stop="deleteScenario(scenario)"
-      ></v-btn>
-    </td>
+  <v-col class="d-flex align-center">
+    <!-- Detail/Edit Dialog Button -->
+    <ScenarioDetailDialog :scenario-id="scenario.scenario_id"
+                          class="details-btn" density="compact"
+                          size="small"/>
+
+    <!-- Delete Button -->
+    <v-btn
+      density="compact"
+      icon="mdi-delete-outline"
+      variant="flat"
+      class="delete-btn"
+      @click.stop="deleteScenario(scenario)"
+    ></v-btn>
+  </v-col>
+</td>
   </tr>
 </tbody>
 <tbody v-else>
@@ -113,8 +113,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import CreateScenarioDialog from "@/components/parts/CreateScenarioDialog.vue";
-//import ScenarioDetailsDialog from "@/components/parts/ScenarioDetailsDialog.vue";
-
+import ScenarioDetailDialog from "@/components/parts/ScenarioDetailsDialog.vue";
 const router = useRouter();
 const scenarios = ref([]);
 const searchQuery = ref('');
@@ -303,13 +302,16 @@ onMounted(() => {
 }
 
 .details-btn {
-  background-color: #b0ca97 !important;
-  color: white !important;
+  padding: 0;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
 }
 
 .details-btn:hover {
-  background-color: #9db888 !important;
+  color: #9db888 !important;
   box-shadow: 0 2px 8px rgba(176, 202, 151, 0.4);
+  background-color: #e8f5e9;
 }
 
 .delete-btn {

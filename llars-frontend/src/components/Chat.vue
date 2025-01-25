@@ -1,3 +1,4 @@
+<!-- Chat.vue -->
 <template>
   <v-container fluid class="chat-page pa-0">
     <v-row no-gutters class="chat-container">

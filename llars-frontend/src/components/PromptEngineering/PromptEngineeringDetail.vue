@@ -8,6 +8,7 @@
       :is-owner="promptOwner === username"
       :shared-with="sharedWithUsers"
       :owner="promptOwner"
+      :promptName="promptName"
       @showAddBlockDialog="showAddBlockDialog = true"
       @refreshPromptDetails="fetchPromptDetails()"
       @uploadJsonFileSelected="onJsonFileSelected"

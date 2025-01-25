@@ -30,11 +30,11 @@
             <v-col cols="12" sm="6" md="4" v-for="prompt in prompts" :key="prompt.id">
               <v-card class="mb-4 case-card">
                 <div class="card-actions">
-                  <button @click.stop="deletePrompt(prompt)" class="delete-button">
-                    <v-icon size="small">mdi-close</v-icon>
-                  </button>
                   <button @click.stop="openRenameDialog(prompt)" class="edit-button">
                     <v-icon size="small">mdi-pencil</v-icon>
+                  </button>
+                  <button @click.stop="deletePrompt(prompt)" class="delete-button">
+                    <v-icon size="small">mdi-close</v-icon>
                   </button>
                 </div>
                 <div class="d-flex flex-column card-content" @click="navigateToPromptDetail(prompt.id)">

@@ -1,3 +1,4 @@
+<!--HistoryGenerationDetail.vue-->
 <template>
   <v-container fluid class="main-container">
     <v-row>

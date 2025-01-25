@@ -146,6 +146,10 @@ const props = defineProps({
     type: String, // Neuer Prop-Typ
     required: true,
   },
+  promptName: { // Neu hinzugefügt
+    type: String,
+    required: true,
+  },
 });
 
 
@@ -311,10 +315,15 @@ const downloadPrompt = () => {
   // Erstelle eine URL für den Blob
   const url = window.URL.createObjectURL(blob);
 
+  // Dynamischer Dateiname basierend auf dem `promptName`
+  const sanitizeFilename = (name) => name.replace(/[^a-z0-9_\-]/gi, '_');
+  const filename = `${sanitizeFilename(props.promptName || 'prompt')}.json`;
+
+
   // Erstelle ein unsichtbares <a> Element für den Download
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'prompt.json'; // Name der Datei, die heruntergeladen wird
+  a.download = filename; // Dynamischer Dateiname
 
   // Füge das Element zum DOM hinzu und klicke es programmatisch
   document.body.appendChild(a);

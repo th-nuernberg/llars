@@ -82,11 +82,35 @@
           <div class="editor-block">
             <div class="editor-header">
               <div class="drag-handle">⋮⋮</div>
-              <h3>{{ block.title }}</h3>
+
+              <!-- If this block is being edited, show an <input>, else show the <h3> -->
+              <template v-if="editingBlockId === block.id">
+                <input
+                  class="block-title-input"
+                  type="text"
+                  v-model="editingBlockTitle"
+                  @keyup.enter="saveBlockTitle(block)"
+                  @blur="saveBlockTitle(block)"
+                  :placeholder="`Blocktitel ändern...`"
+                />
+              </template>
+              <template v-else>
+                <!-- Double-click or click an edit icon to start editing -->
+                <h3 @dblclick="startEditBlockTitle(block)">{{ block.title }}</h3>
+                <!-- You can also show a small "edit" icon to click -->
+                <button
+                  class="edit-title-button"
+                  @click="startEditBlockTitle(block)"
+                  title="Titel bearbeiten"
+                >
+                  <v-icon size="small">mdi-pencil</v-icon>
+                </button>
+              </template>
 
               <!-- Delete-Button (öffnet den Löschdialog) -->
               <div class="delete-button" @click="openDeleteBlockDialog(block)">✕</div>
             </div>
+
             <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
           </div>
         </template>
@@ -135,6 +159,9 @@ const users = ref({});
 
 const promptOwner = ref('');
 const sharedWithUsers = ref([]);
+
+const editingBlockId = ref(null)
+const editingBlockTitle = ref('')
 
 let ydoc = null;
 let socket = null;
@@ -220,6 +247,58 @@ const confirmDeleteBlock = () => {
   // Dialog schließen
   closeDeleteBlockDialog();
 };
+/**
+ * User clicks on the block title or an edit icon,
+ * sets up the local state for editing.
+ */
+const startEditBlockTitle = (block) => {
+  editingBlockId.value = block.id
+  editingBlockTitle.value = block.title
+}
+
+/**
+ * When user presses enter or the input loses focus,
+ * save the new title in the Y.Doc (and broadcast).
+ */
+const saveBlockTitle = (block) => {
+  const newTitle = editingBlockTitle.value.trim()
+  const oldTitle = block.title
+
+  // If the new title is empty or unchanged, just reset
+  if (!newTitle || newTitle === oldTitle) {
+    editingBlockId.value = null
+    editingBlockTitle.value = ''
+    return
+  }
+
+  if (!ydoc) {
+    console.error('No Y.Doc available to update block title')
+    return
+  }
+
+  // Update the Y.Doc
+  ydoc.transact(() => {
+    const blocksMap = ydoc.getMap('blocks')
+    const blockMap = blocksMap.get(block.id)
+    if (blockMap) {
+      blockMap.set('title', newTitle)
+
+      // Broadcast the update to other clients
+      const update = Y.encodeStateAsUpdate(ydoc)
+      if (socket?.connected) {
+        socket.emit('sync_update', {
+          room: roomId.value,
+          update: Array.from(update),
+        })
+      }
+    }
+  })
+
+  // Reset local state
+  editingBlockId.value = null
+  editingBlockTitle.value = ''
+  showSnackbarMessage(`Titel geändert zu "${newTitle}"!`)
+}
 
 // ...
 const showUploadChoiceDialog = ref(false);
@@ -1104,4 +1183,33 @@ onUnmounted(() => {
 .delete-button:hover {
   color: #e74c3c;
 }
+
+.block-title-input {
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  flex: 1; /* So it takes up available horizontal space if you prefer */
+}
+
+.edit-title-button {
+  padding: 4px;
+  color: grey;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
+}
+
+.edit-title-button:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #6ca077;
+}
+
 </style>

@@ -97,20 +97,31 @@
               <template v-else>
                 <!-- Double-click or click an edit icon to start editing -->
                 <h3 @dblclick="startEditBlockTitle(block)">{{ block.title }}</h3>
-                <!-- You can also show a small "edit" icon to click -->
-                <button
-                  class="edit-title-button"
-                  @click="startEditBlockTitle(block)"
-                  title="Titel bearbeiten"
-                >
-                  <v-icon size="small">mdi-pencil</v-icon>
-                </button>
-              </template>
 
-              <!-- Delete-Button (öffnet den Löschdialog) -->
-              <div class="delete-button" @click="openDeleteBlockDialog(block)">✕</div>
+                <!-- Container für die Buttons -->
+                <div class="header-actions">
+                  <!-- Edit Button -->
+                  <button
+                    class="edit-title-button"
+                    @click="startEditBlockTitle(block)"
+                    title="Titel bearbeiten"
+                  >
+                    <v-icon size="small">mdi-pencil</v-icon>
+                  </button>
+
+                  <!-- Delete Button -->
+                  <button
+                    class="delete-button"
+                    @click="openDeleteBlockDialog(block)"
+                    title="Block löschen"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </template>
             </div>
 
+            <!-- Editor-Inhalt -->
             <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
           </div>
         </template>
@@ -1171,25 +1182,18 @@ onUnmounted(() => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Delete-Button im Block */
-.delete-button {
-  margin-left: auto;
-  cursor: pointer;
-  font-size: 1.2rem;
-  color: #999;
-  transition: color 0.2s;
-}
-
-.delete-button:hover {
-  color: #e74c3c;
-}
-
 .block-title-input {
   font-size: 1.1rem;
   padding: 4px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   flex: 1; /* So it takes up available horizontal space if you prefer */
+}
+
+.header-actions {
+  margin-left: auto; /* Buttons ganz rechts platzieren */
+  display: flex;
+  gap: 8px; /* Abstand zwischen den Buttons */
 }
 
 .edit-title-button {
@@ -1210,6 +1214,26 @@ onUnmounted(() => {
 .edit-title-button:hover {
   background: rgba(255, 255, 255, 1);
   color: #6ca077;
+}
+
+.delete-button {
+  padding: 4px;
+  color: grey;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
+}
+
+.delete-button:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #e74c3c;
 }
 
 </style>

@@ -127,7 +127,7 @@ Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 
 
 ###
-GET http://localhost/api/admin/scenarios/7
+GET http://localhost/api/admin/scenarios/1
 Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
 
 ###

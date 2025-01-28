@@ -1,4 +1,5 @@
 import logging
+import traceback
 from numbers import Number
 from pyexpat.errors import messages
 from sre_constants import error
@@ -154,8 +155,8 @@ def get_scenario_details(scenario_id=None): #
             'scenario_name': scenario.scenario_name,
             'function_type_id': scenario.function_type_id,
             'func_type': func_type,
-            'begin_date': scenario.begin,
-            'end_date': scenario.end,
+            'begin_date': scenario.begin.isoformat(),
+            'end_date': scenario.end.isoformat(),
             'threads': threads,
             'raters': scenario_raters,
             'viewers': scenario_viewers,
@@ -364,56 +365,63 @@ def delete_scenario(scenario_id):
 
 @data_blueprint.route('/admin/edit_scenario', methods=['POST']) # TODO: Gedanken zu Zeitzonen machen
 def edit_scenario():
-    # Authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    # get the data
     try:
-        data = request.get_json()
-    except:
-        return jsonify({'error': 'JSON not valid'}), 400
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
 
-    client_data = {
-        "id": data.get('id'),
-        "name": data.get('new_name'),
-        "begin": data.get('new_begin'),
-        "end": data.get('new_end')
-    }
-    # validate the data
-    if not client_data['id'] or ( not isinstance(client_data['id'], int) ) :
-        return jsonify({'error': 'id of scenario is missing or invalid'}), 400
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
 
-    # if no value to change is given, use the given value of db for the update clause
-    scenario = RatingScenarios.query.filter_by(id=client_data['id']).first()
-    if not client_data['name']:
-        client_data['name'] = scenario.scenario_name
-    if not client_data['begin']:
-        client_data['begin'] = scenario.begin
-    else:
-        client_data['begin'] = datetime.fromisoformat(client_data['begin'])
-    if not client_data['end']:
-        client_data['end'] = scenario.end
-    else:
-        client_data['end'] = datetime.fromisoformat(client_data['end'])
+        # get the data
+        try:
+            data = request.get_json()
+        except:
+            return jsonify({'error': 'JSON not valid'}), 400
 
-    # update changes to db
-    try:
-        scenario.scenario_name=client_data['name']
-        scenario.begin=client_data['begin']
-        scenario.end=client_data['end']
-        db.session.commit()
+        client_data = {
+            "id": data.get('id'),
+            "name": data.get('new_name'),
+            "begin": data.get('new_begin'),
+            "end": data.get('new_end')
+        }
+        # validate the data
+        if not client_data['id'] or (not isinstance(client_data['id'], int)):
+            return jsonify({'error': 'id of scenario is missing or invalid'}), 400
+
+        # if no value to change is given, use the given value of db for the update clause
+        scenario = RatingScenarios.query.filter_by(id=client_data['id']).first()
+        if not client_data['name']:
+            client_data['name'] = scenario.scenario_name
+        if not client_data['begin']:
+            client_data['begin'] = scenario.begin
+        else:
+            client_data['begin'] = datetime.fromisoformat(client_data['begin'])
+        if not client_data['end']:
+            client_data['end'] = scenario.end
+        else:
+            client_data['end'] = datetime.fromisoformat(client_data['end'])
+
+        # update changes to db
+        try:
+            scenario.scenario_name = client_data['name']
+            scenario.begin = client_data['begin']
+            scenario.end = client_data['end']
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logging.error(e)
+            return jsonify({'error': 'Scenario couldn\'t be updated'}), 500
+
+        return jsonify({'message': 'Scenario edited successfully'}), 200
     except Exception as e:
         db.session.rollback()
         logging.error(e)
-        return jsonify({'error': 'Scenario couldn\'t be updated'}), 500
+        logging.exception(e)
+        return jsonify({'error': "internal Server error"}), 500
 
-    return jsonify({'message': 'Scenario edited successfully'}), 200
 
 
 

@@ -38,7 +38,7 @@
 
       <!-- Create Button Column -->
       <v-col cols="12" md="4" class="d-flex justify-end">
-        <CreateScenarioDialog @scenarioCreated="handleScenarioCreated" />
+        <CreateScenarioDialog @scenarioCreated="handleScenarioChanged" />
       </v-col>
     </v-row>
 
@@ -81,7 +81,8 @@
     <!-- Detail/Edit Dialog Button -->
     <ScenarioDetailDialog :scenario-id="scenario.scenario_id"
                           class="details-btn" density="compact"
-                          size="small"/>
+                          size="small"
+                          @scenarioEdited="handleScenarioChanged"/>
 
     <!-- Delete Button -->
     <v-btn
@@ -247,9 +248,10 @@ const deleteScenario = async (scenario) => {
 
 
 // Wenn ein Szenario erstellt wurde
-const handleScenarioCreated = () => {
+const handleScenarioChanged= () => {
       fetchScenarios()
     }
+
 
 onMounted(() => {
   fetchScenarios();

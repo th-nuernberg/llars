@@ -1,18 +1,16 @@
 <template>
   <div>
-    <!-- Detail/Edit Dialog Trigger Button -->
     <v-btn
       prepend-icon="mdi-eye"
       @click.stop="openDialog"
       class="details-btn"
       density="compact"
       variant="flat"
-      size = "small"
+      size="small"
     >
     </v-btn>
 
-    <!-- Main Dialog -->
- <v-dialog v-model="dialog" max-width="1000px">
+    <v-dialog v-model="dialog" max-width="1000px">
       <v-card>
         <v-card-title class="headline">
           Szenario Details
@@ -34,10 +32,9 @@
           ></v-text-field>
 
           <v-text-field
-            v-model="editedScenario.func_type"
+            v-model="categoryNameMapping"
             label="Kategorie"
             readonly
-            disabled
             outlined
             density="comfortable"
           ></v-text-field>
@@ -45,32 +42,32 @@
           <v-row>
             <v-col cols="12" md="6">
               <v-menu
-                v-model="dateMenus.start"
-                :close-on-content-click="false"
-                location="start"
-                transition="scale-transition"
-                min-width="auto"
-              >
-                <template v-slot:activator="{ props }">
-                  <v-text-field
-                    v-model="editedScenario.begin_date"
-                    label="Startdatum"
-                    :readonly="!isEditing"
-                    v-bind="props"
-                    prepend-icon="mdi-calendar"
-                    outlined
-                    density="comfortable"
-                  ></v-text-field>
-                </template>
-                <v-date-picker
-                  v-if="isEditing"
-                  v-model="editedScenario.begin_date"
-                  locale="de-DE"
-                  :first-day-of-week="1"
-                  color="primary"
-                  @click:save="dateMenus.start = false"
-                ></v-date-picker>
-              </v-menu>
+  v-model="dateMenus.start"
+  :close-on-content-click="false"
+  location="start"
+  transition="scale-transition"
+  min-width="auto"
+>
+  <template v-slot:activator="{ props }">
+    <v-text-field
+      :model-value="formatDateForDisplay(editedScenario.begin_date)"
+      label="Startdatum"
+      readonly
+      v-bind="props"
+      prepend-icon="mdi-calendar"
+      outlined
+      density="comfortable"
+    ></v-text-field>
+  </template>
+  <v-date-picker
+    v-if="isEditing"
+    v-model="editedScenario.begin_date"
+    locale="de-DE"
+    :first-day-of-week="1"
+    color="primary"
+    @click:save="dateMenus.start = false"
+  ></v-date-picker>
+</v-menu>
             </v-col>
             <v-col cols="12" md="6">
               <v-menu
@@ -82,9 +79,9 @@
               >
                 <template v-slot:activator="{ props }">
                   <v-text-field
-                    v-model="editedScenario.end_date"
+                    :model-value="formatDateForDisplay(editedScenario.end_date)"
                     label="Enddatum"
-                    :readonly="!isEditing"
+                    readonly
                     v-bind="props"
                     prepend-icon="mdi-calendar"
                     outlined
@@ -132,33 +129,49 @@
 
                   <!-- Viewers Section -->
                   <v-col cols="12">
-                    <div class="d-flex align-center mb-2">
-                      <div class="text-h6">Viewer</div>
-                      <v-spacer></v-spacer>
-                      <v-btn
-                        v-if="isEditing"
-                        color="primary"
-                        prepend-icon="mdi-plus"
-                        @click="openViewerSelectionDialog"
-                      >
-                        Viewer hinzufügen
-                      </v-btn>
-                    </div>
-                    <v-row>
-                      <v-col
-                        v-for="viewer in editedScenario.viewers"
-                        :key="viewer.user_id"
-                        cols="12" sm="6" md="4"
-                      >
-                        <v-card outlined class="user-card" density="compact">
-                          <v-card-item>
-                            <div class="text-subtitle-1 mb-1">{{ viewer.username }}</div>
-                            <div class="text-caption text-grey">ID: {{ viewer.user_id }}</div>
-                          </v-card-item>
-                        </v-card>
-                      </v-col>
-                    </v-row>
-                  </v-col>
+  <div class="text-h6 mb-2">Viewer</div>
+  <v-row>
+    <v-col
+      v-for="viewer in editedScenario.viewers"
+      :key="viewer.user_id"
+      cols="12" sm="6" md="4"
+    >
+      <v-card outlined class="user-card" density="compact">
+        <v-card-item>
+          <div class="text-subtitle-1 mb-1">{{ viewer.username }}</div>
+          <div class="text-caption text-grey">ID: {{ viewer.user_id }}</div>
+        </v-card-item>
+      </v-card>
+    </v-col>
+  </v-row>
+
+  <!-- Available Viewers -->
+  <div v-if="isEditing" class="mt-4">
+    <div class="text-subtitle-1 mb-2">Verfügbare Viewer</div>
+    <v-row>
+      <v-col
+        v-for="user in filteredAvailableUsers"
+        :key="user.id"
+        cols="12" sm="6" md="4"
+      >
+        <v-card outlined class="user-card" density="compact">
+          <v-card-item>
+            <div class="text-subtitle-1 mb-1">{{ user.name }}</div>
+            <div class="text-caption text-grey">ID: {{ user.id }}</div>
+            <v-checkbox
+              v-model="selectedViewers"
+              :value="user.id"
+              label="Auswählen"
+              density="compact"
+              hide-details
+              class="mt-1"
+            ></v-checkbox>
+          </v-card-item>
+        </v-card>
+      </v-col>
+    </v-row>
+  </div>
+</v-col>
                 </v-row>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -169,17 +182,51 @@
                 Threads
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div class="d-flex align-center mb-4">
-                  <v-spacer></v-spacer>
-                  <v-btn
-                    v-if="isEditing"
-                    color="primary"
-                    prepend-icon="mdi-plus"
-                    @click="openThreadSelectionDialog"
-                  >
-                    Threads hinzufügen
-                  </v-btn>
-                </div>
+                <!-- Thread Filter -->
+                <v-row v-if="isEditing">
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model.number="threadFilter.from"
+                      label="Von Thread ID"
+                      type="number"
+                      outlined
+                      density="comfortable"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model.number="threadFilter.to"
+                      label="Bis Thread ID"
+                      type="number"
+                      outlined
+                      density="comfortable"
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+                <v-row v-if="isEditing" class="select-all-row">
+  <v-col>
+    <v-btn
+      class="select-all-btn"
+      color="primary"
+      prepend-icon="mdi-check"
+      @click="selectAllFilteredThreads"
+    >
+      Alle anwählen
+    </v-btn>
+  </v-col>
+  <v-col>
+    <v-btn
+      class="select-all-btn"
+      color="primary"
+      prepend-icon="mdi-alpha-x-box-outline"
+      @click="deselectAllFilteredThreads"
+    >
+      Alle abwählen
+    </v-btn>
+  </v-col>
+</v-row>
+
+                <!-- Existing Threads -->
                 <v-row>
                   <v-col
                     v-for="thread in editedScenario.threads"
@@ -199,6 +246,38 @@
                     </v-card>
                   </v-col>
                 </v-row>
+
+                <!-- Available Threads -->
+                <div v-if="isEditing" class="mt-4">
+                  <div class="text-subtitle-1 mb-2">Verfügbare Threads</div>
+                  <v-row>
+                    <v-col
+                      v-for="thread in filteredAvailableThreads"
+                      :key="thread.thread_id"
+                      cols="12" sm="6" md="4"
+                    >
+                      <v-card outlined class="thread-card" density="compact">
+                        <v-card-item>
+                          <div class="d-flex align-center mb-1">
+                            <div class="text-subtitle-1 text-truncate">{{ thread.subject }}</div>
+                          </div>
+                          <div class="d-flex justify-space-between align-center mb-1">
+                            <div class="text-caption text-grey">Thread-ID: {{ thread.thread_id }}</div>
+                            <div class="text-caption">{{ thread.sender }}</div>
+                          </div>
+                          <v-checkbox
+                            v-model="selectedThreads"
+                            :value="thread.thread_id"
+                            label="Auswählen"
+                            density="compact"
+                            hide-details
+                            class="mt-1"
+                          ></v-checkbox>
+                        </v-card-item>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
@@ -217,130 +296,12 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <!-- Thread Selection Dialog -->
-    <v-dialog v-model="threadSelectionDialog" max-width="800px">
-      <v-card>
-        <v-card-title>Threads Hinzufügen</v-card-title>
-        <v-card-text>
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="threadFilter.from"
-                label="Von Thread ID"
-                type="number"
-                outlined
-                density="comfortable"
-              ></v-text-field>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model.number="threadFilter.to"
-                label="Bis Thread ID"
-                type="number"
-                outlined
-                density="comfortable"
-              ></v-text-field>
-            </v-col>
-          </v-row>
-          <v-row class="select-all-row">
-            <v-col>
-              <v-btn
-                class="select-all-btn"
-                color="primary"
-                prepend-icon="mdi-check"
-                @click="selectAllFilteredThreads"
-              >
-                Alle anwählen
-              </v-btn>
-            </v-col>
-            <v-col>
-              <v-btn
-                class="select-all-btn"
-                color="primary"
-                prepend-icon="mdi-alpha-x-box-outline"
-                @click="deselectAllFilteredThreads"
-              >
-                Alle abwählen
-              </v-btn>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col
-              v-for="thread in filteredAvailableThreads"
-              :key="thread.thread_id"
-              cols="12" sm="6" md="4"
-            >
-              <v-card outlined class="thread-card" density="compact">
-                <v-card-item>
-                  <div class="d-flex align-center mb-1">
-                    <div class="text-subtitle-1 text-truncate">{{ thread.subject }}</div>
-                  </div>
-                  <div class="d-flex justify-space-between align-center mb-1">
-                    <div class="text-caption text-grey">Thread-ID: {{ thread.thread_id }}</div>
-                    <div class="text-caption">{{ thread.sender }}</div>
-                  </div>
-                  <v-checkbox
-                    v-model="selectedThreads"
-                    :value="thread.thread_id"
-                    label="Auswählen"
-                    density="compact"
-                    hide-details
-                    class="mt-1"
-                  ></v-checkbox>
-                </v-card-item>
-              </v-card>
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="red" @click="threadSelectionDialog = false">Abbrechen</v-btn>
-          <v-btn color="green" @click="addThreadsToScenario">Hinzufügen</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Viewer Selection Dialog -->
-    <v-dialog v-model="viewerSelectionDialog" max-width="800px">
-      <v-card>
-        <v-card-title>Viewer Hinzufügen</v-card-title>
-        <v-card-text>
-          <v-row>
-            <v-col
-              v-for="user in availableUsers"
-              :key="user.id"
-              cols="12" sm="6" md="4"
-            >
-              <v-card outlined class="user-card" density="compact">
-                <v-card-item>
-                  <div class="text-subtitle-1 mb-1">{{ user.name }}</div>
-                  <div class="text-caption text-grey">ID: {{ user.id }}</div>
-                  <v-checkbox
-                    v-model="selectedViewers"
-                    :value="user.id"
-                    label="Auswählen"
-                    density="compact"
-                    hide-details
-                    class="mt-1"
-                  ></v-checkbox>
-                </v-card-item>
-              </v-card>
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="red" @click="viewerSelectionDialog = false">Abbrechen</v-btn>
-          <v-btn color="green" @click="addViewersToScenario">Hinzufügen</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
+
 <script>
-import {ref, reactive, onMounted, computed,} from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import axios from 'axios';
 
 export default {
@@ -357,8 +318,6 @@ export default {
     return {
       dialog: false,
       isEditing: false,
-      threadSelectionDialog: false,
-      viewerSelectionDialog: false,
       dateMenus: {
         start: false,
         end: false,
@@ -373,8 +332,8 @@ export default {
         scenario_name: '',
         func_type: '',
         function_type_id: null,
-        begin_date: '',
-        end_date: '',
+        begin_date: null,
+        end_date: null,
         threads: [],
         raters: [],
         viewers: []
@@ -383,7 +342,7 @@ export default {
       selectedViewers: [],
       availableThreads: [],
       availableUsers: [],
-      errors: {}
+      errors: {},
     }
   },
 
@@ -408,6 +367,15 @@ export default {
       return filtered;
     },
 
+    categoryNameMapping(){
+      const categoryLabels = {
+      'rating': 'Rating',
+      'mail_rating': 'Verlauf Generierung',
+      'ranking': 'Ranking'
+    };
+      return categoryLabels[this.editedScenario.func_type] || this.editedScenario.func_type;
+    },
+
     filteredAvailableUsers() {
       // Filter users excluding already added viewers and raters
       const existingUserIds = [
@@ -423,53 +391,97 @@ export default {
 
   methods: {
     async openDialog() {
-      this.dialog = true
-      await this.loadScenarioDetails()
+      this.dialog = true;
+      await this.loadScenarioDetails();
+      if (this.isEditing) {
+        await Promise.all([
+          this.loadAvailableThreads(),
+          this.loadAvailableUsers()
+        ]);
+      }
     },
 
-    closeDialog() {
-      this.dialog = false
-      this.isEditing = false
-      this.editedScenario = JSON.parse(JSON.stringify(this.originalScenario))
-    },
-
-    startEditing() {
-      this.isEditing = true
-    },
 
     selectAllFilteredThreads() {
-      this.selectedThreads = this.filteredAvailableThreads.map(thread => thread.thread_id)
+  this.selectedThreads = this.filteredAvailableThreads.map(thread => thread.thread_id);
+},
+
+deselectAllFilteredThreads() {
+  this.selectedThreads = [];
+},
+
+    closeDialog() {
+      this.dialog = false;
+      this.isEditing = false;
+      this.editedScenario = JSON.parse(JSON.stringify(this.originalScenario));
+      this.selectedThreads = [];
+      this.selectedViewers = [];
     },
 
-    deselectAllFilteredThreads() {
-      this.selectedThreads = []
+    async startEditing() {
+      this.isEditing = true;
+      await Promise.all([
+        this.loadAvailableThreads(),
+        this.loadAvailableUsers()
+      ]);
     },
+
+
+  formatDateForDisplay(dateStr) {
+    if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+  },
+
+  formatDateForBackend(date) {
+    if (!date) return '';
+    return date.toISOString().substring(0, 19);
+  },
+
 
     async loadScenarioDetails() {
-      try {
-        const response = await axios.get(`/api/admin/scenarios/${this.scenarioId}`, {
+  try {
+    const response = await axios.get(`/api/admin/scenarios/${this.scenarioId}`, {
       headers: {
         'Authorization': localStorage.getItem('api_key')
       }
     });
-        this.originalScenario = response.data
-        this.editedScenario = JSON.parse(JSON.stringify(response.data))
-      } catch (error) {
-        console.error('Error loading scenario details:', error)
-        // Handle error appropriately
-      }
-    },
+    const data = response.data;
+
+
+   data.begin_date = data.begin_date ? new Date(data.begin_date) : null;
+    data.end_date = data.end_date ? new Date(data.end_date) : null;
+
+    this.originalScenario = data;
+    this.editedScenario = JSON.parse(JSON.stringify(data));
+
+    // The deepcopy through Json-function above changes the type of the date fields this line fixes ist
+    this.editedScenario.begin_date = this.editedScenario.begin_date ? new Date(data.begin_date) : null;
+    this.editedScenario.end_date = this.editedScenario.end_date ? new Date(data.end_date) : null;
+
+
+  } catch (error) {
+    console.error('Error loading scenario details:', error);
+  }
+},
 
     async loadAvailableThreads() {
       if (!this.editedScenario.function_type_id) return;
 
       try {
-        const response = await axios.get(`/api/admin/get_threads_from_function_type/${this.editedScenario.function_type_id}`, {
-          headers: {
-            'Authorization': localStorage.getItem('api_key')
+        const response = await axios.get(
+          `/api/admin/get_threads_from_function_type/${this.editedScenario.function_type_id}`,
+          {
+            headers: {
+              'Authorization': localStorage.getItem('api_key')
+            }
           }
-        });
-        this.availableThreads =  response.data;
+        );
+        this.availableThreads = response.data;
       } catch (error) {
         console.error('Error loading available threads:', error);
       }
@@ -489,114 +501,90 @@ export default {
     },
 
     async saveChanges() {
-      try {
-        // Prepare the update payload
-        const updatePayload = {
-          id: this.editedScenario.scenario_id,
-          new_name: this.editedScenario.scenario_name !== this.originalScenario.scenario_name
-            ? this.editedScenario.scenario_name
-            : undefined,
-          new_begin: this.editedScenario.begin_date !== this.originalScenario.begin_date
-            ? this.editedScenario.begin_date
-            : undefined,
-          new_end: this.editedScenario.end_date !== this.originalScenario.end_date
-            ? this.editedScenario.end_date
-            : undefined
-        }
+    try {
+      const updates = [];
+
+      const basicChanges = {
+        id: this.editedScenario.scenario_id,
+        new_name: this.editedScenario.scenario_name !== this.originalScenario.scenario_name
+          ? this.editedScenario.scenario_name
+          : undefined,
+        new_begin: this.editedScenario.begin_date !== this.originalScenario.begin_date
+          ? this.formatDateForBackend(this.editedScenario.begin_date)
+          : undefined,
+        new_end: this.editedScenario.end_date !== this.originalScenario.end_date
+          ? this.formatDateForBackend(this.editedScenario.end_date)
+          : undefined
+      };
 
         // Only include fields that have actually changed
-        const finalPayload = Object.fromEntries(
-          Object.entries(updatePayload).filter(([_, value]) => value !== undefined)
-        )
+        const finalBasicChanges = Object.fromEntries(
+          Object.entries(basicChanges).filter(([_, value]) => value !== undefined)
+        );
 
-        if (Object.keys(finalPayload).length > 1) { // > 1 because id is always included
-          await axios.post('/api/admin/edit_scenario', {
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(finalPayload)
-          })
+        // Add basic changes if any exist
+        if (Object.keys(finalBasicChanges).length > 1) { // > 1 because id is always included
+          updates.push(
+            axios.post('/api/admin/edit_scenario',
+              finalBasicChanges,
+              {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': localStorage.getItem('api_key')
+              }
+            })
+          );
         }
 
-        this.isEditing = false
-        await this.loadScenarioDetails() // Reload the data
+        // Add new threads if any are selected
+        if (this.selectedThreads.length > 0) {
+          updates.push(
+            axios.post('/api/admin/add_threads_to_scenario',
+              {
+                scenario_id: this.scenarioId,
+                thread_ids: this.selectedThreads
+              },
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': localStorage.getItem('api_key')
+                }
+              }
+            )
+          );
+        }
+
+        // Add new viewers if any are selected
+        if (this.selectedViewers.length > 0) {
+          updates.push(
+            axios.post('/api/admin/add_viewers_to_scenario',
+              {
+                scenario_id: this.scenarioId,
+                user_ids: this.selectedViewers
+              },
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': localStorage.getItem('api_key')
+                }
+              }
+            )
+          );
+        }
+
+        // Wait for all updates to complete
+        await Promise.all(updates);
+
+        this.isEditing = false;
+        await this.loadScenarioDetails(); // Reload the data
+
+        // Reset selections
+        this.selectedThreads = [];
+        this.selectedViewers = [];
       } catch (error) {
-        console.error('Error saving changes:', error)
+        console.error('Error saving changes:', error);
         // Handle error appropriately
       }
-    },
-
-    async openThreadSelectionDialog() {
-      this.threadSelectionDialog = true;
-      await this.loadAvailableThreads();
-    },
-
-
-    async addThreadsToScenario() {
-      try {
-        const threads = Object.values(this.selectedThreads)
-        const payload = {
-            scenario_id: this.scenarioId,
-            thread_ids: threads
-          };
-        console.log("Threads: ", payload)
-        await axios.post('/api/admin/add_threads_to_scenario',
-          payload,
-          {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': localStorage.getItem('api_key')
-          }
-        });
-
-        this.threadSelectionDialog = false
-        this.selectedThreads = []
-        await this.loadScenarioDetails() // Reload the data
-      } catch (error) {
-        console.error('Error adding threads:', error)
-        // Handle error appropriately
-      }
-    },
-
-    async openViewerSelectionDialog() {
-      this.viewerSelectionDialog = true
-      await this.loadAvailableUsers();
-    },
-
-    async addViewersToScenario() {
-      try {
-        const payload = {
-            scenario_id: this.scenarioId,
-            user_ids: Object.values(this.selectedViewers)
-          }
-        // This is the suggested API endpoint format for adding viewers
-
-        await axios.post('/api/admin/add_viewers_to_scenario',
-          payload,
-          {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': localStorage.getItem('api_key')
-          }
-          })
-
-        this.viewerSelectionDialog = false
-        this.selectedViewers = []
-        await this.loadScenarioDetails() // Reload the data
-      } catch (error) {
-        console.error('Error adding viewers:', error)
-        // Handle error appropriately
-      }
-    },
-
-    formatDate(dateStr) {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
     }
   }
 }

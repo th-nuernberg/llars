@@ -42,32 +42,32 @@
           <v-row>
             <v-col cols="12" md="6">
               <v-menu
-  v-model="dateMenus.start"
-  :close-on-content-click="false"
-  location="start"
-  transition="scale-transition"
-  min-width="auto"
->
-  <template v-slot:activator="{ props }">
-    <v-text-field
-      :model-value="formatDateForDisplay(editedScenario.begin_date)"
-      label="Startdatum"
-      readonly
-      v-bind="props"
-      prepend-icon="mdi-calendar"
-      outlined
-      density="comfortable"
-    ></v-text-field>
-  </template>
-  <v-date-picker
-    v-if="isEditing"
-    v-model="editedScenario.begin_date"
-    locale="de-DE"
-    :first-day-of-week="1"
-    color="primary"
-    @click:save="dateMenus.start = false"
-  ></v-date-picker>
-</v-menu>
+                v-model="dateMenus.start"
+                :close-on-content-click="false"
+                location="start"
+                transition="scale-transition"
+                min-width="auto"
+              >
+                <template v-slot:activator="{ props }">
+                  <v-text-field
+                    :model-value="formatDateForDisplay(editedScenario.begin_date)"
+                    label="Startdatum"
+                    readonly
+                    v-bind="props"
+                    prepend-icon="mdi-calendar"
+                    outlined
+                    density="comfortable"
+                  ></v-text-field>
+                </template>
+                <v-date-picker
+                  v-if="isEditing"
+                  v-model="editedScenario.begin_date"
+                  locale="de-DE"
+                  :first-day-of-week="1"
+                  color="primary"
+                  @click:save="dateMenus.start = false"
+                ></v-date-picker>
+              </v-menu>
             </v-col>
             <v-col cols="12" md="6">
               <v-menu
@@ -119,8 +119,8 @@
                       >
                         <v-card outlined class="user-card" density="compact">
                           <v-card-item>
-                            <div class="text-subtitle-1 mb-1">{{ rater.username }}</div>
-                            <div class="text-caption text-grey">ID: {{ rater.user_id }}</div>
+                            <div class="text-subtitle-1 mb-1">{{rater.username}}</div>
+                            <div class="text-caption text-grey">ID: {{rater.user_id}}</div>
                           </v-card-item>
                         </v-card>
                       </v-col>
@@ -128,50 +128,55 @@
                   </v-col>
 
                   <!-- Viewers Section -->
-                  <v-col cols="12">
-  <div class="text-h6 mb-2">Viewer</div>
-  <v-row>
-    <v-col
-      v-for="viewer in editedScenario.viewers"
-      :key="viewer.user_id"
-      cols="12" sm="6" md="4"
-    >
-      <v-card outlined class="user-card" density="compact">
-        <v-card-item>
-          <div class="text-subtitle-1 mb-1">{{ viewer.username }}</div>
-          <div class="text-caption text-grey">ID: {{ viewer.user_id }}</div>
-        </v-card-item>
-      </v-card>
-    </v-col>
-  </v-row>
+                  <!-- Existing Viewers -->
+                  <div>
+                    <div class="text-h6 mb-2">Viewer</div>
+                    <v-row>
+                      <v-col
+                        v-for="viewer in editedScenario.viewers"
+                        :key="viewer.user_id"
+                        cols="12"
+                        sm="6"
+                        md="4"
+                      >
+                        <v-card outlined class="user-card" density="compact">
+                          <v-card-item>
+                            <div class="text-subtitle-1 mb-1">{{viewer.username}}</div>
+                            <div class="text-caption text-grey">ID: {{viewer.user_id}}</div>
+                          </v-card-item>
+                        </v-card>
+                      </v-col>
+                    </v-row>
 
-  <!-- Available Viewers -->
-  <div v-if="isEditing" class="mt-4">
-    <div class="text-subtitle-1 mb-2">Verfügbare Viewer</div>
-    <v-row>
-      <v-col
-        v-for="user in filteredAvailableUsers"
-        :key="user.id"
-        cols="12" sm="6" md="4"
-      >
-        <v-card outlined class="user-card" density="compact">
-          <v-card-item>
-            <div class="text-subtitle-1 mb-1">{{ user.name }}</div>
-            <div class="text-caption text-grey">ID: {{ user.id }}</div>
-            <v-checkbox
-              v-model="selectedViewers"
-              :value="user.id"
-              label="Auswählen"
-              density="compact"
-              hide-details
-              class="mt-1"
-            ></v-checkbox>
-          </v-card-item>
-        </v-card>
-      </v-col>
-    </v-row>
-  </div>
-</v-col>
+                    <!-- Available Viewers -->
+                    <div v-if="isEditing" class="mt-4">
+                      <div class="text-subtitle-1 mb-2">Verfügbare Viewer</div>
+                      <v-row>
+                        <v-col
+                          v-for="user in filteredAvailableUsers"
+                          :key="user.id"
+                          cols="12"
+                          sm="6"
+                          md="4"
+                        >
+                          <v-card outlined class="user-card" density="compact">
+                            <v-card-item>
+                              <div class="text-subtitle-1 mb-1">{{user.name}}</div>
+                              <div class="text-caption text-grey">ID: {{user.id}}</div>
+                              <v-checkbox
+                                v-model="selectedViewers"
+                                :value="user.id"
+                                label="Auswählen"
+                                density="compact"
+                                hide-details
+                                class="mt-1"
+                              ></v-checkbox>
+                            </v-card-item>
+                          </v-card>
+                        </v-col>
+                      </v-row>
+                    </div>
+                  </div>
                 </v-row>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -204,27 +209,27 @@
                   </v-col>
                 </v-row>
                 <v-row v-if="isEditing" class="select-all-row">
-  <v-col>
-    <v-btn
-      class="select-all-btn"
-      color="primary"
-      prepend-icon="mdi-check"
-      @click="selectAllFilteredThreads"
-    >
-      Alle anwählen
-    </v-btn>
-  </v-col>
-  <v-col>
-    <v-btn
-      class="select-all-btn"
-      color="primary"
-      prepend-icon="mdi-alpha-x-box-outline"
-      @click="deselectAllFilteredThreads"
-    >
-      Alle abwählen
-    </v-btn>
-  </v-col>
-</v-row>
+                  <v-col>
+                    <v-btn
+                      class="select-all-btn"
+                      color="primary"
+                      prepend-icon="mdi-check"
+                      @click="selectAllFilteredThreads"
+                    >
+                      Alle anwählen
+                    </v-btn>
+                  </v-col>
+                  <v-col>
+                    <v-btn
+                      class="select-all-btn"
+                      color="primary"
+                      prepend-icon="mdi-alpha-x-box-outline"
+                      @click="deselectAllFilteredThreads"
+                    >
+                      Alle abwählen
+                    </v-btn>
+                  </v-col>
+                </v-row>
 
                 <!-- Existing Threads -->
                 <v-row>
@@ -236,11 +241,11 @@
                     <v-card outlined class="thread-card" density="compact">
                       <v-card-item>
                         <div class="d-flex align-center mb-1">
-                          <div class="text-subtitle-1 text-truncate">{{ thread.subject }}</div>
+                          <div class="text-subtitle-1 text-truncate">{{thread.subject}}</div>
                         </div>
                         <div class="d-flex justify-space-between align-center">
-                          <div class="text-caption text-grey">Thread-ID: {{ thread.thread_id }}</div>
-                          <div class="text-caption">{{ thread.sender }}</div>
+                          <div class="text-caption text-grey">Thread-ID: {{thread.thread_id}}</div>
+                          <div class="text-caption">{{thread.sender}}</div>
                         </div>
                       </v-card-item>
                     </v-card>
@@ -259,11 +264,11 @@
                       <v-card outlined class="thread-card" density="compact">
                         <v-card-item>
                           <div class="d-flex align-center mb-1">
-                            <div class="text-subtitle-1 text-truncate">{{ thread.subject }}</div>
+                            <div class="text-subtitle-1 text-truncate">{{thread.subject}}</div>
                           </div>
                           <div class="d-flex justify-space-between align-center mb-1">
-                            <div class="text-caption text-grey">Thread-ID: {{ thread.thread_id }}</div>
-                            <div class="text-caption">{{ thread.sender }}</div>
+                            <div class="text-caption text-grey">Thread-ID: {{thread.thread_id}}</div>
+                            <div class="text-caption">{{thread.sender}}</div>
                           </div>
                           <v-checkbox
                             v-model="selectedThreads"
@@ -301,7 +306,7 @@
 
 
 <script>
-import { ref, reactive, onMounted, computed } from 'vue';
+import {ref, reactive, onMounted, computed} from 'vue';
 import axios from 'axios';
 
 export default {
@@ -313,6 +318,7 @@ export default {
       required: true
     }
   },
+  emits: ["scenarioEdited"],
 
   data() {
     return {
@@ -367,12 +373,12 @@ export default {
       return filtered;
     },
 
-    categoryNameMapping(){
+    categoryNameMapping() {
       const categoryLabels = {
-      'rating': 'Rating',
-      'mail_rating': 'Verlauf Generierung',
-      'ranking': 'Ranking'
-    };
+        'rating': 'Rating',
+        'mail_rating': 'Verlauf Generierung',
+        'ranking': 'Ranking'
+      };
       return categoryLabels[this.editedScenario.func_type] || this.editedScenario.func_type;
     },
 
@@ -403,12 +409,12 @@ export default {
 
 
     selectAllFilteredThreads() {
-  this.selectedThreads = this.filteredAvailableThreads.map(thread => thread.thread_id);
-},
+      this.selectedThreads = this.filteredAvailableThreads.map(thread => thread.thread_id);
+    },
 
-deselectAllFilteredThreads() {
-  this.selectedThreads = [];
-},
+    deselectAllFilteredThreads() {
+      this.selectedThreads = [];
+    },
 
     closeDialog() {
       this.dialog = false;
@@ -427,47 +433,47 @@ deselectAllFilteredThreads() {
     },
 
 
-  formatDateForDisplay(dateStr) {
-    if (!dateStr) return '';
+    formatDateForDisplay(dateStr) {
+      if (!dateStr) return '';
       const date = new Date(dateStr);
       return date.toLocaleDateString('de-DE', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
       });
-  },
+    },
 
-  formatDateForBackend(date) {
-    if (!date) return '';
-    return date.toISOString().substring(0, 19);
-  },
+    formatDateForBackend(date) {
+      if (!date) return '';
+      return date.toISOString().substring(0, 19);
+    },
 
 
     async loadScenarioDetails() {
-  try {
-    const response = await axios.get(`/api/admin/scenarios/${this.scenarioId}`, {
-      headers: {
-        'Authorization': localStorage.getItem('api_key')
+      try {
+        const response = await axios.get(`/api/admin/scenarios/${this.scenarioId}`, {
+          headers: {
+            'Authorization': localStorage.getItem('api_key')
+          }
+        });
+        const data = response.data;
+
+
+        data.begin_date = data.begin_date ? new Date(data.begin_date) : null;
+        data.end_date = data.end_date ? new Date(data.end_date) : null;
+
+        this.originalScenario = data;
+        this.editedScenario = JSON.parse(JSON.stringify(data));
+
+        // The deepcopy through Json-function above changes the type of the date fields this line fixes ist
+        this.editedScenario.begin_date = this.editedScenario.begin_date ? new Date(data.begin_date) : null;
+        this.editedScenario.end_date = this.editedScenario.end_date ? new Date(data.end_date) : null;
+
+
+      } catch (error) {
+        console.error('Error loading scenario details:', error);
       }
-    });
-    const data = response.data;
-
-
-   data.begin_date = data.begin_date ? new Date(data.begin_date) : null;
-    data.end_date = data.end_date ? new Date(data.end_date) : null;
-
-    this.originalScenario = data;
-    this.editedScenario = JSON.parse(JSON.stringify(data));
-
-    // The deepcopy through Json-function above changes the type of the date fields this line fixes ist
-    this.editedScenario.begin_date = this.editedScenario.begin_date ? new Date(data.begin_date) : null;
-    this.editedScenario.end_date = this.editedScenario.end_date ? new Date(data.end_date) : null;
-
-
-  } catch (error) {
-    console.error('Error loading scenario details:', error);
-  }
-},
+    },
 
     async loadAvailableThreads() {
       if (!this.editedScenario.function_type_id) return;
@@ -501,21 +507,21 @@ deselectAllFilteredThreads() {
     },
 
     async saveChanges() {
-    try {
-      const updates = [];
+      try {
+        const updates = [];
 
-      const basicChanges = {
-        id: this.editedScenario.scenario_id,
-        new_name: this.editedScenario.scenario_name !== this.originalScenario.scenario_name
-          ? this.editedScenario.scenario_name
-          : undefined,
-        new_begin: this.editedScenario.begin_date !== this.originalScenario.begin_date
-          ? this.formatDateForBackend(this.editedScenario.begin_date)
-          : undefined,
-        new_end: this.editedScenario.end_date !== this.originalScenario.end_date
-          ? this.formatDateForBackend(this.editedScenario.end_date)
-          : undefined
-      };
+        const basicChanges = {
+          id: this.editedScenario.scenario_id,
+          new_name: this.editedScenario.scenario_name !== this.originalScenario.scenario_name
+            ? this.editedScenario.scenario_name
+            : undefined,
+          new_begin: this.editedScenario.begin_date !== this.originalScenario.begin_date
+            ? this.formatDateForBackend(this.editedScenario.begin_date)
+            : undefined,
+          new_end: this.editedScenario.end_date !== this.originalScenario.end_date
+            ? this.formatDateForBackend(this.editedScenario.end_date)
+            : undefined
+        };
 
         // Only include fields that have actually changed
         const finalBasicChanges = Object.fromEntries(
@@ -528,11 +534,11 @@ deselectAllFilteredThreads() {
             axios.post('/api/admin/edit_scenario',
               finalBasicChanges,
               {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': localStorage.getItem('api_key')
-              }
-            })
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': localStorage.getItem('api_key')
+                }
+              })
           );
         }
 
@@ -581,6 +587,7 @@ deselectAllFilteredThreads() {
         // Reset selections
         this.selectedThreads = [];
         this.selectedViewers = [];
+        this.$emit("scenarioEdited")
       } catch (error) {
         console.error('Error saving changes:', error);
         // Handle error appropriately
@@ -594,6 +601,7 @@ deselectAllFilteredThreads() {
 <style scoped>
 .user-card {
   transition: all 0.3s ease;
+  width: 100%; /* Ensure cards take full width of their column */
 }
 
 .user-card:hover {
@@ -603,14 +611,16 @@ deselectAllFilteredThreads() {
 
 .v-row {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap; /* Ensure proper wrapping */
+  margin: 0 -12px; /* Compensate for column padding */
 }
 
 .v-col {
   display: flex;
-  justify-content: center;
+  padding: 12px; /* Add consistent padding */
 }
 
+/* Rest of your existing styles remain the same */
 .d-flex {
   display: flex;
   align-items: center;

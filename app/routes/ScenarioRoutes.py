@@ -404,6 +404,9 @@ def edit_scenario():
         else:
             client_data['end'] = datetime.fromisoformat(client_data['end'])
 
+        # check if dates are in order
+        if client_data['begin'] >= client_data['end']:
+            return jsonify({'error': 'Stat Date must be before the endDdate'}), 400
         # update changes to db
         try:
             scenario.scenario_name = client_data['name']

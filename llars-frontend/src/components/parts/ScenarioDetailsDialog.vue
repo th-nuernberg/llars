@@ -26,6 +26,7 @@
           <v-text-field
             v-model="editedScenario.scenario_name"
             label="Szenario Name"
+            :error-messages="errors.scenarioName"
             :readonly="!isEditing"
             outlined
             density="comfortable"
@@ -52,6 +53,7 @@
                   <v-text-field
                     :model-value="formatDateForDisplay(editedScenario.begin_date)"
                     label="Startdatum"
+                    :error-messages="errors.startDate"
                     readonly
                     v-bind="props"
                     prepend-icon="mdi-calendar"
@@ -81,6 +83,7 @@
                   <v-text-field
                     :model-value="formatDateForDisplay(editedScenario.end_date)"
                     label="Enddatum"
+                    :error-messages="errors.endDate"
                     readonly
                     v-bind="props"
                     prepend-icon="mdi-calendar"
@@ -128,6 +131,7 @@
                   </v-col>
 
                   <!-- Viewers Section -->
+                  <!-- Existing Viewers -->
                   <!-- Existing Viewers -->
                   <div>
                     <div class="text-h6 mb-2">Viewer</div>
@@ -348,7 +352,11 @@ export default {
       selectedViewers: [],
       availableThreads: [],
       availableUsers: [],
-      errors: {},
+      errors: {
+        scenarioName: '',
+        startDate: '',
+        endDate: '',
+      },
     }
   },
 
@@ -506,7 +514,44 @@ export default {
       }
     },
 
+    validateForm() {
+      let isValid = true;
+
+      // Szenarioname prüfen
+      if (!this.editedScenario.scenario_name.trim()) {
+        this.errors.scenarioName = 'Der Szenarioname darf nicht leer sein.';
+        isValid = false;
+      } else {
+        this.errors.scenarioName = null;
+      }
+
+      // Datum prüfen
+      const beginDate = this.editedScenario.begin_date;
+      const endDate = this.editedScenario.end_date;
+
+      if(!beginDate)
+        this.errors.startDate = "Kein Startdatum vorhanden"
+      if(!endDate)
+        this.errors.startDate = "Kein Enddatum vorhanden"
+
+      if (beginDate && endDate && beginDate > endDate) {
+        this.errors.startDate = 'Das Startdatum darf nicht hinter dem Enddatum liegen.';
+        this.errors.endDate = 'Das Enddatum darf nicht vor dem Startdatum liegen.';
+        isValid = false;
+      } else {
+        this.errors.startDate = "";
+        this.errors.endDate = "";
+      }
+
+      return isValid;
+    },
+
+
     async saveChanges() {
+      if (!this.validateForm()) {
+        console.warn('Validierungsfehler, Änderungen werden nicht gespeichert.');
+        return;
+      }
       try {
         const updates = [];
 
@@ -527,6 +572,9 @@ export default {
         const finalBasicChanges = Object.fromEntries(
           Object.entries(basicChanges).filter(([_, value]) => value !== undefined)
         );
+
+        const confirmation = confirm("Sind Sie sicher, dass Sie die Änderungen speichern möchten?");
+        if (!confirmation) return;
 
         // Add basic changes if any exist
         if (Object.keys(finalBasicChanges).length > 1) { // > 1 because id is always included
@@ -581,15 +629,21 @@ export default {
         // Wait for all updates to complete
         await Promise.all(updates);
 
+
         this.isEditing = false;
         await this.loadScenarioDetails(); // Reload the data
 
         // Reset selections
         this.selectedThreads = [];
         this.selectedViewers = [];
+        this.errors.scenarioName = "";
+        this.errors.startDate = "";
+        this.errors.endDate = "";
+
+        alert("Szenario erfolgreich geändert!");
         this.$emit("scenarioEdited")
       } catch (error) {
-        console.error('Error saving changes:', error);
+        console.error('Fehler beim Änderen aufgetreten:', error);
         // Handle error appropriately
       }
     }

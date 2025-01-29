@@ -47,7 +47,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const items = ref([
-  { title: 'Ranking', description: 'Ranken Sie Ihre Daten', route: '/ranker', icon: 'mdi-chart-bar-stacked', elevation: 1, disabled: true, hide: false },
+  { title: 'Ranking', description: 'Ranken Sie Ihre Daten', route: '/ranker', icon: 'mdi-chart-bar-stacked', elevation: 1, disabled: false, hide: false },
   { title: 'Verlaufsbewertung', description: 'Bewertung von KI generierten Mail-Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-timeline-text-outline', elevation: 1, disabled: false, hide: false },
   { title: 'Rating', description: 'Raten Sie Ihre Daten', route: '/rater', icon: 'mdi-star-outline', elevation: 1, disabled: true, hide: true },
   { title: 'Chatbot (Alpha)', description: "Chaten mit LLars", route: '/chat', icon: 'mdi-laptop-account', elevation: 1, disabled: true, hide: false},

@@ -86,7 +86,7 @@
       <v-col>
         <v-chip
           class="category-chip"
-          :color="ratedStatus === 'Done' ? 'green lighten-2' : ratedStatus === 'In Progress' ? 'orange lighten-2' : 'grey lighten-2'"
+          :color="ratedStatus === 'Done' ? 'green lighten-2' : ratedStatus === 'Progressing' ? 'orange lighten-2' : 'grey lighten-2'"
           small
         >
           {{ratedStatus}}
@@ -599,7 +599,7 @@ async function fetchCaseList() {
         'Authorization': api_key,
       }
     });
-    return response.data;
+    return response.data.threads;
   } catch (error) {
     console.error('Error fetching case list:', error);
     return [];

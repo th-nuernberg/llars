@@ -62,7 +62,6 @@ check_and_start_docker() {
     if ! docker info >/dev/null 2>&1; then
         echo "Docker-Daemon läuft nicht. Versuche zu starten..."
 
-        # Überprüfen, auf welchem Betriebssystem das Skript läuft
         OS_TYPE=$(uname)
         case "$OS_TYPE" in
             Darwin)
@@ -99,16 +98,14 @@ check_and_start_docker() {
 # Überprüfen, ob der Docker-Daemon läuft und ggf. starten
 check_and_start_docker
 
-# Dienste herunterfahren
-echo "Stopping services..."
+# Dienste herunterfahren (Container sofort stoppen und löschen)
+echo "Erzwinge das Stoppen und Entfernen aller Dienste..."
+docker ps -q | xargs -r docker rm -f
+
 if [ "$REMOVE_VOLUMES" = "True" ]; then
-  echo "Removing volumes..."
-  docker compose -p llars down --volumes --remove-orphans
-  echo "Successfully removed volumes."
-  echo "Services stopped."
-else
-  docker compose -p llars down --remove-orphans
-  echo "Services stopped."
+  echo "Entferne Volumes..."
+  docker volume prune -f
+  echo "Volumes entfernt."
 fi
 
 # Überprüfe den Projektzustand und starte die entsprechenden Dienste

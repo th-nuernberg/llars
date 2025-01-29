@@ -66,3 +66,75 @@ GET http://localhost/auth/health_check
 ###
 GET http://localhost/api/prompts
 Authorization: db0fe35b-0d88-4d03-a774-12fbae54aa51
+
+###
+POST http://localhost/api/admin/create_scenario
+Content-Type: application/json
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+{
+  "scenario_name": "Test1",
+  "function_type_id": 3,
+  "begin": "2024-11-01T08:00:00",
+  "end": "2024-11-30T08:00:00",
+  "rater": [7, 2],
+  "viewer":[1],
+  "threads": [28, 29, 30, 31]
+}
+
+###
+POST http://localhost/api/admin/edit_scenario
+Content-Type: application/json
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+{
+  "id": 1,
+  "new_name": "Corrected",
+  "new_begin": "2024-12-01T08:00:00",
+  "new_end": "2025-12-30T08:00:00"
+}
+
+###
+POST http://localhost/api/admin/add_threads_to_scenario
+Content-Type: application/json
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+{
+  "scenario_id": 1,
+  "thread_ids": [34, 35]
+}
+
+
+###
+GET http://localhost/api/admin/get_threads_from_function_type/3
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+
+###
+GET http://localhost/api/admin/get_users
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+###
+GET http://localhost/api/admin/get_function_types
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+###
+GET http://localhost/api/admin/scenarios
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+###
+GET http://localhost/api/admin/scenarios/1
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+###
+GET http://localhost/api/admin/user_HistoryGeneration_stats/1
+Authorization: 0b09e690-365b-4a55-b9b3-04c0614f773a
+
+
+
+
+

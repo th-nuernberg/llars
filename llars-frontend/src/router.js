@@ -47,7 +47,7 @@ const routes = [
 
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
-    { path: '/AdminHistoryGenerator', component: AdminHistoryGenerator, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
+    { path: '/AdminHistoryGenerator/:id',name:'AdminHistoryGenerator', component: AdminHistoryGenerator, props: true, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminCollaborativeTest', component: AdminCollaborativeTest, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
 

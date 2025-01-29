@@ -5,7 +5,9 @@ from unittest.mock import DEFAULT
 from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+from enum import Enum
 
 class UserGroup(db.Model):
     __tablename__ = 'user_groups'
@@ -54,7 +56,6 @@ class EmailThread(db.Model):
     )
 
 
-
 class Message(db.Model):
     __tablename__ = 'messages'
     message_id = mapped_column(db.Integer, primary_key=True)
@@ -62,7 +63,7 @@ class Message(db.Model):
     sender = mapped_column(db.String(255))
     content = mapped_column(db.TEXT)
     timestamp = mapped_column(db.DateTime)
-    generated_by = mapped_column(db.String(255), default="human")
+    generated_by = mapped_column(db.String(255), default="Human")
 
 
 class LLM(db.Model):
@@ -134,6 +135,65 @@ class UserFeatureRating(db.Model):
     user = db.relationship('User', backref='feature_ratings')
     feature = db.relationship('Feature', backref='user_ratings')
 
+class ScenarioRoles(Enum):
+    VIEWER = 'Viewer'
+    RATER = 'Rater'
+
+class ProgressionStatus(Enum):
+    NOT_STARTED = 'Not Started'
+    PROGRESSING = 'Progressing'
+    DONE = 'Done'
+
+class RatingScenarios(db.Model):
+    __tablename__ = 'rating_scenarios'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_name = mapped_column(db.String(255))
+    function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
+    begin = mapped_column(db.DateTime, default=datetime.utcnow)
+    end = mapped_column(db.DateTime, default=datetime.utcnow)
+    timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    # Definiere die Beziehungen mit Cascade-Option
+    scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete")
+    scenario_threads = db.relationship('ScenarioThreads', backref='rating_scenario', cascade="all, delete")
+    scenario_thread_distribution = db.relationship('ScenarioThreadDistribution', backref='rating_scenario', cascade="all, delete")
+
+class ScenarioUsers(db.Model):
+    __tablename__ = 'scenario_users'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
+    user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
+    role = mapped_column(db.Enum(ScenarioRoles))
+    user = db.relationship('User', backref='scenario_users')
+
+    # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'scenario_id', name='uix_user_szenario'),
+    )
+
+class ScenarioThreads(db.Model):
+    __tablename__ = 'scenario_threads'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
+    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    thread = db.relationship('EmailThread', backref='scenario_threads')
+
+    # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
+    __table_args__ = (
+        db.UniqueConstraint('thread_id', 'scenario_id', name='uix_thread_szenario'),
+    )
+
+
+class ScenarioThreadDistribution(db.Model):
+    __tablename__ = 'scenario_thread_distribution'
+    id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
+    scenario_user_id = mapped_column(db.Integer, db.ForeignKey('scenario_users.id'))
+    scenario_thread_id = mapped_column(db.Integer, db.ForeignKey('scenario_threads.id'))
+    scenario_thread = db.relationship('ScenarioThreads', backref='distributions')
+    scenario_user = db.relationship('ScenarioUsers', backref='thread_distributions')
+
+
 
 class UserMailHistoryRating(db.Model):
     __tablename__ = 'user_mailhistory_ratings'
@@ -145,7 +205,7 @@ class UserMailHistoryRating(db.Model):
     quality_rating = mapped_column(db.Integer, nullable=True)
     overall_rating = mapped_column(db.Integer, nullable=True)
     feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
-    rating_status = mapped_column(db.TEXT, nullable=False, default='Not Rated')
+    status = mapped_column(db.Enum(ProgressionStatus), default=ProgressionStatus.NOT_STARTED)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='mail_ratings')

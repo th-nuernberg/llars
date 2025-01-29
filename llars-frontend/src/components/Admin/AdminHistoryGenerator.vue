@@ -5,115 +5,204 @@
       <v-card-subtitle>Übersicht der E-Mail-Bewertungen</v-card-subtitle>
     </v-card>
 
-    <!-- Legende -->
-    <v-card class="mb-2 legend-card">
-      <v-card-text class="py-2">
-        <v-row align="center" no-gutters class="legend-row">
-          <v-col cols="2" sm="1" class="username-col">
-            <strong>Benutzer</strong>
-          </v-col>
-          <v-col cols="3" sm="2" class="threads-col">
-            <strong>Done</strong>
-          </v-col>
-          <v-col cols="3" sm="2" class="threads-col">
-            <strong>In Progress</strong>
-          </v-col>
-          <v-col cols="3" sm="2" class="threads-col">
-            <strong>Not Started</strong>
-          </v-col>
-          <v-col class="progress-col">
-            <strong>Gesamtfortschritt</strong>
-          </v-col>
-          <v-col cols="auto" class="actions-col">
-            <strong>Aktionen</strong>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+    <!-- Rater und Viewer Panels -->
+    <v-expansion-panels v-model="openPanels" multiple>
+      <!-- Rater Panel -->
+      <v-expansion-panel>
+        <v-expansion-panel-title>
+          <h3>Rater</h3>
+        </v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <!-- Legende -->
+          <v-card class="mb-2 legend-card">
+            <v-card-text class="py-2">
+              <v-row align="center" no-gutters class="legend-row">
+                <v-col cols="2" sm="1" class="username-col">
+                  <strong>Benutzer</strong>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <strong>Done</strong>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <strong>In Progress</strong>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <strong>Not Started</strong>
+                </v-col>
+                <v-col class="progress-col">
+                  <strong>Gesamtfortschritt</strong>
+                </v-col>
+                <v-col cols="auto" class="actions-col">
+                  <strong>Aktionen</strong>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
 
-    <v-card v-for="user in userStats" :key="user.username" class="mb-2 user-card">
-  <v-card-text class="py-2">
-    <v-row align="center" no-gutters class="user-row">
-      <!-- Benutzername -->
-      <v-col cols="2" sm="1" class="username-col">
-        <span class="username">{{ user.username }}</span>
-      </v-col>
+          <v-card v-for="user in raterStats" :key="user.username" class="mb-2 user-card">
+            <v-card-text class="py-2">
+              <v-row align="center" no-gutters class="user-row">
+                <v-col cols="2" sm="1" class="username-col">
+                  <span class="username">{{ user.username }}</span>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <span class="thread-info">{{ user.done_threads }}</span>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <span class="thread-info">{{ user.progressing_threads }}</span>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <span class="thread-info">{{ user.not_started_threads }}</span>
+                </v-col>
+                <v-col class="progress-col">
+                  <div class="progress-bar-wrapper">
+                    <div
+                      :style="{ width: `${user.donePercentage}%` }"
+                      class="progress-bar progress-bar-done"
+                    >
+                      <span
+                        v-if="user.donePercentage > 5"
+                        class="progress-label progress-label-done"
+                      >
+                        {{ Math.round(user.donePercentage) }}%
+                      </span>
+                    </div>
+                    <div
+                      :style="{ width: `${user.progressingPercentage}%`, left: `${user.donePercentage}%` }"
+                      class="progress-bar progress-bar-progressing"
+                    >
+                      <span
+                        v-if="user.progressingPercentage > 5"
+                        class="progress-label progress-label-progressing"
+                      >
+                        {{ Math.round(user.progressingPercentage) }}%
+                      </span>
+                    </div>
+                    <div
+                      :style="{ width: `${user.notStartedPercentage}%`, left: `${user.donePercentage + user.progressingPercentage}%` }"
+                      class="progress-bar progress-bar-not-started"
+                    >
+                      <span
+                        v-if="user.notStartedPercentage > 5"
+                        class="progress-label progress-label-not-started"
+                      >
+                        {{ Math.round(user.notStartedPercentage) }}%
+                      </span>
+                    </div>
+                  </div>
+                </v-col>
+                <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
+                  <v-btn x-small color="primary" @click="showThreadDetails(user)">
+                    Details
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
 
-      <!-- Bewertete Threads -->
-      <v-col cols="3" sm="2" class="threads-col">
-        <span class="thread-info">{{ user.done_threads }}</span>
-      </v-col>
+      <!-- Viewer Panel -->
+      <v-expansion-panel>
+        <v-expansion-panel-title>
+          <h3>Viewer</h3>
+        </v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <!-- Legende für Viewer -->
+          <v-card class="mb-2 legend-card">
+            <v-card-text class="py-2">
+              <v-row align="center" no-gutters class="legend-row">
+                <v-col cols="2" sm="1" class="username-col">
+                  <strong>Benutzer</strong>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <strong>Done</strong>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <strong>In Progress</strong>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <strong>Not Started</strong>
+                </v-col>
+                <v-col class="progress-col">
+                  <strong>Gesamtfortschritt</strong>
+                </v-col>
+                <v-col cols="auto" class="actions-col">
+                  <strong>Aktionen</strong>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
 
-      <!-- Teilweise bewertete Threads -->
-      <v-col cols="3" sm="2" class="threads-col">
-        <span class="thread-info">{{ user.in_progress_threads }}</span>
-      </v-col>
+          <v-card v-for="user in viewerStats" :key="user.username" class="mb-2 user-card">
+            <v-card-text class="py-2">
+              <v-row align="center" no-gutters class="user-row">
+                <v-col cols="2" sm="1" class="username-col">
+                  <span class="username">{{ user.username }}</span>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <span class="thread-info">{{ user.done_threads }}</span>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <span class="thread-info">{{ user.progressing_threads }}</span>
+                </v-col>
+                <v-col cols="3" sm="2" class="threads-col">
+                  <span class="thread-info">{{ user.not_started_threads }}</span>
+                </v-col>
+                <v-col class="progress-col">
+                  <div class="progress-bar-wrapper">
+                    <div
+                      :style="{ width: `${user.donePercentage}%` }"
+                      class="progress-bar progress-bar-done"
+                    >
+                      <span
+                        v-if="user.donePercentage > 5"
+                        class="progress-label progress-label-done"
+                      >
+                        {{ Math.round(user.donePercentage) }}%
+                      </span>
+                    </div>
+                    <div
+                      :style="{ width: `${user.progressingPercentage}%`, left: `${user.donePercentage}%` }"
+                      class="progress-bar progress-bar-progressing"
+                    >
+                      <span
+                        v-if="user.progressingPercentage > 5"
+                        class="progress-label progress-label-progressing"
+                      >
+                        {{ Math.round(user.progressingPercentage) }}%
+                      </span>
+                    </div>
+                    <div
+                      :style="{ width: `${user.notStartedPercentage}%`, left: `${user.donePercentage + user.progressingPercentage}%` }"
+                      class="progress-bar progress-bar-not-started"
+                    >
+                      <span
+                        v-if="user.notStartedPercentage > 5"
+                        class="progress-label progress-label-not-started"
+                      >
+                        {{ Math.round(user.notStartedPercentage) }}%
+                      </span>
+                    </div>
+                  </div>
+                </v-col>
+                <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
+                  <v-btn x-small color="primary" @click="showThreadDetails(user)">
+                    Details
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
 
-      <!-- Nicht bewertete Threads -->
-      <v-col cols="3" sm="2" class="threads-col">
-        <span class="thread-info">{{ user.not_started_threads }}</span>
-      </v-col>
-
-      <!-- Fortschrittsbalken -->
-      <v-col class="progress-col">
-        <div class="progress-bar-wrapper">
-          <!-- Bewertete Threads (grün) -->
-          <div
-            :style="{ width: `${user.donePercentage}%` }"
-            class="progress-bar progress-bar-done"
-          >
-            <span
-              v-if="user.donePercentage > 5"
-              class="progress-label progress-label-done"
-            >
-              {{ Math.round(user.donePercentage) }}%
-            </span>
-          </div>
-
-          <!-- Teilweise bewertete Threads (gelb) -->
-          <div
-            :style="{ width: `${user.inProgressPercentage}%`, left: `${user.donePercentage}%` }"
-            class="progress-bar progress-bar-in-progress"
-          >
-            <span
-              v-if="user.inProgressPercentage > 5"
-              class="progress-label progress-label-in-progress"
-            >
-              {{ Math.round(user.inProgressPercentage) }}%
-            </span>
-          </div>
-
-          <!-- Nicht bewertete Threads (rot) -->
-          <div
-            :style="{ width: `${user.notStartedPercentage}%`, left: `${user.donePercentage + user.inProgressPercentage}%` }"
-            class="progress-bar progress-bar-not-started"
-          >
-            <span
-              v-if="user.notStartedPercentage > 5"
-              class="progress-label progress-label-not-started"
-            >
-              {{ Math.round(user.notStartedPercentage) }}%
-            </span>
-          </div>
-        </div>
-      </v-col>
-
-      <!-- Details Button -->
-      <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
-        <v-btn x-small color="primary" @click="showThreadDetails(user)">
-          Details
-        </v-btn>
-      </v-col>
-    </v-row>
-  </v-card-text>
-</v-card>
-
-    <!-- Thread Details Dialog -->
+    <!-- Thread Details Dialog (unverändert) -->
     <v-dialog v-model="dialogVisible" max-width="700px">
       <v-card>
         <v-card-title>Thread Details für {{ selectedUser.username }}</v-card-title>
         <v-card-text>
-          <!-- Anzeige der bewerteten Threads -->
           <v-subheader>Bewertete Threads</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.done_threads_list" :key="thread.thread_id">
@@ -124,10 +213,9 @@
             </v-list-item>
           </v-list>
 
-          <!-- Anzeige der teils bewerteten Threads -->
           <v-subheader>Teilweise bewertete Threads</v-subheader>
           <v-list dense>
-            <v-list-item v-for="thread in selectedUser.in_progress_threads_list" :key="thread.thread_id">
+            <v-list-item v-for="thread in selectedUser.progressing_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
                 <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
@@ -135,7 +223,6 @@
             </v-list-item>
           </v-list>
 
-          <!-- Anzeige der nicht bewerteten Threads -->
           <v-subheader>Nicht bewertete Threads</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.not_started_threads_list" :key="thread.thread_id">
@@ -157,32 +244,38 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 
-const userStats = ref([]);
+const route = useRoute();
+const router = useRouter();
+
+const scenario_id = route.params.id;
+
+const raterStats = ref([]);
+const viewerStats = ref([]);
 const dialogVisible = ref(false);
 const selectedUser = ref({});
+const openPanels = ref([0]); // Rater Panel standardmäßig geöffnet
 
-// Öffnet den Dialog und zeigt die Details des ausgewählten Benutzers an
 const showThreadDetails = (user) => {
   selectedUser.value = user;
   dialogVisible.value = true;
 };
 
-// Berechnung des Fortschritts für jeden Benutzer
-const calculateProgressSections = (total_threads, done_threads, in_progress_threads) => {
+const calculateProgressSections = (total_threads, done_threads, progressing_threads) => {
   const donePercentage = (done_threads / total_threads) * 100 || 0;
-  const inProgresPercentage = (in_progress_threads / total_threads) * 100 || 0;
+  const inProgresPercentage = (progressing_threads / total_threads) * 100 || 0;
   const notStartedPercentage = 100 - donePercentage - inProgresPercentage;
 
   return {
     donePercentage: donePercentage,
-    inProgressPercentage: inProgresPercentage,
+    progressingPercentage: inProgresPercentage,
     notStartedPercentage,
   };
 };
 
-// Abrufen der Benutzerstatistiken von der API
+
 const fetchUserStats = async () => {
   const apiKey = localStorage.getItem('api_key');
 
@@ -192,38 +285,45 @@ const fetchUserStats = async () => {
   }
 
   try {
-    const response = await axios.get('/api/admin/user_HistoryGeneration_stats', {
+    const response = await axios.get(`/api/admin/user_HistoryGeneration_stats/${scenario_id}`, {
       headers: {
         Authorization: apiKey,
       },
     });
 
-    if (Array.isArray(response.data)) {
-      userStats.value = response.data.map(user => {
-        // Berechnung der Prozentwerte für den Fortschritt
-        const progressSections = calculateProgressSections(
+    if (Array.isArray(response.data.rater_stats)) {
+      raterStats.value = response.data.rater_stats.map(user => ({
+        ...user,
+        ...calculateProgressSections(
           user.total_threads,
           user.done_threads,
-          user.in_progress_threads
-        );
+          user.progressing_threads
+        ),
+      }));
+    }
 
-        // Rückgabe des erweiterten Objekts
-        return {
-          ...user,
-          ...progressSections,
-        };
-      });
-    } else {
-      console.error('Unerwartetes Format der API-Antwort:', response.data);
+    if (Array.isArray(response.data.viewer_stats)) {
+      viewerStats.value = response.data.viewer_stats.map(user => ({
+        ...user,
+        ...calculateProgressSections(
+          user.total_threads,
+          user.done_threads,
+          user.progressing_threads
+        ),
+      }));
     }
   } catch (error) {
     console.error('Fehler beim Laden der Benutzerstatistiken:', error);
   }
 };
 
-// Beim Laden der Komponente die Statistiken abrufen
+watch(openPanels, (newValue) => {
+  localStorage.setItem("HistoryGenerationStatPanelState", JSON.stringify(newValue));
+});
+
 onMounted(() => {
   fetchUserStats();
+  openPanels.value = JSON.parse(localStorage.getItem("HistoryGenerationStatPanelState"));
 });
 </script>
 
@@ -339,7 +439,7 @@ onMounted(() => {
   background-color: #e9f5ea; /* Grün für bewertete Threads */
 }
 
-.progress-bar-in_progress {
+.progress-bar-progressing {
   background-color: #f7ebd9; /* Gelb für teilweise bewertete Threads */
 }
 
@@ -362,7 +462,7 @@ onMounted(() => {
   color: #4aae4d;
 }
 
-.progress-label-in-progress {
+.progress-label-progressing {
   color: #ff9c12;
 }
 

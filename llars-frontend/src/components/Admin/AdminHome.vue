@@ -201,10 +201,6 @@ const getStatusTextColor = (status) => {
   return status === 'beendet' ? 'white' : 'black';
 };
 
-const navigateToDetails = (scenario) => {
-//TODO
-};
-
 
 
 const navigateToStats = (scenario) => {

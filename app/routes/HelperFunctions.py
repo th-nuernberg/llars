@@ -17,11 +17,7 @@ import logging
 
 from db.tables import ProgressionStatus
 
-PROGRESSION_HANDLERS = {
-    1: get_progression_ranking,
-    2: get_progression_rating,
-    3: get_progression_mail_rating
-}
+
 
 def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionStatus:
     """ Berechnet den Fortschritt für das Feature Ranking (function_type_id=1) """
@@ -60,6 +56,8 @@ def get_progression_mail_rating(thread: EmailThread, user_id: int) -> Progressio
     ).order_by(UserMailHistoryRating.timestamp.desc()).first()
 
     return mail_rating.status if mail_rating else ProgressionStatus.NOT_STARTED
+
+
 
 def can_access_thread(user_id, thread_id, function_type_id):
     # Aktuellen Zeitpunkt ermitteln
@@ -159,6 +157,11 @@ def get_user_threads(user_id, function_type_id):
 
 def get_thread_progression_state(thread: EmailThread, user_id: int, function_type_id: int) -> ProgressionStatus:
     """ Dynamische Auswahl der Progressionslogik basierend auf function_type_id """
+    PROGRESSION_HANDLERS = {
+        1: get_progression_ranking,
+        2: get_progression_rating,
+        3: get_progression_mail_rating
+    }
     handler = PROGRESSION_HANDLERS.get(function_type_id)
 
     if handler is None:

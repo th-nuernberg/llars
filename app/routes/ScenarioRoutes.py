@@ -741,12 +741,14 @@ def get_scenario_user_progress_stats(scenario_id):
                             'chat_id': thread.chat_id,
                             'institut_id': thread.institut_id,
                         })
-                else:
-                    total_not_started_threads += 1
-                    not_started_threads_list.append({
-                        'thread_id': thread.thread_id,
-                        'subject': thread.subject
-                    })
+                    else:
+                        total_not_started_threads += 1
+                        not_started_threads_list.append({
+                            'thread_id': thread.thread_id,
+                            'subject': thread.subject,
+                            'chat_id': thread.chat_id,
+                            'institut_id': thread.institut_id,
+                        })
 
             new_data = {
                 'username': scenario_user.user.username,

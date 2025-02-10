@@ -112,8 +112,10 @@
               <v-expansion-panel-text>
                 <v-row>
                   <!-- Raters Section -->
+                  <v-col cols="12">
+                    <div class="text-h6 mb-4">Rater</div>
+                  </v-col>
                   <v-col cols="12" class="mb-4">
-                    <div class="text-h6 mb-2">Rater</div>
                     <v-row>
                       <v-col
                         v-for="rater in editedScenario.raters"
@@ -122,8 +124,12 @@
                       >
                         <v-card outlined class="user-card" density="compact">
                           <v-card-item>
-                            <div class="text-subtitle-1 mb-1">{{rater.username}}</div>
-                            <div class="text-caption text-grey">ID: {{rater.user_id}}</div>
+                            <div class="d-flex align-center mb-1">
+                              <div class="text-subtitle-1 text-truncate">{{rater.username}}</div>
+                            </div>
+                            <div class="d-flex justify-space-between align-center">
+                              <div class="text-caption text-grey">ID: {{rater.user_id}}</div>
+                            </div>
                           </v-card-item>
                         </v-card>
                       </v-col>
@@ -131,59 +137,64 @@
                   </v-col>
 
                   <!-- Viewers Section -->
-                  <!-- Existing Viewers -->
-                  <!-- Existing Viewers -->
-                  <div>
-                    <div class="text-h6 mb-2">Viewer</div>
+                  <v-col cols="12">
+                    <div class="text-h6 mb-4">Viewer</div>
+                  </v-col>
+                  <v-col cols="12" class="mb-4">
                     <v-row>
                       <v-col
                         v-for="viewer in editedScenario.viewers"
                         :key="viewer.user_id"
-                        cols="12"
-                        sm="6"
-                        md="4"
+                        cols="12" sm="6" md="4"
                       >
                         <v-card outlined class="user-card" density="compact">
                           <v-card-item>
-                            <div class="text-subtitle-1 mb-1">{{viewer.username}}</div>
-                            <div class="text-caption text-grey">ID: {{viewer.user_id}}</div>
+                            <div class="d-flex align-center mb-1">
+                              <div class="text-subtitle-1 text-truncate">{{viewer.username}}</div>
+                            </div>
+                            <div class="d-flex justify-space-between align-center">
+                              <div class="text-caption text-grey">ID: {{viewer.user_id}}</div>
+                            </div>
                           </v-card-item>
                         </v-card>
                       </v-col>
                     </v-row>
-
-                    <!-- Available Viewers -->
-                    <div v-if="isEditing" class="mt-4">
-                      <div class="text-subtitle-1 mb-2">Verfügbare Viewer</div>
-                      <v-row>
-                        <v-col
-                          v-for="user in filteredAvailableUsers"
-                          :key="user.id"
-                          cols="12"
-                          sm="6"
-                          md="4"
-                        >
-                          <v-card outlined class="user-card" density="compact">
-                            <v-card-item>
-                              <div class="text-subtitle-1 mb-1">{{user.name}}</div>
-                              <div class="text-caption text-grey">ID: {{user.id}}</div>
-                              <v-checkbox
-                                v-model="selectedViewers"
-                                :value="user.id"
-                                label="Auswählen"
-                                density="compact"
-                                hide-details
-                                class="mt-1"
-                              ></v-checkbox>
-                            </v-card-item>
-                          </v-card>
-                        </v-col>
-                      </v-row>
-                    </div>
-                  </div>
+                  </v-col>
                 </v-row>
+
+                <!-- Available Viewers for Editing Mode -->
+                <div v-if="isEditing" class="mt-4">
+                  <div class="text-subtitle-1 mb-2">Verfügbare Viewer</div>
+                  <v-row>
+                    <v-col
+                      v-for="user in filteredAvailableUsers"
+                      :key="user.id"
+                      cols="12" sm="6" md="4"
+                    >
+                      <v-card outlined class="user-card" density="compact">
+                        <v-card-item>
+                          <div class="d-flex align-center mb-1">
+                            <div class="text-subtitle-1 text-truncate">{{user.name}}</div>
+                          </div>
+                          <div class="d-flex justify-space-between align-center">
+                            <div class="text-caption text-grey">ID: {{user.id}}</div>
+                          </div>
+                          <v-checkbox
+                            v-model="selectedViewers"
+                            :value="user.id"
+                            label="Auswählen"
+                            density="compact"
+                            hide-details
+                            class="mt-1"
+                          ></v-checkbox>
+                        </v-card-item>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
+
 
             <!-- Threads Panel -->
             <v-expansion-panel>
@@ -529,9 +540,9 @@ export default {
       const beginDate = this.editedScenario.begin_date;
       const endDate = this.editedScenario.end_date;
 
-      if(!beginDate)
+      if (!beginDate)
         this.errors.startDate = "Kein Startdatum vorhanden"
-      if(!endDate)
+      if (!endDate)
         this.errors.startDate = "Kein Enddatum vorhanden"
 
       if (beginDate && endDate && beginDate > endDate) {

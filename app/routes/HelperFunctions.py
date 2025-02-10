@@ -15,6 +15,8 @@ from sqlalchemy import func, desc, or_
 from sqlalchemy.orm import joinedload
 import logging
 
+from db.tables import ProgressionStatus
+
 
 def can_access_thread(user_id, thread_id, function_type_id):
     # Aktuellen Zeitpunkt ermitteln
@@ -110,3 +112,52 @@ def get_user_threads(user_id, function_type_id):
                 allowed_threads.append(distribution.scenario_thread.thread)
 
     return allowed_threads
+
+
+def get_thread_progression_state(thread: EmailThread, user_id, function_type_id: int)-> ProgressionStatus:
+    # Ranking
+    if function_type_id == 1:
+        # amount of features in thread
+        total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
+        # count the ranked features
+        ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
+            UserFeatureRanking.user_id == user_id,
+            Feature.thread_id == thread.thread_id
+        ).count()
+
+        if ranked_features_count == 0:
+            return ProgressionStatus.NOT_STARTED
+        if ranked_features_count < total_features_in_thread:
+            return ProgressionStatus.PROGRESSING
+        return ProgressionStatus.DONE
+
+    # Rating
+    elif function_type_id == 2:
+        # amount of features in thread
+        total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
+        # count the ranked features
+        rated_features_count = db.session.query(UserMessageRating).join(Feature).filter(
+            UserFeatureRanking.user_id == user_id,
+            Feature.thread_id == thread.thread_id
+        ).count()
+
+        if rated_features_count == 0:
+            return ProgressionStatus.NOT_STARTED
+        if rated_features_count < total_features_in_thread:
+            return ProgressionStatus.PROGRESSING
+        return ProgressionStatus.DONE
+    # Mail Rating
+    elif function_type_id == 3:
+        mail_rating = (
+            db.session.query(UserMailHistoryRating)
+            .filter_by(user_id=user_id, thread_id=thread.thread_id).order_by(
+                UserMailHistoryRating.timestamp.desc())
+            .first()
+        )
+        if mail_rating:
+            return mail_rating.status
+        else:
+            return ProgressionStatus.NOT_STARTED
+    else: # Maybe something better than a switch case is needed...
+        raise NotImplemented
+

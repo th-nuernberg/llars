@@ -1,8 +1,8 @@
 <template>
   <v-container class="email-progress-dashboard" fluid>
     <v-card class="mb-4 title-card">
-      <v-card-title class="text-h5">Admin Dashboard</v-card-title>
-      <v-card-subtitle>Übersicht der E-Mail-Bewertungen</v-card-subtitle>
+      <v-card-title class="text-h5">{{scenarioName}}</v-card-title>
+      <v-card-subtitle>{{functionTypeTexts.subheader}}</v-card-subtitle>
     </v-card>
 
     <!-- Rater und Viewer Panels -->
@@ -203,7 +203,7 @@
       <v-card>
         <v-card-title>Thread Details für {{ selectedUser.username }}</v-card-title>
         <v-card-text>
-          <v-subheader>Bewertete Threads</v-subheader>
+          <v-subheader>{{functionTypeTexts.done}}</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.done_threads_list" :key="thread.thread_id">
               <v-list-item-content>
@@ -213,7 +213,7 @@
             </v-list-item>
           </v-list>
 
-          <v-subheader>Teilweise bewertete Threads</v-subheader>
+          <v-subheader>{{functionTypeTexts.progressing}}</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.progressing_threads_list" :key="thread.thread_id">
               <v-list-item-content>
@@ -223,7 +223,7 @@
             </v-list-item>
           </v-list>
 
-          <v-subheader>Nicht bewertete Threads</v-subheader>
+          <v-subheader>{{functionTypeTexts.not_started}}</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.not_started_threads_list" :key="thread.thread_id">
               <v-list-item-content>
@@ -243,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -252,12 +252,49 @@ const router = useRouter();
 
 const scenario_id = route.params.id;
 
+// Szenario-Details
+const scenarioDetails = ref({
+  name: "",
+  func_type_id: null,
+});
+
+// Texte für die UI, abhängig vom Funktionstyp
+const functionTypeTexts = computed(() => {
+  if (!scenarioDetails.value.func_type_id) return {};
+  return functionTypeMappings[scenarioDetails.value.func_type_id] || {};
+});
+
+const scenarioName = computed(() => scenarioDetails.value.name || "Unbekanntes Szenario");
+
+const functionTypeMappings = {
+  1: {
+    subheader: "Fortschritt Ranking",
+    done: "Bereits geranked",
+    progressing: "Teilweise geranked",
+    not_started: "Noch nicht geranked",
+  },
+  2: {
+    subheader: "Fortschritt Rating",
+    done: "Bereits bewertet",
+    progressing: "Teilweise bewertet",
+    not_started: "Noch nicht bewertet",
+  },
+  3: {
+    subheader: "Fortschritt Verlaufsgenerierung",
+    done: "Bereits bewertet",
+    progressing: "Teilweise bewertet",
+    not_started: "Noch nicht bewertet",
+  },
+};
+
+// Benutzerstatistiken
 const raterStats = ref([]);
 const viewerStats = ref([]);
 const dialogVisible = ref(false);
 const selectedUser = ref({});
 const openPanels = ref([0]); // Rater Panel standardmäßig geöffnet
 
+// Methoden
 const showThreadDetails = (user) => {
   selectedUser.value = user;
   dialogVisible.value = true;
@@ -265,51 +302,62 @@ const showThreadDetails = (user) => {
 
 const calculateProgressSections = (total_threads, done_threads, progressing_threads) => {
   const donePercentage = (done_threads / total_threads) * 100 || 0;
-  const inProgresPercentage = (progressing_threads / total_threads) * 100 || 0;
-  const notStartedPercentage = 100 - donePercentage - inProgresPercentage;
+  const progressingPercentage = (progressing_threads / total_threads) * 100 || 0;
+  const notStartedPercentage = 100 - donePercentage - progressingPercentage;
 
   return {
-    donePercentage: donePercentage,
-    progressingPercentage: inProgresPercentage,
+    donePercentage,
+    progressingPercentage,
     notStartedPercentage,
   };
 };
 
+const fetchScenarioDetails = async () => {
+  try {
+    const response = await axios.get(`/api/admin/scenarios/${scenario_id}`, {
+      headers: { Authorization: localStorage.getItem('api_key') },
+    });
+
+    scenarioDetails.value = {
+      name: response.data.scenario_name || "Unbekanntes Szenario",
+      func_type_id: response.data.function_type_id || null,
+    };
+
+    if (functionTypeMappings[scenarioDetails.value.func_type_id]) {
+      //statsRoute.value = functionTypeMappings[scenarioDetails.value.func_type_id].route;
+      await fetchUserStats();
+    } else {
+      console.error("Kein passendes Mapping für func_type_id:", scenarioDetails.value.func_type_id);
+    }
+
+  } catch (error) {
+    console.error("Fehler beim Laden der Szenario-Details:", error);
+  }
+};
 
 const fetchUserStats = async () => {
   const apiKey = localStorage.getItem('api_key');
-
   if (!apiKey) {
     console.error('Kein API-Key im localStorage gefunden');
     return;
   }
 
   try {
-    const response = await axios.get(`/api/admin/user_HistoryGeneration_stats/${scenario_id}`, {
-      headers: {
-        Authorization: apiKey,
-      },
+    const response = await axios.get(`/api/admin/scenario_progress_stats/${scenario_id}`, {
+      headers: { Authorization: apiKey },
     });
 
     if (Array.isArray(response.data.rater_stats)) {
       raterStats.value = response.data.rater_stats.map(user => ({
         ...user,
-        ...calculateProgressSections(
-          user.total_threads,
-          user.done_threads,
-          user.progressing_threads
-        ),
+        ...calculateProgressSections(user.total_threads, user.done_threads, user.progressing_threads),
       }));
     }
 
     if (Array.isArray(response.data.viewer_stats)) {
       viewerStats.value = response.data.viewer_stats.map(user => ({
         ...user,
-        ...calculateProgressSections(
-          user.total_threads,
-          user.done_threads,
-          user.progressing_threads
-        ),
+        ...calculateProgressSections(user.total_threads, user.done_threads, user.progressing_threads),
       }));
     }
   } catch (error) {
@@ -317,15 +365,20 @@ const fetchUserStats = async () => {
   }
 };
 
+// Panel Status speichern
 watch(openPanels, (newValue) => {
-  localStorage.setItem("HistoryGenerationStatPanelState", JSON.stringify(newValue));
+  localStorage.setItem("UserStatPanelState", JSON.stringify(newValue));
 });
 
 onMounted(() => {
-  fetchUserStats();
-  openPanels.value = JSON.parse(localStorage.getItem("HistoryGenerationStatPanelState"));
+  fetchScenarioDetails();
+  const savedPanels = localStorage.getItem("UserStatPanelState");
+  if (savedPanels) {
+    openPanels.value = JSON.parse(savedPanels);
+  }
 });
 </script>
+
 
 <style scoped>
 

@@ -61,7 +61,35 @@ def list_email_threads_for_rankings():
 
     return jsonify(threads_list), 200
 
+@data_blueprint.route('/email_threads/feature_ranking_list', methods=['GET'])
+def list_ranking_threads():
+    api_key = request.headers.get('Authorization')
+    if not api_key:
+        return jsonify({'error': 'API key is missing'}), 401
 
+    user = User.query.filter_by(api_key=api_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid API key'}), 401
+
+    # Hole alle Threads mit function_type_id = 1 (Ranking)
+    ranking_function_type = FeatureFunctionType.query.filter_by(name='ranking').first()
+    if not ranking_function_type:
+        return jsonify({'error': 'Ranking function type not found'}), 404
+
+    # Nur Ranking-Threads zurückgeben
+    #email_threads = EmailThread.query.filter_by(function_type_id=ranking_function_type.function_type_id).all()
+    email_threads = get_user_threads(user.id, ranking_function_type.function_type_id)
+
+    threads_list = [
+        {
+            'thread_id': thread.thread_id,
+            'chat_id': thread.chat_id,
+            'institut_id': thread.institut_id,
+            'subject': thread.subject
+        } for thread in email_threads
+    ]
+
+    return jsonify(threads_list), 200
 
 @data_blueprint.route('/email_threads/rankings/<int:thread_id>', methods=['GET'])
 def get_email_thread_for_rankings(thread_id):
@@ -293,6 +321,8 @@ def get_user_ranking_stats():
     admin_user = User.query.filter_by(api_key=api_key).first()
     if not admin_user:
         return jsonify({'error': 'Invalid API key'}), 401
+    if admin_user.group.name != 'Admin':
+        return jsonify({'error': 'You do not have administration rights'}), 403
 
     user_stats = []
 
@@ -312,98 +342,6 @@ def get_user_ranking_stats():
             # Zähle die Anzahl der vom Benutzer gerankten Features in diesem Thread
             ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
                 UserFeatureRanking.user_id == user.id,
-                Feature.thread_id == thread.thread_id
-            ).count()
-
-            if ranked_features_count == total_features_in_thread and total_features_in_thread > 0:
-                # Wenn alle Features eines Threads gerankt wurden, zähle den Thread als vollständig gerankt
-                total_ranked_threads += 1
-                ranked_threads_list.append({
-                    'thread_id': thread.thread_id,
-                    'chat_id': thread.chat_id,
-                    'institut_id': thread.institut_id,
-                    'subject': thread.subject,
-                    'ranked_features_count': ranked_features_count,
-                    'total_features_in_thread': total_features_in_thread
-                })
-            else:
-                # Wenn der Benutzer diesen Thread noch nicht vollständig gerankt hat
-                unranked_threads_list.append({
-                    'thread_id': thread.thread_id,
-                    'chat_id': thread.chat_id,
-                    'institut_id': thread.institut_id,
-                    'subject': thread.subject,
-                    'ranked_features_count': ranked_features_count,
-                    'total_features_in_thread': total_features_in_thread
-                })
-
-        # Füge die Statistiken für diesen Benutzer hinzu
-        user_stats.append({
-            'username': user.username,
-            'ranked_threads_count': total_ranked_threads,  # Anzahl der vollständig gerankten Threads
-            'total_threads': total_threads,  # Gesamtzahl der relevanten Threads (mit function_type_id = 1)
-            'ranked_threads': ranked_threads_list,  # Liste der vollständig gerankten Threads
-            'unranked_threads': unranked_threads_list  # Liste der unvollständig gerankten/unbearbeiteten Threads
-        })
-
-    return jsonify(user_stats), 200
-
-
-@data_blueprint.route('/admin/user_ranking_stats/<int:scenario_id>', methods=['GET'])
-def get_scenario_ranking_stats(scenario_id):
-    api_key = request.headers.get('Authorization')
-
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    # check if scenario id is valid
-    if not scenario_id:
-        return jsonify({'error': 'Scenario id is missing'}), 400
-
-    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
-    if not scenario:
-        return jsonify({'error': 'Scenario does not exist'}), 404
-
-    user_stats = []
-    scenario_users = (db.session.query(ScenarioUsers).join(User, ScenarioUsers.user_id == User.id)
-                      .filter(ScenarioUsers.scenario_id == scenario_id).all())
-
-    for scenario_user in scenario_users:
-        ranked_threads_list = []
-        unranked_threads_list = []
-        total_ranked_threads = 0
-
-        if scenario_user.role == ScenarioRoles.RATER:
-            user_threads = (
-                db.session.query(ScenarioThreads)
-                .join(ScenarioThreadDistribution,
-                      ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
-                .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
-                .filter(ScenarioThreads.scenario_id == scenario_id,
-                        ScenarioUsers.user_id == scenario_user.user_id)
-                .all()
-            )
-        elif scenario_user.role == ScenarioRoles.VIEWER:
-            user_threads = (
-                db.session.query(ScenarioThreads)
-                .filter(ScenarioThreads.scenario_id == scenario_id)
-                .all()
-            )
-        if not user_threads:
-            user_threads = []
-
-        # Iteriere nur über die Email Threads mit function_type_id = 1
-        for thread in user_threads:
-            # Zähle alle Features in diesem Thread
-            total_features_in_thread = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
-
-            # Zähle die Anzahl der vom Benutzer gerankten Features in diesem Thread
-            ranked_features_count = db.session.query(UserFeatureRanking).join(Feature).filter(
-                UserFeatureRanking.user_id == scenario_user.user_id,
                 Feature.thread_id == thread.thread_id
             ).count()
 

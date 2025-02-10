@@ -204,18 +204,7 @@ const getStatusTextColor = (status) => {
 
 
 const navigateToStats = (scenario) => {
-  const routeMap = {
-    'mail_rating': '/AdminHistoryGenerator',
-    'rating': '/admin/rater',
-    'ranking': '/AdminRanker'
-  };
-
-
-  const baseRoute = routeMap[scenario.function_type_name];
-  if (baseRoute) {
-    router.push(`${baseRoute}/${scenario.scenario_id}`);
-    router.push({ name: 'AdminHistoryGenerator', params: { id: scenario.scenario_id } });
-  }
+  router.push({ name: 'AdminUserProgressStats', params: { id: scenario.scenario_id } });
 };
 
 

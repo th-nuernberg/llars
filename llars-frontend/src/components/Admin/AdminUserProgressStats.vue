@@ -208,7 +208,7 @@
             <v-list-item v-for="thread in selectedUser.done_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
-                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
+                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }} | Chat ID: {{ thread.chat_id }} | Institut ID: {{ thread.institut_id }}</v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
           </v-list>
@@ -218,7 +218,7 @@
             <v-list-item v-for="thread in selectedUser.progressing_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
-                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
+                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}  |  Chat ID: {{ thread.chat_id }} | Institut ID: {{ thread.institut_id }}</v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
           </v-list>
@@ -228,7 +228,7 @@
             <v-list-item v-for="thread in selectedUser.not_started_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
-                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}</v-list-item-subtitle>
+                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }} | Chat ID: {{ thread.chat_id }} | Institut ID: {{ thread.institut_id }}</v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
           </v-list>

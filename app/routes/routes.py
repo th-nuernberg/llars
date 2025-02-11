@@ -19,6 +19,7 @@ from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, Us
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
+from dateutil import parser
 from datetime import datetime
 import json
 
@@ -140,7 +141,6 @@ def create_email_thread():
     if not function_type_id:
         return jsonify({"error": "Invalid function type"}), 400
 
-    # Get the sender, if not provided use an alias
     sender = data.get('sender', 'Alias')
 
     email_thread = EmailThread.query.filter_by(
@@ -154,30 +154,48 @@ def create_email_thread():
             chat_id=data.get('chat_id'),
             institut_id=data.get('institut_id'),
             subject=data.get('subject'),
-            sender=sender,  # Store the sender
+            sender=sender,
             function_type_id=function_type_id
         )
         db.session.add(email_thread)
         db.session.commit()
     else:
-        email_thread.subject = data.get('subject')  # Update subject if email_thread already exists
-        email_thread.sender = sender  # Update the sender if email_thread already exists
+        email_thread.subject = data.get('subject')
+        email_thread.sender = sender
         db.session.commit()
 
-    for msg in data.get('messages', []):
-        # Convert timestamp string to datetime object
-        msg_timestamp = datetime.strptime(msg.get('timestamp'), '%Y-%m-%d %H:%M:%S')
-        msg_content = msg.get('content')
-        generated_by = msg.get('generated_by', 'human')  # Standardwert setzen
+    # Funktion zur Reparatur oder Validierung von Timestamps
+    def fix_timestamp(timestamp_str):
+        try:
+            # Versuchen, den Timestamp direkt zu parsen
+            return datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            try:
+                # Wenn das Format nicht passt, versuchen wir es mit einem flexiblen Parser (z.B. dateutil)
+                return parser.parse(timestamp_str)
+            except ValueError:
+                # Wenn nicht mal das klappt, Timestamp ignorieren oder Standardwert setzen
+                return None
 
-        # Check for existing message with same timestamp and content
+    for msg in data.get('messages', []):
+        # Repariere den Timestamp
+        raw_timestamp = msg.get('timestamp')
+        msg_timestamp = fix_timestamp(raw_timestamp)  # Versuchen, den Timestamp zu korrigieren
+
+        if not msg_timestamp:
+            # Falls der Timestamp nicht reparierbar ist, überspringen
+            continue
+
+        msg_content = msg.get('content')
+        generated_by = msg.get('generated_by', 'human')
+
+        # Prüfen, ob es eine Nachricht mit demselben Inhalt und Timestamp gibt
         existing_message = Message.query.filter_by(
             thread_id=email_thread.thread_id,
             timestamp=msg_timestamp,
             content=msg_content
         ).first()
 
-        # If no duplicate found, add the new message
         if not existing_message:
             message = Message(
                 thread_id=email_thread.thread_id,
@@ -202,7 +220,6 @@ def create_email_thread():
                 db.session.add(feature_type)
                 db.session.commit()
 
-            # Store the entire feature content as JSON in the database
             existing_feature = Feature.query.filter_by(
                 thread_id=email_thread.thread_id,
                 type_id=feature_type.type_id,
@@ -214,7 +231,7 @@ def create_email_thread():
                     thread_id=email_thread.thread_id,
                     type_id=feature_type.type_id,
                     llm_id=llm.llm_id,
-                    content=json.dumps(feature_content)  # Store as JSON string
+                    content=json.dumps(feature_content)
                 )
                 db.session.add(feature)
 

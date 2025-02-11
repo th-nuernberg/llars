@@ -16,11 +16,11 @@ file_service_mapping = {
     # "http/seeder/seed_ranking.http": "backend-flask-service",
     "http/seeder/seed_rating.http": "backend-flask-service",
     # "http/seeder/output_ranking.http": "backend-flask-service",
-    "http/seeder/output": "backend-flask-service",
-    "http/seeder/test_output": "backend-flask-service",
-    "http/seeder/mail_rating/4o": "backend-flask-service",
-    "http/seeder/mail_rating/claude": "backend-flask-service",
-    "http/seeder/mail_rating/opensource": "backend-flask-service",
+    #"http/seeder/output": "backend-flask-service",
+    #"http/seeder/test_output": "backend-flask-service",
+    #"http/seeder/mail_rating/4o": "backend-flask-service",
+    #"http/seeder/mail_rating/claude": "backend-flask-service",
+    #"http/seeder/mail_rating/opensource": "backend-flask-service",
 }
 
 def current_timestamp():

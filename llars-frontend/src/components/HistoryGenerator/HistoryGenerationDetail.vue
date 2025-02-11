@@ -449,7 +449,24 @@ function check_for_changes() {
 
 // Get class based on sender (to differentiate between user and other messages)
 function getMessageClass(sender) {
-  return sender === 'Ratsuchende Person' ? 'same-sender' : 'different-sender';
+  // Normalize the sender string by converting to lowercase and removing extra spaces
+  const normalizedSender = sender.toLowerCase().trim();
+
+  // Check if the sender is a client (Ratsuchende variants)
+  const clientVariants = ['ratsuchende person', 'ratsuchender', 'ratsuchend', 'ratsuchende'];
+
+  // Check if the sender is a counselor (Beratende variants)
+  const counselorVariants = ['beratende person', 'berater', 'beratend', 'beratende'];
+
+  if (clientVariants.includes(normalizedSender)) {
+    return 'same-sender';
+  } else if (counselorVariants.includes(normalizedSender)) {
+    return 'different-sender';
+  }
+
+  // Default fallback if none of the known variants match
+  console.warn(`Unrecognized sender type: ${sender}`);
+  return 'different-sender';
 }
 
 // Rate individual messages

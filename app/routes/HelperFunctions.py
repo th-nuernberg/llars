@@ -15,6 +15,49 @@ from sqlalchemy import func, desc, or_
 from sqlalchemy.orm import joinedload
 import logging
 
+from db.tables import ProgressionStatus
+
+
+
+def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """ Berechnet den Fortschritt für das Feature Ranking (function_type_id=1) """
+    total_features = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
+    ranked_features = db.session.query(UserFeatureRanking).join(Feature).filter(
+        UserFeatureRanking.user_id == user_id,
+        Feature.thread_id == thread.thread_id
+    ).count()
+
+    if ranked_features == 0:
+        return ProgressionStatus.NOT_STARTED
+    if ranked_features < total_features:
+        return ProgressionStatus.PROGRESSING
+    return ProgressionStatus.DONE
+
+
+def get_progression_rating(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """ Berechnet den Fortschritt für das Feature Rating (function_type_id=2) """
+    total_features = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
+    rated_features = db.session.query(UserMessageRating).join(Feature).filter(
+        UserMessageRating.user_id == user_id,
+        Feature.thread_id == thread.thread_id
+    ).count()
+
+    if rated_features == 0:
+        return ProgressionStatus.NOT_STARTED
+    if rated_features < total_features:
+        return ProgressionStatus.PROGRESSING
+    return ProgressionStatus.DONE
+
+
+def get_progression_mail_rating(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """ Berechnet den Fortschritt für das Mail Rating (function_type_id=3) """
+    mail_rating = db.session.query(UserMailHistoryRating).filter_by(
+        user_id=user_id, thread_id=thread.thread_id
+    ).order_by(UserMailHistoryRating.timestamp.desc()).first()
+
+    return mail_rating.status if mail_rating else ProgressionStatus.NOT_STARTED
+
+
 
 def can_access_thread(user_id, thread_id, function_type_id):
     # Aktuellen Zeitpunkt ermitteln
@@ -110,3 +153,20 @@ def get_user_threads(user_id, function_type_id):
                 allowed_threads.append(distribution.scenario_thread.thread)
 
     return allowed_threads
+
+
+def get_thread_progression_state(thread: EmailThread, user_id: int, function_type_id: int) -> ProgressionStatus:
+    """ Dynamische Auswahl der Progressionslogik basierend auf function_type_id """
+    PROGRESSION_HANDLERS = {
+        1: get_progression_ranking,
+        2: get_progression_rating,
+        3: get_progression_mail_rating
+    }
+    handler = PROGRESSION_HANDLERS.get(function_type_id)
+
+    if handler is None:
+        raise NotImplementedError(f"Function Type {function_type_id} ist nicht implementiert!")
+
+    return handler(thread, user_id)
+
+

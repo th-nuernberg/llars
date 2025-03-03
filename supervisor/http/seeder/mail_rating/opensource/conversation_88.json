@@ -1,0 +1,66 @@
+{
+  "type": "mail_rating",
+  "chat_id": 88,
+  "institut_id": 0,
+  "subject": "Essensunsicherheit",
+  "sender": "Jonas",
+  "total_messages": 8,
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "03.03.2025 14:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "06.03.2025 11:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "10.03.2025 11:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "14.03.2025 05:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 5,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "22.03.2025 02:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 6,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "25.03.2025 19:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 7,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "31.03.2025 23:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 8,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "05.04.2025 11:27",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    }
+  ]
+}

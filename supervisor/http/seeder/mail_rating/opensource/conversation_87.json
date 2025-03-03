@@ -1,0 +1,108 @@
+{
+  "type": "mail_rating",
+  "chat_id": 87,
+  "institut_id": 0,
+  "subject": "Verlust eines Haustieres",
+  "sender": "Hannah",
+  "total_messages": 14,
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "03.02.2025 20:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "06.02.2025 23:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "10.02.2025 09:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "14.02.2025 12:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 5,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "22.02.2025 21:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 6,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "25.02.2025 13:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 7,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "06.03.2025 02:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 8,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "09.03.2025 18:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 9,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "14.03.2025 16:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 10,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "19.03.2025 06:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 11,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "23.03.2025 19:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 12,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "26.03.2025 05:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 13,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "04.04.2025 19:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 14,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "08.04.2025 15:57",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    }
+  ]
+}

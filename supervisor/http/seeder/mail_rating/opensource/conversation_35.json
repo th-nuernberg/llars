@@ -1,0 +1,108 @@
+{
+  "type": "mail_rating",
+  "chat_id": 35,
+  "institut_id": 0,
+  "subject": "Fehlende soziale Unterstützung",
+  "sender": "Emma",
+  "total_messages": 14,
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "03.03.2025 13:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "07.03.2025 01:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "13.03.2025 07:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "16.03.2025 10:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 5,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "24.03.2025 07:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 6,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "27.03.2025 03:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 7,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "06.04.2025 03:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 8,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "09.04.2025 05:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 9,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "17.04.2025 05:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 10,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "21.04.2025 06:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 11,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "28.04.2025 22:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 12,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "03.05.2025 04:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 13,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "08.05.2025 18:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 14,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "10.05.2025 18:53",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    }
+  ]
+}

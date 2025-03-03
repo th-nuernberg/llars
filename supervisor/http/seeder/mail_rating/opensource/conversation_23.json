@@ -1,0 +1,66 @@
+{
+  "type": "mail_rating",
+  "chat_id": 23,
+  "institut_id": 0,
+  "subject": "Angst vor Veränderungen",
+  "sender": "Tina",
+  "total_messages": 8,
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "24.02.2025 12:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "27.02.2025 05:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 3,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "08.03.2025 12:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 4,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "13.03.2025 07:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 5,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "18.03.2025 06:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 6,
+      "sender": "Beratend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "21.03.2025 19:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 7,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "26.03.2025 00:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "message_id": 8,
+      "sender": "Ratsuchend",
+      "content": "Ein Fehler ist bei der Generierung aufgetreten.",
+      "timestamp": "30.03.2025 14:03",
+      "generated_by": "meta-llama/Llama-3.2-1B"
+    }
+  ]
+}

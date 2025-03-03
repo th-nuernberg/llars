@@ -1,0 +1,24 @@
+{
+  "type": "mail_rating",
+  "chat_id": 8,
+  "institut_id": 0,
+  "subject": "Burnout",
+  "sender": "Benny",
+  "total_messages": 2,
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchend",
+      "content": "Hallo,\n\nich bin Benny und ich glaube, ich komme echt an meine Grenzen. Ich bin 35 Jahre alt und arbeite seit einigen Jahren in einem sehr fordernden Job als Projektmanager. Die letzten Monate waren der absolute Wahnsinn – Überstunden, ständig am Telefon, selbst abends und am Wochenende. Ich habe immer versucht, allem und jedem gerecht zu werden, aber jetzt fühle ich mich einfach nur noch ausgelaugt.\n\nEs begann damit, dass ich schon morgens total erschöpft war, und ich dachte eigentlich, ich bräuchte nur Urlaub. Aber der hat nichts verbessert. Jetzt merke ich, dass es noch mehr ist: Ich habe so eine innere Leere, bin total genervt und kann mich auf nichts mehr richtig freuen. Dinge, die mir früher Spaß gemacht haben, wie Sport oder einfach mal ein Abend mit Freunden, sind mir gerade zu viel. Ich ziehe mich zurück und bin oft gereizt, sogar bei Kleinigkeiten.\n\nMein Körper macht nicht mehr mit – Schlaflosigkeit, ständige Kopfschmerzen und so ein unruhiges Gefühl in mir. Ich komme in letzter Zeit nicht mehr zur Ruhe und fühle mich wie in einem ständigen Zustand von Alarmbereitschaft.\n\nIch habe versucht, mir selbst zu helfen, Meditation ausprobiert und YouTube-Videos über Stressmanagement gesehen, aber irgendwie klappt das alles nicht so richtig. Ich habe Angst, dass ich mich komplett verliere und nichts mehr auf die Reihe kriege.\n\nDeshalb wende ich mich jetzt an euch: Könnt ihr mir helfen, einen Weg aus dieser Erschöpfung zu finden? Ich weiß echt nicht mehr weiter und denke, professionelle Unterstützung wäre vielleicht das, was ich jetzt brauche.\n\nVielen Dank fürs Zuhören. Ich bin für jeden Rat dankbar.\n\nBenny",
+      "timestamp": "03.03.2025 10:30",
+      "generated_by": "openAI/gpt-4o"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratend",
+      "content": "Lieber Benny,\n\nzunächst möchte ich dir sagen, dass es ein wichtiger Schritt ist, dass du dich mit deinem Anliegen an uns wendest. Mein Name ist bke-Anna, ich bin Psychologin und spezialisiert auf die Onlineberatung von Menschen in stressigen und herausfordernden Lebenssituationen. Hier bist du genau richtig, um über deine aktuelle Erschöpfung zu sprechen und gemeinsam nach Lösungen zu suchen.\n\nDu hast in deiner Nachricht sehr eindrucksvoll geschildert, wie sich die beruflichen Anforderungen in den letzten Monaten auf dich ausgewirkt haben. Es klingt, als wäre der Druck enorm gewesen, und ich kann nachvollziehen, dass du dich ausgelaugt fühlst. Dass selbst der ansonsten wohltuende Urlaub keine Erleichterung gebracht hat, zeigt, dass dein Maß voll ist.\n\nDu beschreibst eine innere Leere und fehlende Freude an Aktivitäten, die dich früher begeistert haben. Das sind deutliche Hinweise darauf, dass dein Körper und deine Psyche jetzt eine Pause brauchen. Dein erhöhte Reizbarkeit, die Schlaflosigkeit und die ständigen Kopfschmerzen sind Signale deines Körpers, die ernst genommen werden wollen.\n\nDu hast bereits erste Schritte in die richtige Richtung unternommen, indem du dich über Stressmanagement und Meditation informiert hast. Manchmal reichen solche Maßnahmen allein jedoch nicht aus. Es klingt, als würde dir eine persönliche, tiefere Auseinandersetzung mit deinen individuellen Stressoren und deiner Lebenssituation helfen.\n\nHast du schon überlegt, wie sich deine Arbeitsbelastung auf ein für dich erträgliches Maß verringern lässt? Vielleicht gibt es Möglichkeiten, Aufgaben neu zu verteilen oder klare Grenzen zu ziehen, um selbst kleine Auszeiten einzuplanen. Ein klärendes Gespräch mit Vorgesetzten kann ebenfalls ein sinnvoller Schritt sein.\n\nDu fragst, ob professionelle Unterstützung hilfreich sein könnte, und ich möchte dir darin bestärken. Ein Gespräch mit einem Therapeuten oder einer Beratungsstelle kann wertvoll sein, um die Ursachen für deine Erschöpfung genauer zu betrachten und gemeinsam Lösungen zu erarbeiten. Auch ein Besuch beim Hausarzt könnte sinnvoll sein, um gesundheitliche Aspekte abzuklären.\n\nEs ist wichtig, dir die Zeit zu geben, die du für dich brauchst. Es könnte auch hilfreich sein, dich auf Dinge zu konzentrieren, die dir Sicherheit und Struktur geben, sei es ein fester Tagesablauf oder kleine Wohlfühlaktivitäten. \n\nBitte fühle dich ermutigt, deine Schritte in deinem Tempo zu gehen und immer wieder Rückmeldung darüber zu bekommen, wie es dir dabei geht. Ich bin hier, um dich auf deinem Weg zu unterstützen und freue mich, wenn du wieder schreibst.\n\nMit herzlichen Grüßen,\nbke-Anna",
+      "timestamp": "07.03.2025 08:30",
+      "generated_by": "openAI/gpt-4o"
+    }
+  ]
+}

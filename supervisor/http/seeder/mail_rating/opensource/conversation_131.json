@@ -1,0 +1,24 @@
+{
+  "type": "mail_rating",
+  "chat_id": 3,
+  "institut_id": 0,
+  "subject": "Essstörungen",
+  "sender": "Lulu",
+  "total_messages": 2,
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchend",
+      "content": "Hallo,\n\nich bin Lulu und versuche nun auf diesem Wege Hilfe zu finden. Eigentlich fällt es mir nicht leicht, so offen über meine Probleme zu sprechen, aber ich habe das Gefühl, ich muss es jetzt einfach mal versuchen. Also, zu meinem Problem: Ich habe schon seit einigen Jahren mit Essstörungen zu kämpfen. Es fing an, als ich in der Schule viel Stress hatte und sich das Essen zu einem Thema entwickelte, über das ich Kontrolle haben wollte. Inzwischen sind die Gedanken an Essen, Gewicht und Aussehen ständig präsent bei mir.\n\nIch habe in der Vergangenheit versucht, das allein in den Griff zu bekommen – mit Tagebuchschreiben und Selbsthilfebüchern, aber es hat nichts wirklich geholfen. Die Angst, zuzunehmen oder die Kontrolle zu verlieren, ist immer da, egal wie sehr ich mich ablenke. Meine Familie weiß nichts davon, weil ich Angst habe, dass sie mich nicht verstehen würden oder es mich zusätzlich unter Druck setzen würde. Ich fühle mich oft allein und habe das Gefühl, dass mich niemand wirklich versteht.\n\nDas Problem belastet mich sehr, sowohl körperlich als auch emotional. Ich bin oft erschöpft, fühle mich nicht gut genug und schäme mich. Manchmal weiß ich einfach nicht mehr weiter, und deswegen wende ich mich jetzt an euch. Habt ihr vielleicht Tipps oder könnt mir sagen, wie ich professionelle Unterstützung finden kann? Ich will aus diesem Teufelskreis rauskommen, aber ich schaffe es alleine einfach nicht.\n\nDanke fürs Lesen und für jede Hilfe, die ihr mir geben könnt.\n\nLiebe Grüße,\nLulu",
+      "timestamp": "10.02.2025 11:28",
+      "generated_by": "openAI/gpt-4o"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratend",
+      "content": "Liebe Lulu,\n\nzunächst einmal möchte ich dir sagen, dass es eine mutige und bedeutende Entscheidung ist, dich mit deinem Anliegen bei uns zu melden. Mein Name ist [Name der Beratenden Person], ich bin spezialisiert auf psychosoziale Beratung und freue mich, dich auf deinem Weg zur Veränderung zu begleiten.\n\nDu hast dich dazu entschieden, offen über deine Schwierigkeiten mit Essstörungen zu sprechen – das ist ein wichtiger erster Schritt. Dein Gefühl, die Kontrolle über dein Leben und dein Essen verloren zu haben, ist nachvollziehbar und zeigt, wie sehr du unter Druck stehst. Die Tatsache, dass du erkennst, alleine nicht weiterzukommen und bereit bist, Hilfe zu suchen, ist bereits ein bedeutender Schritt in Richtung Veränderung.\n\nEs ist verständlich, dass die anhaltenden Gedanken und Ängste rund um das Essen, Gewicht und Aussehen eine enorme Belastung darstellen. Deine Erschöpfung und das Gefühl der Unzulänglichkeit, das du beschrieben hast, sind ernstzunehmende Signale deines Körpers und deiner Psyche, dass du Hilfe benötigst.\n\nIch möchte dir einige Fragen stellen, die helfen könnten, die nächsten Schritte genauer zu planen: Gibt es in deinem Umfeld jemanden, dem du vertraust und mit dem du vorsichtig über dein Anliegen sprechen könntest? Manchmal kann ein erster Gesprächspartner eine stärkende Unterstützung bieten. Auch wenn es verständlich ist, dass du zögerst, deine Familie einzubeziehen, könnte dies auf längere Sicht eine wertvolle Ressource sein.\n\nUm gezielte professionelle Unterstützung zu finden, könnte es hilfreich sein, einen Facharzt oder einen Therapeuten aufzusuchen, der auf Essstörungen spezialisiert ist. Ein Anfang könnte ein Gespräch bei deinem Hausarzt sein, um eine Überweisung zu erhalten. Hast du schon einmal daran gedacht, oder gibt es in deiner Nähe Beratungsstellen für Essstörungen, die du kontaktieren könntest?\n\nVielleicht könnte es auch hilfreich für dich sein, dich in Selbsthilfegruppen umzusehen, wo du auf Personen triffst, die ähnliche Erfahrungen teilen und Verständnis zeigen. Manchmal hilft der Austausch mit Gleichgesinnten, um sich nicht mehr ganz so allein zu fühlen.\n\nLulu, es ist wichtig, dass du dir Zeit nimmst und geduldig mit dir selbst bist, während du diesen Weg gehst. Jeder kleine Schritt zählt und selbst an Tagen, an denen es schwieriger wird, zeigt sich die Stärke in deinem Willen zur Veränderung.\n\nIch ermutige dich, diesen Weg der Selbstfürsorge weiterzugehen. Lass uns weiterhin in Kontakt bleiben. Du kannst mir jederzeit wieder schreiben, und ich unterstütze dich gerne bei den nächsten Schritten.\n\nMit herzlichen Grüßen,\n\n[Name der Beratenden Person]",
+      "timestamp": "14.02.2025 13:28",
+      "generated_by": "openAI/gpt-4o"
+    }
+  ]
+}

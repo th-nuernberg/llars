@@ -12,6 +12,7 @@
       @showAddBlockDialog="showAddBlockDialog = true"
       @refreshPromptDetails="fetchPromptDetails()"
       @uploadJsonFileSelected="onJsonFileSelected"
+      @triggerTestPrompt="openTestPromptDialog"
     />
 
     <div class="main-content">
@@ -144,6 +145,8 @@
   <div v-if="showTestPromptDialog" class="dialog-overlay">
     <div class="dialog-box test-prompt-dialog">
       <h3>Prompt testen</h3>
+      <!-- JSON Mode Checkbox -->
+      <v-switch v-model="testJsonMode" label="JSON Mode" class="mb-4" />
       <p><strong>Gesendetes Prompt:</strong></p>
       <pre>{{ testPrompt }}</pre>
       <p><strong>Antwort:</strong></p>
@@ -914,6 +917,8 @@ const showTestPromptDialog = ref(false);
 const testPrompt = ref('');
 const testPromptResponse = ref('');
 const testResponseComplete = ref(false);
+// JSON Mode für Test Prompt
+const testJsonMode = ref(true);
 
 function assemblePrompt() {
   return sortedBlocks.value.map(b => b.content.toString()).join('\n\n');
@@ -923,8 +928,9 @@ function openTestPromptDialog() {
   testPrompt.value = assemblePrompt();
   testPromptResponse.value = '';
   testResponseComplete.value = false;
+  testJsonMode.value = true;
   showTestPromptDialog.value = true;
-  chatSocket.emit('test_prompt_stream', { prompt: testPrompt.value });
+  chatSocket.emit('test_prompt_stream', { prompt: testPrompt.value, jsonMode: testJsonMode.value });
 }
 
 function closeTestPromptDialog() {

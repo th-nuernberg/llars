@@ -21,7 +21,9 @@ services:
       dockerfile: docker/flask/Dockerfile-flask
     expose:
       - "8081"
+    # Mount application code for hot-reloading in development
     volumes:
+      - ./app:/app
       - model_volume:/app/storage
     env_file:
       - .env
@@ -46,6 +48,9 @@ services:
       dockerfile: docker/vue/Dockerfile-vue
     expose:
       - "5173"
+    # Mount frontend code for hot-reloading in development
+    volumes:
+      - ./llars-frontend:/vue
     environment:
       - TZ=Europe/Berlin
       - VITE_API_BASE_URL=${BASE_URL}

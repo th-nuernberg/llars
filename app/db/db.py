@@ -26,7 +26,12 @@ def configure_database(app):
         db.create_all()
         initialize_feature_function_types()
         initialize_consulting_category_types()
-        seed_user_groups()  # Hier wird die neue Funktion für das Seeden der User-Gruppen aufgerufen
+        # Seeder nur ausführen, wenn START_SEEDER in der Umgebung auf 'true' gesetzt ist
+        start_seeder = os.getenv('START_SEEDER', 'false').lower()
+        if start_seeder == 'true':
+            seed_user_groups()
+        else:
+            print(f"Seeder übersprungen (START_SEEDER={start_seeder})")
         # db.session.execute(text("UPDATE users SET group_id = 1 WHERE group_id IS NULL"))
         # db.session.commit()
 

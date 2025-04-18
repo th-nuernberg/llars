@@ -197,6 +197,13 @@ def check_heatlh(interval=10):
 
 
 if __name__ == "__main__":
-    process_files(file_service_mapping)
-    print(f"{Fore.GREEN}{Style.BRIGHT}Successfully seeded data!{Style.RESET_ALL}")
+    # Seeder nur ausführen, wenn START_SEEDER in der Umgebung auf 'true' gesetzt ist
+    start_seeder = os.getenv('START_SEEDER', 'false').lower()
+    if start_seeder == 'true':
+        print(f"Supervisor: Seeder wird gestartet (START_SEEDER={start_seeder})")
+        process_files(file_service_mapping)
+        print(f"{Fore.GREEN}{Style.BRIGHT}Successfully seeded data!{Style.RESET_ALL}")
+    else:
+        print(f"Supervisor: Seeder übersprungen (START_SEEDER={start_seeder})")
+    # Starte Health-Check unabhängig vom Seeding
     check_heatlh(60)

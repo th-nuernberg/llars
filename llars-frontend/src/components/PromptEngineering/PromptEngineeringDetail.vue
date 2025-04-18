@@ -142,11 +142,15 @@
     <div class="dialog-box test-prompt-dialog">
       <h3>Prompt testen</h3>
       <!-- JSON Mode Checkbox -->
-      <v-switch v-model="testJsonMode" label="JSON Mode" class="mb-4" />
+      <v-switch v-model="testJsonMode" label="JSON Mode" class="mb-4" :color="testJsonMode ? 'success' : 'error'" />
+      <!-- Komprimierte Prompt-Anzeige mit Ausklappfunktion -->
       <p><strong>Gesendetes Prompt:</strong></p>
-      <pre>{{ testPrompt }}</pre>
+      <pre>{{ promptCollapsed ? collapsedPrompt : testPrompt }}</pre>
+      <button class="toggle-button" @click="promptCollapsed = !promptCollapsed">
+        {{ promptCollapsed ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
+      </button>
       <p><strong>Antwort:</strong></p>
-      <div class="response-stream">
+      <div class="response-stream" ref="responseContainer">
         <pre>{{ testPromptResponse }}</pre>
         <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
       </div>
@@ -915,6 +919,15 @@ const testPromptResponse = ref('');
 const testResponseComplete = ref(false);
 // JSON Mode für Test Prompt
 const testJsonMode = ref(true);
+// QoL: Komprimierte Prompt-Anzeige im Test-Dialog
+const promptCollapsed = ref(true);
+const collapsedPrompt = computed(() => {
+  const lines = testPrompt.value.split('\n');
+  if (lines.length <= 3) return testPrompt.value;
+  return lines.slice(0, 3).join('\n') + '\n...';
+});
+// Ref für automatisches Scrollen der Antwort
+const responseContainer = ref(null);
 
 function assemblePrompt() {
   return sortedBlocks.value.map(b => b.content.toString()).join('\n\n');
@@ -925,6 +938,7 @@ function openTestPromptDialog() {
   testPromptResponse.value = '';
   testResponseComplete.value = false;
   testJsonMode.value = true;
+  promptCollapsed.value = true;
   showTestPromptDialog.value = true;
   chatSocket.emit('test_prompt_stream', { prompt: testPrompt.value, jsonMode: testJsonMode.value });
 }
@@ -943,6 +957,12 @@ const chatSocket = io(import.meta.env.VITE_API_BASE_URL, {
 
 chatSocket.on('test_prompt_response', (data) => {
   testPromptResponse.value += data.content;
+  // Scroll automatisch nach unten beim Streaming
+  nextTick(() => {
+    if (responseContainer.value) {
+      responseContainer.value.scrollTop = responseContainer.value.scrollHeight;
+    }
+  });
   if (data.complete) {
     testResponseComplete.value = true;
   }
@@ -1329,6 +1349,19 @@ chatSocket.on('test_prompt_response', (data) => {
 .stream-indicator {
   margin-top: 8px;
   font-weight: bold;
+}
+
+/* QoL: Toggle-Button für komprimiertes Prompt */
+.toggle-button {
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  margin-bottom: 12px;
+  padding: 0;
+}
+.toggle-button:hover {
+  text-decoration: underline;
 }
 
 </style>

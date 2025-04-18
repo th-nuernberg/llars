@@ -452,6 +452,8 @@ def configure_socket_routes(socketio, verbose=True):
     @socketio.on('test_prompt_stream')
     def handle_test_prompt_stream(data):
         client_id = request.sid
+        # Debug logging: incoming test prompt stream request
+        logging.info(f"handle_test_prompt_stream called. SID={client_id}, data={data}")
         user_prompt = data.get('prompt', '')
 
         # Initialize vLLM client
@@ -465,16 +467,19 @@ def configure_socket_routes(socketio, verbose=True):
             messages = [{"role": "user", "content": user_prompt}]
             # Optionaler JSON Mode: erzwungenes strukturierte JSON-Antworten
             json_mode = data.get('jsonMode', True)
+            logging.info(f"handle_test_prompt_stream: JSON Mode = {json_mode}")
             # Bereite extra_body vor, nur wenn JSON Mode aktiviert
             if json_mode:
-                # Leere JSON-Schema (erlaubt jedes JSON), mit geführter Decodierung
+                # Leeres JSON-Schema, guided_json forced
                 extra_body = {
                     "guided_json": {},
                     "guided_decoding_backend": "outlines"
                 }
                 extra_kwargs = {"extra_body": extra_body}
+                logging.info(f"handle_test_prompt_stream: extra_kwargs={extra_kwargs}")
             else:
                 extra_kwargs = {}
+                logging.info("handle_test_prompt_stream: JSON Mode disabled, no extra_kwargs")
             # Stream test completion
             stream = client.chat.completions.create(
                 model="mistralai/Mistral-Small-3.1-24B-Instruct-2503",

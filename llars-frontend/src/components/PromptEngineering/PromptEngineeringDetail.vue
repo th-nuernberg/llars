@@ -138,31 +138,12 @@
   </div>
 
   <!-- Dialog zum Testen des gesamten Prompts -->
-  <div v-if="showTestPromptDialog" class="dialog-overlay">
-    <div class="dialog-box test-prompt-dialog">
-      <h3>Prompt testen</h3>
-      <!-- JSON Mode Checkbox -->
-      <v-switch v-model="testJsonMode" label="JSON Mode" class="mb-4" :color="testJsonMode ? 'success' : 'error'" />
-      <!-- Komprimierte Prompt-Anzeige mit Ausklappfunktion -->
-      <p><strong>Gesendetes Prompt:</strong></p>
-      <pre>{{ promptCollapsed ? collapsedPrompt : testPrompt }}</pre>
-      <button class="toggle-button" @click="promptCollapsed = !promptCollapsed">
-        {{ promptCollapsed ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-      </button>
-      <p><strong>Antwort:</strong></p>
-      <div class="response-stream" ref="responseContainer">
-        <pre>{{ testPromptResponse }}</pre>
-        <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
-      </div>
-      <div class="dialog-buttons">
-        <button class="cancel-button" @click="closeTestPromptDialog">Schließen</button>
-      </div>
-    </div>
-  </div>
+  <TestPromptDialog v-model="showTestPromptDialog" :prompt="assemblePrompt()" />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import TestPromptDialog from './TestPromptDialog.vue';
 import { useRoute } from 'vue-router';
 import * as Y from 'yjs';
 import { QuillBinding } from 'y-quill';
@@ -912,61 +893,18 @@ onUnmounted(() => {
   socket?.disconnect();
   ydoc?.destroy();
 });
-// Test Prompt Streaming
+// Visibility for Test Prompt Dialog
 const showTestPromptDialog = ref(false);
-const testPrompt = ref('');
-const testPromptResponse = ref('');
-const testResponseComplete = ref(false);
-// JSON Mode für Test Prompt
-const testJsonMode = ref(true);
-// QoL: Komprimierte Prompt-Anzeige im Test-Dialog
-const promptCollapsed = ref(true);
-const collapsedPrompt = computed(() => {
-  const lines = testPrompt.value.split('\n');
-  if (lines.length <= 3) return testPrompt.value;
-  return lines.slice(0, 3).join('\n') + '\n...';
-});
-// Ref für automatisches Scrollen der Antwort
-const responseContainer = ref(null);
 
 function assemblePrompt() {
   return sortedBlocks.value.map(b => b.content.toString()).join('\n\n');
 }
 
 function openTestPromptDialog() {
-  testPrompt.value = assemblePrompt();
-  testPromptResponse.value = '';
-  testResponseComplete.value = false;
-  testJsonMode.value = true;
-  promptCollapsed.value = true;
   showTestPromptDialog.value = true;
-  chatSocket.emit('test_prompt_stream', { prompt: testPrompt.value, jsonMode: testJsonMode.value });
 }
 
-function closeTestPromptDialog() {
-  showTestPromptDialog.value = false;
-}
-
-// Chat socket for testing prompt
-const chatSocket = io(import.meta.env.VITE_API_BASE_URL, {
-  path: '/socket.io/',
-  transports: ['websocket'],
-  query: { username },
-  headers: { 'Content-Type': 'application/json; charset=utf-8' }
-});
-
-chatSocket.on('test_prompt_response', (data) => {
-  testPromptResponse.value += data.content;
-  // Scroll automatisch nach unten beim Streaming
-  nextTick(() => {
-    if (responseContainer.value) {
-      responseContainer.value.scrollTop = responseContainer.value.scrollHeight;
-    }
-  });
-  if (data.complete) {
-    testResponseComplete.value = true;
-  }
-});
+// (Test prompt streaming logic moved to TestPromptDialog.vue)
 </script>
 
 <style scoped>

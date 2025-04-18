@@ -463,10 +463,18 @@ def configure_socket_routes(socketio, verbose=True):
         )
         try:
             messages = [{"role": "user", "content": user_prompt}]
-            # Optionaler JSON Mode
+            # Optionaler JSON Mode: erzwungenes strukturierte JSON-Antworten
             json_mode = data.get('jsonMode', True)
             # Bereite extra_body vor, nur wenn JSON Mode aktiviert
-            extra_kwargs = {"extra_body": {"guided_json": {}}} if json_mode else {}
+            if json_mode:
+                # Leere JSON-Schema (erlaubt jedes JSON), mit geführter Decodierung
+                extra_body = {
+                    "guided_json": {},
+                    "guided_decoding_backend": "outlines"
+                }
+                extra_kwargs = {"extra_body": extra_body}
+            else:
+                extra_kwargs = {}
             # Stream test completion
             stream = client.chat.completions.create(
                 model="mistralai/Mistral-Small-3.1-24B-Instruct-2503",

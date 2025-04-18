@@ -38,6 +38,11 @@
         <v-icon class="button-icon">mdi-download</v-icon>
         Download Prompt
       </button>
+      <!-- Copy Prompt Button -->
+      <button @click="copyPrompt" class="action-button copy-button">
+        <v-icon class="button-icon">mdi-content-copy</v-icon>
+        Copy Prompt
+      </button>
 
       <button @click="triggerJsonUpload" class="action-button upload-button">
         <v-icon class="button-icon">mdi-upload</v-icon>
@@ -116,6 +121,12 @@
           </div>
         </div>
       </div>
+    </Teleport>
+    <!-- Snackbar für kopiertes Prompt -->
+    <Teleport to="body">
+      <v-snackbar v-model="showCopySnackbar" :timeout="2000" color="success">
+        Prompt kopiert!
+      </v-snackbar>
     </Teleport>
   </div>
 </template>
@@ -285,6 +296,7 @@ const unsharePromptWithUser = async (usernameToRemove) => {
 
 
 const showPreview = ref(false);
+const showCopySnackbar = ref(false);
 
 // Neue computed property für sortierte Blöcke
 const sortedBlocks = computed(() => {
@@ -337,6 +349,24 @@ const downloadPrompt = () => {
   // Cleanup: Entferne das Element und die URL
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
+};
+
+// Copy Prompt to Clipboard as JSON file
+const copyPrompt = async () => {
+  const promptData = {};
+  sortedBlocks.value.forEach(block => {
+    const content = getBlockContent(block).trim();
+    promptData[block.title] = content;
+  });
+  const jsonStr = JSON.stringify(promptData, null, 2);
+  const sanitizeFilename = (name) => name.replace(/[^a-z0-9_\-]/gi, '_');
+  const file = new File([jsonStr], `${sanitizeFilename(props.promptName || 'prompt')}.json`, { type: 'application/json' });
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'application/json': file })]);
+  } catch (err) {
+    await navigator.clipboard.writeText(jsonStr);
+  }
+  showCopySnackbar.value = true;
 };
 
 
@@ -519,6 +549,13 @@ const goToOverview = () => {
   background-color: #aa9768;
 }
 
+.copy-button {
+  background-color: #D1BC8A;
+}
+.copy-button:hover {
+  background-color: #aa9768;
+}
+
 
 .users-list {
   background-color: white;
@@ -625,6 +662,20 @@ const goToOverview = () => {
   color: #e74c3c;
   font-size: 0.85rem;
   margin-top: 8px;
+}
+
+.test-prompt-button{
+  background-color: #81b68b;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.test-prompt-button:hover {
+  background-color: #6ca077;
 }
 
 /* Neue computed property für sortierte Blöcke */

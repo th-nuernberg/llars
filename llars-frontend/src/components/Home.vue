@@ -50,7 +50,7 @@ const items = ref([
   { title: 'Ranking', description: 'Ranken Sie Ihre Daten', route: '/ranker', icon: 'mdi-chart-bar-stacked', elevation: 1, disabled: false, hide: false },
   { title: 'Verlaufsbewertung', description: 'Bewertung von KI generierten Mail-Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-timeline-text-outline', elevation: 1, disabled: false, hide: false },
   { title: 'Rating', description: 'Raten Sie Ihre Daten', route: '/rater', icon: 'mdi-star-outline', elevation: 1, disabled: true, hide: true },
-  { title: 'Chatbot (Alpha)', description: "Chaten mit LLars", route: '/chat', icon: 'mdi-laptop-account', elevation: 1, disabled: true, hide: false},
+  { title: 'Chatbot (Alpha)', description: "Chaten mit LLars", route: '/chat', icon: 'mdi-laptop-account', elevation: 1, disabled: false, hide: false},
   { title: 'Labeling', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-label-outline', elevation: 1, disabled: true, hide: true },
   { title: 'Prompt Engineering (Beta)', description: "Kollaboratives entwerfen von Prompts", route: '/promptengineering', icon: 'mdi-text-search', elevation: 1, disabled: false, hide: false},
 ]);

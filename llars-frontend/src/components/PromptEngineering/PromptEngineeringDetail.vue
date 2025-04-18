@@ -159,13 +159,13 @@ const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
 // QuillCursors-Registrierung
 Quill.register('modules/cursors', QuillCursors);
-// Custom Placeholder Blot für Hervorhebung
-const Inline = Quill.import('blots/inline');
-class PlaceholderBlot extends Inline {}
-PlaceholderBlot.blotName = 'placeholder';
-PlaceholderBlot.tagName = 'span';
-PlaceholderBlot.className = 'placeholder-highlight';
-Quill.register(PlaceholderBlot);
+  // Custom Highlight Blot für Hervorhebung von Platzhaltern
+  const Inline = Quill.import('blots/inline');
+  class HighlightBlot extends Inline {}
+  HighlightBlot.blotName = 'highlight';
+  HighlightBlot.tagName = 'span';
+  HighlightBlot.className = 'placeholder-highlight';
+  Quill.register(HighlightBlot);
 
 const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
@@ -515,8 +515,6 @@ const fetchPromptDetails = async () => {
   }
 };
 
-// Snackbar nach 3 Sek. ausblenden
-
 /**
  * Watch und Lifecycle Hooks
  */
@@ -617,6 +615,22 @@ const processYDoc = () => {
   });
 
   blocks.value = newBlocks;
+
+  // Delay to ensure the editors are initialized before highlighting
+  setTimeout(() => {
+    editors.value.forEach(editor => {
+      // Apply highlighting to each editor
+      if (editor) {
+        const text = editor.getText();
+        const placeholder = '{{complete_email_history}}';
+        let idx = text.indexOf(placeholder);
+        while (idx !== -1) {
+          editor.formatText(idx, placeholder.length, 'placeholder', true, Quill.sources.API);
+          idx = text.indexOf(placeholder, idx + placeholder.length);
+        }
+      }
+    });
+  }, 100);
 };
 
 /**
@@ -665,9 +679,6 @@ const handleSelectionChange = (blockId) => {
 
 /**
  * Editor für einen Block initialisieren
- */
-/**
- * Initialisiert den Quill-Editor für einen Block und richtet Hervorhebung ein
  */
 const initializeEditor = async (block) => {
   await nextTick();
@@ -719,8 +730,10 @@ const initializeEditor = async (block) => {
     theme: 'snow',
     placeholder: `Start editing ${block.title}...`
   });
+
   // Flag zur Vermeidung von Rekursion bei Formatierungen
   let inPlaceholderHighlight = false;
+
   /**
    * Hebt alle Vorkommen von {{complete_email_history}} hervor
    */
@@ -741,8 +754,12 @@ const initializeEditor = async (block) => {
       inPlaceholderHighlight = false;
     }
   }
-  // Nach jeder Text-Änderung Hervorhebung aktualisieren
-  editor.on('text-change', () => highlightPlaceholders());
+
+  // Hervorhebung nach Yjs-Updates (inkl. lokaler Nutzereingabe)
+  ytext.observe(() => {
+    // Nach Quill-Update neu highlighten
+    setTimeout(() => highlightPlaceholders(), 0);
+  });
 
   // Speichere Referenz zum Cursors Module
   const cursorsModule = editor.getModule('cursors');
@@ -752,29 +769,35 @@ const initializeEditor = async (block) => {
   const binding = new QuillBinding(ytext, editor, null, {
     preserveCursor: true
   });
+
   // Initiale Hervorhebung nach Laden des Inhalts
   highlightPlaceholders();
 
   // Selection-Change-Handler
   editor.on('selection-change', handleSelectionChange(block.id));
 
-  // Text-Change-Handler
+  // Text-Change-Handler: Bei Nutzereingabe Yjs-Text aktualisieren
   editor.on('text-change', (delta, oldDelta, source) => {
     if (source === 'user') {
       ydoc.transact(() => {
-        const blocksMap = ydoc.getMap('blocks');
-        const blockMap = blocksMap.get(block.id);
-        const ytext = blockMap.get('content');
-        ytext.applyDelta(delta);
-        const update = Y.encodeStateAsUpdate(ydoc);
+        const blocksMap2 = ydoc.getMap('blocks');
+        const blockMap2 = blocksMap2.get(block.id);
+        blockMap2.get('content').applyDelta(delta);
+        const update2 = Y.encodeStateAsUpdate(ydoc);
         if (socket?.connected) {
           socket.emit('sync_update', {
             room: roomId.value,
-            update: Array.from(update)
+            update: Array.from(update2)
           });
         }
       });
     }
+  });
+
+  // Observe Yjs text updates to ensure highlighting is maintained
+  ytext.observe(() => {
+    // Use setTimeout to ensure this runs after Quill has been updated
+    setTimeout(() => highlightPlaceholders(), 0);
   });
 
   editors.value.set(block.id, editor);
@@ -1069,6 +1092,16 @@ function openTestPromptDialog() {
   border-radius: 8px;
   min-width: 320px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Platzhalter-Hervorhebung in Quill-Editor */
+:deep(.placeholder-highlight) {
+  background-color: #fff176; /* sanftes Gelb */
+  padding: 0 2px;
+  border-radius: 2px;
+  border: 1px solid #ffd600;
+  display: inline-block;
+  font-weight: 500;
 }
 
 .dialog-box h3 {

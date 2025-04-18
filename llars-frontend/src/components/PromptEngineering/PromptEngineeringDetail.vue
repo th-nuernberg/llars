@@ -17,10 +17,6 @@
 
     <div class="main-content">
       <h1 class="prompt-title">{{ promptName }}</h1>
-      <v-btn color="secondary" class="test-prompt-button mb-4" @click="openTestPromptDialog">
-        <v-icon left>mdi-rocket</v-icon>
-        Prompt testen
-      </v-btn>
 
       <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
       <div v-if="showAddBlockDialog" class="dialog-overlay">

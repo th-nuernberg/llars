@@ -159,6 +159,13 @@ const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
 // QuillCursors-Registrierung
 Quill.register('modules/cursors', QuillCursors);
+// Custom Placeholder Blot für Hervorhebung
+const Inline = Quill.import('blots/inline');
+class PlaceholderBlot extends Inline {}
+PlaceholderBlot.blotName = 'placeholder';
+PlaceholderBlot.tagName = 'span';
+PlaceholderBlot.className = 'placeholder-highlight';
+Quill.register(PlaceholderBlot);
 
 const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
@@ -659,6 +666,9 @@ const handleSelectionChange = (blockId) => {
 /**
  * Editor für einen Block initialisieren
  */
+/**
+ * Initialisiert den Quill-Editor für einen Block und richtet Hervorhebung ein
+ */
 const initializeEditor = async (block) => {
   await nextTick();
 
@@ -709,6 +719,30 @@ const initializeEditor = async (block) => {
     theme: 'snow',
     placeholder: `Start editing ${block.title}...`
   });
+  // Flag zur Vermeidung von Rekursion bei Formatierungen
+  let inPlaceholderHighlight = false;
+  /**
+   * Hebt alle Vorkommen von {{complete_email_history}} hervor
+   */
+  function highlightPlaceholders() {
+    if (inPlaceholderHighlight) return;
+    inPlaceholderHighlight = true;
+    try {
+      const placeholder = '{{complete_email_history}}';
+      // Entferne alte Hervorhebungen
+      editor.formatText(0, editor.getLength(), 'placeholder', false, Quill.sources.API);
+      const text = editor.getText();
+      let idx = text.indexOf(placeholder);
+      while (idx !== -1) {
+        editor.formatText(idx, placeholder.length, 'placeholder', true, Quill.sources.API);
+        idx = text.indexOf(placeholder, idx + placeholder.length);
+      }
+    } finally {
+      inPlaceholderHighlight = false;
+    }
+  }
+  // Nach jeder Text-Änderung Hervorhebung aktualisieren
+  editor.on('text-change', () => highlightPlaceholders());
 
   // Speichere Referenz zum Cursors Module
   const cursorsModule = editor.getModule('cursors');
@@ -718,6 +752,8 @@ const initializeEditor = async (block) => {
   const binding = new QuillBinding(ytext, editor, null, {
     preserveCursor: true
   });
+  // Initiale Hervorhebung nach Laden des Inhalts
+  highlightPlaceholders();
 
   // Selection-Change-Handler
   editor.on('selection-change', handleSelectionChange(block.id));
@@ -730,7 +766,6 @@ const initializeEditor = async (block) => {
         const blockMap = blocksMap.get(block.id);
         const ytext = blockMap.get('content');
         ytext.applyDelta(delta);
-
         const update = Y.encodeStateAsUpdate(ydoc);
         if (socket?.connected) {
           socket.emit('sync_update', {

@@ -61,7 +61,8 @@ function formatHistory(data) {
     const [date, time] = parts;
     lines.push(`${msg.sender} schrieb am ${date} um ${time}: ${msg.content}`);
   }
-  return { text: lines.join('\n'), error: false };
+  // Füge Leerzeile zwischen einzelnen Nachrichten ein, um die Lesbarkeit zu erhöhen
+  return { text: lines.join('\n\n'), error: false };
 }
 // Beispiele aus JSON-Dateien laden und validieren
 const exampleModules = import.meta.glob('./examples/*.json', { eager: true });
@@ -348,44 +349,46 @@ function closeDialog() {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
 }
 .examples-list li {
-  margin: 0;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-.examples-list li.selected .example-select-button {
-  font-weight: bold;
-}
-.examples-list li.selected {
-  border-color: #3498db;
-}
-.example-select-button {
-  background: #eef;
-  border: 1px solid #ccd;
-  padding: 4px 8px;
-  margin-right: 8px;
-  cursor: pointer;
-  border-radius: 16px 4px 16px 4px;
-}
-.example-select-button:hover {
-  background: #dde;
-}
-.example-toggle-button {
-  background: #eef;
-  border: 1px solid #ccd;
-  padding: 4px 8px;
-  cursor: pointer;
-  margin-left: 8px;
-  border-radius: 16px 4px 16px 4px;
   display: inline-flex;
   align-items: center;
+  background: #f1f3f5;
+  border-radius: 24px;
+  padding: 4px;
 }
-
+.examples-list li.selected .example-select-button {
+  background-color: #3498db;
+  color: #fff;
+}
+.example-select-button {
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  color: #333;
+  transition: background-color 0.2s;
+}
+.example-select-button:hover {
+  background-color: #e2e6ea;
+}
+.example-toggle-button {
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #333;
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+}
 .example-toggle-button:hover {
-  background: #dde;
+  background-color: #e2e6ea;
 }
 .example-content {
   background: #eaf6ea;

@@ -463,7 +463,11 @@ def configure_socket_routes(socketio, verbose=True):
         )
         try:
             messages = [{"role": "user", "content": user_prompt}]
-            # Stream test completion with guided_json for JSON output
+            # Optionaler JSON Mode
+            json_mode = data.get('jsonMode', True)
+            # Bereite extra_body vor, nur wenn JSON Mode aktiviert
+            extra_kwargs = {"extra_body": {"guided_json": {}}} if json_mode else {}
+            # Stream test completion
             stream = client.chat.completions.create(
                 model="mistralai/Mistral-Small-3.1-24B-Instruct-2503",
                 messages=messages,
@@ -473,7 +477,7 @@ def configure_socket_routes(socketio, verbose=True):
                 frequency_penalty=0.3,
                 temperature=0.15,
                 stream=True,
-                extra_body={"guided_json": {}}
+                **extra_kwargs
             )
             for chunk in stream:
                 choice = chunk.choices[0]

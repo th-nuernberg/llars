@@ -43,6 +43,11 @@
         <v-icon class="button-icon">mdi-upload</v-icon>
         Upload Prompt
       </button>
+      <!-- Prompt testen Button -->
+      <button @click="$emit('triggerTestPrompt')" class="action-button test-prompt-button">
+        <v-icon class="button-icon">mdi-rocket</v-icon>
+        Prompt testen
+      </button>
 
       <input
         type="file"
@@ -157,7 +162,7 @@ const props = defineProps({
 const router = useRouter();
 
 // Ganz oben im <script setup>:
-const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails']);
+const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'triggerTestPrompt']);
 
 // Im sidebar.vue
 // wenn share/unshare erfolgreich war:

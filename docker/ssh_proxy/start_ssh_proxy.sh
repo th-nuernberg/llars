@@ -23,16 +23,16 @@ start_autossh() {
 
 # Funktion zum Überprüfen der Verbindung
 check_connection() {
-    RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8093/info)
+    RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8093/v1/models)
     HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
     RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
 
     if [ "$HTTP_STATUS" = "200" ]; then
-        echo "$(date): Successfully connected to localhost:8093/info" | tee -a $AUTOSSH_LOGFILE
+        echo "$(date): Successfully connected to localhost:8093/v1/models" | tee -a $AUTOSSH_LOGFILE
         echo "Response from server:" | tee -a $AUTOSSH_LOGFILE
         echo "$RESPONSE_BODY" | tee -a $AUTOSSH_LOGFILE
     else
-        echo "$(date): Failed to connect to localhost:8093/info" | tee -a $AUTOSSH_LOGFILE
+        echo "$(date): Failed to connect to localhost:8093/v1/models" | tee -a $AUTOSSH_LOGFILE
         echo "HTTP Status: $HTTP_STATUS" | tee -a $AUTOSSH_LOGFILE
         echo "Response from server:" | tee -a $AUTOSSH_LOGFILE
         echo "$RESPONSE_BODY" | tee -a $AUTOSSH_LOGFILE

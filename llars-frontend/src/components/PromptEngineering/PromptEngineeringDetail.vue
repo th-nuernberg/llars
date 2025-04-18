@@ -16,6 +16,10 @@
 
     <div class="main-content">
       <h1 class="prompt-title">{{ promptName }}</h1>
+      <v-btn color="secondary" class="test-prompt-button mb-4" @click="openTestPromptDialog">
+        <v-icon left>mdi-rocket</v-icon>
+        Prompt testen
+      </v-btn>
 
       <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
       <div v-if="showAddBlockDialog" class="dialog-overlay">
@@ -132,6 +136,23 @@
       <div v-if="isDevelopment" class="debug-info">
         <h4>Debug Information:</h4>
         <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialog zum Testen des gesamten Prompts -->
+  <div v-if="showTestPromptDialog" class="dialog-overlay">
+    <div class="dialog-box test-prompt-dialog">
+      <h3>Prompt testen</h3>
+      <p><strong>Gesendetes Prompt:</strong></p>
+      <pre>{{ testPrompt }}</pre>
+      <p><strong>Antwort:</strong></p>
+      <div class="response-stream">
+        <pre>{{ testPromptResponse }}</pre>
+        <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
+      </div>
+      <div class="dialog-buttons">
+        <button class="cancel-button" @click="closeTestPromptDialog">Schließen</button>
       </div>
     </div>
   </div>
@@ -888,6 +909,42 @@ onUnmounted(() => {
   socket?.disconnect();
   ydoc?.destroy();
 });
+// Test Prompt Streaming
+const showTestPromptDialog = ref(false);
+const testPrompt = ref('');
+const testPromptResponse = ref('');
+const testResponseComplete = ref(false);
+
+function assemblePrompt() {
+  return sortedBlocks.value.map(b => b.content.toString()).join('\n\n');
+}
+
+function openTestPromptDialog() {
+  testPrompt.value = assemblePrompt();
+  testPromptResponse.value = '';
+  testResponseComplete.value = false;
+  showTestPromptDialog.value = true;
+  chatSocket.emit('test_prompt_stream', { prompt: testPrompt.value });
+}
+
+function closeTestPromptDialog() {
+  showTestPromptDialog.value = false;
+}
+
+// Chat socket for testing prompt
+const chatSocket = io(import.meta.env.VITE_API_BASE_URL, {
+  path: '/socket.io/',
+  transports: ['websocket'],
+  query: { username },
+  headers: { 'Content-Type': 'application/json; charset=utf-8' }
+});
+
+chatSocket.on('test_prompt_response', (data) => {
+  testPromptResponse.value += data.content;
+  if (data.complete) {
+    testResponseComplete.value = true;
+  }
+});
 </script>
 
 <style scoped>
@@ -1235,6 +1292,41 @@ onUnmounted(() => {
 .delete-button:hover {
   background: rgba(255, 255, 255, 1);
   color: #e74c3c;
+}
+/* Styles für Test Prompt Dialog */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.dialog-box.test-prompt-dialog {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 80%;
+  max-height: 80%;
+  overflow: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.response-stream {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin-bottom: 12px;
+}
+.stream-indicator {
+  margin-top: 8px;
+  font-weight: bold;
 }
 
 </style>

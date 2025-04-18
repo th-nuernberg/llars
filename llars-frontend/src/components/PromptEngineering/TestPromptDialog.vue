@@ -165,6 +165,9 @@ function sendTestPrompt() {
   // Basis-Prompt mit Platzhalter ersetzt
   let promptString = props.prompt.split(placeholder).join(exampleText);
 
+  // Debug logging: JSON mode and prompt to send
+  console.log('[TestPromptDialog] Sending test prompt. JSON Mode:', testJsonMode.value);
+  console.log('[TestPromptDialog] Prompt to send:', promptString);
   chatSocket.emit('test_prompt_stream', {
     prompt: promptString,
     jsonMode: testJsonMode.value
@@ -193,6 +196,7 @@ watch(selectedExampleIndex, (newIdx) => {
 });
 // Wenn JSON Mode umgeschaltet wird: Prompt neu senden
 watch(testJsonMode, (newVal) => {
+  console.log('[TestPromptDialog] JSON Mode toggled:', newVal);
   if (props.modelValue) {
     testPromptResponse.value = '';
     testResponseComplete.value = false;

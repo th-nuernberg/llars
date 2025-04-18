@@ -10,10 +10,14 @@
             <button class="example-select-button" @click="selectedExampleIndex = idx">
               {{ ex.name }}<span v-if="ex.error" class="example-error"> !</span>
             </button>
-            <button class="example-toggle-button" @click="expandedExamples[idx] = !expandedExamples[idx]">
-              {{ expandedExamples[idx] ? 'Weniger anzeigen' : 'Mehr anzeigen' }}
+            <button class="example-toggle-button" @click="expandedExamples[idx] = !expandedExamples[idx]"
+                    :title="expandedExamples[idx] ? 'Weniger anzeigen' : 'Mehr anzeigen'">
+              <span v-if="expandedExamples[idx]">▲</span>
+              <span v-else>▼</span>
             </button>
-            <div v-if="expandedExamples[idx]" class="example-content"><pre>{{ JSON.stringify(ex.data, null, 2) }}</pre></div>
+            <div v-if="expandedExamples[idx]" class="example-content">
+              <pre class="sent-prompt">{{ ex.formatted }}</pre>
+            </div>
           </li>
         </ul>
       </div>
@@ -29,6 +33,7 @@
         <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
       </div>
       <div class="dialog-buttons">
+        <button class="regen-button" @click="regenerate">Erneut generieren</button>
         <button class="cancel-button" @click="closeDialog">Schließen</button>
       </div>
     </div>
@@ -103,11 +108,13 @@ const replacedPrompt = computed(() => {
   const exampleText = selectedExampleFormatted.value;
   return props.prompt.split(placeholder).join(exampleText);
 });
-// QoL: Komprimierte Anzeige des ersetzten Prompts
+// QoL: Komprimierte Anzeige des ersetzten Prompts (erste und letzte 50 Zeichen)
 const collapsedPrompt = computed(() => {
-  const lines = replacedPrompt.value.split('\n');
-  if (lines.length <= 3) return replacedPrompt.value;
-  return lines.slice(0, 3).join('\n') + '\n...';
+  const text = replacedPrompt.value;
+  if (text.length <= 100) return text;
+  const firstPart = text.slice(0, 50);
+  const lastPart = text.slice(-50);
+  return `${firstPart}...${lastPart}`;
 });
 
 const testPromptResponse = ref('');
@@ -217,6 +224,11 @@ chatSocket.on('test_prompt_response', (data) => {
     testResponseComplete.value = true;
   }
 });
+function regenerate() {
+  testPromptResponse.value = '';
+  testResponseComplete.value = false;
+  sendTestPrompt();
+}
 
 function closeDialog() {
   emit('update:modelValue', false);
@@ -316,6 +328,15 @@ function closeDialog() {
 .dialog-buttons .cancel-button:hover {
   background-color: #7e7e7e;
 }
+
+.dialog-buttons .regen-button {
+  background-color: #3498db;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+.dialog-buttons .regen-button:hover {
+  background-color: #217dbb;
+}
 /* Styles für Beispiele-Auswahl */
 .examples-section {
   border-bottom: 1px solid #ddd;
@@ -325,12 +346,21 @@ function closeDialog() {
 .examples-list {
   list-style: none;
   padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .examples-list li {
-  margin-bottom: 8px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 .examples-list li.selected .example-select-button {
   font-weight: bold;
+}
+.examples-list li.selected {
+  border-color: #3498db;
 }
 .example-select-button {
   background: #eef;
@@ -338,22 +368,29 @@ function closeDialog() {
   padding: 4px 8px;
   margin-right: 8px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 16px 4px 16px 4px;
 }
 .example-select-button:hover {
   background: #dde;
 }
 .example-toggle-button {
-  background: none;
-  border: none;
-  color: #3498db;
+  background: #eef;
+  border: 1px solid #ccd;
+  padding: 4px 8px;
   cursor: pointer;
-  margin-left: 4px;
+  margin-left: 8px;
+  border-radius: 16px 4px 16px 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.example-toggle-button:hover {
+  background: #dde;
 }
 .example-content {
-  background: #f9f9f9;
+  background: #eaf6ea;
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid #81b68b;
   border-radius: 4px;
   margin-top: 4px;
   max-height: 200px;

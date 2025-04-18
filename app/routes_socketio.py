@@ -3,6 +3,7 @@ from flask_socketio import emit, join_room, leave_room
 from flask import request
 import json
 import requests
+from openai import OpenAI
 import logging
 import random
 from prompt_manager import PromptManager
@@ -350,7 +351,7 @@ def configure_socket_routes(socketio, verbose=True):
 
         try:
             user_message = data.get("message", "").encode('utf-8').decode('utf-8')
-            temperature = data.get("temperature", 0.6)
+            temperature = data.get("temperature", 0.15)
 
             # Command Handling
             if user_message.strip().startswith('/'):
@@ -400,66 +401,45 @@ def configure_socket_routes(socketio, verbose=True):
                 chat_history=chat_history
             )
 
-            payload = {
-                "inputs": formatted_input,
-                "parameters": {
-                    "temperature": temperature,
-                    "max_new_tokens": chat_manager.prompt_manager.max_new_tokens,
-                    "top_p": 0.95,
-                    "top_k": 50,
-                    "repetition_penalty": 1.1,
-                    "do_sample": True,
-                    "return_full_text": False,
-                    "stop": ["[INST]", "</s>"]
-                }
-            }
-
-            response = requests.post(
-                f"http://{ssh_container}:{ssh_container_port}/generate_stream",
-                json=payload,
-                stream=True,
-                timeout=30,
-                headers={'Content-Type': 'application/json; charset=utf-8'}
+            # Use vLLM via the OpenAI-compatible interface
+            client = OpenAI(
+                api_key="EMPTY",
+                base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
             )
 
-            response.encoding = 'utf-8'
-            if response.status_code == 200:
-                assistant_message = ""
-                for line in response.iter_lines(decode_unicode=True):
-                    if line and line.startswith("data:"):
-                        try:
-                            json_data = json.loads(line[5:])
+            assistant_message = ""
+            # Stream chat completion from vLLM
+            stream = client.chat.completions.create(
+                model="mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+                messages=[{"role": "user", "content": formatted_input}],
+                temperature=temperature,
+                max_tokens=chat_manager.prompt_manager.max_new_tokens,
+                stream=True
+            )
 
-                            if json_data.get("generated_text"):
-                                final_text = json_data["generated_text"]
-                                assistant_message += final_text
-                                chat_manager.add_to_history(client_id, "assistant", assistant_message)
-                                emit("chat_response", {
-                                    "content": final_text,
-                                    "complete": True,
-                                    "sender": "bot"
-                                }, room=client_id)
-                                break
+            for chunk in stream:
+                choice = chunk.choices[0]
+                delta = choice.delta
+                content = getattr(delta, "content", "")
+                if content:
+                    assistant_message += content
+                    emit("chat_response", {
+                        "content": content,
+                        "complete": False,
+                        "sender": "bot"
+                    }, room=client_id)
 
-                            if "token" in json_data and "text" in json_data["token"]:
-                                content = json_data["token"]["text"].encode('utf-8').decode('utf-8')
-                                assistant_message += content
-                                emit("chat_response", {
-                                    "content": content,
-                                    "complete": False,
-                                    "sender": "bot"
-                                }, room=client_id)
+                # If this chunk signals the end of the stream, emit completion
+                if getattr(choice, "finish_reason", None) is not None:
+                    emit("chat_response", {
+                        "content": "",
+                        "complete": True,
+                        "sender": "bot"
+                    }, room=client_id)
+                    break
 
-                        except json.JSONDecodeError:
-                            logging.warning(f"Failed to parse JSON: {line}")
-                            continue
-                else:
-                    # Add assistant message to history if not already added
-                    if assistant_message:
-                        chat_manager.add_to_history(client_id, "assistant", assistant_message)
-            else:
-                logging.error(f"Error response from LLM service: {response.status_code}")
-                send_error_message()
+            # Persist the full assistant response
+            chat_manager.add_to_history(client_id, "assistant", assistant_message)
 
         except requests.RequestException as e:
             logging.error(f"Request exception: {e}")

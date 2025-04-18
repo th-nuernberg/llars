@@ -7,7 +7,9 @@
         <h4>Beispiele:</h4>
         <ul class="examples-list">
           <li v-for="(ex, idx) in examples" :key="idx" :class="{ selected: idx === selectedExampleIndex }">
-            <button class="example-select-button" @click="selectedExampleIndex = idx">{{ ex.name }}</button>
+            <button class="example-select-button" @click="selectedExampleIndex = idx">
+              {{ ex.name }}<span v-if="ex.error" class="example-error"> !</span>
+            </button>
             <button class="example-toggle-button" @click="expandedExamples[idx] = !expandedExamples[idx]">
               {{ expandedExamples[idx] ? 'Weniger anzeigen' : 'Mehr anzeigen' }}
             </button>
@@ -17,7 +19,7 @@
       </div>
       <v-switch v-model="testJsonMode" label="JSON Mode" class="mb-4" :color="testJsonMode ? 'success' : 'error'" />
       <p><strong>Gesendetes Prompt:</strong></p>
-      <pre class="sent-prompt">{{ promptCollapsed ? collapsedPrompt : replacedPrompt }}</pre>
+      <pre class="sent-prompt" v-html="promptHighlighted"></pre>
       <button class="toggle-button" @click="promptCollapsed = !promptCollapsed">
         {{ promptCollapsed ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
       </button>
@@ -35,19 +37,42 @@
 
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue';
-// Beispiele aus JSON-Dateien laden
+// Hilfsfunktion: formatiert JSON-Daten zur E-Mail-Historie oder markiert Fehler
+function formatHistory(data) {
+  const requiredTop = ['type','chat_id','institut_id','subject','sender','total_messages','messages'];
+  for (const key of requiredTop) {
+    if (!(key in data)) return { text: '', error: true };
+  }
+  if (!Array.isArray(data.messages)) return { text: '', error: true };
+  const lines = [];
+  for (const msg of data.messages) {
+    const requiredMsg = ['message_id','sender','content','timestamp','generated_by'];
+    for (const mk of requiredMsg) {
+      if (!(mk in msg)) return { text: '', error: true };
+    }
+    const ts = msg.timestamp;
+    const parts = ts.split(' ');
+    if (parts.length !== 2) return { text: '', error: true };
+    const [date, time] = parts;
+    lines.push(`${msg.sender} schrieb am ${date} um ${time}: ${msg.content}`);
+  }
+  return { text: lines.join('\n'), error: false };
+}
+// Beispiele aus JSON-Dateien laden und validieren
 const exampleModules = import.meta.glob('./examples/*.json', { eager: true });
 const examples = Object.entries(exampleModules).map(([path, module]) => {
   const data = module.default || module;
   const name = data.subject || data.id || path.split('/').pop().replace('.json', '');
-  return { name, data };
+  const { text: formatted, error } = formatHistory(data);
+  return { name, data, formatted, error };
 });
 // State für ausgeklappte Beispiele
 const expandedExamples = ref(examples.map(() => false));
-// Ausgewähltes Beispiel
+// Ausgewähltes Beispiel (Index)
 const selectedExampleIndex = ref(0);
-// Computed für gerade ausgewähltes Beispiel
-const selectedExampleData = computed(() => examples[selectedExampleIndex.value].data);
+// Computed für formatierten Text und Fehlerindikator des gewählten Beispiels
+const selectedExampleFormatted = computed(() => examples[selectedExampleIndex.value].formatted);
+const selectedExampleError = computed(() => examples[selectedExampleIndex.value].error);
 import { io } from 'socket.io-client';
 
 const props = defineProps({
@@ -72,11 +97,11 @@ const chatSocket = io(import.meta.env.VITE_API_BASE_URL, {
 
 const testJsonMode = ref(true);
 const promptCollapsed = ref(true);
-// Prompt mit Beispiel ersetzen
+// Prompt mit formatiertem Beispiel ersetzen
 const replacedPrompt = computed(() => {
   const placeholder = '{{complete_email_history}}';
-  const exampleJson = JSON.stringify(selectedExampleData.value);
-  return props.prompt.split(placeholder).join(exampleJson);
+  const exampleText = selectedExampleFormatted.value;
+  return props.prompt.split(placeholder).join(exampleText);
 });
 // QoL: Komprimierte Anzeige des ersetzten Prompts
 const collapsedPrompt = computed(() => {
@@ -87,14 +112,59 @@ const collapsedPrompt = computed(() => {
 
 const testPromptResponse = ref('');
 const testResponseComplete = ref(false);
+// Ref auf das Container-Element, in dem der LLM-Output scrollt
 const responseContainer = ref(null);
+/** HTML-Escaping */
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+/** Regex-Escaping */
+function escapeRegex(str) {
+  return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+}
+/**
+ * Hebt im Prompt den eingesetzten Beispieltext hervor
+ */
+const promptHighlighted = computed(() => {
+  const text = promptCollapsed.value ? collapsedPrompt.value : replacedPrompt.value;
+  const exampleText = selectedExampleFormatted.value;
+  // Escape alles
+  const escaped = escapeHtml(text);
+  if (!exampleText) {
+    return escaped.replace(/\n/g, '<br/>');
+  }
+  const escapedExample = escapeHtml(exampleText);
+  const pattern = new RegExp(escapeRegex(escapedExample), 'g');
+  const highlighted = escaped.replace(pattern, `<span class=\"example-highlight\">${escapedExample}</span>`);
+  return highlighted.replace(/\n/g, '<br/>');
+});
+// Flag, ob automatisch nach unten gescrollt werden soll
+const follow = ref(true);
+// Scroll-Handler, pausiert Follow, wenn der User manuell scrollt
+watch(responseContainer, (el) => {
+  if (el) {
+    el.addEventListener('scroll', () => {
+      const threshold = 10;
+      // Wenn innerhalb threshold zum unteren Ende, Follow=true, sonst false
+      if (el.scrollHeight - el.scrollTop - el.clientHeight <= threshold) {
+        follow.value = true;
+      } else {
+        follow.value = false;
+      }
+    });
+  }
+});
 /**
  * Sendet das Prompt an den Server, ersetzt {{complete_email_history}} mit dem ausgewählten Beispiel
  */
 function sendTestPrompt() {
   const placeholder = '{{complete_email_history}}';
-  const exampleJson = JSON.stringify(selectedExampleData.value);
-  const promptString = props.prompt.split(placeholder).join(exampleJson);
+  const exampleText = selectedExampleFormatted.value;
+  // Basis-Prompt mit Platzhalter ersetzt
+  let promptString = props.prompt.split(placeholder).join(exampleText);
+
   chatSocket.emit('test_prompt_stream', {
     prompt: promptString,
     jsonMode: testJsonMode.value
@@ -121,11 +191,21 @@ watch(selectedExampleIndex, (newIdx) => {
     sendTestPrompt();
   }
 });
+// Wenn JSON Mode umgeschaltet wird: Prompt neu senden
+watch(testJsonMode, (newVal) => {
+  if (props.modelValue) {
+    testPromptResponse.value = '';
+    testResponseComplete.value = false;
+    promptCollapsed.value = true;
+    sendTestPrompt();
+  }
+});
 
 chatSocket.on('test_prompt_response', (data) => {
   testPromptResponse.value += data.content;
   nextTick(() => {
-    if (responseContainer.value) {
+    // Automatisch scrollen, wenn Follow nicht pausiert
+    if (follow.value && responseContainer.value) {
       responseContainer.value.scrollTop = responseContainer.value.scrollHeight;
     }
   });
@@ -140,10 +220,16 @@ function closeDialog() {
 </script>
 
 <style scoped>
+.example-error {
+  color: #e74c3c;
+  font-weight: bold;
+  margin-left: 4px;
+}
 .sent-prompt {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  word-break: break-all;
+  white-space: pre-wrap;       /* Umbrüche bei Zeilenende und Whitespaces erlauben */
+  word-break: normal;         /* Keine Zwangsumbrüche innerhalb von Wörtern */
+  overflow-wrap: break-word;  /* Lange Wörter bei Bedarf umbrechen */
+  hyphens: auto;              /* Silbentrennung, falls verfügbar */
   max-width: 100%;
 }
 .dialog-overlay {
@@ -268,5 +354,9 @@ function closeDialog() {
   margin-top: 4px;
   max-height: 200px;
   overflow: auto;
+}
+/* Highlight für eingesetzte Beispieldaten */
+:deep(.example-highlight) {
+  background-color: #81b68b;
 }
 </style>

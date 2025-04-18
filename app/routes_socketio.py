@@ -448,3 +448,54 @@ def configure_socket_routes(socketio, verbose=True):
         except Exception as e:
             logging.error(f"Unexpected error: {e}")
             send_error_message()
+
+    @socketio.on('test_prompt_stream')
+    def handle_test_prompt_stream(data):
+        client_id = request.sid
+        user_prompt = data.get('prompt', '')
+
+        # Initialize vLLM client
+        ssh_container = "llars_docker_ssh_proxy_service"
+        ssh_container_port = "8093"
+        client = OpenAI(
+            api_key="EMPTY",
+            base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
+        )
+        try:
+            messages = [{"role": "user", "content": user_prompt}]
+            # Stream test completion with guided_json for JSON output
+            stream = client.chat.completions.create(
+                model="mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+                messages=messages,
+                max_tokens=4096,
+                n=1,
+                timeout=360.0,
+                frequency_penalty=0.3,
+                temperature=0.15,
+                stream=True,
+                extra_body={"guided_json": {}}
+            )
+            for chunk in stream:
+                choice = chunk.choices[0]
+                delta = choice.delta
+                content = getattr(delta, "content", "")
+                if content:
+                    emit(
+                        "test_prompt_response",
+                        {"content": content, "complete": False},
+                        room=client_id
+                    )
+                if getattr(choice, "finish_reason", None) is not None:
+                    emit(
+                        "test_prompt_response",
+                        {"content": "", "complete": True},
+                        room=client_id
+                    )
+                    break
+        except Exception as e:
+            logging.error(f"Test prompt stream error: {e}")
+            emit(
+                "test_prompt_response",
+                {"content": f"Error: {e}", "complete": True},
+                room=client_id
+            )

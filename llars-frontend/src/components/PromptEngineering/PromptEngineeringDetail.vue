@@ -141,6 +141,21 @@
   <TestPromptDialog v-model="showTestPromptDialog" :prompt="assemblePrompt()" />
 </template>
 
+<script>
+// Modul-Script: Registrierung von Quill-Erweiterungen nur einmal
+import Quill from 'quill';
+import QuillCursors from 'quill-cursors';
+import Inline from 'quill/blots/inline';
+
+// Register the cursors module
+Quill.register('modules/cursors', QuillCursors);
+// Register custom highlight blot for placeholders
+class HighlightBlot extends Inline {}
+HighlightBlot.blotName = 'highlight';
+HighlightBlot.tagName = 'span';
+HighlightBlot.className = 'placeholder-highlight';
+Quill.register(HighlightBlot);
+</script>
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
@@ -157,15 +172,6 @@ import sidebar from "@/components/PromptEngineering/sidebar.vue";
 
 const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
-// QuillCursors-Registrierung
-Quill.register('modules/cursors', QuillCursors);
-  // Custom Highlight Blot für Hervorhebung von Platzhaltern
-  const Inline = Quill.import('blots/inline');
-  class HighlightBlot extends Inline {}
-  HighlightBlot.blotName = 'highlight';
-  HighlightBlot.tagName = 'span';
-  HighlightBlot.className = 'placeholder-highlight';
-  Quill.register(HighlightBlot);
 
 const route = useRoute();
 const promptId = computed(() => route.params.id || 1);

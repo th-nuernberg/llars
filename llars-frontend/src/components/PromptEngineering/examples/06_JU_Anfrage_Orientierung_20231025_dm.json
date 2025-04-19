@@ -1,0 +1,24 @@
+{
+  "type": "mail_rating",
+  "chat_id": 6,
+  "institut_id": 0,
+  "subject": "hallo",
+  "sender": "Nico34",
+  "total_messages": 2,
+  "messages": [
+    {
+      "message_id": 1,
+      "sender": "Ratsuchend",
+      "content": "hmm hallo….\n\nalso hmm hab die adresse von einer freundin….\nhmm weiß eigendlich nich sogenau was ich schreiben soll….\nHmm weiß halt einfach nich wie ich anfangen soll….\n\nAlso hmm ich bin 15 alt….\n\nGibt da so ein paar probleme die ich mit der familie habe , hmm und die mit mir hmm\nKann man nicht sagen ähm schreiben….\n\nNaja ist jetzt vielleicht ein bisschen wenig kann aber nicht mehr schreiben….\nVielleicht wenn ihr zeit habt oder so könnt ihr mal antworten. Hmm wenn ihr wollte…\n\nhmm\nbis vielleicht mal\nNico",
+      "timestamp": "05.06.2020 11:39",
+      "generated_by": "human"
+    },
+    {
+      "message_id": 2,
+      "sender": "Beratend",
+      "content": "Hallo Nico,\n\nich bin bke-maria von der bke-Jugendberatung und habe deine mail erhalten.\n\nDu hast recht, es ist oftmals schwierig einen Anfang zu finden.\nVor allem bei Schwierigkeiten, die einen belasten und beschäftigen.\nOder die man vielleicht auch schon lange mit sich herumträgt.\nDie einen bedrängt haben und vielleicht auch ein Stück einsam.\n\nDarüber zu sprechen oder zu schreiben ist ein wichtiger Schritt. Ein Anfang. Aber eben ein nicht so ganz einfacher.\nAber es lohnt sich, diesen Anfang zu machen.\nWo auch immer.\nBei einem Menschen, den man kennt oder vertraut\nOder eben hier in der Anonymität einer Onlineberatung.\n\nIch wünsche dir ganz viel Mut\nUnd grüße dich herzlich.\n\nbke-maria",
+      "timestamp": "05.06.2020 16:10",
+      "generated_by": "human"
+    }
+  ]
+}

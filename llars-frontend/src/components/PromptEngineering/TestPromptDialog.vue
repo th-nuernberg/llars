@@ -21,7 +21,10 @@
           </li>
         </ul>
       </div>
-      <v-switch v-model="testJsonMode" label="JSON Mode" class="mb-4" :color="testJsonMode ? 'success' : 'error'" />
+      <div class="mb-4" style="display: flex; align-items: center;">
+        <v-switch v-model="testJsonMode" label="JSON Mode" :color="testJsonMode ? 'success' : 'error'" />
+        <v-switch v-model="testSngMode" label="SNG" style="margin-left: 16px;" :color="testSngMode ? 'success' : 'error'" />
+      </div>
       <div v-if="testJsonMode" class="mb-4">
         <p><strong>JSON Schema:</strong></p>
         <textarea v-model="jsonSchemaInput" rows="6" style="width:100%; font-family: monospace;" placeholder="{}"></textarea>
@@ -32,9 +35,28 @@
         {{ promptCollapsed ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
       </button>
       <p><strong>Antwort:</strong></p>
-      <div class="response-stream" ref="responseContainer">
+      <!-- Ladebalken während der Generierung -->
+      <v-progress-linear
+        v-if="!testResponseComplete"
+        indeterminate
+        color="primary"
+        class="mb-2"
+      />
+      <!-- Raw response or social network graph based on SNG mode -->
+      <div v-if="!testSngMode" class="response-stream" ref="responseContainer">
         <pre>{{ testPromptResponse }}</pre>
         <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
+      </div>
+      <div v-else class="sng-container">
+        <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
+        <div v-else>
+          <SocialNetworkGraph
+            v-if="!parseError && networkJson"
+            :data="networkJson"
+          />
+          <p v-else-if="parseError" class="error-message">Fehler: Ungültiges JSON für SocialNetworkGraph</p>
+          <p v-else class="no-data-message">Keine Daten zum Plotten verfügbar</p>
+        </div>
       </div>
       <div class="dialog-buttons">
         <button class="regen-button" @click="regenerate">Erneut generieren</button>
@@ -46,6 +68,7 @@
 
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue';
+import SocialNetworkGraph from './SocialNetworkGraph.vue';
 // Hilfsfunktion: formatiert JSON-Daten zur E-Mail-Historie oder markiert Fehler
 function formatHistory(data) {
   const requiredTop = ['type','chat_id','institut_id','subject','sender','total_messages','messages'];
@@ -112,6 +135,10 @@ const chatSocket = io(import.meta.env.VITE_API_BASE_URL, {
 });
 
 const testJsonMode = ref(true);
+const testSngMode = ref(false);
+// JSON for social network graph and parse error flag
+const networkJson = ref(null);
+const parseError = ref(false);
 const jsonSchemaInput = ref('{}');
 const promptCollapsed = ref(true);
 // Prompt mit formatiertem Beispiel ersetzen
@@ -198,7 +225,8 @@ function sendTestPrompt() {
   chatSocket.emit('test_prompt_stream', {
     prompt: promptString,
     jsonMode: testJsonMode.value,
-    schema: schemaObj
+    schema: schemaObj,
+    sngMode: testSngMode.value
   });
 }
 
@@ -209,6 +237,9 @@ watch(() => props.modelValue, (newVal) => {
     testResponseComplete.value = false;
     testJsonMode.value = true;
     promptCollapsed.value = true;
+    // Reset SNG JSON state
+    networkJson.value = null;
+    parseError.value = false;
     // Prompt mit ausgewähltem Beispiel senden
     sendTestPrompt();
   }
@@ -219,6 +250,9 @@ watch(selectedExampleIndex, (newIdx) => {
     testPromptResponse.value = '';
     testResponseComplete.value = false;
     promptCollapsed.value = true;
+    // Reset SNG JSON state
+    networkJson.value = null;
+    parseError.value = false;
     sendTestPrompt();
   }
 });
@@ -228,6 +262,18 @@ watch(testJsonMode, (newVal) => {
   if (props.modelValue) {
     testPromptResponse.value = '';
     testResponseComplete.value = false;
+    promptCollapsed.value = true;
+    sendTestPrompt();
+  }
+});
+// Wenn SNG Mode umgeschaltet wird: JSON zurücksetzen und neues Prompt senden
+watch(testSngMode, (newVal) => {
+  console.log('[TestPromptDialog] SNG Mode toggled:', newVal);
+  if (props.modelValue) {
+    testPromptResponse.value = '';
+    testResponseComplete.value = false;
+    networkJson.value = null;
+    parseError.value = false;
     promptCollapsed.value = true;
     sendTestPrompt();
   }
@@ -243,6 +289,31 @@ chatSocket.on('test_prompt_response', (data) => {
   });
   if (data.complete) {
     testResponseComplete.value = true;
+    // Parse JSON for social network graph when SNG mode is active
+    if (testSngMode.value) {
+      // Raw streamed content
+      const raw = testPromptResponse.value.trim();
+      let jsonText = raw;
+      // Remove markdown code fences if present
+      const fenceMatch = raw.match(/```(?:json)?\n([\s\S]*?)\n```/);
+      if (fenceMatch && fenceMatch[1]) {
+        jsonText = fenceMatch[1].trim();
+      } else if (!raw.startsWith('{') && raw.includes('{')) {
+        // Fallback: extract between first { and last }
+        const first = raw.indexOf('{');
+        const last = raw.lastIndexOf('}');
+        if (first !== -1 && last !== -1 && last > first) {
+          jsonText = raw.slice(first, last + 1);
+        }
+      }
+      try {
+        networkJson.value = JSON.parse(jsonText);
+        parseError.value = false;
+      } catch (e) {
+        console.error('[TestPromptDialog] Invalid JSON for SNG:', e, jsonText);
+        parseError.value = true;
+      }
+    }
   }
 });
 function regenerate() {

@@ -22,6 +22,10 @@
         </ul>
       </div>
       <v-switch v-model="testJsonMode" label="JSON Mode" class="mb-4" :color="testJsonMode ? 'success' : 'error'" />
+      <div v-if="testJsonMode" class="mb-4">
+        <p><strong>JSON Schema:</strong></p>
+        <textarea v-model="jsonSchemaInput" rows="6" style="width:100%; font-family: monospace;" placeholder="{}"></textarea>
+      </div>
       <p><strong>Gesendetes Prompt:</strong></p>
       <pre class="sent-prompt" v-html="promptHighlighted"></pre>
       <button class="toggle-button" @click="promptCollapsed = !promptCollapsed">
@@ -102,6 +106,7 @@ const chatSocket = io(import.meta.env.VITE_API_BASE_URL, {
 });
 
 const testJsonMode = ref(true);
+const jsonSchemaInput = ref('{}');
 const promptCollapsed = ref(true);
 // Prompt mit formatiertem Beispiel ersetzen
 const replacedPrompt = computed(() => {
@@ -176,9 +181,18 @@ function sendTestPrompt() {
   // Debug logging: JSON mode and prompt to send
   console.log('[TestPromptDialog] Sending test prompt. JSON Mode:', testJsonMode.value);
   console.log('[TestPromptDialog] Prompt to send:', promptString);
+  let schemaObj = {};
+  if (testJsonMode.value) {
+    try {
+      schemaObj = JSON.parse(jsonSchemaInput.value);
+    } catch (e) {
+      console.error('[TestPromptDialog] Invalid JSON Schema:', e);
+    }
+  }
   chatSocket.emit('test_prompt_stream', {
     prompt: promptString,
-    jsonMode: testJsonMode.value
+    jsonMode: testJsonMode.value,
+    schema: schemaObj
   });
 }
 

@@ -470,9 +470,10 @@ def configure_socket_routes(socketio, verbose=True):
             logging.info(f"handle_test_prompt_stream: JSON Mode = {json_mode}")
             # Bereite extra_body vor, nur wenn JSON Mode aktiviert
             if json_mode:
-                # Leeres JSON-Schema, guided_json forced
+                # JSON Mode: use provided schema for guided_json
+                schema = data.get('schema', {}) or {}
                 extra_body = {
-                    "guided_json": {},
+                    "guided_json": schema,
                     "guided_decoding_backend": "outlines"
                 }
                 extra_kwargs = {"extra_body": extra_body}

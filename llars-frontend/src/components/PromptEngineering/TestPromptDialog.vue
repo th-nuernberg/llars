@@ -81,8 +81,14 @@ const expandedExamples = ref(examples.map(() => false));
 // Ausgewähltes Beispiel (Index)
 const selectedExampleIndex = ref(0);
 // Computed für formatierten Text und Fehlerindikator des gewählten Beispiels
-const selectedExampleFormatted = computed(() => examples[selectedExampleIndex.value].formatted);
-const selectedExampleError = computed(() => examples[selectedExampleIndex.value].error);
+const selectedExampleFormatted = computed(() => {
+  const ex = examples[selectedExampleIndex.value];
+  return ex ? ex.formatted : '';
+});
+const selectedExampleError = computed(() => {
+  const ex = examples[selectedExampleIndex.value];
+  return ex ? ex.error : false;
+});
 import { io } from 'socket.io-client';
 
 const props = defineProps({

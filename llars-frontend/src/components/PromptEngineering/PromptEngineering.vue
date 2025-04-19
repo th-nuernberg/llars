@@ -184,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -454,9 +454,22 @@ function navigateToPromptDetail(promptId) {
   router.push(`/promptengineering/${promptId}`);
 }
 
-// Prompts laden, wenn die Komponente gemountet wird
+// Polling-Konfiguration: Lädt Prompts und geteilte Prompts regelmäßig neu
+const POLL_INTERVAL = 10000; // 10 Sekunden
+let promptsTimer = null;
+let sharedTimer = null;
+
+// Prompts beim Mount initial laden und Timer starten
 onMounted(async () => {
   await Promise.all([fetchPrompts(), fetchSharedPrompts()]);
+  promptsTimer = setInterval(fetchPrompts, POLL_INTERVAL);
+  sharedTimer = setInterval(fetchSharedPrompts, POLL_INTERVAL);
+});
+
+// Timer bei Unmount aufräumen
+onUnmounted(() => {
+  if (promptsTimer) clearInterval(promptsTimer);
+  if (sharedTimer) clearInterval(sharedTimer);
 });
 
 // Am Anfang zu den anderen refs hinzufügen:

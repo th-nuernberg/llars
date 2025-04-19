@@ -27,28 +27,51 @@ function drawGraph() {
   const svgSel = d3.select(svg.value);
   svgSel.selectAll('*').remove();
   svgSel.attr('viewBox', `0 0 ${width} ${height}`);
-  // Place nodes in fixed quadrants (and center for the advise-seeker)
+  // draw vertical and horizontal divider lines at center
   const centerX = width / 2;
   const centerY = height / 2;
+  svgSel.append('line')
+    .attr('x1', centerX).attr('y1', 0)
+    .attr('x2', centerX).attr('y2', height)
+    .attr('stroke', '#bbb')
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4 2');
+  svgSel.append('line')
+    .attr('x1', 0).attr('y1', centerY)
+    .attr('x2', width).attr('y2', centerY)
+    .attr('stroke', '#bbb')
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4 2');
+  // Place nodes within their quadrant, offset from axes
   const radius = Math.min(width, height) * 0.4;
-  const sectorAngles = {
-    'Freunde/Bekannte': -Math.PI / 4,        // top right
-    'Schule/Beruf':    Math.PI / 4,         // bottom right
-    'Professionelle':  3 * Math.PI / 4,     // bottom left
-    'Familie':        -3 * Math.PI / 4      // top left
+  const deg = Math.PI / 180;
+  const sectorAngleRanges = {
+    'Freunde/Bekannte': [ -Math.PI/2 + 10*deg, -10*deg ],   // top right: -80° to -10°
+    'Schule/Beruf':     [  10*deg,          Math.PI/2 - 10*deg ], // bottom right: 10° to 80°
+    'Professionelle':   [  Math.PI/2 + 10*deg, Math.PI - 10*deg ],  // bottom left: 100° to 170°
+    'Familie':          [ -Math.PI + 10*deg, -Math.PI/2 - 10*deg ]  // top left: -170° to -100°
   };
   nodes.forEach(n => {
     if (n.Sektor === 'Ratsuchend') {
-      // advise-seeking person in center
       n.x = centerX;
       n.y = centerY;
-    } else {
-      const angle = sectorAngles[n.Sektor] !== undefined ? sectorAngles[n.Sektor] : 0;
+    } else if (sectorAngleRanges[n.Sektor]) {
+      const [minA, maxA] = sectorAngleRanges[n.Sektor];
+      const angle = minA + Math.random() * (maxA - minA);
       n.x = centerX + Math.cos(angle) * radius;
       n.y = centerY + Math.sin(angle) * radius;
+    } else {
+      n.x = centerX;
+      n.y = centerY;
     }
   });
-
+  // Run a short force simulation for collision detection (avoid overlaps)
+  const simulation = d3.forceSimulation(nodes)
+    .force('x', d3.forceX(d => d.x).strength(1))
+    .force('y', d3.forceY(d => d.y).strength(1))
+    .force('collide', d3.forceCollide().radius(d => ((d.Sektor === 'Ratsuchend' ? 10 : 8) + 5)))
+    .stop();
+  for (let i = 0; i < 200; ++i) simulation.tick();
   const linkSel = svgSel.append('g')
     .attr('stroke', '#999')
     .attr('stroke-opacity', 0.6)

@@ -44,6 +44,24 @@ function drawGraph() {
     .attr('stroke-dasharray', '4 2');
   // Place nodes within their quadrant, offset from axes
   const radius = Math.min(width, height) * 0.4;
+  // draw labels for each sector outside
+  const labelRadius = radius + 20;
+  const sectorLabelAngles = {
+    'Ratsuchend':      -Math.PI/2,          // top center
+    'Freunde/Bekannte': -Math.PI/4,         // top right
+    'Schule/Beruf':     Math.PI/4,          // bottom right
+    'Professionelle':   3*Math.PI/4,        // bottom left
+    'Familie':         -3*Math.PI/4         // top left
+  };
+  Object.entries(sectorLabelAngles).forEach(([sector, angle]) => {
+    svgSel.append('text')
+      .attr('x', centerX + Math.cos(angle) * labelRadius)
+      .attr('y', centerY + Math.sin(angle) * labelRadius)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#333')
+      .style('font-size', '12px')
+      .text(sector);
+  });
   const deg = Math.PI / 180;
   const sectorAngleRanges = {
     'Freunde/Bekannte': [ -Math.PI/2 + 10*deg, -10*deg ],   // top right: -80° to -10°
@@ -101,17 +119,25 @@ function drawGraph() {
         d.fy = null;
       })
     );
-  // Append circles (help-seeking person in red at center)
+  // Append circles, colored per sector
+  const sectorColors = {
+    'Ratsuchend':      'red',
+    'Familie':         '#ffa500',
+    'Freunde/Bekannte': '#4caf50',
+    'Schule/Beruf':     '#2196f3',
+    'Professionelle':   '#9c27b0'
+  };
   nodeGroup.append('circle')
     .attr('r', d => d.Sektor === 'Ratsuchend' ? 10 : 8)
-    .attr('fill', d => d.Sektor === 'Ratsuchend' ? 'red' : 'steelblue')
+    .attr('fill', d => sectorColors[d.Sektor] || 'gray')
     .attr('stroke', '#fff')
     .attr('stroke-width', 1.5);
   // Append labels
+  // Append labels above or below depending on sector
   nodeGroup.append('text')
     .text(d => d.Name || d.ID)
     .attr('text-anchor', 'middle')
-    .attr('dy', -12)
+    .attr('dy', d => (d.Sektor === 'Schule/Beruf' || d.Sektor === 'Professionelle') ? '16' : '-12')
     .attr('fill', '#333')
     .style('font-size', '12px');
 

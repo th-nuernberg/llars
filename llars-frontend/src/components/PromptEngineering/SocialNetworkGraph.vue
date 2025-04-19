@@ -44,8 +44,10 @@ function drawGraph() {
     .attr('stroke-dasharray', '4 2');
   // Place nodes within their quadrant, offset from axes
   const radius = Math.min(width, height) * 0.4;
-  // draw labels for each sector outside
-  const labelRadius = radius + 20;
+  // draw labels for each sector outside, push top labels further up and bottom further down
+  const labelRadiusBase = radius + 20;
+  const labelRadiusTop = radius + 50;
+  const labelRadiusBottom = radius + 50;
   const sectorLabelAngles = {
     'Ratsuchend':      -Math.PI/2,          // top center
     'Freunde/Bekannte': -Math.PI/4,         // top right
@@ -54,9 +56,20 @@ function drawGraph() {
     'Familie':         -3*Math.PI/4         // top left
   };
   Object.entries(sectorLabelAngles).forEach(([sector, angle]) => {
+    // choose radius: top half (angle<0) farther up, bottom half (angle>0) farther down
+    let lr = labelRadiusBase;
+    if (angle < 0) lr = labelRadiusTop;
+    else if (angle > 0) lr = labelRadiusBottom;
+    // base label position
+    let lx = centerX + Math.cos(angle) * lr;
+    const ly = centerY + Math.sin(angle) * lr;
+    // horizontal shift: right side sectors further right, left side further left
+    const extraX = 30;
+    if (sector === 'Freunde/Bekannte' || sector === 'Schule/Beruf') lx += extraX;
+    else if (sector === 'Familie' || sector === 'Professionelle') lx -= extraX;
     svgSel.append('text')
-      .attr('x', centerX + Math.cos(angle) * labelRadius)
-      .attr('y', centerY + Math.sin(angle) * labelRadius)
+      .attr('x', lx)
+      .attr('y', ly)
       .attr('text-anchor', 'middle')
       .attr('fill', '#333')
       .style('font-size', '12px')
@@ -127,11 +140,17 @@ function drawGraph() {
     'Schule/Beruf':     '#2196f3',
     'Professionelle':   '#9c27b0'
   };
+  // Append circles, colored per sector, with tooltip showing all attributes
   nodeGroup.append('circle')
     .attr('r', d => d.Sektor === 'Ratsuchend' ? 10 : 8)
     .attr('fill', d => sectorColors[d.Sektor] || 'gray')
     .attr('stroke', '#fff')
-    .attr('stroke-width', 1.5);
+    .attr('stroke-width', 1.5)
+    .append('title')
+      .text(d => Object.entries(d)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n')
+      );
   // Append labels
   // Append labels above or below depending on sector
   nodeGroup.append('text')

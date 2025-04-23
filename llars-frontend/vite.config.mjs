@@ -43,5 +43,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: [
+      'llars.e-beratungsinstitut.de',
+      'llars.informatik.fh-nuernberg.de'
+    ],
   },
 })

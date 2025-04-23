@@ -132,6 +132,12 @@ function drawGraph() {
         d.fy = null;
       })
     );
+  // Group-level tooltip for nodes (shows all attributes)
+  nodeGroup.append('title')
+    .text(d => Object.entries(d)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n')
+    );
   // Append circles, colored per sector
   const sectorColors = {
     'Ratsuchend':      'red',
@@ -140,17 +146,12 @@ function drawGraph() {
     'Schule/Beruf':     '#2196f3',
     'Professionelle':   '#9c27b0'
   };
-  // Append circles, colored per sector, with tooltip showing all attributes
+  // Append circles, colored per sector
   nodeGroup.append('circle')
     .attr('r', d => d.Sektor === 'Ratsuchend' ? 10 : 8)
     .attr('fill', d => sectorColors[d.Sektor] || 'gray')
     .attr('stroke', '#fff')
-    .attr('stroke-width', 1.5)
-    .append('title')
-      .text(d => Object.entries(d)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('\n')
-      );
+    .attr('stroke-width', 1.5);
   // Append labels
   // Append labels above or below depending on sector
   nodeGroup.append('text')

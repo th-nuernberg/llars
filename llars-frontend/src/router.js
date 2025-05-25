@@ -25,7 +25,8 @@ import TempTestPage from "@/components/TempTest.vue";
 import PromptEngineering from "@/components/PromptEngineering/PromptEngineering.vue";
 import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngineeringDetail.vue";
 
-// Importiere die Admin-Check Funktion
+import Comparison from "@/components/comparison/Comparison.vue";
+import ComparisonDetail from "@/components/comparison/ComparisonDetail.vue";
 import { isAdmin } from '@/services/admins';
 import AdminUserProgressStats from "@/components/Admin/AdminUserProgressStats.vue";
 
@@ -45,6 +46,17 @@ const routes = [
     { path: '/PromptEngineering', name: 'PromptEngineering', component: PromptEngineering, meta: { requiresAuth: true } },
     // PromptEngineeringDetail liest die ID intern aus der Route, props: true entfernt, um Vue-Warnung zu vermeiden
     { path : '/PromptEngineering/:id', name:'PromptEngineeringDetail', component: PromptEngineeringDetail, meta: { requiresAuth: true } },
+    { path : '/comparison', name:'Comparison', component: Comparison, meta: { requiresAuth: true } },
+    {
+      path: '/comparison/:id/:session_id?',
+      name: 'ComparisonDetail',
+      component: ComparisonDetail,
+      props: route => ({
+        scenarioId: route.params.id,
+        session_id: route.params.session_id ?? null
+      }),
+      meta: { requiresAuth: true }
+    },
 
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route

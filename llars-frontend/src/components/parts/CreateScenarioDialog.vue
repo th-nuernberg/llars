@@ -143,7 +143,7 @@
             </v-expansion-panel>
 
             <!-- Threads Panel -->
-            <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }">
+            <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }" v-if="formData.selectedCategory !== 4">
               <v-expansion-panel-title>
                 Threads
               </v-expansion-panel-title>
@@ -247,8 +247,13 @@
 </template>
 
 <script>
-import {ref, reactive, onMounted, computed,} from 'vue';
-import axios from 'axios';
+import {reactive, onMounted, computed,} from 'vue';
+import {
+  getFunctionTypes,
+  getAllUsers,
+  getThreadsOfType,
+  createScenario
+} from '@/services/scenarioApi';
 
 export default {
   name: 'ScenarioDialog',
@@ -304,7 +309,10 @@ export default {
       const raters = Object.entries(formData.userRoles).filter(([, role]) => role.rater).map(([id]) => Number(id));
       errors.raters = raters.length > 0 ? "" : "Bitte wählen Sie mindestens einen Rater aus.";
 
-      errors.selectedThreads = formData.selectedThreads.length > 0 ? "" : "Bitte wählen Sie mindestens einen Thread aus.";
+      if(formData.selectedCategory !== 4) {
+        errors.selectedThreads = formData.selectedThreads.length > 0 ? ""
+          : "Bitte wählen Sie mindestens einen Thread aus.";
+      }
 
       return !Object.values(errors).some((error) => error);
     };
@@ -359,7 +367,8 @@ export default {
     const categoryNameMapping = {
       'rating': 'Rating',
       'mail_rating': 'Verlauf Generierung',
-      'ranking': 'Ranking'
+      'ranking': 'Ranking',
+      'comparison': 'Gegenüberstellung'
     };
 
     const categoryItems = computed(() => {
@@ -384,16 +393,9 @@ export default {
       });
     });
 
-    const getAuthHeaders = () => ({
-      headers: {
-        'Authorization': localStorage.getItem('api_key')
-      }
-    });
-
     const fetchCategories = async () => {
       try {
-        const response = await axios.get("/api/admin/get_function_types", getAuthHeaders());
-        state.categories = response.data;
+        state.categories = await getFunctionTypes();
       } catch (error) {
         console.error("Fehler beim Laden der Kategorien:", error);
         handleApiError(error);
@@ -402,8 +404,7 @@ export default {
 
     const fetchUsers = async () => {
       try {
-        const response = await axios.get("/api/admin/get_users", getAuthHeaders());
-        state.users = response.data;
+        state.users = await getAllUsers();
         state.users.forEach(user => {
           formData.userRoles[user.id] = {
             viewer: false,
@@ -424,11 +425,7 @@ export default {
 
       state.isLoadingThreads = true;
       try {
-        const response = await axios.get(
-          `/api/admin/get_threads_from_function_type/${categoryId}`,
-          getAuthHeaders()
-        );
-        state.threads = response.data;
+        state.threads = await getThreadsOfType(categoryId);
       } catch (error) {
         console.error("Fehler beim Laden der Threads:", error);
         handleApiError(error);
@@ -516,7 +513,7 @@ export default {
         if (!confirmation) return;
 
         console.log(payload);
-        await axios.post("/api/admin/create_scenario", payload, getAuthHeaders());
+        await createScenario(payload);
         alert("Szenario erfolgreich erstellt!");
         emit('scenarioCreated');
         closeDialog();

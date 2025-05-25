@@ -1,11 +1,13 @@
 # routes_socketio.py
 from flask_socketio import emit, join_room, leave_room
 from flask import request
-import json
 import requests
 from openai import OpenAI
 import logging
 import random
+
+from ComparisonFunctions import get_all_messages_by_session_id, serialize_message, get_session_by_id, add_message, \
+    generate_comparison_responses, set_message_selected
 from prompt_manager import PromptManager
 from rag_pipeline import RAGPipeline
 from datetime import datetime
@@ -149,6 +151,7 @@ class CollaborativeManager:
 def configure_socket_routes(socketio, verbose=True):
     chat_manager = ChatManager(verbose=verbose)
     collab_manager = CollaborativeManager()
+    comparison_manager = ComparisonManager()
 
     @socketio.on('connect')
     def handle_connect():
@@ -273,6 +276,8 @@ def configure_socket_routes(socketio, verbose=True):
                     'collaborators': collaborators,
                     'leftuser_id': user_id
                 }, room=room)
+
+        comparison_manager.leave_session(user_id)
 
         # Bestehende Chat-Cleanup-Logik
         chat_manager.clear_history(request.sid)
@@ -517,3 +522,105 @@ def configure_socket_routes(socketio, verbose=True):
                 {"content": f"Error: {e}", "complete": True},
                 room=client_id
             )
+
+    @socketio.on('join_comparison_session')
+    def handle_join_comparison_session(data):
+        session_id = data.get('sessionId')
+        client_id = request.sid
+
+        if not session_id:
+            emit('error', {'message': 'Session ID required'}, room=client_id)
+            return
+
+        session = get_session_by_id(session_id)
+        if not session:
+            emit('error', {'message': 'Session not found'}, room=client_id)
+            return
+
+        room = f"comparison_{session_id}"
+        join_room(room)
+        comparison_manager.join_session(session_id, client_id)
+        logging.info(f"Client {client_id} joined comparison session {session_id}")
+
+        try:
+            messages = get_all_messages_by_session_id(session_id)
+            for message in messages:
+                emit('comparison_response', serialize_message(message), room=client_id)
+
+            if not messages:
+                message_id = add_message(session_id, len(session.messages), 'bot_pair', '{"llm1": "", "llm2": ""}')
+                generate_comparison_responses(session, message_id, socketio, client_id)
+        except Exception as e:
+            logging.error(f"Error loading comparison messages: {str(e)}")
+
+    @socketio.on('comparison_message')
+    def handle_comparison_message(data):
+        session_id = data.get('sessionId')
+        message = data.get('message')
+        message_id = data.get('messageId')
+        client_id = request.sid
+
+        if not all([session_id, message, message_id]):
+            emit('error', {'message': 'Missing required data'}, room=client_id)
+            return
+
+        try:
+            session = get_session_by_id(session_id)
+            if not session:
+                emit('error', {'message': 'Session not found'}, room=client_id)
+                return
+
+            add_message(session_id, len(session.messages), 'user', message)
+            add_message(session_id, len(session.messages), 'bot_pair', '{"llm1": "", "llm2": ""}')
+
+            generate_comparison_responses(session, message_id, socketio, client_id)
+
+        except Exception as e:
+            logging.error(f"Error handling comparison message: {str(e)}")
+            emit('error', {'message': 'Failed to process message'}, room=client_id)
+
+    @socketio.on('rate_response')
+    def handle_rate_response(data):
+        session_id = data.get('sessionId')
+        message_id = data.get('messageId')
+        selection = data.get('selection')
+        client_id = request.sid
+
+        if not all([session_id, message_id, selection]):
+            emit('error', {'message': 'Missing required data'}, room=client_id)
+            return
+
+        try:
+            if set_message_selected(message_id, session_id, selection):
+                emit('rating_saved', {
+                    'messageId': message_id,
+                    'selection': selection
+                }, room=client_id)
+            else:
+                emit('error', {'message': 'Failed to save rating'}, room=client_id)
+                return
+
+        except Exception as e:
+            logging.error(f"Error saving rating: {str(e)}")
+            emit('error', {'message': 'Failed to save rating'}, room=client_id)
+
+
+class ComparisonManager:
+    def __init__(self):
+        self.active_sessions = {}  # session_id -> client_ids
+        self.client_sessions = {}  # client_id -> session_id
+
+    def join_session(self, session_id, client_id):
+        if session_id not in self.active_sessions:
+            self.active_sessions[session_id] = set()
+        self.active_sessions[session_id].add(client_id)
+        self.client_sessions[client_id] = session_id
+
+    def leave_session(self, client_id):
+        if client_id in self.client_sessions:
+            session_id = self.client_sessions[client_id]
+            if session_id in self.active_sessions:
+                self.active_sessions[session_id].discard(client_id)
+                if not self.active_sessions[session_id]:
+                    del self.active_sessions[session_id]
+            del self.client_sessions[client_id]

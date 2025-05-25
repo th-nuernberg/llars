@@ -42,7 +42,7 @@
       </div>
     </template>
 
-    <!-- Action-Buttons -->
+    <!--
     <v-divider class="my-4" />
 
     <v-btn
@@ -62,7 +62,7 @@
         class="ml-2"
         v-if="loading"
       />
-    </v-btn>
+    </v-btn>-->
   </v-card>
 </template>
 

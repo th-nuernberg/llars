@@ -38,8 +38,7 @@
               </div>
               <div class="response-content">
                 <div v-if="message.streaming?.llm2" class="typing-indicator">
-                  <span class="typing-dots"></span>
-                  Schreibt...
+                  Schreibt<span class="typing-dots"></span>
                 </div>
                 <div v-else>{{ getResponseContent(message, 'llm2') }}</div>
               </div>
@@ -50,15 +49,15 @@
           <div v-if="!message.selected && !isStreaming(message)" class="rating-container">
             <v-btn-group variant="outlined" divided>
               <v-btn @click="selectResponse(message.messageId, 'llm1')" color="primary">
-                <v-icon>mdi-thumb-up</v-icon>
+                <v-icon class="mr-1">mdi-thumb-up</v-icon>
                 Modell 1 ist besser
               </v-btn>
               <v-btn @click="selectResponse(message.messageId, 'tie')" color="warning">
-                <v-icon>mdi-equal</v-icon>
+                <v-icon class="mr-1">mdi-equal</v-icon>
                 Beide gleich gut
               </v-btn>
               <v-btn @click="selectResponse(message.messageId, 'llm2')" color="primary">
-                <v-icon>mdi-thumb-up</v-icon>
+                <v-icon class="mr-1">mdi-thumb-up</v-icon>
                 Modell 2 ist besser
               </v-btn>
             </v-btn-group>

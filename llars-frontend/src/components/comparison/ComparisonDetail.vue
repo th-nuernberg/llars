@@ -5,7 +5,9 @@
         <v-card flat color="transparent">
           <v-card-title class="pa-0 text-h6 font-weight-bold">
             <v-icon start>mdi-chat</v-icon>
-            Gegenüberstellung: Session #{{ scenarioId }}<span v-if="session">/{{ session?.id }}</span>
+            Gegenüberstellung: Session #{{ scenarioId }}<span v-if="session">/{{
+              session?.id
+            }}</span>
           </v-card-title>
         </v-card>
       </v-col>
@@ -21,25 +23,27 @@
       </v-col>
 
       <v-col cols="12" md="9">
-        <template v-if="loadingSession">
-          <v-skeleton-loader type="paragraph" />
-        </template>
-        <template v-else>
-          <ComparisonChat
-            ref="chatComponent"
-            :session-id="session?.id"
-            :persona="session?.persona_json"
-            @message-update="onMessageUpdate"
-          />
-        </template>
+        <v-card flat color="transparent" class="chat-card">
+          <template v-if="loadingSession">
+            <v-skeleton-loader type="paragraph"/>
+          </template>
+          <template v-else>
+            <ComparisonChat
+              ref="chatComponent"
+              :session-id="session?.id"
+              :persona="session?.persona_json"
+              @message-update="onMessageUpdate"
+            />
+          </template>
+        </v-card>
       </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {ref, onMounted} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import PersonaSidebar from '@/components/comparison/PersonaSidebar.vue';
 import {createSession, getSession} from '@/services/comparisonApi';
 import ComparisonChat from "@/components/comparison/ComparisonChat.vue";
@@ -58,9 +62,12 @@ async function init() {
   if (!sessionId) {
     loadingSession.value = true;
     try {
-      const payload = { scenario_id: scenarioId.value };
+      const payload = {scenario_id: scenarioId.value};
       const newSession = await createSession(payload);
-      router.replace({ name: 'ComparisonDetail', params: { id: scenarioId.value, session_id: newSession.id } });
+      router.replace({
+        name: 'ComparisonDetail',
+        params: {id: scenarioId.value, session_id: newSession.id}
+      });
     } catch (error) {
       console.error('Fehler beim Erstellen der Session', error);
     } finally {

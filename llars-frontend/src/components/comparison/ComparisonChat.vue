@@ -3,7 +3,7 @@
     <div class="messages-container" ref="messagesContainer">
       <div
         v-for="(message, index) in messages"
-        :key="message.id"
+        :key="message.messageId"
         class="message-group"
       >
         <!-- User Message -->
@@ -27,7 +27,7 @@
                   <span class="typing-dots"></span>
                   Schreibt...
                 </div>
-                <div v-else>{{ message.content?.llm1 || '' }}</div>
+                <div v-else>{{ getResponseContent(message, 'llm1') }}</div>
               </div>
             </div>
 
@@ -41,7 +41,7 @@
                   <span class="typing-dots"></span>
                   Schreibt...
                 </div>
-                <div v-else>{{ message.content?.llm2 || '' }}</div>
+                <div v-else>{{ getResponseContent(message, 'llm2') }}</div>
               </div>
             </div>
           </div>
@@ -49,17 +49,17 @@
           <!-- Rating Buttons -->
           <div v-if="!message.selected && !isStreaming(message)" class="rating-container">
             <v-btn-group variant="outlined" divided>
-              <v-btn @click="selectResponse(message.id, 'llm1')" color="primary">
+              <v-btn @click="selectResponse(message.messageId, 'llm1')" color="primary">
                 <v-icon>mdi-thumb-up</v-icon>
-                 Modell 1 ist besser
+                Modell 1 ist besser
               </v-btn>
-              <v-btn @click="selectResponse(message.id, 'tie')" color="warning">
+              <v-btn @click="selectResponse(message.messageId, 'tie')" color="warning">
                 <v-icon>mdi-equal</v-icon>
                 Beide gleich gut
               </v-btn>
-              <v-btn @click="selectResponse(message.id, 'llm2')" color="primary">
+              <v-btn @click="selectResponse(message.messageId, 'llm2')" color="primary">
                 <v-icon>mdi-thumb-up</v-icon>
-                 Modell 2 ist besser
+                Modell 2 ist besser
               </v-btn>
             </v-btn-group>
             <p class="rating-hint">Bitte bewerten Sie die Antworten, bevor Sie fortfahren...</p>
@@ -98,7 +98,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { io } from 'socket.io-client';
 
 interface Message {
-  id: number;
+  messageId: number;
   idx: number;
   type: 'user' | 'bot_pair';
   content?: string | { llm1: string; llm2: string };
@@ -140,6 +140,13 @@ const isStreaming = (message: Message) => {
   return message.streaming?.llm1 || message.streaming?.llm2;
 };
 
+const getResponseContent = (message: Message, llmType: 'llm1' | 'llm2') => {
+  if (typeof message.content === 'object' && message.content) {
+    return message.content[llmType] || '';
+  }
+  return '';
+};
+
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
@@ -158,54 +165,50 @@ const sendMessage = async () => {
   newMessage.value = '';
   isProcessing.value = true;
 
-  const userMessage: Message = {
-    id: Date.now(),
-    idx: messages.value.length,
-    type: 'user',
-    content: messageContent,
-    timestamp: new Date().toISOString()
-  };
-
-  messages.value.push(userMessage);
-  scrollToBottom();
-
-  const botMessage: Message = {
-    id: Date.now() + 1,
-    idx: messages.value.length,
-    type: 'bot_pair',
-    content: { llm1: '', llm2: '' },
-    streaming: { llm1: true, llm2: true },
-    selected: null,
-    timestamp: new Date().toISOString()
-  };
-
-  messages.value.push(botMessage);
-  scrollToBottom();
-
   if (socket.value) {
     socket.value.emit('comparison_message', {
       sessionId: props.sessionId,
-      message: messageContent,
-      messageId: botMessage.id
+      message: messageContent
     });
   }
 };
 
 const selectResponse = async (messageId: number, selection: string) => {
-  const message = messages.value.find(m => m.id === messageId);
-  if (message) {
-    message.selected = selection;
-
-    if (socket.value) {
-      socket.value.emit('rate_response', {
-        sessionId: props.sessionId,
-        messageId: messageId,
-        selection: selection
-      });
-    }
-
-    emit('messageUpdate');
+  const message = messages.value.find(m => m.messageId === messageId);
+  if (message && socket.value) {
+    socket.value.emit('rate_response', {
+      sessionId: props.sessionId,
+      messageId: messageId,
+      selection: selection
+    });
   }
+};
+
+const findMessageById = (messageId: number): Message | undefined => {
+  return messages.value.find(m => m.messageId === messageId);
+};
+
+const addOrUpdateMessage = (messageData: any) => {
+  const existingIndex = messages.value.findIndex(m => m.messageId === messageData.messageId);
+
+  const message: Message = {
+    messageId: messageData.messageId,
+    idx: messageData.idx,
+    type: messageData.type,
+    content: messageData.content,
+    selected: messageData.selected || null,
+    timestamp: messageData.timestamp,
+    streaming: messageData.type === 'bot_pair' ? { llm1: false, llm2: false } : undefined
+  };
+
+  if (existingIndex >= 0) {
+    messages.value[existingIndex] = message;
+  } else {
+    messages.value.push(message);
+    messages.value.sort((a, b) => a.idx - b.idx);
+  }
+
+  scrollToBottom();
 };
 
 // Socket setup
@@ -227,55 +230,108 @@ const initializeSocket = () => {
     });
   });
 
-  socket.value.on('comparison_response', (data: any) => {
-    console.log(data)
-    const { messageId, llmType, content, complete } = data;
-    const message = messages.value.find(m => m.id === messageId);
+  socket.value.on('messages_loaded', (data: any) => {
+    console.log('Messages loaded:', data);
+    messages.value = data.messages.map((msg: any) => ({
+      messageId: msg.messageId,
+      idx: msg.idx,
+      type: msg.type,
+      content: msg.content,
+      selected: msg.selected || null,
+      timestamp: msg.timestamp,
+      streaming: msg.type === 'bot_pair' ? { llm1: false, llm2: false } : undefined
+    }));
+    scrollToBottom();
+  });
 
-    if (message && message.type === 'bot_pair') {
-      if (!complete) {
-        if (typeof message.content === 'object') {
-          message.content[llmType as keyof typeof message.content] += content;
-        }
-      } else {
+  socket.value.on('message_created', (messageData: any) => {
+    console.log('Message created:', messageData);
+    addOrUpdateMessage(messageData);
+  });
+
+  socket.value.on('message_updated', (messageData: any) => {
+    console.log('Message updated:', messageData);
+    addOrUpdateMessage(messageData);
+    emit('messageUpdate');
+  });
+
+  socket.value.on('streaming_started', (data: any) => {
+    console.log('Streaming started:', data);
+    const message = findMessageById(data.messageId);
+    if (message && message.streaming) {
+      data.llmTypes.forEach((llmType: string) => {
         if (message.streaming) {
-          message.streaming[llmType as keyof typeof message.streaming] = false;
+          message.streaming[llmType as keyof typeof message.streaming] = true;
         }
+      });
+    }
+  });
 
-        if (!message.streaming?.llm1 && !message.streaming?.llm2) {
-          isProcessing.value = false;
-        }
-      }
+  // Streaming Update
+  socket.value.on('streaming_update', (data: any) => {
+    const { messageId, llmType, fullContent } = data;
+    const message = findMessageById(messageId);
+
+    if (message && message.type === 'bot_pair' && typeof message.content === 'object') {
+      message.content[llmType as keyof typeof message.content] = fullContent;
       scrollToBottom();
     }
   });
 
-  socket.value.on('rating_saved', (data: any) => {
-    console.log('Rating saved:', data);
+  socket.value.on('streaming_complete', (data: any) => {
+    console.log('Streaming complete:', data);
+    const { messageId, llmType, finalContent } = data;
+    const message = findMessageById(messageId);
+
+    if (message) {
+      if (message.streaming) {
+        message.streaming[llmType as keyof typeof message.streaming] = false;
+      }
+
+      if (message.type === 'bot_pair' && typeof message.content === 'object') {
+        message.content[llmType as keyof typeof message.content] = finalContent;
+      }
+
+      if (!message.streaming?.llm1 && !message.streaming?.llm2) {
+        isProcessing.value = false;
+      }
+    }
+  });
+
+  socket.value.on('streaming_error', (data: any) => {
+    console.error('Streaming error:', data);
+    const { messageId, llmType, error } = data;
+    const message = findMessageById(messageId);
+
+    if (message) {
+      if (message.streaming) {
+        message.streaming[llmType as keyof typeof message.streaming] = false;
+      }
+
+      if (message.type === 'bot_pair' && typeof message.content === 'object') {
+        message.content[llmType as keyof typeof message.content] = error;
+      }
+
+      if (!message.streaming?.llm1 && !message.streaming?.llm2) {
+        isProcessing.value = false;
+      }
+    }
+  });
+
+  socket.value.on('error', (data: any) => {
+    console.error('Socket error:', data);
+    isProcessing.value = false;
   });
 
   socket.value.on('disconnect', () => {
     console.log('Socket disconnected');
-  });
-};
-
-const loadMessages = async (sessionMessages: any[]) => {
-  messages.value = sessionMessages.map(msg => ({
-    id: msg.id,
-    idx: msg.idx,
-    type: msg.type,
-    content: typeof msg.content === 'string' ? msg.content : JSON.parse(msg.content),
-    selected: msg.selected || null,
-    timestamp: msg.timestamp
-  }));
-
-  nextTick(() => {
-    scrollToBottom();
+    isProcessing.value = false;
   });
 };
 
 watch(() => props.sessionId, (newId) => {
   if (newId && socket.value) {
+    messages.value = [];
     socket.value.emit('join_comparison_session', {
       sessionId: newId
     });
@@ -286,8 +342,9 @@ onMounted(() => {
   initializeSocket();
 });
 
+// Entferne die loadMessages Methode - wird nicht mehr benötigt
 defineExpose({
-  loadMessages
+  // Keine loadMessages Funktion mehr nötig
 });
 </script>
 
@@ -301,16 +358,14 @@ defineExpose({
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1rem;
 }
 
 .message-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin-bottom: 1rem;
 }
 
 .user-message-container {
@@ -321,83 +376,85 @@ defineExpose({
 .user-message {
   background: #1976d2;
   color: white;
-  padding: 12px 16px;
-  border-radius: 18px;
-  border-bottom-right-radius: 6px;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
   max-width: 70%;
 }
 
 .message-content {
-  line-height: 1.4;
+  margin-bottom: 0.25rem;
 }
 
 .message-timestamp {
   font-size: 0.75rem;
   opacity: 0.8;
-  margin-top: 4px;
 }
 
 .bot-responses-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 1rem;
 }
 
 .responses-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 1rem;
 }
 
 .response-card {
   border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 0.5rem;
+  padding: 1rem;
   background: white;
   transition: all 0.3s ease;
 }
 
 .response-card.selected {
   border-color: #4caf50;
-  background: #f1f8e9;
+  background: #f8fff8;
 }
 
 .response-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .response-header h4 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #333;
 }
 
 .response-content {
+  min-height: 3rem;
   line-height: 1.5;
-  min-height: 40px;
 }
 
 .typing-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   color: #666;
   font-style: italic;
 }
 
 .typing-dots {
-  display: inline-block;
+  display: inline-flex;
+  gap: 2px;
+}
+
+.typing-dots::after {
+  content: '...';
   animation: typing 1.5s infinite;
 }
 
 @keyframes typing {
-  0%, 60%, 100% { opacity: 0; }
+  0%, 60% { opacity: 0; }
   30% { opacity: 1; }
 }
 
@@ -405,40 +462,27 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px;
-  background: #f5f5f5;
-  border-radius: 8px;
+  gap: 0.5rem;
+  padding: 1rem 0;
 }
 
 .rating-hint {
-  margin: 0;
   font-size: 0.875rem;
   color: #666;
+  margin: 0;
   text-align: center;
 }
 
 .input-container {
-  padding: 16px;
-  border-top: 1px solid #eee;
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
   background: white;
 }
 
 .input-hint {
-  margin-top: 8px;
   font-size: 0.875rem;
-  color: #ff1e00;
+  color: #ff5722;
+  margin-top: 0.5rem;
   text-align: center;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .responses-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .user-message {
-    max-width: 85%;
-  }
 }
 </style>

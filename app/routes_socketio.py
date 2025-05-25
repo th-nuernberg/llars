@@ -7,7 +7,7 @@ import logging
 import random
 
 from ComparisonFunctions import get_all_messages_by_session_id, serialize_message, get_session_by_id, add_message, \
-    generate_comparison_responses, set_message_selected
+    generate_comparison_responses, set_message_selected, get_message_by_id_and_session
 from prompt_manager import PromptManager
 from rag_pipeline import RAGPipeline
 from datetime import datetime
@@ -544,12 +544,19 @@ def configure_socket_routes(socketio, verbose=True):
 
         try:
             messages = get_all_messages_by_session_id(session_id)
-            for message in messages:
-                emit('comparison_response', serialize_message(message), room=client_id)
+
+            emit('messages_loaded', {
+                'messages': [serialize_message(message) for message in messages]
+            }, room=client_id)
 
             if not messages:
-                message_id = add_message(session_id, len(session.messages), 'bot_pair', '{"llm1": "", "llm2": ""}')
+                message_id = add_message(session_id, 0, 'bot_pair', '{"llm1": "", "llm2": ""}')
+
+                new_message = get_message_by_id_and_session(message_id, session_id)
+                emit('message_created', serialize_message(new_message), room=client_id)
+
                 generate_comparison_responses(session, message_id, socketio, client_id)
+
         except Exception as e:
             logging.error(f"Error loading comparison messages: {str(e)}")
 
@@ -557,10 +564,9 @@ def configure_socket_routes(socketio, verbose=True):
     def handle_comparison_message(data):
         session_id = data.get('sessionId')
         message = data.get('message')
-        message_id = data.get('messageId')
         client_id = request.sid
 
-        if not all([session_id, message, message_id]):
+        if not all([session_id, message]):
             emit('error', {'message': 'Missing required data'}, room=client_id)
             return
 
@@ -570,10 +576,19 @@ def configure_socket_routes(socketio, verbose=True):
                 emit('error', {'message': 'Session not found'}, room=client_id)
                 return
 
-            add_message(session_id, len(session.messages), 'user', message)
-            add_message(session_id, len(session.messages), 'bot_pair', '{"llm1": "", "llm2": ""}')
+            current_messages = get_all_messages_by_session_id(session_id)
+            user_message_id = add_message(session_id, len(current_messages), 'user', message)
 
-            generate_comparison_responses(session, message_id, socketio, client_id)
+            current_messages = get_all_messages_by_session_id(session_id)  # Aktualisierte Liste
+            bot_message_id = add_message(session_id, len(current_messages), 'bot_pair', '{"llm1": "", "llm2": ""}')
+
+            user_message = get_message_by_id_and_session(user_message_id, session_id)
+            bot_message = get_message_by_id_and_session(bot_message_id, session_id)
+
+            emit('message_created', serialize_message(user_message), room=client_id)
+            emit('message_created', serialize_message(bot_message), room=client_id)
+
+            generate_comparison_responses(session, bot_message_id, socketio, client_id)
 
         except Exception as e:
             logging.error(f"Error handling comparison message: {str(e)}")
@@ -592,10 +607,8 @@ def configure_socket_routes(socketio, verbose=True):
 
         try:
             if set_message_selected(message_id, session_id, selection):
-                emit('rating_saved', {
-                    'messageId': message_id,
-                    'selection': selection
-                }, room=client_id)
+                updated_message = get_message_by_id_and_session(message_id, session_id)
+                emit('message_updated', serialize_message(updated_message), room=client_id)
             else:
                 emit('error', {'message': 'Failed to save rating'}, room=client_id)
                 return

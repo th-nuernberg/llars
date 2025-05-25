@@ -33,11 +33,18 @@ def set_message_selected(message_id, session_id, selected):
 
 
 def serialize_message(message):
+    content = message.content
+    if isinstance(content, str) and message.type == 'bot_pair':
+        try:
+            content = json.loads(content)
+        except json.JSONDecodeError:
+            content = {"llm1": "", "llm2": ""}
+
     return {
         'messageId': message.id,
         'idx': message.idx,
         'type': message.type,
-        'content': message.content,
+        'content': content,
         'selected': message.selected,
         'timestamp': message.timestamp.isoformat(),
     }
@@ -124,10 +131,11 @@ def build_chat_history(session):
         if message.type == 'bot_pair':
             content_from_json = json.loads(message.content) if isinstance(message.content, str) else message.content
             selected_content = content_from_json.get(message.selected, '')
-            messages.append({
-                'role': 'assistant',
-                'content': selected_content
-            })
+            if selected_content:
+                messages.append({
+                    'role': 'assistant',
+                    'content': selected_content
+                })
         elif message.type == 'user':
             messages.append({
                 'role': 'user',
@@ -149,6 +157,11 @@ def generate_comparison_responses(session, message_id, socketio, client_id):
         'role': 'system',
         'content': system_prompt
     })
+
+    socketio.emit('streaming_started', {
+        'messageId': message_id,
+        'llmTypes': ['llm1', 'llm2']
+    }, room=client_id)
 
     thread1 = threading.Thread(target=generate_llm_response,
                                args=('llm1', chat_history, message_id, socketio, client_id))
@@ -185,19 +198,18 @@ def generate_llm_response(llm_type, messages, message_id, socketio, client_id):
 
             if content:
                 full_response += content
-                socketio.emit('comparison_response', {
+                socketio.emit('streaming_update', {
                     'messageId': message_id,
                     'llmType': llm_type,
                     'content': content,
-                    'complete': False
+                    'fullContent': full_response
                 }, room=client_id)
 
             if getattr(choice, "finish_reason", None) is not None:
-                socketio.emit('comparison_response', {
+                socketio.emit('streaming_complete', {
                     'messageId': message_id,
                     'llmType': llm_type,
-                    'content': '',
-                    'complete': True
+                    'finalContent': full_response
                 }, room=client_id)
                 break
 
@@ -205,11 +217,10 @@ def generate_llm_response(llm_type, messages, message_id, socketio, client_id):
 
     except Exception as e:
         logging.error(f"Error generating {llm_type} response: {str(e)}")
-        socketio.emit('comparison_response', {
+        socketio.emit('streaming_error', {
             'messageId': message_id,
             'llmType': llm_type,
-            'content': f'Fehler beim Generieren der Antwort: {str(e)}',
-            'complete': True
+            'error': f'Fehler beim Generieren der Antwort: {str(e)}'
         }, room=client_id)
 
 

@@ -5,10 +5,37 @@
         <v-card flat color="transparent">
           <v-card-title class="pa-0 text-h6 font-weight-bold">
             <v-icon start>mdi-chat</v-icon>
-            Gegenüberstellung: Session #{{ scenarioId }}<span v-if="session">/{{
+            Gegenüberstellung: Session #{{ scenarioId }}<span v-if="session">.{{
               session?.id
             }}</span>
+            <v-icon
+              class="ml-1 mb-3 text-orange"
+              size="20"
+              @click="infoDialog = true"
+              title="Mehr Informationen"
+            >mdi-information</v-icon>
           </v-card-title>
+
+          <v-dialog v-model="infoDialog" max-width="400">
+            <v-card>
+              <v-card-title class="text-h6">Informationen zur Gegenüberstellung</v-card-title>
+              <v-card-text>
+                In diesem Modus chatten Sie mit zwei verschiedenen KI-Modellen. Beide Modelle erhalten die selbe Eingabe und wir möchten mit Ihrer Hilfe herausfinden, welches der Modelle besser ist und besser den Klienten simuliert.
+                Einige Details zum jeweiligen Klienten sind links in der Seitenleiste angegeben.
+                <br />
+                <br />
+                Nachdem die KI-Modelle etwas geschrieben haben, sollen Sie bewerten, welches der beiden besser ist (oder gleich gut). Anschließend können Sie eine Antwort formulieren, auf welche die Modelle wieder antworten etc.
+                <br />
+                <br />
+                Es gibt hier kein Limit - Sie können so viel schreiben wie sie möchten. Falls Sie eine andere Persona ausprobieren möchten, starten Sie einfach das Szenario von vorne (zurück auf die Startseite -> Gegenüberstellung -> Szenario wählen).
+                Die Persona wird Ihnen zufällig zugewiesen.
+              </v-card-text>
+              <v-card-actions>
+                <v-spacer />
+                <v-btn text @click="infoDialog = false">Schließen</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
         </v-card>
       </v-col>
     </v-row>
@@ -54,6 +81,7 @@ const router = useRouter();
 const scenarioId = ref<string | null>(null);
 const session = ref<any>(null);
 const loadingSession = ref<boolean>(false);
+const infoDialog = ref(false);
 
 async function init() {
   scenarioId.value = route.params.id as string;

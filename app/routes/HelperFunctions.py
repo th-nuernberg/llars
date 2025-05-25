@@ -107,17 +107,24 @@ def can_access_thread(user_id, thread_id, function_type_id):
     return False
 
 
+def get_user_scenarios(user_id, function_type_id):
+  # Aktuellen Zeitpunkt ermitteln
+  current_time = datetime.utcnow()
+
+  # Alle Szenarien, in denen der User eine Rolle hat und deren Zeitraum gültig ist
+  return db.session.query(ScenarioUsers).join(RatingScenarios).filter(
+      ScenarioUsers.user_id == user_id,
+      RatingScenarios.begin <= current_time,
+      RatingScenarios.end >= current_time,
+      RatingScenarios.function_type_id == function_type_id
+  ).all()
+
 
 def get_user_threads(user_id, function_type_id):
     # Aktuellen Zeitpunkt ermitteln
     current_time = datetime.utcnow()
 
-    # Alle Szenarien, in denen der User eine Rolle hat und deren Zeitraum gültig ist
-    scenario_users = db.session.query(ScenarioUsers).join(RatingScenarios).filter(
-        ScenarioUsers.user_id == user_id,
-        RatingScenarios.begin <= current_time,
-        RatingScenarios.end >= current_time
-    ).all()
+    scenario_users = get_user_scenarios(user_id, function_type_id)
 
     # Alle EmailThreads, die der User sehen darf
     allowed_threads = []

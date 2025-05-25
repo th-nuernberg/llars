@@ -197,7 +197,7 @@
 
 
             <!-- Threads Panel -->
-            <v-expansion-panel>
+            <v-expansion-panel v-if="this.editedScenario.func_type !== 'comparison'">
               <v-expansion-panel-title>
                 Threads
               </v-expansion-panel-title>
@@ -396,7 +396,8 @@ export default {
       const categoryLabels = {
         'rating': 'Rating',
         'mail_rating': 'Verlauf Generierung',
-        'ranking': 'Ranking'
+        'ranking': 'Ranking',
+        'comparison': 'Gegenüberstellung'
       };
       return categoryLabels[this.editedScenario.func_type] || this.editedScenario.func_type;
     },

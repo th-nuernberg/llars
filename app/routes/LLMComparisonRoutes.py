@@ -47,50 +47,37 @@ def list_sessions_for_comparison():
 
     comparison_scenarios = get_user_scenarios(user.id, comparison_function_type.function_type_id)
 
-    scenarios_list = [{'id': scenario.id} for scenario in comparison_scenarios]
-    return jsonify(scenarios_list), 200
+    all_sessions = []
+    for scenario in comparison_scenarios:
+        sessions = ComparisonSession.query.filter_by(
+            scenario_id=scenario.scenario_id,
+            user_id=user.id
+        ).all()
+        
+        for session in sessions:
+            rated_messages = sum(1 for msg in session.messages if msg.selected is not None)
+            
+            if rated_messages == 0:
+                status = 'not_started'
+                color = 'grey'
+            elif rated_messages < 5:
+                status = 'progressing'
+                color = 'yellow'
+            else:
+                status = 'completed'
+                color = 'green'
+            
+            all_sessions.append({
+                'id': session.id,
+                'scenario_id': session.scenario_id,
+                'persona_name': session.persona_name,
+                'persona_json': session.persona_json,
+                'rated_messages': rated_messages,
+                'status': status,
+                'color': color
+            })
 
-
-@data_blueprint.route('/comparison/create_session', methods=['POST'])
-def create_session():
-    user = require_user()
-    if isinstance(user, tuple):
-        return user
-
-    try:
-        data = request.get_json()
-    except:
-        return jsonify({'error': 'Invalid JSON'}), 400
-    scenario_id = data.get('scenario_id')
-
-    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
-    if not scenario:
-        return jsonify({"error": "Session not found"}), 404
-
-    # Choose persona
-    personas = json.loads(PERSONAS_PATH.read_text())
-    persona = random.choice(personas)
-    persona_props = json.loads(persona['properties'])
-    persona_json = {
-        "name": persona['name'],
-        "properties": persona_props,
-    }
-
-    session = ComparisonSession(
-        scenario_id=scenario_id,
-        persona_json=persona_json,
-        messages=[]
-    )
-    db.session.add(session)
-    db.session.commit()
-    session_serializable = {
-        "id": session.id,
-        "scenario_id": session.scenario_id,
-        "persona_json": session.persona_json,
-        "messages": []
-    }
-
-    return jsonify(session_serializable), 200
+    return jsonify(all_sessions), 200
 
 
 @data_blueprint.route('/comparison/session/<int:session_id>', methods=['GET'])
@@ -99,7 +86,7 @@ def get_session(session_id):
     if isinstance(user, tuple):
         return user
 
-    session = ComparisonSession.query.filter_by(id=session_id).first()
+    session = ComparisonSession.query.filter_by(id=session_id, user_id=user.id).first()
     if not session:
         return jsonify({'error': 'Session not found'}), 404
 
@@ -126,6 +113,7 @@ def get_session(session_id):
         'id': session.id,
         'scenario_id': session.scenario_id,
         'persona_json': session.persona_json,
+        'persona_name': session.persona_name,
         'messages': serialized_messages
     }
     return jsonify(session_serializable), 200

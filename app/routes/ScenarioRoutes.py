@@ -17,7 +17,7 @@ from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, Us
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
-                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles, ProgressionStatus)
+                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles, ProgressionStatus, ComparisonSession)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
@@ -25,6 +25,10 @@ from datetime import datetime
 import json
 import random
 from .HelperFunctions import get_thread_progression_state
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+PERSONAS_PATH = BASE_DIR / '../static/vikl-personas.json'
 
 
 
@@ -322,6 +326,10 @@ def create_scenario():
 
         # Finaler Commit
         db.session.commit()
+
+        # Für Vergleiche: Sessions für alle Personas
+        if function_type.name == 'comparison':
+            create_comparison_sessions_for_scenario(new_scenario.id)
 
     except Exception as e:
         db.session.rollback()
@@ -792,5 +800,37 @@ def distribute_threads_to_users(thread_ids, user_ids):
         user_threads[user_id].append(thread_id)
 
     return user_threads
+
+
+def create_comparison_sessions_for_scenario(scenario_id):
+    try:
+        personas = json.loads(PERSONAS_PATH.read_text())
+        
+        rater_users = db.session.query(ScenarioUsers).filter_by(
+            scenario_id=scenario_id, 
+            role=ScenarioRoles.RATER
+        ).all()
+        
+        for rater_user in rater_users:
+            for persona in personas:
+                persona_props = json.loads(persona['properties'])
+                persona_json = {
+                    "name": persona['name'],
+                    "properties": persona_props,
+                }
+                
+                session = ComparisonSession(
+                    scenario_id=scenario_id,
+                    user_id=rater_user.user_id,
+                    persona_json=persona_json,
+                    persona_name=persona['name']
+                )
+                db.session.add(session)
+        
+        db.session.commit()
+    except Exception as e:
+        logging.error(f"Error creating comparison sessions: {e}")
+        db.session.rollback()
+        raise
 
 

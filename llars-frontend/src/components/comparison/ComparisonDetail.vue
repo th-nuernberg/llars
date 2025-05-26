@@ -5,9 +5,7 @@
         <v-card flat color="transparent">
           <v-card-title class="pa-0 text-h6 font-weight-bold">
             <v-icon start>mdi-chat</v-icon>
-            Gegenüberstellung: Session #{{ scenarioId }}<span v-if="session">.{{
-              session?.id
-            }}</span>
+            Gegenüberstellung: {{ session?.persona_name || 'Laden...' }}
             <v-icon
               class="ml-1 mb-3 text-orange"
               size="20"
@@ -72,42 +70,24 @@
 import {ref, onMounted} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import PersonaSidebar from '@/components/comparison/PersonaSidebar.vue';
-import {createSession, getSession} from '@/services/comparisonApi';
+import {getSession} from '@/services/comparisonApi';
 import ComparisonChat from "@/components/comparison/ComparisonChat.vue";
 
 const route = useRoute();
 const router = useRouter();
 
-const scenarioId = ref<string | null>(null);
+const sessionId = ref<string | null>(null);
 const session = ref<any>(null);
 const loadingSession = ref<boolean>(false);
 const infoDialog = ref(false);
 
 async function init() {
-  scenarioId.value = route.params.id as string;
-  const sessionId = (route.params.session_id as string) || null;
-
-  if (!sessionId) {
-    loadingSession.value = true;
-    try {
-      const payload = {scenario_id: scenarioId.value};
-      const newSession = await createSession(payload);
-      router.replace({
-        name: 'ComparisonDetail',
-        params: {id: scenarioId.value, session_id: newSession.id}
-      });
-    } catch (error) {
-      console.error('Fehler beim Erstellen der Session', error);
-    } finally {
-      loadingSession.value = false;
-    }
-    return;
-  }
+  sessionId.value = route.params.session_id as string;
 
   // Bestehende Session laden
   loadingSession.value = true;
   try {
-    session.value = await getSession(parseInt(sessionId));
+    session.value = await getSession(parseInt(sessionId.value));
     console.log(session.value)
   } catch (error) {
     console.error('Fehler beim Laden der Session', error);

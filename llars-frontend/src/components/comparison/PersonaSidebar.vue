@@ -59,16 +59,10 @@
           color="primary"
           prepend-icon="mdi-lightbulb"
           @click="$emit('suggestion')"
-          :disabled="loading"
+          :disabled="loading || generatingSuggestion || inputDisabled"
+          :loading="generatingSuggestion"
         >
           Vorschlag generieren
-          <v-progress-circular
-            indeterminate
-            size="14"
-            width="2"
-            class="ml-2"
-            v-if="loading"
-          />
         </v-btn>
       </div>
     </div>
@@ -79,6 +73,8 @@
 defineProps<{
   persona?: any;
   loading: boolean;
+  generatingSuggestion?: boolean;
+  inputDisabled?: boolean;
 }>();
 
 defineEmits<{

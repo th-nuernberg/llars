@@ -239,3 +239,77 @@ def save_llm_response(message_id, llm_type, response):
     except Exception as e:
         logging.error(f"Error saving {llm_type} response: {str(e)}")
         db.session.rollback()
+
+
+def generate_counselor_suggestion(session):
+    try:
+        persona = session.persona_json
+        chat_history = build_chat_history(session)
+        
+        suggestion_prompt = create_counselor_suggestion_prompt(persona, chat_history)
+        
+        ssh_container = "llars_docker_ssh_proxy_service"
+        ssh_container_port = "8093"
+
+        client = OpenAI(
+            api_key="EMPTY",
+            base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
+        )
+
+        response = client.chat.completions.create(
+            model='mistralai/Mistral-Small-3.1-24B-Instruct-2503',
+            messages=[{
+                'role': 'system',
+                'content': suggestion_prompt
+            }],
+            temperature=0.2,
+            max_tokens=150
+        )
+
+        suggestion = response.choices[0].message.content.strip()
+        return suggestion
+        
+    except Exception as e:
+        logging.error(f"Error generating counselor suggestion: {str(e)}")
+        return "Wie fühlen Sie sich in dieser Situation?"
+
+
+def create_counselor_suggestion_prompt(persona, chat_history):
+    persona_info = ""
+    if persona and isinstance(persona, dict):
+        if 'properties' in persona:
+            props = persona['properties']
+            if 'Hauptanliegen' in props:
+                persona_info += f"Hauptanliegen: {props['Hauptanliegen']}\n"
+            if 'Nebenanliegen' in props and props['Nebenanliegen']:
+                persona_info += f"Nebenanliegen: {', '.join(props['Nebenanliegen'])}\n"
+            if 'Steckbrief' in props:
+                steckbrief = props['Steckbrief']
+                for key, value in steckbrief.items():
+                    persona_info += f"{key}: {value}\n"
+    
+    chat_history_text = ""
+    if chat_history:
+        chat_history_text = "\n".join([
+            f"{'Klient' if msg['role'] == 'assistant' else 'Berater'}: {msg['content']}"
+            for msg in chat_history[-6:]
+        ])
+    
+    prompt = f"""Du bist ein erfahrener psychologischer Berater und sollst einen Vorschlag für eine angemessene, empathische Antwort auf den aktuellen Gesprächsverlauf geben.
+
+KLIENT-INFORMATION:
+{persona_info}
+
+BISHERIGER GESPRÄCHSVERLAUF:
+{chat_history_text}
+
+AUFGABE:
+Generiere eine kurze, empathische Berater-Antwort (maximal 2-3 Sätze), die:
+- Empathie und Verständnis zeigt
+- Eine offene Frage stellt, um das Gespräch weiterzuführen
+- Professionelle Beratungstechniken verwendet (aktives Zuhören, Spiegeln, etc.)
+- Auf das spezifische Anliegen des Klienten eingeht
+
+Antworte nur mit der vorgeschlagenen Berater-Antwort, ohne weitere Erklärungen."""
+
+    return prompt

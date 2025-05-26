@@ -74,6 +74,8 @@
         <PersonaSidebar
           :persona="session?.persona_json"
           :loading="loadingSession"
+          :generating-suggestion="generatingSuggestion"
+          :input-disabled="!canSendMessage"
           @suggestion="onSuggestion"
         />
       </v-col>
@@ -89,6 +91,7 @@
               :session-id="session?.id"
               :persona="session?.persona_json"
               @message-update="onMessageUpdate"
+              @suggestion-state-change="onSuggestionStateChange"
             />
           </template>
         </v-card>
@@ -106,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, computed} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import PersonaSidebar from '@/components/comparison/PersonaSidebar.vue';
 import {getSession, listSessionsForUser} from '@/services/comparisonApi';
@@ -121,6 +124,8 @@ const session = ref<any>(null);
 const allSessions = ref<Array<any>>([]);
 const loadingSession = ref<boolean>(false);
 const infoDialog = ref(false);
+const chatComponent = ref<any>(null);
+const generatingSuggestion = ref(false);
 
 async function init() {
   sessionId.value = route.params.session_id as string;
@@ -154,9 +159,25 @@ function onMessageUpdate() {
 }
 
 function onSuggestion() {
-  // TODO: Vorschlags-Logik implementieren
-  console.log('Vorschlag generieren');
+  if (chatComponent.value && chatComponent.value.generateSuggestion) {
+    chatComponent.value.generateSuggestion();
+  }
 }
+
+function onSuggestionStateChange(generating: boolean) {
+  generatingSuggestion.value = generating;
+}
+
+const canSendMessage = computed(() => {
+  if (!session.value?.messages) return true;
+  
+  const messages = session.value.messages;
+  const lastMessage = messages[messages.length - 1];
+  
+  return !lastMessage ||
+    lastMessage.type === 'user' ||
+    (lastMessage.type === 'bot_pair' && lastMessage.selected);
+});
 
 function getRatedMessagesCount(): number {
   if (!session.value?.messages) return 0;

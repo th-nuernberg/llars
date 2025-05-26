@@ -68,25 +68,70 @@
 
     <!-- Input Area -->
     <div class="input-container">
-      <v-text-field
-        v-model="newMessage"
-        @keyup.enter="sendMessage"
-        placeholder="Schreiben Sie eine Nachricht..."
-        variant="outlined"
-        :loading="isProcessing"
-        :disabled="isProcessing || !canSendMessage"
-        hide-details
-        density="comfortable"
-        append-inner-icon="mdi-send"
-        @click:append-inner="sendMessage"
-      >
-        <template v-slot:prepend-inner>
-          <v-icon v-if="!canSendMessage" color="error">mdi-lock</v-icon>
-        </template>
-      </v-text-field>
-      <div v-if="!canSendMessage" class="input-hint">
-        Bitte bewerten Sie zuerst die vorherigen Antworten, bevor Sie eine neue Nachricht senden...
+      <div class="input-wrapper">
+        <v-textarea
+          v-model="newMessage"
+          @keyup.enter.exact="sendMessage"
+          @keydown.enter.shift.prevent
+          placeholder="Schreiben Sie eine Nachricht..."
+          variant="outlined"
+          :loading="isProcessing"
+          :disabled="isProcessing || !canSendMessage"
+          hide-details
+          rows="2"
+          auto-grow
+          max-rows="6"
+          density="comfortable"
+          class="message-input"
+          :class="{ 'input-disabled': !canSendMessage, 'input-processing': isProcessing }"
+        >
+          <template v-slot:prepend-inner>
+            <div class="input-status-icon">
+              <v-icon
+                v-if="!canSendMessage"
+                color="error"
+                size="small"
+                class="status-icon lock-icon"
+              >
+                mdi-lock
+              </v-icon>
+              <v-icon
+                v-else-if="isProcessing"
+                color="primary"
+                size="small"
+                class="status-icon processing-icon"
+              >
+                mdi-clock-outline
+              </v-icon>
+            </div>
+          </template>
+
+          <template v-slot:append-inner>
+            <v-btn
+              @click="sendMessage"
+              :disabled="!newMessage.trim() || isProcessing || !canSendMessage"
+              color="primary"
+              variant="flat"
+              size="small"
+              class="send-button"
+              :loading="isProcessing"
+            >
+              <v-icon>mdi-send</v-icon>
+            </v-btn>
+          </template>
+        </v-textarea>
       </div>
+
+      <transition name="hint-fade">
+        <div v-if="!canSendMessage" class="input-hint error-hint">
+          <v-icon size="small" color="error" class="mr-2">mdi-information-outline</v-icon>
+          Bitte bewerten Sie zuerst die vorherigen Antworten, bevor Sie eine neue Nachricht senden.
+        </div>
+        <div v-else-if="isProcessing" class="input-hint processing-hint">
+          <v-icon size="small" color="primary" class="mr-2">mdi-clock-outline</v-icon>
+          Antworten werden generiert...
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -112,6 +157,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'messageUpdate'): void;
+  (e: 'suggestionStateChange', generating: boolean): void;
 }>();
 
 const messages = ref<Message[]>([]);
@@ -119,6 +165,7 @@ const newMessage = ref('');
 const isProcessing = ref(false);
 const messagesContainer = ref<HTMLElement>();
 const socket = ref<any>(null);
+const generatingSuggestion = ref(false);
 
 const canSendMessage = computed(() => {
   const lastMessage = messages.value[messages.value.length - 1];
@@ -128,7 +175,10 @@ const canSendMessage = computed(() => {
 });
 
 const formatTimestamp = (timestamp: string) => {
-  return new Date(timestamp).toLocaleTimeString('de-DE', {
+  return new Date(timestamp).toLocaleString('de-DE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
   });
@@ -325,6 +375,21 @@ const initializeSocket = () => {
     console.log('Socket disconnected');
     isProcessing.value = false;
   });
+
+  socket.value.on('suggestion_generated', (data: any) => {
+    console.log('Suggestion generated:', data);
+    const { suggestion } = data;
+
+    newMessage.value = suggestion;
+    generatingSuggestion.value = false;
+    emit('suggestionStateChange', false);
+  });
+
+  socket.value.on('suggestion_error', (data: any) => {
+    console.error('Suggestion error:', data);
+    generatingSuggestion.value = false;
+    emit('suggestionStateChange', false);
+  });
 };
 
 watch(() => props.sessionId, (newId) => {
@@ -340,9 +405,19 @@ onMounted(() => {
   initializeSocket();
 });
 
-// Entferne die loadMessages Methode - wird nicht mehr benötigt
+const generateSuggestion = () => {
+  if (!socket.value || generatingSuggestion.value || !canSendMessage.value) return;
+
+  generatingSuggestion.value = true;
+  emit('suggestionStateChange', true);
+
+  socket.value.emit('generate_suggestion', {
+    sessionId: props.sessionId
+  });
+};
+
 defineExpose({
-  // Keine loadMessages Funktion mehr nötig
+  generateSuggestion
 });
 </script>
 
@@ -472,15 +547,182 @@ defineExpose({
 }
 
 .input-container {
-  padding: 1rem;
+  padding: 1.5rem;
   border-top: 1px solid #e0e0e0;
+  background: linear-gradient(to bottom, #fafafa, #ffffff);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.input-wrapper {
+  max-width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+.message-input {
+  transition: all 0.3s ease;
+}
+
+.message-input :deep(.v-field) {
+  border-radius: 20px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   background: white;
+  transition: all 0.3s ease;
+}
+
+.message-input :deep(.v-field):hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.message-input :deep(.v-field--focused) {
+  box-shadow: 0 4px 20px rgba(25, 118, 210, 0.15) !important;
+  border-color: #1976d2 !important;
+}
+
+.message-input.input-disabled :deep(.v-field) {
+  background: #f5f5f5 !important;
+  border-color: #e0e0e0 !important;
+  box-shadow: none !important;
+}
+
+.message-input.input-processing :deep(.v-field) {
+  border-color: #1976d2 !important;
+  background: linear-gradient(45deg, #ffffff, #f8fbff) !important;
+}
+
+.message-input :deep(.v-field__input) {
+  padding: 12px 16px !important;
+  min-height: 48px !important;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.message-input :deep(.v-field__prepend-inner) {
+  padding-top: 12px !important;
+  padding-left: 4px !important;
+}
+
+.message-input :deep(.v-field__append-inner) {
+  padding-top: 8px !important;
+  padding-right: 8px !important;
+}
+
+.input-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.status-icon {
+  transition: all 0.3s ease;
+}
+
+.lock-icon {
+  animation: shake 0.5s ease-in-out;
+}
+
+.processing-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.send-button {
+  border-radius: 12px !important;
+  min-width: 44px !important;
+  height: 36px !important;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.send-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4) !important;
+}
+
+.send-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.send-button:disabled {
+  opacity: 0.5 !important;
+  box-shadow: none !important;
 }
 
 .input-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
   font-size: 0.875rem;
-  color: #ff5722;
-  margin-top: 0.5rem;
+  font-weight: 500;
   text-align: center;
+  transition: all 0.3s ease;
+}
+
+.error-hint {
+  background: linear-gradient(135deg, #ffebee, #fce4ec);
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+.processing-hint {
+  background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+}
+
+.hint-fade-enter-active,
+.hint-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.hint-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.hint-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+@media (max-width: 768px) {
+  .input-container {
+    padding: 1rem;
+  }
+
+  .message-input :deep(.v-field__input) {
+    font-size: 0.9rem;
+  }
+
+  .input-hint {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-input :deep(.v-field) {
+    border-radius: 16px !important;
+  }
+
+  .send-button {
+    min-width: 40px !important;
+    height: 32px !important;
+  }
 }
 </style>

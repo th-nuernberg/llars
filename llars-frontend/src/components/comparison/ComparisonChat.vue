@@ -24,8 +24,7 @@
               </div>
               <div class="response-content">
                 <div v-if="message.streaming?.llm1" class="typing-indicator">
-                  <span class="typing-dots"></span>
-                  Schreibt...
+                  Schreibt<span class="typing-dots"></span>
                 </div>
                 <div v-else>{{ getResponseContent(message, 'llm1') }}</div>
               </div>

@@ -153,26 +153,24 @@ def generate_comparison_responses(session, message_id, socketio, client_id):
         [f"{msg['role']}: '{msg['content']}'" for msg in chat_history]
     )
     system_prompt = create_system_prompt(persona, chat_history_as_text)
-    chat_history.insert(0, {
-        'role': 'system',
-        'content': system_prompt
-    })
 
     socketio.emit('streaming_started', {
         'messageId': message_id,
         'llmTypes': ['llm1', 'llm2']
     }, room=client_id)
 
+    is_first_message = not chat_history
+
     thread1 = threading.Thread(target=generate_llm_response,
-                               args=('llm1', chat_history, message_id, socketio, client_id))
+                               args=('llm1', system_prompt, is_first_message, message_id, socketio, client_id))
     thread2 = threading.Thread(target=generate_llm_response,
-                               args=('llm2', chat_history, message_id, socketio, client_id))
+                               args=('llm2', system_prompt, is_first_message, message_id, socketio, client_id))
 
     thread1.start()
     thread2.start()
 
 
-def generate_llm_response(llm_type, messages, message_id, socketio, client_id):
+def generate_llm_response(llm_type, message, is_first_message, message_id, socketio, client_id):
     try:
         ssh_container = "llars_docker_ssh_proxy_service"
         ssh_container_port = "8093"
@@ -184,9 +182,12 @@ def generate_llm_response(llm_type, messages, message_id, socketio, client_id):
 
         stream = client.chat.completions.create(
             model=MODEL_PATH_LLM_TYPE_MAPPING[llm_type],
-            messages=messages,
+            messages=[{
+                    'role': 'system',
+                    'content': message
+            }],
             temperature=0.15,
-            max_tokens=2048,
+            max_tokens=50 if is_first_message else 100,
             stream=True
         )
 

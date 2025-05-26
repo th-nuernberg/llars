@@ -7,7 +7,7 @@ import logging
 import random
 
 from ComparisonFunctions import get_all_messages_by_session_id, serialize_message, get_session_by_id, add_message, \
-    generate_comparison_responses, set_message_selected, get_message_by_id_and_session
+    generate_comparison_responses, set_message_selected, get_message_by_id_and_session, generate_counselor_suggestion
 from prompt_manager import PromptManager
 from rag_pipeline import RAGPipeline
 from datetime import datetime
@@ -579,7 +579,7 @@ def configure_socket_routes(socketio, verbose=True):
             current_messages = get_all_messages_by_session_id(session_id)
             user_message_id = add_message(session_id, len(current_messages), 'user', message)
 
-            current_messages = get_all_messages_by_session_id(session_id)  # Aktualisierte Liste
+            current_messages = get_all_messages_by_session_id(session_id)
             bot_message_id = add_message(session_id, len(current_messages), 'bot_pair', '{"llm1": "", "llm2": ""}')
 
             user_message = get_message_by_id_and_session(user_message_id, session_id)
@@ -616,6 +616,29 @@ def configure_socket_routes(socketio, verbose=True):
         except Exception as e:
             logging.error(f"Error saving rating: {str(e)}")
             emit('error', {'message': 'Failed to save rating'}, room=client_id)
+
+    @socketio.on('generate_suggestion')
+    def handle_generate_suggestion(data):
+        session_id = data.get('sessionId')
+        client_id = request.sid
+
+        if not session_id:
+            emit('suggestion_error', {'message': 'Missing session ID'}, room=client_id)
+            return
+
+        try:
+            session = get_session_by_id(session_id)
+            if not session:
+                emit('suggestion_error', {'message': 'Session not found'}, room=client_id)
+                return
+
+            suggestion = generate_counselor_suggestion(session)
+            
+            emit('suggestion_generated', {'suggestion': suggestion}, room=client_id)
+
+        except Exception as e:
+            logging.error(f"Error generating suggestion: {str(e)}")
+            emit('suggestion_error', {'message': 'Failed to generate suggestion'}, room=client_id)
 
 
 class ComparisonManager:

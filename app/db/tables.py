@@ -262,7 +262,7 @@ class ComparisonMessage(db.Model):
     type: Mapped[str] = mapped_column(db.String(20)) # "user" / "bot_pair"
     content: Mapped[str] = mapped_column(db.Text)
     selected: Mapped[Optional[str]] = mapped_column(db.String(10), nullable=True) # "llm1" / "llm2" / "tie" / null
-    timestamp: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now)
 
     def to_dict(self):
       content_data = self.content

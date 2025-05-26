@@ -71,7 +71,7 @@
       <v-text-field
         v-model="newMessage"
         @keyup.enter="sendMessage"
-        placeholder="Schreibe eine Nachricht..."
+        placeholder="Schreiben Sie eine Nachricht..."
         variant="outlined"
         :loading="isProcessing"
         :disabled="isProcessing || !canSendMessage"

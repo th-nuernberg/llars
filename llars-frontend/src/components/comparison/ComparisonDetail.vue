@@ -14,23 +14,54 @@
             >mdi-information</v-icon>
           </v-card-title>
 
-          <v-dialog v-model="infoDialog" max-width="400">
+          <v-dialog v-model="infoDialog" max-width="600">
             <v-card>
-              <v-card-title class="text-h6">Informationen zur Gegenüberstellung</v-card-title>
-              <v-card-text>
-                In diesem Modus chatten Sie mit zwei verschiedenen KI-Modellen. Beide Modelle erhalten die selbe Eingabe und wir möchten mit Ihrer Hilfe herausfinden, welches der Modelle besser ist und besser den Klienten simuliert.
-                Einige Details zum jeweiligen Klienten sind links in der Seitenleiste angegeben.
-                <br />
-                <br />
-                Nachdem die KI-Modelle etwas geschrieben haben, sollen Sie bewerten, welches der beiden besser ist (oder gleich gut). Anschließend können Sie eine Antwort formulieren, auf welche die Modelle wieder antworten etc.
-                <br />
-                <br />
-                Es gibt hier kein Limit - Sie können so viel schreiben wie sie möchten. Falls Sie eine andere Persona ausprobieren möchten, starten Sie einfach das Szenario von vorne (zurück auf die Startseite -> Gegenüberstellung -> Szenario wählen).
-                Die Persona wird Ihnen zufällig zugewiesen.
+              <v-card-title class="text-h5 bg-primary text-white pa-4">
+                <v-icon start class="mr-2">mdi-information</v-icon>
+                Informationen zur Gegenüberstellung
+              </v-card-title>
+              <v-card-text class="pa-6">
+                <div class="text-body-1 mb-4">
+                  <v-icon color="primary" class="mr-2">mdi-robot</v-icon>
+                  <strong>Was ist der Gegenüberstellungsmodus?</strong>
+                </div>
+                <p class="mb-4">
+                  In diesem Modus chatten Sie mit zwei verschiedenen KI-Modellen. Beide Modelle erhalten die selbe Eingabe und wir möchten mit Ihrer Hilfe herausfinden, welches der Modelle besser ist und besser den Klienten simuliert.
+                </p>
+
+                <div class="text-body-1 mb-4">
+                  <v-icon color="primary" class="mr-2">mdi-account-details</v-icon>
+                  <strong>Persona-Informationen</strong>
+                </div>
+                <p class="mb-4">
+                  Einige Details zum jeweiligen Klienten sind links in der Seitenleiste angegeben.
+                </p>
+
+                <div class="text-body-1 mb-4">
+                  <v-icon color="primary" class="mr-2">mdi-star</v-icon>
+                  <strong>Bewertung und Interaktion</strong>
+                </div>
+                <p class="mb-4">
+                  Nachdem die KI-Modelle etwas geschrieben haben, sollen Sie bewerten, welches der beiden besser ist (oder gleich gut). Anschließend können Sie eine Antwort formulieren, auf welche die Modelle wieder antworten etc.
+                </p>
+
+                <div class="text-body-1 mb-4">
+                  <v-icon color="primary" class="mr-2">mdi-infinity</v-icon>
+                  <strong>Keine Limits</strong>
+                </div>
+                <p class="mb-0">
+                  Es gibt hier kein Limit - Sie können so viel schreiben wie sie möchten. Falls Sie eine andere Persona ausprobieren möchten, wechseln Sie einfach zur nächsten Session über die untere Leiste oder die Übersichtsseite.
+                </p>
               </v-card-text>
-              <v-card-actions>
+              <v-card-actions class="pa-4">
                 <v-spacer />
-                <v-btn text @click="infoDialog = false">Schließen</v-btn>
+                <v-btn
+                  color="primary"
+                  variant="elevated"
+                  @click="infoDialog = false"
+                >
+                  Verstanden
+                </v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
@@ -63,6 +94,14 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <ComparisonFooterBar
+      v-if="session && allSessions.length > 0"
+      :current-session-id="session.id"
+      :all-sessions="allSessions"
+      :rated-messages="getRatedMessagesCount()"
+      :total-messages="getTotalMessagesCount()"
+    />
   </v-container>
 </template>
 
@@ -70,19 +109,26 @@
 import {ref, onMounted} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import PersonaSidebar from '@/components/comparison/PersonaSidebar.vue';
-import {getSession} from '@/services/comparisonApi';
+import {getSession, listSessionsForUser} from '@/services/comparisonApi';
 import ComparisonChat from "@/components/comparison/ComparisonChat.vue";
+import ComparisonFooterBar from "@/components/comparison/ComparisonFooterBar.vue";
 
 const route = useRoute();
 const router = useRouter();
 
 const sessionId = ref<string | null>(null);
 const session = ref<any>(null);
+const allSessions = ref<Array<any>>([]);
 const loadingSession = ref<boolean>(false);
 const infoDialog = ref(false);
 
 async function init() {
   sessionId.value = route.params.session_id as string;
+  try {
+    allSessions.value = await listSessionsForUser();
+  } catch (error) {
+    console.error('Fehler beim Laden aller Sessions', error);
+  }
 
   // Bestehende Session laden
   loadingSession.value = true;
@@ -112,12 +158,22 @@ function onSuggestion() {
   console.log('Vorschlag generieren');
 }
 
+function getRatedMessagesCount(): number {
+  if (!session.value?.messages) return 0;
+  return session.value.messages.filter((msg: any) => msg.type === 'bot_pair' && msg.selected).length;
+}
+
+function getTotalMessagesCount(): number {
+  if (!session.value?.messages) return 0;
+  return session.value.messages.filter((msg: any) => msg.type === 'bot_pair').length;
+}
+
 onMounted(init);
 </script>
 
 <style scoped>
 .chat-card {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 240px);
   display: flex;
   flex-direction: column;
 }

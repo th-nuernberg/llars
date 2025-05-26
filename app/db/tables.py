@@ -247,8 +247,12 @@ class ComparisonSession(db.Model):
     __tablename__ = "comparison_sessions"
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("rating_scenarios.id"), index=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("users.id"), index=True)
     persona_json: Mapped[dict] = mapped_column(db.JSON, nullable=False)
+    persona_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
     messages: Mapped[list["ComparisonMessage"]] = db.relationship("ComparisonMessage", backref="session", cascade="all, delete-orphan", lazy="selectin")
+    
+    user = db.relationship("User", backref="comparison_sessions")
 
 class ComparisonMessage(db.Model):
     __tablename__ = "comparison_messages"

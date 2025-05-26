@@ -48,13 +48,10 @@ const routes = [
     { path : '/PromptEngineering/:id', name:'PromptEngineeringDetail', component: PromptEngineeringDetail, meta: { requiresAuth: true } },
     { path : '/comparison', name:'Comparison', component: Comparison, meta: { requiresAuth: true } },
     {
-      path: '/comparison/:id/:session_id?',
+      path: '/comparison/session/:session_id',
       name: 'ComparisonDetail',
       component: ComparisonDetail,
-      props: route => ({
-        scenarioId: route.params.id,
-        session_id: route.params.session_id ?? null
-      }),
+      props: true,
       meta: { requiresAuth: true }
     },
 

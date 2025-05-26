@@ -8,7 +8,6 @@ function auth() {
 
 export const listSessionsForUser = () => axios.get(`${BASE_URL}/api/comparison/sessions`, auth()).then(r => r.data);
 
-export const createSession = (payload: any) => axios.post(`${BASE_URL}/api/comparison/create_session`, payload, auth()).then(r => r.data);
 export const getSession = (id: number) => axios.get(`${BASE_URL}/api/comparison/session/${id}`, auth()).then(r => r.data);
 
 export const sendMessage = (sessionId: number, message: string) =>

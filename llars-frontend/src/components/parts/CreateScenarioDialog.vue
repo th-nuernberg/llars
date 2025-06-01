@@ -142,6 +142,45 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
+            <v-expansion-panel v-if="formData.selectedCategory === 4">
+              <v-expansion-panel-title>
+                Modell-Konfiguration
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="formData.llm1Model"
+                      label="Language-Modell 1"
+                      outlined
+                      density="comfortable"
+                      placeholder="z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+                      hint="Erstes Modell für die Gegenüberstellung"
+                      persistent-hint
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="formData.llm2Model"
+                      label="Language-Modell 2"
+                      outlined
+                      density="comfortable"
+                      placeholder="z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+                      hint="Zweites Modell für die Gegenüberstellung"
+                      persistent-hint
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+                <v-alert
+                  type="info"
+                  variant="tonal"
+                  class="mt-3"
+                >
+                  Die Modellnamen müssen mit verfügbaren Modellen übereinstimmen.
+                </v-alert>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
             <!-- Threads Panel -->
             <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }" v-if="formData.selectedCategory !== 4">
               <v-expansion-panel-title>
@@ -281,7 +320,9 @@ export default {
       startDate: null,
       endDate: null,
       userRoles: {},
-      selectedThreads: []
+      selectedThreads: [],
+      llm1Model: '',
+      llm2Model: ''
     });
 
     const errors = reactive({
@@ -469,6 +510,8 @@ export default {
       formData.startDate = null;
       formData.endDate = null;
       formData.selectedThreads = [];
+      formData.llm1Model = '';
+      formData.llm2Model = '';
 
       // Sicherstellen, dass das 'userRoles' Objekt korrekt zurückgesetzt wird
       formData.userRoles = Object.fromEntries(
@@ -507,6 +550,15 @@ export default {
         threads: threadIds,
         viewer: viewers
       };
+
+      if (formData.selectedCategory === 4) {
+        if (formData.llm1Model.trim()) {
+          payload.llm1_model = formData.llm1Model.trim();
+        }
+        if (formData.llm2Model.trim()) {
+          payload.llm2_model = formData.llm2Model.trim();
+        }
+      }
 
       try {
         const confirmation = confirm("Sind Sie sicher, dass Sie das Szenario speichern möchten?");

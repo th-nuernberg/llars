@@ -165,6 +165,8 @@ def get_scenario_details(scenario_id=None): #
             'threads': threads,
             'raters': scenario_raters,
             'viewers': scenario_viewers,
+            'llm1_model': scenario.llm1_model if hasattr(scenario, 'llm1_model') else None,
+            'llm2_model': scenario.llm2_model if hasattr(scenario, 'llm2_model') else None,
         }
         return jsonify(scenario_details), 200
     except Exception as e:
@@ -195,7 +197,9 @@ def create_scenario():
         "end": data.get('end'),
         "rater": data.get('rater'),
         "viewer" : data.get("viewer"),
-        "threads": data.get('threads')
+        "threads": data.get('threads'),
+        "llm1_model": data.get('llm1_model'),
+        "llm2_model": data.get('llm2_model')
     }
 
     for key, value in client_data.items():
@@ -227,6 +231,11 @@ def create_scenario():
         begin=begin,
         end=end,
     )
+
+    if function_type_id == 4 and client_data.get('llm1_model'):
+        new_scenario.llm1_model = client_data['llm1_model']
+    if function_type_id == 4 and client_data.get('llm2_model'):
+        new_scenario.llm2_model = client_data['llm2_model']
 
     rater_error_list = []
     viewer_error_list = []
@@ -396,7 +405,9 @@ def edit_scenario():
             "id": data.get('id'),
             "name": data.get('new_name'),
             "begin": data.get('new_begin'),
-            "end": data.get('new_end')
+            "end": data.get('new_end'),
+            "llm1_model": data.get('llm1_model'),
+            "llm2_model": data.get('llm2_model')
         }
         # validate the data
         if not client_data['id'] or (not isinstance(client_data['id'], int)):
@@ -423,6 +434,14 @@ def edit_scenario():
             scenario.scenario_name = client_data['name']
             scenario.begin = client_data['begin']
             scenario.end = client_data['end']
+
+            # Update model configuration for comparison scenarios
+            if scenario.function_type_id == 4:
+                if client_data.get('llm1_model') is not None:
+                    scenario.llm1_model = client_data['llm1_model']
+                if client_data.get('llm2_model') is not None:
+                    scenario.llm2_model = client_data['llm2_model']
+
             db.session.commit()
         except Exception as e:
             db.session.rollback()

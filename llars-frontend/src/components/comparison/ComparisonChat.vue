@@ -20,7 +20,8 @@
             <div class="response-card" :class="{ 'selected': message.selected === 'llm1' }">
               <div class="response-header">
                 <h4>Modell 1</h4>
-                <v-chip v-if="message.selected === 'llm1'" color="success" size="small">Gewählt</v-chip>
+                <v-chip v-if="message.selected === 'llm1'" color="success" size="small">Gewählt
+                </v-chip>
               </div>
               <div class="response-content">
                 <div v-if="message.streaming?.llm1" class="typing-indicator">
@@ -33,7 +34,8 @@
             <div class="response-card" :class="{ 'selected': message.selected === 'llm2' }">
               <div class="response-header">
                 <h4>Modell 2</h4>
-                <v-chip v-if="message.selected === 'llm2'" color="success" size="small">Gewählt</v-chip>
+                <v-chip v-if="message.selected === 'llm2'" color="success" size="small">Gewählt
+                </v-chip>
               </div>
               <div class="response-content">
                 <div v-if="message.streaming?.llm2" class="typing-indicator">
@@ -137,8 +139,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
-import { io } from 'socket.io-client';
+import {ref, computed, onMounted, nextTick, watch} from 'vue';
+import {io} from 'socket.io-client';
 
 interface Message {
   messageId: number;
@@ -246,7 +248,7 @@ const addOrUpdateMessage = (messageData: any) => {
     content: messageData.content,
     selected: messageData.selected || null,
     timestamp: messageData.timestamp,
-    streaming: messageData.type === 'bot_pair' ? { llm1: false, llm2: false } : undefined
+    streaming: messageData.type === 'bot_pair' ? {llm1: false, llm2: false} : undefined
   };
 
   if (existingIndex >= 0) {
@@ -265,17 +267,19 @@ const initializeSocket = () => {
   socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
     path: '/socket.io/',
     transports: ['websocket'],
-    query: { username: username },
+    query: {username: username},
     headers: {
       'Content-Type': 'application/json; charset=utf-8'
     }
   });
 
   socket.value.on('connect', () => {
-    console.log('Socket connected for comparison');
-    socket.value.emit('join_comparison_session', {
-      sessionId: props.sessionId
-    });
+    if (props.sessionId) {
+      console.log('Socket connected for comparison');
+      socket.value.emit('join_comparison_session', {
+        sessionId: props.sessionId
+      });
+    }
   });
 
   socket.value.on('messages_loaded', (data: any) => {
@@ -287,7 +291,7 @@ const initializeSocket = () => {
       content: msg.content,
       selected: msg.selected || null,
       timestamp: msg.timestamp,
-      streaming: msg.type === 'bot_pair' ? { llm1: false, llm2: false } : undefined
+      streaming: msg.type === 'bot_pair' ? {llm1: false, llm2: false} : undefined
     }));
     scrollToBottom();
   });
@@ -317,7 +321,7 @@ const initializeSocket = () => {
 
   // Streaming Update
   socket.value.on('streaming_update', (data: any) => {
-    const { messageId, llmType, fullContent } = data;
+    const {messageId, llmType, fullContent} = data;
     const message = findMessageById(messageId);
 
     if (message && message.type === 'bot_pair' && typeof message.content === 'object') {
@@ -328,7 +332,7 @@ const initializeSocket = () => {
 
   socket.value.on('streaming_complete', (data: any) => {
     console.log('Streaming complete:', data);
-    const { messageId, llmType, finalContent } = data;
+    const {messageId, llmType, finalContent} = data;
     const message = findMessageById(messageId);
 
     if (message) {
@@ -348,7 +352,7 @@ const initializeSocket = () => {
 
   socket.value.on('streaming_error', (data: any) => {
     console.error('Streaming error:', data);
-    const { messageId, llmType, error } = data;
+    const {messageId, llmType, error} = data;
     const message = findMessageById(messageId);
 
     if (message) {
@@ -378,7 +382,7 @@ const initializeSocket = () => {
 
   socket.value.on('suggestion_generated', (data: any) => {
     console.log('Suggestion generated:', data);
-    const { suggestion } = data;
+    const {suggestion} = data;
 
     newMessage.value = suggestion;
     generatingSuggestion.value = false;
@@ -527,8 +531,12 @@ defineExpose({
 }
 
 @keyframes typing {
-  0%, 60% { opacity: 0; }
-  30% { opacity: 1; }
+  0%, 60% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
 }
 
 .rating-container {
@@ -690,14 +698,26 @@ defineExpose({
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-2px); }
-  75% { transform: translateX(2px); }
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.1); }
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
 }
 
 @media (max-width: 768px) {

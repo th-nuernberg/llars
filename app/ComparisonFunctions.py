@@ -5,14 +5,26 @@ from db.tables import ComparisonSession, ComparisonMessage
 from db.db import db
 from openai import OpenAI
 
-MODEL_PATH_LLM_TYPE_MAPPING = {
-    'llm1': 'mistralai/Mistral-Small-3.1-24B-Instruct-2503',
-    'llm2': 'mistralai/Mistral-Small-3.1-24B-Instruct-2503'
-}
 
+def get_model_mapping_for_session(session):
+    try:
+        from db.tables import RatingScenarios
+        scenario = RatingScenarios.query.filter_by(id=session.scenario_id).first()
+        
+        if scenario and scenario.llm1_model and scenario.llm2_model:
+            return {
+                'llm1': scenario.llm1_model,
+                'llm2': scenario.llm2_model
+            }
+        else:
+            raise ValueError("No valid model mapping found for the session or scenario.")
+    except Exception as e:
+        logging.error(f"Error getting model mapping: {str(e)}")
+        raise ValueError(f"Error accessing scenario data: {str(e)}")
 
 def get_session_by_id(session_id):
-    return ComparisonSession.query.filter_by(id=session_id).first()
+    from sqlalchemy.orm import joinedload
+    return ComparisonSession.query.options(joinedload(ComparisonSession.scenario)).filter_by(id=session_id).first()
 
 
 def get_all_messages_by_session_id(session_id):
@@ -126,51 +138,68 @@ def create_system_prompt(persona, chat_history):
 
 def build_chat_history(session):
     messages = []
-
-    for message in session.messages:
-        if message.type == 'bot_pair':
-            content_from_json = json.loads(message.content) if isinstance(message.content, str) else message.content
-            selected_content = content_from_json.get(message.selected, '')
-            if selected_content:
+    
+    try:
+        for message in session.messages:
+            if message.type == 'bot_pair':
+                content_from_json = json.loads(message.content) if isinstance(message.content, str) else message.content
+                selected_content = content_from_json.get(message.selected, '')
+                if selected_content:
+                    messages.append({
+                        'role': 'assistant',
+                        'content': selected_content
+                    })
+            elif message.type == 'user':
                 messages.append({
-                    'role': 'assistant',
-                    'content': selected_content
+                    'role': 'user',
+                    'content': message.content
                 })
-        elif message.type == 'user':
-            messages.append({
-                'role': 'user',
-                'content': message.content
-            })
+    except Exception as e:
+        logging.error(f"Error building chat history: {str(e)}")
 
     return messages
 
 
 def generate_comparison_responses(session, message_id, socketio, client_id):
-    persona = session.persona_json
+    try:
+        session_id = session.id
+        
+        from main import app
+        with app.app_context():
+            fresh_session = get_session_by_id(session_id)
+            if not fresh_session:
+                raise ValueError(f"Session with ID {session_id} not found")
+            
+            persona = fresh_session.persona_json
+            chat_history = build_chat_history(fresh_session)
+            chat_history_as_text = "\n".join(
+                [f"{msg['role']}: '{msg['content']}'" for msg in chat_history]
+            )
+            system_prompt = create_system_prompt(persona, chat_history_as_text)
 
-    chat_history = build_chat_history(session)
-    chat_history_as_text = "\n".join(
-        [f"{msg['role']}: '{msg['content']}'" for msg in chat_history]
-    )
-    system_prompt = create_system_prompt(persona, chat_history_as_text)
+            socketio.emit('streaming_started', {
+                'messageId': message_id,
+                'llmTypes': ['llm1', 'llm2']
+            }, room=client_id)
 
-    socketio.emit('streaming_started', {
-        'messageId': message_id,
-        'llmTypes': ['llm1', 'llm2']
-    }, room=client_id)
+            is_first_message = not chat_history
 
-    is_first_message = not chat_history
+            thread1 = threading.Thread(target=generate_llm_response,
+                                       args=('llm1', system_prompt, is_first_message, message_id, socketio, client_id, session_id))
+            thread2 = threading.Thread(target=generate_llm_response,
+                                       args=('llm2', system_prompt, is_first_message, message_id, socketio, client_id, session_id))
 
-    thread1 = threading.Thread(target=generate_llm_response,
-                               args=('llm1', system_prompt, is_first_message, message_id, socketio, client_id))
-    thread2 = threading.Thread(target=generate_llm_response,
-                               args=('llm2', system_prompt, is_first_message, message_id, socketio, client_id))
+            thread1.start()
+            thread2.start()
+    except Exception as e:
+        logging.error(f"Error in generate_comparison_responses: {str(e)}")
+        socketio.emit('streaming_error', {
+            'messageId': message_id,
+            'error': f'Fehler beim Generieren der Antwort: {str(e)}'
+        }, room=client_id)
 
-    thread1.start()
-    thread2.start()
 
-
-def generate_llm_response(llm_type, message, is_first_message, message_id, socketio, client_id):
+def generate_llm_response(llm_type, message, is_first_message, message_id, socketio, client_id, session_id):
     try:
         ssh_container = "llars_docker_ssh_proxy_service"
         ssh_container_port = "8093"
@@ -180,8 +209,17 @@ def generate_llm_response(llm_type, message, is_first_message, message_id, socke
             base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
         )
 
+        from main import app
+        with app.app_context():
+            session = get_session_by_id(session_id)
+            if not session:
+                raise ValueError(f"Session with ID {session_id} not found")
+            
+            model_mapping = get_model_mapping_for_session(session)
+            model_name = model_mapping.get(llm_type)
+
         stream = client.chat.completions.create(
-            model=MODEL_PATH_LLM_TYPE_MAPPING[llm_type],
+            model=model_name,
             messages=[{
                     'role': 'system',
                     'content': message
@@ -243,31 +281,39 @@ def save_llm_response(message_id, llm_type, response):
 
 def generate_counselor_suggestion(session):
     try:
-        persona = session.persona_json
-        chat_history = build_chat_history(session)
+        session_id = session.id
         
-        suggestion_prompt = create_counselor_suggestion_prompt(persona, chat_history)
-        
-        ssh_container = "llars_docker_ssh_proxy_service"
-        ssh_container_port = "8093"
+        from main import app
+        with app.app_context():
+            fresh_session = get_session_by_id(session_id)
+            if not fresh_session:
+                raise ValueError(f"Session with ID {session_id} not found")
+            
+            persona = fresh_session.persona_json
+            chat_history = build_chat_history(fresh_session)
+            
+            suggestion_prompt = create_counselor_suggestion_prompt(persona, chat_history)
+            
+            ssh_container = "llars_docker_ssh_proxy_service"
+            ssh_container_port = "8093"
 
-        client = OpenAI(
-            api_key="EMPTY",
-            base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
-        )
+            client = OpenAI(
+                api_key="EMPTY",
+                base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
+            )
 
-        response = client.chat.completions.create(
-            model='mistralai/Mistral-Small-3.1-24B-Instruct-2503',
-            messages=[{
-                'role': 'system',
-                'content': suggestion_prompt
-            }],
-            temperature=0.2,
-            max_tokens=150
-        )
+            response = client.chat.completions.create(
+                model='mistralai/Mistral-Small-3.1-24B-Instruct-2503',
+                messages=[{
+                    'role': 'system',
+                    'content': suggestion_prompt
+                }],
+                temperature=0.2,
+                max_tokens=150
+            )
 
-        suggestion = response.choices[0].message.content.strip()
-        return suggestion
+            suggestion = response.choices[0].message.content.strip()
+            return suggestion
         
     except Exception as e:
         logging.error(f"Error generating counselor suggestion: {str(e)}")

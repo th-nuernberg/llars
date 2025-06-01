@@ -300,6 +300,44 @@
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
+
+            <v-expansion-panel v-if="this.editedScenario.function_type_id === 4">
+              <v-expansion-panel-title>
+                Modell-Konfiguration
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="editedScenario.llm1_model"
+                      label="Language-Modell 1"
+                      hint="Z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+                      :readonly="!isEditing"
+                      outlined
+                      density="comfortable"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="editedScenario.llm2_model"
+                      label="Language-Modell 2"
+                      hint="Z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+                      :readonly="!isEditing"
+                      outlined
+                      density="comfortable"
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+                <v-alert
+                  v-if="!isEditing && (!editedScenario.llm1_model || !editedScenario.llm2_model)"
+                  type="info"
+                  class="mt-2"
+                  density="compact"
+                >
+                  Keine Modelle konfiguriert
+                </v-alert>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
           </v-expansion-panels>
         </v-card-text>
 
@@ -357,7 +395,9 @@ export default {
         end_date: null,
         threads: [],
         raters: [],
-        viewers: []
+        viewers: [],
+        llm1_model: '',
+        llm2_model: ''
       },
       selectedThreads: [],
       selectedViewers: [],
@@ -577,6 +617,14 @@ export default {
             : undefined,
           new_end: this.editedScenario.end_date !== this.originalScenario.end_date
             ? this.formatDateForBackend(this.editedScenario.end_date)
+            : undefined,
+          llm1_model: this.editedScenario.function_type_id === 4 &&
+                     this.editedScenario.llm1_model !== this.originalScenario.llm1_model
+            ? this.editedScenario.llm1_model
+            : undefined,
+          llm2_model: this.editedScenario.function_type_id === 4 &&
+                     this.editedScenario.llm2_model !== this.originalScenario.llm2_model
+            ? this.editedScenario.llm2_model
             : undefined
         };
 

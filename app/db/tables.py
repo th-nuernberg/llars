@@ -153,6 +153,9 @@ class RatingScenarios(db.Model):
     begin = mapped_column(db.DateTime, default=datetime.utcnow)
     end = mapped_column(db.DateTime, default=datetime.utcnow)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+    # Modellkonfiguration für Comparison-Szenarien
+    llm1_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    llm2_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
 
     # Definiere die Beziehungen mit Cascade-Option
     scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete")
@@ -253,6 +256,7 @@ class ComparisonSession(db.Model):
     messages: Mapped[list["ComparisonMessage"]] = db.relationship("ComparisonMessage", backref="session", cascade="all, delete-orphan", lazy="selectin")
     
     user = db.relationship("User", backref="comparison_sessions")
+    scenario = db.relationship("RatingScenarios", backref="comparison_sessions")
 
 class ComparisonMessage(db.Model):
     __tablename__ = "comparison_messages"

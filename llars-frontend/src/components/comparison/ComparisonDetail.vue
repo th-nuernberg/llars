@@ -5,7 +5,7 @@
         <v-card flat color="transparent">
           <v-card-title class="pa-0 text-h6 font-weight-bold">
             <v-icon start>mdi-chat</v-icon>
-            Gegenüberstellung: {{ session?.persona_name || 'Laden...' }}
+            Gegenüberstellung: {{ session?.persona_name || 'Laden...' }}  (Szenario {{ session?.scenario_id || '-1' }})
             <v-icon
               class="ml-1 mb-3 text-orange"
               size="20"
@@ -170,10 +170,10 @@ function onSuggestionStateChange(generating: boolean) {
 
 const canSendMessage = computed(() => {
   if (!session.value?.messages) return true;
-  
+
   const messages = session.value.messages;
   const lastMessage = messages[messages.length - 1];
-  
+
   return !lastMessage ||
     lastMessage.type === 'user' ||
     (lastMessage.type === 'bot_pair' && lastMessage.selected);

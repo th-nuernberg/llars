@@ -24,7 +24,7 @@
           elevation="2"
         >
           <v-card-item class="text-truncate">
-            <div class="text-subtitle-1">{{ session.persona_name }}</div>
+            <div class="text-subtitle-1">{{ session.persona_name }} (Szenario {{ session.scenario_id }})</div>
             <div class="text-caption grey--text">
               Status: {{ getStatusText(session.status) }} ({{ session.rated_messages }} bewertete Nachrichten)
             </div>
@@ -62,7 +62,7 @@ function goToDetail(id: string | number) {
 function getCardClass(color: string) {
   return {
     'card-grey': color === 'grey',
-    'card-yellow': color === 'yellow', 
+    'card-yellow': color === 'yellow',
     'card-green': color === 'green'
   };
 }

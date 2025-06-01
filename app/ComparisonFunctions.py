@@ -86,10 +86,14 @@ def format_persona_info(persona):
     properties = persona.get('properties', {})
     
     if 'Steckbrief' in properties and properties['Steckbrief']:
-        output += "**Steckbrief:**\n"
-        for key, value in properties['Steckbrief'].items():
-            output += f"- **{key}**: {value}\n"
-        output += "\n"
+        steckbrief = properties['Steckbrief']
+        if isinstance(steckbrief, dict):
+            output += "**Steckbrief:**\n"
+            for key, value in steckbrief.items():
+                output += f"- **{key}**: {value}\n"
+            output += "\n"
+        else:
+            logging.warning(f"Steckbrief is not a dict but {type(steckbrief)}: {steckbrief}")
     
     if 'Hauptanliegen' in properties and properties['Hauptanliegen']:
         hauptanliegen = properties['Hauptanliegen']
@@ -122,20 +126,24 @@ def format_persona_info(persona):
                 output += f"- {emotion}\n"
         
         if 'details' in emotionale_merkmale:
-            for emotion, details in emotionale_merkmale['details'].items():
-                if 'ausloeser' in details and 'reaktion' in details:
-                    output += f"  - **{emotion}**:\n"
-                    ausloeser = details.get('ausloeser', 'n/a')
-                    reaktion = details.get('reaktion', '')
-                    output += f"    - Die Emotion {emotion} wird bei {persona.get('name', 'der Persona')} durch {ausloeser} ausgelöst und löst folgende Reaktion aus: {reaktion}. "
-                    
-                    if 'beispielsausloeser' in details:
-                        output += f"-Beispielnachrichten des Beraters (mögliche Auslöser für diese Emotion) {emotion}:>\"{details['beispielsausloeser']}\".\n"
-                    
-                    if 'beispielsreaktion' in details:
-                        output += f"-Beispielsreaktion der Persona für {emotion}:>\"{details['beispielsreaktion']}\".\n"
-                    else:
-                        output += "\n"
+            details = emotionale_merkmale['details']
+            if isinstance(details, dict):
+                for emotion, emotion_details in details.items():
+                    if isinstance(emotion_details, dict) and 'ausloeser' in emotion_details and 'reaktion' in emotion_details:
+                        output += f"  - **{emotion}**:\n"
+                        ausloeser = emotion_details.get('ausloeser', 'n/a')
+                        reaktion = emotion_details.get('reaktion', '')
+                        output += f"    - Die Emotion {emotion} wird bei {persona.get('name', 'der Persona')} durch {ausloeser} ausgelöst und löst folgende Reaktion aus: {reaktion}. "
+                        
+                        if 'beispielsausloeser' in emotion_details:
+                            output += f"-Beispielnachrichten des Beraters (mögliche Auslöser für diese Emotion) {emotion}:>\"{emotion_details['beispielsausloeser']}\".\n"
+                        
+                        if 'beispielsreaktion' in emotion_details:
+                            output += f"-Beispielsreaktion der Persona für {emotion}:>\"{emotion_details['beispielsreaktion']}\".\n"
+                        else:
+                            output += "\n"
+            else:
+                logging.warning(f"details is not a dict but {type(details)}: {details}")
         output += "\n"
     
     if 'Ressourcen' in properties and properties['Ressourcen']:
@@ -223,6 +231,10 @@ def create_system_prompt(persona, chat_history):
         chat_history=chat_history,
         persona_details=persona_details
     )
+
+    is_first_message = not chat_history
+    if is_first_message:
+        prompt = f"{prompt}\n\n**Hinweis:** Dies ist die erste Nachricht in diesem Gespräch und du beginnst. Halte dich dabei an die sprachlichen Merkmale und die emotionale Grundhaltung, die in deinem Persona-Profil definiert sind."
 
     return prompt
 

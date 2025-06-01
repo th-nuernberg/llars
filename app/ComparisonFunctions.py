@@ -77,6 +77,99 @@ def add_message(session_id, idx, message_type, content):
     return message.id
 
 
+def format_persona_info(persona):
+    if not persona or not isinstance(persona, dict):
+        return ""
+    
+    output = f"## Persona: {persona.get('name', 'Unknown')}\n\n"
+    
+    properties = persona.get('properties', {})
+    
+    if 'Steckbrief' in properties and properties['Steckbrief']:
+        output += "**Steckbrief:**\n"
+        for key, value in properties['Steckbrief'].items():
+            output += f"- **{key}**: {value}\n"
+        output += "\n"
+    
+    if 'Hauptanliegen' in properties and properties['Hauptanliegen']:
+        hauptanliegen = properties['Hauptanliegen']
+        bullets = hauptanliegen.replace('. ', '.\n- ')
+        output += f"**Hauptanliegen**\n- {bullets}\n\n"
+    
+    optional_sections = {
+        'Nebenanliegen': 'Nebenanliegen',
+        'Sprachliche Merkmale': 'Sprachliche Merkmale'
+    }
+    
+    for key, title in optional_sections.items():
+        if key in properties and properties[key]:
+            output += f"**{title}**\n"
+            items = properties[key] if isinstance(properties[key], list) else [properties[key]]
+            for item in items:
+                output += f"- {item}\n"
+            output += "\n"
+    
+    if 'Emotionale Merkmale' in properties and properties['Emotionale Merkmale']:
+        emotionale_merkmale = properties['Emotionale Merkmale']
+        output += "**Emotionale Merkmale:**\n"
+        
+        if 'Grundhaltung' in emotionale_merkmale:
+            output += f"- **Emotionale Grundhaltung zu Beginn des Gesprächs**: {emotionale_merkmale['Grundhaltung']}.\n"
+        
+        if 'ausgepraegte Emotionen' in emotionale_merkmale:
+            output += f"- **Ausgeprägte Emotionen** bei {persona.get('name', 'der Persona')}:\n"
+            for emotion in emotionale_merkmale['ausgepraegte Emotionen']:
+                output += f"- {emotion}\n"
+        
+        if 'details' in emotionale_merkmale:
+            for emotion, details in emotionale_merkmale['details'].items():
+                if 'ausloeser' in details and 'reaktion' in details:
+                    output += f"  - **{emotion}**:\n"
+                    ausloeser = details.get('ausloeser', 'n/a')
+                    reaktion = details.get('reaktion', '')
+                    output += f"    - Die Emotion {emotion} wird bei {persona.get('name', 'der Persona')} durch {ausloeser} ausgelöst und löst folgende Reaktion aus: {reaktion}. "
+                    
+                    if 'beispielsausloeser' in details:
+                        output += f"-Beispielnachrichten des Beraters (mögliche Auslöser für diese Emotion) {emotion}:>\"{details['beispielsausloeser']}\".\n"
+                    
+                    if 'beispielsreaktion' in details:
+                        output += f"-Beispielsreaktion der Persona für {emotion}:>\"{details['beispielsreaktion']}\".\n"
+                    else:
+                        output += "\n"
+        output += "\n"
+    
+    if 'Ressourcen' in properties and properties['Ressourcen']:
+        ressourcen = properties['Ressourcen']
+        output += "**Folgende Ressourcen stehen der Persona zur Verfügung:**\n"
+        output += f"- Emotional (Fähigkeit, mit Gefühlen und Stress umzugehen): {'Ja' if ressourcen.get('emotional') else 'Nein'}\n"
+        output += f"- Sozial (Unterstützung durch Familie, Freunde, Netzwerke): {'Ja' if ressourcen.get('sozial') else 'Nein'}\n"
+        output += f"- Finanziell (Verfügbarkeit von Geld oder materiellen Mitteln): {'Ja' if ressourcen.get('finanziell') else 'Nein'}\n"
+        
+        andere_text = "Ja" if ressourcen.get('andere') else "Nein"
+        if ressourcen.get('andere') and ressourcen.get('andereDetails'):
+            andere_text += f" ({ressourcen['andereDetails']})"
+        output += f"- Andere: {andere_text}\n\n"
+    
+    if 'Soziales Umfeld' in properties and properties['Soziales Umfeld']:
+        output += "**Soziales Umfeld**\n"
+        soziales_umfeld = properties['Soziales Umfeld']
+        if isinstance(soziales_umfeld, str):
+            for item in soziales_umfeld.split(', '):
+                output += f"- {item.strip()}\n"
+        elif isinstance(soziales_umfeld, list):
+            for item in soziales_umfeld:
+                output += f"- {item}\n"
+    
+    if 'Prinzipien' in properties and properties['Prinzipien']:
+        output += "**Konversationsprinzipien**\n"
+        prinzipien = properties['Prinzipien'] if isinstance(properties['Prinzipien'], list) else [properties['Prinzipien']]
+        for prinzip in prinzipien:
+            formatted_prinzip = prinzip.strip().replace('.', '.\n  - ')
+            output += f"- {formatted_prinzip}\n"
+    
+    return output
+
+
 def create_system_prompt(persona, chat_history):
     from string import Template
     system_prompt = Template("""
@@ -111,7 +204,7 @@ def create_system_prompt(persona, chat_history):
     - Verboten: Allgemeine Ratschläge, Fachjargon, Rollenwechsel
 
     # Persona-Profil
-    $personality_condition
+    $persona_details
 
 
     # Aufgabe
@@ -123,14 +216,12 @@ def create_system_prompt(persona, chat_history):
     Schreibe jetzt in deutscher Sprache ausschließlich die Aussage von $name
     """)
 
-    persona_details = "\n".join(
-        f"{key}: {value}" for key, value in persona.items() if key not in ['name', 'properties']
-    )
+    persona_details = format_persona_info(persona)
 
     prompt = system_prompt.substitute(
         name=persona['name'],
         chat_history=chat_history,
-        personality_condition=persona_details
+        persona_details=persona_details
     )
 
     return prompt

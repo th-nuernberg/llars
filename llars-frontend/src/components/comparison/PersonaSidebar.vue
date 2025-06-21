@@ -21,7 +21,7 @@
 
           <div class="persona-details">
             <div class="steckbrief-section">
-              <div 
+              <div
                 v-for="(val, key) in persona.properties?.Steckbrief"
                 :key="key"
                 class="steckbrief-item"
@@ -49,7 +49,7 @@
       </template>
     </div>
 
-    <div class="sidebar-footer">
+    <!--<div class="sidebar-footer">
       <v-divider />
       <div class="pa-3">
         <v-btn
@@ -65,7 +65,7 @@
           Vorschlag generieren
         </v-btn>
       </div>
-    </div>
+    </div>-->
   </v-card>
 </template>
 

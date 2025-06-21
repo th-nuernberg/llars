@@ -60,7 +60,7 @@ def list_sessions_for_comparison():
             if rated_messages == 0:
                 status = 'not_started'
                 color = 'grey'
-            elif rated_messages < 5:
+            elif rated_messages < 30:
                 status = 'progressing'
                 color = 'yellow'
             else:

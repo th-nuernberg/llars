@@ -304,8 +304,8 @@ def generate_comparison_responses(session, message_id, socketio, client_id):
 
 def generate_llm_response(llm_type, message, is_first_message, message_id, socketio, client_id, session_id):
     try:
-        ssh_container = "llars_docker_ssh_proxy_service"
-        ssh_container_port = "8093"
+        ssh_container = "llars_docker_ssh_proxy_service_2"
+        ssh_container_port = "8195"
 
         client = OpenAI(
             api_key="EMPTY",

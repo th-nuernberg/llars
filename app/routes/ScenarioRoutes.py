@@ -26,6 +26,7 @@ import json
 import random
 from .HelperFunctions import get_thread_progression_state
 from pathlib import Path
+from openai import OpenAI
 
 BASE_DIR = Path(__file__).parent
 PERSONAS_PATH = BASE_DIR / '../static/vikl-personas.json'
@@ -647,6 +648,48 @@ def get_users():
     except Exception as e:
         logging.error(e)
         return jsonify({'error': 'Internal Server Error'}), 500
+
+
+@data_blueprint.route('/admin/get_available_models_from_vllm_server', methods=['GET'])
+def get_available_models_from_vllm_server():
+    try:
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
+
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
+        if admin_user.group.name != 'Admin':
+            return jsonify({'error': 'You do not have administration rights'}), 403
+
+        # Connect to the LLM server on port 8195
+        ssh_container = "llars_docker_ssh_proxy_service_2"
+        ssh_container_port = "8195"
+
+        client = OpenAI(
+            api_key="EMPTY",
+            base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
+        )
+
+        # Get list of available models
+        models_response = client.models.list()
+        
+        available_models = []
+        for model in models_response.data:
+            available_models.append({
+                'id': model.id,
+                'name': model.id,  # Using ID as display name
+                'created': getattr(model, 'created', None),
+                'owned_by': getattr(model, 'owned_by', 'unknown')
+            })
+
+        return jsonify(available_models), 200
+
+    except Exception as e:
+        logging.error(f"Error fetching available models: {str(e)}")
+        return jsonify({'error': f'Failed to fetch models: {str(e)}'}), 500
 
 
 @data_blueprint.route('/admin/get_threads_from_function_type/<int:function_type_id>', methods=['GET'])

@@ -149,26 +149,46 @@
               <v-expansion-panel-text>
                 <v-row>
                   <v-col cols="12" md="6">
-                    <v-text-field
+                    <v-select
                       v-model="formData.llm1Model"
+                      :items="modelItems"
+                      :loading="state.isLoadingModels"
                       label="Language-Modell 1"
                       outlined
                       density="comfortable"
-                      placeholder="z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503"
                       hint="Erstes Modell für die Gegenüberstellung"
                       persistent-hint
-                    ></v-text-field>
+                      clearable
+                    >
+                      <template v-slot:no-data>
+                        <v-list-item>
+                          <v-list-item-title>
+                            {{ state.isLoadingModels ? 'Lade Modelle...' : 'Keine Modelle verfügbar' }}
+                          </v-list-item-title>
+                        </v-list-item>
+                      </template>
+                    </v-select>
                   </v-col>
                   <v-col cols="12" md="6">
-                    <v-text-field
+                    <v-select
                       v-model="formData.llm2Model"
+                      :items="modelItems"
+                      :loading="state.isLoadingModels"
                       label="Language-Modell 2"
                       outlined
                       density="comfortable"
-                      placeholder="z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503"
                       hint="Zweites Modell für die Gegenüberstellung"
                       persistent-hint
-                    ></v-text-field>
+                      clearable
+                    >
+                      <template v-slot:no-data>
+                        <v-list-item>
+                          <v-list-item-title>
+                            {{ state.isLoadingModels ? 'Lade Modelle...' : 'Keine Modelle verfügbar' }}
+                          </v-list-item-title>
+                        </v-list-item>
+                      </template>
+                    </v-select>
                   </v-col>
                 </v-row>
                 <v-alert
@@ -176,7 +196,20 @@
                   variant="tonal"
                   class="mt-3"
                 >
-                  Die Modellnamen müssen mit verfügbaren Modellen übereinstimmen.
+                  <template v-if="state.isLoadingModels">
+                    <v-progress-circular
+                      indeterminate
+                      size="16"
+                      class="mr-2"
+                    ></v-progress-circular>
+                    Modelle werden geladen...
+                  </template>
+                  <template v-else-if="state.availableModels.length > 0">
+                    {{ state.availableModels.length }} verfügbare Modelle geladen.
+                  </template>
+                  <template v-else>
+                    Bitte wählen Sie Modelle aus der Liste der verfügbaren Modelle aus.
+                  </template>
                 </v-alert>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -291,7 +324,8 @@ import {
   getFunctionTypes,
   getAllUsers,
   getThreadsOfType,
-  createScenario
+  createScenario,
+  getAvailableModels
 } from '@/services/scenarioApi';
 
 export default {
@@ -311,7 +345,9 @@ export default {
       categories: [],
       users: [],
       threads: [],
-      isLoadingThreads: false
+      isLoadingThreads: false,
+      availableModels: [],
+      isLoadingModels: false
     });
 
     const formData = reactive({
@@ -420,6 +456,14 @@ export default {
       }));
     });
 
+    const modelItems = computed(() => {
+      return state.availableModels.map(model => ({
+        value: model.id,
+        title: model.name,
+        subtitle: model.owned_by ? `Owned by: ${model.owned_by}` : undefined
+      }));
+    });
+
     const filteredThreads = computed(() => {
       if (!state.threads) return [];
 
@@ -458,6 +502,19 @@ export default {
       }
     };
 
+    const fetchAvailableModels = async () => {
+      state.isLoadingModels = true;
+      try {
+        state.availableModels = await getAvailableModels();
+      } catch (error) {
+        console.error("Fehler beim Laden der verfügbaren Modelle:", error);
+        handleApiError(error);
+        state.availableModels = [];
+      } finally {
+        state.isLoadingModels = false;
+      }
+    };
+
     const fetchThreads = async (categoryId) => {
       if (!categoryId) {
         state.threads = [];
@@ -479,6 +536,10 @@ export default {
     const handleCategoryChange = async (newCategoryId) => {
       formData.selectedThreads = [];
       await fetchThreads(newCategoryId);
+      
+      if (newCategoryId === 4) {
+        await fetchAvailableModels();
+      }
     };
 
     const handleCheckboxChange = (userId, role) => {
@@ -591,6 +652,7 @@ export default {
       formData,
       threadFilter,
       categoryItems,
+      modelItems,
       filteredThreads,
       openDialog,
       closeDialog,

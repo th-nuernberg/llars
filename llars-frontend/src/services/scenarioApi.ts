@@ -9,6 +9,7 @@ function auth() {
 export const getFunctionTypes = () => axios.get(`${BASE_URL}/api/admin/get_function_types`, auth()).then(r => r.data);
 export const getAllUsers = () => axios.get(`${BASE_URL}/api/admin/get_users`, auth()).then(r => r.data);
 export const getThreadsOfType = (ftId: number) => axios.get(`${BASE_URL}/api/admin/get_threads_from_function_type/${ftId}`, auth()).then(r => r.data);
+export const getAvailableModels = () => axios.get(`${BASE_URL}/api/admin/get_available_models_from_vllm_server`, auth()).then(r => r.data);
 
 export const createScenario = (payload: any) => axios.post(`${BASE_URL}/api/admin/create_scenario`, payload, auth());
 export const listScenarios = () => axios.get(`${BASE_URL}/api/admin/scenarios`, auth()).then(r => r.data);

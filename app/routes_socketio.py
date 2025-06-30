@@ -7,7 +7,8 @@ import logging
 import random
 
 from ComparisonFunctions import get_all_messages_by_session_id, serialize_message, get_session_by_id, add_message, \
-    generate_comparison_responses, set_message_selected, get_message_by_id_and_session, generate_counselor_suggestion
+    generate_comparison_responses, set_message_selected, get_message_by_id_and_session, generate_counselor_suggestion, \
+    perform_ai_evaluation, save_user_justification
 from prompt_manager import PromptManager
 from rag_pipeline import RAGPipeline
 from datetime import datetime
@@ -608,7 +609,16 @@ def configure_socket_routes(socketio, verbose=True):
         try:
             if set_message_selected(message_id, session_id, selection):
                 updated_message = get_message_by_id_and_session(message_id, session_id)
-                emit('message_updated', serialize_message(updated_message), room=client_id)
+                
+                matches, ai_evaluation = perform_ai_evaluation(message_id, session_id, selection)
+                
+                response_data = {
+                    'message': serialize_message(updated_message),
+                    'ai_evaluation': ai_evaluation,
+                    'requires_justification': not matches and ai_evaluation is not None
+                }
+                
+                emit('message_updated', response_data, room=client_id)
             else:
                 emit('error', {'message': 'Failed to save rating'}, room=client_id)
                 return
@@ -639,6 +649,26 @@ def configure_socket_routes(socketio, verbose=True):
         except Exception as e:
             logging.error(f"Error generating suggestion: {str(e)}")
             emit('suggestion_error', {'message': 'Failed to generate suggestion'}, room=client_id)
+
+    @socketio.on('submit_justification')
+    def handle_submit_justification(data):
+        message_id = data.get('messageId')
+        justification = data.get('justification', '')
+        client_id = request.sid
+
+        if not message_id:
+            emit('error', {'message': 'Missing message ID'}, room=client_id)
+            return
+
+        try:
+            if save_user_justification(message_id, justification):
+                emit('justification_saved', {'message': 'Begründung gespeichert'}, room=client_id)
+            else:
+                emit('error', {'message': 'Failed to save justification'}, room=client_id)
+
+        except Exception as e:
+            logging.error(f"Error saving justification: {str(e)}")
+            emit('error', {'message': 'Failed to save justification'}, room=client_id)
 
 
 class ComparisonManager:

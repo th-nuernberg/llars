@@ -1,9 +1,10 @@
+from db.tables import ComparisonSession, ComparisonMessage, ComparisonEvaluation
+from db.db import db
+from openai import OpenAI
+from single_message_evaluation import SingleEvaluator
 import json
 import logging
 import threading
-from db.tables import ComparisonSession, ComparisonMessage
-from db.db import db
-from openai import OpenAI
 
 
 def get_model_mapping_for_session(session):
@@ -42,6 +43,145 @@ def set_message_selected(message_id, session_id, selected):
         db.session.commit()
         return True
     return False
+
+
+def perform_ai_evaluation(message_id, session_id, user_selection):
+    try:
+        evaluation = ComparisonEvaluation.query.filter_by(message_id=message_id).order_by(ComparisonEvaluation.timestamp.desc()).first()
+        
+        if not evaluation:
+            logging.warning(f"No AI evaluation found for message {message_id}, performing now...")
+            return perform_ai_evaluation_fallback(message_id, session_id, user_selection)
+        
+        evaluation.user_selection = user_selection
+        ai_selection = evaluation.ai_selection
+        
+        matches = check_rating_match(user_selection, ai_selection)
+        evaluation.match_result = matches
+        
+        db.session.commit()
+        
+        return matches, {
+            'ai_selection': ai_selection,
+            'ai_reason': evaluation.ai_reason,
+            'user_selection': user_selection
+        }
+        
+    except Exception as e:
+        logging.error(f"Error in AI evaluation check: {str(e)}")
+        return True, None
+
+
+def perform_ai_evaluation_fallback(message_id, session_id, user_selection):
+    try:
+        message = ComparisonMessage.query.filter_by(id=message_id, session_id=session_id).first()
+        if not message or message.type != 'bot_pair':
+            return True, None
+            
+        session = ComparisonSession.query.filter_by(id=session_id).first()
+        if not session:
+            return True, None
+            
+        content = message.content
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except json.JSONDecodeError:
+                logging.error(f"Could not parse message content for evaluation: {message_id}")
+                return True, None
+                
+        if not isinstance(content, dict) or 'llm1' not in content or 'llm2' not in content:
+            return True, None
+            
+        chat_history = build_chat_history_for_evaluation(session, message.idx)
+        
+        persona_description = format_persona_info(session.persona_json) if session.persona_json else "Keine Persona-Information verfügbar"
+        
+        evaluator = SingleEvaluator()
+        result = evaluator.evaluate_responses(
+            persona_description=persona_description,
+            history=chat_history,
+            response1=content['llm1'],
+            response2=content['llm2']
+        )
+        
+        ai_selection = map_ai_rating_to_selection(result.get('rating', 'error'))
+        ai_reason = result.get('reason', 'Keine Begründung verfügbar')
+        
+        matches = check_rating_match(user_selection, ai_selection)
+        
+        evaluation = ComparisonEvaluation(
+            message_id=message_id,
+            user_selection=user_selection,
+            ai_selection=ai_selection,
+            ai_reason=ai_reason,
+            match_result=matches
+        )
+        
+        db.session.add(evaluation)
+        db.session.commit()
+        
+        return matches, {
+            'ai_selection': ai_selection,
+            'ai_reason': ai_reason,
+            'user_selection': user_selection
+        }
+        
+    except Exception as e:
+        logging.error(f"Error in AI evaluation fallback: {str(e)}")
+        return True, None
+
+
+def build_chat_history_for_evaluation(session, up_to_idx):
+    messages = ComparisonMessage.query.filter_by(session_id=session.id).filter(ComparisonMessage.idx < up_to_idx).order_by(ComparisonMessage.idx).all()
+    
+    history_parts = []
+    for msg in messages:
+        if msg.type == 'user':
+            history_parts.append(f"Berater: {msg.content}")
+        elif msg.type == 'bot_pair' and msg.selected:
+            content = msg.content
+            if isinstance(content, str):
+                try:
+                    content = json.loads(content)
+                except json.JSONDecodeError:
+                    continue
+            
+            if isinstance(content, dict) and msg.selected in content:
+                history_parts.append(f"Klient: {content[msg.selected]}")
+    
+    return "\n".join(history_parts)
+
+
+def map_ai_rating_to_selection(ai_rating):
+    if ai_rating == 'model_1':
+        return 'llm1'
+    elif ai_rating == 'model_2':
+        return 'llm2'
+    elif ai_rating == 'same':
+        return 'tie'
+    else:
+        return 'error'
+
+
+def check_rating_match(user_selection, ai_selection):
+    if ai_selection == 'error':
+        return True
+    
+    return user_selection == ai_selection
+
+
+def save_user_justification(message_id, justification):
+    try:
+        evaluation = ComparisonEvaluation.query.filter_by(message_id=message_id).order_by(ComparisonEvaluation.timestamp.desc()).first()
+        if evaluation:
+            evaluation.user_justification = justification
+            db.session.commit()
+            return True
+        return False
+    except Exception as e:
+        logging.error(f"Error saving user justification: {str(e)}")
+        return False
 
 
 def serialize_message(message):
@@ -327,7 +467,7 @@ def generate_llm_response(llm_type, message, is_first_message, message_id, socke
                     'role': 'system',
                     'content': message
             }],
-            temperature=0.15,
+            temperature=0.7,
             max_tokens=50 if is_first_message else 100,
             stream=True
         )
@@ -376,6 +516,9 @@ def save_llm_response(message_id, llm_type, response):
                 content[llm_type] = response
                 message.content = json.dumps(content)
                 db.session.commit()
+                
+                if 'llm1' in content and 'llm2' in content and content['llm1'] and content['llm2']:
+                    perform_ai_evaluation_async(message_id, message.session_id)
 
     except Exception as e:
         logging.error(f"Error saving {llm_type} response: {str(e)}")
@@ -462,3 +605,69 @@ Generiere eine kurze, empathische Berater-Antwort (maximal 2-3 Sätze), die:
 Antworte nur mit der vorgeschlagenen Berater-Antwort, ohne weitere Erklärungen."""
 
     return prompt
+
+
+def perform_ai_evaluation_async(message_id, session_id):
+    import threading
+    
+    def run_evaluation():
+        try:
+            from main import app
+            with app.app_context():
+                message = ComparisonMessage.query.filter_by(id=message_id, session_id=session_id).first()
+                if not message or message.type != 'bot_pair':
+                    return
+                    
+                session = ComparisonSession.query.filter_by(id=session_id).first()
+                if not session:
+                    return
+                
+                existing_evaluation = ComparisonEvaluation.query.filter_by(message_id=message_id).first()
+                if existing_evaluation:
+                    return
+                    
+                content = message.content
+                if isinstance(content, str):
+                    try:
+                        content = json.loads(content)
+                    except json.JSONDecodeError:
+                        logging.error(f"Could not parse message content for evaluation: {message_id}")
+                        return
+                        
+                if not isinstance(content, dict) or 'llm1' not in content or 'llm2' not in content:
+                    return
+                    
+                chat_history = build_chat_history_for_evaluation(session, message.idx)
+                
+                persona_description = format_persona_info(session.persona_json) if session.persona_json else "Keine Persona-Information verfügbar"
+                
+                evaluator = SingleEvaluator()
+                result = evaluator.evaluate_responses(
+                    persona_description=persona_description,
+                    history=chat_history,
+                    response1=content['llm1'],
+                    response2=content['llm2']
+                )
+                
+                ai_selection = map_ai_rating_to_selection(result.get('rating', 'error'))
+                ai_reason = result.get('reason', 'Keine Begründung verfügbar')
+                
+                evaluation = ComparisonEvaluation(
+                    message_id=message_id,
+                    user_selection='',
+                    ai_selection=ai_selection,
+                    ai_reason=ai_reason,
+                    match_result=True
+                )
+                
+                db.session.add(evaluation)
+                db.session.commit()
+                
+                logging.info(f"AI evaluation completed for message {message_id}: {ai_selection}")
+                
+        except Exception as e:
+            logging.error(f"Error in async AI evaluation: {str(e)}")
+    
+    thread = threading.Thread(target=run_evaluation)
+    thread.daemon = True
+    thread.start()

@@ -284,3 +284,17 @@ class ComparisonMessage(db.Model):
         'selected': self.selected,
         'timestamp': self.timestamp.isoformat()
       }
+
+
+class ComparisonEvaluation(db.Model):
+    __tablename__ = "comparison_evaluations"
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    message_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("comparison_messages.id"), index=True)
+    user_selection: Mapped[str] = mapped_column(db.String(10))  # "llm1" / "llm2" / "tie"
+    ai_selection: Mapped[str] = mapped_column(db.String(10))  # "llm1" / "llm2" / "tie"
+    ai_reason: Mapped[str] = mapped_column(db.Text)
+    user_justification: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+    match_result: Mapped[bool] = mapped_column(db.Boolean)
+    timestamp: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now)
+    
+    message = db.relationship("ComparisonMessage", backref="evaluations")

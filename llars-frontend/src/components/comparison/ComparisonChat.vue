@@ -135,6 +135,65 @@
         </div>
       </transition>
     </div>
+
+    <!-- Dialog für Bewertungsabweichung -->
+    <v-dialog v-model="showJustificationDialog" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="text-h5 bg-warning text-white pa-4">
+          <v-icon start class="mr-2">mdi-alert-circle</v-icon>
+          Bewertungsabweichung
+        </v-card-title>
+        <v-card-text class="pa-6">
+          <div class="mb-4">
+            <v-alert type="info" variant="tonal" class="mb-4">
+              Wir führen automatisch auch eine Bewertung der Konversation durch künstliche Intelligenz durch. Diesmal hat diese sich anders entschieden, als Sie es haben. Um das besser zu verstehen, würden wir uns freuen, wenn Sie hierfür eine Begründung angeben könnten. Vielen Dank!
+              <br>
+              <strong>Ihre Bewertung:</strong> {{ formatSelection(currentJustification?.user_selection) }}
+              <br>
+              <strong>KI-Bewertung:</strong> {{ formatSelection(currentJustification?.ai_selection) }}
+            </v-alert>
+          </div>
+          
+          <div class="mb-4">
+            <h4 class="text-subtitle-1 mb-2">Begründung der KI:</h4>
+            <v-card variant="outlined" class="pa-3">
+              <p class="text-body-2">{{ currentJustification?.ai_reason }}</p>
+            </v-card>
+          </div>
+
+          <div>
+            <h4 class="text-subtitle-1 mb-2">Ihre Begründung (optional):</h4>
+            <v-textarea
+              v-model="userJustification"
+              placeholder="Warum sind Sie anderer Meinung als die KI? (Optional)"
+              variant="outlined"
+              hide-details
+              rows="3"
+              auto-grow
+              max-rows="6"
+            />
+          </div>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn
+            color="grey"
+            variant="text"
+            @click="closeJustificationDialog(false)"
+          >
+            Ohne Begründung fortfahren
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            @click="closeJustificationDialog(true)"
+            :disabled="!userJustification.trim()"
+          >
+            Begründung speichern
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -168,6 +227,9 @@ const isProcessing = ref(false);
 const messagesContainer = ref<HTMLElement>();
 const socket = ref<any>(null);
 const generatingSuggestion = ref(false);
+const showJustificationDialog = ref(false);
+const currentJustification = ref<any>(null);
+const userJustification = ref('');
 
 const canSendMessage = computed(() => {
   const lastMessage = messages.value[messages.value.length - 1];
@@ -188,6 +250,15 @@ const formatTimestamp = (timestamp: string) => {
 
 const isStreaming = (message: Message) => {
   return message.streaming?.llm1 || message.streaming?.llm2;
+};
+
+const formatSelection = (selection: string) => {
+  switch(selection) {
+    case 'llm1': return 'Modell 1 ist besser';
+    case 'llm2': return 'Modell 2 ist besser';
+    case 'tie': return 'Beide gleich gut';
+    default: return selection;
+  }
 };
 
 const getResponseContent = (message: Message, llmType: 'llm1' | 'llm2') => {
@@ -301,9 +372,25 @@ const initializeSocket = () => {
     addOrUpdateMessage(messageData);
   });
 
-  socket.value.on('message_updated', (messageData: any) => {
-    console.log('Message updated:', messageData);
-    addOrUpdateMessage(messageData);
+  socket.value.on('message_updated', (data: any) => {
+    console.log('Message updated:', data);
+    
+    // Message aktualisieren
+    if (data.message) {
+      addOrUpdateMessage(data.message);
+    }
+    
+    // Prüfen ob Justification-Dialog angezeigt werden soll
+    if (data.requires_justification && data.ai_evaluation) {
+      currentJustification.value = {
+        messageId: data.message.messageId,
+        user_selection: data.ai_evaluation.user_selection,
+        ai_selection: data.ai_evaluation.ai_selection,
+        ai_reason: data.ai_evaluation.ai_reason
+      };
+      showJustificationDialog.value = true;
+    }
+    
     emit('messageUpdate');
   });
 
@@ -370,16 +457,6 @@ const initializeSocket = () => {
     }
   });
 
-  socket.value.on('error', (data: any) => {
-    console.error('Socket error:', data);
-    isProcessing.value = false;
-  });
-
-  socket.value.on('disconnect', () => {
-    console.log('Socket disconnected');
-    isProcessing.value = false;
-  });
-
   socket.value.on('suggestion_generated', (data: any) => {
     console.log('Suggestion generated:', data);
     const {suggestion} = data;
@@ -393,6 +470,21 @@ const initializeSocket = () => {
     console.error('Suggestion error:', data);
     generatingSuggestion.value = false;
     emit('suggestionStateChange', false);
+  });
+
+  socket.value.on('justification_saved', (data: any) => {
+    console.log('Justification saved:', data);
+    // Optional: Erfolgsmeldung anzeigen
+  });
+  
+  socket.value.on('error', (data: any) => {
+    console.error('Socket error:', data);
+    isProcessing.value = false;
+  });
+
+  socket.value.on('disconnect', () => {
+    console.log('Socket disconnected');
+    isProcessing.value = false;
   });
 };
 
@@ -418,6 +510,19 @@ const generateSuggestion = () => {
   socket.value.emit('generate_suggestion', {
     sessionId: props.sessionId
   });
+};
+
+const closeJustificationDialog = (saveJustification: boolean) => {
+  if (saveJustification && userJustification.value.trim() && currentJustification.value) {
+    socket.value?.emit('submit_justification', {
+      messageId: currentJustification.value.messageId,
+      justification: userJustification.value.trim()
+    });
+  }
+  
+  showJustificationDialog.value = false;
+  currentJustification.value = null;
+  userJustification.value = '';
 };
 
 defineExpose({

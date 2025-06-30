@@ -47,7 +47,7 @@
             </v-chip>
 
             <span class="text-white text-caption">
-              {{ ratedMessages }} / {{ totalMessages }} Nachrichten bewertet
+              {{ ratedMessages }} / {{ messagesToRate }} Nachrichten bewertet
               <span v-if="ratedMessages >= 5" class="ml-2 text-grey-darken-3">
                 (Chat kann weiter fortgesetzt werden)
               </span>
@@ -70,6 +70,8 @@ interface Props {
   totalMessages: number;
 }
 
+const messagesToRate = 30;
+
 const props = defineProps<Props>();
 const router = useRouter();
 
@@ -87,19 +89,19 @@ const isLastSession = computed(() => {
 
 const getStatusColor = () => {
   if (props.ratedMessages === 0) return 'grey';
-  if (props.ratedMessages >= 5) return 'green';
+  if (props.ratedMessages >= messagesToRate) return 'green';
   return 'orange';
 };
 
 const getStatusIcon = () => {
   if (props.ratedMessages === 0) return 'mdi-play-circle-outline';
-  if (props.ratedMessages >= 5) return 'mdi-check-circle';
+  if (props.ratedMessages >= messagesToRate) return 'mdi-check-circle';
   return 'mdi-progress-clock';
 };
 
 const getStatusText = () => {
   if (props.ratedMessages === 0) return 'Nicht begonnen';
-  if (props.ratedMessages >= 5) return 'Abgeschlossen';
+  if (props.ratedMessages >= messagesToRate) return 'Abgeschlossen';
   return 'In Bearbeitung';
 };
 

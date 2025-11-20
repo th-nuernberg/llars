@@ -37,5 +37,13 @@ RUN chmod +x /usr/local/bin/healthcheck.sh
 # Setzt die benötigten Umgebungsvariablen für Flask
 ENV FLASK_APP=main.py
 
+# Create non-root user and set permissions
+RUN groupadd -r flaskuser && useradd -r -g flaskuser -u 1001 flaskuser && \
+    chown -R flaskuser:flaskuser /app && \
+    chown -R flaskuser:flaskuser /app/models
+
+# Switch to non-root user
+USER flaskuser
+
 # Definiert den Startbefehl für den Container
 CMD ["/usr/local/bin/start_flask.sh"]

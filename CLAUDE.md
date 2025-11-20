@@ -506,8 +506,13 @@ CREATE TABLE rankings (
 - ✅ Secrets in `.env` (nicht in Git)
 - ✅ `.gitignore` umfassend konfiguriert
 - ✅ Docker Port-Isolation (nur nginx exponiert)
+- ✅ **Container als Non-Root** (vollständig implementiert)
+  - Flask Backend: `flaskuser` (UID 1001)
+  - YJS Server: `yjsuser` (UID 1002)
+  - Vue Frontend: `vueuser` (UID 1003)
+  - Keycloak: Native non-root support
+  - Nginx: Runs as `nginx` user (official image default)
 - ⚠️ SSL/TLS in Production (noch zu konfigurieren)
-- ⚠️ Container als Non-Root (noch zu implementieren)
 
 #### 4. Frontend-Sicherheit
 - ✅ Keycloak Token Auto-Refresh
@@ -522,11 +527,11 @@ CREATE TABLE rankings (
 
 ### Noch zu implementieren
 
-1. **Container-Härtung**: Non-Root User in allen Dockerfiles
-2. **SSL/TLS**: HTTPS für Production mit Let's Encrypt
-3. **Secrets Management**: Vault oder Kubernetes Secrets statt .env
-4. **Audit Logging**: Keycloak Event Listeners + DB-Audit-Trail
-5. **CSP Enhancement**: Implementierung strikter CSP-Headers
+1. **SSL/TLS**: HTTPS für Production mit Let's Encrypt
+2. **Secrets Management**: Vault oder Kubernetes Secrets statt .env
+3. **Audit Logging**: Keycloak Event Listeners + DB-Audit-Trail
+4. **CSP Enhancement**: Implementierung strikter CSP-Headers
+5. **Security Headers**: X-Frame-Options, X-Content-Type-Options, etc.
 
 ---
 

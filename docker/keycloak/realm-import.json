@@ -28,6 +28,15 @@
   "accessCodeLifespan": 60,
   "accessCodeLifespanUserAction": 300,
   "accessCodeLifespanLogin": 1800,
+  "browserSecurityHeaders": {
+    "contentSecurityPolicy": "frame-src 'self' http://localhost:* http://127.0.0.1:*; frame-ancestors 'self' http://localhost:* http://127.0.0.1:*; object-src 'none';",
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
   "roles": {
     "realm": [
       {

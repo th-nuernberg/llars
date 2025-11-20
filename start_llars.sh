@@ -98,14 +98,26 @@ check_and_start_docker() {
 # Überprüfen, ob der Docker-Daemon läuft und ggf. starten
 check_and_start_docker
 
-# Dienste herunterfahren (Container sofort stoppen und löschen)
-echo "Erzwinge das Stoppen und Entfernen aller Dienste..."
-docker ps -q | xargs -r docker rm -f
+# Dienste herunterfahren (NUR LLARS Container stoppen und löschen)
+echo "Stoppe und entferne LLARS-Dienste..."
+cd "$BASE_DIR"
+docker compose -p llars down
 
 if [ "$REMOVE_VOLUMES" = "True" ]; then
-  echo "Entferne Volumes..."
-  docker volume prune -f
-  echo "Volumes entfernt."
+  echo "Entferne NUR LLARS-Volumes..."
+  # Explizit nur LLARS-Volumes löschen, um andere Projekte nicht zu beeinflussen
+  LLARS_VOLUMES=("llars_llarsdb" "llars_keycloakdb" "llars_model_volume")
+
+  for volume in "${LLARS_VOLUMES[@]}"; do
+    if docker volume inspect "$volume" >/dev/null 2>&1; then
+      echo "Lösche Volume: $volume"
+      docker volume rm "$volume" || echo "Warnung: Konnte $volume nicht löschen (möglicherweise noch in Benutzung)"
+    else
+      echo "Volume $volume existiert nicht, überspringe."
+    fi
+  done
+
+  echo "LLARS-Volumes entfernt."
 fi
 
 # Überprüfe den Projektzustand und starte die entsprechenden Dienste

@@ -7,10 +7,10 @@ from tokenize import group
 from unicodedata import category
 
 from . import data_blueprint, auth_blueprint
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
+from flask import Blueprint, jsonify, request, g
 from werkzeug.security import check_password_hash
 from werkzeug.exceptions import BadRequest
+from auth.decorators import keycloak_required, admin_required, roles_required
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
@@ -29,15 +29,10 @@ from .HelperFunctions import get_thread_progression_state
 
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
+@admin_required
 def get_scenario_list():
-    # Authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @admin_required decorator
+    # Current user available in g.keycloak_user
 
     scenarios = RatingScenarios.query.all()
 
@@ -90,16 +85,11 @@ def get_scenario_list():
 
 
 @data_blueprint.route('/admin/scenarios/<int:scenario_id>', methods=['GET'])
-def get_scenario_details(scenario_id=None): #
+@admin_required
+def get_scenario_details(scenario_id=None):
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         # check if scenario id is valid
         if not scenario_id:
@@ -170,15 +160,10 @@ def get_scenario_details(scenario_id=None): #
 
 
 @data_blueprint.route('/admin/create_scenario', methods=['POST']) # TODO: Gedanken zu Zeitzonen machen
+@admin_required
 def create_scenario():
-    # Authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @admin_required decorator
+    # Current user available in g.keycloak_user
 
     try:
         data = request.get_json()
@@ -336,15 +321,10 @@ def create_scenario():
 
 
 @data_blueprint.route('/admin/delete_scenario/<int:scenario_id>', methods=['DELETE'])
+@admin_required
 def delete_scenario(scenario_id):
-    # Authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @admin_required decorator
+    # Current user available in g.keycloak_user
 
     # Versuche, das Szenario zu finden
     scenario = RatingScenarios.query.get(scenario_id)
@@ -365,18 +345,11 @@ def delete_scenario(scenario_id):
 
 
 @data_blueprint.route('/admin/edit_scenario', methods=['POST']) # TODO: Gedanken zu Zeitzonen machen
+@admin_required
 def edit_scenario():
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
-        if admin_user.group.name != 'Admin':
-            return jsonify({'error': 'You do not have administration rights'}), 403
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         # get the data
         try:
@@ -432,17 +405,11 @@ def edit_scenario():
 
 
 @data_blueprint.route('/admin/add_threads_to_scenario', methods=['POST'])
+@admin_required
 def add_threads_to_scenario():
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
-        if admin_user.group.name != 'Admin':
-            return jsonify({'error': 'You do not have administration rights'}), 403
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         try:
             data = request.get_json()
@@ -516,17 +483,11 @@ def add_threads_to_scenario():
 
 
 @data_blueprint.route('/admin/add_viewers_to_scenario', methods=['POST'])
+@admin_required
 def add_viewers_to_scenario():
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
-        if admin_user.group.name != 'Admin':
-            return jsonify({'error': 'You do not have administration rights'}), 403
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         try:
             data = request.get_json()
@@ -564,18 +525,11 @@ def add_viewers_to_scenario():
 
 
 @data_blueprint.route('/admin/get_function_types', methods=['GET'])
+@admin_required
 def get_function_types():
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
-        if admin_user.group.name != 'Admin':
-            return jsonify({'error': 'You do not have administration rights'}), 403
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         feature_function_types = FeatureFunctionType.query.all()
         function_types = []
@@ -593,18 +547,11 @@ def get_function_types():
 
 
 @data_blueprint.route('/admin/get_users', methods=['GET'])
+@admin_required
 def get_users():
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
-        if admin_user.group.name != 'Admin':
-            return jsonify({'error': 'You do not have administration rights'}), 403
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         db_users = (db.session.query(User).join(UserGroup, User.group_id == UserGroup.id)
                  .filter(UserGroup.name != "Admin").all())
@@ -623,18 +570,11 @@ def get_users():
 
 
 @data_blueprint.route('/admin/get_threads_from_function_type/<int:function_type_id>', methods=['GET'])
+@admin_required
 def get_threads(function_type_id):
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
-        if admin_user.group.name != 'Admin':
-            return jsonify({'error': 'You do not have administration rights'}), 403
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         validated_function_type = FeatureFunctionType.query.filter_by(function_type_id=function_type_id).first()
 
@@ -660,17 +600,10 @@ def get_threads(function_type_id):
 
 
 @data_blueprint.route('/admin/scenario_progress_stats/<int:scenario_id>', methods=['GET'])
+@admin_required
 def get_scenario_user_progress_stats(scenario_id):
-    # Authorization
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    admin_user = User.query.filter_by(api_key=api_key).first()
-    if not admin_user:
-        return jsonify({'error': 'Invalid API key'}), 401
-    if admin_user.group.name != 'Admin':
-        return jsonify({'error': 'You do not have administration rights'}), 403
+    # Authorization handled by @admin_required decorator
+    # Current user available in g.keycloak_user
 
     # check if scenario id is valid
     if not scenario_id:

@@ -25,8 +25,8 @@ import TempTestPage from "@/components/TempTest.vue";
 import PromptEngineering from "@/components/PromptEngineering/PromptEngineering.vue";
 import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngineeringDetail.vue";
 
-// Importiere die Admin-Check Funktion
-import { isAdmin } from '@/services/admins';
+// Keycloak Integration
+import { useKeycloak } from '@dsb-norge/vue-keycloak-js'
 import AdminUserProgressStats from "@/components/Admin/AdminUserProgressStats.vue";
 
 const routes = [
@@ -67,25 +67,40 @@ const router = createRouter({
     routes
 });
 
-// Navigationswächter
+// Navigationswächter mit Keycloak
 router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
-    const isAuthenticated = localStorage.getItem('token');
-    const username = localStorage.getItem('username');
+
+    // Get Keycloak instance
+    const keycloak = useKeycloak();
 
     console.log("Navigating to:", to.path);
-    console.log("isAuthenticated:", isAuthenticated);
-    console.log("username:", username);
-    console.log("isAdmin:", isAdmin(username));
+    console.log("Keycloak authenticated:", keycloak.authenticated);
+    console.log("Keycloak roles:", keycloak.tokenParsed?.realm_access?.roles);
 
-    if (requiresAuth && !isAuthenticated) {
+    // If route requires authentication and user is not authenticated
+    if (requiresAuth && !keycloak.authenticated) {
+        console.log("Route requires auth, redirecting to login");
+        // Redirect to login page instead of Keycloak directly (better UX)
         next('/login');
-    } else if (requiresAdmin && !isAdmin(username)) {
-        next('/Home');
-    } else {
-        next();
+        return;
     }
+
+    // If route requires admin role
+    if (requiresAdmin) {
+        const roles = keycloak.tokenParsed?.realm_access?.roles || [];
+        const isAdmin = roles.includes('admin');
+
+        if (!isAdmin) {
+            console.log("User is not admin, redirecting to Home");
+            next('/Home');
+            return;
+        }
+    }
+
+    // All checks passed, proceed with navigation
+    next();
 });
 
 

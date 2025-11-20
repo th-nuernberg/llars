@@ -4,6 +4,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const setupSocketHandlers = require('./websocket');
+const { authenticateSocket } = require('./auth');
 
 // Test-Funktion
 const { testDBConnection } = require('./db/testDB');
@@ -14,7 +15,7 @@ app.use(cors());
 // HTTP-Server
 const server = http.createServer(app);
 
-// Socket.IO
+// Socket.IO mit Keycloak JWT Authentication
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -22,6 +23,9 @@ const io = new Server(server, {
   },
   path: '/collab/socket.io/'
 });
+
+// Authentication middleware - ALLE WebSocket-Verbindungen müssen authentifiziert sein
+io.use(authenticateSocket);
 
 // Aufruf der Socket-Logik
 setupSocketHandlers(io);

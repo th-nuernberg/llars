@@ -43,42 +43,44 @@
 </template>
 
 <script setup>
-import {ref} from 'vue';
+import {ref, onMounted} from 'vue';
 import {useRouter} from 'vue-router';
-import axios from 'axios';
-import {jwtDecode} from "jwt-decode";
-import {isAdmin} from '../services/admins';
+import {useKeycloak} from '@dsb-norge/vue-keycloak-js';
 
 const username = ref('');
 const password = ref('');
 const errorMessage = ref('');
 const router = useRouter();
+const keycloak = useKeycloak();
+
+// Check if already authenticated on mount
+onMounted(() => {
+  if (keycloak.authenticated) {
+    // Already logged in, redirect based on role
+    const roles = keycloak.tokenParsed?.realm_access?.roles || [];
+    if (roles.includes('admin')) {
+      router.push('/AdminDashboard');
+    } else {
+      router.push('/Home');
+    }
+  }
+});
 
 async function handleLogin() {
   try {
-    const response = await axios.post('/auth/login', {
-      username: username.value,
-      password: password.value
+    // For a seamless experience, we redirect to Keycloak login
+    // The username/password fields are just for UX consistency
+    // In production, you could customize Keycloak's theme to match this design
+
+    // Redirect to Keycloak login page
+    await keycloak.login({
+      redirectUri: window.location.origin + '/Home',
+      // You can optionally pre-fill the username
+      loginHint: username.value
     });
-
-    if (response.data.access_token) {
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('username', response.data.username);
-
-      const decoded = jwtDecode(response.data.access_token);
-      const apiKey = decoded.api_key;
-      localStorage.setItem('api_key', apiKey);
-
-      if (isAdmin(response.data.username)) {
-        router.push('/AdminDashboard');
-      } else {
-        router.push('/Home');
-      }
-    } else {
-      errorMessage.value = 'No access token received';
-    }
   } catch (error) {
-    errorMessage.value = error.response?.data?.error || 'An error occurred during login';
+    console.error('Login error:', error);
+    errorMessage.value = 'An error occurred during login. Please try again.';
   }
 }
 </script>

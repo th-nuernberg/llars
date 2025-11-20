@@ -2,10 +2,10 @@ import traceback
 from venv import logger
 import logging
 from . import data_blueprint, auth_blueprint
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
+from flask import Blueprint, jsonify, request, g
 from werkzeug.security import check_password_hash
 from werkzeug.exceptions import BadRequest
+from auth.decorators import keycloak_required, admin_required, roles_required
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
@@ -25,14 +25,11 @@ from .HelperFunctions import get_user_threads, can_access_thread
 
 
 @data_blueprint.route('/email_threads/ratings/<int:thread_id>', methods=['GET'])
+@keycloak_required
 def get_email_thread_for_ratings(thread_id):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
         return jsonify({'error': 'Access denied'}), 401
@@ -72,14 +69,11 @@ def get_email_thread_for_ratings(thread_id):
 
 
 @data_blueprint.route('/email_threads/ratings/<int:thread_id>/<int:feature_id>', methods=['GET'])
+@keycloak_required
 def get_feature_and_messages(thread_id, feature_id):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
         return jsonify({'error': 'Access denied'}), 401
@@ -121,14 +115,10 @@ def get_feature_and_messages(thread_id, feature_id):
 
 
 @data_blueprint.route('/email_threads/ratings', methods=['GET'])
+@keycloak_required
 def list_email_threads_for_ratings():
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
     if not rating_function_type:
@@ -153,7 +143,9 @@ def list_email_threads_for_ratings():
 
 
 @data_blueprint.route('/feature_type_mapping', methods=['GET'])
+@keycloak_required
 def get_feature_type_mapping():
+    # Authorization handled by @keycloak_required decorator
     feature_types = FeatureType.query.all()
 
     if not feature_types:
@@ -167,7 +159,9 @@ def get_feature_type_mapping():
     return jsonify(mapping), 200
 
 @data_blueprint.route('/feature_type_mapping/<identifier>', methods=['GET'])
+@keycloak_required
 def get_feature_type(identifier):
+    # Authorization handled by @keycloak_required decorator
     if identifier.isdigit():
         # Wenn der Identifier eine Zahl ist, gehe davon aus, dass es eine FeatureType-ID ist
         feature_type = FeatureType.query.filter_by(type_id=int(identifier)).first()
@@ -182,14 +176,11 @@ def get_feature_type(identifier):
         return jsonify({'type_id': feature_type.type_id}), 200
 
 @data_blueprint.route('/save_rating/<int:thread_id>/<int:feature_id>', methods=['POST'])
+@keycloak_required
 def save_rating(thread_id, feature_id):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
         return jsonify({'error': 'Access denied'}), 401
@@ -221,14 +212,11 @@ def save_rating(thread_id, feature_id):
 
 
 @data_blueprint.route('/get_rating/<int:thread_id>/<int:feature_id>', methods=['GET'])
+@keycloak_required
 def get_rating(thread_id, feature_id):
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
         return jsonify({'error': 'Access denied'}), 401

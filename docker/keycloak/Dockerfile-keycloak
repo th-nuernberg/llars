@@ -1,0 +1,18 @@
+FROM quay.io/keycloak/keycloak:26.0.7
+
+# Arbeitsverzeichnis setzen
+WORKDIR /opt/keycloak
+
+# Keycloak für Production vorbereiten
+# In Development-Modus starten wir mit start-dev
+# In Production würde man 'build' und dann 'start' verwenden
+
+# Health-Check Tools
+USER root
+RUN microdnf install -y curl && microdnf clean all
+USER 1000
+
+# Expose Port
+EXPOSE 8080
+
+# Entrypoint wird durch docker-compose command überschrieben

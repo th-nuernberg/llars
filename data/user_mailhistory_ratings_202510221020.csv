@@ -1,0 +1,228 @@
+"rating_id","user_id","thread_id","counsellor_coherence_rating","client_coherence_rating","quality_rating","overall_rating","feedback","status","timestamp"
+1,4,58,1,1,1,,,PROGRESSING,2025-02-11 10:48:47.000
+2,4,58,1,1,1,1,,PROGRESSING,2025-02-11 10:48:56.000
+3,4,58,1,1,1,1,,DONE,2025-02-11 10:49:09.000
+4,4,59,1,1,5,0,,DONE,2025-02-11 12:25:03.000
+5,4,60,1,1,1,1,,DONE,2025-02-11 12:26:01.000
+6,5,106,0,5,0,0,"Wenn Pepe ein Jugendlicher wäre, dürften wir ihn bis zum 21. Lebensjahr begleiten. Würden ihn aber in der Beratung duzen.
+
+Jugendberatung: Du
+Elternberatung: Sie
+
+Erziehungsberatung auf Elternseite, setzt voraus, dass es ein Kind gibt.
+
+Wenn Pepe Vater eines 5 jährigen Sohnes ist und ihm ein gutes Vorbild sein möchte, würde es gehen oder wenn Pepe 19 Jahre alt ist und schon alleine wohnt!!!!
+
+Daher leider raus!",DONE,2025-03-04 07:47:49.000
+7,5,118,0,5,0,0,Kein Beratungstext generiert - daher raus!,DONE,2025-03-04 07:48:22.000
+8,5,89,2,1,3,0,"Beraterinnen Name hakt in der Generierung: [Berater*in-Name]
+
+Die Antworten der Ratsuchenden: 
+= eher untypisch: dankend, reflektiert und etwas zu einsichtig zu schnell ohne Nachfragen oder eigentlich einzusteigen :) a la chat gpt 
+
+Etwas zu Proaktiv vielleicht insgesamt :)
+Die Therapeutensuche habe ich noch nie so reibungslos erlebt.
+",DONE,2025-03-04 08:09:53.000
+9,5,89,2,1,3,0,"Beraterinnen Name hakt in der Generierung: [Berater*in-Name]
+
+Die Antworten der Ratsuchenden: 
+= eher untypisch: dankend, reflektiert und etwas zu einsichtig zu schnell ohne Nachfragen oder eigentlich richtig einzusteigen :) a la chat gpt 
+
+Etwas zu Proaktiv zu kompetente Ratsuchende - vielleicht insgesamt :).
+
+Die Therapeutensuche habe ich noch nie so reibungslos erlebt.
+",DONE,2025-03-04 09:21:37.000
+10,5,89,2,1,3,0,"Beraterinnen Name hakt in der Generierung: [Berater*in-Name]
+
+Die Antworten der Ratsuchenden: 
+= eher untypisch: dankend, reflektiert und etwas zu einsichtig zu schnell ohne Nachfragen oder eigentlich richtig einzusteigen :) a la chat gpt 
+
+Etwas zu Proaktiv zu kompetente Ratsuchende - vielleicht insgesamt :).
+
+Die Therapeutensuche habe ich noch nie so reibungslos erlebt.
+
+Zweifel, Unsicherheiten fehlen!
+-> zu gradlinig
+",DONE,2025-03-04 09:22:41.000
+11,6,138,0,5,0,0,,DONE,2025-03-04 09:37:39.000
+12,6,137,0,5,0,0,,DONE,2025-03-04 09:37:51.000
+13,6,169,0,5,0,0,,DONE,2025-03-04 09:38:02.000
+14,6,99,0,5,0,0,,DONE,2025-03-04 09:38:22.000
+15,6,135,0,5,0,0,,DONE,2025-03-04 09:38:36.000
+16,6,164,0,5,0,0,,DONE,2025-03-04 09:38:50.000
+17,6,162,0,5,0,0,,DONE,2025-03-04 09:39:01.000
+18,6,77,0,5,0,0,,DONE,2025-03-04 09:39:11.000
+19,6,170,0,5,0,0,,DONE,2025-03-04 09:39:25.000
+20,6,160,0,5,0,0,,DONE,2025-03-04 10:48:23.000
+21,6,176,0,5,0,0,,DONE,2025-03-04 10:48:36.000
+22,6,83,0,5,0,0,,DONE,2025-03-04 10:48:46.000
+23,6,157,0,5,0,0,,DONE,2025-03-04 10:48:59.000
+24,6,66,5,0,0,0,,DONE,2025-03-04 10:56:10.000
+25,6,66,5,0,0,0,zwei Fälle hintereinander mit wechselnden Akteuren und Sprüngen in der Zeitangabe,DONE,2025-03-04 10:57:14.000
+26,6,66,5,0,0,0,zwei Fälle hintereinander mit wechselnden Akteuren und Sprüngen in der Zeitangabe,DONE,2025-03-04 10:57:14.000
+27,6,66,5,0,0,0,zwei Fälle hintereinander mit wechselnden Akteuren und Sprüngen in der Zeitangabe,DONE,2025-03-04 10:57:14.000
+28,6,129,0,5,0,0,,DONE,2025-03-04 10:57:30.000
+29,6,76,5,0,0,0,,DONE,2025-03-04 11:19:56.000
+30,6,82,0,5,0,0,,DONE,2025-03-04 11:20:09.000
+31,6,130,0,5,0,0,,DONE,2025-03-04 11:20:19.000
+32,6,140,0,5,0,0,,DONE,2025-03-04 11:20:29.000
+33,6,88,0,5,0,0,,DONE,2025-03-04 11:20:41.000
+34,6,104,0,5,0,0,,DONE,2025-03-04 11:20:49.000
+35,6,117,0,5,0,0,,DONE,2025-03-04 11:21:08.000
+36,6,108,0,5,0,0,,DONE,2025-03-04 11:21:21.000
+37,6,115,0,5,0,0,,DONE,2025-03-04 11:21:29.000
+38,6,84,0,5,0,0,,DONE,2025-03-04 11:21:38.000
+39,6,81,0,5,0,0,,DONE,2025-03-04 11:21:53.000
+40,6,167,0,5,0,0,,DONE,2025-03-04 11:22:02.000
+41,6,151,0,5,0,0,,DONE,2025-03-04 11:22:10.000
+42,6,122,0,5,0,0,,DONE,2025-03-04 11:22:49.000
+43,6,147,0,5,0,0,,DONE,2025-03-04 11:24:26.000
+44,6,94,0,5,0,0,,DONE,2025-03-04 11:24:34.000
+45,6,72,0,5,0,0,,DONE,2025-03-04 11:24:47.000
+46,6,178,0,5,0,0,,DONE,2025-03-04 11:24:58.000
+47,6,96,0,5,0,0,,DONE,2025-03-04 11:25:07.000
+48,6,70,0,5,0,0,,DONE,2025-03-04 11:25:15.000
+49,6,123,0,5,0,0,,DONE,2025-03-04 11:25:34.000
+50,6,134,0,5,0,0,,DONE,2025-03-04 11:25:56.000
+51,6,75,0,5,0,0,,DONE,2025-03-04 11:26:11.000
+52,6,71,0,5,0,0,,DONE,2025-03-04 11:26:30.000
+53,6,80,0,5,0,0,,DONE,2025-03-04 11:26:45.000
+54,6,133,0,5,0,0,,DONE,2025-03-04 11:26:53.000
+55,6,102,0,5,0,0,,DONE,2025-03-04 11:27:02.000
+56,6,142,0,5,0,0,,DONE,2025-03-04 11:27:10.000
+57,6,180,0,5,0,0,,DONE,2025-03-04 11:27:22.000
+58,6,95,0,5,0,0,,DONE,2025-03-04 11:27:32.000
+59,6,163,0,5,0,0,,DONE,2025-03-04 11:27:47.000
+60,5,136,1,1,1,1,guter Anfang !,DONE,2025-03-04 12:52:02.000
+61,5,155,0,5,0,0,,DONE,2025-03-04 12:52:38.000
+62,5,105,0,5,0,0,,DONE,2025-03-04 12:52:54.000
+63,5,86,0,5,0,0,,DONE,2025-03-04 12:53:05.000
+64,5,128,0,5,0,0,,DONE,2025-03-04 12:53:14.000
+65,5,85,0,5,0,0,,DONE,2025-03-04 12:53:23.000
+66,5,139,0,5,0,0,,DONE,2025-03-04 12:53:53.000
+67,5,183,0,5,0,0,,DONE,2025-03-04 12:54:07.000
+68,5,166,0,5,0,0,,DONE,2025-03-04 12:54:19.000
+69,5,131,0,5,0,0,,DONE,2025-03-04 12:54:26.000
+70,5,87,0,5,0,0,,DONE,2025-03-04 12:55:12.000
+71,5,182,0,5,0,0,,DONE,2025-03-04 12:55:24.000
+72,5,148,0,5,0,0,,DONE,2025-03-04 12:55:39.000
+73,5,145,0,5,0,0,,DONE,2025-03-04 12:55:53.000
+74,5,103,0,5,0,0,,DONE,2025-03-04 12:56:03.000
+75,5,172,0,5,0,0,,DONE,2025-03-04 12:56:29.000
+76,5,185,0,5,0,0,,DONE,2025-03-04 12:56:47.000
+77,5,116,0,5,0,0,,DONE,2025-03-04 12:57:01.000
+78,5,101,0,5,0,0,,DONE,2025-03-04 12:57:10.000
+79,5,91,0,5,0,0,,DONE,2025-03-04 12:57:20.000
+80,5,179,0,5,0,0,,DONE,2025-03-04 12:57:50.000
+81,5,159,0,5,0,0,,DONE,2025-03-04 12:58:13.000
+82,5,73,0,5,0,0,,DONE,2025-03-04 12:58:33.000
+83,5,79,0,5,0,0,,DONE,2025-03-04 12:58:50.000
+84,5,216,2,1,4,0,"1. Die Antwort der Beraterin liegt vor der Anfrage !
+Sollte besser binnen 24 bis max. 48h nach der Erstanfrage liegen *für das Prompting vielleicht*
+Die Zeiten springen komplett.
+
+2. Beraterinnenname hakt 
+3. dreimal die wiederholte Antwort der Beratenden
+
+Inhaltlich zu Antwort der Beraterin:
+4. KiB = kinder im Blick Kurs könnte noch vorgeschlagen werden oder T/S Gruppe bei uns online, Austausch mit anderen Eltern im Elternforum (Entlastung) auf uns verweisen und oder auch auf beratungsstelle vor Ort zu eigenen Entlastung
+
+5. die Antworten der Klientin sind zu schnell VIEL zu positiv: da herrscht Sorgerechtsstreit ! Sie ist belastet. KEIN Klient geht so stringend auf jeden Vorschlag ein. Es werden bestimmte Punkte beantwortet. NIE alles. ein kurzes Danke in der Regel aber sonst nicht so viel...",DONE,2025-03-05 07:11:29.000
+85,5,257,3,1,0,0,"Daten springen 
+
+* Nicht gleich alle Ideen in der Erstantwort verpulvern!
+* ""Lass uns gerne wissen"" - bitte im singular. Als ratsuchende würde ich mich fragen: wer liest hier alles noch mit!
+
+Antwort Ratsuchender: to much
+""vielen Dank für deine einfühlsame und aufmerksame Antwort. Es tut gut zu wissen, dass jemand meine Situation nachvollziehen kann und mir helfen möchte, einen Weg durch diesen Erwartungsdruck zu finden."" a la chatgpt never ever von einer Jugendlichen !
+
+Sie beantwortet wieder jede einzelne Frage = sehr unrealistisch
+",DONE,2025-03-05 07:19:40.000
+86,5,189,0,5,0,0,leider zu alt für die Jugendberatung,DONE,2025-03-05 07:22:57.000
+87,5,233,2,1,3,0,"- Zeit springt - Antwort nach 2 Monaten
+- [Beratende Person]
+
+die ersten beiden sind okay, dann wird es wie bei den vorherigen - realitätsfern",DONE,2025-03-05 07:32:04.000
+88,5,239,0,5,0,0,"Klient ist leider zu alt
+Berater könnte einmal schreiben und verweisen ",DONE,2025-03-05 07:33:13.000
+89,5,241,2,1,5,0,"- Zeiten springen
+
+-> wir haben intern Angebote für Jugendliche !!!!",DONE,2025-03-05 07:57:02.000
+90,5,215,2,2,4,0,"- zu viele Fragen der Jugendlichen
+- zu sehr direkt alles umsetzend !",DONE,2025-03-05 08:02:42.000
+91,5,263,0,5,0,0,Klient ist für die Jugendberatung zu alt (25),DONE,2025-03-05 08:06:25.000
+92,5,204,2,2,4,0,"- Zeiten !
+- wie in den Fällen zuvor
+- grenzwertig mit dem Alter",DONE,2025-03-05 08:11:35.000
+93,6,221,1,1,1,1,"diese Beratung finde ich sehr gut, die Vorsicht mit den Lösungsvorschlägen, die Fragen nach mehr Infos",DONE,2025-03-05 16:01:20.000
+94,6,243,0,4,0,0,zu unrealistisch,DONE,2025-03-05 16:10:13.000
+95,6,127,2,2,2,1,der Fall passt soweit,DONE,2025-03-05 16:22:27.000
+96,6,238,0,5,0,0,,DONE,2025-03-05 19:47:39.000
+97,6,228,0,5,0,0,drei Antworten des Beratenden hintereinander mit ähnlichem Inhalt,DONE,2025-03-05 19:51:01.000
+98,6,62,0,5,0,0,"zwei Fälle hintereinander, der erste hat mit dem Titel nichts zu tun, der zweite greift das thema Kinderlosigkeit auf, was aber nicht in eine Erziehungsberatung passt",DONE,2025-03-05 19:57:04.000
+99,5,258,0,3,0,0,,DONE,2025-03-07 07:22:35.000
+100,5,209,2,2,3,0,"- das ""uns"" in der Antwort finde ich störend und irritierend
+- [Berater:innen-Name],",DONE,2025-03-07 07:34:19.000
+101,5,195,2,2,3,0,"Antwort der Beraterin viel zu spät (zeitlich betrachtet)
+Der Beginn Anfrage + Antwort ist gut, doch dann das typische Muster:
+Inhaltlich geht sie abarbeitend auf jede Anregung ein - unrealistisch",DONE,2025-03-07 08:21:04.000
+102,14,58,2,1,5,0,,DONE,2025-03-13 11:16:58.000
+103,5,100,3,2,0,0,,DONE,2025-03-16 12:23:17.000
+104,5,63,0,4,0,0,,DONE,2025-03-16 12:24:08.000
+105,5,59,1,2,2,2,"drei Fälle scheinen sich hier eingeschlichen zu haben !
+
+Anfrage √
+Antwort √
+doch ab dann leider Schema F",PROGRESSING,2025-03-16 12:30:45.000
+106,5,59,1,2,2,2,"drei Fälle scheinen sich hier eingeschlichen zu haben !
+
+Anfrage √
+Antwort √
+doch ab dann leider Schema F",DONE,2025-03-16 12:33:18.000
+107,5,65,0,3,0,0,,DONE,2025-03-16 12:35:07.000
+108,5,171,2,2,2,2,,DONE,2025-03-16 12:38:50.000
+109,5,171,2,2,2,2,ab der 3. Nachricht Schema F und dann kommt ein neuer Fall direkt nach der 3. nachricht...,DONE,2025-03-16 12:39:22.000
+110,6,132,,,,2,zwei Fälle aneinander,PROGRESSING,2025-03-19 11:21:29.000
+111,6,267,3,0,3,0,"da entsteht kein Kontakt , eine eher technische Antwort",DONE,2025-03-20 08:06:00.000
+112,6,132,,,,2,"der Anfang der ersten Beratung gefällt mir, leider zwei Fälle aneinander",PROGRESSING,2025-03-20 08:08:06.000
+113,6,61,0,5,0,0,mit 24 zu alt für die bke-onlineberatung,DONE,2025-03-20 08:09:23.000
+114,6,60,0,5,0,0,zwei Fälle hintereinander,DONE,2025-03-20 08:14:44.000
+115,6,146,,2,,2,zu glatt und dadurch unrealistisch,PROGRESSING,2025-03-20 08:18:14.000
+116,6,111,4,2,0,0,"der Beratende stellt zwar Fragen (positiv), geht aber eher am Thema vorbei, außerdem zwei Fälle hintereinander",DONE,2025-03-20 08:23:12.000
+117,6,144,0,5,0,0,wenn der Ratsuchende jünger wäre...,DONE,2025-03-20 08:26:54.000
+118,6,173,,2,,2,"der erste Fall hat gute Ansätze, aber zuviele Routine-Formulierungen, das macht es unrealistisch, dann kommt ein zweiter neuer Fall",PROGRESSING,2025-03-20 08:45:45.000
+119,6,98,0,5,0,0,"keine Jugendsprache, zu komplexe Sätze, zu viele Fälle in einem",DONE,2025-03-20 08:50:02.000
+120,6,67,0,5,0,0,drei Fälle in einem,DONE,2025-03-20 08:56:56.000
+121,6,210,4,0,0,0,zu wenig Nachfrage,DONE,2025-03-20 09:16:33.000
+122,6,68,0,5,0,0,,DONE,2025-03-20 10:19:34.000
+123,6,158,,2,,2,"der Anfang geht, aber dann...zu viel Lösung, zu wenig Fragen, Mehrere Fälle hintereinander",PROGRESSING,2025-03-20 10:25:13.000
+124,6,114,0,5,0,0,"zu unrealistisch, keine Formulierungen einer Jugendlichen",DONE,2025-03-20 10:29:03.000
+125,6,74,,,5,0,das geht zu glatt und nur lösungsorientiert,PROGRESSING,2025-03-20 10:34:28.000
+126,6,152,,,,2,"nachfragen fehlt, Kleinigkeiten klären, zweiter Fall Suchtproblem",PROGRESSING,2025-03-20 10:40:25.000
+127,6,113,,,,2,kein Fall für eine Erziehungsberatung,PROGRESSING,2025-03-20 10:41:10.000
+128,6,264,,,,2,"Büroalltag ist nicht direkt ein Thema für die Erziehungsberatung, mit Familie zb als Vater würde es gehen, manche Antworten liegen weit in der Zukunft",PROGRESSING,2025-03-20 10:44:12.000
+129,6,273,,2,,2,"die Anfrage der Ratsuchenden finde ich glaubhaft, ein bisschen zu wenig jugendlich formuliert, dann kommen die Routineantworten, die unrealistisch sind",PROGRESSING,2025-03-20 11:06:30.000
+130,6,222,0,5,0,0,"kein Thema für die Erziehungsberatung, wenn kein Kind involviert ist",DONE,2025-03-20 11:07:57.000
+131,6,196,5,2,0,0,"wie kam es, dass die Diagnose erst jetzt gemacht wurde?...also es fehlen Fragen...unrealistisch",DONE,2025-03-20 11:13:53.000
+132,6,242,0,5,0,0,"keine Fragen, kein HIntergrundwissen, Alter, Familie?",DONE,2025-03-20 11:15:53.000
+133,6,197,0,5,0,0,"sprachlich zu unrealistisch, keine Alltagssprache, eher wie in einem Roman",DONE,2025-03-20 11:19:00.000
+134,6,270,0,5,0,0,,DONE,2025-03-20 11:21:04.000
+135,6,220,0,5,0,0,"kein Thema für die Erziehungsberatung, Familie zu wenig konkret, gibt es KInder?",DONE,2025-03-20 11:23:48.000
+136,6,262,0,5,0,0,auch hier das Alter mit 25 ist kein Erziehungsberatungsfall,DONE,2025-03-20 11:25:08.000
+137,6,260,0,5,0,0,Karriereberatung?,DONE,2025-03-20 11:26:02.000
+138,6,218,0,5,0,0,Studienberatung an der Uni würde besser passen,DONE,2025-03-20 11:27:08.000
+139,6,226,,,,2,"mir fehlen wichtige Fragen und Hintergrund, es bleibt zu oberflächlich",PROGRESSING,2025-03-20 11:35:43.000
+140,6,271,,,3,0,"beim ersten Lesen ein eingeschränktes Ja, aber zu wenige Fragen nach konkreten Verhalten der Familienmitglieder, es läuft zu glatt, sprachlich auf einem sehr hohen Niveau",PROGRESSING,2025-03-24 08:13:48.000
+141,6,141,,,,2,"drei Antworten hintereinander, ubnd nicht das Thema einer Erziehungsberatung, weil keine Kinder",PROGRESSING,2025-03-24 08:15:44.000
+142,6,250,,,,2,Arbeitsprobleme ohne Kinder ist kein Thema für EB,PROGRESSING,2025-03-24 08:17:13.000
+143,6,192,,,,2,"drei Antworten hintereinander, unrealistisch",PROGRESSING,2025-03-24 08:29:54.000
+144,6,208,,,,2,"ein sehr kompetenter Ratsuchender, klingt nicht wie ein 17jähriger",PROGRESSING,2025-03-24 08:40:33.000
+145,6,213,,,,2,klingt nicht nach einer Jugendlichen,PROGRESSING,2025-03-24 09:33:05.000
+146,6,268,,,,2,drei Antworten der Beratenden hintereinander geht nicht,PROGRESSING,2025-03-24 09:36:21.000
+147,14,59,2,1,5,0,,DONE,2025-03-25 10:10:14.000
+148,14,60,1,1,1,1,,DONE,2025-03-25 10:10:54.000
+149,6,249,0,5,0,0,,DONE,2025-04-01 07:48:03.000
+150,6,231,,,,2,,PROGRESSING,2025-04-01 08:06:30.000
+151,6,275,,,,2,,PROGRESSING,2025-04-01 08:09:02.000
+152,6,259,,,,2,,PROGRESSING,2025-04-01 08:10:49.000
+153,6,246,,,,2,,PROGRESSING,2025-04-01 08:11:30.000

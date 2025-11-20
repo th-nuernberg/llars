@@ -82,7 +82,6 @@ FRONTEND_EXTERNAL_PORT=55173   # Frontend dev server
 DB_EXTERNAL_PORT=55306         # Database (debugging only)
 KEYCLOAK_EXTERNAL_PORT=55090   # Authentication
 YJS_EXTERNAL_PORT=55082        # Collaborative editing
-SSH_PROXY_EXTERNAL_PORT=55093  # SSH tunnel
 MKDOCS_EXTERNAL_PORT=55800     # Documentation
 
 # Internal Ports (inside Docker network)
@@ -101,6 +100,30 @@ YJS_INTERNAL_PORT=8082
 ```bash
 OPENAI_API_KEY=sk-test-placeholder-replace-with-real-key
 ```
+
+### LiteLLM Proxy (TH Nürnberg)
+
+LLARS uses LiteLLM Proxy for accessing Mistral models hosted by TH Nürnberg:
+
+```bash
+LITELLM_API_KEY=sk-RgzbaiE9HM8w0I5IWgZz6g
+LITELLM_BASE_URL=https://kiz1.in.ohmportal.de/llmproxy/v1
+```
+
+**Configuration:**
+- **Proxy URL:** https://kiz1.in.ohmportal.de/llmproxy/v1
+- **Default Model:** `mistralai/Mistral-Small-3.2-24B-Instruct-2506`
+- **Metadata Tags:** ["Technische Hochschule Nürnberg", "KIA"]
+- **Interface:** OpenAI-compatible API
+
+**Features:**
+- Streaming responses
+- JSON mode support
+- Automatic metadata tagging for usage tracking
+- Integration in `app/llm/litellm_client.py`
+
+**Web Interface:**
+- View available endpoints: https://kiz1.in.ohmportal.de/llmproxy/
 
 ### RAG Pipeline
 

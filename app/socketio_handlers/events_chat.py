@@ -1,9 +1,10 @@
 """
 SocketIO Chat Events
-Handles chat streaming with vLLM integration.
+Handles chat streaming with LiteLLM Proxy integration.
 """
 
 import logging
+import os
 import random
 import requests
 from flask import request
@@ -82,8 +83,6 @@ def register_chat_events(socketio, chat_manager):
     @socketio.on("chat_stream")
     def handle_chat_stream(data):
         """Handle streaming chat with RAG context"""
-        ssh_container = "llars_docker_ssh_proxy_service"
-        ssh_container_port = "8093"
         client_id = request.sid
 
         try:
@@ -137,20 +136,23 @@ def register_chat_events(socketio, chat_manager):
                 chat_history=chat_history
             )
 
-            # Use vLLM via the OpenAI-compatible interface
+            # Use LiteLLM Proxy with OpenAI-compatible interface
+            litellm_api_key = os.getenv("LITELLM_API_KEY", "sk-RgzbaiE9HM8w0I5IWgZz6g")
             client = OpenAI(
-                api_key="EMPTY",
-                base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
+                api_key=litellm_api_key,
+                base_url="https://kiz1.in.ohmportal.de/llmproxy/v1"
             )
 
             assistant_message = ""
-            # Stream chat completion from vLLM
+            # Stream chat completion from LiteLLM Proxy
+            metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
             stream = client.chat.completions.create(
-                model="mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+                model="mistralai/Mistral-Small-3.2-24B-Instruct-2506",
                 messages=[{"role": "user", "content": formatted_input}],
                 temperature=temperature,
                 max_tokens=chat_manager.prompt_manager.max_new_tokens,
-                stream=True
+                stream=True,
+                extra_body={"metadata": metadata}
             )
 
             for chunk in stream:
@@ -192,12 +194,11 @@ def register_chat_events(socketio, chat_manager):
         logging.info(f"handle_test_prompt_stream called. SID={client_id}, data={data}")
         user_prompt = data.get('prompt', '')
 
-        # Initialize vLLM client
-        ssh_container = "llars_docker_ssh_proxy_service"
-        ssh_container_port = "8093"
+        # Initialize LiteLLM client
+        litellm_api_key = os.getenv("LITELLM_API_KEY", "sk-RgzbaiE9HM8w0I5IWgZz6g")
         client = OpenAI(
-            api_key="EMPTY",
-            base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
+            api_key=litellm_api_key,
+            base_url="https://kiz1.in.ohmportal.de/llmproxy/v1"
         )
 
         try:
@@ -207,23 +208,26 @@ def register_chat_events(socketio, chat_manager):
             json_mode = data.get('jsonMode', True)
             logging.info(f"handle_test_prompt_stream: JSON Mode = {json_mode}")
 
-            # Bereite extra_body vor, nur wenn JSON Mode aktiviert
+            # Metadata für TH Nürnberg / KIA
+            metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
+
+            # Bereite extra_body vor mit Metadata
+            extra_body = {"metadata": metadata}
+
             if json_mode:
                 # JSON Mode: use provided schema for guided_json
                 schema = data.get('schema', {}) or {}
-                extra_body = {
-                    "guided_json": schema,
-                    "guided_decoding_backend": "outlines"
-                }
-                extra_kwargs = {"extra_body": extra_body}
-                logging.info(f"handle_test_prompt_stream: extra_kwargs={extra_kwargs}")
+                extra_body["guided_json"] = schema
+                extra_body["guided_decoding_backend"] = "outlines"
+                logging.info(f"handle_test_prompt_stream: JSON Mode with schema")
             else:
-                extra_kwargs = {}
-                logging.info("handle_test_prompt_stream: JSON Mode disabled, no extra_kwargs")
+                logging.info("handle_test_prompt_stream: JSON Mode disabled")
 
-            # Stream test completion
+            extra_kwargs = {"extra_body": extra_body}
+
+            # Stream test completion from LiteLLM Proxy
             stream = client.chat.completions.create(
-                model="mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+                model="mistralai/Mistral-Small-3.2-24B-Instruct-2506",
                 messages=messages,
                 max_tokens=4096,
                 n=1,

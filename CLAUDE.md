@@ -512,16 +512,21 @@ CREATE TABLE rankings (
 #### 4. Frontend-Sicherheit
 - ✅ Keycloak Token Auto-Refresh
 - ✅ Axios Interceptor für Bearer Tokens
-- ⚠️ XSS-Schutz mit DOMPurify (teilweise, RankerDetail.vue offen)
+- ✅ **XSS-Schutz mit DOMPurify** (vollständig implementiert)
+  - `src/utils/sanitize.js`: Zentrale Sanitization-Utility
+  - `RankerDetail.vue`: Alle v-html Direktiven geschützt (8 Stellen)
+  - `TestPromptDialog.vue`: Prompt-Highlighting sanitized
+  - `HistoryGenerationDetail.vue`: Message-Content sanitized
+  - Siehe `llars-frontend/SECURITY.md` für Details
 - ✅ CSP-Headers via nginx (konfiguriert)
 
 ### Noch zu implementieren
 
-1. **XSS-Schutz**: DOMPurify in `RankerDetail.vue` für alle `v-html` Direktiven
-2. **Container-Härtung**: Non-Root User in allen Dockerfiles
-3. **SSL/TLS**: HTTPS für Production mit Let's Encrypt
-4. **Secrets Management**: Vault oder Kubernetes Secrets statt .env
-5. **Audit Logging**: Keycloak Event Listeners + DB-Audit-Trail
+1. **Container-Härtung**: Non-Root User in allen Dockerfiles
+2. **SSL/TLS**: HTTPS für Production mit Let's Encrypt
+3. **Secrets Management**: Vault oder Kubernetes Secrets statt .env
+4. **Audit Logging**: Keycloak Event Listeners + DB-Audit-Trail
+5. **CSP Enhancement**: Implementierung strikter CSP-Headers
 
 ---
 

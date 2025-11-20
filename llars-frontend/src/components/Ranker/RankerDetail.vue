@@ -220,6 +220,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import draggable from 'vuedraggable';
 import axios from 'axios';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 const route = useRoute();
 const router = useRouter();
@@ -539,10 +540,12 @@ function formatFeatureContent(type, content) {
     case 'generated_subject':
       try {
         const subjectObj = JSON.parse(content);
-        return subjectObj.Betreff || content;
+        // Sanitize the subject text before returning
+        return sanitizeHtml(subjectObj.Betreff || content);
       } catch (error) {
         console.error('Error parsing generated_subject JSON:', error);
-        return content;
+        // Sanitize fallback content
+        return sanitizeHtml(content);
       }
 
     case 'situation_summary':
@@ -550,11 +553,13 @@ function formatFeatureContent(type, content) {
         const summaryObj = JSON.parse(content);
         let formattedContent = '<div class="situation-summary">';
         for (const [key, values] of Object.entries(summaryObj)) {
-          const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+          // Escape key name to prevent XSS
+          const capitalizedKey = sanitizeHtml(key.charAt(0).toUpperCase() + key.slice(1));
           formattedContent += `<p><strong>${capitalizedKey}:</strong></p>`;
           formattedContent += '<ul>';
           values.forEach(item => {
-            formattedContent += `<li>${item}</li>`;
+            // Sanitize each list item
+            formattedContent += `<li>${sanitizeHtml(item)}</li>`;
           });
           formattedContent += '</ul>';
         }
@@ -573,14 +578,17 @@ function formatFeatureContent(type, content) {
           </style>
         `;
 
-        return formattedContent;
+        // Sanitize the entire formatted content (will preserve allowed tags)
+        return sanitizeHtml(formattedContent);
       } catch (error) {
         console.error('Error parsing situation_summary JSON:', error);
-        return content;
+        // Sanitize fallback content
+        return sanitizeHtml(content);
       }
 
     default:
-      return content;
+      // Sanitize default content
+      return sanitizeHtml(content);
   }
 }
 

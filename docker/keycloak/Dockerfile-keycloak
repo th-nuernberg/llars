@@ -3,16 +3,22 @@ FROM quay.io/keycloak/keycloak:26.0.7
 # Arbeitsverzeichnis setzen
 WORKDIR /opt/keycloak
 
+# Wechsle zu root für Setup
+USER root
+
+# Kopiere Entrypoint-Script und setze Permissions
+COPY --chmod=755 docker/keycloak/entrypoint.sh /opt/keycloak/entrypoint.sh
+RUN chown 1000:1000 /opt/keycloak/entrypoint.sh
+
 # Keycloak für Production vorbereiten
 # In Development-Modus starten wir mit start-dev
 # In Production würde man 'build' und dann 'start' verwenden
 
-# Health-Check Tools (curl is already included in base image)
-# USER root
-# RUN microdnf install -y curl && microdnf clean all
-# USER 1000
+# Wechsle zurück zu keycloak user
+USER 1000
 
 # Expose Port
 EXPOSE 8080
 
-# Entrypoint wird durch docker-compose command überschrieben
+# Setze Entrypoint
+ENTRYPOINT ["/opt/keycloak/entrypoint.sh"]

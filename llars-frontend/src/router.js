@@ -25,8 +25,6 @@ import TempTestPage from "@/components/TempTest.vue";
 import PromptEngineering from "@/components/PromptEngineering/PromptEngineering.vue";
 import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngineeringDetail.vue";
 
-// Keycloak Integration
-import { useKeycloak } from '@dsb-norge/vue-keycloak-js'
 import AdminUserProgressStats from "@/components/Admin/AdminUserProgressStats.vue";
 
 const routes = [
@@ -67,36 +65,46 @@ const router = createRouter({
     routes
 });
 
-// Navigationswächter mit Keycloak
+// Navigationswächter mit Custom Auth
 router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
 
-    // Get Keycloak instance
-    const keycloak = useKeycloak();
+    // Get auth instance from useAuth composable
+    // We need to import it here instead of using useAuth() directly
+    // because router guards run before components are mounted
+    const isAuthenticated = !!sessionStorage.getItem('kc_token');
+
+    let userRoles = [];
+    let isAdmin = false;
+
+    if (isAuthenticated) {
+        try {
+            const token = sessionStorage.getItem('kc_token');
+            const parsed = JSON.parse(atob(token.split('.')[1]));
+            userRoles = parsed?.realm_access?.roles || [];
+            isAdmin = userRoles.includes('admin');
+        } catch (e) {
+            console.error('Failed to parse token in router guard:', e);
+        }
+    }
 
     console.log("Navigating to:", to.path);
-    console.log("Keycloak authenticated:", keycloak.authenticated);
-    console.log("Keycloak roles:", keycloak.tokenParsed?.realm_access?.roles);
+    console.log("Authenticated:", isAuthenticated);
+    console.log("User roles:", userRoles);
 
     // If route requires authentication and user is not authenticated
-    if (requiresAuth && !keycloak.authenticated) {
+    if (requiresAuth && !isAuthenticated) {
         console.log("Route requires auth, redirecting to login");
-        // Redirect to login page instead of Keycloak directly (better UX)
         next('/login');
         return;
     }
 
     // If route requires admin role
-    if (requiresAdmin) {
-        const roles = keycloak.tokenParsed?.realm_access?.roles || [];
-        const isAdmin = roles.includes('admin');
-
-        if (!isAdmin) {
-            console.log("User is not admin, redirecting to Home");
-            next('/Home');
-            return;
-        }
+    if (requiresAdmin && !isAdmin) {
+        console.log("User is not admin, redirecting to Home");
+        next('/Home');
+        return;
     }
 
     // All checks passed, proceed with navigation

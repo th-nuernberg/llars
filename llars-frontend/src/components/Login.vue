@@ -45,20 +45,19 @@
 <script setup>
 import {ref, onMounted} from 'vue';
 import {useRouter} from 'vue-router';
-import {useKeycloak} from '@dsb-norge/vue-keycloak-js';
+import {useAuth} from '@/composables/useAuth';
 
 const username = ref('');
 const password = ref('');
 const errorMessage = ref('');
 const router = useRouter();
-const keycloak = useKeycloak();
+const auth = useAuth();
 
 // Check if already authenticated on mount
 onMounted(() => {
-  if (keycloak.authenticated) {
+  if (auth.isAuthenticated.value) {
     // Already logged in, redirect based on role
-    const roles = keycloak.tokenParsed?.realm_access?.roles || [];
-    if (roles.includes('admin')) {
+    if (auth.isAdmin.value) {
       router.push('/AdminDashboard');
     } else {
       router.push('/Home');
@@ -67,20 +66,28 @@ onMounted(() => {
 });
 
 async function handleLogin() {
-  try {
-    // For a seamless experience, we redirect to Keycloak login
-    // The username/password fields are just for UX consistency
-    // In production, you could customize Keycloak's theme to match this design
+  // Clear previous error messages
+  errorMessage.value = '';
 
-    // Redirect to Keycloak login page
-    await keycloak.login({
-      redirectUri: window.location.origin + '/Home',
-      // You can optionally pre-fill the username
-      loginHint: username.value
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    errorMessage.value = 'An error occurred during login. Please try again.';
+  // Validate input
+  if (!username.value || !password.value) {
+    errorMessage.value = 'Bitte geben Sie Benutzername und Passwort ein.';
+    return;
+  }
+
+  // Attempt login
+  const result = await auth.login(username.value, password.value);
+
+  if (result.success) {
+    // Login successful, redirect based on role
+    if (auth.isAdmin.value) {
+      router.push('/AdminDashboard');
+    } else {
+      router.push('/Home');
+    }
+  } else {
+    // Login failed, show error
+    errorMessage.value = result.error;
   }
 }
 </script>

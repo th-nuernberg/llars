@@ -13,6 +13,7 @@ services:
         condition: service_healthy
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
 
   backend-flask-service:
     container_name: llars_flask_service
@@ -31,6 +32,7 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_APP=/app/main.py
       - KEYCLOAK_URL=${KEYCLOAK_URL}
@@ -95,6 +97,7 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
     depends_on:
       - backend-flask-service
       - db-maria-service
@@ -114,6 +117,7 @@ services:
       - llarsdb:/var/lib/mysql
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
@@ -136,6 +140,7 @@ services:
       - "${YJS_EXTERNAL_PORT}:${YJS_INTERNAL_PORT}"
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
       - BASE_URL=${BASE_URL}
       - PORT=${YJS_INTERNAL_PORT}
       - MYSQL_HOST=db-maria-service
@@ -162,6 +167,7 @@ services:
     expose:
       - "${KEYCLOAK_DB_INTERNAL_PORT}"
     environment:
+      - PROJECT_STATE=${PROJECT_STATE}
       - POSTGRES_DB=${KEYCLOAK_DB_NAME}
       - POSTGRES_USER=${KEYCLOAK_DB_USER}
       - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
@@ -188,6 +194,7 @@ services:
       - ./docs:/docs
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
 
   keycloak-service:
     container_name: llars_keycloak_service
@@ -196,6 +203,7 @@ services:
       dockerfile: docker/keycloak/Dockerfile-keycloak
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://keycloak-db-service:${KEYCLOAK_DB_INTERNAL_PORT}/${KEYCLOAK_DB_NAME}
       - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
@@ -204,8 +212,7 @@ services:
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USER}
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
       - KC_HOSTNAME=${KEYCLOAK_HOSTNAME}
-      - KC_HOSTNAME_STRICT=false
-      - KC_HTTP_ENABLED=true
+      # KC_HOSTNAME_STRICT und KC_HTTP_ENABLED werden im Entrypoint-Script basierend auf PROJECT_STATE gesetzt
       # Keycloak 26: Replace KC_PROXY=edge with new proxy options
       - KC_PROXY_HEADERS=xforwarded
     expose:
@@ -222,7 +229,7 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - ./docker/keycloak/realm-import.json:/opt/keycloak/data/import/realm-import.json
+      - ./docker/keycloak:/opt/keycloak/import-config:ro
     command:
       - start-dev
       - --import-realm

@@ -7,7 +7,7 @@
 
 export const keycloakConfig = {
   // Keycloak server URL - defaults to localhost for development
-  url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8090',
+  url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:55090',
 
   // Realm name
   realm: import.meta.env.VITE_KEYCLOAK_REALM || 'llars',
@@ -18,16 +18,13 @@ export const keycloakConfig = {
 
 export const keycloakInitOptions = {
   // Authentication method on page load
-  // 'check-sso' = Only authenticate if user is already logged in
-  // 'login-required' = Always redirect to login if not authenticated
+  // 'check-sso' = Only authenticate if user is already logged in (no forced redirect)
+  // This allows the login page to be shown first
   onLoad: 'check-sso',
 
-  // Use silent check-sso for better UX (check authentication in hidden iframe)
-  silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-
   // Check login iframe for session status monitoring
-  checkLoginIframe: true,
-  checkLoginIframeInterval: 5,
+  // DISABLED: Can cause redirect loops in development (common Keycloak issue)
+  checkLoginIframe: false,
 
   // Enable PKCE (Proof Key for Code Exchange) for added security
   pkceMethod: 'S256',

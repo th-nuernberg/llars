@@ -90,12 +90,14 @@
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { isAdmin } from '@/services/admins';
+import { useAuth } from '@/composables/useAuth';
 import FloatingChat from './components/FloatingChat.vue';
 
 // Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
 
 const router = useRouter();
+const auth = useAuth();
 const username = ref('');
 const isAdminUser = ref(false);
 const links = ref(['Impressum', 'Datenschutz', 'Kontakt']);
@@ -154,6 +156,10 @@ function logout() {
     }
   }
 
+  // Logout via useAuth (löscht sessionStorage: kc_token, kc_refreshToken, kc_idToken)
+  auth.logout();
+
+  // Alte localStorage-Items löschen (für Kompatibilität mit altem System)
   localStorage.removeItem('token');
   localStorage.removeItem('username');
   localStorage.removeItem('api_key');

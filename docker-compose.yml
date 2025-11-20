@@ -215,7 +215,7 @@ services:
       keycloak-db-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${KEYCLOAK_INTERNAL_PORT}/health/ready || exit 1"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/${KEYCLOAK_INTERNAL_PORT} && echo -e 'GET /realms/llars HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'HTTP/1.1 200' <&3"]
       start_period: 60s
       interval: 10s
       timeout: 5s

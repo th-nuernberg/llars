@@ -99,7 +99,7 @@
       "authorizationServicesEnabled": false,
       "protocol": "openid-connect",
       "fullScopeAllowed": true,
-      "frontChannelLogout": true,
+      "frontchannelLogout": true,
       "redirectUris": [
         "http://localhost/*",
         "http://localhost:80/*",

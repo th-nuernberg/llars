@@ -7,10 +7,10 @@ WORKDIR /opt/keycloak
 # In Development-Modus starten wir mit start-dev
 # In Production würde man 'build' und dann 'start' verwenden
 
-# Health-Check Tools
-USER root
-RUN microdnf install -y curl && microdnf clean all
-USER 1000
+# Health-Check Tools (curl is already included in base image)
+# USER root
+# RUN microdnf install -y curl && microdnf clean all
+# USER 1000
 
 # Expose Port
 EXPOSE 8080

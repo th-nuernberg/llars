@@ -52,7 +52,7 @@ def test_litellm_connection():
             {"role": "user", "content": "Zähle von 1 bis 5."}
         ]
 
-        logger.info("  Stream output: ", end="")
+        print("  Stream output: ", end="", flush=True)
         for chunk in client.stream_complete(messages=stream_messages, max_tokens=100):
             print(chunk, end="", flush=True)
         print()

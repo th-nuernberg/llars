@@ -123,11 +123,17 @@ function getOrCreateRoom(roomName) {
 
 function setupSocketHandlers(io) {
   io.on('connection', (socket) => {
-    console.log(`[+] Client connected: ${socket.id}`);
+    // Socket is already authenticated by middleware
+    const authenticatedUser = socket.user;
+    console.log(`[+] Client connected: ${socket.id} (User: ${authenticatedUser.username})`);
 
     socket.on('join_room', async (data) => {
-      const { username, room, userId } = data; // userId hinzugefügt
-      console.log(`User "${username}" joined room "${room}"`);
+      const { room } = data; // Nur room wird vom Client erwartet
+      // Username und userId kommen aus dem authentifizierten Token (socket.user)
+      const username = authenticatedUser.username;
+      const userId = authenticatedUser.userId;
+
+      console.log(`User "${username}" (${userId}) joined room "${room}"`);
 
       socket.join(room);
       let doc = ydocs.get(room);
@@ -144,7 +150,9 @@ function setupSocketHandlers(io) {
       const userColor = getRandomColor();
       roomObj.users[socket.id] = {
         username,
-        color: userColor
+        userId,
+        color: userColor,
+        isAdmin: authenticatedUser.isAdmin
       };
 
       // Sende den vollständigen State (Schnappschuss)

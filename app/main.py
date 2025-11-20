@@ -1,30 +1,47 @@
-from flask import Flask
+from flask import Flask, request
 from flask_socketio import SocketIO
 from db.db import configure_database
-# from routes import configure_routes
-from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from routes_socketio import configure_socket_routes
 from routes import auth_blueprint, data_blueprint
 from routes_websocket_prompt_eng import configure_websocket_prompt_eng
+import os
 
 app = Flask(__name__)
-app.config['JWT_SECRET_KEY'] = 'super-geheimer-key'
-CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
 
-jwt = JWTManager(app)
+# CORS configuration - restrict in production!
+allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost,http://localhost:80,http://localhost:5173').split(',')
+CORS(app, origins=allowed_origins, supports_credentials=True)
+socketio = SocketIO(app, cors_allowed_origins=allowed_origins)
+
+# Rate Limiting - Schützt vor Brute-Force und DoS
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",  # In production: Redis verwenden
+)
+
+# JWT_SECRET_KEY removed - Keycloak handles authentication
 configure_database(app)
 
-# configure routes
-# configure_routes(app)
+# Configure routes
+# Legacy auth routes (still available for backwards compatibility)
 app.register_blueprint(auth_blueprint, url_prefix='/auth')
 app.register_blueprint(data_blueprint, url_prefix='/api')
+
+# Keycloak authentication routes
+from routes.keycloak_routes import keycloak_auth_blueprint
+app.register_blueprint(keycloak_auth_blueprint, url_prefix='/auth/keycloak')
 
 
 configure_socket_routes(socketio)
 configure_websocket_prompt_eng(socketio)
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=8081, debug=True)
+    # Debug mode nur in development aktivieren
+    debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
+    socketio.run(app, host='0.0.0.0', port=8081, debug=debug_mode)
 

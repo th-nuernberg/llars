@@ -1,0 +1,35 @@
+# Production Docker Compose Override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file removes external port exposures for internal services
+# Only nginx should be accessible from outside in production
+
+services:
+  nginx-service:
+    # Keep nginx exposed (only entry point)
+    ports:
+      - "${NGINX_EXTERNAL_PORT}:${NGINX_INTERNAL_PORT}"
+
+  backend-flask-service:
+    # Remove external port exposure - only accessible via nginx
+    ports: []
+
+  frontend-vue-service:
+    # Remove external port exposure - only accessible via nginx
+    ports: []
+
+  db-maria-service:
+    # CRITICAL: Never expose database in production!
+    ports: []
+
+  yjs-service:
+    # Remove external port exposure - only accessible via nginx WebSocket proxy
+    ports: []
+
+  keycloak-service:
+    # Remove external port exposure - only accessible via nginx reverse proxy
+    # In production, Keycloak should be behind nginx with SSL
+    ports: []
+
+  # keycloak-db-service has no ports by default - good!
+  # ssh-proxy-service only runs with profile - optional

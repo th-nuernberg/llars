@@ -2,10 +2,10 @@ import traceback
 from venv import logger
 import logging
 from . import data_blueprint, auth_blueprint
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
+from flask import Blueprint, jsonify, request, g
 from werkzeug.security import check_password_hash
 from werkzeug.exceptions import BadRequest
+from auth.decorators import keycloak_required, admin_required, roles_required
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
@@ -25,15 +25,11 @@ from .HelperFunctions import get_user_threads, can_access_thread
 
 # Get the Thread for the Rating
 @data_blueprint.route('/email_threads/generations/<int:thread_id>', methods=['GET'])
+@keycloak_required
 def get_email_thread_details(thread_id):
     try:
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        user = User.query.filter_by(api_key=api_key).first()
-        if not user:
-            return jsonify({'error': 'Invalid API key'}), 401
+        # Authorization handled by @keycloak_required decorator
+        user = g.keycloak_user
 
         # Hole den E-Mail-Thread basierend auf der thread_id
         email_thread = EmailThread.query.filter_by(thread_id=thread_id).first()
@@ -64,16 +60,11 @@ def get_email_thread_details(thread_id):
 
 # get meta_data of all assigned threads
 @data_blueprint.route('/email_threads/mailhistory_ratings', methods=['GET'])
+@keycloak_required
 def list_email_threads_for_mail_ratings():
     try:
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        # get user
-        user = User.query.filter_by(api_key=api_key).first()
-        if not user:
-            return jsonify({'error': 'Invalid API key'}), 401
+        # Authorization handled by @keycloak_required decorator
+        user = g.keycloak_user
 
         # get function type
         mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first().function_type_id
@@ -120,16 +111,11 @@ def list_email_threads_for_mail_ratings():
 
 # get the most recent mail history ratings of the user
 @data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
+@keycloak_required
 def get_mail_rating(thread_id):
     try:
-        # authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-        user = User.query.filter_by(api_key=api_key).first()
-        if not user:
-            return jsonify({'error': 'Invalid API key'}), 401
-
+        # Authorization handled by @keycloak_required decorator
+        user = g.keycloak_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):
@@ -175,16 +161,11 @@ def get_mail_rating(thread_id):
 
 
 @data_blueprint.route('/email_threads/save_mailhistory_rating/<int:thread_id>', methods=['POST'])
+@keycloak_required
 def save_mail_rating(thread_id):
     try:
-        # Authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-        user = User.query.filter_by(api_key=api_key).first()
-        if not user:
-            return jsonify({'error': 'Invalid API key'}), 401
-
+        # Authorization handled by @keycloak_required decorator
+        user = g.keycloak_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):
@@ -318,16 +299,11 @@ def save_mail_rating(thread_id):
 
 # Get the user ratings for the messages of a thread
 @data_blueprint.route('/email_threads/message_ratings/<int:thread_id>', methods=['GET'])
+@keycloak_required
 def get_email_thread_message_ratings(thread_id):
     try:
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        user = User.query.filter_by(api_key=api_key).first()
-        if not user:
-            return jsonify({'error': 'Invalid API key'}), 401
-
+        # Authorization handled by @keycloak_required decorator
+        user = g.keycloak_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):
@@ -371,15 +347,11 @@ def get_email_thread_message_ratings(thread_id):
 
 # Route for saving the rating of each message (up or down) from the generated mail historys
 @data_blueprint.route('/email_threads/save_message_ratings/<int:thread_id>', methods=['POST'])
+@keycloak_required
 def save_message_ratings(thread_id):
     try:
-        # authorization
-        api_key = request.headers.get('Authorization')
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-        user = User.query.filter_by(api_key=api_key).first()
-        if not user:
-            return jsonify({'error': 'Invalid API key'}), 401
+        # Authorization handled by @keycloak_required decorator
+        user = g.keycloak_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):
@@ -430,18 +402,11 @@ def save_message_ratings(thread_id):
 
 # Shows the admin Panel of every MailHistoryRating
 @data_blueprint.route('/admin/user_HistoryGeneration_stats', methods=['GET'])
+@admin_required
 def get_user_HistoryGeneration_stats():
     try:
-        api_key = request.headers.get('Authorization')
-
-        if not api_key:
-            return jsonify({'error': 'API key is missing'}), 401
-
-        admin_user = User.query.filter_by(api_key=api_key).first()
-        if not admin_user:
-            return jsonify({'error': 'Invalid API key'}), 401
-        if admin_user.group.name != 'Admin':
-            return jsonify({'error': 'You do not have administration rights'}), 403
+        # Authorization handled by @admin_required decorator
+        # Current user available in g.keycloak_user
 
         user_stats = []
         mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()

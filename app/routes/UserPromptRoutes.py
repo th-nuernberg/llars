@@ -3,11 +3,11 @@ from numbers import Number
 from pyexpat.errors import messages
 from unicodedata import category
 
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
+from flask import Blueprint, jsonify, request, g, Response
 from werkzeug.security import check_password_hash
 from . import data_blueprint
 from . import auth_blueprint
+from auth.decorators import keycloak_required, admin_required, roles_required
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
@@ -22,17 +22,13 @@ import json
 
 
 @data_blueprint.route('/prompts', methods=['POST'])
+@keycloak_required
 def save_user_prompt():
     """
     Route zum Speichern eines neuen Prompts für den angemeldeten Benutzer.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     data = request.get_json()
     prompt_name = data.get('name')
@@ -68,17 +64,13 @@ def save_user_prompt():
 
 
 @data_blueprint.route('/prompts', methods=['GET'])
+@keycloak_required
 def get_user_prompts():
     """
     Route zum Abrufen aller Prompts des angemeldeten Benutzers.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     # Alle Prompts des Benutzers abrufen inkl. Sharing-Informationen
     user_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
@@ -107,18 +99,14 @@ def get_user_prompts():
     return jsonify({'prompts': prompts_data}), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['GET'])
+@keycloak_required
 def get_user_prompt(prompt_id):
     """
     Route zum Abrufen eines einzelnen Prompts für den Benutzer.
     Berücksichtigt sowohl eigene als auch geteilte Prompts.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     # Prompt abrufen (eigene und geteilte)
     prompt = UserPrompt.query.filter(
@@ -161,17 +149,13 @@ def get_user_prompt(prompt_id):
     }), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['PUT'])
+@keycloak_required
 def update_user_prompt(prompt_id):
     """
     Route zum Aktualisieren eines Prompts für den Benutzer.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
     prompt = UserPrompt.query.filter(
@@ -209,17 +193,13 @@ def update_user_prompt(prompt_id):
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/share', methods=['POST'])
+@keycloak_required
 def share_prompt(prompt_id):
     """
     Route zum Freigeben eines Prompts für einen anderen Benutzer.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     data = request.get_json()
     shared_with_username = data.get('shared_with')
@@ -255,17 +235,13 @@ def share_prompt(prompt_id):
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/unshare', methods=['POST'])
+@keycloak_required
 def unshare_prompt(prompt_id):
     """
     Route zum Entfernen der Freigabe eines Prompts für einen Benutzer.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     data = request.get_json()
     unshare_with_username = data.get('unshare_with')
@@ -300,17 +276,13 @@ def unshare_prompt(prompt_id):
 
 
 @data_blueprint.route('/prompts/shared', methods=['GET'])
+@keycloak_required
 def get_shared_prompts():
     """
     Route zum Abrufen aller für den Benutzer freigegebenen Prompts.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     # Freigegebene Prompts mit Sharing-Zeitstempel abrufen
     shared_prompts = db.session.query(
@@ -337,17 +309,13 @@ def get_shared_prompts():
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/download', methods=['GET'])
+@keycloak_required
 def download_prompt_json(prompt_id):
     """
     Route zum Herunterladen eines Prompts als formatierte JSON-Datei.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
     prompt = UserPrompt.query.filter(
@@ -391,17 +359,13 @@ def download_prompt_json(prompt_id):
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/rename', methods=['PUT'])
+@keycloak_required
 def rename_prompt(prompt_id):
     """
     Route zum Umbenennen eines Prompts.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
@@ -434,17 +398,13 @@ def rename_prompt(prompt_id):
     }), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['DELETE'])
+@keycloak_required
 def delete_prompt(prompt_id):
     """
     Route zum Löschen eines Prompts.
     """
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+    # Authorization handled by @keycloak_required decorator
+    user = g.keycloak_user
 
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()

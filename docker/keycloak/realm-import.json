@@ -1,0 +1,227 @@
+{
+  "realm": "llars",
+  "enabled": true,
+  "displayName": "LLARS Platform",
+  "displayNameHtml": "<b>LLARS</b> Authentication",
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 36000,
+  "ssoSessionMaxLifespan": 36000,
+  "refreshTokenMaxReuse": 0,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator role with full access",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "rater",
+        "description": "User who can rate features",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "viewer",
+        "description": "User with read-only access",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "Admin",
+      "path": "/Admin",
+      "realmRoles": ["admin"]
+    },
+    {
+      "name": "Raters",
+      "path": "/Raters",
+      "realmRoles": ["rater"]
+    },
+    {
+      "name": "Standard",
+      "path": "/Standard",
+      "realmRoles": ["viewer"]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@llars.local",
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"],
+      "groups": ["/Admin"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "llars-frontend",
+      "name": "LLARS Frontend Application",
+      "description": "Vue.js Frontend - Public Client",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "frontChannelLogout": true,
+      "redirectUris": [
+        "http://localhost/*",
+        "http://localhost:80/*",
+        "http://localhost:5173/*",
+        "http://127.0.0.1/*",
+        "http://127.0.0.1:80/*",
+        "http://127.0.0.1:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost",
+        "http://localhost:80",
+        "http://localhost:5173",
+        "http://127.0.0.1",
+        "http://127.0.0.1:80",
+        "http://127.0.0.1:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "llars-backend",
+      "name": "LLARS Backend API",
+      "description": "Flask Backend - Confidential Client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "llars-backend-secret-change-in-production",
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "bearerOnly": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost/*",
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost",
+        "http://localhost:8081"
+      ],
+      "protocolMappers": [
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clientScopes": [],
+  "defaultDefaultClientScopes": [
+    "profile",
+    "email",
+    "roles",
+    "web-origins"
+  ]
+}

@@ -5,7 +5,7 @@
       <v-col cols="12">
         <v-card class="title-card">
           <v-card-title class="text-h4">Szenarios</v-card-title>
-          <v-card-subtitle>Übersicht der E-Mail-Bewertungen</v-card-subtitle>
+          <v-card-subtitle>Übersicht der Bewertungen</v-card-subtitle>
         </v-card>
       </v-col>
     </v-row>

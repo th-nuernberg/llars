@@ -142,8 +142,80 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
+            <v-expansion-panel v-if="formData.selectedCategory === 4">
+              <v-expansion-panel-title>
+                Modell-Konfiguration
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="formData.llm1Model"
+                      :items="modelItems"
+                      :loading="state.isLoadingModels"
+                      label="Language-Modell 1"
+                      outlined
+                      density="comfortable"
+                      hint="Erstes Modell für die Gegenüberstellung"
+                      persistent-hint
+                      clearable
+                    >
+                      <template v-slot:no-data>
+                        <v-list-item>
+                          <v-list-item-title>
+                            {{ state.isLoadingModels ? 'Lade Modelle...' : 'Keine Modelle verfügbar' }}
+                          </v-list-item-title>
+                        </v-list-item>
+                      </template>
+                    </v-select>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="formData.llm2Model"
+                      :items="modelItems"
+                      :loading="state.isLoadingModels"
+                      label="Language-Modell 2"
+                      outlined
+                      density="comfortable"
+                      hint="Zweites Modell für die Gegenüberstellung"
+                      persistent-hint
+                      clearable
+                    >
+                      <template v-slot:no-data>
+                        <v-list-item>
+                          <v-list-item-title>
+                            {{ state.isLoadingModels ? 'Lade Modelle...' : 'Keine Modelle verfügbar' }}
+                          </v-list-item-title>
+                        </v-list-item>
+                      </template>
+                    </v-select>
+                  </v-col>
+                </v-row>
+                <v-alert
+                  type="info"
+                  variant="tonal"
+                  class="mt-3"
+                >
+                  <template v-if="state.isLoadingModels">
+                    <v-progress-circular
+                      indeterminate
+                      size="16"
+                      class="mr-2"
+                    ></v-progress-circular>
+                    Modelle werden geladen...
+                  </template>
+                  <template v-else-if="state.availableModels.length > 0">
+                    {{ state.availableModels.length }} verfügbare Modelle geladen.
+                  </template>
+                  <template v-else>
+                    Bitte wählen Sie Modelle aus der Liste der verfügbaren Modelle aus.
+                  </template>
+                </v-alert>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
             <!-- Threads Panel -->
-            <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }">
+            <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }" v-if="formData.selectedCategory !== 4">
               <v-expansion-panel-title>
                 Threads
               </v-expansion-panel-title>
@@ -247,8 +319,14 @@
 </template>
 
 <script>
-import {ref, reactive, onMounted, computed,} from 'vue';
-import axios from 'axios';
+import {reactive, onMounted, computed,} from 'vue';
+import {
+  getFunctionTypes,
+  getAllUsers,
+  getThreadsOfType,
+  createScenario,
+  getAvailableModels
+} from '@/services/scenarioApi';
 
 export default {
   name: 'ScenarioDialog',
@@ -267,7 +345,9 @@ export default {
       categories: [],
       users: [],
       threads: [],
-      isLoadingThreads: false
+      isLoadingThreads: false,
+      availableModels: [],
+      isLoadingModels: false
     });
 
     const formData = reactive({
@@ -276,7 +356,9 @@ export default {
       startDate: null,
       endDate: null,
       userRoles: {},
-      selectedThreads: []
+      selectedThreads: [],
+      llm1Model: '',
+      llm2Model: ''
     });
 
     const errors = reactive({
@@ -304,7 +386,10 @@ export default {
       const raters = Object.entries(formData.userRoles).filter(([, role]) => role.rater).map(([id]) => Number(id));
       errors.raters = raters.length > 0 ? "" : "Bitte wählen Sie mindestens einen Rater aus.";
 
-      errors.selectedThreads = formData.selectedThreads.length > 0 ? "" : "Bitte wählen Sie mindestens einen Thread aus.";
+      if(formData.selectedCategory !== 4) {
+        errors.selectedThreads = formData.selectedThreads.length > 0 ? ""
+          : "Bitte wählen Sie mindestens einen Thread aus.";
+      }
 
       return !Object.values(errors).some((error) => error);
     };
@@ -359,7 +444,8 @@ export default {
     const categoryNameMapping = {
       'rating': 'Rating',
       'mail_rating': 'Verlauf Generierung',
-      'ranking': 'Ranking'
+      'ranking': 'Ranking',
+      'comparison': 'Gegenüberstellung'
     };
 
     const categoryItems = computed(() => {
@@ -367,6 +453,14 @@ export default {
         value: category.function_type_id,
         title: categoryNameMapping[category.name] || category.name,
         raw: category
+      }));
+    });
+
+    const modelItems = computed(() => {
+      return state.availableModels.map(model => ({
+        value: model.id,
+        title: model.name,
+        subtitle: model.owned_by ? `Owned by: ${model.owned_by}` : undefined
       }));
     });
 
@@ -384,16 +478,9 @@ export default {
       });
     });
 
-    const getAuthHeaders = () => ({
-      headers: {
-        'Authorization': localStorage.getItem('api_key')
-      }
-    });
-
     const fetchCategories = async () => {
       try {
-        const response = await axios.get("/api/admin/get_function_types", getAuthHeaders());
-        state.categories = response.data;
+        state.categories = await getFunctionTypes();
       } catch (error) {
         console.error("Fehler beim Laden der Kategorien:", error);
         handleApiError(error);
@@ -402,8 +489,7 @@ export default {
 
     const fetchUsers = async () => {
       try {
-        const response = await axios.get("/api/admin/get_users", getAuthHeaders());
-        state.users = response.data;
+        state.users = await getAllUsers();
         state.users.forEach(user => {
           formData.userRoles[user.id] = {
             viewer: false,
@@ -416,6 +502,19 @@ export default {
       }
     };
 
+    const fetchAvailableModels = async () => {
+      state.isLoadingModels = true;
+      try {
+        state.availableModels = await getAvailableModels();
+      } catch (error) {
+        console.error("Fehler beim Laden der verfügbaren Modelle:", error);
+        handleApiError(error);
+        state.availableModels = [];
+      } finally {
+        state.isLoadingModels = false;
+      }
+    };
+
     const fetchThreads = async (categoryId) => {
       if (!categoryId) {
         state.threads = [];
@@ -424,11 +523,7 @@ export default {
 
       state.isLoadingThreads = true;
       try {
-        const response = await axios.get(
-          `/api/admin/get_threads_from_function_type/${categoryId}`,
-          getAuthHeaders()
-        );
-        state.threads = response.data;
+        state.threads = await getThreadsOfType(categoryId);
       } catch (error) {
         console.error("Fehler beim Laden der Threads:", error);
         handleApiError(error);
@@ -441,6 +536,10 @@ export default {
     const handleCategoryChange = async (newCategoryId) => {
       formData.selectedThreads = [];
       await fetchThreads(newCategoryId);
+      
+      if (newCategoryId === 4) {
+        await fetchAvailableModels();
+      }
     };
 
     const handleCheckboxChange = (userId, role) => {
@@ -472,6 +571,8 @@ export default {
       formData.startDate = null;
       formData.endDate = null;
       formData.selectedThreads = [];
+      formData.llm1Model = '';
+      formData.llm2Model = '';
 
       // Sicherstellen, dass das 'userRoles' Objekt korrekt zurückgesetzt wird
       formData.userRoles = Object.fromEntries(
@@ -511,12 +612,21 @@ export default {
         viewer: viewers
       };
 
+      if (formData.selectedCategory === 4) {
+        if (formData.llm1Model.trim()) {
+          payload.llm1_model = formData.llm1Model.trim();
+        }
+        if (formData.llm2Model.trim()) {
+          payload.llm2_model = formData.llm2Model.trim();
+        }
+      }
+
       try {
         const confirmation = confirm("Sind Sie sicher, dass Sie das Szenario speichern möchten?");
         if (!confirmation) return;
 
         console.log(payload);
-        await axios.post("/api/admin/create_scenario", payload, getAuthHeaders());
+        await createScenario(payload);
         alert("Szenario erfolgreich erstellt!");
         emit('scenarioCreated');
         closeDialog();
@@ -542,6 +652,7 @@ export default {
       formData,
       threadFilter,
       categoryItems,
+      modelItems,
       filteredThreads,
       openDialog,
       closeDialog,

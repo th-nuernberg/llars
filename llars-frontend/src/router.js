@@ -25,6 +25,8 @@ import TempTestPage from "@/components/TempTest.vue";
 import PromptEngineering from "@/components/PromptEngineering/PromptEngineering.vue";
 import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngineeringDetail.vue";
 
+import Comparison from "@/components/comparison/Comparison.vue";
+import ComparisonDetail from "@/components/comparison/ComparisonDetail.vue";
 import AdminUserProgressStats from "@/components/Admin/AdminUserProgressStats.vue";
 
 const routes = [
@@ -43,6 +45,14 @@ const routes = [
     { path: '/PromptEngineering', name: 'PromptEngineering', component: PromptEngineering, meta: { requiresAuth: true } },
     // PromptEngineeringDetail liest die ID intern aus der Route, props: true entfernt, um Vue-Warnung zu vermeiden
     { path : '/PromptEngineering/:id', name:'PromptEngineeringDetail', component: PromptEngineeringDetail, meta: { requiresAuth: true } },
+    { path : '/comparison', name:'Comparison', component: Comparison, meta: { requiresAuth: true } },
+    {
+      path: '/comparison/session/:session_id',
+      name: 'ComparisonDetail',
+      component: ComparisonDetail,
+      props: true,
+      meta: { requiresAuth: true }
+    },
 
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route

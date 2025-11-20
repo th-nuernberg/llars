@@ -216,11 +216,14 @@ services:
       - KC_DB_URL=jdbc:postgresql://keycloak-db-service:${KEYCLOAK_DB_INTERNAL_PORT}/${KEYCLOAK_DB_NAME}
       - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
       - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      # Keycloak 26: Use KC_BOOTSTRAP_ADMIN_* instead of KEYCLOAK_ADMIN_*
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USER}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
       - KC_HOSTNAME=${KEYCLOAK_HOSTNAME}
+      - KC_HOSTNAME_STRICT=false
       - KC_HTTP_ENABLED=true
-      - KC_PROXY=edge
+      # Keycloak 26: Replace KC_PROXY=edge with new proxy options
+      - KC_PROXY_HEADERS=xforwarded
     expose:
       - "${KEYCLOAK_INTERNAL_PORT}"
     ports:

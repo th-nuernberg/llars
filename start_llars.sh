@@ -99,24 +99,7 @@ check_and_start_docker() {
 check_and_start_docker
 
 # Dienste herunterfahren (NUR LLARS Container stoppen und löschen)
-echo "============================================"
-echo "SICHERHEITSCHECK: Zeige betroffene Container"
-echo "============================================"
 cd "$BASE_DIR"
-echo "Folgende LLARS Container werden gestoppt und entfernt:"
-docker compose -p llars ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || echo "  Keine LLARS Container laufen aktuell."
-echo ""
-echo "Andere laufende Container (bleiben unberührt):"
-docker ps --format "table {{.Names}}\t{{.Image}}" | grep -v "^llars" | head -6 || echo "  Keine anderen Container."
-echo "============================================"
-echo ""
-read -p "Fortfahren? Die obigen LLARS Container werden gestoppt. (j/N): " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[JjYy]$ ]]; then
-    echo "Abgebrochen."
-    exit 0
-fi
-echo ""
 echo "Stoppe und entferne LLARS-Dienste..."
 docker compose -p llars down
 

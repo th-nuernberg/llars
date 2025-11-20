@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: docker/nginx/Dockerfile-nginx
     ports:
-      - "${NGINX_EXTERNAL_PORT}:80"
+      - "80:80"
     depends_on:
       backend-flask-service:
         condition: service_healthy
@@ -13,7 +13,6 @@ services:
         condition: service_healthy
     environment:
       - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
 
   backend-flask-service:
     container_name: llars_flask_service
@@ -21,9 +20,7 @@ services:
       context: .
       dockerfile: docker/flask/Dockerfile-flask
     expose:
-      - "${FLASK_INTERNAL_PORT}"
-    ports:
-      - "${FLASK_EXTERNAL_PORT}:${FLASK_INTERNAL_PORT}"
+      - "8081"
     # Mount application code for hot-reloading in development
     volumes:
       - ./app:/app
@@ -32,17 +29,10 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_APP=/app/main.py
-      - KEYCLOAK_URL=${KEYCLOAK_URL}
-      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
-      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_BACKEND_CLIENT_ID}
-      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_BACKEND_CLIENT_SECRET}
     depends_on:
       db-maria-service:
-        condition: service_healthy
-      keycloak-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
@@ -57,9 +47,7 @@ services:
       context: .
       dockerfile: docker/vue/Dockerfile-vue
     expose:
-      - "${FRONTEND_INTERNAL_PORT}"
-    ports:
-      - "${FRONTEND_EXTERNAL_PORT}:${FRONTEND_INTERNAL_PORT}"
+      - "5173"
     # Mount frontend code for hot-reloading in development
     volumes:
       - ./llars-frontend:/vue
@@ -67,9 +55,6 @@ services:
       - TZ=Europe/Berlin
       - VITE_API_BASE_URL=${BASE_URL}
       - VITE_PROJECT_STATE=${PROJECT_STATE}
-      - VITE_KEYCLOAK_URL=${KEYCLOAK_EXTERNAL_URL}
-      - VITE_KEYCLOAK_REALM=${KEYCLOAK_REALM}
-      - VITE_KEYCLOAK_CLIENT_ID=${KEYCLOAK_FRONTEND_CLIENT_ID}
     develop:
       watch:
         - action: sync
@@ -79,7 +64,7 @@ services:
             - node_modules/
     depends_on:
       - backend-supervisor-service
-      - keycloak-service
+      - ssh-proxy-service
     healthcheck:
       test: [ "CMD", "/usr/local/bin/healthcheck.sh" ]
       start_period: 2s
@@ -97,7 +82,6 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
     depends_on:
       - backend-flask-service
       - db-maria-service
@@ -109,15 +93,12 @@ services:
       dockerfile: docker/db/Dockerfile-mariadb
     env_file:
       - .env
-    expose:
-      - "${DB_INTERNAL_PORT}"
     ports:
-      - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
+      - "3310:3306"
     volumes:
       - llarsdb:/var/lib/mysql
     environment:
       - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
@@ -129,27 +110,52 @@ services:
       timeout: 5s
       retries: 5
 
+  ssh-proxy-service:
+    container_name: llars_docker_ssh_proxy_service
+    profiles:
+      - backend
+    build:
+      context: .
+      dockerfile: docker/ssh_proxy/Dockerfile-ssh-proxy
+    ports:
+      - "8093:8093"
+    environment:
+      - PROXY_REMOTE_USER=${PROXY_REMOTE_USER}
+      - PROXY_REMOTE_HOST=${PROXY_REMOTE_HOST}
+      - PROXY_REMOTE_PORT=${PROXY_REMOTE_PORT}
+      - PROXY_LOCAL_PORT=${PROXY_LOCAL_PORT}
+    command: [ "/scripts/start_ssh_proxy.sh" ]
+
+  ssh-proxy-service-2:
+    container_name: llars_docker_ssh_proxy_service_2
+    profiles:
+      - backend
+    build:
+      context: .
+      dockerfile: docker/ssh_proxy/Dockerfile-ssh-proxy
+    ports:
+      - "8195:8195"
+    environment:
+      - PROXY_REMOTE_USER=${PROXY_REMOTE_USER}
+      - PROXY_REMOTE_HOST=ml1.in.ohmhs.de
+      - PROXY_REMOTE_PORT=8195
+      - PROXY_LOCAL_PORT=8195
+    command: [ "/scripts/start_ssh_proxy.sh" ]
+
   yjs-service:
     container_name: llars_yjs_service
     build:
       context: .
       dockerfile: docker/yjs-server/Dockerfile-yjs
-    expose:
-      - "${YJS_INTERNAL_PORT}"
-    ports:
-      - "${YJS_EXTERNAL_PORT}:${YJS_INTERNAL_PORT}"
     environment:
       - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
       - BASE_URL=${BASE_URL}
-      - PORT=${YJS_INTERNAL_PORT}
+      - PORT=8082
       - MYSQL_HOST=db-maria-service
-      - MYSQL_PORT=${DB_INTERNAL_PORT}
+      - MYSQL_PORT=3306
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - KEYCLOAK_URL=${KEYCLOAK_URL}
-      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
     develop:
       watch:
         - action: sync
@@ -159,83 +165,8 @@ services:
             - node_modules/
     depends_on:
       - db-maria-service
-      - keycloak-service
-
-  keycloak-db-service:
-    container_name: llars_keycloak_db_service
-    image: postgres:16-alpine
-    expose:
-      - "${KEYCLOAK_DB_INTERNAL_PORT}"
-    environment:
-      - PROJECT_STATE=${PROJECT_STATE}
-      - POSTGRES_DB=${KEYCLOAK_DB_NAME}
-      - POSTGRES_USER=${KEYCLOAK_DB_USER}
-      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      - TZ=Europe/Berlin
-    volumes:
-      - keycloakdb:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER}"]
-      start_period: 10s
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  mkdocs-service:
-    container_name: llars_mkdocs_service
-    build:
-      context: .
-      dockerfile: docker/mkdocs/Dockerfile-mkdocs
-    expose:
-      - "8000"
-    ports:
-      - "${MKDOCS_EXTERNAL_PORT}:8000"
-    volumes:
-      - ./docs:/docs
-    environment:
-      - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
-
-  keycloak-service:
-    container_name: llars_keycloak_service
-    build:
-      context: .
-      dockerfile: docker/keycloak/Dockerfile-keycloak
-    environment:
-      - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://keycloak-db-service:${KEYCLOAK_DB_INTERNAL_PORT}/${KEYCLOAK_DB_NAME}
-      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
-      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      # Keycloak 26: Use KC_BOOTSTRAP_ADMIN_* instead of KEYCLOAK_ADMIN_*
-      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USER}
-      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-      - KC_HOSTNAME=${KEYCLOAK_HOSTNAME}
-      # KC_HOSTNAME_STRICT und KC_HTTP_ENABLED werden im Entrypoint-Script basierend auf PROJECT_STATE gesetzt
-      # Keycloak 26: Replace KC_PROXY=edge with new proxy options
-      - KC_PROXY_HEADERS=xforwarded
-    expose:
-      - "${KEYCLOAK_INTERNAL_PORT}"
-    ports:
-      - "${KEYCLOAK_EXTERNAL_PORT}:${KEYCLOAK_INTERNAL_PORT}"
-    depends_on:
-      keycloak-db-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/${KEYCLOAK_INTERNAL_PORT} && echo -e 'GET /realms/llars HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'HTTP/1.1 200' <&3"]
-      start_period: 60s
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - ./docker/keycloak:/opt/keycloak/import-config:ro
-    command:
-      - start-dev
-      - --import-realm
 
 
 volumes:
   llarsdb:
   model_volume:
-  keycloakdb:

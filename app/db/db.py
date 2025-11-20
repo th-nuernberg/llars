@@ -49,6 +49,9 @@ def initialize_feature_function_types():
     if not FeatureFunctionType.query.filter_by(function_type_id=3).first():
         mail_rating = FeatureFunctionType(function_type_id=3, name='mail_rating')
         db.session.add(mail_rating)
+    if not FeatureFunctionType.query.filter_by(function_type_id=4).first():
+        comparison = FeatureFunctionType(function_type_id=4, name='comparison')
+        db.session.add(comparison)
 
     db.session.commit()
 

@@ -53,6 +53,7 @@ const items = ref([
   { title: 'Chatbot (Alpha)', description: "Chaten mit LLars", route: '/chat', icon: 'mdi-laptop-account', elevation: 1, disabled: false, hide: false},
   { title: 'Labeling', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-label-outline', elevation: 1, disabled: true, hide: true },
   { title: 'Prompt Engineering (Beta)', description: "Kollaboratives entwerfen von Prompts", route: '/promptengineering', icon: 'mdi-text-search', elevation: 1, disabled: false, hide: false},
+  { title: 'Gegenüberstellung', description: "Gegenüberstellung von zwei KI-Modellen und Bewertung, welches besser ist", route: '/comparison', icon: 'mdi-compare-horizontal', elevation: 1, disabled: false, hide: false},
 ]);
 
 function navigateTo(route) {

@@ -1,5 +1,6 @@
 #tables.py
-
+import json
+from typing import Optional
 from unittest.mock import DEFAULT
 
 from . import db
@@ -152,6 +153,9 @@ class RatingScenarios(db.Model):
     begin = mapped_column(db.DateTime, default=datetime.utcnow)
     end = mapped_column(db.DateTime, default=datetime.utcnow)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+    # Modellkonfiguration für Comparison-Szenarien
+    llm1_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    llm2_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
 
     # Definiere die Beziehungen mit Cascade-Option
     scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete")
@@ -241,3 +245,56 @@ class UserPromptShare(db.Model):
 
     prompt = db.relationship('UserPrompt', backref='shared_users')
     shared_with_user = db.relationship('User', backref='shared_prompts')
+
+class ComparisonSession(db.Model):
+    __tablename__ = "comparison_sessions"
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("rating_scenarios.id"), index=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("users.id"), index=True)
+    persona_json: Mapped[dict] = mapped_column(db.JSON, nullable=False)
+    persona_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    messages: Mapped[list["ComparisonMessage"]] = db.relationship("ComparisonMessage", backref="session", cascade="all, delete-orphan", lazy="selectin")
+    
+    user = db.relationship("User", backref="comparison_sessions")
+    scenario = db.relationship("RatingScenarios", backref="comparison_sessions")
+
+class ComparisonMessage(db.Model):
+    __tablename__ = "comparison_messages"
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("comparison_sessions.id"), index=True)
+    idx: Mapped[int] = mapped_column(db.Integer)
+    type: Mapped[str] = mapped_column(db.String(20)) # "user" / "bot_pair"
+    content: Mapped[str] = mapped_column(db.Text)
+    selected: Mapped[Optional[str]] = mapped_column(db.String(10), nullable=True) # "llm1" / "llm2" / "tie" / null
+    timestamp: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now)
+
+    def to_dict(self):
+      content_data = self.content
+      if self.type == 'bot_pair' and isinstance(self.content, str):
+        try:
+          content_data = json.loads(self.content)
+        except json.JSONDecodeError:
+          content_data = {'llm1': '', 'llm2': ''}
+
+      return {
+        'id': self.id,
+        'idx': self.idx,
+        'type': self.type,
+        'content': content_data,
+        'selected': self.selected,
+        'timestamp': self.timestamp.isoformat()
+      }
+
+
+class ComparisonEvaluation(db.Model):
+    __tablename__ = "comparison_evaluations"
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    message_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("comparison_messages.id"), index=True)
+    user_selection: Mapped[str] = mapped_column(db.String(10))  # "llm1" / "llm2" / "tie"
+    ai_selection: Mapped[str] = mapped_column(db.String(10))  # "llm1" / "llm2" / "tie"
+    ai_reason: Mapped[str] = mapped_column(db.Text)
+    user_justification: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+    match_result: Mapped[bool] = mapped_column(db.Boolean)
+    timestamp: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now)
+    
+    message = db.relationship("ComparisonMessage", backref="evaluations")

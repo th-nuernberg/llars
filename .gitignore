@@ -50,6 +50,7 @@ htmlcov/
 venv/
 ENV/
 env/
+/supervisor/venv
 
 # Node.js
 node_modules/

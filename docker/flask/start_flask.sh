@@ -5,7 +5,8 @@ sleep 2
 
 # Automatisiere die Migration, um sicherzustellen, dass die Datenbank auf dem neuesten Stand ist
 # echo "Running database migrations..."
-# flask db upgrade
+#flask db migrate -m "adjusts comparison tables"
+#flask db upgrade
 
 
 #ALTER TABLE users ADD COLUMN group_id INT NOT NULL DEFAULT 1;

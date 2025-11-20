@@ -17,7 +17,7 @@ from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, Us
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
-                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles, ProgressionStatus)
+                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles, ProgressionStatus, ComparisonSession)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
@@ -25,6 +25,11 @@ from datetime import datetime
 import json
 import random
 from .HelperFunctions import get_thread_progression_state
+from pathlib import Path
+from openai import OpenAI
+
+BASE_DIR = Path(__file__).parent
+PERSONAS_PATH = BASE_DIR / '../static/vikl-personas.json'
 
 
 
@@ -151,6 +156,8 @@ def get_scenario_details(scenario_id=None):
             'threads': threads,
             'raters': scenario_raters,
             'viewers': scenario_viewers,
+            'llm1_model': scenario.llm1_model if hasattr(scenario, 'llm1_model') else None,
+            'llm2_model': scenario.llm2_model if hasattr(scenario, 'llm2_model') else None,
         }
         return jsonify(scenario_details), 200
     except Exception as e:
@@ -176,7 +183,9 @@ def create_scenario():
         "end": data.get('end'),
         "rater": data.get('rater'),
         "viewer" : data.get("viewer"),
-        "threads": data.get('threads')
+        "threads": data.get('threads'),
+        "llm1_model": data.get('llm1_model'),
+        "llm2_model": data.get('llm2_model')
     }
 
     for key, value in client_data.items():
@@ -208,6 +217,11 @@ def create_scenario():
         begin=begin,
         end=end,
     )
+
+    if function_type_id == 4 and client_data.get('llm1_model'):
+        new_scenario.llm1_model = client_data['llm1_model']
+    if function_type_id == 4 and client_data.get('llm2_model'):
+        new_scenario.llm2_model = client_data['llm2_model']
 
     rater_error_list = []
     viewer_error_list = []
@@ -308,6 +322,10 @@ def create_scenario():
         # Finaler Commit
         db.session.commit()
 
+        # Für Vergleiche: Sessions für alle Personas
+        if function_type.name == 'comparison':
+            create_comparison_sessions_for_scenario(new_scenario.id)
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Scenario couldn\'t be added: {e}'}), 500
@@ -361,7 +379,9 @@ def edit_scenario():
             "id": data.get('id'),
             "name": data.get('new_name'),
             "begin": data.get('new_begin'),
-            "end": data.get('new_end')
+            "end": data.get('new_end'),
+            "llm1_model": data.get('llm1_model'),
+            "llm2_model": data.get('llm2_model')
         }
         # validate the data
         if not client_data['id'] or (not isinstance(client_data['id'], int)):
@@ -388,6 +408,14 @@ def edit_scenario():
             scenario.scenario_name = client_data['name']
             scenario.begin = client_data['begin']
             scenario.end = client_data['end']
+
+            # Update model configuration for comparison scenarios
+            if scenario.function_type_id == 4:
+                if client_data.get('llm1_model') is not None:
+                    scenario.llm1_model = client_data['llm1_model']
+                if client_data.get('llm2_model') is not None:
+                    scenario.llm2_model = client_data['llm2_model']
+
             db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -569,6 +597,48 @@ def get_users():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 
+@data_blueprint.route('/admin/get_available_models_from_vllm_server', methods=['GET'])
+def get_available_models_from_vllm_server():
+    try:
+        # Authorization
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({'error': 'API key is missing'}), 401
+
+        admin_user = User.query.filter_by(api_key=api_key).first()
+        if not admin_user:
+            return jsonify({'error': 'Invalid API key'}), 401
+        if admin_user.group.name != 'Admin':
+            return jsonify({'error': 'You do not have administration rights'}), 403
+
+        # Connect to the LLM server on port 8195
+        ssh_container = "llars_docker_ssh_proxy_service_2"
+        ssh_container_port = "8195"
+
+        client = OpenAI(
+            api_key="EMPTY",
+            base_url=f"http://{ssh_container}:{ssh_container_port}/v1"
+        )
+
+        # Get list of available models
+        models_response = client.models.list()
+        
+        available_models = []
+        for model in models_response.data:
+            available_models.append({
+                'id': model.id,
+                'name': model.id,  # Using ID as display name
+                'created': getattr(model, 'created', None),
+                'owned_by': getattr(model, 'owned_by', 'unknown')
+            })
+
+        return jsonify(available_models), 200
+
+    except Exception as e:
+        logging.error(f"Error fetching available models: {str(e)}")
+        return jsonify({'error': f'Failed to fetch models: {str(e)}'}), 500
+
+
 @data_blueprint.route('/admin/get_threads_from_function_type/<int:function_type_id>', methods=['GET'])
 @admin_required
 def get_threads(function_type_id):
@@ -725,5 +795,37 @@ def distribute_threads_to_users(thread_ids, user_ids):
         user_threads[user_id].append(thread_id)
 
     return user_threads
+
+
+def create_comparison_sessions_for_scenario(scenario_id):
+    try:
+        personas = json.loads(PERSONAS_PATH.read_text())
+        
+        rater_users = db.session.query(ScenarioUsers).filter_by(
+            scenario_id=scenario_id, 
+            role=ScenarioRoles.RATER
+        ).all()
+        
+        for rater_user in rater_users:
+            for persona in personas:
+                persona_props = json.loads(persona['properties'])
+                persona_json = {
+                    "name": persona['name'],
+                    "properties": persona_props,
+                }
+                
+                session = ComparisonSession(
+                    scenario_id=scenario_id,
+                    user_id=rater_user.user_id,
+                    persona_json=persona_json,
+                    persona_name=persona['name']
+                )
+                db.session.add(session)
+        
+        db.session.commit()
+    except Exception as e:
+        logging.error(f"Error creating comparison sessions: {e}")
+        db.session.rollback()
+        raise
 
 

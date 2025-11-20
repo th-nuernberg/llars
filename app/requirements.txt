@@ -13,7 +13,7 @@ openai==1.75.0
 requests==2.31.0
 
 # Keycloak Integration
-python-keycloak==4.8.0
+python-keycloak==5.0.0
 PyJWT==2.9.0
 cryptography==44.0.0
 

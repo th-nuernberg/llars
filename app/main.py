@@ -4,6 +4,7 @@ from db.db import configure_database
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes import auth_blueprint, data_blueprint
 from routes_websocket_prompt_eng import configure_websocket_prompt_eng
@@ -24,7 +25,11 @@ limiter = Limiter(
     storage_uri="memory://",  # In production: Redis verwenden
 )
 
-# JWT_SECRET_KEY removed - Keycloak handles authentication
+# JWT Configuration (for legacy auth routes)
+# TODO: Complete migration to Keycloak and remove legacy JWT auth
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
+jwt = JWTManager(app)
+
 configure_database(app)
 
 # Configure routes

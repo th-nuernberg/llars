@@ -4,7 +4,7 @@ from db.db import configure_database
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from routes_socketio import configure_socket_routes
+from socketio_handlers import configure_socket_routes
 from routes import auth_blueprint, data_blueprint
 from routes_websocket_prompt_eng import configure_websocket_prompt_eng
 import os

@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: docker/nginx/Dockerfile-nginx
     ports:
-      - "${NGINX_EXTERNAL_PORT}:${NGINX_INTERNAL_PORT}"
+      - "${NGINX_EXTERNAL_PORT}:80"
     depends_on:
       backend-flask-service:
         condition: service_healthy
@@ -65,7 +65,7 @@ services:
       - TZ=Europe/Berlin
       - VITE_API_BASE_URL=${BASE_URL}
       - VITE_PROJECT_STATE=${PROJECT_STATE}
-      - VITE_KEYCLOAK_URL=${KEYCLOAK_URL}
+      - VITE_KEYCLOAK_URL=${KEYCLOAK_EXTERNAL_URL}
       - VITE_KEYCLOAK_REALM=${KEYCLOAK_REALM}
       - VITE_KEYCLOAK_CLIENT_ID=${KEYCLOAK_FRONTEND_CLIENT_ID}
     develop:
@@ -190,6 +190,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  mkdocs-service:
+    container_name: llars_mkdocs_service
+    build:
+      context: .
+      dockerfile: docker/mkdocs/Dockerfile-mkdocs
+    expose:
+      - "8000"
+    ports:
+      - "${MKDOCS_EXTERNAL_PORT}:8000"
+    volumes:
+      - ./docs:/docs
+    environment:
+      - TZ=Europe/Berlin
 
   keycloak-service:
     container_name: llars_keycloak_service

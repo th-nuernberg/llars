@@ -1,0 +1,21 @@
+FROM python:3.12-slim
+LABEL authors="philippsteigerwald"
+
+WORKDIR /docs
+
+# Install MkDocs and popular themes/plugins
+RUN pip install --no-cache-dir \
+    mkdocs>=1.6.0 \
+    mkdocs-material>=9.5.0 \
+    mkdocs-mermaid2-plugin>=1.1.0 \
+    pymdown-extensions>=10.8.0
+
+# Create non-root user
+RUN groupadd -r docsuser && useradd -r -g docsuser -u 1004 -m docsuser && \
+    chown -R docsuser:docsuser /docs
+
+USER docsuser
+
+EXPOSE 8000
+
+CMD ["mkdocs", "serve", "--dev-addr=0.0.0.0:8000"]

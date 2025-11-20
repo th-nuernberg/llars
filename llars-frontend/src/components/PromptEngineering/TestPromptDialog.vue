@@ -69,6 +69,7 @@
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue';
 import SocialNetworkGraph from './SocialNetworkGraph.vue';
+import { sanitizeHtml } from '@/utils/sanitize';
 // Hilfsfunktion: formatiert JSON-Daten zur E-Mail-Historie oder markiert Fehler
 function formatHistory(data) {
   const requiredTop = ['type','chat_id','institut_id','subject','sender','total_messages','messages'];
@@ -160,31 +161,31 @@ const testPromptResponse = ref('');
 const testResponseComplete = ref(false);
 // Ref auf das Container-Element, in dem der LLM-Output scrollt
 const responseContainer = ref(null);
-/** HTML-Escaping */
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
 /** Regex-Escaping */
 function escapeRegex(str) {
   return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 }
 /**
  * Hebt im Prompt den eingesetzten Beispieltext hervor
+ * Uses DOMPurify for XSS protection
  */
 const promptHighlighted = computed(() => {
   const text = promptCollapsed.value ? collapsedPrompt.value : replacedPrompt.value;
   const exampleText = selectedExampleFormatted.value;
-  // Escape alles
-  const escaped = escapeHtml(text);
-  if (!exampleText) {
-    return escaped.replace(/\n/g, '<br/>');
+
+  // First, convert newlines to <br/> tags
+  let htmlText = text.replace(/\n/g, '<br/>');
+
+  if (exampleText) {
+    // Escape regex special characters for pattern matching
+    const escapedExample = exampleText.replace(/\n/g, '<br/>');
+    const pattern = new RegExp(escapeRegex(escapedExample), 'g');
+    // Highlight the example text
+    htmlText = htmlText.replace(pattern, `<span class="example-highlight">${escapedExample}</span>`);
   }
-  const escapedExample = escapeHtml(exampleText);
-  const pattern = new RegExp(escapeRegex(escapedExample), 'g');
-  const highlighted = escaped.replace(pattern, `<span class=\"example-highlight\">${escapedExample}</span>`);
-  return highlighted.replace(/\n/g, '<br/>');
+
+  // Sanitize the HTML to prevent XSS while preserving <br/> and <span> tags
+  return sanitizeHtml(htmlText);
 });
 // Flag, ob automatisch nach unten gescrollt werden soll
 const follow = ref(true);

@@ -9,6 +9,7 @@ import RaterDetail from "@/components/Rater/RaterDetail.vue";
 import RaterDetailFeature from "@/components/Rater/RaterDetailFeature.vue";
 import AdminHome from "@/components/Admin/AdminHome.vue"; // Admin Dashboard
 import AdminRanker from "@/components/Admin/AdminRanker.vue";
+import AdminPermissions from "@/components/AdminPermissions.vue"; // Permission Management
 import HistoryGeneration from "@/components/HistoryGenerator/HistoryGeneration.vue";
 import HistoryGenerationDetail from "@/components/HistoryGenerator/HistoryGenerationDetail.vue";
 import Impressum from "@/components/Orga/Impressum.vue";
@@ -58,6 +59,7 @@ const routes = [
 
     { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
+    { path: '/AdminPermissions', component: AdminPermissions, meta: { requiresAuth: true, requiresAdmin: true } }, // Permission Management
     { path: '/AdminUserProgressStats/:id',name:'AdminUserProgressStats', component: AdminUserProgressStats, props: true, meta: { requiresAuth: true, requiresAdmin: true } },// Admin-Route
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminCollaborativeTest', component: AdminCollaborativeTest, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route

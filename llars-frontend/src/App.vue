@@ -113,7 +113,7 @@ const { applyTheme } = useAppTheme();
 
 const username = ref('');
 const isAdminUser = ref(false);
-const links = ref(['Impressum', 'Datenschutz', 'Kontakt']);
+const links = ref(['Dokumentation', 'Impressum', 'Datenschutz', 'Kontakt']);
 const settingsDialogOpen = ref(false);
 
 // Funktion zum Prüfen und Löschen alter Chat-Nachrichten
@@ -220,6 +220,9 @@ function goAdminHome() {
 
 function navigateTo(link) {
   switch (link) {
+    case 'Dokumentation':
+      router.push('/docs');
+      break;
     case 'Impressum':
       router.push('/impressum');
       break;

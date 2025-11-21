@@ -60,14 +60,14 @@ export const lightTheme = {
 export const darkTheme = {
   dark: true,
   colors: {
-    // Primary brand colors (slightly adjusted for dark mode)
-    primary: '#b0ca97',      // Keep brand color
-    'primary-darken-1': '#9db882',
-    'primary-lighten-1': '#c4d8ac',
+    // Primary brand colors (optimized for dark mode)
+    primary: '#8fbc6b',      // Darker, more saturated green for dark backgrounds
+    'primary-darken-1': '#7aa857',
+    'primary-lighten-1': '#a3c97f',
 
-    secondary: '#81b68b',    // Darker green
-    'secondary-darken-1': '#6ea176',
-    'secondary-lighten-1': '#9cc3a4',
+    secondary: '#6b9e56',    // Even darker green for secondary
+    'secondary-darken-1': '#5a8847',
+    'secondary-lighten-1': '#7fb265',
 
     accent: '#8c9eff',       // Blue accent
 
@@ -87,15 +87,15 @@ export const darkTheme = {
     'surface-bright': '#323232',
     'surface-light': '#272727',
 
-    // Text colors (inverted for dark mode)
-    'on-background': '#e0e0e0',
-    'on-surface': '#e0e0e0',
-    'on-primary': '#1a1a1a',
-    'on-secondary': '#1a1a1a',
-    'on-error': '#1a1a1a',
-    'on-warning': '#1a1a1a',
-    'on-info': '#1a1a1a',
-    'on-success': '#1a1a1a',
+    // Text colors (optimized for dark mode)
+    'on-background': '#e5e5e5',      // Slightly brighter for better readability
+    'on-surface': '#e5e5e5',         // Slightly brighter for better readability
+    'on-primary': '#ffffff',         // White text on green buttons/cards
+    'on-secondary': '#ffffff',       // White text on secondary elements
+    'on-error': '#ffffff',           // White text on error backgrounds
+    'on-warning': '#000000',         // Black text on orange (better contrast)
+    'on-info': '#000000',            // Black text on light blue
+    'on-success': '#000000',         // Black text on success green
 
     // Additional UI colors (dark variants)
     'grey-lighten-5': '#424242',

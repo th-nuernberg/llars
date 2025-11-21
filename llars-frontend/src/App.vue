@@ -23,7 +23,10 @@
       >
         {{ username }}
       </v-chip>
-      <v-btn icon @click="logout">
+      <v-btn icon @click="openSettings" title="Einstellungen">
+        <v-icon>mdi-cog</v-icon>
+      </v-btn>
+      <v-btn icon @click="logout" title="Abmelden">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
@@ -51,7 +54,10 @@
       >
         Admin: {{ username }}
       </v-chip>
-      <v-btn icon @click="logout">
+      <v-btn icon @click="openSettings" title="Einstellungen">
+        <v-icon>mdi-cog</v-icon>
+      </v-btn>
+      <v-btn icon @click="logout" title="Abmelden">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
@@ -62,6 +68,9 @@
 
     <!-- Chatbot wird nur angezeigt, wenn Benutzer eingeloggt ist und ENABLE_CHAT true ist -->
     <FloatingChat v-if="username && ENABLE_CHAT" />
+
+    <!-- User Settings Dialog -->
+    <UserSettingsDialog v-model="settingsDialogOpen" />
 
     <v-footer app dark color="primary" height="30" class="px-4 footer">
       <v-row no-gutters align="center" justify="space-between">
@@ -91,16 +100,21 @@ import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { isAdmin } from '@/services/admins';
 import { useAuth } from '@/composables/useAuth';
+import { useAppTheme } from '@/composables/useAppTheme';
 import FloatingChat from './components/FloatingChat.vue';
+import UserSettingsDialog from './components/UserSettingsDialog.vue';
 
 // Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
 
 const router = useRouter();
 const auth = useAuth();
+const { applyTheme } = useAppTheme();
+
 const username = ref('');
 const isAdminUser = ref(false);
 const links = ref(['Impressum', 'Datenschutz', 'Kontakt']);
+const settingsDialogOpen = ref(false);
 
 // Funktion zum Prüfen und Löschen alter Chat-Nachrichten
 const cleanupOldChatMessages = () => {
@@ -137,6 +151,7 @@ function updateUsername() {
 onMounted(() => {
   updateUsername();
   cleanupOldChatMessages();
+  applyTheme(); // Apply theme on app mount
 });
 
 watch(() => router.currentRoute.value, () => {
@@ -215,6 +230,10 @@ function navigateTo(link) {
       router.push('/kontakt');
       break;
   }
+}
+
+function openSettings() {
+  settingsDialogOpen.value = true;
 }
 </script>
 

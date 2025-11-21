@@ -221,7 +221,9 @@ function goAdminHome() {
 function navigateTo(link) {
   switch (link) {
     case 'Dokumentation':
-      router.push('/docs');
+      // Open external MkDocs documentation in new tab
+      const mkdocsUrl = import.meta.env.VITE_MKDOCS_URL || 'http://localhost:55800';
+      window.open(mkdocsUrl, '_blank');
       break;
     case 'Impressum':
       router.push('/impressum');

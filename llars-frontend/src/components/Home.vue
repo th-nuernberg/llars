@@ -11,29 +11,25 @@
     <!-- Feature Cards -->
     <v-row class="equal-size-cards">
       <v-col
-        v-for="item in items.filter(item => !item.hide)"
+        v-for="item in items"
         :key="item.title"
         cols="12" sm="6"
         class="d-flex card-col"
       >
         <v-card
           class="mb-4 feature-card d-flex flex-column"
-          :color="item.disabled ? 'grey lighten-2' : 'primary'"
+          color="primary"
           dark
-          @click="item.disabled ? null : navigateTo(item.route)"
+          @click="navigateTo(item.route)"
           :elevation="item.elevation"
-          @mouseover="() => item.elevation = item.disabled ? 2 : 5"
+          @mouseover="() => item.elevation = 5"
           @mouseleave="() => item.elevation = 1"
-          :class="{ 'disabled-card': item.disabled }"
         >
           <div class="icon-container flex-grow-0">
             <v-icon large class="icon-center" color="white">{{ item.icon }}</v-icon>
           </div>
           <v-card-title class="text-h5 flex-grow-0">{{ item.title }}</v-card-title>
           <v-card-text class="flex-grow-1">{{ item.description }}</v-card-text>
-          <div v-if="item.disabled" class="lock-overlay">
-            <v-icon class="lock-icon" color="grey darken-3">mdi-lock</v-icon>
-          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -41,26 +37,85 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { usePermissions } from '@/composables/usePermissions';
 
 const router = useRouter();
+const { hasPermission, fetchPermissions, isLoading } = usePermissions();
 
-const items = ref([
-  { title: 'Ranking', description: 'Ranken Sie Ihre Daten', route: '/ranker', icon: 'mdi-chart-bar-stacked', elevation: 1, disabled: false, hide: false },
-  { title: 'Verlaufsbewertung', description: 'Bewertung von KI generierten Mail-Verläufen (Säule 4)', route: '/HistoryGeneration', icon: 'mdi-timeline-text-outline', elevation: 1, disabled: false, hide: false },
-  { title: 'Rating', description: 'Raten Sie Ihre Daten', route: '/rater', icon: 'mdi-star-outline', elevation: 1, disabled: true, hide: true },
-  { title: 'Chatbot (Alpha)', description: "Chaten mit LLars", route: '/chat', icon: 'mdi-laptop-account', elevation: 1, disabled: false, hide: false},
-  { title: 'Labeling', description: 'Beschriften Sie Ihre Datenpunkte', route: '/labler', icon: 'mdi-label-outline', elevation: 1, disabled: true, hide: true },
-  { title: 'Prompt Engineering (Beta)', description: "Kollaboratives entwerfen von Prompts", route: '/promptengineering', icon: 'mdi-text-search', elevation: 1, disabled: false, hide: false},
-  { title: 'Gegenüberstellung', description: "Gegenüberstellung von zwei KI-Modellen und Bewertung, welches besser ist", route: '/comparison', icon: 'mdi-compare-horizontal', elevation: 1, disabled: false, hide: false},
+// All available features with their required permissions
+const allItems = ref([
+  {
+    title: 'Ranking',
+    description: 'Ranken Sie Ihre Daten',
+    route: '/ranker',
+    icon: 'mdi-chart-bar-stacked',
+    elevation: 1,
+    permission: 'feature:ranking:view'
+  },
+  {
+    title: 'Verlaufsbewertung',
+    description: 'Bewertung von KI generierten Mail-Verläufen (Säule 4)',
+    route: '/HistoryGeneration',
+    icon: 'mdi-timeline-text-outline',
+    elevation: 1,
+    permission: 'feature:mail_rating:view'
+  },
+  {
+    title: 'Rating',
+    description: 'Raten Sie Ihre Daten',
+    route: '/rater',
+    icon: 'mdi-star-outline',
+    elevation: 1,
+    permission: 'feature:rating:view'
+  },
+  {
+    title: 'Chatbot (Alpha)',
+    description: "Chaten mit LLars",
+    route: '/chat',
+    icon: 'mdi-laptop-account',
+    elevation: 1,
+    permission: null  // No permission required - available to all
+  },
+  {
+    title: 'Prompt Engineering (Beta)',
+    description: "Kollaboratives entwerfen von Prompts",
+    route: '/promptengineering',
+    icon: 'mdi-text-search',
+    elevation: 1,
+    permission: 'feature:prompt_engineering:view'
+  },
+  {
+    title: 'Gegenüberstellung',
+    description: "Gegenüberstellung von zwei KI-Modellen und Bewertung, welches besser ist",
+    route: '/comparison',
+    icon: 'mdi-compare-horizontal',
+    elevation: 1,
+    permission: 'feature:comparison:view'
+  },
 ]);
+
+// Filter items based on permissions
+const items = computed(() => {
+  return allItems.value.filter(item => {
+    // If no permission required, show to everyone
+    if (!item.permission) {
+      return true;
+    }
+    // Check if user has the required permission
+    return hasPermission(item.permission);
+  });
+});
 
 function navigateTo(route) {
   router.push(route);
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Fetch permissions on component mount
+  await fetchPermissions();
+
   equalizeCardSizes();
   window.addEventListener('resize', equalizeCardSizes);
 });

@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: docker/nginx/Dockerfile-nginx
     ports:
-      - "80:80"
+      - "${NGINX_EXTERNAL_PORT}:${NGINX_INTERNAL_PORT}"
     depends_on:
       backend-flask-service:
         condition: service_healthy

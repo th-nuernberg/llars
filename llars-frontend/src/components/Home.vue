@@ -93,7 +93,8 @@ function equalizeCardSizes() {
 .home-container {
   padding: 16px;
   border-radius: 8px;
-  max-width: 1200px; /* Adjust this value as needed */
+  max-width: 1200px;
+  background-color: rgb(var(--v-theme-background));
 }
 
 .header {
@@ -115,8 +116,8 @@ function equalizeCardSizes() {
 }
 
 .feature-card {
-  background-color: #ffffff;
-  border: 1px solid var(--v-primary-base);
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgb(var(--v-theme-primary));
   border-radius: 8px;
   cursor: pointer;
   transition: box-shadow 0.3s ease, background-color 0.3s ease;
@@ -130,7 +131,7 @@ function equalizeCardSizes() {
 
 .feature-card:hover {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  background-color: var(--v-secondary-lighten-4);
+  background-color: rgba(var(--v-theme-secondary), 0.1);
 }
 
 .icon-container {
@@ -138,25 +139,22 @@ function equalizeCardSizes() {
 }
 
 .feature-card .v-card-title {
-  color: white;
+  color: rgb(var(--v-theme-on-primary));
   margin-top: 10px;
-  font-family: Arial, sans-serif; /* Gleiche Schriftart wie die Überschrift */
-  font-weight: bold; /* Optional: Bold für Titel in Cards */
-  color: #f8f8f8;
+  font-family: Arial, sans-serif;
+  font-weight: bold;
 }
 
 .feature-card .v-card-text {
-  color: white;
+  color: rgb(var(--v-theme-on-primary));
   flex-grow: 1;
-  font-family: Arial, sans-serif; /* Gleiche Schriftart wie die Überschrift */
-  font-size: 0.9rem; /* Optional: Anpassen der Schriftgröße */
-    color: #f8f8f8;
+  font-family: Arial, sans-serif;
+  font-size: 0.9rem;
 }
-
 
 .disabled-card {
   opacity: 0.8;
-  background-color: grey lighten-2;
+  background-color: rgb(var(--v-theme-surface-variant));
 }
 
 .disabled-card:hover {
@@ -185,6 +183,7 @@ function equalizeCardSizes() {
 .lock-icon {
   font-size: 48px;
   animation: lockBounce 1s ease-in-out infinite;
+  color: rgb(var(--v-theme-grey-darken-3));
 }
 
 @keyframes lockBounce {
@@ -207,14 +206,14 @@ function equalizeCardSizes() {
 }
 
 .header-title {
-  color: #333333; /* Dunkles Grau */
-  font-family: Arial, sans-serif; /* Beispiel-Schriftart */
+  color: rgb(var(--v-theme-on-background));
+  font-family: Arial, sans-serif;
   font-weight: bold;
 }
 
 .subtitle-text {
-  color: #555555; /* Ein etwas helleres Grau als das Header */
-  font-family: 'Verdana', sans-serif; /* Beispiel-Schriftart */
+  color: rgba(var(--v-theme-on-background), 0.7);
+  font-family: 'Verdana', sans-serif;
   font-size: 1.1rem;
 }
 

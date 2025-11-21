@@ -14,6 +14,7 @@ import HistoryGenerationDetail from "@/components/HistoryGenerator/HistoryGenera
 import Impressum from "@/components/Orga/Impressum.vue";
 import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
+import Documentation from "@/components/Orga/Documentation.vue";
 
 import AdminTester from "@/components/Admin/AdminTester.vue";
 import AdminCollaborativeTest from "@/components/Admin/AdminCollaborativeTest.vue";
@@ -33,6 +34,7 @@ const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
     { path: '/Kontakt', component: Kontakt, meta: { requiresAuth: false } },
+    { path: '/docs', component: Documentation, meta: { requiresAuth: false } },
 
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
     { path: '/Ranker', component: Ranker, meta: { requiresAuth: true } },

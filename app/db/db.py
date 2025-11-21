@@ -26,6 +26,7 @@ def configure_database(app):
         db.create_all()
         initialize_feature_function_types()
         initialize_consulting_category_types()
+        initialize_permissions()  # Initialize permission system
         # Seeder nur ausführen, wenn START_SEEDER in der Umgebung auf 'true' gesetzt ist
         start_seeder = os.getenv('START_SEEDER', 'false').lower()
         if start_seeder == 'true':
@@ -143,3 +144,210 @@ def seed_user_groups():
 
     db.session.commit()
     print("User groups seeded successfully.")
+
+
+def initialize_permissions():
+    """
+    Initialize the permission system with base permissions and roles.
+    This runs on every app startup but uses idempotent checks.
+    """
+    from .tables import Permission, Role, RolePermission
+
+    # Define all base permissions
+    permissions_data = [
+        # Feature: Mail Rating
+        {
+            'permission_key': 'feature:mail_rating:view',
+            'display_name': 'Mail Rating ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen der Mail-Rating-Funktion'
+        },
+        {
+            'permission_key': 'feature:mail_rating:edit',
+            'display_name': 'Mail Rating bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Bearbeiten und Bewerten von Mails'
+        },
+        # Feature: Ranking
+        {
+            'permission_key': 'feature:ranking:view',
+            'display_name': 'Ranking ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen der Ranking-Funktion'
+        },
+        {
+            'permission_key': 'feature:ranking:edit',
+            'display_name': 'Ranking bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Rankings'
+        },
+        # Feature: Rating
+        {
+            'permission_key': 'feature:rating:view',
+            'display_name': 'Rating ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen der Rating-Funktion'
+        },
+        {
+            'permission_key': 'feature:rating:edit',
+            'display_name': 'Rating bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Ratings'
+        },
+        # Feature: Comparison
+        {
+            'permission_key': 'feature:comparison:view',
+            'display_name': 'LLM-Vergleich ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen der LLM-Vergleichs-Funktion'
+        },
+        {
+            'permission_key': 'feature:comparison:edit',
+            'display_name': 'LLM-Vergleich bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Durchführen von LLM-Vergleichen'
+        },
+        # Feature: Prompt Engineering
+        {
+            'permission_key': 'feature:prompt_engineering:view',
+            'display_name': 'Prompt Engineering ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen der Prompt-Engineering-Funktion'
+        },
+        {
+            'permission_key': 'feature:prompt_engineering:edit',
+            'display_name': 'Prompt Engineering bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Prompts'
+        },
+        # Admin: Permissions Management
+        {
+            'permission_key': 'admin:permissions:manage',
+            'display_name': 'Berechtigungen verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Verwalten von Benutzerberechtigungen'
+        },
+        {
+            'permission_key': 'admin:users:manage',
+            'display_name': 'Benutzer verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Verwalten von Benutzern'
+        },
+        {
+            'permission_key': 'admin:roles:manage',
+            'display_name': 'Rollen verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Verwalten von Rollen'
+        },
+        {
+            'permission_key': 'admin:system:configure',
+            'display_name': 'System konfigurieren',
+            'category': 'admin',
+            'description': 'Erlaubt Systemkonfigurationen'
+        },
+        # Data Operations
+        {
+            'permission_key': 'data:export',
+            'display_name': 'Daten exportieren',
+            'category': 'data',
+            'description': 'Erlaubt das Exportieren von Daten'
+        },
+        {
+            'permission_key': 'data:import',
+            'display_name': 'Daten importieren',
+            'category': 'data',
+            'description': 'Erlaubt das Importieren von Daten'
+        },
+        {
+            'permission_key': 'data:delete',
+            'display_name': 'Daten löschen',
+            'category': 'data',
+            'description': 'Erlaubt das Löschen von Daten'
+        },
+    ]
+
+    # Create permissions (idempotent)
+    permission_map = {}  # Maps permission_key to Permission object
+    for perm_data in permissions_data:
+        existing = Permission.query.filter_by(
+            permission_key=perm_data['permission_key']
+        ).first()
+
+        if not existing:
+            perm = Permission(**perm_data)
+            db.session.add(perm)
+            db.session.flush()  # Get ID
+            permission_map[perm_data['permission_key']] = perm
+        else:
+            permission_map[perm_data['permission_key']] = existing
+
+    db.session.commit()
+
+    # Define roles
+    roles_data = [
+        {
+            'role_name': 'admin',
+            'display_name': 'Administrator',
+            'description': 'Voller Zugriff auf alle Funktionen und Einstellungen',
+            'permissions': [p['permission_key'] for p in permissions_data]  # All permissions
+        },
+        {
+            'role_name': 'researcher',
+            'display_name': 'Forscher',
+            'description': 'Zugriff auf alle Features zum Forschen und Daten exportieren',
+            'permissions': [
+                'feature:mail_rating:view',
+                'feature:mail_rating:edit',
+                'feature:ranking:view',
+                'feature:ranking:edit',
+                'feature:rating:view',
+                'feature:rating:edit',
+                'feature:comparison:view',
+                'feature:comparison:edit',
+                'feature:prompt_engineering:view',
+                'feature:prompt_engineering:edit',
+                'data:export',
+            ]
+        },
+        {
+            'role_name': 'viewer',
+            'display_name': 'Betrachter',
+            'description': 'Nur Lesezugriff auf Features',
+            'permissions': [
+                'feature:mail_rating:view',
+                'feature:ranking:view',
+                'feature:rating:view',
+                'feature:comparison:view',
+                'feature:prompt_engineering:view',
+            ]
+        },
+    ]
+
+    # Create roles and assign permissions (idempotent)
+    for role_data in roles_data:
+        role_name = role_data['role_name']
+        permission_keys = role_data.pop('permissions')
+
+        existing_role = Role.query.filter_by(role_name=role_name).first()
+
+        if not existing_role:
+            role = Role(**role_data)
+            db.session.add(role)
+            db.session.flush()  # Get ID
+
+            # Assign permissions to role
+            for perm_key in permission_keys:
+                if perm_key in permission_map:
+                    perm = permission_map[perm_key]
+                    role_perm = RolePermission(
+                        role_id=role.id,
+                        permission_id=perm.id
+                    )
+                    db.session.add(role_perm)
+
+            db.session.commit()
+            print(f"Created role: {role_name}")
+        else:
+            print(f"Role already exists: {role_name}")
+
+    print("Permission system initialized successfully.")

@@ -97,7 +97,7 @@ services:
     env_file:
       - .env
     ports:
-      - "3310:3306"
+      - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
     volumes:
       - llarsdb:/var/lib/mysql
     environment:

@@ -55,6 +55,7 @@ services:
       - TZ=Europe/Berlin
       - VITE_API_BASE_URL=${BASE_URL}
       - VITE_PROJECT_STATE=${PROJECT_STATE}
+      - VITE_MKDOCS_URL=${MKDOCS_URL}
     develop:
       watch:
         - action: sync

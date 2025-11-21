@@ -284,6 +284,6 @@ function openSettings() {
   font-size: 1.25rem;
   font-weight: 500;
   letter-spacing: 0.1px;
-  color: #f8f8f8;
+  color: rgb(var(--v-theme-on-primary));
 }
 </style>

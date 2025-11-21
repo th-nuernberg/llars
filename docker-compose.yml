@@ -68,7 +68,6 @@ services:
             - node_modules/
     depends_on:
       - backend-supervisor-service
-      - ssh-proxy-service
     healthcheck:
       test: [ "CMD", "/usr/local/bin/healthcheck.sh" ]
       start_period: 2s

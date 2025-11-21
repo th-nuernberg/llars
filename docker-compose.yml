@@ -31,6 +31,8 @@ services:
       - TZ=Europe/Berlin
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_APP=/app/main.py
+      # CORS origins derived from PROJECT_HOST
+      - ALLOWED_ORIGINS=http://${PROJECT_HOST},http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT},http://${PROJECT_HOST}:${FRONTEND_EXTERNAL_PORT},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT},http://127.0.0.1:${FRONTEND_EXTERNAL_PORT}
     depends_on:
       db-maria-service:
         condition: service_healthy

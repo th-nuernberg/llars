@@ -1,11 +1,11 @@
 """
-Keycloak Authentication Decorators for Flask
-Provides decorators for protecting routes with Keycloak authentication
+OIDC Authentication Decorators for Flask (Authentik-backed)
+Provides decorators for protecting routes with bearer tokens
 """
 
 from functools import wraps
 from flask import request, jsonify, g
-from .keycloak_validator import (
+from .oidc_validator import (
     validate_token,
     get_token_from_request,
     has_role,

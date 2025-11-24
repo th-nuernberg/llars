@@ -57,9 +57,9 @@ services:
       - TZ=Europe/Berlin
       - VITE_API_BASE_URL=https://${PROJECT_HOST}
       - VITE_PROJECT_STATE=production
-      - VITE_KEYCLOAK_URL=https://${PROJECT_HOST}
-      - VITE_KEYCLOAK_REALM=${KEYCLOAK_REALM}
-      - VITE_KEYCLOAK_CLIENT_ID=${KEYCLOAK_FRONTEND_CLIENT_ID}
+      - VITE_KEYCLOAK_URL=https://${PROJECT_HOST}/authentik
+      - VITE_KEYCLOAK_REALM=llars
+      - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
     # Remove volume mounts and develop mode
     volumes: []
     develop: {}
@@ -108,78 +108,91 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - AUTHENTIK_ISSUER_URL=${AUTHENTIK_ISSUER_URL}
     # Remove volume mounts and develop mode
     volumes: []
     develop: {}
     restart: unless-stopped
 
   # ============================================
-  # Keycloak PostgreSQL - Production Hardening
+  # Authentik Stack (OIDC Provider)
   # ============================================
-  keycloak-db-service:
-    # Remove port exposure (internal only)
-    ports: []
+  authentik-db:
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=${KEYCLOAK_DB_NAME}
-      - POSTGRES_USER=${KEYCLOAK_DB_USER}
-      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      - TZ=Europe/Berlin
-      # Enable SSL
-      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
-      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+      - POSTGRES_DB=${AUTHENTIK_DB_NAME}
+      - POSTGRES_USER=${AUTHENTIK_DB_USER}
+      - POSTGRES_PASSWORD=${AUTHENTIK_DB_PASSWORD}
+    volumes:
+      - authentikdb:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${AUTHENTIK_DB_USER}"]
       start_period: 15s
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # ============================================
-  # Keycloak - Production Mode (CRITICAL!)
-  # ============================================
-  keycloak-service:
-    environment:
-      - TZ=Europe/Berlin
-      - PROJECT_STATE=production
-      # Database
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://keycloak-db-service:${KEYCLOAK_DB_INTERNAL_PORT}/${KEYCLOAK_DB_NAME}
-      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
-      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      # Admin
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-      # Hostname
-      - KC_HOSTNAME=${KEYCLOAK_HOSTNAME}
-      - KC_HOSTNAME_STRICT=true
-      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
-      # HTTP/Proxy (nginx handles TLS)
-      - KC_HTTP_ENABLED=true
-      - KC_PROXY=edge
-      - KC_PROXY_HEADERS=xforwarded
-      # Performance
-      - KC_HTTP_RELATIVE_PATH=/auth
-      - KC_HEALTH_ENABLED=true
-      - KC_METRICS_ENABLED=true
-      # Logging
-      - KC_LOG_LEVEL=warn
-      - KC_LOG_CONSOLE_COLOR=false
-      # Features
-      - KC_FEATURES=token-exchange,admin-fine-grained-authz
-    # Remove direct port exposure (only via nginx)
-    expose:
-      - "8080"
-    ports: []
+  authentik-redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
     restart: unless-stopped
-    # PRODUCTION MODE (optimized, NOT dev mode!)
-    command:
-      - start
-      - --optimized
-      - --import-realm
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /auth/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
-      start_period: 120s
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:latest
+    command: server
+    environment:
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_POSTGRESql__HOST=authentik-db
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_LISTEN__PORT=${AUTHENTIK_INTERNAL_PORT}
+      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=0.0.0.0/0,::/0
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=false
+      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
+      - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}
+    ports: []  # exposed via nginx
+    restart: unless-stopped
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:${AUTHENTIK_INTERNAL_PORT}/-/health/ready').status==200 else 1)\""]
+      start_period: 60s
       interval: 30s
       timeout: 10s
       retries: 5
+    volumes:
+      - authentik_media:/media
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:latest
+    command: worker
+    environment:
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_POSTGRESql__HOST=authentik-db
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_LISTEN__PORT=${AUTHENTIK_INTERNAL_PORT}
+    restart: unless-stopped
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_started
+    volumes:
+      - authentik_media:/media
+
+volumes:
+  authentikdb:
+  authentik_media:

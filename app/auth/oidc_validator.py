@@ -1,6 +1,6 @@
 """
-Keycloak Token Validation Module
-Provides functions for validating JWT tokens issued by Keycloak
+OIDC Token Validation Module (Authentik)
+Validates JWT tokens issued by Authentik for the LLARS applications.
 """
 
 import os
@@ -12,24 +12,26 @@ from typing import Dict, Optional, List
 from flask import request, jsonify
 
 
-class KeycloakConfig:
-    """Keycloak configuration from environment variables"""
+class OIDCConfig:
+    """OIDC configuration (backed by Authentik) from environment variables"""
 
     def __init__(self):
-        self.url = os.environ.get('KEYCLOAK_URL', 'http://keycloak-service:8080')
-        self.realm = os.environ.get('KEYCLOAK_REALM', 'llars')
-        self.client_id = os.environ.get('KEYCLOAK_CLIENT_ID', 'llars-backend')
-        self.client_secret = os.environ.get('KEYCLOAK_CLIENT_SECRET', '')
+        # Issuer URL points to the Authentik application OIDC endpoint
+        self.issuer = os.environ.get(
+            'AUTHENTIK_ISSUER_URL',
+            'http://authentik-server:9000/application/o/llars-backend/'
+        ).rstrip('/')
+        self.client_id = os.environ.get('AUTHENTIK_BACKEND_CLIENT_ID', 'llars-backend')
+        self.client_secret = os.environ.get('AUTHENTIK_BACKEND_CLIENT_SECRET', '')
 
-        # Construct well-known URLs
-        self.realm_url = f"{self.url}/realms/{self.realm}"
-        self.well_known_url = f"{self.realm_url}/.well-known/openid-configuration"
-        self.certs_url = f"{self.realm_url}/protocol/openid-connect/certs"
-        self.introspect_url = f"{self.realm_url}/protocol/openid-connect/token/introspect"
-        self.userinfo_url = f"{self.realm_url}/protocol/openid-connect/userinfo"
+        # Construct well-known URLs (Authentik exposes OIDC metadata per application)
+        self.well_known_url = f"{self.issuer}/.well-known/openid-configuration"
+        self.certs_url = f"{self.issuer}/.well-known/jwks.json"
+        self.introspect_url = f"{self.issuer}/token/introspect"
+        self.userinfo_url = f"{self.issuer}/userinfo"
 
 
-keycloak_config = KeycloakConfig()
+oidc_config = OIDCConfig()
 
 
 # Cache for JWKS with TTL
@@ -39,10 +41,10 @@ _cache_timeout = timedelta(hours=1)
 
 def _fetch_jwks() -> Dict:
     """
-    Fetch JWKS from Keycloak with 1-hour TTL cache
+    Fetch JWKS from the OIDC issuer with 1-hour TTL cache
 
     Returns:
-        JWKS dictionary from Keycloak
+        JWKS dictionary from the issuer
     """
     # Check cache
     if 'jwks' in _jwks_cache:
@@ -52,7 +54,7 @@ def _fetch_jwks() -> Dict:
 
     # Fetch fresh JWKS
     try:
-        response = requests.get(keycloak_config.certs_url, timeout=5)
+        response = requests.get(oidc_config.certs_url, timeout=5)
         response.raise_for_status()
         jwks = response.json()
 
@@ -61,7 +63,7 @@ def _fetch_jwks() -> Dict:
         return jwks
 
     except Exception as e:
-        print(f"Error fetching JWKS from Keycloak: {e}")
+        print(f"Error fetching JWKS from OIDC issuer: {e}")
         # If cache exists (even expired), use it as fallback
         if 'jwks' in _jwks_cache:
             print("Using cached JWKS as fallback")
@@ -72,7 +74,7 @@ def _fetch_jwks() -> Dict:
 
 def get_public_key(kid: Optional[str] = None) -> str:
     """
-    Get Keycloak public key for JWT validation
+    Get public key for JWT validation
 
     Args:
         kid: Key ID from JWT header. If provided, finds matching key.
@@ -133,7 +135,7 @@ def _convert_jwk_to_pem(key_data: Dict) -> str:
 
 def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
     """
-    Validate a Keycloak JWT token with proper kid matching
+    Validate an OIDC JWT token with proper kid matching
 
     Args:
         token: The JWT token string
@@ -143,34 +145,39 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
         Decoded token payload if valid, None otherwise
     """
     try:
-        # Get public key for signature verification
+        expected_aud = oidc_config.client_id
+
         if verify_signature:
-            # Extract kid from JWT header
             unverified_header = jwt.get_unverified_header(token)
             kid = unverified_header.get('kid')
 
             if not kid:
                 print("Warning: Token has no 'kid' in header")
 
-            # Get matching public key
             public_key = get_public_key(kid)
 
-            # Decode and validate token
             decoded = jwt.decode(
                 token,
                 public_key,
                 algorithms=['RS256'],
-                audience=keycloak_config.client_id,
                 options={
                     'verify_signature': True,
                     'verify_exp': True,
-                    'verify_aud': True,
-                    'verify_iss': True
-                },
-                issuer=keycloak_config.realm_url
+                    'verify_iss': False,  # accept non-matching hostnames in dev
+                    'verify_aud': False  # manual audience check below
+                }
             )
+
+            token_aud = decoded.get('aud') or decoded.get('azp')
+            if expected_aud and token_aud and expected_aud not in ([token_aud] if isinstance(token_aud, str) else token_aud):
+                print(f"Invalid audience. Expected: {expected_aud}, got: {token_aud}")
+                return None
+
+            token_iss = decoded.get('iss')
+            if token_iss and oidc_config.issuer not in token_iss:
+                print(f"Invalid issuer. Expected issuer '{oidc_config.issuer}' in {token_iss}")
+                return None
         else:
-            # Decode without verification (use only for debugging!)
             decoded = jwt.decode(token, options={'verify_signature': False})
 
         return decoded
@@ -179,10 +186,10 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
         print("Token has expired")
         return None
     except jwt.InvalidAudienceError:
-        print(f"Invalid audience. Expected: {keycloak_config.client_id}")
+        print(f"Invalid audience. Expected: {oidc_config.client_id}")
         return None
     except jwt.InvalidIssuerError:
-        print(f"Invalid issuer. Expected: {keycloak_config.realm_url}")
+        print(f"Invalid issuer. Expected: {oidc_config.issuer}")
         return None
     except jwt.InvalidTokenError as e:
         print(f"Invalid token: {e}")
@@ -197,7 +204,7 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
 
 def introspect_token(token: str) -> Optional[Dict]:
     """
-    Introspect token via Keycloak's introspection endpoint
+    Introspect token via the issuer's introspection endpoint
     This is the most secure method but requires a network call
 
     Args:
@@ -208,11 +215,11 @@ def introspect_token(token: str) -> Optional[Dict]:
     """
     try:
         response = requests.post(
-            keycloak_config.introspect_url,
+            oidc_config.introspect_url,
             data={
                 'token': token,
-                'client_id': keycloak_config.client_id,
-                'client_secret': keycloak_config.client_secret
+                'client_id': oidc_config.client_id,
+                'client_secret': oidc_config.client_secret
             },
             timeout=5
         )
@@ -245,30 +252,6 @@ def get_token_from_request() -> Optional[str]:
     return None
 
 
-def get_user_info(token: str) -> Optional[Dict]:
-    """
-    Fetch user information from Keycloak using the access token
-
-    Args:
-        token: The access token
-
-    Returns:
-        User information dict if successful, None otherwise
-    """
-    try:
-        response = requests.get(
-            keycloak_config.userinfo_url,
-            headers={'Authorization': f'Bearer {token}'},
-            timeout=5
-        )
-        response.raise_for_status()
-        return response.json()
-
-    except Exception as e:
-        print(f"Error fetching user info: {e}")
-        return None
-
-
 def has_role(token_payload: Dict, role: str) -> bool:
     """
     Check if the token has a specific realm role
@@ -282,7 +265,7 @@ def has_role(token_payload: Dict, role: str) -> bool:
     """
     roles = token_payload.get('realm_access', {}).get('roles', [])
     # Also check resource_access for client roles
-    client_roles = token_payload.get('resource_access', {}).get(keycloak_config.client_id, {}).get('roles', [])
+    client_roles = token_payload.get('resource_access', {}).get(oidc_config.client_id, {}).get('roles', [])
 
     all_roles = roles + client_roles
     return role in all_roles

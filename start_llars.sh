@@ -188,7 +188,7 @@ if [ "$PROJECT_STATE" = "production" ]; then
     echo "Access points:"
     echo "  - Frontend: https://${PROJECT_HOST}"
     echo "  - Backend API: https://${PROJECT_HOST}/api"
-    echo "  - Keycloak: https://${PROJECT_HOST}/auth"
+    echo "  - Authentik: https://${PROJECT_HOST}/authentik"
     echo ""
     echo "View logs: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f"
     echo "============================================"
@@ -213,7 +213,7 @@ else
     echo "Access points:"
     echo "  - Frontend: http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}"
     echo "  - Backend API: http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}/api"
-    echo "  - Keycloak: http://${PROJECT_HOST}:${KEYCLOAK_EXTERNAL_PORT}"
+    echo "  - Authentik: http://${PROJECT_HOST}:${AUTHENTIK_EXTERNAL_PORT}"
     echo ""
     echo "============================================"
 fi

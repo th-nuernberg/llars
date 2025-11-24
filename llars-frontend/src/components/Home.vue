@@ -94,6 +94,14 @@ const allItems = ref([
     elevation: 1,
     permission: 'feature:comparison:view'
   },
+  {
+    title: 'Admin Dashboard',
+    description: 'Benutzer, Rollen und Berechtigungen verwalten',
+    route: '/AdminPermissions',
+    icon: 'mdi-shield-account',
+    elevation: 1,
+    permission: 'admin:permissions:manage'
+  },
 ]);
 
 // Filter items based on permissions

@@ -37,18 +37,18 @@ export const useAuth = () => {
   });
 
   const login = async (username, password) => {
-    const keycloakUrl = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:55090';
-    const realm = import.meta.env.VITE_KEYCLOAK_REALM || 'llars';
+    const authUrl = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:55090';
     const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'llars-frontend';
 
-    const tokenUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`;
+    // Authentik OIDC endpoint: {url}/application/o/{client-id}/token
+    const tokenUrl = `${authUrl}/application/o/${clientId}/token`;
 
     const params = new URLSearchParams();
     params.append('client_id', clientId);
     params.append('grant_type', 'password');
     params.append('username', username);
     params.append('password', password);
-    params.append('scope', 'openid');
+    params.append('scope', 'openid profile email');
 
     try {
       const response = await axios.post(tokenUrl, params, {

@@ -10,7 +10,7 @@ Usage:
         return {'message': 'Access granted'}
 
 The decorator:
-1. Extracts username from Keycloak JWT token
+1. Extracts username from the OIDC JWT (Authentik)
 2. Checks if user has the required permission via PermissionService
 3. Returns 403 Forbidden if permission is denied
 4. Returns 401 Unauthorized if not authenticated

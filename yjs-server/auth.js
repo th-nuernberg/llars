@@ -2,13 +2,17 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 
-// Keycloak configuration from environment variables
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://keycloak-service:8080';
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'llars';
+// OIDC configuration (Authentik-first, Keycloak fallback)
+const AUTHENTIK_ISSUER =
+  process.env.AUTHENTIK_ISSUER_URL ||
+  (process.env.KEYCLOAK_URL && process.env.KEYCLOAK_REALM
+    ? `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`
+    : 'http://authentik-server:9000/application/o/llars-backend');
+const ISSUER = AUTHENTIK_ISSUER.replace(/\/$/, '');
 
-// JWKS client to fetch Keycloak public keys
+// JWKS client to fetch public keys
 const client = jwksClient({
-  jwksUri: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`,
+  jwksUri: `${ISSUER}/.well-known/jwks.json`,
   cache: true,
   cacheMaxAge: 600000, // 10 minutes
   rateLimit: true,
@@ -16,7 +20,7 @@ const client = jwksClient({
 });
 
 /**
- * Get the signing key from Keycloak JWKS endpoint
+ * Get the signing key from JWKS endpoint
  */
 function getKey(header, callback) {
   client.getSigningKey(header.kid, (err, key) => {
@@ -41,7 +45,7 @@ function verifyToken(token) {
       getKey,
       {
         algorithms: ['RS256'],
-        issuer: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`
+        issuer: ISSUER
       },
       (err, decoded) => {
         if (err) {
@@ -60,15 +64,15 @@ function verifyToken(token) {
  * @returns {object} - User information
  */
 function extractUserInfo(decodedToken) {
+  const realmRoles = decodedToken.realm_access?.roles || [];
+  const clientRoles = decodedToken.resource_access?.['llars-backend']?.roles || [];
+  const mappedRoles = decodedToken.roles || [];
   return {
     username: decodedToken.preferred_username || decodedToken.sub,
     userId: decodedToken.sub,
     email: decodedToken.email,
-    roles: [
-      ...(decodedToken.realm_access?.roles || []),
-      ...(decodedToken.resource_access?.['llars-backend']?.roles || [])
-    ],
-    isAdmin: (decodedToken.realm_access?.roles || []).includes('admin')
+    roles: [...mappedRoles, ...realmRoles, ...clientRoles],
+    isAdmin: [...mappedRoles, ...realmRoles, ...clientRoles].includes('admin')
   };
 }
 

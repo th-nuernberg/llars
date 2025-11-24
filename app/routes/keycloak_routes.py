@@ -1,11 +1,11 @@
 """
-Keycloak-compatible Authentication Routes
-These routes provide compatibility with the frontend while using Keycloak for authentication
+OIDC Authentication Routes (Authentik-backed)
+These routes provide compatibility with the frontend while using Authentik for authentication
 """
 
 from flask import Blueprint, jsonify, request, g, current_app
 from auth.decorators import keycloak_required, admin_required
-from auth.keycloak_validator import get_token_from_request, validate_token, get_username, get_user_id
+from auth.oidc_validator import get_token_from_request, validate_token, get_username, get_user_id
 from functools import wraps
 
 # Create blueprint for Keycloak-specific routes

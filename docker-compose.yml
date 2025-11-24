@@ -36,8 +36,6 @@ services:
     depends_on:
       db-maria-service:
         condition: service_healthy
-      keycloak-service:
-        condition: service_started
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       start_period: 1800s   # 30 Minuten maximale Startzeit
@@ -61,9 +59,9 @@ services:
       - VITE_API_BASE_URL=http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}
       - VITE_PROJECT_STATE=${PROJECT_STATE}
       - VITE_MKDOCS_URL=http://${PROJECT_HOST}:${MKDOCS_EXTERNAL_PORT}
-      - VITE_KEYCLOAK_URL=http://${PROJECT_HOST}:${KEYCLOAK_EXTERNAL_PORT}
-      - VITE_KEYCLOAK_REALM=${KEYCLOAK_REALM}
-      - VITE_KEYCLOAK_CLIENT_ID=${KEYCLOAK_FRONTEND_CLIENT_ID}
+      - VITE_KEYCLOAK_URL=http://${PROJECT_HOST}:${AUTHENTIK_EXTERNAL_PORT}
+      - VITE_KEYCLOAK_REALM=llars   # legacy variable; Authentik uses apps, not realms
+      - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
     develop:
       watch:
         - action: sync
@@ -73,8 +71,6 @@ services:
             - node_modules/
     depends_on:
       backend-supervisor-service:
-        condition: service_started
-      keycloak-service:
         condition: service_started
     healthcheck:
       test: [ "CMD", "/usr/local/bin/healthcheck.sh" ]
@@ -136,6 +132,7 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - AUTHENTIK_ISSUER_URL=${AUTHENTIK_ISSUER_URL}
     develop:
       watch:
         - action: sync
@@ -145,65 +142,89 @@ services:
             - node_modules/
     depends_on:
       - db-maria-service
-      - keycloak-service
+      - authentik-server
 
-  keycloak-db-service:
-    container_name: llars_keycloak_db_service
-    image: postgres:16-alpine
-    expose:
-      - "${KEYCLOAK_DB_INTERNAL_PORT}"
+  authentik-server:
+    container_name: llars_authentik_server
+    image: ghcr.io/goauthentik/server:latest
+    command: server
     environment:
-      - POSTGRES_DB=${KEYCLOAK_DB_NAME}
-      - POSTGRES_USER=${KEYCLOAK_DB_USER}
-      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      - TZ=Europe/Berlin
-    volumes:
-      - keycloakdb:/var/lib/postgresql/data
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_POSTGRESql__HOST=authentik-db
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_LISTEN__PORT=${AUTHENTIK_INTERNAL_PORT}
+      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=0.0.0.0/0,::/0
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=false
+      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
+      - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}
+    ports:
+      - "${AUTHENTIK_EXTERNAL_PORT}:${AUTHENTIK_INTERNAL_PORT}"
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER}"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:${AUTHENTIK_INTERNAL_PORT}/-/health/ready').status==200 else 1)\""]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - authentik_media:/media
+
+  authentik-worker:
+    container_name: llars_authentik_worker
+    image: ghcr.io/goauthentik/server:latest
+    command: worker
+    environment:
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_POSTGRESql__HOST=authentik-db
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_LISTEN__PORT=${AUTHENTIK_INTERNAL_PORT}
+    depends_on:
+      authentik-db:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_started
+    volumes:
+      - authentik_media:/media
+
+  authentik-db:
+    container_name: llars_authentik_db
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=${AUTHENTIK_DB_NAME}
+      - POSTGRES_USER=${AUTHENTIK_DB_USER}
+      - POSTGRES_PASSWORD=${AUTHENTIK_DB_PASSWORD}
+    volumes:
+      - authentikdb:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTHENTIK_DB_USER}"]
       start_period: 10s
       interval: 5s
       timeout: 5s
       retries: 5
 
-  keycloak-service:
-    container_name: llars_keycloak_service
-    build:
-      context: .
-      dockerfile: docker/keycloak/Dockerfile-keycloak
-    environment:
-      - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://keycloak-db-service:${KEYCLOAK_DB_INTERNAL_PORT}/${KEYCLOAK_DB_NAME}
-      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
-      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-      - KC_HOSTNAME=${KEYCLOAK_HOSTNAME}
-      - KC_HTTP_ENABLED=true
-      - KC_PROXY=edge
-    expose:
-      - "${KEYCLOAK_INTERNAL_PORT}"
-    ports:
-      - "${KEYCLOAK_EXTERNAL_PORT}:${KEYCLOAK_INTERNAL_PORT}"
-    depends_on:
-      keycloak-db-service:
-        condition: service_healthy
+  authentik-redis:
+    container_name: llars_authentik_redis
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${KEYCLOAK_INTERNAL_PORT}/realms/llars || exit 1"]
-      start_period: 60s
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - ./docker/keycloak/realm-import-template.json:/opt/keycloak/import-config/realm-import-template.json
-    command:
-      - start-dev
-      - --import-realm
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 
 volumes:
   llarsdb:
   model_volume:
-  keycloakdb:
+  authentikdb:
+  authentik_media:

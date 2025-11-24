@@ -13,8 +13,8 @@ def configure_database(app):
     db_user = os.getenv('MYSQL_USER')
     db_user_password = os.getenv('MYSQL_PASSWORD')
 
-    # Datenbank-URI konfigurieren
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://root:{db_root_password}@db-maria-service:3306/{db_database_name}'
+    # Datenbank-URI konfigurieren (use MYSQL_USER instead of root for better security)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{db_user}:{db_user_password}@db-maria-service:3306/{db_database_name}'
 
     # Initialisiere SQLAlchemy mit der App
     db.init_app(app)

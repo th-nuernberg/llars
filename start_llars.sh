@@ -1,36 +1,77 @@
 #!/bin/bash
+# ============================================
+# LLARS Startup Script
+# ============================================
+# Intelligenter Start für Development oder Production basierend auf:
+# 1. Kommandozeilenargument (dev/prod)
+# 2. PROJECT_STATE in .env
+# 3. .env.development/.env.production Template
+
+set -e
 
 # Bestimmen Sie das Verzeichnis, in dem sich das Skript befindet
 SCRIPT_DIR=$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]:-${(%):-%x}}")")" && pwd)
-echo "Skriptverzeichnis: $SCRIPT_DIR"
+BASE_DIR="$SCRIPT_DIR"
 
-# Überprüfen, ob das Skript im richtigen Verzeichnis liegt oder angepasst werden muss
-if [[ "$SCRIPT_DIR" == */llars ]]; then
-    SCRIPT_DIR="$SCRIPT_DIR/scripts"
-    echo "Warnung: SCRIPT_DIR wurde auf '$SCRIPT_DIR' angepasst."
-elif [[ "$SCRIPT_DIR" != */llars/scripts ]]; then
-    echo "Das Skript muss im Verzeichnis 'llars/scripts' liegen."
-    exit 1
-fi
-
-# Basisverzeichnis ermitteln (alles vor /llars/scripts)
-BASE_DIR=$(dirname "$SCRIPT_DIR")
+echo "============================================"
+echo "LLARS Startup Script"
+echo "============================================"
 echo "Basisverzeichnis: $BASE_DIR"
 
-# Überprüfen, ob das Basisverzeichnis mit 'llars' endet
-if [[ "$BASE_DIR" != */llars ]]; then
-    echo "Das Basisverzeichnis muss 'llars' sein."
+# ============================================
+# Schritt 1: Projekt-State ermitteln
+# ============================================
+
+# Default: development
+PROJECT_STATE_ARG="${1:-}"
+
+# Prüfe Kommandozeilenargument
+if [ "$PROJECT_STATE_ARG" = "prod" ] || [ "$PROJECT_STATE_ARG" = "production" ]; then
+    PROJECT_STATE="production"
+    ENV_FILE="$BASE_DIR/.env.production"
+    echo "Mode: PRODUCTION (via command line argument)"
+elif [ "$PROJECT_STATE_ARG" = "dev" ] || [ "$PROJECT_STATE_ARG" = "development" ]; then
+    PROJECT_STATE="development"
+    ENV_FILE="$BASE_DIR/.env.development"
+    echo "Mode: DEVELOPMENT (via command line argument)"
+elif [ -f "$BASE_DIR/.env" ]; then
+    # Lese PROJECT_STATE aus .env
+    source "$BASE_DIR/.env"
+    if [ "$PROJECT_STATE" = "production" ]; then
+        ENV_FILE="$BASE_DIR/.env.production"
+        echo "Mode: PRODUCTION (via .env)"
+    else
+        PROJECT_STATE="development"
+        ENV_FILE="$BASE_DIR/.env.development"
+        echo "Mode: DEVELOPMENT (via .env)"
+    fi
+else
+    # Fallback: Development
+    PROJECT_STATE="development"
+    ENV_FILE="$BASE_DIR/.env.development"
+    echo "Mode: DEVELOPMENT (fallback - no .env found)"
+fi
+
+# ============================================
+# Schritt 2: Environment-Datei laden
+# ============================================
+
+if [ -f "$ENV_FILE" ]; then
+    echo "Loading environment from: $ENV_FILE"
+    source "$ENV_FILE"
+else
+    echo "ERROR: Environment file not found: $ENV_FILE"
+    echo ""
+    echo "Please create one of:"
+    echo "  - .env.development (for development)"
+    echo "  - .env.production (for production)"
+    echo ""
+    echo "Templates are provided in the repository."
     exit 1
 fi
 
-# Überprüfen, ob die .env-Datei vorhanden ist
-if [ ! -f "$BASE_DIR/.env" ]; then
-    echo "Fehler: Die .env-Datei wurde nicht gefunden."
-    exit 1
-fi
-
-# Lade Umgebungsvariablen
-source "$BASE_DIR/.env"
+# Exportiere PROJECT_STATE explizit
+export PROJECT_STATE
 
 # Anzahl der Versuche und Wartezeit in Sekunden zwischen den Versuchen
 MAX_ATTEMPTS=10
@@ -120,11 +161,59 @@ if [ "$REMOVE_VOLUMES" = "True" ]; then
   echo "LLARS-Volumes entfernt."
 fi
 
-# Überprüfe den Projektzustand und starte die entsprechenden Dienste
+# ============================================
+# Schritt 5: Docker Compose starten
+# ============================================
+
+cd "$BASE_DIR"
+
 if [ "$PROJECT_STATE" = "production" ]; then
-    docker compose -f "$BASE_DIR/docker-compose.yml" -p llars --profile backend --profile frontend up --build --detach
-    echo "LLARS Backend und Frontend im Produktionsmodus gestartet."
+    echo ""
+    echo "============================================"
+    echo "Starting LLARS in PRODUCTION MODE"
+    echo "============================================"
+    echo "Using: docker-compose.yml + docker-compose.prod.yml"
+    echo ""
+
+    # Production: Use production override
+    docker compose \
+        -f docker-compose.yml \
+        -f docker-compose.prod.yml \
+        -p llars \
+        up --build --detach
+
+    echo ""
+    echo "✓ LLARS started in PRODUCTION mode"
+    echo ""
+    echo "Access points:"
+    echo "  - Frontend: https://${PROJECT_HOST}"
+    echo "  - Backend API: https://${PROJECT_HOST}/api"
+    echo "  - Keycloak: https://${PROJECT_HOST}/auth"
+    echo ""
+    echo "View logs: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f"
+    echo "============================================"
+
 else
-    docker compose -f "$BASE_DIR/docker-compose.yml" -p llars --profile backend --profile frontend up --build --watch
-    echo "LLARS Backend und Frontend im Entwicklungsmodus gestartet."
+    echo ""
+    echo "============================================"
+    echo "Starting LLARS in DEVELOPMENT MODE"
+    echo "============================================"
+    echo "Using: docker-compose.yml (with --watch)"
+    echo ""
+
+    # Development: Use watch mode for hot-reload
+    docker compose \
+        -f docker-compose.yml \
+        -p llars \
+        up --build --watch
+
+    echo ""
+    echo "✓ LLARS started in DEVELOPMENT mode"
+    echo ""
+    echo "Access points:"
+    echo "  - Frontend: http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}"
+    echo "  - Backend API: http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}/api"
+    echo "  - Keycloak: http://${PROJECT_HOST}:${KEYCLOAK_EXTERNAL_PORT}"
+    echo ""
+    echo "============================================"
 fi

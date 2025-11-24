@@ -3,7 +3,7 @@
   "enabled": true,
   "displayName": "LLARS Platform",
   "displayNameHtml": "<b>LLARS</b> Authentication",
-  "sslRequired": "__SSL_REQUIRED__",
+  "sslRequired": "none",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "rememberMe": true,
@@ -76,24 +76,7 @@
       "realmRoles": ["viewer"]
     }
   ],
-  "users": [
-    {
-      "username": "admin",
-      "enabled": true,
-      "email": "admin@llars.local",
-      "firstName": "Admin",
-      "lastName": "User",
-      "credentials": [
-        {
-          "type": "password",
-          "value": "admin123",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["admin"],
-      "groups": ["/Admin"]
-    }
-  ],
+  "users": [],
   "clients": [
     {
       "clientId": "llars-frontend",
@@ -109,17 +92,8 @@
       "protocol": "openid-connect",
       "fullScopeAllowed": true,
       "frontchannelLogout": true,
-      "redirectUris": [
-        "http://localhost/*",
-        "http://localhost:55080/*",
-        "http://localhost:55173/*",
-        "http://127.0.0.1/*",
-        "http://127.0.0.1:55080/*",
-        "http://127.0.0.1:55173/*"
-      ],
-      "webOrigins": [
-        "+"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       },
@@ -173,7 +147,7 @@
       "description": "Flask Backend - Confidential Client",
       "enabled": true,
       "publicClient": false,
-      "secret": "llars-backend-secret-change-in-production",
+      "secret": "__KEYCLOAK_BACKEND_CLIENT_SECRET__",
       "directAccessGrantsEnabled": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
@@ -182,14 +156,8 @@
       "bearerOnly": false,
       "protocol": "openid-connect",
       "fullScopeAllowed": true,
-      "redirectUris": [
-        "http://localhost/*",
-        "http://localhost:55081/*",
-        "http://localhost:55080/*"
-      ],
-      "webOrigins": [
-        "+"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "protocolMappers": [
         {
           "name": "roles",

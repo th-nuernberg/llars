@@ -32,42 +32,108 @@ class KeycloakConfig:
 keycloak_config = KeycloakConfig()
 
 
-@lru_cache(maxsize=1)
-def get_public_key() -> str:
+# Cache for JWKS with TTL
+_jwks_cache = {}
+_cache_timeout = timedelta(hours=1)
+
+
+def _fetch_jwks() -> Dict:
     """
-    Fetch and cache the Keycloak public key for JWT validation
-    Uses LRU cache to avoid repeated requests
+    Fetch JWKS from Keycloak with 1-hour TTL cache
+
+    Returns:
+        JWKS dictionary from Keycloak
     """
+    # Check cache
+    if 'jwks' in _jwks_cache:
+        cached_jwks, cached_time = _jwks_cache['jwks']
+        if datetime.now() - cached_time < _cache_timeout:
+            return cached_jwks
+
+    # Fetch fresh JWKS
     try:
         response = requests.get(keycloak_config.certs_url, timeout=5)
         response.raise_for_status()
         jwks = response.json()
 
-        # Get first key (Keycloak usually has one active key)
-        if 'keys' in jwks and len(jwks['keys']) > 0:
-            key_data = jwks['keys'][0]
-            # Convert JWK to PEM format for PyJWT
-            from cryptography.hazmat.primitives import serialization
-            from cryptography.hazmat.backends import default_backend
-            from jwt.algorithms import RSAAlgorithm
-
-            public_key = RSAAlgorithm.from_jwk(key_data)
-            pem = public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            )
-            return pem.decode('utf-8')
-        else:
-            raise ValueError("No keys found in JWKS")
+        # Cache for 1 hour
+        _jwks_cache['jwks'] = (jwks, datetime.now())
+        return jwks
 
     except Exception as e:
-        print(f"Error fetching Keycloak public key: {e}")
+        print(f"Error fetching JWKS from Keycloak: {e}")
+        # If cache exists (even expired), use it as fallback
+        if 'jwks' in _jwks_cache:
+            print("Using cached JWKS as fallback")
+            cached_jwks, _ = _jwks_cache['jwks']
+            return cached_jwks
         raise
+
+
+def get_public_key(kid: Optional[str] = None) -> str:
+    """
+    Get Keycloak public key for JWT validation
+
+    Args:
+        kid: Key ID from JWT header. If provided, finds matching key.
+             If None, returns first available key (development fallback)
+
+    Returns:
+        Public key in PEM format
+
+    Raises:
+        ValueError: If kid specified but not found in JWKS
+    """
+    try:
+        jwks = _fetch_jwks()
+
+        if 'keys' not in jwks or len(jwks['keys']) == 0:
+            raise ValueError("No keys found in JWKS")
+
+        # If kid provided, find matching key
+        if kid:
+            for key_data in jwks['keys']:
+                if key_data.get('kid') == kid:
+                    return _convert_jwk_to_pem(key_data)
+
+            # kid not found
+            raise ValueError(f"Key with kid '{kid}' not found in JWKS. "
+                           f"Available kids: {[k.get('kid') for k in jwks['keys']]}")
+
+        # No kid provided - use first key (development fallback)
+        key_data = jwks['keys'][0]
+        print(f"Warning: No kid provided, using first key: {key_data.get('kid')}")
+        return _convert_jwk_to_pem(key_data)
+
+    except Exception as e:
+        print(f"Error getting public key: {e}")
+        raise
+
+
+def _convert_jwk_to_pem(key_data: Dict) -> str:
+    """
+    Convert JWK to PEM format
+
+    Args:
+        key_data: JWK dictionary
+
+    Returns:
+        Public key in PEM format
+    """
+    from cryptography.hazmat.primitives import serialization
+    from jwt.algorithms import RSAAlgorithm
+
+    public_key = RSAAlgorithm.from_jwk(key_data)
+    pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    return pem.decode('utf-8')
 
 
 def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
     """
-    Validate a Keycloak JWT token
+    Validate a Keycloak JWT token with proper kid matching
 
     Args:
         token: The JWT token string
@@ -79,7 +145,15 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
     try:
         # Get public key for signature verification
         if verify_signature:
-            public_key = get_public_key()
+            # Extract kid from JWT header
+            unverified_header = jwt.get_unverified_header(token)
+            kid = unverified_header.get('kid')
+
+            if not kid:
+                print("Warning: Token has no 'kid' in header")
+
+            # Get matching public key
+            public_key = get_public_key(kid)
 
             # Decode and validate token
             decoded = jwt.decode(
@@ -90,8 +164,10 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
                 options={
                     'verify_signature': True,
                     'verify_exp': True,
-                    'verify_aud': True
-                }
+                    'verify_aud': True,
+                    'verify_iss': True
+                },
+                issuer=keycloak_config.realm_url
             )
         else:
             # Decode without verification (use only for debugging!)
@@ -102,8 +178,17 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
     except jwt.ExpiredSignatureError:
         print("Token has expired")
         return None
+    except jwt.InvalidAudienceError:
+        print(f"Invalid audience. Expected: {keycloak_config.client_id}")
+        return None
+    except jwt.InvalidIssuerError:
+        print(f"Invalid issuer. Expected: {keycloak_config.realm_url}")
+        return None
     except jwt.InvalidTokenError as e:
         print(f"Invalid token: {e}")
+        return None
+    except ValueError as e:
+        print(f"Key validation error: {e}")
         return None
     except Exception as e:
         print(f"Error validating token: {e}")

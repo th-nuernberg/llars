@@ -40,7 +40,7 @@ export function usePermissions() {
     isLoading.value = true
 
     try {
-      const token = sessionStorage.getItem('keycloak_token')
+      const token = sessionStorage.getItem('kc_token')
 
       if (!token) {
         console.warn('No authentication token found')

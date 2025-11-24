@@ -28,8 +28,9 @@ def wait_for_authentik(max_attempts=60):
     print("⏳ Waiting for Authentik to be ready...")
     for attempt in range(1, max_attempts + 1):
         try:
-            response = requests.get(f"{AUTHENTIK_URL}/-/health/live/", timeout=5)
-            if response.status_code == 200:
+            # Try the root URL or API endpoint instead of health check (which returns 404)
+            response = requests.get(f"{AUTHENTIK_URL}/api/v3/core/users/", timeout=5)
+            if response.status_code in [200, 401, 403]:  # Any of these means server is up
                 print("✅ Authentik is ready!")
                 time.sleep(10)  # Additional wait for full initialization
                 return True
@@ -40,7 +41,8 @@ def wait_for_authentik(max_attempts=60):
             print(f"❌ Authentik did not become ready in time")
             return False
 
-        print(f"   Attempt {attempt}/{max_attempts}...")
+        if attempt % 5 == 0:  # Print every 5 attempts to reduce noise
+            print(f"   Attempt {attempt}/{max_attempts}...")
         time.sleep(5)
 
     return False
@@ -199,6 +201,132 @@ def create_application(token: str, name: str, slug: str, provider_pk: int,
         print(f"⚠️  Could not create application '{name}'")
         return False
 
+def create_provider_via_shell(name: str, client_id: str, client_type: str,
+                             client_secret: str = "", redirect_uris: list = None) -> Optional[int]:
+    """Create OAuth2 provider via Django shell with correct format"""
+    print(f"📦 Creating {name} via Django shell...")
+
+    if redirect_uris is None:
+        redirect_uris = [f"{BASE_URL}/*", "http://127.0.0.1:55080/*"]
+
+    # Build redirect_uris Python code
+    redirect_uris_code = ",\n        ".join([
+        f"RedirectURI(matching_mode=RedirectURIMatchingMode.STRICT, url='{uri}')"
+        for uri in redirect_uris
+    ])
+
+    # Build provider defaults based on client type
+    client_secret_field = f", 'client_secret': '{client_secret}'" if client_type == 'confidential' else ""
+
+    python_code = f"""
+import json
+from authentik.providers.oauth2.models import OAuth2Provider, RedirectURI, RedirectURIMatchingMode
+from authentik.flows.models import Flow
+
+# Get flows
+auth_flow = Flow.objects.get(slug='default-provider-authorization-explicit-consent')
+invalid_flow = Flow.objects.get(slug='default-provider-invalidation-flow')
+
+# Check if provider exists
+try:
+    provider = OAuth2Provider.objects.get(name='{name}')
+    print(json.dumps({{'exists': True, 'pk': provider.pk, 'name': '{name}'}}))
+except OAuth2Provider.DoesNotExist:
+    # Create provider with correct redirect_uris format
+    provider = OAuth2Provider.objects.create(
+        name='{name}',
+        authorization_flow=auth_flow,
+        invalidation_flow=invalid_flow,
+        client_type='{client_type}',
+        client_id='{client_id}',
+        redirect_uris=[
+            {redirect_uris_code}
+        ],
+        sub_mode='hashed_user_id',
+        issuer_mode='per_provider'{client_secret_field}
+    )
+    print(json.dumps({{'created': True, 'pk': provider.pk, 'name': '{name}'}}))
+"""
+
+    import subprocess
+    try:
+        result = subprocess.run(
+            ['docker', 'compose', 'exec', '-T', 'authentik-server',
+             'python', 'manage.py', 'shell'],
+            input=python_code.encode(),
+            capture_output=True,
+            timeout=30
+        )
+
+        output = result.stdout.decode()
+        for line in output.split('\n'):
+            line = line.strip()
+            if line.startswith('{') and ('pk' in line):
+                data = json.loads(line)
+                pk = data.get('pk')
+                if pk:
+                    print(f"✅ {name} {'exists' if data.get('exists') else 'created'} (PK: {pk})")
+                    return pk
+
+        print(f"⚠️  Could not parse provider PK from output")
+        print(f"   Output: {output[:200]}")
+        return None
+
+    except Exception as e:
+        print(f"⚠️  Error creating provider: {e}")
+        return None
+
+def create_application_via_shell(name: str, slug: str, provider_pk: int,
+                                  launch_url: Optional[str] = None) -> bool:
+    """Create Application via Django shell"""
+    print(f"📱 Creating application: {name}...")
+
+    launch_url_field = f", 'meta_launch_url': '{launch_url}'" if launch_url else ""
+
+    python_code = f"""
+import json
+from authentik.core.models import Application
+from authentik.providers.oauth2.models import OAuth2Provider
+
+# Get provider
+provider = OAuth2Provider.objects.get(pk={provider_pk})
+
+# Check if app exists
+try:
+    app = Application.objects.get(slug='{slug}')
+    print(json.dumps({{'exists': True, 'slug': '{slug}'}}))
+except Application.DoesNotExist:
+    # Create application
+    app = Application.objects.create(
+        name='{name}',
+        slug='{slug}',
+        provider=provider{launch_url_field}
+    )
+    print(json.dumps({{'created': True, 'slug': '{slug}'}}))
+"""
+
+    import subprocess
+    try:
+        result = subprocess.run(
+            ['docker', 'compose', 'exec', '-T', 'authentik-server',
+             'python', 'manage.py', 'shell'],
+            input=python_code.encode(),
+            capture_output=True,
+            timeout=15
+        )
+
+        output = result.stdout.decode()
+        if 'created' in output or 'exists' in output:
+            print(f"✅ Application {name} ready")
+            return True
+        else:
+            print(f"⚠️  Application creation unclear for {name}")
+            return False
+
+    except Exception as e:
+        print(f"⚠️  Error creating application: {e}")
+        return False
+
 def create_user(token: str, username: str, email: str, password: str = "admin123") -> bool:
     """Create user via Django shell (password setting via API is complex)"""
     print(f"👤 Creating user: {username}...")
@@ -268,17 +396,15 @@ def main():
 
     print("🚀 Starting automatic configuration...")
 
-    # Create Frontend Provider
-    frontend_provider_pk = create_oauth_provider(
-        api_token,
+    # Create Frontend Provider (Public)
+    frontend_provider_pk = create_provider_via_shell(
         "llars-frontend-provider",
         FRONTEND_CLIENT_ID,
         "public"
     )
 
-    # Create Backend Provider
-    backend_provider_pk = create_oauth_provider(
-        api_token,
+    # Create Backend Provider (Confidential)
+    backend_provider_pk = create_provider_via_shell(
         "llars-backend-provider",
         BACKEND_CLIENT_ID,
         "confidential",
@@ -287,12 +413,12 @@ def main():
 
     # Create Applications
     if frontend_provider_pk:
-        create_application(api_token, "LLARS Frontend", "llars-frontend",
-                         frontend_provider_pk, BASE_URL)
+        create_application_via_shell("LLARS Frontend", "llars-frontend",
+                                    frontend_provider_pk, BASE_URL)
 
     if backend_provider_pk:
-        create_application(api_token, "LLARS Backend", "llars-backend",
-                         backend_provider_pk)
+        create_application_via_shell("LLARS Backend", "llars-backend",
+                                    backend_provider_pk)
 
     # Create test users
     print("\n👥 Creating test users...")

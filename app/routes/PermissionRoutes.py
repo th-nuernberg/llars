@@ -14,7 +14,7 @@ Routes:
     POST /api/permissions/unassign-role - Unassign role from user
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 import jwt
 from decorators.permission_decorator import require_permission
 from services.permission_service import PermissionService
@@ -108,6 +108,7 @@ def get_my_permissions():
             'roles': roles
         }), 200
     except Exception as e:
+        current_app.logger.error(f"Error in get_my_permissions: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

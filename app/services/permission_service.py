@@ -14,7 +14,7 @@ Performance optimizations with caching will be added in later phases.
 from typing import List, Optional, Set
 from datetime import datetime
 from sqlalchemy import select, and_, or_
-from db import db
+from db.db import db
 from db.tables import (
     Permission,
     Role,

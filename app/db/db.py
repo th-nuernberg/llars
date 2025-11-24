@@ -350,4 +350,42 @@ def initialize_permissions():
         else:
             print(f"Role already exists: {role_name}")
 
+    # Assign admin role to default admin user
+    assign_default_admin_role()
+
     print("Permission system initialized successfully.")
+
+
+def assign_default_admin_role():
+    """
+    Automatically assign admin role to the default 'admin' user.
+    This ensures the admin user always has admin permissions after database reset.
+    """
+    from .tables import UserRole, Role
+    from datetime import datetime
+
+    # Find admin role
+    admin_role = Role.query.filter_by(role_name='admin').first()
+    if not admin_role:
+        print("Warning: Admin role not found. Skipping default admin assignment.")
+        return
+
+    # Check if admin user already has admin role
+    existing = UserRole.query.filter_by(
+        username='admin',
+        role_id=admin_role.id
+    ).first()
+
+    if not existing:
+        # Assign admin role to admin user
+        user_role = UserRole(
+            username='admin',
+            role_id=admin_role.id,
+            assigned_by='system',
+            assigned_at=datetime.utcnow()
+        )
+        db.session.add(user_role)
+        db.session.commit()
+        print("✅ Assigned admin role to user 'admin' automatically.")
+    else:
+        print("✅ User 'admin' already has admin role.")

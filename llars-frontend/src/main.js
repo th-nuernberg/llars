@@ -22,7 +22,7 @@ registerPlugins(app)
 
 // Setup Axios interceptor for adding Bearer token to all requests
 axios.interceptors.request.use(config => {
-  const token = sessionStorage.getItem('kc_token')
+  const token = sessionStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -39,9 +39,9 @@ axios.interceptors.response.use(
     if (error.response?.status === 401) {
       console.log('Token expired or invalid, redirecting to login')
       // Clear tokens
-      sessionStorage.removeItem('kc_token')
-      sessionStorage.removeItem('kc_refreshToken')
-      sessionStorage.removeItem('kc_idToken')
+      sessionStorage.removeItem('auth_token')
+      sessionStorage.removeItem('auth_refreshToken')
+      sessionStorage.removeItem('auth_idToken')
       // Redirect to login
       window.location.href = '/login'
     }

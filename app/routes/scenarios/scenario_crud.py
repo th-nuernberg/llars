@@ -20,7 +20,7 @@ from .scenario_management import distribute_threads_to_users
 def get_scenario_list():
     """Get list of all scenarios with their status"""
     # Authorization handled by @admin_required decorator
-    # Current user available in g.keycloak_user
+    # Current user available in g.authentik_user
 
     scenarios = RatingScenarios.query.all()
 
@@ -77,7 +77,7 @@ def get_scenario_details(scenario_id=None):
     """Get detailed information about a specific scenario"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         # check if scenario id is valid
         if not scenario_id:
@@ -151,7 +151,7 @@ def get_scenario_details(scenario_id=None):
 def create_scenario():
     """Create a new rating scenario with users and threads"""
     # Authorization handled by @admin_required decorator
-    # Current user available in g.keycloak_user
+    # Current user available in g.authentik_user
 
     try:
         data = request.get_json()
@@ -313,7 +313,7 @@ def create_scenario():
 def delete_scenario(scenario_id):
     """Delete a scenario and all associated records"""
     # Authorization handled by @admin_required decorator
-    # Current user available in g.keycloak_user
+    # Current user available in g.authentik_user
 
     scenario = RatingScenarios.query.get(scenario_id)
 
@@ -335,7 +335,7 @@ def edit_scenario():
     """Edit an existing scenario's name and dates"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         try:
             data = request.get_json()

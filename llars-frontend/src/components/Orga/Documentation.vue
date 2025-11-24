@@ -230,9 +230,9 @@ docker compose logs -f</code></pre>
             Authentifizierungs-Tokens werden sicher in <code>sessionStorage</code> gespeichert:
           </p>
           <ul>
-            <li><code>kc_token</code> - Access Token (JWT)</li>
-            <li><code>kc_refreshToken</code> - Refresh Token</li>
-            <li><code>kc_idToken</code> - ID Token</li>
+            <li><code>auth_token</code> - Access Token (JWT)</li>
+            <li><code>auth_refreshToken</code> - Refresh Token</li>
+            <li><code>auth_idToken</code> - ID Token</li>
           </ul>
 
           <v-alert type="info" class="my-4">
@@ -421,10 +421,10 @@ docker compose logs -f</code></pre>
               <v-expansion-panel-text>
                 <p><strong>Lösung:</strong></p>
                 <ul>
-                  <li>Überprüfen Sie, ob Keycloak läuft</li>
+                  <li>Überprüfen Sie, ob Authentik läuft</li>
                   <li>Löschen Sie den Browser-Cache und sessionStorage</li>
-                  <li>Prüfen Sie die Keycloak-Konfiguration in der <code>.env</code> Datei</li>
-                  <li>Stellen Sie sicher, dass der Benutzer in Keycloak existiert</li>
+                  <li>Prüfen Sie die Authentik-Konfiguration in der <code>.env</code> Datei</li>
+                  <li>Stellen Sie sicher, dass der Benutzer in Authentik existiert</li>
                 </ul>
               </v-expansion-panel-text>
             </v-expansion-panel>

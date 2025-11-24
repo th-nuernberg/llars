@@ -6,7 +6,7 @@ Handles getting and saving mail history (thread-level) ratings.
 import logging
 import traceback
 from flask import jsonify, request, g
-from auth.decorators import keycloak_required
+from auth.decorators import authentik_required
 from db.db import db
 from db.tables import (UserMailHistoryRating, ConsultingCategoryType,
                        UserConsultingCategorySelection, ProgressionStatus)
@@ -15,12 +15,12 @@ from ..HelperFunctions import can_access_thread
 
 
 @data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_mail_rating(thread_id):
     """Get the most recent mail history rating for a thread"""
     try:
-        # Authorization handled by @keycloak_required decorator
-        user = g.keycloak_user
+        # Authorization handled by @authentik_required decorator
+        user = g.authentik_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):
@@ -62,12 +62,12 @@ def get_mail_rating(thread_id):
 
 
 @data_blueprint.route('/email_threads/save_mailhistory_rating/<int:thread_id>', methods=['POST'])
-@keycloak_required
+@authentik_required
 def save_mail_rating(thread_id):
     """Save mail history rating with consulting category selection"""
     try:
-        # Authorization handled by @keycloak_required decorator
-        user = g.keycloak_user
+        # Authorization handled by @authentik_required decorator
+        user = g.authentik_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):

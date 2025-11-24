@@ -171,7 +171,7 @@ function logout() {
     }
   }
 
-  // Logout via useAuth (löscht sessionStorage: kc_token, kc_refreshToken, kc_idToken)
+  // Logout via useAuth (löscht sessionStorage: auth_token, auth_refreshToken, auth_idToken)
   auth.logout();
 
   // Alte localStorage-Items löschen (für Kompatibilität mit altem System)

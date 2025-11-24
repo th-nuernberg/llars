@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request, g, Response
 from werkzeug.security import check_password_hash
 from . import data_blueprint
 from . import auth_blueprint
-from auth.decorators import keycloak_required, admin_required, roles_required
+from auth.decorators import authentik_required, admin_required, roles_required
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
@@ -22,13 +22,13 @@ import json
 
 
 @data_blueprint.route('/prompts', methods=['POST'])
-@keycloak_required
+@authentik_required
 def save_user_prompt():
     """
     Route zum Speichern eines neuen Prompts für den angemeldeten Benutzer.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     data = request.get_json()
     prompt_name = data.get('name')
@@ -64,13 +64,13 @@ def save_user_prompt():
 
 
 @data_blueprint.route('/prompts', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_user_prompts():
     """
     Route zum Abrufen aller Prompts des angemeldeten Benutzers.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Alle Prompts des Benutzers abrufen inkl. Sharing-Informationen
     user_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
@@ -99,14 +99,14 @@ def get_user_prompts():
     return jsonify({'prompts': prompts_data}), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_user_prompt(prompt_id):
     """
     Route zum Abrufen eines einzelnen Prompts für den Benutzer.
     Berücksichtigt sowohl eigene als auch geteilte Prompts.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Prompt abrufen (eigene und geteilte)
     prompt = UserPrompt.query.filter(
@@ -149,13 +149,13 @@ def get_user_prompt(prompt_id):
     }), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['PUT'])
-@keycloak_required
+@authentik_required
 def update_user_prompt(prompt_id):
     """
     Route zum Aktualisieren eines Prompts für den Benutzer.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
     prompt = UserPrompt.query.filter(
@@ -193,13 +193,13 @@ def update_user_prompt(prompt_id):
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/share', methods=['POST'])
-@keycloak_required
+@authentik_required
 def share_prompt(prompt_id):
     """
     Route zum Freigeben eines Prompts für einen anderen Benutzer.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     data = request.get_json()
     shared_with_username = data.get('shared_with')
@@ -235,13 +235,13 @@ def share_prompt(prompt_id):
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/unshare', methods=['POST'])
-@keycloak_required
+@authentik_required
 def unshare_prompt(prompt_id):
     """
     Route zum Entfernen der Freigabe eines Prompts für einen Benutzer.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     data = request.get_json()
     unshare_with_username = data.get('unshare_with')
@@ -276,13 +276,13 @@ def unshare_prompt(prompt_id):
 
 
 @data_blueprint.route('/prompts/shared', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_shared_prompts():
     """
     Route zum Abrufen aller für den Benutzer freigegebenen Prompts.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Freigegebene Prompts mit Sharing-Zeitstempel abrufen
     shared_prompts = db.session.query(
@@ -309,13 +309,13 @@ def get_shared_prompts():
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/download', methods=['GET'])
-@keycloak_required
+@authentik_required
 def download_prompt_json(prompt_id):
     """
     Route zum Herunterladen eines Prompts als formatierte JSON-Datei.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Prompt abrufen und prüfen, ob der Benutzer Zugriff hat
     prompt = UserPrompt.query.filter(
@@ -359,13 +359,13 @@ def download_prompt_json(prompt_id):
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/rename', methods=['PUT'])
-@keycloak_required
+@authentik_required
 def rename_prompt(prompt_id):
     """
     Route zum Umbenennen eines Prompts.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
@@ -398,13 +398,13 @@ def rename_prompt(prompt_id):
     }), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['DELETE'])
-@keycloak_required
+@authentik_required
 def delete_prompt(prompt_id):
     """
     Route zum Löschen eines Prompts.
     """
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()

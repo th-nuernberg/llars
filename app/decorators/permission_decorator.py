@@ -56,7 +56,7 @@ def require_permission(permission_key: str):
             try:
                 # Decode token to get username
                 # Note: In production, verify the token signature!
-                # For now, we just decode without verification (Keycloak handles verification)
+                # For now, we just decode without verification (Authentik handles verification)
                 decoded_token = jwt.decode(token, options={"verify_signature": False})
                 username = decoded_token.get('preferred_username')
 

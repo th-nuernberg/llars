@@ -87,14 +87,14 @@ router.beforeEach((to, from, next) => {
     // Get auth instance from useAuth composable
     // We need to import it here instead of using useAuth() directly
     // because router guards run before components are mounted
-    const isAuthenticated = !!sessionStorage.getItem('kc_token');
+    const isAuthenticated = !!sessionStorage.getItem('auth_token');
 
     let userRoles = [];
     let isAdmin = false;
 
     if (isAuthenticated) {
         try {
-            const token = sessionStorage.getItem('kc_token');
+            const token = sessionStorage.getItem('auth_token');
             const parsed = JSON.parse(atob(token.split('.')[1]));
             userRoles = parsed?.realm_access?.roles || [];
             isAdmin = userRoles.includes('admin');

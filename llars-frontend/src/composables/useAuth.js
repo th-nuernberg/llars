@@ -9,9 +9,9 @@ const tokenParsed = ref(null);
 
 // Load tokens from sessionStorage on init
 const loadTokensFromStorage = () => {
-  token.value = sessionStorage.getItem('kc_token');
-  refreshToken.value = sessionStorage.getItem('kc_refreshToken');
-  idToken.value = sessionStorage.getItem('kc_idToken');
+  token.value = sessionStorage.getItem('auth_token');
+  refreshToken.value = sessionStorage.getItem('auth_refreshToken');
+  idToken.value = sessionStorage.getItem('auth_idToken');
 
   if (token.value) {
     try {
@@ -39,7 +39,7 @@ export const useAuth = () => {
   const login = async (username, password) => {
     // Use backend proxy endpoint for authentication (avoids CORS issues)
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
-    const loginUrl = `${baseUrl}/auth/keycloak/login`;
+    const loginUrl = `${baseUrl}/auth/authentik/login`;
 
     try {
       const response = await axios.post(loginUrl, {
@@ -66,10 +66,10 @@ export const useAuth = () => {
       }
 
       // Store in sessionStorage
-      sessionStorage.setItem('kc_token', access_token);
-      sessionStorage.setItem('kc_refreshToken', refresh_token);
+      sessionStorage.setItem('auth_token', access_token);
+      sessionStorage.setItem('auth_refreshToken', refresh_token);
       if (id_token) {
-        sessionStorage.setItem('kc_idToken', id_token);
+        sessionStorage.setItem('auth_idToken', id_token);
       }
 
       // Store username in localStorage for App.vue compatibility
@@ -108,9 +108,9 @@ export const useAuth = () => {
     idToken.value = null;
     tokenParsed.value = null;
 
-    sessionStorage.removeItem('kc_token');
-    sessionStorage.removeItem('kc_refreshToken');
-    sessionStorage.removeItem('kc_idToken');
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_refreshToken');
+    sessionStorage.removeItem('auth_idToken');
   };
 
   const getToken = () => token.value;

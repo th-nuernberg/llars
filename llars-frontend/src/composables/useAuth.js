@@ -37,23 +37,17 @@ export const useAuth = () => {
   });
 
   const login = async (username, password) => {
-    const authUrl = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:55090';
-    const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'llars-frontend';
-
-    // Authentik OIDC endpoint: {url}/application/o/{client-id}/token
-    const tokenUrl = `${authUrl}/application/o/${clientId}/token`;
-
-    const params = new URLSearchParams();
-    params.append('client_id', clientId);
-    params.append('grant_type', 'password');
-    params.append('username', username);
-    params.append('password', password);
-    params.append('scope', 'openid profile email');
+    // Use backend proxy endpoint for authentication (avoids CORS issues)
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const loginUrl = `${baseUrl}/auth/keycloak/login`;
 
     try {
-      const response = await axios.post(tokenUrl, params, {
+      const response = await axios.post(loginUrl, {
+        username,
+        password
+      }, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       });
 

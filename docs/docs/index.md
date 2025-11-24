@@ -14,15 +14,38 @@ LLARS is a comprehensive platform for email rating and analysis using Large Lang
 
 ## Architecture
 
-The LLARS platform consists of multiple microservices:
+**Service-Übersicht (interne Ports)**  
+```text
+┌──────────────────┐
+│  nginx (Port 80) │  ← Reverse Proxy + Load Balancer
+└─────────┬────────┘
+          │
+    ┌─────┼─────────────────┬──────────────────┬────────────────┐
+    │     │                 │                  │                │
+┌───▼──┐ ┌▼────────┐  ┌────▼─────┐  ┌────────▼──────┐  ┌──────▼───────┐
+│ Vue  │ │ Flask   │  │ Keycloak │  │ YJS WebSocket │  │  Supervisor  │
+│:5173 │ │ :8081   │  │  :8090   │  │     :8082     │  │   Service    │
+└──────┘ └─────┬───┘  └────┬─────┘  └───────┬───────┘  └──────┬───────┘
+               │           │                 │                 │
+        ┌──────┴───────────┴─────────────────┴─────────────────┘
+        │
+   ┌────▼──────┐        ┌────────────┐
+   │  MariaDB  │        │ PostgreSQL │
+   │   :3306   │        │   :5432    │
+   └───────────┘        └────────────┘
+     (LLARS DB)         (Keycloak DB)
+```
 
-- **Flask Backend** (Port 55081): REST API and business logic
-- **Vue Frontend** (Port 55173): User interface
-- **Keycloak** (Port 55090): Authentication and authorization
-- **MariaDB** (Port 55306): Primary database
-- **YJS Server** (Port 55082): Real-time collaboration
-- **Nginx** (Port 55080): Reverse proxy and static file serving
-- **MkDocs** (Port 55800): Documentation server
+**Externe Ports (Development-Defaults)**  
+- 55080 → nginx (http)  
+- 55173 → Vue Dev Server  
+- 55081 → Flask (direct dev access)  
+- 55090 → Keycloak  
+- 55082 → YJS Server  
+- 55306 → MariaDB (falls explizit freigegeben)  
+
+**Production**  
+- Nur 443/80 nach nginx; alle anderen Services sind intern erreichbar.
 
 ## Quick Start
 

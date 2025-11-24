@@ -14,15 +14,15 @@ from .oidc_validator import (
 )
 
 
-def keycloak_required(f):
+def authentik_required(f):
     """
-    Decorator to require valid Keycloak authentication
+    Decorator to require valid Authentik authentication
 
     Usage:
         @app.route('/protected')
-        @keycloak_required
+        @authentik_required
         def protected_route():
-            username = g.keycloak_user
+            username = g.authentik_user
             return jsonify({'message': f'Hello {username}'})
     """
     @wraps(f)
@@ -46,9 +46,9 @@ def keycloak_required(f):
             }), 401
 
         # Store token payload in Flask's g object for access in route
-        g.keycloak_token = token_payload
-        g.keycloak_user = get_username(token_payload)
-        g.keycloak_user_id = get_user_id(token_payload)
+        g.authentik_token = token_payload
+        g.authentik_user = get_username(token_payload)
+        g.authentik_user_id = get_user_id(token_payload)
 
         return f(*args, **kwargs)
 
@@ -66,9 +66,9 @@ def admin_required(f):
             return jsonify({'message': 'Admin access granted'})
     """
     @wraps(f)
-    @keycloak_required  # First check if authenticated
+    @authentik_required  # First check if authenticated
     def decorated_function(*args, **kwargs):
-        token_payload = g.keycloak_token
+        token_payload = g.authentik_token
 
         # Check for admin role
         if not has_role(token_payload, 'admin'):
@@ -94,9 +94,9 @@ def roles_required(*required_roles):
     """
     def decorator(f):
         @wraps(f)
-        @keycloak_required  # First check if authenticated
+        @authentik_required  # First check if authenticated
         def decorated_function(*args, **kwargs):
-            token_payload = g.keycloak_token
+            token_payload = g.authentik_token
 
             # Check if user has any of the required roles
             user_has_role = any(has_role(token_payload, role) for role in required_roles)
@@ -124,8 +124,8 @@ def optional_auth(f):
         @app.route('/public')
         @optional_auth
         def public_route():
-            if hasattr(g, 'keycloak_user'):
-                return jsonify({'message': f'Hello {g.keycloak_user}'})
+            if hasattr(g, 'authentik_user'):
+                return jsonify({'message': f'Hello {g.authentik_user}'})
             else:
                 return jsonify({'message': 'Hello guest'})
     """
@@ -136,9 +136,9 @@ def optional_auth(f):
         if token:
             token_payload = validate_token(token)
             if token_payload:
-                g.keycloak_token = token_payload
-                g.keycloak_user = get_username(token_payload)
-                g.keycloak_user_id = get_user_id(token_payload)
+                g.authentik_token = token_payload
+                g.authentik_user = get_username(token_payload)
+                g.authentik_user_id = get_user_id(token_payload)
 
         return f(*args, **kwargs)
 

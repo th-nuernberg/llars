@@ -20,7 +20,7 @@ def add_threads_to_scenario():
     """Add threads to an existing scenario and distribute them to raters"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         try:
             data = request.get_json()
@@ -99,7 +99,7 @@ def add_viewers_to_scenario():
     """Add or update viewers for a scenario"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         try:
             data = request.get_json()

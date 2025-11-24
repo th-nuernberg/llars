@@ -5,7 +5,7 @@ Handles thread retrieval and listing for mail rating functionality.
 
 import logging
 from flask import jsonify, g
-from auth.decorators import keycloak_required
+from auth.decorators import authentik_required
 from db.db import db
 from db.tables import (EmailThread, Message, FeatureFunctionType,
                        UserMailHistoryRating, ProgressionStatus)
@@ -14,12 +14,12 @@ from ..HelperFunctions import get_user_threads
 
 
 @data_blueprint.route('/email_threads/generations/<int:thread_id>', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_email_thread_details(thread_id):
     """Get detailed message content for an email thread"""
     try:
-        # Authorization handled by @keycloak_required decorator
-        user = g.keycloak_user
+        # Authorization handled by @authentik_required decorator
+        user = g.authentik_user
 
         # Hole den E-Mail-Thread basierend auf der thread_id
         email_thread = EmailThread.query.filter_by(thread_id=thread_id).first()
@@ -49,12 +49,12 @@ def get_email_thread_details(thread_id):
 
 
 @data_blueprint.route('/email_threads/mailhistory_ratings', methods=['GET'])
-@keycloak_required
+@authentik_required
 def list_email_threads_for_mail_ratings():
     """Get list of all threads assigned to user for mail rating with progression status"""
     try:
-        # Authorization handled by @keycloak_required decorator
-        user = g.keycloak_user
+        # Authorization handled by @authentik_required decorator
+        user = g.authentik_user
 
         # get function type
         mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first().function_type_id

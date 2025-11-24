@@ -18,7 +18,7 @@ def get_user_HistoryGeneration_stats():
     """Get progress statistics for all users on mail history generation"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         user_stats = []
         mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()

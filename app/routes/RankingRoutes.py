@@ -5,7 +5,7 @@ from . import data_blueprint, auth_blueprint
 from flask import Blueprint, jsonify, request, g
 from werkzeug.security import check_password_hash
 from werkzeug.exceptions import BadRequest
-from auth.decorators import keycloak_required, admin_required, roles_required
+from auth.decorators import authentik_required, admin_required, roles_required
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
@@ -26,10 +26,10 @@ from .HelperFunctions import get_user_threads, can_access_thread
 
 
 @data_blueprint.route('/email_threads/rankings', methods=['GET'])
-@keycloak_required
+@authentik_required
 def list_email_threads_for_rankings():
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     ranking_function_type = FeatureFunctionType.query.filter_by(name='ranking').first()
     if not ranking_function_type:
@@ -58,10 +58,10 @@ def list_email_threads_for_rankings():
     return jsonify(threads_list), 200
 
 @data_blueprint.route('/email_threads/feature_ranking_list', methods=['GET'])
-@keycloak_required
+@authentik_required
 def list_ranking_threads():
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # Hole alle Threads mit function_type_id = 1 (Ranking)
     ranking_function_type = FeatureFunctionType.query.filter_by(name='ranking').first()
@@ -84,10 +84,10 @@ def list_ranking_threads():
     return jsonify(threads_list), 200
 
 @data_blueprint.route('/email_threads/rankings/<int:thread_id>', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_email_thread_for_rankings(thread_id):
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     ranking_function_type = FeatureFunctionType.query.filter_by(name='ranking').first()
     if not ranking_function_type:
@@ -136,10 +136,10 @@ def get_email_thread_for_rankings(thread_id):
 
 
 @data_blueprint.route('/email_threads/<int:thread_id>/current_ranking', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_current_ranking(thread_id):
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 1):
@@ -223,10 +223,10 @@ def get_current_ranking(thread_id):
 
 
 @data_blueprint.route('/save_ranking/<int:thread_id>', methods=['POST'])
-@keycloak_required
+@authentik_required
 def save_ranking(thread_id):
-    # Authorization handled by @keycloak_required decorator
-    user = g.keycloak_user
+    # Authorization handled by @authentik_required decorator
+    user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 1):
@@ -295,7 +295,7 @@ def save_ranking(thread_id):
 @admin_required
 def get_user_ranking_stats():
     # Authorization handled by @admin_required decorator
-    # Current user available in g.keycloak_user
+    # Current user available in g.authentik_user
 
     user_stats = []
 

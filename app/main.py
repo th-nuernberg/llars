@@ -26,7 +26,7 @@ limiter = Limiter(
 )
 
 # JWT Configuration (for legacy auth routes)
-# TODO: Complete migration to Keycloak and remove legacy JWT auth
+# TODO: Complete migration to Authentik and remove legacy JWT auth
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
 jwt = JWTManager(app)
 
@@ -37,9 +37,9 @@ configure_database(app)
 app.register_blueprint(auth_blueprint, url_prefix='/auth')
 app.register_blueprint(data_blueprint, url_prefix='/api')
 
-# Keycloak authentication routes
-from routes.keycloak_routes import keycloak_auth_blueprint
-app.register_blueprint(keycloak_auth_blueprint, url_prefix='/auth/keycloak')
+# Authentik authentication routes
+from routes.authentik_routes import authentik_auth_blueprint
+app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
 
 
 configure_socket_routes(socketio)

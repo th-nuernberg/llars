@@ -6,7 +6,7 @@ Handles individual message ratings within email threads.
 import logging
 from flask import jsonify, request, g
 from sqlalchemy import func
-from auth.decorators import keycloak_required
+from auth.decorators import authentik_required
 from db.db import db
 from db.tables import UserMessageRating
 from .. import data_blueprint
@@ -14,12 +14,12 @@ from ..HelperFunctions import can_access_thread
 
 
 @data_blueprint.route('/email_threads/message_ratings/<int:thread_id>', methods=['GET'])
-@keycloak_required
+@authentik_required
 def get_email_thread_message_ratings(thread_id):
     """Get the most recent ratings for all messages in a thread"""
     try:
-        # Authorization handled by @keycloak_required decorator
-        user = g.keycloak_user
+        # Authorization handled by @authentik_required decorator
+        user = g.authentik_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):
@@ -62,12 +62,12 @@ def get_email_thread_message_ratings(thread_id):
 
 
 @data_blueprint.route('/email_threads/save_message_ratings/<int:thread_id>', methods=['POST'])
-@keycloak_required
+@authentik_required
 def save_message_ratings(thread_id):
     """Save ratings for individual messages (thumbs up/down)"""
     try:
-        # Authorization handled by @keycloak_required decorator
-        user = g.keycloak_user
+        # Authorization handled by @authentik_required decorator
+        user = g.authentik_user
 
         # check if user can access thread
         if not can_access_thread(user.id, thread_id, 3):

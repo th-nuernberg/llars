@@ -17,7 +17,7 @@ def get_function_types():
     """Get all available function types for scenarios"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         feature_function_types = FeatureFunctionType.query.all()
         function_types = []
@@ -40,7 +40,7 @@ def get_users():
     """Get all non-admin users for scenario assignment"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         db_users = (db.session.query(User).join(UserGroup, User.group_id == UserGroup.id)
                     .filter(UserGroup.name != "Admin").all())
@@ -64,7 +64,7 @@ def get_threads(function_type_id):
     """Get all threads for a specific function type"""
     try:
         # Authorization handled by @admin_required decorator
-        # Current user available in g.keycloak_user
+        # Current user available in g.authentik_user
 
         validated_function_type = FeatureFunctionType.query.filter_by(function_type_id=function_type_id).first()
 

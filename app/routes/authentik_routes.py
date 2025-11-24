@@ -4,12 +4,12 @@ These routes provide compatibility with the frontend while using Authentik for a
 """
 
 from flask import Blueprint, jsonify, request, g, current_app
-from auth.decorators import keycloak_required, admin_required
+from auth.decorators import authentik_required, admin_required
 from auth.oidc_validator import get_token_from_request, validate_token, get_username, get_user_id
 from functools import wraps
 
-# Create blueprint for Keycloak-specific routes
-keycloak_auth_blueprint = Blueprint('keycloak_auth', __name__)
+# Create blueprint for Authentik-specific routes
+authentik_auth_blueprint = Blueprint('authentik_auth', __name__)
 
 
 def rate_limit(limit_string):
@@ -25,32 +25,32 @@ def rate_limit(limit_string):
     return decorator
 
 
-@keycloak_auth_blueprint.route('/health_check', methods=['GET'])
+@authentik_auth_blueprint.route('/health_check', methods=['GET'])
 def health_check():
     """Health check endpoint - no authentication required"""
-    return jsonify({"message": "Server is running with Keycloak authentication"}), 200
+    return jsonify({"message": "Server is running with Authentik authentication"}), 200
 
 
-@keycloak_auth_blueprint.route('/me', methods=['GET'])
-@keycloak_required
+@authentik_auth_blueprint.route('/me', methods=['GET'])
+@authentik_required
 @rate_limit("100 per hour")
 def get_current_user():
     """
     Get current authenticated user information
-    Uses Keycloak token to return user details
+    Uses Authentik token to return user details
     Rate limit: 100 requests per hour per IP
     """
     return jsonify({
-        "username": g.keycloak_user,
-        "user_id": g.keycloak_user_id,
-        "roles": g.keycloak_token.get('realm_access', {}).get('roles', []),
-        "email": g.keycloak_token.get('email'),
-        "name": g.keycloak_token.get('name'),
-        "preferred_username": g.keycloak_token.get('preferred_username')
+        "username": g.authentik_user,
+        "user_id": g.authentik_user_id,
+        "roles": g.authentik_token.get('realm_access', {}).get('roles', []),
+        "email": g.authentik_token.get('email'),
+        "name": g.authentik_token.get('name'),
+        "preferred_username": g.authentik_token.get('preferred_username')
     }), 200
 
 
-@keycloak_auth_blueprint.route('/validate', methods=['GET'])
+@authentik_auth_blueprint.route('/validate', methods=['GET'])
 @rate_limit("200 per hour")
 def validate_token_endpoint():
     """
@@ -75,7 +75,7 @@ def validate_token_endpoint():
         return jsonify({'valid': False, 'error': 'Invalid or expired token'}), 401
 
 
-@keycloak_auth_blueprint.route('/admin/check', methods=['GET'])
+@authentik_auth_blueprint.route('/admin/check', methods=['GET'])
 @admin_required
 def check_admin():
     """
@@ -83,11 +83,11 @@ def check_admin():
     """
     return jsonify({
         "message": "User has admin privileges",
-        "username": g.keycloak_user
+        "username": g.authentik_user
     }), 200
 
 
-@keycloak_auth_blueprint.route('/login', methods=['POST'])
+@authentik_auth_blueprint.route('/login', methods=['POST'])
 @rate_limit("10 per minute")
 def login():
     """

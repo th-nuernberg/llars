@@ -19,7 +19,7 @@ from .. import data_blueprint
 def get_scenario_user_progress_stats(scenario_id):
     """Get detailed progress statistics for all users in a scenario"""
     # Authorization handled by @admin_required decorator
-    # Current user available in g.keycloak_user
+    # Current user available in g.authentik_user
 
     # check if scenario id is valid
     if not scenario_id:

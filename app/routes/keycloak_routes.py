@@ -85,3 +85,53 @@ def check_admin():
         "message": "User has admin privileges",
         "username": g.keycloak_user
     }), 200
+
+
+@keycloak_auth_blueprint.route('/login', methods=['POST'])
+@rate_limit("10 per minute")
+def login():
+    """
+    Login endpoint - proxies password grant to Authentik using backend confidential client
+    Rate limit: 10 requests per minute per IP
+    """
+    import requests
+    import os
+
+    # Get credentials from request
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+
+    # Authentik backend client credentials (from environment)
+    authentik_url = os.getenv('AUTHENTIK_ISSUER_URL', 'http://authentik-server:9000/application/o/llars-backend/')
+    client_id = os.getenv('AUTHENTIK_BACKEND_CLIENT_ID', 'llars-backend')
+    client_secret = os.getenv('AUTHENTIK_BACKEND_CLIENT_SECRET', '')
+
+    # Build token URL
+    token_url = f"{authentik_url.rstrip('/')}/token"
+
+    # Prepare token request
+    token_data = {
+        'grant_type': 'password',
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'username': username,
+        'password': password,
+        'scope': 'openid profile email'
+    }
+
+    try:
+        # Request token from Authentik
+        response = requests.post(token_url, data=token_data, timeout=10)
+
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Authentik login error: {e}")
+        return jsonify({'error': 'Authentication service unavailable'}), 503

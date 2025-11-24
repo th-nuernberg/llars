@@ -1,9 +1,18 @@
 # 🚀 LLARS Authentik Quick Start
 
-## ✅ Status: Authentik läuft!
+## ✅ Status: Authentik läuft mit Auto-Konfiguration!
 
 Authentik-Server ist **erfolgreich gestartet** und läuft auf:
 - **URL:** http://localhost:55095
+
+**🎉 Neu:** Authentik wird jetzt beim Start **automatisch konfiguriert**!
+- Provider (Frontend + Backend) werden automatisch erstellt
+- Applications werden automatisch erstellt
+- Test-User werden vorbereitet
+
+**Manuelle Konfiguration nur noch nötig falls:**
+- Auto-Konfiguration fehlschlägt
+- Spezielle Anpassungen gewünscht sind
 
 ---
 
@@ -28,6 +37,8 @@ Du wirst zur Login-Seite weitergeleitet.
 Email:    admin@example.com
 Passwort: admin123
 ```
+
+**Hinweis:** Diese Credentials werden beim ersten Start automatisch erstellt.
 
 ---
 

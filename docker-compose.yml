@@ -222,6 +222,25 @@ services:
       timeout: 3s
       retries: 5
 
+  authentik-init:
+    container_name: llars_authentik_init
+    image: curlimages/curl:latest
+    environment:
+      - AUTHENTIK_URL=http://authentik-server:9000
+      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
+      - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}
+      - AUTHENTIK_FRONTEND_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
+      - AUTHENTIK_BACKEND_CLIENT_ID=${AUTHENTIK_BACKEND_CLIENT_ID}
+      - AUTHENTIK_BACKEND_CLIENT_SECRET=${AUTHENTIK_BACKEND_CLIENT_SECRET}
+      - BASE_URL=http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}
+    volumes:
+      - ./docker/authentik/init-authentik.sh:/init-authentik.sh:ro
+    command: sh /init-authentik.sh
+    depends_on:
+      authentik-server:
+        condition: service_healthy
+    restart: "no"
+
 
 volumes:
   llarsdb:

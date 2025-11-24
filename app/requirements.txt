@@ -17,6 +17,9 @@ python-keycloak==5.0.0
 PyJWT==2.9.0
 cryptography==44.0.0
 
+# Authentik Integration
+psycopg2-binary==2.9.9
+
 langchain==0.3.7
 langchain-community==0.3.7
 langchain-core==0.3.19

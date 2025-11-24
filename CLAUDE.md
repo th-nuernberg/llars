@@ -1,38 +1,52 @@
 # LLARS - LLM-Assisted Rating System
 
-**Stand:** 20. November 2025
-**Version:** 2.0 (mit Keycloak-Integration)
-
-## 📋 Inhaltsverzeichnis
-
-1. [Projekt-Übersicht](#projekt-übersicht)
-2. [Architektur](#architektur)
-3. [Keycloak-Integration](#keycloak-integration)
-4. [Services](#services)
-5. [Sicherheit](#sicherheit)
-6. [Entwicklung](#entwicklung)
-7. [Deployment](#deployment)
-8. [API-Dokumentation](#api-dokumentation)
-9. [Troubleshooting](#troubleshooting)
-
----
+**Version:** 2.1 | **Stand:** 21. November 2025
 
 ## 🎯 Projekt-Übersicht
 
-LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit Hilfe von Large Language Models (LLMs). Das System unterstützt:
+LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-- **Multi-User Collaboration**: Echtzeit-Zusammenarbeit via WebSocket (YJS CRDT)
-- **LLM-Integration**: OpenAI-Modelle für intelligente Prompts
-- **Role-Based Access Control**: Admin, Rater, Viewer via Keycloak
-- **RAG-Pipeline**: Retrieval-Augmented Generation mit ChromaDB
-- **Flexible Bewertung**: Verschiedene Ranking-Methoden und Szenarien
+**Hauptfeatures:**
+- Multi-User Collaboration via YJS CRDT
+- LLM-Integration (OpenAI)
+- Granulares Permission System (RBAC)
+- Keycloak Authentication
+- Light/Dark Mode
+- RAG-Pipeline (ChromaDB)
 
-### Hauptfunktionen
+---
 
-1. **Mail-Rating**: Bewertung von E-Mails nach verschiedenen Kriterien
-2. **Prompt Engineering**: Kollaborative Prompt-Entwicklung mit Echtzeit-Synchronisation
-3. **Scenario Management**: Verwaltung und Bewertung von Use-Cases
-4. **Admin Dashboard**: Benutzerverwaltung und System-Monitoring
+## 🚀 Projekt starten
+
+```bash
+# Schnellstart
+./start_llars.sh
+```
+
+**Das Skript:**
+1. Prüft Docker-Daemon
+2. Lädt `.env`-Variablen
+3. Stoppt alte Container
+4. Startet Services (Development mit Hot-Reload oder Production)
+
+### Wichtige .env Variablen
+
+```bash
+PROJECT_STATE=development        # development | production
+PROJECT_HOST=localhost
+REMOVE_VOLUMES=False            # True = Datenbanken werden gelöscht!
+
+# Ports (Development: 55000er Range)
+NGINX_EXTERNAL_PORT=55080
+NGINX_INTERNAL_PORT=80          # WICHTIG: Muss 80 sein!
+```
+
+### URLs nach Start
+
+- **Frontend**: http://localhost:55080
+- **Backend API**: http://localhost:55080/api
+- **Health Check**: http://localhost:55080/auth/health_check
+- **YJS WebSocket**: ws://localhost:55080/collab/socket.io
 
 ---
 
@@ -40,579 +54,349 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 ### Tech-Stack
 
-#### Backend
-- **Framework**: Flask 3.0.0 mit SocketIO 5.3.6
-- **Datenbank**: MariaDB 11.2.2
-- **Authentication**: Keycloak 26.0.7 mit PostgreSQL 16
-- **LLM**: OpenAI API (gpt-4, gpt-3.5-turbo)
-- **RAG**: LangChain + ChromaDB + Sentence Transformers
-
-#### Frontend
-- **Framework**: Vue.js 3.4.0 + Vuetify 3.5.0
-- **Build Tool**: Vite 5.1.0
-- **Routing**: Vue Router 4.3.0
-- **State**: Keycloak JS Adapter 26.0.7
-- **Collaboration**: Socket.IO Client 4.7.4 + Y.js 13.4.7
-
-#### Infrastructure
-- **Reverse Proxy**: Nginx (Alpine)
-- **Containerization**: Docker Compose
-- **Real-time Sync**: YJS Server (Node.js 23)
-- **Background Tasks**: Supervisor Service (Python)
+**Backend:** Flask 3.0 + MariaDB 11.2 + Keycloak 26.0 + OpenAI + ChromaDB
+**Frontend:** Vue 3.4 + Vuetify 3.5 + Vite 5.1 + Socket.IO + Y.js
+**Infrastructure:** Nginx + Docker Compose + YJS Server (Node.js 23)
 
 ### Service-Übersicht
 
 ```
-┌──────────────────┐
-│  nginx (Port 80) │  ← Reverse Proxy + Load Balancer
-└─────────┬────────┘
-          │
-    ┌─────┼─────────────────┬──────────────────┬────────────────┐
-    │     │                 │                  │                │
-┌───▼──┐ ┌▼────────┐  ┌────▼─────┐  ┌────────▼──────┐  ┌──────▼───────┐
-│ Vue  │ │ Flask   │  │ Keycloak │  │ YJS WebSocket │  │  Supervisor  │
-│:5173 │ │ :8081   │  │  :8090   │  │     :8082     │  │   Service    │
-└──────┘ └─────┬───┘  └────┬─────┘  └───────┬───────┘  └──────┬───────┘
-               │           │                 │                 │
-        ┌──────┴───────────┴─────────────────┴─────────────────┘
-        │
-   ┌────▼──────┐        ┌────────────┐
-   │  MariaDB  │        │ PostgreSQL │
-   │   :3306   │        │   :5432    │
-   └───────────┘        └────────────┘
-     (LLARS DB)         (Keycloak DB)
+nginx (Port 80) → Reverse Proxy
+├── Vue Frontend (:5173)
+├── Flask Backend (:8081)
+├── Keycloak (:8090)
+├── YJS WebSocket (:8082)
+└── Supervisor Service
+
+Databases:
+├── MariaDB (:3306) - LLARS Data
+└── PostgreSQL (:5432) - Keycloak
+```
+
+---
+
+## 🔐 Berechtigungssystem
+
+**Status:** ✅ Vollständig implementiert
+**Dokumentation:** `PERMISSION_SYSTEM_STATUS.md`
+
+### Sicherheitsmodell
+
+- **Deny-by-Default**: Alle Features erfordern explizite Berechtigung
+- **Direct Override**: User-Permissions überschreiben Rollen
+- **Deny Precedence**: Explizites Deny schlägt Grant
+- **Full Audit Trail**: Alle Änderungen geloggt
+
+### Datenbank-Schema (6 Tabellen)
+
+```sql
+permissions              -- 17 verfügbare Permissions
+roles                    -- 3 Rollen (admin, researcher, viewer)
+role_permissions         -- Mapping: Rollen → Permissions
+user_permissions         -- Direkte User-Permissions (Overrides)
+user_roles               -- Mapping: User → Rollen
+permission_audit_log     -- Audit Trail
+```
+
+### Verfügbare Permissions (17 total)
+
+**Feature (12):**
+```
+feature:mail_rating:{view,edit,delete}
+feature:ranking:{view,edit}
+feature:rating:{view,edit}
+feature:prompt_engineering:{view,edit}
+feature:comparison:{view,edit}
+feature:history_generation:view
+```
+
+**Admin (3):**
+```
+admin:permissions:manage
+admin:roles:manage
+admin:users:view
+```
+
+**Data (2):**
+```
+data:{export,import}
+```
+
+### Rollen
+
+| Rolle | Permissions | Use Case |
+|-------|-------------|----------|
+| **admin** | Alle 17 | Vollzugriff + User-Management |
+| **researcher** | 11 (alle View + Edit) | Forscher mit Schreibzugriff |
+| **viewer** | 5 (nur View) | Lesezugriff |
+
+### Backend-Nutzung
+
+**Route schützen:**
+```python
+from app.decorators.permission_decorator import require_permission
+
+@data_blueprint.route('/api/my-feature')
+@require_permission('feature:my_feature:view')
+def my_feature():
+    return jsonify({'message': 'Protected'})
+```
+
+**Decorators:**
+- `@require_permission('key')` - Genau eine Permission
+- `@require_any_permission('key1', 'key2')` - OR-Logik
+- `@require_all_permissions('key1', 'key2')` - AND-Logik
+
+### Frontend-Nutzung
+
+```vue
+<script setup>
+import { usePermissions } from '@/composables/usePermissions'
+const { hasPermission, isAdmin } = usePermissions()
+</script>
+
+<template>
+  <v-card v-if="hasPermission('feature:mail_rating:view')">
+    <!-- Feature Content -->
+  </v-card>
+</template>
+```
+
+### Admin-Dashboard
+
+**URL:** `/AdminPermissions` (requires `admin:permissions:manage`)
+
+**3 Tabs:**
+1. Benutzer - User suchen, Rollen zuweisen/entfernen
+2. Rollen - Übersicht aller Rollen
+3. Berechtigungen - Alle Permissions nach Kategorie
+
+---
+
+## 🎨 Theme-System
+
+**Status:** ✅ Light/Dark Mode vollständig implementiert
+
+### Theme-Konfiguration
+
+**Datei:** `llars-frontend/src/config/theme.js`
+
+**Farben:**
+- Light: `#b0ca97` (primary), `#f5f5f5` (background)
+- Dark: `#8fbc6b` (primary), `#121212` (background)
+
+### Theme wechseln
+
+**Via UserSettingsDialog:**
+- Hell - Erzwingt Light Mode
+- Dunkel - Erzwingt Dark Mode
+- System - Folgt System-Theme automatisch
+
+**Persistierung:** `localStorage.setItem('theme-preference', 'dark')`
+
+**API:**
+```javascript
+import { useTheme } from 'vuetify'
+const theme = useTheme()
+
+theme.global.name.value = 'dark'  // Switch to dark
+const isDark = theme.global.current.value.dark  // Check current
 ```
 
 ---
 
 ## 🔐 Keycloak-Integration
 
-### Übersicht
+**Realm:** `llars`
 
-Die Keycloak-Integration wurde vollständig implementiert und ersetzt das alte Flask-JWT-Extended System. Alle Authentifizierungsflows laufen nun über Keycloak.
+**Clients:**
+- `llars-frontend` (Public) - Frontend Auth
+- `llars-backend` (Confidential) - Backend Service Account
 
-### Konfiguration
+**Keycloak-Rollen (Legacy):**
+- `admin` - Admin-Dashboard-Zugriff
+- `rater` - Basis-Rolle
+- `viewer` - Lesezugriff
 
-**Realm**: `llars`
+**Hinweis:** Granulare Feature-Control läuft über Permission-System.
 
-**Clients**:
-- `llars-frontend` (Public Client)
-  - Protocol: openid-connect
-  - Access Type: public
-  - Standard Flow: enabled
-  - Direct Access Grants: enabled
+### Backend-Token-Validierung
 
-- `llars-backend` (Confidential Client)
-  - Protocol: openid-connect
-  - Access Type: confidential
-  - Service Accounts: enabled
-  - Client Secret: `llars-backend-secret-change-in-production`
-
-**Rollen**:
-- `admin`: Vollzugriff, User-Management, Scenario-Erstellung
-- `rater`: Bewertung von Mails, Prompt-Engineering
-- `viewer`: Nur Lesezugriff
-
-**Gruppen**:
-- `Admin`: Automatisch admin-Rolle
-- `Raters`: Automatisch rater-Rolle
-- `Standard`: Automatisch viewer-Rolle
-
-### Backend-Implementierung
-
-#### Token-Validierung (`app/auth/keycloak_validator.py`)
+**Datei:** `app/auth/keycloak_validator.py`
 
 ```python
-from functools import lru_cache
-import requests
-import jwt
-from flask import request, g
-
-KEYCLOAK_URL = os.environ.get('KEYCLOAK_URL')
-KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM')
-
 @lru_cache(maxsize=1)
 def get_public_key():
     """Holt Keycloak Public Key (gecacht)"""
-    certs_url = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
-    response = requests.get(certs_url)
-    keys = response.json()['keys'][0]
-    return jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(keys))
+    # RS256 JWT Validation
 
 def validate_token(token: str):
-    """Validiert JWT-Token mit Keycloak Public Key"""
-    public_key = get_public_key()
-    return jwt.decode(
-        token,
-        public_key,
-        algorithms=['RS256'],
-        audience='account',
-        options={'verify_signature': True, 'verify_exp': True}
-    )
+    """Validiert JWT-Token"""
+    # Signatur + Expiration Check
 ```
 
-#### Decorators (`app/auth/decorators.py`)
+### Decorators
 
 ```python
-def keycloak_required(f):
-    """Basis-Authentifizierung: Token muss valide sein"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        token = get_token_from_request()
-        if not token:
-            return jsonify({'error': 'Missing token'}), 401
-
-        token_payload = validate_token(token)
-        if not token_payload:
-            return jsonify({'error': 'Invalid token'}), 401
-
-        g.keycloak_token = token_payload
-        g.keycloak_user = get_username(token_payload)
-        return f(*args, **kwargs)
-    return decorated_function
-
-def admin_required(f):
-    """Admin-Only: Prüft admin-Rolle"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not has_role('admin', g.keycloak_token):
-            return jsonify({'error': 'Admin access required'}), 403
-        return f(*args, **kwargs)
-    return decorated_function
+@keycloak_required  # Token muss valide sein
+@admin_required     # Admin-Rolle erforderlich
 ```
 
-### Frontend-Implementierung
+### Frontend-Integration
 
-#### Keycloak-Config (`llars-frontend/src/keycloak.config.js`)
-
+**Axios Interceptor:**
 ```javascript
-export const keycloakConfig = {
-  url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8090',
-  realm: import.meta.env.VITE_KEYCLOAK_REALM || 'llars',
-  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'llars-frontend'
-}
-
-export const keycloakInitOptions = {
-  onLoad: 'check-sso',
-  pkceMethod: 'S256',
-  flow: 'standard',
-  checkLoginIframe: false
-}
-```
-
-#### Main.js Integration
-
-```javascript
-import VueKeyCloak from '@dsb-norge/vue-keycloak-js'
-import axios from 'axios'
-
-app.use(VueKeyCloak, {
-  config: keycloakConfig,
-  init: keycloakInitOptions,
-  onReady: (keycloak) => {
-    // Axios Interceptor: Füge Bearer Token zu allen Requests hinzu
-    axios.interceptors.request.use(config => {
-      if (keycloak.authenticated && keycloak.token) {
-        config.headers.Authorization = `Bearer ${keycloak.token}`
-      }
-      return config
-    })
-
-    // Automatischer Token-Refresh bei 401
-    axios.interceptors.response.use(
-      response => response,
-      async error => {
-        if (error.response?.status === 401) {
-          const refreshed = await keycloak.updateToken(30)
-          if (refreshed) {
-            error.config.headers.Authorization = `Bearer ${keycloak.token}`
-            return axios(error.config)
-          }
-        }
-        return Promise.reject(error)
-      }
-    )
+// Auto-add Bearer Token
+axios.interceptors.request.use(config => {
+  const token = sessionStorage.getItem('kc_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
-})
-```
-
-### YJS WebSocket-Authentifizierung
-
-Der YJS-Server validiert JWT-Tokens bei jeder WebSocket-Verbindung:
-
-```javascript
-// yjs-server/auth.js
-const jwt = require('jsonwebtoken')
-const jwksClient = require('jwks-rsa')
-
-const client = jwksClient({
-  jwksUri: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`,
-  cache: true,
-  cacheMaxAge: 600000
+  return config
 })
 
-async function authenticateSocket(socket, next) {
-  const token = socket.handshake.auth.token
-
-  if (!token) {
-    return next(new Error('Authentication required'))
+// Auto-refresh on 401
+axios.interceptors.response.use(
+  response => response,
+  async error => {
+    if (error.response?.status === 401) {
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
   }
-
-  try {
-    const decoded = await verifyToken(token)
-    socket.user = extractUserInfo(decoded)
-    next()
-  } catch (error) {
-    next(new Error('Authentication failed'))
-  }
-}
+)
 ```
 
 ---
 
 ## 🚀 Services
 
-### 1. Nginx (Port 80)
+### 1. Nginx (Port 80 intern, 55080 extern)
 
-**Funktion**: Reverse Proxy und SSL-Termination
+**WICHTIG:** `NGINX_INTERNAL_PORT=80` in `.env` setzen!
 
-**Konfiguration**:
-```nginx
-upstream frontend {
-    server frontend-vue-service:5173;
-}
-
-upstream backend {
-    server backend-flask-service:8081;
-}
-
-upstream keycloak {
-    server keycloak-service:8080;
-}
-
-upstream yjs {
-    server yjs-service:8082;
-}
-
-server {
-    listen 80;
-    server_name localhost;
-
-    # Frontend
-    location / {
-        proxy_pass http://frontend;
-    }
-
-    # Backend API
-    location /api/ {
-        proxy_pass http://backend;
-    }
-
-    # Keycloak
-    location /auth/ {
-        proxy_pass http://keycloak;
-    }
-
-    # YJS WebSocket
-    location /collab/ {
-        proxy_pass http://yjs;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
+**Routing:**
+- `/` → Vue Frontend
+- `/api/` → Flask Backend
+- `/auth/` → Flask Backend
+- `/collab/` → YJS WebSocket
 
 ### 2. Flask Backend (Port 8081)
 
-**Hauptfunktionen**:
-- REST API für CRUD-Operationen
+**Hauptfunktionen:**
+- REST API (CRUD)
 - Keycloak-Token-Validierung
+- Permission-System
 - LLM-Integration (OpenAI)
 - RAG-Pipeline (ChromaDB)
-- SocketIO für Legacy-Support
 
-**Wichtige Routen**:
+**API-Routen:**
 ```python
-# Keycloak-Auth
+# Auth
 /auth/keycloak/me          GET   @keycloak_required
 /auth/keycloak/validate    GET   Token-Validierung
 
-# Szenarien
-/api/admin/scenarios       GET   @admin_required
-/api/admin/scenario/<id>   GET   @admin_required
-                          POST  @admin_required
-                          PUT   @admin_required
-                          DELETE @admin_required
+# Permissions
+/api/permissions/*         GET   Permission-System API
 
-# Ratings
+# Data
+/api/scenarios             GET   @admin_required
 /api/ratings              GET   @keycloak_required
-/api/rating/<id>          GET   @keycloak_required
-                          POST  @keycloak_required
-
-# Rankings
 /api/rankings             GET   @keycloak_required
-/api/ranking/<id>         POST  @keycloak_required
-
-# User-Prompts
-/api/user_prompts         GET   @keycloak_required
-/api/user_prompt/<id>     GET   @keycloak_required
-                          PUT   @keycloak_required
-                          DELETE @keycloak_required
 ```
 
-**Rate Limiting**:
+**Rate Limiting:**
 - Default: 200/Tag, 50/Stunde
-- `/auth/keycloak/me`: 100/Stunde
-- `/auth/keycloak/validate`: 200/Stunde
+- Auth-Endpoints: Spezielle Limits
 
 ### 3. Vue.js Frontend (Port 5173)
 
-**Hauptkomponenten**:
-- `Login.vue`: Keycloak-Login (transparent)
-- `Home.vue`: Dashboard
-- `AdminDashboard.vue`: Admin-Interface
-- `PromptEngineering.vue`: Kollaborativer Prompt-Editor
-- `RatingOverview.vue`: Mail-Bewertungen
-- `RankerDetail.vue`: Detailansicht mit Vergleichen
-
-**Routing Guards**:
-```javascript
-router.beforeEach((to, from, next) => {
-  const keycloak = useKeycloak()
-
-  if (to.meta.requiresAuth && !keycloak.authenticated) {
-    next('/login')
-  } else if (to.meta.requiresAdmin) {
-    const roles = keycloak.tokenParsed?.realm_access?.roles || []
-    if (!roles.includes('admin')) {
-      next('/Home')
-    } else {
-      next()
-    }
-  } else {
-    next()
-  }
-})
-```
+**Hauptkomponenten:**
+- `Login.vue` - Keycloak-Login
+- `Home.vue` - Permission-filtered Dashboard
+- `AdminPermissions.vue` - Permission-Management
+- `UserSettingsDialog.vue` - Theme & Settings
+- `PromptEngineering.vue` - Kollaborativer Editor
 
 ### 4. YJS WebSocket Server (Port 8082)
 
-**Funktion**: Echtzeit-Kollaboration für Prompt Engineering
+**Features:**
+- JWT-Authentifizierung
+- Y.js CRDT (konfliktfreie Sync)
+- Cursor-Tracking
+- Auto-Save zu MariaDB
 
-**Features**:
-- JWT-Authentifizierung bei WebSocket-Verbindung
-- Y.js CRDT für konfliktfreie Synchronisation
-- Cursor-Tracking zwischen Benutzern
-- Automatisches Speichern in MariaDB
-- User-Awareness (Farben, Präsenz)
+### 5. MariaDB (Port 3306)
 
-**Events**:
-```javascript
-// Client → Server
-socket.emit('join_room', { room: 'room_123' })
-socket.emit('sync_update', { room, update: Uint8Array })
-socket.emit('cursor_update', { room, blockId, range })
-
-// Server → Client
-socket.on('snapshot_document', (uint8Array) => {...})
-socket.on('room_state', ({ users, cursors }) => {...})
-socket.on('user_joined', ({ userId, username, color }) => {...})
-socket.on('sync_update', ({ update }) => {...})
-```
-
-### 5. Keycloak (Port 8090)
-
-**Funktion**: Identity & Access Management
-
-**Admin Console**: `http://localhost:8090/admin`
-- Username: `admin`
-- Password: `admin_secure_password_123`
-
-**Initial User**:
-- Username: `admin`
-- Password: `admin123`
-- Roles: admin, rater, viewer
-
-### 6. MariaDB (Port 3306)
-
-**Datenbank**: `database_llars`
-
-**Wichtige Tabellen**:
-```sql
--- Bewertungsszenarien
-CREATE TABLE rating_scenarios (
-  scenario_id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255),
-  description TEXT,
-  created_at TIMESTAMP
-);
-
--- Mail-Bewertungen
-CREATE TABLE mail_ratings (
-  rating_id INT PRIMARY KEY AUTO_INCREMENT,
-  scenario_id INT,
-  mail_id VARCHAR(255),
-  user_id VARCHAR(255),  -- Keycloak User ID
-  rating_value INT,
-  comment TEXT,
-  created_at TIMESTAMP
-);
-
--- User-Prompts (für YJS)
-CREATE TABLE user_prompts (
-  prompt_id INT PRIMARY KEY AUTO_INCREMENT,
-  user_id VARCHAR(255),  -- Keycloak User ID
-  name VARCHAR(255),
-  content TEXT,  -- Y.js state as JSON
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
-);
-
--- Rankings
-CREATE TABLE rankings (
-  ranking_id INT PRIMARY KEY AUTO_INCREMENT,
-  scenario_id INT,
-  user_id VARCHAR(255),  -- Keycloak User ID
-  method VARCHAR(50),
-  result JSON,
-  created_at TIMESTAMP
-);
-```
+**Wichtige Tabellen:**
+- `rating_scenarios` - Bewertungsszenarien
+- `mail_ratings` - Mail-Bewertungen
+- `user_prompts` - YJS-Dokumente
+- `rankings` - Rankings
+- Permission-System (6 Tabellen)
 
 ---
 
 ## 🔒 Sicherheit
 
-### Implementierte Maßnahmen
+### Implementiert ✅
 
-#### 1. Authentifizierung & Autorisierung
-- ✅ Keycloak OpenID Connect (OAuth 2.0 + JWT)
-- ✅ Token-Signatur-Verifikation mit RS256
-- ✅ Token-Expiration-Checks
-- ✅ Role-Based Access Control (RBAC)
-- ✅ WebSocket JWT-Authentifizierung
+**Auth & Authorization:**
+- Keycloak OpenID Connect (RS256 JWT)
+- Token-Signatur + Expiration
+- RBAC (Keycloak) + Permission-System
+- WebSocket JWT-Auth
 
-#### 2. API-Schutz
-- ✅ Alle API-Routen mit `@keycloak_required` geschützt
-- ✅ Admin-Routen mit `@admin_required` geschützt
-- ✅ Rate Limiting (Flask-Limiter)
-  - Default: 200/Tag, 50/Stunde
-  - Auth-Endpoints: Spezielle Limits
-- ✅ CORS-Konfiguration (nur allowed_origins)
+**API-Schutz:**
+- `@keycloak_required` auf allen Routes
+- `@require_permission()` für Features
+- Rate Limiting (Flask-Limiter)
+- CORS-Konfiguration
 
-#### 3. Production-Sicherheit
-- ✅ Debug-Modus nur in development (`FLASK_ENV=development`)
-- ✅ Secrets in `.env` (nicht in Git)
-- ✅ `.gitignore` umfassend konfiguriert
-- ✅ Docker Port-Isolation (nur nginx exponiert)
-- ✅ **Container als Non-Root** (vollständig implementiert)
-  - Flask Backend: `flaskuser` (UID 1001)
-  - YJS Server: `yjsuser` (UID 1002)
-  - Vue Frontend: `vueuser` (UID 1003)
-  - Keycloak: Native non-root support
-  - Nginx: Runs as `nginx` user (official image default)
-- ⚠️ SSL/TLS in Production (noch zu konfigurieren)
+**Production:**
+- Debug-Modus nur in Development
+- Secrets in `.env`
+- Docker Port-Isolation
+- Non-Root Container Users
 
-#### 4. Frontend-Sicherheit
-- ✅ Keycloak Token Auto-Refresh
-- ✅ Axios Interceptor für Bearer Tokens
-- ✅ **XSS-Schutz mit DOMPurify** (vollständig implementiert)
-  - `src/utils/sanitize.js`: Zentrale Sanitization-Utility
-  - `RankerDetail.vue`: Alle v-html Direktiven geschützt (8 Stellen)
-  - `TestPromptDialog.vue`: Prompt-Highlighting sanitized
-  - `HistoryGenerationDetail.vue`: Message-Content sanitized
-  - Siehe `llars-frontend/SECURITY.md` für Details
-- ✅ CSP-Headers via nginx (konfiguriert)
+**Frontend:**
+- Token Auto-Refresh
+- XSS-Schutz (DOMPurify)
+- Permission-Based UI
 
-### Noch zu implementieren
+### Noch zu tun ⚠️
 
-1. **SSL/TLS**: HTTPS für Production mit Let's Encrypt
-2. **Secrets Management**: Vault oder Kubernetes Secrets statt .env
-3. **Audit Logging**: Keycloak Event Listeners + DB-Audit-Trail
-4. **CSP Enhancement**: Implementierung strikter CSP-Headers
-5. **Security Headers**: X-Frame-Options, X-Content-Type-Options, etc.
+1. SSL/TLS (Let's Encrypt)
+2. Secrets Management (Vault)
+3. Security Headers (CSP, X-Frame-Options)
 
 ---
 
 ## 💻 Entwicklung
 
-### Voraussetzungen
-
-- Docker & Docker Compose
-- Node.js 23+ (für lokale YJS-Entwicklung)
-- Python 3.10+ (für lokales Backend-Development)
-
 ### Setup
 
 ```bash
-# Repository klonen
 git clone <repository-url>
 cd llars
-
-# Environment-Variablen konfigurieren
 cp .env.example .env
-# .env bearbeiten (Secrets, Ports, etc.)
-
-# Development-Modus starten
-docker compose up --build
-
-# Production-Modus (nur nginx exponiert)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+./start_llars.sh
 ```
-
-### Port-Konfiguration
-
-Alle Ports sind in `.env` konfigurierbar:
-
-```bash
-# External Ports (Development)
-NGINX_EXTERNAL_PORT=80
-FLASK_EXTERNAL_PORT=0        # 0 = Random Port (Debugging)
-FRONTEND_EXTERNAL_PORT=0
-DB_EXTERNAL_PORT=0
-KEYCLOAK_EXTERNAL_PORT=8090
-YJS_EXTERNAL_PORT=0
-
-# Internal Ports (Container)
-FLASK_INTERNAL_PORT=8081
-FRONTEND_INTERNAL_PORT=5173
-DB_INTERNAL_PORT=3306
-KEYCLOAK_INTERNAL_PORT=8080
-YJS_INTERNAL_PORT=8082
-```
-
-**Production**: Verwende `docker-compose.prod.yml` - entfernt alle Port-Mappings außer nginx.
 
 ### Hot-Reload
 
-- **Frontend**: Vite Dev Server mit Watch-Mode
-- **Backend**: Flask Debug-Mode mit Auto-Reload
-- **YJS**: Nodemon für Auto-Restart
+- Frontend: Vite Watch-Mode
+- Backend: Flask Debug Auto-Reload
+- YJS: Nodemon Auto-Restart
 
 ### Testing
 
 ```bash
-# Backend Tests
+# Backend
 docker compose exec backend-flask-service pytest
 
-# Frontend Tests
-cd llars-frontend
-npm run test
-
-# E2E Tests
-npm run test:e2e
-```
-
-### Code-Stil
-
-```bash
-# Python (flake8)
-docker compose exec backend-flask-service flake8 app/
-
-# JavaScript (ESLint)
-cd llars-frontend
-npm run lint
+# Frontend
+cd llars-frontend && npm run test
 ```
 
 ---
@@ -621,231 +405,147 @@ npm run lint
 
 ### Production Checklist
 
-- [ ] `.env` Secrets ändern (Keycloak Admin, DB-Passwords, Client-Secrets)
-- [ ] `PROJECT_STATE=production` setzen
-- [ ] `FLASK_ENV=production` setzen
-- [ ] SSL/TLS-Zertifikate in `docker/nginx/certs/` ablegen
-- [ ] nginx SSL-Konfiguration aktivieren
-- [ ] `docker-compose.prod.yml` verwenden
-- [ ] Rate Limiting auf Redis umstellen (nicht Memory)
-- [ ] Keycloak Realm exportieren und versionieren
-- [ ] Backup-Strategie für Datenbanken einrichten
-- [ ] Monitoring einrichten (Prometheus, Grafana)
-- [ ] Logging aggregieren (ELK Stack)
-
-### Deployment-Command
+- [ ] `.env` Secrets ändern
+- [ ] `PROJECT_STATE=production`
+- [ ] `FLASK_ENV=production`
+- [ ] SSL/TLS-Zertifikate konfigurieren
+- [ ] Rate Limiting auf Redis umstellen
+- [ ] Backup-Strategie einrichten
+- [ ] Monitoring einrichten
 
 ```bash
-# Clean Deployment
-docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-
-# Logs überwachen
+./start_llars.sh  # Nutzt PROJECT_STATE aus .env
 docker compose logs -f
-
-# Health-Checks
-curl http://localhost/api/auth/health_check
-curl http://localhost:8090/health/ready  # Keycloak
-```
-
-### Backup & Restore
-
-```bash
-# MariaDB Backup
-docker compose exec db-maria-service mysqldump -u root -p database_llars > backup.sql
-
-# PostgreSQL Backup (Keycloak)
-docker compose exec keycloak-db-service pg_dump -U keycloak keycloak > keycloak_backup.sql
-
-# Restore
-docker compose exec -T db-maria-service mysql -u root -p database_llars < backup.sql
-docker compose exec -T keycloak-db-service psql -U keycloak keycloak < keycloak_backup.sql
 ```
 
 ---
 
 ## 📚 API-Dokumentation
 
-Siehe `KEYCLOAK_INTEGRATION_STATUS.md` für vollständige API-Dokumentation.
-
 ### Authentifizierung
 
-Alle API-Calls (außer `/health_check`) benötigen ein Bearer Token:
-
 ```bash
-# Token von Keycloak holen
-curl -X POST http://localhost:8090/realms/llars/protocol/openid-connect/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
+# Token holen (Testing)
+curl -X POST http://localhost:55090/realms/llars/protocol/openid-connect/token \
   -d "client_id=llars-frontend" \
   -d "username=admin" \
   -d "password=admin123" \
   -d "grant_type=password"
 
 # API-Call mit Token
-curl http://localhost/api/auth/keycloak/me \
-  -H "Authorization: Bearer <your-token>"
+curl http://localhost:55080/api/permissions/my-permissions \
+  -H "Authorization: Bearer <token>"
+```
+
+### Permission API
+
+```bash
+# My permissions
+GET /api/permissions/my-permissions
+
+# All permissions (admin)
+GET /api/permissions
+
+# User permissions (admin)
+GET /api/permissions/user/<username>
+
+# Assign role (admin)
+POST /api/permissions/assign-role
+Body: {"username": "user123", "role_name": "researcher"}
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Problem: Keycloak startet nicht
+### LLars nicht erreichbar
 
 ```bash
-# Logs prüfen
+# .env prüfen:
+NGINX_INTERNAL_PORT=80  # MUSS 80 sein!
+
+docker compose down && docker compose up -d --build
+```
+
+### Keycloak startet nicht
+
+```bash
 docker compose logs keycloak-service
-docker compose logs keycloak-db-service
-
-# Häufige Ursachen:
-# - PostgreSQL nicht bereit → Health-Check verlängern
-# - Port 8090 belegt → lsof -i :8090
-# - realm-import.json Syntax-Fehler
+# Häufig: PostgreSQL nicht bereit oder Port 8090 belegt
 ```
 
-### Problem: Frontend kann nicht auf Backend zugreifen
+### Permission-System nicht initialisiert
 
 ```bash
-# CORS prüfen
-# In .env: ALLOWED_ORIGINS korrekt gesetzt?
+docker compose logs backend-flask-service | grep -i permission
+# Erwartete Ausgabe: "Permission system initialized successfully"
 
-# Nginx-Logs checken
-docker compose logs nginx-service
-
-# Backend Health
-curl http://localhost:8081/auth/health_check
-```
-
-### Problem: WebSocket-Verbindung schlägt fehl
-
-```bash
-# Token-Validierung prüfen
-# Im Browser Console: Wird Token gesendet?
-
-# YJS-Server Logs
-docker compose logs yjs-service
-
-# Keycloak Public Key erreichbar?
-curl http://localhost:8090/realms/llars/protocol/openid-connect/certs
-```
-
-### Problem: "Invalid Token" bei API-Calls
-
-```bash
-# Token abgelaufen? Prüfe exp-Claim
-# Frontend sollte automatisch refreshen
-
-# Keycloak-Public-Key korrekt?
-# Backend logs checken: app/auth/keycloak_validator.py
+docker compose restart backend-flask-service
 ```
 
 ---
 
-## 📝 Wichtige Dateien & Verzeichnisse
+## 📝 Wichtige Dateien
 
 ```
 llars/
-├── app/                          # Flask Backend
-│   ├── auth/                     # Keycloak Auth Module
+├── app/                              # Flask Backend
+│   ├── auth/
 │   │   ├── keycloak_validator.py
 │   │   └── decorators.py
-│   ├── routes/                   # API Routes
-│   │   ├── keycloak_routes.py
-│   │   ├── ScenarioRoutes.py
-│   │   ├── RatingRoutes.py
-│   │   ├── RankingRoutes.py
-│   │   └── ...
-│   ├── db/                       # Database Models
-│   ├── main.py                   # Flask App Entry
-│   └── requirements.txt
-├── llars-frontend/               # Vue.js Frontend
-│   ├── src/
-│   │   ├── components/
-│   │   ├── router.js
-│   │   ├── main.js
-│   │   └── keycloak.config.js
-│   └── package.json
-├── yjs-server/                   # WebSocket Collaboration
-│   ├── auth.js                   # JWT Validation
-│   ├── server.js
-│   ├── websocket.js
-│   ├── package.json
-│   └── README.md
-├── docker/                       # Docker Configurations
-│   ├── nginx/
-│   │   ├── Dockerfile-nginx
-│   │   └── nginx.conf
-│   ├── keycloak/
-│   │   ├── Dockerfile-keycloak
-│   │   └── realm-import.json
-│   ├── flask/
-│   ├── vue/
-│   └── ...
-├── docker-compose.yml            # Development
-├── docker-compose.prod.yml       # Production Override
-├── .env                          # Environment Variables
-├── .gitignore
-├── KEYCLOAK_INTEGRATION_STATUS.md
-└── CLAUDE.md                     # Diese Datei
+│   ├── services/
+│   │   └── permission_service.py     # Permission Logic
+│   ├── decorators/
+│   │   └── permission_decorator.py   # Route Protection
+│   ├── routes/
+│   │   └── PermissionRoutes.py       # Permission API
+│   └── db/
+│       ├── tables.py                 # 6 Permission-Tabellen
+│       └── db.py                     # initialize_permissions()
+├── llars-frontend/
+│   └── src/
+│       ├── components/
+│       │   ├── AdminPermissions.vue
+│       │   └── UserSettingsDialog.vue
+│       ├── composables/
+│       │   └── usePermissions.js
+│       └── config/
+│           └── theme.js
+├── yjs-server/
+│   ├── auth.js                       # JWT Validation
+│   └── websocket.js
+├── docker-compose.yml
+├── start_llars.sh
+└── .env
 ```
 
 ---
 
-## 🔄 Aktueller Status
+## 🔄 Status
 
-**Stand: 20. November 2025**
+**Stand: 21. November 2025**
 
 ### ✅ Abgeschlossen
 
-1. Keycloak-Integration (100%)
-   - Backend-Auth mit JWT-Validierung
-   - Frontend transparente Integration
-   - WebSocket JWT-Auth
-   - Realm-Konfiguration mit Rollen & Gruppen
-
-2. Security-Härtung (85%)
-   - Rate Limiting implementiert
-   - Debug-Modus für Production deaktiviert
-   - .gitignore aktualisiert
-   - Port-Konfiguration externalisiert
-   - Production-Docker-Compose erstellt
-
-3. API-Schutz (100%)
-   - 44 Routes mit Keycloak-Decorators geschützt
-   - Admin-Routen separiert
-   - User-Lookup via g.keycloak_user
+- Keycloak-Integration (100%)
+- Permission-System (100%)
+- Theme-System (100%)
+- Security-Härtung (85%)
+- API-Schutz (100%)
 
 ### ⚠️ In Arbeit
 
-1. XSS-Schutz (50%)
-   - DOMPurify teilweise implementiert
-   - RankerDetail.vue noch zu fixen
-
-2. Container-Härtung (0%)
-   - Non-Root User in Dockerfiles
-
-3. Dokumentation (90%)
-   - CLAUDE.md erstellt
-   - MkDocs Setup ausstehend
+- SSL/TLS (0%)
+- MkDocs Dokumentation (95%)
 
 ### 📋 Nächste Schritte
 
-1. XSS-Fixes in Frontend
-2. Non-Root Container-User
-3. Vollständiger Systemtest
-4. MkDocs Setup für Doku-Portal
-5. Git-Branch-Cleanup
-6. Production-SSL-Setup
+1. Production SSL-Setup
+2. Secrets Management (Vault)
+3. Enhanced Monitoring (Prometheus/Grafana)
 
 ---
 
-## 👥 Kontakte & Support
-
-**Entwickler**: Philipp Steigerwald
-**Repository**: [TBD]
-**Dokumentation**: Diese Datei + KEYCLOAK_INTEGRATION_STATUS.md
-
----
-
-**Letzte Aktualisierung**: 20. November 2025
-**Version**: 2.0-keycloak
+**Entwickler:** Philipp Steigerwald
+**Hauptdokumentation:** CLAUDE.md
+**Permission System:** PERMISSION_SYSTEM_STATUS.md

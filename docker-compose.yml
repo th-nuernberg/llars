@@ -36,6 +36,8 @@ services:
     depends_on:
       db-maria-service:
         condition: service_healthy
+      keycloak-service:
+        condition: service_started
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       start_period: 1800s   # 30 Minuten maximale Startzeit
@@ -59,6 +61,9 @@ services:
       - VITE_API_BASE_URL=http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}
       - VITE_PROJECT_STATE=${PROJECT_STATE}
       - VITE_MKDOCS_URL=http://${PROJECT_HOST}:${MKDOCS_EXTERNAL_PORT}
+      - VITE_KEYCLOAK_URL=http://${PROJECT_HOST}:${KEYCLOAK_EXTERNAL_PORT}
+      - VITE_KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - VITE_KEYCLOAK_CLIENT_ID=${KEYCLOAK_FRONTEND_CLIENT_ID}
     develop:
       watch:
         - action: sync
@@ -67,7 +72,10 @@ services:
           ignore:
             - node_modules/
     depends_on:
-      - backend-supervisor-service
+      backend-supervisor-service:
+        condition: service_started
+      keycloak-service:
+        condition: service_started
     healthcheck:
       test: [ "CMD", "/usr/local/bin/healthcheck.sh" ]
       start_period: 2s
@@ -137,8 +145,65 @@ services:
             - node_modules/
     depends_on:
       - db-maria-service
+      - keycloak-service
+
+  keycloak-db-service:
+    container_name: llars_keycloak_db_service
+    image: postgres:16-alpine
+    expose:
+      - "${KEYCLOAK_DB_INTERNAL_PORT}"
+    environment:
+      - POSTGRES_DB=${KEYCLOAK_DB_NAME}
+      - POSTGRES_USER=${KEYCLOAK_DB_USER}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+      - TZ=Europe/Berlin
+    volumes:
+      - keycloakdb:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER}"]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak-service:
+    container_name: llars_keycloak_service
+    build:
+      context: .
+      dockerfile: docker/keycloak/Dockerfile-keycloak
+    environment:
+      - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db-service:${KEYCLOAK_DB_INTERNAL_PORT}/${KEYCLOAK_DB_NAME}
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KC_HOSTNAME=${KEYCLOAK_HOSTNAME}
+      - KC_HTTP_ENABLED=true
+      - KC_PROXY=edge
+    expose:
+      - "${KEYCLOAK_INTERNAL_PORT}"
+    ports:
+      - "${KEYCLOAK_EXTERNAL_PORT}:${KEYCLOAK_INTERNAL_PORT}"
+    depends_on:
+      keycloak-db-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${KEYCLOAK_INTERNAL_PORT}/realms/llars || exit 1"]
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./docker/keycloak/realm-import-template.json:/opt/keycloak/import-config/realm-import-template.json
+    command:
+      - start-dev
+      - --import-realm
 
 
 volumes:
   llarsdb:
   model_volume:
+  keycloakdb:

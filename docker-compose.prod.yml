@@ -1,35 +1,185 @@
-# Production Docker Compose Override
+# ============================================
+# LLARS Production Docker Compose Override
+# ============================================
+# This file contains production-specific configurations
 # Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-#
-# This file removes external port exposures for internal services
-# Only nginx should be accessible from outside in production
+# Or use start_llars.sh which handles this automatically
 
 services:
+  # ============================================
+  # Nginx - HTTPS/SSL Enabled
+  # ============================================
   nginx-service:
-    # Keep nginx exposed (only entry point)
+    environment:
+      - TZ=Europe/Berlin
+      - PROJECT_STATE=production
     ports:
-      - "${NGINX_EXTERNAL_PORT}:${NGINX_INTERNAL_PORT}"
+      # HTTPS (primary)
+      - "443:443"
+      # HTTP (redirect to HTTPS)
+      - "80:80"
+    volumes:
+      # SSL certificates
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
+      # Production nginx config with SSL
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
 
+  # ============================================
+  # Flask Backend - Production Mode
+  # ============================================
   backend-flask-service:
-    # Remove external port exposure - only accessible via nginx
+    environment:
+      - TZ=Europe/Berlin
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+      # Stricter CORS for production
+      - ALLOWED_ORIGINS=https://${PROJECT_HOST}
+    # Remove volume mounts (no hot-reload in production)
+    volumes:
+      - model_volume:/app/storage
+    # No expose of port to host (only internal)
     ports: []
+    restart: unless-stopped
+    # Production healthcheck (stricter)
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 60s
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # ============================================
+  # Frontend - Production Build
+  # ============================================
   frontend-vue-service:
-    # Remove external port exposure - only accessible via nginx
+    environment:
+      - TZ=Europe/Berlin
+      - VITE_API_BASE_URL=https://${PROJECT_HOST}
+      - VITE_PROJECT_STATE=production
+      - VITE_KEYCLOAK_URL=https://${PROJECT_HOST}
+      - VITE_KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - VITE_KEYCLOAK_CLIENT_ID=${KEYCLOAK_FRONTEND_CLIENT_ID}
+    # Remove volume mounts and develop mode
+    volumes: []
+    develop: {}
+    # No expose of port to host
     ports: []
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 10s
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
+  # ============================================
+  # Supervisor - Production Mode
+  # ============================================
+  backend-supervisor-service:
+    restart: unless-stopped
+
+  # ============================================
+  # MariaDB - Production Hardening
+  # ============================================
   db-maria-service:
-    # CRITICAL: Never expose database in production!
+    # Remove external port exposure (only internal access)
     ports: []
+    restart: unless-stopped
+    # Production healthcheck
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 30s
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # ============================================
+  # YJS Server - Production Mode
+  # ============================================
   yjs-service:
-    # Remove external port exposure - only accessible via nginx WebSocket proxy
-    ports: []
+    environment:
+      - TZ=Europe/Berlin
+      - BASE_URL=https://${PROJECT_HOST}
+      - NODE_ENV=production
+      - PORT=8082
+      - MYSQL_HOST=db-maria-service
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+    # Remove volume mounts and develop mode
+    volumes: []
+    develop: {}
+    restart: unless-stopped
 
+  # ============================================
+  # Keycloak PostgreSQL - Production Hardening
+  # ============================================
+  keycloak-db-service:
+    # Remove port exposure (internal only)
+    ports: []
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${KEYCLOAK_DB_NAME}
+      - POSTGRES_USER=${KEYCLOAK_DB_USER}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+      - TZ=Europe/Berlin
+      # Enable SSL
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER}"]
+      start_period: 15s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # Keycloak - Production Mode (CRITICAL!)
+  # ============================================
   keycloak-service:
-    # Remove external port exposure - only accessible via nginx reverse proxy
-    # In production, Keycloak should be behind nginx with SSL
+    environment:
+      - TZ=Europe/Berlin
+      - PROJECT_STATE=production
+      # Database
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db-service:${KEYCLOAK_DB_INTERNAL_PORT}/${KEYCLOAK_DB_NAME}
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+      # Admin
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      # Hostname
+      - KC_HOSTNAME=${KEYCLOAK_HOSTNAME}
+      - KC_HOSTNAME_STRICT=true
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+      # HTTP/Proxy (nginx handles TLS)
+      - KC_HTTP_ENABLED=true
+      - KC_PROXY=edge
+      - KC_PROXY_HEADERS=xforwarded
+      # Performance
+      - KC_HTTP_RELATIVE_PATH=/auth
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+      # Logging
+      - KC_LOG_LEVEL=warn
+      - KC_LOG_CONSOLE_COLOR=false
+      # Features
+      - KC_FEATURES=token-exchange,admin-fine-grained-authz
+    # Remove direct port exposure (only via nginx)
+    expose:
+      - "8080"
     ports: []
-
-  # keycloak-db-service has no ports by default - good!
-  # ssh-proxy-service only runs with profile - optional
+    restart: unless-stopped
+    # PRODUCTION MODE (optimized, NOT dev mode!)
+    command:
+      - start
+      - --optimized
+      - --import-realm
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /auth/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      start_period: 120s
+      interval: 30s
+      timeout: 10s
+      retries: 5

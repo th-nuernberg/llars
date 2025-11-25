@@ -519,6 +519,7 @@ docker compose logs --tail=100</code></pre>
 
           <h3>Weitere Informationen</h3>
           <ul>
+            <li><a :href="mkdocsUrl" target="_blank">Technische Dokumentation (MkDocs)</a></li>
             <li><router-link to="/Impressum">Impressum</router-link></li>
             <li><router-link to="/Datenschutz">Datenschutz</router-link></li>
             <li><router-link to="/Kontakt">Kontakt</router-link></li>
@@ -541,7 +542,12 @@ docker compose logs --tail=100</code></pre>
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, computed } from 'vue';
+
+// MkDocs URL aus Umgebungsvariable oder Fallback
+const mkdocsUrl = computed(() => {
+  return import.meta.env.VITE_MKDOCS_URL || 'http://localhost:55800';
+});
 
 onMounted(() => {
   // Smooth scrolling for anchor links

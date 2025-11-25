@@ -1,21 +1,30 @@
-FROM python:3.12-slim
-LABEL authors="philippsteigerwald"
+# ============================================
+# MkDocs Documentation Server
+# ============================================
+# Lightweight Alpine-based image for minimal resource usage
+# Dev mode: Hot-reload with mkdocs serve
+# Prod mode: Pre-built static files served by nginx
+
+FROM python:3.12-alpine
 
 WORKDIR /docs
 
-# Install MkDocs and popular themes/plugins
+# Install mkdocs and required plugins (no cache for smaller image)
 RUN pip install --no-cache-dir \
-    mkdocs>=1.6.0 \
-    mkdocs-material>=9.5.0 \
-    mkdocs-mermaid2-plugin>=1.1.0 \
-    pymdown-extensions>=10.8.0
+    mkdocs==1.6.1 \
+    mkdocs-material==9.5.44 \
+    pymdown-extensions==10.12 \
+    mkdocs-mermaid2-plugin==1.1.1
 
-# Create non-root user
-RUN groupadd -r docsuser && useradd -r -g docsuser -u 1004 -m docsuser && \
-    chown -R docsuser:docsuser /docs
+# Install wget for healthcheck
+RUN apk add --no-cache wget
 
-USER docsuser
+# Copy healthcheck script
+COPY docker/mkdocs/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
 
+# Expose port for mkdocs serve
 EXPOSE 8000
 
+# Default command: serve with hot-reload
 CMD ["mkdocs", "serve", "--dev-addr=0.0.0.0:8000"]

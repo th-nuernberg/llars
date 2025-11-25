@@ -80,6 +80,9 @@ docker/nginx/certs/*.pem
 *.cache
 .cache/
 
+# MkDocs compiled documentation (production)
+/docs/site/
+
 # OS
 Thumbs.db
 desktop.ini

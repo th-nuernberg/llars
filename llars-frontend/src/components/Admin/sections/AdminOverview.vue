@@ -269,7 +269,11 @@ const fetchDashboardData = async () => {
   try {
     // Fetch RAG stats
     const ragResponse = await axios.get('/api/rag/stats');
-    stats.value[2].value = (ragResponse.data.total_documents || 0).toString();
+    // Handle both old format (total_documents) and new format (stats.documents.total)
+    const totalDocs = ragResponse.data.total_documents
+      || ragResponse.data.stats?.documents?.total
+      || 0;
+    stats.value[2].value = totalDocs.toString();
   } catch (error) {
     console.error('Error fetching RAG stats:', error);
   }

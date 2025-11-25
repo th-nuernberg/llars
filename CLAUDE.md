@@ -1,6 +1,6 @@
 # LLARS - LLM-Assisted Rating System
 
-**Version:** 2.1 | **Stand:** 21. November 2025
+**Version:** 2.2 | **Stand:** 25. November 2025
 
 ## 🎯 Projekt-Übersicht
 
@@ -8,11 +8,12 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 **Hauptfeatures:**
 - Multi-User Collaboration via YJS CRDT
-- LLM-Integration (OpenAI)
+- LLM-Integration (OpenAI, LiteLLM/Mistral)
 - Granulares Permission System (RBAC)
-- Keycloak Authentication
+- Authentik Authentication
 - Light/Dark Mode
 - RAG-Pipeline (ChromaDB)
+- **LLM-as-Judge**: Automatisierte paarweise Bewertung von E-Mail-Threads
 
 ---
 
@@ -21,12 +22,17 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 ```bash
 # Schnellstart
 ./start_llars.sh
+
+# Komplett-Neustart mit frischer Datenbank
+# In .env setzen: REMOVE_VOLUMES=True
+# Dann: ./start_llars.sh
+# ACHTUNG: Löscht alle Daten!
 ```
 
 **Das Skript:**
 1. Prüft Docker-Daemon
 2. Lädt `.env`-Variablen
-3. Stoppt alte Container
+3. Stoppt alte Container (bei REMOVE_VOLUMES=True werden Volumes gelöscht)
 4. Startet Services (Development mit Hot-Reload oder Production)
 
 ### Wichtige .env Variablen
@@ -205,15 +211,189 @@ const isDark = theme.global.current.value.dark  // Check current
 
 ---
 
-## 🔐 Keycloak-Integration
+## ⚖️ LLM-as-Judge System
 
-**Realm:** `llars`
+**Status:** ✅ Vollständig implementiert
+**Dokumentation:** Diese Sektion
+
+### Übersicht
+
+Das LLM-as-Judge System ermöglicht automatisierte paarweise Vergleiche von E-Mail-Konversationen aus verschiedenen Datenquellen (Säulen). Ein LLM bewertet, welche Antwort qualitativ besser ist.
+
+### Architektur
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Vue Frontend   │────▶│  Flask Backend  │────▶│  LiteLLM Proxy  │
+│  JudgeSession   │     │  JudgeRoutes    │     │  Mistral Model  │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │
+        │ Socket.IO             │
+        ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐
+│  Live Updates   │     │  Judge Worker   │
+│  judge:*        │◀────│  Background     │
+└─────────────────┘     └─────────────────┘
+```
+
+### Datenquellen (5 Säulen)
+
+| Säule | Name | GitLab-Pfad |
+|-------|------|-------------|
+| 1 | Rollenspiele | `data/saeule_1/raw/json` |
+| 2 | Feature (deaktiviert) | - |
+| 3 | Anonymisierte Daten | `data/saeule_3/raw/json` |
+| 4 | Synthetisch (deaktiviert) | - |
+| 5 | Live-Testungen | `data/saeule_5/raw/json` |
+
+**GitLab Repository:** `git.informatik.fh-nuernberg.de/e-beratung/kia/kia-data`
+
+### LLM-Konfiguration
+
+```bash
+# .env
+LITELLM_API_KEY=sk-...
+LITELLM_BASE_URL=https://kiz1.in.ohmportal.de/llmproxy/v1
+
+# Modell (in JudgeService)
+mistralai/Mistral-Small-3.2-24B-Instruct-2506
+```
+
+### Datenbank-Schema
+
+```sql
+-- Säulen-Management
+pillar_threads           -- E-Mail-Threads pro Säule
+pillar_statistics        -- Statistiken (win_rate, elo_score)
+
+-- Session-Management
+judge_sessions           -- Evaluations-Sessions
+judge_comparisons        -- Einzelne Vergleiche (A vs B)
+judge_evaluations        -- LLM-Bewertungsergebnisse
+```
+
+**Session-Status:** `created` → `queued` → `running` → `completed/failed/paused`
+
+### Backend-API (app/routes/judge/judge_routes.py)
+
+```python
+# Sessions
+GET  /api/judge/sessions           # Alle Sessions auflisten
+POST /api/judge/sessions           # Neue Session erstellen
+GET  /api/judge/sessions/<id>      # Session-Details
+
+# Session-Control
+POST /api/judge/sessions/<id>/start   # Session starten
+POST /api/judge/sessions/<id>/pause   # Session pausieren
+
+# Live-Daten
+GET  /api/judge/sessions/<id>/current      # Aktuelle Comparison
+GET  /api/judge/sessions/<id>/queue        # Warteschlange
+GET  /api/judge/sessions/<id>/comparisons  # Abgeschlossene
+
+# KIA Sync
+GET  /api/judge/pillars            # Verfügbare Säulen
+POST /api/judge/sync               # Sync von GitLab
+```
+
+**Permissions:**
+- `feature:comparison:view` - Lesen
+- `feature:comparison:edit` - Erstellen/Starten
+
+### Socket.IO Events (Live Updates)
+
+**Client → Server:**
+```javascript
+socket.emit('judge:join_session', { session_id: 123 });
+socket.emit('judge:leave_session', { session_id: 123 });
+socket.emit('judge:get_status', { session_id: 123 });
+```
+
+**Server → Client:**
+```javascript
+socket.on('judge:joined', (data) => { /* Room beigetreten */ });
+socket.on('judge:progress', (data) => {
+  // { session_id, status, completed, total }
+});
+socket.on('judge:comparison_start', (data) => {
+  // { session_id, comparison_id, pillar_a, pillar_b }
+});
+socket.on('judge:llm_stream', (data) => {
+  // { session_id, token } - Live LLM Output
+});
+socket.on('judge:comparison_complete', (data) => {
+  // { session_id, comparison_id, winner, confidence }
+});
+socket.on('judge:session_complete', (data) => {
+  // { session_id, status }
+});
+```
+
+### Frontend-Komponenten
+
+```
+llars-frontend/src/components/Judge/
+├── JudgeOverview.vue    # Session-Liste
+├── JudgeConfig.vue      # Session erstellen
+├── JudgeSession.vue     # Live-Ansicht + Queue
+└── JudgeResults.vue     # Ergebnisübersicht
+```
+
+### Services & Worker
+
+**KIA Sync Service:** `app/services/judge/kia_sync_service.py`
+```python
+# Holt Threads aus GitLab
+service = KIASyncService()
+threads = service.sync_pillar(pillar_id=1)
+```
+
+**Judge Service:** `app/services/judge/judge_service.py`
+```python
+# Führt LLM-Bewertung durch
+service = JudgeService()
+result = service.evaluate_comparison(comparison_id)
+# → { winner: 'A', confidence: 0.85, reasoning: '...' }
+```
+
+**Judge Worker:** `app/workers/judge_worker.py`
+```python
+# Background-Worker für async Evaluations
+# Sendet Socket.IO Events für Live Updates
+```
+
+### Troubleshooting
+
+**GitLab Token 401:**
+```bash
+# Nach Token-Update in .env:
+docker compose up -d --force-recreate backend-flask-service
+```
+
+**Session startet nicht:**
+```bash
+# Session-Status prüfen (muss created/queued/paused sein)
+curl http://localhost:55080/api/judge/sessions/123
+```
+
+**Keine Live-Updates:**
+```javascript
+// Browser Console: Socket verbunden?
+// Sollte zeigen: "[Judge Socket] Connected"
+// und: "[Judge Socket] Joined session room: ..."
+```
+
+---
+
+## 🔐 Authentik-Integration
+
+**Status:** ✅ Implementiert (ersetzt Keycloak)
 
 **Clients:**
 - `llars-frontend` (Public) - Frontend Auth
 - `llars-backend` (Confidential) - Backend Service Account
 
-**Keycloak-Rollen (Legacy):**
+**Authentik-Rollen:**
 - `admin` - Admin-Dashboard-Zugriff
 - `rater` - Basis-Rolle
 - `viewer` - Lesezugriff
@@ -222,24 +402,19 @@ const isDark = theme.global.current.value.dark  // Check current
 
 ### Backend-Token-Validierung
 
-**Datei:** `app/auth/keycloak_validator.py`
+**Datei:** `app/auth/authentik_validator.py`
 
 ```python
-@lru_cache(maxsize=1)
-def get_public_key():
-    """Holt Keycloak Public Key (gecacht)"""
-    # RS256 JWT Validation
-
-def validate_token(token: str):
-    """Validiert JWT-Token"""
-    # Signatur + Expiration Check
+def validate_authentik_token(token: str):
+    """Validiert Authentik JWT-Token"""
+    # RS256 JWT Validation gegen Authentik JWKS
 ```
 
 ### Decorators
 
 ```python
-@keycloak_required  # Token muss valide sein
-@admin_required     # Admin-Rolle erforderlich
+@authentik_required  # Token muss valide sein
+@admin_required      # Admin-Rolle erforderlich
 ```
 
 ### Frontend-Integration
@@ -491,22 +666,36 @@ docker compose restart backend-flask-service
 llars/
 ├── app/                              # Flask Backend
 │   ├── auth/
-│   │   ├── keycloak_validator.py
+│   │   ├── authentik_validator.py    # Authentik JWT Validation
 │   │   └── decorators.py
 │   ├── services/
-│   │   └── permission_service.py     # Permission Logic
+│   │   ├── permission_service.py     # Permission Logic
+│   │   └── judge/                    # LLM-as-Judge Services
+│   │       ├── judge_service.py      # LLM Evaluation
+│   │       └── kia_sync_service.py   # GitLab Data Sync
+│   ├── workers/
+│   │   └── judge_worker.py           # Background Evaluation Worker
+│   ├── socketio_handlers/
+│   │   └── events_judge.py           # Judge Socket.IO Events
 │   ├── decorators/
 │   │   └── permission_decorator.py   # Route Protection
 │   ├── routes/
-│   │   └── PermissionRoutes.py       # Permission API
+│   │   ├── PermissionRoutes.py       # Permission API
+│   │   ├── rag/RAGRoutes.py          # RAG-Pipeline API
+│   │   └── judge/judge_routes.py     # LLM-as-Judge API
 │   └── db/
-│       ├── tables.py                 # 6 Permission-Tabellen
+│       ├── tables.py                 # Permission + Judge Tabellen
 │       └── db.py                     # initialize_permissions()
 ├── llars-frontend/
 │   └── src/
 │       ├── components/
 │       │   ├── AdminPermissions.vue
-│       │   └── UserSettingsDialog.vue
+│       │   ├── UserSettingsDialog.vue
+│       │   └── Judge/                # LLM-as-Judge Views
+│       │       ├── JudgeOverview.vue
+│       │       ├── JudgeConfig.vue
+│       │       ├── JudgeSession.vue
+│       │       └── JudgeResults.vue
 │       ├── composables/
 │       │   └── usePermissions.js
 │       └── config/
@@ -523,15 +712,17 @@ llars/
 
 ## 🔄 Status
 
-**Stand: 21. November 2025**
+**Stand: 25. November 2025**
 
 ### ✅ Abgeschlossen
 
-- Keycloak-Integration (100%)
+- Authentik-Integration (100%)
 - Permission-System (100%)
 - Theme-System (100%)
 - Security-Härtung (85%)
 - API-Schutz (100%)
+- LLM-as-Judge System (100%)
+- RAG-Pipeline (100%)
 
 ### ⚠️ In Arbeit
 

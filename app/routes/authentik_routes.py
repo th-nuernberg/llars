@@ -1,6 +1,7 @@
 """
 OIDC Authentication Routes (Authentik-backed)
-These routes provide compatibility with the frontend while using Authentik for authentication
+These routes provide compatibility with the frontend while using Authentik for authentication.
+Uses Authentik's OAuth2/OIDC endpoints for proper token issuance and validation.
 """
 
 from flask import Blueprint, jsonify, request, g, current_app
@@ -91,18 +92,16 @@ def check_admin():
 @rate_limit("10 per minute")
 def login():
     """
-    Login endpoint - generates JWT token for development
+    Login endpoint - authenticates via Authentik Flow Executor API
     Rate limit: 10 requests per minute per IP
 
-    DEVELOPMENT ONLY: This endpoint validates username/password by querying Authentik's
-    PostgreSQL database directly. For production, implement proper OAuth2 flow.
+    Uses Authentik's Flow Executor API to authenticate users via the
+    llars-api-authentication flow, then exchanges the session for an OAuth2 token.
+    Returns RS256 signed JWT tokens from Authentik.
     """
-    import psycopg2
     import os
-    import jwt
-    import datetime
-    from datetime import timezone
-    from werkzeug.security import check_password_hash
+    import requests as http_requests
+    import uuid
 
     # Get credentials from request
     data = request.get_json() or {}
@@ -115,119 +114,181 @@ def login():
     current_app.logger.info(f"Login attempt received for user: {username}")
 
     try:
-        # Connect to Authentik's PostgreSQL database
-        conn = psycopg2.connect(
-            host='authentik-db',
-            database=os.getenv('AUTHENTIK_DB_NAME', 'authentik_dev'),
-            user=os.getenv('AUTHENTIK_DB_USER', 'authentik_dev'),
-            password=os.getenv('AUTHENTIK_DB_PASSWORD', 'dev_authentik_db_password'),
-            connect_timeout=5
+        # Authentik configuration
+        authentik_base_url = os.getenv('AUTHENTIK_INTERNAL_URL', 'http://authentik-server:9000')
+        flow_slug = 'llars-api-authentication'
+        client_id = os.getenv('AUTHENTIK_BACKEND_CLIENT_ID', 'llars-backend')
+        client_secret = os.getenv('AUTHENTIK_BACKEND_CLIENT_SECRET', 'llars-backend-secret-change-in-production')
+
+        # Create a session to maintain cookies
+        session = http_requests.Session()
+
+        # Step 1: Start the authentication flow
+        flow_url = f"{authentik_base_url}/api/v3/flows/executor/{flow_slug}/"
+        current_app.logger.info(f"Starting Authentik flow for {username}")
+
+        # Get initial flow state
+        flow_response = session.get(
+            flow_url,
+            headers={'Accept': 'application/json'},
+            timeout=10
         )
 
-        cursor = conn.cursor()
+        if flow_response.status_code != 200:
+            current_app.logger.error(f"Failed to start flow: {flow_response.status_code} - {flow_response.text}")
+            return jsonify({'error': 'Authentication service error'}), 503
 
-        # Query for user
-        cursor.execute(
-            """
-            SELECT id, uuid, username, email, name, is_active, password
-            FROM authentik_core_user
-            WHERE username = %s
-            """,
-            (username,)
-        )
+        flow_data = flow_response.json()
+        current_app.logger.debug(f"Flow response: {flow_data}")
 
-        user_row = cursor.fetchone()
-
-        if not user_row:
-            cursor.close()
-            conn.close()
-            return jsonify({'error': 'Invalid credentials'}), 401
-
-        user_id, user_pk, user_username, user_email, user_name, is_active, stored_password = user_row
-        cursor.close()
-        conn.close()
-
-        # Django password format: algorithm$salt$hash
-        # For development, accept password "admin123" for all users
-        # In production, validate against stored_password using Django's check_password
-
-        # DEVELOPMENT: Accept "admin123" as password for any user
-        # This simplifies testing without proper OAuth2 flow
-        dev_mode = os.getenv('FLASK_ENV', 'development') == 'development' or os.getenv('PROJECT_STATE', 'development') == 'development'
-        current_app.logger.info(f"Login attempt: user={username}, dev_mode={dev_mode}, password_match={password == 'admin123'}")
-
-        if password == 'admin123' and dev_mode:
-            # Development password accepted
-            current_app.logger.info(f"Development login accepted for user {username}")
-        else:
-            # Try to validate against stored password (Django format)
-            # This is a simplified check - Django uses pbkdf2_sha256$iterations$salt$hash
-            if not stored_password or not stored_password.startswith('pbkdf2_sha256'):
-                return jsonify({'error': 'Invalid credentials'}), 401
-            # TODO: Implement proper Django pbkdf2_sha256 password verification
-            return jsonify({'error': 'Invalid credentials - use admin123 in development'}), 401
-
-        if not is_active:
-            return jsonify({'error': 'User account is disabled'}), 401
-
-        # Get user roles from LLARS database (MariaDB) using SQLAlchemy
-        from db.db import db
-        from sqlalchemy import text
-        user_roles = ['user']  # Default role
-
-        try:
-            # Get roles for this user from LLARS database
-            result = db.session.execute(
-                text("""
-                    SELECT r.role_name
-                    FROM user_roles ur
-                    JOIN roles r ON ur.role_id = r.id
-                    WHERE ur.username = :username
-                """),
-                {'username': user_username}
+        # Step 2: Submit username to identification stage
+        if flow_data.get('component') == 'ak-stage-identification':
+            flow_response = session.post(
+                flow_url,
+                json={'uid_field': username},
+                headers={'Accept': 'application/json', 'Content-Type': 'application/json'},
+                timeout=10
             )
 
-            for row in result:
-                role_name = row[0]
-                if role_name not in user_roles:
-                    user_roles.append(role_name)
+            if flow_response.status_code != 200:
+                current_app.logger.error(f"Identification failed: {flow_response.status_code}")
+                return jsonify({'error': 'Invalid credentials'}), 401
 
-        except Exception as e:
-            current_app.logger.warning(f"Could not fetch LLARS roles for {user_username}: {e}")
+            flow_data = flow_response.json()
+            current_app.logger.debug(f"After identification: {flow_data}")
 
-        # Generate JWT token
-        jwt_secret = os.getenv('AUTHENTIK_SECRET_KEY', 'dev-authentik-secret-change-me')
+        # Step 3: Submit password to password stage
+        if flow_data.get('component') == 'ak-stage-password':
+            flow_response = session.post(
+                flow_url,
+                json={'password': password},
+                headers={'Accept': 'application/json', 'Content-Type': 'application/json'},
+                timeout=10
+            )
 
-        now = datetime.datetime.now(timezone.utc)
-        exp = now + datetime.timedelta(hours=1)
+            if flow_response.status_code != 200:
+                current_app.logger.warning(f"Password validation failed for {username}")
+                return jsonify({'error': 'Invalid credentials'}), 401
 
-        token_payload = {
-            'exp': exp,
-            'iat': now,
-            'sub': str(user_pk),
-            'preferred_username': user_username,
-            'email': user_email or '',
-            'name': user_name or user_username,
-            'realm_access': {
-                'roles': user_roles
+            flow_data = flow_response.json()
+            current_app.logger.debug(f"After password: {flow_data}")
+
+        # Check if authentication was successful
+        # Flow executor returns redirect_to on success, or component for next stage
+        if flow_data.get('type') == 'redirect' or 'to' in flow_data:
+            current_app.logger.info(f"User {username} authenticated successfully via flow")
+
+            # Step 4: Now use the authenticated session to get an OAuth2 token
+            # We need to initiate an OAuth2 authorization flow
+            state = str(uuid.uuid4())
+            nonce = str(uuid.uuid4())
+
+            # Get authorization code using implicit consent flow
+            auth_url = f"{authentik_base_url}/application/o/authorize/"
+            auth_params = {
+                'response_type': 'code',
+                'client_id': client_id,
+                'redirect_uri': f"{authentik_base_url}/",  # Placeholder, we intercept
+                'scope': 'openid profile email',
+                'state': state,
+                'nonce': nonce
             }
-        }
 
-        access_token = jwt.encode(token_payload, jwt_secret, algorithm='HS256')
+            auth_response = session.get(
+                auth_url,
+                params=auth_params,
+                allow_redirects=False,  # We want to capture the redirect
+                timeout=10
+            )
 
-        current_app.logger.info(f"User {username} logged in successfully")
+            # Check for authorization code in redirect
+            if auth_response.status_code in [302, 303]:
+                location = auth_response.headers.get('Location', '')
+                current_app.logger.debug(f"Auth redirect: {location}")
 
-        return jsonify({
-            'access_token': access_token,
-            'token_type': 'Bearer',
-            'expires_in': 3600,
-            'refresh_token': access_token,
-            'id_token': access_token
-        }), 200
+                # Extract code from redirect URL
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(location)
+                params = parse_qs(parsed.query)
 
-    except psycopg2.Error as e:
-        current_app.logger.error(f"Database error: {e}")
+                if 'code' in params:
+                    auth_code = params['code'][0]
+
+                    # Step 5: Exchange authorization code for tokens
+                    token_url = f"{authentik_base_url}/application/o/token/"
+                    token_response = http_requests.post(
+                        token_url,
+                        data={
+                            'grant_type': 'authorization_code',
+                            'code': auth_code,
+                            'redirect_uri': f"{authentik_base_url}/",
+                            'client_id': client_id,
+                            'client_secret': client_secret
+                        },
+                        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                        timeout=10
+                    )
+
+                    if token_response.status_code == 200:
+                        token_data = token_response.json()
+                        current_app.logger.info(f"User {username} logged in successfully")
+
+                        # Enrich with LLARS roles
+                        _enrich_token_with_roles(token_data, username)
+
+                        return jsonify(token_data), 200
+                    else:
+                        current_app.logger.error(f"Token exchange failed: {token_response.text}")
+
+            # If we can't get OAuth token, authentication failed
+            current_app.logger.error(f"Could not obtain OAuth token for {username}")
+            return jsonify({'error': 'Could not obtain access token'}), 503
+
+        # Authentication failed - check for error messages
+        if flow_data.get('response_errors'):
+            errors = flow_data.get('response_errors', {})
+            current_app.logger.warning(f"Authentication failed for {username}: {errors}")
+            return jsonify({'error': 'Invalid credentials'}), 401
+
+        # Unknown state
+        current_app.logger.error(f"Unexpected flow state: {flow_data}")
+        return jsonify({'error': 'Authentication error'}), 500
+
+    except http_requests.exceptions.ConnectionError as e:
+        current_app.logger.error(f"Cannot connect to Authentik: {e}")
         return jsonify({'error': 'Authentication service unavailable'}), 503
+    except http_requests.exceptions.Timeout as e:
+        current_app.logger.error(f"Authentik request timeout: {e}")
+        return jsonify({'error': 'Authentication service timeout'}), 503
     except Exception as e:
-        current_app.logger.error(f"Login error: {e}")
+        current_app.logger.error(f"Login error: {e}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
+
+
+def _enrich_token_with_roles(token_data: dict, username: str) -> None:
+    """Add LLARS-specific roles from MariaDB to the token response"""
+    try:
+        from db.db import db
+        from sqlalchemy import text
+        user_roles = ['user']
+
+        result = db.session.execute(
+            text("""
+                SELECT r.role_name
+                FROM user_roles ur
+                JOIN roles r ON ur.role_id = r.id
+                WHERE ur.username = :username
+            """),
+            {'username': username}
+        )
+
+        for row in result:
+            role_name = row[0]
+            if role_name not in user_roles:
+                user_roles.append(role_name)
+
+        token_data['llars_roles'] = user_roles
+
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.warning(f"Could not fetch LLARS roles for {username}: {e}")

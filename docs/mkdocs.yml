@@ -1,6 +1,8 @@
 site_name: LLARS Documentation
 site_description: Documentation for the LLARS (LLM-Assisted Rating System) Platform
 site_author: LLARS Team
+dev_addr: 0.0.0.0:8000
+use_directory_urls: true
 
 theme:
   name: material

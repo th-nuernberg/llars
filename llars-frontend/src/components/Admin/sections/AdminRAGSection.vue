@@ -445,7 +445,19 @@ const getStatusColor = (status) => {
 const fetchStats = async () => {
   try {
     const response = await axios.get('/api/rag/stats');
-    stats.value = response.data;
+    // Transform nested format to flat format expected by template
+    const data = response.data;
+    if (data.stats) {
+      stats.value = {
+        total_documents: data.stats.documents?.total || 0,
+        processed: data.stats.documents?.by_status?.processed || data.stats.documents?.total || 0,
+        total_collections: data.stats.collections?.total || 0,
+        total_size: data.stats.documents?.total_size_bytes || 0
+      };
+    } else {
+      // Already flat format
+      stats.value = data;
+    }
   } catch (error) {
     console.error('Error fetching stats:', error);
   }

@@ -95,6 +95,22 @@ const allItems = ref([
     permission: 'feature:comparison:view'
   },
   {
+    title: 'LLM-as-Judge',
+    description: "Automatisierte Bewertung und Vergleich von Prompt-Säulen mit KI",
+    route: '/judge',
+    icon: 'mdi-gavel',
+    elevation: 1,
+    permission: null  // Available to all authenticated users
+  },
+  {
+    title: 'OnCoCo Analyse',
+    description: "Klassifikation von Beratungsgesprächen auf Satzebene mit dem OnCoCo Modell (68 Kategorien)",
+    route: '/oncoco',
+    icon: 'mdi-chart-timeline-variant-shimmer',
+    elevation: 1,
+    permission: 'feature:comparison:view'  // Reuse comparison permission
+  },
+  {
     title: 'Admin Dashboard',
     description: 'Benutzer, Rollen und Berechtigungen verwalten',
     route: '/AdminPermissions',

@@ -56,12 +56,8 @@ const auth = useAuth();
 // Check if already authenticated on mount
 onMounted(() => {
   if (auth.isAuthenticated.value) {
-    // Already logged in, redirect based on role
-    if (auth.isAdmin.value) {
-      router.push('/AdminDashboard');
-    } else {
-      router.push('/Home');
-    }
+    // Already logged in, redirect to Home (admins see all tiles there)
+    router.push('/Home');
   }
 });
 
@@ -79,12 +75,8 @@ async function handleLogin() {
   const result = await auth.login(username.value, password.value);
 
   if (result.success) {
-    // Login successful, redirect based on role
-    if (auth.isAdmin.value) {
-      router.push('/AdminDashboard');
-    } else {
-      router.push('/Home');
-    }
+    // Login successful, redirect to Home (admins see all tiles there)
+    router.push('/Home');
   } else {
     // Login failed, show error
     errorMessage.value = result.error;

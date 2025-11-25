@@ -730,12 +730,9 @@ function saveFeaturesServerSide() {
   position: sticky;
   bottom: 0;
   padding: 1vh;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid rgb(var(--v-theme-surface-variant));
   margin-top: 1vh;
-}
-
-.button-class {
-  background-color: #d6f6db;
+  background-color: rgb(var(--v-theme-surface));
 }
 
 .category-chip {
@@ -748,7 +745,7 @@ function saveFeaturesServerSide() {
   display: flex;
   flex-direction: column;
   position: relative;
-  background-color: white; /* Beige Hintergrund */
+  background-color: rgb(var(--v-theme-surface));
 }
 
 .features-container,
@@ -768,12 +765,12 @@ function saveFeaturesServerSide() {
 
 .fade-overlay.top {
   top: 0;
-  background: linear-gradient(to bottom, white, transparent); /* Heller Verlauf */
+  background: linear-gradient(to bottom, rgb(var(--v-theme-surface)), transparent);
 }
 
 .fade-overlay.bottom {
   bottom: 0;
-  background: linear-gradient(to top, white, transparent); /* Heller Verlauf */
+  background: linear-gradient(to top, rgb(var(--v-theme-surface)), transparent);
 }
 
 .email-thread {
@@ -803,17 +800,18 @@ function saveFeaturesServerSide() {
 
 .message-sender {
   font-weight: bold;
-  color: #2F4F4F; /* Dunkles Grau-Grün für den Text */
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .message-timestamp {
-  color: #556B2F; /* Graugrüner Farbton für den Zeitstempel */
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
   font-size: 0.8rem;
 }
 
 .message-body p {
   margin: 0;
-  color: #2F4F4F; /* Einheitliche Textfarbe */
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .draggable-item {
@@ -905,7 +903,7 @@ body.dragging * {
 
 .bucket {
   flex: 1;
-  border: 1px solid #ddd;
+  border: 1px solid rgb(var(--v-theme-surface-variant));
   padding: 10px;
   border-radius: 8px;
   min-height: 300px;
@@ -941,7 +939,7 @@ body.dragging * {
   padding: 15px;
   margin-bottom: 10px;
   border-radius: 5px;
-  background-color: white;
+  background-color: rgb(var(--v-theme-surface));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   cursor: grab;
   position: relative;
@@ -949,9 +947,9 @@ body.dragging * {
 
 /* Neutraler Bucket */
 .neutral-bucket-container {
-  background-color: #f5f5f5;
+  background-color: rgb(var(--v-theme-surface-variant));
   min-height: 150px;
-  border: 1px solid #bdbdbd;
+  border: 1px solid rgb(var(--v-theme-surface-variant));
   padding: 10px;
   border-radius: 8px;
   margin-top: 30px;
@@ -967,7 +965,7 @@ body.dragging * {
   padding: 15px;
   margin-bottom: 10px;
   border-radius: 5px;
-  background-color: white;
+  background-color: rgb(var(--v-theme-surface));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   cursor: grab;
   position: relative;
@@ -989,7 +987,7 @@ body.dragging * {
   justify-content: center;
   align-items: center;
   height: 100%;
-  background-color: #f5f5f5;
+  background-color: rgb(var(--v-theme-surface-variant));
   width: 40px;
   position: absolute;
   right: 0;

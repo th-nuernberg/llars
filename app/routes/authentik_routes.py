@@ -112,6 +112,8 @@ def login():
     if not username or not password:
         return jsonify({'error': 'Username and password required'}), 400
 
+    current_app.logger.info(f"Login attempt received for user: {username}")
+
     try:
         # Connect to Authentik's PostgreSQL database
         conn = psycopg2.connect(
@@ -149,12 +151,21 @@ def login():
         # For development, accept password "admin123" for all users
         # In production, validate against stored_password using Django's check_password
 
-        # Simple password validation (development only)
-        if password != 'admin123':
+        # DEVELOPMENT: Accept "admin123" as password for any user
+        # This simplifies testing without proper OAuth2 flow
+        dev_mode = os.getenv('FLASK_ENV', 'development') == 'development' or os.getenv('PROJECT_STATE', 'development') == 'development'
+        current_app.logger.info(f"Login attempt: user={username}, dev_mode={dev_mode}, password_match={password == 'admin123'}")
+
+        if password == 'admin123' and dev_mode:
+            # Development password accepted
+            current_app.logger.info(f"Development login accepted for user {username}")
+        else:
             # Try to validate against stored password (Django format)
             # This is a simplified check - Django uses pbkdf2_sha256$iterations$salt$hash
             if not stored_password or not stored_password.startswith('pbkdf2_sha256'):
                 return jsonify({'error': 'Invalid credentials'}), 401
+            # TODO: Implement proper Django pbkdf2_sha256 password verification
+            return jsonify({'error': 'Invalid credentials - use admin123 in development'}), 401
 
         if not is_active:
             return jsonify({'error': 'User account is disabled'}), 401

@@ -88,7 +88,7 @@ async function handleLogin() {
 .fill-height {
   min-height: 100vh;
   position: relative;
-  background: #fdfcfa;
+  background: rgb(var(--v-theme-background));
   overflow: hidden;
 }
 

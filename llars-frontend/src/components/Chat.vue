@@ -289,7 +289,7 @@ onUnmounted(() => {
 <style scoped>
 .chat-page {
   height: 100%;
-  background-color: #f5f5f5;
+  background-color: rgb(var(--v-theme-background));
 }
 
 .chat-container {
@@ -300,13 +300,13 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: white;
+  background: rgb(var(--v-theme-surface));
 }
 
 .chat-header {
   padding: 16px 24px;
-  background: #b0ca97;
-  color: white;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -366,7 +366,7 @@ onUnmounted(() => {
   position: absolute;
   width: 40px;
   height: 40px;
-  background-color: #ededed;
+  background-color: rgb(var(--v-theme-surface-variant));
   border-radius: 50%;
   z-index: 1;
 }
@@ -379,14 +379,14 @@ onUnmounted(() => {
 }
 
 .message-container.user .message {
-  background: #b0ca97;
-  color: white;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   border-bottom-right-radius: 4px;
 }
 
 .message-container.bot .message {
-  background: #f1f1f1;
-  color: black;
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface));
   border-bottom-left-radius: 4px;
 }
 
@@ -447,8 +447,8 @@ onUnmounted(() => {
 
 .chat-input {
   padding: 16px 24px;
-  background: white;
-  border-top: 1px solid #eee;
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgb(var(--v-theme-surface-variant));
   position: relative;
 }
 
@@ -463,12 +463,12 @@ onUnmounted(() => {
   bottom: 60px; /* Adjust according to the height of your input field */
   left: calc(24px + 20px); /* Slightly shifted to the right */
   right: calc(24px - 10px); /* More compact spacing */
-  background: white;
+  background: rgb(var(--v-theme-surface));
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Softer shadow for better contrast */
   border-radius: 8px;
   z-index: 10;
   padding: 8px; /* Adds a bit of padding inside */
-  border: 1px solid #e0e0e0; /* Subtle border for better distinction */
+  border: 1px solid rgb(var(--v-theme-surface-variant)); /* Subtle border for better distinction */
 }
 
 .command-menu .v-list {
@@ -484,8 +484,8 @@ onUnmounted(() => {
 }
 
 .command-menu .v-list-item:hover {
-  background-color: #f9f9f9; /* Subtle hover effect */
-  color: #4caf50; /* Accent color to match the rest of the UI */
+  background-color: rgb(var(--v-theme-surface-variant)); /* Subtle hover effect */
+  color: rgb(var(--v-theme-success)); /* Accent color to match the rest of the UI */
 }
 
 /* Command Menu Responsiveness */

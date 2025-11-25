@@ -44,8 +44,8 @@ function goHome() {
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background-color: #ffffff;
-  color: #2F4F4F;
+  background-color: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
   font-family: Arial, sans-serif;
 }
 
@@ -57,26 +57,26 @@ function goHome() {
 .title {
   font-size: 8rem;
   margin-bottom: 0;
-  color: #b0ca97;
+  color: rgb(var(--v-theme-primary));
 }
 
 .subtitle {
   font-size: 2rem;
   margin-top: 0;
-  color: #556B2F;
+  color: rgb(var(--v-theme-secondary));
 }
 
 .message {
   font-size: 1.2rem;
   margin-bottom: 2rem;
-  color: #2F4F4F;
+  color: rgb(var(--v-theme-on-background));
 }
 
 .home-button {
   padding: 10px 20px;
   font-size: 1rem;
-  background-color: #f1efd5;
-  color: #2F4F4F;
+  background-color: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface));
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -84,7 +84,8 @@ function goHome() {
 }
 
 .home-button:hover {
-  background-color: #b0ca97;
+  background-color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
 }
 
 .animation-container {
@@ -136,7 +137,7 @@ function goHome() {
   position: absolute;
   width: 8px;
   height: 8px;
-  background-color: #2F4F4F;
+  background-color: rgb(var(--v-theme-on-background));
   border-radius: 50%;
   top: 35px;
 }
@@ -153,7 +154,7 @@ function goHome() {
   position: absolute;
   width: 40px;
   height: 25px;
-  background-color: #2F4F4F;
+  background-color: rgb(var(--v-theme-on-background));
   border-radius: 20px;
   bottom: 15px;
   left: 30px;

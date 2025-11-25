@@ -308,7 +308,7 @@ onUnmounted(() => {
   bottom: 100px;
   right: 20px;
   height: 500px;
-  background: white;
+  background: rgb(var(--v-theme-surface));
   border-radius: 12px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   display: flex;
@@ -338,8 +338,8 @@ onUnmounted(() => {
 
 .chat-header {
   padding: 8px 16px;
-  background: #b0ca97;
-  color: white;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   border-radius: 12px 12px 0 0;
   display: flex;
   justify-content: space-between;
@@ -409,7 +409,7 @@ onUnmounted(() => {
   position: absolute;
   width: 36px;
   height: 36px;
-  background-color: #ededed;
+  background-color: rgb(var(--v-theme-surface-variant));
   border-radius: 50%;
   z-index: 1;
 }
@@ -422,14 +422,14 @@ onUnmounted(() => {
 }
 
 .message-container.user .message {
-  background: #b0ca97;
-  color: white;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   border-bottom-right-radius: 0.2rem;
 }
 
 .message-container.bot .message {
-  background: #f1f1f1;
-  color: black;
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface));
   border-bottom-left-radius: 0.2rem;
 }
 
@@ -491,7 +491,7 @@ onUnmounted(() => {
 
 .chat-input {
   padding: 12px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgb(var(--v-theme-surface-variant));
 }
 
 :global(.resizing) {

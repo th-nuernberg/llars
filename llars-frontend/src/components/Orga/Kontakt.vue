@@ -80,10 +80,10 @@ p {
   line-height: 1.6;
 }
 h1, h3 {
-  color: #333;
+  color: rgb(var(--v-theme-on-surface));
 }
 a {
-  color: #1976D2;
+  color: rgb(var(--v-theme-info));
   text-decoration: none;
 }
 a:hover {

@@ -529,3 +529,34 @@ class PermissionService:
             }
             for r in roles
         ]
+
+    @staticmethod
+    def get_all_users_with_roles() -> List[dict]:
+        """
+        Get all users that have at least one role assigned.
+
+        Returns:
+            List of user dictionaries with username and their roles
+        """
+        # Get all unique usernames from user_roles
+        user_roles = db.session.execute(
+            select(UserRole.username, Role.id, Role.role_name, Role.display_name)
+            .join(Role, Role.id == UserRole.role_id)
+            .order_by(UserRole.username)
+        ).all()
+
+        # Group by username
+        users_dict = {}
+        for username, role_id, role_name, display_name in user_roles:
+            if username not in users_dict:
+                users_dict[username] = {
+                    'username': username,
+                    'roles': []
+                }
+            users_dict[username]['roles'].append({
+                'id': role_id,
+                'role_name': role_name,
+                'display_name': display_name
+            })
+
+        return list(users_dict.values())

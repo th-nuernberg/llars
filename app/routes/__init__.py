@@ -6,3 +6,5 @@ data_blueprint = Blueprint('data', __name__)
 
 from . import mail_rating, routes, RankingRoutes, RatingRoutes, UserPromptRoutes, LLMComparisonRoutes, PermissionRoutes
 from .rag import RAGRoutes
+from . import scenarios  # Scenario management routes
+from .judge import judge_bp  # LLM-as-Judge routes

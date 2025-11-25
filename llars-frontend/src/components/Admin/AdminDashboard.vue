@@ -6,6 +6,7 @@
       :rail="rail"
       permanent
       class="admin-drawer"
+      @click="rail && (rail = false)"
     >
       <v-list-item
         prepend-icon="mdi-shield-crown"
@@ -13,14 +14,24 @@
         :subtitle="rail ? '' : 'Dashboard'"
         class="drawer-header"
       >
-        <template v-slot:append>
+        <template v-slot:append v-if="!rail">
           <v-btn
             variant="text"
-            :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
-            @click.stop="rail = !rail"
+            icon="mdi-chevron-left"
+            @click.stop="rail = true"
           ></v-btn>
         </template>
       </v-list-item>
+
+      <!-- Rail mode: Show expand button at top -->
+      <div v-if="rail" class="text-center py-2">
+        <v-btn
+          variant="text"
+          icon="mdi-chevron-right"
+          size="small"
+          @click.stop="rail = false"
+        ></v-btn>
+      </div>
 
       <v-divider></v-divider>
 

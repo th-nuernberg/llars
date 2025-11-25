@@ -374,8 +374,8 @@ const goToOverview = () => {
 <style scoped>
 .sidebar {
   width: 250px;
-  background-color: #f8f9fa;
-  border-right: 1px solid #dee2e6;
+  background-color: rgb(var(--v-theme-surface));
+  border-right: 1px solid rgb(var(--v-theme-surface-variant));
   height: calc(100vh - 64px);
   position: fixed;
   top: 64px;
@@ -410,7 +410,7 @@ const goToOverview = () => {
 }
 
 .preview-content {
-  background: white;
+  background: rgb(var(--v-theme-surface));
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   margin: 20px;
@@ -426,8 +426,8 @@ const goToOverview = () => {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #eee;
-  background: #f8f9fa;
+  border-bottom: 1px solid rgb(var(--v-theme-surface-variant));
+  background: rgb(var(--v-theme-surface-variant));
   border-radius: 8px 8px 0 0;
 }
 
@@ -443,7 +443,7 @@ const goToOverview = () => {
   font-size: 16px;
   cursor: pointer;
   padding: 8px;
-  color: #666;
+  color: rgb(var(--v-theme-on-surface));
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -454,13 +454,13 @@ const goToOverview = () => {
 }
 
 .close-button:hover {
-  color: #e74c3c;
+  color: rgb(var(--v-theme-error));
 }
 
 .preview-block {
   margin-bottom: 30px;
   padding: 15px;
-  background: #f8f9fa;
+  background: rgb(var(--v-theme-surface-variant));
   border-radius: 6px;
 }
 
@@ -471,15 +471,15 @@ const goToOverview = () => {
 .preview-block h4 {
   margin: 0 0 12px 0;
   font-size: 1.1rem;
-  color: #2c3e50;
-  border-bottom: 2px solid #e0e0e0;
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom: 2px solid rgb(var(--v-theme-surface-variant));
   padding-bottom: 8px;
 }
 
 .preview-block p {
   margin: 0;
   font-size: 1rem;
-  color: #333;
+  color: rgb(var(--v-theme-on-surface));
   line-height: 1.5;
   white-space: pre-wrap;
 }
@@ -554,7 +554,7 @@ const goToOverview = () => {
 
 
 .users-list {
-  background-color: white;
+  background-color: rgb(var(--v-theme-surface));
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -563,7 +563,7 @@ const goToOverview = () => {
 .users-list h3 {
   margin: 0 0 15px 0;
   font-size: 1rem;
-  color: #333;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .user-item {
@@ -582,7 +582,7 @@ const goToOverview = () => {
 
 /* Styling für Sharing Section */
 .sharing-section {
-  background-color: white;
+  background-color: rgb(var(--v-theme-surface));
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -592,7 +592,7 @@ const goToOverview = () => {
 .sharing-section h3 {
   margin: 0 0 15px 0;
   font-size: 1rem;
-  color: #333;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .shared-users-list {
@@ -612,7 +612,7 @@ const goToOverview = () => {
 .unshare-button {
   background: none;
   border: none;
-  color: #666;
+  color: rgb(var(--v-theme-on-surface));
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -620,8 +620,8 @@ const goToOverview = () => {
 }
 
 .unshare-button:hover {
-  background-color: #f0f0f0;
-  color: #e74c3c;
+  background-color: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-error));
 }
 
 .share-form {
@@ -634,9 +634,11 @@ const goToOverview = () => {
 .share-input {
   width: 100%;
   padding: 8px;
-  border: 1px solid #dee2e6;
+  border: 1px solid rgb(var(--v-theme-surface-variant));
   border-radius: 4px;
   font-size: 0.9rem;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .share-button {

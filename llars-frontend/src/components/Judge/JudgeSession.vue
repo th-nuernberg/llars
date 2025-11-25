@@ -30,7 +30,7 @@
           <!-- Action Buttons -->
           <div class="d-flex gap-2">
             <v-btn
-              v-if="session?.status === 'created' || session?.status === 'paused'"
+              v-if="session?.status === 'created' || session?.status === 'queued' || session?.status === 'paused'"
               color="success"
               prepend-icon="mdi-play"
               @click="startSession"

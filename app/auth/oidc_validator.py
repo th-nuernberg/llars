@@ -301,7 +301,12 @@ def get_username(token_payload: Dict) -> Optional[str]:
     Returns:
         Username string if found, None otherwise
     """
-    return token_payload.get('preferred_username') or token_payload.get('username')
+    # Try standard OIDC claims first, then Authentik-specific, then fallback to uid
+    return (token_payload.get('preferred_username') or
+            token_payload.get('username') or
+            token_payload.get('name') or
+            token_payload.get('uid') or  # Authentik user ID
+            token_payload.get('sub')[:16] if token_payload.get('sub') else None)  # Use first 16 chars of sub as last resort
 
 
 def get_user_id(token_payload: Dict) -> Optional[str]:

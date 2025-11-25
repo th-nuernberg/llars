@@ -713,19 +713,23 @@
               </v-card-title>
               <v-divider></v-divider>
 
-              <!-- Result Display - ALWAYS VISIBLE -->
+              <!-- Result Display - ALWAYS VISIBLE with Likert Scales -->
               <div class="pa-3 result-display-header">
                 <v-row dense>
+                  <!-- Side A with Name -->
                   <v-col cols="4" class="text-center">
                     <v-card
                       :color="parsedStreamJson?.winner === 'A' ? 'success' : (isStreaming ? 'grey-darken-1' : 'grey-lighten-2')"
                       variant="tonal"
                       class="pa-3 winner-card-fullscreen"
+                      :class="{ 'winner-highlight': parsedStreamJson?.winner === 'A' }"
                     >
                       <div class="text-h4 font-weight-bold">A</div>
                       <div class="text-caption">{{ currentComparison?.pillar_a_name }}</div>
                     </v-card>
                   </v-col>
+
+                  <!-- Center: Winner + Confidence -->
                   <v-col cols="4" class="d-flex flex-column align-center justify-center">
                     <v-chip
                       :color="parsedStreamJson?.winner ? 'primary' : 'grey'"
@@ -745,11 +749,14 @@
                       </div>
                     </div>
                   </v-col>
+
+                  <!-- Side B with Name -->
                   <v-col cols="4" class="text-center">
                     <v-card
                       :color="parsedStreamJson?.winner === 'B' ? 'success' : (isStreaming ? 'grey-darken-1' : 'grey-lighten-2')"
                       variant="tonal"
                       class="pa-3 winner-card-fullscreen"
+                      :class="{ 'winner-highlight': parsedStreamJson?.winner === 'B' }"
                     >
                       <div class="text-h4 font-weight-bold">B</div>
                       <div class="text-caption">{{ currentComparison?.pillar_b_name }}</div>
@@ -757,29 +764,54 @@
                   </v-col>
                 </v-row>
 
-                <!-- Criteria Scores - show when available -->
-                <v-row v-if="parsedStreamJson?.criteria_scores" dense class="mt-2">
+                <!-- Likert Scales for all criteria - ALWAYS visible with placeholders -->
+                <v-row dense class="mt-3">
                   <v-col cols="12">
-                    <v-table density="compact" class="criteria-table-fullscreen">
-                      <thead>
-                        <tr>
-                          <th>Kriterium</th>
-                          <th class="text-center">A</th>
-                          <th class="text-center">B</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="(scores, criterion) in parsedStreamJson.criteria_scores" :key="criterion">
-                          <td>{{ formatCriterionName(criterion) }}</td>
-                          <td class="text-center">
-                            <v-chip size="x-small" :color="getScoreColor(scores.score_a)">{{ scores.score_a }}/5</v-chip>
-                          </td>
-                          <td class="text-center">
-                            <v-chip size="x-small" :color="getScoreColor(scores.score_b)">{{ scores.score_b }}/5</v-chip>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </v-table>
+                    <div class="likert-scales-container">
+                      <div
+                        v-for="criterion in SCORE_CRITERIA"
+                        :key="criterion.key"
+                        class="likert-row"
+                      >
+                        <!-- Criterion Label -->
+                        <div class="likert-label text-caption">{{ criterion.label }}</div>
+
+                        <!-- A Score Likert -->
+                        <div class="likert-scale likert-a">
+                          <div
+                            v-for="n in 5"
+                            :key="`a-${n}`"
+                            class="likert-dot"
+                            :class="{
+                              'likert-active': parsedStreamJson?.scores?.A?.[criterion.key] >= n,
+                              'likert-pending': !parsedStreamJson?.scores?.A?.[criterion.key] && isStreaming,
+                              'likert-a-color': parsedStreamJson?.scores?.A?.[criterion.key] >= n
+                            }"
+                          >
+                            <span v-if="n === parsedStreamJson?.scores?.A?.[criterion.key]" class="likert-value">{{ n }}</span>
+                          </div>
+                        </div>
+
+                        <!-- VS Divider -->
+                        <div class="likert-vs text-caption text-medium-emphasis">vs</div>
+
+                        <!-- B Score Likert -->
+                        <div class="likert-scale likert-b">
+                          <div
+                            v-for="n in 5"
+                            :key="`b-${n}`"
+                            class="likert-dot"
+                            :class="{
+                              'likert-active': parsedStreamJson?.scores?.B?.[criterion.key] >= n,
+                              'likert-pending': !parsedStreamJson?.scores?.B?.[criterion.key] && isStreaming,
+                              'likert-b-color': parsedStreamJson?.scores?.B?.[criterion.key] >= n
+                            }"
+                          >
+                            <span v-if="n === parsedStreamJson?.scores?.B?.[criterion.key]" class="likert-value">{{ n }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </v-col>
                 </v-row>
               </div>
@@ -804,68 +836,86 @@
 
                 <!-- FORMATTED Mode -->
                 <div v-else class="formatted-stream-view">
-                  <!-- Chain of Thought Steps -->
-                  <div v-if="parsedStreamSteps.length > 0" class="cot-steps-container">
+                  <!-- Pre-structured Step Areas - ALL 6 steps always visible -->
+                  <div class="structured-steps-container">
                     <div
-                      v-for="(step, idx) in parsedStreamSteps"
-                      :key="idx"
-                      class="cot-step-card mb-3"
-                      :class="{ 'current-step': idx === parsedStreamSteps.length - 1 && isStreaming }"
+                      v-for="(stepDef, stepKey) in STEP_DEFINITIONS"
+                      :key="stepKey"
+                      class="structured-step"
+                      :class="{
+                        'step-active': getStepByKey(stepKey),
+                        'step-streaming': getStepByKey(stepKey)?.isStreaming,
+                        'step-pending': !getStepByKey(stepKey) && isStreaming
+                      }"
                     >
-                      <div class="cot-step-header d-flex align-center">
-                        <v-chip size="small" color="primary" variant="flat" class="mr-2">
-                          {{ idx + 1 }}
-                        </v-chip>
-                        <span class="font-weight-bold">{{ step.title }}</span>
-                        <v-icon v-if="idx === parsedStreamSteps.length - 1 && isStreaming" class="ml-2 rotating" size="small">mdi-loading</v-icon>
+                      <!-- Step Header - Always visible -->
+                      <div class="step-header d-flex align-center">
+                        <v-avatar
+                          size="28"
+                          :color="getStepByKey(stepKey) ? 'primary' : 'grey'"
+                          class="mr-2"
+                        >
+                          <v-icon size="16" :class="{ 'rotating': getStepByKey(stepKey)?.isStreaming }">
+                            {{ getStepByKey(stepKey)?.isStreaming ? 'mdi-loading' : stepDef.icon }}
+                          </v-icon>
+                        </v-avatar>
+                        <span class="step-title" :class="{ 'text-medium-emphasis': !getStepByKey(stepKey) }">
+                          {{ stepDef.title }}
+                        </span>
+                        <v-spacer></v-spacer>
+                        <v-icon
+                          v-if="getStepByKey(stepKey) && !getStepByKey(stepKey)?.isStreaming"
+                          size="small"
+                          color="success"
+                        >
+                          mdi-check-circle
+                        </v-icon>
+                        <v-progress-circular
+                          v-else-if="getStepByKey(stepKey)?.isStreaming"
+                          indeterminate
+                          size="16"
+                          width="2"
+                          color="warning"
+                        ></v-progress-circular>
                       </div>
-                      <div class="cot-step-content mt-2 text-body-2">
-                        {{ step.content }}
+
+                      <!-- Step Content - Shows when step is active -->
+                      <div class="step-content" v-if="getStepByKey(stepKey)">
+                        <div class="step-text">
+                          {{ getStepByKey(stepKey).content }}<span v-if="getStepByKey(stepKey)?.isStreaming" class="cursor-blink">|</span>
+                        </div>
+                      </div>
+
+                      <!-- Placeholder when waiting -->
+                      <div class="step-placeholder" v-else-if="isStreaming">
+                        <span class="text-caption text-medium-emphasis">Warte auf Analyse...</span>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Scores Section (when available) -->
-                  <div v-if="parsedStreamJson?.criteria_scores" class="scores-section mt-3">
-                    <div class="text-subtitle-2 font-weight-bold mb-2">
-                      <v-icon size="small" class="mr-1">mdi-chart-bar</v-icon>
-                      Bewertungen
-                    </div>
-                    <v-row dense>
-                      <v-col v-for="(scores, criterion) in parsedStreamJson.criteria_scores" :key="criterion" cols="6" md="4">
-                        <v-card variant="outlined" class="pa-2 text-center">
-                          <div class="text-caption text-medium-emphasis">{{ formatCriterionName(criterion) }}</div>
-                          <div class="d-flex justify-center gap-2 mt-1">
-                            <v-chip size="x-small" :color="getScoreColor(scores.score_a)" variant="flat">
-                              A: {{ scores.score_a }}
-                            </v-chip>
-                            <v-chip size="x-small" :color="getScoreColor(scores.score_b)" variant="flat">
-                              B: {{ scores.score_b }}
-                            </v-chip>
-                          </div>
-                        </v-card>
-                      </v-col>
-                    </v-row>
-                  </div>
-
-                  <!-- Final Justification -->
-                  <div v-if="parsedStreamJson?.final_justification" class="justification-section mt-3">
-                    <div class="text-subtitle-2 font-weight-bold mb-2">
-                      <v-icon size="small" class="mr-1">mdi-text-box-check</v-icon>
-                      Begründung
+                  <!-- Final Justification - at the bottom -->
+                  <div v-if="parsedStreamJson?.final_justification" class="justification-section mt-4">
+                    <div class="d-flex align-center mb-2">
+                      <v-icon size="small" color="primary" class="mr-2">mdi-text-box-check</v-icon>
+                      <span class="text-subtitle-2 font-weight-bold">Abschließende Begründung</span>
                     </div>
                     <v-card variant="tonal" color="primary" class="pa-3">
                       <div class="text-body-2">{{ parsedStreamJson.final_justification }}</div>
                     </v-card>
                   </div>
 
-                  <!-- Fallback: Show raw if nothing parsed yet -->
-                  <div v-if="parsedStreamSteps.length === 0 && !parsedStreamJson" class="raw-fallback">
-                    <v-alert type="info" variant="tonal" density="compact" class="mb-2">
-                      JSON wird geparst...
-                    </v-alert>
-                    <pre class="stream-pre-fullscreen text-medium-emphasis">{{ llmStreamContent }}<span v-if="isStreaming" class="cursor-blink">|</span></pre>
-                  </div>
+                  <!-- Raw JSON Preview (collapsed) -->
+                  <v-expansion-panels class="mt-4" variant="accordion">
+                    <v-expansion-panel>
+                      <v-expansion-panel-title class="py-2">
+                        <v-icon size="small" class="mr-2">mdi-code-json</v-icon>
+                        <span class="text-caption">Raw JSON anzeigen</span>
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <pre class="stream-pre-fullscreen text-caption">{{ llmStreamContent }}</pre>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
                 </div>
 
                 <!-- Follow Button - shows when auto-scroll is disabled -->
@@ -965,7 +1015,7 @@ const llmStreamContent = ref('');
 const streamOutput = ref(null);
 const fullscreenStreamOutput = ref(null);
 const autoScrollEnabled = ref(true);
-const streamDisplayMode = ref('raw'); // 'raw' or 'formatted'
+const streamDisplayMode = ref('formatted'); // 'raw' or 'formatted' - default to formatted for better UX
 
 // Queue Table Headers
 const queueHeaders = [
@@ -998,91 +1048,174 @@ const isStreaming = computed(() => {
   return currentComparison.value?.llm_status === 'running';
 });
 
-// Parse stream content as JSON (for formatted display)
+// Step definitions with German titles
+const STEP_DEFINITIONS = {
+  'step_1': { title: 'Analyse Berater-Kohärenz', icon: 'mdi-account-tie' },
+  'step_2': { title: 'Analyse Klienten-Kohärenz', icon: 'mdi-account' },
+  'step_3': { title: 'Analyse Beratungsqualität', icon: 'mdi-star' },
+  'step_4': { title: 'Analyse Empathie', icon: 'mdi-heart' },
+  'step_5': { title: 'Analyse Authentizität', icon: 'mdi-check-decagram' },
+  'step_6': { title: 'Analyse Lösungsorientierung', icon: 'mdi-lightbulb' }
+};
+
+// Score criteria mapping
+const SCORE_CRITERIA = [
+  { key: 'counsellor_coherence', label: 'Berater-Kohärenz' },
+  { key: 'client_coherence', label: 'Klienten-Kohärenz' },
+  { key: 'quality', label: 'Qualität' },
+  { key: 'empathy', label: 'Empathie' },
+  { key: 'authenticity', label: 'Authentizität' },
+  { key: 'solution_orientation', label: 'Lösungsorientierung' }
+];
+
+// Parse stream content incrementally - extracts partial data while streaming
 const parsedStreamJson = computed(() => {
   if (!llmStreamContent.value) return null;
 
-  try {
-    // Try to find complete JSON in the stream
-    const content = llmStreamContent.value.trim();
+  const content = llmStreamContent.value.trim();
+  const result = {
+    winner: null,
+    confidence: null,
+    scores: { A: {}, B: {} },
+    final_justification: null,
+    criteria_scores: null
+  };
 
-    // Look for JSON object pattern
+  // Try to parse complete JSON first
+  try {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      // Validate expected structure
-      if (parsed.winner || parsed.criteria_scores || parsed.confidence) {
-        return parsed;
+      if (parsed.winner || parsed.criteria_scores || parsed.confidence || parsed.scores) {
+        // Convert scores format if needed
+        if (parsed.scores) {
+          result.scores = parsed.scores;
+          // Also build criteria_scores for compatibility
+          result.criteria_scores = {};
+          for (const criterion of SCORE_CRITERIA) {
+            if (parsed.scores.A?.[criterion.key] !== undefined || parsed.scores.B?.[criterion.key] !== undefined) {
+              result.criteria_scores[criterion.key] = {
+                score_a: parsed.scores.A?.[criterion.key] || 0,
+                score_b: parsed.scores.B?.[criterion.key] || 0
+              };
+            }
+          }
+        }
+        if (parsed.criteria_scores) {
+          result.criteria_scores = parsed.criteria_scores;
+        }
+        result.winner = parsed.winner || null;
+        result.confidence = parsed.confidence || null;
+        result.final_justification = parsed.final_justification || null;
+        return result;
       }
     }
   } catch (e) {
-    // JSON not complete yet, return null
-    return null;
+    // JSON not complete - try incremental parsing
+  }
+
+  // Incremental parsing for partial JSON
+  // Extract winner
+  const winnerMatch = content.match(/"winner"\s*:\s*"([AB])"/);
+  if (winnerMatch) result.winner = winnerMatch[1];
+
+  // Extract confidence
+  const confMatch = content.match(/"confidence"\s*:\s*([\d.]+)/);
+  if (confMatch) result.confidence = parseFloat(confMatch[1]);
+
+  // Extract individual scores from "scores": { "A": { ... }, "B": { ... } }
+  for (const criterion of SCORE_CRITERIA) {
+    // Try to find score for A
+    const scoreAPattern = new RegExp(`"A"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
+    const scoreAMatch = content.match(scoreAPattern);
+    if (scoreAMatch) {
+      result.scores.A[criterion.key] = parseInt(scoreAMatch[1]);
+    }
+
+    // Try to find score for B
+    const scoreBPattern = new RegExp(`"B"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
+    const scoreBMatch = content.match(scoreBPattern);
+    if (scoreBMatch) {
+      result.scores.B[criterion.key] = parseInt(scoreBMatch[1]);
+    }
+  }
+
+  // Build criteria_scores from parsed scores
+  if (Object.keys(result.scores.A).length > 0 || Object.keys(result.scores.B).length > 0) {
+    result.criteria_scores = {};
+    for (const criterion of SCORE_CRITERIA) {
+      if (result.scores.A[criterion.key] !== undefined || result.scores.B[criterion.key] !== undefined) {
+        result.criteria_scores[criterion.key] = {
+          score_a: result.scores.A[criterion.key] || 0,
+          score_b: result.scores.B[criterion.key] || 0
+        };
+      }
+    }
+  }
+
+  // Extract final_justification
+  const justMatch = content.match(/"final_justification"\s*:\s*"([^"]+)"/);
+  if (justMatch) result.final_justification = justMatch[1];
+
+  // Only return if we found something
+  if (result.winner || result.confidence || Object.keys(result.scores.A).length > 0) {
+    return result;
   }
 
   return null;
 });
 
-// Parse stream content for Chain of Thought steps (for formatted display)
+// Parse stream content for Chain of Thought steps incrementally
 const parsedStreamSteps = computed(() => {
   if (!llmStreamContent.value) return [];
 
   const content = llmStreamContent.value;
   const steps = [];
 
-  // Try to parse the JSON structure to extract steps
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+  // Extract each step incrementally using regex
+  for (const [stepKey, stepDef] of Object.entries(STEP_DEFINITIONS)) {
+    // Pattern to match "step_X": "content..." (handles incomplete strings too)
+    const stepPattern = new RegExp(`"${stepKey}"\\s*:\\s*"`, 'm');
+    const stepMatch = content.match(stepPattern);
 
-      // Extract step_1 through step_6 if they exist
-      const stepKeys = ['step_1', 'step_2', 'step_3', 'step_4', 'step_5', 'step_6'];
-      const stepTitles = {
-        'step_1': 'Schritt 1: Analyse der Eingabe',
-        'step_2': 'Schritt 2: Kontextverständnis',
-        'step_3': 'Schritt 3: Kriterien-Bewertung',
-        'step_4': 'Schritt 4: Vergleichende Analyse',
-        'step_5': 'Schritt 5: Entscheidungsfindung',
-        'step_6': 'Schritt 6: Zusammenfassung'
-      };
+    if (stepMatch) {
+      // Found the step, now extract its content
+      const startIdx = content.indexOf(stepMatch[0]) + stepMatch[0].length;
+      let endIdx = startIdx;
+      let escaped = false;
+      let stepContent = '';
 
-      for (const key of stepKeys) {
-        if (parsed[key]) {
-          steps.push({
-            key: key,
-            title: stepTitles[key] || key.replace('_', ' ').toUpperCase(),
-            content: typeof parsed[key] === 'string' ? parsed[key] : JSON.stringify(parsed[key], null, 2)
-          });
+      // Parse string content, handling escapes
+      for (let i = startIdx; i < content.length; i++) {
+        const char = content[i];
+        if (escaped) {
+          // Handle escape sequences
+          if (char === 'n') stepContent += '\n';
+          else if (char === '"') stepContent += '"';
+          else if (char === '\\') stepContent += '\\';
+          else stepContent += char;
+          escaped = false;
+        } else if (char === '\\') {
+          escaped = true;
+        } else if (char === '"') {
+          // End of string
+          endIdx = i;
+          break;
+        } else {
+          stepContent += char;
         }
+        endIdx = i;
       }
 
-      // Also extract chain_of_thought if present
-      if (parsed.chain_of_thought && Array.isArray(parsed.chain_of_thought)) {
-        parsed.chain_of_thought.forEach((step, idx) => {
-          steps.push({
-            key: `cot_${idx}`,
-            title: step.step_name || `Chain of Thought ${idx + 1}`,
-            content: step.reasoning || step.content || JSON.stringify(step)
-          });
-        });
-      }
-    }
-  } catch (e) {
-    // JSON not parseable yet - try to extract partial content
-    // Look for common patterns in the raw stream
-  }
+      // Check if this step is still being written (no closing quote found)
+      const isStreaming = endIdx === content.length - 1 && content[endIdx] !== '"';
 
-  // If no steps found from JSON, try to extract from raw text patterns
-  if (steps.length === 0 && content.length > 50) {
-    // Split by common delimiters to show progress
-    const lines = content.split('\n').filter(line => line.trim());
-    if (lines.length > 0) {
-      // Show raw content as a single step if we can't parse it
       steps.push({
-        key: 'raw',
-        title: 'LLM Output',
-        content: content
+        key: stepKey,
+        title: stepDef.title,
+        icon: stepDef.icon,
+        content: stepContent,
+        isStreaming: isStreaming
       });
     }
   }
@@ -1442,6 +1575,11 @@ const formatDate = (dateString) => {
     minute: '2-digit',
     second: '2-digit'
   });
+};
+
+// Get step by key from parsed steps
+const getStepByKey = (stepKey) => {
+  return parsedStreamSteps.value.find(s => s.key === stepKey) || null;
 };
 
 // Format criterion name for display (snake_case to readable)
@@ -1948,5 +2086,163 @@ onUnmounted(() => {
 /* Display mode toggle button styles */
 .v-btn-toggle .v-btn {
   text-transform: none;
+}
+
+/* ============================================
+   LIKERT SCALE STYLES
+   ============================================ */
+.likert-scales-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.likert-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.likert-label {
+  width: 140px;
+  flex-shrink: 0;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.likert-scale {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.likert-vs {
+  width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.likert-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.likert-dot.likert-pending {
+  animation: likert-pulse 1.5s ease-in-out infinite;
+}
+
+.likert-dot.likert-active {
+  transform: scale(1.1);
+}
+
+.likert-dot.likert-a-color {
+  background: rgba(33, 150, 243, 0.8);
+  border-color: rgb(33, 150, 243);
+}
+
+.likert-dot.likert-b-color {
+  background: rgba(76, 175, 80, 0.8);
+  border-color: rgb(76, 175, 80);
+}
+
+.likert-value {
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+@keyframes likert-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+/* Winner highlight animation */
+.winner-highlight {
+  animation: winner-glow 2s ease-in-out infinite;
+}
+
+@keyframes winner-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(var(--v-theme-success), 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(var(--v-theme-success), 0.6);
+  }
+}
+
+/* ============================================
+   STRUCTURED STEPS STYLES
+   ============================================ */
+.structured-steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.structured-step {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  border-radius: 8px;
+  border-left: 4px solid rgba(var(--v-theme-on-surface), 0.2);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.structured-step.step-active {
+  border-left-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.structured-step.step-streaming {
+  border-left-color: rgb(var(--v-theme-warning));
+  background: rgba(var(--v-theme-warning), 0.1);
+  box-shadow: 0 2px 8px rgba(var(--v-theme-warning), 0.2);
+}
+
+.structured-step.step-pending {
+  opacity: 0.6;
+}
+
+.step-header {
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.step-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.step-content {
+  padding: 0 16px 16px 16px;
+}
+
+.step-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.step-placeholder {
+  padding: 8px 16px 12px 16px;
+  min-height: 32px;
 }
 </style>

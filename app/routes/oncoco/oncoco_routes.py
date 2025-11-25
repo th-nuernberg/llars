@@ -355,7 +355,10 @@ def start_analysis(analysis_id: int):
         JSON object with status
     """
     analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
-    data = request.get_json() or {}
+    # Handle POST with no body or non-JSON content type
+    data = {}
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
     force_resume = data.get('force', False)
 
     # Allow resuming stuck 'running' analyses with force flag
@@ -1091,7 +1094,10 @@ def debug_start_analysis(analysis_id: int):
     Only available in development mode.
     """
     analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
-    data = request.get_json() or {}
+    # Handle POST with no body or non-JSON content type
+    data = {}
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
     force_resume = data.get('force', False)
 
     # Allow resuming stuck 'running' analyses with force flag

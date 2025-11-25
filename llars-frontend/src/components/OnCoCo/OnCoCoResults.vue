@@ -758,7 +758,9 @@ const startAnalysis = async () => {
   starting.value = true;
   try {
     await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/start`
+      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/start`,
+      {},
+      { headers: { 'Content-Type': 'application/json' } }
     );
     // Reset stuck detection
     lastUpdateTime.value = Date.now();

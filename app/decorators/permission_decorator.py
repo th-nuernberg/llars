@@ -58,7 +58,13 @@ def require_permission(permission_key: str):
                 # Note: In production, verify the token signature!
                 # For now, we just decode without verification (Authentik handles verification)
                 decoded_token = jwt.decode(token, options={"verify_signature": False})
-                username = decoded_token.get('preferred_username')
+
+                # Try standard OIDC claims first, then Authentik-specific, then fallback to uid
+                username = (decoded_token.get('preferred_username') or
+                           decoded_token.get('username') or
+                           decoded_token.get('name') or
+                           decoded_token.get('uid') or  # Authentik user ID
+                           (decoded_token.get('sub')[:16] if decoded_token.get('sub') else None))
 
                 if not username:
                     return jsonify({

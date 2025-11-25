@@ -430,59 +430,247 @@ curl http://localhost:55080/api/judge/sessions/123
 
 ## 🔐 Authentik-Integration
 
-**Status:** ✅ Implementiert (ersetzt Keycloak)
+**Status:** ✅ Vollständig implementiert (ersetzt Keycloak)
+**Dokumentation:** `docs/AUTHENTIK_TESTING_PLAN.md`
 
-**Clients:**
-- `llars-frontend` (Public) - Frontend Auth
-- `llars-backend` (Confidential) - Backend Service Account
+### Übersicht
 
-**Authentik-Rollen:**
-- `admin` - Admin-Dashboard-Zugriff
-- `rater` - Basis-Rolle
-- `viewer` - Lesezugriff
+LLARS verwendet Authentik als Identity Provider mit OAuth2/OIDC:
+- **RS256 JWT-Tokens** (asymmetrische Kryptographie)
+- **Flow Executor API** für headless/API Authentication
+- **JWKS-basierte Token-Validierung**
 
-**Hinweis:** Granulare Feature-Control läuft über Permission-System.
+### Login-Credentials
+
+| Benutzername | Passwort | Rollen |
+|--------------|----------|--------|
+| `admin` | `admin123` | user, admin |
+| `akadmin` | `admin123` | user, admin |
+
+### Authentifizierungs-Flow
+
+```
+Frontend (Vue.js)
+      │
+      │ POST /auth/authentik/login {username, password}
+      ▼
+Backend (Flask)
+      │
+      │ 1. Start Flow (GET /api/v3/flows/executor/llars-api-authentication/)
+      │ 2. Submit Username (POST mit uid_field)
+      │ 3. Submit Password (POST mit password)
+      │ 4. OAuth2 Authorization Request
+      │ 5. Exchange Code for Token
+      ▼
+Authentik (OIDC Provider)
+      │
+      │ RS256-signiertes JWT Token
+      ▼
+Backend → Frontend
+      │
+      │ Response: { access_token, id_token, llars_roles }
+      ▼
+Frontend speichert in sessionStorage:
+      - auth_token
+      - auth_llars_roles
+```
+
+### Authentik Setup nach Container-Neustart
+
+Nach einem frischen Container-Start müssen folgende Komponenten in Authentik existieren:
+
+**1. Authentication Flow** (`llars-api-authentication`)
+```bash
+docker compose exec -T authentik-server ak shell -c "
+from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
+from authentik.stages.identification.models import IdentificationStage, UserFields
+from authentik.stages.password.models import PasswordStage
+from authentik.stages.user_login.models import UserLoginStage
+
+flow, created = Flow.objects.get_or_create(
+    slug='llars-api-authentication',
+    defaults={
+        'name': 'LLARS API Authentication',
+        'designation': FlowDesignation.AUTHENTICATION,
+        'title': 'LLARS API Login'
+    }
+)
+if created:
+    id_stage, _ = IdentificationStage.objects.get_or_create(
+        name='llars-api-identification',
+        defaults={'user_fields': [UserFields.USERNAME, UserFields.E_MAIL]}
+    )
+    pw_stage, _ = PasswordStage.objects.get_or_create(
+        name='llars-api-password',
+        defaults={'backends': ['authentik.core.auth.InbuiltBackend']}
+    )
+    login_stage, _ = UserLoginStage.objects.get_or_create(
+        name='llars-api-user-login',
+        defaults={'session_duration': 'seconds=0'}
+    )
+    FlowStageBinding.objects.create(target=flow, stage=id_stage, order=10)
+    FlowStageBinding.objects.create(target=flow, stage=pw_stage, order=20)
+    FlowStageBinding.objects.create(target=flow, stage=login_stage, order=30)
+"
+```
+
+**2. OAuth2 Provider** (`llars-backend`)
+```bash
+docker compose exec -T authentik-server ak shell -c "
+from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
+from authentik.crypto.models import CertificateKeyPair
+from authentik.flows.models import Flow
+from authentik.core.models import Application
+
+cert = CertificateKeyPair.objects.filter(name__contains='Self-signed').first()
+auth_flow = Flow.objects.get(slug='default-provider-authorization-implicit-consent')
+
+provider, created = OAuth2Provider.objects.get_or_create(
+    name='llars-backend',
+    defaults={
+        'client_id': 'llars-backend',
+        'client_secret': 'llars-backend-secret-change-in-production',
+        'client_type': 'confidential',
+        'authorization_flow': auth_flow,
+        'signing_key': cert,
+    }
+)
+scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
+provider.property_mappings.set(scopes)
+provider.save()
+
+app, _ = Application.objects.get_or_create(
+    slug='llars-backend',
+    defaults={'name': 'LLARS Backend', 'provider': provider}
+)
+"
+```
+
+**3. User mit Passwort**
+```bash
+docker compose exec -T authentik-server ak shell -c "
+from authentik.core.models import User, Group
+
+# Admin User erstellen
+admin, created = User.objects.get_or_create(
+    username='admin',
+    defaults={'name': 'Admin User', 'email': 'admin@localhost', 'is_active': True}
+)
+admin.set_password('admin123')
+admin.save()
+
+# Zur Admin-Gruppe hinzufügen
+admin_group = Group.objects.filter(name='authentik Admins').first()
+if admin_group:
+    admin.ak_groups.add(admin_group)
+    admin.save()
+"
+```
 
 ### Backend-Token-Validierung
 
-**Datei:** `app/auth/authentik_validator.py`
+**Datei:** `app/auth/oidc_validator.py`
 
 ```python
-def validate_authentik_token(token: str):
-    """Validiert Authentik JWT-Token"""
-    # RS256 JWT Validation gegen Authentik JWKS
+from app.auth.oidc_validator import validate_token, get_token_from_request
+
+# Token validieren
+token = get_token_from_request()
+payload = validate_token(token)  # Returns decoded JWT or None
+
+# User-Info extrahieren
+username = payload.get('preferred_username')
+groups = payload.get('groups', [])
 ```
 
 ### Decorators
 
+**Datei:** `app/decorators/permission_decorator.py`
+
 ```python
-@authentik_required  # Token muss valide sein
-@admin_required      # Admin-Rolle erforderlich
+from app.decorators.permission_decorator import require_permission
+
+@data_blueprint.route('/api/protected')
+@require_permission('feature:my_feature:view')
+def protected_route():
+    return jsonify({'message': 'Protected'})
 ```
 
 ### Frontend-Integration
 
-**Axios Interceptor:**
+**Token-Storage:** `sessionStorage`
+- `auth_token` - Access Token (JWT)
+- `auth_llars_roles` - Rollen-Array (JSON)
+
+**Axios Interceptor:** `llars-frontend/src/main.js`
 ```javascript
 // Auto-add Bearer Token
 axios.interceptors.request.use(config => {
-  const token = sessionStorage.getItem('kc_token')
+  const token = sessionStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
 
-// Auto-refresh on 401
+// Auto-redirect on 401 (außer bei Login-Requests)
 axios.interceptors.response.use(
   response => response,
   async error => {
-    if (error.response?.status === 401) {
+    const isLoginRequest = error.config?.url?.includes('/auth/') &&
+                           error.config?.url?.includes('/login');
+    if (error.response?.status === 401 && !isLoginRequest) {
+      sessionStorage.clear()
       window.location.href = '/login'
     }
     return Promise.reject(error)
   }
 )
+```
+
+**Auth Composable:** `llars-frontend/src/composables/useAuth.js`
+```javascript
+import { useAuth } from '@/composables/useAuth'
+
+const auth = useAuth()
+await auth.login(username, password)  // Returns { success, error }
+auth.logout()
+auth.isAuthenticated.value  // Boolean
+auth.isAdmin.value          // Boolean
+auth.userRoles.value        // Array ['user', 'admin']
+```
+
+### API-Endpoints
+
+| Endpoint | Method | Beschreibung |
+|----------|--------|--------------|
+| `/auth/authentik/login` | POST | Login mit Username/Password |
+| `/auth/authentik/validate` | GET | Token validieren |
+| `/auth/authentik/me` | GET | User-Info abrufen |
+| `/auth/health_check` | GET | Backend Health Check |
+
+### Troubleshooting
+
+**"Authentication service error":**
+```bash
+# Flow existiert nicht - manuell erstellen (siehe oben)
+docker compose logs backend-flask-service | grep -i "flow"
+```
+
+**"Invalid credentials" obwohl Passwort korrekt:**
+```bash
+# Prüfen ob User existiert
+docker compose exec authentik-server ak shell -c "
+from authentik.core.models import User
+print(list(User.objects.values_list('username', flat=True)))
+"
+```
+
+**Token wird nicht gespeichert:**
+```javascript
+// Browser Console prüfen
+sessionStorage.getItem('auth_token')
+sessionStorage.getItem('auth_llars_roles')
 ```
 
 ---

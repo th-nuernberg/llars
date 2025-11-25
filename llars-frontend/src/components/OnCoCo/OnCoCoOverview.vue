@@ -468,7 +468,11 @@ const syncPillars = async () => {
 const startAnalysis = async (analysisId) => {
   starting.value = analysisId;
   try {
-    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${analysisId}/start`);
+    await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${analysisId}/start`,
+      {},
+      { headers: { 'Content-Type': 'application/json' } }
+    );
     await loadAnalyses();
   } catch (error) {
     console.error('Error starting analysis:', error);

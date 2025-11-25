@@ -20,6 +20,9 @@ const app = createApp(App)
 // Register Vuetify and other plugins
 registerPlugins(app)
 
+// Set default Axios headers
+axios.defaults.headers.common['Content-Type'] = 'application/json'
+
 // Setup Axios interceptor for adding Bearer token to all requests
 axios.interceptors.request.use(config => {
   const token = sessionStorage.getItem('auth_token')
@@ -35,13 +38,18 @@ axios.interceptors.request.use(config => {
 axios.interceptors.response.use(
   response => response,
   async error => {
-    // If 401 Unauthorized, redirect to login
-    if (error.response?.status === 401) {
+    // Don't redirect for login requests - let the login form handle auth errors
+    const isLoginRequest = error.config?.url?.includes('/auth/') &&
+                           error.config?.url?.includes('/login');
+
+    // If 401 Unauthorized on non-login requests, redirect to login
+    if (error.response?.status === 401 && !isLoginRequest) {
       console.log('Token expired or invalid, redirecting to login')
       // Clear tokens
       sessionStorage.removeItem('auth_token')
       sessionStorage.removeItem('auth_refreshToken')
       sessionStorage.removeItem('auth_idToken')
+      sessionStorage.removeItem('auth_llars_roles')
       // Redirect to login
       window.location.href = '/login'
     }

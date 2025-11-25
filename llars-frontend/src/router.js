@@ -123,12 +123,20 @@ router.beforeEach((to, from, next) => {
 
     if (isAuthenticated) {
         try {
-            const token = sessionStorage.getItem('auth_token');
-            const parsed = JSON.parse(atob(token.split('.')[1]));
-            userRoles = parsed?.realm_access?.roles || [];
-            isAdmin = userRoles.includes('admin');
+            // Use stored LLARS roles from backend response (based on Authentik groups)
+            const storedRoles = sessionStorage.getItem('auth_llars_roles');
+            if (storedRoles) {
+                userRoles = JSON.parse(storedRoles);
+            } else {
+                // Fallback: Try to get groups from token (Authentik uses 'groups' not 'realm_access.roles')
+                const token = sessionStorage.getItem('auth_token');
+                const parsed = JSON.parse(atob(token.split('.')[1]));
+                userRoles = parsed?.groups || [];
+            }
+            // Check for 'admin' role or 'authentik Admins' group
+            isAdmin = userRoles.includes('admin') || userRoles.includes('authentik Admins');
         } catch (e) {
-            console.error('Failed to parse token in router guard:', e);
+            console.error('Failed to parse token/roles in router guard:', e);
         }
     }
 

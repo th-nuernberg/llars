@@ -267,7 +267,9 @@ const createAnalysis = async (startImmediately = false) => {
 
     if (startImmediately) {
       await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${analysisId}/start`
+        `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${analysisId}/start`,
+        {},
+        { headers: { 'Content-Type': 'application/json' } }
       );
     }
 

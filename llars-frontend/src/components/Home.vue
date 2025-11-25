@@ -49,7 +49,7 @@ const allItems = ref([
   {
     title: 'Ranking',
     description: 'Ranken Sie Ihre Daten',
-    route: '/ranker',
+    route: '/Ranker',
     icon: 'mdi-chart-bar-stacked',
     elevation: 1,
     permission: 'feature:ranking:view'
@@ -65,7 +65,7 @@ const allItems = ref([
   {
     title: 'Rating',
     description: 'Raten Sie Ihre Daten',
-    route: '/rater',
+    route: '/Rater',
     icon: 'mdi-star-outline',
     elevation: 1,
     permission: 'feature:rating:view'
@@ -81,7 +81,7 @@ const allItems = ref([
   {
     title: 'Prompt Engineering (Beta)',
     description: "Kollaboratives entwerfen von Prompts",
-    route: '/promptengineering',
+    route: '/PromptEngineering',
     icon: 'mdi-text-search',
     elevation: 1,
     permission: 'feature:prompt_engineering:view'
@@ -101,6 +101,14 @@ const allItems = ref([
     icon: 'mdi-shield-account',
     elevation: 1,
     permission: 'admin:permissions:manage'
+  },
+  {
+    title: 'RAG Verwaltung',
+    description: 'Dokumente für die RAG-Pipeline verwalten, hochladen und löschen',
+    route: '/AdminRAG',
+    icon: 'mdi-database-search',
+    elevation: 1,
+    permission: 'feature:rag:view'
   },
 ]);
 

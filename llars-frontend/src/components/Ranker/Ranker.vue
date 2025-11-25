@@ -38,12 +38,7 @@ const emailThreads = ref([]);
 
 onMounted(async () => {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`, {
-      headers: {
-        'Authorization': api_key,
-      },
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`);
     console.log('Email threads:', response.data);
     emailThreads.value = response.data;
   } catch (error) {

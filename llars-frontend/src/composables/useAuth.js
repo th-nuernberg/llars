@@ -111,6 +111,9 @@ export const useAuth = () => {
     sessionStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_refreshToken');
     sessionStorage.removeItem('auth_idToken');
+
+    // Remove username from localStorage
+    localStorage.removeItem('username');
   };
 
   const getToken = () => token.value;

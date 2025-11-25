@@ -149,11 +149,7 @@ const filteredScenarios = computed(() => {
 // Fetch scenarios from the backend
 const fetchScenarios = async () => {
   try {
-    const response = await axios.get('/api/admin/scenarios', {
-      headers: {
-        'Authorization': localStorage.getItem('api_key')
-      }
-    });
+    const response = await axios.get('/api/admin/scenarios');
 
     // Sicherstellen, dass eine Liste zurückkommt
     scenarios.value = Array.isArray(response.data.scenarios)
@@ -215,11 +211,7 @@ const deleteScenario = async (scenario) => {
         if (!confirmation) return;
 
     const scenarioId = scenario.scenario_id
-     await axios.delete(`/api/admin/delete_scenario/${scenarioId}`, {
-      headers: {
-        'Authorization': localStorage.getItem('api_key')
-      }
-    });
+     await axios.delete(`/api/admin/delete_scenario/${scenarioId}`);
 
     alert(`Szenario ${scenario.name} wurde erfolgreich gelöscht!`)
     await fetchScenarios();

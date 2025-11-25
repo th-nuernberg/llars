@@ -264,6 +264,25 @@ def initialize_permissions():
             'category': 'data',
             'description': 'Erlaubt das Löschen von Daten'
         },
+        # Feature: RAG Document Management
+        {
+            'permission_key': 'feature:rag:view',
+            'display_name': 'RAG-Dokumente ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von RAG-Dokumenten und Statistiken'
+        },
+        {
+            'permission_key': 'feature:rag:edit',
+            'display_name': 'RAG-Dokumente bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Hochladen und Bearbeiten von RAG-Dokumenten'
+        },
+        {
+            'permission_key': 'feature:rag:delete',
+            'display_name': 'RAG-Dokumente löschen',
+            'category': 'feature',
+            'description': 'Erlaubt das Löschen von RAG-Dokumenten und Collections'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -306,6 +325,8 @@ def initialize_permissions():
                 'feature:comparison:edit',
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
+                'feature:rag:view',
+                'feature:rag:edit',
                 'data:export',
             ]
         },
@@ -319,6 +340,7 @@ def initialize_permissions():
                 'feature:rating:view',
                 'feature:comparison:view',
                 'feature:prompt_engineering:view',
+                'feature:rag:view',
             ]
         },
     ]
@@ -355,6 +377,9 @@ def initialize_permissions():
 
     print("Permission system initialized successfully.")
 
+    # Initialize RAG system
+    initialize_rag_system()
+
 
 def assign_default_admin_role():
     """
@@ -389,3 +414,152 @@ def assign_default_admin_role():
         print("✅ Assigned admin role to user 'admin' automatically.")
     else:
         print("✅ User 'admin' already has admin role.")
+
+
+def initialize_rag_system():
+    """
+    Initialize RAG system with default collections and scan existing documents.
+    This runs on every app startup but uses idempotent checks.
+    """
+    import os
+    import hashlib
+    from .tables import RAGCollection, RAGDocument
+    from datetime import datetime
+
+    print("\n" + "="*60)
+    print("Initializing RAG Document Management System...")
+    print("="*60)
+
+    # Create default collection if it doesn't exist
+    default_collection = RAGCollection.query.filter_by(name='general').first()
+
+    if not default_collection:
+        default_collection = RAGCollection(
+            name='general',
+            display_name='Allgemeine Dokumente',
+            description='Standard-Sammlung für allgemeine RAG-Dokumente',
+            icon='📚',
+            color='#4CAF50',
+            embedding_model='sentence-transformers/all-MiniLM-L6-v2',
+            chunk_size=1000,
+            chunk_overlap=200,
+            retrieval_k=4,
+            is_active=True,
+            is_public=True,
+            created_by='system',
+            chroma_collection_name='llars_general_sentence-transformers_all-MiniLM-L6-v2'
+        )
+        db.session.add(default_collection)
+        db.session.commit()
+        print("✅ Created default collection: 'general'")
+    else:
+        print("✅ Default collection 'general' already exists")
+
+    # Scan existing documents in /app/rag_docs/ and register them in database
+    rag_docs_path = '/app/rag_docs'
+
+    if not os.path.exists(rag_docs_path):
+        print(f"⚠️  RAG docs directory not found: {rag_docs_path}")
+        print("="*60)
+        return
+
+    # Get all PDF files
+    existing_files = []
+    for filename in os.listdir(rag_docs_path):
+        if filename.endswith(('.pdf', '.txt', '.md')) and not filename.startswith('.'):
+            existing_files.append(filename)
+
+    if not existing_files:
+        print(f"ℹ️  No documents found in {rag_docs_path}")
+        print("="*60)
+        return
+
+    print(f"\n📄 Found {len(existing_files)} documents in {rag_docs_path}")
+    print("-" * 60)
+
+    registered_count = 0
+    updated_count = 0
+
+    for filename in sorted(existing_files):
+        file_path = os.path.join(rag_docs_path, filename)
+
+        try:
+            # Calculate file hash
+            with open(file_path, 'rb') as f:
+                file_hash = hashlib.sha256(f.read()).hexdigest()
+
+            # Get file size
+            file_size = os.path.getsize(file_path)
+
+            # Check if document already exists by hash
+            existing_doc = RAGDocument.query.filter_by(file_hash=file_hash).first()
+
+            if existing_doc:
+                # Document exists, just update metadata if needed
+                if existing_doc.status == 'pending' or existing_doc.collection_id is None:
+                    existing_doc.collection_id = default_collection.id
+                    existing_doc.status = 'indexed'  # Assume existing docs are already indexed
+                    updated_count += 1
+                continue
+
+            # Determine MIME type
+            if filename.endswith('.pdf'):
+                mime_type = 'application/pdf'
+            elif filename.endswith('.txt'):
+                mime_type = 'text/plain'
+            elif filename.endswith('.md'):
+                mime_type = 'text/markdown'
+            else:
+                mime_type = 'application/octet-stream'
+
+            # Create new document entry
+            new_doc = RAGDocument(
+                filename=filename,
+                original_filename=filename,
+                file_path=file_path,
+                file_size_bytes=file_size,
+                mime_type=mime_type,
+                file_hash=file_hash,
+                title=filename.replace('_', ' ').replace('.pdf', '').replace('.txt', '').replace('.md', ''),
+                language='de',
+                status='indexed',  # Mark as indexed since they exist in the system
+                collection_id=default_collection.id,
+                embedding_model='sentence-transformers/all-MiniLM-L6-v2',
+                is_public=True,
+                uploaded_by='system',
+                uploaded_at=datetime.now(),
+                indexed_at=datetime.now()
+            )
+
+            db.session.add(new_doc)
+            registered_count += 1
+
+        except Exception as e:
+            print(f"⚠️  Error processing {filename}: {str(e)}")
+            continue
+
+    # Commit all changes
+    if registered_count > 0 or updated_count > 0:
+        db.session.commit()
+        print(f"✅ Registered {registered_count} new documents")
+        if updated_count > 0:
+            print(f"✅ Updated {updated_count} existing documents")
+    else:
+        print("ℹ️  All documents already registered in database")
+
+    # Update collection statistics
+    total_docs = RAGDocument.query.filter_by(collection_id=default_collection.id).count()
+    total_size = db.session.query(
+        db.func.sum(RAGDocument.file_size_bytes)
+    ).filter_by(collection_id=default_collection.id).scalar() or 0
+
+    default_collection.document_count = total_docs
+    default_collection.total_size_bytes = total_size
+    db.session.commit()
+
+    print(f"\n📊 Collection Statistics:")
+    print(f"   - Total Documents: {total_docs}")
+    print(f"   - Total Size: {total_size / (1024*1024):.2f} MB")
+    print("="*60)
+    print("RAG Document Management System initialized successfully!")
+    print("="*60 + "\n")

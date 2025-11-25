@@ -30,6 +30,7 @@ import PromptEngineeringDetail from "@/components/PromptEngineering/PromptEngine
 import Comparison from "@/components/comparison/Comparison.vue";
 import ComparisonDetail from "@/components/comparison/ComparisonDetail.vue";
 import AdminUserProgressStats from "@/components/Admin/AdminUserProgressStats.vue";
+import AdminRAG from "@/components/Admin/AdminRAG.vue"; // RAG Document Management
 
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
@@ -63,6 +64,7 @@ const routes = [
     { path: '/AdminUserProgressStats/:id',name:'AdminUserProgressStats', component: AdminUserProgressStats, props: true, meta: { requiresAuth: true, requiresAdmin: true } },// Admin-Route
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
     { path: '/AdminCollaborativeTest', component: AdminCollaborativeTest, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
+    { path: '/AdminRAG', component: AdminRAG, meta: { requiresAuth: true } }, // RAG Document Management (permission-based)
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },

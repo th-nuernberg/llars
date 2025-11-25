@@ -142,21 +142,6 @@ def login():
             return jsonify({'error': 'Invalid credentials'}), 401
 
         user_id, user_pk, user_username, user_email, user_name, is_active, stored_password = user_row
-
-        # Check if user is in any superuser group
-        cursor.execute(
-            """
-            SELECT EXISTS(
-                SELECT 1
-                FROM authentik_core_user_ak_groups ug
-                JOIN authentik_core_group g ON ug.group_id = g.group_uuid
-                WHERE ug.user_id = %s AND g.is_superuser = true
-            )
-            """,
-            (user_id,)  # user_id (integer, not uuid)
-        )
-
-        is_superuser = cursor.fetchone()[0]
         cursor.close()
         conn.close()
 
@@ -174,6 +159,31 @@ def login():
         if not is_active:
             return jsonify({'error': 'User account is disabled'}), 401
 
+        # Get user roles from LLARS database (MariaDB) using SQLAlchemy
+        from db.db import db
+        from sqlalchemy import text
+        user_roles = ['user']  # Default role
+
+        try:
+            # Get roles for this user from LLARS database
+            result = db.session.execute(
+                text("""
+                    SELECT r.role_name
+                    FROM user_roles ur
+                    JOIN roles r ON ur.role_id = r.id
+                    WHERE ur.username = :username
+                """),
+                {'username': user_username}
+            )
+
+            for row in result:
+                role_name = row[0]
+                if role_name not in user_roles:
+                    user_roles.append(role_name)
+
+        except Exception as e:
+            current_app.logger.warning(f"Could not fetch LLARS roles for {user_username}: {e}")
+
         # Generate JWT token
         jwt_secret = os.getenv('AUTHENTIK_SECRET_KEY', 'dev-authentik-secret-change-me')
 
@@ -188,13 +198,9 @@ def login():
             'email': user_email or '',
             'name': user_name or user_username,
             'realm_access': {
-                'roles': ['user']
+                'roles': user_roles
             }
         }
-
-        # Add admin role if user is superuser
-        if is_superuser:
-            token_payload['realm_access']['roles'].append('admin')
 
         access_token = jwt.encode(token_payload, jwt_secret, algorithm='HS256')
 

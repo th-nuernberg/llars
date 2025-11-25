@@ -194,21 +194,12 @@ onMounted(async () => {
 async function initializeWebsiteComponent()
 {
   //const threadId = route.params.id;
-  const api_key = localStorage.getItem('api_key');
   try {
     // API request to get the email thread details /  messages of mail history
-    const thread_messages = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadId}`, {
-      headers: {
-        'Authorization': api_key,
-      },
-    });
+    const thread_messages = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadId}`);
     console.log("Email Thread Messages:", thread_messages.data.messages);
     //api request to get rating of each message
-    const message_ratings = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/message_ratings/${threadId}`, {
-      headers: {
-        'Authorization': api_key,
-      },
-    });
+    const message_ratings = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/message_ratings/${threadId}`);
 
     // putting the messages and the ratings together
     messages.value = thread_messages.data.messages.map(message => {
@@ -222,11 +213,7 @@ async function initializeWebsiteComponent()
 
 
     // get the rating of mail history
-    const mailhistoryRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings/${threadId}`, {
-      headers: {
-        'Authorization': api_key,
-      }
-    });
+    const mailhistoryRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings/${threadId}`);
 
     // Check if the user has already rated the thread
     if (mailhistoryRatingResponse.data) {
@@ -478,7 +465,6 @@ function rateMessage(index, rating) {
 
 // Save ratings of history and messages to the server
 async function saveRatingServerSide() {
-  const api_key = localStorage.getItem('api_key');
   const threadId = route.params.id;
   const rating_and_category = {
     counsellor_coherence_rating: ratings.value.counsellor_coherence,
@@ -522,7 +508,6 @@ async function saveRatingServerSide() {
       rating_and_category,
       {
         headers: {
-          'Authorization': api_key,
           'Content-Type': 'application/json',
         }
       }
@@ -540,7 +525,6 @@ async function saveRatingServerSide() {
       { message_ratings: messageRatings },
       {
         headers: {
-          'Authorization': api_key,
           'Content-Type': 'application/json',
         }
       }
@@ -610,12 +594,7 @@ async function navigateToNextCase() {
 // Fetch list of cases
 async function fetchCaseList() {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings`, {
-      headers: {
-        'Authorization': api_key,
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings`);
     return response.data.threads;
   } catch (error) {
     console.error('Error fetching case list:', error);

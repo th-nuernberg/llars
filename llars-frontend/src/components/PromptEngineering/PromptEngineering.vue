@@ -555,7 +555,7 @@ function closeCreateDialog() {
 }
 
 .dialog-box {
-  background: white;
+  background: rgb(var(--v-theme-surface));
   padding: 24px;
   border-radius: 8px;
   min-width: 320px;
@@ -566,16 +566,18 @@ function closeCreateDialog() {
   margin: 0 0 16px 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .block-input {
   width: 100%;
   margin: 10px 0;
   padding: 8px;
-  border: 1px solid #dee2e6;
+  border: 1px solid rgb(var(--v-theme-surface-variant));
   border-radius: 4px;
   font-size: 0.95rem;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .dialog-buttons {
@@ -629,7 +631,7 @@ function closeCreateDialog() {
   display: block;
   margin-bottom: 8px;
   font-size: 0.9rem;
-  color: #666;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .selected-users {

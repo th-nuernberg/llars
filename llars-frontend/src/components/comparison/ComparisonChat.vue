@@ -585,10 +585,10 @@ defineExpose({
 }
 
 .response-card {
-  border: 2px solid #e0e0e0;
+  border: 2px solid rgb(var(--v-theme-surface-variant));
   border-radius: 0.5rem;
   padding: 1rem;
-  background: white;
+  background: rgb(var(--v-theme-surface));
   transition: all 0.3s ease;
 }
 
@@ -603,7 +603,7 @@ defineExpose({
   align-items: center;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgb(var(--v-theme-surface-variant));
 }
 
 .response-header h4 {
@@ -621,7 +621,8 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #666;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
   font-style: italic;
 }
 
@@ -654,15 +655,16 @@ defineExpose({
 
 .rating-hint {
   font-size: 0.875rem;
-  color: #666;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
   margin: 0;
   text-align: center;
 }
 
 .input-container {
   padding: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-  background: linear-gradient(to bottom, #fafafa, #ffffff);
+  border-top: 1px solid rgb(var(--v-theme-surface-variant));
+  background: rgb(var(--v-theme-surface));
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -679,7 +681,7 @@ defineExpose({
 .message-input :deep(.v-field) {
   border-radius: 20px !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  background: white;
+  background: rgb(var(--v-theme-surface));
   transition: all 0.3s ease;
 }
 
@@ -693,8 +695,8 @@ defineExpose({
 }
 
 .message-input.input-disabled :deep(.v-field) {
-  background: #f5f5f5 !important;
-  border-color: #e0e0e0 !important;
+  background: rgb(var(--v-theme-surface-variant)) !important;
+  border-color: rgb(var(--v-theme-surface-variant)) !important;
   box-shadow: none !important;
 }
 

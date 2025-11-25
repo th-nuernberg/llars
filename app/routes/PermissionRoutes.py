@@ -76,6 +76,24 @@ def get_user_permissions(username):
         }), 500
 
 
+@data_blueprint.route('/permissions/users-with-roles', methods=['GET'])
+@require_permission('admin:permissions:manage')
+def get_users_with_roles():
+    """Get all users that have at least one role assigned"""
+    try:
+        users = PermissionService.get_all_users_with_roles()
+        return jsonify({
+            'success': True,
+            'users': users
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error in get_users_with_roles: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @data_blueprint.route('/permissions/my-permissions', methods=['GET'])
 def get_my_permissions():
     """Get current user's permissions (no admin permission required)"""

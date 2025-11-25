@@ -7,7 +7,8 @@ import RankerDetail from "@/components/Ranker/RankerDetail.vue";
 import Rater from "@/components/Rater/Rater.vue";
 import RaterDetail from "@/components/Rater/RaterDetail.vue";
 import RaterDetailFeature from "@/components/Rater/RaterDetailFeature.vue";
-import AdminHome from "@/components/Admin/AdminHome.vue"; // Admin Dashboard
+import AdminDashboard from "@/components/Admin/AdminDashboard.vue"; // New unified Admin Dashboard
+import AdminHome from "@/components/Admin/AdminHome.vue"; // Legacy Admin Dashboard
 import AdminRanker from "@/components/Admin/AdminRanker.vue";
 import AdminPermissions from "@/components/AdminPermissions.vue"; // Permission Management
 import HistoryGeneration from "@/components/HistoryGenerator/HistoryGeneration.vue";
@@ -58,13 +59,17 @@ const routes = [
       meta: { requiresAuth: true }
     },
 
-    { path: '/AdminDashboard', component: AdminHome, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
-    { path: '/AdminRanker', component: AdminRanker, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
-    { path: '/AdminPermissions', component: AdminPermissions, meta: { requiresAuth: true, requiresAdmin: true } }, // Permission Management
-    { path: '/AdminUserProgressStats/:id',name:'AdminUserProgressStats', component: AdminUserProgressStats, props: true, meta: { requiresAuth: true, requiresAdmin: true } },// Admin-Route
-    { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
-    { path: '/AdminCollaborativeTest', component: AdminCollaborativeTest, meta: { requiresAuth: true, requiresAdmin: true } }, // Admin-Route
-    { path: '/AdminRAG', component: AdminRAG, meta: { requiresAuth: true } }, // RAG Document Management (permission-based)
+    // New unified Admin Dashboard
+    { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },
+
+    // Legacy Admin Routes (redirect to new dashboard)
+    { path: '/AdminDashboard', redirect: '/admin' },
+    { path: '/AdminRanker', redirect: '/admin' },
+    { path: '/AdminPermissions', redirect: '/admin' },
+    { path: '/AdminRAG', redirect: '/admin' },
+    { path: '/AdminUserProgressStats/:id', name:'AdminUserProgressStats', component: AdminUserProgressStats, props: true, meta: { requiresAuth: true, requiresAdmin: true } },
+    { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } },
+    { path: '/AdminCollaborativeTest', component: AdminCollaborativeTest, meta: { requiresAuth: true, requiresAdmin: true } },
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },

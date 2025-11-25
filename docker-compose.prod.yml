@@ -115,6 +115,23 @@ services:
     restart: unless-stopped
 
   # ============================================
+  # MkDocs - Production Mode (Static Build)
+  # ============================================
+  mkdocs-service:
+    environment:
+      - TZ=Europe/Berlin
+    # Remove volume mounts and develop mode for production
+    volumes: []
+    develop: {}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 10s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ============================================
   # Authentik Stack (OIDC Provider)
   # ============================================
   authentik-db:

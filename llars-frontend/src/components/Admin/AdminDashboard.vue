@@ -53,9 +53,10 @@
         <v-divider></v-divider>
         <v-list-item
           prepend-icon="mdi-home"
-          title="Zurück zur Home"
+          :title="rail ? '' : 'Zurück zur Home'"
           @click="$router.push('/Home')"
-          class="nav-item"
+          class="nav-item home-link"
+          rounded="xl"
         ></v-list-item>
       </template>
     </v-navigation-drawer>
@@ -182,5 +183,14 @@ const currentSectionSubtitle = computed(() => sectionInfo[activeSection.value]?.
 .admin-main {
   background-color: rgb(var(--v-theme-background));
   min-height: 100vh;
+}
+
+.home-link {
+  margin-bottom: 8px;
+}
+
+.home-link:hover {
+  background-color: rgba(var(--v-theme-info), 0.15);
+  color: rgb(var(--v-theme-info));
 }
 </style>

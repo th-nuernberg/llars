@@ -6,7 +6,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
-from routes import auth_blueprint, data_blueprint, judge_bp
+from routes import auth_blueprint, data_blueprint, judge_bp, oncoco_bp
 from routes_websocket_prompt_eng import configure_websocket_prompt_eng
 import os
 
@@ -43,6 +43,9 @@ app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
 
 # LLM-as-Judge routes
 app.register_blueprint(judge_bp)
+
+# OnCoCo Analysis routes
+app.register_blueprint(oncoco_bp)
 
 
 configure_socket_routes(socketio)

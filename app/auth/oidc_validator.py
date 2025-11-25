@@ -26,7 +26,7 @@ class OIDCConfig:
 
         # Construct well-known URLs (Authentik exposes OIDC metadata per application)
         self.well_known_url = f"{self.issuer}/.well-known/openid-configuration"
-        self.certs_url = f"{self.issuer}/.well-known/jwks.json"
+        self.certs_url = f"{self.issuer}/jwks/"  # Authentik uses /jwks/ not /.well-known/jwks.json
         self.introspect_url = f"{self.issuer}/token/introspect"
         self.userinfo_url = f"{self.issuer}/userinfo"
 
@@ -135,7 +135,7 @@ def _convert_jwk_to_pem(key_data: Dict) -> str:
 
 def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
     """
-    Validate a JWT token - supports both RS256 (Authentik OIDC) and HS256 (development login)
+    Validate a JWT token using RS256 algorithm (Authentik OIDC)
 
     Args:
         token: The JWT token string
@@ -152,23 +152,11 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
             alg = unverified_header.get('alg', 'RS256')
             kid = unverified_header.get('kid')
 
-            # Handle HS256 tokens (from development login endpoint)
-            if alg == 'HS256':
-                hs256_secret = os.environ.get('AUTHENTIK_SECRET_KEY', 'dev-authentik-secret-change-me')
-                decoded = jwt.decode(
-                    token,
-                    hs256_secret,
-                    algorithms=['HS256'],
-                    options={
-                        'verify_signature': True,
-                        'verify_exp': True,
-                        'verify_iss': False,
-                        'verify_aud': False
-                    }
-                )
-                return decoded
+            # Only accept RS256 tokens from Authentik
+            if alg != 'RS256':
+                print(f"Unsupported token algorithm: {alg}. Only RS256 is accepted.")
+                return None
 
-            # Handle RS256 tokens (from Authentik OIDC)
             if not kid:
                 print("Warning: Token has no 'kid' in header")
 

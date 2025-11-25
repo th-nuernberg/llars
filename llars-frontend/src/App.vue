@@ -34,13 +34,13 @@
     <!-- Admin Benutzer AppBar -->
     <v-app-bar v-else app dark color="primary"> <!-- Primärfarbe verwendet -->
       <!--<v-app-bar-nav-icon></v-app-bar-nav-icon>-->
-      <v-toolbar-title @click="goAdminHome" style="display: flex; align-items: center; cursor: pointer;">
+      <v-toolbar-title @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
         <v-row no-gutters align="center">
           <v-col cols="auto">
             <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
           </v-col>
           <v-col cols="auto" class="toolbar-text-wrapper">
-            <span class="toolbar-text">Admin Dashboard</span>
+            <span class="toolbar-text">LLars Plattform</span>
           </v-col>
         </v-row>
       </v-toolbar-title>
@@ -212,10 +212,6 @@ function containsLocalStorageItemWithString(string) {
 
 function goHome() {
   router.push('/home');
-}
-
-function goAdminHome() {
-  router.push('/AdminDashboard');
 }
 
 function navigateTo(link) {

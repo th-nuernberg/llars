@@ -10,6 +10,7 @@ from .events_connection import register_connection_events
 from .events_collaboration import register_collaboration_events
 from .events_chat import register_chat_events
 from .events_judge import register_judge_events
+from .events_oncoco import register_oncoco_events
 
 # Enhanced logging format
 logging.basicConfig(
@@ -51,6 +52,7 @@ def configure_socket_routes(socketio, verbose=True):
     register_collaboration_events(socketio, collab_manager)
     register_chat_events(socketio, chat_manager)
     register_judge_events(socketio)
+    register_oncoco_events(socketio)
 
     logging.info("SocketIO routes configured successfully")
 

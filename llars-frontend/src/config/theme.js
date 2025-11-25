@@ -60,14 +60,14 @@ export const lightTheme = {
 export const darkTheme = {
   dark: true,
   colors: {
-    // Primary brand colors (optimized for dark mode)
-    primary: '#8fbc6b',      // Darker, more saturated green for dark backgrounds
-    'primary-darken-1': '#7aa857',
-    'primary-lighten-1': '#a3c97f',
+    // Primary brand colors (darker green for dark mode - easier on eyes)
+    primary: '#5d7a4a',      // Darker muted green for dark backgrounds
+    'primary-darken-1': '#4a6339',
+    'primary-lighten-1': '#6f8c5c',
 
-    secondary: '#6b9e56',    // Even darker green for secondary
-    'secondary-darken-1': '#5a8847',
-    'secondary-lighten-1': '#7fb265',
+    secondary: '#4a6339',    // Even darker green for secondary
+    'secondary-darken-1': '#3a5029',
+    'secondary-lighten-1': '#5d7a4a',
 
     accent: '#8c9eff',       // Blue accent
 

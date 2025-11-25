@@ -25,6 +25,7 @@ services:
     volumes:
       - ./app:/app
       - model_volume:/app/storage
+      - "./Ideen und Daten dazu/OnCoCo Analyse/xlm-roberta-large-OnCoCo-DE-EN:/app/models/oncoco"
     env_file:
       - .env
     environment:
@@ -33,6 +34,8 @@ services:
       - FLASK_APP=/app/main.py
       # CORS origins derived from PROJECT_HOST
       - ALLOWED_ORIGINS=http://${PROJECT_HOST},http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT},http://${PROJECT_HOST}:${FRONTEND_EXTERNAL_PORT},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT},http://127.0.0.1:${FRONTEND_EXTERNAL_PORT}
+      # OnCoCo model path
+      - ONCOCO_MODEL_PATH=/app/models/oncoco
     depends_on:
       db-maria-service:
         condition: service_healthy
@@ -143,6 +146,33 @@ services:
     depends_on:
       - db-maria-service
       - authentik-server
+
+  mkdocs-service:
+    container_name: llars_mkdocs_service
+    build:
+      context: .
+      dockerfile: docker/mkdocs/Dockerfile-mkdocs
+    expose:
+      - "8000"
+    ports:
+      - "${MKDOCS_EXTERNAL_PORT:-8000}:8000"
+    volumes:
+      - ./docs:/docs
+    environment:
+      - TZ=Europe/Berlin
+    develop:
+      watch:
+        - action: sync
+          path: ./docs
+          target: /docs
+          ignore:
+            - site/
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 10s
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   authentik-server:
     container_name: llars_authentik_server

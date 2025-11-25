@@ -374,6 +374,119 @@ except User.DoesNotExist:
         print(f"⚠️  Error with user {username}: {e}")
         return False
 
+def configure_rs256_and_auth_flow():
+    """Configure RS256 signing and API authentication flow"""
+    print("🔐 Configuring RS256 signing and API authentication flow...")
+
+    python_code = f"""
+import json
+from authentik.providers.oauth2.models import OAuth2Provider
+from authentik.crypto.models import CertificateKeyPair
+from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
+from authentik.stages.identification.models import IdentificationStage, UserFields
+from authentik.stages.password.models import PasswordStage
+from authentik.stages.user_login.models import UserLoginStage
+
+# 1. Configure RS256 signing for all OAuth2 providers
+cert = CertificateKeyPair.objects.filter(name__contains="Self-signed").first()
+if cert:
+    for provider in OAuth2Provider.objects.all():
+        if provider.signing_key != cert:
+            provider.signing_key = cert
+            provider.save()
+            print(f"RS256 configured for {{provider.name}}")
+        else:
+            print(f"RS256 already set for {{provider.name}}")
+else:
+    print("WARNING: Self-signed certificate not found")
+
+# 2. Create API authentication flow (without MFA)
+flow_slug = 'llars-api-authentication'
+try:
+    flow = Flow.objects.get(slug=flow_slug)
+    print(f"Flow {{flow_slug}} already exists")
+except Flow.DoesNotExist:
+    flow = Flow.objects.create(
+        name='LLARS API Authentication',
+        slug=flow_slug,
+        designation=FlowDesignation.AUTHENTICATION,
+        title='LLARS API Login'
+    )
+    print(f"Created flow {{flow_slug}}")
+
+    # Create stages
+    # Identification Stage
+    id_stage, _ = IdentificationStage.objects.get_or_create(
+        name='llars-api-identification',
+        defaults={{
+            'user_fields': [UserFields.USERNAME, UserFields.EMAIL],
+            'show_source_labels': False
+        }}
+    )
+
+    # Password Stage
+    pwd_stage, _ = PasswordStage.objects.get_or_create(
+        name='llars-api-password',
+        defaults={{}}
+    )
+
+    # Login Stage (use existing default)
+    login_stage = UserLoginStage.objects.filter(name='default-authentication-login').first()
+    if not login_stage:
+        login_stage, _ = UserLoginStage.objects.get_or_create(
+            name='llars-api-login',
+            defaults={{}}
+        )
+
+    # Bind stages to flow
+    FlowStageBinding.objects.get_or_create(
+        target=flow, stage=id_stage, defaults={{'order': 10}}
+    )
+    FlowStageBinding.objects.get_or_create(
+        target=flow, stage=pwd_stage, defaults={{'order': 20}}
+    )
+    FlowStageBinding.objects.get_or_create(
+        target=flow, stage=login_stage, defaults={{'order': 30}}
+    )
+    print(f"Stages bound to flow")
+
+# 3. Update redirect URIs to include internal URL for backend
+for provider in OAuth2Provider.objects.filter(name__contains='backend'):
+    from authentik.providers.oauth2.models import RedirectURI, RedirectURIMatchingMode
+    internal_uri = 'http://authentik-server:9000/'
+    existing_uris = [r.url for r in provider.redirect_uris]
+    if internal_uri not in existing_uris:
+        provider.redirect_uris.append(
+            RedirectURI(matching_mode=RedirectURIMatchingMode.STRICT, url=internal_uri)
+        )
+        provider.save()
+        print(f"Added internal redirect URI to {{provider.name}}")
+
+print(json.dumps({{'success': True}}))
+"""
+
+    import subprocess
+    try:
+        result = subprocess.run(
+            ['docker', 'compose', 'exec', '-T', 'authentik-server',
+             'python', 'manage.py', 'shell'],
+            input=python_code.encode(),
+            capture_output=True,
+            timeout=60
+        )
+
+        output = result.stdout.decode()
+        if 'success' in output:
+            print("✅ RS256 and API auth flow configured")
+            return True
+        else:
+            print(f"⚠️  Configuration output: {output[:500]}")
+            return False
+
+    except Exception as e:
+        print(f"⚠️  Error configuring RS256/flow: {e}")
+        return False
+
 def main():
     # Wait for Authentik
     if not wait_for_authentik():
@@ -391,7 +504,9 @@ def main():
 
     # Check if already configured
     if check_existing_providers(api_token):
-        print("✅ Authentik is already configured")
+        print("✅ Authentik providers already exist")
+        # Still configure RS256 and auth flow
+        configure_rs256_and_auth_flow()
         sys.exit(0)
 
     print("🚀 Starting automatic configuration...")

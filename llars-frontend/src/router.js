@@ -33,6 +33,17 @@ import ComparisonDetail from "@/components/comparison/ComparisonDetail.vue";
 import AdminUserProgressStats from "@/components/Admin/AdminUserProgressStats.vue";
 import AdminRAG from "@/components/Admin/AdminRAG.vue"; // RAG Document Management
 
+// Judge Components
+import JudgeOverview from "@/components/Judge/JudgeOverview.vue";
+import JudgeConfig from "@/components/Judge/JudgeConfig.vue";
+import JudgeSession from "@/components/Judge/JudgeSession.vue";
+import JudgeResults from "@/components/Judge/JudgeResults.vue";
+
+// OnCoCo Analysis Components
+import OnCoCoOverview from "@/components/OnCoCo/OnCoCoOverview.vue";
+import OnCoCoConfig from "@/components/OnCoCo/OnCoCoConfig.vue";
+import OnCoCoResults from "@/components/OnCoCo/OnCoCoResults.vue";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -58,6 +69,17 @@ const routes = [
       props: true,
       meta: { requiresAuth: true }
     },
+
+    // Judge Routes
+    { path: '/judge', name: 'JudgeOverview', component: JudgeOverview, meta: { requiresAuth: true } },
+    { path: '/judge/config', name: 'JudgeConfig', component: JudgeConfig, meta: { requiresAuth: true } },
+    { path: '/judge/session/:id', name: 'JudgeSession', component: JudgeSession, props: true, meta: { requiresAuth: true } },
+    { path: '/judge/results/:id', name: 'JudgeResults', component: JudgeResults, props: true, meta: { requiresAuth: true } },
+
+    // OnCoCo Analysis Routes
+    { path: '/oncoco', name: 'OnCoCoOverview', component: OnCoCoOverview, meta: { requiresAuth: true } },
+    { path: '/oncoco/config', name: 'OnCoCoConfig', component: OnCoCoConfig, meta: { requiresAuth: true } },
+    { path: '/oncoco/results/:id', name: 'OnCoCoResults', component: OnCoCoResults, props: true, meta: { requiresAuth: true } },
 
     // New unified Admin Dashboard
     { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },

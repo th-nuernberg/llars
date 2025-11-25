@@ -37,3 +37,6 @@ langchain-chroma==0.1.4
 y-py==0.6.2
 python-socketio==5.11.4
 python-dateutil==2.9.0
+
+# System monitoring for OnCoCo
+psutil==6.1.0

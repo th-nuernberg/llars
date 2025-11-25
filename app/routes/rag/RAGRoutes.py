@@ -855,6 +855,7 @@ def get_document_chunks(document_id):
 # STATISTICS & ANALYTICS
 # ============================================================================
 
+@data_blueprint.route('/rag/stats', methods=['GET'])
 @data_blueprint.route('/rag/stats/overview', methods=['GET'])
 @require_permission('feature:rag:view')
 def get_stats_overview():

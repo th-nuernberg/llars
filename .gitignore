@@ -13,6 +13,9 @@
 .env
 .env.local
 .env.*.local
+# Keep template files tracked!
+!.env.template.development
+!.env.template.production
 docker/ssh_proxy/id_rsa
 docker/ssh_proxy/id_rsa.pub
 docker/keycloak/*.pem

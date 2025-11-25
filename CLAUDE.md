@@ -19,40 +19,83 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 ## 🚀 Projekt starten
 
+### Erstmalige Einrichtung
+
 ```bash
-# Schnellstart
+# 1. Environment-Datei erstellen (einmalig)
+
+# Fur DEVELOPMENT (lokale Entwicklung):
+cp .env.template.development .env
+
+# ODER fur PRODUCTION:
+cp .env.template.production .env
+# Dann .env bearbeiten und alle Secrets anpassen!
+
+# 2. Starten
+./start_llars.sh
+```
+
+### Tägliche Nutzung
+
+```bash
+# Normaler Start (nutzt .env)
 ./start_llars.sh
 
-# Komplett-Neustart mit frischer Datenbank
-# In .env setzen: REMOVE_VOLUMES=True
-# Dann: ./start_llars.sh
-# ACHTUNG: Löscht alle Daten!
+# Mode uberschreiben (temporar)
+./start_llars.sh dev     # Development erzwingen
+./start_llars.sh prod    # Production erzwingen
+```
+
+### Komplett-Neustart (alle Daten loschen)
+
+```bash
+# In .env setzen:
+REMOVE_VOLUMES=True
+
+# Dann starten:
+./start_llars.sh
+
+# ACHTUNG: Loscht ALLE Daten (DB, Authentik, Cache)!
+# In Production wird eine Bestatigung abgefragt.
+
+# Nach dem Start REMOVE_VOLUMES=False zurucksetzen!
 ```
 
 **Das Skript:**
-1. Prüft Docker-Daemon
-2. Lädt `.env`-Variablen
-3. Stoppt alte Container (bei REMOVE_VOLUMES=True werden Volumes gelöscht)
-4. Startet Services (Development mit Hot-Reload oder Production)
+1. Pruft ob `.env` existiert (sonst Fehler mit Anleitung)
+2. Ladt alle Variablen aus `.env`
+3. Pruft Docker-Daemon (startet ggf. automatisch)
+4. Stoppt alte Container
+5. Bei `REMOVE_VOLUMES=True`: Loscht ALLE llars-Volumes
+6. Startet Services (Development mit Hot-Reload oder Production)
+
+### Environment Templates
+
+| Template | Zweck | Ports |
+|----------|-------|-------|
+| `.env.template.development` | Lokale Entwicklung | Alle Ports exponiert (55000er Range) |
+| `.env.template.production` | Server-Deployment | Nur nginx:80/443 exponiert |
 
 ### Wichtige .env Variablen
 
 ```bash
 PROJECT_STATE=development        # development | production
-PROJECT_HOST=localhost
-REMOVE_VOLUMES=False            # True = Datenbanken werden gelöscht!
+PROJECT_HOST=localhost           # oder: llars.your-domain.de
+REMOVE_VOLUMES=False             # True = ALLE DATEN WERDEN GELOSCHT!
 
 # Ports (Development: 55000er Range)
 NGINX_EXTERNAL_PORT=55080
-NGINX_INTERNAL_PORT=80          # WICHTIG: Muss 80 sein!
+NGINX_INTERNAL_PORT=80           # WICHTIG: Muss 80 sein!
 ```
 
-### URLs nach Start
+### URLs nach Start (Development)
 
 - **Frontend**: http://localhost:55080
 - **Backend API**: http://localhost:55080/api
 - **Health Check**: http://localhost:55080/auth/health_check
-- **YJS WebSocket**: ws://localhost:55080/collab/socket.io
+- **Authentik**: http://localhost:55095
+- **Docs**: http://localhost:55800
+- **Database**: localhost:55306
 
 ---
 

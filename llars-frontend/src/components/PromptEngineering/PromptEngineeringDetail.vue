@@ -497,14 +497,8 @@ const createBlock = () => {
  */
 const fetchPromptDetails = async () => {
   try {
-    const api_key = localStorage.getItem('api_key');
     const response = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId.value}`,
-      {
-        headers: {
-          'Authorization': api_key
-        }
-      }
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId.value}`
     );
     const data = await response.json();
 

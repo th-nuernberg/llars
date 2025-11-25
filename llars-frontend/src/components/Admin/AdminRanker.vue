@@ -203,19 +203,8 @@ const calculateGlobalProgress = () => {
 
 // Abrufen der Benutzerstatistiken von der API
 const fetchUserStats = async () => {
-  const apiKey = localStorage.getItem('api_key');
-
-  if (!apiKey) {
-    console.error('Kein API-Key im localStorage gefunden');
-    return;
-  }
-
   try {
-    const response = await axios.get(`/api/admin/user_ranking_stats/${scenario_id}`, {
-      headers: {
-        Authorization: apiKey,
-      },
-    });
+    const response = await axios.get(`/api/admin/user_ranking_stats/${scenario_id}`);
 
     if (Array.isArray(response.data)) {
       userStats.value = response.data;

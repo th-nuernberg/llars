@@ -314,9 +314,7 @@ const calculateProgressSections = (total_threads, done_threads, progressing_thre
 
 const fetchScenarioDetails = async () => {
   try {
-    const response = await axios.get(`/api/admin/scenarios/${scenario_id}`, {
-      headers: { Authorization: localStorage.getItem('api_key') },
-    });
+    const response = await axios.get(`/api/admin/scenarios/${scenario_id}`);
 
     scenarioDetails.value = {
       name: response.data.scenario_name || "Unbekanntes Szenario",
@@ -336,16 +334,8 @@ const fetchScenarioDetails = async () => {
 };
 
 const fetchUserStats = async () => {
-  const apiKey = localStorage.getItem('api_key');
-  if (!apiKey) {
-    console.error('Kein API-Key im localStorage gefunden');
-    return;
-  }
-
   try {
-    const response = await axios.get(`/api/admin/scenario_progress_stats/${scenario_id}`, {
-      headers: { Authorization: apiKey },
-    });
+    const response = await axios.get(`/api/admin/scenario_progress_stats/${scenario_id}`);
 
     if (Array.isArray(response.data.rater_stats)) {
       raterStats.value = response.data.rater_stats.map(user => ({

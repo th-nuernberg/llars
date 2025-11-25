@@ -227,12 +227,7 @@ function formatDate(dateString) {
 // API Call zum Abrufen aller eigenen Prompts
 async function fetchPrompts() {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts`, {
-      headers: {
-        'Authorization': api_key,
-      },
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts`);
     prompts.value = response.data.prompts || [];
   } catch (error) {
     console.error('Fehler beim Abrufen der Prompts:', error);
@@ -242,12 +237,7 @@ async function fetchPrompts() {
 // API Call zum Abrufen aller geteilten Prompts
 async function fetchSharedPrompts() {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts/shared`, {
-      headers: {
-        'Authorization': api_key,
-      },
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts/shared`);
     sharedPrompts.value = response.data.shared_prompts || [];
   } catch (error) {
     console.error('Fehler beim Abrufen der geteilten Prompts:', error);
@@ -273,13 +263,11 @@ async function renamePrompt() {
   if (!selectedPrompt.value || !renamePromptName.value) return;
 
   try {
-    const api_key = localStorage.getItem('api_key');
     await axios.put(
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${selectedPrompt.value.id}/rename`,
       { name: renamePromptName.value },
       {
         headers: {
-          'Authorization': api_key,
           'Content-Type': 'application/json',
         },
       }
@@ -315,14 +303,8 @@ async function confirmDeletePrompt() {
   if (!selectedPrompt.value) return;
 
   try {
-    const api_key = localStorage.getItem('api_key');
     const response = await axios.delete(
-      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${selectedPrompt.value.id}`,
-      {
-        headers: {
-          'Authorization': api_key,
-        },
-      }
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${selectedPrompt.value.id}`
     );
 
     if (response.status === 200 || response.status === 204) {
@@ -349,8 +331,6 @@ async function savePrompt() {
   if (!newPrompt.value.name) return;
 
   try {
-    const api_key = localStorage.getItem('api_key');
-
     // Neues Prompt speichern
     const response = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts`,
@@ -360,7 +340,6 @@ async function savePrompt() {
       },
       {
         headers: {
-          'Authorization': api_key,
           'Content-Type': 'application/json',
         },
       }
@@ -381,7 +360,6 @@ async function savePrompt() {
             { shared_with: user },
             {
               headers: {
-                'Authorization': api_key,
                 'Content-Type': 'application/json',
               },
             }
@@ -415,14 +393,8 @@ function removeUser(user) {
 // Zuerst fügen wir eine neue Funktion zur Überprüfung des Usernamens hinzu
 async function checkUserExists(username) {
   try {
-    const api_key = localStorage.getItem('api_key');
     const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/users/check/${username}`,
-      {
-        headers: {
-          'Authorization': api_key
-        }
-      }
+      `${import.meta.env.VITE_API_BASE_URL}/api/users/check/${username}`
     );
     return response.status === 200;
   } catch (error) {

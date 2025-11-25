@@ -108,12 +108,7 @@ onMounted(async () => {
 
 async function fetchEmailThreads(threadId) {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}`, {
-      headers: {
-        'Authorization': api_key
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching email threads:', error);
@@ -123,12 +118,7 @@ async function fetchEmailThreads(threadId) {
 
 async function fetchServerRanking(threadId) {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/${threadId}/current_ranking`, {
-      headers: {
-        'Authorization': api_key
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/${threadId}/current_ranking`);
     return response.data;
   } catch (error) {
     console.error('Error fetching server ranking:', error);
@@ -231,12 +221,7 @@ async function navigateToNextCase() {
 
 async function fetchTotalCases() {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings`, {
-      headers: {
-        'Authorization': api_key,
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings`);
     return response.data.length;
   } catch (error) {
     console.error('Error fetching total number of cases:', error);
@@ -245,12 +230,6 @@ async function fetchTotalCases() {
 }
 
 function saveFeaturesServerSide() {
-  const api_key = localStorage.getItem('api_key');
-  if (!api_key) {
-    alert('API key is missing');
-    return;
-  }
-
   const savedFeatureOrder = localStorage.getItem(`featureOrder_${route.params.id}`);
   let orderedFeatures = groupedFeatures.value.map(group => ({
     type: group.type,
@@ -267,7 +246,6 @@ function saveFeaturesServerSide() {
 
   axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${route.params.id}`, orderedFeatures, {
     headers: {
-      'Authorization': api_key,
       'Content-Type': 'application/json'
     }
   })
@@ -284,21 +262,12 @@ function saveFeaturesServerSide() {
 async function navigateToFeatureDetail(featureType, featureId) {
   //console.log("FeatureGroup:", featureId);
   const threadId = route.params.id;
-  const api_key = localStorage.getItem('api_key');
   //console.log('Navigating to feature detail:', featureType, featureId, threadId)
-  const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/feature_type_mapping/${featureType}`, {
-      headers: {
-        'Authorization': api_key
-      }
-    });
+  const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/feature_type_mapping/${featureType}`);
   //console.log(response.data.type_id);
   const featureTypeId = response.data.type_id;
 
-  const response1 = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}`, {
-      headers: {
-        'Authorization': api_key
-      }
-    });
+  const response1 = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}`);
   const featureId1 = response1.data.feature_id;
   //console.log(response1.data);
   //console.log('Navigating to feature detail:', featureId, threadId);

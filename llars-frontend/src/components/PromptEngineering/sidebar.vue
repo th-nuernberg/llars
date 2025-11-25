@@ -217,13 +217,11 @@ const sharePromptWithUser = async () => {
   // if (!userToShare.value.trim()) return;
 
   try {
-    const apiKey = localStorage.getItem('api_key');
     const response = await fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${props.promptId}/share`,
       {
         method: 'POST',
         headers: {
-          'Authorization': apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -264,13 +262,11 @@ const clearShareError = () => {
 const unsharePromptWithUser = async (usernameToRemove) => {
   if (!props.isOwner) return; // Sicherheitshalber
   try {
-    const apiKey = localStorage.getItem('api_key');
     const response = await fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${props.promptId}/unshare`,
       {
         method: 'POST',
         headers: {
-          'Authorization': apiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

@@ -431,12 +431,7 @@ function isLongContent(content) {
 
 async function fetchEmailThreads(threadId) {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings/${threadId}`, {
-      headers: {
-        'Authorization': api_key
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings/${threadId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching email threads:', error);
@@ -450,12 +445,7 @@ function toggleMinimize(element) {
 
 async function fetchServerRanking(threadId) {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/${threadId}/current_ranking`, {
-      headers: {
-        'Authorization': api_key
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/${threadId}/current_ranking`);
     console.log('Server ranking:', response.data);
     return response.data;
   } catch (error) {
@@ -660,12 +650,7 @@ async function navigateToNextCase() {
 
 async function fetchRankingThreads() {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/feature_ranking_list`, {
-      headers: {
-        'Authorization': api_key,
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/feature_ranking_list`);
     return response.data;
   } catch (error) {
     console.error('Error fetching ranking threads:', error);
@@ -675,12 +660,7 @@ async function fetchRankingThreads() {
 
 async function fetchTotalCases() {
   try {
-    const api_key = localStorage.getItem('api_key');
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`, {
-      headers: {
-        'Authorization': api_key,
-      }
-    });
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`);
     return response.data.length;
   } catch (error) {
     console.error('Error fetching total number of cases:', error);
@@ -689,12 +669,6 @@ async function fetchTotalCases() {
 }
 
 function saveFeaturesServerSide() {
-  const api_key = localStorage.getItem('api_key');
-  if (!api_key) {
-    alert('API key is missing');
-    return;
-  }
-
   const threadId = route.params.id;
 
   // Erstelle ein Objekt, das die Buckets enthält
@@ -727,7 +701,6 @@ function saveFeaturesServerSide() {
   // Senden der Daten an den Server
   axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${threadId}`, orderedFeatures, {
     headers: {
-      'Authorization': api_key,
       'Content-Type': 'application/json'
     }
   })

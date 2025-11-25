@@ -372,14 +372,26 @@ const createSession = async () => {
 
     // Use debug endpoint in development mode to avoid auth issues
     const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
-    const endpoint = isDev
+    const createEndpoint = isDev
       ? '/api/judge/sessions-debug'
       : '/api/judge/sessions';
 
-    const response = await axios.post(endpoint, payload);
+    const response = await axios.post(createEndpoint, payload);
+    const sessionId = response.data.session_id;
+
+    // Auto-start the session immediately after creation
+    try {
+      const startEndpoint = isDev
+        ? `/api/judge/sessions/${sessionId}/start-debug`
+        : `/api/judge/sessions/${sessionId}/start`;
+      await axios.post(startEndpoint);
+      console.log(`Session ${sessionId} auto-started`);
+    } catch (startError) {
+      console.warn('Auto-start failed, session can be started manually:', startError);
+    }
 
     // Navigate to session detail
-    router.push({ name: 'JudgeSession', params: { id: response.data.session_id } });
+    router.push({ name: 'JudgeSession', params: { id: sessionId } });
   } catch (error) {
     console.error('Error creating session:', error);
     alert('Fehler beim Erstellen der Session. Bitte versuchen Sie es erneut.');

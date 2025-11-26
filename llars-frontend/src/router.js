@@ -105,7 +105,23 @@ const routes = [
 
 const router = createRouter({
     history: createWebHistory(),
-    routes
+    routes,
+    // Scroll to top on every navigation
+    scrollBehavior(to, from, savedPosition) {
+        // If browser back/forward button was used, restore saved position
+        if (savedPosition) {
+            return savedPosition;
+        }
+        // If navigating to a hash anchor, scroll to it
+        if (to.hash) {
+            return {
+                el: to.hash,
+                behavior: 'smooth'
+            };
+        }
+        // Otherwise, always scroll to top
+        return { top: 0, behavior: 'smooth' };
+    }
 });
 
 // Navigationswächter mit Custom Auth

@@ -254,6 +254,123 @@ const isDark = theme.global.current.value.dark  // Check current
 
 ---
 
+## 💀 Skeleton Loading Pattern
+
+**Status:** ✅ Projektweiter Standard
+**Composable:** `llars-frontend/src/composables/useSkeletonLoading.js`
+
+### Regel
+
+**ALLE Seiten und Komponenten MÜSSEN Skeleton Loading verwenden**, um ein flüssiges Ladeerlebnis zu gewährleisten. Niemals sollen Elemente "hässlich aufgebaut" werden - stattdessen werden Platzhalter (Skeletons) angezeigt, bis die Daten geladen sind.
+
+### Prinzipien
+
+1. **Alle Sections haben Skeletons**: Jede Sektion (Stats Cards, Tabellen, Cards) zeigt während des Ladens einen Skeleton-Loader
+2. **Paralleles Laden**: Daten werden parallel geladen, Skeletons verschwinden individuell wenn Daten bereit sind
+3. **Konsistente Höhen**: Skeleton-Loader haben dieselbe Höhe wie der finale Content
+4. **Smooth Transitions**: Übergänge von Skeleton zu Content sind smooth animiert
+
+### Verwendung mit Composable
+
+```javascript
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+
+// Initialisiere Sections die laden sollen
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['stats', 'table', 'chart'])
+
+// Option 1: Manuell
+setLoading('stats', true)
+await fetchStats()
+setLoading('stats', false)
+
+// Option 2: Mit Wrapper
+await withLoading('table', async () => {
+  await fetchTableData()
+})
+```
+
+### Template Pattern
+
+```vue
+<!-- Stats Cards -->
+<v-col cols="12" sm="6" lg="3">
+  <v-skeleton-loader
+    v-if="isLoading('stats')"
+    type="card"
+    height="100"
+  ></v-skeleton-loader>
+  <v-card v-else class="stat-card">
+    <!-- Actual content -->
+  </v-card>
+</v-col>
+
+<!-- Tabellen -->
+<v-skeleton-loader
+  v-if="isLoading('table')"
+  type="table-heading, table-thead, table-tbody, table-tfoot"
+></v-skeleton-loader>
+<v-card v-else>
+  <v-data-table ...></v-data-table>
+</v-card>
+```
+
+### Skeleton Types (Vuetify)
+
+| Type | Verwendung |
+|------|------------|
+| `card` | Stat Cards, Info Cards |
+| `table-heading, table-thead, table-tbody, table-tfoot` | Vollständige Tabellen |
+| `list-item@3` | Listen (3 Items) |
+| `list-item-avatar@3` | Listen mit Avatars |
+| `paragraph` | Textblöcke |
+| `article` | Artikel-Layout |
+
+### Beispiel: Vollständige Seite
+
+```vue
+<template>
+  <v-container>
+    <!-- Stats laden parallel -->
+    <v-row>
+      <v-col v-for="i in 4" :key="i" cols="12" sm="6" lg="3">
+        <v-skeleton-loader v-if="loadingStats" type="card" height="100" />
+        <v-card v-else>...</v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Info Card -->
+    <v-skeleton-loader v-if="loadingInfo" type="card" height="150" />
+    <v-card v-else>...</v-card>
+
+    <!-- Tabelle -->
+    <v-skeleton-loader
+      v-if="loadingTable"
+      type="table-heading, table-thead, table-tbody"
+    />
+    <v-card v-else>
+      <v-data-table ...></v-data-table>
+    </v-card>
+  </v-container>
+</template>
+
+<script setup>
+const loadingStats = ref(true)
+const loadingInfo = ref(true)
+const loadingTable = ref(true)
+
+onMounted(async () => {
+  // Parallel laden
+  Promise.all([
+    fetchStats().finally(() => loadingStats.value = false),
+    fetchInfo().finally(() => loadingInfo.value = false),
+    fetchTable().finally(() => loadingTable.value = false)
+  ])
+})
+</script>
+```
+
+---
+
 ## ⚖️ LLM-as-Judge System
 
 **Status:** ✅ Vollständig implementiert

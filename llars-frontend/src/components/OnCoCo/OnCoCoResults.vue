@@ -545,7 +545,7 @@
                       </v-card>
                     </v-expand-transition>
 
-                    <v-alert v-else-if="!loadingHeatmaps && Object.keys(heatmapData).length === 0" type="info" variant="tonal" class="mb-4">
+                    <v-alert v-if="!loadingHeatmaps && Object.keys(heatmapData).length === 0" type="info" variant="tonal" class="mb-4">
                       Keine Heatmap-Daten verfuegbar. Bitte warten Sie bis die Analyse abgeschlossen ist.
                     </v-alert>
 

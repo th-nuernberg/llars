@@ -23,165 +23,14 @@
       </v-col>
     </v-row>
 
-    <!-- Stats Cards -->
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="primary" size="56" class="mr-4">
-              <v-icon icon="mdi-chart-bar" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ totalAnalyses }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Gesamt Analysen</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="success" size="56" class="mr-4">
-              <v-icon icon="mdi-check-circle" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ completedAnalyses }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Abgeschlossen</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="info" size="56" class="mr-4">
-              <v-icon icon="mdi-play-circle" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ runningAnalyses }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Laufend</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="purple" size="56" class="mr-4">
-              <v-icon icon="mdi-tag-multiple" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ labelCount }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">OnCoCo Kategorien</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Model Info Card -->
+    <!-- Analyses Table with Skeleton Loading (TOP) -->
     <v-row class="mb-4">
       <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2" color="primary">mdi-brain</v-icon>
-            OnCoCo Modell Status
-            <v-spacer></v-spacer>
-            <v-chip
-              :color="modelInfo.model?.model_available ? 'success' : 'error'"
-              size="small"
-            >
-              {{ modelInfo.model?.model_available ? 'Verfuegbar' : 'Nicht verfuegbar' }}
-            </v-chip>
-          </v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col cols="12" md="4">
-                <div class="text-caption text-medium-emphasis">Modell</div>
-                <div class="font-weight-medium">XLM-RoBERTa-Large OnCoCo</div>
-              </v-col>
-              <v-col cols="12" md="4">
-                <div class="text-caption text-medium-emphasis">Kategorien</div>
-                <div class="font-weight-medium">
-                  {{ modelInfo.labels?.counselor || 0 }} Berater +
-                  {{ modelInfo.labels?.client || 0 }} Klient =
-                  {{ modelInfo.labels?.total || 68 }} Total
-                </div>
-              </v-col>
-              <v-col cols="12" md="4">
-                <div class="text-caption text-medium-emphasis">Geraet</div>
-                <div class="font-weight-medium">{{ modelInfo.model?.device || 'CPU' }}</div>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Pillar Data Status -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2" color="primary">mdi-database</v-icon>
-            KIA Daten Status
-            <v-spacer></v-spacer>
-            <v-btn
-              variant="text"
-              prepend-icon="mdi-sync"
-              @click="syncPillars"
-              :loading="syncing"
-              size="small"
-            >
-              Synchronisieren
-            </v-btn>
-          </v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col
-                v-for="(pillar, pillarNum) in pillarStatus.pillars"
-                :key="pillarNum"
-                cols="12"
-                md="4"
-                lg="2"
-              >
-                <v-card
-                  variant="outlined"
-                  :color="getPillarColor(pillar)"
-                  class="pa-3"
-                >
-                  <div class="text-subtitle-2 font-weight-bold mb-1">
-                    Saeule {{ pillarNum }}
-                  </div>
-                  <div class="text-caption">{{ pillar.name }}</div>
-                  <v-divider class="my-2"></v-divider>
-                  <div class="d-flex justify-space-between text-caption">
-                    <span>Threads:</span>
-                    <span class="font-weight-bold">{{ pillar.db_thread_count || 0 }}</span>
-                  </div>
-                  <div class="d-flex justify-space-between text-caption">
-                    <span>Nachrichten:</span>
-                    <span class="font-weight-bold">{{ pillar.db_message_count || 0 }}</span>
-                  </div>
-                  <v-chip
-                    :color="pillar.gitlab_status === 'available' ? 'success' : 'grey'"
-                    size="x-small"
-                    class="mt-2"
-                  >
-                    {{ pillar.gitlab_status }}
-                  </v-chip>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Analyses Table -->
-    <v-row>
-      <v-col cols="12">
-        <v-card>
+        <v-skeleton-loader
+          v-if="loadingTable"
+          type="table-heading, table-thead, table-tbody, table-tfoot"
+        ></v-skeleton-loader>
+        <v-card v-else>
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
             Meine OnCoCo Analysen
@@ -201,7 +50,7 @@
           </v-card-title>
           <v-divider></v-divider>
 
-          <v-progress-linear v-if="loading" indeterminate></v-progress-linear>
+          <v-progress-linear v-if="loading && !loadingTable" indeterminate></v-progress-linear>
 
           <v-data-table
             :headers="headers"
@@ -269,25 +118,18 @@
             <!-- Actions -->
             <template v-slot:item.actions="{ item }">
               <div class="d-flex gap-1">
-                <v-tooltip text="Details anzeigen" location="top">
+                <!-- Primary action: View Results (for completed) or View Details (for others) -->
+                <v-tooltip
+                  :text="item.status === 'completed' ? 'Ergebnisse anzeigen' : 'Details anzeigen'"
+                  location="top"
+                >
                   <template v-slot:activator="{ props }">
                     <v-btn
                       v-bind="props"
-                      icon="mdi-eye"
+                      :icon="item.status === 'completed' ? 'mdi-chart-box' : 'mdi-eye'"
                       size="small"
-                      variant="text"
-                      @click.stop="navigateToAnalysis(null, { item })"
-                    ></v-btn>
-                  </template>
-                </v-tooltip>
-                <v-tooltip v-if="item.status === 'completed'" text="Ergebnisse anzeigen" location="top">
-                  <template v-slot:activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      icon="mdi-chart-box"
-                      size="small"
-                      variant="text"
-                      color="success"
+                      :variant="item.status === 'completed' ? 'flat' : 'text'"
+                      :color="item.status === 'completed' ? 'success' : 'default'"
                       @click.stop="navigateToResults(item.id)"
                     ></v-btn>
                   </template>
@@ -338,6 +180,142 @@
       </v-col>
     </v-row>
 
+    <!-- Stats Cards with Skeleton Loading -->
+    <v-row class="mb-4">
+      <v-col cols="12" sm="6" lg="3">
+        <v-skeleton-loader
+          v-if="loadingStats"
+          type="card"
+          height="100"
+          class="stat-card-skeleton"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="primary" size="56" class="mr-4">
+              <v-icon icon="mdi-chart-bar" color="white" size="28"></v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ totalAnalyses }}</div>
+              <div class="text-subtitle-2 text-medium-emphasis">Gesamt Analysen</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" lg="3">
+        <v-skeleton-loader
+          v-if="loadingStats"
+          type="card"
+          height="100"
+          class="stat-card-skeleton"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="success" size="56" class="mr-4">
+              <v-icon icon="mdi-check-circle" color="white" size="28"></v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ completedAnalyses }}</div>
+              <div class="text-subtitle-2 text-medium-emphasis">Abgeschlossen</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" lg="3">
+        <v-skeleton-loader
+          v-if="loadingStats"
+          type="card"
+          height="100"
+          class="stat-card-skeleton"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="info" size="56" class="mr-4">
+              <v-icon icon="mdi-play-circle" color="white" size="28"></v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ runningAnalyses }}</div>
+              <div class="text-subtitle-2 text-medium-emphasis">Laufend</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" lg="3">
+        <v-skeleton-loader
+          v-if="loadingModelInfo"
+          type="card"
+          height="100"
+          class="stat-card-skeleton"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="purple" size="56" class="mr-4">
+              <v-icon icon="mdi-tag-multiple" color="white" size="28"></v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ labelCount }}</div>
+              <div class="text-subtitle-2 text-medium-emphasis">OnCoCo Kategorien</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Model Info Card with Skeleton Loading -->
+    <v-row class="mb-4">
+      <v-col cols="12">
+        <v-skeleton-loader
+          v-if="loadingModelInfo"
+          type="card"
+          height="150"
+        ></v-skeleton-loader>
+        <v-card v-else>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2" color="primary">mdi-brain</v-icon>
+            OnCoCo Modell Status
+            <v-spacer></v-spacer>
+            <v-chip
+              :color="modelInfo.model?.model_available ? 'success' : 'error'"
+              size="small"
+            >
+              {{ modelInfo.model?.model_available ? 'Verfuegbar' : 'Nicht verfuegbar' }}
+            </v-chip>
+          </v-card-title>
+          <v-card-text>
+            <v-row>
+              <v-col cols="12" md="4">
+                <div class="text-caption text-medium-emphasis">Modell</div>
+                <div class="font-weight-medium">XLM-RoBERTa-Large OnCoCo</div>
+              </v-col>
+              <v-col cols="12" md="4">
+                <div class="text-caption text-medium-emphasis">Kategorien</div>
+                <div class="font-weight-medium">
+                  {{ modelInfo.labels?.counselor || 0 }} Berater +
+                  {{ modelInfo.labels?.client || 0 }} Klient =
+                  {{ modelInfo.labels?.total || 68 }} Total
+                </div>
+              </v-col>
+              <v-col cols="12" md="4">
+                <div class="text-caption text-medium-emphasis">Geraet</div>
+                <div class="font-weight-medium">{{ modelInfo.model?.device || 'CPU' }}</div>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- KIA Data Sync with Skeleton Loading (like Judge page) -->
+    <v-row class="mb-4">
+      <v-col cols="12">
+        <v-skeleton-loader
+          v-if="loadingKIA"
+          type="card"
+          height="200"
+        ></v-skeleton-loader>
+        <KIADataSyncOnCoCo v-else @loaded="loadingKIA = false" />
+      </v-col>
+    </v-row>
+
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="500">
       <v-card>
@@ -366,6 +344,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { getSocket, useSocketState } from '@/services/socketService';
+import KIADataSyncOnCoCo from './KIADataSyncOnCoCo.vue';
 
 const router = useRouter();
 
@@ -381,14 +360,16 @@ const deleteDialog = ref(false);
 const deleteItem = ref(null);
 const deleting = ref(false);
 const starting = ref(null);
-const syncing = ref(false);
+
+// Skeleton Loading States
+const loadingStats = ref(true);
+const loadingModelInfo = ref(true);
+const loadingTable = ref(true);
+const loadingKIA = ref(true);
 
 const modelInfo = ref({
   model: {},
   labels: {}
-});
-const pillarStatus = ref({
-  pillars: {}
 });
 const labelCount = ref(68);
 
@@ -422,28 +403,25 @@ const filteredAnalyses = computed(() => {
 
 // Load Model Info
 const loadModelInfo = async () => {
+  loadingModelInfo.value = true;
   try {
     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/oncoco/info`);
     modelInfo.value = response.data;
     labelCount.value = response.data.labels?.total || 68;
   } catch (error) {
     console.error('Error loading model info:', error);
-  }
-};
-
-// Load Pillar Status
-const loadPillarStatus = async () => {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/oncoco/pillars`);
-    pillarStatus.value = response.data;
-  } catch (error) {
-    console.error('Error loading pillar status:', error);
+  } finally {
+    loadingModelInfo.value = false;
   }
 };
 
 // Load Analyses
-const loadAnalyses = async () => {
+const loadAnalyses = async (isInitial = false) => {
   loading.value = true;
+  if (isInitial) {
+    loadingTable.value = true;
+    loadingStats.value = true;
+  }
   try {
     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses`);
     analyses.value = response.data;
@@ -451,21 +429,8 @@ const loadAnalyses = async () => {
     console.error('Error loading analyses:', error);
   } finally {
     loading.value = false;
-  }
-};
-
-// Sync Pillars
-const syncPillars = async () => {
-  syncing.value = true;
-  try {
-    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/oncoco/pillars/sync`, {
-      pillars: [1, 3, 5]
-    });
-    await loadPillarStatus();
-  } catch (error) {
-    console.error('Error syncing pillars:', error);
-  } finally {
-    syncing.value = false;
+    loadingTable.value = false;
+    loadingStats.value = false;
   }
 };
 
@@ -559,12 +524,6 @@ const getStatusText = (status) => {
   return texts[status] || status;
 };
 
-const getPillarColor = (pillar) => {
-  if (pillar.db_thread_count > 0) return 'success';
-  if (pillar.gitlab_status === 'available') return 'warning';
-  return 'grey';
-};
-
 const formatDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
@@ -646,12 +605,16 @@ const cleanupSocket = () => {
 
 // Lifecycle
 onMounted(() => {
+  // Load all data in parallel with skeleton states
   loadModelInfo();
-  loadPillarStatus();
-  loadAnalyses().then(() => {
+  loadAnalyses(true).then(() => {
     // Setup Socket.IO after initial load
     setupSocket();
   });
+  // KIA Data Sync handles its own loading, set to false after a short delay
+  setTimeout(() => {
+    loadingKIA.value = false;
+  }, 100);
 });
 
 onUnmounted(() => {
@@ -673,6 +636,21 @@ onUnmounted(() => {
 .stat-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Skeleton Loading Styles */
+.stat-card-skeleton {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.stat-card-skeleton :deep(.v-skeleton-loader__bone) {
+  border-radius: 4px;
+}
+
+/* Smooth transition from skeleton to content */
+.v-skeleton-loader {
+  transition: opacity 0.3s ease;
 }
 
 .analyses-table :deep(tbody tr) {

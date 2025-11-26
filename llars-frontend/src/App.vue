@@ -237,6 +237,21 @@ function openSettings() {
 }
 </script>
 
+<!-- Global styles (not scoped) for Vuetify component overrides -->
+<style>
+/* Fix Vuetify Tooltip background - should be dark in light mode, light in dark mode */
+.v-tooltip > .v-overlay__content {
+  background: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+}
+
+/* Dark mode tooltip - lighter background */
+.v-theme--dark .v-tooltip > .v-overlay__content {
+  background: rgba(66, 66, 66, 0.95) !important;
+  color: #ffffff !important;
+}
+</style>
+
 <style scoped>
 .user-chip {
   font-weight: 500;

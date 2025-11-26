@@ -175,14 +175,14 @@ class PooledJudgeWorker:
 
     def _process_queue(self):
         """Process comparisons from the queue."""
-        from app.db.db import db
-        from app.db.tables import (
+        from db.db import db
+        from db.tables import (
             JudgeSession, JudgeSessionStatus,
             JudgeComparison, JudgeComparisonStatus,
             JudgeEvaluation, JudgeWinner,
             PillarStatistics, Message
         )
-        from app.services.judge.judge_service import JudgeService
+        from services.judge.judge_service import JudgeService
 
         logger.info(
             f"[JudgeWorker:{self.session_id}:{self.worker_id}] Processing queue..."
@@ -280,8 +280,8 @@ class PooledJudgeWorker:
         Uses FOR UPDATE SKIP LOCKED to prevent race conditions
         when multiple workers are grabbing comparisons.
         """
-        from app.db.db import db
-        from app.db.tables import JudgeComparison, JudgeComparisonStatus
+        from db.db import db
+        from db.tables import JudgeComparison, JudgeComparisonStatus
         from sqlalchemy import text
 
         try:
@@ -324,9 +324,9 @@ class PooledJudgeWorker:
 
     def _process_comparison(self, comparison, session, judge_service):
         """Process a single comparison."""
-        from app.db.db import db
-        from app.db.tables import (
-            JudgeComparisonStatus, JudgeEvaluation, JudgeWinner,
+        from db.db import db
+        from db.tables import (
+            JudgeComparison, JudgeComparisonStatus, JudgeEvaluation, JudgeWinner,
             PillarStatistics, Message
         )
 
@@ -443,7 +443,7 @@ class PooledJudgeWorker:
 
     def _load_messages(self, thread_id: int):
         """Load messages for a thread."""
-        from app.db.tables import Message
+        from db.tables import Message
 
         messages = Message.query.filter_by(
             thread_id=thread_id
@@ -456,49 +456,72 @@ class PooledJudgeWorker:
         } for msg in messages]
 
     def _update_statistics(self, pillar_a: int, pillar_b: int, winner: str, confidence: float):
-        """Update pillar statistics."""
-        from app.db.db import db
-        from app.db.tables import PillarStatistics
+        """Update pillar statistics (thread-safe with retry on duplicate key)."""
+        from db.db import db
+        from db.tables import PillarStatistics
+        from sqlalchemy.exc import IntegrityError
 
-        stat = PillarStatistics.query.filter_by(
-            session_id=self.session_id,
-            pillar_a=pillar_a,
-            pillar_b=pillar_b
-        ).first()
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Re-query in case another worker created it
+                stat = PillarStatistics.query.filter_by(
+                    session_id=self.session_id,
+                    pillar_a=pillar_a,
+                    pillar_b=pillar_b
+                ).first()
 
-        if not stat:
-            stat = PillarStatistics(
-                session_id=self.session_id,
-                pillar_a=pillar_a,
-                pillar_b=pillar_b,
-                wins_a=0,
-                wins_b=0,
-                ties=0
-            )
-            db.session.add(stat)
+                if not stat:
+                    stat = PillarStatistics(
+                        session_id=self.session_id,
+                        pillar_a=pillar_a,
+                        pillar_b=pillar_b,
+                        wins_a=0,
+                        wins_b=0,
+                        ties=0
+                    )
+                    db.session.add(stat)
+                    # Flush to catch duplicate key early
+                    db.session.flush()
 
-        if winner == 'A':
-            stat.wins_a += 1
-        elif winner == 'B':
-            stat.wins_b += 1
-        else:
-            stat.ties += 1
+                if winner == 'A':
+                    stat.wins_a += 1
+                elif winner == 'B':
+                    stat.wins_b += 1
+                else:
+                    stat.ties += 1
 
-        # Update average confidence
-        total = stat.wins_a + stat.wins_b + stat.ties
-        if stat.avg_confidence is None:
-            stat.avg_confidence = confidence
-        else:
-            stat.avg_confidence = (
-                (stat.avg_confidence * (total - 1) + confidence) / total
-            )
+                # Update average confidence
+                total = stat.wins_a + stat.wins_b + stat.ties
+                if stat.avg_confidence is None:
+                    stat.avg_confidence = confidence
+                else:
+                    stat.avg_confidence = (
+                        (stat.avg_confidence * (total - 1) + confidence) / total
+                    )
 
-        stat.updated_at = datetime.now()
+                stat.updated_at = datetime.now()
+                return  # Success
+
+            except IntegrityError:
+                # Duplicate key - rollback and retry (another worker created it)
+                db.session.rollback()
+                if attempt < max_retries - 1:
+                    logger.debug(
+                        f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                        f"Statistics race condition, retry {attempt + 1}"
+                    )
+                    continue
+                else:
+                    logger.warning(
+                        f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                        f"Failed to update statistics after {max_retries} retries"
+                    )
 
     def _try_complete_session(self, session):
         """Try to mark session as complete (thread-safe)."""
-        from app.db.db import db
-        from app.db.tables import JudgeSessionStatus
+        from db.db import db
+        from db.tables import JudgeSessionStatus
 
         # Double-check under lock that session isn't already completed
         if session.status == JudgeSessionStatus.RUNNING:
@@ -517,20 +540,24 @@ class PooledJudgeWorker:
         try:
             try:
                 from main import socketio
+                logger.debug(f"[JudgeWorker:{self.session_id}:{self.worker_id}] Got socketio from main")
                 return socketio
-            except ImportError:
-                pass
+            except ImportError as e:
+                logger.debug(f"[JudgeWorker:{self.session_id}:{self.worker_id}] main import failed: {e}")
 
             try:
                 from app.main import socketio
+                logger.debug(f"[JudgeWorker:{self.session_id}:{self.worker_id}] Got socketio from app.main")
                 return socketio
-            except ImportError:
-                pass
+            except ImportError as e:
+                logger.debug(f"[JudgeWorker:{self.session_id}:{self.worker_id}] app.main import failed: {e}")
 
             from flask import current_app
             if hasattr(current_app, 'extensions') and 'socketio' in current_app.extensions:
+                logger.debug(f"[JudgeWorker:{self.session_id}:{self.worker_id}] Got socketio from extensions")
                 return current_app.extensions['socketio']
 
+            logger.warning(f"[JudgeWorker:{self.session_id}:{self.worker_id}] No socketio instance found!")
             return None
         except Exception as e:
             logger.warning(
@@ -543,9 +570,11 @@ class PooledJudgeWorker:
         """Broadcast when a comparison starts."""
         socketio = self._get_socketio()
         if not socketio:
+            logger.warning(f"[JudgeWorker:{self.session_id}:{self.worker_id}] Cannot broadcast - no socketio")
             return
 
         room = f"judge_session_{self.session_id}"
+        logger.info(f"[JudgeWorker:{self.session_id}:{self.worker_id}] Broadcasting comparison_start to room {room}")
         socketio.emit('judge:comparison_start', {
             'session_id': self.session_id,
             'worker_id': self.worker_id,
@@ -599,6 +628,7 @@ class PooledJudgeWorker:
 
         socketio.emit('judge:progress', {
             'session_id': self.session_id,
+            'status': session.status.value if hasattr(session.status, 'value') else str(session.status),
             'completed': session.completed_comparisons,
             'total': session.total_comparisons,
             'percent': progress

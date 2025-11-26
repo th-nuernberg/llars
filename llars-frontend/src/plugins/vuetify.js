@@ -23,4 +23,12 @@ export default createVuetify({
       dark: darkTheme,
     },
   },
+  defaults: {
+    global: {
+      // Ensure text is readable in both themes
+    },
+  },
+  // Vuetify 3 uses CSS variables for opacity
+  // text-medium-emphasis uses --v-medium-emphasis-opacity
+  // We override this in the theme colors or via CSS
 })

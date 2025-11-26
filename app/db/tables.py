@@ -776,6 +776,9 @@ class JudgeComparison(db.Model):
     )
     queue_position: Mapped[int] = mapped_column(db.Integer, nullable=False, index=True)
 
+    # Worker tracking (for multi-worker parallelization)
+    worker_id: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True, index=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     started_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)

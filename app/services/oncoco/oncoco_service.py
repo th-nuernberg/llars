@@ -98,6 +98,7 @@ class OnCoCoService:
         self._device = None
         self._id2label = None
         self._label2id = None
+        self._role_label_indices = None  # cache label indices per role for masking
 
     def _get_default_model_path(self) -> str:
         """Get the default model path relative to project root."""
@@ -151,6 +152,12 @@ class OnCoCoService:
                 self._label2id = config.get('label2id', {})
 
             logger.info(f"[OnCoCo] Model loaded successfully. {len(self._id2label)} labels available")
+
+            # Precompute label indices per role for masking
+            self._role_label_indices = {
+                "counselor": [idx for idx, label in self._id2label.items() if label.startswith("CO-")],
+                "client": [idx for idx, label in self._id2label.items() if label.startswith("CL-")]
+            }
 
         except ImportError as e:
             logger.error(f"[OnCoCo] Failed to import required packages: {e}")
@@ -266,6 +273,30 @@ class OnCoCoService:
             "label_hierarchy_levels": len(LABEL_HIERARCHY),
         }
 
+    def _apply_role_prefix(self, sentence: str, role_hint: Optional[str]) -> str:
+        """Prefix sentence with explicit role to mirror paper setup."""
+        if role_hint == "counselor":
+            return f"Counselor: {sentence}"
+        if role_hint == "client":
+            return f"Client: {sentence}"
+        return sentence
+
+    def _mask_probabilities_for_role(self, prob_row: np.ndarray, role_hint: Optional[str]) -> np.ndarray:
+        """
+        Zero-out probabilities of labels that do not belong to the hinted role.
+        Returns a new array (does not mutate input).
+        """
+        if not role_hint or not self._role_label_indices:
+            return prob_row
+
+        allowed = self._role_label_indices.get(role_hint, [])
+        masked = np.zeros_like(prob_row)
+        masked[allowed] = prob_row[allowed]
+        total = masked.sum()
+        if total > 0:
+            masked = masked / total
+        return masked
+
     def classify_sentence(self, sentence: str, role_hint: Optional[str] = None) -> ClassificationResult:
         """
         Classify a single sentence.
@@ -282,9 +313,11 @@ class OnCoCoService:
         import torch
         import torch.nn.functional as F
 
+        input_sentence = self._apply_role_prefix(sentence, role_hint)
+
         # Tokenize
         inputs = self._tokenizer(
-            sentence,
+            input_sentence,
             return_tensors="pt",
             truncation=True,
             max_length=512,
@@ -300,6 +333,8 @@ class OnCoCoService:
 
         # Get predictions
         probs_np = probs.cpu().numpy()[0]
+        probs_np = self._mask_probabilities_for_role(probs_np, role_hint)
+
         top_indices = np.argsort(probs_np)[::-1][:3]
 
         predicted_id = top_indices[0]
@@ -313,19 +348,7 @@ class OnCoCoService:
         ]
 
         # Determine role
-        role = get_label_role(predicted_label)
-
-        # If role hint provided and doesn't match, check if alternative label fits better
-        if role_hint and role != role_hint:
-            # Filter for labels matching the role hint
-            role_prefix = "CO-" if role_hint == "counselor" else "CL-"
-            for idx in top_indices:
-                label = self._id2label.get(idx, "")
-                if label.startswith(role_prefix):
-                    predicted_label = label
-                    confidence = float(probs_np[idx])
-                    role = role_hint
-                    break
+        role = role_hint or get_label_role(predicted_label)
 
         return ClassificationResult(
             sentence=sentence,
@@ -364,9 +387,14 @@ class OnCoCoService:
             batch_sentences = sentences[i:i + batch_size]
             batch_hints = role_hints[i:i + batch_size] if role_hints else [None] * len(batch_sentences)
 
+            # Apply role prefixes per sentence to mirror training setup
+            batch_inputs_with_role = [
+                self._apply_role_prefix(s, h) for s, h in zip(batch_sentences, batch_hints)
+            ]
+
             # Tokenize batch
             inputs = self._tokenizer(
-                batch_sentences,
+                batch_inputs_with_role,
                 return_tensors="pt",
                 truncation=True,
                 max_length=512,
@@ -384,6 +412,7 @@ class OnCoCoService:
             probs_np = probs.cpu().numpy()
 
             for j, (sentence, prob_row, hint) in enumerate(zip(batch_sentences, probs_np, batch_hints)):
+                prob_row = self._mask_probabilities_for_role(prob_row, hint)
                 top_indices = np.argsort(prob_row)[::-1][:3]
 
                 predicted_id = top_indices[0]
@@ -395,18 +424,7 @@ class OnCoCoService:
                     for idx in top_indices
                 ]
 
-                role = get_label_role(predicted_label)
-
-                # Apply role hint if provided
-                if hint and role != hint:
-                    role_prefix = "CO-" if hint == "counselor" else "CL-"
-                    for idx in top_indices:
-                        label = self._id2label.get(idx, "")
-                        if label.startswith(role_prefix):
-                            predicted_label = label
-                            confidence = float(prob_row[idx])
-                            role = hint
-                            break
+                role = hint or get_label_role(predicted_label)
 
                 results.append(ClassificationResult(
                     sentence=sentence,

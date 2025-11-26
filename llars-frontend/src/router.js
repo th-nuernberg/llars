@@ -43,6 +43,7 @@ import JudgeResults from "@/components/Judge/JudgeResults.vue";
 import OnCoCoOverview from "@/components/OnCoCo/OnCoCoOverview.vue";
 import OnCoCoConfig from "@/components/OnCoCo/OnCoCoConfig.vue";
 import OnCoCoResults from "@/components/OnCoCo/OnCoCoResults.vue";
+import OnCoCoInfo from "@/components/OnCoCo/OnCoCoInfo.vue";
 
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
@@ -80,6 +81,7 @@ const routes = [
     { path: '/oncoco', name: 'OnCoCoOverview', component: OnCoCoOverview, meta: { requiresAuth: true } },
     { path: '/oncoco/config', name: 'OnCoCoConfig', component: OnCoCoConfig, meta: { requiresAuth: true } },
     { path: '/oncoco/results/:id', name: 'OnCoCoResults', component: OnCoCoResults, props: true, meta: { requiresAuth: true } },
+    { path: '/oncoco/info', name: 'OnCoCoInfo', component: OnCoCoInfo, meta: { requiresAuth: true } },
 
     // New unified Admin Dashboard
     { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },

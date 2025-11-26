@@ -8,7 +8,7 @@
           prepend-icon="mdi-arrow-left"
           @click="router.push({ name: 'OnCoCoOverview' })"
         >
-          Zurueck zur Uebersicht
+          Zurück zur Übersicht
         </v-btn>
       </v-col>
     </v-row>
@@ -27,7 +27,7 @@
               <v-text-field
                 v-model="config.name"
                 label="Analyse Name"
-                placeholder="z.B. OnCoCo Analyse Saeule 1+3"
+                placeholder="z.B. OnCoCo Analyse Säule 1+3"
                 :rules="[v => !!v || 'Name ist erforderlich']"
                 prepend-icon="mdi-label"
                 variant="outlined"
@@ -37,7 +37,7 @@
               <!-- Pillar Selection -->
               <div class="text-subtitle-1 font-weight-medium mb-2">
                 <v-icon class="mr-1">mdi-database</v-icon>
-                Saeulen auswaehlen
+                Säulen auswählen
               </div>
               <v-row class="mb-4">
                 <v-col
@@ -63,7 +63,7 @@
                           @update:model-value="togglePillar(Number(pillarNum))"
                         ></v-checkbox>
                         <div class="ml-2">
-                          <div class="font-weight-bold">Saeule {{ pillarNum }}</div>
+                          <div class="font-weight-bold">Säule {{ pillarNum }}</div>
                           <div class="text-caption">{{ pillar.name }}</div>
                         </div>
                       </div>
@@ -97,19 +97,19 @@
                     <v-switch
                       v-model="config.use_level2"
                       label="Level-2 Aggregation verwenden"
-                      hint="Fasst die 68 Kategorien in 18 uebergeordnete Gruppen zusammen"
+                      hint="Fasst die 68 Kategorien in 18 übergeordnete Gruppen zusammen"
                       persistent-hint
                       color="primary"
                     ></v-switch>
 
                     <v-slider
                       v-model="config.batch_size"
-                      label="Batch-Groesse"
+                      label="Batch-Größe"
                       min="4"
                       max="64"
                       step="4"
                       thumb-label
-                      hint="Anzahl Saetze pro GPU-Batch (hoeher = schneller, aber mehr Speicher)"
+                      hint="Anzahl Sätze pro GPU-Batch (höher = schneller, aber mehr Speicher)"
                       persistent-hint
                       class="mt-4"
                     ></v-slider>
@@ -156,12 +156,12 @@
         <v-card class="mb-4">
           <v-card-title>
             <v-icon class="mr-2" color="info">mdi-information</v-icon>
-            Ueber OnCoCo
+            Über OnCoCo
           </v-card-title>
           <v-card-text>
             <p class="text-body-2 mb-3">
               Das OnCoCo-Modell (Online Counseling Conversations) klassifiziert
-              Beratungsgespraeche auf Satzebene in 68 Kategorien.
+              Beratungsgespräche auf Satzebene in 68 Kategorien.
             </p>
             <v-divider class="my-3"></v-divider>
             <div class="text-subtitle-2 font-weight-bold mb-2">Kategorien</div>
@@ -196,7 +196,7 @@
               Die Analyse kann je nach Datenmenge einige Minuten dauern.
             </v-alert>
             <v-alert type="warning" variant="tonal" density="compact">
-              Stellen Sie sicher, dass die ausgewaehlten Saeulen synchronisiert sind.
+              Stellen Sie sicher, dass die ausgewählten Säulen synchronisiert sind.
             </v-alert>
           </v-card-text>
         </v-card>

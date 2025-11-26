@@ -8,7 +8,7 @@
           prepend-icon="mdi-arrow-left"
           @click="router.push({ name: 'OnCoCoOverview' })"
         >
-          Zurueck zur Uebersicht
+          Zurück zur Übersicht
         </v-btn>
       </v-col>
     </v-row>
@@ -53,7 +53,7 @@
                   <div class="text-h6">{{ analysis.processed_threads }} / {{ analysis.total_threads }}</div>
                 </v-col>
                 <v-col cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Saetze analysiert</div>
+                  <div class="text-caption text-medium-emphasis">Sätze analysiert</div>
                   <div class="text-h6">{{ analysis.total_sentences?.toLocaleString() || 0 }}</div>
                 </v-col>
                 <v-col cols="6" sm="3">
@@ -119,7 +119,7 @@
           <v-card color="primary" variant="tonal">
             <v-card-title class="d-flex align-center">
               <v-progress-circular indeterminate size="24" class="mr-3"></v-progress-circular>
-              <span>Analyse laeuft...</span>
+              <span>Analyse läuft...</span>
               <v-spacer></v-spacer>
               <v-chip color="success" size="small" v-if="liveData.timing">
                 {{ formatDuration(liveData.timing.elapsed_seconds) }} vergangen
@@ -184,7 +184,7 @@
                     </v-card-title>
                     <v-card-text v-if="liveData.current_thread">
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Saeule:</span>
+                        <span class="text-caption">Säule:</span>
                         <v-chip size="x-small" color="primary">{{ liveData.current_thread.pillar_name }}</v-chip>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
@@ -226,7 +226,7 @@
                         <span class="font-weight-bold">{{ liveData.timing.threads_per_second?.toFixed(3) }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Saetze/Sek:</span>
+                        <span class="text-caption">Sätze/Sek:</span>
                         <span class="font-weight-bold">{{ liveData.timing.sentences_per_second?.toFixed(1) }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
@@ -234,7 +234,7 @@
                         <span class="font-weight-bold">{{ formatDuration(liveData.timing.elapsed_seconds) }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Geschaetzt:</span>
+                        <span class="text-caption">Geschätzt:</span>
                         <span class="font-weight-bold text-warning">{{ formatDuration(liveData.timing.eta_seconds) }}</span>
                       </div>
                       <v-divider class="my-2"></v-divider>
@@ -313,11 +313,10 @@
           <v-col cols="12">
             <v-card>
               <v-tabs v-model="activeTab" color="primary">
-                <v-tab value="overview">Uebersicht</v-tab>
+                <v-tab value="overview">Übersicht</v-tab>
                 <v-tab value="distribution">Verteilung</v-tab>
-                <v-tab value="transitions">Transitionen</v-tab>
-                <v-tab value="comparison">Saeulen-Vergleich</v-tab>
-                <v-tab value="sentences">Saetze</v-tab>
+                <v-tab value="transitions">Transitionen & Vergleich</v-tab>
+                <v-tab value="sentences">Sätze</v-tab>
               </v-tabs>
 
               <v-card-text>
@@ -333,19 +332,19 @@
                       >
                         <v-card variant="outlined">
                           <v-card-title class="text-subtitle-1">
-                            Saeule {{ pillarNum }}
+                            Säule {{ pillarNum }}
                           </v-card-title>
                           <v-card-text>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Saetze:</span>
+                              <span class="text-caption">Sätze:</span>
                               <span class="font-weight-bold">{{ stats.total_sentences?.toLocaleString() }}</span>
                             </div>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Berater-Saetze:</span>
+                              <span class="text-caption">Berater-Sätze:</span>
                               <span class="font-weight-bold text-primary">{{ stats.counselor_sentences?.toLocaleString() }}</span>
                             </div>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Klient-Saetze:</span>
+                              <span class="text-caption">Klient-Sätze:</span>
                               <span class="font-weight-bold text-secondary">{{ stats.client_sentences?.toLocaleString() }}</span>
                             </div>
                             <v-divider class="my-2"></v-divider>
@@ -374,7 +373,7 @@
                         <v-select
                           v-model="distributionPillar"
                           :items="pillarOptions"
-                          label="Saeule"
+                          label="Säule"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -382,8 +381,17 @@
                       <v-col cols="12" sm="6" md="3">
                         <v-select
                           v-model="distributionLevel"
-                          :items="[{title: 'Level 2 (aggregiert)', value: 'level2'}, {title: 'Vollstaendig', value: 'full'}]"
+                          :items="[{title: 'Level 2 (aggregiert)', value: 'level2'}, {title: 'Vollständig', value: 'full'}]"
                           label="Detailstufe"
+                          variant="outlined"
+                          density="compact"
+                        ></v-select>
+                      </v-col>
+                      <v-col cols="12" sm="6" md="3">
+                        <v-select
+                          v-model="distributionRole"
+                          :items="roleFilterOptions"
+                          label="Rolle"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -429,29 +437,38 @@
                     </v-data-table>
                   </v-window-item>
 
-                  <!-- Transitions Tab -->
+                  <!-- Transitions & Comparison Tab -->
                   <v-window-item value="transitions">
                     <!-- Controls -->
                     <v-row class="mb-4">
-                      <v-col cols="12" sm="6" md="3">
+                      <v-col cols="12" sm="6" md="2">
                         <v-select
                           v-model="transitionPillar"
                           :items="pillarOptions"
-                          label="Saeule (Top Liste)"
+                          label="Säule"
                           variant="outlined"
                           density="compact"
                         ></v-select>
                       </v-col>
-                      <v-col cols="12" sm="6" md="3">
+                      <v-col cols="12" sm="6" md="2">
                         <v-select
                           v-model="transitionLevel"
-                          :items="[{title: 'Level 2 (aggregiert)', value: 'level2'}, {title: 'Vollstaendig', value: 'full'}]"
+                          :items="[{title: 'Level 2 (aggregiert)', value: 'level2'}, {title: 'Vollständig', value: 'full'}]"
                           label="Detailstufe"
                           variant="outlined"
                           density="compact"
                         ></v-select>
                       </v-col>
-                      <v-col cols="12" sm="6" md="3">
+                      <v-col cols="12" sm="6" md="2">
+                        <v-select
+                          v-model="transitionRole"
+                          :items="roleFilterOptions"
+                          label="Rolle"
+                          variant="outlined"
+                          density="compact"
+                        ></v-select>
+                      </v-col>
+                      <v-col cols="12" sm="6" md="2">
                         <v-select
                           v-model="heatmapColorMode"
                           :items="[{title: 'Anzahl', value: 'count'}, {title: 'Wahrscheinlichkeit', value: 'probability'}]"
@@ -460,7 +477,7 @@
                           density="compact"
                         ></v-select>
                       </v-col>
-                      <v-col cols="12" sm="6" md="3" class="d-flex align-center">
+                      <v-col cols="12" sm="6" md="2" class="d-flex align-center">
                         <v-switch
                           v-model="showHeatmapValues"
                           label="Werte anzeigen"
@@ -471,12 +488,24 @@
                       </v-col>
                     </v-row>
 
-                    <v-progress-linear v-if="loadingTransitions || loadingHeatmaps" indeterminate></v-progress-linear>
+                    <v-progress-linear v-if="loadingTransitions || loadingHeatmaps || loadingMatrixComparison" indeterminate></v-progress-linear>
+
+                    <!-- Quick Stats Bar -->
+                    <QuickStatsBar
+                      v-if="matrixComparisonData"
+                      :similarity="quickStatsSimilarity"
+                      :frobenius-distance="quickStatsFrobenius"
+                      :p-value="quickStatsPValue"
+                      :chi-square-significant="quickStatsChiSignificant"
+                      :chi-square-total="quickStatsChiTotal"
+                      :loading="loadingMatrixComparison"
+                      @show-methodology="showMethodologyDialog = true"
+                    />
 
                     <!-- Transition Heatmaps per Pillar -->
                     <div class="text-h6 font-weight-bold mb-3">
                       <v-icon start>mdi-grid</v-icon>
-                      Transitions-Heatmaps pro Saeule
+                      Transitions-Heatmaps pro Säule
                     </div>
 
                     <v-row v-if="Object.keys(heatmapData).length > 0">
@@ -546,156 +575,75 @@
                     </v-expand-transition>
 
                     <v-alert v-if="!loadingHeatmaps && Object.keys(heatmapData).length === 0" type="info" variant="tonal" class="mb-4">
-                      Keine Heatmap-Daten verfuegbar. Bitte warten Sie bis die Analyse abgeschlossen ist.
+                      Keine Heatmap-Daten verfügbar. Bitte warten Sie bis die Analyse abgeschlossen ist.
                     </v-alert>
 
                     <v-divider class="my-4"></v-divider>
 
-                    <!-- Transition Analysis Section -->
-                    <div class="text-h6 font-weight-bold mb-3">
-                      <v-icon start>mdi-chart-bar</v-icon>
-                      Transitions-Analyse
-                    </div>
-
-                    <v-card v-if="transitionAnalysis" variant="outlined" class="mb-4">
-                      <v-card-text>
-                        <v-row>
-                          <v-col cols="12" md="4">
-                            <div class="text-subtitle-2 font-weight-bold mb-2">Aehnlichkeit der Heatmaps</div>
-                            <v-progress-linear
-                              :model-value="transitionAnalysis.similarity * 100"
-                              height="24"
-                              rounded
-                              :color="transitionAnalysis.similarity > 0.8 ? 'success' : transitionAnalysis.similarity > 0.5 ? 'warning' : 'error'"
-                            >
-                              <template v-slot:default>
-                                <strong>{{ (transitionAnalysis.similarity * 100).toFixed(1) }}%</strong>
-                              </template>
-                            </v-progress-linear>
-                            <div class="text-caption text-medium-emphasis mt-1">
-                              {{ transitionAnalysis.similarityText }}
-                            </div>
-                          </v-col>
-                          <v-col cols="12" md="8">
-                            <div class="text-subtitle-2 font-weight-bold mb-2">Groesste Unterschiede</div>
-                            <v-list density="compact" v-if="transitionAnalysis.topDifferences.length > 0">
-                              <v-list-item
-                                v-for="(diff, idx) in transitionAnalysis.topDifferences.slice(0, 5)"
-                                :key="idx"
-                                class="px-0"
-                              >
-                                <template v-slot:prepend>
-                                  <v-icon size="small" :color="diff.direction === 'more' ? 'success' : 'error'" class="mr-2">
-                                    {{ diff.direction === 'more' ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
-                                  </v-icon>
-                                </template>
-                                <v-list-item-title class="text-body-2">
-                                  {{ diff.fromDisplay }} → {{ diff.toDisplay }}
-                                </v-list-item-title>
-                                <template v-slot:append>
-                                  <div class="text-caption">
-                                    <span class="font-weight-bold">{{ diff.difference > 0 ? '+' : '' }}{{ (diff.difference * 100).toFixed(1) }}%</span>
-                                    <span class="text-medium-emphasis ml-1">({{ diff.pillarName }})</span>
-                                  </div>
-                                </template>
-                              </v-list-item>
-                            </v-list>
-                            <div v-else class="text-caption text-medium-emphasis">
-                              Keine signifikanten Unterschiede gefunden.
-                            </div>
-                          </v-col>
-                        </v-row>
-                      </v-card-text>
-                    </v-card>
+                    <!-- Pillar Comparison Panel (NEW - replaces old Statistics tab) -->
+                    <PillarComparisonPanel
+                      v-if="matrixComparisonData?.pairwise_comparisons?.length > 0"
+                      :comparisons="matrixComparisonData.pairwise_comparisons"
+                      :loading="loadingMatrixComparison"
+                      @highlight-transition="onHighlightTransition"
+                    />
 
                     <v-divider class="my-4"></v-divider>
 
-                    <!-- Top Transitions List -->
-                    <div class="text-h6 font-weight-bold mb-3">
-                      <v-icon start>mdi-format-list-numbered</v-icon>
-                      Top 20 Transitionen
-                      <span v-if="transitionPillar" class="text-caption ml-2">(Saeule {{ transitionPillar }})</span>
-                      <span v-else class="text-caption ml-2">(Alle Saeulen)</span>
-                    </div>
-                    <v-list density="compact" v-if="topTransitions.length > 0">
-                      <v-list-item
-                        v-for="(link, idx) in topTransitions"
-                        :key="idx"
-                      >
-                        <template v-slot:prepend>
-                          <span class="text-caption text-medium-emphasis mr-3" style="width: 20px;">{{ idx + 1 }}.</span>
-                          <v-chip
-                            size="small"
-                            :color="link.source.startsWith('CO-') ? 'primary' : 'secondary'"
-                            class="mr-2"
-                          >
-                            {{ link.source_display }}
-                          </v-chip>
-                        </template>
-                        <v-list-item-title class="d-flex align-center">
-                          <v-icon size="small" class="mx-2">mdi-arrow-right</v-icon>
-                          <v-chip
-                            size="small"
-                            :color="link.target.startsWith('CO-') ? 'primary' : 'secondary'"
-                          >
-                            {{ link.target_display }}
-                          </v-chip>
-                        </v-list-item-title>
-                        <template v-slot:append>
-                          <div class="text-right">
-                            <div class="font-weight-bold">{{ link.value }}</div>
-                            <div class="text-caption">{{ (link.probability * 100).toFixed(1) }}%</div>
-                          </div>
-                        </template>
-                      </v-list-item>
-                    </v-list>
-                    <v-alert v-else-if="!loadingTransitions" type="info" variant="tonal">
-                      Keine Transitions-Daten verfuegbar.
-                    </v-alert>
-                  </v-window-item>
-
-                  <!-- Pillar Comparison Tab -->
-                  <v-window-item value="comparison">
-                    <v-progress-linear v-if="loadingComparison" indeterminate></v-progress-linear>
-
-                    <v-row v-if="comparisonData.length > 0">
-                      <v-col cols="12">
-                        <v-data-table
-                          :headers="comparisonHeaders"
-                          :items="comparisonData"
-                          density="compact"
-                        >
-                          <template v-slot:item.pillar_name="{ item }">
-                            <div class="font-weight-bold">{{ item.pillar_name }}</div>
-                          </template>
-                          <template v-slot:item.counselor_ratio="{ item }">
-                            <v-progress-linear
-                              :model-value="item.metrics.counselor_ratio * 100"
-                              height="20"
-                              rounded
-                              color="primary"
+                    <!-- Top Transitions List (Collapsible) -->
+                    <v-expansion-panels variant="accordion">
+                      <v-expansion-panel>
+                        <v-expansion-panel-title>
+                          <v-icon start>mdi-format-list-numbered</v-icon>
+                          Top 20 Transitionen
+                          <span v-if="transitionPillar" class="text-caption ml-2">(Säule {{ transitionPillar }})</span>
+                          <span v-else class="text-caption ml-2">(Alle Säulen)</span>
+                        </v-expansion-panel-title>
+                        <v-expansion-panel-text>
+                          <v-list density="compact" v-if="topTransitions.length > 0">
+                            <v-list-item
+                              v-for="(link, idx) in topTransitions"
+                              :key="idx"
                             >
-                              <template v-slot:default>
-                                <strong>{{ (item.metrics.counselor_ratio * 100).toFixed(1) }}%</strong>
+                              <template v-slot:prepend>
+                                <span class="text-caption text-medium-emphasis mr-3" style="width: 20px;">{{ idx + 1 }}.</span>
+                                <v-chip
+                                  size="small"
+                                  :color="link.source.startsWith('CO-') ? 'primary' : 'secondary'"
+                                  class="mr-2"
+                                >
+                                  {{ link.source_display }}
+                                </v-chip>
                               </template>
-                            </v-progress-linear>
-                          </template>
-                          <template v-slot:item.impact_factor_ratio="{ item }">
-                            {{ (item.metrics.impact_factor_ratio * 100).toFixed(1) }}%
-                          </template>
-                          <template v-slot:item.resource_activation_score="{ item }">
-                            {{ (item.metrics.resource_activation_score * 100).toFixed(1) }}%
-                          </template>
-                          <template v-slot:item.mi_score="{ item }">
-                            {{ item.metrics.mi_score?.toFixed(3) }}
-                          </template>
-                          <template v-slot:item.avg_confidence="{ item }">
-                            {{ (item.metrics.avg_confidence * 100).toFixed(1) }}%
-                          </template>
-                        </v-data-table>
-                      </v-col>
-                    </v-row>
+                              <v-list-item-title class="d-flex align-center">
+                                <v-icon size="small" class="mx-2">mdi-arrow-right</v-icon>
+                                <v-chip
+                                  size="small"
+                                  :color="link.target.startsWith('CO-') ? 'primary' : 'secondary'"
+                                >
+                                  {{ link.target_display }}
+                                </v-chip>
+                              </v-list-item-title>
+                              <template v-slot:append>
+                                <div class="text-right">
+                                  <div class="font-weight-bold">{{ link.value }}</div>
+                                  <div class="text-caption">{{ (link.probability * 100).toFixed(1) }}%</div>
+                                </div>
+                              </template>
+                            </v-list-item>
+                          </v-list>
+                          <v-alert v-else-if="!loadingTransitions" type="info" variant="tonal">
+                            Keine Transitions-Daten verfügbar.
+                          </v-alert>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
                   </v-window-item>
+
+                  <!-- Methodology Dialog -->
+                  <v-dialog v-model="showMethodologyDialog" max-width="900" scrollable>
+                    <MatrixComparisonMetrics :analysis-id="route.params.id" />
+                  </v-dialog>
 
                   <!-- Sentences Tab -->
                   <v-window-item value="sentences">
@@ -704,7 +652,7 @@
                         <v-select
                           v-model="sentencePillar"
                           :items="pillarOptions"
-                          label="Saeule"
+                          label="Säule"
                           variant="outlined"
                           density="compact"
                           clearable
@@ -806,6 +754,9 @@ import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import TransitionHeatmap from './TransitionHeatmap.vue';
+import MatrixComparisonMetrics from './MatrixComparisonMetrics.vue';
+import QuickStatsBar from './QuickStatsBar.vue';
+import PillarComparisonPanel from './PillarComparisonPanel.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -835,12 +786,14 @@ const liveData = ref({
 // Distribution State
 const distributionPillar = ref(null);
 const distributionLevel = ref('level2');
+const distributionRole = ref('');  // '', 'counselor', 'client'
 const distributionData = ref([]);
 const loadingDistribution = ref(false);
 
 // Transitions State
 const transitionPillar = ref(null);
 const transitionLevel = ref('level2');
+const transitionRole = ref('');  // '', 'counselor', 'client'
 const transitionsData = ref({ links: [] });
 const loadingTransitions = ref(false);
 
@@ -857,6 +810,11 @@ const hoveredTransition = ref(null);
 const comparisonData = ref([]);
 const loadingComparison = ref(false);
 
+// Matrix Comparison State (for integrated view)
+const matrixComparisonData = ref(null);
+const loadingMatrixComparison = ref(false);
+const showMethodologyDialog = ref(false);
+
 // Sentences State
 const sentencePillar = ref(null);
 const sentenceRole = ref('');
@@ -870,9 +828,9 @@ const loadingSentences = ref(false);
 const pillarOptions = computed(() => {
   if (!analysis.value?.pillar_statistics) return [];
   return [
-    { title: 'Alle Saeulen', value: null },
+    { title: 'Alle Säulen', value: null },
     ...Object.keys(analysis.value.pillar_statistics).map(p => ({
-      title: `Saeule ${p}`,
+      title: `Säule ${p}`,
       value: parseInt(p)
     }))
   ];
@@ -883,8 +841,53 @@ const maxDistributionCount = computed(() => {
   return Math.max(...distributionData.value.map(d => d.count));
 });
 
+const roleFilterOptions = computed(() => [
+  { title: 'Alle (Berater & Ratsuchend)', value: '' },
+  { title: 'Nur Berater', value: 'counselor' },
+  { title: 'Nur Ratsuchend', value: 'client' }
+]);
+
 const topTransitions = computed(() => {
   return transitionsData.value.links?.slice(0, 20) || [];
+});
+
+// Quick Stats Computed Properties (for QuickStatsBar)
+const quickStatsSimilarity = computed(() => {
+  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
+  const comparisons = matrixComparisonData.value.pairwise_comparisons;
+  // Convert frobenius distance to similarity: 1 - normalized_frobenius
+  // Higher similarity = lower distance
+  const avgNormFrob = comparisons.reduce((sum, c) => sum + (c.effect_size?.normalized_frobenius || 0), 0) / comparisons.length;
+  return Math.max(0, 1 - avgNormFrob);
+});
+
+const quickStatsFrobenius = computed(() => {
+  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
+  const comparisons = matrixComparisonData.value.pairwise_comparisons;
+  const avgFrobenius = comparisons.reduce((sum, c) => sum + (c.metrics?.frobenius_distance || 0), 0) / comparisons.length;
+  return avgFrobenius;
+});
+
+const quickStatsPValue = computed(() => {
+  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 1;
+  const comparisons = matrixComparisonData.value.pairwise_comparisons;
+  // Return the minimum p-value (most significant)
+  const minPValue = Math.min(...comparisons.map(c => c.statistical_tests?.permutation_test?.p_value || 1));
+  return minPValue;
+});
+
+const quickStatsChiSignificant = computed(() => {
+  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
+  const comparisons = matrixComparisonData.value.pairwise_comparisons;
+  // Sum up all significant states across all comparisons
+  return comparisons.reduce((sum, c) => sum + (c.statistical_tests?.chi_square?.significant_rows || 0), 0);
+});
+
+const quickStatsChiTotal = computed(() => {
+  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
+  const comparisons = matrixComparisonData.value.pairwise_comparisons;
+  // Sum up all total states across all comparisons
+  return comparisons.reduce((sum, c) => sum + (c.statistical_tests?.chi_square?.total_rows || 0), 0);
 });
 
 // Stuck detection computed properties
@@ -907,8 +910,8 @@ const distributionHeaders = [
 ];
 
 const comparisonHeaders = [
-  { title: 'Saeule', key: 'pillar_name', sortable: true },
-  { title: 'Saetze', key: 'metrics.total_sentences', sortable: true },
+  { title: 'Säule', key: 'pillar_name', sortable: true },
+  { title: 'Sätze', key: 'metrics.total_sentences', sortable: true },
   { title: 'Berater-Anteil', key: 'counselor_ratio', sortable: true, width: '200px' },
   { title: 'Impact Factor', key: 'impact_factor_ratio', sortable: true },
   { title: 'Ressourcen-Aktivierung', key: 'resource_activation_score', sortable: true },
@@ -921,7 +924,7 @@ const sentenceHeaders = [
   { title: 'Rolle', key: 'role', sortable: true },
   { title: 'Label', key: 'label', sortable: true },
   { title: 'Konfidenz', key: 'confidence', sortable: true, width: '150px' },
-  { title: 'Saeule', key: 'pillar_number', sortable: true }
+  { title: 'Säule', key: 'pillar_number', sortable: true }
 ];
 
 // Load Analysis
@@ -938,6 +941,7 @@ const loadAnalysis = async () => {
       await loadTransitions();
       await loadHeatmaps();
       await loadComparison();
+      await loadMatrixComparison();
     }
   } catch (error) {
     console.error('Error loading analysis:', error);
@@ -993,6 +997,7 @@ const loadDistribution = async () => {
     const params = new URLSearchParams();
     if (distributionPillar.value) params.append('pillar', distributionPillar.value);
     params.append('level', distributionLevel.value);
+    if (distributionRole.value) params.append('role', distributionRole.value);
 
     const response = await axios.get(
       `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/distribution?${params}`
@@ -1012,6 +1017,7 @@ const loadTransitions = async () => {
     const params = new URLSearchParams();
     if (transitionPillar.value) params.append('pillar', transitionPillar.value);
     params.append('level', transitionLevel.value);
+    if (transitionRole.value) params.append('role', transitionRole.value);
     params.append('format', 'list');
 
     const response = await axios.get(
@@ -1035,12 +1041,14 @@ const loadHeatmaps = async () => {
   try {
     const pillars = analysis.value.config.pillars;
     const level = transitionLevel.value;
+    const role = transitionRole.value;
 
     // Load matrix for each pillar in parallel
     const promises = pillars.map(async (pillarNum) => {
       const params = new URLSearchParams();
       params.append('pillar', pillarNum);
       params.append('level', level);
+      if (role) params.append('role', role);
       params.append('format', 'matrix');
 
       const response = await axios.get(
@@ -1078,7 +1086,7 @@ const getPillarName = (pillarNum) => {
     3: 'Anonymisierte Daten',
     5: 'Live-Testungen'
   };
-  return names[pillarNum] || `Saeule ${pillarNum}`;
+  return names[pillarNum] || `Säule ${pillarNum}`;
 };
 
 // Load Comparison
@@ -1093,6 +1101,26 @@ const loadComparison = async () => {
     console.error('Error loading comparison:', error);
   } finally {
     loadingComparison.value = false;
+  }
+};
+
+// Load Matrix Comparison Data (for integrated view)
+const loadMatrixComparison = async () => {
+  loadingMatrixComparison.value = true;
+  try {
+    const params = new URLSearchParams();
+    params.append('level', transitionLevel.value);
+    if (transitionRole.value) params.append('role', transitionRole.value);
+
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/matrix-comparison?${params}`
+    );
+    matrixComparisonData.value = response.data;
+  } catch (error) {
+    console.error('Error loading matrix comparison:', error);
+    matrixComparisonData.value = null;
+  } finally {
+    loadingMatrixComparison.value = false;
   }
 };
 
@@ -1135,16 +1163,17 @@ const loadMoreSentences = () => {
 };
 
 // Watchers
-watch([distributionPillar, distributionLevel], () => {
+watch([distributionPillar, distributionLevel, distributionRole], () => {
   if (analysis.value?.status === 'completed') {
     loadDistribution();
   }
 });
 
-watch([transitionPillar, transitionLevel], () => {
+watch([transitionPillar, transitionLevel, transitionRole], () => {
   if (analysis.value?.status === 'completed') {
     loadTransitions();
     loadHeatmaps();
+    loadMatrixComparison();
   }
 });
 
@@ -1172,7 +1201,7 @@ const getStatusIcon = (status) => {
 const getStatusText = (status) => {
   const texts = {
     pending: 'Ausstehend',
-    running: 'Laeuft',
+    running: 'Läuft',
     completed: 'Abgeschlossen',
     failed: 'Fehlgeschlagen'
   };
@@ -1294,6 +1323,22 @@ const onHeatmapCellLeave = () => {
   hoveredTransition.value = null;
 };
 
+// Handle highlight from PillarComparisonPanel
+const onHighlightTransition = (transition) => {
+  // This allows clicking on a transition in the comparison panel to highlight it in heatmaps
+  if (transition) {
+    hoveredTransition.value = {
+      from: transition.from_label,
+      to: transition.to_label,
+      fromDisplay: transition.from_display || transition.from_label,
+      toDisplay: transition.to_display || transition.to_label,
+      pillar: null  // No specific pillar, highlight in all
+    };
+  } else {
+    hoveredTransition.value = null;
+  }
+};
+
 // Helper functions for cross-pillar comparison
 const getTransitionCount = (pillarNum, from, to) => {
   return heatmapData.value[pillarNum]?.counts?.[from]?.[to] || 0;
@@ -1378,9 +1423,9 @@ const transitionAnalysis = computed(() => {
   // Determine similarity text
   let similarityText;
   if (similarity > 0.9) {
-    similarityText = 'Die Heatmaps sind sehr aehnlich';
+    similarityText = 'Die Heatmaps sind sehr ähnlich';
   } else if (similarity > 0.7) {
-    similarityText = 'Die Heatmaps zeigen moderate Aehnlichkeit';
+    similarityText = 'Die Heatmaps zeigen moderate Ähnlichkeit';
   } else if (similarity > 0.5) {
     similarityText = 'Die Heatmaps zeigen einige Unterschiede';
   } else {

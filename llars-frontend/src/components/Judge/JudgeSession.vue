@@ -365,7 +365,7 @@
                     {{ llmStreamContent.length }} Zeichen
                   </v-chip>
                 </v-expansion-panel-title>
-                <v-expansion-panel-text>
+                <v-expansion-panel-text class="stream-panel-content">
                   <!-- Stream Status Header -->
                   <v-alert
                     :type="isStreaming ? 'warning' : 'info'"
@@ -498,13 +498,25 @@
                         Kopieren
                       </v-btn>
                     </div>
-                    <div class="stream-output" ref="streamOutput">
+                    <div class="stream-output" ref="streamOutput" @scroll="handleStreamScroll">
                       <pre v-if="llmStreamContent" class="stream-pre">{{ llmStreamContent }}<span v-if="isStreaming" class="cursor-blink">|</span></pre>
                       <div v-else class="text-center text-medium-emphasis py-4">
                         <v-progress-circular v-if="isStreaming" indeterminate color="primary" class="mb-2"></v-progress-circular>
                         <v-icon v-else size="32" class="mb-2">mdi-text-box-outline</v-icon>
                         <div>{{ isStreaming ? 'Warte auf LLM-Ausgabe...' : 'Stream startet wenn der Vergleich beginnt' }}</div>
                       </div>
+                      <!-- Follow Button (appears when user scrolls up) -->
+                      <v-btn
+                        v-if="!autoScrollEnabled && isStreaming"
+                        class="follow-btn"
+                        color="primary"
+                        size="small"
+                        rounded
+                        @click="enableAutoScroll"
+                      >
+                        <v-icon start>mdi-arrow-down</v-icon>
+                        Folgen
+                      </v-btn>
                     </div>
                   </div>
                 </v-expansion-panel-text>
@@ -993,7 +1005,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
-import { io } from 'socket.io-client';
+import { getSocket, useSocketState } from '@/services/socketService';
 
 const route = useRoute();
 const router = useRouter();
@@ -1343,18 +1355,30 @@ const viewComparison = (comparison) => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// Socket.IO for Live Updates
+// Socket.IO for Live Updates (using centralized service with suspension handling)
 const setupSocket = () => {
-  socket.value = io(import.meta.env.VITE_API_BASE_URL, {
-    path: '/socket.io',
-    transports: ['websocket', 'polling']
-  });
+  socket.value = getSocket();
 
+  // Remove existing listeners to prevent duplicates on reconnect
+  socket.value.off('judge:joined');
+  socket.value.off('judge:error');
+  socket.value.off('judge:progress');
+  socket.value.off('judge:comparison_start');
+  socket.value.off('judge:llm_stream');
+  socket.value.off('judge:comparison_complete');
+  socket.value.off('judge:session_complete');
+
+  // Re-join room when socket reconnects (handles browser suspension)
   socket.value.on('connect', () => {
-    console.log('[Judge Socket] Connected');
+    console.log('[Judge Socket] Connected/Reconnected');
     // Use correct event name with judge: prefix
     socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
   });
+
+  // Join immediately if already connected
+  if (socket.value.connected) {
+    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+  }
 
   // Handle join confirmation
   socket.value.on('judge:joined', (data) => {
@@ -1665,13 +1689,11 @@ const reconnectToStream = async () => {
     // Reset stream content
     llmStreamContent.value = '';
 
-    // Reconnect socket if needed
-    if (!socket.value?.connected) {
-      setupSocket();
-    } else {
-      // Re-join the session room
-      socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
-    }
+    // Get socket (will reconnect if needed via centralized service)
+    socket.value = getSocket();
+
+    // Re-join the session room
+    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
 
     // Reload current comparison data
     await loadCurrentComparison();
@@ -1732,9 +1754,16 @@ onMounted(async () => {
 onUnmounted(() => {
   stopPolling();
   if (socket.value) {
-    // Leave the session room before disconnecting
+    // Leave the session room (but don't disconnect - shared socket)
     socket.value.emit('judge:leave_session', { session_id: parseInt(sessionId) });
-    socket.value.disconnect();
+    // Remove our specific listeners
+    socket.value.off('judge:joined');
+    socket.value.off('judge:error');
+    socket.value.off('judge:progress');
+    socket.value.off('judge:comparison_start');
+    socket.value.off('judge:llm_stream');
+    socket.value.off('judge:comparison_complete');
+    socket.value.off('judge:session_complete');
   }
 });
 </script>
@@ -1859,9 +1888,16 @@ onUnmounted(() => {
   background-color: rgba(var(--v-theme-primary), 0.05);
 }
 
+/* Stream panel content - limit height to prevent overflow */
+.stream-panel-content :deep(.v-expansion-panel-text__wrapper) {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
 /* Stream output styles */
 .stream-output-container {
   margin-top: 16px;
+  position: relative;
 }
 
 .stream-pre {
@@ -1889,6 +1925,8 @@ onUnmounted(() => {
   border: 1px solid rgba(var(--v-theme-success), 0.3);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(var(--v-theme-success), 0.05) 0%, rgba(var(--v-theme-success), 0.02) 100%);
+  max-height: 350px;
+  overflow-y: auto;
 }
 
 .justification-text {

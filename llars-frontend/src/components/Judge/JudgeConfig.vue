@@ -45,32 +45,37 @@
               <div class="mb-6">
                 <div class="text-subtitle-1 font-weight-bold mb-2">
                   <v-icon class="mr-1">mdi-pillar</v-icon>
-                  Säulen auswählen (1-5)
+                  Säulen auswählen
                 </div>
                 <v-chip-group
                   v-model="config.selectedPillars"
                   multiple
                   column
-                  mandatory
                 >
                   <v-chip
                     v-for="pillar in availablePillars"
                     :key="pillar.id"
                     :value="pillar.id"
-                    :disabled="config.selectedPillars.length >= 5 && !config.selectedPillars.includes(pillar.id)"
+                    :disabled="!pillar.enabled"
                     filter
                     variant="outlined"
                     color="primary"
                   >
                     <v-icon start>{{ pillar.icon }}</v-icon>
                     {{ pillar.name }}
+                    <span v-if="pillar.threadCount" class="ml-1 text-caption">
+                      ({{ pillar.threadCount }})
+                    </span>
                   </v-chip>
                 </v-chip-group>
                 <div v-if="config.selectedPillars.length === 0" class="text-error text-caption mt-1">
-                  Bitte wählen Sie mindestens eine Säule aus
+                  Bitte wählen Sie mindestens {{ minPillarsRequired }} Säule(n) aus
                 </div>
                 <div v-else class="text-medium-emphasis text-caption mt-1">
-                  {{ config.selectedPillars.length }} von 5 Säulen ausgewählt
+                  {{ config.selectedPillars.length }} Säule(n) ausgewählt
+                  <span v-if="selectedThreadCount > 0">
+                    ({{ selectedThreadCount }} Threads)
+                  </span>
                 </div>
               </div>
 
@@ -80,30 +85,49 @@
                   <v-icon class="mr-1">mdi-compare</v-icon>
                   Vergleichs-Modus
                 </div>
-                <v-radio-group v-model="config.comparisonMode" inline>
-                  <v-radio
-                    label="Alle Paare"
-                    value="all_pairs"
-                    class="mr-4"
-                  >
+                <v-radio-group v-model="config.comparisonMode" class="comparison-mode-group">
+                  <!-- Pillar Sample -->
+                  <v-radio value="pillar_sample">
                     <template v-slot:label>
-                      <div>
-                        <div class="font-weight-medium">Alle Paare</div>
+                      <div class="radio-label">
+                        <div class="d-flex align-center">
+                          <span class="font-weight-medium">Säulen-Stichprobe</span>
+                          <v-chip size="x-small" color="success" class="ml-2">Schnell</v-chip>
+                        </div>
                         <div class="text-caption text-medium-emphasis">
-                          Jede Säule wird mit jeder anderen verglichen
+                          Zufällige Samples pro Säulen-Paar. Schneller Überblick welche Säule besser ist.
                         </div>
                       </div>
                     </template>
                   </v-radio>
-                  <v-radio
-                    label="Spezifisch"
-                    value="specific"
-                  >
+
+                  <!-- Round Robin -->
+                  <v-radio value="round_robin" class="mt-3">
                     <template v-slot:label>
-                      <div>
-                        <div class="font-weight-medium">Spezifisch</div>
+                      <div class="radio-label">
+                        <div class="d-flex align-center">
+                          <span class="font-weight-medium">Round Robin</span>
+                          <v-chip size="x-small" color="warning" class="ml-2">Mittel</v-chip>
+                        </div>
                         <div class="text-caption text-medium-emphasis">
-                          Nur bestimmte Paarungen vergleichen
+                          Jeder Thread einer Säule gegen jeden Thread der anderen Säule.
+                          Ermöglicht Thread-Level Statistiken.
+                        </div>
+                      </div>
+                    </template>
+                  </v-radio>
+
+                  <!-- Free For All -->
+                  <v-radio value="free_for_all" class="mt-3">
+                    <template v-slot:label>
+                      <div class="radio-label">
+                        <div class="d-flex align-center">
+                          <span class="font-weight-medium">Jeder gegen Jeden</span>
+                          <v-chip size="x-small" color="error" class="ml-2">Umfangreich</v-chip>
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                          Jeder Thread gegen jeden anderen Thread. Vollständiges Ranking mit ELO-Scores.
+                          <strong>Achtung:</strong> Kann bei vielen Threads sehr lange dauern!
                         </div>
                       </div>
                     </template>
@@ -111,8 +135,8 @@
                 </v-radio-group>
               </div>
 
-              <!-- Samples per Pillar -->
-              <div class="mb-6">
+              <!-- Samples per Pillar (only for pillar_sample mode) -->
+              <div v-if="config.comparisonMode === 'pillar_sample'" class="mb-6">
                 <div class="text-subtitle-1 font-weight-bold mb-2">
                   <v-icon class="mr-1">mdi-numeric</v-icon>
                   Samples pro Säule: {{ config.samplesPerPillar }}
@@ -140,7 +164,62 @@
                   </template>
                 </v-slider>
                 <div class="text-caption text-medium-emphasis">
-                  Anzahl der Konversations-Samples, die pro Säule bewertet werden
+                  Anzahl der Konversations-Samples, die pro Säule zufällig ausgewählt werden
+                </div>
+              </div>
+
+              <!-- Max Threads per Pillar (for round_robin and free_for_all) -->
+              <div v-if="config.comparisonMode !== 'pillar_sample'" class="mb-6">
+                <div class="text-subtitle-1 font-weight-bold mb-2">
+                  <v-icon class="mr-1">mdi-filter-variant</v-icon>
+                  Max. Threads pro Säule
+                  <v-chip
+                    v-if="config.maxThreadsPerPillar"
+                    size="x-small"
+                    color="info"
+                    class="ml-2"
+                  >
+                    Limitiert auf {{ config.maxThreadsPerPillar }}
+                  </v-chip>
+                </div>
+                <v-switch
+                  v-model="limitThreadsEnabled"
+                  color="primary"
+                  hide-details
+                  class="mb-2"
+                >
+                  <template v-slot:label>
+                    <span class="text-body-2">Thread-Anzahl begrenzen</span>
+                  </template>
+                </v-switch>
+                <v-slider
+                  v-if="limitThreadsEnabled"
+                  v-model="config.maxThreadsPerPillar"
+                  :min="5"
+                  :max="50"
+                  step="5"
+                  thumb-label
+                  color="primary"
+                  track-color="grey-lighten-2"
+                  show-ticks="always"
+                  :tick-labels="['5', '10', '15', '20', '25', '30', '35', '40', '45', '50']"
+                >
+                  <template v-slot:prepend>
+                    <v-text-field
+                      v-model.number="config.maxThreadsPerPillar"
+                      type="number"
+                      style="width: 80px"
+                      density="compact"
+                      hide-details
+                      variant="outlined"
+                      :min="5"
+                      :max="50"
+                    ></v-text-field>
+                  </template>
+                </v-slider>
+                <div class="text-caption text-medium-emphasis">
+                  Begrenzt die Anzahl Threads pro Säule (zufällige Auswahl).
+                  Reduziert die Laufzeit erheblich.
                 </div>
               </div>
 
@@ -156,18 +235,51 @@
                       <div class="font-weight-medium">
                         <v-icon class="mr-1">mdi-swap-horizontal</v-icon>
                         Position-Swap aktivieren
+                        <v-chip size="x-small" color="info" class="ml-2">Empfohlen</v-chip>
                       </div>
                       <div class="text-caption text-medium-emphasis">
                         Führt jeden Vergleich zweimal durch mit vertauschten Positionen (A↔B)
-                        um Position-Bias zu reduzieren
+                        um Position-Bias zu eliminieren (MT-Bench Methodik)
                       </div>
                     </div>
                   </template>
                 </v-switch>
               </div>
 
-              <!-- Repetitions per Pair -->
-              <div class="mb-4">
+              <!-- Worker Count -->
+              <div class="mb-6">
+                <div class="text-subtitle-1 font-weight-bold mb-2">
+                  <v-icon class="mr-1">mdi-server</v-icon>
+                  Parallele Worker: {{ config.workerCount }}
+                </div>
+                <v-slider
+                  v-model="config.workerCount"
+                  :min="1"
+                  :max="5"
+                  step="1"
+                  thumb-label
+                  color="primary"
+                  track-color="grey-lighten-2"
+                  show-ticks="always"
+                  :tick-labels="['1', '2', '3', '4', '5']"
+                ></v-slider>
+                <v-alert
+                  v-if="config.workerCount > 1"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-2"
+                >
+                  <strong>{{ config.workerCount }} Worker</strong> arbeiten parallel.
+                  Die Live-Ansicht zeigt alle Worker nebeneinander.
+                  <div class="text-caption mt-1">
+                    Geschätzte Beschleunigung: ~{{ config.workerCount }}x schneller
+                  </div>
+                </v-alert>
+              </div>
+
+              <!-- Repetitions per Pair (only for pillar_sample mode) -->
+              <div v-if="config.comparisonMode === 'pillar_sample'" class="mb-4">
                 <div class="text-subtitle-1 font-weight-bold mb-2">
                   <v-icon class="mr-1">mdi-repeat</v-icon>
                   Wiederholungen pro Paar: {{ config.repetitionsPerPair }}
@@ -214,76 +326,125 @@
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text>
-            <!-- Stats -->
-            <div class="summary-item mb-4">
-              <div class="text-caption text-medium-emphasis">Ausgewählte Säulen</div>
-              <div class="text-h5 font-weight-bold">{{ config.selectedPillars.length }}</div>
+            <!-- Loading state for estimate -->
+            <div v-if="estimateLoading" class="text-center py-4">
+              <v-progress-circular indeterminate color="primary"></v-progress-circular>
+              <div class="text-caption mt-2">Berechne Schätzung...</div>
             </div>
 
-            <div class="summary-item mb-4">
-              <div class="text-caption text-medium-emphasis">Samples pro Säule</div>
-              <div class="text-h5 font-weight-bold">{{ config.samplesPerPillar }}</div>
-            </div>
-
-            <div class="summary-item mb-4">
-              <div class="text-caption text-medium-emphasis">Vergleichs-Paare</div>
-              <div class="text-h5 font-weight-bold">{{ estimatedPairs }}</div>
-            </div>
-
-            <div class="summary-item mb-4">
-              <div class="text-caption text-medium-emphasis">Position-Swap</div>
-              <div class="text-h5 font-weight-bold">
-                {{ config.positionSwap ? 'Ja (2x)' : 'Nein' }}
+            <template v-else>
+              <!-- Mode Badge -->
+              <div class="summary-item mb-4">
+                <div class="text-caption text-medium-emphasis">Vergleichs-Modus</div>
+                <div class="d-flex align-center mt-1">
+                  <v-chip
+                    :color="modeColor"
+                    size="small"
+                  >
+                    {{ modeDisplayName }}
+                  </v-chip>
+                </div>
               </div>
-            </div>
 
-            <div class="summary-item mb-4">
-              <div class="text-caption text-medium-emphasis">Wiederholungen</div>
-              <div class="text-h5 font-weight-bold">
-                {{ config.repetitionsPerPair }}x
+              <!-- Thread Stats -->
+              <div class="summary-item mb-4">
+                <div class="text-caption text-medium-emphasis">Threads</div>
+                <div class="text-h5 font-weight-bold">
+                  {{ estimate?.total_threads || selectedThreadCount || 0 }}
+                </div>
+                <div v-if="estimate?.threads_per_pillar" class="text-caption">
+                  <span v-for="(count, pillar) in estimate.threads_per_pillar" :key="pillar">
+                    S{{ pillar }}: {{ count }}
+                    <span v-if="pillar != Object.keys(estimate.threads_per_pillar).pop()">, </span>
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <v-divider class="my-4"></v-divider>
-
-            <!-- Total Comparisons -->
-            <div class="summary-total">
-              <div class="text-subtitle-2 text-medium-emphasis mb-1">
-                Geschätzte Gesamt-Vergleiche
+              <!-- Position Swap -->
+              <div class="summary-item mb-4">
+                <div class="text-caption text-medium-emphasis">Position-Swap</div>
+                <div class="text-h5 font-weight-bold">
+                  {{ config.positionSwap ? 'Ja (×2)' : 'Nein' }}
+                </div>
               </div>
-              <div class="text-h4 font-weight-bold text-primary">
-                {{ estimatedComparisons }}
-              </div>
-              <div class="text-caption text-medium-emphasis mt-2">
-                ≈ {{ estimatedDuration }} Minuten
-              </div>
-            </div>
 
-            <v-divider class="my-4"></v-divider>
+              <v-divider class="my-4"></v-divider>
 
-            <!-- Selected Pillars List -->
-            <div v-if="config.selectedPillars.length > 0">
-              <div class="text-subtitle-2 font-weight-bold mb-2">Ausgewählte Säulen:</div>
-              <v-chip
-                v-for="pillarId in config.selectedPillars"
-                :key="pillarId"
-                size="small"
-                class="mb-1 mr-1"
-                color="primary"
+              <!-- Total Comparisons -->
+              <div class="summary-total">
+                <div class="text-subtitle-2 text-medium-emphasis mb-1">
+                  Gesamt-Vergleiche
+                </div>
+                <div class="text-h3 font-weight-bold text-primary">
+                  {{ formatNumber(estimate?.total_comparisons || estimatedComparisons) }}
+                </div>
+                <div v-if="estimate?.base_comparisons" class="text-caption text-medium-emphasis">
+                  ({{ formatNumber(estimate.base_comparisons) }} Basis {{ config.positionSwap ? '× 2 Swap' : '' }})
+                </div>
+              </div>
+
+              <v-divider class="my-4"></v-divider>
+
+              <!-- Duration Estimates -->
+              <div class="summary-item mb-4">
+                <div class="text-caption text-medium-emphasis mb-2">Geschätzte Laufzeit</div>
+                <div v-if="estimate?.estimated_duration_by_workers" class="duration-grid">
+                  <div
+                    v-for="(duration, workers) in estimate.estimated_duration_by_workers"
+                    :key="workers"
+                    class="duration-item"
+                    :class="{ 'active': config.workerCount == workers }"
+                  >
+                    <div class="text-caption">{{ workers }} Worker</div>
+                    <div class="font-weight-bold">{{ formatDuration(duration) }}</div>
+                  </div>
+                </div>
+                <div v-else class="text-h6 font-weight-bold">
+                  {{ formatDuration(estimatedDuration) }}
+                </div>
+              </div>
+
+              <!-- Warning for long duration -->
+              <v-alert
+                v-if="selectedDuration > 120"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-4"
               >
-                {{ getPillarName(pillarId) }}
-              </v-chip>
-            </div>
+                <div class="font-weight-medium">Lange Laufzeit</div>
+                <div class="text-caption">
+                  Diese Session dauert voraussichtlich
+                  <strong>{{ formatDuration(selectedDuration) }}</strong>.
+                  <span v-if="config.comparisonMode !== 'pillar_sample'">
+                    Erwäge "Max. Threads pro Säule" zu begrenzen.
+                  </span>
+                </div>
+              </v-alert>
 
-            <!-- Info Alert -->
-            <v-alert
-              type="info"
-              variant="tonal"
-              density="compact"
-              class="mt-4"
-            >
-              Die Session wird nach dem Erstellen automatisch in die Warteschlange eingereiht.
-            </v-alert>
+              <!-- Selected Pillars List -->
+              <div v-if="config.selectedPillars.length > 0" class="mb-4">
+                <div class="text-subtitle-2 font-weight-bold mb-2">Ausgewählte Säulen:</div>
+                <v-chip
+                  v-for="pillarId in config.selectedPillars"
+                  :key="pillarId"
+                  size="small"
+                  class="mb-1 mr-1"
+                  color="primary"
+                >
+                  {{ getPillarName(pillarId) }}
+                </v-chip>
+              </div>
+
+              <!-- Info Alert -->
+              <v-alert
+                type="info"
+                variant="tonal"
+                density="compact"
+              >
+                Die Session wird nach dem Erstellen automatisch gestartet.
+              </v-alert>
+            </template>
           </v-card-text>
 
           <!-- Create Button -->
@@ -297,7 +458,7 @@
               :loading="creating"
               @click="createSession"
             >
-              Session erstellen
+              Session erstellen & starten
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -310,11 +471,20 @@
           </v-card-title>
           <v-card-text class="text-caption">
             <div class="mb-2">
-              <strong>Paare:</strong> {{ estimatedPairsFormula }}
+              <strong>Modus:</strong> {{ modeDescription }}
             </div>
-            <div class="mb-2">
-              <strong>Vergleiche:</strong> {{ estimatedPairs }} Paare × {{ config.samplesPerPillar }} Samples
-              {{ config.positionSwap ? ' × 2 (Swap)' : '' }}
+            <div v-if="config.comparisonMode === 'pillar_sample'" class="mb-2">
+              <strong>Formel:</strong> {{ estimatedPairs }} Paare × {{ config.samplesPerPillar }} Samples
+              {{ config.positionSwap ? '× 2' : '' }}
+              {{ config.repetitionsPerPair > 1 ? `× ${config.repetitionsPerPair}` : '' }}
+            </div>
+            <div v-else-if="config.comparisonMode === 'round_robin'" class="mb-2">
+              <strong>Formel:</strong> Σ(n<sub>i</sub> × n<sub>j</sub>) für alle Säulen-Paare
+              {{ config.positionSwap ? '× 2' : '' }}
+            </div>
+            <div v-else class="mb-2">
+              <strong>Formel:</strong> N × (N-1) / 2
+              {{ config.positionSwap ? '× 2' : '' }}
             </div>
             <div>
               <strong>Dauer:</strong> ≈ 10 Sekunden pro Vergleich
@@ -327,7 +497,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -338,40 +508,109 @@ const form = ref(null);
 const valid = ref(false);
 const creating = ref(false);
 
+// Estimate
+const estimate = ref(null);
+const estimateLoading = ref(false);
+let estimateDebounceTimer = null;
+
+// Thread limit toggle
+const limitThreadsEnabled = ref(false);
+
 // Available Pillars
 const availablePillars = ref([
-  { id: 1, name: 'Säule 1', icon: 'mdi-numeric-1-box' },
-  { id: 2, name: 'Säule 2', icon: 'mdi-numeric-2-box' },
-  { id: 3, name: 'Säule 3', icon: 'mdi-numeric-3-box' },
-  { id: 4, name: 'Säule 4', icon: 'mdi-numeric-4-box' },
-  { id: 5, name: 'Säule 5', icon: 'mdi-numeric-5-box' }
+  { id: 1, name: 'Säule 1 - Rollenspiele', icon: 'mdi-theater', enabled: true, threadCount: 0 },
+  { id: 2, name: 'Säule 2 - Feature', icon: 'mdi-star', enabled: false, threadCount: 0 },
+  { id: 3, name: 'Säule 3 - Anonymisiert', icon: 'mdi-incognito', enabled: true, threadCount: 0 },
+  { id: 4, name: 'Säule 4 - Synthetisch', icon: 'mdi-robot', enabled: false, threadCount: 0 },
+  { id: 5, name: 'Säule 5 - Live-Tests', icon: 'mdi-lightning-bolt', enabled: true, threadCount: 0 }
 ]);
 
 // Configuration
 const config = ref({
   sessionName: '',
   selectedPillars: [],
-  comparisonMode: 'all_pairs',
+  comparisonMode: 'pillar_sample',
   samplesPerPillar: 10,
+  maxThreadsPerPillar: 15,
   positionSwap: true,
-  repetitionsPerPair: 1
+  repetitionsPerPair: 1,
+  workerCount: 1
 });
 
+// Watch for limit toggle
+watch(limitThreadsEnabled, (enabled) => {
+  if (!enabled) {
+    config.value.maxThreadsPerPillar = null;
+  } else {
+    config.value.maxThreadsPerPillar = 15;
+  }
+});
+
+// Watch for config changes to update estimate
+watch(
+  () => [
+    config.value.selectedPillars,
+    config.value.comparisonMode,
+    config.value.samplesPerPillar,
+    config.value.maxThreadsPerPillar,
+    config.value.positionSwap
+  ],
+  () => {
+    debouncedFetchEstimate();
+  },
+  { deep: true }
+);
+
 // Computed
+const minPillarsRequired = computed(() => {
+  return config.value.comparisonMode === 'free_for_all' ? 1 : 2;
+});
+
+const selectedThreadCount = computed(() => {
+  return config.value.selectedPillars.reduce((sum, id) => {
+    const pillar = availablePillars.value.find(p => p.id === id);
+    return sum + (pillar?.threadCount || 0);
+  }, 0);
+});
+
+const modeDisplayName = computed(() => {
+  const modes = {
+    'pillar_sample': 'Säulen-Stichprobe',
+    'round_robin': 'Round Robin',
+    'free_for_all': 'Jeder gegen Jeden'
+  };
+  return modes[config.value.comparisonMode] || config.value.comparisonMode;
+});
+
+const modeColor = computed(() => {
+  const colors = {
+    'pillar_sample': 'success',
+    'round_robin': 'warning',
+    'free_for_all': 'error'
+  };
+  return colors[config.value.comparisonMode] || 'primary';
+});
+
+const modeDescription = computed(() => {
+  const descriptions = {
+    'pillar_sample': 'Zufällige Samples pro Säulen-Paar',
+    'round_robin': 'Jeder Thread gegen jeden (innerhalb Säulen-Paare)',
+    'free_for_all': 'Jeder Thread gegen jeden (alle)'
+  };
+  return descriptions[config.value.comparisonMode] || '';
+});
+
 const estimatedPairs = computed(() => {
   const n = config.value.selectedPillars.length;
   if (n < 2) return 0;
-  // Formula for all pairs: n * (n - 1) / 2
   return (n * (n - 1)) / 2;
 });
 
-const estimatedPairsFormula = computed(() => {
-  const n = config.value.selectedPillars.length;
-  if (n < 2) return '0';
-  return `${n} × ${n - 1} / 2 = ${estimatedPairs.value}`;
-});
-
 const estimatedComparisons = computed(() => {
+  if (estimate.value?.total_comparisons) {
+    return estimate.value.total_comparisons;
+  }
+  // Fallback calculation for pillar_sample
   const pairs = estimatedPairs.value;
   const samples = config.value.samplesPerPillar;
   const swapMultiplier = config.value.positionSwap ? 2 : 1;
@@ -380,29 +619,103 @@ const estimatedComparisons = computed(() => {
 });
 
 const estimatedDuration = computed(() => {
-  // Assume ~10 seconds per comparison
+  if (estimate.value?.estimated_duration_minutes) {
+    return estimate.value.estimated_duration_minutes;
+  }
+  // Fallback: ~10 seconds per comparison
   const seconds = estimatedComparisons.value * 10;
   return Math.ceil(seconds / 60);
 });
 
+const selectedDuration = computed(() => {
+  if (estimate.value?.estimated_duration_by_workers) {
+    return estimate.value.estimated_duration_by_workers[config.value.workerCount] || estimatedDuration.value;
+  }
+  return estimatedDuration.value / config.value.workerCount;
+});
+
 const canCreate = computed(() => {
   return (
-    valid.value &&
     config.value.sessionName.trim() !== '' &&
-    config.value.selectedPillars.length >= 2
+    config.value.selectedPillars.length >= minPillarsRequired.value
   );
 });
 
 // Methods
+const formatNumber = (num) => {
+  if (num === null || num === undefined) return '0';
+  return num.toLocaleString('de-DE');
+};
+
+const formatDuration = (minutes) => {
+  if (minutes < 1) return '< 1 min';
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+};
+
 const getPillarName = (id) => {
   const pillar = availablePillars.value.find(p => p.id === id);
-  return pillar ? pillar.name : `Säule ${id}`;
+  return pillar ? `Säule ${id}` : `Säule ${id}`;
+};
+
+const debouncedFetchEstimate = () => {
+  if (estimateDebounceTimer) {
+    clearTimeout(estimateDebounceTimer);
+  }
+  estimateDebounceTimer = setTimeout(() => {
+    fetchEstimate();
+  }, 300);
+};
+
+const fetchEstimate = async () => {
+  if (config.value.selectedPillars.length < minPillarsRequired.value) {
+    estimate.value = null;
+    return;
+  }
+
+  estimateLoading.value = true;
+  try {
+    const payload = {
+      pillar_ids: config.value.selectedPillars,
+      comparison_mode: config.value.comparisonMode,
+      samples_per_pillar: config.value.samplesPerPillar,
+      position_swap: config.value.positionSwap
+    };
+
+    // Only include max_threads_per_pillar if limit is enabled
+    if (limitThreadsEnabled.value && config.value.maxThreadsPerPillar) {
+      payload.max_threads_per_pillar = config.value.maxThreadsPerPillar;
+    }
+
+    const response = await axios.post('/api/judge/estimate', payload);
+    estimate.value = response.data;
+
+    // Update thread counts from estimate
+    if (response.data.threads_per_pillar) {
+      for (const [pillarId, count] of Object.entries(response.data.threads_per_pillar)) {
+        const pillar = availablePillars.value.find(p => p.id === parseInt(pillarId));
+        if (pillar) {
+          pillar.threadCount = count;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching estimate:', error);
+    estimate.value = null;
+  } finally {
+    estimateLoading.value = false;
+  }
 };
 
 const createSession = async () => {
   // Validate form
-  const { valid: isValid } = await form.value.validate();
-  if (!isValid) return;
+  if (form.value) {
+    const { valid: isValid } = await form.value.validate();
+    if (!isValid) return;
+  }
 
   creating.value = true;
   try {
@@ -412,10 +725,16 @@ const createSession = async () => {
       comparison_mode: config.value.comparisonMode,
       samples_per_pillar: config.value.samplesPerPillar,
       position_swap: config.value.positionSwap,
-      repetitions_per_pair: config.value.repetitionsPerPair
+      repetitions_per_pair: config.value.repetitionsPerPair,
+      worker_count: config.value.workerCount
     };
 
-    // Use debug endpoint in development mode to avoid auth issues
+    // Only include max_threads_per_pillar if enabled
+    if (limitThreadsEnabled.value && config.value.maxThreadsPerPillar) {
+      payload.max_threads_per_pillar = config.value.maxThreadsPerPillar;
+    }
+
+    // Use debug endpoint in development mode
     const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
     const createEndpoint = isDev
       ? '/api/judge/sessions-debug'
@@ -444,12 +763,28 @@ const createSession = async () => {
     creating.value = false;
   }
 };
+
+// Lifecycle
+onMounted(() => {
+  // Pre-select pillars 1, 3, 5 (the enabled ones)
+  config.value.selectedPillars = [1, 3, 5];
+  // Fetch initial estimate
+  fetchEstimate();
+});
 </script>
 
 <style scoped>
 .judge-config {
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.comparison-mode-group :deep(.v-selection-control) {
+  align-items: flex-start;
+}
+
+.radio-label {
+  padding: 8px 0;
 }
 
 .summary-item {
@@ -463,5 +798,32 @@ const createSession = async () => {
   padding: 16px;
   background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.1) 0%, rgba(var(--v-theme-primary), 0.05) 100%);
   border-radius: 8px;
+}
+
+.duration-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.duration-item {
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-surface), 0.3);
+  transition: all 0.2s ease;
+}
+
+.duration-item.active {
+  background: rgba(var(--v-theme-primary), 0.2);
+  border: 1px solid rgba(var(--v-theme-primary), 0.5);
+}
+
+.duration-item .text-caption {
+  font-size: 10px;
+}
+
+.duration-item .font-weight-bold {
+  font-size: 11px;
 }
 </style>

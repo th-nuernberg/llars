@@ -65,6 +65,112 @@ def list_sessions_debug():
     return jsonify(result)
 
 
+@judge_bp.route('/estimate', methods=['POST'])
+def estimate_comparisons_endpoint():
+    """
+    Estimate the number of comparisons for a given configuration.
+
+    This endpoint helps the UI show expected workload before creating a session.
+    No authentication required for estimation.
+
+    Body:
+        pillar_ids: List of pillar IDs [1, 3, 5]
+        comparison_mode: 'pillar_sample', 'round_robin', 'free_for_all'
+        samples_per_pillar: For pillar_sample mode (default: 10)
+        max_threads_per_pillar: Optional thread limit
+        position_swap: Whether position swap is enabled (default: true)
+
+    Returns:
+        JSON with estimation details including comparison counts and duration estimates
+    """
+    from services.judge.comparison_generator import ComparisonGenerator
+
+    data = request.get_json() or {}
+
+    pillar_ids = data.get('pillar_ids', [])
+    comparison_mode = data.get('comparison_mode', 'pillar_sample')
+    samples_per_pillar = min(data.get('samples_per_pillar', 10), 50)
+    max_threads_per_pillar = data.get('max_threads_per_pillar')
+    position_swap = data.get('position_swap', True)
+
+    if not pillar_ids:
+        return jsonify({
+            'error': 'pillar_ids is required',
+            'total_comparisons': 0
+        }), 400
+
+    # Get actual thread counts from database
+    pillar_threads = {}
+    for pillar in pillar_ids:
+        threads = PillarThread.query.filter_by(pillar_number=pillar).all()
+        if threads:
+            pillar_threads[pillar] = [t.thread_id for t in threads]
+        else:
+            pillar_threads[pillar] = []
+
+    # Check if we have any threads
+    total_threads = sum(len(t) for t in pillar_threads.values())
+    if total_threads == 0:
+        return jsonify({
+            'error': 'No threads available for the selected pillars',
+            'total_comparisons': 0,
+            'pillars': pillar_ids,
+            'threads_per_pillar': {p: 0 for p in pillar_ids}
+        }), 200
+
+    # Use the generator to estimate
+    generator = ComparisonGenerator()
+    estimate = generator.estimate(
+        pillar_threads=pillar_threads,
+        mode=comparison_mode,
+        samples_per_pillar=samples_per_pillar,
+        position_swap=position_swap,
+        max_threads_per_pillar=max_threads_per_pillar
+    )
+
+    return jsonify(estimate)
+
+
+@judge_bp.route('/comparison-modes', methods=['GET'])
+def get_comparison_modes():
+    """
+    Get available comparison modes with descriptions.
+
+    Returns:
+        JSON array of available modes with details
+    """
+    modes = [
+        {
+            'id': 'pillar_sample',
+            'name': 'Pillar Sample',
+            'name_de': 'Säulen-Stichprobe',
+            'description': 'Random samples per pillar pair. Fast overview.',
+            'description_de': 'Zufällige Stichproben pro Säulen-Paar. Schneller Überblick.',
+            'complexity': 'low',
+            'recommended_for': 'Quick quality comparison between pillars'
+        },
+        {
+            'id': 'round_robin',
+            'name': 'Round Robin',
+            'name_de': 'Rundenturnier',
+            'description': 'Every thread from pillar A vs every thread from pillar B.',
+            'description_de': 'Jeder Thread einer Säule gegen jeden Thread der anderen.',
+            'complexity': 'medium',
+            'recommended_for': 'Comprehensive pillar comparison with thread-level stats'
+        },
+        {
+            'id': 'free_for_all',
+            'name': 'Free For All',
+            'name_de': 'Jeder gegen Jeden',
+            'description': 'Every thread against every other thread, regardless of pillar.',
+            'description_de': 'Jeder Thread gegen jeden anderen Thread, unabhängig von Säule.',
+            'complexity': 'high',
+            'recommended_for': 'Complete thread ranking, ELO scores, finding best/worst threads'
+        }
+    ]
+    return jsonify(modes)
+
+
 @judge_bp.route('/sessions', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
@@ -166,21 +272,25 @@ def create_session_debug():
 
     session_name = data.get('session_name') or data.get('name') or f'Debug Session {datetime.now().strftime("%Y-%m-%d %H:%M")}'
     pillar_ids = data.get('pillar_ids', [])
-    comparison_mode = data.get('comparison_mode', 'all_pairs')
+    comparison_mode = data.get('comparison_mode', 'pillar_sample')  # New default
     samples_per_pillar = min(data.get('samples_per_pillar', 10), 50)
     position_swap = data.get('position_swap', True)
-    repetitions_per_pair = min(max(data.get('repetitions_per_pair', 1), 1), 5)  # 1-5 repetitions
+    repetitions_per_pair = min(max(data.get('repetitions_per_pair', 1), 1), 5)
+    max_threads_per_pillar = data.get('max_threads_per_pillar')  # Optional limit
+    worker_count = min(max(data.get('worker_count', 1), 1), 5)  # 1-5 workers
 
     config_json = {
         'pillars': pillar_ids,
         'comparison_mode': comparison_mode,
         'samples_per_pillar': samples_per_pillar,
         'position_swap': position_swap,
-        'repetitions_per_pair': repetitions_per_pair
+        'repetitions_per_pair': repetitions_per_pair,
+        'max_threads_per_pillar': max_threads_per_pillar,
+        'worker_count': worker_count
     }
 
     session = JudgeSession(
-        user_id='admin',  # Default to admin for debug endpoint
+        user_id='admin',
         name=session_name,
         config_json=config_json,
         status=JudgeSessionStatus.CREATED,
@@ -191,9 +301,15 @@ def create_session_debug():
     db.session.add(session)
     db.session.commit()
 
-    if pillar_ids and len(pillar_ids) >= 2:
+    # For free_for_all mode, we only need 1+ pillars
+    min_pillars = 1 if comparison_mode == 'free_for_all' else 2
+
+    if pillar_ids and len(pillar_ids) >= min_pillars:
         try:
-            _configure_session_comparisons(session, pillar_ids, comparison_mode, samples_per_pillar, position_swap, repetitions_per_pair)
+            _configure_session_comparisons(
+                session, pillar_ids, comparison_mode, samples_per_pillar,
+                position_swap, repetitions_per_pair, max_threads_per_pillar
+            )
             db.session.commit()
         except Exception as e:
             import logging
@@ -204,7 +320,8 @@ def create_session_debug():
         'session_id': session.id,
         'name': session.name,
         'status': session.status.value,
-        'total_comparisons': session.total_comparisons
+        'total_comparisons': session.total_comparisons,
+        'comparison_mode': comparison_mode
     }), 201
 
 
@@ -217,11 +334,13 @@ def create_session():
 
     Body:
         name OR session_name: Session name
-        pillar_ids: Optional list of pillar IDs to include [1, 2, 3, 4, 5]
-        comparison_mode: "all_pairs" or "specific" (default: all_pairs)
-        samples_per_pillar: Number of threads per pillar (default: 10)
+        pillar_ids: List of pillar IDs to include [1, 2, 3, 4, 5]
+        comparison_mode: 'pillar_sample', 'round_robin', 'free_for_all' (default: pillar_sample)
+        samples_per_pillar: Number of threads per pillar for pillar_sample (default: 10)
+        max_threads_per_pillar: Optional limit on threads per pillar (for round_robin/free_for_all)
         position_swap: Whether to run position-swap (default: true)
         repetitions_per_pair: How many times each pair is compared (default: 1, max: 5)
+        worker_count: Number of parallel workers (default: 1, max: 5)
 
     Returns:
         JSON with created session ID
@@ -234,18 +353,22 @@ def create_session():
 
     # Extract configuration from request
     pillar_ids = data.get('pillar_ids', [])
-    comparison_mode = data.get('comparison_mode', 'all_pairs')
+    comparison_mode = data.get('comparison_mode', 'pillar_sample')
     samples_per_pillar = min(data.get('samples_per_pillar', 10), 50)
+    max_threads_per_pillar = data.get('max_threads_per_pillar')
     position_swap = data.get('position_swap', True)
-    repetitions_per_pair = min(max(data.get('repetitions_per_pair', 1), 1), 5)  # 1-5 repetitions
+    repetitions_per_pair = min(max(data.get('repetitions_per_pair', 1), 1), 5)
+    worker_count = min(max(data.get('worker_count', 1), 1), 5)
 
     # Build config JSON
     config_json = {
         'pillars': pillar_ids,
         'comparison_mode': comparison_mode,
         'samples_per_pillar': samples_per_pillar,
+        'max_threads_per_pillar': max_threads_per_pillar,
         'position_swap': position_swap,
-        'repetitions_per_pair': repetitions_per_pair
+        'repetitions_per_pair': repetitions_per_pair,
+        'worker_count': worker_count
     }
 
     session = JudgeSession(
@@ -260,112 +383,110 @@ def create_session():
     db.session.add(session)
     db.session.commit()
 
-    # If pillars provided, auto-configure comparisons
-    if pillar_ids and len(pillar_ids) >= 2:
+    # For free_for_all mode, we only need 1+ pillars (can compare within same pillar)
+    min_pillars = 1 if comparison_mode == 'free_for_all' else 2
+
+    if pillar_ids and len(pillar_ids) >= min_pillars:
         try:
-            _configure_session_comparisons(session, pillar_ids, comparison_mode, samples_per_pillar, position_swap, repetitions_per_pair)
+            _configure_session_comparisons(
+                session, pillar_ids, comparison_mode, samples_per_pillar,
+                position_swap, repetitions_per_pair, max_threads_per_pillar
+            )
             db.session.commit()
         except Exception as e:
-            # Log but don't fail - can be configured later
             import logging
             logging.getLogger(__name__).warning(f"Auto-configure failed: {e}")
 
     return jsonify({
         'session_id': session.id,
-        'id': session.id,  # Keep for backwards compatibility
+        'id': session.id,
         'name': session.name,
         'status': session.status.value,
-        'total_comparisons': session.total_comparisons
+        'total_comparisons': session.total_comparisons,
+        'comparison_mode': comparison_mode
     }), 201
 
 
-def _configure_session_comparisons(session, pillars, comparison_mode, samples_per_pillar, position_swap, repetitions_per_pair=1):
+def _configure_session_comparisons(
+    session,
+    pillars,
+    comparison_mode,
+    samples_per_pillar,
+    position_swap,
+    repetitions_per_pair=1,
+    max_threads_per_pillar=None
+):
     """
-    Helper to configure session comparisons.
+    Helper to configure session comparisons using the ComparisonGenerator.
 
-    When repetitions_per_pair > 1, different thread samples are used for each repetition.
-    This provides statistical stability by comparing the pillars multiple times with
-    different representative samples.
+    Supports three modes:
+    - pillar_sample (default): Random samples per pillar pair
+    - round_robin: All threads of pillar A vs all threads of pillar B
+    - free_for_all: Every thread against every other thread
+
+    Args:
+        session: JudgeSession object
+        pillars: List of pillar numbers
+        comparison_mode: 'pillar_sample', 'round_robin', 'free_for_all', or 'all_pairs' (legacy)
+        samples_per_pillar: Number of samples for pillar_sample mode
+        position_swap: Whether to create A|B and B|A versions
+        repetitions_per_pair: Number of repetitions (only for pillar_sample)
+        max_threads_per_pillar: Optional limit on threads per pillar
     """
-    from itertools import combinations
-    import random
+    from services.judge.comparison_generator import ComparisonGenerator
+    import logging
 
-    # Generate comparison pairs
-    if comparison_mode == 'all_pairs':
-        pairs = list(combinations(sorted(pillars), 2))
-    else:
-        pairs = []
+    logger = logging.getLogger(__name__)
 
     # Get threads for each pillar
     pillar_threads = {}
     for pillar in pillars:
         threads = PillarThread.query.filter_by(pillar_number=pillar).all()
         if threads:
-            pillar_threads[pillar] = threads
+            pillar_threads[pillar] = [t.thread_id for t in threads]
 
     if not pillar_threads:
-        return  # No threads available yet
+        logger.warning("No threads available for any pillar")
+        return
 
-    # Create comparisons
-    queue_position = 0
+    # Use the new ComparisonGenerator
+    generator = ComparisonGenerator()
 
-    for rep in range(repetitions_per_pair):
-        for pillar_a, pillar_b in pairs:
-            threads_a = pillar_threads.get(pillar_a, [])
-            threads_b = pillar_threads.get(pillar_b, [])
+    result = generator.generate(
+        pillar_threads=pillar_threads,
+        mode=comparison_mode,
+        samples_per_pillar=samples_per_pillar,
+        position_swap=position_swap,
+        max_threads_per_pillar=max_threads_per_pillar,
+        repetitions=repetitions_per_pair
+    )
 
-            if not threads_a or not threads_b:
-                continue
+    # Create JudgeComparison objects from the generated pairs
+    comparisons = []
+    for idx, pair in enumerate(result.comparisons):
+        comp = JudgeComparison(
+            session_id=session.id,
+            thread_a_id=pair.thread_a_id,
+            thread_b_id=pair.thread_b_id,
+            pillar_a=pair.pillar_a,
+            pillar_b=pair.pillar_b,
+            position_order=pair.position_order,
+            queue_position=idx,
+            status=JudgeComparisonStatus.PENDING
+        )
+        comparisons.append(comp)
 
-            # Sample threads - use different samples for each repetition
-            # Shuffle threads before sampling to get different samples each repetition
-            shuffled_a = threads_a.copy()
-            shuffled_b = threads_b.copy()
-            random.shuffle(shuffled_a)
-            random.shuffle(shuffled_b)
+    # Bulk insert for efficiency
+    db.session.bulk_save_objects(comparisons)
 
-            sample_a = shuffled_a[:min(samples_per_pillar, len(shuffled_a))]
-            sample_b = shuffled_b[:min(samples_per_pillar, len(shuffled_b))]
-
-            # Create comparisons using proportional sampling strategy
-            # This handles different pillar sizes by pairing proportionally
-            min_samples = min(len(sample_a), len(sample_b))
-
-            for i in range(min_samples):
-                ta = sample_a[i]
-                tb = sample_b[i]
-
-                # Original order (position_order: 1 = AB, 2 = BA)
-                comp = JudgeComparison(
-                    session_id=session.id,
-                    thread_a_id=ta.thread_id,
-                    thread_b_id=tb.thread_id,
-                    pillar_a=pillar_a,
-                    pillar_b=pillar_b,
-                    position_order=1,  # AB
-                    queue_position=queue_position,
-                    status=JudgeComparisonStatus.PENDING
-                )
-                db.session.add(comp)
-                queue_position += 1
-
-                # Swapped order if enabled
-                if position_swap:
-                    comp_swap = JudgeComparison(
-                        session_id=session.id,
-                        thread_a_id=tb.thread_id,
-                        thread_b_id=ta.thread_id,
-                        pillar_a=pillar_b,
-                        pillar_b=pillar_a,
-                        position_order=2,  # BA
-                        queue_position=queue_position,
-                        status=JudgeComparisonStatus.PENDING
-                    )
-                    db.session.add(comp_swap)
-                    queue_position += 1
-
-    session.total_comparisons = queue_position
+    # Update session
+    session.total_comparisons = len(comparisons)
     session.status = JudgeSessionStatus.QUEUED
+
+    logger.info(
+        f"Configured session {session.id} with {len(comparisons)} comparisons "
+        f"using {result.mode.value} mode"
+    )
 
 
 @judge_bp.route('/sessions/<int:session_id>/configure', methods=['POST'])

@@ -59,8 +59,8 @@
       </div>
     </div>
 
-    <!-- Hover Info Panel -->
-    <div v-if="highlightedCell && isHoveredLocally" class="hover-info-panel mt-2">
+    <!-- Hover Info Panel - shows for both local hover and external highlight (synced across heatmaps) -->
+    <div v-if="highlightedCell" class="hover-info-panel mt-2">
       <div class="text-caption font-weight-bold">
         {{ labelDisplays[highlightedCell.from] || highlightedCell.from }}
         <v-icon size="x-small" class="mx-1">mdi-arrow-right</v-icon>

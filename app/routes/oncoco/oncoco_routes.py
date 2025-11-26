@@ -672,10 +672,11 @@ def _run_analysis(analysis: OnCoCoAnalysis, socketio=None, resume: bool = False)
         db.session.add(pillar_stat)
 
         # Store transition matrices
+        # level: 0 = full detail, 2 = level2 aggregated
         tm_full = OnCoCoTransitionMatrix(
             analysis_id=analysis.id,
             pillar_number=pillar_number,
-            level='full',
+            level=0,  # 0 = full detail
             matrix_counts_json=counts,
             matrix_probs_json=probs,
             total_transitions=len(ps['all_labels']) - 1
@@ -685,7 +686,7 @@ def _run_analysis(analysis: OnCoCoAnalysis, socketio=None, resume: bool = False)
         tm_l2 = OnCoCoTransitionMatrix(
             analysis_id=analysis.id,
             pillar_number=pillar_number,
-            level='level2',
+            level=2,  # 2 = level2 aggregated
             matrix_counts_json=counts_l2,
             matrix_probs_json=probs_l2,
             total_transitions=len(ps['all_labels']) - 1
@@ -890,12 +891,15 @@ def get_transition_matrix(analysis_id: int):
         JSON object with transition matrix
     """
     pillar = request.args.get('pillar', type=int)
-    level = request.args.get('level', 'level2')
+    level_param = request.args.get('level', 'level2')
     output_format = request.args.get('format', 'matrix')
+
+    # Convert level parameter to integer: 'full' -> 0, 'level2' -> 2
+    level_int = 0 if level_param == 'full' else 2
 
     query = OnCoCoTransitionMatrix.query.filter_by(
         analysis_id=analysis_id,
-        level=level
+        level=level_int
     )
 
     if pillar:
@@ -953,7 +957,7 @@ def get_transition_matrix(analysis_id: int):
 
         return jsonify({
             'links': sorted(links, key=lambda x: -x['value']),
-            'level': level,
+            'level': level_param,
             'pillar': pillar,
             'total_transitions': total_transitions
         })
@@ -969,7 +973,7 @@ def get_transition_matrix(analysis_id: int):
         'label_displays': {l: get_label_display_name(l, 'de') for l in all_labels},
         'counts': result_counts,
         'probabilities': result_probs,
-        'level': level,
+        'level': level_param,
         'pillar': pillar,
         'total_transitions': total_transitions
     })
@@ -1157,3 +1161,199 @@ def debug_start_analysis(analysis_id: int):
         analysis.error_message = str(e)
         db.session.commit()
         return jsonify({'error': str(e)}), 500
+
+
+@oncoco_bp.route('/debug/analyses/<int:analysis_id>/complete', methods=['POST'])
+@debug_route_protected
+def debug_complete_analysis(analysis_id: int):
+    """
+    DEBUG: Mark a stuck analysis as completed.
+    Use this when an analysis reached 100% but status is still 'running' (e.g., after server restart).
+    Requires SYSTEM_ADMIN_API_KEY via X-API-Key header or api_key query param.
+    Only available in development mode.
+    """
+    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+
+    # Only allow completing 'running' analyses that have reached 100%
+    if analysis.status != OnCoCoAnalysisStatus.RUNNING:
+        return jsonify({
+            'error': f'Cannot complete analysis in {analysis.status.value} status. Only running analyses can be completed.',
+            'current_status': analysis.status.value
+        }), 400
+
+    if analysis.total_threads == 0:
+        return jsonify({
+            'error': 'Analysis has no threads configured',
+            'total_threads': analysis.total_threads
+        }), 400
+
+    progress = (analysis.processed_threads / analysis.total_threads * 100) if analysis.total_threads > 0 else 0
+
+    if progress < 100:
+        return jsonify({
+            'error': f'Analysis is not complete yet ({progress:.1f}%). Wait for it to finish or use force=true.',
+            'progress': progress,
+            'processed_threads': analysis.processed_threads,
+            'total_threads': analysis.total_threads
+        }), 400
+
+    # Mark as completed
+    analysis.status = OnCoCoAnalysisStatus.COMPLETED
+    analysis.completed_at = datetime.utcnow()
+    db.session.commit()
+
+    logger.info(f"[OnCoCo DEBUG] Analysis {analysis_id} marked as completed (was stuck at 100%)")
+
+    return jsonify({
+        'message': 'Analysis marked as completed',
+        'analysis_id': analysis_id,
+        'status': analysis.status.value,
+        'processed_threads': analysis.processed_threads,
+        'total_threads': analysis.total_threads,
+        'total_sentences': analysis.total_sentences
+    })
+
+
+@oncoco_bp.route('/debug/analyses/<int:analysis_id>/recompute-stats', methods=['POST'])
+@debug_route_protected
+def debug_recompute_statistics(analysis_id: int):
+    """
+    DEBUG: Recompute pillar statistics and transition matrices from existing sentence labels.
+    Use this when an analysis was interrupted before statistics were computed.
+    Requires SYSTEM_ADMIN_API_KEY via X-API-Key header or api_key query param.
+    Only available in development mode.
+    """
+    from collections import defaultdict
+
+    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+
+    # Get all sentence labels for this analysis
+    sentence_labels = OnCoCoSentenceLabel.query.filter_by(analysis_id=analysis_id).all()
+
+    if not sentence_labels:
+        return jsonify({
+            'error': 'No sentence labels found for this analysis',
+            'analysis_id': analysis_id
+        }), 404
+
+    # Delete existing statistics (if any)
+    OnCoCoPillarStatistics.query.filter_by(analysis_id=analysis_id).delete()
+    OnCoCoTransitionMatrix.query.filter_by(analysis_id=analysis_id).delete()
+    db.session.commit()
+
+    # Rebuild pillar statistics from sentence labels
+    service = get_oncoco_service()
+
+    pillar_stats = defaultdict(lambda: {
+        'threads': set(),
+        'messages': 0,
+        'sentences': 0,
+        'counselor_sentences': 0,
+        'client_sentences': 0,
+        'labels': defaultdict(int),
+        'labels_level2': defaultdict(int),
+        'all_labels': [],
+        'confidences': []
+    })
+
+    for sl in sentence_labels:
+        ps = pillar_stats[sl.pillar_number]
+        ps['threads'].add(sl.thread_id)
+        ps['sentences'] += 1
+        ps['confidences'].append(sl.confidence)
+        ps['labels'][sl.label] += 1
+        ps['all_labels'].append(sl.label)
+
+        # Aggregate to level2
+        level2 = get_label_level2(sl.label)
+        ps['labels_level2'][level2] += 1
+
+        if sl.role == 'counselor':
+            ps['counselor_sentences'] += 1
+        else:
+            ps['client_sentences'] += 1
+
+    # Count unique messages per pillar
+    for sl in sentence_labels:
+        ps = pillar_stats[sl.pillar_number]
+        # We don't have message_id in sentence labels, so we estimate
+        # by counting unique (thread_id, message_index) combinations
+        # For now, just set messages = sentences (approximation)
+
+    # Compute and store statistics for each pillar
+    stats_created = 0
+    matrices_created = 0
+
+    for pillar_number, ps in pillar_stats.items():
+        if ps['sentences'] == 0:
+            continue
+
+        # Convert defaultdicts to regular dicts
+        labels_dict = dict(ps['labels'])
+        labels_level2_dict = dict(ps['labels_level2'])
+
+        # Compute transition matrix
+        counts, probs = service.compute_transition_matrix(ps['all_labels'], use_level2=False)
+        counts_l2, probs_l2 = service.compute_transition_matrix(ps['all_labels'], use_level2=True)
+
+        # Compute metrics
+        impact_factor_ratio = service.compute_impact_factor_ratio(labels_dict)
+        ra_score = service.compute_resource_activation_score(labels_dict)
+        mi_score = service.compute_mutual_information(counts)
+        avg_confidence = sum(ps['confidences']) / len(ps['confidences']) if ps['confidences'] else 0
+
+        # Store pillar statistics
+        pillar_stat = OnCoCoPillarStatistics(
+            analysis_id=analysis_id,
+            pillar_number=pillar_number,
+            total_threads=len(ps['threads']),
+            total_messages=ps['sentences'],  # Approximation
+            total_sentences=ps['sentences'],
+            counselor_sentences=ps['counselor_sentences'],
+            client_sentences=ps['client_sentences'],
+            label_distribution_json=labels_dict,
+            label_distribution_level2_json=labels_level2_dict,
+            impact_factor_ratio=impact_factor_ratio,
+            mi_score=mi_score,
+            resource_activation_score=ra_score,
+            avg_confidence=avg_confidence
+        )
+        db.session.add(pillar_stat)
+        stats_created += 1
+
+        # Store transition matrices
+        # level: 0 = full detail, 2 = level2 aggregated
+        tm_full = OnCoCoTransitionMatrix(
+            analysis_id=analysis_id,
+            pillar_number=pillar_number,
+            level=0,  # 0 = full detail
+            matrix_counts_json=counts,
+            matrix_probs_json=probs,
+            total_transitions=len(ps['all_labels']) - 1 if ps['all_labels'] else 0
+        )
+        db.session.add(tm_full)
+        matrices_created += 1
+
+        tm_l2 = OnCoCoTransitionMatrix(
+            analysis_id=analysis_id,
+            pillar_number=pillar_number,
+            level=2,  # 2 = level2 aggregated
+            matrix_counts_json=counts_l2,
+            matrix_probs_json=probs_l2,
+            total_transitions=len(ps['all_labels']) - 1 if ps['all_labels'] else 0
+        )
+        db.session.add(tm_l2)
+        matrices_created += 1
+
+    db.session.commit()
+
+    logger.info(f"[OnCoCo DEBUG] Recomputed statistics for analysis {analysis_id}: {stats_created} pillar stats, {matrices_created} transition matrices")
+
+    return jsonify({
+        'message': 'Statistics recomputed successfully',
+        'analysis_id': analysis_id,
+        'sentence_labels_processed': len(sentence_labels),
+        'pillar_statistics_created': stats_created,
+        'transition_matrices_created': matrices_created,
+        'pillars': list(pillar_stats.keys())
+    })

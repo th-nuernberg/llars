@@ -1262,11 +1262,13 @@ def get_thread_performance(session_id: int):
     })
 
     for comp in comparisons:
-        if not comp.evaluation:
+        # evaluations is a list - get the first (latest) evaluation
+        if not comp.evaluations:
             continue
 
-        eval_data = comp.evaluation
-        winner = eval_data.winner  # 'A', 'B', or 'TIE'
+        eval_data = comp.evaluations[0]  # Get first evaluation
+        # winner is a JudgeWinner Enum - get string value for comparison
+        winner = eval_data.winner.value if hasattr(eval_data.winner, 'value') else str(eval_data.winner)  # 'A', 'B', or 'TIE'
 
         thread_a = comp.thread_a_id
         thread_b = comp.thread_b_id
@@ -1464,6 +1466,336 @@ def get_thread_performance(session_id: int):
             'global': global_likert_consistency,
             'inconsistent_threads': inconsistent_threads,
             'metrics_tracked': LIKERT_METRICS
+        }
+    })
+
+
+@judge_bp.route('/sessions/<int:session_id>/position-swap-analysis', methods=['GET'])
+@authentik_required
+@require_permission('feature:comparison:view')
+def get_position_swap_analysis(session_id: int):
+    """
+    Detailed Position-Swap Consistency Analysis following best practices from:
+    - Zheng et al. (2023): "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"
+    - "Judging the Judges: A Systematic Investigation of Position Bias in Pairwise Comparative Assessments"
+
+    Metrics calculated:
+    1. Position Consistency Rate: % of swapped pairs where winner is the same
+    2. Consistent Wins: Same thread wins regardless of position
+    3. Consistent Ties: Both evaluations result in TIE
+    4. Position Bias Direction: Primacy (first preferred) vs Recency (last preferred)
+    5. Likert Score Deltas: How much do scores change when positions swap?
+
+    Returns detailed pair-by-pair analysis for inspection.
+    """
+    import statistics
+    from collections import defaultdict
+
+    session = JudgeSession.query.get_or_404(session_id)
+
+    # Get all completed comparisons
+    comparisons = JudgeComparison.query.filter_by(
+        session_id=session_id,
+        status=JudgeComparisonStatus.COMPLETED
+    ).all()
+
+    if not comparisons:
+        return jsonify({
+            'session_id': session_id,
+            'error': 'Keine abgeschlossenen Vergleiche gefunden',
+            'total_pairs': 0
+        })
+
+    # Group comparisons by thread pair (to find swapped pairs)
+    # Key: frozenset({thread_a_id, thread_b_id}) -> list of comparisons
+    pair_groups = defaultdict(list)
+    for comp in comparisons:
+        pair_key = frozenset({comp.thread_a_id, comp.thread_b_id})
+        evaluation = JudgeEvaluation.query.filter_by(comparison_id=comp.id).first()
+        if evaluation:
+            pair_groups[pair_key].append({
+                'comparison': comp,
+                'evaluation': evaluation
+            })
+
+    # Analyze each swapped pair
+    LIKERT_METRICS = ['counsellor_coherence', 'client_coherence', 'quality', 'empathy', 'authenticity', 'solution_orientation']
+
+    # Counters
+    total_swap_pairs = 0  # Pairs that have both A|B and B|A
+    consistent_wins = 0   # Same thread wins in both positions
+    consistent_ties = 0   # Both result in TIE
+    inconsistent = 0      # Different outcomes
+    primacy_bias = 0      # First position preferred when inconsistent
+    recency_bias = 0      # Second position preferred when inconsistent
+
+    # Detailed pair analysis
+    pair_analyses = []
+
+    # Likert consistency tracking
+    likert_deltas = {metric: [] for metric in LIKERT_METRICS}
+
+    for pair_key, group in pair_groups.items():
+        # Need at least 2 evaluations (original and swapped) for analysis
+        if len(group) < 2:
+            continue
+
+        # Find original (A|B) and swapped (B|A) comparisons
+        # Group by position_order or by which thread is in position A
+        threads = list(pair_key)
+        t1, t2 = threads[0], threads[1]
+
+        # Separate into "t1 as A" and "t2 as A" groups
+        t1_as_a = [g for g in group if g['comparison'].thread_a_id == t1]
+        t2_as_a = [g for g in group if g['comparison'].thread_a_id == t2]
+
+        # Analyze each original-swapped pair
+        for orig in t1_as_a:
+            for swap in t2_as_a:
+                total_swap_pairs += 1
+
+                orig_eval = orig['evaluation']
+                swap_eval = swap['evaluation']
+                orig_comp = orig['comparison']
+                swap_comp = swap['comparison']
+
+                # Determine winner in terms of actual thread (not position)
+                # Original: A=t1, B=t2 -> winner 'A' means t1 wins
+                # Swapped:  A=t2, B=t1 -> winner 'A' means t2 wins, 'B' means t1 wins
+                orig_winner = orig_eval.winner.value if orig_eval.winner else None
+                swap_winner = swap_eval.winner.value if swap_eval.winner else None
+
+                # Convert to actual thread winner
+                if orig_winner == 'A':
+                    orig_thread_winner = t1
+                elif orig_winner == 'B':
+                    orig_thread_winner = t2
+                else:
+                    orig_thread_winner = 'TIE'
+
+                if swap_winner == 'A':
+                    swap_thread_winner = t2  # In swapped, A is t2
+                elif swap_winner == 'B':
+                    swap_thread_winner = t1  # In swapped, B is t1
+                else:
+                    swap_thread_winner = 'TIE'
+
+                # Determine consistency
+                is_consistent = False
+                consistency_type = None
+                bias_direction = None
+
+                if orig_thread_winner == swap_thread_winner:
+                    is_consistent = True
+                    if orig_thread_winner == 'TIE':
+                        consistent_ties += 1
+                        consistency_type = 'consistent_tie'
+                    else:
+                        consistent_wins += 1
+                        consistency_type = 'consistent_win'
+                else:
+                    inconsistent += 1
+                    consistency_type = 'inconsistent'
+
+                    # Determine bias direction
+                    # Primacy: Position A always wins
+                    # Recency: Position B always wins
+                    if orig_winner == 'A' and swap_winner == 'A':
+                        primacy_bias += 1
+                        bias_direction = 'primacy'
+                    elif orig_winner == 'B' and swap_winner == 'B':
+                        recency_bias += 1
+                        bias_direction = 'recency'
+                    else:
+                        # Mixed - one wins in orig, TIE in swap or vice versa
+                        bias_direction = 'mixed'
+
+                # Calculate Likert score deltas
+                # Compare scores for the SAME thread across both evaluations
+                likert_comparison = {}
+                for metric in LIKERT_METRICS:
+                    # In original: t1 is A, t2 is B
+                    orig_t1_score = getattr(orig_eval, f'{metric}_a', None)
+                    orig_t2_score = getattr(orig_eval, f'{metric}_b', None)
+
+                    # In swapped: t2 is A, t1 is B
+                    swap_t1_score = getattr(swap_eval, f'{metric}_b', None)  # t1 is now B
+                    swap_t2_score = getattr(swap_eval, f'{metric}_a', None)  # t2 is now A
+
+                    # Calculate deltas (same thread, different position)
+                    delta_t1 = None
+                    delta_t2 = None
+
+                    if orig_t1_score is not None and swap_t1_score is not None:
+                        delta_t1 = swap_t1_score - orig_t1_score
+                        likert_deltas[metric].append(abs(delta_t1))
+
+                    if orig_t2_score is not None and swap_t2_score is not None:
+                        delta_t2 = swap_t2_score - orig_t2_score
+                        likert_deltas[metric].append(abs(delta_t2))
+
+                    likert_comparison[metric] = {
+                        'thread_1': {
+                            'original_score': orig_t1_score,  # t1 as A
+                            'swapped_score': swap_t1_score,   # t1 as B
+                            'delta': delta_t1
+                        },
+                        'thread_2': {
+                            'original_score': orig_t2_score,  # t2 as B
+                            'swapped_score': swap_t2_score,   # t2 as A
+                            'delta': delta_t2
+                        }
+                    }
+
+                # Build pair analysis
+                pair_analyses.append({
+                    'thread_1_id': t1,
+                    'thread_2_id': t2,
+                    'original': {
+                        'comparison_id': orig_comp.id,
+                        'position': f't{t1}_as_A',
+                        'winner_position': orig_winner,
+                        'winner_thread': orig_thread_winner,
+                        'confidence': orig_eval.confidence,
+                        'pillar_a': orig_comp.pillar_a,
+                        'pillar_b': orig_comp.pillar_b
+                    },
+                    'swapped': {
+                        'comparison_id': swap_comp.id,
+                        'position': f't{t2}_as_A',
+                        'winner_position': swap_winner,
+                        'winner_thread': swap_thread_winner,
+                        'confidence': swap_eval.confidence,
+                        'pillar_a': swap_comp.pillar_a,
+                        'pillar_b': swap_comp.pillar_b
+                    },
+                    'is_consistent': is_consistent,
+                    'consistency_type': consistency_type,
+                    'bias_direction': bias_direction,
+                    'likert_comparison': likert_comparison,
+                    'confidence_delta': abs((orig_eval.confidence or 0) - (swap_eval.confidence or 0))
+                })
+
+    # Calculate summary statistics
+    consistency_rate = (consistent_wins + consistent_ties) / total_swap_pairs if total_swap_pairs > 0 else 0
+    inconsistency_rate = inconsistent / total_swap_pairs if total_swap_pairs > 0 else 0
+
+    # Bias direction summary
+    bias_summary = {
+        'primacy_count': primacy_bias,
+        'recency_count': recency_bias,
+        'primacy_rate': primacy_bias / inconsistent if inconsistent > 0 else 0,
+        'recency_rate': recency_bias / inconsistent if inconsistent > 0 else 0,
+        'dominant_bias': 'primacy' if primacy_bias > recency_bias else ('recency' if recency_bias > primacy_bias else 'balanced')
+    }
+
+    # Likert stability analysis
+    likert_stability = {}
+    for metric in LIKERT_METRICS:
+        deltas = likert_deltas[metric]
+        if deltas:
+            likert_stability[metric] = {
+                'mean_delta': round(statistics.mean(deltas), 3),
+                'max_delta': max(deltas),
+                'std_delta': round(statistics.stdev(deltas), 3) if len(deltas) > 1 else 0,
+                'stable_count': sum(1 for d in deltas if d <= 1),  # Delta ≤ 1 is stable
+                'unstable_count': sum(1 for d in deltas if d > 1),
+                'stability_rate': sum(1 for d in deltas if d <= 1) / len(deltas)
+            }
+
+    # Interpretation and recommendations
+    interpretation = {
+        'overall_quality': 'excellent' if consistency_rate >= 0.8 else ('good' if consistency_rate >= 0.6 else ('fair' if consistency_rate >= 0.4 else 'poor')),
+        'position_bias_present': inconsistency_rate > 0.2,
+        'recommendations': []
+    }
+
+    if consistency_rate < 0.6:
+        interpretation['recommendations'].append('Low consistency rate suggests significant position bias. Consider using majority voting or averaging scores.')
+    if bias_summary['dominant_bias'] == 'primacy' and bias_summary['primacy_rate'] > 0.6:
+        interpretation['recommendations'].append('Strong primacy bias detected. The model tends to prefer the first option.')
+    if bias_summary['dominant_bias'] == 'recency' and bias_summary['recency_rate'] > 0.6:
+        interpretation['recommendations'].append('Strong recency bias detected. The model tends to prefer the last option.')
+    if not interpretation['recommendations']:
+        interpretation['recommendations'].append('Position-swap consistency is acceptable. Results are reliable.')
+
+    # Sort pair analyses: inconsistent first, then by confidence delta
+    pair_analyses.sort(key=lambda x: (x['is_consistent'], -x['confidence_delta']))
+
+    return jsonify({
+        'session_id': session_id,
+        'session_name': session.name,
+
+        # Summary Statistics (MT-Bench style)
+        'summary': {
+            'total_swap_pairs': total_swap_pairs,
+            'consistency_rate': round(consistency_rate, 4),
+            'inconsistency_rate': round(inconsistency_rate, 4),
+            'consistent_wins': consistent_wins,
+            'consistent_ties': consistent_ties,
+            'inconsistent': inconsistent
+        },
+
+        # Position Bias Analysis
+        'position_bias': bias_summary,
+
+        # Likert Score Stability
+        'likert_stability': likert_stability,
+
+        # Interpretation
+        'interpretation': interpretation,
+
+        # Detailed Pair Analysis (for inspection)
+        'pairs': pair_analyses,
+
+        # References
+        'methodology': {
+            'description': 'Position-Swap Consistency Analysis based on MT-Bench methodology',
+            'metrics_explanation': {
+                'consistency_rate': {
+                    'description': 'Percentage of swapped pairs where the same thread wins (or both TIE)',
+                    'source': 'MT-Bench',
+                    'source_url': 'https://arxiv.org/abs/2306.05685'
+                },
+                'primacy_bias': {
+                    'description': 'Tendency to prefer the first option (Position A)',
+                    'source': 'Judging the Judges',
+                    'source_url': 'https://arxiv.org/abs/2406.07791'
+                },
+                'recency_bias': {
+                    'description': 'Tendency to prefer the last option (Position B)',
+                    'source': 'Judging the Judges',
+                    'source_url': 'https://arxiv.org/abs/2406.07791'
+                },
+                'likert_stability': {
+                    'description': 'How much Likert scores change for the same thread when position changes',
+                    'source': 'Auto-J / JudgeLM calibration',
+                    'source_url': 'https://arxiv.org/abs/2310.05470'
+                }
+            },
+            'references': [
+                {
+                    'title': 'Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena',
+                    'authors': 'Zheng et al.',
+                    'year': 2023,
+                    'url': 'https://arxiv.org/abs/2306.05685',
+                    'key_contribution': 'Consistency metric, position swap methodology'
+                },
+                {
+                    'title': 'Judging the Judges: Position Bias in Pairwise Assessments',
+                    'authors': 'Shi et al.',
+                    'year': 2024,
+                    'url': 'https://arxiv.org/abs/2406.07791',
+                    'key_contribution': 'Primacy/Recency bias classification'
+                },
+                {
+                    'title': 'Generative Judge for Evaluating Alignment',
+                    'authors': 'Li et al. (Auto-J)',
+                    'year': 2023,
+                    'url': 'https://arxiv.org/abs/2310.05470',
+                    'key_contribution': 'Score calibration via position shuffling'
+                }
+            ]
         }
     })
 

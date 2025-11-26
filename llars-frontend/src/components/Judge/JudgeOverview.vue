@@ -23,10 +23,15 @@
       </v-col>
     </v-row>
 
-    <!-- Stats Cards -->
+    <!-- Stats Cards with Skeleton Loading -->
     <v-row class="mb-4">
       <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
+        <v-skeleton-loader
+          v-if="loadingStats"
+          type="card"
+          height="100"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="primary" size="56" class="mr-4">
               <v-icon icon="mdi-folder-multiple" color="white" size="28"></v-icon>
@@ -39,7 +44,12 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
+        <v-skeleton-loader
+          v-if="loadingStats"
+          type="card"
+          height="100"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="success" size="56" class="mr-4">
               <v-icon icon="mdi-check-circle" color="white" size="28"></v-icon>
@@ -52,7 +62,12 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
+        <v-skeleton-loader
+          v-if="loadingStats"
+          type="card"
+          height="100"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="info" size="56" class="mr-4">
               <v-icon icon="mdi-play-circle" color="white" size="28"></v-icon>
@@ -65,7 +80,12 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" lg="3">
-        <v-card class="stat-card">
+        <v-skeleton-loader
+          v-if="loadingStats"
+          type="card"
+          height="100"
+        ></v-skeleton-loader>
+        <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="warning" size="56" class="mr-4">
               <v-icon icon="mdi-clock-outline" color="white" size="28"></v-icon>
@@ -79,17 +99,14 @@
       </v-col>
     </v-row>
 
-    <!-- KIA Data Sync -->
+    <!-- Sessions Table with Skeleton Loading (moved above KIA Data Sync) -->
     <v-row class="mb-4">
       <v-col cols="12">
-        <KIADataSync />
-      </v-col>
-    </v-row>
-
-    <!-- Sessions Table -->
-    <v-row>
-      <v-col cols="12">
-        <v-card>
+        <v-skeleton-loader
+          v-if="loadingTable"
+          type="table-heading, table-thead, table-tbody, table-tfoot"
+        ></v-skeleton-loader>
+        <v-card v-else>
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
             Meine Judge Sessions
@@ -110,8 +127,8 @@
           </v-card-title>
           <v-divider></v-divider>
 
-          <!-- Loading State -->
-          <v-progress-linear v-if="loading" indeterminate></v-progress-linear>
+          <!-- Loading State for refresh (not initial load) -->
+          <v-progress-linear v-if="loading && !loadingTable" indeterminate></v-progress-linear>
 
           <!-- Sessions Data Table -->
           <v-data-table
@@ -236,6 +253,18 @@
       </v-col>
     </v-row>
 
+    <!-- KIA Data Sync with Skeleton Loading -->
+    <v-row class="mb-4">
+      <v-col cols="12">
+        <v-skeleton-loader
+          v-if="loadingKIA"
+          type="card"
+          height="200"
+        ></v-skeleton-loader>
+        <KIADataSync v-else @loaded="loadingKIA = false" />
+      </v-col>
+    </v-row>
+
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="500">
       <v-card>
@@ -275,6 +304,11 @@ const deleteDialog = ref(false);
 const deleteItem = ref(null);
 const deleting = ref(false);
 
+// Skeleton Loading States
+const loadingStats = ref(true);
+const loadingTable = ref(true);
+const loadingKIA = ref(true);
+
 // Table Headers
 const headers = [
   { title: 'Session Name', key: 'session_name', sortable: true },
@@ -307,8 +341,12 @@ const filteredSessions = computed(() => {
 });
 
 // Load Sessions
-const loadSessions = async () => {
+const loadSessions = async (isInitial = false) => {
   loading.value = true;
+  if (isInitial) {
+    loadingTable.value = true;
+    loadingStats.value = true;
+  }
   try {
     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions`);
     sessions.value = response.data;
@@ -316,6 +354,8 @@ const loadSessions = async () => {
     console.error('Error loading sessions:', error);
   } finally {
     loading.value = false;
+    loadingTable.value = false;
+    loadingStats.value = false;
   }
 };
 
@@ -411,7 +451,12 @@ const formatDate = (dateString) => {
 
 // Lifecycle
 onMounted(() => {
-  loadSessions();
+  // Initial load with skeleton states
+  loadSessions(true);
+  // KIA Data Sync handles its own loading, set to false after a short delay
+  setTimeout(() => {
+    loadingKIA.value = false;
+  }, 100);
 });
 </script>
 

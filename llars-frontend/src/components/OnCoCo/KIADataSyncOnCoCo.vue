@@ -28,7 +28,7 @@
           <div>
             <div class="font-weight-bold">GitLab Token erforderlich</div>
             <div class="text-caption">
-              Um KIA-Daten aus dem Repository zu laden, benoetigen Sie einen GitLab Personal Access Token.
+              Um KIA-Daten aus dem Repository zu laden, benötigen Sie einen GitLab Personal Access Token.
             </div>
           </div>
         </div>
@@ -50,7 +50,7 @@
       <!-- Pillar Status Grid -->
       <div class="text-subtitle-1 font-weight-bold mb-2">
         <v-icon class="mr-1">mdi-pillar</v-icon>
-        Saeulen-Status
+        Säulen-Status
       </div>
 
       <v-skeleton-loader v-if="loading" type="list-item@5"></v-skeleton-loader>
@@ -119,7 +119,7 @@
               size="small"
               :loading="syncing[num]"
               @click="syncPillar(num)"
-              title="Diese Saeule synchronisieren"
+              title="Diese Säule synchronisieren"
             >
               <v-icon>mdi-sync</v-icon>
             </v-btn>
@@ -133,7 +133,7 @@
                   mdi-information-outline
                 </v-icon>
               </template>
-              {{ pillar.error || 'Nicht verfuegbar' }}
+              {{ pillar.error || 'Nicht verfügbar' }}
             </v-tooltip>
           </template>
         </v-list-item>
@@ -239,7 +239,7 @@ const getStatusIcon = (status) => {
 
 const getStatusText = (status) => {
   switch (status) {
-    case 'available': return 'Verfuegbar';
+    case 'available': return 'Verfügbar';
     case 'not_found': return 'Nicht gefunden';
     case 'error': return 'Fehler';
     case 'syncing': return 'Synchronisiere...';
@@ -286,8 +286,8 @@ const syncPillar = async (pillarNumber) => {
     lastSyncResult.value = {
       success: pillarResult?.success ?? response.data.success,
       message: pillarResult?.success
-        ? `Saeule ${pillarNumber} erfolgreich synchronisiert`
-        : `Fehler bei Saeule ${pillarNumber}`,
+        ? `Säule ${pillarNumber} erfolgreich synchronisiert`
+        : `Fehler bei Säule ${pillarNumber}`,
       details: pillarResult?.success
         ? `${pillarResult.threads_synced || 0} Threads synchronisiert`
         : pillarResult?.error || 'Unbekannter Fehler'
@@ -299,7 +299,7 @@ const syncPillar = async (pillarNumber) => {
     console.error('Error syncing pillar:', error);
     lastSyncResult.value = {
       success: false,
-      message: `Fehler bei Saeule ${pillarNumber}`,
+      message: `Fehler bei Säule ${pillarNumber}`,
       details: error.response?.data?.error || error.message
     };
     if (pillars.value[pillarNumber]) {
@@ -324,7 +324,7 @@ const syncAll = async () => {
     lastSyncResult.value = {
       success: totalSuccess > 0,
       message: `Synchronisation abgeschlossen`,
-      details: `${totalSuccess} Saeulen erfolgreich, ${totalThreadsSynced} Threads synchronisiert`
+      details: `${totalSuccess} Säulen erfolgreich, ${totalThreadsSynced} Threads synchronisiert`
     };
 
     // Refresh status

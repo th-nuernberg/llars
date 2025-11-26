@@ -7,10 +7,18 @@
           <div>
             <h1 class="text-h4 font-weight-bold">OnCoCo Analyse</h1>
             <p class="text-subtitle-1 text-medium-emphasis">
-              Klassifikation von Beratungsgespraechen mit dem OnCoCo Modell
+              Klassifikation von Beratungsgesprächen mit dem OnCoCo Modell
             </p>
           </div>
           <v-spacer></v-spacer>
+          <v-btn
+            color="secondary"
+            prepend-icon="mdi-information-outline"
+            class="mr-2"
+            @click="navigateToInfo"
+          >
+            Was ist OnCoCo?
+          </v-btn>
           <v-btn
             color="primary"
             prepend-icon="mdi-plus"
@@ -96,7 +104,7 @@
             <!-- Pillars -->
             <template v-slot:item.pillar_count="{ item }">
               <v-chip size="small" variant="outlined">
-                {{ item.pillar_count }} Saeulen
+                {{ item.pillar_count }} Säulen
               </v-chip>
             </template>
 
@@ -106,7 +114,7 @@
                 <div class="text-subtitle-2 font-weight-bold">
                   {{ item.total_sentences || 0 }}
                 </div>
-                <div class="text-caption text-medium-emphasis">Saetze</div>
+                <div class="text-caption text-medium-emphasis">Sätze</div>
               </div>
             </template>
 
@@ -147,7 +155,7 @@
                     ></v-btn>
                   </template>
                 </v-tooltip>
-                <v-tooltip text="Loeschen" location="top">
+                <v-tooltip text="Löschen" location="top">
                   <template v-slot:activator="{ props }">
                     <v-btn
                       v-bind="props"
@@ -277,7 +285,7 @@
               :color="modelInfo.model?.model_available ? 'success' : 'error'"
               size="small"
             >
-              {{ modelInfo.model?.model_available ? 'Verfuegbar' : 'Nicht verfuegbar' }}
+              {{ modelInfo.model?.model_available ? 'Verfügbar' : 'Nicht verfügbar' }}
             </v-chip>
           </v-card-title>
           <v-card-text>
@@ -295,7 +303,7 @@
                 </div>
               </v-col>
               <v-col cols="12" md="4">
-                <div class="text-caption text-medium-emphasis">Geraet</div>
+                <div class="text-caption text-medium-emphasis">Gerät</div>
                 <div class="font-weight-medium">{{ modelInfo.model?.device || 'CPU' }}</div>
               </v-col>
             </v-row>
@@ -321,17 +329,17 @@
       <v-card>
         <v-card-title class="text-h5">
           <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
-          Analyse loeschen?
+          Analyse löschen?
         </v-card-title>
         <v-card-text>
-          Moechten Sie die Analyse <strong>{{ deleteItem?.name }}</strong> wirklich loeschen?
-          Diese Aktion kann nicht rueckgaengig gemacht werden.
+          Möchten Sie die Analyse <strong>{{ deleteItem?.name }}</strong> wirklich löschen?
+          Diese Aktion kann nicht rückgängig gemacht werden.
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="deleteDialog = false">Abbrechen</v-btn>
           <v-btn color="error" variant="flat" @click="deleteAnalysis" :loading="deleting">
-            Loeschen
+            Löschen
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -378,8 +386,8 @@ const headers = [
   { title: 'Analyse Name', key: 'name', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Fortschritt', key: 'progress', sortable: true },
-  { title: 'Saeulen', key: 'pillar_count', sortable: true },
-  { title: 'Saetze', key: 'total_sentences', sortable: true },
+  { title: 'Säulen', key: 'pillar_count', sortable: true },
+  { title: 'Sätze', key: 'total_sentences', sortable: true },
   { title: 'Erstellt am', key: 'created_at', sortable: true },
   { title: 'Aktionen', key: 'actions', sortable: false, align: 'center' }
 ];
@@ -460,6 +468,10 @@ const navigateToConfig = () => {
   router.push({ name: 'OnCoCoConfig' });
 };
 
+const navigateToInfo = () => {
+  router.push({ name: 'OnCoCoInfo' });
+};
+
 const navigateToAnalysis = (event, row) => {
   const item = row?.item || row;
   if (item?.id) {
@@ -517,7 +529,7 @@ const getStatusIcon = (status) => {
 const getStatusText = (status) => {
   const texts = {
     pending: 'Ausstehend',
-    running: 'Laeuft',
+    running: 'Läuft',
     completed: 'Abgeschlossen',
     failed: 'Fehlgeschlagen'
   };

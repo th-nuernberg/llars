@@ -726,6 +726,68 @@ def start_session(session_id: int):
     return jsonify(response)
 
 
+@judge_bp.route('/sessions/<int:session_id>/resume', methods=['POST'])
+@authentik_required
+@require_permission('feature:comparison:edit')
+def resume_session(session_id: int):
+    """
+    Resume a session after backend restart or interruption.
+
+    This endpoint:
+    1. Resets any "running" comparisons back to "pending"
+    2. Restarts the worker pool
+    3. Works even if session status is already "running" (handles backend restarts)
+
+    Returns:
+        JSON with session status and reset count
+    """
+    session = JudgeSession.query.get_or_404(session_id)
+
+    # Allow resuming from RUNNING, PAUSED, or QUEUED status
+    if session.status not in [JudgeSessionStatus.RUNNING, JudgeSessionStatus.PAUSED, JudgeSessionStatus.QUEUED]:
+        return jsonify({
+            'error': f'Session kann nicht fortgesetzt werden (Status: {session.status.value})'
+        }), 400
+
+    # Reset any "running" comparisons back to "pending" (handles interrupted comparisons)
+    reset_count = JudgeComparison.query.filter(
+        JudgeComparison.session_id == session_id,
+        JudgeComparison.status == JudgeComparisonStatus.RUNNING
+    ).update({
+        'status': JudgeComparisonStatus.PENDING,
+        'worker_id': None
+    })
+
+    # Also clear any orphaned worker_id assignments
+    JudgeComparison.query.filter(
+        JudgeComparison.session_id == session_id,
+        JudgeComparison.status == JudgeComparisonStatus.PENDING,
+        JudgeComparison.worker_id != None
+    ).update({'worker_id': None})
+
+    session.status = JudgeSessionStatus.RUNNING
+    if not session.started_at:
+        session.started_at = datetime.now()
+    db.session.commit()
+
+    # Get worker_count from session config (default: 1)
+    worker_count = 1
+    if session.config_json:
+        worker_count = session.config_json.get('worker_count', 1)
+
+    # Trigger background worker pool
+    from workers.judge_worker_pool import trigger_judge_worker_pool
+    trigger_judge_worker_pool(session_id, worker_count)
+
+    return jsonify({
+        'session_id': session.id,
+        'status': 'running',
+        'worker_count': worker_count,
+        'comparisons_reset': reset_count,
+        'message': f'Session fortgesetzt, {reset_count} unterbrochene Vergleiche zurückgesetzt'
+    })
+
+
 @judge_bp.route('/sessions/<int:session_id>/pause', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')

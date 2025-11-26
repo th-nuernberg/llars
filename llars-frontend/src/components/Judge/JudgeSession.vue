@@ -48,6 +48,16 @@
               Pause
             </v-btn>
             <v-btn
+              v-if="session?.status === 'running' || session?.status === 'paused' || session?.status === 'queued'"
+              color="info"
+              prepend-icon="mdi-restart"
+              @click="resumeSession"
+              :loading="actionLoading"
+              title="Session nach Backend-Neustart fortsetzen"
+            >
+              Fortsetzen
+            </v-btn>
+            <v-btn
               v-if="session?.status === 'completed'"
               color="primary"
               prepend-icon="mdi-chart-box"
@@ -1310,9 +1320,10 @@ const loadSession = async () => {
     );
     session.value = response.data;
 
-    // Extract worker_count from config
-    if (session.value.config_json?.worker_count) {
-      workerCount.value = session.value.config_json.worker_count;
+    // Extract worker_count from config (API returns 'config', not 'config_json')
+    const sessionConfig = session.value.config || session.value.config_json;
+    if (sessionConfig?.worker_count) {
+      workerCount.value = sessionConfig.worker_count;
       // Initialize worker streams
       initializeWorkerStreams(workerCount.value);
     }
@@ -1438,6 +1449,22 @@ const pauseSession = async () => {
   }
 };
 
+const resumeSession = async () => {
+  actionLoading.value = true;
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/resume`
+    );
+    console.log('[Judge] Session resumed:', response.data);
+    await loadSession();
+    startPolling(); // Start polling when session resumes
+  } catch (error) {
+    console.error('Error resuming session:', error);
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
 const navigateToResults = () => {
   router.push({ name: 'JudgeResults', params: { id: sessionId } });
 };
@@ -1486,12 +1513,15 @@ const setupSocket = () => {
   socket.value.on('judge:progress', (data) => {
     console.log('[Judge Socket] Progress:', data);
     if (data.session_id == sessionId) {
+      // Only update status if provided (defensive - keep current status if undefined)
+      const newStatus = data.status || session.value?.status;
       session.value = {
         ...session.value,
-        status: data.status,
+        status: newStatus,
         completed_comparisons: data.completed,
         total_comparisons: data.total
       };
+      console.log('[Judge Socket] Session status after progress:', newStatus);
     }
   });
 
@@ -1503,7 +1533,16 @@ const setupSocket = () => {
       const workerId = data.worker_id ?? 0; // Default to worker 0 for single-worker mode
 
       // Multi-worker mode: update specific worker stream
-      if (workerCount.value > 1 && workerStreams[workerId]) {
+      if (workerCount.value > 1) {
+        // Auto-initialize worker stream if not exists
+        if (!workerStreams[workerId]) {
+          console.log(`[Judge Socket] Auto-initializing worker stream ${workerId}`);
+          workerStreams[workerId] = {
+            content: '',
+            comparison: null,
+            isStreaming: false
+          };
+        }
         workerStreams[workerId].content = '';
         workerStreams[workerId].isStreaming = true;
         workerStreams[workerId].comparison = {
@@ -1514,7 +1553,7 @@ const setupSocket = () => {
           pillar_a_name: getPillarName(data.pillar_a),
           pillar_b_name: getPillarName(data.pillar_b)
         };
-        console.log(`[Judge Socket] Worker ${workerId} stream cleared for new comparison`);
+        console.log(`[Judge Socket] Worker ${workerId} stream updated for new comparison`, workerStreams[workerId]);
       }
 
       // Single-worker mode: reset stream content for new comparison - IMPORTANT for clean display
@@ -1549,7 +1588,16 @@ const setupSocket = () => {
       const token = data.token || data.content || '';
 
       // Multi-worker mode: update specific worker stream
-      if (workerCount.value > 1 && workerStreams[workerId]) {
+      if (workerCount.value > 1) {
+        // Auto-initialize worker stream if not exists (handles race condition)
+        if (!workerStreams[workerId]) {
+          console.log(`[Judge Socket] Auto-initializing worker stream ${workerId} from llm_stream`);
+          workerStreams[workerId] = {
+            content: '',
+            comparison: null,
+            isStreaming: true
+          };
+        }
         workerStreams[workerId].content += token;
         workerStreams[workerId].isStreaming = true;
       }
@@ -1616,13 +1664,16 @@ const setupSocket = () => {
   socket.value.on('judge:status', (data) => {
     console.log('[Judge Socket] Status:', data);
     if (data.session_id == sessionId) {
+      // Only update status if provided (defensive - keep current status if undefined)
+      const newStatus = data.status || session.value?.status;
       session.value = {
         ...session.value,
-        status: data.status,
+        status: newStatus,
         completed_comparisons: data.completed,
         total_comparisons: data.total,
         current_comparison_id: data.current_comparison_id
       };
+      console.log('[Judge Socket] Session status after status event:', newStatus);
     }
   });
 };

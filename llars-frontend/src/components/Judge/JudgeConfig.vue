@@ -534,7 +534,7 @@ const config = ref({
   maxThreadsPerPillar: 15,
   positionSwap: true,
   repetitionsPerPair: 1,
-  workerCount: 1
+  workerCount: 3
 });
 
 // Watch for limit toggle
@@ -754,7 +754,7 @@ const createSession = async () => {
       console.warn('Auto-start failed, session can be started manually:', startError);
     }
 
-    // Navigate to session detail
+    // Navigate directly to the new session
     router.push({ name: 'JudgeSession', params: { id: sessionId } });
   } catch (error) {
     console.error('Error creating session:', error);
@@ -789,14 +789,14 @@ onMounted(() => {
 
 .summary-item {
   padding: 12px;
-  background-color: rgba(var(--v-theme-surface), 0.5);
+  background-color: rgba(var(--v-theme-surface-variant), 0.6);
   border-radius: 8px;
 }
 
 .summary-total {
   text-align: center;
   padding: 16px;
-  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.1) 0%, rgba(var(--v-theme-primary), 0.05) 100%);
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.15) 0%, rgba(var(--v-theme-primary), 0.08) 100%);
   border-radius: 8px;
 }
 
@@ -810,20 +810,26 @@ onMounted(() => {
   text-align: center;
   padding: 6px 4px;
   border-radius: 6px;
-  background: rgba(var(--v-theme-surface), 0.3);
+  background: rgba(var(--v-theme-surface-variant), 0.5);
   transition: all 0.2s ease;
+  /* Ensure text is readable in light mode */
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .duration-item.active {
-  background: rgba(var(--v-theme-primary), 0.2);
-  border: 1px solid rgba(var(--v-theme-primary), 0.5);
+  background: rgba(var(--v-theme-primary), 0.25);
+  border: 1px solid rgba(var(--v-theme-primary), 0.6);
 }
 
 .duration-item .text-caption {
   font-size: 10px;
+  /* Inherit color from parent for proper theme support */
+  color: inherit;
+  opacity: 0.85;
 }
 
 .duration-item .font-weight-bold {
   font-size: 11px;
+  color: inherit;
 }
 </style>

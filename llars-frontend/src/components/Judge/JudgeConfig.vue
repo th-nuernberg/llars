@@ -145,7 +145,7 @@
               </div>
 
               <!-- Position Swap -->
-              <div class="mb-4">
+              <div class="mb-6">
                 <v-switch
                   v-model="config.positionSwap"
                   color="primary"
@@ -164,6 +164,41 @@
                     </div>
                   </template>
                 </v-switch>
+              </div>
+
+              <!-- Repetitions per Pair -->
+              <div class="mb-4">
+                <div class="text-subtitle-1 font-weight-bold mb-2">
+                  <v-icon class="mr-1">mdi-repeat</v-icon>
+                  Wiederholungen pro Paar: {{ config.repetitionsPerPair }}
+                </div>
+                <v-slider
+                  v-model="config.repetitionsPerPair"
+                  :min="1"
+                  :max="5"
+                  step="1"
+                  thumb-label
+                  color="primary"
+                  track-color="grey-lighten-2"
+                  show-ticks="always"
+                >
+                  <template v-slot:prepend>
+                    <v-text-field
+                      v-model.number="config.repetitionsPerPair"
+                      type="number"
+                      style="width: 80px"
+                      density="compact"
+                      hide-details
+                      variant="outlined"
+                      :min="1"
+                      :max="5"
+                    ></v-text-field>
+                  </template>
+                </v-slider>
+                <div class="text-caption text-medium-emphasis">
+                  Wie oft jedes Sample-Paar verglichen wird (für statistische Stabilität).
+                  Bei >1 werden verschiedene Threads aus den Säulen gewählt.
+                </div>
               </div>
             </v-form>
           </v-card-text>
@@ -199,6 +234,13 @@
               <div class="text-caption text-medium-emphasis">Position-Swap</div>
               <div class="text-h5 font-weight-bold">
                 {{ config.positionSwap ? 'Ja (2x)' : 'Nein' }}
+              </div>
+            </div>
+
+            <div class="summary-item mb-4">
+              <div class="text-caption text-medium-emphasis">Wiederholungen</div>
+              <div class="text-h5 font-weight-bold">
+                {{ config.repetitionsPerPair }}x
               </div>
             </div>
 
@@ -311,7 +353,8 @@ const config = ref({
   selectedPillars: [],
   comparisonMode: 'all_pairs',
   samplesPerPillar: 10,
-  positionSwap: true
+  positionSwap: true,
+  repetitionsPerPair: 1
 });
 
 // Computed
@@ -331,8 +374,9 @@ const estimatedPairsFormula = computed(() => {
 const estimatedComparisons = computed(() => {
   const pairs = estimatedPairs.value;
   const samples = config.value.samplesPerPillar;
-  const multiplier = config.value.positionSwap ? 2 : 1;
-  return pairs * samples * multiplier;
+  const swapMultiplier = config.value.positionSwap ? 2 : 1;
+  const repetitions = config.value.repetitionsPerPair;
+  return pairs * samples * swapMultiplier * repetitions;
 });
 
 const estimatedDuration = computed(() => {
@@ -367,7 +411,8 @@ const createSession = async () => {
       pillar_ids: config.value.selectedPillars,
       comparison_mode: config.value.comparisonMode,
       samples_per_pillar: config.value.samplesPerPillar,
-      position_swap: config.value.positionSwap
+      position_swap: config.value.positionSwap,
+      repetitions_per_pair: config.value.repetitionsPerPair
     };
 
     // Use debug endpoint in development mode to avoid auth issues

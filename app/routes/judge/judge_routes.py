@@ -169,12 +169,14 @@ def create_session_debug():
     comparison_mode = data.get('comparison_mode', 'all_pairs')
     samples_per_pillar = min(data.get('samples_per_pillar', 10), 50)
     position_swap = data.get('position_swap', True)
+    repetitions_per_pair = min(max(data.get('repetitions_per_pair', 1), 1), 5)  # 1-5 repetitions
 
     config_json = {
         'pillars': pillar_ids,
         'comparison_mode': comparison_mode,
         'samples_per_pillar': samples_per_pillar,
-        'position_swap': position_swap
+        'position_swap': position_swap,
+        'repetitions_per_pair': repetitions_per_pair
     }
 
     session = JudgeSession(
@@ -191,7 +193,7 @@ def create_session_debug():
 
     if pillar_ids and len(pillar_ids) >= 2:
         try:
-            _configure_session_comparisons(session, pillar_ids, comparison_mode, samples_per_pillar, position_swap)
+            _configure_session_comparisons(session, pillar_ids, comparison_mode, samples_per_pillar, position_swap, repetitions_per_pair)
             db.session.commit()
         except Exception as e:
             import logging
@@ -219,6 +221,7 @@ def create_session():
         comparison_mode: "all_pairs" or "specific" (default: all_pairs)
         samples_per_pillar: Number of threads per pillar (default: 10)
         position_swap: Whether to run position-swap (default: true)
+        repetitions_per_pair: How many times each pair is compared (default: 1, max: 5)
 
     Returns:
         JSON with created session ID
@@ -234,13 +237,15 @@ def create_session():
     comparison_mode = data.get('comparison_mode', 'all_pairs')
     samples_per_pillar = min(data.get('samples_per_pillar', 10), 50)
     position_swap = data.get('position_swap', True)
+    repetitions_per_pair = min(max(data.get('repetitions_per_pair', 1), 1), 5)  # 1-5 repetitions
 
     # Build config JSON
     config_json = {
         'pillars': pillar_ids,
         'comparison_mode': comparison_mode,
         'samples_per_pillar': samples_per_pillar,
-        'position_swap': position_swap
+        'position_swap': position_swap,
+        'repetitions_per_pair': repetitions_per_pair
     }
 
     session = JudgeSession(
@@ -258,7 +263,7 @@ def create_session():
     # If pillars provided, auto-configure comparisons
     if pillar_ids and len(pillar_ids) >= 2:
         try:
-            _configure_session_comparisons(session, pillar_ids, comparison_mode, samples_per_pillar, position_swap)
+            _configure_session_comparisons(session, pillar_ids, comparison_mode, samples_per_pillar, position_swap, repetitions_per_pair)
             db.session.commit()
         except Exception as e:
             # Log but don't fail - can be configured later
@@ -274,9 +279,16 @@ def create_session():
     }), 201
 
 
-def _configure_session_comparisons(session, pillars, comparison_mode, samples_per_pillar, position_swap):
-    """Helper to configure session comparisons."""
+def _configure_session_comparisons(session, pillars, comparison_mode, samples_per_pillar, position_swap, repetitions_per_pair=1):
+    """
+    Helper to configure session comparisons.
+
+    When repetitions_per_pair > 1, different thread samples are used for each repetition.
+    This provides statistical stability by comparing the pillars multiple times with
+    different representative samples.
+    """
     from itertools import combinations
+    import random
 
     # Generate comparison pairs
     if comparison_mode == 'all_pairs':
@@ -296,21 +308,33 @@ def _configure_session_comparisons(session, pillars, comparison_mode, samples_pe
 
     # Create comparisons
     queue_position = 0
-    for pillar_a, pillar_b in pairs:
-        threads_a = pillar_threads.get(pillar_a, [])
-        threads_b = pillar_threads.get(pillar_b, [])
 
-        if not threads_a or not threads_b:
-            continue
+    for rep in range(repetitions_per_pair):
+        for pillar_a, pillar_b in pairs:
+            threads_a = pillar_threads.get(pillar_a, [])
+            threads_b = pillar_threads.get(pillar_b, [])
 
-        # Sample threads
-        import random
-        sample_a = random.sample(threads_a, min(samples_per_pillar, len(threads_a)))
-        sample_b = random.sample(threads_b, min(samples_per_pillar, len(threads_b)))
+            if not threads_a or not threads_b:
+                continue
 
-        # Create comparisons for each sample pair
-        for ta in sample_a:
-            for tb in sample_b[:1]:  # One-to-one for now
+            # Sample threads - use different samples for each repetition
+            # Shuffle threads before sampling to get different samples each repetition
+            shuffled_a = threads_a.copy()
+            shuffled_b = threads_b.copy()
+            random.shuffle(shuffled_a)
+            random.shuffle(shuffled_b)
+
+            sample_a = shuffled_a[:min(samples_per_pillar, len(shuffled_a))]
+            sample_b = shuffled_b[:min(samples_per_pillar, len(shuffled_b))]
+
+            # Create comparisons using proportional sampling strategy
+            # This handles different pillar sizes by pairing proportionally
+            min_samples = min(len(sample_a), len(sample_b))
+
+            for i in range(min_samples):
+                ta = sample_a[i]
+                tb = sample_b[i]
+
                 # Original order (position_order: 1 = AB, 2 = BA)
                 comp = JudgeComparison(
                     session_id=session.id,
@@ -878,6 +902,7 @@ def get_session_comparisons(session_id: int):
             result['confidence_score'] = evaluation.confidence
             result['reasoning'] = evaluation.reasoning
             result['evaluated_at'] = evaluation.created_at.isoformat() if evaluation.created_at else None
+            result['raw_response'] = evaluation.raw_response
             result['scores'] = {
                 'counsellor_coherence': {'a': evaluation.counsellor_coherence_a, 'b': evaluation.counsellor_coherence_b},
                 'client_coherence': {'a': evaluation.client_coherence_a, 'b': evaluation.client_coherence_b},
@@ -894,7 +919,7 @@ def get_session_comparisons(session_id: int):
 
 def _load_thread_preview(thread_id: int) -> dict:
     """Load thread with messages for preview."""
-    from app.db.tables import EmailThread, EmailMessage
+    from db.tables import EmailThread, EmailMessage
 
     thread = EmailThread.query.get(thread_id)
     if not thread:
@@ -1068,6 +1093,378 @@ def get_pillar_statistics(session_id: int):
         'matrix': matrix,
         'overall': overall,
         'pillar_ranking': [{'pillar': p, 'wins': w} for p, w in pillar_ranking]
+    })
+
+
+@judge_bp.route('/sessions/<int:session_id>/verbosity-analysis', methods=['GET'])
+@authentik_required
+@require_permission('feature:comparison:view')
+def get_verbosity_analysis(session_id: int):
+    """
+    Analyze verbosity bias - do longer threads win more often?
+
+    Returns:
+        JSON with verbosity bias metrics
+    """
+    from db.tables import Message
+
+    session = JudgeSession.query.get_or_404(session_id)
+
+    # Get all completed comparisons with evaluations
+    comparisons = JudgeComparison.query.filter_by(
+        session_id=session_id,
+        status=JudgeComparisonStatus.COMPLETED
+    ).all()
+
+    if not comparisons:
+        return jsonify({
+            'session_id': session_id,
+            'total_analyzed': 0,
+            'longer_wins': 0,
+            'shorter_wins': 0,
+            'ties': 0,
+            'verbosity_bias_rate': 0,
+            'avg_length_winner': 0,
+            'avg_length_loser': 0,
+            'comparisons': []
+        })
+
+    # Calculate thread lengths and analyze
+    results = []
+    longer_wins = 0
+    shorter_wins = 0
+    ties = 0
+    winner_lengths = []
+    loser_lengths = []
+
+    for comp in comparisons:
+        # Get evaluation
+        evaluation = JudgeEvaluation.query.filter_by(comparison_id=comp.id).first()
+        if not evaluation:
+            continue
+
+        # Calculate thread lengths (character count of all messages)
+        messages_a = Message.query.filter_by(thread_id=comp.thread_a_id).all()
+        messages_b = Message.query.filter_by(thread_id=comp.thread_b_id).all()
+
+        length_a = sum(len(m.content or '') for m in messages_a)
+        length_b = sum(len(m.content or '') for m in messages_b)
+
+        # Determine winner and verbosity relationship
+        winner = evaluation.winner.value if evaluation.winner else None
+
+        if winner == 'A':
+            if length_a > length_b:
+                longer_wins += 1
+                winner_lengths.append(length_a)
+                loser_lengths.append(length_b)
+            elif length_b > length_a:
+                shorter_wins += 1
+                winner_lengths.append(length_a)
+                loser_lengths.append(length_b)
+            else:
+                ties += 1
+        elif winner == 'B':
+            if length_b > length_a:
+                longer_wins += 1
+                winner_lengths.append(length_b)
+                loser_lengths.append(length_a)
+            elif length_a > length_b:
+                shorter_wins += 1
+                winner_lengths.append(length_b)
+                loser_lengths.append(length_a)
+            else:
+                ties += 1
+        else:  # TIE
+            ties += 1
+
+        results.append({
+            'comparison_id': comp.id,
+            'thread_a_length': length_a,
+            'thread_b_length': length_b,
+            'winner': winner,
+            'longer_thread': 'A' if length_a > length_b else ('B' if length_b > length_a else 'TIE'),
+            'longer_won': (winner == 'A' and length_a > length_b) or (winner == 'B' and length_b > length_a)
+        })
+
+    total = longer_wins + shorter_wins + ties
+    verbosity_bias_rate = longer_wins / total if total > 0 else 0
+
+    return jsonify({
+        'session_id': session_id,
+        'total_analyzed': total,
+        'longer_wins': longer_wins,
+        'shorter_wins': shorter_wins,
+        'ties': ties,
+        'verbosity_bias_rate': verbosity_bias_rate,
+        'avg_length_winner': sum(winner_lengths) / len(winner_lengths) if winner_lengths else 0,
+        'avg_length_loser': sum(loser_lengths) / len(loser_lengths) if loser_lengths else 0,
+        'comparisons': results
+    })
+
+
+@judge_bp.route('/sessions/<int:session_id>/thread-performance', methods=['GET'])
+@authentik_required
+@require_permission('feature:comparison:view')
+def get_thread_performance(session_id: int):
+    """
+    Analyze individual thread performance across all comparisons.
+
+    Returns:
+        - Per-thread statistics (wins, losses, ties, usage count)
+        - Threads ranked by performance (consistent winners/losers)
+        - Likert scale consistency analysis per thread
+        - Can be used to validate if LLM ratings are consistent
+
+    This helps identify:
+    1. Threads that consistently lose (might be low quality)
+    2. Threads that consistently win (might be high quality)
+    3. Threads used frequently vs. rarely (sampling coverage)
+    4. Threads with consistent vs. inconsistent Likert ratings
+    """
+    from collections import defaultdict
+    import statistics
+    from db.tables import EmailThread
+
+    session = JudgeSession.query.get_or_404(session_id)
+
+    # Get all completed comparisons
+    comparisons = JudgeComparison.query.filter_by(
+        session_id=session_id,
+        status=JudgeComparisonStatus.COMPLETED
+    ).all()
+
+    if not comparisons:
+        return jsonify({
+            'session_id': session_id,
+            'total_threads': 0,
+            'threads': [],
+            'pillar_summary': {},
+            'likert_consistency': {}
+        })
+
+    # Likert metrics we track
+    LIKERT_METRICS = ['counsellor_coherence', 'client_coherence', 'quality', 'empathy', 'authenticity', 'solution_orientation']
+
+    # Track thread statistics
+    thread_stats = defaultdict(lambda: {
+        'thread_id': None,
+        'pillar': None,
+        'usage_count': 0,
+        'wins': 0,
+        'losses': 0,
+        'ties': 0,
+        'opponents': [],
+        'opponents_beaten': [],
+        'opponents_lost_to': [],
+        # Likert scores across all comparisons
+        'likert_scores': {metric: [] for metric in LIKERT_METRICS}
+    })
+
+    for comp in comparisons:
+        if not comp.evaluation:
+            continue
+
+        eval_data = comp.evaluation
+        winner = eval_data.winner  # 'A', 'B', or 'TIE'
+
+        thread_a = comp.thread_a_id
+        thread_b = comp.thread_b_id
+        pillar_a = comp.pillar_a
+        pillar_b = comp.pillar_b
+
+        # Initialize thread entries
+        if thread_stats[thread_a]['thread_id'] is None:
+            thread_stats[thread_a]['thread_id'] = thread_a
+            thread_stats[thread_a]['pillar'] = pillar_a
+            thread_stats[thread_a]['likert_scores'] = {metric: [] for metric in LIKERT_METRICS}
+
+        if thread_stats[thread_b]['thread_id'] is None:
+            thread_stats[thread_b]['thread_id'] = thread_b
+            thread_stats[thread_b]['pillar'] = pillar_b
+            thread_stats[thread_b]['likert_scores'] = {metric: [] for metric in LIKERT_METRICS}
+
+        # Count usage
+        thread_stats[thread_a]['usage_count'] += 1
+        thread_stats[thread_b]['usage_count'] += 1
+
+        # Track opponents
+        thread_stats[thread_a]['opponents'].append(thread_b)
+        thread_stats[thread_b]['opponents'].append(thread_a)
+
+        # Collect Likert scores for Thread A
+        for metric in LIKERT_METRICS:
+            score_a = getattr(eval_data, f'{metric}_a', None)
+            score_b = getattr(eval_data, f'{metric}_b', None)
+            if score_a is not None:
+                thread_stats[thread_a]['likert_scores'][metric].append(score_a)
+            if score_b is not None:
+                thread_stats[thread_b]['likert_scores'][metric].append(score_b)
+
+        # Count wins/losses/ties
+        if winner == 'A':
+            thread_stats[thread_a]['wins'] += 1
+            thread_stats[thread_a]['opponents_beaten'].append(thread_b)
+            thread_stats[thread_b]['losses'] += 1
+            thread_stats[thread_b]['opponents_lost_to'].append(thread_a)
+        elif winner == 'B':
+            thread_stats[thread_b]['wins'] += 1
+            thread_stats[thread_b]['opponents_beaten'].append(thread_a)
+            thread_stats[thread_a]['losses'] += 1
+            thread_stats[thread_a]['opponents_lost_to'].append(thread_b)
+        else:  # TIE
+            thread_stats[thread_a]['ties'] += 1
+            thread_stats[thread_b]['ties'] += 1
+
+    # Calculate win rates and prepare output
+    threads_list = []
+    pillar_summary = defaultdict(lambda: {
+        'pillar': None,
+        'total_threads': 0,
+        'total_comparisons': 0,
+        'avg_win_rate': 0,
+        'consistent_winners': 0,
+        'consistent_losers': 0
+    })
+
+    # Global Likert consistency tracking
+    global_likert_scores = {metric: [] for metric in LIKERT_METRICS}
+
+    for thread_id, stats in thread_stats.items():
+        total = stats['wins'] + stats['losses'] + stats['ties']
+        win_rate = stats['wins'] / total if total > 0 else 0
+        loss_rate = stats['losses'] / total if total > 0 else 0
+
+        # Determine consistency (>70% win or >70% loss rate with min 3 comparisons)
+        is_consistent_winner = win_rate >= 0.7 and total >= 3
+        is_consistent_loser = loss_rate >= 0.7 and total >= 3
+
+        # Calculate Likert consistency per thread
+        # Standard deviation: low = consistent, high = inconsistent
+        likert_summary = {}
+        likert_consistency_score = 0  # Average consistency across all metrics
+        metrics_with_data = 0
+
+        for metric in LIKERT_METRICS:
+            scores = stats['likert_scores'].get(metric, [])
+            if len(scores) >= 2:
+                mean_score = statistics.mean(scores)
+                std_dev = statistics.stdev(scores)
+                likert_summary[metric] = {
+                    'mean': round(mean_score, 2),
+                    'std_dev': round(std_dev, 2),
+                    'min': min(scores),
+                    'max': max(scores),
+                    'count': len(scores),
+                    'is_consistent': std_dev < 0.5  # Threshold for consistency
+                }
+                # Lower std_dev = more consistent = higher score
+                likert_consistency_score += max(0, 1 - std_dev)
+                metrics_with_data += 1
+                # Add to global tracking
+                global_likert_scores[metric].extend(scores)
+            elif len(scores) == 1:
+                likert_summary[metric] = {
+                    'mean': scores[0],
+                    'std_dev': 0,
+                    'min': scores[0],
+                    'max': scores[0],
+                    'count': 1,
+                    'is_consistent': True  # Only one data point
+                }
+                global_likert_scores[metric].extend(scores)
+
+        if metrics_with_data > 0:
+            likert_consistency_score = round(likert_consistency_score / metrics_with_data, 3)
+
+        thread_entry = {
+            'thread_id': thread_id,
+            'pillar': stats['pillar'],
+            'usage_count': stats['usage_count'],
+            'unique_opponents': len(set(stats['opponents'])),
+            'wins': stats['wins'],
+            'losses': stats['losses'],
+            'ties': stats['ties'],
+            'win_rate': round(win_rate, 3),
+            'loss_rate': round(loss_rate, 3),
+            'is_consistent_winner': is_consistent_winner,
+            'is_consistent_loser': is_consistent_loser,
+            'performance_score': round(win_rate - loss_rate, 3),  # -1 to +1
+            'likert_scores': likert_summary,
+            'likert_consistency_score': likert_consistency_score  # 0-1, higher = more consistent
+        }
+        threads_list.append(thread_entry)
+
+        # Aggregate by pillar
+        pillar = stats['pillar']
+        if pillar:
+            pillar_summary[pillar]['pillar'] = pillar
+            pillar_summary[pillar]['total_threads'] += 1
+            pillar_summary[pillar]['total_comparisons'] += stats['usage_count']
+            pillar_summary[pillar]['avg_win_rate'] += win_rate
+            if is_consistent_winner:
+                pillar_summary[pillar]['consistent_winners'] += 1
+            if is_consistent_loser:
+                pillar_summary[pillar]['consistent_losers'] += 1
+
+    # Finalize pillar averages
+    for pillar, summary in pillar_summary.items():
+        if summary['total_threads'] > 0:
+            summary['avg_win_rate'] = round(
+                summary['avg_win_rate'] / summary['total_threads'], 3
+            )
+
+    # Sort threads by performance score (best first)
+    threads_list.sort(key=lambda x: x['performance_score'], reverse=True)
+
+    # Calculate coverage statistics
+    total_threads = len(threads_list)
+    total_usage = sum(t['usage_count'] for t in threads_list)
+    avg_usage = total_usage / total_threads if total_threads > 0 else 0
+
+    # Find outliers (used much more or less than average)
+    over_sampled = [t for t in threads_list if t['usage_count'] > avg_usage * 1.5]
+    under_sampled = [t for t in threads_list if t['usage_count'] < avg_usage * 0.5]
+
+    # Calculate global Likert consistency (are LLM ratings consistent overall?)
+    global_likert_consistency = {}
+    for metric in LIKERT_METRICS:
+        scores = global_likert_scores[metric]
+        if len(scores) >= 2:
+            global_likert_consistency[metric] = {
+                'mean': round(statistics.mean(scores), 2),
+                'std_dev': round(statistics.stdev(scores), 2),
+                'min': min(scores),
+                'max': max(scores),
+                'count': len(scores),
+                'is_consistent': statistics.stdev(scores) < 1.0  # More lenient for global
+            }
+
+    # Find threads with inconsistent Likert scores (potential quality issues)
+    inconsistent_threads = [
+        t for t in threads_list
+        if t.get('likert_consistency_score', 1) < 0.5 and t['usage_count'] >= 3
+    ]
+
+    return jsonify({
+        'session_id': session_id,
+        'total_threads': total_threads,
+        'total_comparisons': len(comparisons),
+        'avg_usage_per_thread': round(avg_usage, 2),
+        'coverage_stats': {
+            'over_sampled_count': len(over_sampled),
+            'under_sampled_count': len(under_sampled),
+            'evenly_sampled_count': total_threads - len(over_sampled) - len(under_sampled)
+        },
+        'threads': threads_list,
+        'pillar_summary': dict(pillar_summary),
+        'consistent_winners': [t for t in threads_list if t['is_consistent_winner']],
+        'consistent_losers': [t for t in threads_list if t['is_consistent_loser']],
+        'likert_consistency': {
+            'global': global_likert_consistency,
+            'inconsistent_threads': inconsistent_threads,
+            'metrics_tracked': LIKERT_METRICS
+        }
     })
 
 

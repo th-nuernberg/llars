@@ -25,6 +25,12 @@ limiter = Limiter(
     storage_uri="memory://",  # In production: Redis verwenden
 )
 
+# Exempt health check endpoints from rate limiting
+@limiter.request_filter
+def exempt_health_checks():
+    """Exempt health check endpoints from rate limiting"""
+    return request.endpoint and 'health_check' in request.endpoint
+
 # JWT Configuration (for legacy auth routes)
 # TODO: Complete migration to Authentik and remove legacy JWT auth
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')

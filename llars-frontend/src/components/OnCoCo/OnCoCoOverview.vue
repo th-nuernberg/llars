@@ -362,11 +362,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { getSocket, useSocketState } from '@/services/socketService';
 
 const router = useRouter();
+
+// Socket.IO connection (using centralized service)
+let socket = null;
+const { isConnected: socketConnected } = useSocketState();
 
 // State
 const analyses = ref([]);
@@ -474,6 +479,10 @@ const startAnalysis = async (analysisId) => {
       { headers: { 'Content-Type': 'application/json' } }
     );
     await loadAnalyses();
+    // Join Socket.IO room for the newly started analysis
+    if (socket) {
+      socket.emit('oncoco:join_analysis', { analysis_id: analysisId });
+    }
   } catch (error) {
     console.error('Error starting analysis:', error);
   } finally {
@@ -568,11 +577,85 @@ const formatDate = (dateString) => {
   });
 };
 
+// Socket.IO Setup for Live Updates (using centralized service with suspension handling)
+const setupSocket = () => {
+  socket = getSocket();
+
+  // Remove existing listeners to prevent duplicates on reconnect
+  socket.off('oncoco:joined');
+  socket.off('oncoco:progress');
+  socket.off('oncoco:complete');
+
+  socket.on('oncoco:joined', (data) => {
+    console.log('[OnCoCo Overview] Joined room:', data);
+  });
+
+  socket.on('oncoco:progress', (data) => {
+    console.log('[OnCoCo Overview] Progress update:', data);
+    // Update the analysis in our list
+    const idx = analyses.value.findIndex(a => a.id === data.analysis_id);
+    if (idx !== -1) {
+      analyses.value[idx].processed_threads = data.processed_threads;
+      analyses.value[idx].total_threads = data.total_threads;
+      analyses.value[idx].total_sentences = data.total_sentences;
+      analyses.value[idx].progress = data.progress;
+    }
+  });
+
+  socket.on('oncoco:complete', async (data) => {
+    console.log('[OnCoCo Overview] Analysis complete:', data);
+    // Reload analyses to get final status
+    await loadAnalyses();
+    // Re-join rooms for any still-running analyses
+    joinRunningAnalysisRooms();
+  });
+
+  // Re-join rooms when socket reconnects (handles browser suspension)
+  socket.on('connect', () => {
+    console.log('[OnCoCo Overview] Socket reconnected, rejoining rooms...');
+    joinRunningAnalysisRooms();
+  });
+
+  // Initial join if already connected
+  if (socket.connected) {
+    joinRunningAnalysisRooms();
+  }
+};
+
+const joinRunningAnalysisRooms = () => {
+  if (!socket) return;
+  // Join Socket.IO room for each running analysis
+  const running = analyses.value.filter(a => a.status === 'running');
+  for (const analysis of running) {
+    socket.emit('oncoco:join_analysis', { analysis_id: analysis.id });
+  }
+};
+
+const cleanupSocket = () => {
+  if (socket) {
+    // Leave all analysis rooms (but don't disconnect - shared socket)
+    for (const analysis of analyses.value) {
+      socket.emit('oncoco:leave_analysis', { analysis_id: analysis.id });
+    }
+    // Remove our specific listeners
+    socket.off('oncoco:joined');
+    socket.off('oncoco:progress');
+    socket.off('oncoco:complete');
+  }
+};
+
 // Lifecycle
 onMounted(() => {
   loadModelInfo();
   loadPillarStatus();
-  loadAnalyses();
+  loadAnalyses().then(() => {
+    // Setup Socket.IO after initial load
+    setupSocket();
+  });
+});
+
+onUnmounted(() => {
+  cleanupSocket();
 });
 </script>
 

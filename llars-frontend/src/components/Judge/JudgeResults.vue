@@ -282,6 +282,433 @@
       </v-col>
     </v-row>
 
+    <!-- Position Swap Consistency Analysis -->
+    <v-row class="mt-4" v-if="positionSwapAnalysis.pairs.length > 0">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-swap-horizontal</v-icon>
+            Position-Swap Konsistenz
+            <v-chip
+              class="ml-3"
+              :color="positionSwapAnalysis.consistencyRate >= 0.8 ? 'success' : positionSwapAnalysis.consistencyRate >= 0.6 ? 'warning' : 'error'"
+              size="small"
+            >
+              {{ Math.round(positionSwapAnalysis.consistencyRate * 100) }}% konsistent
+            </v-chip>
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text>
+            <v-alert
+              :type="positionSwapAnalysis.consistencyRate >= 0.8 ? 'success' : positionSwapAnalysis.consistencyRate >= 0.6 ? 'warning' : 'error'"
+              variant="tonal"
+              class="mb-4"
+            >
+              <strong>{{ positionSwapAnalysis.consistent }}</strong> von <strong>{{ positionSwapAnalysis.total }}</strong> Swap-Paaren
+              zeigten konsistente Ergebnisse (gleicher Gewinner unabhängig von Position A/B).
+            </v-alert>
+
+            <v-data-table
+              :headers="swapHeaders"
+              :items="positionSwapAnalysis.pairs"
+              :items-per-page="10"
+              density="compact"
+            >
+              <template v-slot:item.matchup="{ item }">
+                {{ item.pillar_a_name }} vs {{ item.pillar_b_name }}
+              </template>
+              <template v-slot:item.original="{ item }">
+                <v-chip size="x-small" :color="item.originalWinner === 'A' ? 'blue' : 'green'">
+                  {{ item.originalWinner }} ({{ Math.round(item.originalConfidence * 100) }}%)
+                </v-chip>
+              </template>
+              <template v-slot:item.swapped="{ item }">
+                <v-chip size="x-small" :color="item.swappedWinner === 'A' ? 'blue' : 'green'">
+                  {{ item.swappedWinner }} ({{ Math.round(item.swappedConfidence * 100) }}%)
+                </v-chip>
+              </template>
+              <template v-slot:item.consistent="{ item }">
+                <v-icon :color="item.isConsistent ? 'success' : 'error'">
+                  {{ item.isConsistent ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+                </v-icon>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Verbosity Bias Analysis -->
+    <v-row class="mt-4" v-if="verbosityAnalysis">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-text-long</v-icon>
+            Verbosity Bias Analyse
+            <v-chip
+              class="ml-3"
+              :color="verbosityBiasColor"
+              size="small"
+            >
+              {{ Math.round(verbosityAnalysis.verbosity_bias_rate * 100) }}% längerer gewinnt
+            </v-chip>
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text>
+            <v-alert
+              :type="verbosityBiasType"
+              variant="tonal"
+              class="mb-4"
+            >
+              <template v-if="verbosityAnalysis.verbosity_bias_rate > 0.6">
+                <strong>Warnung:</strong> Das LLM zeigt einen starken Verbosity Bias - längere Threads werden bevorzugt.
+              </template>
+              <template v-else-if="verbosityAnalysis.verbosity_bias_rate < 0.4">
+                <strong>Info:</strong> Das LLM bevorzugt kürzere Threads - möglicherweise negatives Verbosity Bias.
+              </template>
+              <template v-else>
+                <strong>Gut:</strong> Keine signifikante Präferenz für Thread-Länge erkannt.
+              </template>
+            </v-alert>
+
+            <v-row>
+              <v-col cols="12" md="4">
+                <v-card variant="outlined" class="text-center pa-4">
+                  <div class="text-h3 font-weight-bold text-success">{{ verbosityAnalysis.longer_wins }}</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">Längerer Thread gewinnt</div>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-card variant="outlined" class="text-center pa-4">
+                  <div class="text-h3 font-weight-bold text-error">{{ verbosityAnalysis.shorter_wins }}</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">Kürzerer Thread gewinnt</div>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-card variant="outlined" class="text-center pa-4">
+                  <div class="text-h3 font-weight-bold text-grey">{{ verbosityAnalysis.ties }}</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">Gleiche Länge / Tie</div>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-row class="mt-4">
+              <v-col cols="12" md="6">
+                <div class="text-subtitle-2 mb-2">Durchschnittliche Länge (Zeichen)</div>
+                <v-table density="compact">
+                  <tbody>
+                    <tr>
+                      <td>Gewinner</td>
+                      <td class="text-right font-weight-bold">{{ Math.round(verbosityAnalysis.avg_length_winner).toLocaleString() }}</td>
+                    </tr>
+                    <tr>
+                      <td>Verlierer</td>
+                      <td class="text-right font-weight-bold">{{ Math.round(verbosityAnalysis.avg_length_loser).toLocaleString() }}</td>
+                    </tr>
+                    <tr>
+                      <td>Differenz</td>
+                      <td class="text-right font-weight-bold" :class="lengthDiffClass">
+                        {{ lengthDiffFormatted }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </v-col>
+              <v-col cols="12" md="6">
+                <div class="text-subtitle-2 mb-2">Bias-Interpretation</div>
+                <v-progress-linear
+                  :model-value="verbosityAnalysis.verbosity_bias_rate * 100"
+                  height="30"
+                  rounded
+                  :color="verbosityBiasColor"
+                >
+                  <template v-slot:default="{ value }">
+                    <strong>{{ Math.round(value) }}%</strong>
+                  </template>
+                </v-progress-linear>
+                <div class="d-flex justify-space-between text-caption text-medium-emphasis mt-1">
+                  <span>Kürzerer bevorzugt</span>
+                  <span>Neutral (50%)</span>
+                  <span>Längerer bevorzugt</span>
+                </div>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Thread Performance Analysis -->
+    <v-row class="mt-4" v-if="threadPerformance">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-account-details</v-icon>
+            Thread-Performance Analyse
+            <v-chip class="ml-3" color="info" size="small">
+              {{ threadPerformance.total_threads }} Threads
+            </v-chip>
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text>
+            <!-- Summary Cards -->
+            <v-row class="mb-4">
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" class="text-center pa-3">
+                  <div class="text-h4 font-weight-bold text-primary">{{ threadPerformance.total_threads }}</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">Threads verwendet</div>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" class="text-center pa-3">
+                  <div class="text-h4 font-weight-bold text-info">{{ threadPerformance.avg_usage_per_thread }}</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">Ø Verwendungen</div>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" class="text-center pa-3">
+                  <div class="text-h4 font-weight-bold text-success">{{ threadPerformance.consistent_winners?.length || 0 }}</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">Konsistente Gewinner</div>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" class="text-center pa-3">
+                  <div class="text-h4 font-weight-bold text-error">{{ threadPerformance.consistent_losers?.length || 0 }}</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">Konsistente Verlierer</div>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Coverage Stats -->
+            <v-alert
+              v-if="threadPerformance.coverage_stats"
+              :type="threadPerformance.coverage_stats.under_sampled_count > threadPerformance.coverage_stats.evenly_sampled_count ? 'warning' : 'success'"
+              variant="tonal"
+              class="mb-4"
+            >
+              <strong>Sampling Coverage:</strong>
+              {{ threadPerformance.coverage_stats.evenly_sampled_count }} gleichmäßig,
+              {{ threadPerformance.coverage_stats.over_sampled_count }} über-verwendet,
+              {{ threadPerformance.coverage_stats.under_sampled_count }} unter-verwendet
+            </v-alert>
+
+            <!-- Likert Consistency Global -->
+            <v-card variant="outlined" class="mb-4" v-if="threadPerformance.likert_consistency?.global">
+              <v-card-title class="text-subtitle-1">
+                <v-icon class="mr-2" size="small">mdi-chart-bell-curve</v-icon>
+                Globale Likert-Konsistenz
+              </v-card-title>
+              <v-divider></v-divider>
+              <v-card-text>
+                <v-row>
+                  <v-col cols="12" md="6" lg="4" v-for="(data, metric) in threadPerformance.likert_consistency.global" :key="metric">
+                    <div class="d-flex align-center justify-space-between mb-1">
+                      <span class="text-body-2">{{ formatLikertMetric(metric) }}</span>
+                      <v-chip
+                        size="x-small"
+                        :color="data.is_consistent ? 'success' : 'warning'"
+                      >
+                        {{ data.is_consistent ? 'Konsistent' : 'Variabel' }}
+                      </v-chip>
+                    </div>
+                    <div class="d-flex align-center gap-2">
+                      <v-progress-linear
+                        :model-value="(data.mean / 5) * 100"
+                        height="8"
+                        rounded
+                        color="primary"
+                        class="flex-grow-1"
+                      ></v-progress-linear>
+                      <span class="text-caption text-medium-emphasis" style="min-width: 80px">
+                        Ø {{ data.mean }} (σ {{ data.std_dev }})
+                      </span>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+
+            <!-- Consistent Winners/Losers -->
+            <v-row class="mb-4" v-if="threadPerformance.consistent_winners?.length || threadPerformance.consistent_losers?.length">
+              <v-col cols="12" md="6" v-if="threadPerformance.consistent_winners?.length">
+                <v-card variant="tonal" color="success">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon class="mr-2" size="small">mdi-trophy</v-icon>
+                    Konsistente Gewinner (≥70% Win-Rate)
+                  </v-card-title>
+                  <v-card-text>
+                    <v-chip
+                      v-for="thread in threadPerformance.consistent_winners.slice(0, 10)"
+                      :key="thread.thread_id"
+                      size="small"
+                      class="ma-1"
+                      color="success"
+                      variant="flat"
+                    >
+                      Thread #{{ thread.thread_id }}
+                      <span class="ml-1 text-caption">({{ getPillarName(thread.pillar) }}, {{ Math.round(thread.win_rate * 100) }}%)</span>
+                    </v-chip>
+                    <div v-if="threadPerformance.consistent_winners.length > 10" class="text-caption mt-2">
+                      ... und {{ threadPerformance.consistent_winners.length - 10 }} weitere
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="6" v-if="threadPerformance.consistent_losers?.length">
+                <v-card variant="tonal" color="error">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon class="mr-2" size="small">mdi-alert-circle</v-icon>
+                    Konsistente Verlierer (≥70% Loss-Rate)
+                  </v-card-title>
+                  <v-card-text>
+                    <v-chip
+                      v-for="thread in threadPerformance.consistent_losers.slice(0, 10)"
+                      :key="thread.thread_id"
+                      size="small"
+                      class="ma-1"
+                      color="error"
+                      variant="flat"
+                    >
+                      Thread #{{ thread.thread_id }}
+                      <span class="ml-1 text-caption">({{ getPillarName(thread.pillar) }}, {{ Math.round(thread.loss_rate * 100) }}%)</span>
+                    </v-chip>
+                    <div v-if="threadPerformance.consistent_losers.length > 10" class="text-caption mt-2">
+                      ... und {{ threadPerformance.consistent_losers.length - 10 }} weitere
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Thread Table -->
+            <v-data-table
+              :headers="threadHeaders"
+              :items="threadPerformance.threads"
+              :items-per-page="10"
+              density="compact"
+              class="thread-table"
+              show-expand
+              v-model:expanded="expandedThreadRows"
+            >
+              <!-- Thread ID -->
+              <template v-slot:item.thread_id="{ item }">
+                <span class="font-weight-medium">#{{ item.thread_id }}</span>
+              </template>
+
+              <!-- Pillar -->
+              <template v-slot:item.pillar="{ item }">
+                <v-chip size="x-small" color="primary" variant="outlined">
+                  {{ getPillarName(item.pillar) }}
+                </v-chip>
+              </template>
+
+              <!-- Usage Count -->
+              <template v-slot:item.usage_count="{ item }">
+                <v-chip
+                  size="x-small"
+                  :color="item.usage_count > threadPerformance.avg_usage_per_thread * 1.5 ? 'warning' : item.usage_count < threadPerformance.avg_usage_per_thread * 0.5 ? 'error' : 'grey'"
+                >
+                  {{ item.usage_count }}x
+                </v-chip>
+              </template>
+
+              <!-- Wins -->
+              <template v-slot:item.wins="{ item }">
+                <span class="text-success font-weight-medium">{{ item.wins }}</span>
+              </template>
+
+              <!-- Losses -->
+              <template v-slot:item.losses="{ item }">
+                <span class="text-error font-weight-medium">{{ item.losses }}</span>
+              </template>
+
+              <!-- Win Rate -->
+              <template v-slot:item.win_rate="{ item }">
+                <v-progress-linear
+                  :model-value="item.win_rate * 100"
+                  height="16"
+                  rounded
+                  :color="getWinRateColor(item.win_rate)"
+                  style="min-width: 80px"
+                >
+                  <template v-slot:default="{ value }">
+                    <span class="text-caption">{{ Math.round(value) }}%</span>
+                  </template>
+                </v-progress-linear>
+              </template>
+
+              <!-- Likert Consistency -->
+              <template v-slot:item.likert_consistency_score="{ item }">
+                <v-chip
+                  size="x-small"
+                  :color="getLikertConsistencyColor(item.likert_consistency_score)"
+                >
+                  {{ Math.round(item.likert_consistency_score * 100) }}%
+                </v-chip>
+              </template>
+
+              <!-- Status -->
+              <template v-slot:item.status="{ item }">
+                <v-icon v-if="item.is_consistent_winner" color="success" size="small">mdi-trophy</v-icon>
+                <v-icon v-else-if="item.is_consistent_loser" color="error" size="small">mdi-alert-circle</v-icon>
+                <v-icon v-else color="grey" size="small">mdi-minus</v-icon>
+              </template>
+
+              <!-- Expanded Row - Likert Details -->
+              <template v-slot:expanded-row="{ columns, item }">
+                <tr>
+                  <td :colspan="columns.length" class="expanded-content pa-4">
+                    <v-card variant="outlined">
+                      <v-card-title class="text-subtitle-1">
+                        <v-icon class="mr-2" size="small">mdi-chart-bar</v-icon>
+                        Likert-Scores für Thread #{{ item.thread_id }}
+                      </v-card-title>
+                      <v-divider></v-divider>
+                      <v-card-text>
+                        <v-row v-if="item.likert_scores && Object.keys(item.likert_scores).length > 0">
+                          <v-col cols="12" md="6" lg="4" v-for="(data, metric) in item.likert_scores" :key="metric">
+                            <div class="d-flex align-center justify-space-between mb-1">
+                              <span class="text-body-2">{{ formatLikertMetric(metric) }}</span>
+                              <v-chip
+                                size="x-small"
+                                :color="data.is_consistent ? 'success' : 'warning'"
+                              >
+                                {{ data.count }}x bewertet
+                              </v-chip>
+                            </div>
+                            <div class="d-flex align-center gap-2 mb-2">
+                              <v-progress-linear
+                                :model-value="(data.mean / 5) * 100"
+                                height="12"
+                                rounded
+                                :color="getScoreColor(data.mean)"
+                                class="flex-grow-1"
+                              ></v-progress-linear>
+                              <span class="text-caption" style="min-width: 100px">
+                                Ø {{ data.mean }} ({{ data.min }}-{{ data.max }})
+                              </span>
+                            </div>
+                            <div class="text-caption text-medium-emphasis">
+                              σ = {{ data.std_dev }}
+                              <v-icon v-if="data.is_consistent" size="x-small" color="success" class="ml-1">mdi-check</v-icon>
+                              <v-icon v-else size="x-small" color="warning" class="ml-1">mdi-alert</v-icon>
+                            </div>
+                          </v-col>
+                        </v-row>
+                        <div v-else class="text-center text-medium-emphasis py-4">
+                          Keine Likert-Daten verfügbar
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </td>
+                </tr>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Comparison Details -->
     <v-row class="mt-4">
       <v-col cols="12">
@@ -297,6 +724,8 @@
             :items="allComparisons"
             :items-per-page="20"
             class="comparisons-table"
+            show-expand
+            v-model:expanded="expandedRows"
           >
             <!-- Index -->
             <template v-slot:item.comparison_index="{ item }">
@@ -312,6 +741,10 @@
                 <v-icon size="small">mdi-sword-cross</v-icon>
                 <v-chip size="small" color="green" variant="outlined">
                   {{ item.pillar_b_name }}
+                </v-chip>
+                <v-chip v-if="item.position_order === 2" size="x-small" color="warning" variant="tonal">
+                  <v-icon start size="x-small">mdi-swap-horizontal</v-icon>
+                  Swapped
                 </v-chip>
               </div>
             </template>
@@ -343,6 +776,66 @@
             <template v-slot:item.evaluated_at="{ item }">
               {{ formatDate(item.evaluated_at) }}
             </template>
+
+            <!-- Expanded Row - LLM Output -->
+            <template v-slot:expanded-row="{ columns, item }">
+              <tr>
+                <td :colspan="columns.length" class="expanded-content pa-4">
+                  <v-card variant="outlined">
+                    <v-card-title class="text-subtitle-1">
+                      <v-icon class="mr-2" size="small">mdi-robot</v-icon>
+                      LLM Raw Output
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                      <!-- Reasoning -->
+                      <div v-if="item.reasoning" class="mb-4">
+                        <div class="text-subtitle-2 font-weight-bold mb-2">Begründung:</div>
+                        <div class="reasoning-text">{{ item.reasoning }}</div>
+                      </div>
+
+                      <!-- Scores -->
+                      <div v-if="item.scores" class="mb-4">
+                        <div class="text-subtitle-2 font-weight-bold mb-2">Einzelbewertungen:</div>
+                        <v-table density="compact">
+                          <thead>
+                            <tr>
+                              <th>Kriterium</th>
+                              <th class="text-center">A</th>
+                              <th class="text-center">B</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="(score, criterion) in item.scores" :key="criterion">
+                              <td>{{ formatCriterionName(criterion) }}</td>
+                              <td class="text-center">
+                                <v-chip size="x-small" :color="getScoreColor(score.a)">{{ score.a }}</v-chip>
+                              </td>
+                              <td class="text-center">
+                                <v-chip size="x-small" :color="getScoreColor(score.b)">{{ score.b }}</v-chip>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </v-table>
+                      </div>
+
+                      <!-- Raw Response -->
+                      <v-expansion-panels v-if="item.raw_response">
+                        <v-expansion-panel>
+                          <v-expansion-panel-title>
+                            <v-icon class="mr-2" size="small">mdi-code-json</v-icon>
+                            Raw LLM Response ({{ item.raw_response?.length || 0 }} Zeichen)
+                          </v-expansion-panel-title>
+                          <v-expansion-panel-text>
+                            <pre class="raw-output">{{ item.raw_response }}</pre>
+                          </v-expansion-panel-text>
+                        </v-expansion-panel>
+                      </v-expansion-panels>
+                    </v-card-text>
+                  </v-card>
+                </td>
+              </tr>
+            </template>
           </v-data-table>
         </v-card>
       </v-col>
@@ -362,7 +855,11 @@ const sessionId = route.params.id;
 const session = ref(null);
 const results = ref(null);
 const allComparisons = ref([]);
+const verbosityAnalysis = ref(null);
+const threadPerformance = ref(null);
 const loading = ref(false);
+const expandedRows = ref([]);
+const expandedThreadRows = ref([]);
 
 // Metrics Table Headers
 const metricsHeaders = [
@@ -382,6 +879,26 @@ const comparisonHeaders = [
   { title: 'Gewinner', key: 'winner', sortable: true },
   { title: 'Konfidenz', key: 'confidence_score', sortable: true },
   { title: 'Zeitpunkt', key: 'evaluated_at', sortable: true }
+];
+
+// Position Swap Analysis Headers
+const swapHeaders = [
+  { title: 'Paarung', key: 'matchup', sortable: false },
+  { title: 'Original (Pos 1)', key: 'original', sortable: false },
+  { title: 'Swapped (Pos 2)', key: 'swapped', sortable: false },
+  { title: 'Konsistent', key: 'consistent', sortable: true }
+];
+
+// Thread Performance Headers
+const threadHeaders = [
+  { title: 'Thread', key: 'thread_id', sortable: true },
+  { title: 'Säule', key: 'pillar', sortable: true },
+  { title: 'Verwendungen', key: 'usage_count', sortable: true },
+  { title: 'Siege', key: 'wins', sortable: true },
+  { title: 'Niederlagen', key: 'losses', sortable: true },
+  { title: 'Win-Rate', key: 'win_rate', sortable: true },
+  { title: 'Likert-Konsistenz', key: 'likert_consistency_score', sortable: true },
+  { title: 'Status', key: 'status', sortable: false }
 ];
 
 // Computed
@@ -420,6 +937,116 @@ const duration = computed(() => {
   return `${minutes}m ${seconds}s`;
 });
 
+// Position Swap Consistency Analysis
+const positionSwapAnalysis = computed(() => {
+  if (!allComparisons.value || allComparisons.value.length === 0) {
+    return { pairs: [], consistent: 0, total: 0, consistencyRate: 0 };
+  }
+
+  // Group comparisons by pillar pair (regardless of position)
+  const pairGroups = {};
+
+  for (const comp of allComparisons.value) {
+    if (!comp.winner) continue;
+
+    // Create a consistent key for the pair (sorted pillar IDs)
+    const sortedPillars = [comp.pillar_a, comp.pillar_b].sort((a, b) => a - b);
+    const pairKey = `${sortedPillars[0]}_${sortedPillars[1]}`;
+
+    if (!pairGroups[pairKey]) {
+      pairGroups[pairKey] = {
+        pillar_a: sortedPillars[0],
+        pillar_b: sortedPillars[1],
+        pillar_a_name: comp.pillar_a === sortedPillars[0] ? comp.pillar_a_name : comp.pillar_b_name,
+        pillar_b_name: comp.pillar_a === sortedPillars[1] ? comp.pillar_a_name : comp.pillar_b_name,
+        original: null,
+        swapped: null
+      };
+    }
+
+    // Determine if this is position_order 1 (original) or 2 (swapped)
+    if (comp.position_order === 1) {
+      pairGroups[pairKey].original = comp;
+    } else if (comp.position_order === 2) {
+      pairGroups[pairKey].swapped = comp;
+    }
+  }
+
+  // Analyze consistency for pairs with both positions
+  const pairs = [];
+  let consistent = 0;
+  let total = 0;
+
+  for (const [key, group] of Object.entries(pairGroups)) {
+    if (group.original && group.swapped) {
+      total++;
+
+      // Determine the "real" winner based on position
+      // If original winner is A and original pillar_a matches sorted pillar_a, winner is sorted pillar_a
+      // For swapped, positions are reversed
+      const originalRealWinner = group.original.winner === 'A'
+        ? group.original.pillar_a
+        : group.original.pillar_b;
+
+      const swappedRealWinner = group.swapped.winner === 'A'
+        ? group.swapped.pillar_a
+        : group.swapped.pillar_b;
+
+      const isConsistent = originalRealWinner === swappedRealWinner;
+      if (isConsistent) consistent++;
+
+      pairs.push({
+        pillar_a_name: group.pillar_a_name,
+        pillar_b_name: group.pillar_b_name,
+        originalWinner: group.original.winner,
+        originalConfidence: group.original.confidence_score || 0,
+        swappedWinner: group.swapped.winner,
+        swappedConfidence: group.swapped.confidence_score || 0,
+        isConsistent
+      });
+    }
+  }
+
+  return {
+    pairs,
+    consistent,
+    total,
+    consistencyRate: total > 0 ? consistent / total : 0
+  };
+});
+
+// Verbosity Bias Computed Properties
+const verbosityBiasColor = computed(() => {
+  if (!verbosityAnalysis.value) return 'grey';
+  const rate = verbosityAnalysis.value.verbosity_bias_rate;
+  if (rate > 0.6) return 'warning';
+  if (rate < 0.4) return 'info';
+  return 'success';
+});
+
+const verbosityBiasType = computed(() => {
+  if (!verbosityAnalysis.value) return 'info';
+  const rate = verbosityAnalysis.value.verbosity_bias_rate;
+  if (rate > 0.6) return 'warning';
+  if (rate < 0.4) return 'info';
+  return 'success';
+});
+
+const lengthDiffFormatted = computed(() => {
+  if (!verbosityAnalysis.value) return '-';
+  const diff = verbosityAnalysis.value.avg_length_winner - verbosityAnalysis.value.avg_length_loser;
+  const sign = diff > 0 ? '+' : '';
+  return `${sign}${Math.round(diff).toLocaleString()}`;
+});
+
+const lengthDiffClass = computed(() => {
+  if (!verbosityAnalysis.value) return '';
+  const diff = verbosityAnalysis.value.avg_length_winner - verbosityAnalysis.value.avg_length_loser;
+  if (diff > 500) return 'text-warning';
+  if (diff < -500) return 'text-info';
+  return 'text-success';
+});
+
 // Load Results
 const loadResults = async () => {
   loading.value = true;
@@ -441,6 +1068,26 @@ const loadResults = async () => {
       `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/comparisons`
     );
     allComparisons.value = comparisonsResponse.data;
+
+    // Load verbosity analysis
+    try {
+      const verbosityResponse = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/verbosity-analysis`
+      );
+      verbosityAnalysis.value = verbosityResponse.data;
+    } catch (verbosityError) {
+      console.warn('Could not load verbosity analysis:', verbosityError);
+    }
+
+    // Load thread performance analysis
+    try {
+      const threadPerfResponse = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/thread-performance`
+      );
+      threadPerformance.value = threadPerfResponse.data;
+    } catch (threadPerfError) {
+      console.warn('Could not load thread performance:', threadPerfError);
+    }
   } catch (error) {
     console.error('Error loading results:', error);
   } finally {
@@ -513,6 +1160,48 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const formatCriterionName = (criterion) => {
+  const names = {
+    'counsellor_coherence': 'Berater-Kohärenz',
+    'client_coherence': 'Klient-Kohärenz',
+    'quality': 'Qualität',
+    'empathy': 'Empathie',
+    'authenticity': 'Authentizität',
+    'solution_orientation': 'Lösungsorientierung'
+  };
+  return names[criterion] || criterion;
+};
+
+const getScoreColor = (score) => {
+  if (score >= 4) return 'success';
+  if (score >= 3) return 'info';
+  if (score >= 2) return 'warning';
+  return 'error';
+};
+
+// Thread Performance Helper Functions
+const getLikertConsistencyColor = (score) => {
+  if (score >= 0.7) return 'success';
+  if (score >= 0.5) return 'warning';
+  return 'error';
+};
+
+const getPillarName = (pillarId) => {
+  return `Säule ${pillarId}`;
+};
+
+const formatLikertMetric = (metric) => {
+  const names = {
+    'counsellor_coherence': 'Berater-Kohärenz',
+    'client_coherence': 'Klient-Kohärenz',
+    'quality': 'Qualität',
+    'empathy': 'Empathie',
+    'authenticity': 'Authentizität',
+    'solution_orientation': 'Lösungsorientierung'
+  };
+  return names[metric] || metric;
 };
 
 // Export Functions
@@ -638,5 +1327,39 @@ onMounted(() => {
 
 .comparisons-table :deep(tbody tr:hover) {
   background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+/* Expanded Row Styles */
+.expanded-content {
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.reasoning-text {
+  background-color: rgba(var(--v-theme-surface), 0.8);
+  padding: 12px;
+  border-radius: 6px;
+  font-style: italic;
+  line-height: 1.6;
+  border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+.raw-output {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.thread-table :deep(tbody tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.thread-table :deep(.v-data-table__td) {
+  padding: 8px 12px;
 }
 </style>

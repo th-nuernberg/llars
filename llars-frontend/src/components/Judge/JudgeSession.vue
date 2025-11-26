@@ -94,8 +94,48 @@
               <span>Säulen: {{ session?.pillar_count }}</span>
               <span>Samples: {{ session?.samples_per_pillar }}</span>
               <span>Position-Swap: {{ session?.position_swap ? 'Ja' : 'Nein' }}</span>
+              <span v-if="workerCount > 1">Worker: {{ workerCount }}</span>
               <span v-if="session?.created_at">Erstellt: {{ formatDate(session.created_at) }}</span>
             </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Multi-Worker Live View (when worker_count > 1) -->
+    <v-row v-if="workerCount > 1 && session?.status === 'running'" class="mb-4">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-account-multiple</v-icon>
+            Worker-Pool Live View
+            <v-spacer></v-spacer>
+            <v-chip size="small" color="info" class="mr-2">
+              {{ workerCount }} Worker
+            </v-chip>
+            <v-btn
+              icon="mdi-refresh"
+              variant="text"
+              size="small"
+              @click="loadWorkerPoolStatus"
+            ></v-btn>
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text>
+            <v-row>
+              <v-col
+                v-for="i in workerCount"
+                :key="i - 1"
+                :cols="workerCount <= 2 ? 6 : (workerCount <= 3 ? 4 : 3)"
+              >
+                <WorkerLane
+                  :worker-id="i - 1"
+                  :current-comparison="workerStreams[i - 1]?.comparison"
+                  :stream-content="workerStreams[i - 1]?.content || ''"
+                  :is-streaming="workerStreams[i - 1]?.isStreaming || false"
+                />
+              </v-col>
+            </v-row>
           </v-card-text>
         </v-card>
       </v-col>
@@ -1002,10 +1042,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { getSocket, useSocketState } from '@/services/socketService';
+import WorkerLane from './WorkerLane.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -1028,6 +1069,11 @@ const streamOutput = ref(null);
 const fullscreenStreamOutput = ref(null);
 const autoScrollEnabled = ref(true);
 const streamDisplayMode = ref('formatted'); // 'raw' or 'formatted' - default to formatted for better UX
+
+// Multi-worker state
+const workerCount = ref(1);
+const workerStreams = reactive({}); // { workerId: { content: '', comparison: null, isStreaming: false } }
+const workerPoolStatus = ref(null);
 
 // Queue Table Headers
 const queueHeaders = [
@@ -1264,6 +1310,13 @@ const loadSession = async () => {
     );
     session.value = response.data;
 
+    // Extract worker_count from config
+    if (session.value.config_json?.worker_count) {
+      workerCount.value = session.value.config_json.worker_count;
+      // Initialize worker streams
+      initializeWorkerStreams(workerCount.value);
+    }
+
     // Load current comparison - check both formats (id or object)
     if (session.value.current_comparison_id || session.value.current_comparison) {
       await loadCurrentComparison();
@@ -1272,10 +1325,49 @@ const loadSession = async () => {
     // Load completed comparisons and queue
     await loadCompletedComparisons();
     await loadQueue();
+
+    // Load worker pool status if running
+    if (session.value.status === 'running') {
+      await loadWorkerPoolStatus();
+    }
   } catch (error) {
     console.error('Error loading session:', error);
   } finally {
     loading.value = false;
+  }
+};
+
+// Initialize worker streams for multi-worker mode
+const initializeWorkerStreams = (count) => {
+  for (let i = 0; i < count; i++) {
+    if (!workerStreams[i]) {
+      workerStreams[i] = {
+        content: '',
+        comparison: null,
+        isStreaming: false
+      };
+    }
+  }
+};
+
+// Load worker pool status
+const loadWorkerPoolStatus = async () => {
+  try {
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/workers`
+    );
+    workerPoolStatus.value = response.data;
+
+    // Update worker streams from pool status
+    if (response.data.workers) {
+      response.data.workers.forEach(worker => {
+        if (workerStreams[worker.worker_id]) {
+          workerStreams[worker.worker_id].comparison = worker.current_comparison;
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error loading worker pool status:', error);
   }
 };
 
@@ -1408,7 +1500,24 @@ const setupSocket = () => {
     console.log('[Judge Socket] Comparison started:', data);
     // Check session_id if provided, otherwise accept all (room-based filtering)
     if (!data.session_id || data.session_id == sessionId) {
-      // Reset stream content for new comparison - IMPORTANT for clean display
+      const workerId = data.worker_id ?? 0; // Default to worker 0 for single-worker mode
+
+      // Multi-worker mode: update specific worker stream
+      if (workerCount.value > 1 && workerStreams[workerId]) {
+        workerStreams[workerId].content = '';
+        workerStreams[workerId].isStreaming = true;
+        workerStreams[workerId].comparison = {
+          thread_a_id: data.thread_a_id,
+          thread_b_id: data.thread_b_id,
+          pillar_a: data.pillar_a,
+          pillar_b: data.pillar_b,
+          pillar_a_name: getPillarName(data.pillar_a),
+          pillar_b_name: getPillarName(data.pillar_b)
+        };
+        console.log(`[Judge Socket] Worker ${workerId} stream cleared for new comparison`);
+      }
+
+      // Single-worker mode: reset stream content for new comparison - IMPORTANT for clean display
       llmStreamContent.value = '';
       console.log('[Judge Socket] Stream content cleared for new comparison');
 
@@ -1436,8 +1545,17 @@ const setupSocket = () => {
   // LLM streaming tokens (show live generation)
   socket.value.on('judge:llm_stream', (data) => {
     if (data.session_id == sessionId) {
-      // Append streamed content
-      llmStreamContent.value += data.token || data.content || '';
+      const workerId = data.worker_id ?? 0; // Default to worker 0 for single-worker mode
+      const token = data.token || data.content || '';
+
+      // Multi-worker mode: update specific worker stream
+      if (workerCount.value > 1 && workerStreams[workerId]) {
+        workerStreams[workerId].content += token;
+        workerStreams[workerId].isStreaming = true;
+      }
+
+      // Single-worker mode: append to main stream
+      llmStreamContent.value += token;
 
       // Update llm_status to show evaluation in progress
       if (currentComparison.value) {
@@ -1463,6 +1581,14 @@ const setupSocket = () => {
   socket.value.on('judge:comparison_complete', async (data) => {
     console.log('[Judge Socket] Comparison complete:', data);
     if (data.session_id == sessionId) {
+      const workerId = data.worker_id ?? 0;
+
+      // Multi-worker mode: mark worker as not streaming
+      if (workerCount.value > 1 && workerStreams[workerId]) {
+        workerStreams[workerId].isStreaming = false;
+        workerStreams[workerId].comparison = null;
+      }
+
       // Update current comparison with result
       if (currentComparison.value) {
         currentComparison.value = {
@@ -1543,6 +1669,19 @@ const getConfidenceColor = (confidence) => {
   if (confidence >= 0.6) return 'info';
   if (confidence >= 0.4) return 'warning';
   return 'error';
+};
+
+// Pillar name helper
+const PILLAR_NAMES = {
+  1: "Rollenspiele",
+  2: "Feature Säule 1",
+  3: "Anonymisierte Daten",
+  4: "Synthetisch",
+  5: "Live-Test"
+};
+
+const getPillarName = (pillarId) => {
+  return PILLAR_NAMES[pillarId] || `Säule ${pillarId}`;
 };
 
 // Queue status helpers

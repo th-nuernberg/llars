@@ -8,6 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 import chromadb
 
@@ -17,16 +18,33 @@ chromadb.config.Settings(anonymized_telemetry=False)
 
 
 class RAGPipeline:
+    """
+    RAG Pipeline with LiteLLM proxy embedding support and HuggingFace fallback.
+
+    Primary: llamaindex/vdr-2b-multi-v1 via LiteLLM proxy (1024 dimensions)
+    Fallback: sentence-transformers/all-MiniLM-L6-v2 local (384 dimensions)
+    """
+
+    # Embedding model configurations
+    LITELLM_MODEL = "llamaindex/vdr-2b-multi-v1"
+    LITELLM_DIMENSIONS = 1024
+    FALLBACK_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+    FALLBACK_DIMENSIONS = 384
+
     def __init__(self, docs_dir="docs", collection_name="llars_docs", storage_dir="/app/storage"):
         self.docs_dir = docs_dir
-        self.model_name = "intfloat/multilingual-e5-large-instruct"
-        self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
-        self.collection_name = f"{collection_name}_{self.model_name.replace('/', '_')}"
+        self.storage_dir = storage_dir
         self.model_dir = os.path.join(storage_dir, "models")
-        self.vectorstore_dir = os.path.join(storage_dir, "vectorstore", self.model_name.replace('/', '_'))
 
         os.environ["HF_HOME"] = self.model_dir
         os.makedirs(self.model_dir, exist_ok=True)
+
+        # Initialize embedding model (LiteLLM primary, HuggingFace fallback)
+        self.embeddings, self.model_name, self.model_type, self.embedding_dimensions = self._init_embeddings()
+
+        # Set up paths based on active model
+        self.collection_name = f"{collection_name}_{self.model_name.replace('/', '_')}"
+        self.vectorstore_dir = os.path.join(storage_dir, "vectorstore", self.model_name.replace('/', '_'))
         os.makedirs(self.vectorstore_dir, exist_ok=True)
 
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -35,14 +53,64 @@ class RAGPipeline:
             separators=["# ", "## ", "\n\n", "\n", ". ", "! ", "? "]
         )
 
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=self.model_name,
+        self.vectorstore = None
+
+    def _init_embeddings(self):
+        """
+        Initialize embeddings with LiteLLM proxy as primary and HuggingFace as fallback.
+        Returns: (embeddings, model_name, model_type, dimensions)
+        """
+        litellm_api_key = os.environ.get("LITELLM_API_KEY")
+        litellm_base_url = os.environ.get("LITELLM_BASE_URL")
+
+        # Try LiteLLM proxy first
+        if litellm_api_key and litellm_base_url:
+            try:
+                logging.info(f"Attempting to initialize LiteLLM embedding model: {self.LITELLM_MODEL}")
+                embeddings = OpenAIEmbeddings(
+                    model=self.LITELLM_MODEL,
+                    openai_api_key=litellm_api_key,
+                    openai_api_base=litellm_base_url
+                )
+                # Test the connection with a simple embedding
+                test_result = embeddings.embed_query("test")
+                if test_result and len(test_result) > 0:
+                    logging.info(f"LiteLLM embedding model initialized successfully: {self.LITELLM_MODEL} ({len(test_result)} dimensions)")
+                    return embeddings, self.LITELLM_MODEL, "litellm", len(test_result)
+            except Exception as e:
+                logging.warning(f"Failed to initialize LiteLLM embedding model: {e}")
+                logging.info("Falling back to HuggingFace embedding model...")
+        else:
+            logging.info("LiteLLM credentials not configured, using HuggingFace fallback")
+
+        # Fallback to HuggingFace
+        logging.info(f"Initializing HuggingFace fallback embedding model: {self.FALLBACK_MODEL}")
+        embeddings = HuggingFaceEmbeddings(
+            model_name=self.FALLBACK_MODEL,
             model_kwargs={"device": "cpu"},
             encode_kwargs={"normalize_embeddings": True},
             cache_folder=self.model_dir
         )
+        logging.info(f"HuggingFace embedding model initialized: {self.FALLBACK_MODEL} ({self.FALLBACK_DIMENSIONS} dimensions)")
+        return embeddings, self.FALLBACK_MODEL, "huggingface", self.FALLBACK_DIMENSIONS
 
-        self.vectorstore = None
+    def get_embedding_info(self):
+        """
+        Returns information about the current embedding model configuration.
+        Useful for admin panel and debugging.
+        """
+        return {
+            "model_name": self.model_name,
+            "model_type": self.model_type,
+            "dimensions": self.embedding_dimensions,
+            "is_primary": self.model_type == "litellm",
+            "primary_model": self.LITELLM_MODEL,
+            "fallback_model": self.FALLBACK_MODEL,
+            "litellm_configured": bool(os.environ.get("LITELLM_API_KEY") and os.environ.get("LITELLM_BASE_URL")),
+            "litellm_base_url": os.environ.get("LITELLM_BASE_URL", "Not configured"),
+            "vectorstore_dir": self.vectorstore_dir,
+            "collection_name": self.collection_name
+        }
 
     def _get_docs_hash(self):
         hash_md5 = hashlib.md5()

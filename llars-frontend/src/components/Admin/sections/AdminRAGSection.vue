@@ -48,6 +48,103 @@
       </v-col>
     </v-row>
 
+    <!-- Embedding Model Info Card -->
+    <v-card class="mb-4" variant="outlined">
+      <v-card-title class="d-flex align-center">
+        <v-icon start color="primary">mdi-brain</v-icon>
+        Embedding Model
+        <v-spacer></v-spacer>
+        <v-chip
+          :color="embeddingInfo.is_primary ? 'success' : 'warning'"
+          size="small"
+          variant="flat"
+        >
+          {{ embeddingInfo.is_primary ? 'LiteLLM Proxy' : 'Fallback (Local)' }}
+        </v-chip>
+      </v-card-title>
+      <v-card-text>
+        <v-row>
+          <v-col cols="12" md="6">
+            <v-list density="compact" class="bg-transparent">
+              <v-list-item>
+                <template v-slot:prepend>
+                  <v-icon color="primary" size="small">mdi-cube-outline</v-icon>
+                </template>
+                <v-list-item-title class="text-caption text-medium-emphasis">Aktives Model</v-list-item-title>
+                <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.model_name }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <template v-slot:prepend>
+                  <v-icon color="primary" size="small">mdi-vector-line</v-icon>
+                </template>
+                <v-list-item-title class="text-caption text-medium-emphasis">Dimensionen</v-list-item-title>
+                <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.dimensions }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <template v-slot:prepend>
+                  <v-icon color="primary" size="small">mdi-server</v-icon>
+                </template>
+                <v-list-item-title class="text-caption text-medium-emphasis">Model Typ</v-list-item-title>
+                <v-list-item-subtitle class="font-weight-bold text-uppercase">{{ embeddingInfo.model_type }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-list density="compact" class="bg-transparent">
+              <v-list-item>
+                <template v-slot:prepend>
+                  <v-icon :color="embeddingInfo.litellm_configured ? 'success' : 'warning'" size="small">
+                    {{ embeddingInfo.litellm_configured ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+                  </v-icon>
+                </template>
+                <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM Status</v-list-item-title>
+                <v-list-item-subtitle class="font-weight-bold">
+                  {{ embeddingInfo.litellm_configured ? 'Konfiguriert' : 'Nicht konfiguriert' }}
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item v-if="embeddingInfo.litellm_configured">
+                <template v-slot:prepend>
+                  <v-icon color="primary" size="small">mdi-link</v-icon>
+                </template>
+                <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM URL</v-list-item-title>
+                <v-list-item-subtitle class="font-weight-bold text-truncate" style="max-width: 300px;">
+                  {{ embeddingInfo.litellm_base_url }}
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <template v-slot:prepend>
+                  <v-icon color="primary" size="small">mdi-swap-horizontal</v-icon>
+                </template>
+                <v-list-item-title class="text-caption text-medium-emphasis">Fallback Model</v-list-item-title>
+                <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.fallback_model }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+        <v-row>
+          <v-col cols="12">
+            <div class="d-flex align-center">
+              <v-icon size="small" color="grey" class="mr-2">mdi-folder-open</v-icon>
+              <span class="text-caption text-medium-emphasis mr-2">Collection:</span>
+              <code class="text-caption">{{ embeddingInfo.collection_name }}</code>
+            </div>
+          </v-col>
+        </v-row>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn
+          variant="text"
+          size="small"
+          @click="fetchEmbeddingInfo"
+          :loading="loadingEmbeddingInfo"
+        >
+          <v-icon start size="small">mdi-refresh</v-icon>
+          Aktualisieren
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+
     <!-- Tabs for Documents and Upload -->
     <v-card>
       <v-tabs v-model="activeTab" bg-color="primary">
@@ -330,6 +427,21 @@ const stats = ref({
   total_size: 0
 });
 
+// Embedding Info
+const embeddingInfo = ref({
+  model_name: 'Loading...',
+  model_type: '-',
+  dimensions: 0,
+  is_primary: false,
+  primary_model: '-',
+  fallback_model: '-',
+  litellm_configured: false,
+  litellm_base_url: '-',
+  vectorstore_dir: '-',
+  collection_name: '-'
+});
+const loadingEmbeddingInfo = ref(false);
+
 // Documents
 const documents = ref([]);
 const documentSearch = ref('');
@@ -442,6 +554,31 @@ const getStatusColor = (status) => {
 };
 
 // API calls
+const fetchEmbeddingInfo = async () => {
+  loadingEmbeddingInfo.value = true;
+  try {
+    const response = await axios.get('/api/rag/embedding-info');
+    if (response.data.success && response.data.embedding) {
+      embeddingInfo.value = response.data.embedding;
+    }
+  } catch (error) {
+    console.error('Error fetching embedding info:', error);
+    embeddingInfo.value = {
+      model_name: 'Error loading',
+      model_type: 'error',
+      dimensions: 0,
+      is_primary: false,
+      primary_model: '-',
+      fallback_model: '-',
+      litellm_configured: false,
+      litellm_base_url: '-',
+      vectorstore_dir: '-',
+      collection_name: '-'
+    };
+  }
+  loadingEmbeddingInfo.value = false;
+};
+
 const fetchStats = async () => {
   try {
     const response = await axios.get('/api/rag/stats');
@@ -582,5 +719,6 @@ onMounted(() => {
   fetchStats();
   fetchDocuments();
   fetchCollections();
+  fetchEmbeddingInfo();
 });
 </script>

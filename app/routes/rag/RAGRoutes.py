@@ -1070,3 +1070,47 @@ def retry_processing(queue_id):
         db.session.rollback()
         current_app.logger.error(f"Error in retry_processing: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# EMBEDDING MODEL INFO
+# ============================================================================
+
+@data_blueprint.route('/rag/embedding-info', methods=['GET'])
+@require_permission('feature:rag:view')
+def get_embedding_info():
+    """
+    Get information about the current embedding model configuration.
+
+    Returns details about:
+    - Active embedding model (LiteLLM or HuggingFace fallback)
+    - Model dimensions
+    - Configuration status
+    - Vectorstore paths
+    """
+    try:
+        from rag_pipeline import RAGPipeline
+
+        # Create a temporary pipeline instance to get embedding info
+        # Note: This doesn't re-initialize embeddings if already cached
+        pipeline = RAGPipeline()
+        embedding_info = pipeline.get_embedding_info()
+
+        return jsonify({
+            'success': True,
+            'embedding': embedding_info
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in get_embedding_info: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'embedding': {
+                'model_name': 'Unknown',
+                'model_type': 'error',
+                'dimensions': 0,
+                'is_primary': False,
+                'error_message': str(e)
+            }
+        }), 500

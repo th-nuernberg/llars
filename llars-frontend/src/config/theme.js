@@ -6,54 +6,55 @@
 export const lightTheme = {
   dark: false,
   colors: {
-    // Primary brand colors
-    primary: '#b0ca97',      // Light green (LLars brand color)
-    'primary-darken-1': '#9db882',
-    'primary-lighten-1': '#c4d8ac',
+    // Primary brand colors - light green (original LLARS branding)
+    primary: '#b0ca97',      // Original light green
+    'primary-darken-1': '#9ab882',
+    'primary-lighten-1': '#c4d9af',
 
-    secondary: '#81b68b',    // Darker green
-    'secondary-darken-1': '#6ea176',
-    'secondary-lighten-1': '#9cc3a4',
+    secondary: '#8fbc6b',    // Slightly darker green for secondary
+    'secondary-darken-1': '#7aa858',
+    'secondary-lighten-1': '#a4c985',
 
-    accent: '#8c9eff',       // Blue accent
+    accent: '#5c6bc0',       // Blue accent
 
     // Semantic colors
-    error: '#b71c1c',        // Red for errors
-    warning: '#f57c00',      // Orange for warnings
-    info: '#1976D2',         // Blue for info
-    success: '#388E3C',      // Green for success
+    error: '#c62828',        // Darker red for errors
+    warning: '#e65100',      // Darker orange for warnings
+    info: '#1565C0',         // Darker blue for info
+    success: '#2e7d32',      // Darker green for success
 
     // Admin color
-    admin: '#8c00ff',        // Purple for admin
+    admin: '#6a1b9a',        // Purple for admin
 
     // Background and surface
     background: '#f5f5f5',   // Light gray background
     surface: '#ffffff',      // White surface
-    'surface-variant': '#f0f0f0',
+    'surface-variant': '#e8e8e8', // Slightly darker for cards in summary
     'surface-bright': '#ffffff',
     'surface-light': '#fafafa',
 
-    // Text colors
-    'on-background': '#1a1a1a',
-    'on-surface': '#1a1a1a',
-    'on-primary': '#ffffff',
+    // Text colors - DARK text for light backgrounds (critical for readability!)
+    'on-background': '#1a1a1a',    // Very dark for maximum readability
+    'on-surface': '#1a1a1a',       // Very dark for maximum readability
+    'on-surface-variant': '#2d2d2d', // Dark text on surface-variant
+    'on-primary': '#ffffff',       // White on green buttons
     'on-secondary': '#ffffff',
     'on-error': '#ffffff',
     'on-warning': '#ffffff',
     'on-info': '#ffffff',
     'on-success': '#ffffff',
 
-    // Additional UI colors
+    // Grey scale for text hierarchy
     'grey-lighten-5': '#fafafa',
     'grey-lighten-4': '#f5f5f5',
     'grey-lighten-3': '#eeeeee',
     'grey-lighten-2': '#e0e0e0',
     'grey-lighten-1': '#bdbdbd',
-    'grey': '#9e9e9e',
-    'grey-darken-1': '#757575',
-    'grey-darken-2': '#616161',
-    'grey-darken-3': '#424242',
-    'grey-darken-4': '#212121',
+    'grey': '#616161',        // Darker grey for secondary text (was #757575)
+    'grey-darken-1': '#525252',
+    'grey-darken-2': '#424242',
+    'grey-darken-3': '#303030',
+    'grey-darken-4': '#1a1a1a',
   }
 }
 

@@ -231,8 +231,8 @@ const { hasPermission, isAdmin } = usePermissions()
 **Datei:** `llars-frontend/src/config/theme.js`
 
 **Farben:**
-- Light: `#b0ca97` (primary), `#f5f5f5` (background)
-- Dark: `#8fbc6b` (primary), `#121212` (background)
+- Light: `#b0ca97` (primary - original helles Grün), `#f5f5f5` (background)
+- Dark: `#5d7a4a` (primary - dunkleres Grün), `#121212` (background)
 
 ### Theme wechseln
 
@@ -251,6 +251,44 @@ const theme = useTheme()
 theme.global.name.value = 'dark'  // Switch to dark
 const isDark = theme.global.current.value.dark  // Check current
 ```
+
+### ⚠️ Light Mode Textfarben - WICHTIG!
+
+Im Light Mode MUSS Text dunkel sein für gute Lesbarkeit. Vuetify's Standard-Opacity für `text-medium-emphasis` (0.6) ist zu hell auf weißem Hintergrund.
+
+**Globale Fixes in `App.vue`:**
+```css
+/* Light mode: Erhöhte Opacity für besseren Kontrast */
+.v-theme--light {
+  --v-medium-emphasis-opacity: 0.75;
+  --v-high-emphasis-opacity: 0.95;
+}
+
+.v-theme--light .text-medium-emphasis {
+  color: rgba(0, 0, 0, 0.75) !important;
+}
+```
+
+**Bei Custom Styles in Komponenten:**
+```css
+/* FALSCH - Text unsichtbar im Light Mode */
+.duration-item {
+  background: rgba(var(--v-theme-surface), 0.3);
+  /* Kein color definiert - erbt möglicherweise helle Farbe */
+}
+
+/* RICHTIG - Text immer lesbar */
+.duration-item {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  color: rgb(var(--v-theme-on-surface));  /* Explizit dunkle Textfarbe */
+}
+```
+
+**Regeln für neue Komponenten:**
+1. IMMER `color: rgb(var(--v-theme-on-surface))` setzen wenn Custom Background
+2. NIEMALS Text ohne explizite Farbe auf Custom Backgrounds
+3. `text-medium-emphasis` Klasse nutzen für Sekundärtext (global gefixt)
+4. Bei `text-caption` innerhalb Custom-Container: `color: inherit` nutzen
 
 ---
 

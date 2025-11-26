@@ -250,6 +250,87 @@ function openSettings() {
   background: rgba(66, 66, 66, 0.95) !important;
   color: #ffffff !important;
 }
+
+/* ============================================
+   LIGHT MODE TEXT CONTRAST FIXES
+   ============================================
+   In Light Mode, text must be dark for readability.
+   Vuetify's default medium-emphasis opacity (0.6) is too light.
+   We increase it to 0.75 for better contrast.
+   ============================================ */
+
+/* Light mode: Increase medium-emphasis opacity for better contrast */
+.v-theme--light {
+  --v-medium-emphasis-opacity: 0.75;
+  --v-high-emphasis-opacity: 0.95;
+}
+
+/* Light mode: Ensure text-medium-emphasis is readable */
+.v-theme--light .text-medium-emphasis {
+  color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Light mode: Ensure text-caption is readable */
+.v-theme--light .text-caption {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* Light mode: Ensure v-card-text content is readable */
+.v-theme--light .v-card-text {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+/* Light mode: Fix expansion panels text */
+.v-theme--light .v-expansion-panel-title,
+.v-theme--light .v-expansion-panel-text {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+/* Light mode: Fix slider tick labels and values */
+.v-theme--light .v-slider .v-slider__tick-label {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* Light mode: Fix chip text in outlined variant */
+.v-theme--light .v-chip.v-chip--variant-outlined {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+/* Light mode: Fix radio button and switch labels */
+.v-theme--light .v-label {
+  color: rgba(0, 0, 0, 0.87);
+  opacity: 1;
+}
+
+.v-theme--light .v-selection-control .v-label {
+  color: rgba(0, 0, 0, 0.87);
+  opacity: 1;
+}
+
+/* Light mode: Fix text inside radio/switch labels using text-medium-emphasis */
+.v-theme--light .v-selection-control .text-medium-emphasis,
+.v-theme--light .v-radio .text-medium-emphasis,
+.v-theme--light .v-switch .text-medium-emphasis {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Light mode: Fix text-caption inside form controls */
+.v-theme--light .v-selection-control .text-caption,
+.v-theme--light .v-radio .text-caption,
+.v-theme--light .v-switch .text-caption {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Light mode: Fix form hint text */
+.v-theme--light .v-messages__message {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* Light mode: Fix input labels */
+.v-theme--light .v-field__outline,
+.v-theme--light .v-field-label {
+  color: rgba(0, 0, 0, 0.6);
+}
 </style>
 
 <style scoped>

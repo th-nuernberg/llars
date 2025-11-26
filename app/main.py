@@ -25,11 +25,19 @@ limiter = Limiter(
     storage_uri="memory://",  # In production: Redis verwenden
 )
 
-# Exempt health check endpoints from rate limiting
+# Exempt health check and judge session endpoints from rate limiting
 @limiter.request_filter
-def exempt_health_checks():
-    """Exempt health check endpoints from rate limiting"""
-    return request.endpoint and 'health_check' in request.endpoint
+def exempt_endpoints():
+    """Exempt health check and high-frequency judge endpoints from rate limiting"""
+    if not request.endpoint:
+        return False
+    # Exempt health checks
+    if 'health_check' in request.endpoint:
+        return True
+    # Exempt judge session polling endpoints (queue, current, comparisons, workers)
+    if request.path and '/api/judge/sessions/' in request.path:
+        return True
+    return False
 
 # JWT Configuration (for legacy auth routes)
 # TODO: Complete migration to Authentik and remove legacy JWT auth

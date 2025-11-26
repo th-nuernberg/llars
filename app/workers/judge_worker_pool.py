@@ -1,0 +1,670 @@
+"""
+Worker Pool for parallel LLM-as-Judge Evaluations.
+
+Manages multiple JudgeWorker instances to process evaluations in parallel.
+Each worker grabs comparisons from the queue using database-level locking
+to prevent race conditions.
+
+Author: LLARS Team
+Date: November 2025
+"""
+
+import logging
+import threading
+import time
+from datetime import datetime
+from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
+
+# Global pool registry
+_pools: Dict[int, 'JudgeWorkerPool'] = {}
+_pool_lock = threading.Lock()
+
+
+class JudgeWorkerPool:
+    """
+    Manages multiple parallel workers for a Judge session.
+
+    Features:
+    - Spawns 1-5 worker threads
+    - Thread-safe comparison assignment via FOR UPDATE SKIP LOCKED
+    - Graceful shutdown support
+    - Live Socket.IO broadcasts with worker_id
+    """
+
+    MAX_WORKERS = 5
+
+    def __init__(self, session_id: int, worker_count: int, app):
+        """
+        Initialize the worker pool.
+
+        Args:
+            session_id: ID of the session to process
+            worker_count: Number of parallel workers (1-5)
+            app: Flask application instance (for context)
+        """
+        self.session_id = session_id
+        self.worker_count = min(max(worker_count, 1), self.MAX_WORKERS)
+        self.app = app
+        self.workers: List['PooledJudgeWorker'] = []
+        self.running = False
+        self._stop_event = threading.Event()
+
+        logger.info(
+            f"[JudgeWorkerPool:{session_id}] Initialized with {self.worker_count} workers"
+        )
+
+    def start(self):
+        """Start all workers in the pool."""
+        if self.running:
+            logger.warning(f"[JudgeWorkerPool:{self.session_id}] Already running")
+            return
+
+        self.running = True
+        self._stop_event.clear()
+
+        # Spawn worker threads
+        for worker_id in range(self.worker_count):
+            worker = PooledJudgeWorker(
+                session_id=self.session_id,
+                worker_id=worker_id,
+                pool=self,
+                app=self.app
+            )
+            self.workers.append(worker)
+            worker.start()
+
+        logger.info(
+            f"[JudgeWorkerPool:{self.session_id}] Started {len(self.workers)} workers"
+        )
+
+    def stop(self):
+        """Stop all workers gracefully."""
+        logger.info(f"[JudgeWorkerPool:{self.session_id}] Stopping pool...")
+        self.running = False
+        self._stop_event.set()
+
+        # Wait for all workers to finish
+        for worker in self.workers:
+            worker.stop()
+
+        self.workers.clear()
+        logger.info(f"[JudgeWorkerPool:{self.session_id}] Pool stopped")
+
+    def is_running(self) -> bool:
+        """Check if any worker is still running."""
+        return any(w.running for w in self.workers)
+
+    def get_status(self) -> Dict:
+        """Get status of all workers in the pool."""
+        return {
+            'session_id': self.session_id,
+            'worker_count': self.worker_count,
+            'running': self.running,
+            'workers': [
+                {
+                    'worker_id': w.worker_id,
+                    'running': w.running,
+                    'current_comparison_id': w.current_comparison_id
+                }
+                for w in self.workers
+            ]
+        }
+
+
+class PooledJudgeWorker:
+    """
+    Individual worker within a pool.
+
+    Each worker runs in its own thread and fetches comparisons
+    from the queue using database-level locking.
+    """
+
+    def __init__(self, session_id: int, worker_id: int, pool: JudgeWorkerPool, app):
+        self.session_id = session_id
+        self.worker_id = worker_id
+        self.pool = pool
+        self.app = app
+        self.running = False
+        self.thread: Optional[threading.Thread] = None
+        self.current_comparison_id: Optional[int] = None
+        self._stop_event = threading.Event()
+
+    def start(self):
+        """Start the worker thread."""
+        if self.running:
+            return
+
+        self.running = True
+        self._stop_event.clear()
+        self.thread = threading.Thread(
+            target=self._run,
+            name=f"JudgeWorker-{self.session_id}-{self.worker_id}",
+            daemon=True
+        )
+        self.thread.start()
+        logger.info(
+            f"[JudgeWorker:{self.session_id}:{self.worker_id}] Started"
+        )
+
+    def stop(self):
+        """Stop the worker gracefully."""
+        self.running = False
+        self._stop_event.set()
+
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=5.0)
+
+        logger.info(
+            f"[JudgeWorker:{self.session_id}:{self.worker_id}] Stopped"
+        )
+
+    def _run(self):
+        """Main worker loop."""
+        with self.app.app_context():
+            try:
+                self._process_queue()
+            except Exception as e:
+                logger.error(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] Fatal error: {e}"
+                )
+            finally:
+                self.running = False
+                self.current_comparison_id = None
+
+    def _process_queue(self):
+        """Process comparisons from the queue."""
+        from app.db.db import db
+        from app.db.tables import (
+            JudgeSession, JudgeSessionStatus,
+            JudgeComparison, JudgeComparisonStatus,
+            JudgeEvaluation, JudgeWinner,
+            PillarStatistics, Message
+        )
+        from app.services.judge.judge_service import JudgeService
+
+        logger.info(
+            f"[JudgeWorker:{self.session_id}:{self.worker_id}] Processing queue..."
+        )
+
+        # Initialize judge service
+        try:
+            judge_service = JudgeService()
+        except Exception as e:
+            logger.error(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Failed to init JudgeService: {e}"
+            )
+            return
+
+        while self.running and not self._stop_event.is_set():
+            # Check if pool is still running
+            if not self.pool.running:
+                logger.info(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Pool stopped, exiting"
+                )
+                break
+
+            # Check session status
+            session = db.session.get(JudgeSession, self.session_id)
+            if not session:
+                logger.error(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Session not found"
+                )
+                break
+
+            if session.status != JudgeSessionStatus.RUNNING:
+                logger.info(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Session status: {session.status.value}"
+                )
+                break
+
+            # Get next pending comparison using database-level lock
+            comparison = self._get_next_comparison()
+
+            if not comparison:
+                # No more work - check if other workers might still be working
+                pending_count = JudgeComparison.query.filter_by(
+                    session_id=self.session_id,
+                    status=JudgeComparisonStatus.PENDING
+                ).count()
+
+                running_count = JudgeComparison.query.filter_by(
+                    session_id=self.session_id,
+                    status=JudgeComparisonStatus.RUNNING
+                ).count()
+
+                if pending_count == 0 and running_count == 0:
+                    # Queue truly empty - mark session complete (first worker to notice)
+                    logger.info(
+                        f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                        f"Queue empty - completing session"
+                    )
+                    self._try_complete_session(session)
+                    break
+                elif pending_count == 0 and running_count > 0:
+                    # Other workers still processing, wait a bit and check again
+                    time.sleep(2)
+                    continue
+                else:
+                    # Race condition: retry
+                    time.sleep(0.5)
+                    continue
+
+            # Process this comparison
+            self.current_comparison_id = comparison.id
+            try:
+                self._process_comparison(comparison, session, judge_service)
+            except Exception as e:
+                logger.error(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Comparison {comparison.id} failed: {e}"
+                )
+                comparison.status = JudgeComparisonStatus.FAILED
+                comparison.worker_id = None
+                db.session.commit()
+            finally:
+                self.current_comparison_id = None
+
+            # Brief pause between comparisons
+            time.sleep(0.5)
+
+    def _get_next_comparison(self):
+        """
+        Get next pending comparison with database-level locking.
+
+        Uses FOR UPDATE SKIP LOCKED to prevent race conditions
+        when multiple workers are grabbing comparisons.
+        """
+        from app.db.db import db
+        from app.db.tables import JudgeComparison, JudgeComparisonStatus
+        from sqlalchemy import text
+
+        try:
+            # Use raw SQL for FOR UPDATE SKIP LOCKED (not all ORMs support this well)
+            result = db.session.execute(
+                text("""
+                    SELECT id FROM judge_comparisons
+                    WHERE session_id = :session_id
+                    AND status = 'pending'
+                    ORDER BY queue_position
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                """),
+                {'session_id': self.session_id}
+            ).fetchone()
+
+            if not result:
+                return None
+
+            comparison_id = result[0]
+
+            # Update the comparison
+            comparison = db.session.get(JudgeComparison, comparison_id)
+            if comparison and comparison.status == JudgeComparisonStatus.PENDING:
+                comparison.status = JudgeComparisonStatus.RUNNING
+                comparison.worker_id = self.worker_id
+                comparison.started_at = datetime.now()
+                db.session.commit()
+                return comparison
+
+            return None
+
+        except Exception as e:
+            logger.warning(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Error getting next comparison: {e}"
+            )
+            db.session.rollback()
+            return None
+
+    def _process_comparison(self, comparison, session, judge_service):
+        """Process a single comparison."""
+        from app.db.db import db
+        from app.db.tables import (
+            JudgeComparisonStatus, JudgeEvaluation, JudgeWinner,
+            PillarStatistics, Message
+        )
+
+        logger.info(
+            f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+            f"Processing comparison {comparison.id}: "
+            f"Thread {comparison.thread_a_id} vs {comparison.thread_b_id}"
+        )
+
+        # Broadcast start
+        self._broadcast_comparison_start(comparison)
+
+        # Load thread messages
+        messages_a = self._load_messages(comparison.thread_a_id)
+        messages_b = self._load_messages(comparison.thread_b_id)
+
+        if not messages_a or not messages_b:
+            logger.warning(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Empty messages for comparison {comparison.id}"
+            )
+            comparison.status = JudgeComparisonStatus.FAILED
+            comparison.worker_id = None
+            db.session.commit()
+            return
+
+        # Perform evaluation
+        start_time = time.time()
+
+        try:
+            result, metadata = judge_service.evaluate_pair(
+                thread_a_messages=messages_a,
+                thread_b_messages=messages_b,
+                pillar_a=comparison.pillar_a,
+                pillar_b=comparison.pillar_b,
+                stream_callback=lambda chunk: self._broadcast_stream(chunk)
+            )
+        except Exception as e:
+            logger.error(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Evaluation error: {e}"
+            )
+            comparison.status = JudgeComparisonStatus.FAILED
+            comparison.worker_id = None
+            db.session.commit()
+            return
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Map winner string to enum
+        winner_map = {
+            'A': JudgeWinner.A,
+            'B': JudgeWinner.B,
+            'TIE': JudgeWinner.TIE
+        }
+
+        # Create evaluation record
+        evaluation = JudgeEvaluation(
+            comparison_id=comparison.id,
+            raw_response=result.model_dump_json(),
+            evaluation_json=result.model_dump(),
+            winner=winner_map.get(result.winner, JudgeWinner.TIE),
+            counsellor_coherence_a=result.criteria_scores.counsellor_coherence.score_a,
+            counsellor_coherence_b=result.criteria_scores.counsellor_coherence.score_b,
+            client_coherence_a=result.criteria_scores.client_coherence.score_a,
+            client_coherence_b=result.criteria_scores.client_coherence.score_b,
+            quality_a=result.criteria_scores.quality.score_a,
+            quality_b=result.criteria_scores.quality.score_b,
+            empathy_a=result.criteria_scores.empathy.score_a,
+            empathy_b=result.criteria_scores.empathy.score_b,
+            authenticity_a=result.criteria_scores.authenticity.score_a,
+            authenticity_b=result.criteria_scores.authenticity.score_b,
+            solution_orientation_a=result.criteria_scores.solution_orientation.score_a,
+            solution_orientation_b=result.criteria_scores.solution_orientation.score_b,
+            reasoning=result.final_justification,
+            confidence=result.confidence,
+            position_variant=comparison.position_order,
+            llm_latency_ms=latency_ms,
+            token_count=metadata.get('token_count')
+        )
+
+        db.session.add(evaluation)
+
+        # Update statistics
+        self._update_statistics(
+            comparison.pillar_a,
+            comparison.pillar_b,
+            result.winner,
+            result.confidence
+        )
+
+        # Update comparison status
+        comparison.status = JudgeComparisonStatus.COMPLETED
+        comparison.completed_at = datetime.now()
+
+        # Update session progress (thread-safe increment)
+        session.completed_comparisons = (
+            JudgeComparison.query.filter_by(
+                session_id=self.session_id,
+                status=JudgeComparisonStatus.COMPLETED
+            ).count()
+        )
+        db.session.commit()
+
+        # Broadcast completion
+        self._broadcast_comparison_complete(comparison, result)
+        self._broadcast_progress(session)
+
+        logger.info(
+            f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+            f"Comparison {comparison.id} complete: "
+            f"winner={result.winner}, confidence={result.confidence:.2f}"
+        )
+
+    def _load_messages(self, thread_id: int):
+        """Load messages for a thread."""
+        from app.db.tables import Message
+
+        messages = Message.query.filter_by(
+            thread_id=thread_id
+        ).order_by(Message.timestamp).all()
+
+        return [{
+            'content': msg.content,
+            'is_counsellor': msg.is_counsellor if hasattr(msg, 'is_counsellor') else False,
+            'timestamp': msg.timestamp.isoformat() if msg.timestamp else None
+        } for msg in messages]
+
+    def _update_statistics(self, pillar_a: int, pillar_b: int, winner: str, confidence: float):
+        """Update pillar statistics."""
+        from app.db.db import db
+        from app.db.tables import PillarStatistics
+
+        stat = PillarStatistics.query.filter_by(
+            session_id=self.session_id,
+            pillar_a=pillar_a,
+            pillar_b=pillar_b
+        ).first()
+
+        if not stat:
+            stat = PillarStatistics(
+                session_id=self.session_id,
+                pillar_a=pillar_a,
+                pillar_b=pillar_b,
+                wins_a=0,
+                wins_b=0,
+                ties=0
+            )
+            db.session.add(stat)
+
+        if winner == 'A':
+            stat.wins_a += 1
+        elif winner == 'B':
+            stat.wins_b += 1
+        else:
+            stat.ties += 1
+
+        # Update average confidence
+        total = stat.wins_a + stat.wins_b + stat.ties
+        if stat.avg_confidence is None:
+            stat.avg_confidence = confidence
+        else:
+            stat.avg_confidence = (
+                (stat.avg_confidence * (total - 1) + confidence) / total
+            )
+
+        stat.updated_at = datetime.now()
+
+    def _try_complete_session(self, session):
+        """Try to mark session as complete (thread-safe)."""
+        from app.db.db import db
+        from app.db.tables import JudgeSessionStatus
+
+        # Double-check under lock that session isn't already completed
+        if session.status == JudgeSessionStatus.RUNNING:
+            session.status = JudgeSessionStatus.COMPLETED
+            session.completed_at = datetime.now()
+            session.current_comparison_id = None
+            db.session.commit()
+            self._broadcast_session_complete()
+
+    # ========================================================================
+    # Socket.IO Broadcasts (with worker_id)
+    # ========================================================================
+
+    def _get_socketio(self):
+        """Get SocketIO instance."""
+        try:
+            try:
+                from main import socketio
+                return socketio
+            except ImportError:
+                pass
+
+            try:
+                from app.main import socketio
+                return socketio
+            except ImportError:
+                pass
+
+            from flask import current_app
+            if hasattr(current_app, 'extensions') and 'socketio' in current_app.extensions:
+                return current_app.extensions['socketio']
+
+            return None
+        except Exception as e:
+            logger.warning(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Failed to get socketio: {e}"
+            )
+            return None
+
+    def _broadcast_comparison_start(self, comparison):
+        """Broadcast when a comparison starts."""
+        socketio = self._get_socketio()
+        if not socketio:
+            return
+
+        room = f"judge_session_{self.session_id}"
+        socketio.emit('judge:comparison_start', {
+            'session_id': self.session_id,
+            'worker_id': self.worker_id,
+            'comparison_id': comparison.id,
+            'thread_a_id': comparison.thread_a_id,
+            'thread_b_id': comparison.thread_b_id,
+            'pillar_a': comparison.pillar_a,
+            'pillar_b': comparison.pillar_b,
+            'position_order': comparison.position_order
+        }, room=room)
+
+    def _broadcast_stream(self, chunk: str):
+        """Broadcast LLM streaming chunk."""
+        socketio = self._get_socketio()
+        if not socketio:
+            return
+
+        room = f"judge_session_{self.session_id}"
+        socketio.emit('judge:llm_stream', {
+            'session_id': self.session_id,
+            'worker_id': self.worker_id,
+            'token': chunk,
+            'content': chunk
+        }, room=room)
+
+    def _broadcast_comparison_complete(self, comparison, result):
+        """Broadcast when a comparison completes."""
+        socketio = self._get_socketio()
+        if not socketio:
+            return
+
+        room = f"judge_session_{self.session_id}"
+        socketio.emit('judge:comparison_complete', {
+            'session_id': self.session_id,
+            'worker_id': self.worker_id,
+            'comparison_id': comparison.id,
+            'winner': result.winner,
+            'confidence': result.confidence,
+            'reasoning': result.final_justification
+        }, room=room)
+
+    def _broadcast_progress(self, session):
+        """Broadcast session progress update."""
+        socketio = self._get_socketio()
+        if not socketio:
+            return
+
+        room = f"judge_session_{self.session_id}"
+        progress = (session.completed_comparisons / session.total_comparisons * 100) \
+            if session.total_comparisons > 0 else 0
+
+        socketio.emit('judge:progress', {
+            'session_id': self.session_id,
+            'completed': session.completed_comparisons,
+            'total': session.total_comparisons,
+            'percent': progress
+        }, room=room)
+
+    def _broadcast_session_complete(self):
+        """Broadcast when session completes."""
+        socketio = self._get_socketio()
+        if not socketio:
+            return
+
+        room = f"judge_session_{self.session_id}"
+        socketio.emit('judge:session_complete', {
+            'session_id': self.session_id
+        }, room=room)
+
+
+# ============================================================================
+# Pool Management Functions
+# ============================================================================
+
+def trigger_judge_worker_pool(session_id: int, worker_count: int = 1):
+    """
+    Start a worker pool for a session.
+
+    Args:
+        session_id: ID of the session to process
+        worker_count: Number of parallel workers (1-5)
+    """
+    from flask import current_app
+
+    with _pool_lock:
+        # Stop existing pool if any
+        if session_id in _pools:
+            _pools[session_id].stop()
+            del _pools[session_id]
+
+        # Create and start new pool
+        pool = JudgeWorkerPool(
+            session_id=session_id,
+            worker_count=worker_count,
+            app=current_app._get_current_object()
+        )
+        _pools[session_id] = pool
+        pool.start()
+
+    logger.info(
+        f"[JudgeWorkerPool] Triggered pool for session {session_id} "
+        f"with {worker_count} workers"
+    )
+
+
+def stop_judge_worker_pool(session_id: int):
+    """Stop the worker pool for a session."""
+    with _pool_lock:
+        if session_id in _pools:
+            _pools[session_id].stop()
+            del _pools[session_id]
+            logger.info(f"[JudgeWorkerPool] Stopped pool for session {session_id}")
+        else:
+            logger.warning(f"[JudgeWorkerPool] No pool found for session {session_id}")
+
+
+def get_pool_status(session_id: int) -> Optional[Dict]:
+    """Get the status of a worker pool."""
+    with _pool_lock:
+        if session_id in _pools:
+            return _pools[session_id].get_status()
+        return None

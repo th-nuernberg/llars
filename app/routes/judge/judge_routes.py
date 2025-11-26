@@ -88,7 +88,8 @@ def estimate_comparisons_endpoint():
     data = request.get_json() or {}
 
     pillar_ids = data.get('pillar_ids', [])
-    comparison_mode = data.get('comparison_mode', 'pillar_sample')
+    # Support both 'comparison_mode' and 'mode' parameter names
+    comparison_mode = data.get('comparison_mode') or data.get('mode', 'pillar_sample')
     samples_per_pillar = min(data.get('samples_per_pillar', 10), 50)
     max_threads_per_pillar = data.get('max_threads_per_pillar')
     position_swap = data.get('position_swap', True)
@@ -642,12 +643,18 @@ def start_session_debug(session_id: int):
     session.started_at = datetime.now()
     db.session.commit()
 
-    from workers.judge_worker import trigger_judge_worker
-    trigger_judge_worker(session_id)
+    # Get worker_count from session config (default: 1)
+    worker_count = 1
+    if session.config_json:
+        worker_count = session.config_json.get('worker_count', 1)
+
+    from workers.judge_worker_pool import trigger_judge_worker_pool
+    trigger_judge_worker_pool(session_id, worker_count)
 
     return jsonify({
         'session_id': session.id,
         'status': 'running',
+        'worker_count': worker_count,
         'message': 'DEBUG: Evaluation gestartet'
     })
 
@@ -697,13 +704,19 @@ def start_session(session_id: int):
     session.started_at = datetime.now()
     db.session.commit()
 
-    # Trigger background worker
-    from workers.judge_worker import trigger_judge_worker
-    trigger_judge_worker(session_id)
+    # Get worker_count from session config (default: 1)
+    worker_count = 1
+    if session.config_json:
+        worker_count = session.config_json.get('worker_count', 1)
+
+    # Trigger background worker pool
+    from workers.judge_worker_pool import trigger_judge_worker_pool
+    trigger_judge_worker_pool(session_id, worker_count)
 
     response = {
         'session_id': session.id,
         'status': 'running',
+        'worker_count': worker_count,
         'message': 'Evaluation gestartet'
     }
 
@@ -733,9 +746,9 @@ def pause_session(session_id: int):
     session.status = JudgeSessionStatus.PAUSED
     db.session.commit()
 
-    # Stop worker
-    from workers.judge_worker import stop_judge_worker
-    stop_judge_worker(session_id)
+    # Stop worker pool
+    from workers.judge_worker_pool import stop_judge_worker_pool
+    stop_judge_worker_pool(session_id)
 
     return jsonify({
         'session_id': session.id,
@@ -756,10 +769,10 @@ def delete_session(session_id: int):
     """
     session = JudgeSession.query.get_or_404(session_id)
 
-    # Stop worker if running
+    # Stop worker pool if running
     if session.status == JudgeSessionStatus.RUNNING:
-        from workers.judge_worker import stop_judge_worker
-        stop_judge_worker(session_id)
+        from workers.judge_worker_pool import stop_judge_worker_pool
+        stop_judge_worker_pool(session_id)
 
     # Delete cascades to comparisons, evaluations, statistics
     db.session.delete(session)
@@ -768,6 +781,65 @@ def delete_session(session_id: int):
     return jsonify({
         'message': 'Session gelöscht',
         'session_id': session_id
+    })
+
+
+@judge_bp.route('/sessions/<int:session_id>/workers', methods=['GET'])
+@authentik_required
+@require_permission('feature:comparison:view')
+def get_worker_pool_status(session_id: int):
+    """
+    Get the status of all workers for a session.
+
+    Returns:
+        JSON with worker pool status including each worker's current task
+    """
+    session = JudgeSession.query.get_or_404(session_id)
+
+    from workers.judge_worker_pool import get_pool_status
+    pool_status = get_pool_status(session_id)
+
+    if not pool_status:
+        # No active pool - return static info from config
+        worker_count = 1
+        if session.config_json:
+            worker_count = session.config_json.get('worker_count', 1)
+
+        return jsonify({
+            'session_id': session_id,
+            'worker_count': worker_count,
+            'running': False,
+            'workers': []
+        })
+
+    # Enrich worker status with comparison details
+    enriched_workers = []
+    for worker in pool_status.get('workers', []):
+        worker_info = {
+            'worker_id': worker['worker_id'],
+            'running': worker['running'],
+            'current_comparison': None
+        }
+
+        if worker.get('current_comparison_id'):
+            comparison = JudgeComparison.query.get(worker['current_comparison_id'])
+            if comparison:
+                worker_info['current_comparison'] = {
+                    'id': comparison.id,
+                    'thread_a_id': comparison.thread_a_id,
+                    'thread_b_id': comparison.thread_b_id,
+                    'pillar_a': comparison.pillar_a,
+                    'pillar_b': comparison.pillar_b,
+                    'position_order': comparison.position_order
+                }
+
+        enriched_workers.append(worker_info)
+
+    return jsonify({
+        'session_id': session_id,
+        'worker_count': pool_status.get('worker_count', 1),
+        'running': pool_status.get('running', False),
+        'workers': enriched_workers
     })
 
 

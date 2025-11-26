@@ -288,6 +288,25 @@
         </v-col>
       </v-row>
 
+      <!-- Info when not completed -->
+      <v-row v-if="analysis.status === 'pending'">
+        <v-col cols="12">
+          <v-alert type="info" prominent>
+            <v-alert-title>Analyse noch nicht gestartet</v-alert-title>
+            Starten Sie die Analyse mit dem Button oben, um Ergebnisse zu generieren.
+          </v-alert>
+        </v-col>
+      </v-row>
+
+      <v-row v-if="analysis.status === 'failed'">
+        <v-col cols="12">
+          <v-alert type="error" prominent>
+            <v-alert-title>Analyse fehlgeschlagen</v-alert-title>
+            {{ analysis.error_message || 'Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.' }}
+          </v-alert>
+        </v-col>
+      </v-row>
+
       <!-- Results Tabs (only show when completed) -->
       <template v-if="analysis.status === 'completed'">
         <v-row>
@@ -412,12 +431,13 @@
 
                   <!-- Transitions Tab -->
                   <v-window-item value="transitions">
+                    <!-- Controls -->
                     <v-row class="mb-4">
                       <v-col cols="12" sm="6" md="3">
                         <v-select
                           v-model="transitionPillar"
                           :items="pillarOptions"
-                          label="Saeule"
+                          label="Saeule (Top Liste)"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -431,20 +451,179 @@
                           density="compact"
                         ></v-select>
                       </v-col>
+                      <v-col cols="12" sm="6" md="3">
+                        <v-select
+                          v-model="heatmapColorMode"
+                          :items="[{title: 'Anzahl', value: 'count'}, {title: 'Wahrscheinlichkeit', value: 'probability'}]"
+                          label="Heatmap Farbmodus"
+                          variant="outlined"
+                          density="compact"
+                        ></v-select>
+                      </v-col>
+                      <v-col cols="12" sm="6" md="3" class="d-flex align-center">
+                        <v-switch
+                          v-model="showHeatmapValues"
+                          label="Werte anzeigen"
+                          density="compact"
+                          hide-details
+                          color="primary"
+                        ></v-switch>
+                      </v-col>
                     </v-row>
 
-                    <v-progress-linear v-if="loadingTransitions" indeterminate></v-progress-linear>
+                    <v-progress-linear v-if="loadingTransitions || loadingHeatmaps" indeterminate></v-progress-linear>
+
+                    <!-- Transition Heatmaps per Pillar -->
+                    <div class="text-h6 font-weight-bold mb-3">
+                      <v-icon start>mdi-grid</v-icon>
+                      Transitions-Heatmaps pro Saeule
+                    </div>
+
+                    <v-row v-if="Object.keys(heatmapData).length > 0">
+                      <v-col
+                        v-for="(data, pillarNum) in heatmapData"
+                        :key="'heatmap-' + pillarNum"
+                        cols="12"
+                        :md="Object.keys(heatmapData).length <= 2 ? 6 : 4"
+                      >
+                        <v-card variant="outlined" class="h-100">
+                          <v-card-title class="text-subtitle-1 py-2">
+                            <v-icon start size="small" color="primary">mdi-chart-box</v-icon>
+                            {{ getPillarName(pillarNum) }}
+                            <v-chip size="x-small" class="ml-2" variant="tonal">
+                              {{ data.totalTransitions }} Transitionen
+                            </v-chip>
+                          </v-card-title>
+                          <v-card-text class="pt-0">
+                            <TransitionHeatmap
+                              :counts="data.counts"
+                              :probabilities="data.probabilities"
+                              :labels="data.labels"
+                              :label-displays="data.labelDisplays"
+                              :show-values="showHeatmapValues"
+                              :color-mode="heatmapColorMode"
+                              :pillar-name="getPillarName(pillarNum)"
+                              :pillar-number="pillarNum"
+                              :external-highlight="hoveredTransition"
+                              @cell-hover="onHeatmapCellHover"
+                              @cell-leave="onHeatmapCellLeave"
+                            />
+                          </v-card-text>
+                        </v-card>
+                      </v-col>
+                    </v-row>
+
+                    <!-- Synchronized Comparison Panel -->
+                    <v-expand-transition>
+                      <v-card v-if="hoveredTransition" variant="tonal" color="primary" class="mt-3">
+                        <v-card-title class="text-subtitle-1 py-2">
+                          <v-icon start size="small">mdi-compare</v-icon>
+                          Vergleich: {{ hoveredTransition.fromDisplay }}
+                          <v-icon size="x-small" class="mx-1">mdi-arrow-right</v-icon>
+                          {{ hoveredTransition.toDisplay }}
+                        </v-card-title>
+                        <v-card-text class="py-2">
+                          <v-row dense>
+                            <v-col
+                              v-for="(data, pillarNum) in heatmapData"
+                              :key="'compare-' + pillarNum"
+                              cols="12"
+                              :sm="12 / Object.keys(heatmapData).length"
+                            >
+                              <div class="text-center">
+                                <div class="text-caption text-medium-emphasis">{{ getPillarName(pillarNum) }}</div>
+                                <div class="text-h5 font-weight-bold">
+                                  {{ getTransitionCount(pillarNum, hoveredTransition.from, hoveredTransition.to) }}
+                                </div>
+                                <div class="text-caption">
+                                  {{ (getTransitionProbability(pillarNum, hoveredTransition.from, hoveredTransition.to) * 100).toFixed(1) }}%
+                                </div>
+                              </div>
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-expand-transition>
+
+                    <v-alert v-else-if="!loadingHeatmaps && Object.keys(heatmapData).length === 0" type="info" variant="tonal" class="mb-4">
+                      Keine Heatmap-Daten verfuegbar. Bitte warten Sie bis die Analyse abgeschlossen ist.
+                    </v-alert>
+
+                    <v-divider class="my-4"></v-divider>
+
+                    <!-- Transition Analysis Section -->
+                    <div class="text-h6 font-weight-bold mb-3">
+                      <v-icon start>mdi-chart-bar</v-icon>
+                      Transitions-Analyse
+                    </div>
+
+                    <v-card v-if="transitionAnalysis" variant="outlined" class="mb-4">
+                      <v-card-text>
+                        <v-row>
+                          <v-col cols="12" md="4">
+                            <div class="text-subtitle-2 font-weight-bold mb-2">Aehnlichkeit der Heatmaps</div>
+                            <v-progress-linear
+                              :model-value="transitionAnalysis.similarity * 100"
+                              height="24"
+                              rounded
+                              :color="transitionAnalysis.similarity > 0.8 ? 'success' : transitionAnalysis.similarity > 0.5 ? 'warning' : 'error'"
+                            >
+                              <template v-slot:default>
+                                <strong>{{ (transitionAnalysis.similarity * 100).toFixed(1) }}%</strong>
+                              </template>
+                            </v-progress-linear>
+                            <div class="text-caption text-medium-emphasis mt-1">
+                              {{ transitionAnalysis.similarityText }}
+                            </div>
+                          </v-col>
+                          <v-col cols="12" md="8">
+                            <div class="text-subtitle-2 font-weight-bold mb-2">Groesste Unterschiede</div>
+                            <v-list density="compact" v-if="transitionAnalysis.topDifferences.length > 0">
+                              <v-list-item
+                                v-for="(diff, idx) in transitionAnalysis.topDifferences.slice(0, 5)"
+                                :key="idx"
+                                class="px-0"
+                              >
+                                <template v-slot:prepend>
+                                  <v-icon size="small" :color="diff.direction === 'more' ? 'success' : 'error'" class="mr-2">
+                                    {{ diff.direction === 'more' ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
+                                  </v-icon>
+                                </template>
+                                <v-list-item-title class="text-body-2">
+                                  {{ diff.fromDisplay }} → {{ diff.toDisplay }}
+                                </v-list-item-title>
+                                <template v-slot:append>
+                                  <div class="text-caption">
+                                    <span class="font-weight-bold">{{ diff.difference > 0 ? '+' : '' }}{{ (diff.difference * 100).toFixed(1) }}%</span>
+                                    <span class="text-medium-emphasis ml-1">({{ diff.pillarName }})</span>
+                                  </div>
+                                </template>
+                              </v-list-item>
+                            </v-list>
+                            <div v-else class="text-caption text-medium-emphasis">
+                              Keine signifikanten Unterschiede gefunden.
+                            </div>
+                          </v-col>
+                        </v-row>
+                      </v-card-text>
+                    </v-card>
+
+                    <v-divider class="my-4"></v-divider>
 
                     <!-- Top Transitions List -->
-                    <div class="text-subtitle-1 font-weight-bold mb-2">
+                    <div class="text-h6 font-weight-bold mb-3">
+                      <v-icon start>mdi-format-list-numbered</v-icon>
                       Top 20 Transitionen
+                      <span v-if="transitionPillar" class="text-caption ml-2">(Saeule {{ transitionPillar }})</span>
+                      <span v-else class="text-caption ml-2">(Alle Saeulen)</span>
                     </div>
-                    <v-list density="compact">
+                    <v-list density="compact" v-if="topTransitions.length > 0">
                       <v-list-item
                         v-for="(link, idx) in topTransitions"
                         :key="idx"
                       >
                         <template v-slot:prepend>
+                          <span class="text-caption text-medium-emphasis mr-3" style="width: 20px;">{{ idx + 1 }}.</span>
                           <v-chip
                             size="small"
                             :color="link.source.startsWith('CO-') ? 'primary' : 'secondary'"
@@ -470,6 +649,9 @@
                         </template>
                       </v-list-item>
                     </v-list>
+                    <v-alert v-else-if="!loadingTransitions" type="info" variant="tonal">
+                      Keine Transitions-Daten verfuegbar.
+                    </v-alert>
                   </v-window-item>
 
                   <!-- Pillar Comparison Tab -->
@@ -623,6 +805,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import TransitionHeatmap from './TransitionHeatmap.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -660,6 +843,15 @@ const transitionPillar = ref(null);
 const transitionLevel = ref('level2');
 const transitionsData = ref({ links: [] });
 const loadingTransitions = ref(false);
+
+// Heatmap State (per pillar)
+const heatmapData = ref({});  // { pillarNumber: { labels, labelDisplays, counts, probabilities } }
+const loadingHeatmaps = ref(false);
+const showHeatmapValues = ref(false);
+const heatmapColorMode = ref('count'); // 'count' or 'probability'
+
+// Synchronized hover state
+const hoveredTransition = ref(null);
 
 // Comparison State
 const comparisonData = ref([]);
@@ -744,6 +936,7 @@ const loadAnalysis = async () => {
     if (analysis.value.status === 'completed') {
       await loadDistribution();
       await loadTransitions();
+      await loadHeatmaps();
       await loadComparison();
     }
   } catch (error) {
@@ -812,7 +1005,7 @@ const loadDistribution = async () => {
   }
 };
 
-// Load Transitions
+// Load Transitions (list format for top transitions)
 const loadTransitions = async () => {
   loadingTransitions.value = true;
   try {
@@ -830,6 +1023,62 @@ const loadTransitions = async () => {
   } finally {
     loadingTransitions.value = false;
   }
+};
+
+// Load Heatmaps (matrix format for each pillar)
+const loadHeatmaps = async () => {
+  if (!analysis.value?.config?.pillars) return;
+
+  loadingHeatmaps.value = true;
+  heatmapData.value = {};
+
+  try {
+    const pillars = analysis.value.config.pillars;
+    const level = transitionLevel.value;
+
+    // Load matrix for each pillar in parallel
+    const promises = pillars.map(async (pillarNum) => {
+      const params = new URLSearchParams();
+      params.append('pillar', pillarNum);
+      params.append('level', level);
+      params.append('format', 'matrix');
+
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/transition-matrix?${params}`
+      );
+
+      return { pillarNum, data: response.data };
+    });
+
+    const results = await Promise.all(promises);
+
+    // Store results
+    const newData = {};
+    for (const { pillarNum, data } of results) {
+      newData[pillarNum] = {
+        labels: data.labels || [],
+        labelDisplays: data.label_displays || {},
+        counts: data.counts || {},
+        probabilities: data.probabilities || {},
+        totalTransitions: data.total_transitions || 0
+      };
+    }
+    heatmapData.value = newData;
+  } catch (error) {
+    console.error('Error loading heatmaps:', error);
+  } finally {
+    loadingHeatmaps.value = false;
+  }
+};
+
+// Get pillar name
+const getPillarName = (pillarNum) => {
+  const names = {
+    1: 'Rollenspiele',
+    3: 'Anonymisierte Daten',
+    5: 'Live-Testungen'
+  };
+  return names[pillarNum] || `Saeule ${pillarNum}`;
 };
 
 // Load Comparison
@@ -895,6 +1144,7 @@ watch([distributionPillar, distributionLevel], () => {
 watch([transitionPillar, transitionLevel], () => {
   if (analysis.value?.status === 'completed') {
     loadTransitions();
+    loadHeatmaps();
   }
 });
 
@@ -1026,6 +1276,123 @@ const cleanupSocket = () => {
     socket = null;
   }
 };
+
+// Heatmap Cell Hover Handlers
+const onHeatmapCellHover = (data) => {
+  const fromDisplay = heatmapData.value[data.pillar]?.labelDisplays?.[data.from] || data.from;
+  const toDisplay = heatmapData.value[data.pillar]?.labelDisplays?.[data.to] || data.to;
+  hoveredTransition.value = {
+    from: data.from,
+    to: data.to,
+    fromDisplay,
+    toDisplay,
+    pillar: data.pillar
+  };
+};
+
+const onHeatmapCellLeave = () => {
+  hoveredTransition.value = null;
+};
+
+// Helper functions for cross-pillar comparison
+const getTransitionCount = (pillarNum, from, to) => {
+  return heatmapData.value[pillarNum]?.counts?.[from]?.[to] || 0;
+};
+
+const getTransitionProbability = (pillarNum, from, to) => {
+  return heatmapData.value[pillarNum]?.probabilities?.[from]?.[to] || 0;
+};
+
+// Transition Analysis computed
+const transitionAnalysis = computed(() => {
+  const pillars = Object.keys(heatmapData.value);
+  if (pillars.length < 2) return null;
+
+  // Calculate similarity between heatmaps using cosine similarity on probability vectors
+  const allLabels = new Set();
+  for (const pillarNum of pillars) {
+    const labels = heatmapData.value[pillarNum]?.labels || [];
+    labels.forEach(l => allLabels.add(l));
+  }
+  const labelList = Array.from(allLabels);
+
+  // Build probability vectors for each pillar
+  const vectors = {};
+  for (const pillarNum of pillars) {
+    const vec = [];
+    for (const from of labelList) {
+      for (const to of labelList) {
+        vec.push(heatmapData.value[pillarNum]?.probabilities?.[from]?.[to] || 0);
+      }
+    }
+    vectors[pillarNum] = vec;
+  }
+
+  // Calculate average pairwise cosine similarity
+  let totalSim = 0;
+  let pairCount = 0;
+  for (let i = 0; i < pillars.length; i++) {
+    for (let j = i + 1; j < pillars.length; j++) {
+      const v1 = vectors[pillars[i]];
+      const v2 = vectors[pillars[j]];
+      const dot = v1.reduce((sum, val, idx) => sum + val * v2[idx], 0);
+      const norm1 = Math.sqrt(v1.reduce((sum, val) => sum + val * val, 0));
+      const norm2 = Math.sqrt(v2.reduce((sum, val) => sum + val * val, 0));
+      const sim = (norm1 > 0 && norm2 > 0) ? dot / (norm1 * norm2) : 0;
+      totalSim += sim;
+      pairCount++;
+    }
+  }
+  const similarity = pairCount > 0 ? totalSim / pairCount : 0;
+
+  // Find biggest differences
+  const differences = [];
+  const basePillar = pillars[0];
+  for (const from of labelList) {
+    for (const to of labelList) {
+      const baseProb = heatmapData.value[basePillar]?.probabilities?.[from]?.[to] || 0;
+      for (let i = 1; i < pillars.length; i++) {
+        const otherPillar = pillars[i];
+        const otherProb = heatmapData.value[otherPillar]?.probabilities?.[from]?.[to] || 0;
+        const diff = otherProb - baseProb;
+        if (Math.abs(diff) > 0.01) { // Only include meaningful differences
+          differences.push({
+            from,
+            to,
+            fromDisplay: heatmapData.value[basePillar]?.labelDisplays?.[from] || from,
+            toDisplay: heatmapData.value[basePillar]?.labelDisplays?.[to] || to,
+            difference: diff,
+            direction: diff > 0 ? 'more' : 'less',
+            pillarName: getPillarName(otherPillar),
+            basePillar,
+            otherPillar
+          });
+        }
+      }
+    }
+  }
+
+  // Sort by absolute difference
+  differences.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+
+  // Determine similarity text
+  let similarityText;
+  if (similarity > 0.9) {
+    similarityText = 'Die Heatmaps sind sehr aehnlich';
+  } else if (similarity > 0.7) {
+    similarityText = 'Die Heatmaps zeigen moderate Aehnlichkeit';
+  } else if (similarity > 0.5) {
+    similarityText = 'Die Heatmaps zeigen einige Unterschiede';
+  } else {
+    similarityText = 'Die Heatmaps sind deutlich unterschiedlich';
+  }
+
+  return {
+    similarity,
+    similarityText,
+    topDifferences: differences.slice(0, 10)
+  };
+});
 
 // Lifecycle
 onMounted(() => {

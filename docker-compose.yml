@@ -198,7 +198,7 @@ services:
       authentik-redis:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:${AUTHENTIK_INTERNAL_PORT}/').status==200 else 1)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${AUTHENTIK_INTERNAL_PORT}/-/health/live/')\" || exit 1"]
       start_period: 60s
       interval: 15s
       timeout: 10s
@@ -254,27 +254,26 @@ services:
 
   authentik-init:
     container_name: llars_authentik_init
-    image: python:3.12-slim
+    image: ghcr.io/goauthentik/server:latest
     environment:
-      - AUTHENTIK_URL=http://authentik-server:9000
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_POSTGRESql__HOST=authentik-db
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_REDIS__HOST=authentik-redis
       - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
       - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}
-      - AUTHENTIK_FRONTEND_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
       - AUTHENTIK_BACKEND_CLIENT_ID=${AUTHENTIK_BACKEND_CLIENT_ID}
       - AUTHENTIK_BACKEND_CLIENT_SECRET=${AUTHENTIK_BACKEND_CLIENT_SECRET}
-      - BASE_URL=http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}
     volumes:
-      - ./docker/authentik/init-authentik.py:/init-authentik.py:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/authentik/init-authentik.sh:/init-authentik.sh:ro
     working_dir: /
-    command: >
-      sh -c "
-      pip install --quiet requests &&
-      apt-get update -qq && apt-get install -y -qq docker.io > /dev/null 2>&1 &&
-      python3 /init-authentik.py
-      "
+    entrypoint: ["/bin/bash", "/init-authentik.sh"]
     depends_on:
       authentik-server:
+        condition: service_healthy
+      authentik-db:
         condition: service_healthy
     restart: "no"
 

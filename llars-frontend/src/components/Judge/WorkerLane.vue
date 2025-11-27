@@ -21,6 +21,18 @@
         {{ statusText }}
       </v-chip>
 
+      <!-- Fullscreen Button -->
+      <v-btn
+        icon
+        size="x-small"
+        variant="text"
+        class="mr-1"
+        @click="$emit('open-fullscreen', workerId)"
+        title="Vollbild"
+      >
+        <v-icon size="small">mdi-fullscreen</v-icon>
+      </v-btn>
+
       <!-- Current Comparison Info -->
       <v-chip v-if="currentComparison" size="x-small" variant="outlined">
         {{ currentComparison.pillar_a_name }} vs {{ currentComparison.pillar_b_name }}
@@ -38,53 +50,143 @@
 
       <!-- Live Result Display -->
       <div v-else class="worker-content">
-        <!-- Winner Display -->
-        <div class="d-flex justify-center mb-2">
-          <v-chip
-            size="small"
-            :color="parsedResult?.winner ? 'primary' : 'grey'"
-            variant="flat"
-            :class="{ 'pulse-chip': isStreaming && !parsedResult?.winner }"
-          >
-            <v-icon start size="small" :class="{ 'rotating': isStreaming && !parsedResult?.winner }">
-              {{ isStreaming && !parsedResult?.winner ? 'mdi-loading' : 'mdi-trophy' }}
-            </v-icon>
-            {{ parsedResult?.winner || (isStreaming ? '...' : '-') }}
-          </v-chip>
+        <!-- Winner and Confidence Display -->
+        <div class="result-header mb-2">
+          <div class="d-flex justify-space-between align-center">
+            <!-- Thread A indicator -->
+            <div class="thread-indicator thread-a" :class="{ 'is-winner': parsedResult?.winner === 'A' }">
+              <span class="thread-letter">A</span>
+            </div>
 
-          <v-chip
-            v-if="parsedResult?.confidence"
-            size="small"
-            variant="outlined"
-            class="ml-2"
-            :color="getConfidenceColor(parsedResult.confidence)"
-          >
-            {{ Math.round(parsedResult.confidence * 100) }}%
-          </v-chip>
+            <!-- Center: Winner Trophy -->
+            <v-chip
+              size="small"
+              :color="parsedResult?.winner ? 'primary' : 'grey'"
+              variant="flat"
+              :class="{ 'pulse-chip': isStreaming && !parsedResult?.winner }"
+            >
+              <v-icon start size="small" :class="{ 'rotating': isStreaming && !parsedResult?.winner }">
+                {{ isStreaming && !parsedResult?.winner ? 'mdi-loading' : 'mdi-trophy' }}
+              </v-icon>
+              {{ parsedResult?.winner || (isStreaming ? '...' : '-') }}
+            </v-chip>
+
+            <!-- Thread B indicator -->
+            <div class="thread-indicator thread-b" :class="{ 'is-winner': parsedResult?.winner === 'B' }">
+              <span class="thread-letter">B</span>
+            </div>
+          </div>
+
+          <!-- Confidence Bar -->
+          <div v-if="parsedResult?.confidence || isStreaming" class="confidence-bar mt-2">
+            <v-progress-linear
+              :model-value="parsedResult?.confidence ? parsedResult.confidence * 100 : 0"
+              :indeterminate="isStreaming && !parsedResult?.confidence"
+              :color="getConfidenceColor(parsedResult?.confidence || 0)"
+              height="16"
+              rounded
+            >
+              <template v-slot:default>
+                <span class="text-caption font-weight-bold">
+                  {{ parsedResult?.confidence ? Math.round(parsedResult.confidence * 100) + '%' : '' }}
+                </span>
+              </template>
+            </v-progress-linear>
+          </div>
         </div>
 
-        <!-- Mini Scores Grid -->
-        <div v-if="parsedResult?.criteria_scores" class="mini-scores">
+        <!-- Likert Scale Scores (formatted like fullscreen) -->
+        <div class="likert-scores-compact">
           <div
             v-for="criterion in CRITERIA_SHORT"
             :key="criterion.key"
-            class="score-item"
+            class="likert-row-compact"
           >
-            <span class="score-label text-caption">{{ criterion.short }}</span>
-            <div class="score-values">
-              <span class="score-a" :class="{ 'winner': parsedResult?.criteria_scores?.[criterion.key]?.score_a > parsedResult?.criteria_scores?.[criterion.key]?.score_b }">
-                {{ parsedResult?.criteria_scores?.[criterion.key]?.score_a || '-' }}
-              </span>
-              <span class="vs">:</span>
-              <span class="score-b" :class="{ 'winner': parsedResult?.criteria_scores?.[criterion.key]?.score_b > parsedResult?.criteria_scores?.[criterion.key]?.score_a }">
-                {{ parsedResult?.criteria_scores?.[criterion.key]?.score_b || '-' }}
-              </span>
+            <span class="criterion-label">{{ criterion.short }}</span>
+            <div class="likert-dots">
+              <!-- A Score dots -->
+              <div class="dots-group dots-a">
+                <div
+                  v-for="n in 5"
+                  :key="`a-${n}`"
+                  class="dot"
+                  :class="{
+                    'dot-filled': getScoreA(criterion.key) >= n,
+                    'dot-pending': !getScoreA(criterion.key) && isStreaming
+                  }"
+                ></div>
+              </div>
+              <span class="score-divider">|</span>
+              <!-- B Score dots -->
+              <div class="dots-group dots-b">
+                <div
+                  v-for="n in 5"
+                  :key="`b-${n}`"
+                  class="dot"
+                  :class="{
+                    'dot-filled': getScoreB(criterion.key) >= n,
+                    'dot-pending': !getScoreB(criterion.key) && isStreaming
+                  }"
+                ></div>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Stream Text (collapsed by default) -->
-        <v-expansion-panels v-model="expandedPanel" class="mt-2">
+        <!-- Display Mode Toggle -->
+        <div class="d-flex justify-center mt-2 mb-1">
+          <v-btn-toggle
+            v-model="displayMode"
+            density="compact"
+            mandatory
+            size="x-small"
+            color="primary"
+            variant="outlined"
+          >
+            <v-btn value="formatted" size="x-small">
+              <v-icon size="x-small">mdi-format-list-bulleted</v-icon>
+            </v-btn>
+            <v-btn value="raw" size="x-small">
+              <v-icon size="x-small">mdi-code-braces</v-icon>
+            </v-btn>
+          </v-btn-toggle>
+        </div>
+
+        <!-- Formatted View -->
+        <div v-if="displayMode === 'formatted'" class="formatted-output">
+          <!-- Analysis Steps (compact) -->
+          <div class="analysis-steps-compact">
+            <div
+              v-for="(stepDef, stepKey) in STEP_DEFINITIONS_COMPACT"
+              :key="stepKey"
+              class="step-compact"
+              :class="{
+                'step-active': getStepByKey(stepKey),
+                'step-streaming': getStepByKey(stepKey)?.isStreaming
+              }"
+            >
+              <v-icon
+                size="12"
+                :color="getStepByKey(stepKey) ? (getStepByKey(stepKey)?.isStreaming ? 'warning' : 'success') : 'grey'"
+                :class="{ 'rotating': getStepByKey(stepKey)?.isStreaming }"
+              >
+                {{ getStepByKey(stepKey)?.isStreaming ? 'mdi-loading' : (getStepByKey(stepKey) ? 'mdi-check-circle' : 'mdi-circle-outline') }}
+              </v-icon>
+              <span class="step-label text-caption" :class="{ 'text-medium-emphasis': !getStepByKey(stepKey) }">
+                {{ stepDef.short }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Final Justification (if available) -->
+          <div v-if="parsedResult?.final_justification" class="justification-compact mt-2">
+            <div class="text-caption text-medium-emphasis mb-1">Begründung:</div>
+            <div class="justification-text text-caption">{{ parsedResult.final_justification }}</div>
+          </div>
+        </div>
+
+        <!-- Raw Stream Text -->
+        <v-expansion-panels v-else v-model="expandedPanel" class="mt-2">
           <v-expansion-panel value="stream">
             <v-expansion-panel-title class="py-1 px-2">
               <v-icon size="small" class="mr-1" :class="{ 'rotating': isStreaming }">
@@ -124,7 +226,10 @@ const props = defineProps({
   }
 });
 
+defineEmits(['open-fullscreen']);
+
 const expandedPanel = ref(null);
+const displayMode = ref('formatted'); // 'formatted' or 'raw'
 
 // Short criterion names for compact display
 const CRITERIA_SHORT = [
@@ -135,6 +240,16 @@ const CRITERIA_SHORT = [
   { key: 'authenticity', short: 'A' },
   { key: 'solution_orientation', short: 'LO' }
 ];
+
+// Step definitions (compact version)
+const STEP_DEFINITIONS_COMPACT = {
+  'step_1': { short: 'BK', title: 'Berater-Kohärenz' },
+  'step_2': { short: 'KK', title: 'Klienten-Kohärenz' },
+  'step_3': { short: 'Q', title: 'Qualität' },
+  'step_4': { short: 'E', title: 'Empathie' },
+  'step_5': { short: 'A', title: 'Authentizität' },
+  'step_6': { short: 'LO', title: 'Lösungsorientierung' }
+};
 
 // Worker colors (cycle through)
 const WORKER_COLORS = ['blue', 'purple', 'teal', 'orange', 'pink'];
@@ -169,7 +284,9 @@ const parsedResult = computed(() => {
   const result = {
     winner: null,
     confidence: null,
-    criteria_scores: null
+    criteria_scores: null,
+    scores: { A: {}, B: {} },
+    final_justification: null
   };
 
   // Try to parse JSON
@@ -177,10 +294,14 @@ const parsedResult = computed(() => {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.winner || parsed.criteria_scores || parsed.confidence) {
+      if (parsed.winner || parsed.criteria_scores || parsed.confidence || parsed.scores) {
         result.winner = parsed.winner;
         result.confidence = parsed.confidence;
         result.criteria_scores = parsed.criteria_scores;
+        result.final_justification = parsed.final_justification;
+        if (parsed.scores) {
+          result.scores = parsed.scores;
+        }
         return result;
       }
     }
@@ -195,8 +316,95 @@ const parsedResult = computed(() => {
   const confMatch = content.match(/"confidence"\s*:\s*([\d.]+)/);
   if (confMatch) result.confidence = parseFloat(confMatch[1]);
 
-  return result.winner || result.confidence ? result : null;
+  // Extract individual scores from "scores": { "A": { ... }, "B": { ... } }
+  for (const criterion of CRITERIA_SHORT) {
+    // Try to find score for A
+    const scoreAPattern = new RegExp(`"A"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
+    const scoreAMatch = content.match(scoreAPattern);
+    if (scoreAMatch) {
+      result.scores.A[criterion.key] = parseInt(scoreAMatch[1]);
+    }
+
+    // Try to find score for B
+    const scoreBPattern = new RegExp(`"B"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
+    const scoreBMatch = content.match(scoreBPattern);
+    if (scoreBMatch) {
+      result.scores.B[criterion.key] = parseInt(scoreBMatch[1]);
+    }
+  }
+
+  // Extract final_justification
+  const justMatch = content.match(/"final_justification"\s*:\s*"([^"]+)"/);
+  if (justMatch) result.final_justification = justMatch[1];
+
+  return result.winner || result.confidence || Object.keys(result.scores.A).length > 0 ? result : null;
 });
+
+// Parse stream steps incrementally
+const parsedStreamSteps = computed(() => {
+  if (!props.streamContent) return [];
+
+  const content = props.streamContent;
+  const steps = [];
+
+  for (const [stepKey, stepDef] of Object.entries(STEP_DEFINITIONS_COMPACT)) {
+    const stepPattern = new RegExp(`"${stepKey}"\\s*:\\s*"`, 'm');
+    const stepMatch = content.match(stepPattern);
+
+    if (stepMatch) {
+      const startIdx = content.indexOf(stepMatch[0]) + stepMatch[0].length;
+      let stepContent = '';
+      let escaped = false;
+
+      for (let i = startIdx; i < content.length; i++) {
+        const char = content[i];
+        if (escaped) {
+          if (char === 'n') stepContent += '\n';
+          else if (char === '"') stepContent += '"';
+          else if (char === '\\') stepContent += '\\';
+          else stepContent += char;
+          escaped = false;
+        } else if (char === '\\') {
+          escaped = true;
+        } else if (char === '"') {
+          break;
+        } else {
+          stepContent += char;
+        }
+      }
+
+      const isStepStreaming = !content.slice(startIdx).includes('"');
+
+      steps.push({
+        key: stepKey,
+        title: stepDef.title,
+        content: stepContent,
+        isStreaming: isStepStreaming
+      });
+    }
+  }
+
+  return steps;
+});
+
+// Get step by key
+const getStepByKey = (stepKey) => {
+  return parsedStreamSteps.value.find(s => s.key === stepKey);
+};
+
+// Get score for criterion A
+const getScoreA = (criterionKey) => {
+  return parsedResult.value?.scores?.A?.[criterionKey] ||
+         parsedResult.value?.criteria_scores?.[criterionKey]?.score_a ||
+         0;
+};
+
+// Get score for criterion B
+const getScoreB = (criterionKey) => {
+  return parsedResult.value?.scores?.B?.[criterionKey] ||
+         parsedResult.value?.criteria_scores?.[criterionKey]?.score_b ||
+         0;
+};
 
 const getConfidenceColor = (confidence) => {
   if (confidence >= 0.8) return 'success';
@@ -216,7 +424,7 @@ watch(() => props.isStreaming, (streaming) => {
 <style scoped>
 .worker-lane {
   transition: all 0.3s ease;
-  min-height: 200px;
+  min-height: 280px;
 }
 
 .worker-lane.lane-active {
@@ -233,7 +441,7 @@ watch(() => props.isStreaming, (streaming) => {
 }
 
 .stream-container {
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
@@ -241,53 +449,169 @@ watch(() => props.isStreaming, (streaming) => {
   padding: 8px;
 }
 
-.mini-scores {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+/* Result Header with A vs B */
+.result-header {
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.thread-indicator {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.thread-indicator.thread-a {
+  background: rgba(33, 150, 243, 0.2);
+  color: rgb(33, 150, 243);
+  border: 2px solid rgba(33, 150, 243, 0.3);
+}
+
+.thread-indicator.thread-b {
+  background: rgba(76, 175, 80, 0.2);
+  color: rgb(76, 175, 80);
+  border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+.thread-indicator.is-winner {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px currentColor;
+}
+
+.thread-indicator.thread-a.is-winner {
+  background: rgb(33, 150, 243);
+  color: white;
+}
+
+.thread-indicator.thread-b.is-winner {
+  background: rgb(76, 175, 80);
+  color: white;
+}
+
+/* Likert Scores Compact */
+.likert-scores-compact {
   background: rgba(var(--v-theme-surface-variant), 0.3);
   padding: 8px;
   border-radius: 4px;
+  margin-top: 8px;
 }
 
-.score-item {
-  text-align: center;
-  padding: 4px;
-}
-
-.score-label {
-  display: block;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  font-size: 10px;
-  margin-bottom: 2px;
-}
-
-.score-values {
+.likert-row-compact {
   display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.likert-row-compact:last-child {
+  margin-bottom: 0;
+}
+
+.criterion-label {
+  width: 24px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.likert-dots {
+  display: flex;
+  align-items: center;
+  flex: 1;
   justify-content: center;
+  gap: 2px;
+}
+
+.dots-group {
+  display: flex;
+  gap: 2px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  transition: all 0.2s ease;
+}
+
+.dots-a .dot.dot-filled {
+  background: rgb(33, 150, 243);
+}
+
+.dots-b .dot.dot-filled {
+  background: rgb(76, 175, 80);
+}
+
+.dot.dot-pending {
+  animation: dot-pulse 1s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+.score-divider {
+  color: rgba(var(--v-theme-on-surface), 0.3);
+  font-size: 10px;
+  margin: 0 4px;
+}
+
+/* Analysis Steps Compact */
+.analysis-steps-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+  border-radius: 4px;
+}
+
+.step-compact {
+  display: flex;
   align-items: center;
   gap: 2px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  transition: all 0.2s ease;
 }
 
-.score-a {
-  color: rgb(33, 150, 243);
+.step-compact.step-active {
+  background: rgba(var(--v-theme-success), 0.1);
 }
 
-.score-b {
-  color: rgb(76, 175, 80);
+.step-compact.step-streaming {
+  background: rgba(var(--v-theme-warning), 0.2);
 }
 
-.score-a.winner, .score-b.winner {
-  font-size: 14px;
-  text-decoration: underline;
+.step-label {
+  font-size: 10px;
 }
 
-.vs {
-  color: rgba(var(--v-theme-on-surface), 0.4);
+/* Justification */
+.justification-compact {
+  background: rgba(var(--v-theme-primary), 0.1);
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid rgb(var(--v-theme-primary));
 }
 
+.justification-text {
+  line-height: 1.4;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+/* Stream Panel */
 .stream-panel :deep(.v-expansion-panel-text__wrapper) {
   max-height: 150px;
   overflow-y: auto;
@@ -329,5 +653,10 @@ watch(() => props.isStreaming, (streaming) => {
 @keyframes pulse-chip {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+/* Formatted output container */
+.formatted-output {
+  margin-top: 8px;
 }
 </style>

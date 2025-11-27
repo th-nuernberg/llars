@@ -1,0 +1,429 @@
+#!/bin/bash
+
+#########################################
+# LLARS Authentik Manual Setup Script
+#########################################
+# This script manually configures Authentik with:
+# - OAuth2 Providers (backend + frontend)
+# - Applications
+# - Authentication Flow
+# - Test Users
+#########################################
+
+set -e  # Exit on error
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Helper functions
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+print_section() {
+    echo ""
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}$1${NC}"
+    echo -e "${GREEN}========================================${NC}"
+}
+
+# Check if docker compose is available
+if ! command -v docker &> /dev/null; then
+    print_error "Docker is not installed or not in PATH"
+    exit 1
+fi
+
+# Check if authentik container is running
+if ! docker compose ps | grep -q "authentik-server.*running"; then
+    print_error "Authentik server is not running. Start it with: docker compose up -d"
+    exit 1
+fi
+
+print_info "Starting Authentik setup for LLARS..."
+
+#########################################
+# 1. Create Authentication Flow
+#########################################
+print_section "1. Creating Authentication Flow"
+
+docker compose exec -T authentik-server ak shell <<'EOF'
+from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
+from authentik.stages.identification.models import IdentificationStage, UserFields
+from authentik.stages.password.models import PasswordStage
+from authentik.stages.user_login.models import UserLoginStage
+
+print("[1/4] Creating authentication flow...")
+
+# Create or get the flow
+flow, created = Flow.objects.get_or_create(
+    slug='llars-api-authentication',
+    defaults={
+        'name': 'LLARS API Authentication',
+        'designation': FlowDesignation.AUTHENTICATION,
+        'title': 'LLARS API Login'
+    }
+)
+
+if created:
+    print("  ✓ Created new flow: llars-api-authentication")
+else:
+    print("  ℹ Flow already exists: llars-api-authentication")
+
+# Create identification stage
+print("[2/4] Creating identification stage...")
+id_stage, created = IdentificationStage.objects.get_or_create(
+    name='llars-api-identification',
+    defaults={
+        'user_fields': [UserFields.USERNAME, UserFields.E_MAIL],
+        'sources': []
+    }
+)
+if created:
+    print("  ✓ Created identification stage")
+else:
+    print("  ℹ Identification stage already exists")
+
+# Create password stage
+print("[3/4] Creating password stage...")
+pw_stage, created = PasswordStage.objects.get_or_create(
+    name='llars-api-password',
+    defaults={
+        'backends': ['authentik.core.auth.InbuiltBackend']
+    }
+)
+if created:
+    print("  ✓ Created password stage")
+else:
+    print("  ℹ Password stage already exists")
+
+# Create user login stage
+print("[4/4] Creating user login stage...")
+login_stage, created = UserLoginStage.objects.get_or_create(
+    name='llars-api-user-login',
+    defaults={
+        'session_duration': 'seconds=0'  # Use default session duration
+    }
+)
+if created:
+    print("  ✓ Created user login stage")
+else:
+    print("  ℹ User login stage already exists")
+
+# Bind stages to flow (if not already bound)
+existing_bindings = FlowStageBinding.objects.filter(target=flow).count()
+if existing_bindings == 0:
+    print("Binding stages to flow...")
+    FlowStageBinding.objects.create(target=flow, stage=id_stage, order=10)
+    FlowStageBinding.objects.create(target=flow, stage=pw_stage, order=20)
+    FlowStageBinding.objects.create(target=flow, stage=login_stage, order=30)
+    print("  ✓ Bound all stages to flow")
+else:
+    print(f"  ℹ Flow already has {existing_bindings} stage bindings")
+
+print("\n✓ Authentication flow setup complete!")
+EOF
+
+print_success "Authentication flow created successfully"
+
+#########################################
+# 2. Create OAuth2 Providers
+#########################################
+print_section "2. Creating OAuth2 Providers"
+
+docker compose exec -T authentik-server ak shell <<'EOF'
+from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping, ClientTypes
+from authentik.crypto.models import CertificateKeyPair
+from authentik.flows.models import Flow
+
+print("[1/2] Creating backend OAuth2 provider (confidential)...")
+
+# Get signing certificate
+cert = CertificateKeyPair.objects.filter(name__icontains='self-signed').first()
+if not cert:
+    print("  ✗ ERROR: No self-signed certificate found!")
+    exit(1)
+print(f"  ✓ Using certificate: {cert.name}")
+
+# Get authorization flow
+auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
+if not auth_flow:
+    auth_flow = Flow.objects.filter(designation='authorization').first()
+if not auth_flow:
+    print("  ✗ ERROR: No authorization flow found!")
+    exit(1)
+print(f"  ✓ Using authorization flow: {auth_flow.slug}")
+
+# Create backend provider (confidential)
+backend_provider, created = OAuth2Provider.objects.update_or_create(
+    name='llars-backend-provider',
+    defaults={
+        'client_id': 'llars-backend',
+        'client_secret': 'llars-backend-secret-change-in-production',
+        'client_type': ClientTypes.CONFIDENTIAL,
+        'authorization_flow': auth_flow,
+        'signing_key': cert,
+        'redirect_uris': 'http://localhost:55080/auth/callback\nhttp://localhost:8081/auth/callback',
+    }
+)
+
+# Add OAuth2 scopes to backend provider
+scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
+backend_provider.property_mappings.set(scopes)
+backend_provider.save()
+
+if created:
+    print(f"  ✓ Created backend provider: {backend_provider.name}")
+else:
+    print(f"  ℹ Updated existing backend provider: {backend_provider.name}")
+
+print(f"    - Client ID: {backend_provider.client_id}")
+print(f"    - Client Type: {backend_provider.client_type}")
+print(f"    - Redirect URIs: {backend_provider.redirect_uris[:50]}...")
+
+# Create frontend provider (public)
+print("\n[2/2] Creating frontend OAuth2 provider (public)...")
+frontend_provider, created = OAuth2Provider.objects.update_or_create(
+    name='llars-frontend-provider',
+    defaults={
+        'client_id': 'llars-frontend',
+        'client_type': ClientTypes.PUBLIC,
+        'authorization_flow': auth_flow,
+        'signing_key': cert,
+        'redirect_uris': 'http://localhost:55080/\nhttp://localhost:55080/login',
+    }
+)
+
+# Add OAuth2 scopes to frontend provider
+frontend_provider.property_mappings.set(scopes)
+frontend_provider.save()
+
+if created:
+    print(f"  ✓ Created frontend provider: {frontend_provider.name}")
+else:
+    print(f"  ℹ Updated existing frontend provider: {frontend_provider.name}")
+
+print(f"    - Client ID: {frontend_provider.client_id}")
+print(f"    - Client Type: {frontend_provider.client_type}")
+
+print("\n✓ OAuth2 providers setup complete!")
+EOF
+
+print_success "OAuth2 providers created successfully"
+
+#########################################
+# 3. Create Applications
+#########################################
+print_section "3. Creating Applications"
+
+docker compose exec -T authentik-server ak shell <<'EOF'
+from authentik.core.models import Application
+from authentik.providers.oauth2.models import OAuth2Provider
+
+print("[1/2] Creating LLARS Backend application...")
+
+backend_provider = OAuth2Provider.objects.get(name='llars-backend-provider')
+backend_app, created = Application.objects.update_or_create(
+    slug='llars-backend',
+    defaults={
+        'name': 'LLARS Backend',
+        'provider': backend_provider,
+    }
+)
+
+if created:
+    print(f"  ✓ Created application: {backend_app.name}")
+else:
+    print(f"  ℹ Updated existing application: {backend_app.name}")
+
+print("[2/2] Creating LLARS Frontend application...")
+
+frontend_provider = OAuth2Provider.objects.get(name='llars-frontend-provider')
+frontend_app, created = Application.objects.update_or_create(
+    slug='llars-frontend',
+    defaults={
+        'name': 'LLARS Frontend',
+        'provider': frontend_provider,
+    }
+)
+
+if created:
+    print(f"  ✓ Created application: {frontend_app.name}")
+else:
+    print(f"  ℹ Updated existing application: {frontend_app.name}")
+
+print("\n✓ Applications setup complete!")
+EOF
+
+print_success "Applications created successfully"
+
+#########################################
+# 4. Create Test Users
+#########################################
+print_section "4. Creating Test Users"
+
+docker compose exec -T authentik-server ak shell <<'EOF'
+from authentik.core.models import User, Group
+
+print("Creating test users with password 'admin123'...")
+
+# Get or create authentik Admins group
+admin_group, _ = Group.objects.get_or_create(
+    name='authentik Admins',
+    defaults={'is_superuser': True}
+)
+
+users_data = [
+    {
+        'username': 'admin',
+        'name': 'Admin User',
+        'email': 'admin@localhost',
+        'is_admin': True
+    },
+    {
+        'username': 'akadmin',
+        'name': 'Authentik Admin',
+        'email': 'akadmin@localhost',
+        'is_admin': True
+    },
+    {
+        'username': 'researcher',
+        'name': 'Researcher User',
+        'email': 'researcher@localhost',
+        'is_admin': False
+    },
+    {
+        'username': 'viewer',
+        'name': 'Viewer User',
+        'email': 'viewer@localhost',
+        'is_admin': False
+    }
+]
+
+for user_data in users_data:
+    user, created = User.objects.get_or_create(
+        username=user_data['username'],
+        defaults={
+            'name': user_data['name'],
+            'email': user_data['email'],
+            'is_active': True
+        }
+    )
+
+    # Set password
+    user.set_password('admin123')
+    user.save()
+
+    # Add admin users to admin group
+    if user_data['is_admin']:
+        if admin_group not in user.ak_groups.all():
+            user.ak_groups.add(admin_group)
+            user.save()
+
+    if created:
+        print(f"  ✓ Created user: {user.username} ({user.email})")
+    else:
+        print(f"  ℹ Updated existing user: {user.username}")
+
+    if user_data['is_admin']:
+        print(f"    - Added to admin group")
+
+print("\n✓ Test users setup complete!")
+print("\nTest Credentials:")
+print("  - admin / admin123 (admin)")
+print("  - akadmin / admin123 (admin)")
+print("  - researcher / admin123 (researcher)")
+print("  - viewer / admin123 (viewer)")
+EOF
+
+print_success "Test users created successfully"
+
+#########################################
+# 5. Verify Setup
+#########################################
+print_section "5. Verifying Setup"
+
+docker compose exec -T authentik-server ak shell <<'EOF'
+from authentik.flows.models import Flow
+from authentik.providers.oauth2.models import OAuth2Provider
+from authentik.core.models import Application, User
+
+print("Checking configuration...")
+
+# Check flow
+flows = Flow.objects.filter(slug='llars-api-authentication').count()
+print(f"  ✓ Authentication flows: {flows}")
+
+# Check providers
+providers = OAuth2Provider.objects.filter(name__icontains='llars').count()
+print(f"  ✓ OAuth2 providers: {providers}")
+
+# Check applications
+apps = Application.objects.filter(slug__icontains='llars').count()
+print(f"  ✓ Applications: {apps}")
+
+# Check users
+users = User.objects.filter(username__in=['admin', 'akadmin', 'researcher', 'viewer']).count()
+print(f"  ✓ Test users: {users}")
+
+print("\n✓ Verification complete!")
+EOF
+
+print_success "Setup verification completed"
+
+#########################################
+# Summary
+#########################################
+print_section "Setup Complete!"
+
+echo ""
+echo -e "${GREEN}Authentik has been configured with:${NC}"
+echo ""
+echo -e "${BLUE}Authentication Flow:${NC}"
+echo "  • llars-api-authentication (Identification → Password → Login)"
+echo ""
+echo -e "${BLUE}OAuth2 Providers:${NC}"
+echo "  • llars-backend-provider (confidential, RS256)"
+echo "    - Client ID: llars-backend"
+echo "    - Client Secret: llars-backend-secret-change-in-production"
+echo "  • llars-frontend-provider (public, RS256)"
+echo "    - Client ID: llars-frontend"
+echo ""
+echo -e "${BLUE}Applications:${NC}"
+echo "  • LLARS Backend (linked to backend provider)"
+echo "  • LLARS Frontend (linked to frontend provider)"
+echo ""
+echo -e "${BLUE}Test Users:${NC}"
+echo "  • admin / admin123 (admin)"
+echo "  • akadmin / admin123 (admin)"
+echo "  • researcher / admin123 (researcher)"
+echo "  • viewer / admin123 (viewer)"
+echo ""
+echo -e "${YELLOW}Next Steps:${NC}"
+echo "  1. Access Authentik UI: http://localhost:55095"
+echo "  2. Login with: akadmin / admin123"
+echo "  3. Verify providers in: Applications → Providers"
+echo "  4. Test LLARS login: http://localhost:55080/login"
+echo ""
+echo -e "${YELLOW}Important:${NC}"
+echo "  • Change client_secret in production!"
+echo "  • Change test user passwords in production!"
+echo "  • Configure proper redirect URIs for production domain"
+echo ""
+
+print_success "Authentik setup completed successfully!"

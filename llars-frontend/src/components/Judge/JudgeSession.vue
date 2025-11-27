@@ -123,6 +123,17 @@
             <v-chip size="small" color="info" class="mr-2">
               {{ workerCount }} Worker
             </v-chip>
+            <!-- Multi-Worker Fullscreen Button -->
+            <v-btn
+              color="primary"
+              variant="tonal"
+              size="small"
+              class="mr-2"
+              @click="openMultiWorkerFullscreen"
+            >
+              <v-icon start>mdi-fullscreen</v-icon>
+              Vollbild
+            </v-btn>
             <v-btn
               icon="mdi-refresh"
               variant="text"
@@ -143,6 +154,7 @@
                   :current-comparison="workerStreams[i - 1]?.comparison"
                   :stream-content="workerStreams[i - 1]?.content || ''"
                   :is-streaming="workerStreams[i - 1]?.isStreaming || false"
+                  @open-fullscreen="openWorkerFullscreen"
                 />
               </v-col>
             </v-row>
@@ -1049,6 +1061,469 @@
       </v-footer>
     </v-card>
   </v-dialog>
+
+  <!-- Multi-Worker Fullscreen Dialog -->
+  <v-dialog
+    v-model="multiWorkerFullscreenMode"
+    fullscreen
+    transition="dialog-bottom-transition"
+    class="multi-worker-fullscreen-dialog"
+  >
+    <v-card class="fullscreen-card d-flex flex-column">
+      <!-- Header -->
+      <v-toolbar color="primary" density="compact">
+        <v-btn icon @click="closeMultiWorkerFullscreen">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+        <v-toolbar-title>
+          <v-icon class="mr-2">mdi-account-multiple</v-icon>
+          Multi-Worker Live View
+        </v-toolbar-title>
+        <v-spacer></v-spacer>
+        <v-chip color="white" variant="outlined" class="mr-2">
+          {{ workerCount }} Worker aktiv
+        </v-chip>
+        <v-chip
+          :color="session?.status === 'running' ? 'success' : 'grey'"
+          variant="flat"
+          class="mr-2"
+        >
+          <v-icon start size="small">
+            {{ session?.status === 'running' ? 'mdi-play-circle' : 'mdi-pause-circle' }}
+          </v-icon>
+          {{ getStatusText(session?.status) }}
+        </v-chip>
+        <!-- Display Mode Toggle for all workers -->
+        <v-btn-toggle
+          v-model="multiWorkerDisplayMode"
+          density="compact"
+          mandatory
+          class="mr-2"
+          color="white"
+          variant="outlined"
+        >
+          <v-btn value="grid" size="small" title="Grid-Ansicht">
+            <v-icon size="small">mdi-view-grid</v-icon>
+          </v-btn>
+          <v-btn value="focus" size="small" title="Fokus-Ansicht">
+            <v-icon size="small">mdi-card-outline</v-icon>
+          </v-btn>
+        </v-btn-toggle>
+      </v-toolbar>
+
+      <!-- Main Content - Grid View -->
+      <v-container v-if="multiWorkerDisplayMode === 'grid'" fluid class="flex-grow-1 pa-4 fullscreen-content multi-worker-grid">
+        <v-row class="h-100">
+          <v-col
+            v-for="i in workerCount"
+            :key="i - 1"
+            :cols="getMultiWorkerColSize"
+            class="worker-col"
+          >
+            <!-- Enhanced Worker Card for Fullscreen -->
+            <v-card
+              variant="outlined"
+              class="worker-fullscreen-card h-100 d-flex flex-column"
+              :class="{
+                'worker-streaming': workerStreams[i - 1]?.isStreaming,
+                'worker-active': workerStreams[i - 1]?.comparison
+              }"
+            >
+              <!-- Worker Header -->
+              <v-card-title
+                class="py-2 px-3 d-flex align-center"
+                :class="`bg-${WORKER_COLORS[(i - 1) % WORKER_COLORS.length]}`"
+              >
+                <v-avatar size="32" :color="WORKER_COLORS[(i - 1) % WORKER_COLORS.length]" variant="flat" class="mr-2">
+                  <span class="font-weight-bold">W{{ i }}</span>
+                </v-avatar>
+                <span class="text-subtitle-1 font-weight-bold">Worker {{ i }}</span>
+                <v-spacer></v-spacer>
+                <v-chip
+                  size="small"
+                  :color="workerStreams[i - 1]?.isStreaming ? 'warning' : (workerStreams[i - 1]?.comparison ? 'info' : 'grey')"
+                  variant="flat"
+                >
+                  <v-icon start size="small" :class="{ 'rotating': workerStreams[i - 1]?.isStreaming }">
+                    {{ workerStreams[i - 1]?.isStreaming ? 'mdi-loading' : (workerStreams[i - 1]?.comparison ? 'mdi-play-circle' : 'mdi-sleep') }}
+                  </v-icon>
+                  {{ workerStreams[i - 1]?.isStreaming ? 'Streamt' : (workerStreams[i - 1]?.comparison ? 'Arbeitet' : 'Wartet') }}
+                </v-chip>
+              </v-card-title>
+
+              <!-- Comparison Info -->
+              <div v-if="workerStreams[i - 1]?.comparison" class="comparison-info pa-2 bg-surface-variant">
+                <div class="d-flex justify-space-between align-center">
+                  <v-chip size="small" color="blue" variant="outlined">
+                    {{ workerStreams[i - 1]?.comparison?.pillar_a_name || 'A' }}
+                  </v-chip>
+                  <v-icon size="small">mdi-arrow-left-right</v-icon>
+                  <v-chip size="small" color="green" variant="outlined">
+                    {{ workerStreams[i - 1]?.comparison?.pillar_b_name || 'B' }}
+                  </v-chip>
+                </div>
+              </div>
+
+              <v-divider></v-divider>
+
+              <!-- Worker Content -->
+              <v-card-text class="flex-grow-1 overflow-y-auto pa-3">
+                <!-- Empty State -->
+                <div v-if="!workerStreams[i - 1]?.content && !workerStreams[i - 1]?.comparison" class="d-flex flex-column align-center justify-center h-100 text-medium-emphasis">
+                  <v-icon size="48" class="mb-2">mdi-robot-off</v-icon>
+                  <span>Wartet auf Aufgabe...</span>
+                </div>
+
+                <!-- Result Display -->
+                <div v-else class="worker-result-display">
+                  <!-- Winner and Confidence -->
+                  <div class="result-summary mb-3">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <div class="thread-badge thread-a" :class="{ 'is-winner': getWorkerParsedResult(i - 1)?.winner === 'A' }">A</div>
+                      <v-chip
+                        :color="getWorkerParsedResult(i - 1)?.winner ? 'primary' : 'grey'"
+                        size="large"
+                        :class="{ 'pulse-chip': workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.winner }"
+                      >
+                        <v-icon start :class="{ 'rotating': workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.winner }">
+                          {{ workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.winner ? 'mdi-loading' : 'mdi-trophy' }}
+                        </v-icon>
+                        {{ getWorkerParsedResult(i - 1)?.winner || (workerStreams[i - 1]?.isStreaming ? '...' : '-') }}
+                      </v-chip>
+                      <div class="thread-badge thread-b" :class="{ 'is-winner': getWorkerParsedResult(i - 1)?.winner === 'B' }">B</div>
+                    </div>
+
+                    <!-- Confidence Bar -->
+                    <v-progress-linear
+                      :model-value="getWorkerParsedResult(i - 1)?.confidence ? getWorkerParsedResult(i - 1).confidence * 100 : 0"
+                      :indeterminate="workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.confidence"
+                      :color="getConfidenceColor(getWorkerParsedResult(i - 1)?.confidence || 0)"
+                      height="20"
+                      rounded
+                    >
+                      <template v-slot:default>
+                        <span class="text-caption font-weight-bold">
+                          {{ getWorkerParsedResult(i - 1)?.confidence ? Math.round(getWorkerParsedResult(i - 1).confidence * 100) + '%' : '' }}
+                        </span>
+                      </template>
+                    </v-progress-linear>
+                  </div>
+
+                  <!-- Likert Scale Scores -->
+                  <div class="likert-scores-fullscreen mb-3">
+                    <div
+                      v-for="criterion in SCORE_CRITERIA"
+                      :key="criterion.key"
+                      class="likert-row-fullscreen"
+                    >
+                      <span class="criterion-label-full">{{ criterion.label }}</span>
+                      <div class="likert-dots-full">
+                        <!-- A Score dots -->
+                        <div class="dots-group-full dots-a">
+                          <div
+                            v-for="n in 5"
+                            :key="`a-${n}`"
+                            class="dot-full"
+                            :class="{
+                              'dot-filled': getWorkerScoreA(i - 1, criterion.key) >= n,
+                              'dot-pending': !getWorkerScoreA(i - 1, criterion.key) && workerStreams[i - 1]?.isStreaming
+                            }"
+                          ></div>
+                        </div>
+                        <span class="score-divider-full">|</span>
+                        <!-- B Score dots -->
+                        <div class="dots-group-full dots-b">
+                          <div
+                            v-for="n in 5"
+                            :key="`b-${n}`"
+                            class="dot-full"
+                            :class="{
+                              'dot-filled': getWorkerScoreB(i - 1, criterion.key) >= n,
+                              'dot-pending': !getWorkerScoreB(i - 1, criterion.key) && workerStreams[i - 1]?.isStreaming
+                            }"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Analysis Steps Progress -->
+                  <div class="analysis-steps-progress mb-3">
+                    <div class="steps-row">
+                      <div
+                        v-for="(stepDef, stepKey) in STEP_DEFINITIONS"
+                        :key="stepKey"
+                        class="step-indicator"
+                        :class="{
+                          'step-complete': getWorkerStep(i - 1, stepKey) && !getWorkerStep(i - 1, stepKey)?.isStreaming,
+                          'step-active': getWorkerStep(i - 1, stepKey)?.isStreaming
+                        }"
+                        :title="stepDef.title"
+                      >
+                        <v-icon size="16" :class="{ 'rotating': getWorkerStep(i - 1, stepKey)?.isStreaming }">
+                          {{ getWorkerStep(i - 1, stepKey)?.isStreaming ? 'mdi-loading' : (getWorkerStep(i - 1, stepKey) ? 'mdi-check-circle' : 'mdi-circle-outline') }}
+                        </v-icon>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Final Justification -->
+                  <div v-if="getWorkerParsedResult(i - 1)?.final_justification" class="justification-fullscreen">
+                    <div class="text-caption text-medium-emphasis mb-1">Begründung:</div>
+                    <div class="text-body-2">{{ getWorkerParsedResult(i - 1).final_justification }}</div>
+                  </div>
+
+                  <!-- Raw Stream Toggle -->
+                  <v-expansion-panels class="mt-3" variant="accordion">
+                    <v-expansion-panel>
+                      <v-expansion-panel-title class="py-2">
+                        <v-icon size="small" class="mr-2" :class="{ 'rotating': workerStreams[i - 1]?.isStreaming }">
+                          {{ workerStreams[i - 1]?.isStreaming ? 'mdi-loading' : 'mdi-code-json' }}
+                        </v-icon>
+                        <span class="text-caption">Raw Stream ({{ (workerStreams[i - 1]?.content || '').length }} Zeichen)</span>
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <pre class="stream-pre-fullscreen">{{ workerStreams[i - 1]?.content || '' }}<span v-if="workerStreams[i - 1]?.isStreaming" class="cursor-blink">|</span></pre>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+
+      <!-- Focus View - Shows one worker large with selector -->
+      <v-container v-else fluid class="flex-grow-1 pa-4 fullscreen-content">
+        <v-row class="h-100">
+          <!-- Worker Selector Sidebar -->
+          <v-col cols="2" class="d-flex flex-column">
+            <div class="worker-selector">
+              <div
+                v-for="i in workerCount"
+                :key="i - 1"
+                class="worker-selector-item mb-2"
+                :class="{
+                  'selected': focusedWorkerId === (i - 1),
+                  'streaming': workerStreams[i - 1]?.isStreaming
+                }"
+                @click="focusedWorkerId = i - 1"
+              >
+                <v-avatar size="36" :color="WORKER_COLORS[(i - 1) % WORKER_COLORS.length]" class="mr-2">
+                  <span class="font-weight-bold">W{{ i }}</span>
+                </v-avatar>
+                <div class="worker-mini-info">
+                  <div class="text-caption font-weight-bold">Worker {{ i }}</div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ getWorkerParsedResult(i - 1)?.winner ? `Sieger: ${getWorkerParsedResult(i - 1).winner}` : (workerStreams[i - 1]?.isStreaming ? 'Streamt...' : 'Wartet') }}
+                  </div>
+                </div>
+                <v-icon v-if="workerStreams[i - 1]?.isStreaming" size="small" color="warning" class="rotating ml-auto">mdi-loading</v-icon>
+              </div>
+            </div>
+          </v-col>
+
+          <!-- Focused Worker Display -->
+          <v-col cols="10" class="d-flex flex-column">
+            <v-card class="flex-grow-1 d-flex flex-column" variant="outlined">
+              <v-card-title
+                class="py-3 px-4 d-flex align-center"
+                :class="`bg-${WORKER_COLORS[focusedWorkerId % WORKER_COLORS.length]}`"
+              >
+                <v-avatar size="40" :color="WORKER_COLORS[focusedWorkerId % WORKER_COLORS.length]" variant="flat" class="mr-3">
+                  <span class="text-h6 font-weight-bold">W{{ focusedWorkerId + 1 }}</span>
+                </v-avatar>
+                <div>
+                  <div class="text-h6 font-weight-bold">Worker {{ focusedWorkerId + 1 }}</div>
+                  <div v-if="workerStreams[focusedWorkerId]?.comparison" class="text-caption">
+                    {{ workerStreams[focusedWorkerId]?.comparison?.pillar_a_name }} vs {{ workerStreams[focusedWorkerId]?.comparison?.pillar_b_name }}
+                  </div>
+                </div>
+                <v-spacer></v-spacer>
+                <v-chip
+                  :color="workerStreams[focusedWorkerId]?.isStreaming ? 'warning' : (workerStreams[focusedWorkerId]?.comparison ? 'success' : 'grey')"
+                  variant="flat"
+                  size="large"
+                >
+                  <v-icon start :class="{ 'rotating': workerStreams[focusedWorkerId]?.isStreaming }">
+                    {{ workerStreams[focusedWorkerId]?.isStreaming ? 'mdi-loading' : (workerStreams[focusedWorkerId]?.comparison ? 'mdi-check-circle' : 'mdi-sleep') }}
+                  </v-icon>
+                  {{ workerStreams[focusedWorkerId]?.isStreaming ? 'Streamt...' : (workerStreams[focusedWorkerId]?.comparison ? 'Aktiv' : 'Wartet') }}
+                </v-chip>
+              </v-card-title>
+
+              <v-divider></v-divider>
+
+              <!-- Large Result Display for Focused Worker -->
+              <v-card-text class="flex-grow-1 overflow-y-auto pa-4">
+                <!-- Empty State -->
+                <div v-if="!workerStreams[focusedWorkerId]?.content && !workerStreams[focusedWorkerId]?.comparison" class="d-flex flex-column align-center justify-center h-100 text-medium-emphasis">
+                  <v-icon size="64" class="mb-4">mdi-robot-off</v-icon>
+                  <span class="text-h6">Wartet auf Aufgabe...</span>
+                </div>
+
+                <!-- Full Result Display -->
+                <div v-else>
+                  <!-- Winner Display - Large -->
+                  <v-row class="mb-4">
+                    <v-col cols="4" class="text-center">
+                      <v-card
+                        :color="getWorkerParsedResult(focusedWorkerId)?.winner === 'A' ? 'success' : 'grey-lighten-2'"
+                        variant="tonal"
+                        class="pa-4"
+                        :class="{ 'winner-glow': getWorkerParsedResult(focusedWorkerId)?.winner === 'A' }"
+                      >
+                        <div class="text-h3 font-weight-bold">A</div>
+                        <div class="text-body-2">{{ workerStreams[focusedWorkerId]?.comparison?.pillar_a_name }}</div>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="4" class="d-flex flex-column align-center justify-center">
+                      <v-chip
+                        :color="getWorkerParsedResult(focusedWorkerId)?.winner ? 'primary' : 'grey'"
+                        size="x-large"
+                        class="mb-3"
+                        :class="{ 'pulse-chip': workerStreams[focusedWorkerId]?.isStreaming && !getWorkerParsedResult(focusedWorkerId)?.winner }"
+                      >
+                        <v-icon start size="large" :class="{ 'rotating': workerStreams[focusedWorkerId]?.isStreaming && !getWorkerParsedResult(focusedWorkerId)?.winner }">
+                          {{ workerStreams[focusedWorkerId]?.isStreaming && !getWorkerParsedResult(focusedWorkerId)?.winner ? 'mdi-loading' : 'mdi-trophy' }}
+                        </v-icon>
+                        {{ getWorkerParsedResult(focusedWorkerId)?.winner || (workerStreams[focusedWorkerId]?.isStreaming ? '...' : '?') }}
+                      </v-chip>
+                      <div class="text-center">
+                        <div class="text-caption text-medium-emphasis">Konfidenz</div>
+                        <div class="text-h5 font-weight-bold">
+                          {{ getWorkerParsedResult(focusedWorkerId)?.confidence ? Math.round(getWorkerParsedResult(focusedWorkerId).confidence * 100) + '%' : '-' }}
+                        </div>
+                      </div>
+                    </v-col>
+                    <v-col cols="4" class="text-center">
+                      <v-card
+                        :color="getWorkerParsedResult(focusedWorkerId)?.winner === 'B' ? 'success' : 'grey-lighten-2'"
+                        variant="tonal"
+                        class="pa-4"
+                        :class="{ 'winner-glow': getWorkerParsedResult(focusedWorkerId)?.winner === 'B' }"
+                      >
+                        <div class="text-h3 font-weight-bold">B</div>
+                        <div class="text-body-2">{{ workerStreams[focusedWorkerId]?.comparison?.pillar_b_name }}</div>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+
+                  <!-- Likert Scales - Large -->
+                  <v-card variant="outlined" class="mb-4 pa-4">
+                    <div class="text-subtitle-1 font-weight-bold mb-3">Kriterien-Bewertung</div>
+                    <div class="likert-scales-large">
+                      <div
+                        v-for="criterion in SCORE_CRITERIA"
+                        :key="criterion.key"
+                        class="likert-row-large"
+                      >
+                        <span class="criterion-label-large">{{ criterion.label }}</span>
+                        <div class="likert-visual-large">
+                          <!-- A Score -->
+                          <div class="score-side score-a-side">
+                            <div
+                              v-for="n in 5"
+                              :key="`a-${n}`"
+                              class="score-dot-large"
+                              :class="{
+                                'filled': getWorkerScoreA(focusedWorkerId, criterion.key) >= n,
+                                'pending': !getWorkerScoreA(focusedWorkerId, criterion.key) && workerStreams[focusedWorkerId]?.isStreaming
+                              }"
+                            ></div>
+                            <span class="score-value">{{ getWorkerScoreA(focusedWorkerId, criterion.key) || '-' }}</span>
+                          </div>
+                          <span class="vs-label">vs</span>
+                          <!-- B Score -->
+                          <div class="score-side score-b-side">
+                            <span class="score-value">{{ getWorkerScoreB(focusedWorkerId, criterion.key) || '-' }}</span>
+                            <div
+                              v-for="n in 5"
+                              :key="`b-${n}`"
+                              class="score-dot-large"
+                              :class="{
+                                'filled': getWorkerScoreB(focusedWorkerId, criterion.key) >= n,
+                                'pending': !getWorkerScoreB(focusedWorkerId, criterion.key) && workerStreams[focusedWorkerId]?.isStreaming
+                              }"
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </v-card>
+
+                  <!-- Analysis Steps with Content -->
+                  <v-card variant="outlined" class="mb-4 pa-4">
+                    <div class="text-subtitle-1 font-weight-bold mb-3">Analyse-Schritte</div>
+                    <div class="steps-detailed">
+                      <div
+                        v-for="(stepDef, stepKey) in STEP_DEFINITIONS"
+                        :key="stepKey"
+                        class="step-detailed"
+                        :class="{
+                          'active': getWorkerStep(focusedWorkerId, stepKey),
+                          'streaming': getWorkerStep(focusedWorkerId, stepKey)?.isStreaming
+                        }"
+                      >
+                        <div class="step-header-detailed d-flex align-center">
+                          <v-avatar size="28" :color="getWorkerStep(focusedWorkerId, stepKey) ? 'primary' : 'grey'" class="mr-2">
+                            <v-icon size="16" :class="{ 'rotating': getWorkerStep(focusedWorkerId, stepKey)?.isStreaming }">
+                              {{ getWorkerStep(focusedWorkerId, stepKey)?.isStreaming ? 'mdi-loading' : stepDef.icon }}
+                            </v-icon>
+                          </v-avatar>
+                          <span :class="{ 'text-medium-emphasis': !getWorkerStep(focusedWorkerId, stepKey) }">{{ stepDef.title }}</span>
+                          <v-spacer></v-spacer>
+                          <v-icon v-if="getWorkerStep(focusedWorkerId, stepKey) && !getWorkerStep(focusedWorkerId, stepKey)?.isStreaming" size="small" color="success">mdi-check</v-icon>
+                        </div>
+                        <div v-if="getWorkerStep(focusedWorkerId, stepKey)" class="step-content-detailed mt-2">
+                          {{ getWorkerStep(focusedWorkerId, stepKey).content }}<span v-if="getWorkerStep(focusedWorkerId, stepKey)?.isStreaming" class="cursor-blink">|</span>
+                        </div>
+                      </div>
+                    </div>
+                  </v-card>
+
+                  <!-- Final Justification -->
+                  <v-card v-if="getWorkerParsedResult(focusedWorkerId)?.final_justification" variant="tonal" color="primary" class="pa-4">
+                    <div class="text-subtitle-1 font-weight-bold mb-2">Abschließende Begründung</div>
+                    <div class="text-body-1">{{ getWorkerParsedResult(focusedWorkerId).final_justification }}</div>
+                  </v-card>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+
+      <!-- Footer with Progress -->
+      <v-footer class="bg-surface-variant pa-2">
+        <v-container fluid>
+          <v-row align="center">
+            <v-col cols="12" md="8">
+              <v-progress-linear
+                :model-value="progress"
+                height="20"
+                rounded
+                :color="progress === 100 ? 'success' : 'primary'"
+                striped
+              >
+                <template v-slot:default="{ value }">
+                  <strong>{{ session?.completed_comparisons || 0 }} / {{ session?.total_comparisons || 0 }} ({{ Math.round(value) }}%)</strong>
+                </template>
+              </v-progress-linear>
+            </v-col>
+            <v-col cols="12" md="4" class="text-right">
+              <v-chip size="small" :color="getStatusColor(session?.status)" class="mr-2">
+                <v-icon start size="small">{{ getStatusIcon(session?.status) }}</v-icon>
+                {{ getStatusText(session?.status) }}
+              </v-chip>
+              <span class="text-caption">Session: {{ session?.session_name }}</span>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-footer>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
@@ -1084,6 +1559,14 @@ const streamDisplayMode = ref('formatted'); // 'raw' or 'formatted' - default to
 const workerCount = ref(1);
 const workerStreams = reactive({}); // { workerId: { content: '', comparison: null, isStreaming: false } }
 const workerPoolStatus = ref(null);
+
+// Multi-worker fullscreen state
+const multiWorkerFullscreenMode = ref(false);
+const multiWorkerDisplayMode = ref('grid'); // 'grid' or 'focus'
+const focusedWorkerId = ref(0);
+
+// Worker colors for fullscreen display
+const WORKER_COLORS = ['blue', 'purple', 'teal', 'orange', 'pink'];
 
 // Queue Table Headers
 const queueHeaders = [
@@ -1490,8 +1973,28 @@ const setupSocket = () => {
   // Re-join room when socket reconnects (handles browser suspension)
   socket.value.on('connect', () => {
     console.log('[Judge Socket] Connected/Reconnected');
+    isStreaming.value = true; // Mark as connected
     // Use correct event name with judge: prefix
     socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+    // Reload data after reconnection to sync state
+    loadSession();
+    loadQueue();
+  });
+
+  // Handle disconnection - mark streaming as inactive
+  socket.value.on('disconnect', (reason) => {
+    console.warn('[Judge Socket] Disconnected:', reason);
+    isStreaming.value = false;
+    // Don't clear worker streams - they will be restored on reconnect
+  });
+
+  // Handle reconnect event specifically
+  socket.value.on('reconnect', (attemptNumber) => {
+    console.log(`[Judge Socket] Reconnected after ${attemptNumber} attempts`);
+    // Re-join room
+    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+    loadSession();
+    loadQueue();
   });
 
   // Join immediately if already connected
@@ -1845,6 +2348,143 @@ const closeFullscreen = () => {
   fullscreenMode.value = false;
 };
 
+// Open multi-worker fullscreen mode
+const openMultiWorkerFullscreen = () => {
+  multiWorkerFullscreenMode.value = true;
+};
+
+// Close multi-worker fullscreen mode
+const closeMultiWorkerFullscreen = () => {
+  multiWorkerFullscreenMode.value = false;
+};
+
+// Open fullscreen for a specific worker (from WorkerLane emit)
+const openWorkerFullscreen = (workerId) => {
+  focusedWorkerId.value = workerId;
+  multiWorkerDisplayMode.value = 'focus';
+  multiWorkerFullscreenMode.value = true;
+};
+
+// Computed for multi-worker column size
+const getMultiWorkerColSize = computed(() => {
+  if (workerCount.value <= 2) return 6;
+  if (workerCount.value <= 4) return 6;
+  return 4;
+});
+
+// Parse worker stream content for results
+const getWorkerParsedResult = (workerId) => {
+  const content = workerStreams[workerId]?.content;
+  if (!content) return null;
+
+  const result = {
+    winner: null,
+    confidence: null,
+    scores: { A: {}, B: {} },
+    final_justification: null
+  };
+
+  // Try to parse JSON
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.winner || parsed.confidence || parsed.scores) {
+        result.winner = parsed.winner;
+        result.confidence = parsed.confidence;
+        result.final_justification = parsed.final_justification;
+        if (parsed.scores) {
+          result.scores = parsed.scores;
+        }
+        return result;
+      }
+    }
+  } catch (e) {
+    // JSON not complete - try incremental parsing
+  }
+
+  // Incremental parsing
+  const winnerMatch = content.match(/"winner"\s*:\s*"([AB])"/);
+  if (winnerMatch) result.winner = winnerMatch[1];
+
+  const confMatch = content.match(/"confidence"\s*:\s*([\d.]+)/);
+  if (confMatch) result.confidence = parseFloat(confMatch[1]);
+
+  // Extract individual scores
+  for (const criterion of SCORE_CRITERIA) {
+    const scoreAPattern = new RegExp(`"A"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
+    const scoreAMatch = content.match(scoreAPattern);
+    if (scoreAMatch) {
+      result.scores.A[criterion.key] = parseInt(scoreAMatch[1]);
+    }
+
+    const scoreBPattern = new RegExp(`"B"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
+    const scoreBMatch = content.match(scoreBPattern);
+    if (scoreBMatch) {
+      result.scores.B[criterion.key] = parseInt(scoreBMatch[1]);
+    }
+  }
+
+  const justMatch = content.match(/"final_justification"\s*:\s*"([^"]+)"/);
+  if (justMatch) result.final_justification = justMatch[1];
+
+  return result.winner || result.confidence || Object.keys(result.scores.A).length > 0 ? result : null;
+};
+
+// Get worker score for A
+const getWorkerScoreA = (workerId, criterionKey) => {
+  const parsed = getWorkerParsedResult(workerId);
+  return parsed?.scores?.A?.[criterionKey] || 0;
+};
+
+// Get worker score for B
+const getWorkerScoreB = (workerId, criterionKey) => {
+  const parsed = getWorkerParsedResult(workerId);
+  return parsed?.scores?.B?.[criterionKey] || 0;
+};
+
+// Get worker analysis step by key
+const getWorkerStep = (workerId, stepKey) => {
+  const content = workerStreams[workerId]?.content;
+  if (!content) return null;
+
+  const stepPattern = new RegExp(`"${stepKey}"\\s*:\\s*"`, 'm');
+  const stepMatch = content.match(stepPattern);
+
+  if (stepMatch) {
+    const startIdx = content.indexOf(stepMatch[0]) + stepMatch[0].length;
+    let stepContent = '';
+    let escaped = false;
+
+    for (let i = startIdx; i < content.length; i++) {
+      const char = content[i];
+      if (escaped) {
+        if (char === 'n') stepContent += '\n';
+        else if (char === '"') stepContent += '"';
+        else if (char === '\\') stepContent += '\\';
+        else stepContent += char;
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        break;
+      } else {
+        stepContent += char;
+      }
+    }
+
+    const isStepStreaming = !content.slice(startIdx).includes('"');
+
+    return {
+      key: stepKey,
+      content: stepContent,
+      isStreaming: isStepStreaming
+    };
+  }
+
+  return null;
+};
+
 // Handle user scroll - disable auto-scroll if user scrolls up
 const handleStreamScroll = (event) => {
   const el = event.target;
@@ -1947,6 +2587,9 @@ onUnmounted(() => {
     // Leave the session room (but don't disconnect - shared socket)
     socket.value.emit('judge:leave_session', { session_id: parseInt(sessionId) });
     // Remove our specific listeners
+    socket.value.off('connect');
+    socket.value.off('disconnect');
+    socket.value.off('reconnect');
     socket.value.off('judge:joined');
     socket.value.off('judge:error');
     socket.value.off('judge:progress');
@@ -2472,5 +3115,348 @@ onUnmounted(() => {
 .step-placeholder {
   padding: 8px 16px 12px 16px;
   min-height: 32px;
+}
+
+/* ============================================
+   MULTI-WORKER FULLSCREEN STYLES
+   ============================================ */
+
+.multi-worker-grid {
+  overflow-y: auto;
+}
+
+.worker-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.worker-fullscreen-card {
+  transition: all 0.3s ease;
+  min-height: 400px;
+}
+
+.worker-fullscreen-card.worker-streaming {
+  border-color: rgb(var(--v-theme-warning));
+  box-shadow: 0 0 15px rgba(var(--v-theme-warning), 0.3);
+}
+
+.worker-fullscreen-card.worker-active {
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.comparison-info {
+  font-size: 12px;
+}
+
+/* Thread badges */
+.thread-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.thread-badge.thread-a {
+  background: rgba(33, 150, 243, 0.2);
+  color: rgb(33, 150, 243);
+  border: 2px solid rgba(33, 150, 243, 0.3);
+}
+
+.thread-badge.thread-b {
+  background: rgba(76, 175, 80, 0.2);
+  color: rgb(76, 175, 80);
+  border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+.thread-badge.is-winner {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px currentColor;
+}
+
+.thread-badge.thread-a.is-winner {
+  background: rgb(33, 150, 243);
+  color: white;
+}
+
+.thread-badge.thread-b.is-winner {
+  background: rgb(76, 175, 80);
+  color: white;
+}
+
+/* Likert scores fullscreen */
+.likert-scores-fullscreen {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.likert-row-fullscreen {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.likert-row-fullscreen:last-child {
+  margin-bottom: 0;
+}
+
+.criterion-label-full {
+  width: 120px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.likert-dots-full {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+  gap: 3px;
+}
+
+.dots-group-full {
+  display: flex;
+  gap: 3px;
+}
+
+.dot-full {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  transition: all 0.2s ease;
+}
+
+.dots-group-full.dots-a .dot-full.dot-filled {
+  background: rgb(33, 150, 243);
+}
+
+.dots-group-full.dots-b .dot-full.dot-filled {
+  background: rgb(76, 175, 80);
+}
+
+.dot-full.dot-pending {
+  animation: dot-pulse 1s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+.score-divider-full {
+  color: rgba(var(--v-theme-on-surface), 0.3);
+  font-size: 12px;
+  margin: 0 6px;
+}
+
+/* Analysis steps progress */
+.analysis-steps-progress {
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.steps-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  transition: all 0.2s ease;
+}
+
+.step-indicator.step-complete {
+  background: rgba(var(--v-theme-success), 0.15);
+  color: rgb(var(--v-theme-success));
+}
+
+.step-indicator.step-active {
+  background: rgba(var(--v-theme-warning), 0.2);
+  color: rgb(var(--v-theme-warning));
+}
+
+/* Justification fullscreen */
+.justification-fullscreen {
+  background: rgba(var(--v-theme-primary), 0.1);
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+/* Worker selector for focus view */
+.worker-selector {
+  display: flex;
+  flex-direction: column;
+}
+
+.worker-selector-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.worker-selector-item:hover {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+}
+
+.worker-selector-item.selected {
+  background: rgba(var(--v-theme-primary), 0.15);
+  border: 2px solid rgb(var(--v-theme-primary));
+}
+
+.worker-selector-item.streaming {
+  background: rgba(var(--v-theme-warning), 0.15);
+  border: 2px solid rgb(var(--v-theme-warning));
+}
+
+.worker-mini-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Winner glow effect */
+.winner-glow {
+  box-shadow: 0 0 20px rgba(var(--v-theme-success), 0.4);
+}
+
+/* Likert scales large (focus view) */
+.likert-scales-large {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.likert-row-large {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.criterion-label-large {
+  width: 160px;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.likert-visual-large {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+  gap: 8px;
+}
+
+.score-side {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.score-side.score-a-side {
+  flex-direction: row;
+}
+
+.score-side.score-b-side {
+  flex-direction: row-reverse;
+}
+
+.score-dot-large {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  transition: all 0.2s ease;
+}
+
+.score-side.score-a-side .score-dot-large.filled {
+  background: rgb(33, 150, 243);
+}
+
+.score-side.score-b-side .score-dot-large.filled {
+  background: rgb(76, 175, 80);
+}
+
+.score-dot-large.pending {
+  animation: dot-pulse 1s ease-in-out infinite;
+}
+
+.score-value {
+  font-weight: bold;
+  font-size: 16px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.score-side.score-a-side .score-value {
+  color: rgb(33, 150, 243);
+}
+
+.score-side.score-b-side .score-value {
+  color: rgb(76, 175, 80);
+}
+
+.vs-label {
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-size: 14px;
+  padding: 0 8px;
+}
+
+/* Steps detailed (focus view) */
+.steps-detailed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step-detailed {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+  transition: all 0.2s ease;
+}
+
+.step-detailed.active {
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+.step-detailed.streaming {
+  background: rgba(var(--v-theme-warning), 0.15);
+  border-left: 3px solid rgb(var(--v-theme-warning));
+}
+
+.step-content-detailed {
+  padding-left: 36px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.result-summary {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  padding: 16px;
+  border-radius: 8px;
 }
 </style>

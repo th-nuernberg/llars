@@ -619,11 +619,13 @@ class CrawlerService:
                             'error': str(e)
                         })
 
-            # Update collection stats - re-fetch collection to avoid detached instance
+            # Update collection stats - count actual documents in DB for this collection
             try:
                 collection = RAGCollection.query.get(collection_id)
                 if collection:
-                    collection.document_count = self.active_crawls[job_id]['documents_created']
+                    # Count actual documents in collection (not just from this job)
+                    actual_count = RAGDocument.query.filter_by(collection_id=collection_id).count()
+                    collection.document_count = actual_count
                     db.session.commit()
             except Exception as e:
                 logger.warning(f"Could not update collection stats: {e}")
@@ -687,11 +689,15 @@ class CrawlerService:
             'status': 'queued',
             'urls': urls,
             'collection_name': collection_name,
+            'max_pages': max_pages_per_site * len(urls),
             'pages_crawled': 0,
             'documents_created': 0,
             'errors': [],
             'queued_at': datetime.now().isoformat()
         }
+
+        # Notify all clients about new job
+        self._emit_jobs_updated()
 
         def run_crawl_with_context():
             """Run crawl in background thread with Flask app context."""
@@ -861,11 +867,13 @@ class CrawlerService:
                             'error': str(e)
                         })
 
-            # Update collection stats - re-fetch collection to avoid detached instance
+            # Update collection stats - count actual documents in DB for this collection
             try:
                 collection = RAGCollection.query.get(collection_id)
                 if collection:
-                    collection.document_count = self.active_crawls[job_id]['documents_created']
+                    # Count actual documents in collection (not just from this job)
+                    actual_count = RAGDocument.query.filter_by(collection_id=collection_id).count()
+                    collection.document_count = actual_count
                     db.session.commit()
             except Exception as e:
                 logger.warning(f"Could not update collection stats: {e}")
@@ -884,6 +892,9 @@ class CrawlerService:
                 'errors_count': len(self.active_crawls[job_id]['errors'])
             })
 
+            # Notify all clients about job completion
+            self._emit_jobs_updated()
+
         except Exception as e:
             logger.error(f"[Job {job_id}] Background crawl failed: {e}")
             self.active_crawls[job_id]['status'] = 'failed'
@@ -894,16 +905,31 @@ class CrawlerService:
                 pass
             self._emit_error(job_id, str(e))
 
+            # Notify all clients about job failure
+            self._emit_jobs_updated()
+
     def get_job_status(self, job_id: str) -> Optional[Dict]:
         """Get status of a crawl job."""
         return self.active_crawls.get(job_id)
 
+    def get_all_jobs(self) -> List[Dict]:
+        """Get all crawl jobs (for WebSocket subscription)."""
+        jobs = []
+        for job_id, status in self.active_crawls.items():
+            jobs.append({'job_id': job_id, **status})
+        # Sort by start time descending
+        jobs.sort(key=lambda x: x.get('started_at') or x.get('queued_at') or '', reverse=True)
+        return jobs
+
     def list_jobs(self) -> List[Dict]:
         """List all crawl jobs."""
-        return [
-            {'job_id': job_id, **status}
-            for job_id, status in self.active_crawls.items()
-        ]
+        return self.get_all_jobs()
+
+    def _emit_jobs_updated(self):
+        """Emit global job list update to all subscribed clients."""
+        if self._socketio:
+            from socketio_handlers.events_crawler import emit_crawler_jobs_updated
+            emit_crawler_jobs_updated(self._socketio, self.get_all_jobs())
 
     def cancel_job(self, job_id: str) -> bool:
         """Cancel a running crawl job (marks as cancelled, thread continues until next check)."""

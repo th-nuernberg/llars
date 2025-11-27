@@ -427,7 +427,9 @@ function navigateToPromptDetail(promptId) {
 }
 
 // Polling-Konfiguration: Lädt Prompts und geteilte Prompts regelmäßig neu
-const POLL_INTERVAL = 10000; // 10 Sekunden
+// Increased to 60 seconds since prompt list changes are infrequent
+// TODO: Replace with WebSocket events for real-time prompt list updates
+const POLL_INTERVAL = 60000; // 60 Sekunden (erhöht von 10s)
 let promptsTimer = null;
 let sharedTimer = null;
 

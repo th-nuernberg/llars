@@ -10,6 +10,9 @@ from flask_socketio import join_room, leave_room, emit
 
 logger = logging.getLogger(__name__)
 
+# Global room for clients watching all jobs
+CRAWLER_JOBS_ROOM = "crawler_jobs_global"
+
 
 def register_crawler_events(socketio):
     """Register WebSocket events for crawler live updates."""
@@ -30,6 +33,23 @@ def register_crawler_events(socketio):
             'session_id': session_id,
             'message': 'Joined crawler session'
         })
+
+    @socketio.on('crawler:subscribe_jobs')
+    def handle_subscribe_jobs():
+        """Subscribe to global job updates (replaces polling)."""
+        join_room(CRAWLER_JOBS_ROOM)
+        logger.info(f"[Crawler Socket] Client subscribed to global job updates")
+
+        # Send current jobs list immediately
+        from services.crawler.web_crawler import crawler_service
+        jobs = crawler_service.get_all_jobs()
+        emit('crawler:jobs_list', {'jobs': jobs})
+
+    @socketio.on('crawler:unsubscribe_jobs')
+    def handle_unsubscribe_jobs():
+        """Unsubscribe from global job updates."""
+        leave_room(CRAWLER_JOBS_ROOM)
+        logger.info(f"[Crawler Socket] Client unsubscribed from global job updates")
 
     @socketio.on('crawler:leave_session')
     def handle_leave_session(data):
@@ -99,3 +119,19 @@ def emit_crawler_error(socketio, session_id: str, error: str):
         'session_id': session_id,
         'error': error
     }, room=room)
+
+
+def emit_crawler_jobs_updated(socketio, jobs: list = None):
+    """
+    Emit global job list update to all subscribed clients.
+    Call this whenever jobs are created, updated, or completed.
+    """
+    if jobs is None:
+        # Fetch current jobs if not provided
+        from services.crawler.web_crawler import crawler_service
+        jobs = crawler_service.get_all_jobs()
+
+    socketio.emit('crawler:jobs_updated', {
+        'jobs': jobs
+    }, room=CRAWLER_JOBS_ROOM)
+    logger.debug(f"[Crawler Socket] Emitted jobs update to global room ({len(jobs)} jobs)")

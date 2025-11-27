@@ -231,9 +231,11 @@ watch(selectedUsers, (newValue) => {
 });
 
 // Beim Laden der Komponente die Statistiken abrufen und Polling starten
+// Increased to 60 seconds - user stats change infrequently
+// TODO: Replace with WebSocket events for real-time updates
 onMounted(() => {
   fetchUserStats();
-  pollingInterval = setInterval(fetchUserStats, 10000);
+  pollingInterval = setInterval(fetchUserStats, 60000); // 60 seconds (increased from 10s)
 });
 
 // Beim Verlassen der Komponente das Polling stoppen

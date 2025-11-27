@@ -48,6 +48,67 @@
       </v-col>
     </v-row>
 
+    <!-- Processing Queue Card - shows pending/processing documents -->
+    <v-card v-if="processingQueue.pending > 0 || processingQueue.processing > 0" class="mb-4" variant="outlined" color="warning">
+      <v-card-title class="d-flex align-center">
+        <v-icon start color="warning" class="mr-2">mdi-progress-clock</v-icon>
+        Embedding-Verarbeitung
+        <v-spacer></v-spacer>
+        <v-chip color="warning" size="small" variant="flat">
+          {{ processingQueue.pending + processingQueue.processing }} in Warteschlange
+        </v-chip>
+      </v-card-title>
+      <v-card-text>
+        <v-row align="center">
+          <v-col cols="12" md="8">
+            <div class="d-flex align-center mb-2">
+              <span class="text-body-2 mr-3">Fortschritt:</span>
+              <v-progress-linear
+                :model-value="processingProgress"
+                color="primary"
+                height="20"
+                rounded
+                striped
+              >
+                <template v-slot:default>
+                  {{ processingQueue.indexed }} / {{ processingQueue.total }} indexiert
+                </template>
+              </v-progress-linear>
+            </div>
+            <div class="d-flex gap-4">
+              <v-chip size="small" color="warning" variant="tonal">
+                <v-icon start size="small">mdi-clock-outline</v-icon>
+                {{ processingQueue.pending }} warten
+              </v-chip>
+              <v-chip size="small" color="info" variant="tonal">
+                <v-icon start size="small">mdi-cog</v-icon>
+                {{ processingQueue.processing }} werden verarbeitet
+              </v-chip>
+              <v-chip size="small" color="success" variant="tonal">
+                <v-icon start size="small">mdi-check</v-icon>
+                {{ processingQueue.indexed }} fertig
+              </v-chip>
+            </div>
+          </v-col>
+          <v-col cols="12" md="4" class="text-right">
+            <v-btn
+              variant="outlined"
+              size="small"
+              @click="fetchProcessingQueue"
+              :loading="loadingQueue"
+            >
+              <v-icon start size="small">mdi-refresh</v-icon>
+              Aktualisieren
+            </v-btn>
+          </v-col>
+        </v-row>
+        <v-alert v-if="processingQueue.pending > 0 || processingQueue.processing > 0" type="info" variant="tonal" density="compact" class="mt-3">
+          <v-icon start size="small">mdi-information</v-icon>
+          Dokumente werden im Hintergrund durch das Embedding-Model verarbeitet. Dies kann einige Minuten dauern.
+        </v-alert>
+      </v-card-text>
+    </v-card>
+
     <!-- Embedding Model Info Card -->
     <v-card class="mb-4" variant="outlined">
       <v-card-title class="d-flex align-center">
@@ -275,16 +336,20 @@
               :items="collections"
               :loading="loadingCollections"
               :items-per-page="10"
+              hover
+              @click:row="(event, { item }) => openCollectionDetail(item)"
+              class="cursor-pointer"
             >
               <template v-slot:item.name="{ item }">
                 <div class="d-flex align-center">
                   <v-icon color="primary" class="mr-2">mdi-folder</v-icon>
-                  <span class="font-weight-medium">{{ item.name }}</span>
+                  <span class="font-weight-medium text-primary">{{ item.name }}</span>
+                  <v-icon size="small" class="ml-1" color="grey">mdi-open-in-new</v-icon>
                 </div>
               </template>
 
               <template v-slot:item.document_count="{ item }">
-                <v-chip size="small" variant="tonal">
+                <v-chip size="small" variant="tonal" :color="item.document_count > 0 ? 'success' : 'grey'">
                   {{ item.document_count }} Dokumente
                 </v-chip>
               </template>
@@ -298,9 +363,20 @@
                   icon
                   variant="text"
                   size="small"
+                  color="primary"
+                  @click.stop="openCollectionDetail(item)"
+                  title="Details anzeigen"
+                >
+                  <v-icon>mdi-eye</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
                   color="error"
-                  @click="confirmDeleteCollection(item)"
-                  :disabled="item.name === 'default'"
+                  @click.stop="confirmDeleteCollection(item)"
+                  :disabled="item.name === 'default' || item.name === 'general'"
+                  title="Löschen"
                 >
                   <v-icon>mdi-delete</v-icon>
                 </v-btn>
@@ -411,11 +487,249 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Collection Detail Dialog -->
+    <v-dialog v-model="collectionDetailDialog" max-width="1200" scrollable>
+      <v-card v-if="selectedCollection">
+        <v-card-title class="d-flex align-center bg-primary">
+          <v-icon start color="white">mdi-folder-open</v-icon>
+          <span class="text-white">{{ selectedCollection.display_name || selectedCollection.name }}</span>
+          <v-spacer></v-spacer>
+          <v-btn icon variant="text" color="white" @click="collectionDetailDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text class="pa-0">
+          <!-- Collection Info Header -->
+          <v-sheet class="pa-4 bg-grey-lighten-4">
+            <v-row>
+              <v-col cols="12" md="8">
+                <div class="text-body-2 text-medium-emphasis mb-1">Beschreibung</div>
+                <div class="text-body-1">{{ selectedCollection.description || 'Keine Beschreibung' }}</div>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-row dense>
+                  <v-col cols="6">
+                    <v-chip color="primary" variant="flat" size="small" class="mr-1">
+                      <v-icon start size="small">mdi-file-document-multiple</v-icon>
+                      {{ selectedCollection.document_count }} Dokumente
+                    </v-chip>
+                  </v-col>
+                  <v-col cols="6">
+                    <v-chip color="info" variant="flat" size="small">
+                      <v-icon start size="small">mdi-harddisk</v-icon>
+                      {{ formatFileSize(selectedCollection.total_size_bytes) }}
+                    </v-chip>
+                  </v-col>
+                </v-row>
+                <v-row dense class="mt-2">
+                  <v-col cols="12">
+                    <div class="text-caption text-medium-emphasis">
+                      <v-icon size="x-small" class="mr-1">mdi-puzzle</v-icon>
+                      Chunk: {{ selectedCollection.chunk_size || 1000 }} Zeichen, {{ selectedCollection.chunk_overlap || 200 }} Overlap
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-col>
+            </v-row>
+          </v-sheet>
+
+          <v-divider></v-divider>
+
+          <!-- Documents List -->
+          <div class="pa-4">
+            <div class="d-flex align-center mb-3">
+              <h3 class="text-h6">Dokumente in dieser Collection</h3>
+              <v-spacer></v-spacer>
+              <v-btn
+                size="small"
+                variant="outlined"
+                @click="fetchCollectionDocuments"
+                :loading="loadingCollectionDocs"
+              >
+                <v-icon start size="small">mdi-refresh</v-icon>
+                Aktualisieren
+              </v-btn>
+            </div>
+
+            <v-data-table
+              :headers="collectionDocHeaders"
+              :items="collectionDocuments"
+              :loading="loadingCollectionDocs"
+              :items-per-page="10"
+              hover
+              @click:row="(event, { item }) => openDocumentPreview(item)"
+              class="cursor-pointer elevation-1"
+            >
+              <template v-slot:item.filename="{ item }">
+                <div class="d-flex align-center">
+                  <v-icon :color="getFileTypeColor(item.file_type || getFileExtension(item.filename))" class="mr-2">
+                    {{ getFileTypeIcon(item.file_type || getFileExtension(item.filename)) }}
+                  </v-icon>
+                  <div>
+                    <div class="font-weight-medium text-primary">{{ item.title || item.filename }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ item.filename }}</div>
+                  </div>
+                </div>
+              </template>
+
+              <template v-slot:item.file_size="{ item }">
+                {{ formatFileSize(item.file_size_bytes || item.file_size) }}
+              </template>
+
+              <template v-slot:item.status="{ item }">
+                <v-chip :color="getStatusColor(item.status)" size="small">
+                  <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
+                  {{ item.status }}
+                </v-chip>
+              </template>
+
+              <template v-slot:item.chunk_count="{ item }">
+                <v-chip size="small" variant="tonal" color="info">
+                  {{ item.chunk_count || 0 }} Chunks
+                </v-chip>
+              </template>
+
+              <template v-slot:item.actions="{ item }">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  color="primary"
+                  @click.stop="openDocumentPreview(item)"
+                  title="Vorschau"
+                >
+                  <v-icon>mdi-eye</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  color="info"
+                  @click.stop="downloadDocument(item)"
+                  title="Download"
+                >
+                  <v-icon>mdi-download</v-icon>
+                </v-btn>
+              </template>
+
+              <template v-slot:no-data>
+                <div class="text-center pa-8">
+                  <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open-outline</v-icon>
+                  <div class="text-h6 text-grey">Keine Dokumente in dieser Collection</div>
+                  <div class="text-body-2 text-grey-darken-1">
+                    Laden Sie Dokumente hoch oder starten Sie einen Crawl-Job.
+                  </div>
+                </div>
+              </template>
+            </v-data-table>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- Document Preview Dialog -->
+    <v-dialog v-model="documentPreviewDialog" max-width="1000" scrollable>
+      <v-card v-if="previewDocument">
+        <v-card-title class="d-flex align-center">
+          <v-icon start :color="getFileTypeColor(previewDocument.file_type || getFileExtension(previewDocument.filename))">
+            {{ getFileTypeIcon(previewDocument.file_type || getFileExtension(previewDocument.filename)) }}
+          </v-icon>
+          {{ previewDocument.title || previewDocument.filename }}
+          <v-spacer></v-spacer>
+          <v-btn icon variant="text" @click="documentPreviewDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-divider></v-divider>
+
+        <v-card-text>
+          <!-- Document Metadata -->
+          <v-sheet class="pa-3 mb-4 rounded" color="grey-lighten-4">
+            <v-row dense>
+              <v-col cols="6" md="3">
+                <div class="text-caption text-medium-emphasis">Dateiname</div>
+                <div class="text-body-2 font-weight-medium">{{ previewDocument.filename }}</div>
+              </v-col>
+              <v-col cols="6" md="3">
+                <div class="text-caption text-medium-emphasis">Größe</div>
+                <div class="text-body-2">{{ formatFileSize(previewDocument.file_size_bytes || previewDocument.file_size) }}</div>
+              </v-col>
+              <v-col cols="6" md="3">
+                <div class="text-caption text-medium-emphasis">Status</div>
+                <v-chip :color="getStatusColor(previewDocument.status)" size="x-small">{{ previewDocument.status }}</v-chip>
+              </v-col>
+              <v-col cols="6" md="3">
+                <div class="text-caption text-medium-emphasis">Chunks</div>
+                <div class="text-body-2">{{ previewDocument.chunk_count || 0 }}</div>
+              </v-col>
+              <v-col cols="12" md="6">
+                <div class="text-caption text-medium-emphasis">Hochgeladen</div>
+                <div class="text-body-2">{{ formatDate(previewDocument.uploaded_at) }}</div>
+              </v-col>
+              <v-col cols="12" md="6">
+                <div class="text-caption text-medium-emphasis">MIME-Type</div>
+                <div class="text-body-2">{{ previewDocument.mime_type || '-' }}</div>
+              </v-col>
+            </v-row>
+          </v-sheet>
+
+          <!-- PDF Preview -->
+          <div v-if="isPdfDocument(previewDocument)" class="pdf-preview-container">
+            <div class="text-subtitle-1 mb-2 d-flex align-center">
+              <v-icon start color="red">mdi-file-pdf-box</v-icon>
+              PDF Vorschau
+            </div>
+            <iframe
+              :src="getDocumentPreviewUrl(previewDocument)"
+              class="pdf-iframe"
+              frameborder="0"
+            ></iframe>
+          </div>
+
+          <!-- Text/Markdown Preview -->
+          <div v-else-if="isTextDocument(previewDocument)" class="text-preview-container">
+            <div class="text-subtitle-1 mb-2 d-flex align-center">
+              <v-icon start color="blue">mdi-file-document-outline</v-icon>
+              Textvorschau
+            </div>
+            <v-skeleton-loader v-if="loadingPreviewContent" type="paragraph@5"></v-skeleton-loader>
+            <pre v-else class="text-preview pa-3 rounded bg-grey-lighten-4">{{ previewContent }}</pre>
+          </div>
+
+          <!-- Unsupported Format -->
+          <div v-else class="text-center pa-8">
+            <v-icon size="64" color="grey">mdi-file-question</v-icon>
+            <div class="text-h6 mt-2">Vorschau nicht verfügbar</div>
+            <div class="text-body-2 text-grey">
+              Für diesen Dateityp ist keine Vorschau möglich.
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-btn
+            variant="outlined"
+            color="primary"
+            @click="downloadDocument(previewDocument)"
+          >
+            <v-icon start>mdi-download</v-icon>
+            Download
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="documentPreviewDialog = false">Schließen</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 // State
@@ -441,6 +755,22 @@ const embeddingInfo = ref({
   collection_name: '-'
 });
 const loadingEmbeddingInfo = ref(false);
+
+// Processing Queue
+const processingQueue = ref({
+  pending: 0,
+  processing: 0,
+  indexed: 0,
+  error: 0,
+  total: 0
+});
+const loadingQueue = ref(false);
+
+// Computed for progress
+const processingProgress = computed(() => {
+  if (processingQueue.value.total === 0) return 0;
+  return (processingQueue.value.indexed / processingQueue.value.total) * 100;
+});
 
 // Documents
 const documents = ref([]);
@@ -469,6 +799,18 @@ const deleteCollDialog = ref(false);
 const collectionToDelete = ref(null);
 const deletingCollection = ref(false);
 
+// Collection Detail Dialog
+const collectionDetailDialog = ref(false);
+const selectedCollection = ref(null);
+const collectionDocuments = ref([]);
+const loadingCollectionDocs = ref(false);
+
+// Document Preview Dialog
+const documentPreviewDialog = ref(false);
+const previewDocument = ref(null);
+const previewContent = ref('');
+const loadingPreviewContent = ref(false);
+
 // Table headers
 const documentHeaders = [
   { title: 'Dateiname', key: 'filename', sortable: true },
@@ -483,6 +825,14 @@ const collectionHeaders = [
   { title: 'Name', key: 'name', sortable: true },
   { title: 'Dokumente', key: 'document_count', sortable: true },
   { title: 'Erstellt', key: 'created_at', sortable: true },
+  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
+];
+
+const collectionDocHeaders = [
+  { title: 'Dateiname', key: 'filename', sortable: true },
+  { title: 'Größe', key: 'file_size', sortable: true },
+  { title: 'Status', key: 'status', sortable: true },
+  { title: 'Chunks', key: 'chunk_count', sortable: true },
   { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
 ];
 
@@ -546,6 +896,7 @@ const getFileTypeColor = (type) => {
 const getStatusColor = (status) => {
   const colors = {
     'processed': 'success',
+    'indexed': 'success',
     'pending': 'warning',
     'processing': 'info',
     'error': 'error'
@@ -553,7 +904,89 @@ const getStatusColor = (status) => {
   return colors[status] || 'grey';
 };
 
+const getStatusIcon = (status) => {
+  const icons = {
+    'processed': 'mdi-check-circle',
+    'indexed': 'mdi-check-circle',
+    'pending': 'mdi-clock-outline',
+    'processing': 'mdi-cog-sync',
+    'error': 'mdi-alert-circle'
+  };
+  return icons[status] || 'mdi-help-circle';
+};
+
+const getFileExtension = (filename) => {
+  if (!filename) return '';
+  const parts = filename.split('.');
+  return parts.length > 1 ? parts.pop().toLowerCase() : '';
+};
+
+const isPdfDocument = (doc) => {
+  if (!doc) return false;
+  const ext = doc.file_type || getFileExtension(doc.filename);
+  return ext === 'pdf' || doc.mime_type === 'application/pdf';
+};
+
+const isTextDocument = (doc) => {
+  if (!doc) return false;
+  const ext = doc.file_type || getFileExtension(doc.filename);
+  const textExtensions = ['txt', 'md', 'markdown', 'text'];
+  const textMimeTypes = ['text/plain', 'text/markdown'];
+  return textExtensions.includes(ext) || textMimeTypes.includes(doc.mime_type);
+};
+
+const getDocumentPreviewUrl = (doc) => {
+  if (!doc || !doc.id) return '';
+  // Return the backend URL for serving the document
+  return `/api/rag/documents/${doc.id}/download`;
+};
+
+// Polling interval ref
+let queuePollInterval = null;
+
 // API calls
+const fetchProcessingQueue = async () => {
+  loadingQueue.value = true;
+  try {
+    const response = await axios.get('/api/rag/stats');
+    const data = response.data;
+    if (data.stats?.documents?.by_status) {
+      const byStatus = data.stats.documents.by_status;
+      processingQueue.value = {
+        pending: byStatus.pending || 0,
+        processing: byStatus.processing || 0,
+        indexed: byStatus.indexed || 0,
+        error: byStatus.error || 0,
+        total: data.stats.documents?.total || 0
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching processing queue:', error);
+  }
+  loadingQueue.value = false;
+};
+
+// Start/stop polling for processing queue
+// Only polls when documents are being processed
+// TODO: Replace with WebSocket events for real-time queue updates
+const startQueuePolling = () => {
+  if (queuePollInterval) return;
+  queuePollInterval = setInterval(() => {
+    if (processingQueue.value.pending > 0 || processingQueue.value.processing > 0) {
+      fetchProcessingQueue();
+    } else {
+      stopQueuePolling();
+    }
+  }, 10000); // 10 seconds (increased from 5s) - only active during processing
+};
+
+const stopQueuePolling = () => {
+  if (queuePollInterval) {
+    clearInterval(queuePollInterval);
+    queuePollInterval = null;
+  }
+};
+
 const fetchEmbeddingInfo = async () => {
   loadingEmbeddingInfo.value = true;
   try {
@@ -715,10 +1148,126 @@ const deleteCollection = async () => {
   deletingCollection.value = false;
 };
 
-onMounted(() => {
+// Collection Detail Functions
+const openCollectionDetail = async (collection) => {
+  selectedCollection.value = collection;
+  collectionDetailDialog.value = true;
+  await fetchCollectionDocuments();
+};
+
+const fetchCollectionDocuments = async () => {
+  if (!selectedCollection.value) return;
+
+  loadingCollectionDocs.value = true;
+  try {
+    const response = await axios.get(`/api/rag/collections/${selectedCollection.value.id}`);
+    // Update selectedCollection with detailed info (including chunk_size, chunk_overlap)
+    if (response.data.collection) {
+      selectedCollection.value = {
+        ...selectedCollection.value,
+        ...response.data.collection
+      };
+      collectionDocuments.value = response.data.collection.documents || [];
+    } else {
+      collectionDocuments.value = [];
+    }
+  } catch (error) {
+    console.error('Error fetching collection documents:', error);
+    collectionDocuments.value = [];
+  }
+  loadingCollectionDocs.value = false;
+};
+
+// Document Preview Functions
+const openDocumentPreview = async (doc) => {
+  previewDocument.value = doc;
+  previewContent.value = '';
+  documentPreviewDialog.value = true;
+
+  // Load text content if it's a text document
+  if (isTextDocument(doc)) {
+    await loadTextContent(doc);
+  }
+};
+
+const loadTextContent = async (doc) => {
+  loadingPreviewContent.value = true;
+  try {
+    const response = await axios.get(`/api/rag/documents/${doc.id}/content`);
+    previewContent.value = response.data.content || 'Inhalt konnte nicht geladen werden.';
+  } catch (error) {
+    console.error('Error loading document content:', error);
+    previewContent.value = 'Fehler beim Laden des Inhalts.';
+  }
+  loadingPreviewContent.value = false;
+};
+
+const downloadDocument = async (doc) => {
+  try {
+    const response = await axios.get(`/api/rag/documents/${doc.id}/download`, {
+      responseType: 'blob'
+    });
+
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', doc.filename || 'document');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error downloading document:', error);
+  }
+};
+
+onMounted(async () => {
   fetchStats();
   fetchDocuments();
   fetchCollections();
   fetchEmbeddingInfo();
+
+  // Fetch processing queue and start polling if there are pending items
+  await fetchProcessingQueue();
+  if (processingQueue.value.pending > 0 || processingQueue.value.processing > 0) {
+    startQueuePolling();
+  }
+});
+
+onUnmounted(() => {
+  stopQueuePolling();
 });
 </script>
+
+<style scoped>
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-pointer tbody tr:hover {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.pdf-iframe {
+  width: 100%;
+  height: 600px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+
+.text-preview {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.pdf-preview-container,
+.text-preview-container {
+  margin-bottom: 16px;
+}
+</style>

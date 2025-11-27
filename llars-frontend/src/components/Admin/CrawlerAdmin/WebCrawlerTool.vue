@@ -543,8 +543,7 @@ const jobHeaders = [
   { title: '', key: 'actions', width: '80px', sortable: false, align: 'end' }
 ]
 
-// Polling interval reference
-let pollInterval = null
+// No polling - using WebSocket for real-time updates
 
 // Computed
 const urls = computed(() => {
@@ -661,9 +660,81 @@ function initSocket() {
   socket.on('crawler:status', (data) => {
     console.log('[Crawler Socket] Status response:', data)
     if (data && watchingJob.value && watchingJob.value.job_id === data.session_id) {
-      updateProgress(data)
+      // Update liveProgress with all available fields from status
+      liveProgress.value = {
+        pages_crawled: data.pages_crawled || 0,
+        max_pages: data.max_pages || liveProgress.value.max_pages || 50,
+        current_url: data.current_url || null,
+        current_url_index: data.current_url_index || 1,
+        total_urls: data.urls?.length || liveProgress.value.total_urls || 1
+      }
+      // Also update watchingJob
+      watchingJob.value = {
+        ...watchingJob.value,
+        pages_crawled: data.pages_crawled || 0,
+        documents_created: data.documents_created || 0,
+        status: data.status || watchingJob.value.status,
+        errors: data.errors || watchingJob.value.errors
+      }
     }
   })
+
+  // Global job list updates (replaces polling)
+  socket.on('crawler:jobs_list', (data) => {
+    console.log('[Crawler Socket] Initial jobs list received:', data.jobs?.length || 0, 'jobs')
+    if (data.jobs) {
+      updateJobsList(data.jobs)
+    }
+  })
+
+  socket.on('crawler:jobs_updated', (data) => {
+    console.log('[Crawler Socket] Jobs updated:', data.jobs?.length || 0, 'jobs')
+    if (data.jobs) {
+      updateJobsList(data.jobs)
+    }
+  })
+}
+
+function updateJobsList(newJobs) {
+  // Update jobs list from WebSocket
+  for (const newJob of newJobs) {
+    const existingIdx = jobs.value.findIndex(j => j.job_id === newJob.job_id)
+    if (existingIdx !== -1) {
+      // Update existing job
+      Object.assign(jobs.value[existingIdx], newJob)
+    } else {
+      // Add new job
+      jobs.value.push(newJob)
+    }
+
+    // Also update watchingJob and liveProgress if this is the watched job
+    if (watchingJob.value && watchingJob.value.job_id === newJob.job_id) {
+      watchingJob.value = { ...watchingJob.value, ...newJob }
+      liveProgress.value = {
+        pages_crawled: newJob.pages_crawled || 0,
+        max_pages: newJob.max_pages || liveProgress.value.max_pages || 50,
+        current_url: newJob.current_url || liveProgress.value.current_url,
+        current_url_index: liveProgress.value.current_url_index || 1,
+        total_urls: newJob.urls?.length || liveProgress.value.total_urls || 1
+      }
+    }
+  }
+  // Sort by start time descending
+  jobs.value.sort((a, b) => {
+    const dateA = new Date(b.started_at || b.queued_at || 0)
+    const dateB = new Date(a.started_at || a.queued_at || 0)
+    return dateA - dateB
+  })
+}
+
+function subscribeToJobUpdates() {
+  if (socket && socket.connected) {
+    socket.emit('crawler:subscribe_jobs')
+  } else if (socket) {
+    socket.once('connect', () => {
+      socket.emit('crawler:subscribe_jobs')
+    })
+  }
 }
 
 function updateProgress(data) {
@@ -745,15 +816,28 @@ function watchJob(job) {
   watchingJob.value = { ...job }
   liveProgress.value = {
     pages_crawled: job.pages_crawled || 0,
-    max_pages: job.max_pages || crawlForm.value.maxPages * (job.urls?.length || 1),
-    current_url: job.current_url || null
+    max_pages: job.max_pages || 50,  // Default to 50 if not available
+    current_url: job.current_url || null,
+    current_url_index: 1,
+    total_urls: job.urls?.length || 1
   }
   recentPages.value = []
 
-  // Join new session
+  // Join session and request status
+  const joinSession = () => {
+    if (socket) {
+      socket.emit('crawler:join_session', { session_id: job.job_id })
+      // Request current status to update liveProgress
+      socket.emit('crawler:get_status', { session_id: job.job_id })
+    }
+  }
+
+  // If socket is connected, join immediately
   if (socket && socket.connected) {
-    socket.emit('crawler:join_session', { session_id: job.job_id })
-    socket.emit('crawler:get_status', { session_id: job.job_id })
+    joinSession()
+  } else if (socket) {
+    // Wait for connection then join
+    socket.once('connect', joinSession)
   }
 }
 
@@ -856,6 +940,21 @@ async function loadJobs() {
           // Add new job
           jobs.value.push(newJob)
         }
+
+        // Also update watchingJob and liveProgress if this is the watched job
+        if (watchingJob.value && watchingJob.value.job_id === newJob.job_id) {
+          // Update watchingJob with new data
+          watchingJob.value = { ...watchingJob.value, ...newJob }
+
+          // Update liveProgress
+          liveProgress.value = {
+            pages_crawled: newJob.pages_crawled || 0,
+            max_pages: newJob.max_pages || liveProgress.value.max_pages || 50,
+            current_url: newJob.current_url || liveProgress.value.current_url,
+            current_url_index: liveProgress.value.current_url_index || 1,
+            total_urls: newJob.urls?.length || liveProgress.value.total_urls || 1
+          }
+        }
       }
       // Sort by start time descending
       jobs.value.sort((a, b) => {
@@ -935,24 +1034,21 @@ function showSnackbar(text, color = 'success') {
 // Lifecycle
 onMounted(() => {
   initSocket()
+  // Subscribe to global job updates via WebSocket (replaces polling)
+  subscribeToJobUpdates()
+  // Also load jobs once via HTTP as fallback
   loadJobs()
-
-  // Poll for job updates every 5 seconds
-  pollInterval = setInterval(loadJobs, 5000)
 })
 
 onUnmounted(() => {
   if (socket) {
+    // Unsubscribe from global job updates
+    socket.emit('crawler:unsubscribe_jobs')
     if (watchingJob.value) {
       socket.emit('crawler:leave_session', { session_id: watchingJob.value.job_id })
     }
     socket.disconnect()
     socket = null
-  }
-
-  if (pollInterval) {
-    clearInterval(pollInterval)
-    pollInterval = null
   }
 })
 </script>

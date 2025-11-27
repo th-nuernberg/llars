@@ -1960,8 +1960,12 @@ const viewComparison = (comparison) => {
 // Socket.IO for Live Updates (using centralized service with suspension handling)
 const setupSocket = () => {
   socket.value = getSocket();
+  console.log('[Judge Socket] Setting up socket, connected:', socket.value.connected);
 
   // Remove existing listeners to prevent duplicates on reconnect
+  socket.value.off('connect');
+  socket.value.off('disconnect');
+  socket.value.off('reconnect');
   socket.value.off('judge:joined');
   socket.value.off('judge:error');
   socket.value.off('judge:progress');
@@ -1970,12 +1974,17 @@ const setupSocket = () => {
   socket.value.off('judge:comparison_complete');
   socket.value.off('judge:session_complete');
 
+  // Helper function to join session room
+  const joinSessionRoom = () => {
+    console.log('[Judge Socket] Joining session room:', sessionId);
+    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+  };
+
   // Re-join room when socket reconnects (handles browser suspension)
   socket.value.on('connect', () => {
-    console.log('[Judge Socket] Connected/Reconnected');
+    console.log('[Judge Socket] Connected/Reconnected, socket id:', socket.value.id);
     isStreaming.value = true; // Mark as connected
-    // Use correct event name with judge: prefix
-    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+    joinSessionRoom();
     // Reload data after reconnection to sync state
     loadSession();
     loadQueue();
@@ -1991,15 +2000,17 @@ const setupSocket = () => {
   // Handle reconnect event specifically
   socket.value.on('reconnect', (attemptNumber) => {
     console.log(`[Judge Socket] Reconnected after ${attemptNumber} attempts`);
-    // Re-join room
-    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+    joinSessionRoom();
     loadSession();
     loadQueue();
   });
 
-  // Join immediately if already connected
+  // Join immediately if already connected (important: this runs AFTER setting up listeners)
   if (socket.value.connected) {
-    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+    console.log('[Judge Socket] Already connected, joining room immediately');
+    joinSessionRoom();
+  } else {
+    console.log('[Judge Socket] Not yet connected, waiting for connect event');
   }
 
   // Handle join confirmation
@@ -2549,11 +2560,13 @@ const reconnectToStream = async () => {
   }
 };
 
-// Polling interval for running sessions
+// Fallback polling for running sessions (WebSocket is primary, this is backup)
+// Increased interval since WebSocket handles most updates in real-time
 let pollInterval = null;
 
 const startPolling = () => {
   if (pollInterval) return;
+  // Poll every 30 seconds as fallback (WebSocket is primary communication)
   pollInterval = setInterval(async () => {
     if (session.value?.status === 'running') {
       await loadCurrentComparison();
@@ -2561,7 +2574,7 @@ const startPolling = () => {
     } else {
       stopPolling();
     }
-  }, 5000); // Poll every 5 seconds
+  }, 30000); // 30 seconds fallback polling (WebSocket handles real-time)
 };
 
 const stopPolling = () => {

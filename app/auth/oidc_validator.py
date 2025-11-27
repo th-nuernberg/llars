@@ -260,7 +260,16 @@ def get_token_from_request() -> Optional[str]:
 
 def has_role(token_payload: Dict, role: str) -> bool:
     """
-    Check if the token has a specific realm role
+    Check if the token has a specific role.
+
+    Supports multiple token formats:
+    - Keycloak: realm_access.roles, resource_access.<client>.roles
+    - Authentik: groups (array of group names)
+
+    For Authentik, maps common group names to roles:
+    - 'authentik Admins' -> 'admin'
+    - 'admins' -> 'admin'
+    - Group names are also checked directly
 
     Args:
         token_payload: Decoded JWT payload
@@ -269,11 +278,45 @@ def has_role(token_payload: Dict, role: str) -> bool:
     Returns:
         True if user has the role, False otherwise
     """
-    roles = token_payload.get('realm_access', {}).get('roles', [])
-    # Also check resource_access for client roles
+    # === Keycloak format ===
+    # Check realm_access.roles
+    keycloak_roles = token_payload.get('realm_access', {}).get('roles', [])
+    # Check resource_access.<client_id>.roles
     client_roles = token_payload.get('resource_access', {}).get(oidc_config.client_id, {}).get('roles', [])
 
-    all_roles = roles + client_roles
+    # === Authentik format ===
+    # Authentik sends groups in the 'groups' claim (from profile scope)
+    authentik_groups = token_payload.get('groups', [])
+
+    # Map Authentik group names to standard role names
+    authentik_group_to_role = {
+        'authentik Admins': 'admin',
+        'authentik admins': 'admin',
+        'Admins': 'admin',
+        'admins': 'admin',
+        'Administrators': 'admin',
+        'administrators': 'admin',
+        'Researchers': 'researcher',
+        'researchers': 'researcher',
+        'Viewers': 'viewer',
+        'viewers': 'viewer',
+    }
+
+    # Convert Authentik groups to roles
+    authentik_roles = []
+    for group in authentik_groups:
+        # Add the mapped role if exists
+        if group in authentik_group_to_role:
+            authentik_roles.append(authentik_group_to_role[group])
+        # Also add the group name directly (lowercase) as a role
+        authentik_roles.append(group.lower())
+        # And the original group name
+        authentik_roles.append(group)
+
+    # Combine all roles from all sources
+    all_roles = keycloak_roles + client_roles + authentik_roles
+
+    # Check if the requested role is in any of the sources
     return role in all_roles
 
 

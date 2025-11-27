@@ -22,6 +22,7 @@ import AdminTester from "@/components/Admin/AdminTester.vue";
 import AdminCollaborativeTest from "@/components/Admin/AdminCollaborativeTest.vue";
 
 import Chat from "@/components/Chat.vue";
+import ChatWithBots from "@/components/ChatWithBots.vue";
 
 import TempTestPage from "@/components/TempTest.vue";
 
@@ -99,7 +100,8 @@ const routes = [
     { path: '/', redirect: '/login' },
     { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
 
-    { path: '/chat', component: Chat, meta: { requiresAuth: true } },
+    { path: '/chat', component: ChatWithBots, name: 'ChatWithBots', meta: { requiresAuth: true } },
+    { path: '/chat-legacy', component: Chat, meta: { requiresAuth: true } },
 
     { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
 

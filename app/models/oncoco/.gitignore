@@ -1,0 +1,7 @@
+# Large model files - do not commit to git
+# Download from HuggingFace or internal storage
+model.safetensors
+*.bin
+*.h5
+*.pt
+*.onnx

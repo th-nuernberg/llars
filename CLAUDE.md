@@ -1,6 +1,6 @@
 # LLARS - LLM-Assisted Rating System
 
-**Version:** 2.2 | **Stand:** 25. November 2025
+**Version:** 2.4 | **Stand:** 27. November 2025
 
 ## 🎯 Projekt-Übersicht
 
@@ -14,6 +14,96 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 - Light/Dark Mode
 - RAG-Pipeline (ChromaDB)
 - **LLM-as-Judge**: Automatisierte paarweise Bewertung von E-Mail-Threads
+
+---
+
+## 🤖 Vorgehen bei komplexen Tasks (für Claude Code)
+
+Dieses Projekt verwendet Claude Code für Entwicklungsaufgaben. Bei komplexen, mehrteiligen Aufgaben sollte folgendes Vorgehen angewendet werden:
+
+### Schritt 1: Analyse & Parallelisierung
+
+```
+1. Problem vollständig verstehen (Logs, Code, Doku lesen)
+2. Unabhängige Teilaufgaben identifizieren
+3. Abhängigkeiten zwischen Tasks erkennen
+4. Parallelisierbare Tasks gruppieren
+```
+
+### Schritt 2: Parallele Ausführung mit Agents
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Hauptprozess identifiziert 4 unabhängige Probleme          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+   │  Agent 1    │    │  Agent 2    │    │  Agent 3    │
+   │  Problem A  │    │  Problem B  │    │  Problem C  │
+   └─────────────┘    └─────────────┘    └─────────────┘
+          │                   │                   │
+          └───────────────────┼───────────────────┘
+                              ▼
+                    ┌─────────────────┐
+                    │  Zusammenführung │
+                    │  & Validierung   │
+                    └─────────────────┘
+```
+
+**Vorteile:**
+- Schnellere Bearbeitung durch Parallelisierung
+- Jeder Agent fokussiert auf ein spezifisches Problem
+- Unabhängige Fehlerbehandlung pro Task
+
+### Schritt 3: Validierung & Iteration
+
+```bash
+# Nach Agent-Ausführung immer prüfen:
+1. Existieren alle erstellten Dateien?
+2. Sind die Änderungen korrekt angewendet?
+3. Funktioniert das System noch?
+
+# Bei Fehlern: Iterative Korrektur
+while (!funktioniert) {
+    identifiziere_problem()
+    korrigiere_gezielt()
+    teste_erneut()
+}
+```
+
+### Schritt 4: Dokumentation
+
+Nach erfolgreicher Umsetzung:
+1. **CLAUDE.md aktualisieren** - Neue Features/Änderungen dokumentieren
+2. **Version hochzählen** - Bei signifikanten Änderungen
+3. **Datum aktualisieren** - Stand der Dokumentation
+
+### Beispiel: Authentik-Problem gelöst
+
+```
+Problem: Authentik-Integration fehlerhaft (4 Teilprobleme)
+
+Parallelisiert:
+├── Agent 1: SECRET_KEY Security Fix (.env Dateien)
+├── Agent 2: Auto-Init Script neu schreiben (API-basiert)
+├── Agent 3: Setup-Skript erstellen (scripts/)
+└── Agent 4: Healthcheck verbessern (docker-compose.yml)
+
+Ergebnis: Alle 4 Agents parallel, dann Validierung, dann Doku
+```
+
+### Best Practices für Claude Code in LLARS
+
+| Regel | Beschreibung |
+|-------|--------------|
+| **TodoWrite nutzen** | Immer Tasks tracken bei >2 Schritten |
+| **Agents parallelisieren** | Unabhängige Tasks gleichzeitig starten |
+| **Validieren** | Nach jeder Änderung prüfen (Dateien, Logs, Tests) |
+| **Iterieren** | Bei Fehlern gezielt nachbessern |
+| **Dokumentieren** | CLAUDE.md immer aktuell halten |
+| **Keine Annahmen** | Immer erst lesen, dann ändern |
 
 ---
 
@@ -588,6 +678,30 @@ curl http://localhost:55080/api/judge/sessions/123
 **Status:** ✅ Vollständig implementiert (ersetzt Keycloak)
 **Dokumentation:** `docs/AUTHENTIK_TESTING_PLAN.md`
 
+### 🚀 Schnellstart: Automatisches Setup
+
+**Wenn die Authentik-Initialisierung fehlschlägt**, verwende das Setup-Skript:
+
+```bash
+# Setup-Skript ausführen (automatisch konfiguriert Authentik)
+./scripts/setup_authentik.sh
+
+# Überprüfen ob alles funktioniert
+./scripts/verify_authentik.sh
+```
+
+**Dokumentation:**
+- **Quick Start:** `scripts/QUICK_START.md` - Schnelle Anleitung
+- **Vollständig:** `scripts/README_AUTHENTIK_SETUP.md` - Detaillierte Dokumentation
+- **Übersicht:** `scripts/SETUP_SUMMARY.md` - Architektur & Komponenten
+- **Index:** `scripts/INDEX.md` - Navigation durch alle Docs
+
+Das Skript erstellt automatisch:
+- ✅ Authentication Flow (`llars-api-authentication`)
+- ✅ OAuth2 Providers (Backend + Frontend)
+- ✅ Applications (`LLARS Backend`, `LLARS Frontend`)
+- ✅ Test Users (`admin`, `akadmin`, `researcher`, `viewer`)
+
 ### Übersicht
 
 LLARS verwendet Authentik als Identity Provider mit OAuth2/OIDC:
@@ -597,10 +711,16 @@ LLARS verwendet Authentik als Identity Provider mit OAuth2/OIDC:
 
 ### Login-Credentials
 
-| Benutzername | Passwort | Rollen |
-|--------------|----------|--------|
-| `admin` | `admin123` | user, admin |
-| `akadmin` | `admin123` | user, admin |
+**Test-Benutzer (erstellt durch Setup-Skript):**
+
+| Benutzername | Passwort | Rollen | Beschreibung |
+|--------------|----------|--------|--------------|
+| `admin` | `admin123` | user, admin | Admin-Zugang für LLARS |
+| `akadmin` | `admin123` | user, admin | Admin für Authentik UI |
+| `researcher` | `admin123` | user | Forscher mit Schreibzugriff |
+| `viewer` | `admin123` | user | Nur Lesezugriff |
+
+⚠️ **Wichtig:** In Production andere Passwörter verwenden!
 
 ### Authentifizierungs-Flow
 
@@ -826,6 +946,165 @@ print(list(User.objects.values_list('username', flat=True)))
 // Browser Console prüfen
 sessionStorage.getItem('auth_token')
 sessionStorage.getItem('auth_llars_roles')
+```
+
+### ⚠️ Authentik Invarianten - NICHT ÄNDERN!
+
+Die folgenden Konfigurationen sind **kritisch für die Stabilität** von Authentik als Auth-Provider. Änderungen können zu komplettem Auth-Ausfall führen.
+
+#### Kritische Dateien (NIEMALS ohne Grund ändern)
+
+| Datei | Kritische Teile | Warum |
+|-------|-----------------|-------|
+| `docker-compose.yml` | Authentik Service-Block (Zeilen 177-279) | Service-Abhängigkeiten, Ports, Volumes |
+| `.env` | `AUTHENTIK_*` Variablen | Secrets, Client-IDs, URLs |
+| `app/routes/authentik_routes.py` | Login-Flow Logik | OAuth2 Flow-Executor Protokoll |
+| `app/auth/oidc_validator.py` | Token-Validierung | JWKS-basierte RS256 Validierung |
+| `docker/authentik/init-authentik.py` | Provider-Namen, Client-IDs | Müssen mit .env übereinstimmen |
+
+#### Invarianten-Checkliste
+
+**1. Service-Namen (docker-compose.yml)**
+```yaml
+# DIESE NAMEN DÜRFEN NICHT GEÄNDERT WERDEN:
+authentik-server      # Backend erwartet diesen Namen
+authentik-worker      # Celery Worker
+authentik-db          # PostgreSQL für Authentik
+authentik-redis       # Redis für Sessions
+```
+
+**2. Client-IDs und Secrets**
+```bash
+# MÜSSEN ÜBERALL IDENTISCH SEIN:
+# .env ↔ init-authentik.py ↔ authentik_routes.py
+
+AUTHENTIK_BACKEND_CLIENT_ID=llars-backend           # NICHT ändern
+AUTHENTIK_FRONTEND_CLIENT_ID=llars-frontend         # NICHT ändern
+AUTHENTIK_BACKEND_CLIENT_SECRET=<secret>            # Nur in .env ändern
+```
+
+**3. Flow-Slug**
+```python
+# Der Flow-Name ist hardcoded im Backend:
+flow_slug = 'llars-api-authentication'  # authentik_routes.py:119
+
+# Wenn geändert, muss auch in Authentik der Flow umbenannt werden!
+```
+
+**4. Interne URLs**
+```bash
+# Backend → Authentik Kommunikation:
+AUTHENTIK_INTERNAL_URL=http://authentik-server:9000  # Docker-intern
+AUTHENTIK_ISSUER_URL=http://authentik-server:9000/application/o/llars-backend/
+
+# NICHT auf externe URLs ändern (localhost, domain) - bricht Container-Kommunikation!
+```
+
+**5. Port-Mapping**
+```yaml
+# Authentik MUSS auf Port 9000 intern laufen:
+AUTHENTIK_INTERNAL_PORT=9000    # Hardcoded in Healthchecks
+AUTHENTIK_EXTERNAL_PORT=55095   # Kann geändert werden (nur externe Erreichbarkeit)
+```
+
+**6. Healthcheck-Endpoint**
+```yaml
+# Authentik Healthcheck (docker-compose.yml):
+test: ["CMD-SHELL", "wget ... http://localhost:${AUTHENTIK_INTERNAL_PORT}/-/health/live/"]
+
+# Dieser Endpoint ist Authentik-spezifisch - NICHT ändern!
+```
+
+**7. SECRET_KEY Anforderungen**
+```bash
+# AUTHENTIK_SECRET_KEY muss:
+# - Mindestens 50 Zeichen lang sein
+# - Hohe Entropie haben (base64 oder hex)
+# - NIEMALS in Git committed werden
+# - Bei Änderung: ALLE Authentik-Container neu starten!
+
+# Generieren:
+openssl rand -base64 64
+```
+
+#### Was passiert wenn...
+
+| Änderung | Konsequenz | Lösung |
+|----------|------------|--------|
+| Client-ID geändert | Login schlägt fehl (401) | IDs in .env, init-script UND Authentik UI synchronisieren |
+| Flow-Slug geändert | "Authentication service error" (503) | Flow in Authentik umbenennen oder Code zurückändern |
+| SECRET_KEY < 50 Zeichen | Django Security Warning, unsichere Tokens | Neuen Key generieren, Container neu starten |
+| Interner Port geändert | Healthcheck schlägt fehl, Container unhealthy | Port 9000 beibehalten |
+| Service-Name geändert | Backend kann Authentik nicht erreichen | Namen zurückändern |
+| Redis entfernt | Sessions funktionieren nicht, Login bricht ab | Redis ist Pflicht für Authentik |
+
+#### Sichere Änderungen
+
+Diese Änderungen sind **sicher** und brechen nichts:
+
+```bash
+# ✅ SICHER zu ändern:
+AUTHENTIK_EXTERNAL_PORT=55095      # Externer Port (Browser-Zugriff)
+AUTHENTIK_BOOTSTRAP_EMAIL=...      # Nur bei Neuinstallation relevant
+AUTHENTIK_BOOTSTRAP_PASSWORD=...   # Nur bei Neuinstallation relevant
+AUTHENTIK_BACKEND_CLIENT_SECRET=.. # Wenn auch in Authentik UI geändert
+
+# ✅ Neue User hinzufügen (via Setup-Skript oder UI)
+# ✅ Neue Rollen in LLARS (MariaDB) - unabhängig von Authentik
+# ✅ Redirect-URIs erweitern (für neue Domains)
+```
+
+#### Authentik-Architektur verstehen
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Docker Network                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐       │
+│  │   Flask     │────▶│  Authentik  │◀────│   Vue.js    │       │
+│  │  Backend    │     │   Server    │     │  Frontend   │       │
+│  │  :8081      │     │   :9000     │     │   :5173     │       │
+│  └─────────────┘     └──────┬──────┘     └─────────────┘       │
+│         │                   │                   │               │
+│         │            ┌──────┴──────┐            │               │
+│         │            │             │            │               │
+│         │      ┌─────▼─────┐ ┌─────▼─────┐      │               │
+│         │      │ PostgreSQL│ │   Redis   │      │               │
+│         │      │   :5432   │ │   :6379   │      │               │
+│         │      └───────────┘ └───────────┘      │               │
+│         │                                       │               │
+│         └───────────────┬───────────────────────┘               │
+│                         │                                       │
+│                   ┌─────▼─────┐                                 │
+│                   │  MariaDB  │  ← LLARS Daten (nicht Auth!)    │
+│                   │   :3306   │                                 │
+│                   └───────────┘                                 │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Authentik verwaltet:        LLARS (MariaDB) verwaltet:
+- User-Identitäten          - LLARS-spezifische Rollen
+- Passwörter                - Permissions
+- OAuth2 Tokens             - User-zu-Rollen Mapping
+- Sessions (Redis)          - Audit Logs
+```
+
+#### Vor jeder Authentik-Änderung
+
+```bash
+# 1. Backup der aktuellen Konfiguration
+docker compose exec authentik-server ak export_blueprint > backup_$(date +%Y%m%d).yaml
+
+# 2. Änderung dokumentieren (was, warum, wann)
+
+# 3. Nach Änderung testen:
+./scripts/verify_authentik.sh
+
+# 4. Bei Problemen: Rollback
+docker compose down
+docker compose up -d
+./scripts/setup_authentik.sh  # Neu konfigurieren
 ```
 
 ---

@@ -14,8 +14,31 @@ app = Flask(__name__)
 
 # CORS configuration - restrict in production!
 allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost,http://localhost:80,http://localhost:5173').split(',')
+# Strip whitespace from origins
+allowed_origins = [origin.strip() for origin in allowed_origins]
 CORS(app, origins=allowed_origins, supports_credentials=True)
-socketio = SocketIO(app, cors_allowed_origins=allowed_origins)
+
+# Determine socket CORS settings based on environment
+flask_env = os.environ.get('FLASK_ENV', 'production')
+if flask_env == 'development':
+    # Allow all origins in development for easier debugging
+    socket_cors = '*'
+else:
+    socket_cors = allowed_origins
+
+# SocketIO with increased timeouts for long-running LLM streams
+# ping_timeout: How long to wait for pong before disconnecting (default: 20s)
+# ping_interval: How often to send ping to keep connection alive (default: 25s)
+# For LLM streaming, we need longer timeouts to prevent disconnections during generation
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=socket_cors,
+    async_mode='eventlet',  # Use eventlet for better concurrency
+    ping_timeout=120,  # 2 minutes - allow for long LLM responses
+    ping_interval=30,  # Send ping every 30 seconds
+    logger=flask_env == 'development',  # Enable logging in development
+    engineio_logger=False
+)
 
 # Rate Limiting - Schützt vor Brute-Force und DoS
 limiter = Limiter(
@@ -61,8 +84,19 @@ app.register_blueprint(judge_bp)
 # OnCoCo Analysis routes
 app.register_blueprint(oncoco_bp)
 
+# Chatbot routes
+from routes.chatbot.chatbot_routes import chatbot_blueprint
+app.register_blueprint(chatbot_blueprint)
+
+# Web Crawler routes
+from routes.crawler.crawler_routes import crawler_blueprint, init_crawler_socketio
+app.register_blueprint(crawler_blueprint)
+
 
 configure_socket_routes(socketio)
+
+# Initialize Crawler WebSocket integration
+init_crawler_socketio(socketio)
 configure_websocket_prompt_eng(socketio)
 
 if __name__ == '__main__':

@@ -425,12 +425,15 @@ const getChiSquareColor = (chiSquare) => {
 <style scoped>
 .pillar-comparison-panel {
   background: rgba(var(--v-theme-surface-variant), 0.3);
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .differences-list {
   background: transparent;
   max-height: 300px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .differences-list :deep(.v-list-item) {

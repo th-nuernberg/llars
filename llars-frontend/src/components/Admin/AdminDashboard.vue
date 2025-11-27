@@ -98,6 +98,16 @@
             <AdminScenariosSection />
           </div>
 
+          <!-- Chatbots Section -->
+          <div v-else-if="activeSection === 'chatbots'" key="chatbots">
+            <ChatbotManager />
+          </div>
+
+          <!-- Web Crawler Section -->
+          <div v-else-if="activeSection === 'crawler'" key="crawler">
+            <WebCrawlerTool />
+          </div>
+
           <!-- RAG Section -->
           <div v-else-if="activeSection === 'rag'" key="rag">
             <AdminRAGSection />
@@ -123,6 +133,8 @@ import AdminUsersSection from './sections/AdminUsersSection.vue';
 import AdminScenariosSection from './sections/AdminScenariosSection.vue';
 import AdminRAGSection from './sections/AdminRAGSection.vue';
 import AdminPermissionsSection from './sections/AdminPermissionsSection.vue';
+import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
+import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 
 const auth = useAuth();
 const username = computed(() => auth.tokenParsed.value?.preferred_username || 'Admin');
@@ -139,6 +151,8 @@ const navItems = [
   { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard' },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group' },
   { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list' },
+  { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot' },
+  { title: 'Web Crawler', value: 'crawler', icon: 'mdi-spider-web' },
   { title: 'RAG Dokumente', value: 'rag', icon: 'mdi-database-search' },
   { title: 'Berechtigungen', value: 'permissions', icon: 'mdi-shield-lock' },
 ];
@@ -148,6 +162,8 @@ const sectionInfo = {
   overview: { title: 'Dashboard Übersicht', subtitle: 'Schnellübersicht aller wichtigen Kennzahlen' },
   users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },
   scenarios: { title: 'Szenario-Verwaltung', subtitle: 'Bewertungs-Szenarien erstellen und verwalten' },
+  chatbots: { title: 'Chatbot-Verwaltung', subtitle: 'Chatbots mit RAG-Collections erstellen und konfigurieren' },
+  crawler: { title: 'Website Crawler', subtitle: 'Websites crawlen und RAG-Collections erstellen' },
   rag: { title: 'RAG Dokumente', subtitle: 'Dokumente für die RAG-Pipeline verwalten' },
   permissions: { title: 'Berechtigungen', subtitle: 'Rollen und Berechtigungen konfigurieren' },
 };

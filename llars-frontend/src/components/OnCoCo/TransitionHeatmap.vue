@@ -247,11 +247,15 @@ watch(() => props.externalHighlight, (newVal) => {
 .transition-heatmap {
   --cell-size: 24px;
   --label-width: 60px;
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
 }
 
 .heatmap-container {
   display: flex;
   width: fit-content;
+  min-width: min-content;
 }
 
 .y-labels {

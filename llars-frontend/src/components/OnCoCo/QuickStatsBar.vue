@@ -199,15 +199,27 @@ const getChiSquareText = (significant, total) => {
 <style scoped>
 .quick-stats-bar {
   position: relative;
+  overflow: hidden;
 }
 
 .stat-item {
   padding: 8px 12px;
+  min-width: 0; /* Allow shrinking */
+}
+
+.stat-item .text-body-2 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 600px) {
   .stat-item {
     padding: 8px 4px;
+  }
+
+  .stat-item .ml-3 {
+    margin-left: 8px !important;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="matrix-comparison-metrics">
-    <!-- Header with Help Button -->
-    <div class="d-flex align-center mb-3">
+    <!-- Header with Help Button (hidden when used in dialog) -->
+    <div v-if="!hideHeader" class="d-flex align-center mb-3">
       <div class="text-h6 font-weight-bold">
         <v-icon start>mdi-chart-scatter-plot</v-icon>
         Statistische Matrix-Vergleichsmetriken
@@ -358,7 +358,7 @@
 
     <!-- Methodology Dialog -->
     <v-dialog v-model="showMethodologyDialog" max-width="900" scrollable>
-      <v-card>
+      <v-card class="methodology-dialog-card">
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-book-open-variant</v-icon>
           Methodik & Erklärungen
@@ -620,6 +620,10 @@ const props = defineProps({
   analysisId: {
     type: [Number, String],
     required: true
+  },
+  hideHeader: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -778,6 +782,13 @@ onMounted(() => {
 <style scoped>
 .matrix-comparison-metrics {
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Methodology Dialog - ensure solid background */
+.methodology-dialog-card {
+  background-color: rgb(var(--v-theme-surface)) !important;
 }
 
 .metric-row {
@@ -787,6 +798,22 @@ onMounted(() => {
 
 .metric-row:last-child {
   border-bottom: none;
+}
+
+/* Fix card overlap in grid */
+:deep(.v-row) {
+  margin: -8px;
+}
+
+:deep(.v-col) {
+  padding: 8px;
+  min-width: 0; /* Allow shrinking */
+}
+
+/* Ensure cards don't overflow */
+:deep(.v-card) {
+  overflow: hidden;
+  word-wrap: break-word;
 }
 
 .footnote-ref {

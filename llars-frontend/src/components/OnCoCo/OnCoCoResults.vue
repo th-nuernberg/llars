@@ -508,14 +508,16 @@
                       Transitions-Heatmaps pro Säule
                     </div>
 
-                    <v-row v-if="Object.keys(heatmapData).length > 0">
+                    <v-row v-if="Object.keys(heatmapData).length > 0" class="heatmap-row">
                       <v-col
                         v-for="(data, pillarNum) in heatmapData"
                         :key="'heatmap-' + pillarNum"
                         cols="12"
-                        :md="Object.keys(heatmapData).length <= 2 ? 6 : 4"
+                        lg="4"
+                        md="6"
+                        class="heatmap-col"
                       >
-                        <v-card variant="outlined" class="h-100">
+                        <v-card variant="outlined" class="h-100 heatmap-card">
                           <v-card-title class="text-subtitle-1 py-2">
                             <v-icon start size="small" color="primary">mdi-chart-box</v-icon>
                             {{ getPillarName(pillarNum) }}
@@ -523,7 +525,7 @@
                               {{ data.totalTransitions }} Transitionen
                             </v-chip>
                           </v-card-title>
-                          <v-card-text class="pt-0">
+                          <v-card-text class="pt-0 heatmap-content">
                             <TransitionHeatmap
                               :counts="data.counts"
                               :probabilities="data.probabilities"
@@ -642,7 +644,26 @@
 
                   <!-- Methodology Dialog -->
                   <v-dialog v-model="showMethodologyDialog" max-width="900" scrollable>
-                    <MatrixComparisonMetrics :analysis-id="route.params.id" />
+                    <v-card class="methodology-dialog-card" rounded="lg">
+                      <!-- Dialog Header with Close Button -->
+                      <v-toolbar color="primary" density="compact">
+                        <v-icon class="ml-2">mdi-chart-scatter-plot</v-icon>
+                        <v-toolbar-title class="text-body-1 font-weight-medium">
+                          Statistische Matrix-Vergleichsmetriken
+                        </v-toolbar-title>
+                        <v-spacer></v-spacer>
+                        <v-btn
+                          icon="mdi-close"
+                          variant="text"
+                          @click="showMethodologyDialog = false"
+                        ></v-btn>
+                      </v-toolbar>
+
+                      <!-- Content with padding -->
+                      <v-card-text class="pa-6">
+                        <MatrixComparisonMetrics :analysis-id="route.params.id" hide-header />
+                      </v-card-text>
+                    </v-card>
                   </v-dialog>
 
                   <!-- Sentences Tab -->
@@ -1452,7 +1473,7 @@ onUnmounted(() => {
 
 <style scoped>
 .oncoco-results {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -1461,5 +1482,52 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Heatmap Layout Fixes */
+.heatmap-row {
+  flex-wrap: wrap;
+}
+
+.heatmap-col {
+  min-width: 0; /* Allow flex shrinking */
+}
+
+.heatmap-card {
+  overflow: hidden;
+}
+
+.heatmap-content {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 12px;
+}
+
+/* Ensure cards don't overlap */
+.heatmap-card :deep(.v-card-text) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Better spacing for tabs on mobile */
+@media (max-width: 960px) {
+  .heatmap-col {
+    margin-bottom: 16px;
+  }
+}
+
+/* Methodology Dialog Styles */
+.methodology-dialog-card {
+  background-color: rgb(var(--v-theme-surface)) !important;
+  overflow: hidden;
+}
+
+.methodology-dialog-card .v-toolbar {
+  flex-shrink: 0;
+}
+
+.methodology-dialog-card .v-card-text {
+  max-height: 70vh;
+  overflow-y: auto;
 }
 </style>

@@ -283,6 +283,25 @@ def initialize_permissions():
             'category': 'feature',
             'description': 'Erlaubt das Löschen von RAG-Dokumenten und Collections'
         },
+        # Feature: Chatbots
+        {
+            'permission_key': 'feature:chatbots:view',
+            'display_name': 'Chatbots ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen und Verwenden von Chatbots'
+        },
+        {
+            'permission_key': 'feature:chatbots:edit',
+            'display_name': 'Chatbots bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Chatbots'
+        },
+        {
+            'permission_key': 'feature:chatbots:delete',
+            'display_name': 'Chatbots löschen',
+            'category': 'feature',
+            'description': 'Erlaubt das Löschen von Chatbots'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -327,6 +346,8 @@ def initialize_permissions():
                 'feature:prompt_engineering:edit',
                 'feature:rag:view',
                 'feature:rag:edit',
+                'feature:chatbots:view',
+                'feature:chatbots:edit',
                 'data:export',
             ]
         },
@@ -341,6 +362,7 @@ def initialize_permissions():
                 'feature:comparison:view',
                 'feature:prompt_engineering:view',
                 'feature:rag:view',
+                'feature:chatbots:view',
             ]
         },
     ]
@@ -370,7 +392,28 @@ def initialize_permissions():
             db.session.commit()
             print(f"Created role: {role_name}")
         else:
-            print(f"Role already exists: {role_name}")
+            # Update existing role with any new permissions
+            role = existing_role
+            existing_perm_ids = {rp.permission_id for rp in
+                               RolePermission.query.filter_by(role_id=role.id).all()}
+
+            added_perms = []
+            for perm_key in permission_keys:
+                if perm_key in permission_map:
+                    perm = permission_map[perm_key]
+                    if perm.id not in existing_perm_ids:
+                        role_perm = RolePermission(
+                            role_id=role.id,
+                            permission_id=perm.id
+                        )
+                        db.session.add(role_perm)
+                        added_perms.append(perm_key)
+
+            if added_perms:
+                db.session.commit()
+                print(f"Role '{role_name}' updated with new permissions: {added_perms}")
+            else:
+                print(f"Role already exists: {role_name}")
 
     # Assign admin role to default admin user
     assign_default_admin_role()

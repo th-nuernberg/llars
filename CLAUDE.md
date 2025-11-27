@@ -1,6 +1,6 @@
 # LLARS - LLM-Assisted Rating System
 
-**Version:** 2.4 | **Stand:** 27. November 2025
+**Version:** 2.5 | **Stand:** 27. November 2025
 
 ## 🎯 Projekt-Übersicht
 
@@ -1105,6 +1105,233 @@ docker compose exec authentik-server ak export_blueprint > backup_$(date +%Y%m%d
 docker compose down
 docker compose up -d
 ./scripts/setup_authentik.sh  # Neu konfigurieren
+```
+
+---
+
+## 📦 Git Commit Guidelines
+
+**Status:** ✅ Projektstandard
+
+### Commit-Format
+
+LLARS verwendet **Conventional Commits** für eine konsistente Git-Historie:
+
+```
+<type>(<scope>): <kurze Beschreibung>
+
+<optionaler Body mit Details>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+### Commit-Typen
+
+| Type | Verwendung | Beispiel |
+|------|------------|----------|
+| `feat` | Neues Feature | `feat(chatbot): Add RAG-based conversation system` |
+| `fix` | Bugfix | `fix(auth): Resolve token expiration handling` |
+| `docs` | Dokumentation | `docs: Add commit guidelines to CLAUDE.md` |
+| `refactor` | Code-Umstrukturierung | `refactor(judge): Simplify worker queue logic` |
+| `style` | Formatierung (kein Code-Change) | `style: Fix indentation in routes` |
+| `test` | Tests hinzufügen/ändern | `test(permissions): Add unit tests for RBAC` |
+| `chore` | Wartung, Dependencies | `chore: Update package.json dependencies` |
+| `deps` | Dependency-Updates | `deps(backend): Add crawl4ai for web crawling` |
+| `security` | Sicherheits-Fixes | `security(authentik): Increase SECRET_KEY length` |
+| `perf` | Performance-Verbesserung | `perf(rag): Optimize vector search queries` |
+
+### Scope (optional)
+
+Der Scope gibt den betroffenen Bereich an:
+
+```
+feat(frontend): ...     # Vue.js Frontend
+feat(backend): ...      # Flask Backend
+feat(auth): ...         # Authentik/Auth-System
+feat(judge): ...        # LLM-as-Judge
+feat(rag): ...          # RAG-Pipeline
+feat(chatbot): ...      # Chatbot-System
+feat(crawler): ...      # Web Crawler
+feat(db): ...           # Datenbank-Schema
+feat(docker): ...       # Docker/Infrastructure
+```
+
+### Best Practices
+
+**1. Atomare Commits**
+```bash
+# ✅ GUT: Ein Commit pro logischer Änderung
+git commit -m "feat(chatbot): Add conversation history storage"
+git commit -m "feat(chatbot): Implement RAG context injection"
+
+# ❌ SCHLECHT: Alles in einem Commit
+git commit -m "Add chatbot with history and RAG and UI and tests"
+```
+
+**2. Aussagekräftige Beschreibungen**
+```bash
+# ✅ GUT: Erklärt WAS und WARUM
+git commit -m "fix(socketio): Increase ping_timeout to 120s for LLM streaming
+
+Long-running LLM responses were causing disconnections with default 20s timeout.
+Increased to 120s to accommodate slow model responses."
+
+# ❌ SCHLECHT: Nicht aussagekräftig
+git commit -m "fix stuff"
+git commit -m "update code"
+```
+
+**3. Einzelne Dateien/Features committen**
+```bash
+# Bei mehreren unabhängigen Änderungen: Einzeln committen
+git add app/db/tables.py
+git commit -m "feat(db): Add Chatbot and ChatbotMessage models"
+
+git add app/routes/chatbot/
+git commit -m "feat(chatbot): Add REST API endpoints"
+
+git add llars-frontend/src/components/ChatWithBots.vue
+git commit -m "feat(frontend): Add ChatWithBots conversation UI"
+```
+
+### Claude Code Commits
+
+Bei Commits die mit Claude Code erstellt wurden, wird automatisch der Footer hinzugefügt:
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(crawler): Add web crawler service with Crawl4AI
+
+- Add CrawlerService for async web crawling
+- Implement URL queue management
+- Add progress tracking via Socket.IO
+- Support for sitemap parsing
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
+
+### Commit-Workflow
+
+```bash
+# 1. Status prüfen
+git status
+
+# 2. Änderungen reviewen
+git diff
+
+# 3. Staged Änderungen prüfen
+git diff --staged
+
+# 4. Commit-Style aus History ableiten
+git log --oneline -10
+
+# 5. Commit erstellen (mit HEREDOC für mehrzeilige Messages)
+git commit -m "$(cat <<'EOF'
+<type>(<scope>): <description>
+
+<body>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+
+# 6. Erfolg verifizieren
+git status
+git log -1
+```
+
+### Beispiele aus dem Projekt
+
+**Feature-Commit (Chatbot):**
+```
+feat(chatbot): Add chatbot routes and services
+
+- Add ChatbotRoutes with REST API for conversations
+- Implement ChatbotService with RAG integration
+- Support multiple RAG collections per chatbot
+- Add streaming responses via Socket.IO
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Fix-Commit (Auth):**
+```
+fix(authentik): Resolve healthcheck failing on container startup
+
+- Change healthcheck from Python urllib to wget
+- Use correct endpoint /-/health/live/ instead of /
+- Add proper timeout and retry configuration
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Security-Commit:**
+```
+security(authentik): Increase SECRET_KEY to 86 characters
+
+Django requires SECRET_KEY >= 50 characters for security.
+Previous key was only 35 characters, causing security warning.
+
+- Generate new key with: openssl rand -base64 64
+- Update both .env.template files
+- Add documentation about key requirements
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Docs-Commit:**
+```
+docs(oncoco): Add model README and download instructions
+
+- Document model architecture (XLM-RoBERTa Large)
+- Add file size information
+- Provide download options (HuggingFace, internal, backup)
+- Include usage example with transformers
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+### Nicht committen
+
+Diese Dateien/Patterns gehören NICHT in Git:
+
+```gitignore
+# Secrets
+.env                    # Enthält echte Secrets
+*.pem, *.key           # Private Keys
+
+# Große Dateien
+*.safetensors          # ML Model Weights (>100MB)
+*.bin                  # Binary Model Files
+*.h5, *.pt, *.onnx    # Model Formats
+
+# Temporäre Dateien
+__pycache__/
+node_modules/
+*.pyc
+.DS_Store
+~$*.docx               # Word Temp-Files
+
+# IDE
+.idea/
+.vscode/
+*.swp
 ```
 
 ---

@@ -152,6 +152,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import { getSocket } from '@/services/socketService';
 
 const route = useRoute();
 const router = useRouter();
@@ -163,7 +164,6 @@ const dialogVisible = ref(false);
 const selectedUser = ref({});
 const selectedUsers = ref([]);
 const selectAll = ref(false);
-let pollingInterval = null;
 
 // Öffnet den Dialog und zeigt die Details des ausgewählten Benutzers an
 const showThreadDetails = (user) => {
@@ -230,17 +230,68 @@ watch(selectedUsers, (newValue) => {
   selectAll.value = newValue.length === userStats.value.length;
 });
 
-// Beim Laden der Komponente die Statistiken abrufen und Polling starten
-// Increased to 60 seconds - user stats change infrequently
-// TODO: Replace with WebSocket events for real-time updates
+// WebSocket für Echtzeit-Updates
+let socket = null;
+
+// WebSocket Event-Handler für Stats-Updates
+function handleStatsUpdate(data) {
+  if (data.stats && Array.isArray(data.stats)) {
+    userStats.value = data.stats;
+    console.log('[Ranker] Stats-Update erhalten:', data.stats.length, 'User');
+  }
+}
+
+function handleRankingSaved(data) {
+  console.log('[Ranker] Ranking gespeichert von User:', data.user_id, 'für Thread:', data.thread_id);
+}
+
+// WebSocket Setup
+function setupWebSocket() {
+  socket = getSocket();
+
+  if (socket) {
+    // Event-Listener registrieren
+    socket.on('ranker:stats_list', handleStatsUpdate);
+    socket.on('ranker:stats_updated', handleStatsUpdate);
+    socket.on('ranker:ranking_saved', handleRankingSaved);
+
+    // Subscription starten wenn verbunden
+    if (socket.connected) {
+      socket.emit('ranker:subscribe', { scenario_id: scenario_id });
+      console.log('[Ranker] WebSocket subscribed für Szenario:', scenario_id);
+    }
+
+    // Bei Reconnect erneut subscriben
+    socket.on('connect', () => {
+      socket.emit('ranker:subscribe', { scenario_id: scenario_id });
+      console.log('[Ranker] WebSocket reconnected und subscribed');
+    });
+  }
+}
+
+// WebSocket Cleanup
+function cleanupWebSocket() {
+  if (socket) {
+    socket.off('ranker:stats_list', handleStatsUpdate);
+    socket.off('ranker:stats_updated', handleStatsUpdate);
+    socket.off('ranker:ranking_saved', handleRankingSaved);
+    socket.emit('ranker:unsubscribe', { scenario_id: scenario_id });
+    console.log('[Ranker] WebSocket unsubscribed');
+  }
+}
+
+// Beim Laden der Komponente die Statistiken abrufen und WebSocket starten
 onMounted(() => {
+  // Initiales Laden (Fallback falls WebSocket nicht sofort verbunden)
   fetchUserStats();
-  pollingInterval = setInterval(fetchUserStats, 60000); // 60 seconds (increased from 10s)
+
+  // WebSocket für Echtzeit-Updates
+  setupWebSocket();
 });
 
-// Beim Verlassen der Komponente das Polling stoppen
+// Beim Verlassen der Komponente WebSocket aufräumen
 onUnmounted(() => {
-  clearInterval(pollingInterval);
+  cleanupWebSocket();
 });
 </script>
 

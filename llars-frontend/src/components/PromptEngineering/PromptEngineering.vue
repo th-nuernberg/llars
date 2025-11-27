@@ -187,6 +187,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { getSocket } from '@/services/socketService';
 
 // Router
 const router = useRouter();
@@ -426,24 +427,84 @@ function navigateToPromptDetail(promptId) {
   router.push(`/promptengineering/${promptId}`);
 }
 
-// Polling-Konfiguration: Lädt Prompts und geteilte Prompts regelmäßig neu
-// Increased to 60 seconds since prompt list changes are infrequent
-// TODO: Replace with WebSocket events for real-time prompt list updates
-const POLL_INTERVAL = 60000; // 60 Sekunden (erhöht von 10s)
-let promptsTimer = null;
-let sharedTimer = null;
+// WebSocket für Echtzeit-Updates
+let socket = null;
+let currentUserId = null;
 
-// Prompts beim Mount initial laden und Timer starten
+// Funktion zum Abrufen der User-ID
+async function fetchUserId() {
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/auth/authentik/me`);
+    return response.data.user_id || response.data.id;
+  } catch (error) {
+    console.error('Fehler beim Abrufen der User-ID:', error);
+    return null;
+  }
+}
+
+// WebSocket Event-Handler für Prompt-Updates
+function handlePromptsUpdate(data) {
+  if (data.prompts) {
+    prompts.value = data.prompts;
+    console.log('[Prompts] Echtzeit-Update erhalten:', data.prompts.length, 'Prompts');
+  }
+}
+
+// WebSocket Setup
+function setupWebSocket(userId) {
+  if (!userId) return;
+
+  socket = getSocket();
+
+  if (socket) {
+    // Event-Listener registrieren
+    socket.on('prompts:list', handlePromptsUpdate);
+    socket.on('prompts:updated', handlePromptsUpdate);
+
+    // Subscription starten wenn verbunden
+    if (socket.connected) {
+      socket.emit('prompts:subscribe', { user_id: userId });
+      console.log('[Prompts] WebSocket subscribed für User:', userId);
+    }
+
+    // Bei Reconnect erneut subscriben
+    socket.on('connect', () => {
+      socket.emit('prompts:subscribe', { user_id: userId });
+      console.log('[Prompts] WebSocket reconnected und subscribed');
+    });
+  }
+}
+
+// WebSocket Cleanup
+function cleanupWebSocket() {
+  if (socket) {
+    socket.off('prompts:list', handlePromptsUpdate);
+    socket.off('prompts:updated', handlePromptsUpdate);
+
+    if (currentUserId) {
+      socket.emit('prompts:unsubscribe', { user_id: currentUserId });
+      console.log('[Prompts] WebSocket unsubscribed');
+    }
+  }
+}
+
+// Prompts beim Mount initial laden und WebSocket starten
 onMounted(async () => {
+  // User-ID abrufen
+  currentUserId = await fetchUserId();
+
+  // Initiales Laden (Fallback falls WebSocket nicht sofort verbunden)
   await Promise.all([fetchPrompts(), fetchSharedPrompts()]);
-  promptsTimer = setInterval(fetchPrompts, POLL_INTERVAL);
-  sharedTimer = setInterval(fetchSharedPrompts, POLL_INTERVAL);
+
+  // WebSocket für Echtzeit-Updates
+  if (currentUserId) {
+    setupWebSocket(currentUserId);
+  }
 });
 
-// Timer bei Unmount aufräumen
+// WebSocket bei Unmount aufräumen
 onUnmounted(() => {
-  if (promptsTimer) clearInterval(promptsTimer);
-  if (sharedTimer) clearInterval(sharedTimer);
+  cleanupWebSocket();
 });
 
 // Am Anfang zu den anderen refs hinzufügen:

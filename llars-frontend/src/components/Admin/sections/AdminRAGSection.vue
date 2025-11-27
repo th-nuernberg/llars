@@ -731,6 +731,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { getSocket } from '@/services/socketService';
 
 // State
 const activeTab = ref('documents');
@@ -941,8 +942,86 @@ const getDocumentPreviewUrl = (doc) => {
   return `/api/rag/documents/${doc.id}/download`;
 };
 
-// Polling interval ref
-let queuePollInterval = null;
+// WebSocket für Echtzeit-Updates
+let socket = null;
+
+// WebSocket Event-Handler für Queue-Updates
+function handleQueueUpdate(data) {
+  if (data.queue) {
+    // Verarbeite die Queue-Daten
+    const byStatus = {
+      pending: 0,
+      processing: 0,
+      indexed: 0,
+      error: 0
+    };
+
+    data.queue.forEach(item => {
+      if (item.status === 'queued') byStatus.pending++;
+      else if (item.status === 'processing') byStatus.processing++;
+      else if (item.status === 'completed') byStatus.indexed++;
+      else if (item.status === 'failed') byStatus.error++;
+    });
+
+    processingQueue.value = {
+      pending: byStatus.pending,
+      processing: byStatus.processing,
+      indexed: byStatus.indexed,
+      error: byStatus.error,
+      total: data.queue.length
+    };
+
+    console.log('[RAG] Queue-Update erhalten:', processingQueue.value);
+  }
+}
+
+function handleProgressUpdate(data) {
+  console.log('[RAG] Progress-Update:', data.queue_id, data.progress_percent + '%', data.current_step);
+}
+
+function handleDocumentProcessed(data) {
+  console.log('[RAG] Dokument verarbeitet:', data.filename, '-', data.status);
+  // Daten aktualisieren
+  fetchStats();
+  fetchDocuments();
+}
+
+// WebSocket Setup
+function setupWebSocket() {
+  socket = getSocket();
+
+  if (socket) {
+    // Event-Listener registrieren
+    socket.on('rag:queue_list', handleQueueUpdate);
+    socket.on('rag:queue_updated', handleQueueUpdate);
+    socket.on('rag:progress', handleProgressUpdate);
+    socket.on('rag:document_processed', handleDocumentProcessed);
+
+    // Subscription starten wenn verbunden
+    if (socket.connected) {
+      socket.emit('rag:subscribe_queue');
+      console.log('[RAG] WebSocket subscribed');
+    }
+
+    // Bei Reconnect erneut subscriben
+    socket.on('connect', () => {
+      socket.emit('rag:subscribe_queue');
+      console.log('[RAG] WebSocket reconnected und subscribed');
+    });
+  }
+}
+
+// WebSocket Cleanup
+function cleanupWebSocket() {
+  if (socket) {
+    socket.off('rag:queue_list', handleQueueUpdate);
+    socket.off('rag:queue_updated', handleQueueUpdate);
+    socket.off('rag:progress', handleProgressUpdate);
+    socket.off('rag:document_processed', handleDocumentProcessed);
+    socket.emit('rag:unsubscribe_queue');
+    console.log('[RAG] WebSocket unsubscribed');
+  }
+}
 
 // API calls
 const fetchProcessingQueue = async () => {
@@ -966,25 +1045,14 @@ const fetchProcessingQueue = async () => {
   loadingQueue.value = false;
 };
 
-// Start/stop polling for processing queue
-// Only polls when documents are being processed
-// TODO: Replace with WebSocket events for real-time queue updates
+// Polling wurde durch WebSocket ersetzt - diese Funktionen bleiben für Kompatibilität
 const startQueuePolling = () => {
-  if (queuePollInterval) return;
-  queuePollInterval = setInterval(() => {
-    if (processingQueue.value.pending > 0 || processingQueue.value.processing > 0) {
-      fetchProcessingQueue();
-    } else {
-      stopQueuePolling();
-    }
-  }, 10000); // 10 seconds (increased from 5s) - only active during processing
+  // Polling wurde durch WebSocket ersetzt
+  console.log('[RAG] Polling deaktiviert - WebSocket wird verwendet');
 };
 
 const stopQueuePolling = () => {
-  if (queuePollInterval) {
-    clearInterval(queuePollInterval);
-    queuePollInterval = null;
-  }
+  // Nichts zu tun - Polling ist deaktiviert
 };
 
 const fetchEmbeddingInfo = async () => {
@@ -1228,15 +1296,15 @@ onMounted(async () => {
   fetchCollections();
   fetchEmbeddingInfo();
 
-  // Fetch processing queue and start polling if there are pending items
+  // Initiales Laden der Queue (Fallback falls WebSocket nicht sofort verbunden)
   await fetchProcessingQueue();
-  if (processingQueue.value.pending > 0 || processingQueue.value.processing > 0) {
-    startQueuePolling();
-  }
+
+  // WebSocket für Echtzeit-Updates
+  setupWebSocket();
 });
 
 onUnmounted(() => {
-  stopQueuePolling();
+  cleanupWebSocket();
 });
 </script>
 

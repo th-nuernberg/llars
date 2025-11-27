@@ -83,6 +83,17 @@ docker/nginx/certs/*.pem
 *.cache
 .cache/
 
+# Microsoft Office temporary files (Word, Excel, PowerPoint lock/temp files)
+# Pattern ~$* matches files like ~$document.docx in any directory
+*~$*
+**/*~$*
+*.~*
+**/*.~*
+~*.tmp
+**/~*.tmp
+*.xlk
+**/*.xlk
+
 # MkDocs compiled documentation (production)
 /docs/site/
 

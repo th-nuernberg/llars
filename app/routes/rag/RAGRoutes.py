@@ -421,6 +421,46 @@ def get_document(document_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@data_blueprint.route('/rag/documents/<int:document_id>/content', methods=['GET'])
+@require_permission('feature:rag:view')
+def get_document_content(document_id):
+    """
+    Get the extracted text content of a document.
+    Returns the combined text from all chunks.
+    """
+    try:
+        document = RAGDocument.query.get_or_404(document_id)
+
+        # Get all chunks ordered by index
+        chunks = RAGDocumentChunk.query.filter_by(
+            document_id=document_id
+        ).order_by(RAGDocumentChunk.chunk_index).all()
+
+        # Combine chunk content
+        full_content = "\n\n".join([c.content for c in chunks])
+
+        # If no chunks, try to extract from file directly
+        if not full_content and document.status != 'indexed':
+            full_content = "[Dokument wurde noch nicht verarbeitet. Bitte warten Sie, bis die Indexierung abgeschlossen ist.]"
+
+        return jsonify({
+            'success': True,
+            'document': {
+                'id': document.id,
+                'filename': document.filename,
+                'title': document.title,
+                'status': document.status,
+                'chunk_count': document.chunk_count
+            },
+            'content': full_content,
+            'content_length': len(full_content)
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in get_document_content: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @data_blueprint.route('/rag/documents/<int:document_id>', methods=['PUT'])
 @require_permission('feature:rag:edit')
 def update_document(document_id):

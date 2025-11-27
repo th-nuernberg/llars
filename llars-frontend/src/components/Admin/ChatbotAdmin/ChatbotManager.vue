@@ -1,0 +1,568 @@
+<template>
+  <v-container fluid>
+    <!-- Header -->
+    <v-row class="mb-4">
+      <v-col cols="12">
+        <div class="d-flex justify-space-between align-center">
+          <div>
+            <h1 class="text-h4 font-weight-bold">Chatbot & RAG Verwaltung</h1>
+            <p class="text-medium-emphasis mt-1">
+              Erstellen und verwalten Sie Chatbots mit RAG-Integration
+            </p>
+          </div>
+          <v-btn
+            color="primary"
+            prepend-icon="mdi-plus"
+            @click="openCreateDialog"
+          >
+            Neuer Chatbot
+          </v-btn>
+        </div>
+      </v-col>
+    </v-row>
+
+    <!-- Stats Cards -->
+    <v-row class="mb-4">
+      <v-col cols="12" sm="6" md="3">
+        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="primary" size="48" class="mr-4">
+              <v-icon color="white">mdi-robot</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ stats.total_chatbots }}</div>
+              <div class="text-medium-emphasis">Chatbots</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="success" size="48" class="mr-4">
+              <v-icon color="white">mdi-check-circle</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ stats.active_chatbots }}</div>
+              <div class="text-medium-emphasis">Aktiv</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="info" size="48" class="mr-4">
+              <v-icon color="white">mdi-message-text</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ stats.total_conversations }}</div>
+              <div class="text-medium-emphasis">Gespräche</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+        <v-card v-else class="stat-card">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="warning" size="48" class="mr-4">
+              <v-icon color="white">mdi-folder-multiple</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h4 font-weight-bold">{{ collectionsCount }}</div>
+              <div class="text-medium-emphasis">Collections</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Tabs -->
+    <v-card>
+      <v-tabs v-model="activeTab" color="primary">
+        <v-tab value="chatbots">
+          <v-icon start>mdi-robot</v-icon>
+          Chatbots
+        </v-tab>
+        <v-tab value="collections">
+          <v-icon start>mdi-folder-multiple</v-icon>
+          Collections
+        </v-tab>
+        <v-tab value="documents">
+          <v-icon start>mdi-file-document-multiple</v-icon>
+          Dokumente
+        </v-tab>
+      </v-tabs>
+
+      <v-card-text>
+        <v-tabs-window v-model="activeTab">
+          <!-- Chatbots Tab -->
+          <v-tabs-window-item value="chatbots">
+            <ChatbotList
+              :chatbots="chatbots"
+              :loading="loading.chatbots"
+              @edit="openEditDialog"
+              @delete="confirmDelete"
+              @duplicate="duplicateChatbot"
+              @test="openTestDialog"
+              @manage-collections="openCollectionManager"
+            />
+          </v-tabs-window-item>
+
+          <!-- Collections Tab -->
+          <v-tabs-window-item value="collections">
+            <CollectionManager
+              :collections="collections"
+              :loading="loading.collections"
+              @create="openCreateCollectionDialog"
+              @edit="openEditCollectionDialog"
+              @delete="confirmDeleteCollection"
+              @view-documents="viewCollectionDocuments"
+            />
+          </v-tabs-window-item>
+
+          <!-- Documents Tab -->
+          <v-tabs-window-item value="documents">
+            <DocumentManager
+              :documents="documents"
+              :collections="collections"
+              :loading="loading.documents"
+              @upload="openUploadDialog"
+              @view="viewDocument"
+              @delete="confirmDeleteDocument"
+              @download="downloadDocument"
+            />
+          </v-tabs-window-item>
+        </v-tabs-window>
+      </v-card-text>
+    </v-card>
+
+    <!-- Chatbot Editor Dialog -->
+    <ChatbotEditor
+      v-model="dialogs.editor"
+      :chatbot="selectedChatbot"
+      :collections="collections"
+      :is-edit="isEditMode"
+      @save="saveChatbot"
+    />
+
+    <!-- Collection Editor Dialog -->
+    <CollectionEditor
+      v-model="dialogs.collectionEditor"
+      :collection="selectedCollection"
+      :is-edit="isCollectionEditMode"
+      @save="saveCollection"
+    />
+
+    <!-- Chatbot Test Dialog -->
+    <ChatbotTestDialog
+      v-model="dialogs.test"
+      :chatbot="selectedChatbot"
+    />
+
+    <!-- Document Viewer Dialog -->
+    <DocumentViewer
+      v-model="dialogs.documentViewer"
+      :document="selectedDocument"
+    />
+
+    <!-- Upload Dialog -->
+    <DocumentUploadDialog
+      v-model="dialogs.upload"
+      :collections="collections"
+      @uploaded="onDocumentsUploaded"
+    />
+
+    <!-- Collection Assignment Dialog -->
+    <CollectionAssignmentDialog
+      v-model="dialogs.collectionAssignment"
+      :chatbot="selectedChatbot"
+      :available-collections="collections"
+      @save="saveCollectionAssignment"
+    />
+
+    <!-- Delete Confirmation -->
+    <v-dialog v-model="dialogs.deleteConfirm" max-width="400">
+      <v-card>
+        <v-card-title class="text-h6">
+          {{ deleteType === 'chatbot' ? 'Chatbot löschen?' : deleteType === 'collection' ? 'Collection löschen?' : 'Dokument löschen?' }}
+        </v-card-title>
+        <v-card-text>
+          {{ deleteMessage }}
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="dialogs.deleteConfirm = false">Abbrechen</v-btn>
+          <v-btn color="error" variant="flat" @click="executeDelete">Löschen</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
+      {{ snackbar.text }}
+    </v-snackbar>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
+import ChatbotList from './ChatbotList.vue'
+import ChatbotEditor from './ChatbotEditor.vue'
+import ChatbotTestDialog from './ChatbotTestDialog.vue'
+import CollectionManager from '@/components/RAG/CollectionManager.vue'
+import CollectionEditor from '@/components/RAG/CollectionEditor.vue'
+import DocumentManager from '@/components/RAG/DocumentManager.vue'
+import DocumentViewer from '@/components/RAG/DocumentViewer.vue'
+import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue'
+import CollectionAssignmentDialog from './CollectionAssignmentDialog.vue'
+
+// State
+const activeTab = ref('chatbots')
+const chatbots = ref([])
+const collections = ref([])
+const documents = ref([])
+const stats = ref({
+  total_chatbots: 0,
+  active_chatbots: 0,
+  total_conversations: 0,
+  total_messages: 0
+})
+
+const loading = ref({
+  chatbots: true,
+  collections: true,
+  documents: true,
+  stats: true
+})
+
+const dialogs = ref({
+  editor: false,
+  collectionEditor: false,
+  test: false,
+  documentViewer: false,
+  upload: false,
+  collectionAssignment: false,
+  deleteConfirm: false
+})
+
+const selectedChatbot = ref(null)
+const selectedCollection = ref(null)
+const selectedDocument = ref(null)
+const isEditMode = ref(false)
+const isCollectionEditMode = ref(false)
+const deleteType = ref('')
+const deleteTarget = ref(null)
+
+const snackbar = ref({
+  show: false,
+  text: '',
+  color: 'success'
+})
+
+// Computed
+const collectionsCount = computed(() => collections.value.length)
+
+const deleteMessage = computed(() => {
+  if (deleteType.value === 'chatbot' && deleteTarget.value) {
+    return `Möchten Sie den Chatbot "${deleteTarget.value.display_name}" wirklich löschen? Alle zugehörigen Gespräche werden ebenfalls gelöscht.`
+  }
+  if (deleteType.value === 'collection' && deleteTarget.value) {
+    return `Möchten Sie die Collection "${deleteTarget.value.display_name}" wirklich löschen? Alle enthaltenen Dokumente werden ebenfalls gelöscht.`
+  }
+  if (deleteType.value === 'document' && deleteTarget.value) {
+    return `Möchten Sie das Dokument "${deleteTarget.value.filename}" wirklich löschen?`
+  }
+  return ''
+})
+
+// Methods
+async function loadChatbots() {
+  loading.value.chatbots = true
+  try {
+    const response = await axios.get('/api/chatbots?include_inactive=true')
+    if (response.data.success) {
+      chatbots.value = response.data.chatbots
+    }
+  } catch (error) {
+    showSnackbar('Fehler beim Laden der Chatbots', 'error')
+    console.error('Error loading chatbots:', error)
+  } finally {
+    loading.value.chatbots = false
+  }
+}
+
+async function loadCollections() {
+  loading.value.collections = true
+  try {
+    const response = await axios.get('/api/rag/collections')
+    if (response.data.success) {
+      collections.value = response.data.collections
+    }
+  } catch (error) {
+    showSnackbar('Fehler beim Laden der Collections', 'error')
+    console.error('Error loading collections:', error)
+  } finally {
+    loading.value.collections = false
+  }
+}
+
+async function loadDocuments() {
+  loading.value.documents = true
+  try {
+    const response = await axios.get('/api/rag/documents')
+    if (response.data.success) {
+      documents.value = response.data.documents
+    }
+  } catch (error) {
+    showSnackbar('Fehler beim Laden der Dokumente', 'error')
+    console.error('Error loading documents:', error)
+  } finally {
+    loading.value.documents = false
+  }
+}
+
+async function loadStats() {
+  loading.value.stats = true
+  try {
+    const response = await axios.get('/api/chatbots/stats/overview')
+    if (response.data.success) {
+      stats.value = response.data.stats
+    }
+  } catch (error) {
+    console.error('Error loading stats:', error)
+  } finally {
+    loading.value.stats = false
+  }
+}
+
+function openCreateDialog() {
+  selectedChatbot.value = null
+  isEditMode.value = false
+  dialogs.value.editor = true
+}
+
+function openEditDialog(chatbot) {
+  selectedChatbot.value = { ...chatbot }
+  isEditMode.value = true
+  dialogs.value.editor = true
+}
+
+function openTestDialog(chatbot) {
+  selectedChatbot.value = chatbot
+  dialogs.value.test = true
+}
+
+function openCollectionManager(chatbot) {
+  selectedChatbot.value = chatbot
+  dialogs.value.collectionAssignment = true
+}
+
+async function saveChatbot(chatbotData) {
+  try {
+    let response
+    if (isEditMode.value) {
+      response = await axios.put(`/api/chatbots/${chatbotData.id}`, chatbotData)
+    } else {
+      response = await axios.post('/api/chatbots', chatbotData)
+    }
+
+    if (response.data.success) {
+      showSnackbar(isEditMode.value ? 'Chatbot aktualisiert' : 'Chatbot erstellt', 'success')
+      dialogs.value.editor = false
+      await loadChatbots()
+      await loadStats()
+    }
+  } catch (error) {
+    showSnackbar(error.response?.data?.error || 'Fehler beim Speichern', 'error')
+    console.error('Error saving chatbot:', error)
+  }
+}
+
+async function duplicateChatbot(chatbot) {
+  try {
+    const response = await axios.post(`/api/chatbots/${chatbot.id}/duplicate`)
+    if (response.data.success) {
+      showSnackbar('Chatbot dupliziert', 'success')
+      await loadChatbots()
+    }
+  } catch (error) {
+    showSnackbar('Fehler beim Duplizieren', 'error')
+    console.error('Error duplicating chatbot:', error)
+  }
+}
+
+function confirmDelete(chatbot) {
+  deleteType.value = 'chatbot'
+  deleteTarget.value = chatbot
+  dialogs.value.deleteConfirm = true
+}
+
+function confirmDeleteCollection(collection) {
+  deleteType.value = 'collection'
+  deleteTarget.value = collection
+  dialogs.value.deleteConfirm = true
+}
+
+function confirmDeleteDocument(document) {
+  deleteType.value = 'document'
+  deleteTarget.value = document
+  dialogs.value.deleteConfirm = true
+}
+
+async function executeDelete() {
+  try {
+    let response
+    if (deleteType.value === 'chatbot') {
+      response = await axios.delete(`/api/chatbots/${deleteTarget.value.id}`)
+      if (response.data.success) {
+        showSnackbar('Chatbot gelöscht', 'success')
+        await loadChatbots()
+        await loadStats()
+      }
+    } else if (deleteType.value === 'collection') {
+      response = await axios.delete(`/api/rag/collections/${deleteTarget.value.id}`)
+      if (response.data.success) {
+        showSnackbar('Collection gelöscht', 'success')
+        await loadCollections()
+        await loadDocuments()
+      }
+    } else if (deleteType.value === 'document') {
+      response = await axios.delete(`/api/rag/documents/${deleteTarget.value.id}`)
+      if (response.data.success) {
+        showSnackbar('Dokument gelöscht', 'success')
+        await loadDocuments()
+        await loadCollections()
+      }
+    }
+  } catch (error) {
+    showSnackbar('Fehler beim Löschen', 'error')
+    console.error('Error deleting:', error)
+  } finally {
+    dialogs.value.deleteConfirm = false
+    deleteTarget.value = null
+  }
+}
+
+// Collection methods
+function openCreateCollectionDialog() {
+  selectedCollection.value = null
+  isCollectionEditMode.value = false
+  dialogs.value.collectionEditor = true
+}
+
+function openEditCollectionDialog(collection) {
+  selectedCollection.value = { ...collection }
+  isCollectionEditMode.value = true
+  dialogs.value.collectionEditor = true
+}
+
+async function saveCollection(collectionData) {
+  try {
+    let response
+    if (isCollectionEditMode.value) {
+      response = await axios.put(`/api/rag/collections/${collectionData.id}`, collectionData)
+    } else {
+      response = await axios.post('/api/rag/collections', collectionData)
+    }
+
+    if (response.data.success) {
+      showSnackbar(isCollectionEditMode.value ? 'Collection aktualisiert' : 'Collection erstellt', 'success')
+      dialogs.value.collectionEditor = false
+      await loadCollections()
+    }
+  } catch (error) {
+    showSnackbar(error.response?.data?.error || 'Fehler beim Speichern', 'error')
+    console.error('Error saving collection:', error)
+  }
+}
+
+function viewCollectionDocuments(collection) {
+  activeTab.value = 'documents'
+  // Filter documents by collection (implement in DocumentManager)
+}
+
+// Document methods
+function openUploadDialog() {
+  dialogs.value.upload = true
+}
+
+async function viewDocument(document) {
+  selectedDocument.value = document
+  dialogs.value.documentViewer = true
+}
+
+async function downloadDocument(document) {
+  try {
+    const response = await axios.get(`/api/rag/documents/${document.id}/download`, {
+      responseType: 'blob'
+    })
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', document.original_filename || document.filename)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  } catch (error) {
+    showSnackbar('Fehler beim Download', 'error')
+    console.error('Error downloading document:', error)
+  }
+}
+
+function onDocumentsUploaded() {
+  dialogs.value.upload = false
+  loadDocuments()
+  loadCollections()
+}
+
+async function saveCollectionAssignment(data) {
+  try {
+    // Remove existing assignments
+    for (const coll of selectedChatbot.value.collections || []) {
+      await axios.delete(`/api/chatbots/${selectedChatbot.value.id}/collections/${coll.id}`)
+    }
+
+    // Add new assignments
+    for (const collId of data.collection_ids) {
+      await axios.post(`/api/chatbots/${selectedChatbot.value.id}/collections`, {
+        collection_id: collId
+      })
+    }
+
+    showSnackbar('Collections zugewiesen', 'success')
+    dialogs.value.collectionAssignment = false
+    await loadChatbots()
+  } catch (error) {
+    showSnackbar('Fehler beim Zuweisen', 'error')
+    console.error('Error assigning collections:', error)
+  }
+}
+
+function showSnackbar(text, color = 'success') {
+  snackbar.value = { show: true, text, color }
+}
+
+// Lifecycle
+onMounted(() => {
+  loadChatbots()
+  loadCollections()
+  loadDocuments()
+  loadStats()
+})
+</script>
+
+<style scoped>
+.stat-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+</style>

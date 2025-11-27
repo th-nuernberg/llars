@@ -32,12 +32,16 @@ export function getSocket() {
   socket = io(baseUrl, {
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,  // Keep trying to reconnect
     reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
+    reconnectionDelayMax: 10000,
+    timeout: 30000,  // Increased connection timeout
     // Prevent connection attempts when page is hidden
     autoConnect: document.visibilityState !== 'hidden',
+    // Increased ping timeout to match server (120s)
+    // This prevents premature disconnections during long LLM streams
+    pingTimeout: 120000,  // 2 minutes - matches server config
+    pingInterval: 30000,  // 30 seconds - matches server config
   });
 
   // Connection handlers

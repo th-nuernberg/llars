@@ -23,11 +23,18 @@ let reconnectOnVisible = false;
  * @returns {Socket} Socket.IO instance
  */
 export function getSocket() {
-  if (socket && socket.connected) {
+  // Return existing socket if it exists (even if not connected - it will reconnect)
+  if (socket) {
+    // If socket exists but disconnected, trigger reconnect
+    if (!socket.connected) {
+      console.log('[SocketService] Socket exists but disconnected, reconnecting...');
+      socket.connect();
+    }
     return socket;
   }
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  console.log('[SocketService] Creating new socket connection to:', baseUrl);
 
   socket = io(baseUrl, {
     transports: ['websocket', 'polling'],

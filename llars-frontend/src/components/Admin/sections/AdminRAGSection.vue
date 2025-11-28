@@ -474,16 +474,44 @@
     </v-dialog>
 
     <!-- Delete Collection Dialog -->
-    <v-dialog v-model="deleteCollDialog" max-width="400">
+    <v-dialog v-model="deleteCollDialog" max-width="500">
       <v-card>
-        <v-card-title>Collection löschen?</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <v-icon color="error" class="mr-2">mdi-delete-alert</v-icon>
+          Collection löschen?
+        </v-card-title>
         <v-card-text>
-          Möchten Sie die Collection "{{ collectionToDelete?.name }}" und alle enthaltenen Dokumente löschen?
+          <p>Möchten Sie die Collection "<strong>{{ collectionToDelete?.display_name || collectionToDelete?.name }}</strong>" löschen?</p>
+          <v-alert
+            v-if="collectionToDelete?.document_count > 0"
+            type="warning"
+            variant="tonal"
+            class="mt-3"
+            density="compact"
+          >
+            <strong>Achtung:</strong> Diese Collection enthält {{ collectionToDelete?.document_count }} Dokument(e).
+          </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="deleteCollDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" @click="deleteCollection" :loading="deletingCollection">Löschen</v-btn>
+          <v-btn
+            v-if="collectionToDelete?.document_count > 0"
+            color="error"
+            variant="tonal"
+            @click="deleteCollection(true)"
+            :loading="deletingCollection"
+          >
+            Inkl. Dokumente löschen
+          </v-btn>
+          <v-btn
+            color="error"
+            @click="deleteCollection(false)"
+            :loading="deletingCollection"
+            :disabled="collectionToDelete?.document_count > 0"
+          >
+            Löschen
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -986,6 +1014,36 @@ function handleDocumentProcessed(data) {
   fetchDocuments();
 }
 
+function handleDocumentProgress(data) {
+  console.log('[RAG] Dokument-Progress:', data.filename, data.progress + '%', data.step);
+
+  // Update processing queue based on status change
+  if (data.status === 'processing') {
+    // Move from pending to processing
+    if (processingQueue.value.pending > 0) {
+      processingQueue.value.pending--;
+      processingQueue.value.processing++;
+    }
+  } else if (data.status === 'indexed') {
+    // Move from processing to indexed
+    if (processingQueue.value.processing > 0) {
+      processingQueue.value.processing--;
+      processingQueue.value.indexed++;
+    }
+    // Refresh stats to get accurate counts
+    fetchStats();
+    fetchDocuments();
+  } else if (data.status === 'failed') {
+    // Move from processing to error
+    if (processingQueue.value.processing > 0) {
+      processingQueue.value.processing--;
+      processingQueue.value.error++;
+    }
+    // Refresh stats
+    fetchStats();
+  }
+}
+
 // WebSocket Setup
 function setupWebSocket() {
   socket = getSocket();
@@ -996,6 +1054,7 @@ function setupWebSocket() {
     socket.on('rag:queue_updated', handleQueueUpdate);
     socket.on('rag:progress', handleProgressUpdate);
     socket.on('rag:document_processed', handleDocumentProcessed);
+    socket.on('rag:document_progress', handleDocumentProgress);
 
     // Subscription starten wenn verbunden
     if (socket.connected) {
@@ -1018,6 +1077,7 @@ function cleanupWebSocket() {
     socket.off('rag:queue_updated', handleQueueUpdate);
     socket.off('rag:progress', handleProgressUpdate);
     socket.off('rag:document_processed', handleDocumentProcessed);
+    socket.off('rag:document_progress', handleDocumentProgress);
     socket.emit('rag:unsubscribe_queue');
     console.log('[RAG] WebSocket unsubscribed');
   }
@@ -1199,19 +1259,24 @@ const confirmDeleteCollection = (coll) => {
   deleteCollDialog.value = true;
 };
 
-const deleteCollection = async () => {
+const deleteCollection = async (force = false) => {
   if (!collectionToDelete.value) return;
 
   deletingCollection.value = true;
   try {
-    await axios.delete(`/api/rag/collections/${collectionToDelete.value.id}`);
-    deleteCollDialog.value = false;
-    collectionToDelete.value = null;
-    await fetchCollections();
-    await fetchDocuments();
-    await fetchStats();
+    const url = `/api/rag/collections/${collectionToDelete.value.id}${force ? '?force=true' : ''}`;
+    const response = await axios.delete(url);
+    if (response.data.success) {
+      deleteCollDialog.value = false;
+      collectionToDelete.value = null;
+      await fetchCollections();
+      await fetchDocuments();
+      await fetchStats();
+    }
   } catch (error) {
     console.error('Error deleting collection:', error);
+    const errorMsg = error.response?.data?.error || 'Fehler beim Löschen der Collection';
+    alert(errorMsg);
   }
   deletingCollection.value = false;
 };

@@ -321,6 +321,12 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import {
+  useWorkerState,
+  useStreamParser,
+  CRITERIA_CONFIG,
+  STEP_CONFIG
+} from './WorkerLane/composables';
 
 const props = defineProps({
   workerId: {
@@ -348,261 +354,41 @@ const props = defineProps({
 defineEmits(['open-fullscreen']);
 
 const expandedPanel = ref(null);
-const displayMode = ref('formatted');
 
-// Pillar Configuration
-const PILLAR_CONFIG = {
-  1: { name: 'Rollenspiele', icon: 'mdi-theater', color: '#E91E63', short: 'S1' },
-  2: { name: 'Feature', icon: 'mdi-star', color: '#9C27B0', short: 'S2' },
-  3: { name: 'Anonymisiert', icon: 'mdi-incognito', color: '#2196F3', short: 'S3' },
-  4: { name: 'Synthetisch', icon: 'mdi-robot', color: '#FF9800', short: 'S4' },
-  5: { name: 'Live-Tests', icon: 'mdi-lightning-bolt', color: '#4CAF50', short: 'S5' }
-};
+// Initialize composables
+const {
+  workerColorName,
+  isActive,
+  statusType,
+  statusColor,
+  statusIcon,
+  statusText,
+  progressCircumference,
+  progressOffset: progressOffsetFn,
+  getPillarIcon,
+  getPillarShortName,
+  truncateText
+} = useWorkerState(props);
 
-// Criteria Configuration
-const CRITERIA_CONFIG = [
-  { key: 'counsellor_coherence', short: 'BK', full: 'Berater-Kohärenz' },
-  { key: 'client_coherence', short: 'KK', full: 'Klienten-Kohärenz' },
-  { key: 'quality', short: 'Q', full: 'Qualität' },
-  { key: 'empathy', short: 'E', full: 'Empathie' },
-  { key: 'authenticity', short: 'A', full: 'Authentizität' },
-  { key: 'solution_orientation', short: 'LO', full: 'Lösungsorientierung' }
-];
+const {
+  parsedResult,
+  parsedStreamSteps,
+  getStepByKey,
+  completedSteps,
+  currentActiveStep,
+  getScoreA,
+  getScoreB,
+  totalScoreA,
+  totalScoreB,
+  scoreDiff,
+  dominanceA,
+  dominanceB,
+  getDiffClass,
+  getDiffText
+} = useStreamParser(props);
 
-// Step Configuration
-const STEP_CONFIG = [
-  { key: 'step_1', short: 'BK', title: 'Berater-Kohärenz' },
-  { key: 'step_2', short: 'KK', title: 'Klienten-Kohärenz' },
-  { key: 'step_3', short: 'Q', title: 'Qualität' },
-  { key: 'step_4', short: 'E', title: 'Empathie' },
-  { key: 'step_5', short: 'A', title: 'Authentizität' },
-  { key: 'step_6', short: 'LO', title: 'Lösungsorientierung' }
-];
-
-// Worker colors
-const WORKER_COLORS = ['blue', 'purple', 'teal', 'orange', 'pink'];
-
-const workerColorName = computed(() => WORKER_COLORS[props.workerId % WORKER_COLORS.length]);
-
-const isActive = computed(() => props.currentComparison !== null || props.streamContent.length > 0);
-
-// Status computations
-const statusType = computed(() => {
-  if (props.isStreaming) return 'streaming';
-  if (props.currentComparison) return 'active';
-  return 'idle';
-});
-
-const statusColor = computed(() => {
-  if (props.isStreaming) return 'warning';
-  if (props.currentComparison) return 'info';
-  return 'grey';
-});
-
-const statusIcon = computed(() => {
-  if (props.isStreaming) return 'mdi-loading';
-  if (props.currentComparison) return 'mdi-play-circle';
-  return 'mdi-sleep';
-});
-
-const statusText = computed(() => {
-  if (props.isStreaming) return 'Streamt';
-  if (props.currentComparison) return 'Aktiv';
-  return 'Wartet';
-});
-
-// Progress ring calculations
-const progressCircumference = computed(() => 2 * Math.PI * 18);
-const progressOffset = computed(() => {
-  const progress = completedSteps.value / 6;
-  return progressCircumference.value * (1 - progress);
-});
-
-// Pillar helpers
-const getPillarIcon = (pillarId) => {
-  return PILLAR_CONFIG[pillarId]?.icon || 'mdi-help-circle';
-};
-
-const getPillarShortName = (pillarName) => {
-  if (!pillarName) return '';
-  // Extract "Säule X" or just use first word
-  const match = pillarName.match(/Säule\s*(\d)/i);
-  if (match) return `S${match[1]}`;
-  return pillarName.split(' ')[0].substring(0, 6);
-};
-
-// Parse stream content for results
-const parsedResult = computed(() => {
-  if (!props.streamContent) return null;
-
-  const content = props.streamContent.trim();
-  const result = {
-    winner: null,
-    confidence: null,
-    criteria_scores: null,
-    scores: { A: {}, B: {} },
-    final_justification: null
-  };
-
-  // Try to parse JSON
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.winner || parsed.criteria_scores || parsed.confidence || parsed.scores) {
-        result.winner = parsed.winner;
-        result.confidence = parsed.confidence;
-        result.criteria_scores = parsed.criteria_scores;
-        result.final_justification = parsed.final_justification;
-        if (parsed.scores) {
-          result.scores = parsed.scores;
-        }
-        return result;
-      }
-    }
-  } catch (e) {
-    // JSON not complete - try incremental parsing
-  }
-
-  // Incremental parsing
-  const winnerMatch = content.match(/"winner"\s*:\s*"([AB])"/);
-  if (winnerMatch) result.winner = winnerMatch[1];
-
-  const confMatch = content.match(/"confidence"\s*:\s*([\d.]+)/);
-  if (confMatch) result.confidence = parseFloat(confMatch[1]);
-
-  // Extract individual scores
-  for (const criterion of CRITERIA_CONFIG) {
-    const scoreAPattern = new RegExp(`"A"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
-    const scoreAMatch = content.match(scoreAPattern);
-    if (scoreAMatch) {
-      result.scores.A[criterion.key] = parseInt(scoreAMatch[1]);
-    }
-
-    const scoreBPattern = new RegExp(`"B"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
-    const scoreBMatch = content.match(scoreBPattern);
-    if (scoreBMatch) {
-      result.scores.B[criterion.key] = parseInt(scoreBMatch[1]);
-    }
-  }
-
-  // Extract final_justification
-  const justMatch = content.match(/"final_justification"\s*:\s*"([^"]+)"/);
-  if (justMatch) result.final_justification = justMatch[1];
-
-  return result.winner || result.confidence || Object.keys(result.scores.A).length > 0 ? result : null;
-});
-
-// Parse stream steps
-const parsedStreamSteps = computed(() => {
-  if (!props.streamContent) return [];
-
-  const content = props.streamContent;
-  const steps = [];
-
-  for (const step of STEP_CONFIG) {
-    const stepPattern = new RegExp(`"${step.key}"\\s*:\\s*"`, 'm');
-    const stepMatch = content.match(stepPattern);
-
-    if (stepMatch) {
-      const startIdx = content.indexOf(stepMatch[0]) + stepMatch[0].length;
-      let stepContent = '';
-      let escaped = false;
-
-      for (let i = startIdx; i < content.length; i++) {
-        const char = content[i];
-        if (escaped) {
-          if (char === 'n') stepContent += '\n';
-          else if (char === '"') stepContent += '"';
-          else if (char === '\\') stepContent += '\\';
-          else stepContent += char;
-          escaped = false;
-        } else if (char === '\\') {
-          escaped = true;
-        } else if (char === '"') {
-          break;
-        } else {
-          stepContent += char;
-        }
-      }
-
-      const isStepStreaming = !content.slice(startIdx).includes('"');
-
-      steps.push({
-        key: step.key,
-        title: step.title,
-        content: stepContent,
-        isStreaming: isStepStreaming
-      });
-    }
-  }
-
-  return steps;
-});
-
-const getStepByKey = (stepKey) => {
-  return parsedStreamSteps.value.find(s => s.key === stepKey);
-};
-
-const completedSteps = computed(() => {
-  return parsedStreamSteps.value.filter(s => !s.isStreaming).length;
-});
-
-const currentActiveStep = computed(() => {
-  return parsedStreamSteps.value.find(s => s.isStreaming);
-});
-
-// Score helpers
-const getScoreA = (criterionKey) => {
-  return parsedResult.value?.scores?.A?.[criterionKey] ||
-         parsedResult.value?.criteria_scores?.[criterionKey]?.score_a ||
-         0;
-};
-
-const getScoreB = (criterionKey) => {
-  return parsedResult.value?.scores?.B?.[criterionKey] ||
-         parsedResult.value?.criteria_scores?.[criterionKey]?.score_b ||
-         0;
-};
-
-const totalScoreA = computed(() => {
-  return CRITERIA_CONFIG.reduce((sum, c) => sum + getScoreA(c.key), 0);
-});
-
-const totalScoreB = computed(() => {
-  return CRITERIA_CONFIG.reduce((sum, c) => sum + getScoreB(c.key), 0);
-});
-
-const scoreDiff = computed(() => totalScoreA.value - totalScoreB.value);
-
-const dominanceA = computed(() => {
-  const total = totalScoreA.value + totalScoreB.value;
-  return total > 0 ? (totalScoreA.value / total * 100) : 50;
-});
-
-const dominanceB = computed(() => {
-  const total = totalScoreA.value + totalScoreB.value;
-  return total > 0 ? (totalScoreB.value / total * 100) : 50;
-});
-
-const getDiffClass = (criterionKey) => {
-  const diff = getScoreA(criterionKey) - getScoreB(criterionKey);
-  if (diff > 0) return 'diff-positive';
-  if (diff < 0) return 'diff-negative';
-  return 'diff-neutral';
-};
-
-const getDiffText = (criterionKey) => {
-  const diff = getScoreA(criterionKey) - getScoreB(criterionKey);
-  if (diff > 0) return `+${diff}`;
-  if (diff < 0) return `${diff}`;
-  return '0';
-};
-
-const truncateText = (text, maxLength) => {
-  if (!text) return '';
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-};
+// Progress offset as computed (uses completedSteps from streamParser)
+const progressOffset = computed(() => progressOffsetFn(completedSteps.value));
 
 // Auto-expand panel when streaming starts
 watch(() => props.isStreaming, (streaming) => {

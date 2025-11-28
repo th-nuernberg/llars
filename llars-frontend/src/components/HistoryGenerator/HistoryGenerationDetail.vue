@@ -111,11 +111,11 @@
           <v-icon left>mdi-content-save</v-icon>
           Speichern
         </v-btn>
-        <v-btn class="mr-2" @click="navigateToPreviousCase">
+        <v-btn class="mr-2" @click="handleNavigateToPrevious">
           <v-icon left>mdi-arrow-left</v-icon>
           Vorheriger Fall
         </v-btn>
-        <v-btn @click="navigateToNextCase">
+        <v-btn @click="handleNavigateToNext">
           Nächster Fall
           <v-icon right>mdi-arrow-right</v-icon>
         </v-btn>
@@ -126,486 +126,54 @@
 
 
 <script setup>
-import { ref, onMounted, watch, watchEffect } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import LikertScale from '../parts/LikertScale.vue';
 import BinaryLikertScale from "@/components/parts/BinaryLikertScale.vue";
 import CategorySelection from '../parts/CategorySelection.vue';
-import DOMPurify from 'dompurify';
+import {
+  useHistoryHelpers,
+  useHistoryNavigation,
+  useHistoryRatings
+} from './HistoryGenerationDetail/composables';
 
-// Setup route, router and data variables
+// Setup route and thread ID
 const route = useRoute();
-const threadId = route.params.id;
-const router = useRouter();
-const messages = ref([]);
-const ratings = ref({
-  counsellor_coherence: null,
-  client_coherence: null,
-  quality: null,
-  overall: null
-});
-const feedback = ref(null);
+const threadId = computed(() => route.params.id);
 
-const selectedCategoryId = ref(null);
-const categoryNotes = ref(null);
+// Initialize composables
+const { formatContent, formatTimestamp, getMessageClass } = useHistoryHelpers();
+const { navigateToPreviousCase, navigateToNextCase, navigateToOverview } = useHistoryNavigation();
+const {
+  messages,
+  ratings,
+  feedback,
+  selectedCategoryId,
+  categoryNotes,
+  ratedStatus,
+  hasUnsavedChanges,
+  isDisabled,
+  initializeData,
+  rateMessage,
+  handleCategorySelection,
+  saveRatingServerSide,
+  setupWatchers
+} = useHistoryRatings(threadId);
 
-// for comparison tee see if there are unsaved changes
-const initial_rating = ref(null)
-const initial_feedback = ref(null)
-const initial_messages = ref([]);
-const initialSelectedCategoryId = ref(null);
-const initialCategoryNotes = ref(null)
-
-const ratedStatus = ref(null);
-const hasUnsavedChanges = ref(false)
-
-const isDisabled = ref({
-  counsellor_coherence: false,
-  client_coherence: false,
-  quality: false,
-  overall: false
-})
-
-function formatContent(content) {
-  if (!content) return '';
-
-  // Zeilenumbrüche zu <br> konvertieren
-  const sanitizedContent = content.replace(/\n/g, '<br>');
-
-  // Bereinigen und nur erlaubte Tags behalten
-  const cleanContent = DOMPurify.sanitize(sanitizedContent, {
-    ALLOWED_TAGS: ['br', 'a'], // Nur <br> und <a> erlauben
-    ALLOWED_ATTR: ['href'], // Nur href-Attribute erlauben
-  });
-
-  // Alle entfernten Tags als reinen Text darstellen
-  return cleanContent.replace(/<(iframe|script|embed|object)[^>]*>.*?<\/\1>/gi, (match) => {
-    return DOMPurify.sanitize(match, { ALLOWED_TAGS: [] }); // Entferne alles Gefährliche und behandle es als Text
-  });
+// Navigation wrappers using current thread ID
+async function handleNavigateToPrevious() {
+  await navigateToPreviousCase(parseInt(route.params.id));
 }
 
+async function handleNavigateToNext() {
+  await navigateToNextCase(parseInt(route.params.id));
+}
 
-// Fetch email thread details on component mount
+// Initialize on mount
 onMounted(async () => {
-  await initializeWebsiteComponent()
+  await initializeData();
+  setupWatchers();
 });
-
-async function initializeWebsiteComponent()
-{
-  //const threadId = route.params.id;
-  try {
-    // API request to get the email thread details /  messages of mail history
-    const thread_messages = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadId}`);
-    console.log("Email Thread Messages:", thread_messages.data.messages);
-    //api request to get rating of each message
-    const message_ratings = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/message_ratings/${threadId}`);
-
-    // putting the messages and the ratings together
-    messages.value = thread_messages.data.messages.map(message => {
-      const ratingObj = message_ratings.data.find(rating => rating.message_id === message.message_id);
-      return {
-        ...message,
-        rating: ratingObj ? ratingObj.rating : null // Setze Bewertung auf null, wenn keine vorhanden ist
-      };
-    });
-    console.log("Combined Messages with Ratings:", messages.value);
-
-
-    // get the rating of mail history
-    const mailhistoryRatingResponse = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings/${threadId}`);
-
-    // Check if the user has already rated the thread
-    if (mailhistoryRatingResponse.data) {
-      console.log("API Daten:", mailhistoryRatingResponse.data)
-      // If the mail rating exists, set the data accordingly
-      let temp_rating ={ // for avoiding bugs cause of 0 value
-        counsellor_coherence: mailhistoryRatingResponse.data.rating.counsellor_coherence_rating,
-        client_coherence: mailhistoryRatingResponse.data.rating.client_coherence_rating,
-        quality: mailhistoryRatingResponse.data.rating.quality_rating,
-        overall: mailhistoryRatingResponse.data.rating.overall_rating
-      }
-
-      // If Values are saved as 0 in the db, use null for the frontend. 0 stands for a disabled scal
-
-      Object.keys(temp_rating).forEach(key => {
-        if (temp_rating[key] === 0) {
-          temp_rating[key] = null;
-        }
-      });
-
-      ratings.value = {
-        counsellor_coherence: temp_rating.counsellor_coherence,
-        client_coherence: temp_rating.client_coherence,
-        quality: temp_rating.quality,
-        overall: temp_rating.overall
-      };
-      selectedCategoryId.value = mailhistoryRatingResponse.data.consulting_category.consulting_category_type_id
-      categoryNotes.value = mailhistoryRatingResponse.data.consulting_category.consulting_category_note
-
-
-      feedback.value = mailhistoryRatingResponse.data.rating.feedback;
-      ratedStatus.value = mailhistoryRatingResponse.data.rating.rating_status;
-
-    // set rating status to none if no rating is found
-    } else {
-      ratedStatus.value = 'Not Rated';
-    }
-
-    // set the db retrieved values as initial values, in order for comparison if changes occurred
-    initial_rating.value = JSON.parse(JSON.stringify(ratings.value));
-    initial_feedback.value = JSON.parse(JSON.stringify(feedback.value));
-    initial_messages.value = JSON.parse(JSON.stringify(messages.value));
-    initialSelectedCategoryId.value = JSON.parse(JSON.stringify(selectedCategoryId.value))
-    initialCategoryNotes.value = JSON.parse(JSON.stringify(categoryNotes.value))
-
-    // load ratings from local storage
-    loadMailHistoryRatingsFromLocalStorage();
-    loadMessageRatingsFromLocalStorage();
-
-    hasUnsavedChanges.value = check_for_changes()
-  } catch (error) {
-    console.error('Error fetching email thread details or rating status:', error);
-  }
-}
-
-function handleCategorySelection(selectedCategory) {
-  selectedCategoryId.value = selectedCategory.categoryId;
-  categoryNotes.value = selectedCategory.categoryNotes;
-  console.log("Test ID", selectedCategoryId.value)
-  console.log("Test Kategory", categoryNotes.value)
-}
-
-// Format timestamp for display
-function formatTimestamp(timestamp) {
-  const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
-  const date = new Date(timestamp);
-  return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
-}
-
-
-// Load changes of mail history ratings from local storage
-function loadMailHistoryRatingsFromLocalStorage() {
-  const savedData = JSON.parse(localStorage.getItem(`local_rating_changes_${threadId}`));
-  if (savedData) {
-    ratings.value = savedData.ratings;
-    feedback.value = savedData.feedback;
-    selectedCategoryId.value= savedData.category_id;
-    categoryNotes.value = savedData.category_notes;
-    console.log("Ratings wurden aus dem Local Storage geladen", categoryNotes.value)
-    hasUnsavedChanges.value = check_for_changes();
-  }
-}
-
-// Load changes of message ratings from local storage
-function loadMessageRatingsFromLocalStorage() {
-  // retrieve data from local storage
-  const savedMessageRatings = JSON.parse(localStorage.getItem(`local_messageRating_changes_${threadId}`));
-
-  // check if data got retrieved
-  if (savedMessageRatings) {
-    savedMessageRatings.forEach(savedRating => {
-      // if yes set the individual rating of each message
-      const message = messages.value.find(msg => msg.message_id === savedRating.message_id);
-      if (message) {
-        message.rating = savedRating.rating;
-      }
-    });
-    console.log("Nachrichtenbewertungen aus Local Storage geladen:", messages.value);
-  }
-}
-
-// save local changes of mail history rating into local storage
-function saveMailhistoryRatingsToLocalStorage() {
-  if (feedback.value === ""){feedback.value = null}
-  const dataToSave = {
-    ratings: ratings.value,
-    feedback: feedback.value,
-    category_id: selectedCategoryId.value,
-    category_notes: categoryNotes.value
-  };
-  localStorage.setItem(`local_rating_changes_${threadId}`, JSON.stringify(dataToSave));
-  console.log("Änderungen wurden im LocalStorage gespeichert")
-}
-
-
-// save local changes of message rating into local storage
-function saveMessageRatingsToLocalStorage() {
-  const messageRatingsToSave = messages.value.map(message => ({
-    message_id: message.message_id,
-    rating: message.rating
-  }));
-
-  // save ratings and message id into local storage
-  localStorage.setItem(`local_messageRating_changes_${threadId}`, JSON.stringify(messageRatingsToSave));
-  console.log("Nachrichtenbewertungen im Local Storage gespeichert:", messageRatingsToSave);
-}
-
-// Observes for mail history ratings and feedback
-watch(
-  [ratings, selectedCategoryId, categoryNotes],
-  () => {
-    console.log("Bewertung wurde geändert, speichere in Local Storage...");
-
-    saveMailhistoryRatingsToLocalStorage();
-    hasUnsavedChanges.value = check_for_changes();
-    updateLikertActivationStatus()
-  },
-  { deep: true }
-);
-
-watch(
-  [feedback],
-  () => {
-    console.log("Feedback wurde geändert, speichere in Local Storage...");
-
-
-    saveMailhistoryRatingsToLocalStorage();
-    hasUnsavedChanges.value = check_for_changes();
-  },
-  { deep: true }
-);
-
-
-function updateLikertActivationStatus() {
-  // Hilfsfunktion zum Hinzufügen und Entfernen der "disabled"-Klassen
-  function toggleClassForDiv(elementId, shouldDisable) {
-    const div = document.getElementById(elementId);
-    if (shouldDisable) {
-      div.classList.add('disabled');
-    } else {
-      div.classList.remove('disabled');
-    }
-  }
-
-  const shouldDisableCounsellorCoherence = ratings.value.client_coherence > 2
-  toggleClassForDiv('rating-category-coherence-counsellor', shouldDisableCounsellorCoherence);
-
-  const shouldDisableClientCoherence = ratings.value.counsellor_coherence > 2
-  toggleClassForDiv('rating-category-coherence-client', shouldDisableClientCoherence);
-
-  const shouldDisableQuality = ratings.value.counsellor_coherence > 2 || ratings.value.client_coherence > 2;
-  toggleClassForDiv('rating-category-quality', shouldDisableQuality || shouldDisableClientCoherence || shouldDisableCounsellorCoherence);
-
-  // Wenn der Wert von quality >= 2, deaktivieren wir "rating-category-overall"
-  const shouldDisableOverall = ratings.value.quality > 2;
-  toggleClassForDiv('rating-category-overall', shouldDisableQuality || shouldDisableOverall || shouldDisableClientCoherence || shouldDisableCounsellorCoherence);
-
-  isDisabled.value.counsellor_coherence = checkIfDisabled('rating-category-coherence-counsellor')
-  isDisabled.value.client_coherence = checkIfDisabled('rating-category-coherence-client')
-  isDisabled.value.quality = checkIfDisabled('rating-category-quality')
-  isDisabled.value.overall = checkIfDisabled('rating-category-overall')
-}
-
-
-
-function checkIfDisabled(elementID) {
-  const element = document.getElementById(elementID);
-
-  return element.classList.contains('disabled')
-
-}
-
-function check_for_changes() {
-  // did changes occur in mail history rating or feedback?
-  if(initial_rating.value.counsellor_coherence !== ratings.value.counsellor_coherence||
-    initial_rating.value.client_coherence !== ratings.value.client_coherence ||
-    initial_rating.value.quality !== ratings.value.quality  ||
-    initial_rating.value.overall !== ratings.value.overall ||
-    initial_feedback.value !== feedback.value ||
-    initialSelectedCategoryId.value !== selectedCategoryId.value ||
-    initialCategoryNotes.value !== categoryNotes.value)
-  {
-    localStorage.setItem(`hasUnsaved_ratingChanges_${threadId}`, JSON.stringify(true));
-    return true;
-  }
-
-  // occurred changes in the ratings of the message rating?
-  for(let i = 0; i < initial_messages.value.length; i++)
-  {
-    if(initial_messages.value[i].rating !== messages.value[i].rating)
-    {
-      localStorage.setItem(`hasUnsaved_ratingChanges_${threadId}`, JSON.stringify(true))
-      return true;
-    }
-  }
-  localStorage.removeItem(`hasUnsaved_ratingChanges_${threadId}`)
-  return false
-}
-
-
-// Get class based on sender (to differentiate between user and other messages)
-function getMessageClass(sender) {
-  // Normalize the sender string by converting to lowercase and removing extra spaces
-  const normalizedSender = sender.toLowerCase().trim();
-
-  // Check if the sender is a client (Ratsuchende variants)
-  const clientVariants = ['ratsuchende person', 'ratsuchender', 'ratsuchend', 'ratsuchende'];
-
-  // Check if the sender is a counselor (Beratende variants)
-  const counselorVariants = ['beratende person', 'berater', 'beratend', 'beratende'];
-
-  if (clientVariants.includes(normalizedSender)) {
-    return 'same-sender';
-  } else if (counselorVariants.includes(normalizedSender)) {
-    return 'different-sender';
-  }
-
-  // Default fallback if none of the known variants match
-  console.warn(`Unrecognized sender type: ${sender}`);
-  return 'different-sender';
-}
-
-// Rate individual messages
-function rateMessage(index, rating) {
-  messages.value[index].rating = messages.value[index].rating === rating ? null : rating;
-  saveMessageRatingsToLocalStorage()
-  hasUnsavedChanges.value = check_for_changes()
-}
-
-// Save ratings of history and messages to the server
-async function saveRatingServerSide() {
-  const threadId = route.params.id;
-  const rating_and_category = {
-    counsellor_coherence_rating: ratings.value.counsellor_coherence,
-    client_coherence_rating: ratings.value.client_coherence,
-    quality_rating: ratings.value.quality,
-    overall_rating: ratings.value.overall,
-    feedback: feedback.value,
-    consulting_category_id: selectedCategoryId.value,
-    consulting_category_notes: categoryNotes.value,
-    consider_category_for_status: true
-  }
-  if(checkIfDisabled("rating-category-coherence-client"))
-  {
-    if (rating_and_category.client_coherence_rating === null)
-      rating_and_category.client_coherence_rating = 0;
-    rating_and_category.consider_category_for_status = false;
-  }
-  if(checkIfDisabled("rating-category-coherence-counsellor"))
-  {
-    if(rating_and_category.counsellor_coherence_rating === null)
-      rating_and_category.counsellor_coherence_rating = 0;
-    rating_and_category.consider_category_for_status = false;
-  }
-
-  if(checkIfDisabled("rating-category-quality"))
-  {
-    if(rating_and_category.quality_rating === null)
-      rating_and_category.quality_rating = 0;
-    rating_and_category.consider_category_for_status = false;
-  }
-  if(checkIfDisabled("rating-category-overall"))
-  {
-    if(rating_and_category.overall_rating === null)
-      rating_and_category.overall_rating = 0;
-    rating_and_category.consider_category_for_status = false;
-  }
-  try {
-    // saving mail history ratings
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_mailhistory_rating/${threadId}`,
-      rating_and_category,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }
-    );
-    console.log('Mail Rating saved:', response.data);
-
-    // save message ratings
-    const messageRatings = messages.value.map(message => ({
-      message_id: message.message_id,
-      rating: message.rating // Wenn kein Rating vorhanden ist, wird null übermittelt
-    }));
-    // API request to save message ratings
-    const messageRatingResponse = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/email_threads/save_message_ratings/${threadId}`,
-      { message_ratings: messageRatings },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }
-    );
-    console.log('Message Ratings saved:', messageRatingResponse.data);
-
-    alert('Rating und Feedback wurden erfolgreich gespeichert!');
-    localStorage.removeItem(`local_rating_changes_${threadId}`); // remove the local changes from local storage
-    localStorage.removeItem(`local_messageRating_changes_${threadId}`);
-    await initializeWebsiteComponent() //reload website
-
-  } catch (error) {
-    console.error('Error saving rating:', error);
-    alert('Fehler beim Speichern des Ratings und Feedbacks.');
-  }
-}
-
-
-
-// Navigate to the previous case
-async function navigateToPreviousCase() {
-  const currentId = parseInt(route.params.id);
-  const caseList = await fetchCaseList(); // Fetch the list of email threads
-
-  if (!caseList || caseList.length === 0) {
-    console.log("Keine Fälle verfügbar");
-    return;
-  }
-
-  // Finde den aktuellen Fall in der Liste
-  const currentIndex = caseList.findIndex(c => c.thread_id === currentId);
-
-  if (currentIndex === -1 || currentIndex === 0) {
-    console.log("Erster Fall erreicht oder Fall nicht gefunden");
-    return;
-  }
-
-  // Navigiere zum vorherigen Fall
-  const previousCase = caseList[currentIndex - 1];
-  router.push({name: 'HistoryGenerationDetail', params: {id: previousCase.thread_id}});
-}
-
-async function navigateToNextCase() {
-  const currentId = parseInt(route.params.id);
-  const caseList = await fetchCaseList(); // Fetch the list of email threads
-
-  if (!caseList || caseList.length === 0) {
-    console.log("Keine Fälle verfügbar");
-    return;
-  }
-
-  // Finde den aktuellen Fall in der Liste
-  const currentIndex = caseList.findIndex(c => c.thread_id === currentId);
-
-  if (currentIndex === -1 || currentIndex === caseList.length - 1) {
-    console.log("Letzter Fall erreicht oder Fall nicht gefunden");
-    return;
-  }
-
-  // Navigiere zum nächsten Fall
-  const nextCase = caseList[currentIndex + 1];
-  router.push({name: 'HistoryGenerationDetail', params: {id: nextCase.thread_id}});
-}
-
-
-
-// Fetch list of cases
-async function fetchCaseList() {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/mailhistory_ratings`);
-    return response.data.threads;
-  } catch (error) {
-    console.error('Error fetching case list:', error);
-    return [];
-  }
-}
-
-// Navigate back to the overview
-function navigateToOverview() {
-  router.push({name: 'HistoryGenerator'});
-}
 </script>
 
 <style scoped>

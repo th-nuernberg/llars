@@ -612,563 +612,177 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
-import { io } from 'socket.io-client'
+import { onMounted, onUnmounted } from 'vue'
+import {
+  useCrawlerSocket,
+  useCrawlerJobs,
+  useCrawlerForm,
+  useCrawlerHelpers
+} from './WebCrawlerTool/composables'
 
-// Socket connection
-let socket = null
-const socketConnected = ref(false)
-let reconnectAttempts = 0
-const maxReconnectAttempts = 10
+// Initialize composables
+const {
+  snackbar,
+  jobHeaders,
+  getStatusColor,
+  getStatusIcon,
+  getStatusLabel,
+  formatDate,
+  formatNumber,
+  showSnackbar,
+  goToCollection
+} = useCrawlerHelpers()
 
-// Form data
-const crawlForm = ref({
-  urlsText: '',
-  collectionName: '',
-  description: '',
-  maxPages: 50,
-  maxDepth: 3,
-  collectionMode: 'new',  // 'new' or 'existing'
-  existingCollectionId: null
-})
+const {
+  jobs,
+  loadingJobs,
+  watchingJob,
+  liveProgress,
+  recentPages,
+  runningJobs,
+  progressPercent,
+  loadJobs,
+  updateJobsList,
+  watchJob: watchJobBase,
+  stopWatching: stopWatchingBase,
+  updateProgress,
+  addRecentPage,
+  handleComplete: handleCompleteBase,
+  handleError: handleErrorBase,
+  handleStatus
+} = useCrawlerJobs()
 
-// Collections for dropdown
-const collections = ref([])
-const loadingCollections = ref(false)
+const {
+  crawlForm,
+  collections,
+  loadingCollections,
+  startingCrawl,
+  previewing,
+  preview,
+  urlError,
+  urls,
+  hasValidUrl,
+  canStartCrawl,
+  validateUrls,
+  loadCollections,
+  previewUrl: previewUrlBase,
+  startBackgroundCrawl: startBackgroundCrawlBase,
+  resetForm
+} = useCrawlerForm()
 
-// State
-const startingCrawl = ref(false)
-const previewing = ref(false)
-const preview = ref(null)
-const jobs = ref([])
-const loadingJobs = ref(false)
-const urlError = ref(null)
-
-// Live watching state
-const watchingJob = ref(null)
-const liveProgress = ref({})
-const recentPages = ref([])
-
-const snackbar = ref({
-  show: false,
-  text: '',
-  color: 'success'
-})
-
-// Reconnection state
-const isReconnecting = ref(false)
-const reconnectionFailed = ref(false)
-
-// Job table headers
-const jobHeaders = [
-  { title: 'Status', key: 'status', width: '140px' },
-  { title: 'URLs', key: 'urls', sortable: false },
-  { title: 'Seiten', key: 'pages_crawled', width: '90px', align: 'center' },
-  { title: 'Dokumente', key: 'documents_created', width: '100px', align: 'center' },
-  { title: 'Gestartet', key: 'started_at', width: '160px' },
-  { title: '', key: 'actions', width: '80px', sortable: false, align: 'end' }
-]
-
-// No polling - using WebSocket for real-time updates
-
-// Computed
-const urls = computed(() => {
-  return crawlForm.value.urlsText
-    .split('\n')
-    .map(u => u.trim())
-    .filter(u => u.length > 0)
-})
-
-const hasValidUrl = computed(() => {
-  return urls.value.length > 0 && urls.value.every(u =>
-    u.startsWith('http://') || u.startsWith('https://')
-  )
-})
-
-const canStartCrawl = computed(() => {
-  if (!hasValidUrl.value || startingCrawl.value) return false
-
-  // For new collection mode, require collection name
-  if (crawlForm.value.collectionMode === 'new') {
-    return !!crawlForm.value.collectionName?.trim()
-  }
-
-  // For existing collection mode, require selected collection
-  return !!crawlForm.value.existingCollectionId
-})
-
-const runningJobs = computed(() => {
-  return jobs.value.filter(j => j.status === 'running' || j.status === 'queued')
-})
-
-const progressPercent = computed(() => {
-  if (!liveProgress.value.max_pages) return 0
-  return Math.min(100, Math.round((liveProgress.value.pages_crawled / liveProgress.value.max_pages) * 100))
-})
-
-// Validation
-function validateUrls() {
-  urlError.value = null
-  if (crawlForm.value.urlsText.trim() && !hasValidUrl.value) {
-    urlError.value = 'URLs müssen mit http:// oder https:// beginnen'
-  }
-}
-
-// Load collections for dropdown
-async function loadCollections() {
-  loadingCollections.value = true
-  try {
-    const response = await axios.get('/api/rag/collections')
-    if (response.data.success) {
-      collections.value = response.data.collections
-      console.log('[Crawler] Loaded', collections.value.length, 'collections')
-    }
-  } catch (error) {
-    console.error('[Crawler] Error loading collections:', error)
-    showSnackbar('Fehler beim Laden der Collections', 'error')
-  } finally {
-    loadingCollections.value = false
-  }
-}
-
-// Socket Methods
-function initSocket() {
-  if (socket && socket.connected) return
-
-  // Clean up old socket
-  if (socket) {
-    socket.disconnect()
-    socket = null
-  }
-
-  const baseUrl = window.location.origin
-
-  socket = io(baseUrl, {
-    path: '/socket.io',
-    transports: ['polling', 'websocket'], // Start with polling, upgrade to websocket
-    reconnection: true,
-    reconnectionAttempts: maxReconnectAttempts,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
-    forceNew: true
-  })
-
-  socket.on('connect', () => {
-    console.log('[Crawler Socket] Connected:', socket.id)
-    socketConnected.value = true
-    isReconnecting.value = false
-    reconnectionFailed.value = false
-    reconnectAttempts = 0
-
+// Socket with callbacks
+const socketCallbacks = {
+  onConnect: () => {
     // Rejoin session if we were watching one
     if (watchingJob.value) {
-      socket.emit('crawler:join_session', { session_id: watchingJob.value.job_id })
+      joinSession(watchingJob.value.job_id)
     }
-  })
-
-  socket.on('disconnect', (reason) => {
-    console.log('[Crawler Socket] Disconnected:', reason)
-    socketConnected.value = false
-    // Only show reconnecting if it was an unexpected disconnect
-    if (reason !== 'io client disconnect') {
-      isReconnecting.value = true
-    }
-  })
-
-  socket.on('connect_error', (error) => {
-    console.warn('[Crawler Socket] Connection error:', error.message)
-    reconnectAttempts++
-    isReconnecting.value = true
-    if (reconnectAttempts >= maxReconnectAttempts) {
-      console.error('[Crawler Socket] Max reconnection attempts reached')
-      isReconnecting.value = false
-      reconnectionFailed.value = true
-    }
-  })
-
-  socket.on('crawler:joined', (data) => {
-    console.log('[Crawler Socket] Joined session:', data)
-  })
-
-  socket.on('crawler:progress', (data) => {
-    console.log('[Crawler Socket] Progress:', data)
+  },
+  onProgress: (data) => {
     updateProgress(data)
-  })
-
-  socket.on('crawler:page_crawled', (data) => {
-    console.log('[Crawler Socket] Page crawled:', data)
-    if (data.url) {
-      recentPages.value.push(data)
-      // Keep only last 50 pages
-      if (recentPages.value.length > 50) {
-        recentPages.value = recentPages.value.slice(-50)
-      }
-    }
-  })
-
-  socket.on('crawler:complete', (data) => {
-    console.log('[Crawler Socket] Complete:', data)
-    handleComplete(data)
-  })
-
-  socket.on('crawler:error', (data) => {
-    console.error('[Crawler Socket] Error:', data)
-    handleError(data)
-  })
-
-  socket.on('crawler:status', (data) => {
-    console.log('[Crawler Socket] Status response:', data)
-    if (data && watchingJob.value && watchingJob.value.job_id === data.session_id) {
-      // Update liveProgress with all available fields from status
-      liveProgress.value = {
-        pages_crawled: data.pages_crawled || 0,
-        max_pages: data.max_pages || liveProgress.value.max_pages || 50,
-        current_url: data.current_url || null,
-        current_url_index: data.current_url_index || 1,
-        total_urls: data.urls?.length || liveProgress.value.total_urls || 1
-      }
-      // Also update watchingJob
-      watchingJob.value = {
-        ...watchingJob.value,
-        pages_crawled: data.pages_crawled || 0,
-        documents_created: data.documents_created || 0,
-        status: data.status || watchingJob.value.status,
-        errors: data.errors || watchingJob.value.errors
-      }
-    }
-  })
-
-  // Global job list updates (replaces polling)
-  socket.on('crawler:jobs_list', (data) => {
-    console.log('[Crawler Socket] Initial jobs list received:', data.jobs?.length || 0, 'jobs')
-    if (data.jobs) {
-      updateJobsList(data.jobs)
-    }
-  })
-
-  socket.on('crawler:jobs_updated', (data) => {
-    console.log('[Crawler Socket] Jobs updated:', data.jobs?.length || 0, 'jobs')
-    if (data.jobs) {
-      updateJobsList(data.jobs)
-    }
-  })
-}
-
-function updateJobsList(newJobs) {
-  // Update jobs list from WebSocket
-  for (const newJob of newJobs) {
-    const existingIdx = jobs.value.findIndex(j => j.job_id === newJob.job_id)
-    if (existingIdx !== -1) {
-      // Update existing job
-      Object.assign(jobs.value[existingIdx], newJob)
+  },
+  onPageCrawled: (data) => {
+    addRecentPage(data)
+  },
+  onComplete: (data) => {
+    const result = handleCompleteBase(data)
+    // Show appropriate snackbar message
+    if (result.documents_created > 0) {
+      showSnackbar(`Crawl abgeschlossen: ${result.documents_created} Dokumente erstellt`, 'success')
+    } else if (result.skipped_existing > 0) {
+      showSnackbar(`Crawl abgeschlossen: Alle ${result.skipped_existing} Seiten waren bereits in der Datenbank vorhanden`, 'warning')
     } else {
-      // Add new job
-      jobs.value.push(newJob)
+      showSnackbar('Crawl abgeschlossen: Keine neuen Dokumente erstellt', 'info')
     }
-
-    // Also update watchingJob and liveProgress if this is the watched job
-    if (watchingJob.value && watchingJob.value.job_id === newJob.job_id) {
-      watchingJob.value = { ...watchingJob.value, ...newJob }
-      liveProgress.value = {
-        pages_crawled: newJob.pages_crawled || 0,
-        max_pages: newJob.max_pages || liveProgress.value.max_pages || 50,
-        current_url: newJob.current_url || liveProgress.value.current_url,
-        current_url_index: liveProgress.value.current_url_index || 1,
-        total_urls: newJob.urls?.length || liveProgress.value.total_urls || 1
-      }
-    }
-  }
-  // Sort by start time descending
-  jobs.value.sort((a, b) => {
-    const dateA = new Date(b.started_at || b.queued_at || 0)
-    const dateB = new Date(a.started_at || a.queued_at || 0)
-    return dateA - dateB
-  })
-}
-
-function subscribeToJobUpdates() {
-  if (socket && socket.connected) {
-    socket.emit('crawler:subscribe_jobs')
-  } else if (socket) {
-    socket.once('connect', () => {
-      socket.emit('crawler:subscribe_jobs')
-    })
+  },
+  onError: (data) => {
+    handleErrorBase(data)
+    showSnackbar(`Crawl-Fehler: ${data.error}`, 'error')
+  },
+  onStatus: (data) => {
+    handleStatus(data)
+  },
+  onJobsList: (jobsList) => {
+    updateJobsList(jobsList)
+  },
+  onJobsUpdated: (jobsList) => {
+    updateJobsList(jobsList)
   }
 }
 
-function updateProgress(data) {
-  // Update live progress
-  liveProgress.value = {
-    pages_crawled: data.pages_crawled || 0,
-    max_pages: data.max_pages || liveProgress.value.max_pages,
-    current_url: data.current_url,
-    current_url_index: data.current_url_index,
-    total_urls: data.total_urls
-  }
+const {
+  socketConnected,
+  isReconnecting,
+  reconnectionFailed,
+  initSocket,
+  subscribeToJobUpdates,
+  joinSession,
+  leaveSession,
+  retryConnection: retryConnectionBase,
+  disconnect,
+  getSocket
+} = useCrawlerSocket(socketCallbacks)
 
-  // Update job in list
-  const jobIndex = jobs.value.findIndex(j => j.job_id === data.session_id)
-  if (jobIndex !== -1) {
-    jobs.value[jobIndex].pages_crawled = data.pages_crawled
-    jobs.value[jobIndex].status = data.status || jobs.value[jobIndex].status
-    if (data.documents_created !== undefined) {
-      jobs.value[jobIndex].documents_created = data.documents_created
-    }
-  }
-
-  // Update watching job
-  if (watchingJob.value && watchingJob.value.job_id === data.session_id) {
-    watchingJob.value.pages_crawled = data.pages_crawled
-    watchingJob.value.status = data.status || watchingJob.value.status
-    if (data.documents_created !== undefined) {
-      watchingJob.value.documents_created = data.documents_created
-    }
-  }
-}
-
-function handleComplete(data) {
-  // Update job in list
-  const jobIndex = jobs.value.findIndex(j => j.job_id === data.session_id)
-  if (jobIndex !== -1) {
-    jobs.value[jobIndex].status = 'completed'
-    jobs.value[jobIndex].pages_crawled = data.pages_crawled
-    jobs.value[jobIndex].documents_created = data.documents_created
-    jobs.value[jobIndex].collection_id = data.collection_id
-    jobs.value[jobIndex].skipped_existing = data.skipped_existing || 0
-    jobs.value[jobIndex].skipped_duplicates = data.skipped_duplicates || 0
-  }
-
-  // Update watching job
-  if (watchingJob.value && watchingJob.value.job_id === data.session_id) {
-    watchingJob.value.status = 'completed'
-    watchingJob.value.pages_crawled = data.pages_crawled
-    watchingJob.value.documents_created = data.documents_created
-    watchingJob.value.collection_id = data.collection_id
-    watchingJob.value.skipped_existing = data.skipped_existing || 0
-    watchingJob.value.skipped_duplicates = data.skipped_duplicates || 0
-  }
-
-  // Show appropriate snackbar message
-  if (data.documents_created > 0) {
-    showSnackbar(`Crawl abgeschlossen: ${data.documents_created} Dokumente erstellt`, 'success')
-  } else if (data.skipped_existing > 0) {
-    showSnackbar(`Crawl abgeschlossen: Alle ${data.skipped_existing} Seiten waren bereits in der Datenbank vorhanden`, 'warning')
-  } else {
-    showSnackbar('Crawl abgeschlossen: Keine neuen Dokumente erstellt', 'info')
-  }
-}
-
-function handleError(data) {
-  // Update job in list
-  const jobIndex = jobs.value.findIndex(j => j.job_id === data.session_id)
-  if (jobIndex !== -1) {
-    jobs.value[jobIndex].status = 'failed'
-    jobs.value[jobIndex].error = data.error
-  }
-
-  // Update watching job
-  if (watchingJob.value && watchingJob.value.job_id === data.session_id) {
-    watchingJob.value.status = 'failed'
-    watchingJob.value.error = data.error
-  }
-
-  showSnackbar(`Crawl-Fehler: ${data.error}`, 'error')
-}
-
+// Wrapped methods that integrate socket and jobs
 function watchJob(job) {
   initSocket()
 
   // Leave previous session
-  if (watchingJob.value && watchingJob.value.job_id !== job.job_id && socket) {
-    socket.emit('crawler:leave_session', { session_id: watchingJob.value.job_id })
+  if (watchingJob.value && watchingJob.value.job_id !== job.job_id) {
+    leaveSession(watchingJob.value.job_id)
   }
 
-  watchingJob.value = { ...job }
-  liveProgress.value = {
-    pages_crawled: job.pages_crawled || 0,
-    max_pages: job.max_pages || 50,  // Default to 50 if not available
-    current_url: job.current_url || null,
-    current_url_index: 1,
-    total_urls: job.urls?.length || 1
-  }
-  recentPages.value = []
+  watchJobBase(job)
 
   // Join session and request status
-  const joinSession = () => {
-    if (socket) {
-      socket.emit('crawler:join_session', { session_id: job.job_id })
-      // Request current status to update liveProgress
-      socket.emit('crawler:get_status', { session_id: job.job_id })
-    }
-  }
-
-  // If socket is connected, join immediately
+  const socket = getSocket()
   if (socket && socket.connected) {
-    joinSession()
-  } else if (socket) {
-    // Wait for connection then join
-    socket.once('connect', joinSession)
+    joinSession(job.job_id)
   }
 }
 
 function stopWatching() {
-  if (socket && watchingJob.value) {
-    socket.emit('crawler:leave_session', { session_id: watchingJob.value.job_id })
+  if (watchingJob.value) {
+    leaveSession(watchingJob.value.job_id)
   }
-  watchingJob.value = null
-  liveProgress.value = {}
-  recentPages.value = []
+  stopWatchingBase()
 }
 
-// API Methods
 async function previewUrl() {
-  if (!urls.value.length) return
-
-  previewing.value = true
-  preview.value = null
-
   try {
-    const response = await axios.post('/api/crawler/preview', {
-      url: urls.value[0]
-    })
-
-    if (response.data.success) {
-      preview.value = response.data.preview
-    } else {
-      showSnackbar(response.data.error || 'Vorschau fehlgeschlagen', 'error')
-    }
+    await previewUrlBase()
   } catch (error) {
-    console.error('Preview error:', error)
-    showSnackbar(error.response?.data?.error || 'Fehler bei der Vorschau', 'error')
-  } finally {
-    previewing.value = false
+    showSnackbar(error.response?.data?.error || error.message || 'Fehler bei der Vorschau', 'error')
   }
 }
 
 async function startBackgroundCrawl() {
-  if (!canStartCrawl.value) return
-
-  startingCrawl.value = true
-
   try {
-    // Build request based on collection mode
-    const requestData = {
-      urls: urls.value,
-      max_pages_per_site: crawlForm.value.maxPages,
-      max_depth: crawlForm.value.maxDepth
-    }
-
-    if (crawlForm.value.collectionMode === 'existing') {
-      // Add to existing collection
-      requestData.existing_collection_id = crawlForm.value.existingCollectionId
-    } else {
-      // Create new collection
-      requestData.collection_name = crawlForm.value.collectionName
-      requestData.collection_description = crawlForm.value.description
-    }
-
-    const response = await axios.post('/api/crawler/start', requestData)
-
-    if (response.data.success) {
+    const newJob = await startBackgroundCrawlBase()
+    if (newJob) {
       showSnackbar('Crawl gestartet - Live-Ansicht wird aktiviert', 'success')
-
-      // Create job object for watching (will be merged with WebSocket update)
-      const newJob = {
-        job_id: response.data.job_id,
-        status: 'queued',
-        urls: response.data.urls,
-        collection_name: response.data.collection_name,
-        pages_crawled: 0,
-        documents_created: 0,
-        started_at: new Date().toISOString(),
-        max_pages: crawlForm.value.maxPages * urls.value.length
-      }
 
       // Check if job already exists in list (from WebSocket update)
       const existingIdx = jobs.value.findIndex(j => j.job_id === newJob.job_id)
       if (existingIdx === -1) {
-        // Only add if not already present
         jobs.value.unshift(newJob)
       }
 
       // Auto-watch the new job
       watchJob(newJob)
 
-      // Reset form without triggering validation errors
+      // Reset form
       setTimeout(() => {
-        crawlForm.value.urlsText = ''
-        crawlForm.value.collectionName = ''
-        crawlForm.value.description = ''
-        preview.value = null
+        resetForm()
       }, 100)
-    } else {
-      showSnackbar(response.data.error || 'Crawl konnte nicht gestartet werden', 'error')
     }
   } catch (error) {
-    console.error('Start crawl error:', error)
-    showSnackbar(error.response?.data?.error || 'Fehler beim Starten des Crawls', 'error')
-  } finally {
-    startingCrawl.value = false
-  }
-}
-
-async function loadJobs() {
-  loadingJobs.value = true
-  try {
-    const response = await axios.get('/api/crawler/jobs')
-    if (response.data.success) {
-      // Merge with existing jobs to preserve local state
-      const newJobs = response.data.jobs || []
-      for (const newJob of newJobs) {
-        const existingIdx = jobs.value.findIndex(j => j.job_id === newJob.job_id)
-        if (existingIdx !== -1) {
-          // Update existing job
-          Object.assign(jobs.value[existingIdx], newJob)
-        } else {
-          // Add new job
-          jobs.value.push(newJob)
-        }
-
-        // Also update watchingJob and liveProgress if this is the watched job
-        if (watchingJob.value && watchingJob.value.job_id === newJob.job_id) {
-          // Update watchingJob with new data
-          watchingJob.value = { ...watchingJob.value, ...newJob }
-
-          // Update liveProgress
-          liveProgress.value = {
-            pages_crawled: newJob.pages_crawled || 0,
-            max_pages: newJob.max_pages || liveProgress.value.max_pages || 50,
-            current_url: newJob.current_url || liveProgress.value.current_url,
-            current_url_index: liveProgress.value.current_url_index || 1,
-            total_urls: newJob.urls?.length || liveProgress.value.total_urls || 1
-          }
-        }
-      }
-      // Sort by start time descending
-      jobs.value.sort((a, b) => {
-        const dateA = new Date(b.started_at || b.queued_at || 0)
-        const dateB = new Date(a.started_at || a.queued_at || 0)
-        return dateA - dateB
-      })
-    }
-  } catch (error) {
-    console.error('Error loading jobs:', error)
-  } finally {
-    loadingJobs.value = false
+    showSnackbar(error.response?.data?.error || error.message || 'Fehler beim Starten des Crawls', 'error')
   }
 }
 
 function retryConnection() {
-  reconnectionFailed.value = false
-  reconnectAttempts = 0
-  if (socket) {
-    socket.disconnect()
-    socket = null
-  }
-  initSocket()
-  subscribeToJobUpdates()
+  retryConnectionBase()
 }
 
 function onJobClick(job) {
@@ -1177,82 +791,18 @@ function onJobClick(job) {
   }
 }
 
-// Helpers
-function getStatusColor(status) {
-  const colors = {
-    completed: 'success',
-    running: 'info',
-    queued: 'warning',
-    failed: 'error'
-  }
-  return colors[status] || 'grey'
-}
-
-function getStatusIcon(status) {
-  const icons = {
-    completed: 'mdi-check-circle',
-    running: 'mdi-loading',
-    queued: 'mdi-clock-outline',
-    failed: 'mdi-alert-circle'
-  }
-  return icons[status] || 'mdi-clock'
-}
-
-function getStatusLabel(status) {
-  const labels = {
-    completed: 'Fertig',
-    running: 'Läuft',
-    queued: 'Wartend',
-    failed: 'Fehler'
-  }
-  return labels[status] || status
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-function formatNumber(num) {
-  return num?.toLocaleString('de-DE') || '0'
-}
-
-function goToCollection(collectionId) {
-  // TODO: Navigate to RAG section with collection filter
-  showSnackbar(`Collection ${collectionId} erstellt - siehe RAG Dokumente`, 'info')
-}
-
-function showSnackbar(text, color = 'success') {
-  snackbar.value = { show: true, text, color }
-}
-
 // Lifecycle
 onMounted(() => {
   initSocket()
-  // Subscribe to global job updates via WebSocket (replaces polling)
   subscribeToJobUpdates()
-  // Also load jobs once via HTTP as fallback
   loadJobs()
-  // Load collections for dropdown
-  loadCollections()
+  loadCollections().catch(error => {
+    showSnackbar('Fehler beim Laden der Collections', 'error')
+  })
 })
 
 onUnmounted(() => {
-  if (socket) {
-    // Unsubscribe from global job updates
-    socket.emit('crawler:unsubscribe_jobs')
-    if (watchingJob.value) {
-      socket.emit('crawler:leave_session', { session_id: watchingJob.value.job_id })
-    }
-    socket.disconnect()
-    socket = null
-  }
+  disconnect()
 })
 </script>
 

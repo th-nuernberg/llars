@@ -539,9 +539,14 @@ def initialize_rag_system():
 
             if existing_doc:
                 # Document exists, just update metadata if needed
-                if existing_doc.status == 'pending' or existing_doc.collection_id is None:
+                # Only set default collection if no collection is assigned
+                # Don't overwrite collection_id for documents created by crawler with specific collection
+                if existing_doc.collection_id is None:
                     existing_doc.collection_id = default_collection.id
-                    existing_doc.status = 'indexed'  # Assume existing docs are already indexed
+                    updated_count += 1
+                # Update status if still pending (from crawler documents)
+                if existing_doc.status == 'pending':
+                    existing_doc.status = 'indexed'
                     updated_count += 1
                 continue
 
@@ -590,19 +595,28 @@ def initialize_rag_system():
     else:
         print("ℹ️  All documents already registered in database")
 
-    # Update collection statistics
-    total_docs = RAGDocument.query.filter_by(collection_id=default_collection.id).count()
-    total_size = db.session.query(
-        db.func.sum(RAGDocument.file_size_bytes)
-    ).filter_by(collection_id=default_collection.id).scalar() or 0
+    # Update collection statistics for ALL collections (not just default)
+    all_collections = RAGCollection.query.all()
+    total_all_docs = 0
+    total_all_size = 0
 
-    default_collection.document_count = total_docs
-    default_collection.total_size_bytes = total_size
+    for collection in all_collections:
+        doc_count = RAGDocument.query.filter_by(collection_id=collection.id).count()
+        size_bytes = db.session.query(
+            db.func.sum(RAGDocument.file_size_bytes)
+        ).filter_by(collection_id=collection.id).scalar() or 0
+
+        collection.document_count = doc_count
+        collection.total_size_bytes = size_bytes
+        total_all_docs += doc_count
+        total_all_size += size_bytes
+
     db.session.commit()
 
     print(f"\n📊 Collection Statistics:")
-    print(f"   - Total Documents: {total_docs}")
-    print(f"   - Total Size: {total_size / (1024*1024):.2f} MB")
+    print(f"   - Total Collections: {len(all_collections)}")
+    print(f"   - Total Documents: {total_all_docs}")
+    print(f"   - Total Size: {total_all_size / (1024*1024):.2f} MB")
     print("="*60)
     print("RAG Document Management System initialized successfully!")
     print("="*60 + "\n")

@@ -423,6 +423,62 @@ class RAGCollection(db.Model):
     updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     last_indexed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
 
+    # Relationships (n:m via CollectionDocumentLink)
+    document_links = db.relationship('CollectionDocumentLink', back_populates='collection', cascade='all, delete-orphan')
+
+
+class CollectionDocumentLink(db.Model):
+    """
+    Linking table for n:m relationship between Collections and Documents.
+
+    A document can be linked to multiple collections, and a collection can contain
+    multiple documents. When the same content (by hash) is found during crawling,
+    it is only "linked" to the collection rather than creating a duplicate.
+
+    Link types:
+    - 'new': Document was newly created for this collection
+    - 'linked': Document already existed and was linked to this collection
+    """
+    __tablename__ = 'collection_document_links'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+
+    collection_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('rag_collections.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+    document_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('rag_documents.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    # Link type: 'new' (newly created) or 'linked' (already existed)
+    link_type: Mapped[str] = mapped_column(
+        db.String(20),
+        default='new',
+        nullable=False
+    )
+
+    # Source information
+    source_url: Mapped[Optional[str]] = mapped_column(db.String(2048), nullable=True)
+    crawl_job_id: Mapped[Optional[str]] = mapped_column(db.String(36), nullable=True, index=True)
+
+    # Timestamps
+    linked_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+    linked_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
+    # Relationships
+    collection = db.relationship('RAGCollection', back_populates='document_links')
+    document = db.relationship('RAGDocument', back_populates='collection_links')
+
+    __table_args__ = (
+        db.UniqueConstraint('collection_id', 'document_id', name='unique_collection_document'),
+    )
+
 
 class RAGDocument(db.Model):
     """Documents stored in RAG system with full metadata tracking"""
@@ -487,6 +543,8 @@ class RAGDocument(db.Model):
     chunks = db.relationship('RAGDocumentChunk', backref='document', cascade='all, delete-orphan')
     versions = db.relationship('RAGDocumentVersion', backref='document', cascade='all, delete-orphan')
     permissions = db.relationship('RAGDocumentPermission', backref='document', cascade='all, delete-orphan')
+    # n:m relationship to collections via CollectionDocumentLink
+    collection_links = db.relationship('CollectionDocumentLink', back_populates='document', cascade='all, delete-orphan')
 
 
 class RAGDocumentChunk(db.Model):

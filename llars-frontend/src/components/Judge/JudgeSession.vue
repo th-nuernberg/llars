@@ -1663,1229 +1663,169 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, reactive } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
-import { getSocket, useSocketState } from '@/services/socketService';
 import WorkerLane from './WorkerLane.vue';
+
+// Import composables
+import {
+  WORKER_COLORS,
+  PILLAR_CONFIG,
+  STEP_DEFINITIONS,
+  SCORE_CRITERIA,
+  QUEUE_HEADERS,
+  HISTORY_HEADERS,
+  useSessionHelpers,
+  useSessionState,
+  useSessionApi,
+  useStreamParsing,
+  useSessionSocket,
+  useFullscreen
+} from './JudgeSession/composables';
 
 const route = useRoute();
 const router = useRouter();
 const sessionId = route.params.id;
 
-// State
-const session = ref(null);
-const currentComparison = ref(null);
-const completedComparisons = ref([]);
-const queue = ref({ pending: [], current: null, stats: {} });
-const loading = ref(false);
-const actionLoading = ref(false);
-const queueLoading = ref(false);
-const reconnecting = ref(false);
-const fullscreenMode = ref(false);
-const socket = ref(null);
-const expandedPanels = ref([]);
-const llmStreamContent = ref('');
-const streamOutput = ref(null);
-const fullscreenStreamOutput = ref(null);
-const autoScrollEnabled = ref(true);
-const streamDisplayMode = ref('formatted'); // 'raw' or 'formatted' - default to formatted for better UX
+// Initialize composables
+const helpers = useSessionHelpers();
+const state = useSessionState(sessionId);
+const api = useSessionApi(sessionId, state, helpers);
+const parsing = useStreamParsing(state);
+const socketHandler = useSessionSocket(sessionId, state, api, helpers);
+const fullscreen = useFullscreen(state, api);
 
-// Multi-worker state
-const workerCount = ref(1);
-const workerStreams = reactive({}); // { workerId: { content: '', comparison: null, isStreaming: false } }
-const workerPoolStatus = ref(null);
+// Destructure state for template access
+const {
+  session,
+  currentComparison,
+  completedComparisons,
+  queue,
+  sessionHealth,
+  loading,
+  actionLoading,
+  queueLoading,
+  reconnecting,
+  fullscreenMode,
+  expandedPanels,
+  autoScrollEnabled,
+  streamDisplayMode,
+  llmStreamContent,
+  workerCount,
+  workerStreams,
+  multiWorkerFullscreenMode,
+  multiWorkerDisplayMode,
+  focusedWorkerId,
+  streamOutput,
+  fullscreenStreamOutput,
+  // Computed
+  progress,
+  isStreaming,
+  isActuallyRunning,
+  showResumeButton,
+  activeWorkerCount,
+  sessionPillars,
+  pillarPairs,
+  allQueueItems,
+  getMultiWorkerColSize,
+  // Methods
+  isPairActive
+} = state;
 
-// Multi-worker fullscreen state
-const multiWorkerFullscreenMode = ref(false);
-const multiWorkerDisplayMode = ref('grid'); // 'grid' or 'focus'
-const focusedWorkerId = ref(0);
+// Destructure helpers for template access
+const {
+  getStatusColor,
+  getStatusIcon,
+  getStatusText,
+  getConfidenceColor,
+  getPillarName,
+  getPillarIcon,
+  getPillarColor,
+  getQueueStatusColor,
+  getQueueStatusIcon,
+  getQueueStatusText,
+  formatDate,
+  formatCriterionName,
+  getScoreColor,
+  copyToClipboard
+} = helpers;
 
-// Session Health State (for intelligent button logic)
-const sessionHealth = ref(null);
+// Destructure API methods
+const {
+  loadSession,
+  loadQueue,
+  loadWorkerPoolStatus
+} = api;
 
-// Worker colors for fullscreen display
-const WORKER_COLORS = ['blue', 'purple', 'teal', 'orange', 'pink'];
+// Destructure parsing methods
+const {
+  parsedStreamJson,
+  parsedStreamSteps,
+  getStepByKey,
+  getWorkerParsedResult,
+  getWorkerScoreA,
+  getWorkerScoreB,
+  getWorkerStep
+} = parsing;
 
-// Queue Table Headers
-const queueHeaders = [
-  { title: '#', key: 'queue_position', sortable: true, width: '60px' },
-  { title: 'Status', key: 'status', sortable: true, width: '120px' },
-  { title: 'Säule A', key: 'pillar_a', sortable: false },
-  { title: '', key: 'vs', sortable: false, width: '50px' },
-  { title: 'Säule B', key: 'pillar_b', sortable: false },
-  { title: 'Ergebnis', key: 'result', sortable: false, width: '100px' }
-];
+// Destructure socket methods
+const {
+  setupSocket,
+  cleanupSocket,
+  startPolling,
+  stopPolling,
+  reconnectToStream,
+  handleStreamScroll,
+  enableAutoScroll
+} = socketHandler;
 
-// History Table Headers
-const historyHeaders = [
-  { title: '#', key: 'comparison_index', sortable: true },
-  { title: 'Säulen', key: 'pillars', sortable: false },
-  { title: 'Gewinner', key: 'winner', sortable: true },
-  { title: 'Konfidenz', key: 'confidence_score', sortable: true },
-  { title: 'Zeitpunkt', key: 'evaluated_at', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false }
-];
+// Destructure fullscreen methods
+const {
+  openFullscreen: openFullscreenBase,
+  closeFullscreen,
+  openMultiWorkerFullscreen,
+  closeMultiWorkerFullscreen,
+  openWorkerFullscreen
+} = fullscreen;
 
-// Computed
-const progress = computed(() => {
-  if (!session.value || !session.value.total_comparisons) return 0;
-  return (session.value.completed_comparisons / session.value.total_comparisons) * 100;
-});
+// Wrap openFullscreen to pass reconnectToStream
+const openFullscreen = () => openFullscreenBase(reconnectToStream);
 
-// Check if LLM is currently streaming
-const isStreaming = computed(() => {
-  return currentComparison.value?.llm_status === 'running';
-});
+// Table headers
+const queueHeaders = QUEUE_HEADERS;
+const historyHeaders = HISTORY_HEADERS;
 
-// Computed: Is the session actually running (workers active)?
-const isActuallyRunning = computed(() => {
-  // Session must be in "running" status AND workers must be actually running
-  if (session.value?.status !== 'running') return false;
-  return sessionHealth.value?.workers_running === true;
-});
+// Session control actions (wrap API methods to pass polling callbacks)
+const startSession = () => api.startSession(startPolling);
+const pauseSession = () => api.pauseSession(stopPolling);
+const resumeSession = () => api.resumeSession(startPolling);
+const refreshAll = () => api.refreshAll();
 
-// Computed: Should we show the Resume button?
-const showResumeButton = computed(() => {
-  const status = session.value?.status;
-
-  // Show for paused sessions
-  if (status === 'paused') return true;
-
-  // Show for "running" sessions that need recovery (workers stopped)
-  if (status === 'running' && sessionHealth.value?.needs_recovery) return true;
-
-  // Don't show for actually running or completed sessions
-  return false;
-});
-
-// Pillar Configuration
-const PILLAR_CONFIG = {
-  1: { name: 'Rollenspiele', icon: 'mdi-theater', color: '#E91E63', short: 'S1' },
-  2: { name: 'Feature', icon: 'mdi-star', color: '#9C27B0', short: 'S2' },
-  3: { name: 'Anonymisiert', icon: 'mdi-incognito', color: '#2196F3', short: 'S3' },
-  4: { name: 'Synthetisch', icon: 'mdi-robot', color: '#FF9800', short: 'S4' },
-  5: { name: 'Live-Tests', icon: 'mdi-lightning-bolt', color: '#4CAF50', short: 'S5' }
-};
-
-// Get pillar icon by ID
-const getPillarIcon = (pillarId) => {
-  return PILLAR_CONFIG[pillarId]?.icon || 'mdi-help-circle';
-};
-
-// Get pillar color by ID
-const getPillarColor = (pillarId) => {
-  return PILLAR_CONFIG[pillarId]?.color || '#9E9E9E';
-};
-
-// Computed: Active worker count
-const activeWorkerCount = computed(() => {
-  let count = 0;
-  for (let i = 0; i < workerCount.value; i++) {
-    if (workerStreams[i]?.comparison || workerStreams[i]?.isStreaming) {
-      count++;
-    }
-  }
-  return count;
-});
-
-// Computed: Session pillars from session data
-const sessionPillars = computed(() => {
-  if (!session.value?.pillar_ids) return [];
-  return session.value.pillar_ids.map(id => ({
-    id,
-    name: PILLAR_CONFIG[id]?.name || `Säule ${id}`,
-    short: PILLAR_CONFIG[id]?.short || `S${id}`,
-    icon: PILLAR_CONFIG[id]?.icon || 'mdi-help-circle'
-  }));
-});
-
-// Computed: Pillar pairs from session pillars
-const pillarPairs = computed(() => {
-  const pillars = sessionPillars.value;
-  const pairs = [];
-  for (let i = 0; i < pillars.length; i++) {
-    for (let j = i + 1; j < pillars.length; j++) {
-      pairs.push({
-        key: `${pillars[i].id}_${pillars[j].id}`,
-        a: pillars[i].short,
-        b: pillars[j].short,
-        pillar_a: pillars[i].id,
-        pillar_b: pillars[j].id
-      });
-    }
-  }
-  return pairs;
-});
-
-// Check if a pair is currently being worked on
-const isPairActive = (pair) => {
-  for (let i = 0; i < workerCount.value; i++) {
-    const comp = workerStreams[i]?.comparison;
-    if (comp) {
-      if ((comp.pillar_a === pair.pillar_a && comp.pillar_b === pair.pillar_b) ||
-          (comp.pillar_a === pair.pillar_b && comp.pillar_b === pair.pillar_a)) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-// Step definitions with German titles
-const STEP_DEFINITIONS = {
-  'step_1': { title: 'Analyse Berater-Kohärenz', icon: 'mdi-account-tie' },
-  'step_2': { title: 'Analyse Klienten-Kohärenz', icon: 'mdi-account' },
-  'step_3': { title: 'Analyse Beratungsqualität', icon: 'mdi-star' },
-  'step_4': { title: 'Analyse Empathie', icon: 'mdi-heart' },
-  'step_5': { title: 'Analyse Authentizität', icon: 'mdi-check-decagram' },
-  'step_6': { title: 'Analyse Lösungsorientierung', icon: 'mdi-lightbulb' }
-};
-
-// Score criteria mapping
-const SCORE_CRITERIA = [
-  { key: 'counsellor_coherence', label: 'Berater-Kohärenz' },
-  { key: 'client_coherence', label: 'Klienten-Kohärenz' },
-  { key: 'quality', label: 'Qualität' },
-  { key: 'empathy', label: 'Empathie' },
-  { key: 'authenticity', label: 'Authentizität' },
-  { key: 'solution_orientation', label: 'Lösungsorientierung' }
-];
-
-// Parse stream content incrementally - extracts partial data while streaming
-const parsedStreamJson = computed(() => {
-  if (!llmStreamContent.value) return null;
-
-  const content = llmStreamContent.value.trim();
-  const result = {
-    winner: null,
-    confidence: null,
-    scores: { A: {}, B: {} },
-    final_justification: null,
-    criteria_scores: null
-  };
-
-  // Try to parse complete JSON first
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.winner || parsed.criteria_scores || parsed.confidence || parsed.scores) {
-        // Convert scores format if needed
-        if (parsed.scores) {
-          result.scores = parsed.scores;
-          // Also build criteria_scores for compatibility
-          result.criteria_scores = {};
-          for (const criterion of SCORE_CRITERIA) {
-            if (parsed.scores.A?.[criterion.key] !== undefined || parsed.scores.B?.[criterion.key] !== undefined) {
-              result.criteria_scores[criterion.key] = {
-                score_a: parsed.scores.A?.[criterion.key] || 0,
-                score_b: parsed.scores.B?.[criterion.key] || 0
-              };
-            }
-          }
-        }
-        if (parsed.criteria_scores) {
-          result.criteria_scores = parsed.criteria_scores;
-        }
-        result.winner = parsed.winner || null;
-        result.confidence = parsed.confidence || null;
-        result.final_justification = parsed.final_justification || null;
-        return result;
-      }
-    }
-  } catch (e) {
-    // JSON not complete - try incremental parsing
-  }
-
-  // Incremental parsing for partial JSON
-  // Extract winner
-  const winnerMatch = content.match(/"winner"\s*:\s*"([AB])"/);
-  if (winnerMatch) result.winner = winnerMatch[1];
-
-  // Extract confidence
-  const confMatch = content.match(/"confidence"\s*:\s*([\d.]+)/);
-  if (confMatch) result.confidence = parseFloat(confMatch[1]);
-
-  // Extract individual scores from "scores": { "A": { ... }, "B": { ... } }
-  for (const criterion of SCORE_CRITERIA) {
-    // Try to find score for A
-    const scoreAPattern = new RegExp(`"A"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
-    const scoreAMatch = content.match(scoreAPattern);
-    if (scoreAMatch) {
-      result.scores.A[criterion.key] = parseInt(scoreAMatch[1]);
-    }
-
-    // Try to find score for B
-    const scoreBPattern = new RegExp(`"B"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
-    const scoreBMatch = content.match(scoreBPattern);
-    if (scoreBMatch) {
-      result.scores.B[criterion.key] = parseInt(scoreBMatch[1]);
-    }
-  }
-
-  // Build criteria_scores from parsed scores
-  if (Object.keys(result.scores.A).length > 0 || Object.keys(result.scores.B).length > 0) {
-    result.criteria_scores = {};
-    for (const criterion of SCORE_CRITERIA) {
-      if (result.scores.A[criterion.key] !== undefined || result.scores.B[criterion.key] !== undefined) {
-        result.criteria_scores[criterion.key] = {
-          score_a: result.scores.A[criterion.key] || 0,
-          score_b: result.scores.B[criterion.key] || 0
-        };
-      }
-    }
-  }
-
-  // Extract final_justification
-  const justMatch = content.match(/"final_justification"\s*:\s*"([^"]+)"/);
-  if (justMatch) result.final_justification = justMatch[1];
-
-  // Only return if we found something
-  if (result.winner || result.confidence || Object.keys(result.scores.A).length > 0) {
-    return result;
-  }
-
-  return null;
-});
-
-// Parse stream content for Chain of Thought steps incrementally
-const parsedStreamSteps = computed(() => {
-  if (!llmStreamContent.value) return [];
-
-  const content = llmStreamContent.value;
-  const steps = [];
-
-  // Extract each step incrementally using regex
-  for (const [stepKey, stepDef] of Object.entries(STEP_DEFINITIONS)) {
-    // Pattern to match "step_X": "content..." (handles incomplete strings too)
-    const stepPattern = new RegExp(`"${stepKey}"\\s*:\\s*"`, 'm');
-    const stepMatch = content.match(stepPattern);
-
-    if (stepMatch) {
-      // Found the step, now extract its content
-      const startIdx = content.indexOf(stepMatch[0]) + stepMatch[0].length;
-      let endIdx = startIdx;
-      let escaped = false;
-      let stepContent = '';
-
-      // Parse string content, handling escapes
-      for (let i = startIdx; i < content.length; i++) {
-        const char = content[i];
-        if (escaped) {
-          // Handle escape sequences
-          if (char === 'n') stepContent += '\n';
-          else if (char === '"') stepContent += '"';
-          else if (char === '\\') stepContent += '\\';
-          else stepContent += char;
-          escaped = false;
-        } else if (char === '\\') {
-          escaped = true;
-        } else if (char === '"') {
-          // End of string
-          endIdx = i;
-          break;
-        } else {
-          stepContent += char;
-        }
-        endIdx = i;
-      }
-
-      // Check if this step is still being written (no closing quote found)
-      const isStreaming = endIdx === content.length - 1 && content[endIdx] !== '"';
-
-      steps.push({
-        key: stepKey,
-        title: stepDef.title,
-        icon: stepDef.icon,
-        content: stepContent,
-        isStreaming: isStreaming
-      });
-    }
-  }
-
-  return steps;
-});
-
-// Combine current and pending items for queue display
-const allQueueItems = computed(() => {
-  const items = [];
-
-  // Add current comparison first if running
-  if (queue.value.current) {
-    items.push({
-      ...queue.value.current,
-      status: 'running'
-    });
-  }
-
-  // Add all pending items
-  if (queue.value.pending) {
-    items.push(...queue.value.pending);
-  }
-
-  return items.sort((a, b) => a.queue_position - b.queue_position);
-});
-
-// Load Session Health (for intelligent button state)
-const loadSessionHealth = async () => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/health`
-    );
-    sessionHealth.value = response.data;
-    console.log('[Judge] Session health:', response.data);
-  } catch (error) {
-    console.error('Error loading session health:', error);
-    // Fallback: assume healthy if endpoint fails
-    sessionHealth.value = {
-      workers_running: session.value?.status === 'running',
-      needs_recovery: false
-    };
-  }
-};
-
-// Load Session
-const loadSession = async () => {
-  loading.value = true;
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}`
-    );
-    session.value = response.data;
-
-    // Extract worker_count from config (API returns 'config', not 'config_json')
-    const sessionConfig = session.value.config || session.value.config_json;
-    if (sessionConfig?.worker_count) {
-      workerCount.value = sessionConfig.worker_count;
-      // Initialize worker streams
-      initializeWorkerStreams(workerCount.value);
-    }
-
-    // Load current comparison - check both formats (id or object)
-    if (session.value.current_comparison_id || session.value.current_comparison) {
-      await loadCurrentComparison();
-    }
-
-    // Load completed comparisons and queue
-    await loadCompletedComparisons();
-    await loadQueue();
-
-    // Load worker pool status and health check for running/paused sessions
-    if (session.value.status === 'running' || session.value.status === 'paused') {
-      await loadWorkerPoolStatus();
-      await loadSessionHealth();
-    }
-  } catch (error) {
-    console.error('Error loading session:', error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// Refresh all data including health check
-const refreshAll = async () => {
-  await loadSession();
-  if (session.value?.status === 'running' || session.value?.status === 'paused') {
-    await loadSessionHealth();
-  }
-};
-
-// Initialize worker streams for multi-worker mode
-const initializeWorkerStreams = (count) => {
-  for (let i = 0; i < count; i++) {
-    if (!workerStreams[i]) {
-      workerStreams[i] = {
-        content: '',
-        comparison: null,
-        isStreaming: false
-      };
-    }
-  }
-};
-
-// Load worker pool status
-const loadWorkerPoolStatus = async () => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/workers`
-    );
-    workerPoolStatus.value = response.data;
-
-    // Initialize and update worker streams from pool status
-    if (response.data.workers) {
-      response.data.workers.forEach(worker => {
-        // Auto-initialize worker stream if not exists
-        if (!workerStreams[worker.worker_id]) {
-          workerStreams[worker.worker_id] = {
-            content: '',
-            comparison: null,
-            isStreaming: false
-          };
-        }
-        // Update comparison data from pool status
-        workerStreams[worker.worker_id].comparison = worker.current_comparison;
-        // If worker is actively running, mark as streaming
-        if (worker.status === 'running' || worker.status === 'RUNNING') {
-          workerStreams[worker.worker_id].isStreaming = true;
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Error loading worker pool status:', error);
-  }
-};
-
-const loadCurrentComparison = async () => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/current`
-    );
-    currentComparison.value = response.data;
-  } catch (error) {
-    console.error('Error loading current comparison:', error);
-  }
-};
-
-const loadCompletedComparisons = async () => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/comparisons`
-    );
-    completedComparisons.value = response.data;
-  } catch (error) {
-    console.error('Error loading comparisons:', error);
-  }
-};
-
-const loadQueue = async () => {
-  queueLoading.value = true;
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/queue`
-    );
-    queue.value = response.data;
-  } catch (error) {
-    console.error('Error loading queue:', error);
-  } finally {
-    queueLoading.value = false;
-  }
-};
-
-// Session Control
-const startSession = async () => {
-  actionLoading.value = true;
-  try {
-    await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/start`
-    );
-    await loadSession();
-    startPolling(); // Start polling when session starts
-  } catch (error) {
-    console.error('Error starting session:', error);
-  } finally {
-    actionLoading.value = false;
-  }
-};
-
-const pauseSession = async () => {
-  actionLoading.value = true;
-  try {
-    await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/pause`
-    );
-    stopPolling(); // Stop polling when paused
-    await loadSession();
-  } catch (error) {
-    console.error('Error pausing session:', error);
-  } finally {
-    actionLoading.value = false;
-  }
-};
-
-const resumeSession = async () => {
-  actionLoading.value = true;
-  try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/resume`
-    );
-    console.log('[Judge] Session resumed:', response.data);
-    await loadSession();
-    startPolling(); // Start polling when session resumes
-  } catch (error) {
-    console.error('Error resuming session:', error);
-  } finally {
-    actionLoading.value = false;
-  }
-};
-
+// Navigation
 const navigateToResults = () => {
   router.push({ name: 'JudgeResults', params: { id: sessionId } });
 };
 
+// View comparison in detail
 const viewComparison = (comparison) => {
   currentComparison.value = comparison;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// Socket.IO for Live Updates (using centralized service with suspension handling)
-const setupSocket = () => {
-  socket.value = getSocket();
-  console.log('[Judge Socket] Setting up socket, connected:', socket.value.connected);
-
-  // Remove existing listeners to prevent duplicates on reconnect
-  socket.value.off('connect');
-  socket.value.off('disconnect');
-  socket.value.off('reconnect');
-  socket.value.off('judge:joined');
-  socket.value.off('judge:error');
-  socket.value.off('judge:progress');
-  socket.value.off('judge:comparison_start');
-  socket.value.off('judge:llm_stream');
-  socket.value.off('judge:comparison_complete');
-  socket.value.off('judge:session_complete');
-
-  // Helper function to join session room
-  const joinSessionRoom = () => {
-    console.log('[Judge Socket] Joining session room:', sessionId);
-    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
-  };
-
-  // Re-join room when socket reconnects (handles browser suspension)
-  socket.value.on('connect', () => {
-    console.log('[Judge Socket] Connected/Reconnected, socket id:', socket.value.id);
-    isStreaming.value = true; // Mark as connected
-    joinSessionRoom();
-    // Reload data after reconnection to sync state
-    loadSession();
-    loadQueue();
-  });
-
-  // Handle disconnection - mark streaming as inactive
-  socket.value.on('disconnect', (reason) => {
-    console.warn('[Judge Socket] Disconnected:', reason);
-    isStreaming.value = false;
-    // Don't clear worker streams - they will be restored on reconnect
-  });
-
-  // Handle reconnect event specifically
-  socket.value.on('reconnect', (attemptNumber) => {
-    console.log(`[Judge Socket] Reconnected after ${attemptNumber} attempts`);
-    joinSessionRoom();
-    loadSession();
-    loadQueue();
-  });
-
-  // Join immediately if already connected (important: this runs AFTER setting up listeners)
-  if (socket.value.connected) {
-    console.log('[Judge Socket] Already connected, joining room immediately');
-    joinSessionRoom();
-  } else {
-    console.log('[Judge Socket] Not yet connected, waiting for connect event');
-  }
-
-  // Handle join confirmation
-  socket.value.on('judge:joined', (data) => {
-    console.log('[Judge Socket] Joined session room:', data);
-  });
-
-  // Handle errors
-  socket.value.on('judge:error', (data) => {
-    console.error('[Judge Socket] Error:', data.message);
-  });
-
-  // Progress updates from worker
-  socket.value.on('judge:progress', (data) => {
-    console.log('[Judge Socket] Progress:', data);
-    if (data.session_id == sessionId) {
-      // Only update status if provided (defensive - keep current status if undefined)
-      const newStatus = data.status || session.value?.status;
-      session.value = {
-        ...session.value,
-        status: newStatus,
-        completed_comparisons: data.completed,
-        total_comparisons: data.total
-      };
-      console.log('[Judge Socket] Session status after progress:', newStatus);
-    }
-  });
-
-  // Comparison started
-  socket.value.on('judge:comparison_start', (data) => {
-    console.log('[Judge Socket] Comparison started:', data);
-    // Check session_id if provided, otherwise accept all (room-based filtering)
-    if (!data.session_id || data.session_id == sessionId) {
-      const workerId = data.worker_id ?? 0; // Default to worker 0 for single-worker mode
-
-      // Multi-worker mode: update specific worker stream
-      if (workerCount.value > 1) {
-        // Auto-initialize worker stream if not exists
-        if (!workerStreams[workerId]) {
-          console.log(`[Judge Socket] Auto-initializing worker stream ${workerId}`);
-          workerStreams[workerId] = {
-            content: '',
-            comparison: null,
-            isStreaming: false
-          };
-        }
-        workerStreams[workerId].content = '';
-        workerStreams[workerId].isStreaming = true;
-        workerStreams[workerId].comparison = {
-          thread_a_id: data.thread_a_id,
-          thread_b_id: data.thread_b_id,
-          pillar_a: data.pillar_a,
-          pillar_b: data.pillar_b,
-          pillar_a_name: getPillarName(data.pillar_a),
-          pillar_b_name: getPillarName(data.pillar_b)
-        };
-        console.log(`[Judge Socket] Worker ${workerId} stream updated for new comparison`, workerStreams[workerId]);
-      }
-
-      // Single-worker mode: reset stream content for new comparison - IMPORTANT for clean display
-      llmStreamContent.value = '';
-      console.log('[Judge Socket] Stream content cleared for new comparison');
-
-      // Re-enable auto-scroll for new comparison
-      autoScrollEnabled.value = true;
-
-      // Update comparison status
-      if (currentComparison.value) {
-        currentComparison.value = {
-          ...currentComparison.value,
-          llm_status: 'running',
-          winner: null,
-          confidence_score: null
-        };
-      }
-
-      // Expand the stream panel automatically
-      expandedPanels.value = ['stream', 'prompt'];
-
-      // Reload current comparison to get full data
-      loadCurrentComparison();
-    }
-  });
-
-  // LLM streaming tokens (show live generation)
-  socket.value.on('judge:llm_stream', (data) => {
-    if (data.session_id == sessionId) {
-      const workerId = data.worker_id ?? 0; // Default to worker 0 for single-worker mode
-      const token = data.token || data.content || '';
-
-      // Multi-worker mode: update specific worker stream
-      if (workerCount.value > 1) {
-        // Auto-initialize worker stream if not exists (handles race condition)
-        if (!workerStreams[workerId]) {
-          console.log(`[Judge Socket] Auto-initializing worker stream ${workerId} from llm_stream`);
-          workerStreams[workerId] = {
-            content: '',
-            comparison: null,
-            isStreaming: true
-          };
-        }
-        workerStreams[workerId].content += token;
-        workerStreams[workerId].isStreaming = true;
-      }
-
-      // Single-worker mode: append to main stream
-      llmStreamContent.value += token;
-
-      // Update llm_status to show evaluation in progress
-      if (currentComparison.value) {
-        currentComparison.value = {
-          ...currentComparison.value,
-          llm_status: 'running'
-        };
-      }
-
-      // Auto-scroll to bottom (only if auto-scroll is enabled)
-      if (autoScrollEnabled.value) {
-        if (streamOutput.value) {
-          streamOutput.value.scrollTop = streamOutput.value.scrollHeight;
-        }
-        if (fullscreenStreamOutput.value) {
-          fullscreenStreamOutput.value.scrollTop = fullscreenStreamOutput.value.scrollHeight;
-        }
-      }
-    }
-  });
-
-  // Comparison completed
-  socket.value.on('judge:comparison_complete', async (data) => {
-    console.log('[Judge Socket] Comparison complete:', data);
-    if (data.session_id == sessionId) {
-      const workerId = data.worker_id ?? 0;
-
-      // Multi-worker mode: mark worker as not streaming
-      if (workerCount.value > 1 && workerStreams[workerId]) {
-        workerStreams[workerId].isStreaming = false;
-        workerStreams[workerId].comparison = null;
-      }
-
-      // Update current comparison with result
-      if (currentComparison.value) {
-        currentComparison.value = {
-          ...currentComparison.value,
-          llm_status: 'completed',
-          winner: data.winner,
-          confidence_score: data.confidence
-        };
-      }
-      // Reload completed comparisons list and queue
-      await loadCompletedComparisons();
-      await loadQueue();
-    }
-  });
-
-  // Session completed
-  socket.value.on('judge:session_complete', async (data) => {
-    console.log('[Judge Socket] Session complete:', data);
-    if (data.session_id == sessionId) {
-      await loadSession();
-    }
-  });
-
-  // Status response (from get_status request)
-  socket.value.on('judge:status', (data) => {
-    console.log('[Judge Socket] Status:', data);
-    if (data.session_id == sessionId) {
-      // Only update status if provided (defensive - keep current status if undefined)
-      const newStatus = data.status || session.value?.status;
-      session.value = {
-        ...session.value,
-        status: newStatus,
-        completed_comparisons: data.completed,
-        total_comparisons: data.total,
-        current_comparison_id: data.current_comparison_id
-      };
-      console.log('[Judge Socket] Session status after status event:', newStatus);
-    }
-  });
-};
-
-// Utility Functions
-const getStatusColor = (status) => {
-  const colors = {
-    created: 'grey',
-    queued: 'warning',
-    running: 'info',
-    paused: 'orange',
-    completed: 'success',
-    failed: 'error'
-  };
-  return colors[status] || 'grey';
-};
-
-const getStatusIcon = (status) => {
-  const icons = {
-    created: 'mdi-file-document',
-    queued: 'mdi-clock-outline',
-    running: 'mdi-play-circle',
-    paused: 'mdi-pause-circle',
-    completed: 'mdi-check-circle',
-    failed: 'mdi-alert-circle'
-  };
-  return icons[status] || 'mdi-help-circle';
-};
-
-const getStatusText = (status) => {
-  const texts = {
-    created: 'Erstellt',
-    queued: 'In Warteschlange',
-    running: 'Läuft',
-    paused: 'Pausiert',
-    completed: 'Abgeschlossen',
-    failed: 'Fehlgeschlagen'
-  };
-  return texts[status] || status;
-};
-
-const getConfidenceColor = (confidence) => {
-  if (confidence >= 0.8) return 'success';
-  if (confidence >= 0.6) return 'info';
-  if (confidence >= 0.4) return 'warning';
-  return 'error';
-};
-
-// Pillar name helper
-const PILLAR_NAMES = {
-  1: "Rollenspiele",
-  2: "Feature Säule 1",
-  3: "Anonymisierte Daten",
-  4: "Synthetisch",
-  5: "Live-Test"
-};
-
-const getPillarName = (pillarId) => {
-  return PILLAR_NAMES[pillarId] || `Säule ${pillarId}`;
-};
-
-// Queue status helpers
-const getQueueStatusColor = (status) => {
-  const colors = {
-    'pending': 'grey',
-    'running': 'warning',
-    'completed': 'success',
-    'failed': 'error',
-    'PENDING': 'grey',
-    'RUNNING': 'warning',
-    'COMPLETED': 'success',
-    'FAILED': 'error'
-  };
-  return colors[status] || 'grey';
-};
-
-const getQueueStatusIcon = (status) => {
-  const icons = {
-    'pending': 'mdi-clock-outline',
-    'running': 'mdi-loading',
-    'completed': 'mdi-check',
-    'failed': 'mdi-alert',
-    'PENDING': 'mdi-clock-outline',
-    'RUNNING': 'mdi-loading',
-    'COMPLETED': 'mdi-check',
-    'FAILED': 'mdi-alert'
-  };
-  return icons[status] || 'mdi-help';
-};
-
-const getQueueStatusText = (status) => {
-  const texts = {
-    'pending': 'Ausstehend',
-    'running': 'Läuft',
-    'completed': 'Fertig',
-    'failed': 'Fehler',
-    'PENDING': 'Ausstehend',
-    'RUNNING': 'Läuft',
-    'COMPLETED': 'Fertig',
-    'FAILED': 'Fehler'
-  };
-  return texts[status] || status;
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-};
-
-// Get step by key from parsed steps
-const getStepByKey = (stepKey) => {
-  return parsedStreamSteps.value.find(s => s.key === stepKey) || null;
-};
-
-// Format criterion name for display (snake_case to readable)
-const formatCriterionName = (criterion) => {
-  const nameMap = {
-    'counsellor_coherence': 'Berater-Kohärenz',
-    'client_coherence': 'Klienten-Kohärenz',
-    'quality': 'Qualität',
-    'empathy': 'Empathie',
-    'authenticity': 'Authentizität',
-    'solution_orientation': 'Lösungsorientierung'
-  };
-  return nameMap[criterion] || criterion.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-};
-
-// Get color based on score (1-5)
-const getScoreColor = (score) => {
-  if (score >= 4.5) return 'success';
-  if (score >= 3.5) return 'info';
-  if (score >= 2.5) return 'warning';
-  return 'error';
-};
-
 // Copy stream content to clipboard
-const copyStreamToClipboard = async () => {
-  if (!llmStreamContent.value) return;
-
-  try {
-    await navigator.clipboard.writeText(llmStreamContent.value);
-    // Could add a snackbar notification here
-    console.log('Stream content copied to clipboard');
-  } catch (err) {
-    console.error('Failed to copy stream content:', err);
-  }
-};
-
-// Open fullscreen mode
-const openFullscreen = () => {
-  fullscreenMode.value = true;
-  autoScrollEnabled.value = true; // Reset auto-scroll when opening fullscreen
-  // Auto-reconnect to stream when opening fullscreen
-  if (session.value?.status === 'running' && !isStreaming.value) {
-    reconnectToStream();
-  }
-};
-
-// Close fullscreen mode
-const closeFullscreen = () => {
-  fullscreenMode.value = false;
-};
-
-// Open multi-worker fullscreen mode
-const openMultiWorkerFullscreen = async () => {
-  multiWorkerFullscreenMode.value = true;
-  // Ensure worker streams are initialized and updated
-  await loadWorkerPoolStatus();
-};
-
-// Close multi-worker fullscreen mode
-const closeMultiWorkerFullscreen = () => {
-  multiWorkerFullscreenMode.value = false;
-};
-
-// Open fullscreen for a specific worker (from WorkerLane emit)
-const openWorkerFullscreen = async (workerId) => {
-  focusedWorkerId.value = workerId;
-  multiWorkerDisplayMode.value = 'focus';
-  multiWorkerFullscreenMode.value = true;
-  // Ensure worker streams are initialized and updated
-  await loadWorkerPoolStatus();
-};
-
-// Computed for multi-worker column size
-const getMultiWorkerColSize = computed(() => {
-  if (workerCount.value <= 2) return 6;
-  if (workerCount.value <= 4) return 6;
-  return 4;
-});
-
-// Parse worker stream content for results
-const getWorkerParsedResult = (workerId) => {
-  const content = workerStreams[workerId]?.content;
-  if (!content) return null;
-
-  const result = {
-    winner: null,
-    confidence: null,
-    scores: { A: {}, B: {} },
-    final_justification: null
-  };
-
-  // Try to parse JSON
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.winner || parsed.confidence || parsed.scores) {
-        result.winner = parsed.winner;
-        result.confidence = parsed.confidence;
-        result.final_justification = parsed.final_justification;
-        if (parsed.scores) {
-          result.scores = parsed.scores;
-        }
-        return result;
-      }
-    }
-  } catch (e) {
-    // JSON not complete - try incremental parsing
-  }
-
-  // Incremental parsing
-  const winnerMatch = content.match(/"winner"\s*:\s*"([AB])"/);
-  if (winnerMatch) result.winner = winnerMatch[1];
-
-  const confMatch = content.match(/"confidence"\s*:\s*([\d.]+)/);
-  if (confMatch) result.confidence = parseFloat(confMatch[1]);
-
-  // Extract individual scores
-  for (const criterion of SCORE_CRITERIA) {
-    const scoreAPattern = new RegExp(`"A"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
-    const scoreAMatch = content.match(scoreAPattern);
-    if (scoreAMatch) {
-      result.scores.A[criterion.key] = parseInt(scoreAMatch[1]);
-    }
-
-    const scoreBPattern = new RegExp(`"B"[\\s\\S]*?"${criterion.key}"\\s*:\\s*(\\d+)`, 'm');
-    const scoreBMatch = content.match(scoreBPattern);
-    if (scoreBMatch) {
-      result.scores.B[criterion.key] = parseInt(scoreBMatch[1]);
-    }
-  }
-
-  const justMatch = content.match(/"final_justification"\s*:\s*"([^"]+)"/);
-  if (justMatch) result.final_justification = justMatch[1];
-
-  return result.winner || result.confidence || Object.keys(result.scores.A).length > 0 ? result : null;
-};
-
-// Get worker score for A
-const getWorkerScoreA = (workerId, criterionKey) => {
-  const parsed = getWorkerParsedResult(workerId);
-  return parsed?.scores?.A?.[criterionKey] || 0;
-};
-
-// Get worker score for B
-const getWorkerScoreB = (workerId, criterionKey) => {
-  const parsed = getWorkerParsedResult(workerId);
-  return parsed?.scores?.B?.[criterionKey] || 0;
-};
-
-// Get worker analysis step by key
-const getWorkerStep = (workerId, stepKey) => {
-  const content = workerStreams[workerId]?.content;
-  if (!content) return null;
-
-  const stepPattern = new RegExp(`"${stepKey}"\\s*:\\s*"`, 'm');
-  const stepMatch = content.match(stepPattern);
-
-  if (stepMatch) {
-    const startIdx = content.indexOf(stepMatch[0]) + stepMatch[0].length;
-    let stepContent = '';
-    let escaped = false;
-
-    for (let i = startIdx; i < content.length; i++) {
-      const char = content[i];
-      if (escaped) {
-        if (char === 'n') stepContent += '\n';
-        else if (char === '"') stepContent += '"';
-        else if (char === '\\') stepContent += '\\';
-        else stepContent += char;
-        escaped = false;
-      } else if (char === '\\') {
-        escaped = true;
-      } else if (char === '"') {
-        break;
-      } else {
-        stepContent += char;
-      }
-    }
-
-    const isStepStreaming = !content.slice(startIdx).includes('"');
-
-    return {
-      key: stepKey,
-      content: stepContent,
-      isStreaming: isStepStreaming
-    };
-  }
-
-  return null;
-};
-
-// Handle user scroll - disable auto-scroll if user scrolls up
-const handleStreamScroll = (event) => {
-  const el = event.target;
-  // Check if user is near the bottom (within 50px)
-  const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
-
-  if (!isNearBottom && autoScrollEnabled.value) {
-    // User scrolled up - disable auto-scroll
-    autoScrollEnabled.value = false;
-    console.log('[Stream] Auto-scroll disabled - user scrolled');
-  }
-};
-
-// Re-enable auto-scroll and scroll to bottom
-const enableAutoScroll = () => {
-  autoScrollEnabled.value = true;
-  // Immediately scroll to bottom
-  if (fullscreenStreamOutput.value) {
-    fullscreenStreamOutput.value.scrollTop = fullscreenStreamOutput.value.scrollHeight;
-  }
-  if (streamOutput.value) {
-    streamOutput.value.scrollTop = streamOutput.value.scrollHeight;
-  }
-  console.log('[Stream] Auto-scroll re-enabled');
-};
-
-// Reconnect to live stream
-const reconnectToStream = async () => {
-  reconnecting.value = true;
-
-  try {
-    // Reset stream content
-    llmStreamContent.value = '';
-
-    // Get socket (will reconnect if needed via centralized service)
-    socket.value = getSocket();
-
-    // Re-join the session room
-    socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
-
-    // Reload current comparison data
-    await loadCurrentComparison();
-
-    // Expand stream panel to show live output
-    if (!expandedPanels.value.includes('stream')) {
-      expandedPanels.value = ['stream', 'prompt'];
-    }
-
-    // Update comparison status to show we're listening
-    if (currentComparison.value) {
-      currentComparison.value = {
-        ...currentComparison.value,
-        llm_status: 'running'
-      };
-    }
-
-    console.log('[Judge] Reconnected to live stream');
-  } catch (err) {
-    console.error('Failed to reconnect to stream:', err);
-  } finally {
-    reconnecting.value = false;
-  }
-};
-
-// Fallback polling for running sessions (WebSocket is primary, this is backup)
-// Increased interval since WebSocket handles most updates in real-time
-let pollInterval = null;
-
-const startPolling = () => {
-  if (pollInterval) return;
-  // Poll every 30 seconds as fallback (WebSocket is primary communication)
-  pollInterval = setInterval(async () => {
-    if (session.value?.status === 'running') {
-      await loadCurrentComparison();
-      await loadQueue();
-    } else {
-      stopPolling();
-    }
-  }, 30000); // 30 seconds fallback polling (WebSocket handles real-time)
-};
-
-const stopPolling = () => {
-  if (pollInterval) {
-    clearInterval(pollInterval);
-    pollInterval = null;
-  }
-};
+const copyStreamToClipboard = () => copyToClipboard(llmStreamContent.value);
 
 // Lifecycle
 onMounted(async () => {
   await loadSession();
   setupSocket();
-  // Start polling if session is running
   if (session.value?.status === 'running') {
     startPolling();
   }
 });
 
 onUnmounted(() => {
-  stopPolling();
-  if (socket.value) {
-    // Leave the session room (but don't disconnect - shared socket)
-    socket.value.emit('judge:leave_session', { session_id: parseInt(sessionId) });
-    // Remove our specific listeners
-    socket.value.off('connect');
-    socket.value.off('disconnect');
-    socket.value.off('reconnect');
-    socket.value.off('judge:joined');
-    socket.value.off('judge:error');
-    socket.value.off('judge:progress');
-    socket.value.off('judge:comparison_start');
-    socket.value.off('judge:llm_stream');
-    socket.value.off('judge:comparison_complete');
-    socket.value.off('judge:session_complete');
-  }
+  cleanupSocket();
 });
 </script>
 

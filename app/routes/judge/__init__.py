@@ -7,7 +7,10 @@ Provides all Judge-related API endpoints, split into sub-modules:
 - session_debug_routes: Debug endpoints (dev only)
 - session_health_routes: Health and worker status
 - comparison_routes: Comparison retrieval and queue
-- statistics_routes: Results and statistics
+- statistics_routes: Core results and statistics
+- statistics_verbosity_routes: Verbosity bias analysis
+- statistics_thread_routes: Thread performance analysis
+- statistics_position_routes: Position-swap consistency analysis
 - pillar_routes: Pillar management
 - export_routes: Data export
 - kia_sync_routes: KIA GitLab synchronization
@@ -25,6 +28,9 @@ from routes.judge.session_debug_routes import session_debug_bp
 from routes.judge.session_health_routes import session_health_bp
 from routes.judge.comparison_routes import comparison_bp
 from routes.judge.statistics_routes import statistics_bp
+from routes.judge.statistics_verbosity_routes import statistics_verbosity_bp
+from routes.judge.statistics_thread_routes import statistics_thread_bp
+from routes.judge.statistics_position_routes import statistics_position_bp
 from routes.judge.pillar_routes import pillar_bp
 from routes.judge.export_routes import export_bp
 from routes.judge.kia_sync_routes import kia_sync_bp
@@ -36,6 +42,9 @@ judge_bp.register_blueprint(session_debug_bp)
 judge_bp.register_blueprint(session_health_bp)
 judge_bp.register_blueprint(comparison_bp)
 judge_bp.register_blueprint(statistics_bp)
+judge_bp.register_blueprint(statistics_verbosity_bp)
+judge_bp.register_blueprint(statistics_thread_bp)
+judge_bp.register_blueprint(statistics_position_bp)
 judge_bp.register_blueprint(pillar_bp)
 judge_bp.register_blueprint(export_bp)
 judge_bp.register_blueprint(kia_sync_bp)

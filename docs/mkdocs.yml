@@ -63,6 +63,10 @@ nav:
           - Overview: projekte/authentik/overview.md
           - Migration: projekte/authentik/migration.md
           - Testing Plan: projekte/authentik/testing-plan.md
+      - Splitting & Refactoring:
+          - Konzept: projekte/splitting-refactoring/konzept.md
+          - Umsetzung: projekte/splitting-refactoring/umsetzung.md
+          - Progress: projekte/splitting-refactoring/progress.md
       - Templates:
           - Konzept: projekte/templates/konzept-template.md
           - Umsetzung: projekte/templates/umsetzung-template.md

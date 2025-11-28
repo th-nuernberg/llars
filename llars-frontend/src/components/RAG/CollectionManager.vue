@@ -66,7 +66,7 @@
                   <div class="text-caption text-medium-emphasis">Dokumente</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-h6">{{ formatSize(collection.total_size) }}</div>
+                  <div class="text-h6">{{ formatSize(collection.total_size_bytes) }}</div>
                   <div class="text-caption text-medium-emphasis">Größe</div>
                 </div>
               </div>

@@ -48,11 +48,20 @@ def start_crawl():
     Request body:
     {
         "urls": ["https://example.com"],
-        "collection_name": "My Website Docs",
+        "collection_name": "My Website Docs",           // Name for new collection (ignored if existing_collection_id is set)
         "collection_description": "Crawled documentation",
         "max_pages_per_site": 50,
-        "max_depth": 3
+        "max_depth": 3,
+        "existing_collection_id": null                  // If set, add documents to existing collection
     }
+
+    Collection modes:
+    - New collection: Omit existing_collection_id, provide collection_name
+    - Existing collection: Set existing_collection_id, collection_name is optional
+
+    Document handling:
+    - If content hash already exists: Document is LINKED to collection (no duplicate)
+    - If content is new: Document is created and LINKED
 
     Returns immediately with job_id. Connect via WebSocket to crawler:{job_id}
     room for live progress updates.
@@ -74,8 +83,11 @@ def start_crawl():
                     'error': f'Invalid URL format: {url}'
                 }), 400
 
+        # Collection mode: existing or new
+        existing_collection_id = data.get('existing_collection_id')
+
         collection_name = data.get('collection_name')
-        if not collection_name:
+        if not collection_name and not existing_collection_id:
             # Generate name from first URL domain
             from urllib.parse import urlparse
             domain = urlparse(urls[0]).netloc
@@ -86,23 +98,32 @@ def start_crawl():
         # Start background crawl with WebSocket support
         job_id = crawler_service.start_crawl_background(
             urls=urls,
-            collection_name=collection_name,
+            collection_name=collection_name or '',
             collection_description=data.get('collection_description', ''),
             max_pages_per_site=data.get('max_pages_per_site', 50),
             max_depth=data.get('max_depth', 3),
             created_by=username,
-            app=current_app._get_current_object()
+            app=current_app._get_current_object(),
+            existing_collection_id=existing_collection_id
         )
 
         # Return immediately with job info
-        return jsonify({
+        response_data = {
             'success': True,
             'message': 'Crawl job started',
             'job_id': job_id,
             'urls': urls,
-            'collection_name': collection_name,
             'websocket_room': f'crawler_{job_id}'
-        }), 202
+        }
+
+        if existing_collection_id:
+            response_data['mode'] = 'add_to_existing'
+            response_data['existing_collection_id'] = existing_collection_id
+        else:
+            response_data['mode'] = 'new_collection'
+            response_data['collection_name'] = collection_name
+
+        return jsonify(response_data), 202
 
     except Exception as e:
         logger.error(f"Error starting crawl: {e}")

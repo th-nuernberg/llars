@@ -757,82 +757,92 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { getSocket } from '@/services/socketService';
+import {
+  useRAGStats,
+  useRAGDocuments,
+  useRAGCollections,
+  useRAGHelpers
+} from './AdminRAGSection/composables';
 
-// State
+// Local UI State
 const activeTab = ref('documents');
-const stats = ref({
-  total_documents: 0,
-  processed: 0,
-  total_collections: 0,
-  total_size: 0
-});
 
-// Embedding Info
-const embeddingInfo = ref({
-  model_name: 'Loading...',
-  model_type: '-',
-  dimensions: 0,
-  is_primary: false,
-  primary_model: '-',
-  fallback_model: '-',
-  litellm_configured: false,
-  litellm_base_url: '-',
-  vectorstore_dir: '-',
-  collection_name: '-'
-});
-const loadingEmbeddingInfo = ref(false);
+// Initialize composables
+const {
+  stats,
+  embeddingInfo,
+  loadingEmbeddingInfo,
+  processingQueue,
+  loadingQueue,
+  processingProgress,
+  fetchStats,
+  fetchEmbeddingInfo,
+  fetchProcessingQueue,
+  updateQueueFromWebSocket,
+  handleDocumentProgress
+} = useRAGStats();
 
-// Processing Queue
-const processingQueue = ref({
-  pending: 0,
-  processing: 0,
-  indexed: 0,
-  error: 0,
-  total: 0
-});
-const loadingQueue = ref(false);
+const {
+  collections,
+  loadingCollections,
+  newCollectionName,
+  creatingCollection,
+  deleteCollDialog,
+  collectionToDelete,
+  deletingCollection,
+  collectionDetailDialog,
+  selectedCollection,
+  collectionDocuments,
+  loadingCollectionDocs,
+  collectionHeaders,
+  collectionDocHeaders,
+  fetchCollections,
+  createCollection: createCollectionFn,
+  confirmDeleteCollection,
+  deleteCollection: deleteCollectionFn,
+  openCollectionDetail,
+  fetchCollectionDocuments
+} = useRAGCollections();
 
-// Computed for progress
-const processingProgress = computed(() => {
-  if (processingQueue.value.total === 0) return 0;
-  return (processingQueue.value.indexed / processingQueue.value.total) * 100;
-});
+const {
+  documents,
+  documentSearch,
+  collectionFilter,
+  loadingDocuments,
+  filesToUpload,
+  uploadCollection,
+  uploading,
+  uploadProgress,
+  deleteDocDialog,
+  documentToDelete,
+  deletingDocument,
+  documentHeaders,
+  collectionOptions,
+  filteredDocuments,
+  fetchDocuments,
+  handleFileSelect,
+  uploadFiles: uploadFilesFn,
+  confirmDeleteDocument,
+  deleteDocument: deleteDocumentFn
+} = useRAGDocuments(collections);
 
-// Documents
-const documents = ref([]);
-const documentSearch = ref('');
-const collectionFilter = ref(null);
-const loadingDocuments = ref(false);
-
-// Collections
-const collections = ref([]);
-const loadingCollections = ref(false);
-const newCollectionName = ref('');
-const creatingCollection = ref(false);
-
-// Upload
-const filesToUpload = ref([]);
-const uploadCollection = ref('default');
-const uploading = ref(false);
-const uploadProgress = ref(0);
-const acceptedFileTypes = '.pdf,.txt,.md,.docx,.doc';
-
-// Delete dialogs
-const deleteDocDialog = ref(false);
-const documentToDelete = ref(null);
-const deletingDocument = ref(false);
-const deleteCollDialog = ref(false);
-const collectionToDelete = ref(null);
-const deletingCollection = ref(false);
-
-// Collection Detail Dialog
-const collectionDetailDialog = ref(false);
-const selectedCollection = ref(null);
-const collectionDocuments = ref([]);
-const loadingCollectionDocs = ref(false);
+const {
+  formatFileSize,
+  formatDate,
+  getFileTypeIcon,
+  getFileTypeColor,
+  getStatusColor,
+  getStatusIcon,
+  getFileExtension,
+  isPdfDocument,
+  isTextDocument,
+  getDocumentPreviewUrl,
+  downloadDocument,
+  acceptedFileTypes
+} = useRAGHelpers();
 
 // Document Preview Dialog
 const documentPreviewDialog = ref(false);
@@ -840,484 +850,43 @@ const previewDocument = ref(null);
 const previewContent = ref('');
 const loadingPreviewContent = ref(false);
 
-// Table headers
-const documentHeaders = [
-  { title: 'Dateiname', key: 'filename', sortable: true },
-  { title: 'Collection', key: 'collection_name', sortable: true },
-  { title: 'Größe', key: 'file_size', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Hochgeladen', key: 'uploaded_at', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
-];
-
-const collectionHeaders = [
-  { title: 'Name', key: 'name', sortable: true },
-  { title: 'Dokumente', key: 'document_count', sortable: true },
-  { title: 'Erstellt', key: 'created_at', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
-];
-
-const collectionDocHeaders = [
-  { title: 'Dateiname', key: 'filename', sortable: true },
-  { title: 'Größe', key: 'file_size', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Chunks', key: 'chunk_count', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
-];
-
-// Computed
-const collectionOptions = computed(() => {
-  const options = ['Alle', ...collections.value.map(c => c.name)];
-  return options;
-});
-
-const filteredDocuments = computed(() => {
-  return documents.value.filter(doc => {
-    const matchesSearch = doc.filename.toLowerCase().includes(documentSearch.value.toLowerCase());
-    const matchesCollection = !collectionFilter.value || collectionFilter.value === 'Alle' ||
-      doc.collection_name === collectionFilter.value;
-    return matchesSearch && matchesCollection;
-  });
-});
-
-// Helper functions
-const formatFileSize = (bytes) => {
-  if (!bytes) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-const getFileTypeIcon = (type) => {
-  const icons = {
-    'pdf': 'mdi-file-pdf-box',
-    'txt': 'mdi-file-document-outline',
-    'md': 'mdi-language-markdown',
-    'docx': 'mdi-file-word',
-    'doc': 'mdi-file-word'
-  };
-  return icons[type] || 'mdi-file';
-};
-
-const getFileTypeColor = (type) => {
-  const colors = {
-    'pdf': 'red',
-    'txt': 'grey',
-    'md': 'blue',
-    'docx': 'blue',
-    'doc': 'blue'
-  };
-  return colors[type] || 'grey';
-};
-
-const getStatusColor = (status) => {
-  const colors = {
-    'processed': 'success',
-    'indexed': 'success',
-    'pending': 'warning',
-    'processing': 'info',
-    'error': 'error'
-  };
-  return colors[status] || 'grey';
-};
-
-const getStatusIcon = (status) => {
-  const icons = {
-    'processed': 'mdi-check-circle',
-    'indexed': 'mdi-check-circle',
-    'pending': 'mdi-clock-outline',
-    'processing': 'mdi-cog-sync',
-    'error': 'mdi-alert-circle'
-  };
-  return icons[status] || 'mdi-help-circle';
-};
-
-const getFileExtension = (filename) => {
-  if (!filename) return '';
-  const parts = filename.split('.');
-  return parts.length > 1 ? parts.pop().toLowerCase() : '';
-};
-
-const isPdfDocument = (doc) => {
-  if (!doc) return false;
-  const ext = doc.file_type || getFileExtension(doc.filename);
-  return ext === 'pdf' || doc.mime_type === 'application/pdf';
-};
-
-const isTextDocument = (doc) => {
-  if (!doc) return false;
-  const ext = doc.file_type || getFileExtension(doc.filename);
-  const textExtensions = ['txt', 'md', 'markdown', 'text'];
-  const textMimeTypes = ['text/plain', 'text/markdown'];
-  return textExtensions.includes(ext) || textMimeTypes.includes(doc.mime_type);
-};
-
-const getDocumentPreviewUrl = (doc) => {
-  if (!doc || !doc.id) return '';
-  // Return the backend URL for serving the document
-  return `/api/rag/documents/${doc.id}/download`;
-};
-
-// WebSocket für Echtzeit-Updates
-let socket = null;
-
-// WebSocket Event-Handler für Queue-Updates
-function handleQueueUpdate(data) {
-  if (data.queue) {
-    // Verarbeite die Queue-Daten
-    const byStatus = {
-      pending: 0,
-      processing: 0,
-      indexed: 0,
-      error: 0
-    };
-
-    data.queue.forEach(item => {
-      if (item.status === 'queued') byStatus.pending++;
-      else if (item.status === 'processing') byStatus.processing++;
-      else if (item.status === 'completed') byStatus.indexed++;
-      else if (item.status === 'failed') byStatus.error++;
-    });
-
-    processingQueue.value = {
-      pending: byStatus.pending,
-      processing: byStatus.processing,
-      indexed: byStatus.indexed,
-      error: byStatus.error,
-      total: data.queue.length
-    };
-
-    console.log('[RAG] Queue-Update erhalten:', processingQueue.value);
-  }
-}
-
-function handleProgressUpdate(data) {
-  console.log('[RAG] Progress-Update:', data.queue_id, data.progress_percent + '%', data.current_step);
-}
-
-function handleDocumentProcessed(data) {
-  console.log('[RAG] Dokument verarbeitet:', data.filename, '-', data.status);
-  // Daten aktualisieren
-  fetchStats();
-  fetchDocuments();
-}
-
-function handleDocumentProgress(data) {
-  console.log('[RAG] Dokument-Progress:', data.filename, data.progress + '%', data.step);
-
-  // Update processing queue based on status change
-  if (data.status === 'processing') {
-    // Move from pending to processing
-    if (processingQueue.value.pending > 0) {
-      processingQueue.value.pending--;
-      processingQueue.value.processing++;
-    }
-  } else if (data.status === 'indexed') {
-    // Move from processing to indexed
-    if (processingQueue.value.processing > 0) {
-      processingQueue.value.processing--;
-      processingQueue.value.indexed++;
-    }
-    // Refresh stats to get accurate counts
-    fetchStats();
-    fetchDocuments();
-  } else if (data.status === 'failed') {
-    // Move from processing to error
-    if (processingQueue.value.processing > 0) {
-      processingQueue.value.processing--;
-      processingQueue.value.error++;
-    }
-    // Refresh stats
-    fetchStats();
-  }
-}
-
-// WebSocket Setup
-function setupWebSocket() {
-  socket = getSocket();
-
-  if (socket) {
-    // Event-Listener registrieren
-    socket.on('rag:queue_list', handleQueueUpdate);
-    socket.on('rag:queue_updated', handleQueueUpdate);
-    socket.on('rag:progress', handleProgressUpdate);
-    socket.on('rag:document_processed', handleDocumentProcessed);
-    socket.on('rag:document_progress', handleDocumentProgress);
-
-    // Subscription starten wenn verbunden
-    if (socket.connected) {
-      socket.emit('rag:subscribe_queue');
-      console.log('[RAG] WebSocket subscribed');
-    }
-
-    // Bei Reconnect erneut subscriben
-    socket.on('connect', () => {
-      socket.emit('rag:subscribe_queue');
-      console.log('[RAG] WebSocket reconnected und subscribed');
-    });
-  }
-}
-
-// WebSocket Cleanup
-function cleanupWebSocket() {
-  if (socket) {
-    socket.off('rag:queue_list', handleQueueUpdate);
-    socket.off('rag:queue_updated', handleQueueUpdate);
-    socket.off('rag:progress', handleProgressUpdate);
-    socket.off('rag:document_processed', handleDocumentProcessed);
-    socket.off('rag:document_progress', handleDocumentProgress);
-    socket.emit('rag:unsubscribe_queue');
-    console.log('[RAG] WebSocket unsubscribed');
-  }
-}
-
-// API calls
-const fetchProcessingQueue = async () => {
-  loadingQueue.value = true;
-  try {
-    const response = await axios.get('/api/rag/stats');
-    const data = response.data;
-    if (data.stats?.documents?.by_status) {
-      const byStatus = data.stats.documents.by_status;
-      processingQueue.value = {
-        pending: byStatus.pending || 0,
-        processing: byStatus.processing || 0,
-        indexed: byStatus.indexed || 0,
-        error: byStatus.error || 0,
-        total: data.stats.documents?.total || 0
-      };
-    }
-  } catch (error) {
-    console.error('Error fetching processing queue:', error);
-  }
-  loadingQueue.value = false;
-};
-
-// Polling wurde durch WebSocket ersetzt - diese Funktionen bleiben für Kompatibilität
-const startQueuePolling = () => {
-  // Polling wurde durch WebSocket ersetzt
-  console.log('[RAG] Polling deaktiviert - WebSocket wird verwendet');
-};
-
-const stopQueuePolling = () => {
-  // Nichts zu tun - Polling ist deaktiviert
-};
-
-const fetchEmbeddingInfo = async () => {
-  loadingEmbeddingInfo.value = true;
-  try {
-    const response = await axios.get('/api/rag/embedding-info');
-    if (response.data.success && response.data.embedding) {
-      embeddingInfo.value = response.data.embedding;
-    }
-  } catch (error) {
-    console.error('Error fetching embedding info:', error);
-    embeddingInfo.value = {
-      model_name: 'Error loading',
-      model_type: 'error',
-      dimensions: 0,
-      is_primary: false,
-      primary_model: '-',
-      fallback_model: '-',
-      litellm_configured: false,
-      litellm_base_url: '-',
-      vectorstore_dir: '-',
-      collection_name: '-'
-    };
-  }
-  loadingEmbeddingInfo.value = false;
-};
-
-const fetchStats = async () => {
-  try {
-    const response = await axios.get('/api/rag/stats');
-    // Transform nested format to flat format expected by template
-    const data = response.data;
-    if (data.stats) {
-      stats.value = {
-        total_documents: data.stats.documents?.total || 0,
-        processed: data.stats.documents?.by_status?.processed || data.stats.documents?.total || 0,
-        total_collections: data.stats.collections?.total || 0,
-        total_size: data.stats.documents?.total_size_bytes || 0
-      };
-    } else {
-      // Already flat format
-      stats.value = data;
-    }
-  } catch (error) {
-    console.error('Error fetching stats:', error);
-  }
-};
-
-const fetchDocuments = async () => {
-  loadingDocuments.value = true;
-  try {
-    const response = await axios.get('/api/rag/documents');
-    documents.value = response.data.documents || [];
-  } catch (error) {
-    console.error('Error fetching documents:', error);
-  }
-  loadingDocuments.value = false;
-};
-
-const fetchCollections = async () => {
-  loadingCollections.value = true;
-  try {
-    const response = await axios.get('/api/rag/collections');
-    collections.value = response.data.collections || [];
-  } catch (error) {
-    console.error('Error fetching collections:', error);
-  }
-  loadingCollections.value = false;
-};
-
+// Wrapper functions for composables (with callbacks for data refresh)
 const createCollection = async () => {
-  if (!newCollectionName.value) return;
-
-  creatingCollection.value = true;
-  try {
-    await axios.post('/api/rag/collections', { name: newCollectionName.value });
-    newCollectionName.value = '';
+  await createCollectionFn(async () => {
     await fetchCollections();
     await fetchStats();
-  } catch (error) {
-    console.error('Error creating collection:', error);
-  }
-  creatingCollection.value = false;
-};
-
-const handleFileSelect = (files) => {
-  filesToUpload.value = files;
+  });
 };
 
 const uploadFiles = async () => {
-  if (!filesToUpload.value || filesToUpload.value.length === 0) return;
-
-  uploading.value = true;
-  uploadProgress.value = 0;
-
-  const formData = new FormData();
-  for (const file of filesToUpload.value) {
-    formData.append('files', file);
-  }
-  formData.append('collection', uploadCollection.value || 'default');
-
-  try {
-    await axios.post('/api/rag/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (progressEvent) => {
-        uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-      }
-    });
-
-    filesToUpload.value = [];
+  await uploadFilesFn(async () => {
     await fetchDocuments();
     await fetchStats();
     activeTab.value = 'documents';
-  } catch (error) {
-    console.error('Error uploading files:', error);
-  }
-
-  uploading.value = false;
-};
-
-const confirmDeleteDocument = (doc) => {
-  documentToDelete.value = doc;
-  deleteDocDialog.value = true;
+  });
 };
 
 const deleteDocument = async () => {
-  if (!documentToDelete.value) return;
-
-  deletingDocument.value = true;
-  try {
-    await axios.delete(`/api/rag/documents/${documentToDelete.value.id}`);
-    deleteDocDialog.value = false;
-    documentToDelete.value = null;
+  await deleteDocumentFn(async () => {
     await fetchDocuments();
     await fetchStats();
-  } catch (error) {
-    console.error('Error deleting document:', error);
-  }
-  deletingDocument.value = false;
-};
-
-const confirmDeleteCollection = (coll) => {
-  collectionToDelete.value = coll;
-  deleteCollDialog.value = true;
+  });
 };
 
 const deleteCollection = async (force = false) => {
-  if (!collectionToDelete.value) return;
-
-  deletingCollection.value = true;
-  try {
-    const url = `/api/rag/collections/${collectionToDelete.value.id}${force ? '?force=true' : ''}`;
-    const response = await axios.delete(url);
-    if (response.data.success) {
-      deleteCollDialog.value = false;
-      collectionToDelete.value = null;
-      await fetchCollections();
-      await fetchDocuments();
-      await fetchStats();
-    }
-  } catch (error) {
-    console.error('Error deleting collection:', error);
-    const errorMsg = error.response?.data?.error || 'Fehler beim Löschen der Collection';
-    alert(errorMsg);
-  }
-  deletingCollection.value = false;
+  await deleteCollectionFn(force, async () => {
+    await fetchCollections();
+    await fetchDocuments();
+    await fetchStats();
+  });
 };
 
-// Collection Detail Functions
-const openCollectionDetail = async (collection) => {
-  selectedCollection.value = collection;
-  collectionDetailDialog.value = true;
-  await fetchCollectionDocuments();
-};
-
-const fetchCollectionDocuments = async () => {
-  if (!selectedCollection.value) return;
-
-  loadingCollectionDocs.value = true;
-  try {
-    const response = await axios.get(`/api/rag/collections/${selectedCollection.value.id}`);
-    // Update selectedCollection with detailed info (including chunk_size, chunk_overlap)
-    if (response.data.collection) {
-      selectedCollection.value = {
-        ...selectedCollection.value,
-        ...response.data.collection
-      };
-      collectionDocuments.value = response.data.collection.documents || [];
-    } else {
-      collectionDocuments.value = [];
-    }
-  } catch (error) {
-    console.error('Error fetching collection documents:', error);
-    collectionDocuments.value = [];
-  }
-  loadingCollectionDocs.value = false;
-};
-
-// Document Preview Functions
+// Document Preview Functions (local - not in composables)
 const openDocumentPreview = async (doc) => {
   previewDocument.value = doc;
   previewContent.value = '';
   documentPreviewDialog.value = true;
 
-  // Load text content if it's a text document
   if (isTextDocument(doc)) {
     await loadTextContent(doc);
   }
@@ -1335,36 +904,61 @@ const loadTextContent = async (doc) => {
   loadingPreviewContent.value = false;
 };
 
-const downloadDocument = async (doc) => {
-  try {
-    const response = await axios.get(`/api/rag/documents/${doc.id}/download`, {
-      responseType: 'blob'
+// WebSocket für Echtzeit-Updates
+let socket = null;
+
+function setupWebSocket() {
+  socket = getSocket();
+
+  if (socket) {
+    socket.on('rag:queue_list', updateQueueFromWebSocket);
+    socket.on('rag:queue_updated', updateQueueFromWebSocket);
+    socket.on('rag:progress', (data) => {
+      console.log('[RAG] Progress-Update:', data.queue_id, data.progress_percent + '%', data.current_step);
+    });
+    socket.on('rag:document_processed', async (data) => {
+      console.log('[RAG] Dokument verarbeitet:', data.filename, '-', data.status);
+      await fetchStats();
+      await fetchDocuments();
+    });
+    socket.on('rag:document_progress', (data) => {
+      handleDocumentProgress(data);
+      if (data.status === 'indexed' || data.status === 'failed') {
+        fetchDocuments();
+      }
     });
 
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', doc.filename || 'document');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Error downloading document:', error);
-  }
-};
+    if (socket.connected) {
+      socket.emit('rag:subscribe_queue');
+      console.log('[RAG] WebSocket subscribed');
+    }
 
+    socket.on('connect', () => {
+      socket.emit('rag:subscribe_queue');
+      console.log('[RAG] WebSocket reconnected und subscribed');
+    });
+  }
+}
+
+function cleanupWebSocket() {
+  if (socket) {
+    socket.off('rag:queue_list');
+    socket.off('rag:queue_updated');
+    socket.off('rag:progress');
+    socket.off('rag:document_processed');
+    socket.off('rag:document_progress');
+    socket.emit('rag:unsubscribe_queue');
+    console.log('[RAG] WebSocket unsubscribed');
+  }
+}
+
+// Lifecycle
 onMounted(async () => {
   fetchStats();
   fetchDocuments();
   fetchCollections();
   fetchEmbeddingInfo();
-
-  // Initiales Laden der Queue (Fallback falls WebSocket nicht sofort verbunden)
   await fetchProcessingQueue();
-
-  // WebSocket für Echtzeit-Updates
   setupWebSocket();
 });
 

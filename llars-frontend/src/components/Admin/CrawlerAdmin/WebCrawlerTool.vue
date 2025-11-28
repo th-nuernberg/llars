@@ -11,13 +11,14 @@
         </div>
         <div class="d-flex align-center ga-2">
           <v-chip
-            :color="socketConnected ? 'success' : 'error'"
+            :color="socketConnected ? 'success' : isReconnecting ? 'warning' : 'error'"
             :variant="socketConnected ? 'flat' : 'outlined'"
             size="small"
             class="font-weight-medium"
           >
-            <v-icon start size="14">{{ socketConnected ? 'mdi-wifi' : 'mdi-wifi-off' }}</v-icon>
-            {{ socketConnected ? 'Live verbunden' : 'Offline' }}
+            <v-progress-circular v-if="isReconnecting" indeterminate size="12" width="2" class="mr-1" />
+            <v-icon v-else start size="14">{{ socketConnected ? 'mdi-wifi' : 'mdi-wifi-off' }}</v-icon>
+            {{ socketConnected ? 'Live verbunden' : isReconnecting ? 'Verbinde...' : 'Offline' }}
           </v-chip>
           <v-btn
             icon="mdi-refresh"
@@ -29,6 +30,55 @@
         </div>
       </v-card-text>
     </v-card>
+
+    <!-- Reconnection Alert -->
+    <v-slide-y-transition>
+      <v-alert
+        v-if="isReconnecting"
+        type="warning"
+        variant="tonal"
+        class="mb-4"
+        density="compact"
+      >
+        <template v-slot:prepend>
+          <v-progress-circular indeterminate size="20" width="2" color="warning" />
+        </template>
+        <span class="font-weight-medium">Verbindung wird wiederhergestellt...</span>
+        <span class="text-body-2 ml-2">Live-Updates werden fortgesetzt, sobald die Verbindung steht.</span>
+      </v-alert>
+    </v-slide-y-transition>
+
+    <!-- Reconnection Failed Alert -->
+    <v-slide-y-transition>
+      <v-alert
+        v-if="reconnectionFailed"
+        type="error"
+        variant="tonal"
+        class="mb-4"
+        density="compact"
+        closable
+        @click:close="reconnectionFailed = false"
+      >
+        <template v-slot:prepend>
+          <v-icon>mdi-wifi-off</v-icon>
+        </template>
+        <div class="d-flex justify-space-between align-center flex-wrap ga-2">
+          <div>
+            <span class="font-weight-medium">Verbindung fehlgeschlagen</span>
+            <span class="text-body-2 ml-2">Live-Updates sind nicht verfügbar.</span>
+          </div>
+          <v-btn
+            color="error"
+            variant="text"
+            size="small"
+            @click="retryConnection"
+            prepend-icon="mdi-refresh"
+          >
+            Erneut versuchen
+          </v-btn>
+        </div>
+      </v-alert>
+    </v-slide-y-transition>
 
     <!-- Active Crawl Alert -->
     <v-slide-y-transition>
@@ -94,7 +144,8 @@
               variant="outlined"
               density="comfortable"
               class="mb-3"
-              :rules="[v => !!v || 'Name ist erforderlich']"
+              :hint="!crawlForm.collectionName?.trim() ? 'Name ist erforderlich' : ''"
+              :persistent-hint="!crawlForm.collectionName?.trim()"
             />
 
             <!-- Description -->
@@ -116,6 +167,60 @@
                   Erweiterte Einstellungen
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
+                  <!-- Collection Mode Selection -->
+                  <div class="mb-4">
+                    <div class="text-caption text-medium-emphasis mb-2">Collection-Modus</div>
+                    <v-radio-group v-model="crawlForm.collectionMode" density="compact" hide-details class="mb-3">
+                      <v-radio value="new" label="Neue Collection erstellen" />
+                      <v-radio value="existing" label="Zu bestehender Collection hinzufügen" />
+                    </v-radio-group>
+
+                    <!-- Existing Collection Dropdown -->
+                    <v-autocomplete
+                      v-if="crawlForm.collectionMode === 'existing'"
+                      v-model="crawlForm.existingCollectionId"
+                      :items="collections"
+                      item-title="display_name"
+                      item-value="id"
+                      label="Collection auswählen"
+                      variant="outlined"
+                      density="compact"
+                      :loading="loadingCollections"
+                      prepend-inner-icon="mdi-folder-multiple"
+                      clearable
+                      class="mb-2"
+                    >
+                      <template v-slot:item="{ props, item }">
+                        <v-list-item v-bind="props">
+                          <template v-slot:append>
+                            <v-chip size="x-small" color="primary" variant="tonal">
+                              {{ item.raw.document_count }} Docs
+                            </v-chip>
+                          </template>
+                        </v-list-item>
+                      </template>
+                      <template v-slot:no-data>
+                        <v-list-item>
+                          <v-list-item-title class="text-body-2 text-medium-emphasis">
+                            Keine Collections gefunden
+                          </v-list-item-title>
+                        </v-list-item>
+                      </template>
+                    </v-autocomplete>
+
+                    <v-alert
+                      v-if="crawlForm.collectionMode === 'existing'"
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="text-caption"
+                    >
+                      <strong>Verlinken statt Duplizieren:</strong> Seiten mit identischem Inhalt werden nur verlinkt, nicht erneut gespeichert.
+                    </v-alert>
+                  </div>
+
+                  <v-divider class="mb-4" />
+
                   <v-row dense>
                     <v-col cols="6">
                       <v-text-field
@@ -289,10 +394,18 @@
                 </v-card>
               </v-col>
               <v-col cols="4">
-                <v-card variant="tonal" color="warning" class="text-center pa-3">
-                  <div class="text-h5 font-weight-bold">{{ watchingJob.errors?.length || 0 }}</div>
-                  <div class="text-caption">Übersprungen</div>
-                </v-card>
+                <v-tooltip location="bottom">
+                  <template #activator="{ props }">
+                    <v-card v-bind="props" variant="tonal" color="info" class="text-center pa-3">
+                      <div class="text-h5 font-weight-bold">{{ watchingJob.documents_linked || 0 }}</div>
+                      <div class="text-caption">Verlinkt</div>
+                    </v-card>
+                  </template>
+                  <div v-if="(watchingJob.documents_linked || 0) > 0">
+                    <div>{{ watchingJob.documents_linked }} bereits existierende Dokumente zur Collection verlinkt</div>
+                  </div>
+                  <span v-else>Keine existierenden Dokumente verlinkt</span>
+                </v-tooltip>
               </v-col>
             </v-row>
 
@@ -328,7 +441,7 @@
             <!-- Completion/Error Messages -->
             <v-alert
               v-if="watchingJob.status === 'completed'"
-              type="success"
+              :type="watchingJob.documents_created > 0 ? 'success' : 'warning'"
               variant="tonal"
               class="mt-4"
             >
@@ -336,6 +449,10 @@
                 <div>
                   <strong>Crawl erfolgreich abgeschlossen!</strong>
                   <div class="text-body-2">{{ watchingJob.documents_created }} Dokumente wurden erstellt.</div>
+                  <div v-if="watchingJob.skipped_existing > 0" class="text-body-2 text-warning">
+                    <v-icon size="small" color="warning" class="mr-1">mdi-alert-circle</v-icon>
+                    {{ watchingJob.skipped_existing }} Seite(n) übersprungen (Inhalt bereits in der Datenbank vorhanden).
+                  </div>
                 </div>
                 <v-btn
                   v-if="watchingJob.collection_id"
@@ -511,8 +628,14 @@ const crawlForm = ref({
   collectionName: '',
   description: '',
   maxPages: 50,
-  maxDepth: 3
+  maxDepth: 3,
+  collectionMode: 'new',  // 'new' or 'existing'
+  existingCollectionId: null
 })
+
+// Collections for dropdown
+const collections = ref([])
+const loadingCollections = ref(false)
 
 // State
 const startingCrawl = ref(false)
@@ -532,6 +655,10 @@ const snackbar = ref({
   text: '',
   color: 'success'
 })
+
+// Reconnection state
+const isReconnecting = ref(false)
+const reconnectionFailed = ref(false)
 
 // Job table headers
 const jobHeaders = [
@@ -560,7 +687,15 @@ const hasValidUrl = computed(() => {
 })
 
 const canStartCrawl = computed(() => {
-  return hasValidUrl.value && crawlForm.value.collectionName?.trim() && !startingCrawl.value
+  if (!hasValidUrl.value || startingCrawl.value) return false
+
+  // For new collection mode, require collection name
+  if (crawlForm.value.collectionMode === 'new') {
+    return !!crawlForm.value.collectionName?.trim()
+  }
+
+  // For existing collection mode, require selected collection
+  return !!crawlForm.value.existingCollectionId
 })
 
 const runningJobs = computed(() => {
@@ -577,6 +712,23 @@ function validateUrls() {
   urlError.value = null
   if (crawlForm.value.urlsText.trim() && !hasValidUrl.value) {
     urlError.value = 'URLs müssen mit http:// oder https:// beginnen'
+  }
+}
+
+// Load collections for dropdown
+async function loadCollections() {
+  loadingCollections.value = true
+  try {
+    const response = await axios.get('/api/rag/collections')
+    if (response.data.success) {
+      collections.value = response.data.collections
+      console.log('[Crawler] Loaded', collections.value.length, 'collections')
+    }
+  } catch (error) {
+    console.error('[Crawler] Error loading collections:', error)
+    showSnackbar('Fehler beim Laden der Collections', 'error')
+  } finally {
+    loadingCollections.value = false
   }
 }
 
@@ -606,6 +758,8 @@ function initSocket() {
   socket.on('connect', () => {
     console.log('[Crawler Socket] Connected:', socket.id)
     socketConnected.value = true
+    isReconnecting.value = false
+    reconnectionFailed.value = false
     reconnectAttempts = 0
 
     // Rejoin session if we were watching one
@@ -617,13 +771,20 @@ function initSocket() {
   socket.on('disconnect', (reason) => {
     console.log('[Crawler Socket] Disconnected:', reason)
     socketConnected.value = false
+    // Only show reconnecting if it was an unexpected disconnect
+    if (reason !== 'io client disconnect') {
+      isReconnecting.value = true
+    }
   })
 
   socket.on('connect_error', (error) => {
     console.warn('[Crawler Socket] Connection error:', error.message)
     reconnectAttempts++
+    isReconnecting.value = true
     if (reconnectAttempts >= maxReconnectAttempts) {
       console.error('[Crawler Socket] Max reconnection attempts reached')
+      isReconnecting.value = false
+      reconnectionFailed.value = true
     }
   })
 
@@ -775,6 +936,8 @@ function handleComplete(data) {
     jobs.value[jobIndex].pages_crawled = data.pages_crawled
     jobs.value[jobIndex].documents_created = data.documents_created
     jobs.value[jobIndex].collection_id = data.collection_id
+    jobs.value[jobIndex].skipped_existing = data.skipped_existing || 0
+    jobs.value[jobIndex].skipped_duplicates = data.skipped_duplicates || 0
   }
 
   // Update watching job
@@ -783,9 +946,18 @@ function handleComplete(data) {
     watchingJob.value.pages_crawled = data.pages_crawled
     watchingJob.value.documents_created = data.documents_created
     watchingJob.value.collection_id = data.collection_id
+    watchingJob.value.skipped_existing = data.skipped_existing || 0
+    watchingJob.value.skipped_duplicates = data.skipped_duplicates || 0
   }
 
-  showSnackbar(`Crawl abgeschlossen: ${data.documents_created} Dokumente erstellt`, 'success')
+  // Show appropriate snackbar message
+  if (data.documents_created > 0) {
+    showSnackbar(`Crawl abgeschlossen: ${data.documents_created} Dokumente erstellt`, 'success')
+  } else if (data.skipped_existing > 0) {
+    showSnackbar(`Crawl abgeschlossen: Alle ${data.skipped_existing} Seiten waren bereits in der Datenbank vorhanden`, 'warning')
+  } else {
+    showSnackbar('Crawl abgeschlossen: Keine neuen Dokumente erstellt', 'info')
+  }
 }
 
 function handleError(data) {
@@ -881,21 +1053,31 @@ async function startBackgroundCrawl() {
   startingCrawl.value = true
 
   try {
-    const response = await axios.post('/api/crawler/start', {
+    // Build request based on collection mode
+    const requestData = {
       urls: urls.value,
-      collection_name: crawlForm.value.collectionName,
-      collection_description: crawlForm.value.description,
       max_pages_per_site: crawlForm.value.maxPages,
       max_depth: crawlForm.value.maxDepth
-    })
+    }
+
+    if (crawlForm.value.collectionMode === 'existing') {
+      // Add to existing collection
+      requestData.existing_collection_id = crawlForm.value.existingCollectionId
+    } else {
+      // Create new collection
+      requestData.collection_name = crawlForm.value.collectionName
+      requestData.collection_description = crawlForm.value.description
+    }
+
+    const response = await axios.post('/api/crawler/start', requestData)
 
     if (response.data.success) {
       showSnackbar('Crawl gestartet - Live-Ansicht wird aktiviert', 'success')
 
-      // Add job to list
+      // Create job object for watching (will be merged with WebSocket update)
       const newJob = {
         job_id: response.data.job_id,
-        status: 'running',
+        status: 'queued',
         urls: response.data.urls,
         collection_name: response.data.collection_name,
         pages_crawled: 0,
@@ -903,16 +1085,24 @@ async function startBackgroundCrawl() {
         started_at: new Date().toISOString(),
         max_pages: crawlForm.value.maxPages * urls.value.length
       }
-      jobs.value.unshift(newJob)
+
+      // Check if job already exists in list (from WebSocket update)
+      const existingIdx = jobs.value.findIndex(j => j.job_id === newJob.job_id)
+      if (existingIdx === -1) {
+        // Only add if not already present
+        jobs.value.unshift(newJob)
+      }
 
       // Auto-watch the new job
       watchJob(newJob)
 
-      // Reset form
-      crawlForm.value.urlsText = ''
-      crawlForm.value.collectionName = ''
-      crawlForm.value.description = ''
-      preview.value = null
+      // Reset form without triggering validation errors
+      setTimeout(() => {
+        crawlForm.value.urlsText = ''
+        crawlForm.value.collectionName = ''
+        crawlForm.value.description = ''
+        preview.value = null
+      }, 100)
     } else {
       showSnackbar(response.data.error || 'Crawl konnte nicht gestartet werden', 'error')
     }
@@ -968,6 +1158,17 @@ async function loadJobs() {
   } finally {
     loadingJobs.value = false
   }
+}
+
+function retryConnection() {
+  reconnectionFailed.value = false
+  reconnectAttempts = 0
+  if (socket) {
+    socket.disconnect()
+    socket = null
+  }
+  initSocket()
+  subscribeToJobUpdates()
 }
 
 function onJobClick(job) {
@@ -1038,6 +1239,8 @@ onMounted(() => {
   subscribeToJobUpdates()
   // Also load jobs once via HTTP as fallback
   loadJobs()
+  // Load collections for dropdown
+  loadCollections()
 })
 
 onUnmounted(() => {

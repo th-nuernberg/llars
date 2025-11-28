@@ -198,18 +198,12 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, onMounted, nextTick, watch} from 'vue';
-import {io} from 'socket.io-client';
-
-interface Message {
-  messageId: number;
-  idx: number;
-  type: 'user' | 'bot_pair';
-  content?: string | { llm1: string; llm2: string };
-  selected?: string | null;
-  streaming?: { llm1: boolean; llm2: boolean };
-  timestamp: string;
-}
+import { ref, computed, onMounted } from 'vue';
+import {
+  useComparisonSocket,
+  useComparisonHelpers,
+  type Message
+} from './ComparisonChat';
 
 const props = defineProps<{
   sessionId: number;
@@ -221,309 +215,72 @@ const emit = defineEmits<{
   (e: 'suggestionStateChange', generating: boolean): void;
 }>();
 
-const messages = ref<Message[]>([]);
-const newMessage = ref('');
-const isProcessing = ref(false);
-const messagesContainer = ref<HTMLElement>();
-const socket = ref<any>(null);
-const generatingSuggestion = ref(false);
-const showJustificationDialog = ref(false);
-const currentJustification = ref<any>(null);
-const userJustification = ref('');
+// Initialize composables
+const sessionIdRef = computed(() => props.sessionId);
 
-const canSendMessage = computed(() => {
-  const lastMessage = messages.value[messages.value.length - 1];
-  return !lastMessage ||
-    lastMessage.type === 'user' ||
-    (lastMessage.type === 'bot_pair' && lastMessage.selected);
+const {
+  messages,
+  isProcessing,
+  generatingSuggestion,
+  showJustificationDialog,
+  currentJustification,
+  initializeSocket,
+  sendMessage: socketSendMessage,
+  selectResponse,
+  generateSuggestion: socketGenerateSuggestion,
+  submitJustification,
+  closeJustificationDialog: socketCloseDialog,
+  setupSessionWatcher
+} = useComparisonSocket({
+  sessionId: sessionIdRef,
+  onMessageUpdate: () => emit('messageUpdate'),
+  onSuggestionStateChange: (generating) => emit('suggestionStateChange', generating)
 });
 
-const formatTimestamp = (timestamp: string) => {
-  return new Date(timestamp).toLocaleString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+const {
+  messagesContainer,
+  newMessage,
+  userJustification,
+  canSendMessage,
+  formatTimestamp,
+  isStreaming,
+  formatSelection,
+  getResponseContent,
+  scrollToBottom,
+  clearNewMessage,
+  setSuggestion,
+  clearJustification
+} = useComparisonHelpers(messages);
 
-const isStreaming = (message: Message) => {
-  return message.streaming?.llm1 || message.streaming?.llm2;
-};
-
-const formatSelection = (selection: string) => {
-  switch(selection) {
-    case 'llm1': return 'Modell 1 ist besser';
-    case 'llm2': return 'Modell 2 ist besser';
-    case 'tie': return 'Beide gleich gut';
-    default: return selection;
-  }
-};
-
-const getResponseContent = (message: Message, llmType: 'llm1' | 'llm2') => {
-  if (typeof message.content === 'object' && message.content) {
-    return message.content[llmType] || '';
-  }
-  return '';
-};
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTo({
-        top: messagesContainer.value.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  });
-};
-
+// Handle send message
 const sendMessage = async () => {
   if (!newMessage.value.trim() || isProcessing.value || !canSendMessage.value) return;
 
   const messageContent = newMessage.value.trim();
-  newMessage.value = '';
-  isProcessing.value = true;
-
-  if (socket.value) {
-    socket.value.emit('comparison_message', {
-      sessionId: props.sessionId,
-      message: messageContent
-    });
-  }
+  clearNewMessage();
+  socketSendMessage(messageContent);
 };
 
-const selectResponse = async (messageId: number, selection: string) => {
-  const message = messages.value.find(m => m.messageId === messageId);
-  if (message && socket.value) {
-    socket.value.emit('rate_response', {
-      sessionId: props.sessionId,
-      messageId: messageId,
-      selection: selection
-    });
-  }
-};
-
-const findMessageById = (messageId: number): Message | undefined => {
-  return messages.value.find(m => m.messageId === messageId);
-};
-
-const addOrUpdateMessage = (messageData: any) => {
-  const existingIndex = messages.value.findIndex(m => m.messageId === messageData.messageId);
-
-  const message: Message = {
-    messageId: messageData.messageId,
-    idx: messageData.idx,
-    type: messageData.type,
-    content: messageData.content,
-    selected: messageData.selected || null,
-    timestamp: messageData.timestamp,
-    streaming: messageData.type === 'bot_pair' ? {llm1: false, llm2: false} : undefined
-  };
-
-  if (existingIndex >= 0) {
-    messages.value[existingIndex] = message;
-  } else {
-    messages.value.push(message);
-    messages.value.sort((a, b) => a.idx - b.idx);
-  }
-
-  scrollToBottom();
-};
-
-// Socket setup
-const initializeSocket = () => {
-  const username = localStorage.getItem('username') || 'Gast';
-  socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
-    path: '/socket.io/',
-    transports: ['websocket'],
-    query: {username: username},
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8'
-    }
-  });
-
-  socket.value.on('connect', () => {
-    if (props.sessionId) {
-      console.log('Socket connected for comparison');
-      socket.value.emit('join_comparison_session', {
-        sessionId: props.sessionId
-      });
-    }
-  });
-
-  socket.value.on('messages_loaded', (data: any) => {
-    console.log('Messages loaded:', data);
-    messages.value = data.messages.map((msg: any) => ({
-      messageId: msg.messageId,
-      idx: msg.idx,
-      type: msg.type,
-      content: msg.content,
-      selected: msg.selected || null,
-      timestamp: msg.timestamp,
-      streaming: msg.type === 'bot_pair' ? {llm1: false, llm2: false} : undefined
-    }));
-    scrollToBottom();
-  });
-
-  socket.value.on('message_created', (messageData: any) => {
-    console.log('Message created:', messageData);
-    addOrUpdateMessage(messageData);
-  });
-
-  socket.value.on('message_updated', (data: any) => {
-    console.log('Message updated:', data);
-    
-    // Message aktualisieren
-    if (data.message) {
-      addOrUpdateMessage(data.message);
-    }
-    
-    // Prüfen ob Justification-Dialog angezeigt werden soll
-    if (data.requires_justification && data.ai_evaluation) {
-      currentJustification.value = {
-        messageId: data.message.messageId,
-        user_selection: data.ai_evaluation.user_selection,
-        ai_selection: data.ai_evaluation.ai_selection,
-        ai_reason: data.ai_evaluation.ai_reason
-      };
-      showJustificationDialog.value = true;
-    }
-    
-    emit('messageUpdate');
-  });
-
-  socket.value.on('streaming_started', (data: any) => {
-    console.log('Streaming started:', data);
-    const message = findMessageById(data.messageId);
-    if (message && message.streaming) {
-      data.llmTypes.forEach((llmType: string) => {
-        if (message.streaming) {
-          message.streaming[llmType as keyof typeof message.streaming] = true;
-        }
-      });
-    }
-  });
-
-  // Streaming Update
-  socket.value.on('streaming_update', (data: any) => {
-    const {messageId, llmType, fullContent} = data;
-    const message = findMessageById(messageId);
-
-    if (message && message.type === 'bot_pair' && typeof message.content === 'object') {
-      message.content[llmType as keyof typeof message.content] = fullContent;
-      scrollToBottom();
-    }
-  });
-
-  socket.value.on('streaming_complete', (data: any) => {
-    console.log('Streaming complete:', data);
-    const {messageId, llmType, finalContent} = data;
-    const message = findMessageById(messageId);
-
-    if (message) {
-      if (message.streaming) {
-        message.streaming[llmType as keyof typeof message.streaming] = false;
-      }
-
-      if (message.type === 'bot_pair' && typeof message.content === 'object') {
-        message.content[llmType as keyof typeof message.content] = finalContent;
-      }
-
-      if (!message.streaming?.llm1 && !message.streaming?.llm2) {
-        isProcessing.value = false;
-      }
-    }
-  });
-
-  socket.value.on('streaming_error', (data: any) => {
-    console.error('Streaming error:', data);
-    const {messageId, llmType, error} = data;
-    const message = findMessageById(messageId);
-
-    if (message) {
-      if (message.streaming) {
-        message.streaming[llmType as keyof typeof message.streaming] = false;
-      }
-
-      if (message.type === 'bot_pair' && typeof message.content === 'object') {
-        message.content[llmType as keyof typeof message.content] = error;
-      }
-
-      if (!message.streaming?.llm1 && !message.streaming?.llm2) {
-        isProcessing.value = false;
-      }
-    }
-  });
-
-  socket.value.on('suggestion_generated', (data: any) => {
-    console.log('Suggestion generated:', data);
-    const {suggestion} = data;
-
-    newMessage.value = suggestion;
-    generatingSuggestion.value = false;
-    emit('suggestionStateChange', false);
-  });
-
-  socket.value.on('suggestion_error', (data: any) => {
-    console.error('Suggestion error:', data);
-    generatingSuggestion.value = false;
-    emit('suggestionStateChange', false);
-  });
-
-  socket.value.on('justification_saved', (data: any) => {
-    console.log('Justification saved:', data);
-    // Optional: Erfolgsmeldung anzeigen
-  });
-  
-  socket.value.on('error', (data: any) => {
-    console.error('Socket error:', data);
-    isProcessing.value = false;
-  });
-
-  socket.value.on('disconnect', () => {
-    console.log('Socket disconnected');
-    isProcessing.value = false;
-  });
-};
-
-watch(() => props.sessionId, (newId) => {
-  if (newId && socket.value) {
-    messages.value = [];
-    socket.value.emit('join_comparison_session', {
-      sessionId: newId
-    });
-  }
-});
-
-onMounted(() => {
-  initializeSocket();
-});
-
+// Handle generate suggestion with callback for setting the value
 const generateSuggestion = () => {
-  if (!socket.value || generatingSuggestion.value || !canSendMessage.value) return;
-
-  generatingSuggestion.value = true;
-  emit('suggestionStateChange', true);
-
-  socket.value.emit('generate_suggestion', {
-    sessionId: props.sessionId
-  });
+  if (generatingSuggestion.value || !canSendMessage.value) return;
+  socketGenerateSuggestion();
 };
 
+// Handle close justification dialog
 const closeJustificationDialog = (saveJustification: boolean) => {
-  if (saveJustification && userJustification.value.trim() && currentJustification.value) {
-    socket.value?.emit('submit_justification', {
-      messageId: currentJustification.value.messageId,
-      justification: userJustification.value.trim()
-    });
+  if (saveJustification && userJustification.value.trim()) {
+    submitJustification(userJustification.value);
   }
-  
-  showJustificationDialog.value = false;
-  currentJustification.value = null;
-  userJustification.value = '';
+  socketCloseDialog();
+  clearJustification();
 };
+
+// Initialize on mount
+onMounted(() => {
+  initializeSocket(scrollToBottom);
+  setupSessionWatcher();
+});
 
 defineExpose({
   generateSuggestion

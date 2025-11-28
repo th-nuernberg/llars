@@ -497,54 +497,62 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
+import {
+  useJudgeConfigState,
+  useJudgeConfigComputed,
+  useJudgeConfigActions
+} from './JudgeConfig';
 
 const router = useRouter();
 
-// Form
-const form = ref(null);
-const valid = ref(false);
-const creating = ref(false);
+// Initialize state composable
+const {
+  form,
+  valid,
+  creating,
+  estimate,
+  estimateLoading,
+  limitThreadsEnabled,
+  availablePillars,
+  config,
+  setupLimitWatcher,
+  initializeDefaultPillars,
+  updateThreadCounts
+} = useJudgeConfigState();
 
-// Estimate
-const estimate = ref(null);
-const estimateLoading = ref(false);
-let estimateDebounceTimer = null;
+// Initialize computed composable
+const {
+  minPillarsRequired,
+  selectedThreadCount,
+  modeDisplayName,
+  modeColor,
+  modeDescription,
+  estimatedPairs,
+  estimatedComparisons,
+  estimatedDuration,
+  selectedDuration,
+  canCreate
+} = useJudgeConfigComputed(config, availablePillars, estimate, limitThreadsEnabled);
 
-// Thread limit toggle
-const limitThreadsEnabled = ref(false);
+// Initialize actions composable
+const {
+  formatNumber,
+  formatDuration,
+  getPillarName: getPillarNameFn,
+  debouncedFetchEstimate,
+  fetchEstimate: fetchEstimateFn,
+  createSession: createSessionFn
+} = useJudgeConfigActions(config, estimate, limitThreadsEnabled, minPillarsRequired, updateThreadCounts);
 
-// Available Pillars
-const availablePillars = ref([
-  { id: 1, name: 'Säule 1 - Rollenspiele', icon: 'mdi-theater', enabled: true, threadCount: 0 },
-  { id: 2, name: 'Säule 2 - Feature', icon: 'mdi-star', enabled: false, threadCount: 0 },
-  { id: 3, name: 'Säule 3 - Anonymisiert', icon: 'mdi-incognito', enabled: true, threadCount: 0 },
-  { id: 4, name: 'Säule 4 - Synthetisch', icon: 'mdi-robot', enabled: false, threadCount: 0 },
-  { id: 5, name: 'Säule 5 - Live-Tests', icon: 'mdi-lightning-bolt', enabled: true, threadCount: 0 }
-]);
+// Wrapper functions
+const getPillarName = (id) => getPillarNameFn(id, availablePillars);
+const fetchEstimate = () => fetchEstimateFn(estimateLoading);
+const createSession = () => createSessionFn(form, creating, router);
 
-// Configuration
-const config = ref({
-  sessionName: '',
-  selectedPillars: [],
-  comparisonMode: 'pillar_sample',
-  samplesPerPillar: 10,
-  maxThreadsPerPillar: 15,
-  positionSwap: true,
-  repetitionsPerPair: 1,
-  workerCount: 3
-});
-
-// Watch for limit toggle
-watch(limitThreadsEnabled, (enabled) => {
-  if (!enabled) {
-    config.value.maxThreadsPerPillar = null;
-  } else {
-    config.value.maxThreadsPerPillar = 15;
-  }
-});
+// Setup watchers
+setupLimitWatcher();
 
 // Watch for config changes to update estimate
 watch(
@@ -556,219 +564,14 @@ watch(
     config.value.positionSwap
   ],
   () => {
-    debouncedFetchEstimate();
+    debouncedFetchEstimate(fetchEstimate);
   },
   { deep: true }
 );
 
-// Computed
-const minPillarsRequired = computed(() => {
-  return config.value.comparisonMode === 'free_for_all' ? 1 : 2;
-});
-
-const selectedThreadCount = computed(() => {
-  return config.value.selectedPillars.reduce((sum, id) => {
-    const pillar = availablePillars.value.find(p => p.id === id);
-    return sum + (pillar?.threadCount || 0);
-  }, 0);
-});
-
-const modeDisplayName = computed(() => {
-  const modes = {
-    'pillar_sample': 'Säulen-Stichprobe',
-    'round_robin': 'Round Robin',
-    'free_for_all': 'Jeder gegen Jeden'
-  };
-  return modes[config.value.comparisonMode] || config.value.comparisonMode;
-});
-
-const modeColor = computed(() => {
-  const colors = {
-    'pillar_sample': 'success',
-    'round_robin': 'warning',
-    'free_for_all': 'error'
-  };
-  return colors[config.value.comparisonMode] || 'primary';
-});
-
-const modeDescription = computed(() => {
-  const descriptions = {
-    'pillar_sample': 'Zufällige Samples pro Säulen-Paar',
-    'round_robin': 'Jeder Thread gegen jeden (innerhalb Säulen-Paare)',
-    'free_for_all': 'Jeder Thread gegen jeden (alle)'
-  };
-  return descriptions[config.value.comparisonMode] || '';
-});
-
-const estimatedPairs = computed(() => {
-  const n = config.value.selectedPillars.length;
-  if (n < 2) return 0;
-  return (n * (n - 1)) / 2;
-});
-
-const estimatedComparisons = computed(() => {
-  if (estimate.value?.total_comparisons) {
-    return estimate.value.total_comparisons;
-  }
-  // Fallback calculation for pillar_sample
-  const pairs = estimatedPairs.value;
-  const samples = config.value.samplesPerPillar;
-  const swapMultiplier = config.value.positionSwap ? 2 : 1;
-  const repetitions = config.value.repetitionsPerPair;
-  return pairs * samples * swapMultiplier * repetitions;
-});
-
-const estimatedDuration = computed(() => {
-  if (estimate.value?.estimated_duration_minutes) {
-    return estimate.value.estimated_duration_minutes;
-  }
-  // Fallback: ~10 seconds per comparison
-  const seconds = estimatedComparisons.value * 10;
-  return Math.ceil(seconds / 60);
-});
-
-const selectedDuration = computed(() => {
-  if (estimate.value?.estimated_duration_by_workers) {
-    return estimate.value.estimated_duration_by_workers[config.value.workerCount] || estimatedDuration.value;
-  }
-  return estimatedDuration.value / config.value.workerCount;
-});
-
-const canCreate = computed(() => {
-  return (
-    config.value.sessionName.trim() !== '' &&
-    config.value.selectedPillars.length >= minPillarsRequired.value
-  );
-});
-
-// Methods
-const formatNumber = (num) => {
-  if (num === null || num === undefined) return '0';
-  return num.toLocaleString('de-DE');
-};
-
-const formatDuration = (minutes) => {
-  if (minutes < 1) return '< 1 min';
-  if (minutes < 60) return `${Math.round(minutes)} min`;
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.round(minutes % 60);
-  if (mins === 0) return `${hours}h`;
-  return `${hours}h ${mins}m`;
-};
-
-const getPillarName = (id) => {
-  const pillar = availablePillars.value.find(p => p.id === id);
-  return pillar ? `Säule ${id}` : `Säule ${id}`;
-};
-
-const debouncedFetchEstimate = () => {
-  if (estimateDebounceTimer) {
-    clearTimeout(estimateDebounceTimer);
-  }
-  estimateDebounceTimer = setTimeout(() => {
-    fetchEstimate();
-  }, 300);
-};
-
-const fetchEstimate = async () => {
-  if (config.value.selectedPillars.length < minPillarsRequired.value) {
-    estimate.value = null;
-    return;
-  }
-
-  estimateLoading.value = true;
-  try {
-    const payload = {
-      pillar_ids: config.value.selectedPillars,
-      comparison_mode: config.value.comparisonMode,
-      samples_per_pillar: config.value.samplesPerPillar,
-      position_swap: config.value.positionSwap
-    };
-
-    // Only include max_threads_per_pillar if limit is enabled
-    if (limitThreadsEnabled.value && config.value.maxThreadsPerPillar) {
-      payload.max_threads_per_pillar = config.value.maxThreadsPerPillar;
-    }
-
-    const response = await axios.post('/api/judge/estimate', payload);
-    estimate.value = response.data;
-
-    // Update thread counts from estimate
-    if (response.data.threads_per_pillar) {
-      for (const [pillarId, count] of Object.entries(response.data.threads_per_pillar)) {
-        const pillar = availablePillars.value.find(p => p.id === parseInt(pillarId));
-        if (pillar) {
-          pillar.threadCount = count;
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching estimate:', error);
-    estimate.value = null;
-  } finally {
-    estimateLoading.value = false;
-  }
-};
-
-const createSession = async () => {
-  // Validate form
-  if (form.value) {
-    const { valid: isValid } = await form.value.validate();
-    if (!isValid) return;
-  }
-
-  creating.value = true;
-  try {
-    const payload = {
-      session_name: config.value.sessionName,
-      pillar_ids: config.value.selectedPillars,
-      comparison_mode: config.value.comparisonMode,
-      samples_per_pillar: config.value.samplesPerPillar,
-      position_swap: config.value.positionSwap,
-      repetitions_per_pair: config.value.repetitionsPerPair,
-      worker_count: config.value.workerCount
-    };
-
-    // Only include max_threads_per_pillar if enabled
-    if (limitThreadsEnabled.value && config.value.maxThreadsPerPillar) {
-      payload.max_threads_per_pillar = config.value.maxThreadsPerPillar;
-    }
-
-    // Use debug endpoint in development mode
-    const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
-    const createEndpoint = isDev
-      ? '/api/judge/sessions-debug'
-      : '/api/judge/sessions';
-
-    const response = await axios.post(createEndpoint, payload);
-    const sessionId = response.data.session_id;
-
-    // Auto-start the session immediately after creation
-    try {
-      const startEndpoint = isDev
-        ? `/api/judge/sessions/${sessionId}/start-debug`
-        : `/api/judge/sessions/${sessionId}/start`;
-      await axios.post(startEndpoint);
-      console.log(`Session ${sessionId} auto-started`);
-    } catch (startError) {
-      console.warn('Auto-start failed, session can be started manually:', startError);
-    }
-
-    // Navigate directly to the new session
-    router.push({ name: 'JudgeSession', params: { id: sessionId } });
-  } catch (error) {
-    console.error('Error creating session:', error);
-    alert('Fehler beim Erstellen der Session. Bitte versuchen Sie es erneut.');
-  } finally {
-    creating.value = false;
-  }
-};
-
 // Lifecycle
 onMounted(() => {
-  // Pre-select pillars 1, 3, 5 (the enabled ones)
-  config.value.selectedPillars = [1, 3, 5];
-  // Fetch initial estimate
+  initializeDefaultPillars();
   fetchEstimate();
 });
 </script>

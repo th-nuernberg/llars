@@ -12,5 +12,7 @@ sleep 2
 #ALTER TABLE users ADD COLUMN group_id INT NOT NULL DEFAULT 1;
 
 # Starte die Flask-App
-echo "Starting Flask app on port 8081 with hot-reload enabled..."
+# Note: Using threading async_mode for SocketIO, which works with flask run
+# WebSocket will use long-polling fallback but is fully functional
+echo "Starting Flask app on port 8081..."
 flask run --host=0.0.0.0 --port=8081 --reload

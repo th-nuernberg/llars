@@ -1,6 +1,6 @@
 # Projekte
 
-Dieser Bereich dokumentiert alle größeren Entwicklungsprojekte in LLARS. Jedes Projekt durchläuft einen strukturierten Prozess von der Konzeption bis zur Fertigstellung.
+Dieser Bereich dokumentiert alle größeren Entwicklungsprojekte in LLARS.
 
 ---
 
@@ -8,56 +8,39 @@ Dieser Bereich dokumentiert alle größeren Entwicklungsprojekte in LLARS. Jedes
 
 | Projekt | Status | Beschreibung |
 |---------|--------|--------------|
-| *Noch keine Projekte* | - | Projekte werden hier aufgelistet sobald sie erstellt werden |
+| [LLM-as-Judge](llm-as-judge/index.md) | ✅ Fertig | Automatisierte paarweise E-Mail-Bewertung |
+| [OnCoCo Analyse](oncoco/index.md) | ✅ Fertig | 68-Klassen Konversations-Klassifizierung |
+| [Authentik](authentik/index.md) | ✅ Fertig | OAuth2/OIDC Identity Provider |
+| [Chatbot & RAG](chatbot-rag/index.md) | 📋 Konzept | Konfigurierbare Chatbots mit RAG |
+| [KAIMo](kaimo/index.md) | 📋 Konzept | KI-gestützte Analyse-Integration |
 
 ---
 
-## Projekt-Phasen
+## Status-Legende
 
-```mermaid
-graph LR
-    A[📋 Konzept] --> B[🔧 Umsetzung]
-    B --> C[✅ Abgeschlossen]
-
-    style A fill:#fff3cd,stroke:#856404
-    style B fill:#cce5ff,stroke:#004085
-    style C fill:#d4edda,stroke:#155724
-```
-
-| Phase | Beschreibung |
-|-------|--------------|
-| 📋 **Konzept** | Anforderungen werden definiert, Design wird erarbeitet |
-| 🔧 **Umsetzung** | Aktive Implementierung läuft |
-| ✅ **Abgeschlossen** | Projekt ist fertig implementiert |
+| Status | Bedeutung |
+|--------|-----------|
+| ✅ **Fertig** | Vollständig implementiert |
+| 🔧 **In Umsetzung** | Aktive Implementierung |
+| 📋 **Konzept** | Design-Phase, noch nicht implementiert |
 
 ---
 
-## Schnellstart
+## Neues Projekt anlegen
 
-### Neues Projekt anlegen
+Siehe [How-To: Projekte anlegen](how-to-project.md) für eine ausführliche Anleitung.
 
-1. Kopiere die Templates aus `projekte/templates/`
-2. Benenne die Dateien nach deinem Projekt (z.B. `mein-feature-konzept.md`)
-3. Fülle zuerst das **Konzept** vollständig aus
-4. Erstelle dann die **Umsetzung** basierend auf dem Konzept
-5. Tracke den Fortschritt in der **Progress**-Datei
+### Schnellstart
 
-### Projekt-Struktur
-
-Jedes Projekt besteht aus drei Dateien:
-
-```
-projekte/
-├── mein-projekt-konzept.md      # WAS soll gebaut werden
-├── mein-projekt-umsetzung.md    # WIE wird es gebaut
-└── mein-projekt-progress.md     # WO stehen wir
-```
+1. Kopiere Templates aus `projekte/templates/`
+2. Erstelle neuen Unterordner für das Projekt
+3. Fülle Konzept aus → Review → Umsetzung
+4. Aktualisiere diese Übersicht
 
 ---
 
-## Dokumentation
+## Templates
 
-- [How-To: Projekte anlegen](how-to-project.md) - Ausführliche Anleitung
-- [Template: Konzept](templates/konzept-template.md)
-- [Template: Umsetzung](templates/umsetzung-template.md)
-- [Template: Progress](templates/progress-template.md)
+- [Konzept Template](templates/konzept-template.md)
+- [Umsetzung Template](templates/umsetzung-template.md)
+- [Progress Template](templates/progress-template.md)

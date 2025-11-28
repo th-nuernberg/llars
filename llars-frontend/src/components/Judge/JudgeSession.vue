@@ -27,19 +27,33 @@
           </div>
           <v-spacer></v-spacer>
 
-          <!-- Action Buttons -->
-          <div class="d-flex gap-2">
+          <!-- Action Buttons - Intelligent State-Based -->
+          <div class="d-flex gap-2 align-center">
+            <!-- Recovery Warning Badge -->
+            <v-chip
+              v-if="sessionHealth?.needs_recovery"
+              color="warning"
+              size="small"
+              prepend-icon="mdi-alert"
+              class="mr-2"
+            >
+              Wiederherstellung nötig
+            </v-chip>
+
+            <!-- START: Only for created/queued sessions -->
             <v-btn
-              v-if="session?.status === 'created' || session?.status === 'queued' || session?.status === 'paused'"
+              v-if="session?.status === 'created' || session?.status === 'queued'"
               color="success"
               prepend-icon="mdi-play"
               @click="startSession"
               :loading="actionLoading"
             >
-              Start
+              Starten
             </v-btn>
+
+            <!-- PAUSE: Only when workers are actually running -->
             <v-btn
-              v-if="session?.status === 'running'"
+              v-if="isActuallyRunning"
               color="warning"
               prepend-icon="mdi-pause"
               @click="pauseSession"
@@ -47,16 +61,19 @@
             >
               Pause
             </v-btn>
+
+            <!-- RESUME/RECOVER: When session needs recovery or is paused -->
             <v-btn
-              v-if="session?.status === 'running' || session?.status === 'paused' || session?.status === 'queued'"
-              color="info"
-              prepend-icon="mdi-restart"
+              v-if="showResumeButton"
+              :color="sessionHealth?.needs_recovery ? 'error' : 'info'"
+              :prepend-icon="sessionHealth?.needs_recovery ? 'mdi-restart-alert' : 'mdi-play'"
               @click="resumeSession"
               :loading="actionLoading"
-              title="Session nach Backend-Neustart fortsetzen"
             >
-              Fortsetzen
+              {{ sessionHealth?.needs_recovery ? 'Wiederherstellen' : 'Fortsetzen' }}
             </v-btn>
+
+            <!-- RESULTS: Completed sessions -->
             <v-btn
               v-if="session?.status === 'completed'"
               color="primary"
@@ -65,11 +82,14 @@
             >
               Ergebnisse
             </v-btn>
+
+            <!-- Refresh -->
             <v-btn
               icon="mdi-refresh"
               variant="text"
-              @click="loadSession"
+              @click="refreshAll"
               :loading="loading"
+              title="Seite aktualisieren"
             ></v-btn>
           </div>
         </div>
@@ -115,34 +135,97 @@
     <!-- Multi-Worker Live View (when worker_count > 1) -->
     <v-row v-if="workerCount > 1 && session?.status === 'running'" class="mb-4">
       <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-account-multiple</v-icon>
-            Worker-Pool Live View
-            <v-spacer></v-spacer>
-            <v-chip size="small" color="info" class="mr-2">
-              {{ workerCount }} Worker
-            </v-chip>
-            <!-- Multi-Worker Fullscreen Button -->
-            <v-btn
-              color="primary"
-              variant="tonal"
-              size="small"
-              class="mr-2"
-              @click="openMultiWorkerFullscreen"
-            >
-              <v-icon start>mdi-fullscreen</v-icon>
-              Vollbild
-            </v-btn>
-            <v-btn
-              icon="mdi-refresh"
-              variant="text"
-              size="small"
-              @click="loadWorkerPoolStatus"
-            ></v-btn>
-          </v-card-title>
+        <v-card class="worker-pool-card">
+          <!-- Enhanced Dashboard Header -->
+          <div class="worker-pool-header">
+            <div class="header-main">
+              <div class="header-title-section">
+                <div class="header-icon-badge">
+                  <v-icon size="24">mdi-account-group</v-icon>
+                </div>
+                <div class="header-title-text">
+                  <span class="header-title">Worker-Pool Live View</span>
+                  <span class="header-subtitle">{{ activeWorkerCount }}/{{ workerCount }} Worker aktiv</span>
+                </div>
+              </div>
+
+              <v-spacer></v-spacer>
+
+              <!-- Session Stats -->
+              <div class="header-stats">
+                <div class="stat-item">
+                  <v-icon size="16">mdi-check-circle-outline</v-icon>
+                  <span class="stat-value">{{ session?.completed_comparisons || 0 }}</span>
+                  <span class="stat-label">/{{ session?.total_comparisons || 0 }}</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                  <v-icon size="16">mdi-percent</v-icon>
+                  <span class="stat-value">{{ Math.round(progress) }}%</span>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="header-actions">
+                <v-btn
+                  color="white"
+                  variant="tonal"
+                  size="small"
+                  class="mr-2"
+                  @click="openMultiWorkerFullscreen"
+                >
+                  <v-icon start size="18">mdi-fullscreen</v-icon>
+                  Vollbild
+                </v-btn>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  @click="loadWorkerPoolStatus"
+                  color="white"
+                >
+                  <v-icon size="20">mdi-refresh</v-icon>
+                </v-btn>
+              </div>
+            </div>
+
+            <!-- Pillar Overview Bar -->
+            <div v-if="sessionPillars.length > 0" class="pillars-overview">
+              <div class="pillars-label">
+                <v-icon size="14">mdi-pillar</v-icon>
+                <span>Säulen im Vergleich:</span>
+              </div>
+              <div class="pillars-chips">
+                <div
+                  v-for="pillar in sessionPillars"
+                  :key="pillar.id"
+                  class="pillar-badge"
+                  :style="{ '--pillar-color': getPillarColor(pillar.id) }"
+                >
+                  <v-icon size="14">{{ getPillarIcon(pillar.id) }}</v-icon>
+                  <span>{{ pillar.short }}</span>
+                </div>
+              </div>
+              <div class="pairs-info">
+                <span class="pairs-label">Paare:</span>
+                <div class="pairs-progress">
+                  <div
+                    v-for="pair in pillarPairs"
+                    :key="pair.key"
+                    class="pair-chip"
+                    :class="{ 'pair-active': isPairActive(pair) }"
+                  >
+                    <span>{{ pair.a }}{{ pair.b }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <v-divider></v-divider>
-          <v-card-text>
+
+          <!-- Worker Grid -->
+          <v-card-text class="worker-grid-container">
             <v-row>
               <v-col
                 v-for="i in workerCount"
@@ -1070,46 +1153,99 @@
     class="multi-worker-fullscreen-dialog"
   >
     <v-card class="fullscreen-card d-flex flex-column">
-      <!-- Header -->
-      <v-toolbar color="primary" density="compact">
-        <v-btn icon @click="closeMultiWorkerFullscreen">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-        <v-toolbar-title>
-          <v-icon class="mr-2">mdi-account-multiple</v-icon>
-          Multi-Worker Live View
-        </v-toolbar-title>
-        <v-spacer></v-spacer>
-        <v-chip color="white" variant="outlined" class="mr-2">
-          {{ workerCount }} Worker aktiv
-        </v-chip>
-        <v-chip
-          :color="session?.status === 'running' ? 'success' : 'grey'"
-          variant="flat"
-          class="mr-2"
-        >
-          <v-icon start size="small">
-            {{ session?.status === 'running' ? 'mdi-play-circle' : 'mdi-pause-circle' }}
-          </v-icon>
-          {{ getStatusText(session?.status) }}
-        </v-chip>
-        <!-- Display Mode Toggle for all workers -->
-        <v-btn-toggle
-          v-model="multiWorkerDisplayMode"
-          density="compact"
-          mandatory
-          class="mr-2"
-          color="white"
-          variant="outlined"
-        >
-          <v-btn value="grid" size="small" title="Grid-Ansicht">
-            <v-icon size="small">mdi-view-grid</v-icon>
-          </v-btn>
-          <v-btn value="focus" size="small" title="Fokus-Ansicht">
-            <v-icon size="small">mdi-card-outline</v-icon>
-          </v-btn>
-        </v-btn-toggle>
-      </v-toolbar>
+      <!-- Enhanced Fullscreen Header -->
+      <div class="fullscreen-header">
+        <div class="fullscreen-header-main">
+          <div class="fullscreen-header-left">
+            <v-btn icon variant="text" @click="closeMultiWorkerFullscreen" class="mr-2">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+            <div class="fullscreen-title-section">
+              <div class="fullscreen-icon-badge">
+                <v-icon size="24">mdi-account-group</v-icon>
+              </div>
+              <div class="fullscreen-title-text">
+                <span class="fullscreen-title">Worker-Pool Live View</span>
+                <span class="fullscreen-subtitle">{{ session?.session_name }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fullscreen-header-stats">
+            <div class="fullscreen-stat">
+              <span class="fullscreen-stat-value">{{ activeWorkerCount }}</span>
+              <span class="fullscreen-stat-label">Aktiv</span>
+            </div>
+            <div class="fullscreen-stat-divider"></div>
+            <div class="fullscreen-stat">
+              <span class="fullscreen-stat-value">{{ session?.completed_comparisons || 0 }}</span>
+              <span class="fullscreen-stat-label">Fertig</span>
+            </div>
+            <div class="fullscreen-stat-divider"></div>
+            <div class="fullscreen-stat">
+              <span class="fullscreen-stat-value">{{ session?.total_comparisons || 0 }}</span>
+              <span class="fullscreen-stat-label">Total</span>
+            </div>
+          </div>
+
+          <div class="fullscreen-header-right">
+            <!-- Session Status -->
+            <v-chip
+              :color="session?.status === 'running' ? 'success' : 'warning'"
+              variant="flat"
+              class="mr-2"
+            >
+              <v-icon start size="small" :class="{ 'rotating': session?.status === 'running' }">
+                {{ session?.status === 'running' ? 'mdi-loading' : 'mdi-pause-circle' }}
+              </v-icon>
+              {{ getStatusText(session?.status) }}
+            </v-chip>
+
+            <!-- Display Mode Toggle -->
+            <v-btn-toggle
+              v-model="multiWorkerDisplayMode"
+              density="compact"
+              mandatory
+              class="fullscreen-mode-toggle"
+              variant="outlined"
+            >
+              <v-btn value="grid" size="small" title="Grid-Ansicht">
+                <v-icon size="small">mdi-view-grid</v-icon>
+              </v-btn>
+              <v-btn value="focus" size="small" title="Fokus-Ansicht">
+                <v-icon size="small">mdi-card-outline</v-icon>
+              </v-btn>
+            </v-btn-toggle>
+          </div>
+        </div>
+
+        <!-- Pillar Progress Bar -->
+        <div class="fullscreen-pillars-bar">
+          <div class="fullscreen-pillars-chips">
+            <div
+              v-for="pillar in sessionPillars"
+              :key="pillar.id"
+              class="fullscreen-pillar-badge"
+              :style="{
+                '--pillar-color': getPillarColor(pillar.id),
+                '--pillar-bg': getPillarColor(pillar.id) + '20'
+              }"
+            >
+              <v-icon size="14">{{ getPillarIcon(pillar.id) }}</v-icon>
+              <span>{{ pillar.short }}</span>
+            </div>
+          </div>
+          <div class="fullscreen-progress-container">
+            <v-progress-linear
+              :model-value="progress"
+              height="8"
+              rounded
+              :color="progress === 100 ? 'success' : 'primary'"
+            ></v-progress-linear>
+            <span class="fullscreen-progress-text">{{ Math.round(progress) }}%</span>
+          </div>
+        </div>
+      </div>
 
       <!-- Main Content - Grid View -->
       <v-container v-if="multiWorkerDisplayMode === 'grid'" fluid class="flex-grow-1 pa-4 fullscreen-content multi-worker-grid">
@@ -1565,6 +1701,9 @@ const multiWorkerFullscreenMode = ref(false);
 const multiWorkerDisplayMode = ref('grid'); // 'grid' or 'focus'
 const focusedWorkerId = ref(0);
 
+// Session Health State (for intelligent button logic)
+const sessionHealth = ref(null);
+
 // Worker colors for fullscreen display
 const WORKER_COLORS = ['blue', 'purple', 'teal', 'orange', 'pink'];
 
@@ -1598,6 +1737,100 @@ const progress = computed(() => {
 const isStreaming = computed(() => {
   return currentComparison.value?.llm_status === 'running';
 });
+
+// Computed: Is the session actually running (workers active)?
+const isActuallyRunning = computed(() => {
+  // Session must be in "running" status AND workers must be actually running
+  if (session.value?.status !== 'running') return false;
+  return sessionHealth.value?.workers_running === true;
+});
+
+// Computed: Should we show the Resume button?
+const showResumeButton = computed(() => {
+  const status = session.value?.status;
+
+  // Show for paused sessions
+  if (status === 'paused') return true;
+
+  // Show for "running" sessions that need recovery (workers stopped)
+  if (status === 'running' && sessionHealth.value?.needs_recovery) return true;
+
+  // Don't show for actually running or completed sessions
+  return false;
+});
+
+// Pillar Configuration
+const PILLAR_CONFIG = {
+  1: { name: 'Rollenspiele', icon: 'mdi-theater', color: '#E91E63', short: 'S1' },
+  2: { name: 'Feature', icon: 'mdi-star', color: '#9C27B0', short: 'S2' },
+  3: { name: 'Anonymisiert', icon: 'mdi-incognito', color: '#2196F3', short: 'S3' },
+  4: { name: 'Synthetisch', icon: 'mdi-robot', color: '#FF9800', short: 'S4' },
+  5: { name: 'Live-Tests', icon: 'mdi-lightning-bolt', color: '#4CAF50', short: 'S5' }
+};
+
+// Get pillar icon by ID
+const getPillarIcon = (pillarId) => {
+  return PILLAR_CONFIG[pillarId]?.icon || 'mdi-help-circle';
+};
+
+// Get pillar color by ID
+const getPillarColor = (pillarId) => {
+  return PILLAR_CONFIG[pillarId]?.color || '#9E9E9E';
+};
+
+// Computed: Active worker count
+const activeWorkerCount = computed(() => {
+  let count = 0;
+  for (let i = 0; i < workerCount.value; i++) {
+    if (workerStreams[i]?.comparison || workerStreams[i]?.isStreaming) {
+      count++;
+    }
+  }
+  return count;
+});
+
+// Computed: Session pillars from session data
+const sessionPillars = computed(() => {
+  if (!session.value?.pillar_ids) return [];
+  return session.value.pillar_ids.map(id => ({
+    id,
+    name: PILLAR_CONFIG[id]?.name || `Säule ${id}`,
+    short: PILLAR_CONFIG[id]?.short || `S${id}`,
+    icon: PILLAR_CONFIG[id]?.icon || 'mdi-help-circle'
+  }));
+});
+
+// Computed: Pillar pairs from session pillars
+const pillarPairs = computed(() => {
+  const pillars = sessionPillars.value;
+  const pairs = [];
+  for (let i = 0; i < pillars.length; i++) {
+    for (let j = i + 1; j < pillars.length; j++) {
+      pairs.push({
+        key: `${pillars[i].id}_${pillars[j].id}`,
+        a: pillars[i].short,
+        b: pillars[j].short,
+        pillar_a: pillars[i].id,
+        pillar_b: pillars[j].id
+      });
+    }
+  }
+  return pairs;
+});
+
+// Check if a pair is currently being worked on
+const isPairActive = (pair) => {
+  for (let i = 0; i < workerCount.value; i++) {
+    const comp = workerStreams[i]?.comparison;
+    if (comp) {
+      if ((comp.pillar_a === pair.pillar_a && comp.pillar_b === pair.pillar_b) ||
+          (comp.pillar_a === pair.pillar_b && comp.pillar_b === pair.pillar_a)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
 
 // Step definitions with German titles
 const STEP_DEFINITIONS = {
@@ -1794,6 +2027,24 @@ const allQueueItems = computed(() => {
   return items.sort((a, b) => a.queue_position - b.queue_position);
 });
 
+// Load Session Health (for intelligent button state)
+const loadSessionHealth = async () => {
+  try {
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/health`
+    );
+    sessionHealth.value = response.data;
+    console.log('[Judge] Session health:', response.data);
+  } catch (error) {
+    console.error('Error loading session health:', error);
+    // Fallback: assume healthy if endpoint fails
+    sessionHealth.value = {
+      workers_running: session.value?.status === 'running',
+      needs_recovery: false
+    };
+  }
+};
+
 // Load Session
 const loadSession = async () => {
   loading.value = true;
@@ -1820,14 +2071,23 @@ const loadSession = async () => {
     await loadCompletedComparisons();
     await loadQueue();
 
-    // Load worker pool status if running
-    if (session.value.status === 'running') {
+    // Load worker pool status and health check for running/paused sessions
+    if (session.value.status === 'running' || session.value.status === 'paused') {
       await loadWorkerPoolStatus();
+      await loadSessionHealth();
     }
   } catch (error) {
     console.error('Error loading session:', error);
   } finally {
     loading.value = false;
+  }
+};
+
+// Refresh all data including health check
+const refreshAll = async () => {
+  await loadSession();
+  if (session.value?.status === 'running' || session.value?.status === 'paused') {
+    await loadSessionHealth();
   }
 };
 
@@ -1852,11 +2112,22 @@ const loadWorkerPoolStatus = async () => {
     );
     workerPoolStatus.value = response.data;
 
-    // Update worker streams from pool status
+    // Initialize and update worker streams from pool status
     if (response.data.workers) {
       response.data.workers.forEach(worker => {
-        if (workerStreams[worker.worker_id]) {
-          workerStreams[worker.worker_id].comparison = worker.current_comparison;
+        // Auto-initialize worker stream if not exists
+        if (!workerStreams[worker.worker_id]) {
+          workerStreams[worker.worker_id] = {
+            content: '',
+            comparison: null,
+            isStreaming: false
+          };
+        }
+        // Update comparison data from pool status
+        workerStreams[worker.worker_id].comparison = worker.current_comparison;
+        // If worker is actively running, mark as streaming
+        if (worker.status === 'running' || worker.status === 'RUNNING') {
+          workerStreams[worker.worker_id].isStreaming = true;
         }
       });
     }
@@ -2360,8 +2631,10 @@ const closeFullscreen = () => {
 };
 
 // Open multi-worker fullscreen mode
-const openMultiWorkerFullscreen = () => {
+const openMultiWorkerFullscreen = async () => {
   multiWorkerFullscreenMode.value = true;
+  // Ensure worker streams are initialized and updated
+  await loadWorkerPoolStatus();
 };
 
 // Close multi-worker fullscreen mode
@@ -2370,10 +2643,12 @@ const closeMultiWorkerFullscreen = () => {
 };
 
 // Open fullscreen for a specific worker (from WorkerLane emit)
-const openWorkerFullscreen = (workerId) => {
+const openWorkerFullscreen = async (workerId) => {
   focusedWorkerId.value = workerId;
   multiWorkerDisplayMode.value = 'focus';
   multiWorkerFullscreenMode.value = true;
+  // Ensure worker streams are initialized and updated
+  await loadWorkerPoolStatus();
 };
 
 // Computed for multi-worker column size
@@ -3471,5 +3746,446 @@ onUnmounted(() => {
   background: rgba(var(--v-theme-surface-variant), 0.3);
   padding: 16px;
   border-radius: 8px;
+}
+
+/* ============================================
+   ENHANCED DASHBOARD HEADER STYLES
+   ============================================ */
+
+.worker-pool-card {
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+  background: linear-gradient(135deg,
+    rgba(var(--v-theme-surface), 0.95) 0%,
+    rgba(var(--v-theme-surface-variant), 0.5) 100%);
+}
+
+.worker-pool-header {
+  background: linear-gradient(135deg,
+    rgba(var(--v-theme-primary), 0.08) 0%,
+    rgba(var(--v-theme-surface-variant), 0.3) 100%);
+  border-bottom: 1px solid rgba(var(--v-theme-primary), 0.1);
+  padding: 16px 20px;
+}
+
+.header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg,
+    rgba(var(--v-theme-primary), 0.2) 0%,
+    rgba(var(--v-theme-primary), 0.1) 100%);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+}
+
+.header-title-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.header-subtitle {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.header-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(var(--v-theme-surface), 0.6);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.stat-label {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-transform: uppercase;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pillars Overview Bar */
+.pillars-overview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(var(--v-theme-surface), 0.5);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.pillars-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pillars-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pillar-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  background: color-mix(in srgb, var(--pillar-color) 15%, transparent);
+  color: var(--pillar-color);
+  border: 1px solid var(--pillar-color);
+}
+
+.pillar-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: color-mix(in srgb, var(--pillar-color) 25%, transparent);
+}
+
+.pairs-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.pairs-label {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.pairs-progress {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pair-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  transition: all 0.2s ease;
+}
+
+.pair-chip.pair-active {
+  background: rgba(var(--v-theme-success), 0.15);
+  color: rgb(var(--v-theme-success));
+  animation: pair-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pair-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-success), 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(var(--v-theme-success), 0);
+  }
+}
+
+.pair-vs {
+  font-size: 9px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* Worker Grid Container */
+.worker-grid-container {
+  padding: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .header-top-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-stats {
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .pillars-overview {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pairs-info {
+    margin-left: 0;
+    margin-top: 8px;
+  }
+}
+
+/* ============================================
+   FULLSCREEN HEADER STYLES
+   ============================================ */
+
+.fullscreen-header {
+  background: linear-gradient(135deg,
+    rgba(var(--v-theme-primary), 0.15) 0%,
+    rgba(var(--v-theme-surface-variant), 0.5) 100%);
+  border-bottom: 1px solid rgba(var(--v-theme-primary), 0.2);
+  padding: 0;
+}
+
+.fullscreen-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  gap: 16px;
+}
+
+.fullscreen-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fullscreen-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fullscreen-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg,
+    rgba(var(--v-theme-primary), 0.25) 0%,
+    rgba(var(--v-theme-primary), 0.1) 100%);
+  border: 1px solid rgba(var(--v-theme-primary), 0.3);
+}
+
+.fullscreen-title-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.fullscreen-subtitle {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.fullscreen-header-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(var(--v-theme-surface), 0.7);
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.fullscreen-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+}
+
+.fullscreen-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.fullscreen-stat-label {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-transform: uppercase;
+}
+
+.fullscreen-stat-divider {
+  width: 1px;
+  height: 30px;
+  background: rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.fullscreen-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fullscreen-mode-toggle {
+  border-color: rgba(var(--v-theme-on-surface), 0.3);
+}
+
+/* Pillar Progress Bar in Fullscreen */
+.fullscreen-pillars-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  background: rgba(var(--v-theme-surface), 0.5);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  gap: 16px;
+}
+
+.fullscreen-pillars-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.fullscreen-pillar-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--pillar-bg);
+  color: var(--pillar-color);
+  border: 1px solid var(--pillar-color);
+  transition: all 0.2s ease;
+}
+
+.fullscreen-pillar-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.fullscreen-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.fullscreen-progress-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Enhanced Worker Cards in Fullscreen Grid */
+.multi-worker-fullscreen-dialog .worker-fullscreen-card {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.multi-worker-fullscreen-dialog .worker-fullscreen-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.multi-worker-fullscreen-dialog .worker-fullscreen-card.worker-streaming {
+  border-color: rgb(var(--v-theme-warning));
+  box-shadow: 0 0 20px rgba(var(--v-theme-warning), 0.3);
+}
+
+.multi-worker-fullscreen-dialog .worker-fullscreen-card.worker-active {
+  border-color: rgba(var(--v-theme-primary), 0.5);
+}
+
+/* Responsive Fullscreen Header */
+@media (max-width: 1200px) {
+  .fullscreen-header-main {
+    flex-wrap: wrap;
+  }
+
+  .fullscreen-header-stats {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .fullscreen-pillars-bar {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .fullscreen-progress-container {
+    max-width: 100%;
+    width: 100%;
+  }
 }
 </style>

@@ -1,32 +1,26 @@
-# Chatbot & RAG System
+# Chatbot & RAG System (Deprecated)
 
-!!! warning "📋 Status: Konzept"
-    Dieses Projekt befindet sich in der **Konzeptphase**.
-    Das Design ist fertig, Implementierung steht aus.
+!!! danger "Ersetzt durch Chatbot Builder"
+    Dieses Konzept wurde durch das neue **[Chatbot Builder](../chatbot-builder/index.md)** Konzept ersetzt.
 
-## Übersicht
+    Das neue Konzept integriert Web Crawler, RAG Pipeline und Chatbot-Erstellung in einem nahtlosen Workflow.
 
-Ein konfigurierbares Chatbot-System mit RAG-Integration (Retrieval-Augmented Generation). Ermöglicht die Erstellung von Chatbots, die auf spezifische Dokumenten-Sammlungen zugreifen.
+## Neues Konzept
 
-## Dokumentation
+**[Chatbot Builder mit Web Crawler RAG Pipeline](../chatbot-builder/index.md)**
 
-| Dokument | Beschreibung | Status |
-|----------|--------------|--------|
-| [Konzept](konzept.md) | Vollständige Spezifikation mit DB-Schema, API, Frontend | 📋 Fertig |
+### Verbesserungen im neuen Konzept
 
-## Geplante Features
+| Aspekt | Alt (dieses Konzept) | Neu (chatbot-builder) |
+|--------|---------------------|----------------------|
+| Fokus | Separate Verwaltung | Integrierter Wizard |
+| Crawler | Manuell, getrennt | Im Wizard integriert |
+| Embedding | Status nicht sichtbar | Real-time WebSocket Progress |
+| Konfiguration | Manuell alle Felder | KI-gestützte Generierung |
+| Dokumente | Einfache Referenz | Hash-Deduplizierung, n:m |
 
-- Chatbot-Verwaltung (CRUD)
-- Multi-Collection RAG-Anbindung
-- Konversations-Historie
-- Admin-Dashboard
-- Streaming-Responses
+---
 
-## Implementierungs-Phasen
+## Altes Konzept (Archiv)
 
-1. [ ] Datenbank-Schema (4 Tabellen)
-2. [ ] Backend-Services
-3. [ ] API-Endpoints (27 geplant)
-4. [ ] Frontend-Komponenten
-5. [ ] RAG-Integration
-6. [ ] Testing
+Das alte Konzept ist weiterhin unter [konzept.md](konzept.md) einsehbar, wird aber nicht mehr weiterentwickelt.

@@ -30,15 +30,51 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
+      - Übersicht: getting-started/overview.md
       - Installation: getting-started/installation.md
       - Configuration: getting-started/configuration.md
+  - Guides:
+      - Übersicht: guides/index.md
+      - Quick Start: guides/quick-start.md
+      - Authentik Setup: guides/authentik-setup.md
+      - Login Anleitung: guides/login-anleitung.md
+      - Project State: guides/project-state.md
+      - Permission System: guides/permission-system.md
   - Projekte:
       - Übersicht: projekte/index.md
       - How-To: projekte/how-to-project.md
+      - LLM-as-Judge:
+          - Übersicht: projekte/llm-as-judge/index.md
+          - Konzept: projekte/llm-as-judge/konzept.md
+          - Comparison Modes: projekte/llm-as-judge/comparison-modes-konzept.md
+          - Sampling Strategien: projekte/llm-as-judge/sampling-strategien.md
+      - OnCoCo Analyse:
+          - Übersicht: projekte/oncoco/index.md
+          - Konzept: projekte/oncoco/konzept.md
+      - Chatbot & RAG:
+          - Übersicht: projekte/chatbot-rag/index.md
+          - Konzept: projekte/chatbot-rag/konzept.md
+      - KAIMo:
+          - Übersicht: projekte/kaimo/index.md
+          - Anfrage-Einschätzung: projekte/kaimo/anfrage-einschaetzung.md
+          - Integration Konzept: projekte/kaimo/integration-konzept.md
+      - Authentik:
+          - Übersicht: projekte/authentik/index.md
+          - Overview: projekte/authentik/overview.md
+          - Migration: projekte/authentik/migration.md
+          - Testing Plan: projekte/authentik/testing-plan.md
       - Templates:
           - Konzept: projekte/templates/konzept-template.md
           - Umsetzung: projekte/templates/umsetzung-template.md
           - Progress: projekte/templates/progress-template.md
+  - Archiv:
+      - Übersicht: archive/index.md
+      - Refactoring Complete: archive/refactoring-complete.md
+      - Refactoring Scenarios: archive/refactoring-scenarios.md
+      - Session 2025-11-20: archive/session-2025-11-20.md
+      - Work Summary: archive/work-summary.md
+      - Testing Report: archive/testing-report.md
+      - Keycloak Integration: archive/keycloak-integration.md
 
 markdown_extensions:
   - pymdownx.highlight:

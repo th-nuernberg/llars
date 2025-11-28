@@ -2,6 +2,28 @@
 """
 SocketIO event handlers for Web Crawler live updates.
 Provides real-time progress updates during crawling.
+
+Events:
+    Client → Server:
+        - crawler:join_session: Join a specific crawler job session for live updates
+        - crawler:leave_session: Leave a crawler job session
+        - crawler:subscribe_jobs: Subscribe to global job list updates (replaces polling)
+        - crawler:unsubscribe_jobs: Unsubscribe from global job updates
+        - crawler:get_status: Request current status of a crawler job
+
+    Server → Client:
+        - crawler:joined: Confirmation of joining a session
+        - crawler:jobs_list: Initial list of all crawler jobs
+        - crawler:jobs_updated: Global job list has changed
+        - crawler:progress: Progress update for a specific job
+        - crawler:page_crawled: Notification when a page has been crawled
+        - crawler:status: Current status of a requested job
+        - crawler:complete: Crawl job has completed
+        - crawler:error: Error occurred during crawling
+
+Rooms:
+    - crawler_{session_id}: Per-job room for detailed updates
+    - crawler_jobs_global: Global room for job list updates
 """
 
 import logging
@@ -15,7 +37,11 @@ CRAWLER_JOBS_ROOM = "crawler_jobs_global"
 
 
 def register_crawler_events(socketio):
-    """Register WebSocket events for crawler live updates."""
+    """
+    Register WebSocket events for crawler live updates.
+
+    This replaces HTTP polling for crawler job status with real-time WebSocket updates.
+    """
 
     @socketio.on('crawler:join_session')
     def handle_join_session(data):

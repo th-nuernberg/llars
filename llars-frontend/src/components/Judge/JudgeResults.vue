@@ -1196,447 +1196,86 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import axios from 'axios';
+import {
+  METRICS_HEADERS,
+  COMPARISON_HEADERS,
+  SWAP_HEADERS,
+  DETAILED_SWAP_HEADERS,
+  THREAD_HEADERS,
+  LIKERT_METRICS,
+  useJudgeResults,
+  useJudgeMatrix,
+  useJudgeHelpers
+} from './JudgeResults/composables';
 
 const route = useRoute();
 const sessionId = route.params.id;
 
-// State
-const session = ref(null);
-const results = ref(null);
-const allComparisons = ref([]);
-const verbosityAnalysis = ref(null);
-const threadPerformance = ref(null);
-const positionSwapDetailed = ref(null);
-const loading = ref(false);
-const expandedRows = ref([]);
-const expandedThreadRows = ref([]);
-const expandedSwapPairs = ref([]);
+// Initialize composables
+const {
+  // State
+  loading,
+  session,
+  results,
+  allComparisons,
+  verbosityAnalysis,
+  threadPerformance,
+  positionSwapDetailed,
+  expandedRows,
+  expandedThreadRows,
+  expandedSwapPairs,
+  // Computed - Pillar data
+  pillarRanking,
+  pillarList,
+  pillarMetrics,
+  topPillar,
+  averageConfidence,
+  duration,
+  // Computed - Analysis
+  positionSwapAnalysis,
+  // Computed - Verbosity
+  lengthDiff: lengthDiffFormatted,
+  lengthDiffClass,
+  verbosityBiasColor,
+  verbosityBiasType,
+  // Methods
+  loadResults
+} = useJudgeResults(sessionId);
 
-// Metrics Table Headers
-const metricsHeaders = [
-  { title: 'Säule', key: 'name', sortable: true },
-  { title: 'Siege', key: 'wins', sortable: true },
-  { title: 'Niederlagen', key: 'losses', sortable: true },
-  { title: 'Siegrate', key: 'win_rate', sortable: true },
-  { title: 'Ø Konfidenz', key: 'avg_confidence', sortable: true },
-  { title: 'Score', key: 'score', sortable: true },
-  { title: 'Vergleiche', key: 'total_comparisons', sortable: true }
-];
+const {
+  getMatrixValue: getMatrixValueRaw,
+  getMatrixCellClass,
+  getMatrixCellStyle: getMatrixCellStyleRaw
+} = useJudgeMatrix(results);
 
-// Comparison Table Headers
-const comparisonHeaders = [
-  { title: '#', key: 'comparison_index', sortable: true },
-  { title: 'Paarung', key: 'matchup', sortable: false },
-  { title: 'Gewinner', key: 'winner', sortable: true },
-  { title: 'Konfidenz', key: 'confidence_score', sortable: true },
-  { title: 'Zeitpunkt', key: 'evaluated_at', sortable: true }
-];
+const {
+  getRankColor,
+  getWinRateColor,
+  getConfidenceColor,
+  getScoreColor,
+  getLikertConsistencyColor,
+  getConsistencyQualityColor,
+  formatDate,
+  formatCriterionName,
+  formatLikertMetric,
+  getPillarName,
+  getBiasLabel,
+  exportCSV,
+  exportJSON
+} = useJudgeHelpers(sessionId);
 
-// Position Swap Analysis Headers (Legacy)
-const swapHeaders = [
-  { title: 'Paarung', key: 'matchup', sortable: false },
-  { title: 'Original (Pos 1)', key: 'original', sortable: false },
-  { title: 'Swapped (Pos 2)', key: 'swapped', sortable: false },
-  { title: 'Konsistent', key: 'consistent', sortable: true }
-];
+// Table headers (from constants)
+const metricsHeaders = METRICS_HEADERS;
+const comparisonHeaders = COMPARISON_HEADERS;
+const swapHeaders = SWAP_HEADERS;
+const detailedSwapHeaders = DETAILED_SWAP_HEADERS;
+const threadHeaders = THREAD_HEADERS;
 
-// Detailed Position Swap Analysis Headers
-const detailedSwapHeaders = [
-  { title: 'Threads', key: 'threads', sortable: false },
-  { title: 'Original', key: 'original', sortable: false },
-  { title: 'Swapped', key: 'swapped', sortable: false },
-  { title: 'Konsistenz', key: 'consistency', sortable: true },
-  { title: 'Bias', key: 'bias', sortable: true },
-  { title: 'Konf. Δ', key: 'conf_delta', sortable: true }
-];
-
-// Thread Performance Headers
-const threadHeaders = [
-  { title: 'Thread', key: 'thread_id', sortable: true },
-  { title: 'Säule', key: 'pillar', sortable: true },
-  { title: 'Verwendungen', key: 'usage_count', sortable: true },
-  { title: 'Siege', key: 'wins', sortable: true },
-  { title: 'Niederlagen', key: 'losses', sortable: true },
-  { title: 'Win-Rate', key: 'win_rate', sortable: true },
-  { title: 'Likert-Konsistenz', key: 'likert_consistency_score', sortable: true },
-  { title: 'Status', key: 'status', sortable: false }
-];
-
-// Computed
-const pillarRanking = computed(() => {
-  if (!results.value?.pillar_metrics) return [];
-  return [...results.value.pillar_metrics].sort((a, b) => b.score - a.score);
-});
-
-const pillarList = computed(() => {
-  if (!results.value?.pillar_metrics) return [];
-  return results.value.pillar_metrics;
-});
-
-const pillarMetrics = computed(() => {
-  if (!results.value?.pillar_metrics) return [];
-  return results.value.pillar_metrics;
-});
-
-const topPillar = computed(() => {
-  return pillarRanking.value[0] || null;
-});
-
-const averageConfidence = computed(() => {
-  if (!results.value?.pillar_metrics || results.value.pillar_metrics.length === 0) return 0;
-  const sum = results.value.pillar_metrics.reduce((acc, p) => acc + p.avg_confidence, 0);
-  return Math.round((sum / results.value.pillar_metrics.length) * 100);
-});
-
-const duration = computed(() => {
-  if (!session.value?.created_at || !session.value?.completed_at) return '-';
-  const start = new Date(session.value.created_at);
-  const end = new Date(session.value.completed_at);
-  const diff = end - start;
-  const minutes = Math.floor(diff / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
-  return `${minutes}m ${seconds}s`;
-});
-
-// Position Swap Consistency Analysis
-const positionSwapAnalysis = computed(() => {
-  if (!allComparisons.value || allComparisons.value.length === 0) {
-    return { pairs: [], consistent: 0, total: 0, consistencyRate: 0 };
-  }
-
-  // Group comparisons by pillar pair (regardless of position)
-  const pairGroups = {};
-
-  for (const comp of allComparisons.value) {
-    if (!comp.winner) continue;
-
-    // Create a consistent key for the pair (sorted pillar IDs)
-    const sortedPillars = [comp.pillar_a, comp.pillar_b].sort((a, b) => a - b);
-    const pairKey = `${sortedPillars[0]}_${sortedPillars[1]}`;
-
-    if (!pairGroups[pairKey]) {
-      pairGroups[pairKey] = {
-        pillar_a: sortedPillars[0],
-        pillar_b: sortedPillars[1],
-        pillar_a_name: comp.pillar_a === sortedPillars[0] ? comp.pillar_a_name : comp.pillar_b_name,
-        pillar_b_name: comp.pillar_a === sortedPillars[1] ? comp.pillar_a_name : comp.pillar_b_name,
-        original: null,
-        swapped: null
-      };
-    }
-
-    // Determine if this is position_order 1 (original) or 2 (swapped)
-    if (comp.position_order === 1) {
-      pairGroups[pairKey].original = comp;
-    } else if (comp.position_order === 2) {
-      pairGroups[pairKey].swapped = comp;
-    }
-  }
-
-  // Analyze consistency for pairs with both positions
-  const pairs = [];
-  let consistent = 0;
-  let total = 0;
-
-  for (const [key, group] of Object.entries(pairGroups)) {
-    if (group.original && group.swapped) {
-      total++;
-
-      // Determine the "real" winner based on position
-      // If original winner is A and original pillar_a matches sorted pillar_a, winner is sorted pillar_a
-      // For swapped, positions are reversed
-      const originalRealWinner = group.original.winner === 'A'
-        ? group.original.pillar_a
-        : group.original.pillar_b;
-
-      const swappedRealWinner = group.swapped.winner === 'A'
-        ? group.swapped.pillar_a
-        : group.swapped.pillar_b;
-
-      const isConsistent = originalRealWinner === swappedRealWinner;
-      if (isConsistent) consistent++;
-
-      pairs.push({
-        pillar_a_name: group.pillar_a_name,
-        pillar_b_name: group.pillar_b_name,
-        originalWinner: group.original.winner,
-        originalConfidence: group.original.confidence_score || 0,
-        swappedWinner: group.swapped.winner,
-        swappedConfidence: group.swapped.confidence_score || 0,
-        isConsistent
-      });
-    }
-  }
-
-  return {
-    pairs,
-    consistent,
-    total,
-    consistencyRate: total > 0 ? consistent / total : 0
-  };
-});
-
-// Verbosity Bias Computed Properties
-const verbosityBiasColor = computed(() => {
-  if (!verbosityAnalysis.value) return 'grey';
-  const rate = verbosityAnalysis.value.verbosity_bias_rate;
-  if (rate > 0.6) return 'warning';
-  if (rate < 0.4) return 'info';
-  return 'success';
-});
-
-const verbosityBiasType = computed(() => {
-  if (!verbosityAnalysis.value) return 'info';
-  const rate = verbosityAnalysis.value.verbosity_bias_rate;
-  if (rate > 0.6) return 'warning';
-  if (rate < 0.4) return 'info';
-  return 'success';
-});
-
-const lengthDiffFormatted = computed(() => {
-  if (!verbosityAnalysis.value) return '-';
-  const diff = verbosityAnalysis.value.avg_length_winner - verbosityAnalysis.value.avg_length_loser;
-  const sign = diff > 0 ? '+' : '';
-  return `${sign}${Math.round(diff).toLocaleString()}`;
-});
-
-const lengthDiffClass = computed(() => {
-  if (!verbosityAnalysis.value) return '';
-  const diff = verbosityAnalysis.value.avg_length_winner - verbosityAnalysis.value.avg_length_loser;
-  if (diff > 500) return 'text-warning';
-  if (diff < -500) return 'text-info';
-  return 'text-success';
-});
-
-// Load Results
-const loadResults = async () => {
-  loading.value = true;
-  try {
-    // Load session info
-    const sessionResponse = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}`
-    );
-    session.value = sessionResponse.data;
-
-    // Load results
-    const resultsResponse = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/results`
-    );
-    results.value = resultsResponse.data;
-
-    // Load all comparisons
-    const comparisonsResponse = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/comparisons`
-    );
-    allComparisons.value = comparisonsResponse.data;
-
-    // Load verbosity analysis
-    try {
-      const verbosityResponse = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/verbosity-analysis`
-      );
-      verbosityAnalysis.value = verbosityResponse.data;
-    } catch (verbosityError) {
-      console.warn('Could not load verbosity analysis:', verbosityError);
-    }
-
-    // Load thread performance analysis
-    try {
-      const threadPerfResponse = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/thread-performance`
-      );
-      threadPerformance.value = threadPerfResponse.data;
-    } catch (threadPerfError) {
-      console.warn('Could not load thread performance:', threadPerfError);
-    }
-
-    // Load detailed position-swap analysis
-    try {
-      const swapResponse = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/position-swap-analysis`
-      );
-      positionSwapDetailed.value = swapResponse.data;
-    } catch (swapError) {
-      console.warn('Could not load position-swap analysis:', swapError);
-    }
-  } catch (error) {
-    console.error('Error loading results:', error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// Matrix Functions
-const getMatrixValue = (pillarA, pillarB) => {
-  if (pillarA === pillarB) return '-';
-  if (!results.value?.win_matrix) return '0';
-
-  const key = `${pillarA}_vs_${pillarB}`;
-  return results.value.win_matrix[key] || 0;
-};
-
-const getMatrixCellClass = (pillarA, pillarB) => {
-  if (pillarA === pillarB) return 'diagonal-cell';
-  return '';
-};
-
-const getMatrixCellStyle = (pillarA, pillarB) => {
-  if (pillarA === pillarB) return {};
-
-  const value = getMatrixValue(pillarA, pillarB);
-  const maxValue = Math.max(
-    ...Object.values(results.value?.win_matrix || {})
-  );
-
-  if (maxValue === 0) return {};
-
-  const intensity = value / maxValue;
-  const hue = 120; // Green hue
-  const saturation = 60;
-  const lightness = 90 - (intensity * 40); // Lighter = less wins
-
-  return {
-    backgroundColor: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-    fontWeight: intensity > 0.5 ? 'bold' : 'normal'
-  };
-};
-
-// Utility Functions
-const getRankColor = (index) => {
-  const colors = ['warning', 'grey-lighten-1', 'orange-lighten-1', 'grey-lighten-2', 'grey-lighten-3'];
-  return colors[index] || 'grey';
-};
-
-const getWinRateColor = (winRate) => {
-  if (winRate >= 0.7) return 'success';
-  if (winRate >= 0.5) return 'info';
-  if (winRate >= 0.3) return 'warning';
-  return 'error';
-};
-
-const getConfidenceColor = (confidence) => {
-  if (confidence >= 0.8) return 'success';
-  if (confidence >= 0.6) return 'info';
-  if (confidence >= 0.4) return 'warning';
-  return 'error';
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-const formatCriterionName = (criterion) => {
-  const names = {
-    'counsellor_coherence': 'Berater-Kohärenz',
-    'client_coherence': 'Klient-Kohärenz',
-    'quality': 'Qualität',
-    'empathy': 'Empathie',
-    'authenticity': 'Authentizität',
-    'solution_orientation': 'Lösungsorientierung'
-  };
-  return names[criterion] || criterion;
-};
-
-const getScoreColor = (score) => {
-  if (score >= 4) return 'success';
-  if (score >= 3) return 'info';
-  if (score >= 2) return 'warning';
-  return 'error';
-};
-
-// Thread Performance Helper Functions
-const getLikertConsistencyColor = (score) => {
-  if (score >= 0.7) return 'success';
-  if (score >= 0.5) return 'warning';
-  return 'error';
-};
-
-const getPillarName = (pillarId) => {
-  return `Säule ${pillarId}`;
-};
-
-const formatLikertMetric = (metric) => {
-  const names = {
-    'counsellor_coherence': 'Berater-Kohärenz',
-    'client_coherence': 'Klient-Kohärenz',
-    'quality': 'Qualität',
-    'empathy': 'Empathie',
-    'authenticity': 'Authentizität',
-    'solution_orientation': 'Lösungsorientierung'
-  };
-  return names[metric] || metric;
-};
-
-// Position Swap Analysis Helper Functions
-const getConsistencyQualityColor = (quality) => {
-  const colors = {
-    'excellent': 'success',
-    'good': 'info',
-    'fair': 'warning',
-    'poor': 'error'
-  };
-  return colors[quality] || 'grey';
-};
-
-const getBiasLabel = (bias) => {
-  const labels = {
-    'primacy': 'Primacy Bias',
-    'recency': 'Recency Bias',
-    'balanced': 'Ausbalanciert'
-  };
-  return labels[bias] || 'Unbekannt';
-};
-
-// Export Functions
-const exportCSV = async () => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/export/csv`,
-      { responseType: 'blob' }
-    );
-
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `judge_results_${sessionId}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch (error) {
-    console.error('Error exporting CSV:', error);
-  }
-};
-
-const exportJSON = async () => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/export/json`
-    );
-
-    const dataStr = JSON.stringify(response.data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = window.URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `judge_results_${sessionId}.json`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch (error) {
-    console.error('Error exporting JSON:', error);
-  }
-};
+// Wrapper functions for matrix (to use results.value internally)
+const getMatrixValue = (pillarA, pillarB) => getMatrixValueRaw(pillarA, pillarB);
+const getMatrixCellStyle = (pillarA, pillarB) => getMatrixCellStyleRaw(pillarA, pillarB);
 
 // Lifecycle
 onMounted(() => {

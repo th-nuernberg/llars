@@ -538,9 +538,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
-import { io } from 'socket.io-client'
+import { watch } from 'vue';
+import {
+  useChatbotForm,
+  useChatbotCrawler
+} from './ChatbotEditor/composables';
 
 const props = defineProps({
   modelValue: Boolean,
@@ -550,315 +552,70 @@ const props = defineProps({
     default: () => []
   },
   isEdit: Boolean
-})
+});
 
-const emit = defineEmits(['update:modelValue', 'save', 'collection-created'])
+const emit = defineEmits(['update:modelValue', 'save', 'collection-created']);
 
-// State
-const activeTab = ref('general')
-const formData = ref({
-  name: '',
-  display_name: '',
-  description: '',
-  icon: 'mdi-robot',
-  color: '#b0ca97',
-  system_prompt: '',
-  model_name: 'gpt-4',
-  temperature: 0.7,
-  max_tokens: 2000,
-  top_p: 1.0,
-  rag_enabled: false,
-  rag_retrieval_k: 5,
-  rag_min_relevance: 0.6,
-  rag_include_sources: true,
-  welcome_message: '',
-  fallback_message: '',
-  is_active: true,
-  is_public: false,
-  collection_ids: []
-})
+// Initialize composables
+const {
+  formData,
+  activeTab,
+  promptLineCount,
+  iconOptions,
+  promptTemplates,
+  rules,
+  isCollectionSelected,
+  updateLineCount,
+  applyPromptTemplate,
+  toggleCollection,
+  loadChatbot,
+  prepareForSave
+} = useChatbotForm();
 
-const promptLineCount = ref(10)
-
-// Crawler State
-const crawlerUrls = ref('')
-const crawlerMaxPages = ref(30)
-const crawlerMaxDepth = ref(2)
-const crawling = ref(false)
-const crawlStatus = ref(null)
-const crawlJobId = ref(null)
-const crawlProgress = ref(null)
-const crawledPages = ref([])
-
-// WebSocket for crawler
-let crawlerSocket = null
-
-// Icon options
-const iconOptions = [
-  { title: 'Robot', value: 'mdi-robot' },
-  { title: 'Account', value: 'mdi-account' },
-  { title: 'Chat', value: 'mdi-chat' },
-  { title: 'Help', value: 'mdi-help-circle' },
-  { title: 'Information', value: 'mdi-information' },
-  { title: 'Support', value: 'mdi-face-agent' },
-  { title: 'Book', value: 'mdi-book-open-page-variant' },
-  { title: 'Lightbulb', value: 'mdi-lightbulb' }
-]
-
-// Prompt templates
-const promptTemplates = [
-  {
-    name: 'Support',
-    icon: 'mdi-face-agent',
-    prompt: 'Du bist ein freundlicher Support-Mitarbeiter. Beantworte Fragen höflich und präzise. Wenn du etwas nicht weißt, gib das ehrlich zu und biete an, weiterzuhelfen.'
-  },
-  {
-    name: 'FAQ',
-    icon: 'mdi-help-circle',
-    prompt: 'Du bist ein FAQ-Bot. Beantworte häufige Fragen basierend auf den verfügbaren Dokumenten. Halte deine Antworten kurz und präzise.'
-  },
-  {
-    name: 'Onboarding',
-    icon: 'mdi-account-star',
-    prompt: 'Du bist ein Onboarding-Assistent. Führe neue Benutzer freundlich durch die ersten Schritte. Erkläre Funktionen verständlich und gebe hilfreiche Tipps.'
-  },
-  {
-    name: 'Technisch',
-    icon: 'mdi-wrench',
-    prompt: 'Du bist ein technischer Assistent. Beantworte Fragen präzise und sachlich. Gebe technische Details, wenn nötig, und verwende Fachbegriffe korrekt.'
-  }
-]
-
-// Validation rules
-const rules = {
-  required: v => !!v || 'Dieses Feld ist erforderlich'
-}
-
-// Computed
-const isCollectionSelected = computed(() => {
-  return (collectionId) => formData.value.collection_ids.includes(collectionId)
-})
-
-// Crawler URL validation
-const parsedCrawlerUrls = computed(() => {
-  return crawlerUrls.value
-    .split('\n')
-    .map(u => u.trim())
-    .filter(u => u.length > 0)
-})
-
-const hasValidCrawlerUrls = computed(() => {
-  return parsedCrawlerUrls.value.length > 0 && parsedCrawlerUrls.value.every(u =>
-    u.startsWith('http://') || u.startsWith('https://')
-  )
-})
+const {
+  crawlerUrls,
+  crawlerMaxPages,
+  crawlerMaxDepth,
+  crawling,
+  crawlStatus,
+  crawlProgress,
+  crawledPages,
+  hasValidCrawlerUrls,
+  startCrawl,
+  resetCrawler
+} = useChatbotCrawler();
 
 // Methods
-function updateLineCount() {
-  const lines = (formData.value.system_prompt || '').split('\n').length
-  promptLineCount.value = Math.max(lines, 10)
-}
-
-function applyPromptTemplate(template) {
-  formData.value.system_prompt = template.prompt
-  updateLineCount()
-}
-
-function toggleCollection(collectionId) {
-  const index = formData.value.collection_ids.indexOf(collectionId)
-  if (index > -1) {
-    formData.value.collection_ids.splice(index, 1)
-  } else {
-    formData.value.collection_ids.push(collectionId)
-  }
-}
-
 function closeDialog() {
-  emit('update:modelValue', false)
-  activeTab.value = 'general'
-  // Reset crawler state
-  crawlerUrls.value = ''
-  crawlStatus.value = null
+  emit('update:modelValue', false);
+  activeTab.value = 'general';
+  resetCrawler();
 }
 
-// WebSocket functions for crawler
-function initCrawlerSocket() {
-  if (crawlerSocket) return
-
-  crawlerSocket = io('/', {
-    path: '/socket.io',
-    transports: ['websocket', 'polling']
-  })
-
-  crawlerSocket.on('connect', () => {
-    console.log('[Crawler Socket] Connected')
-  })
-
-  crawlerSocket.on('crawler:joined', (data) => {
-    console.log('[Crawler Socket] Joined session:', data)
-  })
-
-  crawlerSocket.on('crawler:progress', (data) => {
-    console.log('[Crawler Socket] Progress:', data)
-    crawlProgress.value = data
-    crawlStatus.value = {
-      message: `Crawle ${data.current_url_index}/${data.total_urls} URLs - ${data.pages_crawled} Seiten...`,
-      current_url: data.current_url,
-      pages_crawled: data.pages_crawled,
-      max_pages: data.max_pages
-    }
-  })
-
-  crawlerSocket.on('crawler:page_crawled', (data) => {
-    console.log('[Crawler Socket] Page crawled:', data)
-    crawledPages.value.push(data.url)
-    // Keep only last 10 pages for display
-    if (crawledPages.value.length > 10) {
-      crawledPages.value.shift()
-    }
-  })
-
-  crawlerSocket.on('crawler:complete', (data) => {
-    console.log('[Crawler Socket] Complete:', data)
-    crawling.value = false
-    crawlStatus.value = {
-      success: true,
-      message: `Crawl abgeschlossen!`,
-      pages_crawled: data.pages_crawled,
-      documents_created: data.documents_created,
-      collection_id: data.collection_id
-    }
-
-    // Auto-add the new collection to the chatbot
-    if (data.collection_id && !formData.value.collection_ids.includes(data.collection_id)) {
-      formData.value.collection_ids.push(data.collection_id)
-    }
-
-    // Emit event to refresh collections list in parent
-    emit('collection-created', data.collection_id)
-
-    // Leave the room
-    if (crawlJobId.value) {
-      crawlerSocket.emit('crawler:leave_session', { session_id: crawlJobId.value })
-    }
-  })
-
-  crawlerSocket.on('crawler:error', (data) => {
-    console.error('[Crawler Socket] Error:', data)
-    crawling.value = false
-    crawlStatus.value = {
-      error: true,
-      message: data.error || 'Crawl fehlgeschlagen'
-    }
-  })
-}
-
-function cleanupCrawlerSocket() {
-  if (crawlerSocket) {
-    if (crawlJobId.value) {
-      crawlerSocket.emit('crawler:leave_session', { session_id: crawlJobId.value })
-    }
-    crawlerSocket.disconnect()
-    crawlerSocket = null
-  }
-}
-
-// Crawler function with WebSocket
 async function startCrawlForChatbot() {
-  if (!hasValidCrawlerUrls.value) return
+  const chatbotName = formData.value.display_name || formData.value.name || 'Chatbot';
 
-  crawling.value = true
-  crawlStatus.value = { message: 'Crawl wird gestartet...' }
-  crawledPages.value = []
-  crawlProgress.value = null
-
-  // Initialize WebSocket
-  initCrawlerSocket()
-
-  try {
-    const chatbotName = formData.value.display_name || formData.value.name || 'Chatbot'
-    const response = await axios.post('/api/crawler/start', {
-      urls: parsedCrawlerUrls.value,
-      collection_name: `${chatbotName} - Web`,
-      collection_description: `Automatisch gecrawlt für Chatbot '${chatbotName}'`,
-      max_pages_per_site: crawlerMaxPages.value,
-      max_depth: crawlerMaxDepth.value
-    })
-
-    if (response.data.success && response.data.job_id) {
-      crawlJobId.value = response.data.job_id
-
-      // Join the WebSocket room for this crawl session
-      crawlerSocket.emit('crawler:join_session', { session_id: response.data.job_id })
-
-      crawlStatus.value = {
-        message: 'Crawl gestartet, warte auf Updates...',
-        job_id: response.data.job_id
+  await startCrawl(chatbotName, {
+    onComplete: (data) => {
+      // Auto-add the new collection to the chatbot
+      if (data.collection_id && !formData.value.collection_ids.includes(data.collection_id)) {
+        formData.value.collection_ids.push(data.collection_id);
       }
-    } else {
-      crawling.value = false
-      crawlStatus.value = {
-        error: true,
-        message: response.data.error || 'Crawl konnte nicht gestartet werden'
-      }
+      // Emit event to refresh collections list in parent
+      emit('collection-created', data.collection_id);
     }
-  } catch (error) {
-    console.error('Crawl error:', error)
-    crawling.value = false
-    crawlStatus.value = {
-      error: true,
-      message: error.response?.data?.error || 'Fehler beim Starten des Crawls'
-    }
-  }
+  });
 }
-
-// Lifecycle
-onUnmounted(() => {
-  cleanupCrawlerSocket()
-})
 
 function saveChanges() {
-  const dataToSave = { ...formData.value }
-  if (props.isEdit) {
-    dataToSave.id = props.chatbot.id
-  }
-  emit('save', dataToSave)
+  const dataToSave = prepareForSave(props.isEdit, props.chatbot?.id);
+  emit('save', dataToSave);
 }
 
 // Watch for chatbot changes
 watch(() => props.chatbot, (newChatbot) => {
-  if (newChatbot) {
-    formData.value = {
-      ...formData.value,
-      ...newChatbot,
-      collection_ids: newChatbot.collections?.map(c => c.id) || []
-    }
-    updateLineCount()
-  } else {
-    // Reset for new chatbot
-    formData.value = {
-      name: '',
-      display_name: '',
-      description: '',
-      icon: 'mdi-robot',
-      color: '#b0ca97',
-      system_prompt: '',
-      model_name: 'gpt-4',
-      temperature: 0.7,
-      max_tokens: 2000,
-      top_p: 1.0,
-      rag_enabled: false,
-      rag_retrieval_k: 5,
-      rag_min_relevance: 0.6,
-      rag_include_sources: true,
-      welcome_message: '',
-      fallback_message: '',
-      is_active: true,
-      is_public: false,
-      collection_ids: []
-    }
-  }
-}, { immediate: true })
+  loadChatbot(newChatbot);
+}, { immediate: true });
 </script>
 
 <style scoped>

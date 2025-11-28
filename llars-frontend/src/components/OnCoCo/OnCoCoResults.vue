@@ -770,562 +770,117 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import axios from 'axios';
-import { io } from 'socket.io-client';
 import TransitionHeatmap from './TransitionHeatmap.vue';
 import MatrixComparisonMetrics from './MatrixComparisonMetrics.vue';
 import QuickStatsBar from './QuickStatsBar.vue';
 import PillarComparisonPanel from './PillarComparisonPanel.vue';
+import {
+  useOnCoCoAnalysis,
+  useOnCoCoSocket,
+  useOnCoCoHelpers
+} from './OnCoCoResults/composables';
 
 const router = useRouter();
 const route = useRoute();
 
-// Socket.IO connection
-let socket = null;
-
-// State
-const loading = ref(false);
-const starting = ref(false);
-const resuming = ref(false);
-const analysis = ref(null);
+// Local UI State
 const activeTab = ref('overview');
-
-// Stuck detection
-const lastUpdateTime = ref(Date.now());
-const stuckThresholdSeconds = 30; // Consider stuck after 30s without updates
-
-// Live data from Socket.IO
-const liveData = ref({
-  hardware: null,
-  current_thread: null,
-  current_message: null,
-  timing: null
-});
-
-// Distribution State
-const distributionPillar = ref(null);
-const distributionLevel = ref('level2');
-const distributionRole = ref('');  // '', 'counselor', 'client'
-const distributionData = ref([]);
-const loadingDistribution = ref(false);
-
-// Transitions State
-const transitionPillar = ref(null);
-const transitionLevel = ref('level2');
-const transitionRole = ref('');  // '', 'counselor', 'client'
-const transitionsData = ref({ links: [] });
-const loadingTransitions = ref(false);
-
-// Heatmap State (per pillar)
-const heatmapData = ref({});  // { pillarNumber: { labels, labelDisplays, counts, probabilities } }
-const loadingHeatmaps = ref(false);
-const showHeatmapValues = ref(false);
-const heatmapColorMode = ref('count'); // 'count' or 'probability'
-
-// Synchronized hover state
-const hoveredTransition = ref(null);
-
-// Comparison State
-const comparisonData = ref([]);
-const loadingComparison = ref(false);
-
-// Matrix Comparison State (for integrated view)
-const matrixComparisonData = ref(null);
-const loadingMatrixComparison = ref(false);
 const showMethodologyDialog = ref(false);
 
-// Sentences State
-const sentencePillar = ref(null);
-const sentenceRole = ref('');
-const sentenceLabel = ref('');
-const sentences = ref([]);
-const sentencesTotal = ref(0);
-const sentencesOffset = ref(0);
-const loadingSentences = ref(false);
+// Initialize composables
+const analysisId = route.params.id;
 
-// Computed
-const pillarOptions = computed(() => {
-  if (!analysis.value?.pillar_statistics) return [];
-  return [
-    { title: 'Alle Säulen', value: null },
-    ...Object.keys(analysis.value.pillar_statistics).map(p => ({
-      title: `Säule ${p}`,
-      value: parseInt(p)
-    }))
-  ];
-});
+const {
+  // State
+  analysis,
+  loading,
+  starting,
+  resuming,
+  liveData,
+  // Stuck detection
+  stuckDuration,
+  isStuck,
+  // Distribution
+  distributionPillar,
+  distributionLevel,
+  distributionRole,
+  distributionData,
+  loadingDistribution,
+  maxDistributionCount,
+  // Transitions
+  transitionPillar,
+  transitionLevel,
+  transitionRole,
+  loadingTransitions,
+  topTransitions,
+  // Heatmaps
+  heatmapData,
+  loadingHeatmaps,
+  showHeatmapValues,
+  heatmapColorMode,
+  hoveredTransition,
+  // Matrix Comparison
+  matrixComparisonData,
+  loadingMatrixComparison,
+  quickStatsSimilarity,
+  quickStatsFrobenius,
+  quickStatsPValue,
+  quickStatsChiSignificant,
+  quickStatsChiTotal,
+  // Sentences
+  sentencePillar,
+  sentenceRole,
+  sentenceLabel,
+  sentences,
+  sentencesTotal,
+  loadingSentences,
+  // Computed
+  pillarOptions,
+  roleFilterOptions,
+  // Functions
+  loadAnalysis,
+  startAnalysis,
+  resumeAnalysis,
+  loadDistribution,
+  loadTransitions,
+  loadHeatmaps,
+  loadMatrixComparison,
+  loadSentences,
+  loadMoreSentences,
+  updateLiveData,
+  clearLiveData,
+  getTransitionCount,
+  getTransitionProbability
+} = useOnCoCoAnalysis(analysisId);
 
-const maxDistributionCount = computed(() => {
-  if (distributionData.value.length === 0) return 1;
-  return Math.max(...distributionData.value.map(d => d.count));
-});
+const {
+  getStatusColor,
+  getStatusIcon,
+  getStatusText,
+  getPillarName,
+  formatDate,
+  formatDuration,
+  distributionHeaders,
+  comparisonHeaders,
+  sentenceHeaders
+} = useOnCoCoHelpers();
 
-const roleFilterOptions = computed(() => [
-  { title: 'Alle (Berater & Ratsuchend)', value: '' },
-  { title: 'Nur Berater', value: 'counselor' },
-  { title: 'Nur Ratsuchend', value: 'client' }
-]);
-
-const topTransitions = computed(() => {
-  return transitionsData.value.links?.slice(0, 20) || [];
-});
-
-// Quick Stats Computed Properties (for QuickStatsBar)
-const quickStatsSimilarity = computed(() => {
-  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
-  const comparisons = matrixComparisonData.value.pairwise_comparisons;
-  // Convert frobenius distance to similarity: 1 - normalized_frobenius
-  // Higher similarity = lower distance
-  const avgNormFrob = comparisons.reduce((sum, c) => sum + (c.effect_size?.normalized_frobenius || 0), 0) / comparisons.length;
-  return Math.max(0, 1 - avgNormFrob);
-});
-
-const quickStatsFrobenius = computed(() => {
-  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
-  const comparisons = matrixComparisonData.value.pairwise_comparisons;
-  const avgFrobenius = comparisons.reduce((sum, c) => sum + (c.metrics?.frobenius_distance || 0), 0) / comparisons.length;
-  return avgFrobenius;
-});
-
-const quickStatsPValue = computed(() => {
-  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 1;
-  const comparisons = matrixComparisonData.value.pairwise_comparisons;
-  // Return the minimum p-value (most significant)
-  const minPValue = Math.min(...comparisons.map(c => c.statistical_tests?.permutation_test?.p_value || 1));
-  return minPValue;
-});
-
-const quickStatsChiSignificant = computed(() => {
-  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
-  const comparisons = matrixComparisonData.value.pairwise_comparisons;
-  // Sum up all significant states across all comparisons
-  return comparisons.reduce((sum, c) => sum + (c.statistical_tests?.chi_square?.significant_rows || 0), 0);
-});
-
-const quickStatsChiTotal = computed(() => {
-  if (!matrixComparisonData.value?.pairwise_comparisons?.length) return 0;
-  const comparisons = matrixComparisonData.value.pairwise_comparisons;
-  // Sum up all total states across all comparisons
-  return comparisons.reduce((sum, c) => sum + (c.statistical_tests?.chi_square?.total_rows || 0), 0);
-});
-
-// Stuck detection computed properties
-const stuckDuration = computed(() => {
-  return Math.round((Date.now() - lastUpdateTime.value) / 1000);
-});
-
-const isStuck = computed(() => {
-  // Only check if analysis is running and we haven't received updates
-  if (analysis.value?.status !== 'running') return false;
-  const secondsSinceUpdate = (Date.now() - lastUpdateTime.value) / 1000;
-  return secondsSinceUpdate > stuckThresholdSeconds && !liveData.value.timing;
-});
-
-// Headers
-const distributionHeaders = [
-  { title: 'Label', key: 'label', sortable: true },
-  { title: 'Rolle', key: 'role', sortable: true },
-  { title: 'Anzahl', key: 'count', sortable: true, width: '300px' }
-];
-
-const comparisonHeaders = [
-  { title: 'Säule', key: 'pillar_name', sortable: true },
-  { title: 'Sätze', key: 'metrics.total_sentences', sortable: true },
-  { title: 'Berater-Anteil', key: 'counselor_ratio', sortable: true, width: '200px' },
-  { title: 'Impact Factor', key: 'impact_factor_ratio', sortable: true },
-  { title: 'Ressourcen-Aktivierung', key: 'resource_activation_score', sortable: true },
-  { title: 'MI Score', key: 'mi_score', sortable: true },
-  { title: 'Konfidenz', key: 'avg_confidence', sortable: true }
-];
-
-const sentenceHeaders = [
-  { title: 'Satz', key: 'sentence_text', sortable: false, width: '40%' },
-  { title: 'Rolle', key: 'role', sortable: true },
-  { title: 'Label', key: 'label', sortable: true },
-  { title: 'Konfidenz', key: 'confidence', sortable: true, width: '150px' },
-  { title: 'Säule', key: 'pillar_number', sortable: true }
-];
-
-// Load Analysis
-const loadAnalysis = async () => {
-  loading.value = true;
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}`
-    );
-    analysis.value = response.data;
-
-    if (analysis.value.status === 'completed') {
-      await loadDistribution();
-      await loadTransitions();
-      await loadHeatmaps();
-      await loadComparison();
-      await loadMatrixComparison();
-    }
-  } catch (error) {
-    console.error('Error loading analysis:', error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// Start Analysis
-const startAnalysis = async () => {
-  starting.value = true;
-  try {
-    await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/start`,
-      {},
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-    // Reset stuck detection
-    lastUpdateTime.value = Date.now();
-    // Reload to get updated status
+// Socket.IO setup with callbacks
+const analysisIdRef = ref(analysisId);
+const { setupSocket, cleanupSocket } = useOnCoCoSocket(analysisIdRef, {
+  onProgress: (data) => {
+    updateLiveData(data);
+  },
+  onComplete: async (data) => {
+    clearLiveData();
     await loadAnalysis();
-  } catch (error) {
-    console.error('Error starting analysis:', error);
-  } finally {
-    starting.value = false;
-  }
-};
-
-// Resume stuck Analysis
-const resumeAnalysis = async () => {
-  resuming.value = true;
-  try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/start`,
-      { force: true }
-    );
-    console.log('[OnCoCo] Analysis resumed:', response.data);
-    // Reset stuck detection
-    lastUpdateTime.value = Date.now();
-    // Reload to get updated status
-    await loadAnalysis();
-  } catch (error) {
-    console.error('Error resuming analysis:', error);
-  } finally {
-    resuming.value = false;
-  }
-};
-
-// Load Distribution
-const loadDistribution = async () => {
-  loadingDistribution.value = true;
-  try {
-    const params = new URLSearchParams();
-    if (distributionPillar.value) params.append('pillar', distributionPillar.value);
-    params.append('level', distributionLevel.value);
-    if (distributionRole.value) params.append('role', distributionRole.value);
-
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/distribution?${params}`
-    );
-    distributionData.value = response.data.distribution || [];
-  } catch (error) {
-    console.error('Error loading distribution:', error);
-  } finally {
-    loadingDistribution.value = false;
-  }
-};
-
-// Load Transitions (list format for top transitions)
-const loadTransitions = async () => {
-  loadingTransitions.value = true;
-  try {
-    const params = new URLSearchParams();
-    if (transitionPillar.value) params.append('pillar', transitionPillar.value);
-    params.append('level', transitionLevel.value);
-    if (transitionRole.value) params.append('role', transitionRole.value);
-    params.append('format', 'list');
-
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/transition-matrix?${params}`
-    );
-    transitionsData.value = response.data;
-  } catch (error) {
-    console.error('Error loading transitions:', error);
-  } finally {
-    loadingTransitions.value = false;
-  }
-};
-
-// Load Heatmaps (matrix format for each pillar)
-const loadHeatmaps = async () => {
-  if (!analysis.value?.config?.pillars) return;
-
-  loadingHeatmaps.value = true;
-  heatmapData.value = {};
-
-  try {
-    const pillars = analysis.value.config.pillars;
-    const level = transitionLevel.value;
-    const role = transitionRole.value;
-
-    // Load matrix for each pillar in parallel
-    const promises = pillars.map(async (pillarNum) => {
-      const params = new URLSearchParams();
-      params.append('pillar', pillarNum);
-      params.append('level', level);
-      if (role) params.append('role', role);
-      params.append('format', 'matrix');
-
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/transition-matrix?${params}`
-      );
-
-      return { pillarNum, data: response.data };
-    });
-
-    const results = await Promise.all(promises);
-
-    // Store results
-    const newData = {};
-    for (const { pillarNum, data } of results) {
-      newData[pillarNum] = {
-        labels: data.labels || [],
-        labelDisplays: data.label_displays || {},
-        counts: data.counts || {},
-        probabilities: data.probabilities || {},
-        totalTransitions: data.total_transitions || 0
-      };
-    }
-    heatmapData.value = newData;
-  } catch (error) {
-    console.error('Error loading heatmaps:', error);
-  } finally {
-    loadingHeatmaps.value = false;
-  }
-};
-
-// Get pillar name
-const getPillarName = (pillarNum) => {
-  const names = {
-    1: 'Rollenspiele',
-    3: 'Anonymisierte Daten',
-    5: 'Live-Testungen'
-  };
-  return names[pillarNum] || `Säule ${pillarNum}`;
-};
-
-// Load Comparison
-const loadComparison = async () => {
-  loadingComparison.value = true;
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/comparison`
-    );
-    comparisonData.value = response.data.pillars || [];
-  } catch (error) {
-    console.error('Error loading comparison:', error);
-  } finally {
-    loadingComparison.value = false;
-  }
-};
-
-// Load Matrix Comparison Data (for integrated view)
-const loadMatrixComparison = async () => {
-  loadingMatrixComparison.value = true;
-  try {
-    const params = new URLSearchParams();
-    params.append('level', transitionLevel.value);
-    if (transitionRole.value) params.append('role', transitionRole.value);
-
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/matrix-comparison?${params}`
-    );
-    matrixComparisonData.value = response.data;
-  } catch (error) {
-    console.error('Error loading matrix comparison:', error);
-    matrixComparisonData.value = null;
-  } finally {
-    loadingMatrixComparison.value = false;
-  }
-};
-
-// Load Sentences
-const loadSentences = async (reset = true) => {
-  loadingSentences.value = true;
-  if (reset) {
-    sentences.value = [];
-    sentencesOffset.value = 0;
-  }
-
-  try {
-    const params = new URLSearchParams();
-    if (sentencePillar.value) params.append('pillar', sentencePillar.value);
-    if (sentenceRole.value) params.append('role', sentenceRole.value);
-    if (sentenceLabel.value) params.append('label', sentenceLabel.value);
-    params.append('limit', '50');
-    params.append('offset', sentencesOffset.value);
-
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/oncoco/analyses/${route.params.id}/sentences?${params}`
-    );
-
-    if (reset) {
-      sentences.value = response.data.sentences || [];
-    } else {
-      sentences.value = [...sentences.value, ...(response.data.sentences || [])];
-    }
-    sentencesTotal.value = response.data.total || 0;
-    sentencesOffset.value += response.data.sentences?.length || 0;
-  } catch (error) {
-    console.error('Error loading sentences:', error);
-  } finally {
-    loadingSentences.value = false;
-  }
-};
-
-const loadMoreSentences = () => {
-  loadSentences(false);
-};
-
-// Watchers
-watch([distributionPillar, distributionLevel, distributionRole], () => {
-  if (analysis.value?.status === 'completed') {
-    loadDistribution();
+  },
+  onError: (data) => {
+    console.error('[OnCoCo] Socket error:', data);
   }
 });
-
-watch([transitionPillar, transitionLevel, transitionRole], () => {
-  if (analysis.value?.status === 'completed') {
-    loadTransitions();
-    loadHeatmaps();
-    loadMatrixComparison();
-  }
-});
-
-// Utility Functions
-const getStatusColor = (status) => {
-  const colors = {
-    pending: 'grey',
-    running: 'info',
-    completed: 'success',
-    failed: 'error'
-  };
-  return colors[status] || 'grey';
-};
-
-const getStatusIcon = (status) => {
-  const icons = {
-    pending: 'mdi-clock-outline',
-    running: 'mdi-play-circle',
-    completed: 'mdi-check-circle',
-    failed: 'mdi-alert-circle'
-  };
-  return icons[status] || 'mdi-help-circle';
-};
-
-const getStatusText = (status) => {
-  const texts = {
-    pending: 'Ausstehend',
-    running: 'Läuft',
-    completed: 'Abgeschlossen',
-    failed: 'Fehlgeschlagen'
-  };
-  return texts[status] || status;
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-const formatDuration = (seconds) => {
-  if (!seconds || seconds < 0) return '0s';
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  if (seconds < 3600) {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.round(seconds % 60);
-    return `${mins}m ${secs}s`;
-  }
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  return `${hours}h ${mins}m`;
-};
-
-// Socket.IO Setup
-const setupSocket = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
-  socket = io(baseUrl, {
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionDelay: 1000,
-  });
-
-  socket.on('connect', () => {
-    console.log('[OnCoCo Socket] Connected');
-    // Join analysis room
-    socket.emit('oncoco:join_analysis', { analysis_id: parseInt(route.params.id) });
-  });
-
-  socket.on('oncoco:joined', (data) => {
-    console.log('[OnCoCo Socket] Joined room:', data);
-  });
-
-  socket.on('oncoco:progress', (data) => {
-    console.log('[OnCoCo Socket] Progress update:', data);
-    if (analysis.value && data.analysis_id === parseInt(route.params.id)) {
-      // Update basic progress
-      analysis.value.processed_threads = data.processed_threads;
-      analysis.value.total_threads = data.total_threads;
-      analysis.value.total_sentences = data.total_sentences;
-      analysis.value.progress = data.progress;
-
-      // Update live data for detailed display
-      liveData.value = {
-        hardware: data.hardware,
-        current_thread: data.current_thread,
-        current_message: data.current_message,
-        timing: data.timing
-      };
-
-      // Update last update time for stuck detection
-      lastUpdateTime.value = Date.now();
-    }
-  });
-
-  socket.on('oncoco:complete', async (data) => {
-    console.log('[OnCoCo Socket] Analysis complete:', data);
-    if (data.analysis_id === parseInt(route.params.id)) {
-      // Clear live data
-      liveData.value = {
-        hardware: null,
-        current_thread: null,
-        current_message: null,
-        timing: null
-      };
-      // Reload full analysis data to get results
-      await loadAnalysis();
-    }
-  });
-
-  socket.on('oncoco:error', (data) => {
-    console.error('[OnCoCo Socket] Error:', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('[OnCoCo Socket] Disconnected');
-  });
-};
-
-const cleanupSocket = () => {
-  if (socket) {
-    socket.emit('oncoco:leave_analysis', { analysis_id: parseInt(route.params.id) });
-    socket.disconnect();
-    socket = null;
-  }
-};
 
 // Heatmap Cell Hover Handlers
 const onHeatmapCellHover = (data) => {
@@ -1346,118 +901,32 @@ const onHeatmapCellLeave = () => {
 
 // Handle highlight from PillarComparisonPanel
 const onHighlightTransition = (transition) => {
-  // This allows clicking on a transition in the comparison panel to highlight it in heatmaps
   if (transition) {
     hoveredTransition.value = {
       from: transition.from_label,
       to: transition.to_label,
       fromDisplay: transition.from_display || transition.from_label,
       toDisplay: transition.to_display || transition.to_label,
-      pillar: null  // No specific pillar, highlight in all
+      pillar: null
     };
   } else {
     hoveredTransition.value = null;
   }
 };
 
-// Helper functions for cross-pillar comparison
-const getTransitionCount = (pillarNum, from, to) => {
-  return heatmapData.value[pillarNum]?.counts?.[from]?.[to] || 0;
-};
-
-const getTransitionProbability = (pillarNum, from, to) => {
-  return heatmapData.value[pillarNum]?.probabilities?.[from]?.[to] || 0;
-};
-
-// Transition Analysis computed
-const transitionAnalysis = computed(() => {
-  const pillars = Object.keys(heatmapData.value);
-  if (pillars.length < 2) return null;
-
-  // Calculate similarity between heatmaps using cosine similarity on probability vectors
-  const allLabels = new Set();
-  for (const pillarNum of pillars) {
-    const labels = heatmapData.value[pillarNum]?.labels || [];
-    labels.forEach(l => allLabels.add(l));
+// Watchers for filter changes
+watch([distributionPillar, distributionLevel, distributionRole], () => {
+  if (analysis.value?.status === 'completed') {
+    loadDistribution();
   }
-  const labelList = Array.from(allLabels);
+});
 
-  // Build probability vectors for each pillar
-  const vectors = {};
-  for (const pillarNum of pillars) {
-    const vec = [];
-    for (const from of labelList) {
-      for (const to of labelList) {
-        vec.push(heatmapData.value[pillarNum]?.probabilities?.[from]?.[to] || 0);
-      }
-    }
-    vectors[pillarNum] = vec;
+watch([transitionPillar, transitionLevel, transitionRole], () => {
+  if (analysis.value?.status === 'completed') {
+    loadTransitions();
+    loadHeatmaps();
+    loadMatrixComparison();
   }
-
-  // Calculate average pairwise cosine similarity
-  let totalSim = 0;
-  let pairCount = 0;
-  for (let i = 0; i < pillars.length; i++) {
-    for (let j = i + 1; j < pillars.length; j++) {
-      const v1 = vectors[pillars[i]];
-      const v2 = vectors[pillars[j]];
-      const dot = v1.reduce((sum, val, idx) => sum + val * v2[idx], 0);
-      const norm1 = Math.sqrt(v1.reduce((sum, val) => sum + val * val, 0));
-      const norm2 = Math.sqrt(v2.reduce((sum, val) => sum + val * val, 0));
-      const sim = (norm1 > 0 && norm2 > 0) ? dot / (norm1 * norm2) : 0;
-      totalSim += sim;
-      pairCount++;
-    }
-  }
-  const similarity = pairCount > 0 ? totalSim / pairCount : 0;
-
-  // Find biggest differences
-  const differences = [];
-  const basePillar = pillars[0];
-  for (const from of labelList) {
-    for (const to of labelList) {
-      const baseProb = heatmapData.value[basePillar]?.probabilities?.[from]?.[to] || 0;
-      for (let i = 1; i < pillars.length; i++) {
-        const otherPillar = pillars[i];
-        const otherProb = heatmapData.value[otherPillar]?.probabilities?.[from]?.[to] || 0;
-        const diff = otherProb - baseProb;
-        if (Math.abs(diff) > 0.01) { // Only include meaningful differences
-          differences.push({
-            from,
-            to,
-            fromDisplay: heatmapData.value[basePillar]?.labelDisplays?.[from] || from,
-            toDisplay: heatmapData.value[basePillar]?.labelDisplays?.[to] || to,
-            difference: diff,
-            direction: diff > 0 ? 'more' : 'less',
-            pillarName: getPillarName(otherPillar),
-            basePillar,
-            otherPillar
-          });
-        }
-      }
-    }
-  }
-
-  // Sort by absolute difference
-  differences.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
-
-  // Determine similarity text
-  let similarityText;
-  if (similarity > 0.9) {
-    similarityText = 'Die Heatmaps sind sehr ähnlich';
-  } else if (similarity > 0.7) {
-    similarityText = 'Die Heatmaps zeigen moderate Ähnlichkeit';
-  } else if (similarity > 0.5) {
-    similarityText = 'Die Heatmaps zeigen einige Unterschiede';
-  } else {
-    similarityText = 'Die Heatmaps sind deutlich unterschiedlich';
-  }
-
-  return {
-    similarity,
-    similarityText,
-    topDifferences: differences.slice(0, 10)
-  };
 });
 
 // Lifecycle

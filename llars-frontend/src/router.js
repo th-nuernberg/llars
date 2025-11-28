@@ -19,7 +19,6 @@ import Kontakt from "@/components/Orga/Kontakt.vue";
 import Documentation from "@/components/Orga/Documentation.vue";
 
 import AdminTester from "@/components/Admin/AdminTester.vue";
-import AdminCollaborativeTest from "@/components/Admin/AdminCollaborativeTest.vue";
 
 import Chat from "@/components/Chat.vue";
 import ChatWithBots from "@/components/ChatWithBots.vue";
@@ -94,7 +93,6 @@ const routes = [
     { path: '/AdminRAG', redirect: '/admin' },
     { path: '/AdminUserProgressStats/:id', name:'AdminUserProgressStats', component: AdminUserProgressStats, props: true, meta: { requiresAuth: true, requiresAdmin: true } },
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } },
-    { path: '/AdminCollaborativeTest', component: AdminCollaborativeTest, meta: { requiresAuth: true, requiresAdmin: true } },
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },

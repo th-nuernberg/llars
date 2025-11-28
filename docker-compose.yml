@@ -25,7 +25,7 @@ services:
     volumes:
       - ./app:/app
       - model_volume:/app/storage
-      - "./Ideen und Daten dazu/OnCoCo Analyse/xlm-roberta-large-OnCoCo-DE-EN:/app/models/oncoco"
+      # OnCoCo model is now included in app/models/oncoco (part of ./app mount)
     env_file:
       - .env
     environment:

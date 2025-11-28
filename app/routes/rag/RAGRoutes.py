@@ -50,7 +50,7 @@ from decorators.permission_decorator import require_permission
 from db.tables import (
     RAGCollection, RAGDocument, RAGDocumentChunk,
     RAGDocumentVersion, RAGRetrievalLog,
-    RAGDocumentPermission, RAGProcessingQueue
+    RAGDocumentPermission, RAGProcessingQueue, CollectionDocumentLink
 )
 from db.db import db
 from sqlalchemy import func, desc
@@ -86,16 +86,25 @@ def get_collections():
     try:
         collections = RAGCollection.query.filter_by(is_active=True).all()
 
-        return jsonify({
-            'success': True,
-            'collections': [{
+        result = []
+        for c in collections:
+            # Count linked documents via CollectionDocumentLink (n:m relationship)
+            link_count = CollectionDocumentLink.query.filter_by(collection_id=c.id).count()
+
+            # Count by link type
+            new_docs = CollectionDocumentLink.query.filter_by(collection_id=c.id, link_type='new').count()
+            linked_docs = CollectionDocumentLink.query.filter_by(collection_id=c.id, link_type='linked').count()
+
+            result.append({
                 'id': c.id,
                 'name': c.name,
                 'display_name': c.display_name,
                 'description': c.description,
                 'icon': c.icon,
                 'color': c.color,
-                'document_count': c.document_count,
+                'document_count': link_count,  # Use link count instead of legacy field
+                'documents_new': new_docs,
+                'documents_linked': linked_docs,
                 'total_chunks': c.total_chunks,
                 'total_size_bytes': c.total_size_bytes,
                 'total_size_mb': round(c.total_size_bytes / (1024*1024), 2),
@@ -106,7 +115,11 @@ def get_collections():
                 'is_public': c.is_public,
                 'created_at': c.created_at.isoformat() if c.created_at else None,
                 'last_indexed_at': c.last_indexed_at.isoformat() if c.last_indexed_at else None
-            } for c in collections]
+            })
+
+        return jsonify({
+            'success': True,
+            'collections': result
         }), 200
 
     except Exception as e:
@@ -117,14 +130,39 @@ def get_collections():
 @data_blueprint.route('/rag/collections/<int:collection_id>', methods=['GET'])
 @require_permission('feature:rag:view')
 def get_collection(collection_id):
-    """Get detailed collection information"""
+    """Get detailed collection information with linked documents"""
     try:
         collection = RAGCollection.query.get_or_404(collection_id)
 
-        # Get document list for this collection
-        documents = RAGDocument.query.filter_by(
+        # Get documents via CollectionDocumentLink (n:m relationship)
+        links = CollectionDocumentLink.query.filter_by(
             collection_id=collection_id
-        ).order_by(desc(RAGDocument.uploaded_at)).all()
+        ).order_by(desc(CollectionDocumentLink.linked_at)).all()
+
+        # Build document list with link info
+        documents_list = []
+        for link in links:
+            doc = link.document
+            if doc:
+                documents_list.append({
+                    'id': doc.id,
+                    'filename': doc.filename,
+                    'title': doc.title,
+                    'file_size_bytes': doc.file_size_bytes,
+                    'mime_type': doc.mime_type,
+                    'status': doc.status,
+                    'chunk_count': doc.chunk_count,
+                    'retrieval_count': doc.retrieval_count,
+                    'uploaded_at': doc.uploaded_at.isoformat() if doc.uploaded_at else None,
+                    # Link-specific info
+                    'link_type': link.link_type,
+                    'source_url': link.source_url,
+                    'linked_at': link.linked_at.isoformat() if link.linked_at else None
+                })
+
+        # Count by link type
+        new_docs = sum(1 for link in links if link.link_type == 'new')
+        linked_docs = sum(1 for link in links if link.link_type == 'linked')
 
         return jsonify({
             'success': True,
@@ -135,7 +173,9 @@ def get_collection(collection_id):
                 'description': collection.description,
                 'icon': collection.icon,
                 'color': collection.color,
-                'document_count': collection.document_count,
+                'document_count': len(links),
+                'documents_new': new_docs,
+                'documents_linked': linked_docs,
                 'total_chunks': collection.total_chunks,
                 'total_size_bytes': collection.total_size_bytes,
                 'total_size_mb': round(collection.total_size_bytes / (1024*1024), 2),
@@ -147,17 +187,7 @@ def get_collection(collection_id):
                 'created_by': collection.created_by,
                 'created_at': collection.created_at.isoformat() if collection.created_at else None,
                 'last_indexed_at': collection.last_indexed_at.isoformat() if collection.last_indexed_at else None,
-                'documents': [{
-                    'id': d.id,
-                    'filename': d.filename,
-                    'title': d.title,
-                    'file_size_bytes': d.file_size_bytes,
-                    'mime_type': d.mime_type,
-                    'status': d.status,
-                    'chunk_count': d.chunk_count,
-                    'retrieval_count': d.retrieval_count,
-                    'uploaded_at': d.uploaded_at.isoformat() if d.uploaded_at else None
-                } for d in documents]
+                'documents': documents_list
             }
         }), 200
 
@@ -272,24 +302,40 @@ def update_collection(collection_id):
 @data_blueprint.route('/rag/collections/<int:collection_id>', methods=['DELETE'])
 @require_permission('feature:rag:delete')
 def delete_collection(collection_id):
-    """Delete collection (requires no documents)"""
+    """Delete collection with optional cascade delete of documents"""
     try:
         collection = RAGCollection.query.get_or_404(collection_id)
 
+        # Check for force parameter (cascade delete)
+        force = request.args.get('force', 'false').lower() == 'true'
+
         # Check if collection has documents
         doc_count = RAGDocument.query.filter_by(collection_id=collection_id).count()
-        if doc_count > 0:
+
+        if doc_count > 0 and not force:
             return jsonify({
                 'success': False,
-                'error': f"Cannot delete collection with {doc_count} documents. Remove documents first."
+                'error': f"Collection enthält {doc_count} Dokument(e). Verwenden Sie 'Inkl. Dokumente löschen' um die Collection mit allen Dokumenten zu löschen.",
+                'document_count': doc_count
             }), 400
+
+        # If force delete, remove all documents first
+        if doc_count > 0 and force:
+            # Delete all chunks for documents in this collection
+            documents = RAGDocument.query.filter_by(collection_id=collection_id).all()
+            for doc in documents:
+                RAGChunk.query.filter_by(document_id=doc.id).delete()
+
+            # Delete all documents
+            RAGDocument.query.filter_by(collection_id=collection_id).delete()
+            current_app.logger.info(f"Cascade deleted {doc_count} documents from collection {collection_id}")
 
         db.session.delete(collection)
         db.session.commit()
 
         return jsonify({
             'success': True,
-            'message': f"Collection '{collection.display_name}' deleted successfully"
+            'message': f"Collection '{collection.display_name}' erfolgreich gelöscht" + (f" (inkl. {doc_count} Dokumente)" if doc_count > 0 else "")
         }), 200
 
     except Exception as e:

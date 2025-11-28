@@ -529,285 +529,80 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
-import { usePermissions } from '@/composables/usePermissions'
+import { onMounted } from 'vue';
+import { usePermissions } from '@/composables/usePermissions';
+import {
+  useAdminRAGState,
+  useAdminRAGActions,
+  useAdminRAGHelpers
+} from './AdminRAG';
 
-const { hasPermission } = usePermissions()
+const { hasPermission } = usePermissions();
 
-// State
-const activeTab = ref('documents')
-const loadingDocuments = ref(false)
-const loadingCollections = ref(false)
-const uploading = ref(false)
-const creatingCollection = ref(false)
-const deleting = ref(false)
+// Initialize state composable
+const state = useAdminRAGState();
+const {
+  loadingDocuments,
+  loadingCollections,
+  uploading,
+  creatingCollection,
+  deleting,
+  documents,
+  collections,
+  stats,
+  popularDocuments,
+  searchQuery,
+  filterCollection,
+  filterStatus,
+  statusOptions,
+  filesToUpload,
+  uploadCollectionId,
+  uploadResults,
+  activeTab,
+  showDocumentDialog,
+  showCreateCollectionDialog,
+  showDeleteDialog,
+  selectedDocument,
+  documentToDelete,
+  newCollection,
+  snackbar,
+  collectionsForFilter,
+  documentHeaders,
+  fileRules
+} = state;
 
-// Data
-const documents = ref([])
-const collections = ref([])
-const stats = ref({})
-const popularDocuments = ref([])
+// Initialize actions composable
+const {
+  loadDocuments,
+  loadCollections,
+  loadStats,
+  loadPopularDocuments,
+  uploadFiles,
+  createCollection,
+  downloadDocument,
+  deleteDocument,
+  loadAllData
+} = useAdminRAGActions(state);
 
-// Filters
-const searchQuery = ref('')
-const filterCollection = ref(null)
-const filterStatus = ref(null)
-const statusOptions = ['pending', 'processing', 'indexed', 'error']
+// Initialize helpers composable
+const {
+  viewDocument,
+  viewCollection: viewCollectionFn,
+  editCollection,
+  confirmDeleteDocument,
+  getStatusColor,
+  formatDate
+} = useAdminRAGHelpers(state);
 
-// Upload
-const filesToUpload = ref([])
-const uploadCollectionId = ref(null)
-const uploadResults = ref(null)
-
-// Dialogs
-const showDocumentDialog = ref(false)
-const showCreateCollectionDialog = ref(false)
-const showDeleteDialog = ref(false)
-const selectedDocument = ref(null)
-const documentToDelete = ref(null)
-
-// New collection form
-const newCollection = ref({
-  name: '',
-  display_name: '',
-  description: '',
-  icon: ''
-})
-
-// Snackbar
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'success'
-})
-
-// Computed
-const collectionsForFilter = computed(() => {
-  return [{ id: null, display_name: 'Alle' }, ...collections.value]
-})
-
-// Table headers
-const documentHeaders = [
-  { title: 'Titel', key: 'title', sortable: true },
-  { title: 'Dateiname', key: 'filename', sortable: true },
-  { title: 'Größe', key: 'file_size_mb', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Collection', key: 'collection_name', sortable: true },
-  { title: 'Hochgeladen', key: 'uploaded_at', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, width: '150px' }
-]
-
-// File validation rules
-const fileRules = [
-  v => !v || v.every(f => f.size <= 50 * 1024 * 1024) || 'Maximale Dateigröße ist 50 MB'
-]
-
-// Methods
-async function loadDocuments() {
-  loadingDocuments.value = true
-  try {
-    const params = new URLSearchParams()
-    if (searchQuery.value) params.append('search', searchQuery.value)
-    if (filterCollection.value) params.append('collection_id', filterCollection.value)
-    if (filterStatus.value) params.append('status', filterStatus.value)
-    params.append('per_page', 100)
-
-    const response = await axios.get(`/api/rag/documents?${params}`)
-    if (response.data.success) {
-      documents.value = response.data.documents
-    }
-  } catch (error) {
-    console.error('Error loading documents:', error)
-    showSnackbar('Fehler beim Laden der Dokumente', 'error')
-  } finally {
-    loadingDocuments.value = false
-  }
-}
-
-async function loadCollections() {
-  loadingCollections.value = true
-  try {
-    const response = await axios.get('/api/rag/collections')
-    if (response.data.success) {
-      collections.value = response.data.collections
-    }
-  } catch (error) {
-    console.error('Error loading collections:', error)
-    showSnackbar('Fehler beim Laden der Collections', 'error')
-  } finally {
-    loadingCollections.value = false
-  }
-}
-
-async function loadStats() {
-  try {
-    const response = await axios.get('/api/rag/stats/overview')
-    if (response.data.success) {
-      stats.value = response.data.stats
-    }
-  } catch (error) {
-    console.error('Error loading stats:', error)
-  }
-}
-
-async function loadPopularDocuments() {
-  try {
-    const response = await axios.get('/api/rag/stats/popular-documents?limit=5')
-    if (response.data.success) {
-      popularDocuments.value = response.data.documents
-    }
-  } catch (error) {
-    console.error('Error loading popular documents:', error)
-  }
-}
-
-async function uploadFiles() {
-  if (!filesToUpload.value || filesToUpload.value.length === 0) return
-
-  uploading.value = true
-  uploadResults.value = null
-
-  try {
-    const formData = new FormData()
-    for (const file of filesToUpload.value) {
-      formData.append('files', file)
-    }
-    if (uploadCollectionId.value) {
-      formData.append('collection_id', uploadCollectionId.value)
-    }
-
-    const response = await axios.post('/api/rag/documents/upload-multiple', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-
-    if (response.data.success) {
-      uploadResults.value = response.data.results
-      showSnackbar(response.data.message, 'success')
-      filesToUpload.value = []
-      // Reload data
-      loadDocuments()
-      loadCollections()
-      loadStats()
-    }
-  } catch (error) {
-    console.error('Error uploading files:', error)
-    showSnackbar('Fehler beim Hochladen', 'error')
-  } finally {
-    uploading.value = false
-  }
-}
-
-async function createCollection() {
-  if (!newCollection.value.name || !newCollection.value.display_name) return
-
-  creatingCollection.value = true
-  try {
-    const response = await axios.post('/api/rag/collections', newCollection.value)
-    if (response.data.success) {
-      showSnackbar('Collection erstellt', 'success')
-      showCreateCollectionDialog.value = false
-      newCollection.value = { name: '', display_name: '', description: '', icon: '' }
-      loadCollections()
-    }
-  } catch (error) {
-    console.error('Error creating collection:', error)
-    showSnackbar(error.response?.data?.error || 'Fehler beim Erstellen', 'error')
-  } finally {
-    creatingCollection.value = false
-  }
-}
-
-function viewDocument(doc) {
-  selectedDocument.value = doc
-  showDocumentDialog.value = true
-}
-
-function viewCollection(collection) {
-  filterCollection.value = collection.id
-  activeTab.value = 'documents'
-  loadDocuments()
-}
-
-function editCollection(collection) {
-  // TODO: Implement edit collection dialog
-  console.log('Edit collection:', collection)
-}
-
-async function downloadDocument(doc) {
-  try {
-    const response = await axios.get(`/api/rag/documents/${doc.id}/download`, {
-      responseType: 'blob'
-    })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', doc.original_filename || doc.filename)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-  } catch (error) {
-    console.error('Error downloading document:', error)
-    showSnackbar('Fehler beim Download', 'error')
-  }
-}
-
-function confirmDeleteDocument(doc) {
-  documentToDelete.value = doc
-  showDeleteDialog.value = true
-}
-
-async function deleteDocument() {
-  if (!documentToDelete.value) return
-
-  deleting.value = true
-  try {
-    const response = await axios.delete(`/api/rag/documents/${documentToDelete.value.id}`)
-    if (response.data.success) {
-      showSnackbar('Dokument gelöscht', 'success')
-      showDeleteDialog.value = false
-      documentToDelete.value = null
-      loadDocuments()
-      loadCollections()
-      loadStats()
-    }
-  } catch (error) {
-    console.error('Error deleting document:', error)
-    showSnackbar('Fehler beim Löschen', 'error')
-  } finally {
-    deleting.value = false
-  }
-}
-
-function getStatusColor(status) {
-  const colors = {
-    'pending': 'warning',
-    'processing': 'info',
-    'indexed': 'success',
-    'error': 'error'
-  }
-  return colors[status] || 'grey'
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '-'
-  return new Date(dateString).toLocaleString('de-DE')
-}
-
-function showSnackbar(message, color = 'success') {
-  snackbar.value = { show: true, message, color }
-}
+// Wrapper for viewCollection to pass loadDocuments
+const viewCollection = (collection) => viewCollectionFn(collection, loadDocuments);
 
 // Lifecycle
 onMounted(() => {
   if (hasPermission('feature:rag:view')) {
-    loadDocuments()
-    loadCollections()
-    loadStats()
-    loadPopularDocuments()
+    loadAllData();
   }
-})
+});
 </script>
 
 <style scoped>

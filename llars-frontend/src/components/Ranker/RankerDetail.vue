@@ -219,241 +219,115 @@
 import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import draggable from 'vuedraggable';
-import axios from 'axios';
-import { sanitizeHtml } from '@/utils/sanitize';
+import {
+  useRankerFeatures,
+  useRankerApi,
+  useRankerHelpers
+} from './RankerDetail/composables';
 
 const route = useRoute();
 const router = useRouter();
-const features = ref([]);
+
+// Initialize composables
+const {
+  features,
+  groupedFeatures,
+  localStorageKey,
+  ranked,
+  saveToLocalStorage,
+  loadFromLocalStorage,
+  groupFeaturesByType,
+  applyServerRanking,
+  applyFeatureOrder,
+  saveFeatureOrderToLocalStorage,
+  prepareForServerSave
+} = useRankerFeatures();
+
+const {
+  fetchEmailThreads,
+  fetchServerRanking,
+  fetchRankingThreads,
+  saveRankingToServer
+} = useRankerApi();
+
+const {
+  emailPaneExpanded,
+  senderColors,
+  dragOptions,
+  toggleEmailPane,
+  toggleMinimize,
+  isLongContent,
+  getTooltipText,
+  translateFeatureType,
+  formatTimestamp,
+  formatFeatureContent,
+  getMessageClass,
+  updateSenderColors,
+  handleDragStart,
+  handleDragEnd
+} = useRankerHelpers();
+
 const messages = ref([]);
-const senderColors = ref({});
-const groupedFeatures = ref([]);
-const localStorageKey = ref('');
-const ranked = ref(null);
 
-const emailPaneExpanded = ref(true);
-
-const toggleEmailPane = () => {
-  emailPaneExpanded.value = !emailPaneExpanded.value;
-};
-
-const dragOptions = ref({
-  animation: 200,
-  group: 'description',
-  disabled: false,
-  ghostClass: 'ghost',
-});
-
-// Der Key für LocalStorage
-const STORAGE_KEY = 'rankerDetail_data';
-
-// Speichern in LocalStorage mit threadId
-function saveToLocalStorage(threadId) {
-  const key = `${STORAGE_KEY}_${threadId}`;
-  const data = groupedFeatures.value.map(group => ({
-    type: group.type,
-    goodList: group.goodList,
-    averageList: group.averageList,
-    badList: group.badList,
-    neutralList: group.neutralList,
-  }));
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-// Daten aus LocalStorage laden mit threadId
-function loadFromLocalStorage(threadId) {
-  const key = `${STORAGE_KEY}_${threadId}`;
-  const savedData = localStorage.getItem(key);
-
-  if (savedData) {
-    const parsedData = JSON.parse(savedData);
-    groupedFeatures.value = parsedData.map(group => ({
-      type: group.type,
-      goodList: group.goodList || [],
-      averageList: group.averageList || [],
-      badList: group.badList || [],
-      neutralList: group.neutralList || []
-    }));
-    return true;  // Daten wurden aus LocalStorage geladen
-  }
-  return false;  // Keine Daten im LocalStorage gefunden
-}
-
-// Funktion zum Laden der Daten für einen spezifischen Fall
-// Funktion zum Laden der Daten für einen spezifischen Fall
+// Load case data for a specific case ID
 const loadCaseData = async (caseId) => {
   let dataLoadedFromLocalStorage = false;
 
-  // Prüfe zuerst, ob es Daten im LocalStorage gibt
+  // Check localStorage first
   if (loadFromLocalStorage(caseId)) {
     dataLoadedFromLocalStorage = true;
   }
 
-  // Wenn keine Daten im LocalStorage sind oder sie unvollständig sind, rufe die Daten vom Server ab
+  // If no localStorage data, fetch from server
   if (!dataLoadedFromLocalStorage) {
     const threadData = await fetchEmailThreads(caseId);
     if (!threadData) return;
 
     const serverRanking = await fetchServerRanking(caseId);
 
-    // Setze den Status, ob dieser Thread geranked wurde
     ranked.value = threadData.ranked;
-
     features.value = threadData.features;
 
-    // Erstelle ein Feature-Map, um die Features nach Typ zu gruppieren
-    const featureMap = new Map();
-    features.value.forEach((f, index) => {
-      if (!featureMap.has(f.type)) {
-        featureMap.set(f.type, {
-          type: f.type,
-          goodList: [],
-          averageList: [],
-          badList: [],
-          neutralList: []
-        });
-      }
+    // Group features by type
+    const featureMap = groupFeaturesByType(features.value);
 
-      // Platziere das Feature initial in der Neutral-Liste
-      featureMap.get(f.type).neutralList.push({
-        model_name: f.model_name,
-        content: f.content,
-        feature_id: f.feature_id,
-        position: index,
-        minimized: true,
-      });
-    });
-
-    // Überschreibe die neutralen Listen, goodList, etc. mit den Server-Rankings, wenn vorhanden
-    serverRanking.forEach(serverGroup => {
-      if (featureMap.has(serverGroup.type)) {
-        featureMap.get(serverGroup.type).goodList = serverGroup.goodList || [];
-        featureMap.get(serverGroup.type).averageList = serverGroup.averageList || [];
-        featureMap.get(serverGroup.type).badList = serverGroup.badList || [];
-        featureMap.get(serverGroup.type).neutralList = serverGroup.neutralList || [];
-      }
-    });
+    // Apply server ranking if available
+    if (serverRanking) {
+      applyServerRanking(featureMap, serverRanking);
+    }
 
     groupedFeatures.value = Array.from(featureMap.values());
     console.log('Grouped features:', groupedFeatures.value);
     localStorageKey.value = `featureOrder_${caseId}`;
 
-    // Speichern der vom Server abgerufenen Daten im LocalStorage
+    // Save to localStorage
     saveToLocalStorage(caseId);
   }
 
-  // Stelle sicher, dass die Nachrichten immer aktuell sind, indem sie vom Server geladen werden
+  // Always load messages from server
   const threadData = await fetchEmailThreads(caseId);
   if (threadData) {
     messages.value = threadData.messages;
-
-    // Setze den Status des Rankings basierend auf den aktuellen Daten vom Server
     ranked.value = threadData.ranked;
   }
 
-  // Aktualisiere die Farben der Nachrichten im E-Mail-Verlauf
-  let lastSender = '';
-  let currentColor = 'same-sender';
-  messages.value.forEach(message => {
-    if (message.sender !== lastSender) {
-      currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender';
-      lastSender = message.sender;
-    }
-    senderColors.value[message.sender] = currentColor;
-  });
+  // Update sender colors
+  updateSenderColors(messages.value);
 };
 
 onMounted(() => {
   const caseId = route.params.id;
   if (caseId) {
-    loadCaseData(caseId);  // Lade zuerst aus LocalStorage, dann (falls nötig) vom Server
+    loadCaseData(caseId);
   }
 });
 
-
-function getTooltipText(type) {
-  const tooltips = {
-    abstract_summary: 'Diese Zusammenfassung gibt einen Überblick über den Fall.',
-    generated_category: 'Dies ist die generierte Kategorie des Falls.',
-    generated_subject: 'Das Feature "Generierter Betreff" beschreibt einen prägnanten und individuellen Betreff, der aus der ersten Nachricht der ratsuchenden Person generiert wurde.\n\nDer Betreff soll den Hauptinhalt der Anfrage klar und verständlich in maximal 6 Wörtern zusammenfassen, ohne unnötige Formalitäten oder zusätzliche Phrasen.\n\nDie Qualität des "Generierter Betreff" wird danach bewertet, wie gut es den Kerninhalt der Erstnachricht präzise und direkt wiedergibt. Ein guter Betreff ermöglicht es dem Beratungsteam, schnell einen Überblick über das Anliegen zu erhalten und effektiv darauf zu reagieren.',
-    order_clarification: 'Hier werden Unklarheiten in der Anfrage geklärt.',
-    situation_summary: 'Das Feature "Situationsbeschreibung" fasst die aktuelle Situation der ratsuchenden Person in den Bereichen sozial, beruflich und persönlich zusammen.\n\nDiese Zusammenfassungen basieren auf der bisherigen Kommunikation. Zusätzlich können relevante Aspekte in weiteren Feldern wie "zusätzlicher_aspekt" beschrieben werden.\n\nJeder Bereich wird durch Stichpunkte dargestellt, die aus maximal zwei Sätzen bestehen und die wichtigsten Informationen prägnant zusammenfassen.\n\nDie Qualität der "Situationsbeschreibung" wird danach bewertet, wie genau und umfassend sie die soziale, berufliche und persönliche Lage der ratsuchenden Person wiedergibt, ohne unnötige Formalitäten oder Ausschweifungen.',
-  };
-
-  return tooltips[type] || 'Allgemeine Informationen zum Feature.';
-}
-
-// Beobachte Änderungen in den Routenparametern
+// Watch for route changes
 watch(() => route.params.id, (newId) => {
   loadCaseData(newId);
-}, {immediate: true});
+}, { immediate: true });
 
-function getColorForText(text) {
-  const hash = hashCode(text);
-
-  // Basisfarbe
-  const baseHue = 65;
-  const baseSaturation = 68;
-  const baseLightness = 86;
-
-  // Variationen generieren
-  const hueVariation = (hash & 0xFF) % 21 - 10;
-  const saturationVariation = ((hash >> 8) & 0xFF) % 31 - 15;
-  const lightnessVariation = ((hash >> 16) & 0xFF) % 21 - 10;
-
-  // Variationen anwenden
-  const hue = (baseHue + hueVariation + 360) % 360;
-  const saturation = Math.max(40, Math.min(100, baseSaturation + saturationVariation));
-  const lightness = Math.max(70, Math.min(95, baseLightness + lightnessVariation));
-
-  // In HSL-Farbstring umwandeln
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-}
-
-function hashCode(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash;
-}
-
-function isLongContent(content) {
-  // Eine Annahme über die durchschnittliche Anzahl von Zeichen pro Zeile
-  const maxCharsPerLine = 80; // Beispielwert, abhängig von der CSS-Breite und Schriftart
-
-  // Prüfe, ob der Inhalt die Schwelle für lange Inhalte überschreitet
-  return content.length > (maxCharsPerLine * 3); // Mehr als 3 Zeilen
-}
-
-
-async function fetchEmailThreads(threadId) {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings/${threadId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching email threads:', error);
-    return null;
-  }
-}
-
-function toggleMinimize(element) {
-  element.minimized = !element.minimized;
-}
-
-async function fetchServerRanking(threadId) {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/${threadId}/current_ranking`);
-    console.log('Server ranking:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching server ranking:', error);
-    return null;
-  }
-}
-
+// Load feature order from localStorage or server
 async function loadFeatureOrder() {
   const savedOrder = localStorage.getItem(localStorageKey.value);
   if (savedOrder) {
@@ -467,143 +341,7 @@ async function loadFeatureOrder() {
   }
 }
 
-function applyFeatureOrder(orderedFeatures) {
-  const featureMap = new Map();
-
-  // Überprüfe, ob die Struktur korrekt ist
-  orderedFeatures.forEach(f => {
-    if (!featureMap.has(f.type)) {
-      featureMap.set(f.type, {
-        type: f.type,
-        goodList: [],
-        averageList: [],
-        badList: [],
-        neutralList: []
-      });
-    }
-
-    f.details.forEach(detail => {
-      const featureGroup = featureMap.get(f.type);
-
-      // Verteile die Features basierend auf dem Bucket
-      if (detail.bucket === 'Gut') {
-        featureGroup.goodList.push(detail);
-      } else if (detail.bucket === 'Mittel') {
-        featureGroup.averageList.push(detail);
-      } else if (detail.bucket === 'Schlecht') {
-        featureGroup.badList.push(detail);
-      } else {
-        featureGroup.neutralList.push(detail);
-      }
-    });
-  });
-
-  // Ordne die Features der groupedFeatures zu
-  groupedFeatures.value = Array.from(featureMap.values());
-}
-
-
-function getMessageClass(sender) {
-  return senderColors.value[sender];
-}
-
-function translateFeatureType(type) {
-  const translations = {
-    abstract_summary: 'Abstrakte Fallzusammenfassung',
-    generated_category: 'Generierte Kategorie',
-    generated_subject: 'Generierter Betreff',
-    order_clarification: 'Ordnungsklärung',
-    situation_summary: 'Situationsbeschreibung'
-  };
-  return translations[type] || type;
-}
-
-function formatTimestamp(timestamp) {
-  const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
-  const date = new Date(timestamp);
-  return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
-}
-
-function formatFeatureContent(type, content) {
-  // console.log('Formatting feature content:', type, content);
-  switch (type) {
-    case 'generated_subject':
-      try {
-        const subjectObj = JSON.parse(content);
-        // Sanitize the subject text before returning
-        return sanitizeHtml(subjectObj.Betreff || content);
-      } catch (error) {
-        console.error('Error parsing generated_subject JSON:', error);
-        // Sanitize fallback content
-        return sanitizeHtml(content);
-      }
-
-    case 'situation_summary':
-      try {
-        const summaryObj = JSON.parse(content);
-        let formattedContent = '<div class="situation-summary">';
-        for (const [key, values] of Object.entries(summaryObj)) {
-          // Escape key name to prevent XSS
-          const capitalizedKey = sanitizeHtml(key.charAt(0).toUpperCase() + key.slice(1));
-          formattedContent += `<p><strong>${capitalizedKey}:</strong></p>`;
-          formattedContent += '<ul>';
-          values.forEach(item => {
-            // Sanitize each list item
-            formattedContent += `<li>${sanitizeHtml(item)}</li>`;
-          });
-          formattedContent += '</ul>';
-        }
-        formattedContent += '</div>';
-
-        formattedContent += `
-          <style>
-            .situation-summary ul {
-              padding-left: 20px;
-              margin-top: 5px;
-              margin-bottom: 15px;
-            }
-            .situation-summary p {
-              margin-bottom: 5px;
-            }
-          </style>
-        `;
-
-        // Sanitize the entire formatted content (will preserve allowed tags)
-        return sanitizeHtml(formattedContent);
-      } catch (error) {
-        console.error('Error parsing situation_summary JSON:', error);
-        // Sanitize fallback content
-        return sanitizeHtml(content);
-      }
-
-    default:
-      // Sanitize default content
-      return sanitizeHtml(content);
-  }
-}
-
-function handleDragStart() {
-  document.body.classList.add("dragging");
-}
-
-function handleDragEnd() {
-  document.body.classList.remove("dragging");
-  saveFeatureOrderToLocalStorage();
-}
-
-function saveFeatureOrderToLocalStorage() {
-  const orderedFeatures = groupedFeatures.value.map(group => ({
-    type: group.type,
-    details: group.details.map((detail, index) => ({
-      model_name: detail.model_name,
-      content: detail.content,
-      feature_id: detail.feature_id,
-      position: index
-    }))
-  }));
-  localStorage.setItem(localStorageKey.value, JSON.stringify(orderedFeatures));
-}
-
+// Navigation methods
 async function navigateToPreviousCase() {
   const currentId = parseInt(route.params.id);
   const rankingThreads = await fetchRankingThreads();
@@ -613,7 +351,6 @@ async function navigateToPreviousCase() {
     return;
   }
 
-  // Finde den aktuellen Thread in der Liste
   const currentIndex = rankingThreads.findIndex(thread => thread.thread_id === currentId);
 
   if (currentIndex === -1 || currentIndex === 0) {
@@ -621,9 +358,8 @@ async function navigateToPreviousCase() {
     return;
   }
 
-  // Navigiere zum vorherigen Ranking-Thread
   const previousThread = rankingThreads[currentIndex - 1];
-  router.push({name: 'RankerDetail', params: {id: previousThread.thread_id.toString()}});
+  router.push({ name: 'RankerDetail', params: { id: previousThread.thread_id.toString() } });
 }
 
 async function navigateToNextCase() {
@@ -635,7 +371,6 @@ async function navigateToNextCase() {
     return;
   }
 
-  // Finde den aktuellen Thread in der Liste
   const currentIndex = rankingThreads.findIndex(thread => thread.thread_id === currentId);
 
   if (currentIndex === -1 || currentIndex === rankingThreads.length - 1) {
@@ -643,78 +378,29 @@ async function navigateToNextCase() {
     return;
   }
 
-  // Navigiere zum nächsten Ranking-Thread
   const nextThread = rankingThreads[currentIndex + 1];
-  router.push({name: 'RankerDetail', params: {id: nextThread.thread_id.toString()}});
+  router.push({ name: 'RankerDetail', params: { id: nextThread.thread_id.toString() } });
 }
 
-async function fetchRankingThreads() {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/feature_ranking_list`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching ranking threads:', error);
-    return [];
-  }
-}
-
-async function fetchTotalCases() {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`);
-    return response.data.length;
-  } catch (error) {
-    console.error('Error fetching total number of cases:', error);
-    return 0;
-  }
-}
-
-function saveFeaturesServerSide() {
+// Save features to server
+async function saveFeaturesServerSide() {
   const threadId = route.params.id;
+  const orderedFeatures = prepareForServerSave();
 
-  // Erstelle ein Objekt, das die Buckets enthält
-  let orderedFeatures = groupedFeatures.value.map(group => {
-    return {
-      type: group.type,
-      details: [
-        ...group.goodList.map((detail, index) => ({
-          model_name: detail.model_name,
-          content: detail.content,
-          position: index,
-          bucket: 'Gut' // Bucket-Information für "Gut"
-        })),
-        ...group.averageList.map((detail, index) => ({
-          model_name: detail.model_name,
-          content: detail.content,
-          position: index,
-          bucket: 'Mittel' // Bucket-Information für "Mittel"
-        })),
-        ...group.badList.map((detail, index) => ({
-          model_name: detail.model_name,
-          content: detail.content,
-          position: index,
-          bucket: 'Schlecht' // Bucket-Information für "Schlecht"
-        }))
-      ]
-    };
-  });
-
-  // Senden der Daten an den Server
-  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_ranking/${threadId}`, orderedFeatures, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
-    .then(response => {
-      console.log('Ranking saved successfully:', response.data);
-      alert('Ranking wurde erfolgreich gespeichert!');
-      ranked.value = true;
-    })
-    .catch(error => {
-      console.error('Error saving ranking:', error);
-      alert('Fehler beim Speichern des Rankings.');
-    });
+  const result = await saveRankingToServer(threadId, orderedFeatures);
+  if (result.success) {
+    alert('Ranking wurde erfolgreich gespeichert!');
+    ranked.value = true;
+  } else {
+    alert('Fehler beim Speichern des Rankings.');
+  }
 }
 
+// Handle drag end with localStorage save
+function onDragEnd() {
+  handleDragEnd();
+  saveFeatureOrderToLocalStorage();
+}
 </script>
 
 <style scoped>

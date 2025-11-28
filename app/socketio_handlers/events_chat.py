@@ -1,6 +1,20 @@
 """
 SocketIO Chat Events
 Handles chat streaming with LiteLLM Proxy integration.
+
+Events:
+    Client → Server:
+        - chat_stream: Send a chat message for streaming response
+        - test_prompt_stream: Test a prompt with optional JSON mode
+
+    Server → Client:
+        - chat_response: Streaming chat response chunks
+        - test_prompt_response: Streaming test prompt response chunks
+
+Integration:
+    - Uses LiteLLM Proxy (mistralai/Mistral-Small-3.2-24B-Instruct-2506)
+    - Supports RAG context injection via chat_manager.rag_pipeline
+    - Maintains chat history per client (request.sid)
 """
 
 import logging
@@ -13,7 +27,13 @@ from openai import OpenAI
 
 
 def register_chat_events(socketio, chat_manager):
-    """Register chat-related SocketIO events"""
+    """
+    Register chat-related SocketIO events.
+
+    Events:
+        chat_stream: Handle user chat message with RAG and streaming response
+        test_prompt_stream: Handle test prompt with optional JSON mode
+    """
 
     # Error Messages for failed chat requests
     ERROR_MESSAGES = [

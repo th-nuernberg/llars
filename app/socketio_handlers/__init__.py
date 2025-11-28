@@ -1,13 +1,26 @@
 """
 SocketIO Handlers Module
-Refactored from routes_socketio.py into focused modules.
+========================
+
+Centralized Socket.IO event handlers for real-time features.
+
+Architecture:
+    - Flask Socket.IO handles: Chat, Judge, OnCoCo, Crawler, RAG, Prompts, Ranker
+    - YJS Server (yjs-server/) handles: Collaborative Prompt Editing (CRDT-based)
+
+Event Namespaces:
+    - judge:*     - LLM-as-Judge evaluation sessions
+    - rag:*       - RAG document processing queue
+    - ranker:*    - Ranking statistics updates
+    - prompts:*   - User prompt list updates
+    - crawler:*   - Web crawler job progress
+    - oncoco:*    - OnCoCo analysis progress
+    - (default)   - Chat streaming, connection events
 """
 
 import logging
 from .chat_manager import ChatManager
-from .collaborative_manager import CollaborativeManager
 from .events_connection import register_connection_events
-from .events_collaboration import register_collaboration_events
 from .events_chat import register_chat_events
 from .events_judge import register_judge_events
 from .events_oncoco import register_oncoco_events
@@ -31,29 +44,49 @@ def configure_socket_routes(socketio, verbose=True):
         socketio: Flask-SocketIO instance
         verbose: Enable verbose logging for prompts and debugging
 
-    Event Handlers Registered:
-        Connection Events:
-            - connect: Client connection
-            - disconnect: Client disconnection
+    Registered Event Handlers:
+        Connection (events_connection.py):
+            - connect: Client connection with welcome message
+            - disconnect: Client disconnection and cleanup
 
-        Collaboration Events:
-            - join_prompt: Join collaborative session
-            - leave_prompt: Leave collaborative session
-            - cursor_move: Cursor position updates
-            - blocks_update: Block structure updates
-            - content_change: Content modifications
-
-        Chat Events:
-            - chat_stream: Streaming chat with RAG
+        Chat (events_chat.py):
+            - chat_stream: Streaming chat with RAG integration
             - test_prompt_stream: Test prompt execution
+
+        Judge (events_judge.py):
+            - judge:join_session: Join evaluation session room
+            - judge:leave_session: Leave evaluation session room
+            - judge:get_status: Request current session status
+
+        RAG (events_rag.py):
+            - rag:subscribe_queue: Subscribe to processing queue updates
+            - rag:unsubscribe_queue: Unsubscribe from queue updates
+
+        Ranker (events_ranker.py):
+            - ranker:subscribe: Subscribe to ranking stat updates
+            - ranker:unsubscribe: Unsubscribe from stat updates
+
+        Prompts (events_prompts.py):
+            - prompts:subscribe: Subscribe to user's prompt updates
+            - prompts:unsubscribe: Unsubscribe from prompt updates
+
+        Crawler (events_crawler.py):
+            - crawler:join_session: Join crawler job session
+            - crawler:leave_session: Leave crawler job session
+            - crawler:subscribe_jobs: Subscribe to all jobs updates
+            - crawler:unsubscribe_jobs: Unsubscribe from jobs updates
+            - crawler:get_status: Request job status
+
+        OnCoCo (events_oncoco.py):
+            - oncoco:join_analysis: Join analysis session
+            - oncoco:leave_analysis: Leave analysis session
+            - oncoco:get_status: Request analysis status
     """
     # Initialize managers
     chat_manager = ChatManager(verbose=verbose)
-    collab_manager = CollaborativeManager()
 
     # Register event handlers
-    register_connection_events(socketio, chat_manager, collab_manager)
-    register_collaboration_events(socketio, collab_manager)
+    register_connection_events(socketio, chat_manager)
     register_chat_events(socketio, chat_manager)
     register_judge_events(socketio)
     register_oncoco_events(socketio)
@@ -67,6 +100,5 @@ def configure_socket_routes(socketio, verbose=True):
 
 __all__ = [
     'configure_socket_routes',
-    'ChatManager',
-    'CollaborativeManager'
+    'ChatManager'
 ]

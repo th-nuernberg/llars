@@ -1,6 +1,9 @@
 """
 SocketIO Connection Events
 Handles client connection and disconnection.
+
+Note: Collaborative editing for Prompt Engineering is handled by the dedicated
+YJS WebSocket server (yjs-server/) which provides CRDT-based real-time sync.
 """
 
 import logging
@@ -8,8 +11,14 @@ from flask import request
 from flask_socketio import emit
 
 
-def register_connection_events(socketio, chat_manager, collab_manager):
-    """Register connection-related SocketIO events"""
+def register_connection_events(socketio, chat_manager):
+    """
+    Register connection-related SocketIO events.
+
+    Events:
+        connect: Client connects to Socket.IO server
+        disconnect: Client disconnects from Socket.IO server
+    """
 
     @socketio.on('connect')
     def handle_connect():
@@ -34,19 +43,5 @@ def register_connection_events(socketio, chat_manager, collab_manager):
     @socketio.on('disconnect')
     def handle_disconnect():
         """Handle client disconnection"""
-        user_id = request.sid
-
-        # Verlasse alle aktiven Prompt-Räume
-        if user_id in collab_manager.user_rooms:
-            for room in collab_manager.user_rooms[user_id].copy():
-                prompt_id = room.split('_')[1]  # Extract prompt_id from room name
-                collaborators = collab_manager.leave_prompt(prompt_id, user_id)
-
-                emit('collaborator_left', {
-                    'collaborators': collaborators,
-                    'leftuser_id': user_id
-                }, room=room)
-
-        # Bestehende Chat-Cleanup-Logik
         chat_manager.clear_history(request.sid)
         logging.info(f'Client {request.sid} disconnected')

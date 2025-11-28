@@ -7,7 +7,6 @@ from flask_limiter.util import get_remote_address
 from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes import auth_blueprint, data_blueprint, judge_bp, oncoco_bp
-from routes_websocket_prompt_eng import configure_websocket_prompt_eng
 import os
 
 app = Flask(__name__)
@@ -30,10 +29,18 @@ else:
 # ping_timeout: How long to wait for pong before disconnecting (default: 20s)
 # ping_interval: How often to send ping to keep connection alive (default: 25s)
 # For LLM streaming, we need longer timeouts to prevent disconnections during generation
+#
+# async_mode options:
+# - 'eventlet': Best performance but requires eventlet server and monkey-patching
+# - 'gevent': Good performance, requires gevent server
+# - 'threading': Works with any WSGI server, uses long-polling fallback for WebSocket
+#
+# For development with flask run, use 'threading' mode
+# For production, use 'eventlet' or 'gevent' with appropriate server
 socketio = SocketIO(
     app,
     cors_allowed_origins=socket_cors,
-    async_mode='eventlet',  # Use eventlet for better concurrency
+    async_mode='threading',  # Use threading for compatibility with flask run
     ping_timeout=120,  # 2 minutes - allow for long LLM responses
     ping_interval=30,  # Send ping every 30 seconds
     logger=flask_env == 'development',  # Enable logging in development
@@ -93,11 +100,18 @@ from routes.crawler.crawler_routes import crawler_blueprint, init_crawler_socket
 app.register_blueprint(crawler_blueprint)
 
 
+# Configure all SocketIO event handlers
 configure_socket_routes(socketio)
 
-# Initialize Crawler WebSocket integration
+# Initialize Crawler service with SocketIO for live updates
+# (Crawler events are registered in configure_socket_routes,
+# this only injects the socketio instance into the crawler service)
 init_crawler_socketio(socketio)
-configure_websocket_prompt_eng(socketio)
+
+# Initialize Embedding Worker for background document processing
+# The worker automatically processes pending documents and creates embeddings
+from workers.embedding_worker import start_embedding_worker
+start_embedding_worker(app)
 
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren

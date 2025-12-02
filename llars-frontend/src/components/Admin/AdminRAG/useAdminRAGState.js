@@ -32,7 +32,7 @@ export function useAdminRAGState() {
   const uploadResults = ref(null);
 
   // Dialogs
-  const activeTab = ref('documents');
+  const activeTab = ref('collections');
   const showDocumentDialog = ref(false);
   const showCreateCollectionDialog = ref(false);
   const showDeleteDialog = ref(false);

@@ -409,9 +409,14 @@ class CrawlerService:
                     delay_seconds=1.0
                 )
 
+                # Track seen hashes for deduplication during this crawl
+                seen_hashes_in_crawl = set()
+
                 def progress_callback(current, total, page_url):
                     self.active_crawls[job_id]['pages_crawled'] = total_pages + current
                     self.active_crawls[job_id]['current_url'] = page_url
+                    docs_created = self.active_crawls[job_id]['documents_created']
+                    docs_linked = self.active_crawls[job_id]['documents_linked']
                     self._emit_progress(job_id, {
                         'status': 'running',
                         'pages_crawled': total_pages + current,
@@ -419,115 +424,26 @@ class CrawlerService:
                         'current_url': page_url,
                         'current_url_index': url_index + 1,
                         'total_urls': len(urls),
-                        'documents_created': self.active_crawls[job_id]['documents_created'],
-                        'documents_linked': self.active_crawls[job_id]['documents_linked']
+                        'documents_created': docs_created,
+                        'documents_linked': docs_linked
                     })
                     self._emit_page_crawled(job_id, {
                         'url': page_url,
-                        'page_number': total_pages + current
+                        'page_number': total_pages + current,
+                        'documents_created': docs_created,
+                        'documents_linked': docs_linked
                     })
 
-                pages = crawler.crawl(progress_callback=progress_callback)
+                def page_callback(page_data):
+                    """Process each page immediately as it's crawled."""
+                    self._process_crawled_page(
+                        job_id, page_data, collection_id, created_by,
+                        seen_hashes_in_crawl
+                    )
+
+                pages = crawler.crawl(progress_callback=progress_callback, page_callback=page_callback)
                 total_pages += len(pages)
-
-                # Process crawled pages
-                seen_hashes_in_crawl = set()
-
-                for page in pages:
-                    try:
-                        content_hash = page['content_hash']
-
-                        if content_hash in seen_hashes_in_crawl:
-                            logger.debug(f"Skipping duplicate content within crawl for {page['url']}")
-                            continue
-                        seen_hashes_in_crawl.add(content_hash)
-
-                        existing_doc = RAGDocument.query.filter_by(file_hash=content_hash).first()
-
-                        if existing_doc:
-                            existing_link = CollectionDocumentLink.query.filter_by(
-                                collection_id=collection_id,
-                                document_id=existing_doc.id
-                            ).first()
-
-                            if existing_link:
-                                logger.debug(f"Document already linked to collection for {page['url']}")
-                                continue
-
-                            link = CollectionDocumentLink(
-                                collection_id=collection_id,
-                                document_id=existing_doc.id,
-                                link_type='linked',
-                                source_url=page['url'],
-                                crawl_job_id=job_id,
-                                linked_at=datetime.now(),
-                                linked_by=created_by
-                            )
-                            db.session.add(link)
-                            db.session.commit()
-
-                            self.active_crawls[job_id]['documents_linked'] += 1
-                            logger.info(f"[Job {job_id}] Linked existing document {existing_doc.id} to collection {collection_id}")
-
-                        else:
-                            filename = f"webcrawl_{job_id[:8]}_{uuid.uuid4().hex[:8]}.md"
-                            file_path = os.path.join(self.RAG_DOCS_PATH, filename)
-                            os.makedirs(self.RAG_DOCS_PATH, exist_ok=True)
-
-                            with open(file_path, 'w', encoding='utf-8') as f:
-                                f.write(page['content'])
-
-                            doc = RAGDocument(
-                                filename=filename,
-                                original_filename=page['metadata'].get('title', page['url'])[:255],
-                                file_path=file_path,
-                                file_size_bytes=len(page['content'].encode('utf-8')),
-                                mime_type='text/markdown',
-                                file_hash=content_hash,
-                                title=page['metadata'].get('title', '')[:255],
-                                description=page['metadata'].get('description', '')[:500],
-                                author=urlparse(page['url']).netloc,
-                                language=page['metadata'].get('language', 'de'),
-                                keywords=page['metadata'].get('keywords', ''),
-                                status='pending',
-                                collection_id=collection_id,
-                                is_public=True,
-                                uploaded_by=created_by,
-                                uploaded_at=datetime.now()
-                            )
-                            db.session.add(doc)
-                            db.session.flush()
-
-                            link = CollectionDocumentLink(
-                                collection_id=collection_id,
-                                document_id=doc.id,
-                                link_type='new',
-                                source_url=page['url'],
-                                crawl_job_id=job_id,
-                                linked_at=datetime.now(),
-                                linked_by=created_by
-                            )
-                            db.session.add(link)
-
-                            queue_entry = RAGProcessingQueue(
-                                document_id=doc.id,
-                                priority=5,
-                                status='queued',
-                                created_at=datetime.now()
-                            )
-                            db.session.add(queue_entry)
-                            db.session.commit()
-
-                            self.active_crawls[job_id]['documents_created'] += 1
-                            logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']}")
-
-                    except Exception as e:
-                        logger.error(f"Error processing document for {page['url']}: {e}")
-                        db.session.rollback()
-                        self.active_crawls[job_id]['errors'].append({
-                            'url': page['url'],
-                            'error': str(e)
-                        })
+                # Pages are already processed via page_callback during crawling
 
             # Update collection stats
             try:
@@ -591,6 +507,116 @@ class CrawlerService:
             self.active_crawls[job_id]['status'] = 'cancelled'
             return True
         return False
+
+    def _process_crawled_page(
+        self,
+        job_id: str,
+        page: Dict,
+        collection_id: int,
+        created_by: str,
+        seen_hashes: set
+    ):
+        """
+        Process a single crawled page immediately.
+        Creates document or links existing document to collection.
+        """
+        from db.db import db
+        from db.tables import RAGDocument, RAGProcessingQueue, CollectionDocumentLink
+
+        try:
+            content_hash = page['content_hash']
+
+            if content_hash in seen_hashes:
+                logger.debug(f"Skipping duplicate content within crawl for {page['url']}")
+                return
+            seen_hashes.add(content_hash)
+
+            existing_doc = RAGDocument.query.filter_by(file_hash=content_hash).first()
+
+            if existing_doc:
+                existing_link = CollectionDocumentLink.query.filter_by(
+                    collection_id=collection_id,
+                    document_id=existing_doc.id
+                ).first()
+
+                if existing_link:
+                    logger.debug(f"Document already linked to collection for {page['url']}")
+                    return
+
+                link = CollectionDocumentLink(
+                    collection_id=collection_id,
+                    document_id=existing_doc.id,
+                    link_type='linked',
+                    source_url=page['url'],
+                    crawl_job_id=job_id,
+                    linked_at=datetime.now(),
+                    linked_by=created_by
+                )
+                db.session.add(link)
+                db.session.commit()
+
+                self.active_crawls[job_id]['documents_linked'] += 1
+                logger.info(f"[Job {job_id}] Linked existing document {existing_doc.id} to collection {collection_id}")
+
+            else:
+                filename = f"webcrawl_{job_id[:8]}_{uuid.uuid4().hex[:8]}.md"
+                file_path = os.path.join(self.RAG_DOCS_PATH, filename)
+                os.makedirs(self.RAG_DOCS_PATH, exist_ok=True)
+
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(page['content'])
+
+                doc = RAGDocument(
+                    filename=filename,
+                    original_filename=page['metadata'].get('title', page['url'])[:255],
+                    file_path=file_path,
+                    file_size_bytes=len(page['content'].encode('utf-8')),
+                    mime_type='text/markdown',
+                    file_hash=content_hash,
+                    title=page['metadata'].get('title', '')[:255],
+                    description=page['metadata'].get('description', '')[:500],
+                    author=urlparse(page['url']).netloc,
+                    language=page['metadata'].get('language', 'de'),
+                    keywords=page['metadata'].get('keywords', ''),
+                    status='pending',
+                    collection_id=collection_id,
+                    is_public=True,
+                    uploaded_by=created_by,
+                    uploaded_at=datetime.now()
+                )
+                db.session.add(doc)
+                db.session.flush()
+
+                link = CollectionDocumentLink(
+                    collection_id=collection_id,
+                    document_id=doc.id,
+                    link_type='new',
+                    source_url=page['url'],
+                    crawl_job_id=job_id,
+                    linked_at=datetime.now(),
+                    linked_by=created_by
+                )
+                db.session.add(link)
+
+                queue_entry = RAGProcessingQueue(
+                    document_id=doc.id,
+                    priority=5,
+                    status='queued',
+                    created_at=datetime.now()
+                )
+                db.session.add(queue_entry)
+                db.session.commit()
+
+                self.active_crawls[job_id]['documents_created'] += 1
+                logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']}")
+
+        except Exception as e:
+            logger.error(f"Error processing document for {page['url']}: {e}")
+            db.session.rollback()
+            self.active_crawls[job_id]['errors'].append({
+                'url': page['url'],
+                'error': str(e)
+            })
 
 
 # Singleton instance

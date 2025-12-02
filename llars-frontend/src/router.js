@@ -44,6 +44,11 @@ import OnCoCoOverview from "@/components/OnCoCo/OnCoCoOverview.vue";
 import OnCoCoConfig from "@/components/OnCoCo/OnCoCoConfig.vue";
 import OnCoCoResults from "@/components/OnCoCo/OnCoCoResults.vue";
 import OnCoCoInfo from "@/components/OnCoCo/OnCoCoInfo.vue";
+import KaimoHub from "@/components/Kaimo/KaimoHub.vue";
+import KaimoPanel from "@/components/Kaimo/KaimoPanel.vue";
+import KaimoNewCase from "@/components/Kaimo/KaimoNewCase.vue";
+import KaimoCase from "@/components/Kaimo/KaimoCase.vue";
+import KaimoCaseEditor from "@/components/Kaimo/KaimoCaseEditor.vue";
 
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
@@ -82,6 +87,12 @@ const routes = [
     { path: '/oncoco/config', name: 'OnCoCoConfig', component: OnCoCoConfig, meta: { requiresAuth: true } },
     { path: '/oncoco/results/:id', name: 'OnCoCoResults', component: OnCoCoResults, props: true, meta: { requiresAuth: true } },
     { path: '/oncoco/info', name: 'OnCoCoInfo', component: OnCoCoInfo, meta: { requiresAuth: true } },
+    // KAIMO Routes
+    { path: '/kaimo', name: 'KaimoHub', component: KaimoHub, meta: { requiresAuth: true } },
+    { path: '/kaimo/panel', name: 'KaimoPanel', component: KaimoPanel, meta: { requiresAuth: true } },
+    { path: '/kaimo/new', name: 'KaimoNewCase', component: KaimoNewCase, meta: { requiresAuth: true } },
+    { path: '/kaimo/edit/:id', name: 'KaimoCaseEditor', component: KaimoCaseEditor, props: true, meta: { requiresAuth: true } },
+    { path: '/kaimo/:id', name: 'KaimoCase', component: KaimoCase, props: true, meta: { requiresAuth: true } },
 
     // New unified Admin Dashboard
     { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },

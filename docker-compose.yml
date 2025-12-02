@@ -24,7 +24,8 @@ services:
     # Mount application code for hot-reloading in development
     volumes:
       - ./app:/app
-      - model_volume:/app/storage
+      - rag_storage:/app/storage
+      - rag_docs:/app/rag_docs
       # OnCoCo model is now included in app/models/oncoco (part of ./app mount)
     env_file:
       - .env
@@ -160,13 +161,8 @@ services:
       - ./docs:/docs
     environment:
       - TZ=Europe/Berlin
-    develop:
-      watch:
-        - action: sync
-          path: ./docs
-          target: /docs
-          ignore:
-            - site/
+      - PROJECT_STATE=${PROJECT_STATE}
+      - MKDOCS_BIND_ADDR=0.0.0.0:8000
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       start_period: 10s
@@ -280,6 +276,12 @@ services:
 
 volumes:
   llarsdb:
-  model_volume:
+    name: llars_llarsdb
+  rag_storage:
+    name: llars_rag_storage
+  rag_docs:
+    name: llars_rag_docs
   authentikdb:
+    name: llars_authentikdb
   authentik_media:
+    name: llars_authentik_media

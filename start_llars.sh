@@ -142,10 +142,6 @@ check_and_start_docker
 # ============================================
 
 cd "$BASE_DIR"
-echo ""
-echo "Stopping existing LLARS services..."
-docker compose -p llars down --remove-orphans 2>/dev/null || true
-
 # ============================================
 # Step 5: Handle REMOVE_VOLUMES
 # ============================================
@@ -157,8 +153,9 @@ if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
     echo "============================================"
     echo "This will DELETE ALL LLARS DATA including:"
     echo "  - Database (users, ratings, scenarios)"
+    echo "  - RAG Collections and Documents"
     echo "  - Authentik (all user accounts)"
-    echo "  - Model cache"
+    echo "  - Model cache and embeddings"
     echo ""
 
     # Safety check in production
@@ -172,24 +169,32 @@ if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
         fi
     fi
 
-    echo "Removing ALL LLARS volumes..."
+    # Stop and remove containers WITH volumes
+    echo "Stopping and removing LLARS services with volumes..."
+    docker compose -p llars down --volumes --remove-orphans 2>/dev/null || true
 
-    # Get all volumes with llars prefix dynamically
+    # Also remove any remaining volumes with llars prefix
+    echo "Removing ALL LLARS volumes..."
     LLARS_VOLUMES=$(docker volume ls -q --filter name=llars 2>/dev/null || true)
 
     if [ -n "$LLARS_VOLUMES" ]; then
         for volume in $LLARS_VOLUMES; do
             echo "  Deleting: $volume"
-            docker volume rm "$volume" 2>/dev/null || echo "  Warning: Could not delete $volume (may be in use)"
+            docker volume rm "$volume" 2>/dev/null || echo "  Warning: Could not delete $volume"
         done
         echo ""
         echo "All LLARS volumes removed."
     else
-        echo "No LLARS volumes found."
+        echo "No additional LLARS volumes found."
     fi
 
     echo "============================================"
     echo ""
+else
+    # Normal stop without removing volumes
+    echo ""
+    echo "Stopping existing LLARS services..."
+    docker compose -p llars down --remove-orphans 2>/dev/null || true
 fi
 
 # ============================================

@@ -43,6 +43,25 @@ class RAGCollection(db.Model):
     updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     last_indexed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
 
+    # Source Information (for Chatbot Builder)
+    source_type: Mapped[str] = mapped_column(
+        db.Enum('crawler', 'upload', 'mixed', name='source_type_enum'),
+        default='upload',
+        nullable=False
+    )
+    source_url: Mapped[Optional[str]] = mapped_column(db.String(2048), nullable=True)
+    crawl_job_id: Mapped[Optional[str]] = mapped_column(db.String(36), nullable=True, index=True)
+
+    # Embedding Status (for live progress tracking)
+    embedding_status: Mapped[str] = mapped_column(
+        db.Enum('idle', 'processing', 'completed', 'failed', name='collection_embedding_status_enum'),
+        default='idle',
+        nullable=False,
+        index=True
+    )
+    embedding_progress: Mapped[int] = mapped_column(db.Integer, default=0)
+    embedding_error: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+
     # Relationships (n:m via CollectionDocumentLink)
     document_links = db.relationship('CollectionDocumentLink', back_populates='collection', cascade='all, delete-orphan')
 
@@ -191,6 +210,17 @@ class RAGDocumentChunk(db.Model):
 
     # Vector
     vector_id: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, index=True)  # ChromaDB vector ID
+
+    # Embedding Info (for Chatbot Builder)
+    embedding_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    embedding_dimensions: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
+    embedding_status: Mapped[str] = mapped_column(
+        db.Enum('pending', 'processing', 'completed', 'failed', name='chunk_embedding_status_enum'),
+        default='pending',
+        nullable=False,
+        index=True
+    )
+    embedding_error: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
 
     # Statistics
     retrieval_count: Mapped[int] = mapped_column(db.Integer, default=0)

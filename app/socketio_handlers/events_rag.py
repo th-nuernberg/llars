@@ -5,11 +5,16 @@ Events:
     Client → Server:
         - rag:subscribe_queue: Subscribe to processing queue updates
         - rag:unsubscribe_queue: Unsubscribe from queue updates
+        - rag:subscribe_collection: Subscribe to a collection's embedding progress
+        - rag:unsubscribe_collection: Unsubscribe from collection progress
 
     Server → Client:
         - rag:queue_list: Initial processing queue after subscribing
         - rag:queue_updated: Processing queue has been updated
         - rag:document_processed: A document has finished processing
+        - rag:collection_progress: Embedding progress for a collection
+        - rag:collection_completed: Collection embedding completed
+        - rag:collection_error: Collection embedding failed
 """
 
 import logging
@@ -75,6 +80,53 @@ def register_rag_events(socketio):
 
         except Exception as e:
             logger.error(f"[RAG Socket] Error unsubscribing from queue: {e}")
+
+    @socketio.on('rag:subscribe_collection')
+    def handle_subscribe_collection(data):
+        """Subscribe to a specific collection's embedding progress."""
+        try:
+            collection_id = data.get('collection_id')
+            if not collection_id:
+                emit('rag:error', {'error': 'collection_id required'})
+                return
+
+            room = f"rag_collection_{collection_id}"
+            join_room(room)
+            logger.info(f"[RAG Socket] Client {request.sid} subscribed to collection {collection_id}")
+
+            # Send current collection status
+            from db.tables import RAGCollection
+            collection = RAGCollection.query.get(collection_id)
+
+            if collection:
+                emit('rag:collection_status', {
+                    'collection_id': collection.id,
+                    'name': collection.name,
+                    'embedding_status': collection.embedding_status,
+                    'embedding_progress': collection.embedding_progress or 0,
+                    'embedding_error': collection.embedding_error,
+                    'document_count': collection.document_count,
+                    'total_chunks': collection.total_chunks
+                })
+
+            emit('rag:subscribed_collection', {'collection_id': collection_id, 'room': room})
+
+        except Exception as e:
+            logger.error(f"[RAG Socket] Error subscribing to collection: {e}")
+            emit('rag:error', {'error': str(e)})
+
+    @socketio.on('rag:unsubscribe_collection')
+    def handle_unsubscribe_collection(data):
+        """Unsubscribe from a collection's embedding progress."""
+        try:
+            collection_id = data.get('collection_id')
+            if collection_id:
+                room = f"rag_collection_{collection_id}"
+                leave_room(room)
+                logger.info(f"[RAG Socket] Client {request.sid} unsubscribed from collection {collection_id}")
+
+        except Exception as e:
+            logger.error(f"[RAG Socket] Error unsubscribing from collection: {e}")
 
     logger.info("[RAG Socket] Events registered")
 
@@ -168,3 +220,87 @@ def emit_rag_progress(socketio, queue_id: int, progress_percent: int, current_st
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting progress: {e}")
+
+
+def emit_collection_progress(socketio, collection_id: int, progress: int, current_doc: str = None,
+                             docs_processed: int = 0, docs_total: int = 0):
+    """
+    Emit embedding progress for a collection.
+
+    Args:
+        socketio: Flask-SocketIO instance
+        collection_id: The collection ID
+        progress: Overall progress percentage (0-100)
+        current_doc: Currently processing document name
+        docs_processed: Number of documents already processed
+        docs_total: Total number of documents to process
+    """
+    try:
+        room = f"rag_collection_{collection_id}"
+        socketio.emit('rag:collection_progress', {
+            'collection_id': collection_id,
+            'progress': progress,
+            'current_document': current_doc,
+            'documents_processed': docs_processed,
+            'documents_total': docs_total
+        }, room=room)
+
+        # Also emit to global room
+        socketio.emit('rag:collection_progress', {
+            'collection_id': collection_id,
+            'progress': progress,
+            'current_document': current_doc,
+            'documents_processed': docs_processed,
+            'documents_total': docs_total
+        }, room=RAG_QUEUE_ROOM)
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting collection progress: {e}")
+
+
+def emit_collection_completed(socketio, collection_id: int, total_chunks: int, total_docs: int):
+    """
+    Emit when collection embedding is completed.
+
+    Args:
+        socketio: Flask-SocketIO instance
+        collection_id: The collection ID
+        total_chunks: Total number of chunks embedded
+        total_docs: Total number of documents processed
+    """
+    try:
+        room = f"rag_collection_{collection_id}"
+        data = {
+            'collection_id': collection_id,
+            'status': 'completed',
+            'total_chunks': total_chunks,
+            'total_documents': total_docs
+        }
+        socketio.emit('rag:collection_completed', data, room=room)
+        socketio.emit('rag:collection_completed', data, room=RAG_QUEUE_ROOM)
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting collection completed: {e}")
+
+
+def emit_collection_error(socketio, collection_id: int, error: str):
+    """
+    Emit when collection embedding fails.
+
+    Args:
+        socketio: Flask-SocketIO instance
+        collection_id: The collection ID
+        error: Error message
+    """
+    try:
+        room = f"rag_collection_{collection_id}"
+        data = {
+            'collection_id': collection_id,
+            'status': 'failed',
+            'error': error
+        }
+        socketio.emit('rag:collection_error', data, room=room)
+        socketio.emit('rag:collection_error', data, room=RAG_QUEUE_ROOM)
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting collection error: {e}")

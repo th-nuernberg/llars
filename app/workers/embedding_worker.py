@@ -253,8 +253,9 @@ class EmbeddingWorker:
             raise ValueError(f"Document {doc.id} has no collection assigned")
 
         # Use first collection for ChromaDB naming (embeddings are shared)
+        from services.rag.collection_embedding_service import sanitize_chroma_collection_name
         primary_collection = linked_collections[0]
-        collection_name = f"llars_{primary_collection.name}_{self._pipeline.model_name.replace('/', '_')}"
+        collection_name = sanitize_chroma_collection_name(primary_collection.name, self._pipeline.model_name)
 
         # Get or create Chroma collection
         vectorstore_dir = os.path.join(self._pipeline.storage_dir, "vectorstore", self._pipeline.model_name.replace('/', '_'))
@@ -276,9 +277,10 @@ class EmbeddingWorker:
                     chunk_index=i,
                     content=chunk_text,
                     content_hash=self._hash_content(chunk_text),
-                    char_count=len(chunk_text),
-                    token_count_estimate=len(chunk_text) // 4,  # Rough estimate
+                    start_char=0,  # Would need proper tracking for accurate values
+                    end_char=len(chunk_text),
                     embedding_model=self._pipeline.model_name,
+                    embedding_status='completed',
                     vector_id=chunk_id
                 )
                 db.session.add(db_chunk)

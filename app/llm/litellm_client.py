@@ -29,7 +29,7 @@ class LiteLLMClient:
 
     DEFAULT_BASE_URL = "https://kiz1.in.ohmportal.de/llmproxy/v1"
     DEFAULT_MODEL = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
-    METADATA_TAGS = ["Technische Hochschule Nürnberg", "KIA"]
+    METADATA_TAGS = ["Technische Hochschule Nürnberg", "prj-llars"]
 
     def __init__(
         self,

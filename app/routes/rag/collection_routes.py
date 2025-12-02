@@ -16,7 +16,7 @@ from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 import jwt
 from decorators.permission_decorator import require_permission
-from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink
+from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink, ChatbotCollection
 from db.db import db
 from sqlalchemy import desc
 
@@ -58,7 +58,13 @@ def get_collections():
                 'retrieval_k': c.retrieval_k,
                 'is_public': c.is_public,
                 'created_at': c.created_at.isoformat() if c.created_at else None,
-                'last_indexed_at': c.last_indexed_at.isoformat() if c.last_indexed_at else None
+                'last_indexed_at': c.last_indexed_at.isoformat() if c.last_indexed_at else None,
+                # Embedding status fields (for Chatbot Builder)
+                'source_type': c.source_type,
+                'source_url': c.source_url,
+                'embedding_status': c.embedding_status,
+                'embedding_progress': c.embedding_progress or 0,
+                'embedding_error': c.embedding_error
             })
 
         return jsonify({
@@ -274,6 +280,12 @@ def delete_collection(collection_id):
             RAGDocument.query.filter_by(collection_id=collection_id).delete()
             current_app.logger.info(f"Cascade deleted {doc_count} documents from collection {collection_id}")
 
+        # Delete chatbot-collection associations
+        ChatbotCollection.query.filter_by(collection_id=collection_id).delete()
+
+        # Delete document-collection links
+        CollectionDocumentLink.query.filter_by(collection_id=collection_id).delete()
+
         db.session.delete(collection)
         db.session.commit()
 
@@ -285,4 +297,67 @@ def delete_collection(collection_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error in delete_collection: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# Embedding API Endpoints
+# ============================================================================
+
+@rag_collection_bp.route('/collections/<int:collection_id>/embed', methods=['POST'])
+@require_permission('feature:rag:edit')
+def start_collection_embedding(collection_id):
+    """
+    Start embedding process for a collection.
+
+    All linked documents will be processed and embedded.
+    Progress is streamed via WebSocket.
+    """
+    try:
+        from services.rag.collection_embedding_service import get_collection_embedding_service
+
+        service = get_collection_embedding_service()
+        result = service.start_embedding(collection_id)
+
+        if result['success']:
+            return jsonify(result), 202
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        current_app.logger.error(f"Error starting embedding: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@rag_collection_bp.route('/collections/<int:collection_id>/embed', methods=['DELETE'])
+@require_permission('feature:rag:edit')
+def pause_collection_embedding(collection_id):
+    """Pause/Stop embedding process for a collection."""
+    try:
+        from services.rag.collection_embedding_service import get_collection_embedding_service
+
+        service = get_collection_embedding_service()
+        result = service.pause_embedding(collection_id)
+
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        current_app.logger.error(f"Error pausing embedding: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@rag_collection_bp.route('/collections/<int:collection_id>/embed/status', methods=['GET'])
+@require_permission('feature:rag:view')
+def get_collection_embedding_status(collection_id):
+    """Get embedding status for a collection."""
+    try:
+        from services.rag.collection_embedding_service import get_collection_embedding_service
+
+        service = get_collection_embedding_service()
+        result = service.get_status(collection_id)
+
+        return jsonify(result), 200 if result['success'] else 404
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting embedding status: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500

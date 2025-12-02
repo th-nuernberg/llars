@@ -48,9 +48,9 @@
           v-for="(message, index) in messages"
           :key="index"
           class="message-wrapper"
-          :class="message.role"
+          :class="[message.role, { 'system-info': message.isSystemInfo }]"
         >
-          <div class="message" :class="`${message.role}-message`">
+          <div class="message" :class="[`${message.role}-message`, { 'system-info-message': message.isSystemInfo }]">
             <div class="message-header" v-if="message.role === 'assistant'">
               <v-avatar :color="chatbot?.color || 'primary'" size="24" class="mr-2">
                 <v-icon color="white" size="16">{{ chatbot?.icon || 'mdi-robot' }}</v-icon>
@@ -132,20 +132,118 @@
 
       <!-- Footer Stats -->
       <v-card-text class="py-2 px-4 bg-surface-variant">
-        <div class="d-flex justify-space-between text-caption text-medium-emphasis">
-          <div>
-            <v-icon size="14">mdi-message-text</v-icon>
-            {{ messages.length }} Nachrichten
+        <div class="d-flex justify-space-between align-center text-caption text-medium-emphasis">
+          <div class="d-flex gap-4">
+            <div>
+              <v-icon size="14">mdi-message-text</v-icon>
+              {{ messages.length }} Nachrichten
+            </div>
+            <div v-if="totalResponseTime > 0">
+              <v-icon size="14">mdi-clock-outline</v-icon>
+              Ø {{ averageResponseTime }}ms
+            </div>
+            <div v-if="totalTokens > 0">
+              <v-icon size="14">mdi-counter</v-icon>
+              {{ totalTokens }} Tokens gesamt
+            </div>
           </div>
-          <div v-if="totalResponseTime > 0">
-            <v-icon size="14">mdi-clock-outline</v-icon>
-            Ø {{ averageResponseTime }}ms
-          </div>
-          <div v-if="totalTokens > 0">
-            <v-icon size="14">mdi-counter</v-icon>
-            {{ totalTokens }} Tokens gesamt
-          </div>
+          <v-btn
+            size="x-small"
+            variant="text"
+            :icon="showSettings ? 'mdi-chevron-down' : 'mdi-cog'"
+            @click="showSettings = !showSettings"
+          >
+            <v-tooltip activator="parent" location="top">
+              Test-Einstellungen
+            </v-tooltip>
+          </v-btn>
         </div>
+
+        <!-- Admin Test Settings Panel -->
+        <v-expand-transition>
+          <div v-if="showSettings" class="mt-4 pt-4" style="border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12)">
+            <v-row dense>
+              <v-col cols="12" md="6">
+                <v-slider
+                  v-model="testSettings.temperature"
+                  label="Temperature"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  thumb-label
+                  hide-details
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-slider
+                  v-model="testSettings.maxTokens"
+                  label="Max Tokens"
+                  min="100"
+                  max="4096"
+                  step="100"
+                  thumb-label
+                  hide-details
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-slider
+                  v-model="testSettings.retrievalK"
+                  label="RAG Top-K"
+                  min="1"
+                  max="10"
+                  step="1"
+                  thumb-label
+                  hide-details
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-slider
+                  v-model="testSettings.minRelevance"
+                  label="Min Relevanz"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  thumb-label
+                  hide-details
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+            <v-row dense class="mt-2">
+              <v-col cols="12">
+                <v-textarea
+                  v-model="testSettings.systemPromptOverride"
+                  label="System Prompt Override (leer = Original verwenden)"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
+            <div class="d-flex justify-end mt-2">
+              <v-btn
+                size="small"
+                variant="text"
+                @click="resetSettings"
+              >
+                Zurücksetzen
+              </v-btn>
+              <v-btn
+                size="small"
+                color="primary"
+                variant="tonal"
+                class="ml-2"
+                @click="applySettings"
+              >
+                Anwenden
+              </v-btn>
+            </div>
+          </div>
+        </v-expand-transition>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -167,6 +265,18 @@ const messages = ref([])
 const inputMessage = ref('')
 const loading = ref(false)
 const messagesContainer = ref(null)
+const showSettings = ref(false)
+
+// Admin Test Settings
+const testSettings = ref({
+  temperature: 0.7,
+  maxTokens: 2048,
+  retrievalK: 4,
+  minRelevance: 0.3,
+  systemPromptOverride: ''
+})
+
+const activeSettings = ref(null) // Applied settings for testing
 
 // Computed
 const totalResponseTime = computed(() => {
@@ -206,10 +316,24 @@ async function sendMessage() {
   try {
     const startTime = performance.now()
 
-    const response = await axios.post(`/api/chatbots/${props.chatbot.id}/test`, {
+    // Build request with optional test settings
+    const requestData = {
       message: userMessage,
-      conversation_history: messages.value.slice(0, -1) // Exclude current message
-    })
+      conversation_history: messages.value.filter(m => !m.isSystemInfo).slice(0, -1)
+    }
+
+    // Include test settings if applied
+    if (activeSettings.value) {
+      requestData.test_settings = {
+        temperature: activeSettings.value.temperature,
+        max_tokens: activeSettings.value.maxTokens,
+        retrieval_k: activeSettings.value.retrievalK,
+        min_relevance: activeSettings.value.minRelevance,
+        system_prompt_override: activeSettings.value.systemPromptOverride || null
+      }
+    }
+
+    const response = await axios.post(`/api/chatbots/${props.chatbot.id}/test`, requestData)
 
     const endTime = performance.now()
     const responseTime = Math.round(endTime - startTime)
@@ -262,10 +386,35 @@ function resetChat() {
   inputMessage.value = ''
 }
 
+function resetSettings() {
+  if (props.chatbot) {
+    testSettings.value = {
+      temperature: props.chatbot.temperature || 0.7,
+      maxTokens: props.chatbot.max_tokens || 2048,
+      retrievalK: props.chatbot.rag_retrieval_k || 4,
+      minRelevance: props.chatbot.rag_min_relevance || 0.3,
+      systemPromptOverride: ''
+    }
+  }
+  activeSettings.value = null
+}
+
+function applySettings() {
+  activeSettings.value = { ...testSettings.value }
+  messages.value.push({
+    role: 'system',
+    content: `[Test-Einstellungen angewendet: Temperature=${activeSettings.value.temperature}, MaxTokens=${activeSettings.value.maxTokens}, RAG-K=${activeSettings.value.retrievalK}]`,
+    isSystemInfo: true
+  })
+  scrollToBottom()
+}
+
 // Watch for dialog open/close
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     resetChat()
+    resetSettings()
+    showSettings.value = false
   }
 })
 </script>
@@ -328,6 +477,20 @@ watch(() => props.modelValue, (newVal) => {
 
 .text-medium-emphasis {
   color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+/* System Info Messages */
+.message-wrapper.system-info {
+  justify-content: center;
+}
+
+.system-info-message {
+  background: rgba(var(--v-theme-warning), 0.1) !important;
+  border: 1px dashed rgba(var(--v-theme-warning), 0.5) !important;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  font-size: 12px;
+  font-style: italic;
+  max-width: 90% !important;
 }
 
 /* Scrollbar styling */

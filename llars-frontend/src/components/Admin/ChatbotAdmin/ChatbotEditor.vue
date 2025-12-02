@@ -46,9 +46,9 @@
 
       <!-- Content -->
       <v-card-text style="height: 500px; overflow-y: auto;">
-        <v-tabs-window v-model="activeTab" class="h-100">
+        <v-window v-model="activeTab" class="h-100">
           <!-- General Tab -->
-          <v-tabs-window-item value="general" eager>
+          <v-window-item value="general" eager>
             <v-form ref="formGeneral">
               <v-row>
                 <v-col cols="12" md="6">
@@ -169,10 +169,10 @@
                 </v-col>
               </v-row>
             </v-form>
-          </v-tabs-window-item>
+          </v-window-item>
 
           <!-- LLM Settings Tab -->
-          <v-tabs-window-item value="llm" eager>
+          <v-window-item value="llm" eager>
             <v-form ref="formLLM">
               <v-row>
                 <!-- Prompt Templates -->
@@ -291,10 +291,10 @@
                 </v-col>
               </v-row>
             </v-form>
-          </v-tabs-window-item>
+          </v-window-item>
 
           <!-- RAG Settings Tab -->
-          <v-tabs-window-item value="rag" eager>
+          <v-window-item value="rag" eager>
             <v-form ref="formRAG">
               <v-row>
                 <v-col cols="12">
@@ -353,10 +353,10 @@
                 </template>
               </v-row>
             </v-form>
-          </v-tabs-window-item>
+          </v-window-item>
 
           <!-- Collections Tab -->
-          <v-tabs-window-item value="collections" eager>
+          <v-window-item value="collections" eager>
             <div v-if="collections.length === 0" class="text-center pa-8">
               <v-icon size="48" color="grey-lighten-1" class="mb-2">
                 mdi-folder-off
@@ -382,10 +382,10 @@
                 </v-list-item-subtitle>
               </v-list-item>
             </v-list>
-          </v-tabs-window-item>
+          </v-window-item>
 
           <!-- Web Crawler Tab -->
-          <v-tabs-window-item value="webcrawler" eager>
+          <v-window-item value="webcrawler" eager>
             <v-row>
               <v-col cols="12">
                 <v-alert type="info" variant="tonal" class="mb-4">
@@ -514,8 +514,8 @@
                 </v-btn>
               </v-col>
             </v-row>
-          </v-tabs-window-item>
-        </v-tabs-window>
+          </v-window-item>
+        </v-window>
       </v-card-text>
 
       <!-- Actions -->

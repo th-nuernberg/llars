@@ -320,9 +320,15 @@ class ChatService:
                 doc_id = doc.metadata.get('document_id')
                 title = doc.metadata.get('title', doc.metadata.get('source', 'Unbekannt'))
 
+                # Convert L2 distance to cosine similarity for normalized vectors
+                # For normalized vectors: L2_distance^2 = 2 * (1 - cosine_similarity)
+                # Therefore: cosine_similarity = 1 - (L2_distance^2 / 2)
+                # Clamp to [0, 1] to handle any numerical edge cases
+                similarity = max(0.0, min(1.0, 1 - (score ** 2) / 2))
+
                 results.append({
                     'content': doc.page_content,
-                    'score': 1 - score,  # Convert distance to similarity
+                    'score': similarity,
                     'document_id': doc_id,
                     'title': title,
                     'metadata': doc.metadata

@@ -10,13 +10,22 @@
               Erstellen und verwalten Sie Chatbots mit RAG-Integration
             </p>
           </div>
-          <v-btn
-            color="primary"
-            prepend-icon="mdi-plus"
-            @click="openCreateDialog"
-          >
-            Neuer Chatbot
-          </v-btn>
+          <div class="d-flex gap-2">
+            <v-btn
+              color="secondary"
+              prepend-icon="mdi-wizard-hat"
+              @click="dialogs.wizard = true"
+            >
+              Builder Wizard
+            </v-btn>
+            <v-btn
+              color="primary"
+              prepend-icon="mdi-plus"
+              @click="openCreateDialog"
+            >
+              Neuer Chatbot
+            </v-btn>
+          </div>
         </div>
       </v-col>
     </v-row>
@@ -99,9 +108,9 @@
       </v-tabs>
 
       <v-card-text>
-        <v-tabs-window v-model="activeTab">
+        <v-window v-model="activeTab">
           <!-- Chatbots Tab -->
-          <v-tabs-window-item value="chatbots">
+          <v-window-item value="chatbots">
             <ChatbotList
               :chatbots="chatbots"
               :loading="loading.chatbots"
@@ -111,10 +120,10 @@
               @test="openTestDialog"
               @manage-collections="openCollectionManager"
             />
-          </v-tabs-window-item>
+          </v-window-item>
 
           <!-- Collections Tab -->
-          <v-tabs-window-item value="collections">
+          <v-window-item value="collections">
             <CollectionManager
               :collections="collections"
               :loading="loading.collections"
@@ -123,10 +132,10 @@
               @delete="confirmDeleteCollection"
               @view-documents="viewCollectionDocuments"
             />
-          </v-tabs-window-item>
+          </v-window-item>
 
           <!-- Documents Tab -->
-          <v-tabs-window-item value="documents">
+          <v-window-item value="documents">
             <DocumentManager
               :documents="documents"
               :collections="collections"
@@ -136,8 +145,8 @@
               @delete="confirmDeleteDocument"
               @download="downloadDocument"
             />
-          </v-tabs-window-item>
-        </v-tabs-window>
+          </v-window-item>
+        </v-window>
       </v-card-text>
     </v-card>
 
@@ -202,6 +211,13 @@
       </v-card>
     </v-dialog>
 
+    <!-- Chatbot Builder Wizard -->
+    <ChatbotBuilderWizard
+      v-model="dialogs.wizard"
+      @created="onWizardChatbotCreated"
+      @test="openTestDialogById"
+    />
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.text }}
@@ -215,6 +231,7 @@ import axios from 'axios'
 import ChatbotList from './ChatbotList.vue'
 import ChatbotEditor from './ChatbotEditor.vue'
 import ChatbotTestDialog from './ChatbotTestDialog.vue'
+import ChatbotBuilderWizard from './ChatbotBuilderWizard.vue'
 import CollectionManager from '@/components/RAG/CollectionManager.vue'
 import CollectionEditor from '@/components/RAG/CollectionEditor.vue'
 import DocumentManager from '@/components/RAG/DocumentManager.vue'
@@ -248,7 +265,8 @@ const dialogs = ref({
   documentViewer: false,
   upload: false,
   collectionAssignment: false,
-  deleteConfirm: false
+  deleteConfirm: false,
+  wizard: false
 })
 
 const selectedChatbot = ref(null)
@@ -546,6 +564,27 @@ async function saveCollectionAssignment(data) {
 
 function showSnackbar(text, color = 'success') {
   snackbar.value = { show: true, text, color }
+}
+
+// Wizard methods
+async function onWizardChatbotCreated(chatbotId) {
+  showSnackbar('Chatbot erfolgreich erstellt', 'success')
+  await loadChatbots()
+  await loadCollections()
+  await loadStats()
+}
+
+async function openTestDialogById(chatbotId) {
+  try {
+    const response = await axios.get(`/api/chatbots/${chatbotId}`)
+    if (response.data.success) {
+      selectedChatbot.value = response.data.chatbot
+      dialogs.value.test = true
+    }
+  } catch (error) {
+    console.error('Error loading chatbot for test:', error)
+    showSnackbar('Fehler beim Laden des Chatbots', 'error')
+  }
 }
 
 // Lifecycle

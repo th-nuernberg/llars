@@ -77,7 +77,12 @@ class ChatbotService:
                 'updated_at': bot.updated_at.isoformat() if bot.updated_at else None,
                 'collection_count': collection_count,
                 'conversation_count': conversation_count,
-                'collections': collections
+                'collections': collections,
+                # Build status fields (for Chatbot Builder)
+                'build_status': bot.build_status,
+                'build_error': bot.build_error,
+                'source_url': bot.source_url,
+                'primary_collection_id': bot.primary_collection_id
             })
 
         return result
@@ -134,7 +139,12 @@ class ChatbotService:
             'created_at': bot.created_at.isoformat() if bot.created_at else None,
             'updated_at': bot.updated_at.isoformat() if bot.updated_at else None,
             'collections': collections,
-            'conversation_count': conversation_count
+            'conversation_count': conversation_count,
+            # Build status fields (for Chatbot Builder)
+            'build_status': bot.build_status,
+            'build_error': bot.build_error,
+            'source_url': bot.source_url,
+            'primary_collection_id': bot.primary_collection_id
         }
 
     @staticmethod

@@ -53,6 +53,24 @@ class Chatbot(db.Model):
     is_public: Mapped[bool] = mapped_column(db.Boolean, default=False)
     allowed_roles: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
 
+    # Build Status (for Chatbot Builder Wizard)
+    build_status: Mapped[str] = mapped_column(
+        db.Enum('draft', 'crawling', 'embedding', 'configuring', 'ready', 'error', 'paused', name='chatbot_build_status_enum'),
+        default='ready',
+        nullable=False,
+        index=True
+    )
+    build_error: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+
+    # Source Information (for Chatbot Builder)
+    source_url: Mapped[Optional[str]] = mapped_column(db.String(2048), nullable=True)
+    primary_collection_id: Mapped[Optional[int]] = mapped_column(
+        db.Integer,
+        db.ForeignKey('rag_collections.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
+
     # Audit
     created_by: Mapped[str] = mapped_column(db.String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now)
@@ -61,6 +79,7 @@ class Chatbot(db.Model):
     # Relationships
     collections = db.relationship('ChatbotCollection', backref='chatbot', cascade='all, delete-orphan')
     conversations = db.relationship('ChatbotConversation', backref='chatbot', cascade='all, delete-orphan')
+    primary_collection = db.relationship('RAGCollection', foreign_keys=[primary_collection_id], backref='primary_chatbots')
 
 
 class ChatbotCollection(db.Model):

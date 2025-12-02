@@ -103,6 +103,14 @@ const allItems = ref([
     permission: null  // Available to all authenticated users
   },
   {
+    title: 'KAIMO',
+    description: 'Fallvignetten durcharbeiten und als Researcher neue Fälle anlegen',
+    route: '/kaimo',
+    icon: 'mdi-shield-account',
+    elevation: 1,
+    permission: 'feature:kaimo:view'
+  },
+  {
     title: 'OnCoCo Analyse',
     description: "Klassifikation von Beratungsgesprächen auf Satzebene mit dem OnCoCo Modell (68 Kategorien)",
     route: '/oncoco',

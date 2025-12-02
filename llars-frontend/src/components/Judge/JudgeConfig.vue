@@ -503,7 +503,7 @@ import {
   useJudgeConfigState,
   useJudgeConfigComputed,
   useJudgeConfigActions
-} from './JudgeConfig';
+} from './JudgeConfig/index';
 
 const router = useRouter();
 

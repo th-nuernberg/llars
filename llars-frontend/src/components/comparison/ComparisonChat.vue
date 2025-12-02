@@ -203,7 +203,7 @@ import {
   useComparisonSocket,
   useComparisonHelpers,
   type Message
-} from './ComparisonChat';
+} from './ComparisonChat/index';
 
 const props = defineProps<{
   sessionId: number;

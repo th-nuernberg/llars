@@ -7,6 +7,7 @@ from flask_limiter.util import get_remote_address
 from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes import auth_blueprint, data_blueprint, judge_bp, oncoco_bp
+from routes.kaimo import kaimo_bp
 import os
 
 app = Flask(__name__)
@@ -91,9 +92,16 @@ app.register_blueprint(judge_bp)
 # OnCoCo Analysis routes
 app.register_blueprint(oncoco_bp)
 
+# RAG routes (document management, collections, search)
+from routes.rag import rag_bp
+app.register_blueprint(rag_bp)
+
 # Chatbot routes
 from routes.chatbot.chatbot_routes import chatbot_blueprint
 app.register_blueprint(chatbot_blueprint)
+
+# KAIMO routes
+app.register_blueprint(kaimo_bp)
 
 # Web Crawler routes
 from routes.crawler.crawler_routes import crawler_blueprint, init_crawler_socketio
@@ -113,8 +121,37 @@ init_crawler_socketio(socketio)
 from workers.embedding_worker import start_embedding_worker
 start_embedding_worker(app)
 
+# Fix missing chroma_collection_name for existing collections
+# This is a one-time migration for collections created before the fix
+def fix_missing_chroma_collection_names():
+    """Set chroma_collection_name for collections where it's missing."""
+    from db.tables import RAGCollection
+    from db.db import db
+    from rag_pipeline import RAGPipeline
+    from services.rag.collection_embedding_service import sanitize_chroma_collection_name
+
+    with app.app_context():
+        try:
+            pipeline = RAGPipeline()
+            collections = RAGCollection.query.filter(
+                RAGCollection.chroma_collection_name.is_(None),
+                RAGCollection.embedding_status == 'completed'
+            ).all()
+
+            for collection in collections:
+                chroma_name = sanitize_chroma_collection_name(collection.name, pipeline.model_name)
+                collection.chroma_collection_name = chroma_name
+                print(f"[Startup] Fixed chroma_collection_name for collection '{collection.name}': {chroma_name}")
+
+            if collections:
+                db.session.commit()
+                print(f"[Startup] Fixed {len(collections)} collections with missing chroma_collection_name")
+        except Exception as e:
+            print(f"[Startup] Error fixing chroma_collection_names: {e}")
+
+fix_missing_chroma_collection_names()
+
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
     socketio.run(app, host='0.0.0.0', port=8081, debug=debug_mode)
-

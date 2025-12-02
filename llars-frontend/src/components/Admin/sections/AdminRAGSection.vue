@@ -48,67 +48,6 @@
       </v-col>
     </v-row>
 
-    <!-- Processing Queue Card - shows pending/processing documents -->
-    <v-card v-if="processingQueue.pending > 0 || processingQueue.processing > 0" class="mb-4" variant="outlined" color="warning">
-      <v-card-title class="d-flex align-center">
-        <v-icon start color="warning" class="mr-2">mdi-progress-clock</v-icon>
-        Embedding-Verarbeitung
-        <v-spacer></v-spacer>
-        <v-chip color="warning" size="small" variant="flat">
-          {{ processingQueue.pending + processingQueue.processing }} in Warteschlange
-        </v-chip>
-      </v-card-title>
-      <v-card-text>
-        <v-row align="center">
-          <v-col cols="12" md="8">
-            <div class="d-flex align-center mb-2">
-              <span class="text-body-2 mr-3">Fortschritt:</span>
-              <v-progress-linear
-                :model-value="processingProgress"
-                color="primary"
-                height="20"
-                rounded
-                striped
-              >
-                <template v-slot:default>
-                  {{ processingQueue.indexed }} / {{ processingQueue.total }} indexiert
-                </template>
-              </v-progress-linear>
-            </div>
-            <div class="d-flex gap-4">
-              <v-chip size="small" color="warning" variant="tonal">
-                <v-icon start size="small">mdi-clock-outline</v-icon>
-                {{ processingQueue.pending }} warten
-              </v-chip>
-              <v-chip size="small" color="info" variant="tonal">
-                <v-icon start size="small">mdi-cog</v-icon>
-                {{ processingQueue.processing }} werden verarbeitet
-              </v-chip>
-              <v-chip size="small" color="success" variant="tonal">
-                <v-icon start size="small">mdi-check</v-icon>
-                {{ processingQueue.indexed }} fertig
-              </v-chip>
-            </div>
-          </v-col>
-          <v-col cols="12" md="4" class="text-right">
-            <v-btn
-              variant="outlined"
-              size="small"
-              @click="fetchProcessingQueue"
-              :loading="loadingQueue"
-            >
-              <v-icon start size="small">mdi-refresh</v-icon>
-              Aktualisieren
-            </v-btn>
-          </v-col>
-        </v-row>
-        <v-alert v-if="processingQueue.pending > 0 || processingQueue.processing > 0" type="info" variant="tonal" density="compact" class="mt-3">
-          <v-icon start size="small">mdi-information</v-icon>
-          Dokumente werden im Hintergrund durch das Embedding-Model verarbeitet. Dies kann einige Minuten dauern.
-        </v-alert>
-      </v-card-text>
-    </v-card>
-
     <!-- Embedding Model Info Card -->
     <v-card class="mb-4" variant="outlined">
       <v-card-title class="d-flex align-center">
@@ -565,6 +504,57 @@
 
           <v-divider></v-divider>
 
+          <!-- Embedding Progress Card - shown when there are pending/processing documents -->
+          <v-card
+            v-if="collectionEmbeddingProgress.pending > 0 || collectionEmbeddingProgress.processing > 0"
+            class="ma-4"
+            variant="outlined"
+            color="warning"
+          >
+            <v-card-title class="d-flex align-center py-2">
+              <v-icon start color="warning" size="small">mdi-progress-clock</v-icon>
+              <span class="text-body-1">Embedding-Verarbeitung</span>
+              <v-spacer></v-spacer>
+              <v-chip color="warning" size="x-small" variant="flat">
+                {{ collectionEmbeddingProgress.pending + collectionEmbeddingProgress.processing }} ausstehend
+              </v-chip>
+            </v-card-title>
+            <v-card-text class="pt-0">
+              <div class="d-flex align-center mb-2">
+                <span class="text-body-2 mr-3">Fortschritt:</span>
+                <v-progress-linear
+                  :model-value="collectionEmbeddingProgressPercent"
+                  color="primary"
+                  height="16"
+                  rounded
+                  striped
+                >
+                  <template v-slot:default>
+                    <span class="text-caption">{{ collectionEmbeddingProgress.indexed }} / {{ collectionEmbeddingProgress.total }}</span>
+                  </template>
+                </v-progress-linear>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <v-chip size="x-small" color="warning" variant="tonal">
+                  <v-icon start size="x-small">mdi-clock-outline</v-icon>
+                  {{ collectionEmbeddingProgress.pending }} warten
+                </v-chip>
+                <v-chip size="x-small" color="info" variant="tonal">
+                  <v-icon start size="x-small">mdi-cog</v-icon>
+                  {{ collectionEmbeddingProgress.processing }} verarbeiten
+                </v-chip>
+                <v-chip size="x-small" color="success" variant="tonal">
+                  <v-icon start size="x-small">mdi-check</v-icon>
+                  {{ collectionEmbeddingProgress.indexed }} fertig
+                </v-chip>
+                <v-chip v-if="collectionEmbeddingProgress.failed > 0" size="x-small" color="error" variant="tonal">
+                  <v-icon start size="x-small">mdi-alert</v-icon>
+                  {{ collectionEmbeddingProgress.failed }} fehlgeschlagen
+                </v-chip>
+              </div>
+            </v-card-text>
+          </v-card>
+
           <!-- Documents List -->
           <div class="pa-4">
             <div class="d-flex align-center mb-3">
@@ -757,7 +747,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { getSocket } from '@/services/socketService';
 import {
@@ -768,7 +758,7 @@ import {
 } from './AdminRAGSection/composables';
 
 // Local UI State
-const activeTab = ref('documents');
+const activeTab = ref('collections');
 
 // Initialize composables
 const {
@@ -849,6 +839,28 @@ const documentPreviewDialog = ref(false);
 const previewDocument = ref(null);
 const previewContent = ref('');
 const loadingPreviewContent = ref(false);
+
+// Computed: Collection embedding progress based on collectionDocuments
+const collectionEmbeddingProgress = computed(() => {
+  const docs = collectionDocuments.value || [];
+  const pending = docs.filter(d => d.status === 'pending').length;
+  const processing = docs.filter(d => d.status === 'processing').length;
+  const indexed = docs.filter(d => d.status === 'indexed').length;
+  const failed = docs.filter(d => d.status === 'failed').length;
+  return {
+    pending,
+    processing,
+    indexed,
+    failed,
+    total: docs.length
+  };
+});
+
+const collectionEmbeddingProgressPercent = computed(() => {
+  const progress = collectionEmbeddingProgress.value;
+  if (progress.total === 0) return 0;
+  return Math.round((progress.indexed / progress.total) * 100);
+});
 
 // Wrapper functions for composables (with callbacks for data refresh)
 const createCollection = async () => {

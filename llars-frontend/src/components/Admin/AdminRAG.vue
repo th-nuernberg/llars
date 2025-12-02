@@ -535,7 +535,7 @@ import {
   useAdminRAGState,
   useAdminRAGActions,
   useAdminRAGHelpers
-} from './AdminRAG';
+} from './AdminRAG/index';
 
 const { hasPermission } = usePermissions();
 

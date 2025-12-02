@@ -197,6 +197,13 @@ class WebCrawler:
             elif name in ['language', 'og:locale']:
                 metadata['language'] = content[:2] if content else 'de'
 
+        # First, capture raw body text before aggressive filtering (for fallback)
+        raw_soup = BeautifulSoup(html, 'html.parser')
+        for el in raw_soup.find_all(['script', 'style', 'noscript']):
+            el.decompose()
+        raw_body = raw_soup.find('body')
+        raw_body_text = raw_body.get_text(separator=' ', strip=True) if raw_body else ''
+
         # Remove unwanted elements
         for element in soup.find_all([
             'script', 'style', 'nav', 'header', 'footer',
@@ -250,6 +257,17 @@ class WebCrawler:
 
         # Clean up and join
         text = '\n'.join(text_parts)
+
+        # Fallback: If we got very little text, use raw body text
+        if len(text) < 200 and raw_body_text and len(raw_body_text) > 100:
+            # Clean up the raw text - remove excessive whitespace
+            fallback_text = re.sub(r'\s+', ' ', raw_body_text).strip()
+            # Remove common navigation/footer patterns
+            fallback_text = re.sub(r'(Cookie|Datenschutz|Impressum|©|All Rights Reserved).*$', '', fallback_text, flags=re.IGNORECASE)
+
+            if len(fallback_text) > len(text):
+                text = f"# {metadata['title']}\n\n{fallback_text}" if metadata['title'] else fallback_text
+                logger.info(f"Used fallback text extraction for {url} ({len(fallback_text)} chars)")
 
         # Remove excessive whitespace
         text = re.sub(r'\n{3,}', '\n\n', text)
@@ -312,12 +330,14 @@ class WebCrawler:
 
         return None
 
-    def crawl(self, progress_callback=None) -> List[Dict]:
+    def crawl(self, progress_callback=None, page_callback=None) -> List[Dict]:
         """
         Execute the crawl starting from base_url.
 
         Args:
             progress_callback: Optional callback function(current, total, url)
+            page_callback: Optional callback function(page_data) called for each page
+                           immediately after it's crawled (for live document creation)
 
         Returns:
             List of crawled pages with content and metadata
@@ -367,6 +387,13 @@ class WebCrawler:
                     }
                     self.crawled_pages.append(page_data)
                     self.stats['pages_crawled'] += 1
+
+                    # Call page callback immediately for live document creation
+                    if page_callback:
+                        try:
+                            page_callback(page_data)
+                        except Exception as e:
+                            logger.error(f"Error in page_callback for {url}: {e}")
 
                     # Extract and queue links
                     if depth < self.max_depth:

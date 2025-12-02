@@ -60,6 +60,20 @@ from db.models.chatbot import (
     ChatbotMessage,
 )
 
+# KAIMO models
+from db.models.kaimo import (
+    KaimoCase,
+    KaimoDocument,
+    KaimoCategory,
+    KaimoSubcategory,
+    KaimoHint,
+    KaimoCaseCategory,
+    KaimoAIContent,
+    KaimoUserAssessment,
+    KaimoHintAssignment,
+    KaimoCasePermission,
+)
+
 # Scenario and Rating models
 from db.models.scenario import (
     ScenarioRoles,
@@ -128,6 +142,17 @@ __all__ = [
     'ChatbotCollection',
     'ChatbotConversation',
     'ChatbotMessage',
+    # KAIMO
+    'KaimoCase',
+    'KaimoDocument',
+    'KaimoCategory',
+    'KaimoSubcategory',
+    'KaimoHint',
+    'KaimoCaseCategory',
+    'KaimoAIContent',
+    'KaimoUserAssessment',
+    'KaimoHintAssignment',
+    'KaimoCasePermission',
     # Scenario
     'ScenarioRoles',
     'ProgressionStatus',

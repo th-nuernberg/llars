@@ -528,3 +528,208 @@ def get_chatbot_stats(chatbot_id):
     except Exception as e:
         logger.error(f"Error fetching chatbot stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# CHATBOT BUILDER WIZARD ROUTES
+# ============================================================================
+
+@chatbot_blueprint.route('/wizard', methods=['POST'])
+@require_permission('feature:chatbots:edit')
+def create_wizard_chatbot():
+    """
+    Start the chatbot creation wizard with a URL.
+
+    Creates a draft chatbot that will be built from the crawled URL content.
+    """
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        data = request.get_json()
+        if not data or 'url' not in data:
+            return jsonify({'success': False, 'error': 'url is required'}), 400
+
+        username = g.get('username', 'unknown')
+        result = ChatbotBuilderService.create_wizard_chatbot(data['url'], username)
+
+        return jsonify(result), 201 if result['success'] else 400
+
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error creating wizard chatbot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/wizard/crawl', methods=['POST'])
+@require_permission('feature:chatbots:edit')
+def start_wizard_crawl(chatbot_id):
+    """Start the crawl process for a wizard chatbot."""
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        result = ChatbotBuilderService.start_crawl(chatbot_id)
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        logger.error(f"Error starting crawl: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/wizard/generate-field', methods=['POST'])
+@require_permission('feature:chatbots:edit')
+def generate_chatbot_field(chatbot_id):
+    """
+    Generate a field value using LLM.
+
+    Supported fields: name, display_name, system_prompt, welcome_message, description
+    """
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        data = request.get_json()
+        if not data or 'field' not in data:
+            return jsonify({'success': False, 'error': 'field is required'}), 400
+
+        result = ChatbotBuilderService.generate_field(
+            chatbot_id=chatbot_id,
+            field=data['field'],
+            context=data.get('context')
+        )
+
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        logger.error(f"Error generating field: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/wizard/status', methods=['GET'])
+@require_permission('feature:chatbots:view')
+def get_wizard_status(chatbot_id):
+    """Get the current build status of a wizard chatbot."""
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        result = ChatbotBuilderService.get_build_status(chatbot_id)
+        return jsonify(result), 200 if result['success'] else 404
+
+    except Exception as e:
+        logger.error(f"Error getting wizard status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/wizard/finalize', methods=['POST'])
+@require_permission('feature:chatbots:edit')
+def finalize_wizard_chatbot(chatbot_id):
+    """
+    Finalize the chatbot configuration and mark as ready.
+
+    Accepts final configuration values and activates the chatbot.
+    """
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        data = request.get_json() or {}
+        result = ChatbotBuilderService.finalize_chatbot(chatbot_id, data)
+
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        logger.error(f"Error finalizing chatbot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/wizard/pause', methods=['POST'])
+@require_permission('feature:chatbots:edit')
+def pause_wizard_build(chatbot_id):
+    """Pause the chatbot build process."""
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        result = ChatbotBuilderService.update_build_status(chatbot_id, 'paused')
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        logger.error(f"Error pausing build: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/cancel-build', methods=['POST'])
+@require_permission('feature:chatbots:edit')
+def cancel_chatbot_build(chatbot_id):
+    """
+    Cancel the chatbot build process.
+
+    Aborts any running crawl/embedding and keeps already processed data.
+    """
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        result = ChatbotBuilderService.cancel_build(chatbot_id)
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        logger.error(f"Error cancelling build: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/resume-build', methods=['POST'])
+@require_permission('feature:chatbots:edit')
+def resume_chatbot_build(chatbot_id):
+    """
+    Resume a paused chatbot build process.
+
+    Continues from where the build was paused.
+    """
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        result = ChatbotBuilderService.resume_build(chatbot_id)
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        logger.error(f"Error resuming build: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/admin-test', methods=['GET'])
+@require_permission('feature:chatbots:edit')
+def get_admin_test_data(chatbot_id):
+    """
+    Get data for the admin test page.
+
+    Returns chatbot config, collection info, stats, and sample documents.
+    """
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        result = ChatbotBuilderService.get_admin_test_data(chatbot_id)
+        return jsonify(result), 200 if result['success'] else 404
+
+    except Exception as e:
+        logger.error(f"Error getting admin test data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/tweak', methods=['PATCH'])
+@require_permission('feature:chatbots:edit')
+def tweak_chatbot(chatbot_id):
+    """
+    Quick-tweak chatbot parameters (partial update).
+
+    Allows adjusting temperature, RAG settings, and system prompt.
+    """
+    try:
+        from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        result = ChatbotBuilderService.tweak_chatbot(chatbot_id, data)
+        return jsonify(result), 200 if result['success'] else 400
+
+    except Exception as e:
+        logger.error(f"Error tweaking chatbot: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

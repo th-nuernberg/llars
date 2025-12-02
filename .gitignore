@@ -100,3 +100,10 @@ docker/nginx/certs/*.pem
 # OS
 Thumbs.db
 desktop.ini
+
+# KAIMO Prototype (external reference, not part of LLARS)
+/docs/docs/projekte/kaimo/KAIMo_Final/
+
+# Scripts output
+*.pyc
+scripts/*.log

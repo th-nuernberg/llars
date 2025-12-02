@@ -26,6 +26,7 @@ def configure_database(app):
         db.create_all()
         initialize_feature_function_types()
         initialize_consulting_category_types()
+        initialize_kaimo_defaults()
         initialize_permissions()  # Initialize permission system
         # Seeder nur ausführen, wenn START_SEEDER in der Umgebung auf 'true' gesetzt ist
         start_seeder = os.getenv('START_SEEDER', 'false').lower()
@@ -129,6 +130,109 @@ def initialize_consulting_category_types():
         db.session.add(category)
 
     db.session.commit()
+
+
+def initialize_kaimo_defaults():
+    """
+    Seed default KAIMO categories and subcategories (idempotent).
+    Based on docs/docs/projekte/kaimo/konzept.md.
+    """
+    from .tables import KaimoCategory, KaimoSubcategory
+
+    default_categories = [
+        {
+            'name': 'grundversorgung',
+            'display_name': 'Grundversorgung des jungen Menschen',
+            'icon': None,
+            'color': '#4CAF50',
+            'subcategories': [
+                ('koerperliche_gesundheit_kind', 'Körperliche Gesundheit des Kindes'),
+                ('psychische_gesundheit_kind', 'Psychische Gesundheit des Kindes'),
+                ('substanzen_kind', 'Medikamenten- und Substanzkonsum des Kindes'),
+                ('aufsicht_betreuung', 'Aufsicht / Betreuungssituation des Kindes'),
+            ]
+        },
+        {
+            'name': 'entwicklungssituation',
+            'display_name': 'Entwicklungssituation des jungen Menschen',
+            'icon': None,
+            'color': '#2196F3',
+            'subcategories': [
+                ('biografie_kind', 'Biografie des Kindes (inkl. Maßnahmen der Jugendhilfe)'),
+                ('sozialverhalten_kind', 'Sozialverhalten / Sozialkontakte des Kindes'),
+                ('sexualentwicklung', 'Sexualentwicklung des Kindes'),
+                ('bildung_leistung', 'Bildung- und Leistungsbereich des Kindes'),
+            ]
+        },
+        {
+            'name': 'familiensituation',
+            'display_name': 'Familiensituation',
+            'icon': None,
+            'color': '#9C27B0',
+            'subcategories': [
+                ('wohnsituation', 'Wohnsituation'),
+                ('wirtschaftliche_situation', 'Wirtschaftliche Situation (inkl. Erwerbstätigkeit)'),
+                ('familiaere_beziehungen', 'Familiäre Beziehungen (inkl. Häusliche Gewalt)'),
+            ]
+        },
+        {
+            'name': 'eltern_erziehungsberechtigte',
+            'display_name': 'Eltern / Erziehungsberechtigte',
+            'icon': None,
+            'color': '#FF9800',
+            'subcategories': [
+                ('biografie_eltern', 'Biografie der Erziehungsberechtigten'),
+                ('gesundheit_eltern', 'Gesundheit der Erziehungsberechtigten'),
+                ('wohlbefinden_eltern', 'Wohlbefinden der Erziehungsberechtigten'),
+                ('sozialverhalten_eltern', 'Sozialverhalten / Sozialkontakte der Erziehungsberechtigten'),
+            ]
+        },
+    ]
+
+    created_categories = 0
+    created_subcategories = 0
+
+    for idx, cat_data in enumerate(default_categories, start=1):
+        category = KaimoCategory.query.filter_by(name=cat_data['name']).first()
+        if not category:
+            category = KaimoCategory(
+                name=cat_data['name'],
+                display_name=cat_data['display_name'],
+                description=None,
+                icon=cat_data.get('icon'),
+                color=cat_data.get('color'),
+                sort_order=idx,
+                is_default=True,
+            )
+            db.session.add(category)
+            db.session.flush()
+            created_categories += 1
+        else:
+            category.is_default = True
+            if category.sort_order is None:
+                category.sort_order = idx
+
+        for sub_idx, (sub_name, sub_display) in enumerate(cat_data['subcategories'], start=1):
+            sub = KaimoSubcategory.query.filter_by(category_id=category.id, name=sub_name).first()
+            if not sub:
+                sub = KaimoSubcategory(
+                    category_id=category.id,
+                    name=sub_name,
+                    display_name=sub_display,
+                    description=None,
+                    sort_order=sub_idx,
+                    is_default=True,
+                )
+                db.session.add(sub)
+                created_subcategories += 1
+            else:
+                sub.is_default = True
+                if sub.sort_order is None:
+                    sub.sort_order = sub_idx
+
+    if created_categories or created_subcategories:
+        db.session.commit()
+        print(f"✓ Seeded KAIMO defaults (categories: {created_categories}, subcategories: {created_subcategories})")
 
 
 def seed_user_groups():
@@ -302,6 +406,31 @@ def initialize_permissions():
             'category': 'feature',
             'description': 'Erlaubt das Löschen von Chatbots'
         },
+        # Feature: KAIMO
+        {
+            'permission_key': 'feature:kaimo:view',
+            'display_name': 'KAIMO ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt den Zugriff auf das KAIMO Panel'
+        },
+        {
+            'permission_key': 'feature:kaimo:edit',
+            'display_name': 'KAIMO bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt Bewertungen und Zuordnungen im KAIMO Panel'
+        },
+        {
+            'permission_key': 'admin:kaimo:manage',
+            'display_name': 'KAIMO Fälle verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Anlegen, Bearbeiten und Veröffentlichen von KAIMO Fällen'
+        },
+        {
+            'permission_key': 'admin:kaimo:results',
+            'display_name': 'KAIMO Ergebnisse einsehen',
+            'category': 'admin',
+            'description': 'Erlaubt aggregierte Ergebnisse und Statistiken zu sehen'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -348,6 +477,10 @@ def initialize_permissions():
                 'feature:rag:edit',
                 'feature:chatbots:view',
                 'feature:chatbots:edit',
+                'feature:kaimo:view',
+                'feature:kaimo:edit',
+                'admin:kaimo:manage',
+                'admin:kaimo:results',
                 'data:export',
             ]
         },
@@ -363,6 +496,8 @@ def initialize_permissions():
                 'feature:prompt_engineering:view',
                 'feature:rag:view',
                 'feature:chatbots:view',
+                'feature:kaimo:view',
+                'feature:kaimo:edit',
             ]
         },
     ]
@@ -417,6 +552,7 @@ def initialize_permissions():
 
     # Assign admin role to default admin user
     assign_default_admin_role()
+    assign_default_demo_roles()
 
     print("Permission system initialized successfully.")
 
@@ -457,6 +593,40 @@ def assign_default_admin_role():
         print("✅ Assigned admin role to user 'admin' automatically.")
     else:
         print("✅ User 'admin' already has admin role.")
+
+
+def assign_default_demo_roles():
+    """
+    Assign default demo roles to 'researcher' and 'viewer' users if they exist.
+    Uses username-based mapping (no foreign key to users table required).
+    """
+    from .tables import UserRole, Role
+    from datetime import datetime
+
+    role_map = {
+        'researcher': 'researcher',
+        'viewer': 'viewer',
+    }
+
+    for username, role_name in role_map.items():
+        role = Role.query.filter_by(role_name=role_name).first()
+        if not role:
+            print(f"Warning: Role '{role_name}' not found; skipping assignment for {username}")
+            continue
+
+        existing = UserRole.query.filter_by(username=username, role_id=role.id).first()
+        if existing:
+            continue
+
+        assignment = UserRole(
+            username=username,
+            role_id=role.id,
+            assigned_by='system',
+            assigned_at=datetime.utcnow()
+        )
+        db.session.add(assignment)
+
+    db.session.commit()
 
 
 def initialize_rag_system():
@@ -544,10 +714,8 @@ def initialize_rag_system():
                 if existing_doc.collection_id is None:
                     existing_doc.collection_id = default_collection.id
                     updated_count += 1
-                # Update status if still pending (from crawler documents)
-                if existing_doc.status == 'pending':
-                    existing_doc.status = 'indexed'
-                    updated_count += 1
+                # DON'T auto-set pending to indexed - let the embedding worker handle it
+                # Documents need actual embeddings before being marked as indexed
                 continue
 
             # Determine MIME type

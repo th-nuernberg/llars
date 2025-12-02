@@ -35,9 +35,10 @@ services:
       - FLASK_DEBUG=False
       # Stricter CORS for production
       - ALLOWED_ORIGINS=https://${PROJECT_HOST}
-    # Remove volume mounts (no hot-reload in production)
+    # Production volumes (no code hot-reload, but persistent RAG data)
     volumes:
-      - model_volume:/app/storage
+      - rag_storage:/app/storage
+      - rag_docs:/app/rag_docs
     # No expose of port to host (only internal)
     ports: []
     restart: unless-stopped
@@ -120,6 +121,8 @@ services:
   mkdocs-service:
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE}
+      - MKDOCS_BIND_ADDR=0.0.0.0:8000
     # Remove volume mounts and develop mode for production
     volumes: []
     develop: {}
@@ -211,5 +214,11 @@ services:
       - authentik_media:/media
 
 volumes:
+  rag_storage:
+    name: llars_rag_storage
+  rag_docs:
+    name: llars_rag_docs
   authentikdb:
+    name: llars_authentikdb
   authentik_media:
+    name: llars_authentik_media

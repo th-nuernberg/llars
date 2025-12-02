@@ -3,28 +3,30 @@
 # ============================================
 # Lightweight Alpine-based image for minimal resource usage
 # Dev mode: Hot-reload with mkdocs serve
-# Prod mode: Pre-built static files served by nginx
+# Prod mode: Static build served via lightweight python http.server
 
 FROM python:3.12-alpine
 
 WORKDIR /docs
 
-# Install mkdocs and required plugins (no cache for smaller image)
-RUN pip install --no-cache-dir \
-    mkdocs==1.6.1 \
-    mkdocs-material==9.5.44 \
-    pymdown-extensions==10.12 \
-    mkdocs-mermaid2-plugin==1.1.1
-
-# Install wget for healthcheck
-RUN apk add --no-cache wget
+# Install runtime deps + build deps for watchdog (removed after install)
+RUN apk add --no-cache wget \
+    && apk add --no-cache --virtual .build-deps build-base linux-headers python3-dev \
+    && pip install --no-cache-dir \
+        mkdocs==1.6.1 \
+        mkdocs-material==9.5.44 \
+        pymdown-extensions==10.12 \
+        mkdocs-mermaid2-plugin==1.1.1 \
+        watchdog==4.0.1 \
+    && apk del .build-deps
 
 # Copy healthcheck script
 COPY docker/mkdocs/healthcheck.sh /usr/local/bin/healthcheck.sh
-RUN chmod +x /usr/local/bin/healthcheck.sh
+COPY docker/mkdocs/entrypoint.sh /usr/local/bin/mkdocs-entrypoint.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh /usr/local/bin/mkdocs-entrypoint.sh
 
 # Expose port for mkdocs serve
 EXPOSE 8000
 
 # Default command: serve with hot-reload
-CMD ["mkdocs", "serve", "--dev-addr=0.0.0.0:8000"]
+CMD ["/usr/local/bin/mkdocs-entrypoint.sh"]

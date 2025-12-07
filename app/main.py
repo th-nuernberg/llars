@@ -6,8 +6,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
-from routes import auth_blueprint, data_blueprint, judge_bp, oncoco_bp
-from routes.kaimo import kaimo_bp
+from routes.registry import register_all_blueprints
 import os
 
 app = Flask(__name__)
@@ -77,39 +76,8 @@ jwt = JWTManager(app)
 
 configure_database(app)
 
-# Configure routes
-# Legacy auth routes (still available for backwards compatibility)
-app.register_blueprint(auth_blueprint, url_prefix='/auth')
-app.register_blueprint(data_blueprint, url_prefix='/api')
-
-# Authentik authentication routes
-from routes.authentik_routes import authentik_auth_blueprint
-app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
-
-# LLM-as-Judge routes
-app.register_blueprint(judge_bp)
-
-# OnCoCo Analysis routes
-app.register_blueprint(oncoco_bp)
-
-# RAG routes (document management, collections, search)
-from routes.rag import rag_bp
-app.register_blueprint(rag_bp)
-
-# Chatbot routes
-from routes.chatbot.chatbot_routes import chatbot_blueprint
-app.register_blueprint(chatbot_blueprint)
-
-# KAIMO routes
-app.register_blueprint(kaimo_bp)
-
-# Web Crawler routes
-from routes.crawler.crawler_routes import crawler_blueprint, init_crawler_socketio
-app.register_blueprint(crawler_blueprint)
-
-# LLM Model routes
-from routes.llm_routes import llm_bp
-app.register_blueprint(llm_bp)
+# Register all blueprints via central registry
+register_all_blueprints(app)
 
 
 # Configure all SocketIO event handlers
@@ -118,6 +86,7 @@ configure_socket_routes(socketio)
 # Initialize Crawler service with SocketIO for live updates
 # (Crawler events are registered in configure_socket_routes,
 # this only injects the socketio instance into the crawler service)
+from routes.crawler.crawler_routes import init_crawler_socketio
 init_crawler_socketio(socketio)
 
 # Initialize Embedding Worker for background document processing

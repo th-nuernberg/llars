@@ -20,10 +20,8 @@
             <v-icon v-else start size="14">{{ socketConnected ? 'mdi-wifi' : 'mdi-wifi-off' }}</v-icon>
             {{ socketConnected ? 'Live verbunden' : isReconnecting ? 'Verbinde...' : 'Offline' }}
           </v-chip>
-          <v-btn
+          <LIconBtn
             icon="mdi-refresh"
-            variant="text"
-            size="small"
             :loading="loadingJobs"
             @click="loadJobs"
           />
@@ -67,15 +65,14 @@
             <span class="font-weight-medium">Verbindung fehlgeschlagen</span>
             <span class="text-body-2 ml-2">Live-Updates sind nicht verfügbar.</span>
           </div>
-          <v-btn
-            color="error"
+          <LBtn
             variant="text"
             size="small"
             @click="retryConnection"
             prepend-icon="mdi-refresh"
           >
             Erneut versuchen
-          </v-btn>
+          </LBtn>
         </div>
       </v-alert>
     </v-slide-y-transition>
@@ -98,15 +95,14 @@
             <span class="font-weight-bold">{{ runningJobs.length }} aktive{{ runningJobs.length > 1 ? ' Crawls' : 'r Crawl' }}</span>
             <span class="text-body-2 ml-2">- Klicken Sie auf "Live ansehen" um den Fortschritt zu verfolgen</span>
           </div>
-          <v-btn
-            color="primary"
-            variant="flat"
+          <LBtn
+            variant="primary"
             size="small"
             @click="watchJob(runningJobs[0])"
             prepend-icon="mdi-eye"
           >
             Live ansehen
-          </v-btn>
+          </LBtn>
         </div>
       </v-alert>
     </v-slide-y-transition>
@@ -255,25 +251,24 @@
 
             <!-- Action Buttons -->
             <div class="d-flex ga-2">
-              <v-btn
-                color="primary"
+              <LBtn
+                variant="primary"
                 :loading="startingCrawl"
                 :disabled="!canStartCrawl"
                 @click="startBackgroundCrawl"
                 prepend-icon="mdi-spider-web"
-                variant="flat"
               >
                 Crawl starten
-              </v-btn>
-              <v-btn
-                variant="outlined"
+              </LBtn>
+              <LBtn
+                variant="secondary"
                 :loading="previewing"
                 :disabled="!hasValidUrl"
                 @click="previewUrl"
                 prepend-icon="mdi-magnify"
               >
                 Vorschau
-              </v-btn>
+              </LBtn>
             </div>
           </v-card-text>
         </v-card>
@@ -328,10 +323,8 @@
               </v-icon>
               <span>Live Crawl Session</span>
             </div>
-            <v-btn
+            <LIconBtn
               icon="mdi-close"
-              variant="text"
-              density="compact"
               @click="stopWatching"
             />
           </v-card-title>
@@ -454,16 +447,15 @@
                     {{ watchingJob.skipped_existing }} Seite(n) übersprungen (Inhalt bereits in der Datenbank vorhanden).
                   </div>
                 </div>
-                <v-btn
+                <LBtn
                   v-if="watchingJob.collection_id"
-                  color="success"
-                  variant="flat"
+                  variant="success"
                   size="small"
                   @click="goToCollection(watchingJob.collection_id)"
                   prepend-icon="mdi-folder-open"
                 >
                   Zur Collection
-                </v-btn>
+                </LBtn>
               </div>
             </v-alert>
 
@@ -487,15 +479,14 @@
             <p class="text-body-2 text-medium-emphasis mb-4">
               Starten Sie einen neuen Crawl oder wählen Sie einen<br>laufenden Job aus der Liste unten.
             </p>
-            <v-btn
+            <LBtn
               v-if="runningJobs.length > 0"
-              color="primary"
-              variant="flat"
+              variant="primary"
               @click="watchJob(runningJobs[0])"
               prepend-icon="mdi-eye"
             >
               Laufenden Crawl ansehen
-            </v-btn>
+            </LBtn>
           </v-card-text>
         </v-card>
       </v-col>
@@ -508,10 +499,8 @@
           <v-icon start>mdi-history</v-icon>
           Crawl-Verlauf
         </div>
-        <v-btn
+        <LIconBtn
           icon="mdi-refresh"
-          variant="text"
-          size="small"
           :loading="loadingJobs"
           @click="loadJobs"
         />
@@ -567,28 +556,22 @@
           </template>
           <template v-slot:item.actions="{ item }">
             <div class="d-flex ga-1">
-              <v-btn
+              <LIconBtn
                 v-if="item.status === 'running' || item.status === 'queued'"
                 icon="mdi-eye"
-                variant="text"
+                variant="primary"
+                tooltip="Live ansehen"
                 size="x-small"
-                color="primary"
                 @click.stop="watchJob(item)"
-              >
-                <v-icon>mdi-eye</v-icon>
-                <v-tooltip activator="parent" location="top">Live ansehen</v-tooltip>
-              </v-btn>
-              <v-btn
+              />
+              <LIconBtn
                 v-if="item.collection_id"
                 icon="mdi-folder-open"
-                variant="text"
+                variant="success"
+                tooltip="Collection öffnen"
                 size="x-small"
-                color="success"
                 @click.stop="goToCollection(item.collection_id)"
-              >
-                <v-icon>mdi-folder-open</v-icon>
-                <v-tooltip activator="parent" location="top">Collection öffnen</v-tooltip>
-              </v-btn>
+              />
             </div>
           </template>
           <template v-slot:no-data>
@@ -605,7 +588,7 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000" location="bottom right">
       {{ snackbar.text }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false">OK</v-btn>
+        <LBtn variant="text" @click="snackbar.show = false">OK</LBtn>
       </template>
     </v-snackbar>
   </v-container>

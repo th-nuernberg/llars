@@ -28,8 +28,8 @@ class FileProcessor:
     SUPPORTED_IMAGES = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'}
     SUPPORTED_DOCUMENTS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'}
 
-    # Vision-capable models
-    VISION_MODELS = {
+    # Fallback vision-capable models (used when DB is not available)
+    VISION_MODELS_FALLBACK = {
         'gpt-4-vision-preview',
         'gpt-4o',
         'gpt-4o-mini',
@@ -40,7 +40,20 @@ class FileProcessor:
         'claude-3.5-sonnet',
         'claude-3-5-sonnet',
         'claude-4-opus',
-        'claude-4-sonnet'
+        'claude-4-sonnet',
+        # Mistral Vision Models via LiteLLM
+        'mistralai/magistral-small-2509',
+        'magistral-small-2509',
+        'pixtral',  # Mistral's vision model family
+    }
+
+    # Fallback models that explicitly DO NOT support vision (text-only)
+    NON_VISION_MODELS_FALLBACK = {
+        'mistralai/mistral-small-3.2-24b-instruct-2506',
+        'mistral-small-3.2-24b-instruct-2506',
+        'mistral-small',
+        'mistral-7b',
+        'mixtral',
     }
 
     # Max image dimensions for Vision API
@@ -52,12 +65,53 @@ class FileProcessor:
 
     @classmethod
     def is_vision_model(cls, model_name: str) -> bool:
-        """Check if model supports vision/images."""
+        """
+        Check if model supports vision/images.
+
+        First tries to look up the model in the database (LLMModel table).
+        Falls back to hardcoded lists if DB lookup fails.
+        """
+        # Try database lookup first
+        try:
+            from db.models.llm_model import LLMModel
+            db_model = LLMModel.get_by_model_id(model_name)
+            if db_model:
+                return db_model.supports_vision
+        except Exception:
+            # DB not available or other error, fall back to hardcoded lists
+            pass
+
+        # Fallback to hardcoded lists
         model_lower = model_name.lower()
-        for vm in cls.VISION_MODELS:
+
+        # First check if explicitly non-vision
+        for nvm in cls.NON_VISION_MODELS_FALLBACK:
+            if nvm.lower() in model_lower:
+                return False
+
+        # Then check if it's a known vision model
+        for vm in cls.VISION_MODELS_FALLBACK:
             if vm.lower() in model_lower:
                 return True
+
+        # Default to False for unknown models
         return False
+
+    @classmethod
+    def get_model_info(cls, model_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get full model information from database.
+
+        Returns None if model not found in DB.
+        """
+        try:
+            from db.models.llm_model import LLMModel
+            db_model = LLMModel.get_by_model_id(model_name)
+            if db_model:
+                return db_model.to_dict()
+        except Exception:
+            pass
+        return None
 
     @classmethod
     def get_file_type(cls, filename: str) -> Optional[str]:

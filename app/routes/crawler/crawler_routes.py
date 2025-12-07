@@ -52,7 +52,9 @@ def start_crawl():
         "collection_description": "Crawled documentation",
         "max_pages_per_site": 50,
         "max_depth": 3,
-        "existing_collection_id": null                  // If set, add documents to existing collection
+        "existing_collection_id": null,                 // If set, add documents to existing collection
+        "use_playwright": true,                         // Use headless browser for JS rendering (default: true)
+        "use_vision_llm": true                          // Use Vision-LLM for intelligent data extraction (default: true)
     }
 
     Collection modes:
@@ -62,6 +64,15 @@ def start_crawl():
     Document handling:
     - If content hash already exists: Document is LINKED to collection (no duplicate)
     - If content is new: Document is created and LINKED
+
+    Crawler modes:
+    - Playwright (default): Uses headless Chromium browser for full JS rendering
+      - Takes screenshots of each page
+      - Supports Vision-LLM for intelligent data extraction from screenshots
+      - Better for modern JavaScript-heavy websites
+    - Basic: Uses simple HTTP requests (faster, no JS support)
+      - Falls back to regex-based data extraction
+      - Better for static HTML websites
 
     Returns immediately with job_id. Connect via WebSocket to crawler:{job_id}
     room for live progress updates.
@@ -95,6 +106,10 @@ def start_crawl():
 
         username = get_username_from_token()
 
+        # Crawler options
+        use_playwright = data.get('use_playwright', True)
+        use_vision_llm = data.get('use_vision_llm', True)
+
         # Start background crawl with WebSocket support
         job_id = crawler_service.start_crawl_background(
             urls=urls,
@@ -104,7 +119,9 @@ def start_crawl():
             max_depth=data.get('max_depth', 3),
             created_by=username,
             app=current_app._get_current_object(),
-            existing_collection_id=existing_collection_id
+            existing_collection_id=existing_collection_id,
+            use_playwright=use_playwright,
+            use_vision_llm=use_vision_llm
         )
 
         # Return immediately with job info
@@ -113,7 +130,11 @@ def start_crawl():
             'message': 'Crawl job started',
             'job_id': job_id,
             'urls': urls,
-            'websocket_room': f'crawler_{job_id}'
+            'websocket_room': f'crawler_{job_id}',
+            'crawler_config': {
+                'use_playwright': use_playwright,
+                'use_vision_llm': use_vision_llm
+            }
         }
 
         if existing_collection_id:

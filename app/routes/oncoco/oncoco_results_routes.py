@@ -20,6 +20,9 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from services.oncoco import (
     get_oncoco_service,
     get_label_display_name
@@ -38,6 +41,7 @@ oncoco_results_bp = Blueprint('oncoco_results', __name__)
 @oncoco_results_bp.route('/analyses/<int:analysis_id>/sentences', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='oncoco')
 def get_analysis_sentences(analysis_id: int):
     """
     Get sentence-level classifications for an analysis.
@@ -110,6 +114,7 @@ def get_analysis_sentences(analysis_id: int):
 @oncoco_results_bp.route('/analyses/<int:analysis_id>/distribution', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='oncoco')
 def get_analysis_distribution(analysis_id: int):
     """
     Get label distribution for an analysis.
@@ -128,7 +133,7 @@ def get_analysis_distribution(analysis_id: int):
 
     allowed_roles = {'counselor', 'client'}
     if role and role not in allowed_roles:
-        return jsonify({'error': 'Invalid role'}), 400
+        raise ValidationError('Invalid role')
 
     # If a role filter is provided, compute distribution from sentence labels to respect speaker separation
     if role:
@@ -154,7 +159,7 @@ def get_analysis_distribution(analysis_id: int):
             ).first()
 
             if not stats:
-                return jsonify({'error': 'Pillar statistics not found'}), 404
+                raise NotFoundError('Pillar statistics not found')
 
             distribution = stats.label_distribution_level2_json if level == 'level2' else stats.label_distribution_json
         else:
@@ -190,6 +195,7 @@ def get_analysis_distribution(analysis_id: int):
 @oncoco_results_bp.route('/analyses/<int:analysis_id>/transition-matrix', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='oncoco')
 def get_transition_matrix(analysis_id: int):
     """
     Get transition matrix for an analysis.
@@ -210,7 +216,7 @@ def get_transition_matrix(analysis_id: int):
 
     allowed_roles = {'counselor', 'client'}
     if role and role not in allowed_roles:
-        return jsonify({'error': 'Invalid role'}), 400
+        raise ValidationError('Invalid role')
 
     # Convert level parameter to integer: 'full' -> 0, 'level2' -> 2
     level_int = 0 if level_param == 'full' else 2
@@ -290,7 +296,7 @@ def get_transition_matrix(analysis_id: int):
     matrices = query.all()
 
     if not matrices:
-        return jsonify({'error': 'Transition matrix not found'}), 404
+        raise NotFoundError('Transition matrix not found')
 
     # Aggregate if multiple pillars
     if len(matrices) > 1:
@@ -364,6 +370,7 @@ def get_transition_matrix(analysis_id: int):
 @oncoco_results_bp.route('/analyses/<int:analysis_id>/comparison', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='oncoco')
 def compare_pillars(analysis_id: int):
     """
     Compare pillars within an analysis.
@@ -376,7 +383,7 @@ def compare_pillars(analysis_id: int):
     ).all()
 
     if not stats:
-        return jsonify({'error': 'No pillar statistics found'}), 404
+        raise NotFoundError('No pillar statistics found')
 
     comparison = []
     for ps in stats:

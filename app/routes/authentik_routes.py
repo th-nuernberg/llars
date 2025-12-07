@@ -7,6 +7,7 @@ Uses Authentik's OAuth2/OIDC endpoints for proper token issuance and validation.
 from flask import Blueprint, jsonify, request, g, current_app
 from auth.decorators import authentik_required, admin_required
 from auth.oidc_validator import get_token_from_request, validate_token, get_username, get_user_id
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
 from functools import wraps
 
 # Create blueprint for Authentik-specific routes
@@ -53,6 +54,7 @@ def get_current_user():
 
 @authentik_auth_blueprint.route('/validate', methods=['GET'])
 @rate_limit("200 per hour")
+@handle_api_errors(logger_name='authentik')
 def validate_token_endpoint():
     """
     Validate token endpoint - for frontend to check if token is still valid
@@ -61,7 +63,7 @@ def validate_token_endpoint():
     token = get_token_from_request()
 
     if not token:
-        return jsonify({'valid': False, 'error': 'No token provided'}), 401
+        raise UnauthorizedError('No token provided')
 
     token_payload = validate_token(token)
 
@@ -73,7 +75,7 @@ def validate_token_endpoint():
             'roles': token_payload.get('realm_access', {}).get('roles', [])
         }), 200
     else:
-        return jsonify({'valid': False, 'error': 'Invalid or expired token'}), 401
+        raise UnauthorizedError('Invalid or expired token')
 
 
 @authentik_auth_blueprint.route('/admin/check', methods=['GET'])
@@ -90,6 +92,7 @@ def check_admin():
 
 @authentik_auth_blueprint.route('/login', methods=['POST'])
 @rate_limit("10 per minute")
+@handle_api_errors(logger_name='authentik')
 def login():
     """
     Login endpoint - authenticates via Authentik Flow Executor API
@@ -109,7 +112,7 @@ def login():
     password = data.get('password')
 
     if not username or not password:
-        return jsonify({'error': 'Username and password required'}), 400
+        raise ValidationError('Username and password required')
 
     current_app.logger.info(f"Login attempt received for user: {username}")
 
@@ -136,7 +139,7 @@ def login():
 
         if flow_response.status_code != 200:
             current_app.logger.error(f"Failed to start flow: {flow_response.status_code} - {flow_response.text}")
-            return jsonify({'error': 'Authentication service error'}), 503
+            raise ValidationError('Authentication service error')
 
         flow_data = flow_response.json()
         current_app.logger.debug(f"Flow response: {flow_data}")
@@ -152,7 +155,7 @@ def login():
 
             if flow_response.status_code != 200:
                 current_app.logger.error(f"Identification failed: {flow_response.status_code}")
-                return jsonify({'error': 'Invalid credentials'}), 401
+                raise UnauthorizedError('Invalid credentials')
 
             flow_data = flow_response.json()
             current_app.logger.debug(f"After identification: {flow_data}")
@@ -168,7 +171,7 @@ def login():
 
             if flow_response.status_code != 200:
                 current_app.logger.warning(f"Password validation failed for {username}")
-                return jsonify({'error': 'Invalid credentials'}), 401
+                raise UnauthorizedError('Invalid credentials')
 
             flow_data = flow_response.json()
             current_app.logger.debug(f"After password: {flow_data}")
@@ -242,27 +245,24 @@ def login():
 
             # If we can't get OAuth token, authentication failed
             current_app.logger.error(f"Could not obtain OAuth token for {username}")
-            return jsonify({'error': 'Could not obtain access token'}), 503
+            raise ValidationError('Could not obtain access token')
 
         # Authentication failed - check for error messages
         if flow_data.get('response_errors'):
             errors = flow_data.get('response_errors', {})
             current_app.logger.warning(f"Authentication failed for {username}: {errors}")
-            return jsonify({'error': 'Invalid credentials'}), 401
+            raise UnauthorizedError('Invalid credentials')
 
         # Unknown state
         current_app.logger.error(f"Unexpected flow state: {flow_data}")
-        return jsonify({'error': 'Authentication error'}), 500
+        raise ValidationError('Authentication error')
 
     except http_requests.exceptions.ConnectionError as e:
         current_app.logger.error(f"Cannot connect to Authentik: {e}")
-        return jsonify({'error': 'Authentication service unavailable'}), 503
+        raise ValidationError('Authentication service unavailable')
     except http_requests.exceptions.Timeout as e:
         current_app.logger.error(f"Authentik request timeout: {e}")
-        return jsonify({'error': 'Authentication service timeout'}), 503
-    except Exception as e:
-        current_app.logger.error(f"Login error: {e}", exc_info=True)
-        return jsonify({'error': 'Internal server error'}), 500
+        raise ValidationError('Authentication service timeout')
 
 
 def _enrich_token_with_roles(token_data: dict, username: str) -> None:

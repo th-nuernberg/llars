@@ -36,7 +36,7 @@
       <!-- Document List (Left 30%) -->
       <div class="documents-list" :class="{ 'list-hidden': !showList }">
         <v-skeleton-loader
-          v-if="isLoading"
+          v-if="props.isLoading"
           type="list-item-three-line@4"
         />
         <template v-else>
@@ -68,7 +68,7 @@
         <div class="document-viewer-scroll">
           <div class="document-viewer-content">
             <v-skeleton-loader
-              v-if="isLoading"
+              v-if="props.isLoading"
               type="heading, paragraph@3"
             />
             <template v-else-if="filteredDocuments.length > 0">

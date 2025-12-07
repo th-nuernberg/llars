@@ -1,6 +1,9 @@
 <template>
   <v-container fluid>
-    <v-row>
+    <!-- Skeleton Loading for entire page -->
+    <v-skeleton-loader v-if="isLoading('data')" type="article, article"></v-skeleton-loader>
+
+    <v-row v-else>
       <v-col cols="12" md="6">
         <h2>Features</h2>
         <v-expansion-panels>
@@ -59,6 +62,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 const route = useRoute();
 const router = useRouter();
@@ -68,41 +72,46 @@ const senderColors = ref({});
 const groupedFeatures = ref([]);
 const localStorageKey = ref('');
 
+// Skeleton Loading
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['data']);
+
 onMounted(async () => {
-  const threadData = await fetchEmailThreads(route.params.id);
-  if (!threadData) return;
+  await withLoading('data', async () => {
+    const threadData = await fetchEmailThreads(route.params.id);
+    if (!threadData) return;
 
-  features.value = threadData.features;
-  messages.value = threadData.messages;
-  console.log('Features:', features.value);
-  const featureMap = new Map();
-  features.value.forEach((f, index) => {
-    if (!featureMap.has(f.type)) {
-      featureMap.set(f.type, {
-        type: f.type,
-        details: []
+    features.value = threadData.features;
+    messages.value = threadData.messages;
+    console.log('Features:', features.value);
+    const featureMap = new Map();
+    features.value.forEach((f, index) => {
+      if (!featureMap.has(f.type)) {
+        featureMap.set(f.type, {
+          type: f.type,
+          details: []
+        });
+      }
+      featureMap.get(f.type).details.push({
+        model_name: f.model_name,
+        content: f.content,
+        feature_id: f.feature_id,
+        position: index
       });
-    }
-    featureMap.get(f.type).details.push({
-      model_name: f.model_name,
-      content: f.content,
-      feature_id: f.feature_id,
-      position: index
     });
-  });
 
-  groupedFeatures.value = Array.from(featureMap.values());
-  localStorageKey.value = `featureOrder_${route.params.id}`;
-  await loadFeatureOrder();
+    groupedFeatures.value = Array.from(featureMap.values());
+    localStorageKey.value = `featureOrder_${route.params.id}`;
+    await loadFeatureOrder();
 
-  let lastSender = '';
-  let currentColor = 'same-sender';
-  messages.value.forEach(message => {
-    if (message.sender !== lastSender) {
-      currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender';
-      lastSender = message.sender;
-    }
-    senderColors.value[message.sender] = currentColor;
+    let lastSender = '';
+    let currentColor = 'same-sender';
+    messages.value.forEach(message => {
+      if (message.sender !== lastSender) {
+        currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender';
+        lastSender = message.sender;
+      }
+      senderColors.value[message.sender] = currentColor;
+    });
   });
 });
 

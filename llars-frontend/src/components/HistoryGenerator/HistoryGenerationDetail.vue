@@ -1,7 +1,10 @@
 <!--HistoryGenerationDetail.vue-->
 <template>
   <v-container fluid class="main-container">
-    <v-row>
+    <!-- Skeleton Loading -->
+    <v-skeleton-loader v-if="isLoading('messages')" type="article, article"></v-skeleton-loader>
+
+    <v-row v-else>
       <v-col cols="12" md="6">
 
         <div class="email-thread-container">
@@ -131,6 +134,7 @@ import { useRoute } from 'vue-router';
 import LikertScale from '../parts/LikertScale.vue';
 import BinaryLikertScale from "@/components/parts/BinaryLikertScale.vue";
 import CategorySelection from '../parts/CategorySelection.vue';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import {
   useHistoryHelpers,
   useHistoryNavigation,
@@ -140,6 +144,9 @@ import {
 // Setup route and thread ID
 const route = useRoute();
 const threadId = computed(() => route.params.id);
+
+// Skeleton Loading
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['messages']);
 
 // Initialize composables
 const { formatContent, formatTimestamp, getMessageClass } = useHistoryHelpers();
@@ -171,8 +178,10 @@ async function handleNavigateToNext() {
 
 // Initialize on mount
 onMounted(async () => {
-  await initializeData();
-  setupWatchers();
+  await withLoading('messages', async () => {
+    await initializeData();
+    setupWatchers();
+  });
 });
 </script>
 

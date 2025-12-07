@@ -19,7 +19,6 @@ Routes:
 from flask import Blueprint, request, jsonify, current_app, send_file
 from datetime import datetime
 from werkzeug.utils import secure_filename
-import jwt
 import os
 import hashlib
 import uuid
@@ -30,6 +29,7 @@ from db.tables import (
 )
 from db.db import db
 from sqlalchemy import desc
+from auth.auth_utils import AuthUtils
 
 rag_document_bp = Blueprint('rag_document', __name__)
 
@@ -278,10 +278,7 @@ def upload_document():
     """Upload new document to RAG system"""
     try:
         # Get username from token
-        auth_header = request.headers.get('Authorization')
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        username = decoded_token.get('preferred_username')
+        username = AuthUtils.extract_username_without_validation()
 
         # Check if file was uploaded
         if 'file' not in request.files:
@@ -428,10 +425,7 @@ def upload_multiple_documents():
     """Upload multiple documents at once"""
     try:
         # Get username from token
-        auth_header = request.headers.get('Authorization')
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        username = decoded_token.get('preferred_username')
+        username = AuthUtils.extract_username_without_validation()
 
         if 'files' not in request.files:
             return jsonify({

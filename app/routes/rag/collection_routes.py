@@ -14,11 +14,11 @@ Routes:
 
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
-import jwt
 from decorators.permission_decorator import require_permission
 from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink, ChatbotCollection
 from db.db import db
 from sqlalchemy import desc
+from auth.auth_utils import AuthUtils
 
 rag_collection_bp = Blueprint('rag_collection', __name__)
 
@@ -154,10 +154,7 @@ def create_collection():
         data = request.get_json()
 
         # Get username from token
-        auth_header = request.headers.get('Authorization')
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        username = decoded_token.get('preferred_username')
+        username = AuthUtils.extract_username_without_validation()
 
         # Validate required fields
         if not data.get('name') or not data.get('display_name'):

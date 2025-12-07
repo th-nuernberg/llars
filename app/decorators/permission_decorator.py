@@ -19,7 +19,7 @@ The decorator:
 from functools import wraps
 from flask import request, jsonify
 from services.permission_service import PermissionService
-import jwt
+from auth.auth_utils import AuthUtils
 import os
 
 
@@ -42,45 +42,13 @@ def require_permission(permission_key: str):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Extract token from Authorization header
-            auth_header = request.headers.get('Authorization')
+            # Extract username from token using centralized AuthUtils
+            username = AuthUtils.extract_username_without_validation()
 
-            if not auth_header or not auth_header.startswith('Bearer '):
+            if not username:
                 return jsonify({
                     'error': 'Unauthorized',
-                    'message': 'No valid authorization token provided'
-                }), 401
-
-            token = auth_header.split(' ')[1]
-
-            try:
-                # Decode token to get username
-                # Note: In production, verify the token signature!
-                # For now, we just decode without verification (Authentik handles verification)
-                decoded_token = jwt.decode(token, options={"verify_signature": False})
-
-                # Try standard OIDC claims first, then Authentik-specific, then fallback to uid
-                username = (decoded_token.get('preferred_username') or
-                           decoded_token.get('username') or
-                           decoded_token.get('name') or
-                           decoded_token.get('uid') or  # Authentik user ID
-                           (decoded_token.get('sub')[:16] if decoded_token.get('sub') else None))
-
-                if not username:
-                    return jsonify({
-                        'error': 'Unauthorized',
-                        'message': 'Invalid token: no username found'
-                    }), 401
-
-            except jwt.DecodeError:
-                return jsonify({
-                    'error': 'Unauthorized',
-                    'message': 'Invalid token format'
-                }), 401
-            except Exception as e:
-                return jsonify({
-                    'error': 'Unauthorized',
-                    'message': f'Token validation error: {str(e)}'
+                    'message': 'No valid authorization token provided or username not found'
                 }), 401
 
             # Check permission
@@ -119,35 +87,13 @@ def require_any_permission(*permission_keys):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            auth_header = request.headers.get('Authorization')
+            # Extract username from token using centralized AuthUtils
+            username = AuthUtils.extract_username_without_validation()
 
-            if not auth_header or not auth_header.startswith('Bearer '):
+            if not username:
                 return jsonify({
                     'error': 'Unauthorized',
-                    'message': 'No valid authorization token provided'
-                }), 401
-
-            token = auth_header.split(' ')[1]
-
-            try:
-                decoded_token = jwt.decode(token, options={"verify_signature": False})
-                username = decoded_token.get('preferred_username')
-
-                if not username:
-                    return jsonify({
-                        'error': 'Unauthorized',
-                        'message': 'Invalid token: no username found'
-                    }), 401
-
-            except jwt.DecodeError:
-                return jsonify({
-                    'error': 'Unauthorized',
-                    'message': 'Invalid token format'
-                }), 401
-            except Exception as e:
-                return jsonify({
-                    'error': 'Unauthorized',
-                    'message': f'Token validation error: {str(e)}'
+                    'message': 'No valid authorization token provided or username not found'
                 }), 401
 
             # Check if user has ANY of the required permissions
@@ -189,35 +135,13 @@ def require_all_permissions(*permission_keys):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            auth_header = request.headers.get('Authorization')
+            # Extract username from token using centralized AuthUtils
+            username = AuthUtils.extract_username_without_validation()
 
-            if not auth_header or not auth_header.startswith('Bearer '):
+            if not username:
                 return jsonify({
                     'error': 'Unauthorized',
-                    'message': 'No valid authorization token provided'
-                }), 401
-
-            token = auth_header.split(' ')[1]
-
-            try:
-                decoded_token = jwt.decode(token, options={"verify_signature": False})
-                username = decoded_token.get('preferred_username')
-
-                if not username:
-                    return jsonify({
-                        'error': 'Unauthorized',
-                        'message': 'Invalid token: no username found'
-                    }), 401
-
-            except jwt.DecodeError:
-                return jsonify({
-                    'error': 'Unauthorized',
-                    'message': 'Invalid token format'
-                }), 401
-            except Exception as e:
-                return jsonify({
-                    'error': 'Unauthorized',
-                    'message': f'Token validation error: {str(e)}'
+                    'message': 'No valid authorization token provided or username not found'
                 }), 401
 
             # Check if user has ALL of the required permissions

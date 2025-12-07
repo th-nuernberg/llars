@@ -155,7 +155,7 @@ def create_scenario():
 
     try:
         data = request.get_json()
-    except:
+    except (ValueError, TypeError) as e:
         return jsonify({'error': 'Invalid JSON'}), 400
 
     client_data = {
@@ -339,7 +339,7 @@ def edit_scenario():
 
         try:
             data = request.get_json()
-        except:
+        except (ValueError, TypeError) as e:
             return jsonify({'error': 'JSON not valid'}), 400
 
         client_data = {

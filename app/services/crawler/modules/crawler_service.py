@@ -259,7 +259,7 @@ class CrawlerService:
             self.active_crawls[job_id]['error'] = str(e)
             try:
                 db.session.rollback()
-            except:
+            except Exception:
                 pass
             self._emit_error(job_id, str(e))
 
@@ -556,7 +556,7 @@ class CrawlerService:
             self.active_crawls[job_id]['error'] = str(e)
             try:
                 db.session.rollback()
-            except:
+            except Exception:
                 pass
             self._emit_error(job_id, str(e))
             self._emit_jobs_updated()

@@ -20,6 +20,9 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from routes.judge.session_helpers import configure_session_comparisons
 
 session_bp = Blueprint('judge_sessions', __name__)
@@ -30,6 +33,7 @@ session_bp = Blueprint('judge_sessions', __name__)
 # ============================================================================
 
 @session_bp.route('/estimate', methods=['POST'])
+@handle_api_errors(logger_name='judge')
 def estimate_comparisons_endpoint():
     """
     Estimate the number of comparisons for a given configuration.
@@ -59,10 +63,7 @@ def estimate_comparisons_endpoint():
     position_swap = data.get('position_swap', True)
 
     if not pillar_ids:
-        return jsonify({
-            'error': 'pillar_ids is required',
-            'total_comparisons': 0
-        }), 400
+        raise ValidationError('pillar_ids is required')
 
     # Get actual thread counts from database
     pillar_threads = {}
@@ -76,6 +77,7 @@ def estimate_comparisons_endpoint():
     # Check if we have any threads
     total_threads = sum(len(t) for t in pillar_threads.values())
     if total_threads == 0:
+        # Return 200 with informative message (not an error, just empty data)
         return jsonify({
             'error': 'No threads available for the selected pillars',
             'total_comparisons': 0,
@@ -97,6 +99,7 @@ def estimate_comparisons_endpoint():
 
 
 @session_bp.route('/comparison-modes', methods=['GET'])
+@handle_api_errors(logger_name='judge')
 def get_comparison_modes():
     """
     Get available comparison modes with descriptions.
@@ -143,6 +146,7 @@ def get_comparison_modes():
 @session_bp.route('/sessions', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def list_sessions():
     """
     List all Judge sessions for the current user.
@@ -185,6 +189,7 @@ def list_sessions():
 @session_bp.route('/sessions/<int:session_id>', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def get_session(session_id: int):
     """
     Get details of a specific session.
@@ -195,7 +200,9 @@ def get_session(session_id: int):
     Returns:
         JSON object with session details
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     # Get current comparison if running
     current_comparison = None
@@ -230,6 +237,7 @@ def get_session(session_id: int):
 @session_bp.route('/sessions', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def create_session():
     """
     Create a new Judge session with optional configuration.
@@ -316,6 +324,7 @@ def create_session():
 @session_bp.route('/sessions/<int:session_id>/configure', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def configure_session(session_id: int):
     """
     Configure which pillars to compare in the session.
@@ -330,13 +339,14 @@ def configure_session(session_id: int):
     Returns:
         JSON with configuration summary
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     if session.status not in [JudgeSessionStatus.CREATED, JudgeSessionStatus.QUEUED]:
-        return jsonify({
-            'error': 'Session kann nicht mehr konfiguriert werden',
-            'status': session.status.value
-        }), 400
+        raise ValidationError(
+            f'Session kann nicht mehr konfiguriert werden (Status: {session.status.value})'
+        )
 
     data = request.get_json()
 

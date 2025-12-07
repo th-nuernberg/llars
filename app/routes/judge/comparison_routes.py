@@ -11,6 +11,9 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 
 comparison_bp = Blueprint('judge_comparisons', __name__)
 
@@ -22,6 +25,7 @@ comparison_bp = Blueprint('judge_comparisons', __name__)
 @comparison_bp.route('/sessions/<int:session_id>/current', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def get_current_comparison(session_id: int):
     """
     Get the currently running comparison with thread data.
@@ -29,7 +33,9 @@ def get_current_comparison(session_id: int):
     Returns:
         JSON with current comparison and thread contents in frontend-compatible format
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     if not session.current_comparison_id:
         return jsonify(None)
@@ -148,6 +154,7 @@ def _load_thread_messages(thread_id: int):
 @comparison_bp.route('/sessions/<int:session_id>/queue', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def get_session_queue(session_id: int):
     """
     Get the pending comparisons queue for a session.
@@ -155,7 +162,9 @@ def get_session_queue(session_id: int):
     Returns:
         JSON with pending and running comparisons, plus summary stats
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     # Pillar names
     pillar_names = {
@@ -218,6 +227,7 @@ def get_session_queue(session_id: int):
 @comparison_bp.route('/sessions/<int:session_id>/comparisons', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def get_session_comparisons(session_id: int):
     """
     Get all comparisons for a session with their evaluation status.
@@ -225,7 +235,9 @@ def get_session_comparisons(session_id: int):
     Returns:
         JSON array of comparisons with pillar info and results
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     # Pillar names for display
     pillar_names = {

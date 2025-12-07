@@ -6,6 +6,9 @@ from db.db import db
 from db.tables import PillarThread, EmailThread
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 
 kia_sync_bp = Blueprint('judge_kia_sync', __name__)
 
@@ -17,6 +20,7 @@ kia_sync_bp = Blueprint('judge_kia_sync', __name__)
 @kia_sync_bp.route('/kia/status', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def get_kia_sync_status():
     """
     Get sync status for all KIA pillars.
@@ -29,21 +33,15 @@ def get_kia_sync_status():
     """
     from services.judge.kia_sync_service import get_kia_sync_service
 
-    try:
-        sync_service = get_kia_sync_service()
-        status = sync_service.get_sync_status()
-        return jsonify(status)
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'gitlab_connected': False,
-            'pillars': {}
-        }), 500
+    sync_service = get_kia_sync_service()
+    status = sync_service.get_sync_status()
+    return jsonify(status)
 
 
 @kia_sync_bp.route('/kia/check', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def check_kia_availability():
     """
     Check which pillars have data available in GitLab.
@@ -55,30 +53,28 @@ def check_kia_availability():
     """
     from services.judge.kia_sync_service import get_kia_sync_service
 
-    try:
-        sync_service = get_kia_sync_service()
-        availability = sync_service.check_pillar_availability()
+    sync_service = get_kia_sync_service()
+    availability = sync_service.check_pillar_availability()
 
-        return jsonify({
-            'pillars': {
-                num: {
-                    'number': status.pillar_number,
-                    'name': status.pillar_name,
-                    'status': status.status.value,
-                    'file_count': status.file_count,
-                    'error': status.error_message
-                }
-                for num, status in availability.items()
-            },
-            'gitlab_connected': sync_service._get_project_id() is not None
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({
+        'pillars': {
+            num: {
+                'number': status.pillar_number,
+                'name': status.pillar_name,
+                'status': status.status.value,
+                'file_count': status.file_count,
+                'error': status.error_message
+            }
+            for num, status in availability.items()
+        },
+        'gitlab_connected': sync_service._get_project_id() is not None
+    })
 
 
 @kia_sync_bp.route('/kia/sync', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def sync_kia_data():
     """
     Sync KIA data from GitLab repository.
@@ -98,55 +94,52 @@ def sync_kia_data():
     force = data.get('force', False)
     gitlab_token = data.get('gitlab_token')  # Optional token override
 
-    try:
-        sync_service = get_kia_sync_service(gitlab_token)
+    sync_service = get_kia_sync_service(gitlab_token)
 
-        if pillar:
-            # Sync specific pillar
-            if pillar not in range(1, 6):
-                return jsonify({'error': 'Pillar muss zwischen 1 und 5 sein'}), 400
+    if pillar:
+        # Sync specific pillar
+        if pillar not in range(1, 6):
+            raise ValidationError('Pillar muss zwischen 1 und 5 sein')
 
-            result = sync_service.sync_pillar(pillar, force)
-            return jsonify({
+        result = sync_service.sync_pillar(pillar, force)
+        return jsonify({
+            'success': result.success,
+            'pillar': pillar,
+            'files_processed': result.files_processed,
+            'threads_created': result.threads_created,
+            'threads_updated': result.threads_updated,
+            'threads_skipped': result.threads_skipped,
+            'errors': result.errors
+        })
+    else:
+        # Sync all pillars
+        results = sync_service.sync_all_pillars(force)
+
+        summary = {
+            'total_success': sum(1 for r in results.values() if r.success),
+            'total_failed': sum(1 for r in results.values() if not r.success),
+            'total_threads_created': sum(r.threads_created for r in results.values()),
+            'total_threads_updated': sum(r.threads_updated for r in results.values()),
+            'pillars': {}
+        }
+
+        for pillar_num, result in results.items():
+            summary['pillars'][pillar_num] = {
                 'success': result.success,
-                'pillar': pillar,
                 'files_processed': result.files_processed,
                 'threads_created': result.threads_created,
                 'threads_updated': result.threads_updated,
                 'threads_skipped': result.threads_skipped,
                 'errors': result.errors
-            })
-        else:
-            # Sync all pillars
-            results = sync_service.sync_all_pillars(force)
-
-            summary = {
-                'total_success': sum(1 for r in results.values() if r.success),
-                'total_failed': sum(1 for r in results.values() if not r.success),
-                'total_threads_created': sum(r.threads_created for r in results.values()),
-                'total_threads_updated': sum(r.threads_updated for r in results.values()),
-                'pillars': {}
             }
 
-            for pillar_num, result in results.items():
-                summary['pillars'][pillar_num] = {
-                    'success': result.success,
-                    'files_processed': result.files_processed,
-                    'threads_created': result.threads_created,
-                    'threads_updated': result.threads_updated,
-                    'threads_skipped': result.threads_skipped,
-                    'errors': result.errors
-                }
-
-            return jsonify(summary)
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify(summary)
 
 
 @kia_sync_bp.route('/kia/sync/<int:pillar_number>', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def sync_specific_pillar(pillar_number: int):
     """
     Sync a specific pillar from GitLab.
@@ -163,30 +156,28 @@ def sync_specific_pillar(pillar_number: int):
     from services.judge.kia_sync_service import get_kia_sync_service
 
     if pillar_number not in range(1, 6):
-        return jsonify({'error': 'Pillar muss zwischen 1 und 5 sein'}), 400
+        raise ValidationError('Pillar muss zwischen 1 und 5 sein')
 
     force = request.args.get('force', 'false').lower() == 'true'
 
-    try:
-        sync_service = get_kia_sync_service()
-        result = sync_service.sync_pillar(pillar_number, force)
+    sync_service = get_kia_sync_service()
+    result = sync_service.sync_pillar(pillar_number, force)
 
-        return jsonify({
-            'success': result.success,
-            'pillar': pillar_number,
-            'files_processed': result.files_processed,
-            'threads_created': result.threads_created,
-            'threads_updated': result.threads_updated,
-            'threads_skipped': result.threads_skipped,
-            'errors': result.errors
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({
+        'success': result.success,
+        'pillar': pillar_number,
+        'files_processed': result.files_processed,
+        'threads_created': result.threads_created,
+        'threads_updated': result.threads_updated,
+        'threads_skipped': result.threads_skipped,
+        'errors': result.errors
+    })
 
 
 @kia_sync_bp.route('/kia/config', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def get_kia_config():
     """
     Get KIA sync configuration.
@@ -214,6 +205,7 @@ def get_kia_config():
 @kia_sync_bp.route('/kia/config', methods=['POST'])
 @authentik_required
 @require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='judge')
 def set_kia_token():
     """
     Set GitLab token for KIA sync.
@@ -228,7 +220,7 @@ def set_kia_token():
     token = data.get('gitlab_token')
 
     if not token:
-        return jsonify({'error': 'gitlab_token ist erforderlich'}), 400
+        raise ValidationError('gitlab_token ist erforderlich')
 
     # Store token in environment (for this process only)
     import os

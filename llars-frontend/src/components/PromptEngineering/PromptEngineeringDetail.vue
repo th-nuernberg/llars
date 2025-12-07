@@ -24,13 +24,13 @@
           <h3>Neuen Block erstellen</h3>
           <input
             v-model="newBlockName"
-            @keyup.enter="createBlock"
+            @keyup.enter="handleCreateBlock"
             type="text"
             placeholder="Blockname"
             class="block-input"
           />
           <div class="dialog-buttons">
-            <button class="success-button" @click="createBlock">Erstellen</button>
+            <button class="success-button" @click="handleCreateBlock">Erstellen</button>
             <button class="cancel-button" @click="closeAddBlockDialog">Abbrechen</button>
           </div>
         </div>
@@ -42,7 +42,7 @@
           <h3>Block "{{ blockToDelete?.title }}" löschen?</h3>
           <p>Soll der Block wirklich entfernt werden?</p>
           <div class="dialog-buttons">
-            <button class="danger-button" @click="confirmDeleteBlock">Löschen</button>
+            <button class="danger-button" @click="handleConfirmDeleteBlock">Löschen</button>
             <button class="cancel-button" @click="closeDeleteBlockDialog">Abbrechen</button>
           </div>
         </div>
@@ -50,23 +50,22 @@
 
       <!-- Dialog-Fenster für die Wahl, ob Blocks überschrieben oder angehängt werden -->
       <div v-if="showUploadChoiceDialog" class="dialog-overlay">
-      <div class="dialog-box">
-        <h3>JSON-Blocks hochladen</h3>
-        <p>Sollen die vorhandenen Blöcke überschrieben oder neue Blocks nur angehängt werden?</p>
-        <div class="dialog-buttons">
-          <button class="danger-button" @click="overrideJsonBlocks">
-            Überschreiben
-          </button>
-          <button class="success-button" @click="appendJsonBlocks">
-            Anhängen
-          </button>
-          <button class="cancel-button" @click="cancelJsonUpload">
-            Abbrechen
-          </button>
+        <div class="dialog-box">
+          <h3>JSON-Blocks hochladen</h3>
+          <p>Sollen die vorhandenen Blöcke überschrieben oder neue Blocks nur angehängt werden?</p>
+          <div class="dialog-buttons">
+            <button class="danger-button" @click="handleOverrideJsonBlocks">
+              Überschreiben
+            </button>
+            <button class="success-button" @click="handleAppendJsonBlocks">
+              Anhängen
+            </button>
+            <button class="cancel-button" @click="closeUploadChoiceDialog">
+              Abbrechen
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-
 
       <!-- Snackbar -->
       <div v-if="showSnackbar" class="snackbar">
@@ -91,8 +90,8 @@
                   class="block-title-input"
                   type="text"
                   v-model="editingBlockTitle"
-                  @keyup.enter="saveBlockTitle(block)"
-                  @blur="saveBlockTitle(block)"
+                  @keyup.enter="handleSaveBlockTitle(block)"
+                  @blur="handleSaveBlockTitle(block)"
                   :placeholder="`Blocktitel ändern...`"
                 />
               </template>
@@ -156,368 +155,124 @@ HighlightBlot.tagName = 'span';
 HighlightBlot.className = 'placeholder-highlight';
 Quill.register(HighlightBlot);
 </script>
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
 import { useRoute } from 'vue-router';
-import * as Y from 'yjs';
-import { QuillBinding } from 'y-quill';
-import Quill from 'quill';
-import QuillCursors from 'quill-cursors';
-import { io } from 'socket.io-client';
 import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
-import printYDoc from "@/components/PromptEngineering/utils";
 import sidebar from "@/components/PromptEngineering/sidebar.vue";
 
-const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
+// Composables
+import { useSnackbar } from './composables/useSnackbar';
+import { useDialogs } from './composables/useDialogs';
+import { usePromptDetails } from './composables/usePromptDetails';
+import { useYjsCollaboration } from './composables/useYjsCollaboration';
+import { usePromptBlocks } from './composables/usePromptBlocks';
+import { useQuillEditor } from './composables/useQuillEditor';
 
+const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
 const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
-const promptName = ref('');
 
-// State Management
-const blocks = ref([]);
-const editorsMap = ref(new Map());
-const editors = ref(new Map());
-const bindings = ref(new Map());
-const cursorsModules = ref(new Map());
-const users = ref({});
+// Composables initialization
+const { showSnackbar, snackbarMessage, showMessage } = useSnackbar();
 
-const promptOwner = ref('');
-const sharedWithUsers = ref([]);
+const {
+  showAddBlockDialog,
+  newBlockName,
+  closeAddBlockDialog,
+  showDeleteBlockDialog,
+  blockToDelete,
+  openDeleteBlockDialog,
+  closeDeleteBlockDialog,
+  showUploadChoiceDialog,
+  pendingJsonData,
+  openUploadChoiceDialog,
+  closeUploadChoiceDialog,
+  editingBlockId,
+  editingBlockTitle,
+  startEditBlockTitle,
+  resetBlockTitleEdit,
+  showTestPromptDialog,
+  openTestPromptDialog
+} = useDialogs();
 
-const editingBlockId = ref(null)
-const editingBlockTitle = ref('')
+const { promptName, promptOwner, sharedWithUsers, fetchPromptDetails } = usePromptDetails(promptId);
 
-let ydoc = null;
-let socket = null;
+// YJS and Socket.IO setup
+const collaboration = useYjsCollaboration(
+  roomId,
+  username,
+  () => processYDoc(),
+  (userId, cursor) => updateCursor(userId, cursor)
+);
 
-// Fürs Hinzufügen neuer Blöcke
-const showAddBlockDialog = ref(false);
-const newBlockName = ref('');
+const { ydoc, socket, users } = collaboration;
 
-// Snackbar
-const showSnackbar = ref(false);
-const snackbarMessage = ref('');
+// Blocks management
+const blocksManager = usePromptBlocks(ydoc, roomId, socket, showMessage);
+const { blocks, sortedBlocks, processYDoc, createBlock, deleteBlock, saveBlockTitle, handleJsonUpload, assemblePrompt } = blocksManager;
 
-const showSnackbarMessage = (message) => {
-  snackbarMessage.value = message;
-  showSnackbar.value = true;
+// Quill editor management
+const editorManager = useQuillEditor(ydoc, socket, roomId);
+const {
+  setEditorRef,
+  updateCursor,
+  initializeEditor,
+  cleanupEditor,
+  cleanupAll,
+  applyHighlightingToAll,
+  removeCursorForUser,
+  editors
+} = editorManager;
 
-  // Setze die Sichtbarkeit nach der Animationsdauer auf false
-  setTimeout(() => {
-    showSnackbar.value = false;
-  }, 3000); // Dauer muss mit der Gesamtdauer der Animation (CSS) übereinstimmen
+// Event handlers
+const handleCreateBlock = () => {
+  if (createBlock(newBlockName.value)) {
+    closeAddBlockDialog();
+  }
 };
 
-
-// Für das Löschen von Blöcken
-const showDeleteBlockDialog = ref(false);
-const blockToDelete = ref(null);
-
-/**
- * Dialog schließen und Eingabefeld (für neuen Block) zurücksetzen
- */
-const closeAddBlockDialog = () => {
-  showAddBlockDialog.value = false;
-  newBlockName.value = '';
-};
-
-/**
- * Dialog für das Löschen schließen
- */
-const closeDeleteBlockDialog = () => {
-  showDeleteBlockDialog.value = false;
-  blockToDelete.value = null;
-};
-
-/**
- * Methode zum Öffnen des Dialogs für das Löschen eines Blocks
- */
-const openDeleteBlockDialog = (block) => {
-  blockToDelete.value = block; // gemerkter Block, der gelöscht werden soll
-  showDeleteBlockDialog.value = true;
-};
-
-/**
- * Bestätigte Löschung des Blocks
- */
-const confirmDeleteBlock = () => {
-  if (!blockToDelete.value || !ydoc) {
+const handleConfirmDeleteBlock = () => {
+  if (deleteBlock(blockToDelete.value)) {
     closeDeleteBlockDialog();
-    return;
   }
-
-  const blockId = blockToDelete.value.id;
-
-  // Y.Doc Update
-  ydoc.transact(() => {
-    const blocksMap = ydoc.getMap('blocks');
-    if (blocksMap.has(blockId)) {
-      blocksMap.delete(blockId);
-
-      // Synchronisiere Update
-      const update = Y.encodeStateAsUpdate(ydoc);
-      if (socket?.connected) {
-        socket.emit('sync_update', {
-          room: roomId.value,
-          update: Array.from(update)
-        });
-      }
-    }
-  });
-
-  showSnackbarMessage(`Block "${blockToDelete.value.title}" wurde gelöscht!`);
-
-
-  // Dialog schließen
-  closeDeleteBlockDialog();
 };
-/**
- * User clicks on the block title or an edit icon,
- * sets up the local state for editing.
- */
-const startEditBlockTitle = (block) => {
-  editingBlockId.value = block.id
-  editingBlockTitle.value = block.title
-}
 
-/**
- * When user presses enter or the input loses focus,
- * save the new title in the Y.Doc (and broadcast).
- */
-const saveBlockTitle = (block) => {
-  const newTitle = editingBlockTitle.value.trim()
-  const oldTitle = block.title
-
-  // If the new title is empty or unchanged, just reset
-  if (!newTitle || newTitle === oldTitle) {
-    editingBlockId.value = null
-    editingBlockTitle.value = ''
-    return
+const handleSaveBlockTitle = (block) => {
+  if (saveBlockTitle(block, editingBlockTitle.value)) {
+    resetBlockTitleEdit();
+  } else {
+    resetBlockTitleEdit();
   }
+};
 
-  if (!ydoc) {
-    console.error('No Y.Doc available to update block title')
-    return
-  }
-
-  // Update the Y.Doc
-  ydoc.transact(() => {
-    const blocksMap = ydoc.getMap('blocks')
-    const blockMap = blocksMap.get(block.id)
-    if (blockMap) {
-      blockMap.set('title', newTitle)
-
-      // Broadcast the update to other clients
-      const update = Y.encodeStateAsUpdate(ydoc)
-      if (socket?.connected) {
-        socket.emit('sync_update', {
-          room: roomId.value,
-          update: Array.from(update),
-        })
-      }
-    }
-  })
-
-  // Reset local state
-  editingBlockId.value = null
-  editingBlockTitle.value = ''
-  showSnackbarMessage(`Titel geändert zu "${newTitle}"!`)
-}
-
-// ...
-const showUploadChoiceDialog = ref(false);
-const pendingJsonData = ref(null);
-
-// Wenn die Sidebar ein JSON-Objekt gemeldet hat
 const onJsonFileSelected = (jsonData) => {
-  pendingJsonData.value = jsonData;
-  showUploadChoiceDialog.value = true;
+  openUploadChoiceDialog(jsonData);
 };
 
-// Methode: Alle Blöcke entfernen und neue aus pendingJsonData einfügen
-const overrideJsonBlocks = () => {
-  if (!pendingJsonData.value) return;
-
-  // 1) Vorhandene Blocks löschen
-  if (ydoc) {
-    ydoc.transact(() => {
-      const blocksMap = ydoc.getMap('blocks');
-      blocksMap.forEach((val, key) => {
-        blocksMap.delete(key);
-      });
-      // (optional) Sync-Update senden
-      const update = Y.encodeStateAsUpdate(ydoc);
-      if (socket?.connected) {
-        socket.emit('sync_update', {
-          room: roomId.value,
-          update: Array.from(update)
-        });
-      }
-    });
-  }
-
-  // 2) Neue Blocks anlegen (existiert schon als handleJsonUpload):
-  handleJsonUpload(pendingJsonData.value);
-
-  // Dialog schließen
-  showUploadChoiceDialog.value = false;
-  pendingJsonData.value = null;
-};
-
-const handleJsonUpload = (jsonData) => {
-  if (!ydoc) return;
-
-  ydoc.transact(() => {
-    const blocksMap = ydoc.getMap('blocks');
-
-    let maxPosition = 0;
-    blocksMap.forEach((blockMap) => {
-      const pos = blockMap.get('position');
-      if (pos > maxPosition) {
-        maxPosition = pos;
-      }
-    });
-
-    // Iteriere über Keys und Values im jsonData
-    Object.entries(jsonData).forEach(([blockName, blockContent], idx) => {
-      // Existiert der Block schon?
-      if (blocksMap.has(blockName)) {
-        showSnackbarMessage(`Block "${blockName}" existiert bereits! Übersprungen.`);
-        return;
-      }
-
-      const newBlockMap = new Y.Map();
-      newBlockMap.set('title', blockName);
-      newBlockMap.set('position', maxPosition + idx + 1);
-
-      // Neuen Text anlegen
-      const ytext = new Y.Text();
-      ytext.insert(0, blockContent);
-      newBlockMap.set('content', ytext);
-
-      blocksMap.set(blockName, newBlockMap);
-    });
-
-    const update = Y.encodeStateAsUpdate(ydoc);
-    if (socket?.connected) {
-      socket.emit('sync_update', {
-        room: roomId.value,
-        update: Array.from(update)
-      });
-    }
-  });
-
-  showSnackbarMessage('JSON-Datei erfolgreich verarbeitet!');
-};
-
-
-// Methode: Vorhandene Blöcke behalten und nur neue hinzufügen
-const appendJsonBlocks = () => {
-  if (!pendingJsonData.value) return;
-  // Einfach die vorhandene Methode "handleJsonUpload" nutzen
-  handleJsonUpload(pendingJsonData.value);
-
-  // Dialog schließen
-  showUploadChoiceDialog.value = false;
-  pendingJsonData.value = null;
-};
-
-// Falls der User sich umentscheidet
-const cancelJsonUpload = () => {
-  showUploadChoiceDialog.value = false;
-  pendingJsonData.value = null;
-};
-
-
-
-/**
- * Methode zum Erstellen eines neuen Blocks
- */
-const createBlock = () => {
-  const blockName = newBlockName.value.trim();
-  if (!blockName) return;
-  if (!ydoc) return;
-
-  ydoc.transact(() => {
-    const blocksMap = ydoc.getMap('blocks');
-
-    // Prüfen, ob der Blockname schon existiert
-    if (blocksMap.has(blockName)) {
-      showSnackbarMessage(`Block "${blockName}" existiert bereits!`);
-
-      return;
-    }
-
-    let maxPosition = 0;
-    blocksMap.forEach((blockMap) => {
-      const pos = blockMap.get('position');
-      if (pos > maxPosition) {
-        maxPosition = pos;
-      }
-    });
-
-    // Neuen Block anlegen
-    const newBlockMap = new Y.Map();
-    newBlockMap.set('title', blockName);
-    newBlockMap.set('position', maxPosition + 1);
-
-    // Leerer Y.Text
-    const ytext = new Y.Text();
-    newBlockMap.set('content', ytext);
-
-    // In blocksMap einfügen
-    blocksMap.set(blockName, newBlockMap);
-
-    // Explizit ein Update an den Server senden
-    const update = Y.encodeStateAsUpdate(ydoc);
-    if (socket?.connected) {
-      socket.emit('sync_update', {
-        room: roomId.value,
-        update: Array.from(update)
-      });
-    }
-  });
-
-  // Debug-Ausgabe
-  console.log("Neuer Block erstellt und synchronisiert");
-  printYDoc(ydoc);
-
-  showSnackbarMessage(`Block "${blockName}" wurde hinzugefügt!`);
-  closeAddBlockDialog();
-};
-
-/**
- * Prompt Details laden
- */
-const fetchPromptDetails = async () => {
-  try {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId.value}`
-    );
-    const data = await response.json();
-
-    if (response.ok) {
-      promptName.value = data.name;
-      // --- Hier neu:
-      promptOwner.value = data.owner;
-      sharedWithUsers.value = data.shared_with || [];
-    } else {
-      console.error('Fehler beim Abrufen der Prompt-Details:', data.error);
-    }
-  } catch (error) {
-    console.error('Fehler beim Laden der Prompt-Details:', error);
+const handleOverrideJsonBlocks = () => {
+  if (handleJsonUpload(pendingJsonData.value, true)) {
+    closeUploadChoiceDialog();
   }
 };
 
-/**
- * Watch und Lifecycle Hooks
- */
+const handleAppendJsonBlocks = () => {
+  if (handleJsonUpload(pendingJsonData.value, false)) {
+    closeUploadChoiceDialog();
+  }
+};
+
+const onDragEnd = () => {
+  showMessage('Block-Reihenfolge aktualisiert!');
+};
+
+// Watch für neue/gelöschte Blocks
 watch(
   () => blocks.value,
   async (newBlocks, oldBlocks) => {
@@ -528,22 +283,14 @@ watch(
       );
 
       deletedBlocks.forEach(block => {
-        const binding = bindings.value.get(block.id);
-        if (binding) {
-          binding.destroy();
-          bindings.value.delete(block.id);
-        }
-
-        editors.value.delete(block.id);
-        editorsMap.value.delete(block.id);
-        cursorsModules.value.delete(block.id);
+        cleanupEditor(block.id);
       });
     }
 
     // Initialisiere neue Editoren
     for (const block of newBlocks) {
       if (!editors.value.has(block.id)) {
-        await nextTick(); // Warte auf DOM-Update
+        await nextTick();
         await initializeEditor(block);
       }
     }
@@ -551,418 +298,35 @@ watch(
   { deep: true }
 );
 
-/**
- * Sortierte Liste der Blocks
- */
-const sortedBlocks = computed({
-  get: () => {
-    return [...blocks.value].sort((a, b) => a.position - b.position);
-  },
-  set: (newValue) => {
-    // Update positions in blocks.value based on new order
-    newValue.forEach((block, index) => {
-      const originalBlock = blocks.value.find(b => b.id === block.id);
-      if (originalBlock) {
-        originalBlock.position = index;
-      }
-    });
-
-    // Update positions in ydoc
-    if (ydoc) {
-      ydoc.transact(() => {
-        const blocksMap = ydoc.getMap('blocks');
-        newValue.forEach((block, index) => {
-          const blockMap = blocksMap.get(block.id);
-          if (blockMap) {
-            blockMap.set('position', index);
-          }
-        });
-      });
-
-      // Sync changes with other clients
-      const update = Y.encodeStateAsUpdate(ydoc);
-      if (socket?.connected) {
-        socket.emit('sync_update', {
-          room: roomId.value,
-          update: Array.from(update)
-        });
-      }
-    }
-  }
-});
-
-/**
- * Wird aufgerufen, wenn ein Drag beendet wurde
- */
-const onDragEnd = () => {
-  showSnackbarMessage(`Block-Reihenfolge aktualisiert!`);
-};
-
-/**
- * Alle Blocks in das lokale Array `blocks` laden
- */
-const processYDoc = () => {
-  const blocksMap = ydoc.getMap('blocks');
-  const newBlocks = [];
-
-  blocksMap.forEach((value, key) => {
-    newBlocks.push({
-      id: key,
-      title: value.get('title'),
-      position: value.get('position'),
-      content: value.get('content')
-    });
-  });
-
-  blocks.value = newBlocks;
-
-  // Delay to ensure the editors are initialized before highlighting
-  setTimeout(() => {
-    editors.value.forEach(editor => {
-      // Apply highlighting to each editor
-      if (editor) {
-        const text = editor.getText();
-        const placeholder = '{{complete_email_history}}';
-        let idx = text.indexOf(placeholder);
-        while (idx !== -1) {
-          editor.formatText(idx, placeholder.length, 'placeholder', true, Quill.sources.API);
-          idx = text.indexOf(placeholder, idx + placeholder.length);
-        }
-      }
-    });
-  }, 100);
-};
-
-/**
- * Debounce-Funktion für Cursor-Updates
- */
-const debounce = (fn, delay) => {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  };
-};
-
-/**
- * Cursor-Positionen aktualisieren (z.B. wenn User tippt)
- */
-const handleSelectionChange = (blockId) => {
-  const debouncedEmit = debounce((range) => {
-    if (socket?.connected) {
-      socket.emit('cursor_update', {
-        room: roomId.value,
-        blockId,
-        range: range
-          ? {
-              index: range.index,
-              length: range.length
-            }
-          : null
-      });
-    }
-  }, 50);
-
-  return (range, oldRange, source) => {
-    if (source === 'user') {
-      if (!range) {
-        // Entferne Cursor, wenn der Benutzer keinen Bereich mehr ausgewählt hat
-        const cursorsModule = cursorsModules.value.get(blockId);
-        if (cursorsModule) {
-          cursorsModule.removeCursor(socket.id);
-        }
-      }
-      debouncedEmit(range);
-    }
-  };
-};
-
-/**
- * Editor für einen Block initialisieren
- */
-const initializeEditor = async (block) => {
-  await nextTick();
-
-  const editorElement = editorsMap.value.get(block.id);
-  if (!editorElement || editors.value.has(block.id)) {
-    return;
-  }
-
-  const blocksMap = ydoc.getMap('blocks');
-  const blockMap = blocksMap.get(block.id);
-  if (!blockMap) {
-    console.error('Block map not found:', block.id);
-    return;
-  }
-
-  let ytext = blockMap.get('content');
-  if (!ytext) {
-    ytext = new Y.Text();
-    blockMap.set('content', ytext);
-
-    // Wenn ein neuer ytext erstellt wurde, sofort synchronisieren
-    const update = Y.encodeStateAsUpdate(ydoc);
-    if (socket?.connected) {
-      socket.emit('sync_update', {
-        room: roomId.value,
-        update: Array.from(update)
-      });
-    }
-  }
-
-  // Quill Editor mit angepassten Cursor-Einstellungen
-  const editor = new Quill(editorElement, {
-    modules: {
-      cursors: {
-        transformOnTextChange: true,
-        hideDelayMs: 5000,
-        hideSpeedMs: 500,
-        selectionChangeSource: 'api'
-      },
-      toolbar: [
-        ['bold', 'italic', 'underline'],
-        ['clean']
-      ],
-      history: {
-        userOnly: true
-      }
-    },
-    theme: 'snow',
-    placeholder: `Start editing ${block.title}...`
-  });
-
-  // Flag zur Vermeidung von Rekursion bei Formatierungen
-  let inPlaceholderHighlight = false;
-
-  /**
-   * Hebt alle Vorkommen von {{complete_email_history}} hervor
-   */
-  function highlightPlaceholders() {
-    if (inPlaceholderHighlight) return;
-    inPlaceholderHighlight = true;
-    try {
-      const placeholder = '{{complete_email_history}}';
-      // Entferne alte Hervorhebungen
-      editor.formatText(0, editor.getLength(), 'placeholder', false, Quill.sources.API);
-      const text = editor.getText();
-      let idx = text.indexOf(placeholder);
-      while (idx !== -1) {
-        editor.formatText(idx, placeholder.length, 'placeholder', true, Quill.sources.API);
-        idx = text.indexOf(placeholder, idx + placeholder.length);
-      }
-    } finally {
-      inPlaceholderHighlight = false;
-    }
-  }
-
-  // Hervorhebung nach Yjs-Updates (inkl. lokaler Nutzereingabe)
-  ytext.observe(() => {
-    // Nach Quill-Update neu highlighten
-    setTimeout(() => highlightPlaceholders(), 0);
-  });
-
-  // Speichere Referenz zum Cursors Module
-  const cursorsModule = editor.getModule('cursors');
-  cursorsModules.value.set(block.id, cursorsModule);
-
-  // Binding zwischen Yjs und Quill
-  const binding = new QuillBinding(ytext, editor, null, {
-    preserveCursor: true
-  });
-
-  // Initiale Hervorhebung nach Laden des Inhalts
-  highlightPlaceholders();
-
-  // Selection-Change-Handler
-  editor.on('selection-change', handleSelectionChange(block.id));
-
-  // Text-Change-Handler: Bei Nutzereingabe Yjs-Text aktualisieren
-  editor.on('text-change', (delta, oldDelta, source) => {
-    if (source === 'user') {
-      ydoc.transact(() => {
-        const blocksMap2 = ydoc.getMap('blocks');
-        const blockMap2 = blocksMap2.get(block.id);
-        blockMap2.get('content').applyDelta(delta);
-        const update2 = Y.encodeStateAsUpdate(ydoc);
-        if (socket?.connected) {
-          socket.emit('sync_update', {
-            room: roomId.value,
-            update: Array.from(update2)
-          });
-        }
-      });
-    }
-  });
-
-  // Observe Yjs text updates to ensure highlighting is maintained
-  ytext.observe(() => {
-    // Use setTimeout to ensure this runs after Quill has been updated
-    setTimeout(() => highlightPlaceholders(), 0);
-  });
-
-  editors.value.set(block.id, editor);
-  bindings.value.set(block.id, binding);
-};
-
-/**
- * Speichert die Editor-Referenz
- */
-const setEditorRef = (el, blockId) => {
-  if (el) {
-    editorsMap.value.set(blockId, el);
-  }
-};
-
-/**
- * Cursor aktualisieren (z.B. von anderen Usern)
- */
-const updateCursor = (userId, cursor) => {
-  // 1) Wenn cursor === null, entfernen wir den Cursor in allen Blöcken
-  if (!cursor) {
-    cursorsModules.value.forEach((cursorsModule) => {
-      cursorsModule.removeCursor(userId);
-    });
-    return;
-  }
-
-  // 2) Wenn range === null, nur den Cursor in dem spezifischen Block entfernen
-  const { blockId, range, username, color } = cursor;
-  const cursorsModule = cursorsModules.value.get(blockId);
-  const editor = editors.value.get(blockId);
-
-  if (!range) {
-    if (cursorsModule) {
-      cursorsModule.removeCursor(userId);
-    }
-    return;
-  }
-
-  // 3) Falls es eine gültige Range gibt => Cursor aktualisieren
-  if (cursorsModule && editor) {
-    if (!cursorsModule.cursors().find(c => c.id === userId)) {
-      cursorsModule.createCursor(userId, username, color);
-    }
-
-    const transformedRange = editor.getLength() < range.index
-      ? { index: editor.getLength(), length: 0 }
-      : range;
-
-    cursorsModule.moveCursor(userId, transformedRange);
-  }
-};
-
-/**
- * Socket Initialisierung
- */
-const initializeSocket = () => {
-  socket = io(import.meta.env.VITE_API_BASE_URL, {
-    path: '/collab/socket.io/',
-    reconnection: true,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000
-  });
-
-  socket.on('connect', () => {
-    console.log('Connected to server');
-    socket.emit('join_room', {
-      room: roomId.value,
-      username
-    });
-  });
-
-  socket.on('snapshot_document', (fullUpdate) => {
-    Y.applyUpdate(ydoc, new Uint8Array(fullUpdate));
-    processYDoc();
-  });
-
-  socket.on('sync_update', ({ update }) => {
-    Y.applyUpdate(ydoc, new Uint8Array(update));
-    processYDoc();
-  });
-
-  socket.on('room_state', (state) => {
-    users.value = state.users;
-    nextTick(() => {
-      Object.entries(state.cursors).forEach(([userId, cursor]) => {
-        updateCursor(userId, cursor);
-      });
-    });
-  });
-
-  socket.on('user_joined', ({ userId, username, color }) => {
-    users.value[userId] = { username, color };
-  });
-
-  socket.on('user_left', ({ userId }) => {
-    delete users.value[userId];
-    cursorsModules.value.forEach(cursorsModule => {
-      cursorsModule.removeCursor(userId);
-    });
-  });
-
-  socket.on('cursor_updated', ({ userId, cursor }) => {
-    nextTick(() => updateCursor(userId, cursor));
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Disconnected from server');
-  });
-};
-
-/**
- * Watch und Lifecycle Hooks
- */
-watch(
-  blocks,
-  async (newBlocks) => {
-    for (const block of newBlocks) {
-      if (!editors.value.has(block.id)) {
-        await initializeEditor(block);
-      }
-    }
-  },
-  { deep: true }
-);
-
+// Lifecycle hooks
 onMounted(async () => {
   await fetchPromptDetails();
-  ydoc = new Y.Doc();
-  initializeSocket();
+  collaboration.initialize();
 
-  ydoc.on('update', (update) => {
-    processYDoc();
-
-    if (update.transaction?.local && socket?.connected) {
-      const fullState = Y.encodeStateAsUpdate(ydoc);
-      socket.emit('sync_update', {
-        room: roomId.value,
-        update: Array.from(fullState)
-      });
+  // Apply highlighting after editors are initialized
+  watch(
+    () => blocks.value.length,
+    () => {
+      applyHighlightingToAll();
     }
-  });
+  );
 });
 
 onUnmounted(() => {
-  bindings.value.forEach(binding => binding.destroy());
-  editorsMap.value.clear();
-  editors.value.clear();
-  bindings.value.clear();
-  cursorsModules.value.clear();
-  socket?.disconnect();
-  ydoc?.destroy();
+  cleanupAll();
+  collaboration.cleanup();
 });
-// Visibility for Test Prompt Dialog
-const showTestPromptDialog = ref(false);
 
-function assemblePrompt() {
-  return sortedBlocks.value.map(b => b.content.toString()).join('\n\n');
-}
-
-function openTestPromptDialog() {
-  showTestPromptDialog.value = true;
-}
-
-// (Test prompt streaming logic moved to TestPromptDialog.vue)
+// User left handler
+watch(users, (newUsers, oldUsers) => {
+  if (oldUsers) {
+    Object.keys(oldUsers).forEach(userId => {
+      if (!newUsers[userId]) {
+        removeCursorForUser(userId);
+      }
+    });
+  }
+});
 </script>
 
 <style scoped>

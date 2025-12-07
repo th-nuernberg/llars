@@ -60,6 +60,13 @@ from db.models.chatbot import (
     ChatbotMessage,
 )
 
+# LLM Model configuration
+from db.models.llm_model import (
+    LLMModel,
+    DEFAULT_LLM_MODELS,
+    seed_default_models,
+)
+
 # KAIMO models
 from db.models.kaimo import (
     KaimoCase,
@@ -142,6 +149,10 @@ __all__ = [
     'ChatbotCollection',
     'ChatbotConversation',
     'ChatbotMessage',
+    # LLM Model
+    'LLMModel',
+    'DEFAULT_LLM_MODELS',
+    'seed_default_models',
     # KAIMO
     'KaimoCase',
     'KaimoDocument',

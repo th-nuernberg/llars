@@ -170,6 +170,13 @@ class RAGDocument(db.Model):
     is_public: Mapped[bool] = mapped_column(db.Boolean, default=True)
     uploaded_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, index=True)
 
+    # Screenshot for web crawls (Vision-LLM support)
+    screenshot_path: Mapped[Optional[str]] = mapped_column(db.String(512), nullable=True)
+    screenshot_url: Mapped[Optional[str]] = mapped_column(db.String(2048), nullable=True)
+
+    # Source URL for web crawls
+    source_url: Mapped[Optional[str]] = mapped_column(db.String(2048), nullable=True, index=True)
+
     # Timestamps
     uploaded_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     processed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
@@ -202,6 +209,13 @@ class RAGDocumentChunk(db.Model):
     # Content
     content: Mapped[str] = mapped_column(db.Text, nullable=False)
     content_hash: Mapped[Optional[str]] = mapped_column(db.String(64), nullable=True)  # MD5 of content
+
+    # Image data for Vision-enabled RAG
+    has_image: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False)
+    image_path: Mapped[Optional[str]] = mapped_column(db.String(512), nullable=True)  # Path to stored image
+    image_url: Mapped[Optional[str]] = mapped_column(db.String(2048), nullable=True)  # Original URL if from web
+    image_alt_text: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)  # Alt text / caption
+    image_mime_type: Mapped[Optional[str]] = mapped_column(db.String(100), nullable=True)
 
     # Metadata
     page_number: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)

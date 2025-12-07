@@ -7,6 +7,9 @@ import logging
 from datetime import datetime
 from flask import jsonify, request, g
 from auth.decorators import admin_required
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from db.db import db
 from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        EmailThread, ScenarioThreads, ScenarioRoles, User,
@@ -17,6 +20,7 @@ from .scenario_management import distribute_threads_to_users
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
 @admin_required
+@handle_api_errors(logger_name='scenarios')
 def get_scenario_list():
     """Get list of all scenarios with their status"""
     # Authorization handled by @admin_required decorator
@@ -73,81 +77,79 @@ def get_scenario_list():
 
 @data_blueprint.route('/admin/scenarios/<int:scenario_id>', methods=['GET'])
 @admin_required
+@handle_api_errors(logger_name='scenarios')
 def get_scenario_details(scenario_id=None):
     """Get detailed information about a specific scenario"""
-    try:
-        # Authorization handled by @admin_required decorator
-        # Current user available in g.authentik_user
+    # Authorization handled by @admin_required decorator
+    # Current user available in g.authentik_user
 
-        # check if scenario id is valid
-        if not scenario_id:
-            return jsonify({'error': 'Scenario id is missing'}), 400
+    # check if scenario id is valid
+    if not scenario_id:
+        raise ValidationError('Scenario id is missing')
 
-        scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
-        if not scenario:
-            return jsonify({'error': 'Scenario does not exist'}), 404
+    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+    if not scenario:
+        raise NotFoundError('Scenario does not exist')
 
-        func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
+    func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
 
-        # get all users
-        scenario_users = (db.session.query(ScenarioUsers).join(User, ScenarioUsers.user_id == User.id)
-                          .filter(ScenarioUsers.scenario_id == scenario_id).all())
+    # get all users
+    scenario_users = (db.session.query(ScenarioUsers).join(User, ScenarioUsers.user_id == User.id)
+                      .filter(ScenarioUsers.scenario_id == scenario_id).all())
 
-        # divide the users into the roles
-        scenario_raters = []
-        scenario_viewers = []
-        for scenario_user in scenario_users:
-            if scenario_user.role == ScenarioRoles.RATER:
-                scenario_raters.append(
-                    {
-                        'user_id': scenario_user.user_id,
-                        'username': scenario_user.user.username,
-                        'role': scenario_user.role.value,
-                    }
-                )
+    # divide the users into the roles
+    scenario_raters = []
+    scenario_viewers = []
+    for scenario_user in scenario_users:
+        if scenario_user.role == ScenarioRoles.RATER:
+            scenario_raters.append(
+                {
+                    'user_id': scenario_user.user_id,
+                    'username': scenario_user.user.username,
+                    'role': scenario_user.role.value,
+                }
+            )
 
-            if scenario_user.role == ScenarioRoles.VIEWER:
-                scenario_viewers.append(
-                    {
-                        'user_id': scenario_user.user_id,
-                        'username': scenario_user.user.username,
-                        'role': scenario_user.role.value,
-                    }
-                )
+        if scenario_user.role == ScenarioRoles.VIEWER:
+            scenario_viewers.append(
+                {
+                    'user_id': scenario_user.user_id,
+                    'username': scenario_user.user.username,
+                    'role': scenario_user.role.value,
+                }
+            )
 
-        # get all the threads of the scenario
-        scenario_threads = (db.session.query(ScenarioThreads)
-                            .join(EmailThread, EmailThread.thread_id == ScenarioThreads.thread_id)
-                            .filter(ScenarioThreads.scenario_id == scenario_id).all())
-        threads = []
-        for scenario_thread in scenario_threads:
-            threads.append({
-                'thread_id': scenario_thread.thread_id,
-                'subject': scenario_thread.thread.subject,
-                'chat_id': scenario_thread.thread.chat_id,
-                'institut_id': scenario_thread.thread.institut_id,
-                'sender': scenario_thread.thread.sender,
-            })
+    # get all the threads of the scenario
+    scenario_threads = (db.session.query(ScenarioThreads)
+                        .join(EmailThread, EmailThread.thread_id == ScenarioThreads.thread_id)
+                        .filter(ScenarioThreads.scenario_id == scenario_id).all())
+    threads = []
+    for scenario_thread in scenario_threads:
+        threads.append({
+            'thread_id': scenario_thread.thread_id,
+            'subject': scenario_thread.thread.subject,
+            'chat_id': scenario_thread.thread.chat_id,
+            'institut_id': scenario_thread.thread.institut_id,
+            'sender': scenario_thread.thread.sender,
+        })
 
-        scenario_details = {
-            'scenario_id': scenario_id,
-            'scenario_name': scenario.scenario_name,
-            'function_type_id': scenario.function_type_id,
-            'func_type': func_type,
-            'begin_date': scenario.begin.isoformat(),
-            'end_date': scenario.end.isoformat(),
-            'threads': threads,
-            'raters': scenario_raters,
-            'viewers': scenario_viewers,
-        }
-        return jsonify(scenario_details), 200
-    except Exception as e:
-        logging.exception(e)
-        return jsonify({'error': "Internal Server Error"}), 500
+    scenario_details = {
+        'scenario_id': scenario_id,
+        'scenario_name': scenario.scenario_name,
+        'function_type_id': scenario.function_type_id,
+        'func_type': func_type,
+        'begin_date': scenario.begin.isoformat(),
+        'end_date': scenario.end.isoformat(),
+        'threads': threads,
+        'raters': scenario_raters,
+        'viewers': scenario_viewers,
+    }
+    return jsonify(scenario_details), 200
 
 
 @data_blueprint.route('/admin/create_scenario', methods=['POST'])
 @admin_required
+@handle_api_errors(logger_name='scenarios')
 def create_scenario():
     """Create a new rating scenario with users and threads"""
     # Authorization handled by @admin_required decorator
@@ -156,7 +158,7 @@ def create_scenario():
     try:
         data = request.get_json()
     except (ValueError, TypeError) as e:
-        return jsonify({'error': 'Invalid JSON'}), 400
+        raise ValidationError('Invalid JSON')
 
     client_data = {
         "scenario_name": data.get('scenario_name'),
@@ -170,12 +172,12 @@ def create_scenario():
 
     for key, value in client_data.items():
         if value is None:
-            return jsonify({'error': f'Missing value for {key}'}), 400
+            raise ValidationError(f'Missing value for {key}')
 
     # Validate function type
     function_type = FeatureFunctionType.query.filter_by(function_type_id=data.get('function_type_id')).first()
     if not function_type:
-        return jsonify({'error': 'Invalid function type'}), 400
+        raise ValidationError('Invalid function type')
 
     function_type_id = function_type.function_type_id
 
@@ -184,10 +186,10 @@ def create_scenario():
         begin = datetime.fromisoformat(data.get('begin'))
         end = datetime.fromisoformat(data.get('end'))
     except ValueError:
-        return jsonify({'error': 'Timestamp format is invalid'}), 400
+        raise ValidationError('Timestamp format is invalid')
 
     if end < begin:
-        return jsonify({'error': 'End date must be before begin'}), 400
+        raise ValidationError('End date must be before begin')
 
     # Create new scenario
     new_scenario = RatingScenarios(
@@ -204,7 +206,7 @@ def create_scenario():
 
     # Validate and collect raters
     if not isinstance(client_data['rater'], list):
-        return jsonify({'error': 'rater is not a list'}), 400
+        raise ValidationError('rater is not a list')
     for user_id in client_data['rater']:
         if not isinstance(user_id, int):
             continue
@@ -219,7 +221,7 @@ def create_scenario():
 
     # Validate and collect viewers
     if not isinstance(client_data['viewer'], list):
-        return jsonify({'error': 'viewer is not a list'}), 400
+        raise ValidationError('viewer is not a list')
     for user_id in client_data['viewer']:
         if not isinstance(user_id, int):
             continue
@@ -236,7 +238,7 @@ def create_scenario():
     thread_error_list = []
     threads_for_scenario = []
     if not isinstance(client_data['threads'], list):
-        return jsonify({'error': 'threads is not a list'}), 400
+        raise ValidationError('threads is not a list')
     for thread_id in client_data['threads']:
         if not isinstance(thread_id, int):
             continue
@@ -298,7 +300,7 @@ def create_scenario():
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Scenario couldn\'t be added: {e}'}), 500
+        raise Exception(f'Scenario couldn\'t be added: {e}')
 
     return_msg = {
         'notification': 'successfully created scenarios',
@@ -310,6 +312,7 @@ def create_scenario():
 
 @data_blueprint.route('/admin/delete_scenario/<int:scenario_id>', methods=['DELETE'])
 @admin_required
+@handle_api_errors(logger_name='scenarios')
 def delete_scenario(scenario_id):
     """Delete a scenario and all associated records"""
     # Authorization handled by @admin_required decorator
@@ -318,7 +321,7 @@ def delete_scenario(scenario_id):
     scenario = RatingScenarios.query.get(scenario_id)
 
     if not scenario:
-        return jsonify({'error': 'Scenario not found'}), 404
+        raise NotFoundError('Scenario not found')
 
     try:
         db.session.delete(scenario)
@@ -326,68 +329,62 @@ def delete_scenario(scenario_id):
         return jsonify({"message": "Scenario and associated records deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        raise
 
 
 @data_blueprint.route('/admin/edit_scenario', methods=['POST'])
 @admin_required
+@handle_api_errors(logger_name='scenarios')
 def edit_scenario():
     """Edit an existing scenario's name and dates"""
+    # Authorization handled by @admin_required decorator
+    # Current user available in g.authentik_user
+
     try:
-        # Authorization handled by @admin_required decorator
-        # Current user available in g.authentik_user
+        data = request.get_json()
+    except (ValueError, TypeError) as e:
+        raise ValidationError('JSON not valid')
 
-        try:
-            data = request.get_json()
-        except (ValueError, TypeError) as e:
-            return jsonify({'error': 'JSON not valid'}), 400
+    client_data = {
+        "id": data.get('id'),
+        "name": data.get('new_name'),
+        "begin": data.get('new_begin'),
+        "end": data.get('new_end')
+    }
 
-        client_data = {
-            "id": data.get('id'),
-            "name": data.get('new_name'),
-            "begin": data.get('new_begin'),
-            "end": data.get('new_end')
-        }
+    # Validate scenario ID
+    if not client_data['id'] or (not isinstance(client_data['id'], int)):
+        raise ValidationError('id of scenario is missing or invalid')
 
-        # Validate scenario ID
-        if not client_data['id'] or (not isinstance(client_data['id'], int)):
-            return jsonify({'error': 'id of scenario is missing or invalid'}), 400
+    # Get existing scenario
+    scenario = RatingScenarios.query.filter_by(id=client_data['id']).first()
+    if not scenario:
+        raise NotFoundError('Scenario not found')
 
-        # Get existing scenario
-        scenario = RatingScenarios.query.filter_by(id=client_data['id']).first()
-        if not scenario:
-            return jsonify({'error': 'Scenario not found'}), 404
+    # Use existing values if new ones not provided
+    if not client_data['name']:
+        client_data['name'] = scenario.scenario_name
+    if not client_data['begin']:
+        client_data['begin'] = scenario.begin
+    else:
+        client_data['begin'] = datetime.fromisoformat(client_data['begin'])
+    if not client_data['end']:
+        client_data['end'] = scenario.end
+    else:
+        client_data['end'] = datetime.fromisoformat(client_data['end'])
 
-        # Use existing values if new ones not provided
-        if not client_data['name']:
-            client_data['name'] = scenario.scenario_name
-        if not client_data['begin']:
-            client_data['begin'] = scenario.begin
-        else:
-            client_data['begin'] = datetime.fromisoformat(client_data['begin'])
-        if not client_data['end']:
-            client_data['end'] = scenario.end
-        else:
-            client_data['end'] = datetime.fromisoformat(client_data['end'])
+    # Validate dates
+    if client_data['begin'] >= client_data['end']:
+        raise ValidationError('Start Date must be before the end date')
 
-        # Validate dates
-        if client_data['begin'] >= client_data['end']:
-            return jsonify({'error': 'Start Date must be before the end date'}), 400
-
-        # Update scenario
-        try:
-            scenario.scenario_name = client_data['name']
-            scenario.begin = client_data['begin']
-            scenario.end = client_data['end']
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            logging.error(e)
-            return jsonify({'error': 'Scenario couldn\'t be updated'}), 500
-
-        return jsonify({'message': 'Scenario edited successfully'}), 200
+    # Update scenario
+    try:
+        scenario.scenario_name = client_data['name']
+        scenario.begin = client_data['begin']
+        scenario.end = client_data['end']
+        db.session.commit()
     except Exception as e:
         db.session.rollback()
-        logging.error(e)
-        logging.exception(e)
-        return jsonify({'error': "internal Server error"}), 500
+        raise
+
+    return jsonify({'message': 'Scenario edited successfully'}), 200

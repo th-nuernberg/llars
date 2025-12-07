@@ -12,6 +12,10 @@ import axios from 'axios'
 // Components
 import App from './App.vue'
 
+// Global LLARS Components
+import LBtn from '@/components/common/LBtn.vue'
+import LIconBtn from '@/components/common/LIconBtn.vue'
+
 // Composables
 import { createApp } from 'vue'
 
@@ -19,6 +23,10 @@ const app = createApp(App)
 
 // Register Vuetify and other plugins
 registerPlugins(app)
+
+// Register global LLARS components
+app.component('LBtn', LBtn)
+app.component('LIconBtn', LIconBtn)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

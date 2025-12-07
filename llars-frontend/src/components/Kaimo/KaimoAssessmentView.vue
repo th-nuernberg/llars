@@ -1,5 +1,9 @@
 <template>
   <div class="assessment-view">
+    <!-- Skeleton Loading -->
+    <v-skeleton-loader v-if="isLoading" type="heading, article"></v-skeleton-loader>
+
+    <template v-else>
     <!-- Header -->
     <div class="assessment-header">
       <h1 class="assessment-title">Abschließende Fallbeurteilung</h1>
@@ -156,6 +160,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -185,6 +190,8 @@ const props = defineProps({
     default: false
   }
 })
+
+// Use the isLoading prop directly for skeleton loading
 
 const emit = defineEmits(['complete'])
 

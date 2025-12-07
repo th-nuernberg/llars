@@ -319,7 +319,8 @@
 
       <!-- Summary Card -->
       <v-col cols="12" md="4">
-        <v-card color="surface-variant">
+        <v-skeleton-loader v-if="isLoading('pillars')" type="card" height="600"></v-skeleton-loader>
+        <v-card v-else color="surface-variant">
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-information</v-icon>
             Zusammenfassung
@@ -499,6 +500,7 @@
 <script setup>
 import { watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import {
   useJudgeConfigState,
   useJudgeConfigComputed,
@@ -506,6 +508,9 @@ import {
 } from './JudgeConfig/index';
 
 const router = useRouter();
+
+// Skeleton Loading
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['pillars']);
 
 // Initialize state composable
 const {
@@ -570,9 +575,11 @@ watch(
 );
 
 // Lifecycle
-onMounted(() => {
-  initializeDefaultPillars();
-  fetchEstimate();
+onMounted(async () => {
+  await withLoading('pillars', async () => {
+    initializeDefaultPillars();
+    fetchEstimate();
+  });
 });
 </script>
 

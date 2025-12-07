@@ -46,7 +46,10 @@
 
       <!-- Content -->
       <v-card-text style="height: 500px; overflow-y: auto;">
-        <v-window v-model="activeTab" class="h-100">
+        <!-- Skeleton Loading for Crawler -->
+        <v-skeleton-loader v-if="isLoading('crawler')" type="article"></v-skeleton-loader>
+
+        <v-window v-else v-model="activeTab" class="h-100">
           <!-- General Tab -->
           <v-window-item value="general" eager>
             <v-form ref="formGeneral">
@@ -539,6 +542,7 @@
 
 <script setup>
 import { watch } from 'vue';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import {
   useChatbotForm,
   useChatbotCrawler
@@ -555,6 +559,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'save', 'collection-created']);
+
+// Skeleton Loading
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['crawler']);
 
 // Initialize composables
 const {
@@ -595,15 +602,17 @@ function closeDialog() {
 async function startCrawlForChatbot() {
   const chatbotName = formData.value.display_name || formData.value.name || 'Chatbot';
 
-  await startCrawl(chatbotName, {
-    onComplete: (data) => {
-      // Auto-add the new collection to the chatbot
-      if (data.collection_id && !formData.value.collection_ids.includes(data.collection_id)) {
-        formData.value.collection_ids.push(data.collection_id);
+  await withLoading('crawler', async () => {
+    await startCrawl(chatbotName, {
+      onComplete: (data) => {
+        // Auto-add the new collection to the chatbot
+        if (data.collection_id && !formData.value.collection_ids.includes(data.collection_id)) {
+          formData.value.collection_ids.push(data.collection_id);
+        }
+        // Emit event to refresh collections list in parent
+        emit('collection-created', data.collection_id);
       }
-      // Emit event to refresh collections list in parent
-      emit('collection-created', data.collection_id);
-    }
+    });
   });
 }
 

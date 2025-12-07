@@ -16,6 +16,10 @@
     />
 
     <div class="main-content">
+      <!-- Skeleton Loading -->
+      <v-skeleton-loader v-if="isLoading('prompt')" type="heading, card@3"></v-skeleton-loader>
+
+      <template v-else>
       <h1 class="prompt-title">{{ promptName }}</h1>
 
       <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
@@ -133,6 +137,7 @@
         <h4>Debug Information:</h4>
         <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
       </div>
+      </template>
     </div>
   </div>
 
@@ -163,6 +168,7 @@ import { useRoute } from 'vue-router';
 import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
 import sidebar from "@/components/PromptEngineering/sidebar.vue";
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // Composables
 import { useSnackbar } from './composables/useSnackbar';
@@ -178,6 +184,9 @@ const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
+
+// Skeleton Loading
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['prompt']);
 
 // Composables initialization
 const { showSnackbar, snackbarMessage, showMessage } = useSnackbar();
@@ -300,16 +309,18 @@ watch(
 
 // Lifecycle hooks
 onMounted(async () => {
-  await fetchPromptDetails();
-  collaboration.initialize();
+  await withLoading('prompt', async () => {
+    await fetchPromptDetails();
+    collaboration.initialize();
 
-  // Apply highlighting after editors are initialized
-  watch(
-    () => blocks.value.length,
-    () => {
-      applyHighlightingToAll();
-    }
-  );
+    // Apply highlighting after editors are initialized
+    watch(
+      () => blocks.value.length,
+      () => {
+        applyHighlightingToAll();
+      }
+    );
+  });
 });
 
 onUnmounted(() => {

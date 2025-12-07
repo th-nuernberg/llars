@@ -8,10 +8,28 @@ LABEL authors="philippsteigerwald"
 # Setzt das Arbeitsverzeichnis im Container
 WORKDIR /app
 
-# Installiert curl und notwendige Systembibliotheken
+# Installiert curl und notwendige Systembibliotheken für Playwright
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    # Playwright dependencies
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libatspi2.0-0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Installiert websocat
@@ -26,6 +44,15 @@ RUN mkdir -p /app/models
 COPY app/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
+# Create non-root user BEFORE installing Playwright
+RUN groupadd -r flaskuser && useradd -r -g flaskuser -u 1001 -m flaskuser
+
+# Installiert Playwright Chromium Browser als flaskuser
+# Das stellt sicher, dass der Browser im Home-Verzeichnis des Users installiert wird
+USER flaskuser
+RUN playwright install chromium
+USER root
+
 # Kopiert den Rest des Codes
 COPY app /app/
 # Kopiert das Start-Skript außerhalb des Anwendungs-Verzeichnisses, damit es durch Volumes nicht überschrieben wird
@@ -37,9 +64,8 @@ RUN chmod +x /usr/local/bin/healthcheck.sh
 # Setzt die benötigten Umgebungsvariablen für Flask
 ENV FLASK_APP=main.py
 
-# Create non-root user and set permissions
-RUN groupadd -r flaskuser && useradd -r -g flaskuser -u 1001 flaskuser && \
-    chown -R flaskuser:flaskuser /app && \
+# Set permissions
+RUN chown -R flaskuser:flaskuser /app && \
     chown -R flaskuser:flaskuser /app/models
 
 # Switch to non-root user

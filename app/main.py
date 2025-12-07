@@ -107,6 +107,10 @@ app.register_blueprint(kaimo_bp)
 from routes.crawler.crawler_routes import crawler_blueprint, init_crawler_socketio
 app.register_blueprint(crawler_blueprint)
 
+# LLM Model routes
+from routes.llm_routes import llm_bp
+app.register_blueprint(llm_bp)
+
 
 # Configure all SocketIO event handlers
 configure_socket_routes(socketio)
@@ -150,6 +154,22 @@ def fix_missing_chroma_collection_names():
             print(f"[Startup] Error fixing chroma_collection_names: {e}")
 
 fix_missing_chroma_collection_names()
+
+
+# Seed default LLM models into the database
+def seed_llm_models():
+    """Seed default LLM models on startup."""
+    from db.models.llm_model import seed_default_models
+
+    with app.app_context():
+        try:
+            print("[Startup] Seeding LLM models...")
+            seed_default_models()
+            print("[Startup] LLM models seeded successfully")
+        except Exception as e:
+            print(f"[Startup] Error seeding LLM models: {e}")
+
+seed_llm_models()
 
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren

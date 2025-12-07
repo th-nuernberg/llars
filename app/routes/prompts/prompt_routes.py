@@ -8,6 +8,9 @@ from werkzeug.security import check_password_hash
 from . import data_blueprint
 from . import auth_blueprint
 from auth.decorators import authentik_required, admin_required, roles_required
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
+)
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
@@ -23,6 +26,7 @@ import json
 
 @data_blueprint.route('/prompts', methods=['POST'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def save_user_prompt():
     """
     Route zum Speichern eines neuen Prompts für den angemeldeten Benutzer.
@@ -35,12 +39,12 @@ def save_user_prompt():
     prompt_content = data.get('content')
 
     if not prompt_name or not prompt_content:
-        return jsonify({'error': 'Prompt name and content are required'}), 400
+        raise ValidationError('Prompt name and content are required')
 
     # Prüfen, ob ein Prompt mit dem gleichen Namen bereits existiert
     existing_prompt = UserPrompt.query.filter_by(user_id=user.id, name=prompt_name).first()
     if existing_prompt:
-        return jsonify({'error': f'A prompt with the name "{prompt_name}" already exists'}), 409
+        raise ConflictError(f'A prompt with the name "{prompt_name}" already exists')
 
     # Neuen Prompt speichern
     new_prompt = UserPrompt(
@@ -52,8 +56,9 @@ def save_user_prompt():
     db.session.commit()
 
     return jsonify({
+        'success': True,
         'message': 'Prompt saved successfully',
-        'prompt': {
+        'data': {
             'id': new_prompt.prompt_id,
             'name': new_prompt.name,
             'content': new_prompt.content,
@@ -65,6 +70,7 @@ def save_user_prompt():
 
 @data_blueprint.route('/prompts', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def get_user_prompts():
     """
     Route zum Abrufen aller Prompts des angemeldeten Benutzers.
@@ -96,10 +102,11 @@ def get_user_prompts():
         }
         prompts_data.append(prompt_data)
 
-    return jsonify({'prompts': prompts_data}), 200
+    return jsonify({'success': True, 'data': prompts_data}), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def get_user_prompt(prompt_id):
     """
     Route zum Abrufen eines einzelnen Prompts für den Benutzer.
@@ -119,7 +126,7 @@ def get_user_prompt(prompt_id):
     ).first()
 
     if not prompt:
-        return jsonify({'error': 'Prompt not found or you do not have permission to view it'}), 404
+        raise NotFoundError('Prompt not found or you do not have permission to view it')
 
     # Überprüfen, ob es ein geteiltes Prompt ist
     is_shared = prompt.user_id != user.id
@@ -138,18 +145,22 @@ def get_user_prompt(prompt_id):
     should_see_shared_with = (prompt.user_id == user.id) or (user.username in shared_with)
 
     return jsonify({
-        'id': prompt.prompt_id,
-        'name': prompt.name,
-        'content': prompt.content,
-        'created_at': prompt.created_at.isoformat(),
-        'updated_at': prompt.updated_at.isoformat(),
-        'is_shared': is_shared,
-        'owner': owner,
-        'shared_with': shared_with if should_see_shared_with else []  # Nur ausgeben wenn berechtigt
+        'success': True,
+        'data': {
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'content': prompt.content,
+            'created_at': prompt.created_at.isoformat(),
+            'updated_at': prompt.updated_at.isoformat(),
+            'is_shared': is_shared,
+            'owner': owner,
+            'shared_with': shared_with if should_see_shared_with else []  # Nur ausgeben wenn berechtigt
+        }
     }), 200
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['PUT'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def update_user_prompt(prompt_id):
     """
     Route zum Aktualisieren eines Prompts für den Benutzer.
@@ -168,13 +179,13 @@ def update_user_prompt(prompt_id):
     ).first()
 
     if not prompt:
-        return jsonify({'error': 'Prompt not found or you do not have permission to edit it'}), 404
+        raise NotFoundError('Prompt not found or you do not have permission to edit it')
 
     data = request.get_json()
     content = data.get('content')
 
     if not isinstance(content, dict):
-        return jsonify({'error': 'Content must be a valid JSON object'}), 400
+        raise ValidationError('Content must be a valid JSON object')
 
     # Prompt-Inhalt aktualisieren
     prompt.content = content
@@ -182,8 +193,9 @@ def update_user_prompt(prompt_id):
     db.session.commit()
 
     return jsonify({
+        'success': True,
         'message': 'Prompt updated successfully',
-        'prompt': {
+        'data': {
             'id': prompt.prompt_id,
             'name': prompt.name,
             'content': prompt.content,
@@ -194,6 +206,7 @@ def update_user_prompt(prompt_id):
 
 @data_blueprint.route('/prompts/<int:prompt_id>/share', methods=['POST'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def share_prompt(prompt_id):
     """
     Route zum Freigeben eines Prompts für einen anderen Benutzer.
@@ -205,37 +218,38 @@ def share_prompt(prompt_id):
     shared_with_username = data.get('shared_with')
 
     if not shared_with_username:
-        return jsonify({'error': 'Username to share with is required'}), 400
+        raise ValidationError('Username to share with is required')
 
     # Prüfen, ob der Benutzer versucht, das Prompt mit sich selbst zu teilen
     if shared_with_username == user.username:
-        return jsonify({'error': 'You cannot share a prompt with yourself'}), 400
+        raise ValidationError('You cannot share a prompt with yourself')
 
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
     if not prompt:
-        return jsonify({'error': 'Prompt not found or you do not have permission to share it'}), 404
+        raise NotFoundError('Prompt not found or you do not have permission to share it')
 
     # Zielbenutzer abrufen
     shared_with_user = User.query.filter_by(username=shared_with_username).first()
     if not shared_with_user:
-        return jsonify({'error': f'User "{shared_with_username}" not found'}), 404
+        raise NotFoundError(f'User "{shared_with_username}" not found')
 
     # Prüfen, ob das Prompt bereits freigegeben wurde
     existing_share = UserPromptShare.query.filter_by(prompt_id=prompt_id, shared_with_user_id=shared_with_user.id).first()
     if existing_share:
-        return jsonify({'error': f'Prompt is already shared with "{shared_with_username}"'}), 409
+        raise ConflictError(f'Prompt is already shared with "{shared_with_username}"')
 
     # Freigabe erstellen
     new_share = UserPromptShare(prompt_id=prompt_id, shared_with_user_id=shared_with_user.id)
     db.session.add(new_share)
     db.session.commit()
 
-    return jsonify({'message': f'Prompt shared with "{shared_with_username}" successfully'}), 201
+    return jsonify({'success': True, 'message': f'Prompt shared with "{shared_with_username}" successfully'}), 201
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/unshare', methods=['POST'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def unshare_prompt(prompt_id):
     """
     Route zum Entfernen der Freigabe eines Prompts für einen Benutzer.
@@ -247,17 +261,17 @@ def unshare_prompt(prompt_id):
     unshare_with_username = data.get('unshare_with')
 
     if not unshare_with_username:
-        return jsonify({'error': 'Username to unshare with is required'}), 400
+        raise ValidationError('Username to unshare with is required')
 
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
     if not prompt:
-        return jsonify({'error': 'Prompt not found or you do not have permission to unshare it'}), 404
+        raise NotFoundError('Prompt not found or you do not have permission to unshare it')
 
     # Zielbenutzer abrufen
     unshare_with_user = User.query.filter_by(username=unshare_with_username).first()
     if not unshare_with_user:
-        return jsonify({'error': f'User "{unshare_with_username}" not found'}), 404
+        raise NotFoundError(f'User "{unshare_with_username}" not found')
 
     # Freigabe entfernen
     share = UserPromptShare.query.filter_by(
@@ -266,17 +280,18 @@ def unshare_prompt(prompt_id):
     ).first()
 
     if not share:
-        return jsonify({'error': f'Prompt is not shared with "{unshare_with_username}"'}), 404
+        raise NotFoundError(f'Prompt is not shared with "{unshare_with_username}"')
 
     db.session.delete(share)
     db.session.commit()
 
-    return jsonify({'message': f'Prompt sharing removed for "{unshare_with_username}" successfully'}), 200
+    return jsonify({'success': True, 'message': f'Prompt sharing removed for "{unshare_with_username}" successfully'}), 200
 
 
 
 @data_blueprint.route('/prompts/shared', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def get_shared_prompts():
     """
     Route zum Abrufen aller für den Benutzer freigegebenen Prompts.
@@ -305,11 +320,12 @@ def get_shared_prompts():
         for prompt, shared_at in shared_prompts
     ]
 
-    return jsonify({'shared_prompts': prompts_data}), 200
+    return jsonify({'success': True, 'data': prompts_data}), 200
 
 
 @data_blueprint.route('/prompts/<int:prompt_id>/download', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def download_prompt_json(prompt_id):
     """
     Route zum Herunterladen eines Prompts als formatierte JSON-Datei.
@@ -328,7 +344,7 @@ def download_prompt_json(prompt_id):
     ).first()
 
     if not prompt:
-        return jsonify({'error': 'Prompt not found or you do not have permission to access it'}), 404
+        raise NotFoundError('Prompt not found or you do not have permission to access it')
 
     # Formatierte JSON erstellen
     formatted_content = {}
@@ -360,6 +376,7 @@ def download_prompt_json(prompt_id):
 
 @data_blueprint.route('/prompts/<int:prompt_id>/rename', methods=['PUT'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def rename_prompt(prompt_id):
     """
     Route zum Umbenennen eines Prompts.
@@ -370,18 +387,18 @@ def rename_prompt(prompt_id):
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
     if not prompt:
-        return jsonify({'error': 'Prompt not found or you do not have permission to rename it'}), 404
+        raise NotFoundError('Prompt not found or you do not have permission to rename it')
 
     data = request.get_json()
     new_name = data.get('name')
 
     if not new_name:
-        return jsonify({'error': 'New name is required'}), 400
+        raise ValidationError('New name is required')
 
     # Prüfen, ob bereits ein Prompt mit diesem Namen existiert
     existing_prompt = UserPrompt.query.filter_by(user_id=user.id, name=new_name).first()
     if existing_prompt and existing_prompt.prompt_id != prompt_id:
-        return jsonify({'error': f'A prompt with the name "{new_name}" already exists'}), 409
+        raise ConflictError(f'A prompt with the name "{new_name}" already exists')
 
     # Prompt umbenennen
     prompt.name = new_name
@@ -389,8 +406,9 @@ def rename_prompt(prompt_id):
     db.session.commit()
 
     return jsonify({
+        'success': True,
         'message': 'Prompt renamed successfully',
-        'prompt': {
+        'data': {
             'id': prompt.prompt_id,
             'name': prompt.name,
             'updated_at': prompt.updated_at.isoformat()
@@ -399,6 +417,7 @@ def rename_prompt(prompt_id):
 
 @data_blueprint.route('/prompts/<int:prompt_id>', methods=['DELETE'])
 @authentik_required
+@handle_api_errors(logger_name='prompts')
 def delete_prompt(prompt_id):
     """
     Route zum Löschen eines Prompts.
@@ -409,7 +428,7 @@ def delete_prompt(prompt_id):
     # Prompt abrufen und prüfen, ob es dem Benutzer gehört
     prompt = UserPrompt.query.filter_by(prompt_id=prompt_id, user_id=user.id).first()
     if not prompt:
-        return jsonify({'error': 'Prompt not found or you do not have permission to delete it'}), 404
+        raise NotFoundError('Prompt not found or you do not have permission to delete it')
 
     # Freigaben für das Prompt entfernen
     UserPromptShare.query.filter_by(prompt_id=prompt_id).delete()
@@ -418,4 +437,4 @@ def delete_prompt(prompt_id):
     db.session.delete(prompt)
     db.session.commit()
 
-    return jsonify({'message': 'Prompt deleted successfully'}), 200
+    return jsonify({'success': True, 'message': 'Prompt deleted successfully'}), 200

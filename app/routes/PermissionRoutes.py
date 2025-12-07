@@ -15,10 +15,10 @@ Routes:
 """
 
 from flask import Blueprint, request, jsonify, current_app
-import jwt
 from decorators.permission_decorator import require_permission
 from services.permission_service import PermissionService
 from routes import data_blueprint
+from auth.auth_utils import AuthUtils
 
 
 @data_blueprint.route('/permissions', methods=['GET'])
@@ -99,16 +99,7 @@ def get_my_permissions():
     """Get current user's permissions (no admin permission required)"""
     try:
         # Extract username from token
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized'
-            }), 401
-
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        username = decoded_token.get('preferred_username')
+        username = AuthUtils.extract_username_without_validation()
 
         if not username:
             return jsonify({
@@ -157,10 +148,7 @@ def grant_permission():
             }), 400
 
         # Get admin username from token
-        auth_header = request.headers.get('Authorization')
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        admin_username = decoded_token.get('preferred_username')
+        admin_username = AuthUtils.extract_username_without_validation()
 
         success = PermissionService.grant_permission(
             username=username,
@@ -210,10 +198,7 @@ def revoke_permission():
             }), 400
 
         # Get admin username from token
-        auth_header = request.headers.get('Authorization')
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        admin_username = decoded_token.get('preferred_username')
+        admin_username = AuthUtils.extract_username_without_validation()
 
         success = PermissionService.revoke_permission(
             username=username,
@@ -263,10 +248,7 @@ def assign_role():
             }), 400
 
         # Get admin username from token
-        auth_header = request.headers.get('Authorization')
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        admin_username = decoded_token.get('preferred_username')
+        admin_username = AuthUtils.extract_username_without_validation()
 
         success = PermissionService.assign_role(
             username=username,
@@ -316,10 +298,7 @@ def unassign_role():
             }), 400
 
         # Get admin username from token
-        auth_header = request.headers.get('Authorization')
-        token = auth_header.split(' ')[1]
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        admin_username = decoded_token.get('preferred_username')
+        admin_username = AuthUtils.extract_username_without_validation()
 
         success = PermissionService.unassign_role(
             username=username,

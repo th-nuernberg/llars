@@ -9,7 +9,7 @@ import threading
 from flask import Blueprint, request, jsonify, g, current_app
 from decorators.permission_decorator import require_permission
 from services.crawler.web_crawler import crawler_service, WebCrawler
-import jwt
+from auth.auth_utils import AuthUtils
 
 logger = logging.getLogger(__name__)
 
@@ -20,19 +20,6 @@ def init_crawler_socketio(socketio):
     """Initialize crawler service with SocketIO for live updates."""
     crawler_service.set_socketio(socketio)
     logger.info("[Crawler] WebSocket integration initialized")
-
-
-def get_username_from_token():
-    """Extract username from JWT token."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-        try:
-            decoded = jwt.decode(token, options={"verify_signature": False})
-            return decoded.get('preferred_username', 'unknown')
-        except:
-            pass
-    return 'unknown'
 
 
 # ============================================================================
@@ -104,7 +91,7 @@ def start_crawl():
             domain = urlparse(urls[0]).netloc
             collection_name = f"Webcrawl: {domain}"
 
-        username = get_username_from_token()
+        username = AuthUtils.extract_username_without_validation() or 'unknown'
 
         # Crawler options
         use_playwright = data.get('use_playwright', True)
@@ -173,7 +160,7 @@ def start_crawl_sync():
             domain = urlparse(urls[0]).netloc
             collection_name = f"Webcrawl: {domain}"
 
-        username = get_username_from_token()
+        username = AuthUtils.extract_username_without_validation() or 'unknown'
 
         result = crawler_service.start_crawl(
             urls=urls,
@@ -357,7 +344,7 @@ def crawl_for_chatbot():
         if not urls:
             return jsonify({'success': False, 'error': 'No URLs provided'}), 400
 
-        username = get_username_from_token()
+        username = AuthUtils.extract_username_without_validation() or 'unknown'
 
         # Generate collection name
         from urllib.parse import urlparse

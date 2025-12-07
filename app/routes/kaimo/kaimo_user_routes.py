@@ -4,7 +4,6 @@ User-facing endpoints for KAIMO panel.
 """
 
 from datetime import datetime
-import jwt
 from flask import Blueprint, jsonify, request
 from decorators.permission_decorator import require_permission
 from db.db import db
@@ -19,24 +18,9 @@ from db.models import (
     KaimoHintAssignment,
 )
 from sqlalchemy import func
+from auth.auth_utils import AuthUtils
 
 kaimo_user_bp = Blueprint('kaimo_user', __name__)
-
-
-def _get_username_from_token():
-    """Extract username from Authorization header without verifying signature."""
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return None
-    token = auth_header.split(' ')[1]
-    decoded = jwt.decode(token, options={"verify_signature": False})
-    return (
-        decoded.get('preferred_username')
-        or decoded.get('username')
-        or decoded.get('name')
-        or decoded.get('uid')
-        or decoded.get('sub')
-    )
 
 
 def _get_case_categories(case_id: int):
@@ -177,7 +161,7 @@ def start_assessment(case_id: int):
     if not case:
         return jsonify({"success": False, "error": "Case not found"}), 404
 
-    user_id = _get_username_from_token()
+    user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
         return jsonify({"success": False, "error": "User ID not found in token"}), 401
 
@@ -230,7 +214,7 @@ def get_assessment(assessment_id: int):
     if not assessment:
         return jsonify({"success": False, "error": "Assessment not found"}), 404
 
-    user_id = _get_username_from_token()
+    user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
         return jsonify({"success": False, "error": "User ID not found in token"}), 401
 
@@ -278,7 +262,7 @@ def update_hint_assignment(assessment_id: int, hint_id: int):
     if not assessment:
         return jsonify({"success": False, "error": "Assessment not found"}), 404
 
-    user_id = _get_username_from_token()
+    user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
         return jsonify({"success": False, "error": "User ID not found in token"}), 401
 
@@ -356,7 +340,7 @@ def complete_assessment(assessment_id: int):
     if not assessment:
         return jsonify({"success": False, "error": "Assessment not found"}), 404
 
-    user_id = _get_username_from_token()
+    user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
         return jsonify({"success": False, "error": "User ID not found in token"}), 401
 

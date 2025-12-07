@@ -16,6 +16,9 @@ Routes:
 
 from flask import Blueprint, request, jsonify, current_app
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
+)
 from services.permission_service import PermissionService
 from routes import data_blueprint
 from auth.auth_utils import AuthUtils
@@ -23,109 +26,84 @@ from auth.auth_utils import AuthUtils
 
 @data_blueprint.route('/permissions', methods=['GET'])
 @require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='auth')
 def get_all_permissions():
     """Get all available permissions in the system"""
-    try:
-        permissions = PermissionService.get_all_permissions()
-        return jsonify({
-            'success': True,
-            'permissions': permissions
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    permissions = PermissionService.get_all_permissions()
+    return jsonify({
+        'success': True,
+        'data': permissions
+    }), 200
 
 
 @data_blueprint.route('/permissions/roles', methods=['GET'])
 @require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='auth')
 def get_all_roles():
     """Get all available roles in the system"""
-    try:
-        roles = PermissionService.get_all_roles()
-        return jsonify({
-            'success': True,
-            'roles': roles
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    roles = PermissionService.get_all_roles()
+    return jsonify({
+        'success': True,
+        'data': roles
+    }), 200
 
 
 @data_blueprint.route('/permissions/user/<username>', methods=['GET'])
 @require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='auth')
 def get_user_permissions(username):
     """Get all permissions and roles for a specific user"""
-    try:
-        permissions = PermissionService.get_user_permissions(username)
-        roles = PermissionService.get_user_roles(username)
+    permissions = PermissionService.get_user_permissions(username)
+    roles = PermissionService.get_user_roles(username)
 
-        return jsonify({
-            'success': True,
+    return jsonify({
+        'success': True,
+        'data': {
             'username': username,
             'permissions': permissions,
             'roles': roles
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        }
+    }), 200
 
 
 @data_blueprint.route('/permissions/users-with-roles', methods=['GET'])
 @require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='auth')
 def get_users_with_roles():
     """Get all users that have at least one role assigned"""
-    try:
-        users = PermissionService.get_all_users_with_roles()
-        return jsonify({
-            'success': True,
-            'users': users
-        }), 200
-    except Exception as e:
-        current_app.logger.error(f"Error in get_users_with_roles: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    users = PermissionService.get_all_users_with_roles()
+    return jsonify({
+        'success': True,
+        'data': users
+    }), 200
 
 
 @data_blueprint.route('/permissions/my-permissions', methods=['GET'])
+@handle_api_errors(logger_name='auth')
 def get_my_permissions():
     """Get current user's permissions (no admin permission required)"""
-    try:
-        # Extract username from token
-        username = AuthUtils.extract_username_without_validation()
+    # Extract username from token
+    username = AuthUtils.extract_username_without_validation()
 
-        if not username:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid token'
-            }), 401
+    if not username:
+        raise UnauthorizedError('Invalid token')
 
-        permissions = PermissionService.get_user_permissions(username)
-        roles = PermissionService.get_user_roles(username)
+    permissions = PermissionService.get_user_permissions(username)
+    roles = PermissionService.get_user_roles(username)
 
-        return jsonify({
-            'success': True,
+    return jsonify({
+        'success': True,
+        'data': {
             'username': username,
             'permissions': permissions,
             'roles': roles
-        }), 200
-    except Exception as e:
-        current_app.logger.error(f"Error in get_my_permissions: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        }
+    }), 200
 
 
 @data_blueprint.route('/permissions/grant', methods=['POST'])
 @require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='auth')
 def grant_permission():
     """
     Grant a permission to a user
@@ -136,46 +114,34 @@ def grant_permission():
             "permission_key": "feature:mail_rating:view"
         }
     """
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        permission_key = data.get('permission_key')
+    data = request.get_json()
+    username = data.get('username')
+    permission_key = data.get('permission_key')
 
-        if not username or not permission_key:
-            return jsonify({
-                'success': False,
-                'error': 'username and permission_key are required'
-            }), 400
+    if not username or not permission_key:
+        raise ValidationError('username and permission_key are required')
 
-        # Get admin username from token
-        admin_username = AuthUtils.extract_username_without_validation()
+    # Get admin username from token
+    admin_username = AuthUtils.extract_username_without_validation()
 
-        success = PermissionService.grant_permission(
-            username=username,
-            permission_key=permission_key,
-            admin_username=admin_username
-        )
+    success = PermissionService.grant_permission(
+        username=username,
+        permission_key=permission_key,
+        admin_username=admin_username
+    )
 
-        if success:
-            return jsonify({
-                'success': True,
-                'message': f'Permission {permission_key} granted to {username}'
-            }), 200
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to grant permission'
-            }), 400
+    if not success:
+        raise ValidationError('Failed to grant permission')
 
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify({
+        'success': True,
+        'message': f'Permission {permission_key} granted to {username}'
+    }), 200
 
 
 @data_blueprint.route('/permissions/revoke', methods=['POST'])
 @require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='auth')
 def revoke_permission():
     """
     Revoke a permission from a user
@@ -186,46 +152,34 @@ def revoke_permission():
             "permission_key": "feature:mail_rating:view"
         }
     """
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        permission_key = data.get('permission_key')
+    data = request.get_json()
+    username = data.get('username')
+    permission_key = data.get('permission_key')
 
-        if not username or not permission_key:
-            return jsonify({
-                'success': False,
-                'error': 'username and permission_key are required'
-            }), 400
+    if not username or not permission_key:
+        raise ValidationError('username and permission_key are required')
 
-        # Get admin username from token
-        admin_username = AuthUtils.extract_username_without_validation()
+    # Get admin username from token
+    admin_username = AuthUtils.extract_username_without_validation()
 
-        success = PermissionService.revoke_permission(
-            username=username,
-            permission_key=permission_key,
-            admin_username=admin_username
-        )
+    success = PermissionService.revoke_permission(
+        username=username,
+        permission_key=permission_key,
+        admin_username=admin_username
+    )
 
-        if success:
-            return jsonify({
-                'success': True,
-                'message': f'Permission {permission_key} revoked from {username}'
-            }), 200
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to revoke permission'
-            }), 400
+    if not success:
+        raise ValidationError('Failed to revoke permission')
 
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify({
+        'success': True,
+        'message': f'Permission {permission_key} revoked from {username}'
+    }), 200
 
 
 @data_blueprint.route('/permissions/assign-role', methods=['POST'])
 @require_permission('admin:roles:manage')
+@handle_api_errors(logger_name='auth')
 def assign_role():
     """
     Assign a role to a user
@@ -236,46 +190,34 @@ def assign_role():
             "role_name": "researcher"
         }
     """
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        role_name = data.get('role_name')
+    data = request.get_json()
+    username = data.get('username')
+    role_name = data.get('role_name')
 
-        if not username or not role_name:
-            return jsonify({
-                'success': False,
-                'error': 'username and role_name are required'
-            }), 400
+    if not username or not role_name:
+        raise ValidationError('username and role_name are required')
 
-        # Get admin username from token
-        admin_username = AuthUtils.extract_username_without_validation()
+    # Get admin username from token
+    admin_username = AuthUtils.extract_username_without_validation()
 
-        success = PermissionService.assign_role(
-            username=username,
-            role_name=role_name,
-            admin_username=admin_username
-        )
+    success = PermissionService.assign_role(
+        username=username,
+        role_name=role_name,
+        admin_username=admin_username
+    )
 
-        if success:
-            return jsonify({
-                'success': True,
-                'message': f'Role {role_name} assigned to {username}'
-            }), 200
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to assign role'
-            }), 400
+    if not success:
+        raise ValidationError('Failed to assign role')
 
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify({
+        'success': True,
+        'message': f'Role {role_name} assigned to {username}'
+    }), 200
 
 
 @data_blueprint.route('/permissions/unassign-role', methods=['POST'])
 @require_permission('admin:roles:manage')
+@handle_api_errors(logger_name='auth')
 def unassign_role():
     """
     Unassign a role from a user
@@ -286,39 +228,26 @@ def unassign_role():
             "role_name": "researcher"
         }
     """
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        role_name = data.get('role_name')
+    data = request.get_json()
+    username = data.get('username')
+    role_name = data.get('role_name')
 
-        if not username or not role_name:
-            return jsonify({
-                'success': False,
-                'error': 'username and role_name are required'
-            }), 400
+    if not username or not role_name:
+        raise ValidationError('username and role_name are required')
 
-        # Get admin username from token
-        admin_username = AuthUtils.extract_username_without_validation()
+    # Get admin username from token
+    admin_username = AuthUtils.extract_username_without_validation()
 
-        success = PermissionService.unassign_role(
-            username=username,
-            role_name=role_name,
-            admin_username=admin_username
-        )
+    success = PermissionService.unassign_role(
+        username=username,
+        role_name=role_name,
+        admin_username=admin_username
+    )
 
-        if success:
-            return jsonify({
-                'success': True,
-                'message': f'Role {role_name} unassigned from {username}'
-            }), 200
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to unassign role'
-            }), 400
+    if not success:
+        raise ValidationError('Failed to unassign role')
 
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+    return jsonify({
+        'success': True,
+        'message': f'Role {role_name} unassigned from {username}'
+    }), 200

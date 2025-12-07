@@ -99,675 +99,86 @@
     <!-- Progress Bar -->
     <v-row class="mb-4">
       <v-col cols="12">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex justify-space-between mb-2">
-              <span class="text-subtitle-2">Fortschritt</span>
-              <span class="text-subtitle-2 font-weight-bold">
-                {{ session?.completed_comparisons || 0 }} / {{ session?.total_comparisons || 0 }} Vergleiche
-              </span>
-            </div>
-            <v-progress-linear
-              :model-value="progress"
-              height="25"
-              rounded
-              :color="progress === 100 ? 'success' : 'primary'"
-              striped
-            >
-              <template v-slot:default="{ value }">
-                <strong>{{ Math.round(value) }}%</strong>
-              </template>
-            </v-progress-linear>
-
-            <!-- Session Info -->
-            <div class="d-flex justify-space-between mt-4 text-caption text-medium-emphasis">
-              <span>Säulen: {{ session?.pillar_count }}</span>
-              <span>Samples: {{ session?.samples_per_pillar }}</span>
-              <span>Position-Swap: {{ session?.position_swap ? 'Ja' : 'Nein' }}</span>
-              <span v-if="workerCount > 1">Worker: {{ workerCount }}</span>
-              <span v-if="session?.created_at">Erstellt: {{ formatDate(session.created_at) }}</span>
-            </div>
-          </v-card-text>
-        </v-card>
+        <SessionProgressBar
+          :session="session"
+          :progress="progress"
+          :worker-count="workerCount"
+          :format-date="formatDate"
+        />
       </v-col>
     </v-row>
 
     <!-- Multi-Worker Live View (when worker_count > 1) -->
     <v-row v-if="workerCount > 1 && session?.status === 'running'" class="mb-4">
       <v-col cols="12">
-        <v-card class="worker-pool-card">
-          <!-- Enhanced Dashboard Header -->
-          <div class="worker-pool-header">
-            <div class="header-main">
-              <div class="header-title-section">
-                <div class="header-icon-badge">
-                  <v-icon size="24">mdi-account-group</v-icon>
-                </div>
-                <div class="header-title-text">
-                  <span class="header-title">Worker-Pool Live View</span>
-                  <span class="header-subtitle">{{ activeWorkerCount }}/{{ workerCount }} Worker aktiv</span>
-                </div>
-              </div>
-
-              <v-spacer></v-spacer>
-
-              <!-- Session Stats -->
-              <div class="header-stats">
-                <div class="stat-item">
-                  <v-icon size="16">mdi-check-circle-outline</v-icon>
-                  <span class="stat-value">{{ session?.completed_comparisons || 0 }}</span>
-                  <span class="stat-label">/{{ session?.total_comparisons || 0 }}</span>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">
-                  <v-icon size="16">mdi-percent</v-icon>
-                  <span class="stat-value">{{ Math.round(progress) }}%</span>
-                </div>
-              </div>
-
-              <!-- Actions -->
-              <div class="header-actions">
-                <v-btn
-                  color="white"
-                  variant="tonal"
-                  size="small"
-                  class="mr-2"
-                  @click="openMultiWorkerFullscreen"
-                >
-                  <v-icon start size="18">mdi-fullscreen</v-icon>
-                  Vollbild
-                </v-btn>
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  @click="loadWorkerPoolStatus"
-                  color="white"
-                >
-                  <v-icon size="20">mdi-refresh</v-icon>
-                </v-btn>
-              </div>
-            </div>
-
-            <!-- Pillar Overview Bar -->
-            <div v-if="sessionPillars.length > 0" class="pillars-overview">
-              <div class="pillars-label">
-                <v-icon size="14">mdi-pillar</v-icon>
-                <span>Säulen im Vergleich:</span>
-              </div>
-              <div class="pillars-chips">
-                <div
-                  v-for="pillar in sessionPillars"
-                  :key="pillar.id"
-                  class="pillar-badge"
-                  :style="{ '--pillar-color': getPillarColor(pillar.id) }"
-                >
-                  <v-icon size="14">{{ getPillarIcon(pillar.id) }}</v-icon>
-                  <span>{{ pillar.short }}</span>
-                </div>
-              </div>
-              <div class="pairs-info">
-                <span class="pairs-label">Paare:</span>
-                <div class="pairs-progress">
-                  <div
-                    v-for="pair in pillarPairs"
-                    :key="pair.key"
-                    class="pair-chip"
-                    :class="{ 'pair-active': isPairActive(pair) }"
-                  >
-                    <span>{{ pair.a }}{{ pair.b }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <v-divider></v-divider>
-
-          <!-- Worker Grid -->
-          <v-card-text class="worker-grid-container">
-            <v-row>
-              <v-col
-                v-for="i in workerCount"
-                :key="i - 1"
-                :cols="workerCount <= 2 ? 6 : (workerCount <= 3 ? 4 : 3)"
-              >
-                <WorkerLane
-                  :worker-id="i - 1"
-                  :current-comparison="workerStreams[i - 1]?.comparison"
-                  :stream-content="workerStreams[i - 1]?.content || ''"
-                  :is-streaming="workerStreams[i - 1]?.isStreaming || false"
-                  @open-fullscreen="openWorkerFullscreen"
-                />
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+        <WorkerLaneGrid
+          :worker-count="workerCount"
+          :active-worker-count="activeWorkerCount"
+          :session="session"
+          :progress="progress"
+          :session-pillars="sessionPillars"
+          :pillar-pairs="pillarPairs"
+          :worker-streams="workerStreams"
+          :get-pillar-color="getPillarColor"
+          :get-pillar-icon="getPillarIcon"
+          :is-pair-active="isPairActive"
+          @open-fullscreen="openMultiWorkerFullscreen"
+          @refresh="loadWorkerPoolStatus"
+          @open-worker-fullscreen="openWorkerFullscreen"
+        />
       </v-col>
     </v-row>
 
     <!-- Queue Display - Shows ALL pending comparisons -->
     <v-row class="mb-4">
       <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-playlist-play</v-icon>
-            Vergleichs-Warteschlange
-            <v-spacer></v-spacer>
-            <v-chip size="small" color="info" class="mr-2">
-              {{ queue.stats?.pending || 0 }} ausstehend
-            </v-chip>
-            <v-chip size="small" color="warning" class="mr-2" v-if="queue.stats?.running > 0">
-              {{ queue.stats?.running || 0 }} läuft
-            </v-chip>
-            <v-chip size="small" color="success" class="mr-2" v-if="queue.stats?.completed > 0">
-              {{ queue.stats?.completed || 0 }} fertig
-            </v-chip>
-            <v-btn
-              icon="mdi-refresh"
-              variant="text"
-              size="small"
-              @click="loadQueue"
-              :loading="queueLoading"
-            ></v-btn>
-          </v-card-title>
-          <v-divider></v-divider>
-
-          <!-- Queue Table -->
-          <v-data-table
-            v-if="queue.pending?.length > 0 || queue.current"
-            :headers="queueHeaders"
-            :items="allQueueItems"
-            :items-per-page="20"
-            class="queue-table"
-            density="compact"
-          >
-            <!-- Position -->
-            <template v-slot:item.queue_position="{ item }">
-              <span class="font-weight-bold">#{{ item.queue_position + 1 }}</span>
-            </template>
-
-            <!-- Status -->
-            <template v-slot:item.status="{ item }">
-              <v-chip
-                size="x-small"
-                :color="getQueueStatusColor(item.status)"
-                variant="flat"
-              >
-                <v-icon start size="x-small" :class="{ 'mdi-spin': item.status === 'running' }">
-                  {{ getQueueStatusIcon(item.status) }}
-                </v-icon>
-                {{ getQueueStatusText(item.status) }}
-              </v-chip>
-            </template>
-
-            <!-- Pillar A -->
-            <template v-slot:item.pillar_a="{ item }">
-              <v-chip size="small" color="blue" variant="outlined">
-                {{ item.pillar_a_name }}
-              </v-chip>
-            </template>
-
-            <!-- VS -->
-            <template v-slot:item.vs="{ item }">
-              <v-icon size="small">mdi-arrow-left-right</v-icon>
-            </template>
-
-            <!-- Pillar B -->
-            <template v-slot:item.pillar_b="{ item }">
-              <v-chip size="small" color="green" variant="outlined">
-                {{ item.pillar_b_name }}
-              </v-chip>
-            </template>
-
-            <!-- Result (if completed) -->
-            <template v-slot:item.result="{ item }">
-              <template v-if="item.winner">
-                <v-chip size="x-small" :color="item.winner === 'A' ? 'blue' : 'green'" variant="flat">
-                  <v-icon start size="x-small">mdi-trophy</v-icon>
-                  {{ item.winner }}
-                </v-chip>
-              </template>
-              <span v-else class="text-medium-emphasis">-</span>
-            </template>
-          </v-data-table>
-
-          <!-- Empty State -->
-          <v-card-text v-else class="text-center py-8 text-medium-emphasis">
-            <v-icon size="48" class="mb-2">mdi-playlist-remove</v-icon>
-            <div>Keine Vergleiche in der Warteschlange</div>
-            <div class="text-caption mt-1">
-              Konfigurieren Sie die Session um Vergleiche zu erstellen
-            </div>
-          </v-card-text>
-        </v-card>
+        <SessionQueuePanel
+          :queue="queue"
+          :all-queue-items="allQueueItems"
+          :headers="queueHeaders"
+          :loading="queueLoading"
+          :get-queue-status-color="getQueueStatusColor"
+          :get-queue-status-icon="getQueueStatusIcon"
+          :get-queue-status-text="getQueueStatusText"
+          @refresh="loadQueue"
+        />
       </v-col>
     </v-row>
 
     <!-- Current Comparison View -->
     <v-row v-if="currentComparison">
       <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-eye</v-icon>
-            Aktueller Vergleich
-            <v-spacer></v-spacer>
-            <!-- Live Stream Button -->
-            <v-btn
-              v-if="session?.status === 'running'"
-              color="error"
-              variant="tonal"
-              size="small"
-              class="mr-2"
-              :loading="reconnecting"
-              @click="reconnectToStream"
-            >
-              <v-icon start :class="{ 'pulse-icon': isStreaming }">mdi-broadcast</v-icon>
-              {{ isStreaming ? 'Live' : 'Verbinden' }}
-            </v-btn>
-            <!-- Fullscreen Button -->
-            <v-btn
-              color="primary"
-              variant="tonal"
-              size="small"
-              class="mr-2"
-              @click="openFullscreen"
-            >
-              <v-icon start>mdi-fullscreen</v-icon>
-              Vollbild
-            </v-btn>
-            <v-chip size="small" variant="outlined">
-              Vergleich {{ (currentComparison.comparison_index || 0) + 1 }} von {{ session?.total_comparisons }}
-            </v-chip>
-          </v-card-title>
-          <v-divider></v-divider>
-
-          <v-card-text>
-            <v-row>
-              <!-- Thread A -->
-              <v-col cols="12" md="5">
-                <div class="thread-container">
-                  <div class="thread-header">
-                    <v-chip color="blue" variant="flat" prepend-icon="mdi-alpha-a-circle">
-                      Thread A - {{ currentComparison.pillar_a_name }}
-                    </v-chip>
-                  </div>
-                  <v-card variant="outlined" class="mt-2 thread-card">
-                    <v-card-text class="pa-3">
-                      <div v-for="(msg, idx) in currentComparison.thread_a_messages" :key="idx" class="message-item mb-3">
-                        <div class="message-role text-caption font-weight-bold mb-1" :class="msg.role === 'assistant' ? 'text-primary' : 'text-secondary'">
-                          <v-icon size="small" class="mr-1">
-                            {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
-                          </v-icon>
-                          {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
-                        </div>
-                        <div class="message-content">{{ msg.content }}</div>
-                      </div>
-                    </v-card-text>
-                  </v-card>
-                </div>
-              </v-col>
-
-              <!-- Center: LLM Evaluation -->
-              <v-col cols="12" md="2">
-                <div class="evaluation-center">
-                  <!-- LLM Status -->
-                  <v-card variant="outlined" class="text-center mb-3">
-                    <v-card-text class="pa-2">
-                      <v-icon
-                        :color="currentComparison.llm_status === 'completed' ? 'success' : 'info'"
-                        size="32"
-                        :class="{ 'rotating': currentComparison.llm_status === 'running' }"
-                      >
-                        {{ currentComparison.llm_status === 'completed' ? 'mdi-check-circle' : 'mdi-loading' }}
-                      </v-icon>
-                      <div class="text-caption mt-1">
-                        {{ currentComparison.llm_status === 'completed' ? 'Bewertet' : 'Bewertet...' }}
-                      </div>
-                    </v-card-text>
-                  </v-card>
-
-                  <!-- Winner Display -->
-                  <v-card
-                    v-if="currentComparison.winner"
-                    variant="outlined"
-                    :color="currentComparison.winner === 'A' ? 'blue' : 'green'"
-                    class="text-center winner-card"
-                  >
-                    <v-card-text class="pa-3">
-                      <v-icon size="48" color="warning">mdi-trophy</v-icon>
-                      <div class="text-h5 font-weight-bold mt-2">
-                        {{ currentComparison.winner }}
-                      </div>
-                      <div class="text-caption">Gewinner</div>
-                    </v-card-text>
-                  </v-card>
-
-                  <!-- Confidence Score -->
-                  <v-card v-if="currentComparison.confidence_score" variant="outlined" class="text-center mt-3">
-                    <v-card-text class="pa-2">
-                      <div class="text-caption text-medium-emphasis">Konfidenz</div>
-                      <div class="text-h6 font-weight-bold">
-                        {{ Math.round(currentComparison.confidence_score * 100) }}%
-                      </div>
-                    </v-card-text>
-                  </v-card>
-                </div>
-              </v-col>
-
-              <!-- Thread B -->
-              <v-col cols="12" md="5">
-                <div class="thread-container">
-                  <div class="thread-header">
-                    <v-chip color="green" variant="flat" prepend-icon="mdi-alpha-b-circle">
-                      Thread B - {{ currentComparison.pillar_b_name }}
-                    </v-chip>
-                  </div>
-                  <v-card variant="outlined" class="mt-2 thread-card">
-                    <v-card-text class="pa-3">
-                      <div v-for="(msg, idx) in currentComparison.thread_b_messages" :key="idx" class="message-item mb-3">
-                        <div class="message-role text-caption font-weight-bold mb-1" :class="msg.role === 'assistant' ? 'text-primary' : 'text-secondary'">
-                          <v-icon size="small" class="mr-1">
-                            {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
-                          </v-icon>
-                          {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
-                        </div>
-                        <div class="message-content">{{ msg.content }}</div>
-                      </div>
-                    </v-card-text>
-                  </v-card>
-                </div>
-              </v-col>
-            </v-row>
-
-            <!-- LLM Prompt Display -->
-            <v-expansion-panels class="mt-4" v-model="expandedPanels">
-              <v-expansion-panel value="prompt">
-                <v-expansion-panel-title>
-                  <v-icon class="mr-2">mdi-message-text</v-icon>
-                  LLM Prompt (an das Modell gesendet)
-                  <v-chip size="x-small" class="ml-2" color="info">{{ currentComparison.llm_prompt?.length || 0 }} Zeichen</v-chip>
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-                    <strong>System Prompt:</strong> {{ currentComparison.llm_system_prompt }}
-                  </v-alert>
-                  <pre class="prompt-preview">{{ currentComparison.llm_prompt }}</pre>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-
-              <!-- LLM Stream Output - Live Formatted -->
-              <v-expansion-panel value="stream">
-                <v-expansion-panel-title>
-                  <v-icon class="mr-2" :class="{ 'rotating': isStreaming }">
-                    {{ isStreaming ? 'mdi-loading' : 'mdi-robot' }}
-                  </v-icon>
-                  LLM Ausgabe (Live Stream)
-                  <v-chip size="x-small" class="ml-2" :color="isStreaming ? 'warning' : (llmStreamContent ? 'success' : 'grey')">
-                    {{ isStreaming ? 'Streamt...' : (llmStreamContent ? 'Fertig' : 'Warte...') }}
-                  </v-chip>
-                  <v-chip size="x-small" class="ml-1" color="info" v-if="llmStreamContent">
-                    {{ llmStreamContent.length }} Zeichen
-                  </v-chip>
-                </v-expansion-panel-title>
-                <v-expansion-panel-text class="stream-panel-content">
-                  <!-- Stream Status Header -->
-                  <v-alert
-                    :type="isStreaming ? 'warning' : 'info'"
-                    variant="tonal"
-                    density="compact"
-                    class="mb-3"
-                  >
-                    <div class="d-flex align-center justify-space-between">
-                      <span>
-                        <strong>Vergleich #{{ currentComparison.comparison_index + 1 }}:</strong>
-                        {{ currentComparison.pillar_a_name }} vs {{ currentComparison.pillar_b_name }}
-                      </span>
-                      <v-chip
-                        size="x-small"
-                        :color="isStreaming ? 'warning' : 'success'"
-                        class="ml-2"
-                      >
-                        <v-icon start size="x-small" :class="{ 'rotating': isStreaming }">
-                          {{ isStreaming ? 'mdi-loading' : 'mdi-check' }}
-                        </v-icon>
-                        {{ isStreaming ? 'LLM generiert...' : 'Abgeschlossen' }}
-                      </v-chip>
-                    </div>
-                  </v-alert>
-
-                  <!-- Formatted JSON Output (when valid JSON detected) -->
-                  <div v-if="parsedStreamJson" class="formatted-json-output mb-3">
-                    <v-card variant="outlined" class="pa-3">
-                      <div class="text-subtitle-2 font-weight-bold mb-2 d-flex align-center">
-                        <v-icon class="mr-1" size="small" color="success">mdi-check-circle</v-icon>
-                        Strukturierte Bewertung
-                      </div>
-
-                      <!-- Winner Display -->
-                      <v-row class="mb-3">
-                        <v-col cols="4">
-                          <v-card
-                            :color="parsedStreamJson.winner === 'A' ? 'success' : 'grey-lighten-3'"
-                            variant="tonal"
-                            class="text-center pa-2"
-                          >
-                            <div class="text-h5 font-weight-bold">A</div>
-                            <div class="text-caption">{{ currentComparison.pillar_a_name }}</div>
-                          </v-card>
-                        </v-col>
-                        <v-col cols="4" class="d-flex align-center justify-center">
-                          <v-chip
-                            :color="parsedStreamJson.winner === 'TIE' ? 'warning' : 'primary'"
-                            size="large"
-                          >
-                            <v-icon start>mdi-trophy</v-icon>
-                            {{ parsedStreamJson.winner || '?' }}
-                          </v-chip>
-                        </v-col>
-                        <v-col cols="4">
-                          <v-card
-                            :color="parsedStreamJson.winner === 'B' ? 'success' : 'grey-lighten-3'"
-                            variant="tonal"
-                            class="text-center pa-2"
-                          >
-                            <div class="text-h5 font-weight-bold">B</div>
-                            <div class="text-caption">{{ currentComparison.pillar_b_name }}</div>
-                          </v-card>
-                        </v-col>
-                      </v-row>
-
-                      <!-- Confidence -->
-                      <div v-if="parsedStreamJson.confidence" class="mb-3">
-                        <div class="text-caption text-medium-emphasis">Konfidenz</div>
-                        <v-progress-linear
-                          :model-value="parsedStreamJson.confidence * 100"
-                          :color="parsedStreamJson.confidence >= 0.8 ? 'success' : parsedStreamJson.confidence >= 0.6 ? 'info' : 'warning'"
-                          height="20"
-                          rounded
-                        >
-                          <template v-slot:default="{ value }">
-                            <strong>{{ Math.round(value) }}%</strong>
-                          </template>
-                        </v-progress-linear>
-                      </div>
-
-                      <!-- Criteria Scores -->
-                      <div v-if="parsedStreamJson.criteria_scores" class="criteria-scores">
-                        <div class="text-subtitle-2 font-weight-bold mb-2">Kriterien-Bewertungen</div>
-                        <v-table density="compact">
-                          <thead>
-                            <tr>
-                              <th>Kriterium</th>
-                              <th class="text-center">A</th>
-                              <th class="text-center">B</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr v-for="(scores, criterion) in parsedStreamJson.criteria_scores" :key="criterion">
-                              <td>{{ formatCriterionName(criterion) }}</td>
-                              <td class="text-center">
-                                <v-chip size="x-small" :color="getScoreColor(scores.score_a)">
-                                  {{ scores.score_a }}/5
-                                </v-chip>
-                              </td>
-                              <td class="text-center">
-                                <v-chip size="x-small" :color="getScoreColor(scores.score_b)">
-                                  {{ scores.score_b }}/5
-                                </v-chip>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </v-table>
-                      </div>
-
-                      <!-- Final Justification -->
-                      <div v-if="parsedStreamJson.final_justification" class="mt-3">
-                        <div class="text-subtitle-2 font-weight-bold mb-1">Begründung</div>
-                        <div class="text-body-2 justification-text">{{ parsedStreamJson.final_justification }}</div>
-                      </div>
-                    </v-card>
-                  </div>
-
-                  <!-- Raw Stream Output -->
-                  <div class="stream-output-container">
-                    <div class="d-flex align-center justify-space-between mb-2">
-                      <span class="text-subtitle-2">Raw Stream Output</span>
-                      <v-btn
-                        size="x-small"
-                        variant="text"
-                        @click="copyStreamToClipboard"
-                        :disabled="!llmStreamContent"
-                      >
-                        <v-icon start size="small">mdi-content-copy</v-icon>
-                        Kopieren
-                      </v-btn>
-                    </div>
-                    <div class="stream-output" ref="streamOutput" @scroll="handleStreamScroll">
-                      <pre v-if="llmStreamContent" class="stream-pre">{{ llmStreamContent }}<span v-if="isStreaming" class="cursor-blink">|</span></pre>
-                      <div v-else class="text-center text-medium-emphasis py-4">
-                        <v-progress-circular v-if="isStreaming" indeterminate color="primary" class="mb-2"></v-progress-circular>
-                        <v-icon v-else size="32" class="mb-2">mdi-text-box-outline</v-icon>
-                        <div>{{ isStreaming ? 'Warte auf LLM-Ausgabe...' : 'Stream startet wenn der Vergleich beginnt' }}</div>
-                      </div>
-                      <!-- Follow Button (appears when user scrolls up) -->
-                      <v-btn
-                        v-if="!autoScrollEnabled && isStreaming"
-                        class="follow-btn"
-                        color="primary"
-                        size="small"
-                        rounded
-                        @click="enableAutoScroll"
-                      >
-                        <v-icon start>mdi-arrow-down</v-icon>
-                        Folgen
-                      </v-btn>
-                    </div>
-                  </div>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-
-              <!-- Chain of Thought -->
-              <v-expansion-panel v-if="currentComparison.chain_of_thought" value="cot">
-                <v-expansion-panel-title>
-                  <v-icon class="mr-2">mdi-brain</v-icon>
-                  Chain-of-Thought Reasoning
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <div v-for="(step, idx) in currentComparison.chain_of_thought" :key="idx" class="cot-step mb-3">
-                    <div class="text-subtitle-2 font-weight-bold">{{ step.step_name }}</div>
-                    <div class="text-body-2 mt-1">{{ step.reasoning }}</div>
-                  </div>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-
-              <!-- JSON Preview -->
-              <v-expansion-panel value="json">
-                <v-expansion-panel-title>
-                  <v-icon class="mr-2">mdi-code-json</v-icon>
-                  JSON Rohdaten
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <pre class="json-preview">{{ JSON.stringify(currentComparison, null, 2) }}</pre>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-            </v-expansion-panels>
-          </v-card-text>
-        </v-card>
+        <CurrentComparisonView
+          :current-comparison="currentComparison"
+          :session="session"
+          :reconnecting="reconnecting"
+          :is-streaming="isStreaming"
+          :llm-stream-content="llmStreamContent"
+          :parsed-stream-json="parsedStreamJson"
+          :expanded-panels="expandedPanels"
+          :auto-scroll-enabled="autoScrollEnabled"
+          :format-criterion-name="formatCriterionName"
+          :get-score-color="getScoreColor"
+          @reconnect="reconnectToStream"
+          @open-fullscreen="openFullscreen"
+          @copy-stream="copyStreamToClipboard"
+          @stream-scroll="handleStreamScroll"
+          @enable-auto-scroll="enableAutoScroll"
+          @update:expanded-panels="expandedPanels = $event"
+        />
       </v-col>
     </v-row>
 
     <!-- Comparison History -->
     <v-row class="mt-4">
       <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-history</v-icon>
-            Verlauf ({{ completedComparisons.length }} abgeschlossene Vergleiche)
-          </v-card-title>
-          <v-divider></v-divider>
-
-          <v-data-table
-            :headers="historyHeaders"
-            :items="completedComparisons"
-            :items-per-page="10"
-            class="history-table"
-          >
-            <!-- Index -->
-            <template v-slot:item.comparison_index="{ item }">
-              <span class="font-weight-bold">#{{ item.comparison_index + 1 }}</span>
-            </template>
-
-            <!-- Pillars -->
-            <template v-slot:item.pillars="{ item }">
-              <div class="d-flex gap-1">
-                <v-chip size="small" color="blue" variant="outlined">{{ item.pillar_a_name }}</v-chip>
-                <v-icon size="small">mdi-arrow-left-right</v-icon>
-                <v-chip size="small" color="green" variant="outlined">{{ item.pillar_b_name }}</v-chip>
-              </div>
-            </template>
-
-            <!-- Winner -->
-            <template v-slot:item.winner="{ item }">
-              <v-chip
-                size="small"
-                :color="item.winner === 'A' ? 'blue' : item.winner === 'B' ? 'green' : 'grey'"
-                variant="flat"
-              >
-                <v-icon start size="small">mdi-trophy</v-icon>
-                {{ item.winner || 'TBD' }}
-              </v-chip>
-            </template>
-
-            <!-- Confidence -->
-            <template v-slot:item.confidence_score="{ item }">
-              <v-chip
-                v-if="item.confidence_score"
-                size="small"
-                :color="getConfidenceColor(item.confidence_score)"
-                variant="outlined"
-              >
-                {{ Math.round(item.confidence_score * 100) }}%
-              </v-chip>
-              <span v-else>-</span>
-            </template>
-
-            <!-- Timestamp -->
-            <template v-slot:item.evaluated_at="{ item }">
-              {{ formatDate(item.evaluated_at) }}
-            </template>
-
-            <!-- Actions -->
-            <template v-slot:item.actions="{ item }">
-              <v-btn
-                icon="mdi-eye"
-                size="small"
-                variant="text"
-                @click="viewComparison(item)"
-              ></v-btn>
-            </template>
-          </v-data-table>
-        </v-card>
+        <ComparisonHistoryTable
+          :completed-comparisons="completedComparisons"
+          :headers="historyHeaders"
+          :get-confidence-color="getConfidenceColor"
+          :format-date="formatDate"
+          @view-comparison="viewComparison"
+        />
       </v-col>
     </v-row>
   </v-container>
@@ -1666,6 +1077,13 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import WorkerLane from './WorkerLane.vue';
+
+// Import extracted components
+import SessionProgressBar from './JudgeSession/SessionProgressBar.vue';
+import WorkerLaneGrid from './JudgeSession/WorkerLaneGrid.vue';
+import SessionQueuePanel from './JudgeSession/SessionQueuePanel.vue';
+import CurrentComparisonView from './JudgeSession/CurrentComparisonView.vue';
+import ComparisonHistoryTable from './JudgeSession/ComparisonHistoryTable.vue';
 
 // Import composables
 import {

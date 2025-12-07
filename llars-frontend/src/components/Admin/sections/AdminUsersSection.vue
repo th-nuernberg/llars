@@ -26,10 +26,9 @@
         ></v-select>
       </v-col>
       <v-col cols="12" md="2">
-        <v-btn color="primary" @click="searchUser" :loading="loadingSearch" block height="48">
-          <v-icon start>mdi-magnify</v-icon>
+        <LBtn variant="primary" @click="searchUser" :loading="loadingSearch" block prepend-icon="mdi-magnify">
           Suchen
-        </v-btn>
+        </LBtn>
       </v-col>
     </v-row>
 
@@ -45,9 +44,7 @@
             <div class="text-caption text-medium-emphasis">Benutzerdetails</div>
           </div>
           <v-spacer></v-spacer>
-          <v-btn icon variant="text" @click="selectedUser = null">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <LIconBtn icon="mdi-close" @click="selectedUser = null" />
         </v-card-title>
 
         <v-divider></v-divider>
@@ -89,15 +86,14 @@
                   hide-details
                   style="max-width: 250px;"
                 ></v-select>
-                <v-btn
-                  color="success"
-                  variant="flat"
+                <LIconBtn
+                  icon="mdi-plus"
+                  variant="success"
                   :disabled="!roleToAssign"
                   @click="assignRole"
                   :loading="assigningRole"
-                >
-                  <v-icon>mdi-plus</v-icon>
-                </v-btn>
+                  size="default"
+                />
               </div>
             </v-col>
 
@@ -117,14 +113,14 @@
                 >
                   {{ perm }}
                 </v-chip>
-                <v-btn
+                <LBtn
                   v-if="selectedUser.permissions.length > 8"
                   variant="text"
                   size="small"
                   @click="showAllPermissions = !showAllPermissions"
                 >
                   {{ showAllPermissions ? 'Weniger anzeigen' : `+${selectedUser.permissions.length - 8} mehr` }}
-                </v-btn>
+                </LBtn>
               </div>
             </v-col>
           </v-row>
@@ -138,10 +134,9 @@
         <v-icon class="mr-2">mdi-account-group</v-icon>
         Benutzer mit Rollen
         <v-spacer></v-spacer>
-        <v-btn variant="text" color="primary" @click="loadAllUsersWithRoles" :loading="loadingUsers">
-          <v-icon start>mdi-refresh</v-icon>
+        <LBtn variant="text" @click="loadAllUsersWithRoles" :loading="loadingUsers" prepend-icon="mdi-refresh">
           Aktualisieren
-        </v-btn>
+        </LBtn>
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text>
@@ -175,16 +170,12 @@
           </template>
 
           <template v-slot:item.actions="{ item }">
-            <v-btn
-              icon
-              variant="text"
-              size="small"
+            <LIconBtn
+              icon="mdi-pencil"
+              tooltip="Bearbeiten"
               @click="selectUser(item.username)"
               :loading="loadingUser === item.username"
-            >
-              <v-icon>mdi-pencil</v-icon>
-              <v-tooltip activator="parent" location="top">Bearbeiten</v-tooltip>
-            </v-btn>
+            />
           </template>
 
           <template v-slot:no-data>

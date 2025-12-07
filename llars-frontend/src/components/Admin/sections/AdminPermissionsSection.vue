@@ -56,9 +56,9 @@
                     </v-chip>
                   </v-card-text>
                   <v-card-actions>
-                    <v-btn variant="text" size="small" @click="viewRoleDetails(role)">
+                    <LBtn variant="text" size="small" @click="viewRoleDetails(role)">
                       Details
-                    </v-btn>
+                    </LBtn>
                   </v-card-actions>
                 </v-card>
               </v-col>
@@ -142,9 +142,7 @@
           </v-icon>
           {{ selectedRole.display_name }}
           <v-spacer></v-spacer>
-          <v-btn icon variant="text" @click="roleDialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <LIconBtn icon="mdi-close" @click="roleDialog = false" />
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>

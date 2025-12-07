@@ -133,15 +133,15 @@
         </v-row>
       </v-card-text>
       <v-card-actions>
-        <v-btn
+        <LBtn
           variant="text"
           size="small"
           @click="fetchEmbeddingInfo"
           :loading="loadingEmbeddingInfo"
+          prepend-icon="mdi-refresh"
         >
-          <v-icon start size="small">mdi-refresh</v-icon>
           Aktualisieren
-        </v-btn>
+        </LBtn>
       </v-card-actions>
     </v-card>
 
@@ -190,10 +190,9 @@
                 ></v-select>
               </v-col>
               <v-col cols="12" md="4" class="d-flex justify-end">
-                <v-btn color="primary" @click="fetchDocuments" :loading="loadingDocuments">
-                  <v-icon start>mdi-refresh</v-icon>
+                <LBtn variant="primary" @click="fetchDocuments" :loading="loadingDocuments" prepend-icon="mdi-refresh">
                   Aktualisieren
-                </v-btn>
+                </LBtn>
               </v-col>
             </v-row>
 
@@ -227,15 +226,12 @@
               </template>
 
               <template v-slot:item.actions="{ item }">
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  color="error"
+                <LIconBtn
+                  icon="mdi-delete"
+                  variant="danger"
+                  tooltip="Löschen"
                   @click="confirmDeleteDocument(item)"
-                >
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
+                />
               </template>
             </v-data-table>
           </v-card-text>
@@ -256,17 +252,16 @@
                 ></v-text-field>
               </v-col>
               <v-col cols="12" md="4">
-                <v-btn
-                  color="primary"
+                <LBtn
+                  variant="primary"
                   @click="createCollection"
                   :loading="creatingCollection"
                   :disabled="!newCollectionName"
                   block
-                  height="48"
+                  prepend-icon="mdi-plus"
                 >
-                  <v-icon start>mdi-plus</v-icon>
                   Collection erstellen
-                </v-btn>
+                </LBtn>
               </v-col>
             </v-row>
 
@@ -298,27 +293,19 @@
               </template>
 
               <template v-slot:item.actions="{ item }">
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  color="primary"
+                <LIconBtn
+                  icon="mdi-eye"
+                  variant="primary"
+                  tooltip="Details anzeigen"
                   @click.stop="openCollectionDetail(item)"
-                  title="Details anzeigen"
-                >
-                  <v-icon>mdi-eye</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  color="error"
+                />
+                <LIconBtn
+                  icon="mdi-delete"
+                  variant="danger"
+                  tooltip="Löschen"
                   @click.stop="confirmDeleteCollection(item)"
                   :disabled="item.name === 'default' || item.name === 'general'"
-                  title="Löschen"
-                >
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
+                />
               </template>
             </v-data-table>
           </v-card-text>
@@ -368,16 +355,16 @@
               <strong>Maximale Dateigröße:</strong> 50 MB pro Datei
             </v-alert>
 
-            <v-btn
-              color="primary"
+            <LBtn
+              variant="primary"
               size="large"
               @click="uploadFiles"
               :loading="uploading"
               :disabled="!filesToUpload || filesToUpload.length === 0"
+              prepend-icon="mdi-upload"
             >
-              <v-icon start>mdi-upload</v-icon>
               {{ filesToUpload?.length || 0 }} Datei(en) hochladen
-            </v-btn>
+            </LBtn>
 
             <!-- Upload Progress -->
             <v-progress-linear
@@ -406,8 +393,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="deleteDocDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" @click="deleteDocument" :loading="deletingDocument">Löschen</v-btn>
+          <LBtn variant="text" @click="deleteDocDialog = false">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="deleteDocument" :loading="deletingDocument">Löschen</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -433,24 +420,23 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="deleteCollDialog = false">Abbrechen</v-btn>
-          <v-btn
+          <LBtn variant="text" @click="deleteCollDialog = false">Abbrechen</LBtn>
+          <LBtn
             v-if="collectionToDelete?.document_count > 0"
-            color="error"
             variant="tonal"
             @click="deleteCollection(true)"
             :loading="deletingCollection"
           >
             Inkl. Dokumente löschen
-          </v-btn>
-          <v-btn
-            color="error"
+          </LBtn>
+          <LBtn
+            variant="danger"
             @click="deleteCollection(false)"
             :loading="deletingCollection"
             :disabled="collectionToDelete?.document_count > 0"
           >
             Löschen
-          </v-btn>
+          </LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -462,9 +448,7 @@
           <v-icon start color="white">mdi-folder-open</v-icon>
           <span class="text-white">{{ selectedCollection.display_name || selectedCollection.name }}</span>
           <v-spacer></v-spacer>
-          <v-btn icon variant="text" color="white" @click="collectionDetailDialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <LIconBtn icon="mdi-close" @click="collectionDetailDialog = false" />
         </v-card-title>
 
         <v-card-text class="pa-0">
@@ -560,15 +544,15 @@
             <div class="d-flex align-center mb-3">
               <h3 class="text-h6">Dokumente in dieser Collection</h3>
               <v-spacer></v-spacer>
-              <v-btn
+              <LBtn
                 size="small"
-                variant="outlined"
+                variant="secondary"
                 @click="fetchCollectionDocuments"
                 :loading="loadingCollectionDocs"
+                prepend-icon="mdi-refresh"
               >
-                <v-icon start size="small">mdi-refresh</v-icon>
                 Aktualisieren
-              </v-btn>
+              </LBtn>
             </div>
 
             <v-data-table
@@ -610,26 +594,17 @@
               </template>
 
               <template v-slot:item.actions="{ item }">
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  color="primary"
+                <LIconBtn
+                  icon="mdi-eye"
+                  variant="primary"
+                  tooltip="Vorschau"
                   @click.stop="openDocumentPreview(item)"
-                  title="Vorschau"
-                >
-                  <v-icon>mdi-eye</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  color="info"
+                />
+                <LIconBtn
+                  icon="mdi-download"
+                  tooltip="Download"
                   @click.stop="downloadDocument(item)"
-                  title="Download"
-                >
-                  <v-icon>mdi-download</v-icon>
-                </v-btn>
+                />
               </template>
 
               <template v-slot:no-data>
@@ -656,9 +631,7 @@
           </v-icon>
           {{ previewDocument.title || previewDocument.filename }}
           <v-spacer></v-spacer>
-          <v-btn icon variant="text" @click="documentPreviewDialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <LIconBtn icon="mdi-close" @click="documentPreviewDialog = false" />
         </v-card-title>
 
         <v-divider></v-divider>
@@ -730,16 +703,15 @@
         <v-divider></v-divider>
 
         <v-card-actions>
-          <v-btn
-            variant="outlined"
-            color="primary"
+          <LBtn
+            variant="secondary"
             @click="downloadDocument(previewDocument)"
+            prepend-icon="mdi-download"
           >
-            <v-icon start>mdi-download</v-icon>
             Download
-          </v-btn>
+          </LBtn>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="documentPreviewDialog = false">Schließen</v-btn>
+          <LBtn variant="text" @click="documentPreviewDialog = false">Schließen</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>

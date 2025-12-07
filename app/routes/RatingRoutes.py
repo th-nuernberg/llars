@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request, g
 from werkzeug.security import check_password_hash
 from werkzeug.exceptions import BadRequest
 from auth.decorators import authentik_required, admin_required, roles_required
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
@@ -26,22 +27,22 @@ from .HelperFunctions import get_user_threads, can_access_thread
 
 @data_blueprint.route('/email_threads/ratings/<int:thread_id>', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='rating')
 def get_email_thread_for_ratings(thread_id):
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
-        return jsonify({'error': 'Access denied'}), 401
+        raise ValidationError('Access denied')
 
     rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
     if not rating_function_type:
-        return jsonify({'error': 'Rating function type not found'}), 404
+        raise NotFoundError('Rating function type not found')
 
     email_thread = EmailThread.query.filter_by(thread_id=thread_id,
                                                function_type_id=rating_function_type.function_type_id).first()
     if not email_thread:
-        return jsonify({'error': 'Email thread not found or not for rating'}), 404
+        raise NotFoundError('Email thread not found or not for rating')
 
     thread_data = {
         'chat_id': email_thread.chat_id,
@@ -70,23 +71,23 @@ def get_email_thread_for_ratings(thread_id):
 
 @data_blueprint.route('/email_threads/ratings/<int:thread_id>/<int:feature_id>', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='rating')
 def get_feature_and_messages(thread_id, feature_id):
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
-        return jsonify({'error': 'Access denied'}), 401
+        raise ValidationError('Access denied')
 
     # Get the feature by thread_id and feature_id
     feature = Feature.query.filter_by(thread_id=thread_id, feature_id=feature_id).first()
     if not feature:
-        return jsonify({'error': 'Feature not found'}), 404
+        raise NotFoundError('Feature not found')
 
     # Get the messages for the thread_id
     messages = Message.query.filter_by(thread_id=thread_id).all()
     if not messages:
-        return jsonify({'error': 'No messages found for the given thread_id'}), 404
+        raise NotFoundError('No messages found for the given thread_id')
 
     feature_data = {
         'model_name': feature.llm.name,
@@ -116,13 +117,13 @@ def get_feature_and_messages(thread_id, feature_id):
 
 @data_blueprint.route('/email_threads/ratings', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='rating')
 def list_email_threads_for_ratings():
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
     if not rating_function_type:
-        return jsonify({'error': 'Rating function type not found'}), 404
+        raise NotFoundError('Rating function type not found')
 
     email_threads = get_user_threads(user.id, 2)
 
@@ -144,12 +145,12 @@ def list_email_threads_for_ratings():
 
 @data_blueprint.route('/feature_type_mapping', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='rating')
 def get_feature_type_mapping():
-    # Authorization handled by @authentik_required decorator
     feature_types = FeatureType.query.all()
 
     if not feature_types:
-        return jsonify({'error': 'No feature types found'}), 404
+        raise NotFoundError('No feature types found')
 
     mapping = {
         'by_name': {ft.name: ft.type_id for ft in feature_types},
@@ -160,36 +161,36 @@ def get_feature_type_mapping():
 
 @data_blueprint.route('/feature_type_mapping/<identifier>', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='rating')
 def get_feature_type(identifier):
-    # Authorization handled by @authentik_required decorator
     if identifier.isdigit():
         # Wenn der Identifier eine Zahl ist, gehe davon aus, dass es eine FeatureType-ID ist
         feature_type = FeatureType.query.filter_by(type_id=int(identifier)).first()
         if not feature_type:
-            return jsonify({'error': f'Feature type ID {identifier} not found'}), 404
+            raise NotFoundError(f'Feature type ID {identifier} not found')
         return jsonify({'name': feature_type.name}), 200
     else:
         # Andernfalls gehe davon aus, dass es sich um einen FeatureType-Namen handelt
         feature_type = FeatureType.query.filter_by(name=identifier).first()
         if not feature_type:
-            return jsonify({'error': f'Feature type name {identifier} not found'}), 404
+            raise NotFoundError(f'Feature type name {identifier} not found')
         return jsonify({'type_id': feature_type.type_id}), 200
 
 @data_blueprint.route('/save_rating/<int:thread_id>/<int:feature_id>', methods=['POST'])
 @authentik_required
+@handle_api_errors(logger_name='rating')
 def save_rating(thread_id, feature_id):
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
-        return jsonify({'error': 'Access denied'}), 401
+        raise ValidationError('Access denied')
     data = request.get_json()
     rating_content = data.get('rating_content')
     edited_feature = data.get('edited_feature')
 
     if rating_content is None or edited_feature is None:
-        return jsonify({'error': 'Rating content and edited feature are required'}), 400
+        raise ValidationError('Rating content and edited feature are required')
 
     # Find or create the feature rating
     feature_rating = UserFeatureRating.query.filter_by(user_id=user.id, feature_id=feature_id).first()
@@ -213,17 +214,17 @@ def save_rating(thread_id, feature_id):
 
 @data_blueprint.route('/get_rating/<int:thread_id>/<int:feature_id>', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='rating')
 def get_rating(thread_id, feature_id):
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 2):
-        return jsonify({'error': 'Access denied'}), 401
+        raise ValidationError('Access denied')
     feature_rating = UserFeatureRating.query.filter_by(user_id=user.id, feature_id=feature_id).first()
 
     if not feature_rating:
-        return jsonify({'error': 'Rating not found'}), 404
+        raise NotFoundError('Rating not found')
 
     rating_data = {
         'rating_content': feature_rating.rating_content,

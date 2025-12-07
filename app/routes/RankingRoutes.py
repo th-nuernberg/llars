@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, request, g
 from werkzeug.security import check_password_hash
 from werkzeug.exceptions import BadRequest
 from auth.decorators import authentik_required, admin_required, roles_required
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 
 from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
@@ -33,14 +34,14 @@ from .HelperFunctions import get_user_threads, can_access_thread
 
 @data_blueprint.route('/email_threads/rankings', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='ranking')
 def list_email_threads_for_rankings():
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # Use FeatureService to get function type
     ranking_function_type = FeatureService.get_function_type_by_name('ranking')
     if not ranking_function_type:
-        return jsonify({'error': 'Ranking function type not found'}), 404
+        raise NotFoundError('Ranking function type not found')
 
     # Use ThreadService to get user threads
     email_threads = ThreadService.get_threads_for_user(user.id, ranking_function_type.function_type_id)
@@ -63,14 +64,14 @@ def list_email_threads_for_rankings():
 
 @data_blueprint.route('/email_threads/feature_ranking_list', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='ranking')
 def list_ranking_threads():
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # Use FeatureService to get function type
     ranking_function_type = FeatureService.get_function_type_by_name('ranking')
     if not ranking_function_type:
-        return jsonify({'error': 'Ranking function type not found'}), 404
+        raise NotFoundError('Ranking function type not found')
 
     # Use ThreadService to get user threads
     email_threads = ThreadService.get_threads_for_user(user.id, ranking_function_type.function_type_id)
@@ -88,23 +89,23 @@ def list_ranking_threads():
 
 @data_blueprint.route('/email_threads/rankings/<int:thread_id>', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='ranking')
 def get_email_thread_for_rankings(thread_id):
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # Use FeatureService to get function type
     ranking_function_type = FeatureService.get_function_type_by_name('ranking')
     if not ranking_function_type:
-        return jsonify({'error': 'Ranking function type not found'}), 404
+        raise NotFoundError('Ranking function type not found')
 
     # Use ThreadService to check access
     if not ThreadService.can_user_access_thread(user.id, thread_id, 1):
-        return jsonify({'error': 'Access denied'}), 401
+        raise ValidationError('Access denied')
 
     # Use ThreadService to get thread by id
     email_thread = ThreadService.get_thread_by_id(thread_id, ranking_function_type.function_type_id)
     if not email_thread:
-        return jsonify({'error': 'Email thread not found or not for ranking'}), 404
+        raise NotFoundError('Email thread not found or not for ranking')
 
     # Use RankingService to check if user has ranked this thread
     ranked = RankingService.has_user_ranked_thread(user.id, email_thread.thread_id)
@@ -137,13 +138,13 @@ def get_email_thread_for_rankings(thread_id):
 
 @data_blueprint.route('/email_threads/<int:thread_id>/current_ranking', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='ranking')
 def get_current_ranking(thread_id):
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # Use ThreadService to check access
     if not ThreadService.can_user_access_thread(user.id, thread_id, 1):
-        return jsonify({'error': 'Access denied'}), 401
+        raise ValidationError('Access denied')
 
     # Use RankingService to get current rankings organized by type
     rankings_data = RankingService.get_current_rankings_by_type(user.id, thread_id)
@@ -167,13 +168,13 @@ def get_current_ranking(thread_id):
 
 @data_blueprint.route('/save_ranking/<int:thread_id>', methods=['POST'])
 @authentik_required
+@handle_api_errors(logger_name='ranking')
 def save_ranking(thread_id):
-    # Authorization handled by @authentik_required decorator
     user = g.authentik_user
 
     # Use ThreadService to check access
     if not ThreadService.can_user_access_thread(user.id, thread_id, 1):
-        return jsonify({'error': 'Access denied'}), 401
+        raise ValidationError('Access denied')
 
     data = request.get_json()
 
@@ -188,12 +189,12 @@ def save_ranking(thread_id):
             # Use FeatureService to find the FeatureType
             feature_type_entry = FeatureService.get_feature_type_by_name(type_name)
             if not feature_type_entry:
-                return jsonify({'error': f'Feature type {type_name} not found'}), 404
+                raise NotFoundError(f'Feature type {type_name} not found')
 
             # Use FeatureService to find the LLM
             llm_entry = FeatureService.get_llm_by_name(model_name)
             if not llm_entry:
-                return jsonify({'error': f'LLM {model_name} not found'}), 404
+                raise NotFoundError(f'LLM {model_name} not found')
 
             # Use FeatureService to find the feature
             feature = FeatureService.get_feature_by_attributes(
@@ -216,7 +217,7 @@ def save_ranking(thread_id):
                 )
 
                 if not success:
-                    return jsonify({'error': error_msg}), 400
+                    raise ValidationError(error_msg)
 
     return jsonify({'status': 'Ranking saved successfully'}), 201
 
@@ -224,9 +225,9 @@ def save_ranking(thread_id):
 
 @data_blueprint.route('/admin/user_ranking_stats', methods=['GET'])
 @admin_required
+@handle_api_errors(logger_name='ranking')
 def get_user_ranking_stats():
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
+    # Use RankingService to get user ranking stats
 
     # Use RankingService to get user ranking stats
     user_stats = RankingService.get_user_ranking_stats_for_all_users()

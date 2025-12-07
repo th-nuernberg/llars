@@ -187,7 +187,7 @@ class OnCoCoService:
             except LookupError:
                 try:
                     nltk.download('punkt_tab', quiet=True)
-                except:
+                except Exception:
                     pass  # Not all NLTK versions have punkt_tab
 
             self._sentence_tokenizer = nltk.sent_tokenize

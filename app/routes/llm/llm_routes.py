@@ -7,11 +7,13 @@ Endpoints for retrieving available LLM models and their configurations.
 from flask import jsonify, request
 from db.models.llm_model import LLMModel
 from db.db import db
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
 
 from routes.llm import llm_bp
 
 
 @llm_bp.route('/models', methods=['GET'])
+@handle_api_errors(logger_name='llm')
 def get_models():
     """
     Get all available LLM models.
@@ -49,15 +51,13 @@ def get_models():
 
 
 @llm_bp.route('/models/default', methods=['GET'])
+@handle_api_errors(logger_name='llm')
 def get_default_model():
     """Get the default LLM model."""
     model = LLMModel.get_default_model()
 
     if not model:
-        return jsonify({
-            'success': False,
-            'error': 'No default model configured'
-        }), 404
+        raise NotFoundError('No default model configured')
 
     return jsonify({
         'success': True,
@@ -66,15 +66,13 @@ def get_default_model():
 
 
 @llm_bp.route('/models/<int:model_id>', methods=['GET'])
+@handle_api_errors(logger_name='llm')
 def get_model(model_id):
     """Get a specific LLM model by ID."""
     model = LLMModel.query.get(model_id)
 
     if not model:
-        return jsonify({
-            'success': False,
-            'error': f'Model with ID {model_id} not found'
-        }), 404
+        raise NotFoundError(f'Model with ID {model_id} not found')
 
     return jsonify({
         'success': True,
@@ -83,15 +81,13 @@ def get_model(model_id):
 
 
 @llm_bp.route('/models/by-model-id/<path:model_id>', methods=['GET'])
+@handle_api_errors(logger_name='llm')
 def get_model_by_model_id(model_id):
     """Get a specific LLM model by its model_id string."""
     model = LLMModel.get_by_model_id(model_id)
 
     if not model:
-        return jsonify({
-            'success': False,
-            'error': f'Model "{model_id}" not found'
-        }), 404
+        raise NotFoundError(f'Model "{model_id}" not found')
 
     return jsonify({
         'success': True,
@@ -100,21 +96,16 @@ def get_model_by_model_id(model_id):
 
 
 @llm_bp.route('/models/<int:model_id>/set-default', methods=['POST'])
+@handle_api_errors(logger_name='llm')
 def set_default_model(model_id):
     """Set a model as the default."""
     model = LLMModel.query.get(model_id)
 
     if not model:
-        return jsonify({
-            'success': False,
-            'error': f'Model with ID {model_id} not found'
-        }), 404
+        raise NotFoundError(f'Model with ID {model_id} not found')
 
     if not model.is_active:
-        return jsonify({
-            'success': False,
-            'error': 'Cannot set inactive model as default'
-        }), 400
+        raise ValidationError('Cannot set inactive model as default')
 
     # Unset current default
     LLMModel.query.filter_by(is_default=True).update({'is_default': False})
@@ -131,25 +122,23 @@ def set_default_model(model_id):
 
 
 @llm_bp.route('/models', methods=['POST'])
+@handle_api_errors(logger_name='llm')
 def create_model():
     """Create a new LLM model configuration."""
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'No data provided'}), 400
+        raise ValidationError('No data provided')
 
     required_fields = ['model_id', 'display_name', 'provider', 'context_window', 'max_output_tokens']
     for field in required_fields:
         if field not in data:
-            return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+            raise ValidationError(f'Missing required field: {field}')
 
     # Check if model_id already exists
     existing = LLMModel.get_by_model_id(data['model_id'])
     if existing:
-        return jsonify({
-            'success': False,
-            'error': f'Model with ID "{data["model_id"]}" already exists'
-        }), 400
+        raise ConflictError(f'Model with ID "{data["model_id"]}" already exists')
 
     model = LLMModel(
         model_id=data['model_id'],
@@ -184,19 +173,17 @@ def create_model():
 
 
 @llm_bp.route('/models/<int:model_id>', methods=['PUT'])
+@handle_api_errors(logger_name='llm')
 def update_model(model_id):
     """Update an existing LLM model configuration."""
     model = LLMModel.query.get(model_id)
 
     if not model:
-        return jsonify({
-            'success': False,
-            'error': f'Model with ID {model_id} not found'
-        }), 404
+        raise NotFoundError(f'Model with ID {model_id} not found')
 
     data = request.get_json()
     if not data:
-        return jsonify({'success': False, 'error': 'No data provided'}), 400
+        raise ValidationError('No data provided')
 
     # Update allowed fields
     updatable_fields = [
@@ -225,21 +212,16 @@ def update_model(model_id):
 
 
 @llm_bp.route('/models/<int:model_id>', methods=['DELETE'])
+@handle_api_errors(logger_name='llm')
 def delete_model(model_id):
     """Delete an LLM model configuration."""
     model = LLMModel.query.get(model_id)
 
     if not model:
-        return jsonify({
-            'success': False,
-            'error': f'Model with ID {model_id} not found'
-        }), 404
+        raise NotFoundError(f'Model with ID {model_id} not found')
 
     if model.is_default:
-        return jsonify({
-            'success': False,
-            'error': 'Cannot delete the default model. Set another model as default first.'
-        }), 400
+        raise ValidationError('Cannot delete the default model. Set another model as default first.')
 
     db.session.delete(model)
     db.session.commit()

@@ -13,7 +13,8 @@ from db.tables import (
     FeatureFunctionType,
     RatingScenarios
 )
-from .HelperFunctions import get_user_scenarios
+from routes.HelperFunctions import get_user_scenarios
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
 
 BASE_DIR = Path(__file__).parent
 PERSONAS_PATH = BASE_DIR / '../static/vikl-personas.json'
@@ -32,18 +33,19 @@ def require_user():
 
 
 @data_blueprint.route('/comparison/sessions', methods=['GET'])
+@handle_api_errors(logger_name='comparison')
 def list_sessions_for_comparison():
     api_key = request.headers.get('Authorization')
     if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
+        raise UnauthorizedError('API key is missing')
 
     user = User.query.filter_by(api_key=api_key).first()
     if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
+        raise UnauthorizedError('Invalid API key')
 
     comparison_function_type = FeatureFunctionType.query.filter_by(name='comparison').first()
     if not comparison_function_type:
-        return jsonify({'error': 'Comparison function type not found'}), 404
+        raise NotFoundError('Comparison function type not found')
 
     comparison_scenarios = get_user_scenarios(user.id, comparison_function_type.function_type_id)
 
@@ -81,6 +83,7 @@ def list_sessions_for_comparison():
 
 
 @data_blueprint.route('/comparison/session/<int:session_id>', methods=['GET'])
+@handle_api_errors(logger_name='comparison')
 def get_session(session_id):
     user = require_user()
     if isinstance(user, tuple):
@@ -88,7 +91,7 @@ def get_session(session_id):
 
     session = ComparisonSession.query.filter_by(id=session_id, user_id=user.id).first()
     if not session:
-        return jsonify({'error': 'Session not found'}), 404
+        raise NotFoundError('Session not found')
 
     messages = (
         ComparisonMessage

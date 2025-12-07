@@ -144,25 +144,34 @@
                 </v-chip>
               </div>
 
-              <div class="message-content" v-html="formatMessage(message.content)"></div>
+              <div
+                class="message-content"
+                v-html="formatMessage(message.content, message.sources)"
+                @click="handleFootnoteClick($event, message.sources)"
+              ></div>
 
-              <!-- Sources -->
+              <!-- Sources Legend -->
               <div v-if="message.sources && message.sources.length > 0" class="message-sources mt-2">
-                <v-expansion-panels variant="accordion" density="compact">
-                  <v-expansion-panel>
-                    <v-expansion-panel-title class="text-caption">
-                      <v-icon start size="14">mdi-file-document-multiple</v-icon>
-                      {{ message.sources.length }} Quellen
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                      <div v-for="(source, idx) in message.sources" :key="idx" class="source-item">
-                        <strong>{{ source.title }}</strong>
-                        <span class="text-caption ml-2">({{ (source.relevance * 100).toFixed(0) }}%)</span>
-                        <div class="text-caption text-medium-emphasis">{{ source.excerpt }}</div>
-                      </div>
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
+                <div class="sources-legend">
+                  <div class="sources-header text-caption d-flex align-center mb-1">
+                    <v-icon size="14" class="mr-1">mdi-bookmark-multiple</v-icon>
+                    <span>Quellen</span>
+                  </div>
+                  <div class="sources-list">
+                    <v-chip
+                      v-for="source in message.sources"
+                      :key="source.footnote_id"
+                      size="small"
+                      variant="tonal"
+                      color="primary"
+                      class="source-chip mr-1 mb-1"
+                      @click="showSourceDetail(source)"
+                    >
+                      <span class="font-weight-bold mr-1">[{{ source.footnote_id }}]</span>
+                      <span class="text-truncate" style="max-width: 150px;">{{ source.title }}</span>
+                    </v-chip>
+                  </div>
+                </div>
               </div>
 
               <div v-if="message.streaming" class="stream-indicator">
@@ -253,37 +262,95 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000">
       {{ snackbar.text }}
     </v-snackbar>
+
+    <!-- Source Detail Dialog -->
+    <v-dialog v-model="sourceDialog.show" max-width="600">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-chip size="small" color="primary" class="mr-2">
+            [{{ sourceDialog.source?.footnote_id }}]
+          </v-chip>
+          {{ sourceDialog.source?.title || 'Quelle' }}
+        </v-card-title>
+        <v-card-subtitle v-if="sourceDialog.source?.collection_name">
+          <v-icon size="14" class="mr-1">mdi-folder</v-icon>
+          {{ sourceDialog.source?.collection_name }}
+          <v-chip size="x-small" class="ml-2" color="success" variant="tonal">
+            {{ ((sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% relevant
+          </v-chip>
+        </v-card-subtitle>
+        <v-divider />
+        <v-card-text class="source-excerpt">
+          {{ sourceDialog.source?.excerpt }}
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="sourceDialog.show = false">
+            Schließen
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { io } from 'socket.io-client'
 import axios from 'axios'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+import { useChatMessages } from './ChatWithBots/composables/useChatMessages.js'
 
-// State
+// Composable for chat message operations
+const {
+  isProcessing,
+  currentSources,
+  addUserMessage,
+  addBotPlaceholder,
+  updateBotMessage,
+  setBotError,
+  sendViaREST,
+  getFileType
+} = useChatMessages()
+
+// Socket.IO connection
+const socket = ref(null)
+
+// Chatbot data
 const chatbots = ref([])
 const selectedChatbot = ref(null)
 const capabilities = ref(null)
+
+// Chat state
 const messages = ref([])
 const newMessage = ref('')
-const isProcessing = ref(false)
+const sessionId = ref(null)
+
+// UI state
 const loadingChatbots = ref(true)
 const sidebarCollapsed = ref(false)
 const selectedFiles = ref([])
-const sessionId = ref(null)
 
+// Refs
 const chatContainer = ref(null)
 const fileInput = ref(null)
 
+// Snackbar state
 const snackbar = ref({
   show: false,
   text: '',
   color: 'success'
 })
 
-// Computed
+// Source detail dialog state
+const sourceDialog = ref({
+  show: false,
+  source: null
+})
+
+// ==================== COMPUTED PROPERTIES ====================
+
 const acceptedFileTypes = computed(() => {
   const types = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
   if (capabilities.value?.vision) {
@@ -299,7 +366,11 @@ const fileUploadTooltip = computed(() => {
   return 'Dokumente hochladen (PDF, Word, Excel, PowerPoint)'
 })
 
-// Methods
+// ==================== CHATBOT MANAGEMENT ====================
+
+/**
+ * Load available chatbots from API
+ */
 async function loadChatbots() {
   loadingChatbots.value = true
   try {
@@ -316,6 +387,9 @@ async function loadChatbots() {
   }
 }
 
+/**
+ * Select a chatbot and load its chat history
+ */
 async function selectChatbot(bot) {
   selectedChatbot.value = bot
   messages.value = []
@@ -347,6 +421,11 @@ async function selectChatbot(bot) {
   }
 }
 
+// ==================== CHAT PERSISTENCE ====================
+
+/**
+ * Save current chat to localStorage
+ */
 function saveChat() {
   if (!selectedChatbot.value) return
   const storageKey = `chat_${selectedChatbot.value.id}`
@@ -356,6 +435,9 @@ function saveChat() {
   }))
 }
 
+/**
+ * Clear current chat and localStorage
+ */
 function clearChat() {
   messages.value = []
   if (selectedChatbot.value) {
@@ -365,10 +447,18 @@ function clearChat() {
   sessionId.value = crypto.randomUUID()
 }
 
+// ==================== FILE HANDLING ====================
+
+/**
+ * Trigger file input dialog
+ */
 function triggerFileInput() {
   fileInput.value?.click()
 }
 
+/**
+ * Handle file selection from input
+ */
 function handleFileSelect(event) {
   const files = Array.from(event.target.files)
   for (const file of files) {
@@ -382,26 +472,30 @@ function handleFileSelect(event) {
   event.target.value = ''
 }
 
+/**
+ * Remove file from selection
+ */
 function removeFile(index) {
   selectedFiles.value.splice(index, 1)
 }
 
+// ==================== MESSAGE SENDING ====================
+
+/**
+ * Main message sending function
+ * Handles both text-only and file upload scenarios
+ * Uses Socket.IO for streaming when available, falls back to REST API
+ */
 async function sendMessage() {
   if ((!newMessage.value.trim() && selectedFiles.value.length === 0) || isProcessing.value) return
   if (!selectedChatbot.value) return
 
   const userMessage = newMessage.value.trim()
   const files = [...selectedFiles.value]
+  const hasFiles = files.length > 0
 
-  // Add user message
-  const userMsgObj = {
-    id: Date.now(),
-    content: userMessage || '(Dateien hochgeladen)',
-    sender: 'user',
-    timestamp: new Date().toLocaleTimeString(),
-    files: files.map(f => ({ filename: f.name, type: getFileType(f.name) }))
-  }
-  messages.value.push(userMsgObj)
+  // Add user message to chat
+  addUserMessage(messages, userMessage, files)
 
   // Clear input
   newMessage.value = ''
@@ -409,66 +503,65 @@ async function sendMessage() {
   isProcessing.value = true
 
   // Add placeholder for bot response
-  const botMsgObj = {
-    id: Date.now() + 1,
-    content: '',
-    sender: 'bot',
-    timestamp: '',
-    streaming: true
-  }
-  messages.value.push(botMsgObj)
+  addBotPlaceholder(messages)
   scrollToBottom()
 
+  // Files require REST API (Socket.IO doesn't support file uploads)
+  // Also use REST as fallback if socket is not connected
+  if (hasFiles || !socket.value?.connected) {
+    await sendMessageViaREST(userMessage, files)
+  } else {
+    // Use Socket.IO for streaming text-only messages
+    socket.value.emit('chatbot:stream', {
+      chatbot_id: selectedChatbot.value.id,
+      message: userMessage,
+      session_id: sessionId.value,
+      username: null
+    })
+  }
+}
+
+/**
+ * Send message via REST API
+ * Handles both text-only and file upload
+ */
+async function sendMessageViaREST(userMessage, files = []) {
   try {
-    // Build form data for file upload
-    const formData = new FormData()
-    formData.append('message', userMessage)
-    formData.append('session_id', sessionId.value)
-    formData.append('include_sources', 'true')
-
-    for (const file of files) {
-      formData.append('files', file)
-    }
-
-    const response = await axios.post(
-      `/api/chatbots/${selectedChatbot.value.id}/chat`,
-      formData,
-      {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      }
+    const result = await sendViaREST(
+      selectedChatbot.value.id,
+      userMessage,
+      sessionId.value,
+      files
     )
 
-    if (response.data.success) {
-      // Update bot message
-      const lastIdx = messages.value.length - 1
-      messages.value[lastIdx] = {
-        ...messages.value[lastIdx],
-        content: response.data.response,
-        timestamp: new Date().toLocaleTimeString(),
-        streaming: false,
-        sources: response.data.sources
-      }
+    if (result.success) {
+      updateBotMessage(
+        messages,
+        result.content,
+        new Date().toLocaleTimeString(),
+        false,
+        result.sources
+      )
       saveChat()
     } else {
-      throw new Error(response.data.error || 'Unbekannter Fehler')
+      setBotError(messages)
+      showSnackbar(result.error || 'Fehler beim Senden', 'error')
     }
-
   } catch (error) {
     console.error('Chat error:', error)
-    const lastIdx = messages.value.length - 1
-    messages.value[lastIdx] = {
-      ...messages.value[lastIdx],
-      content: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
-      timestamp: new Date().toLocaleTimeString(),
-      streaming: false
-    }
-    showSnackbar(error.response?.data?.error || 'Fehler beim Senden', 'error')
+    setBotError(messages)
+    showSnackbar('Fehler beim Senden', 'error')
   } finally {
     isProcessing.value = false
     scrollToBottom()
   }
 }
 
+// ==================== UI UTILITIES ====================
+
+/**
+ * Scroll chat container to bottom
+ */
 function scrollToBottom() {
   nextTick(() => {
     if (chatContainer.value) {
@@ -480,13 +573,53 @@ function scrollToBottom() {
   })
 }
 
-function formatMessage(content) {
-  if (!content) return ''
-  // Parse markdown and sanitize
-  const html = marked.parse(content, { breaks: true })
-  return DOMPurify.sanitize(html)
+/**
+ * Show snackbar notification
+ */
+function showSnackbar(text, color = 'success') {
+  snackbar.value = { show: true, text, color }
 }
 
+// ==================== MESSAGE FORMATTING ====================
+
+/**
+ * Format message content with markdown and footnote support
+ */
+function formatMessage(content, sources = []) {
+  if (!content) return ''
+
+  // Replace footnote references [1], [2], etc. with clickable links
+  let processedContent = content
+  if (sources && sources.length > 0) {
+    // Create a map of footnote_id to source
+    const sourceMap = {}
+    sources.forEach(s => {
+      sourceMap[s.footnote_id] = s
+    })
+
+    // Replace [1], [2], etc. with clickable footnote links
+    processedContent = content.replace(/\[(\d+)\]/g, (match, num) => {
+      const footnoteId = parseInt(num)
+      const source = sourceMap[footnoteId]
+      if (source) {
+        const title = source.title || 'Quelle ' + footnoteId
+        // Create a clickable superscript footnote
+        return `<sup class="footnote-ref" data-footnote-id="${footnoteId}" title="${title}">[${num}]</sup>`
+      }
+      return match
+    })
+  }
+
+  // Parse markdown and sanitize
+  const html = marked.parse(processedContent, { breaks: true })
+  return DOMPurify.sanitize(html, {
+    ADD_ATTR: ['data-footnote-id', 'title']
+  })
+}
+
+/**
+ * Get icon for file type
+ */
 function getFileIcon(type) {
   switch (type) {
     case 'image': return 'mdi-image'
@@ -498,34 +631,140 @@ function getFileIcon(type) {
   }
 }
 
-function getFileType(filename) {
-  const ext = filename.split('.').pop()?.toLowerCase()
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext)) return 'image'
-  if (ext === 'pdf') return 'pdf'
-  if (['doc', 'docx'].includes(ext)) return 'word'
-  if (['xls', 'xlsx'].includes(ext)) return 'excel'
-  if (['ppt', 'pptx'].includes(ext)) return 'powerpoint'
-  return 'document'
-}
-
+/**
+ * Format file size for display
+ */
 function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-function showSnackbar(text, color = 'success') {
-  snackbar.value = { show: true, text, color }
+// ==================== SOURCE HANDLING ====================
+
+/**
+ * Show source detail dialog
+ */
+function showSourceDetail(source) {
+  sourceDialog.value = {
+    show: true,
+    source: source
+  }
 }
 
-// Watch for chatbot changes
+/**
+ * Handle click on footnote references in message content
+ */
+function handleFootnoteClick(event, sources) {
+  const target = event.target
+  if (target.classList.contains('footnote-ref')) {
+    const footnoteId = parseInt(target.dataset.footnoteId)
+    if (sources && sources.length > 0) {
+      const source = sources.find(s => s.footnote_id === footnoteId)
+      if (source) {
+        showSourceDetail(source)
+      }
+    }
+  }
+}
+
+// ==================== SOCKET.IO SETUP ====================
+
+/**
+ * Initialize Socket.IO connection and event handlers
+ */
+function initSocket() {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  socket.value = io(baseUrl, {
+    path: '/socket.io/',
+    transports: ['websocket', 'polling']
+  })
+
+  socket.value.on('connect', () => {
+    console.log('ChatWithBots: Socket connected')
+  })
+
+  socket.value.on('disconnect', () => {
+    console.log('ChatWithBots: Socket disconnected')
+  })
+
+  // Sources are sent BEFORE streaming, so we store them for the current message
+  socket.value.on('chatbot:sources', (data) => {
+    currentSources.value = data.sources || []
+    // Assign sources to the current bot message placeholder
+    const lastIdx = messages.value.length - 1
+    if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot') {
+      messages.value[lastIdx].sources = currentSources.value
+    }
+  })
+
+  // Streaming response chunks
+  socket.value.on('chatbot:response', (data) => {
+    const lastIdx = messages.value.length - 1
+    if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot') {
+      if (data.content) {
+        messages.value[lastIdx].content += data.content
+        scrollToBottom()
+      }
+      if (data.complete) {
+        messages.value[lastIdx].streaming = false
+        messages.value[lastIdx].timestamp = new Date().toLocaleTimeString()
+        // Ensure sources are assigned
+        if (currentSources.value.length > 0 && !messages.value[lastIdx].sources) {
+          messages.value[lastIdx].sources = currentSources.value
+        }
+        currentSources.value = []
+        isProcessing.value = false
+        saveChat()
+        scrollToBottom()
+      }
+    }
+  })
+
+  // Completion metadata
+  socket.value.on('chatbot:complete', (data) => {
+    console.log('Chatbot response complete:', data)
+  })
+
+  // Error handling
+  socket.value.on('chatbot:error', (data) => {
+    console.error('Chatbot error:', data.error)
+    const lastIdx = messages.value.length - 1
+    if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot') {
+      messages.value[lastIdx].content = data.error || 'Ein Fehler ist aufgetreten.'
+      messages.value[lastIdx].streaming = false
+      messages.value[lastIdx].timestamp = new Date().toLocaleTimeString()
+    }
+    isProcessing.value = false
+    showSnackbar(data.error || 'Fehler beim Senden', 'error')
+  })
+}
+
+/**
+ * Disconnect Socket.IO connection
+ */
+function disconnectSocket() {
+  if (socket.value) {
+    socket.value.disconnect()
+    socket.value = null
+  }
+}
+
+// ==================== WATCHERS ====================
+
 watch(messages, () => {
   scrollToBottom()
 }, { deep: true })
 
-// Lifecycle
+// ==================== LIFECYCLE HOOKS ====================
+
 onMounted(() => {
   loadChatbots()
+  initSocket()
+})
+
+onUnmounted(() => {
+  disconnectSocket()
 })
 </script>
 
@@ -672,6 +911,23 @@ onMounted(() => {
   overflow-x: auto;
 }
 
+/* Footnote references styling */
+.message-content :deep(.footnote-ref) {
+  color: rgb(var(--v-theme-primary));
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.75em;
+  vertical-align: super;
+  padding: 0 2px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.message-content :deep(.footnote-ref:hover) {
+  background: rgba(var(--v-theme-primary), 0.15);
+  text-decoration: underline;
+}
+
 .message-files {
   display: flex;
   flex-wrap: wrap;
@@ -680,6 +936,30 @@ onMounted(() => {
 .message-sources {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   padding-top: 8px;
+}
+
+.sources-legend {
+  padding: 4px 0;
+}
+
+.sources-header {
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
+}
+
+.sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.source-chip {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.source-chip:hover {
+  transform: scale(1.05);
 }
 
 .source-item {
@@ -714,6 +994,18 @@ onMounted(() => {
 
 .gap-2 {
   gap: 8px;
+}
+
+/* Source detail dialog */
+.source-excerpt {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 0.9rem;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 @media (max-width: 960px) {

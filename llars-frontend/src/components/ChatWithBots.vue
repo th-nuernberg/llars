@@ -25,7 +25,7 @@
 
         <!-- Chatbot List -->
         <div v-if="!sidebarCollapsed" class="chatbot-list">
-          <v-skeleton-loader v-if="loadingChatbots" type="list-item@3" />
+          <v-skeleton-loader v-if="isLoading('chatbots')" type="list-item@3" />
           <template v-else>
             <v-list density="compact" class="pa-0">
               <v-list-item
@@ -300,6 +300,7 @@ import { io } from 'socket.io-client'
 import axios from 'axios'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { useChatMessages } from './ChatWithBots/composables/useChatMessages.js'
 
 // Composable for chat message operations
@@ -313,6 +314,9 @@ const {
   sendViaREST,
   getFileType
 } = useChatMessages()
+
+// Skeleton Loading
+const { isLoading, withLoading } = useSkeletonLoading(['chatbots'])
 
 // Socket.IO connection
 const socket = ref(null)
@@ -328,7 +332,6 @@ const newMessage = ref('')
 const sessionId = ref(null)
 
 // UI state
-const loadingChatbots = ref(true)
 const sidebarCollapsed = ref(false)
 const selectedFiles = ref([])
 
@@ -372,7 +375,6 @@ const fileUploadTooltip = computed(() => {
  * Load available chatbots from API
  */
 async function loadChatbots() {
-  loadingChatbots.value = true
   try {
     const response = await axios.get('/api/chatbots')
     if (response.data.success) {
@@ -382,8 +384,6 @@ async function loadChatbots() {
   } catch (error) {
     console.error('Error loading chatbots:', error)
     showSnackbar('Fehler beim Laden der Chatbots', 'error')
-  } finally {
-    loadingChatbots.value = false
   }
 }
 
@@ -758,8 +758,10 @@ watch(messages, () => {
 
 // ==================== LIFECYCLE HOOKS ====================
 
-onMounted(() => {
-  loadChatbots()
+onMounted(async () => {
+  await withLoading('chatbots', async () => {
+    await loadChatbots()
+  })
   initSocket()
 })
 

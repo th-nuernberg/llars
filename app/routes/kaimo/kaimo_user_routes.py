@@ -6,6 +6,13 @@ User-facing endpoints for KAIMO panel.
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors,
+    NotFoundError,
+    ValidationError,
+    ForbiddenError,
+    UnauthorizedError,
+)
 from db.db import db
 from db.models import (
     KaimoCase,
@@ -39,6 +46,7 @@ def _get_case_categories(case_id: int):
 
 @kaimo_user_bp.route('/cases', methods=['GET'])
 @require_permission('feature:kaimo:view')
+@handle_api_errors(logger_name='kaimo.user')
 def list_cases_user():
     """List published KAIMO cases for users."""
     cases = (
@@ -79,11 +87,12 @@ def list_cases_user():
 
 @kaimo_user_bp.route('/cases/<int:case_id>', methods=['GET'])
 @require_permission('feature:kaimo:view')
+@handle_api_errors(logger_name='kaimo.user')
 def get_case_detail(case_id: int):
     """Get KAIMO case detail with documents, categories, hints."""
     case = KaimoCase.query.get(case_id)
     if not case:
-        return jsonify({"success": False, "error": "Case not found"}), 404
+        raise NotFoundError("Case not found")
 
     categories = _get_case_categories(case.id)
     subcategories = KaimoSubcategory.query.filter(
@@ -155,15 +164,16 @@ def get_case_detail(case_id: int):
 
 @kaimo_user_bp.route('/cases/<int:case_id>/start', methods=['POST'])
 @require_permission('feature:kaimo:edit')
+@handle_api_errors(logger_name='kaimo.user')
 def start_assessment(case_id: int):
     """Start or continue an assessment for a case."""
     case = KaimoCase.query.get(case_id)
     if not case:
-        return jsonify({"success": False, "error": "Case not found"}), 404
+        raise NotFoundError("Case not found")
 
     user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
-        return jsonify({"success": False, "error": "User ID not found in token"}), 401
+        raise UnauthorizedError("User ID not found in token")
 
     # Check if user already has an assessment for this case
     assessment = KaimoUserAssessment.query.filter_by(
@@ -208,19 +218,20 @@ def start_assessment(case_id: int):
 
 @kaimo_user_bp.route('/assessments/<int:assessment_id>', methods=['GET'])
 @require_permission('feature:kaimo:view')
+@handle_api_errors(logger_name='kaimo.user')
 def get_assessment(assessment_id: int):
     """Get assessment details with all hint assignments."""
     assessment = KaimoUserAssessment.query.get(assessment_id)
     if not assessment:
-        return jsonify({"success": False, "error": "Assessment not found"}), 404
+        raise NotFoundError("Assessment not found")
 
     user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
-        return jsonify({"success": False, "error": "User ID not found in token"}), 401
+        raise UnauthorizedError("User ID not found in token")
 
     # Check if user owns this assessment
     if assessment.user_id != user_id:
-        return jsonify({"success": False, "error": "Access denied"}), 403
+        raise ForbiddenError("Access denied")
 
     # Get all hint assignments
     assignments = (
@@ -256,28 +267,29 @@ def get_assessment(assessment_id: int):
 
 @kaimo_user_bp.route('/assessments/<int:assessment_id>/hints/<int:hint_id>', methods=['PUT'])
 @require_permission('feature:kaimo:edit')
+@handle_api_errors(logger_name='kaimo.user')
 def update_hint_assignment(assessment_id: int, hint_id: int):
     """Update or create a hint assignment."""
     assessment = KaimoUserAssessment.query.get(assessment_id)
     if not assessment:
-        return jsonify({"success": False, "error": "Assessment not found"}), 404
+        raise NotFoundError("Assessment not found")
 
     user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
-        return jsonify({"success": False, "error": "User ID not found in token"}), 401
+        raise UnauthorizedError("User ID not found in token")
 
     # Check if user owns this assessment
     if assessment.user_id != user_id:
-        return jsonify({"success": False, "error": "Access denied"}), 403
+        raise ForbiddenError("Access denied")
 
     # Check if assessment is already completed
     if assessment.status == 'completed':
-        return jsonify({"success": False, "error": "Cannot modify completed assessment"}), 400
+        raise ValidationError("Cannot modify completed assessment")
 
     # Verify hint belongs to the same case
     hint = KaimoHint.query.filter_by(id=hint_id, case_id=assessment.case_id).first()
     if not hint:
-        return jsonify({"success": False, "error": "Hint not found"}), 404
+        raise NotFoundError("Hint not found")
 
     data = request.get_json() or {}
     assigned_category_id = data.get('assigned_category_id')
@@ -286,10 +298,7 @@ def update_hint_assignment(assessment_id: int, hint_id: int):
 
     # Validate rating if provided
     if rating and rating not in ('risk', 'resource', 'unclear'):
-        return jsonify({
-            "success": False,
-            "error": "rating must be one of: risk, resource, unclear"
-        }), 400
+        raise ValidationError("rating must be one of: risk, resource, unclear")
 
     # Check if assignment already exists (upsert logic)
     assignment = KaimoHintAssignment.query.filter_by(
@@ -334,23 +343,24 @@ def update_hint_assignment(assessment_id: int, hint_id: int):
 
 @kaimo_user_bp.route('/assessments/<int:assessment_id>/complete', methods=['POST'])
 @require_permission('feature:kaimo:edit')
+@handle_api_errors(logger_name='kaimo.user')
 def complete_assessment(assessment_id: int):
     """Complete an assessment."""
     assessment = KaimoUserAssessment.query.get(assessment_id)
     if not assessment:
-        return jsonify({"success": False, "error": "Assessment not found"}), 404
+        raise NotFoundError("Assessment not found")
 
     user_id = AuthUtils.extract_username_without_validation()
     if not user_id:
-        return jsonify({"success": False, "error": "User ID not found in token"}), 401
+        raise UnauthorizedError("User ID not found in token")
 
     # Check if user owns this assessment
     if assessment.user_id != user_id:
-        return jsonify({"success": False, "error": "Access denied"}), 403
+        raise ForbiddenError("Access denied")
 
     # Check if assessment is already completed
     if assessment.status == 'completed':
-        return jsonify({"success": False, "error": "Assessment already completed"}), 400
+        raise ValidationError("Assessment already completed")
 
     data = request.get_json() or {}
     final_verdict = data.get('final_verdict')
@@ -358,10 +368,7 @@ def complete_assessment(assessment_id: int):
 
     # Validate final_verdict if provided
     if final_verdict and final_verdict not in ('inconclusive', 'not_endangered', 'endangered'):
-        return jsonify({
-            "success": False,
-            "error": "final_verdict must be one of: inconclusive, not_endangered, endangered"
-        }), 400
+        raise ValidationError("final_verdict must be one of: inconclusive, not_endangered, endangered")
 
     # Update assessment
     assessment.status = 'completed'
@@ -390,6 +397,7 @@ def complete_assessment(assessment_id: int):
 
 @kaimo_user_bp.route('/categories', methods=['GET'])
 @require_permission('feature:kaimo:view')
+@handle_api_errors(logger_name='kaimo.user')
 def get_categories_user():
     """Get all KAIMO categories for users (for dropdowns)."""
     categories = KaimoCategory.query.order_by(KaimoCategory.sort_order).all()

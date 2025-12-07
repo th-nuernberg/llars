@@ -21,7 +21,8 @@
         <!-- Roles Tab -->
         <v-window-item value="roles">
           <v-card-text>
-            <v-row>
+            <v-skeleton-loader v-if="isLoading('roles')" type="card@3"></v-skeleton-loader>
+            <v-row v-else>
               <v-col
                 cols="12"
                 md="4"
@@ -80,8 +81,11 @@
               class="mb-4"
             ></v-text-field>
 
+            <!-- Skeleton Loading -->
+            <v-skeleton-loader v-if="isLoading('permissions')" type="paragraph@3"></v-skeleton-loader>
+
             <!-- Grouped Permissions -->
-            <div v-for="(group, category) in groupedPermissions" :key="category" class="mb-4">
+            <div v-else v-for="(group, category) in groupedPermissions" :key="category" class="mb-4">
               <h3 class="text-subtitle-1 font-weight-bold mb-2">
                 <v-icon class="mr-1">{{ getCategoryIcon(category) }}</v-icon>
                 {{ getCategoryName(category) }}
@@ -105,7 +109,9 @@
         <!-- Audit Log Tab -->
         <v-window-item value="audit">
           <v-card-text>
+            <v-skeleton-loader v-if="isLoading('audit')" type="table"></v-skeleton-loader>
             <v-data-table
+              v-else
               :headers="auditHeaders"
               :items="auditLog"
               :loading="loadingAudit"
@@ -167,6 +173,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // State
 const activeTab = ref('roles');
@@ -179,6 +186,7 @@ const permissionSearch = ref('');
 const loadingRoles = ref(false);
 const loadingPermissions = ref(false);
 const loadingAudit = ref(false);
+const { isLoading, withLoading } = useSkeletonLoading(['roles', 'permissions', 'audit']);
 
 // Dialog
 const roleDialog = ref(false);
@@ -278,35 +286,41 @@ const viewRoleDetails = (role) => {
 // API calls
 const fetchRoles = async () => {
   loadingRoles.value = true;
-  try {
-    const response = await axios.get('/api/permissions/roles');
-    roles.value = response.data.roles || [];
-  } catch (error) {
-    console.error('Error fetching roles:', error);
-  }
+  await withLoading('roles', async () => {
+    try {
+      const response = await axios.get('/api/permissions/roles');
+      roles.value = response.data.roles || [];
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+    }
+  });
   loadingRoles.value = false;
 };
 
 const fetchPermissions = async () => {
   loadingPermissions.value = true;
-  try {
-    const response = await axios.get('/api/permissions');
-    permissions.value = response.data.permissions || [];
-  } catch (error) {
-    console.error('Error fetching permissions:', error);
-  }
+  await withLoading('permissions', async () => {
+    try {
+      const response = await axios.get('/api/permissions');
+      permissions.value = response.data.permissions || [];
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+    }
+  });
   loadingPermissions.value = false;
 };
 
 const fetchAuditLog = async () => {
   loadingAudit.value = true;
-  try {
-    const response = await axios.get('/api/permissions/audit-log');
-    auditLog.value = response.data.entries || [];
-  } catch (error) {
-    console.error('Error fetching audit log:', error);
-    auditLog.value = [];
-  }
+  await withLoading('audit', async () => {
+    try {
+      const response = await axios.get('/api/permissions/audit-log');
+      auditLog.value = response.data.entries || [];
+    } catch (error) {
+      console.error('Error fetching audit log:', error);
+      auditLog.value = [];
+    }
+  });
   loadingAudit.value = false;
 };
 

@@ -2,8 +2,13 @@
   <div class="admin-overview">
     <!-- Stats Cards Row -->
     <v-row>
-      <v-col cols="12" sm="6" lg="3" v-for="stat in stats" :key="stat.title">
-        <v-card class="stat-card" :loading="loading">
+      <template v-if="isLoading('stats')">
+        <v-col cols="12" sm="6" lg="3" v-for="n in 4" :key="'skeleton-stat-' + n">
+          <v-skeleton-loader type="card" height="100"></v-skeleton-loader>
+        </v-col>
+      </template>
+      <v-col v-else cols="12" sm="6" lg="3" v-for="stat in stats" :key="stat.title">
+        <v-card class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar :color="stat.color" size="56" class="mr-4">
               <v-icon :icon="stat.icon" color="white" size="28"></v-icon>
@@ -110,7 +115,8 @@
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text>
-            <v-table v-if="activeScenarios.length > 0">
+            <v-skeleton-loader v-if="isLoading('scenarios')" type="table"></v-skeleton-loader>
+            <v-table v-else-if="activeScenarios.length > 0">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -163,8 +169,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 const loading = ref(true);
+const { isLoading, withLoading } = useSkeletonLoading(['stats', 'activities', 'scenarios']);
 
 // Stats data
 const stats = ref([
@@ -234,57 +242,58 @@ const formatDate = (dateString) => {
 const fetchDashboardData = async () => {
   loading.value = true;
 
-  try {
-    // Fetch scenarios
-    const scenariosResponse = await axios.get('/api/admin/scenarios');
-    const scenarios = scenariosResponse.data.scenarios || [];
-
-    // Calculate stats
-    const activeCount = scenarios.filter(s => s.status === 'aktiv').length;
-    stats.value[1].value = activeCount.toString();
-
-    // Filter active scenarios for display
-    activeScenarios.value = scenarios.filter(s => s.status === 'aktiv').slice(0, 5);
-
-    // Check for warnings
-    const expiringScenarios = scenarios.filter(s => {
-      if (!s.end_date || s.status !== 'aktiv') return false;
-      const endDate = new Date(s.end_date);
-      const daysUntilEnd = (endDate - new Date()) / (1000 * 60 * 60 * 24);
-      return daysUntilEnd <= 7 && daysUntilEnd > 0;
-    });
-
-    if (expiringScenarios.length > 0) {
-      warnings.value.push({
-        type: 'warning',
-        message: `${expiringScenarios.length} Szenario(s) laufen in den nächsten 7 Tagen ab`
-      });
+  await withLoading('stats', async () => {
+    try {
+      // Fetch RAG stats
+      const ragResponse = await axios.get('/api/rag/stats');
+      const totalDocs = ragResponse.data.total_documents
+        || ragResponse.data.stats?.documents?.total
+        || 0;
+      stats.value[2].value = totalDocs.toString();
+    } catch (error) {
+      console.error('Error fetching RAG stats:', error);
     }
 
-  } catch (error) {
-    console.error('Error fetching scenarios:', error);
-  }
+    try {
+      // Fetch user count (from permissions API)
+      const permResponse = await axios.get('/api/permissions/roles');
+      stats.value[0].value = '-';
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  });
 
-  try {
-    // Fetch RAG stats
-    const ragResponse = await axios.get('/api/rag/stats');
-    // Handle both old format (total_documents) and new format (stats.documents.total)
-    const totalDocs = ragResponse.data.total_documents
-      || ragResponse.data.stats?.documents?.total
-      || 0;
-    stats.value[2].value = totalDocs.toString();
-  } catch (error) {
-    console.error('Error fetching RAG stats:', error);
-  }
+  await withLoading('scenarios', async () => {
+    try {
+      // Fetch scenarios
+      const scenariosResponse = await axios.get('/api/admin/scenarios');
+      const scenarios = scenariosResponse.data.scenarios || [];
 
-  try {
-    // Fetch user count (from permissions API)
-    const permResponse = await axios.get('/api/permissions/roles');
-    // We don't have a direct user count endpoint, so we'll estimate
-    stats.value[0].value = '-';
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-  }
+      // Calculate stats
+      const activeCount = scenarios.filter(s => s.status === 'aktiv').length;
+      stats.value[1].value = activeCount.toString();
+
+      // Filter active scenarios for display
+      activeScenarios.value = scenarios.filter(s => s.status === 'aktiv').slice(0, 5);
+
+      // Check for warnings
+      const expiringScenarios = scenarios.filter(s => {
+        if (!s.end_date || s.status !== 'aktiv') return false;
+        const endDate = new Date(s.end_date);
+        const daysUntilEnd = (endDate - new Date()) / (1000 * 60 * 60 * 24);
+        return daysUntilEnd <= 7 && daysUntilEnd > 0;
+      });
+
+      if (expiringScenarios.length > 0) {
+        warnings.value.push({
+          type: 'warning',
+          message: `${expiringScenarios.length} Szenario(s) laufen in den nächsten 7 Tagen ab`
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching scenarios:', error);
+    }
+  });
 
   loading.value = false;
 };

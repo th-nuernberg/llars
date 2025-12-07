@@ -140,7 +140,9 @@
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text>
+        <v-skeleton-loader v-if="isLoading('table')" type="table"></v-skeleton-loader>
         <v-data-table
+          v-else
           :headers="headers"
           :items="filteredUsers"
           :loading="loadingUsers"
@@ -195,6 +197,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // State
 const searchQuery = ref('');
@@ -210,6 +213,7 @@ const loadingSearch = ref(false);
 const loadingUsers = ref(false);
 const loadingUser = ref(null);
 const assigningRole = ref(false);
+const { isLoading, withLoading } = useSkeletonLoading(['table']);
 
 // Table headers
 const headers = [
@@ -261,14 +265,16 @@ const loadRoles = async () => {
 // Load all users with roles
 const loadAllUsersWithRoles = async () => {
   loadingUsers.value = true;
-  try {
-    const response = await axios.get('/api/permissions/users-with-roles');
-    users.value = response.data.users || [];
-  } catch (error) {
-    console.error('Error loading users:', error);
-    // Fallback: Try to get from user_roles table
-    users.value = [];
-  }
+  await withLoading('table', async () => {
+    try {
+      const response = await axios.get('/api/permissions/users-with-roles');
+      users.value = response.data.users || [];
+    } catch (error) {
+      console.error('Error loading users:', error);
+      // Fallback: Try to get from user_roles table
+      users.value = [];
+    }
+  });
   loadingUsers.value = false;
 };
 

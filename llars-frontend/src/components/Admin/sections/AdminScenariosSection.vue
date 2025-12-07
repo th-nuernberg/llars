@@ -40,56 +40,65 @@
 
     <!-- Stats Cards -->
     <v-row class="mb-4">
-      <v-col cols="6" md="3">
-        <v-card variant="tonal" color="success">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ scenarioStats.aktiv }}</div>
-              <div class="text-caption">Aktiv</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" md="3">
-        <v-card variant="tonal" color="warning">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-clock-outline</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ scenarioStats.ausstehend }}</div>
-              <div class="text-caption">Ausstehend</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" md="3">
-        <v-card variant="tonal" color="grey">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-check-all</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ scenarioStats.beendet }}</div>
-              <div class="text-caption">Beendet</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" md="3">
-        <v-card variant="tonal" color="primary">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-sigma</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ scenarios.length }}</div>
-              <div class="text-caption">Gesamt</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
+      <template v-if="isLoading('stats')">
+        <v-col cols="6" md="3" v-for="n in 4" :key="'skeleton-stat-' + n">
+          <v-skeleton-loader type="card" height="100"></v-skeleton-loader>
+        </v-col>
+      </template>
+      <template v-else>
+        <v-col cols="6" md="3">
+          <v-card variant="tonal" color="success">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ scenarioStats.aktiv }}</div>
+                <div class="text-caption">Aktiv</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="6" md="3">
+          <v-card variant="tonal" color="warning">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-clock-outline</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ scenarioStats.ausstehend }}</div>
+                <div class="text-caption">Ausstehend</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="6" md="3">
+          <v-card variant="tonal" color="grey">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-check-all</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ scenarioStats.beendet }}</div>
+                <div class="text-caption">Beendet</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="6" md="3">
+          <v-card variant="tonal" color="primary">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-sigma</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ scenarios.length }}</div>
+                <div class="text-caption">Gesamt</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </template>
     </v-row>
 
     <!-- Scenarios Table -->
     <v-card>
       <v-card-text>
+        <v-skeleton-loader v-if="isLoading('table')" type="table"></v-skeleton-loader>
         <v-data-table
+          v-else
           :headers="headers"
           :items="filteredScenarios"
           :loading="loading"
@@ -238,6 +247,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import CreateScenarioDialog from '@/components/parts/CreateScenarioDialog.vue';
 import ScenarioDetailDialog from '@/components/parts/ScenarioDetailsDialog.vue';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // State
 const scenarios = ref([]);
@@ -245,6 +255,7 @@ const searchQuery = ref('');
 const statusFilter = ref('all');
 const typeFilter = ref('all');
 const loading = ref(false);
+const { isLoading, withLoading } = useSkeletonLoading(['stats', 'table']);
 
 // Stats dialog
 const statsDialog = ref(false);
@@ -372,13 +383,17 @@ const calculateProgress = (user) => {
 // API calls
 const fetchScenarios = async () => {
   loading.value = true;
-  try {
-    const response = await axios.get('/api/admin/scenarios');
-    scenarios.value = response.data.scenarios || [];
-  } catch (error) {
-    console.error('Error fetching scenarios:', error);
-    scenarios.value = [];
-  }
+  await withLoading('table', async () => {
+    await withLoading('stats', async () => {
+      try {
+        const response = await axios.get('/api/admin/scenarios');
+        scenarios.value = response.data.scenarios || [];
+      } catch (error) {
+        console.error('Error fetching scenarios:', error);
+        scenarios.value = [];
+      }
+    });
+  });
   loading.value = false;
 };
 

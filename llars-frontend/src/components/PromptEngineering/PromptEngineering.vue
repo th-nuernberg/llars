@@ -26,7 +26,14 @@
         <!-- Meine Prompts -->
         <h2 class="text-h5 mb-4">Meine Prompts</h2>
         <v-row>
-          <template v-if="prompts.length > 0">
+          <!-- Skeleton Loading -->
+          <template v-if="isLoading('prompts')">
+            <v-col cols="12" sm="6" md="4" v-for="n in 3" :key="'skeleton-prompt-' + n">
+              <v-skeleton-loader type="card" height="150"></v-skeleton-loader>
+            </v-col>
+          </template>
+
+          <template v-else-if="prompts.length > 0">
             <v-col cols="12" sm="6" md="4" v-for="prompt in prompts" :key="prompt.id">
               <v-card class="mb-4 case-card">
                 <div class="card-actions">
@@ -65,7 +72,14 @@
         <!-- Mit mir geteilte Prompts -->
         <h2 class="text-h5 mb-4 mt-6">Mit mir geteilte Prompts</h2>
         <v-row>
-          <template v-if="sharedPrompts.length > 0">
+          <!-- Skeleton Loading -->
+          <template v-if="isLoading('sharedPrompts')">
+            <v-col cols="12" sm="6" md="4" v-for="n in 3" :key="'skeleton-shared-' + n">
+              <v-skeleton-loader type="card" height="150"></v-skeleton-loader>
+            </v-col>
+          </template>
+
+          <template v-else-if="sharedPrompts.length > 0">
             <v-col cols="12" sm="6" md="4" v-for="prompt in sharedPrompts" :key="prompt.id">
               <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
                 <div class="d-flex flex-column card-content">
@@ -188,9 +202,13 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { getSocket } from '@/services/socketService';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // Router
 const router = useRouter();
+
+// Skeleton Loading
+const { isLoading, withLoading } = useSkeletonLoading(['prompts', 'sharedPrompts']);
 
 // Prompts State
 const prompts = ref([]);
@@ -227,22 +245,26 @@ function formatDate(dateString) {
 
 // API Call zum Abrufen aller eigenen Prompts
 async function fetchPrompts() {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts`);
-    prompts.value = response.data.prompts || [];
-  } catch (error) {
-    console.error('Fehler beim Abrufen der Prompts:', error);
-  }
+  await withLoading('prompts', async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts`);
+      prompts.value = response.data.prompts || [];
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Prompts:', error);
+    }
+  });
 }
 
 // API Call zum Abrufen aller geteilten Prompts
 async function fetchSharedPrompts() {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts/shared`);
-    sharedPrompts.value = response.data.shared_prompts || [];
-  } catch (error) {
-    console.error('Fehler beim Abrufen der geteilten Prompts:', error);
-  }
+  await withLoading('sharedPrompts', async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts/shared`);
+      sharedPrompts.value = response.data.shared_prompts || [];
+    } catch (error) {
+      console.error('Fehler beim Abrufen der geteilten Prompts:', error);
+    }
+  });
 }
 
 // Öffnet den Dialog zum Umbenennen

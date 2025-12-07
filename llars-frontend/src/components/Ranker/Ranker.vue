@@ -8,7 +8,15 @@
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="12" sm="4" v-for="emailThread in emailThreads" :key="emailThread.thread_id">
+      <!-- Skeleton Loading -->
+      <template v-if="isLoading('threads')">
+        <v-col cols="12" sm="4" v-for="n in 6" :key="'skeleton-' + n">
+          <v-skeleton-loader type="card" height="200"></v-skeleton-loader>
+        </v-col>
+      </template>
+
+      <!-- Actual Content -->
+      <v-col v-else cols="12" sm="4" v-for="emailThread in emailThreads" :key="emailThread.thread_id">
         <v-card class="mb-4 case-card" @click="navigateToCase(emailThread.thread_id)">
           <v-chip
             class="category-chip"
@@ -32,18 +40,22 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 const router = useRouter();
 const emailThreads = ref([]);
+const { isLoading, withLoading } = useSkeletonLoading(['threads']);
 
 onMounted(async () => {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`);
-    console.log('Email threads:', response.data);
-    emailThreads.value = response.data;
-  } catch (error) {
-    console.error('Error fetching email threads:', error);
-  }
+  await withLoading('threads', async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/rankings`);
+      console.log('Email threads:', response.data);
+      emailThreads.value = response.data;
+    } catch (error) {
+      console.error('Error fetching email threads:', error);
+    }
+  });
 });
 
 function navigateToCase(threadId) {

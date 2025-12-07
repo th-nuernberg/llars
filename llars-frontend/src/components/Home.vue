@@ -10,7 +10,16 @@
     </v-row>
     <!-- Feature Cards -->
     <v-row class="equal-size-cards">
+      <!-- Skeleton Loading -->
+      <template v-if="isSkelLoading('permissions')">
+        <v-col v-for="n in 6" :key="'skeleton-' + n" cols="12" sm="6" class="d-flex card-col">
+          <v-skeleton-loader type="card" class="mb-4 w-100" height="200"></v-skeleton-loader>
+        </v-col>
+      </template>
+
+      <!-- Actual Content -->
       <v-col
+        v-else
         v-for="item in items"
         :key="item.title"
         cols="12" sm="6"
@@ -40,9 +49,11 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { usePermissions } from '@/composables/usePermissions';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 const router = useRouter();
 const { hasPermission, fetchPermissions, isLoading } = usePermissions();
+const { isLoading: isSkelLoading, withLoading } = useSkeletonLoading(['permissions']);
 
 // All available features with their required permissions
 const allItems = ref([
@@ -154,7 +165,9 @@ function navigateTo(route) {
 
 onMounted(async () => {
   // Fetch permissions on component mount
-  await fetchPermissions();
+  await withLoading('permissions', async () => {
+    await fetchPermissions();
+  });
 
   equalizeCardSizes();
   window.addEventListener('resize', equalizeCardSizes);

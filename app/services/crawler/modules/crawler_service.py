@@ -17,6 +17,15 @@ from .crawler_core import WebCrawler
 
 logger = logging.getLogger(__name__)
 
+# Flag to check if Playwright is available
+PLAYWRIGHT_AVAILABLE = False
+try:
+    from .playwright_crawler import PlaywrightCrawler
+    PLAYWRIGHT_AVAILABLE = True
+    logger.info("[CrawlerService] Playwright crawler available")
+except ImportError as e:
+    logger.warning(f"[CrawlerService] Playwright not available: {e}")
+
 
 class CrawlerService:
     """
@@ -271,7 +280,9 @@ class CrawlerService:
         max_depth: int = 3,
         created_by: str = 'web_crawler',
         app=None,
-        existing_collection_id: Optional[int] = None
+        existing_collection_id: Optional[int] = None,
+        use_playwright: bool = True,
+        use_vision_llm: bool = True
     ) -> str:
         """
         Start a crawl job in the background (continues even if user leaves).
@@ -285,11 +296,18 @@ class CrawlerService:
             created_by: Username of requester
             app: Flask app instance for context
             existing_collection_id: If set, add documents to this existing collection instead of creating new one
+            use_playwright: Use Playwright headless browser for JavaScript rendering (default: True)
+            use_vision_llm: Use Vision-LLM for intelligent data extraction from screenshots (default: True)
 
         Returns:
             job_id: The ID of the started crawl job
         """
         job_id = str(uuid.uuid4())
+
+        # Check if Playwright is requested but not available
+        actual_use_playwright = use_playwright and PLAYWRIGHT_AVAILABLE
+        if use_playwright and not PLAYWRIGHT_AVAILABLE:
+            logger.warning(f"[Job {job_id}] Playwright requested but not available, falling back to basic crawler")
 
         # Pre-create job entry immediately
         self.active_crawls[job_id] = {
@@ -301,8 +319,12 @@ class CrawlerService:
             'pages_crawled': 0,
             'documents_created': 0,
             'documents_linked': 0,
+            'screenshots_taken': 0,
+            'vision_extractions': 0,
             'errors': [],
-            'queued_at': datetime.now().isoformat()
+            'queued_at': datetime.now().isoformat(),
+            'use_playwright': actual_use_playwright,
+            'use_vision_llm': use_vision_llm
         }
 
         # Notify all clients about new job
@@ -315,13 +337,13 @@ class CrawlerService:
                     self._run_background_crawl(
                         job_id, urls, collection_name, collection_description,
                         max_pages_per_site, max_depth, created_by,
-                        existing_collection_id
+                        existing_collection_id, actual_use_playwright, use_vision_llm
                     )
             else:
                 self._run_background_crawl(
                     job_id, urls, collection_name, collection_description,
                     max_pages_per_site, max_depth, created_by,
-                    existing_collection_id
+                    existing_collection_id, actual_use_playwright, use_vision_llm
                 )
 
         # Start background thread
@@ -329,7 +351,9 @@ class CrawlerService:
         thread.start()
         self._background_threads[job_id] = thread
 
-        logger.info(f"[Job {job_id}] Background crawl started for {len(urls)} URLs (existing_collection_id={existing_collection_id})")
+        crawler_type = "Playwright" if actual_use_playwright else "Basic"
+        vision_status = "with Vision-LLM" if use_vision_llm and actual_use_playwright else "without Vision-LLM"
+        logger.info(f"[Job {job_id}] Background crawl started ({crawler_type}, {vision_status}) for {len(urls)} URLs")
 
         return job_id
 
@@ -342,7 +366,9 @@ class CrawlerService:
         max_pages_per_site: int,
         max_depth: int,
         created_by: str,
-        existing_collection_id: Optional[int] = None
+        existing_collection_id: Optional[int] = None,
+        use_playwright: bool = True,
+        use_vision_llm: bool = True
     ):
         """
         Internal method to run crawl in background.
@@ -351,6 +377,18 @@ class CrawlerService:
         - If a document with the same content hash already exists, it is LINKED to the collection
         - If the document is new, it is created and linked
         - Documents can exist in multiple collections via CollectionDocumentLink
+
+        Args:
+            job_id: Unique job identifier
+            urls: List of URLs to crawl
+            collection_name: Name for the collection
+            collection_description: Description for the collection
+            max_pages_per_site: Max pages per URL
+            max_depth: Max link depth
+            created_by: Username
+            existing_collection_id: Optional existing collection ID
+            use_playwright: Use Playwright headless browser (default: True)
+            use_vision_llm: Use Vision-LLM for extraction (default: True)
         """
         from db.db import db
         from db.tables import RAGCollection, RAGDocument, RAGProcessingQueue, CollectionDocumentLink
@@ -358,12 +396,16 @@ class CrawlerService:
         self.active_crawls[job_id]['status'] = 'running'
         self.active_crawls[job_id]['started_at'] = datetime.now().isoformat()
 
+        crawler_type = "Playwright" if use_playwright else "Basic"
+
         # Emit started event
         self._emit_progress(job_id, {
             'status': 'running',
             'pages_crawled': 0,
             'max_pages': max_pages_per_site * len(urls),
-            'message': 'Crawl gestartet...'
+            'message': f'Crawl gestartet ({crawler_type})...',
+            'crawler_type': crawler_type,
+            'use_vision_llm': use_vision_llm
         })
 
         try:
@@ -400,23 +442,37 @@ class CrawlerService:
             total_pages = 0
 
             for url_index, url in enumerate(urls):
-                logger.info(f"[Job {job_id}] Crawling URL {url_index + 1}/{len(urls)}: {url}")
-
-                crawler = WebCrawler(
-                    base_url=url,
-                    max_pages=max_pages_per_site,
-                    max_depth=max_depth,
-                    delay_seconds=1.0
-                )
+                logger.info(f"[Job {job_id}] Crawling URL {url_index + 1}/{len(urls)}: {url} (using {crawler_type})")
 
                 # Track seen hashes for deduplication during this crawl
                 seen_hashes_in_crawl = set()
+
+                # Choose crawler based on use_playwright flag
+                if use_playwright and PLAYWRIGHT_AVAILABLE:
+                    # Use Playwright crawler with Vision-LLM support
+                    crawler = PlaywrightCrawler(
+                        base_url=url,
+                        max_pages=max_pages_per_site,
+                        max_depth=max_depth,
+                        delay_seconds=1.5,
+                        use_vision_llm=use_vision_llm
+                    )
+                else:
+                    # Fallback to basic WebCrawler
+                    crawler = WebCrawler(
+                        base_url=url,
+                        max_pages=max_pages_per_site,
+                        max_depth=max_depth,
+                        delay_seconds=1.0
+                    )
 
                 def progress_callback(current, total, page_url):
                     self.active_crawls[job_id]['pages_crawled'] = total_pages + current
                     self.active_crawls[job_id]['current_url'] = page_url
                     docs_created = self.active_crawls[job_id]['documents_created']
                     docs_linked = self.active_crawls[job_id]['documents_linked']
+                    screenshots = self.active_crawls[job_id].get('screenshots_taken', 0)
+                    vision_extractions = self.active_crawls[job_id].get('vision_extractions', 0)
                     self._emit_progress(job_id, {
                         'status': 'running',
                         'pages_crawled': total_pages + current,
@@ -425,7 +481,10 @@ class CrawlerService:
                         'current_url_index': url_index + 1,
                         'total_urls': len(urls),
                         'documents_created': docs_created,
-                        'documents_linked': docs_linked
+                        'documents_linked': docs_linked,
+                        'screenshots_taken': screenshots,
+                        'vision_extractions': vision_extractions,
+                        'crawler_type': crawler_type
                     })
                     self._emit_page_crawled(job_id, {
                         'url': page_url,
@@ -436,6 +495,16 @@ class CrawlerService:
 
                 def page_callback(page_data):
                     """Process each page immediately as it's crawled."""
+                    # Update stats from Playwright crawler
+                    if page_data.get('screenshot'):
+                        self.active_crawls[job_id]['screenshots_taken'] = \
+                            self.active_crawls[job_id].get('screenshots_taken', 0) + 1
+                    if page_data.get('structured_data') and page_data.get('crawler_type') == 'playwright':
+                        # Check if vision extraction was used (non-empty structured data)
+                        if any(v for v in page_data.get('structured_data', {}).values() if v):
+                            self.active_crawls[job_id]['vision_extractions'] = \
+                                self.active_crawls[job_id].get('vision_extractions', 0) + 1
+
                     self._process_crawled_page(
                         job_id, page_data, collection_id, created_by,
                         seen_hashes_in_crawl
@@ -460,8 +529,12 @@ class CrawlerService:
 
             docs_created = self.active_crawls[job_id]['documents_created']
             docs_linked = self.active_crawls[job_id]['documents_linked']
+            screenshots = self.active_crawls[job_id].get('screenshots_taken', 0)
+            vision_extractions = self.active_crawls[job_id].get('vision_extractions', 0)
 
             logger.info(f"[Job {job_id}] Background crawl completed: {total_pages} pages, {docs_created} documents neu, {docs_linked} documents verlinkt")
+            if use_playwright:
+                logger.info(f"[Job {job_id}] Playwright stats: {screenshots} screenshots, {vision_extractions} vision extractions")
 
             self._emit_complete(job_id, {
                 'status': 'completed',
@@ -469,7 +542,10 @@ class CrawlerService:
                 'pages_crawled': total_pages,
                 'documents_created': docs_created,
                 'documents_linked': docs_linked,
-                'errors_count': len(self.active_crawls[job_id]['errors'])
+                'screenshots_taken': screenshots,
+                'vision_extractions': vision_extractions,
+                'errors_count': len(self.active_crawls[job_id]['errors']),
+                'crawler_type': crawler_type
             })
 
             self._emit_jobs_updated()
@@ -519,9 +595,10 @@ class CrawlerService:
         """
         Process a single crawled page immediately.
         Creates document or links existing document to collection.
+        Also stores extracted images and screenshots as RAGDocumentChunks.
         """
         from db.db import db
-        from db.tables import RAGDocument, RAGProcessingQueue, CollectionDocumentLink
+        from db.tables import RAGDocument, RAGDocumentChunk, RAGProcessingQueue, CollectionDocumentLink
 
         try:
             content_hash = page['content_hash']
@@ -566,6 +643,10 @@ class CrawlerService:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(page['content'])
 
+                # Extract screenshot data if available (from Playwright crawler)
+                screenshot_data = page.get('screenshot')
+                screenshot_path = screenshot_data.get('screenshot_path') if screenshot_data else None
+
                 doc = RAGDocument(
                     filename=filename,
                     original_filename=page['metadata'].get('title', page['url'])[:255],
@@ -582,10 +663,47 @@ class CrawlerService:
                     collection_id=collection_id,
                     is_public=True,
                     uploaded_by=created_by,
-                    uploaded_at=datetime.now()
+                    uploaded_at=datetime.now(),
+                    # New fields for Playwright/Vision-LLM support
+                    screenshot_path=screenshot_path,
+                    source_url=page['url']
                 )
                 db.session.add(doc)
                 db.session.flush()
+
+                # Store extracted images as chunks
+                images = page.get('images', [])
+                if images:
+                    for idx, img in enumerate(images):
+                        image_chunk = RAGDocumentChunk(
+                            document_id=doc.id,
+                            chunk_index=10000 + idx,  # High index to avoid collision with text chunks
+                            content=f"[Bild: {img.get('alt_text', 'Bild ohne Beschreibung')}]",
+                            has_image=True,
+                            image_path=img.get('image_path'),
+                            image_url=img.get('source_url'),
+                            image_alt_text=img.get('alt_text'),
+                            image_mime_type=img.get('mime_type', 'image/jpeg'),
+                            embedding_status='completed'  # Images don't need text embedding
+                        )
+                        db.session.add(image_chunk)
+                    logger.info(f"[Job {job_id}] Stored {len(images)} images for document {doc.id}")
+
+                # Store screenshot as a special chunk (for Vision-LLM queries)
+                if screenshot_data and screenshot_path:
+                    screenshot_chunk = RAGDocumentChunk(
+                        document_id=doc.id,
+                        chunk_index=99999,  # Special index for page screenshot
+                        content=f"[Screenshot der Webseite: {page['url']}]",
+                        has_image=True,
+                        image_path=screenshot_path,
+                        image_url=page['url'],
+                        image_alt_text=f"Screenshot von {page['metadata'].get('title', page['url'])}",
+                        image_mime_type='image/png',
+                        embedding_status='completed'
+                    )
+                    db.session.add(screenshot_chunk)
+                    logger.info(f"[Job {job_id}] Stored screenshot for document {doc.id}")
 
                 link = CollectionDocumentLink(
                     collection_id=collection_id,
@@ -608,7 +726,8 @@ class CrawlerService:
                 db.session.commit()
 
                 self.active_crawls[job_id]['documents_created'] += 1
-                logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']}")
+                crawler_type = page.get('crawler_type', 'basic')
+                logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']} (crawler: {crawler_type})")
 
         except Exception as e:
             logger.error(f"Error processing document for {page['url']}: {e}")

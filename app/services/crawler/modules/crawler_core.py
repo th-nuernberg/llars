@@ -1,20 +1,24 @@
 """
 WebCrawler Core Module
 
-Core crawler logic for extracting text content from websites.
+Core crawler logic for extracting text content and images from websites.
 Designed to be polite and respect website policies.
 """
 
 import re
+import os
+import io
 import time
 import hashlib
 import logging
+import base64
 import requests
 from datetime import datetime
 from typing import List, Dict, Set, Optional, Tuple
 from urllib.parse import urljoin, urlparse, urlunparse
 from urllib.robotparser import RobotFileParser
 from bs4 import BeautifulSoup
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +31,11 @@ class WebCrawler:
 
     USER_AGENT = "LLARSBot/1.0 (+https://github.com/llars; friendly-crawler)"
 
+    # Supported image formats for extraction
+    SUPPORTED_IMAGE_FORMATS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+    MAX_IMAGE_SIZE = (1024, 1024)  # Max dimensions for stored images
+    MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5MB max per image
+
     def __init__(
         self,
         base_url: str,
@@ -36,7 +45,10 @@ class WebCrawler:
         timeout: int = 30,
         follow_external: bool = False,
         include_patterns: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None
+        exclude_patterns: Optional[List[str]] = None,
+        extract_images: bool = True,
+        max_images_per_page: int = 10,
+        image_storage_path: str = '/app/storage/rag_images'
     ):
         """
         Initialize the web crawler.
@@ -50,6 +62,9 @@ class WebCrawler:
             follow_external: Whether to follow links to other domains
             include_patterns: URL patterns to include (regex)
             exclude_patterns: URL patterns to exclude (regex)
+            extract_images: Whether to extract and store images
+            max_images_per_page: Maximum images to extract per page
+            image_storage_path: Path to store extracted images
         """
         self.base_url = self._normalize_url(base_url)
         self.base_domain = urlparse(self.base_url).netloc
@@ -59,11 +74,15 @@ class WebCrawler:
         self.timeout = timeout
         self.follow_external = follow_external
 
+        # Image extraction settings
+        self.extract_images = extract_images
+        self.max_images_per_page = max_images_per_page
+        self.image_storage_path = image_storage_path
+
         # URL filtering patterns
         self.include_patterns = [re.compile(p) for p in (include_patterns or [])]
         self.exclude_patterns = [re.compile(p) for p in (exclude_patterns or [
             r'\.pdf$', r'\.zip$', r'\.exe$', r'\.dmg$',
-            r'\.jpg$', r'\.jpeg$', r'\.png$', r'\.gif$', r'\.svg$',
             r'\.mp3$', r'\.mp4$', r'\.avi$', r'\.mov$',
             r'/login', r'/logout', r'/signin', r'/signup',
             r'/cart', r'/checkout', r'/account',
@@ -87,11 +106,16 @@ class WebCrawler:
         self.stats = {
             'pages_crawled': 0,
             'pages_skipped': 0,
+            'images_extracted': 0,
             'errors': 0,
             'total_bytes': 0,
             'start_time': None,
             'end_time': None
         }
+
+        # Create image storage directory if needed
+        if self.extract_images and self.image_storage_path:
+            os.makedirs(self.image_storage_path, exist_ok=True)
 
     def _normalize_url(self, url: str) -> str:
         """Normalize URL for consistent comparison."""
@@ -278,6 +302,247 @@ class WebCrawler:
 
         return text.strip(), metadata
 
+    def _extract_images(self, html: str, base_url: str, page_hash: str) -> List[Dict]:
+        """
+        Extract relevant images from HTML page.
+
+        Args:
+            html: HTML content
+            base_url: Base URL for resolving relative paths
+            page_hash: Hash of the page for unique image naming
+
+        Returns:
+            List of image dictionaries with url, alt_text, stored_path, base64_data
+        """
+        if not self.extract_images:
+            return []
+
+        soup = BeautifulSoup(html, 'html.parser')
+        images = []
+        seen_urls = set()
+
+        # Find all images
+        for img in soup.find_all('img', src=True):
+            if len(images) >= self.max_images_per_page:
+                break
+
+            src = img.get('src', '')
+            alt = img.get('alt', '') or img.get('title', '')
+
+            # Skip data URLs, tracking pixels, icons
+            if src.startswith('data:') or 'pixel' in src.lower() or 'tracking' in src.lower():
+                continue
+
+            # Skip tiny images (likely icons)
+            width = img.get('width')
+            height = img.get('height')
+            if width and height:
+                try:
+                    if int(width) < 100 or int(height) < 100:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
+            # Resolve absolute URL
+            absolute_url = urljoin(base_url, src)
+
+            # Check file extension
+            parsed = urlparse(absolute_url)
+            ext = os.path.splitext(parsed.path)[1].lower()
+            if ext not in self.SUPPORTED_IMAGE_FORMATS:
+                continue
+
+            # Skip duplicates
+            if absolute_url in seen_urls:
+                continue
+            seen_urls.add(absolute_url)
+
+            # Try to fetch and process the image
+            image_data = self._fetch_and_process_image(absolute_url, page_hash, len(images))
+            if image_data:
+                image_data['alt_text'] = alt
+                image_data['source_url'] = absolute_url
+                images.append(image_data)
+                self.stats['images_extracted'] += 1
+
+        return images
+
+    def _fetch_and_process_image(self, url: str, page_hash: str, index: int) -> Optional[Dict]:
+        """
+        Fetch and process a single image.
+
+        Returns:
+            Dict with image_path, base64_data, mime_type, width, height or None
+        """
+        try:
+            response = self.session.get(url, timeout=10, stream=True)
+            response.raise_for_status()
+
+            # Check content length
+            content_length = response.headers.get('Content-Length')
+            if content_length and int(content_length) > self.MAX_IMAGE_BYTES:
+                logger.debug(f"Image too large: {url}")
+                return None
+
+            # Read image data
+            image_data = response.content
+            if len(image_data) > self.MAX_IMAGE_BYTES:
+                logger.debug(f"Image too large after download: {url}")
+                return None
+
+            # Open and process with PIL
+            image = Image.open(io.BytesIO(image_data))
+
+            # Skip very small images
+            if image.size[0] < 100 or image.size[1] < 100:
+                return None
+
+            # Convert to RGB if needed
+            if image.mode == 'RGBA':
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                background.paste(image, mask=image.split()[3])
+                image = background
+            elif image.mode not in ['RGB', 'L']:
+                image = image.convert('RGB')
+
+            # Resize if too large
+            if image.size[0] > self.MAX_IMAGE_SIZE[0] or image.size[1] > self.MAX_IMAGE_SIZE[1]:
+                image.thumbnail(self.MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
+
+            # Generate filename
+            ext = '.jpg'  # Standardize to JPEG
+            filename = f"{page_hash}_{index}{ext}"
+            filepath = os.path.join(self.image_storage_path, filename)
+
+            # Save image
+            image.save(filepath, 'JPEG', quality=85)
+
+            # Generate base64 for inline use
+            buffer = io.BytesIO()
+            image.save(buffer, format='JPEG', quality=85)
+            base64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+            return {
+                'image_path': filepath,
+                'base64_data': base64_data,
+                'mime_type': 'image/jpeg',
+                'width': image.size[0],
+                'height': image.size[1]
+            }
+
+        except Exception as e:
+            logger.debug(f"Failed to process image {url}: {e}")
+            return None
+
+    def _extract_structured_data(self, html: str, url: str) -> Dict:
+        """
+        Extract structured business/contact information from the page.
+
+        Returns:
+            Dict with owner, company, contact info, social links, etc.
+        """
+        soup = BeautifulSoup(html, 'html.parser')
+        structured = {
+            'company_name': None,
+            'owner': None,
+            'email': None,
+            'phone': None,
+            'address': None,
+            'social_links': [],
+            'legal_form': None,
+            'vat_id': None,
+            'registration': None
+        }
+
+        # Get all text for pattern matching
+        full_text = soup.get_text(separator=' ', strip=True)
+
+        # Extract emails
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        emails = re.findall(email_pattern, full_text)
+        if emails:
+            # Filter out common non-contact emails
+            contact_emails = [e for e in emails if not any(x in e.lower() for x in ['noreply', 'no-reply', 'donotreply', 'example'])]
+            if contact_emails:
+                structured['email'] = contact_emails[0]
+
+        # Extract phone numbers (German format)
+        phone_patterns = [
+            r'\+49\s*[\d\s/\-()]+',
+            r'0\d{2,4}[\s/\-]?\d{3,}[\s/\-]?\d{2,}',
+            r'Tel\.?:?\s*[\d\s/\-+()]+',
+            r'Telefon:?\s*[\d\s/\-+()]+',
+        ]
+        for pattern in phone_patterns:
+            phones = re.findall(pattern, full_text)
+            if phones:
+                # Clean up the phone number
+                phone = re.sub(r'[^\d+]', '', phones[0])
+                if len(phone) >= 8:
+                    structured['phone'] = phones[0].strip()
+                    break
+
+        # Look for Impressum/About sections for owner/company info
+        impressum_patterns = [
+            r'Inhaber:?\s*([A-ZÄÖÜa-zäöüß\s\-]+)',
+            r'Geschäftsführer:?\s*([A-ZÄÖÜa-zäöüß\s\-]+)',
+            r'Geschäftsführung:?\s*([A-ZÄÖÜa-zäöüß\s\-]+)',
+            r'Verantwortlich:?\s*([A-ZÄÖÜa-zäöüß\s\-]+)',
+            r'Vertretungsberechtig[te]+:?\s*([A-ZÄÖÜa-zäöüß\s\-]+)',
+        ]
+        for pattern in impressum_patterns:
+            match = re.search(pattern, full_text)
+            if match:
+                owner = match.group(1).strip()
+                # Filter out common false positives
+                if len(owner) > 3 and not any(x in owner.lower() for x in ['gmbh', 'ag', 'gbr', 'ohg', 'kg']):
+                    structured['owner'] = owner
+                    break
+
+        # Extract company name from various sources
+        company_patterns = [
+            r'([A-ZÄÖÜa-zäöüß\s\-&]+)\s+(?:GmbH|AG|GbR|OHG|KG|UG|e\.?K\.?)',
+            r'Firma:?\s*([A-ZÄÖÜa-zäöüß\s\-&]+)',
+        ]
+        for pattern in company_patterns:
+            match = re.search(pattern, full_text)
+            if match:
+                structured['company_name'] = match.group(0).strip()
+                break
+
+        # Look for VAT ID
+        vat_pattern = r'USt\.?-?(?:Id\.?-?)?Nr\.?:?\s*(DE\s*\d{9})'
+        vat_match = re.search(vat_pattern, full_text, re.IGNORECASE)
+        if vat_match:
+            structured['vat_id'] = vat_match.group(1).replace(' ', '')
+
+        # Extract social media links
+        social_domains = ['facebook.com', 'twitter.com', 'x.com', 'instagram.com', 'linkedin.com', 'xing.com', 'youtube.com']
+        for link in soup.find_all('a', href=True):
+            href = link['href'].lower()
+            for domain in social_domains:
+                if domain in href:
+                    structured['social_links'].append({
+                        'platform': domain.split('.')[0],
+                        'url': link['href']
+                    })
+                    break
+
+        # Try to extract address
+        address_patterns = [
+            r'(\d{5}\s+[A-ZÄÖÜa-zäöüß\s\-]+)',  # PLZ + Stadt
+            r'([A-ZÄÖÜa-zäöüß\s\-]+str(?:aße|\.)\s+\d+[a-z]?)',  # Straße + Nr
+        ]
+        address_parts = []
+        for pattern in address_patterns:
+            matches = re.findall(pattern, full_text)
+            if matches:
+                address_parts.extend(matches[:2])
+        if address_parts:
+            structured['address'] = ', '.join(address_parts[:2])
+
+        return structured
+
     def _extract_links(self, html: str, base_url: str) -> List[str]:
         """Extract and normalize all links from HTML."""
         soup = BeautifulSoup(html, 'html.parser')
@@ -376,13 +641,51 @@ class WebCrawler:
                 text, metadata = self._extract_text(html, url)
 
                 if text and len(text) > 100:  # Minimum content threshold
+                    content_hash = hashlib.sha256(text.encode()).hexdigest()
+
+                    # Extract images if enabled
+                    images = []
+                    if self.extract_images:
+                        images = self._extract_images(html, url, content_hash[:16])
+
+                    # Extract structured business data
+                    structured_data = self._extract_structured_data(html, url)
+
+                    # Enhance content with structured data if found
+                    enhanced_content = text
+                    if any(v for v in structured_data.values() if v and v != []):
+                        structured_section = "\n\n## Kontaktinformationen\n"
+                        if structured_data.get('company_name'):
+                            structured_section += f"- **Firma:** {structured_data['company_name']}\n"
+                        if structured_data.get('owner'):
+                            structured_section += f"- **Inhaber/Geschäftsführer:** {structured_data['owner']}\n"
+                        if structured_data.get('email'):
+                            structured_section += f"- **E-Mail:** {structured_data['email']}\n"
+                        if structured_data.get('phone'):
+                            structured_section += f"- **Telefon:** {structured_data['phone']}\n"
+                        if structured_data.get('address'):
+                            structured_section += f"- **Adresse:** {structured_data['address']}\n"
+                        if structured_data.get('vat_id'):
+                            structured_section += f"- **USt-IdNr:** {structured_data['vat_id']}\n"
+
+                        # Insert before the source line
+                        if "\n\n---\nQuelle:" in enhanced_content:
+                            enhanced_content = enhanced_content.replace(
+                                "\n\n---\nQuelle:",
+                                f"{structured_section}\n\n---\nQuelle:"
+                            )
+                        else:
+                            enhanced_content += structured_section
+
                     page_data = {
                         'url': url,
                         'depth': depth,
-                        'content': text,
-                        'content_length': len(text),
-                        'content_hash': hashlib.sha256(text.encode()).hexdigest(),
+                        'content': enhanced_content,
+                        'content_length': len(enhanced_content),
+                        'content_hash': content_hash,
                         'metadata': metadata,
+                        'structured_data': structured_data,
+                        'images': images,
                         'crawled_at': datetime.now().isoformat()
                     }
                     self.crawled_pages.append(page_data)

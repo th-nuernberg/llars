@@ -104,10 +104,9 @@
             <v-icon class="mr-2">mdi-clipboard-list</v-icon>
             Aktive Szenarien
             <v-spacer></v-spacer>
-            <v-btn variant="text" color="primary" @click="$parent.$parent.activeSection = 'scenarios'">
+            <LBtn variant="text" append-icon="mdi-arrow-right" @click="$parent.$parent.activeSection = 'scenarios'">
               Alle anzeigen
-              <v-icon end>mdi-arrow-right</v-icon>
-            </v-btn>
+            </LBtn>
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text>

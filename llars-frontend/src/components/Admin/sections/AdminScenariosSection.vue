@@ -129,39 +129,30 @@
           </template>
 
           <template v-slot:item.actions="{ item }">
-            <v-btn
-              icon
-              variant="text"
-              size="small"
+            <LIconBtn
+              icon="mdi-chart-bar"
+              tooltip="Statistiken"
               @click.stop="viewScenarioStats(item)"
-            >
-              <v-icon>mdi-chart-bar</v-icon>
-              <v-tooltip activator="parent" location="top">Statistiken</v-tooltip>
-            </v-btn>
+            />
             <ScenarioDetailDialog
               :scenario-id="item.scenario_id"
               @scenarioEdited="fetchScenarios"
             />
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              color="error"
+            <LIconBtn
+              icon="mdi-delete"
+              variant="danger"
+              tooltip="Löschen"
               @click.stop="confirmDelete(item)"
-            >
-              <v-icon>mdi-delete</v-icon>
-              <v-tooltip activator="parent" location="top">Löschen</v-tooltip>
-            </v-btn>
+            />
           </template>
 
           <template v-slot:no-data>
             <div class="text-center py-8">
               <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-clipboard-outline</v-icon>
               <div class="text-medium-emphasis">Keine Szenarien gefunden</div>
-              <v-btn color="primary" class="mt-4" @click="fetchScenarios">
-                <v-icon start>mdi-refresh</v-icon>
+              <LBtn variant="primary" class="mt-4" prepend-icon="mdi-refresh" @click="fetchScenarios">
                 Aktualisieren
-              </v-btn>
+              </LBtn>
             </div>
           </template>
         </v-data-table>
@@ -175,9 +166,7 @@
           <v-icon class="mr-2">mdi-chart-bar</v-icon>
           {{ selectedScenario.name }} - Fortschrittsstatistiken
           <v-spacer></v-spacer>
-          <v-btn icon variant="text" @click="statsDialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <LIconBtn icon="mdi-close" @click="statsDialog = false" />
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>
@@ -234,10 +223,10 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="deleteDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" variant="flat" @click="deleteScenario" :loading="deleting">
+          <LBtn variant="text" @click="deleteDialog = false">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="deleteScenario" :loading="deleting">
             Löschen
-          </v-btn>
+          </LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>

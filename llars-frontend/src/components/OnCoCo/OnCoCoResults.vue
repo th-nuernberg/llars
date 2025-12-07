@@ -14,9 +14,9 @@
     </v-row>
 
     <!-- Loading State -->
-    <v-progress-linear v-if="loading" indeterminate class="mb-4"></v-progress-linear>
+    <v-skeleton-loader v-if="isLoading('data')" type="card" height="200" class="mb-4" />
 
-    <template v-if="analysis">
+    <template v-else-if="analysis">
       <!-- Analysis Info Header -->
       <v-row class="mb-4">
         <v-col cols="12">
@@ -311,7 +311,8 @@
       <template v-if="analysis.status === 'completed'">
         <v-row>
           <v-col cols="12">
-            <v-card>
+            <v-skeleton-loader v-if="isLoading('tabs')" type="card" height="400" />
+            <v-card v-else>
               <v-tabs v-model="activeTab" color="primary">
                 <v-tab value="overview">Übersicht</v-tab>
                 <v-tab value="distribution">Verteilung</v-tab>
@@ -772,6 +773,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import TransitionHeatmap from './TransitionHeatmap.vue';
 import MatrixComparisonMetrics from './MatrixComparisonMetrics.vue';
 import QuickStatsBar from './QuickStatsBar.vue';
@@ -784,6 +786,9 @@ import {
 
 const router = useRouter();
 const route = useRoute();
+
+// Skeleton Loading
+const { isLoading, withLoading } = useSkeletonLoading(['data', 'tabs']);
 
 // Local UI State
 const activeTab = ref('overview');
@@ -930,8 +935,23 @@ watch([transitionPillar, transitionLevel, transitionRole], () => {
 });
 
 // Lifecycle
-onMounted(() => {
-  loadAnalysis();
+onMounted(async () => {
+  await withLoading('data', async () => {
+    await loadAnalysis();
+  });
+
+  // Load tabs data after analysis is loaded
+  if (analysis.value?.status === 'completed') {
+    await withLoading('tabs', async () => {
+      await Promise.all([
+        loadDistribution(),
+        loadTransitions(),
+        loadHeatmaps(),
+        loadMatrixComparison()
+      ]);
+    });
+  }
+
   setupSocket();
 });
 

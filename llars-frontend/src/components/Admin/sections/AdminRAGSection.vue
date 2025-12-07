@@ -3,7 +3,8 @@
     <!-- Stats Cards -->
     <v-row class="mb-4">
       <v-col cols="6" md="3">
-        <v-card variant="tonal" color="primary">
+        <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
+        <v-card v-else variant="tonal" color="primary">
           <v-card-text class="d-flex align-center">
             <v-icon size="32" class="mr-3">mdi-file-document-multiple</v-icon>
             <div>
@@ -14,7 +15,8 @@
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
-        <v-card variant="tonal" color="success">
+        <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
+        <v-card v-else variant="tonal" color="success">
           <v-card-text class="d-flex align-center">
             <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
             <div>
@@ -25,7 +27,8 @@
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
-        <v-card variant="tonal" color="info">
+        <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
+        <v-card v-else variant="tonal" color="info">
           <v-card-text class="d-flex align-center">
             <v-icon size="32" class="mr-3">mdi-folder-multiple</v-icon>
             <div>
@@ -36,7 +39,8 @@
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
-        <v-card variant="tonal" color="warning">
+        <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
+        <v-card v-else variant="tonal" color="warning">
           <v-card-text class="d-flex align-center">
             <v-icon size="32" class="mr-3">mdi-harddisk</v-icon>
             <div>
@@ -49,7 +53,8 @@
     </v-row>
 
     <!-- Embedding Model Info Card -->
-    <v-card class="mb-4" variant="outlined">
+    <v-skeleton-loader v-if="isLoading('embedding')" type="card" height="250" class="mb-4" />
+    <v-card v-else class="mb-4" variant="outlined">
       <v-card-title class="d-flex align-center">
         <v-icon start color="primary">mdi-brain</v-icon>
         Embedding Model
@@ -166,6 +171,7 @@
         <!-- Documents Tab -->
         <v-window-item value="documents">
           <v-card-text>
+            <v-skeleton-loader v-if="isLoading('documents')" type="table" />
             <v-row class="mb-4">
               <v-col cols="12" md="4">
                 <v-text-field
@@ -197,6 +203,7 @@
             </v-row>
 
             <v-data-table
+              v-if="!isLoading('documents')"
               :headers="documentHeaders"
               :items="filteredDocuments"
               :loading="loadingDocuments"
@@ -240,6 +247,7 @@
         <!-- Collections Tab -->
         <v-window-item value="collections">
           <v-card-text>
+            <v-skeleton-loader v-if="isLoading('collections')" type="table" />
             <v-row class="mb-4">
               <v-col cols="12" md="8">
                 <v-text-field
@@ -266,6 +274,7 @@
             </v-row>
 
             <v-data-table
+              v-if="!isLoading('collections')"
               :headers="collectionHeaders"
               :items="collections"
               :loading="loadingCollections"
@@ -721,6 +730,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { getSocket } from '@/services/socketService';
 import {
   useRAGStats,
@@ -728,6 +738,9 @@ import {
   useRAGCollections,
   useRAGHelpers
 } from './AdminRAGSection/composables';
+
+// Skeleton Loading
+const { isLoading, withLoading } = useSkeletonLoading(['stats', 'embedding', 'collections', 'documents']);
 
 // Local UI State
 const activeTab = ref('collections');
@@ -938,10 +951,22 @@ function cleanupWebSocket() {
 
 // Lifecycle
 onMounted(async () => {
-  fetchStats();
-  fetchDocuments();
-  fetchCollections();
-  fetchEmbeddingInfo();
+  await withLoading('stats', async () => {
+    await fetchStats();
+  });
+
+  await withLoading('embedding', async () => {
+    await fetchEmbeddingInfo();
+  });
+
+  await withLoading('collections', async () => {
+    await fetchCollections();
+  });
+
+  await withLoading('documents', async () => {
+    await fetchDocuments();
+  });
+
   await fetchProcessingQueue();
   setupWebSocket();
 });

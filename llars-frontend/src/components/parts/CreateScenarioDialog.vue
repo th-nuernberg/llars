@@ -1,12 +1,12 @@
 <template>
   <div>
-    <v-btn
-      color="primary"
+    <LBtn
+      variant="primary"
       prepend-icon="mdi-plus"
       @click="openDialog"
     >
       Szenario Erstellen
-    </v-btn>
+    </LBtn>
 
     <v-dialog v-model="dialogState.showCreateDialog" max-width="1000px">
       <v-card>
@@ -242,26 +242,23 @@
                 </v-row>
                 <v-row class="select-all-row">
                   <v-col>
-                    <v-btn
-                      class="select-all-btn"
-                      color="primary"
-                      prepend-icon="mdi-check"
+                    <LBtn
+                      variant="secondary"
+                      prepend-icon="mdi-check-all"
                       @click="selectAllFilteredThreads"
-                  >
-                    Alle anwählen
-                  </v-btn>
+                    >
+                      Alle anwählen
+                    </LBtn>
                   </v-col>
                   <v-col>
-                    <v-btn
-                      class="select-all-btn"
-                      color="primary"
-                      prepend-icon="mdi-alpha-x-box-outline"
+                    <LBtn
+                      variant="secondary"
+                      prepend-icon="mdi-close-box-outline"
                       @click="deselectAllFilteredThreads"
                     >
-                    Alle abwählen
-                  </v-btn>
+                      Alle abwählen
+                    </LBtn>
                   </v-col>
-
                 </v-row>
                 <div v-if="state.threads.length > 0">
                   <v-row>
@@ -310,8 +307,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="closeDialog" color="red">Abbrechen</v-btn>
-          <v-btn @click="validateAndSubmitScenario" color="green">Anlegen</v-btn>
+          <LBtn variant="text" @click="closeDialog">Abbrechen</LBtn>
+          <LBtn variant="success" @click="validateAndSubmitScenario">Anlegen</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>

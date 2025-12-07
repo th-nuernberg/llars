@@ -21,6 +21,9 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from services.oncoco import (
     get_oncoco_service,
     get_label_display_name, get_label_level2
@@ -42,6 +45,7 @@ oncoco_analysis_bp = Blueprint('oncoco_analysis', __name__)
 @oncoco_analysis_bp.route('/analyses', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='oncoco')
 def list_analyses():
     """
     List all OnCoCo analyses for the current user.
@@ -83,6 +87,7 @@ def list_analyses():
 @oncoco_analysis_bp.route('/analyses', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='oncoco')
 def create_analysis():
     """
     Create a new OnCoCo analysis.
@@ -99,7 +104,7 @@ def create_analysis():
     data = request.get_json()
 
     if not data or 'name' not in data:
-        return jsonify({'error': 'Name is required'}), 400
+        raise ValidationError('Name is required')
 
     pillar_numbers = data.get('pillars', [1, 3, 5])  # Default active pillars
 
@@ -109,9 +114,7 @@ def create_analysis():
     ).count()
 
     if total_threads == 0:
-        return jsonify({
-            'error': 'No threads found for selected pillars. Please sync data first.'
-        }), 400
+        raise ValidationError('No threads found for selected pillars. Please sync data first.')
 
     config = {
         'pillars': pillar_numbers,
@@ -147,6 +150,7 @@ def create_analysis():
 @oncoco_analysis_bp.route('/analyses/<int:analysis_id>', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='oncoco')
 def get_analysis(analysis_id: int):
     """
     Get details of a specific analysis.
@@ -157,7 +161,9 @@ def get_analysis(analysis_id: int):
     Returns:
         JSON object with analysis details
     """
-    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+    analysis = OnCoCoAnalysis.query.get(analysis_id)
+    if not analysis:
+        raise NotFoundError(f'Analysis {analysis_id} not found')
 
     # Get pillar statistics
     pillar_stats = OnCoCoPillarStatistics.query.filter_by(
@@ -202,6 +208,7 @@ def get_analysis(analysis_id: int):
 @oncoco_analysis_bp.route('/analyses/<int:analysis_id>/start', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='oncoco')
 def start_analysis(analysis_id: int):
     """
     Start or resume an OnCoCo analysis.
@@ -218,7 +225,9 @@ def start_analysis(analysis_id: int):
     Returns:
         JSON object with status
     """
-    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+    analysis = OnCoCoAnalysis.query.get(analysis_id)
+    if not analysis:
+        raise NotFoundError(f'Analysis {analysis_id} not found')
     # Handle POST with no body or non-JSON content type
     data = {}
     if request.is_json:
@@ -228,24 +237,18 @@ def start_analysis(analysis_id: int):
     # Allow resuming stuck 'running' analyses with force flag
     if analysis.status == OnCoCoAnalysisStatus.RUNNING:
         if not force_resume:
-            return jsonify({
-                'error': 'Analysis is already running. Use force=true to resume if stuck.',
-                'hint': 'The analysis may be stuck after a server restart. Use force=true to resume.'
-            }), 400
+            raise ValidationError('Analysis is already running. Use force=true to resume if stuck.',
+                                details={'hint': 'The analysis may be stuck after a server restart. Use force=true to resume.'})
         # Reset to pending to allow restart, keeping existing progress
         logger.info(f"[OnCoCo] Force resuming stuck analysis {analysis_id}")
 
     if analysis.status not in [OnCoCoAnalysisStatus.PENDING, OnCoCoAnalysisStatus.FAILED, OnCoCoAnalysisStatus.RUNNING]:
-        return jsonify({
-            'error': f'Cannot start analysis in {analysis.status.value} status'
-        }), 400
+        raise ValidationError(f'Cannot start analysis in {analysis.status.value} status')
 
     # Check model availability
     service = get_oncoco_service()
     if not service.is_model_available():
-        return jsonify({
-            'error': 'OnCoCo model not available. Please check model path.'
-        }), 500
+        raise ValidationError('OnCoCo model not available. Please check model path.')
 
     # Update status
     analysis.status = OnCoCoAnalysisStatus.RUNNING
@@ -273,6 +276,7 @@ def start_analysis(analysis_id: int):
         action = 'resumed' if should_resume else 'started'
         logger.info(f"[OnCoCo] Analysis {analysis_id} {action} in background (resume={should_resume})")
         return jsonify({
+            'success': True,
             'message': f'Analysis {action}',
             'status': analysis.status.value,
             'resumed': should_resume
@@ -282,7 +286,7 @@ def start_analysis(analysis_id: int):
         analysis.status = OnCoCoAnalysisStatus.FAILED
         analysis.error_message = str(e)
         db.session.commit()
-        return jsonify({'error': str(e)}), 500
+        raise
 
 
 def _run_analysis_background(app, analysis_id: int, socketio, resume: bool = False):
@@ -589,6 +593,7 @@ def _run_analysis(analysis: OnCoCoAnalysis, socketio=None, resume: bool = False)
 @oncoco_analysis_bp.route('/analyses/<int:analysis_id>', methods=['DELETE'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='oncoco')
 def delete_analysis(analysis_id: int):
     """
     Delete an OnCoCo analysis and all related data.
@@ -599,7 +604,9 @@ def delete_analysis(analysis_id: int):
     Returns:
         JSON object with status
     """
-    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+    analysis = OnCoCoAnalysis.query.get(analysis_id)
+    if not analysis:
+        raise NotFoundError(f'Analysis {analysis_id} not found')
 
     # Delete related data
     OnCoCoSentenceLabel.query.filter_by(analysis_id=analysis_id).delete()
@@ -611,4 +618,4 @@ def delete_analysis(analysis_id: int):
 
     logger.info(f"[OnCoCo] Deleted analysis {analysis_id}")
 
-    return jsonify({'message': 'Analysis deleted'})
+    return jsonify({'success': True, 'message': 'Analysis deleted'})

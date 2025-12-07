@@ -10,6 +10,9 @@ import logging
 from flask import Blueprint, request, jsonify
 
 from auth.decorators import authentik_required
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from services.oncoco import (
     get_oncoco_service,
     ONCOCO_LABELS, LABEL_HIERARCHY
@@ -27,6 +30,7 @@ oncoco_info_bp = Blueprint('oncoco_info', __name__)
 
 @oncoco_info_bp.route('/info', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='oncoco')
 def get_oncoco_info():
     """
     Get information about the OnCoCo model and label system.
@@ -53,6 +57,7 @@ def get_oncoco_info():
 
 @oncoco_info_bp.route('/labels', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='oncoco')
 def get_labels():
     """
     Get all OnCoCo labels with metadata.

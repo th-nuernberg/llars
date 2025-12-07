@@ -11,6 +11,9 @@ from flask import Blueprint, request, jsonify
 
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from services.judge.kia_sync_service import get_kia_sync_service
 
 logger = logging.getLogger(__name__)
@@ -24,6 +27,7 @@ oncoco_pillar_bp = Blueprint('oncoco_pillar', __name__)
 
 @oncoco_pillar_bp.route('/pillars', methods=['GET'])
 @authentik_required
+@handle_api_errors(logger_name='oncoco')
 def get_pillars_status():
     """
     Get status of all pillars (local DB + GitLab availability).
@@ -40,6 +44,7 @@ def get_pillars_status():
 @oncoco_pillar_bp.route('/pillars/sync', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='oncoco')
 def sync_pillars():
     """
     Sync pillar data from GitLab.
@@ -82,6 +87,7 @@ def sync_pillars():
         }
 
     return jsonify({
+        'success': True,
         'message': 'Sync complete',
         'results': results
     })

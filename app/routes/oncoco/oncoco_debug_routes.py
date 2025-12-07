@@ -21,6 +21,9 @@ from db.tables import (
     OnCoCoTransitionMatrix
 )
 from auth.decorators import debug_route_protected
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from services.oncoco import (
     get_oncoco_service,
     get_label_display_name, get_label_level2
@@ -37,6 +40,7 @@ oncoco_debug_bp = Blueprint('oncoco_debug', __name__)
 
 @oncoco_debug_bp.route('/debug/classify', methods=['POST'])
 @debug_route_protected
+@handle_api_errors(logger_name='oncoco')
 def debug_classify():
     """
     DEBUG: Classify a single sentence.
@@ -45,12 +49,12 @@ def debug_classify():
     """
     data = request.get_json()
     if not data or 'sentence' not in data:
-        return jsonify({'error': 'sentence is required'}), 400
+        raise ValidationError('sentence is required')
 
     service = get_oncoco_service()
 
     if not service.is_model_available():
-        return jsonify({'error': 'Model not available'}), 500
+        raise ValidationError('Model not available')
 
     result = service.classify_sentence(
         data['sentence'],
@@ -74,6 +78,7 @@ def debug_classify():
 
 @oncoco_debug_bp.route('/debug/analyses', methods=['GET'])
 @debug_route_protected
+@handle_api_errors(logger_name='oncoco')
 def debug_list_analyses():
     """
     DEBUG: List all analyses.
@@ -100,6 +105,7 @@ def debug_list_analyses():
 
 @oncoco_debug_bp.route('/debug/analyses/<int:analysis_id>/start', methods=['POST'])
 @debug_route_protected
+@handle_api_errors(logger_name='oncoco')
 def debug_start_analysis(analysis_id: int):
     """
     DEBUG: Start or resume an analysis.
@@ -109,7 +115,9 @@ def debug_start_analysis(analysis_id: int):
     # Import helper functions from analysis routes
     from routes.oncoco.oncoco_analysis_routes import _run_analysis_background
 
-    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+    analysis = OnCoCoAnalysis.query.get(analysis_id)
+    if not analysis:
+        raise NotFoundError(f'Analysis {analysis_id} not found')
     # Handle POST with no body or non-JSON content type
     data = {}
     if request.is_json:
@@ -119,23 +127,17 @@ def debug_start_analysis(analysis_id: int):
     # Allow resuming stuck 'running' analyses with force flag
     if analysis.status == OnCoCoAnalysisStatus.RUNNING:
         if not force_resume:
-            return jsonify({
-                'error': 'Analysis is already running. Use force=true to resume if stuck.',
-                'hint': 'The analysis may be stuck after a server restart. Use force=true to resume.'
-            }), 400
+            raise ValidationError('Analysis is already running. Use force=true to resume if stuck.',
+                                details={'hint': 'The analysis may be stuck after a server restart. Use force=true to resume.'})
         logger.info(f"[OnCoCo] Force resuming stuck analysis {analysis_id}")
 
     if analysis.status not in [OnCoCoAnalysisStatus.PENDING, OnCoCoAnalysisStatus.FAILED, OnCoCoAnalysisStatus.RUNNING]:
-        return jsonify({
-            'error': f'Cannot start analysis in {analysis.status.value} status'
-        }), 400
+        raise ValidationError(f'Cannot start analysis in {analysis.status.value} status')
 
     # Check model availability
     service = get_oncoco_service()
     if not service.is_model_available():
-        return jsonify({
-            'error': 'OnCoCo model not available. Please check model path.'
-        }), 500
+        raise ValidationError('OnCoCo model not available. Please check model path.')
 
     # Update status
     analysis.status = OnCoCoAnalysisStatus.RUNNING
@@ -161,6 +163,7 @@ def debug_start_analysis(analysis_id: int):
         action = 'resumed' if should_resume else 'started'
         logger.info(f"[OnCoCo DEBUG] Analysis {analysis_id} {action} in background (resume={should_resume})")
         return jsonify({
+            'success': True,
             'message': f'Analysis {action}',
             'status': analysis.status.value,
             'resumed': should_resume,
@@ -172,11 +175,12 @@ def debug_start_analysis(analysis_id: int):
         analysis.status = OnCoCoAnalysisStatus.FAILED
         analysis.error_message = str(e)
         db.session.commit()
-        return jsonify({'error': str(e)}), 500
+        raise
 
 
 @oncoco_debug_bp.route('/debug/analyses/<int:analysis_id>/complete', methods=['POST'])
 @debug_route_protected
+@handle_api_errors(logger_name='oncoco')
 def debug_complete_analysis(analysis_id: int):
     """
     DEBUG: Mark a stuck analysis as completed.
@@ -184,30 +188,28 @@ def debug_complete_analysis(analysis_id: int):
     Requires SYSTEM_ADMIN_API_KEY via X-API-Key header or api_key query param.
     Only available in development mode.
     """
-    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+    analysis = OnCoCoAnalysis.query.get(analysis_id)
+    if not analysis:
+        raise NotFoundError(f'Analysis {analysis_id} not found')
 
     # Only allow completing 'running' analyses that have reached 100%
     if analysis.status != OnCoCoAnalysisStatus.RUNNING:
-        return jsonify({
-            'error': f'Cannot complete analysis in {analysis.status.value} status. Only running analyses can be completed.',
-            'current_status': analysis.status.value
-        }), 400
+        raise ValidationError(f'Cannot complete analysis in {analysis.status.value} status. Only running analyses can be completed.',
+                            details={'current_status': analysis.status.value})
 
     if analysis.total_threads == 0:
-        return jsonify({
-            'error': 'Analysis has no threads configured',
-            'total_threads': analysis.total_threads
-        }), 400
+        raise ValidationError('Analysis has no threads configured',
+                            details={'total_threads': analysis.total_threads})
 
     progress = (analysis.processed_threads / analysis.total_threads * 100) if analysis.total_threads > 0 else 0
 
     if progress < 100:
-        return jsonify({
-            'error': f'Analysis is not complete yet ({progress:.1f}%). Wait for it to finish or use force=true.',
-            'progress': progress,
-            'processed_threads': analysis.processed_threads,
-            'total_threads': analysis.total_threads
-        }), 400
+        raise ValidationError(f'Analysis is not complete yet ({progress:.1f}%). Wait for it to finish or use force=true.',
+                            details={
+                                'progress': progress,
+                                'processed_threads': analysis.processed_threads,
+                                'total_threads': analysis.total_threads
+                            })
 
     # Mark as completed
     analysis.status = OnCoCoAnalysisStatus.COMPLETED
@@ -217,6 +219,7 @@ def debug_complete_analysis(analysis_id: int):
     logger.info(f"[OnCoCo DEBUG] Analysis {analysis_id} marked as completed (was stuck at 100%)")
 
     return jsonify({
+        'success': True,
         'message': 'Analysis marked as completed',
         'analysis_id': analysis_id,
         'status': analysis.status.value,
@@ -228,6 +231,7 @@ def debug_complete_analysis(analysis_id: int):
 
 @oncoco_debug_bp.route('/debug/analyses/<int:analysis_id>/recompute-stats', methods=['POST'])
 @debug_route_protected
+@handle_api_errors(logger_name='oncoco')
 def debug_recompute_statistics(analysis_id: int):
     """
     DEBUG: Recompute pillar statistics and transition matrices from existing sentence labels.
@@ -235,16 +239,16 @@ def debug_recompute_statistics(analysis_id: int):
     Requires SYSTEM_ADMIN_API_KEY via X-API-Key header or api_key query param.
     Only available in development mode.
     """
-    analysis = OnCoCoAnalysis.query.get_or_404(analysis_id)
+    analysis = OnCoCoAnalysis.query.get(analysis_id)
+    if not analysis:
+        raise NotFoundError(f'Analysis {analysis_id} not found')
 
     # Get all sentence labels for this analysis
     sentence_labels = OnCoCoSentenceLabel.query.filter_by(analysis_id=analysis_id).all()
 
     if not sentence_labels:
-        return jsonify({
-            'error': 'No sentence labels found for this analysis',
-            'analysis_id': analysis_id
-        }), 404
+        raise NotFoundError('No sentence labels found for this analysis',
+                          details={'analysis_id': analysis_id})
 
     # Delete existing statistics (if any)
     OnCoCoPillarStatistics.query.filter_by(analysis_id=analysis_id).delete()
@@ -360,6 +364,7 @@ def debug_recompute_statistics(analysis_id: int):
     logger.info(f"[OnCoCo DEBUG] Recomputed statistics for analysis {analysis_id}: {stats_created} pillar stats, {matrices_created} transition matrices")
 
     return jsonify({
+        'success': True,
         'message': 'Statistics recomputed successfully',
         'analysis_id': analysis_id,
         'sentence_labels_processed': len(sentence_labels),

@@ -16,6 +16,9 @@ from scipy.spatial.distance import jensenshannon
 from db.tables import OnCoCoTransitionMatrix
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 from services.oncoco import get_label_display_name
 from services.judge.kia_sync_service import PILLAR_CONFIG
 
@@ -31,6 +34,7 @@ oncoco_matrix_bp = Blueprint('oncoco_matrix', __name__)
 @oncoco_matrix_bp.route('/analyses/<int:analysis_id>/matrix-comparison', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='oncoco')
 def get_matrix_comparison_metrics(analysis_id: int):
     """
     Get statistical comparison metrics for transition matrices across pillars.
@@ -69,10 +73,8 @@ def get_matrix_comparison_metrics(analysis_id: int):
     ).all()
 
     if len(matrices) < 2:
-        return jsonify({
-            'error': 'Need at least 2 pillars for comparison',
-            'pillars_found': len(matrices)
-        }), 400
+        raise ValidationError('Need at least 2 pillars for comparison',
+                            details={'pillars_found': len(matrices)})
 
     # Convert matrices to numpy arrays with consistent labels
     all_labels = set()

@@ -10,6 +10,9 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 
 session_control_bp = Blueprint('judge_sessions_control', __name__)
 
@@ -17,6 +20,7 @@ session_control_bp = Blueprint('judge_sessions_control', __name__)
 @session_control_bp.route('/sessions/<int:session_id>/start', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def start_session(session_id: int):
     """
     Start processing the session queue.
@@ -27,13 +31,15 @@ def start_session(session_id: int):
     Returns:
         JSON with session status
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     # Allow starting from CREATED, QUEUED, or PAUSED status
     if session.status not in [JudgeSessionStatus.CREATED, JudgeSessionStatus.QUEUED, JudgeSessionStatus.PAUSED]:
-        return jsonify({
-            'error': f'Session kann nicht gestartet werden (Status: {session.status.value})'
-        }), 400
+        raise ValidationError(
+            f'Session kann nicht gestartet werden (Status: {session.status.value})'
+        )
 
     # Optional: Auto-sync KIA data before starting
     auto_sync = request.args.get('auto_sync', 'false').lower() == 'true'
@@ -84,6 +90,7 @@ def start_session(session_id: int):
 @session_control_bp.route('/sessions/<int:session_id>/resume', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def resume_session(session_id: int):
     """
     Resume a session after backend restart or interruption.
@@ -96,13 +103,15 @@ def resume_session(session_id: int):
     Returns:
         JSON with session status and reset count
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     # Allow resuming from RUNNING, PAUSED, or QUEUED status
     if session.status not in [JudgeSessionStatus.RUNNING, JudgeSessionStatus.PAUSED, JudgeSessionStatus.QUEUED]:
-        return jsonify({
-            'error': f'Session kann nicht fortgesetzt werden (Status: {session.status.value})'
-        }), 400
+        raise ValidationError(
+            f'Session kann nicht fortgesetzt werden (Status: {session.status.value})'
+        )
 
     # Reset any "running" comparisons back to "pending" (handles interrupted comparisons)
     reset_count = JudgeComparison.query.filter(
@@ -146,6 +155,7 @@ def resume_session(session_id: int):
 @session_control_bp.route('/sessions/<int:session_id>/pause', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def pause_session(session_id: int):
     """
     Pause a running session.
@@ -153,12 +163,14 @@ def pause_session(session_id: int):
     Returns:
         JSON with session status
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     if session.status != JudgeSessionStatus.RUNNING:
-        return jsonify({
-            'error': f'Session ist nicht am Laufen (Status: {session.status.value})'
-        }), 400
+        raise ValidationError(
+            f'Session ist nicht am Laufen (Status: {session.status.value})'
+        )
 
     session.status = JudgeSessionStatus.PAUSED
     db.session.commit()
@@ -177,6 +189,7 @@ def pause_session(session_id: int):
 @session_control_bp.route('/sessions/<int:session_id>', methods=['DELETE'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def delete_session(session_id: int):
     """
     Delete a session and all its data.
@@ -184,7 +197,9 @@ def delete_session(session_id: int):
     Returns:
         JSON confirmation
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     # Stop worker pool if running
     if session.status == JudgeSessionStatus.RUNNING:

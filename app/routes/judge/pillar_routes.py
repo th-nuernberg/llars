@@ -9,6 +9,9 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 
 pillar_bp = Blueprint('judge_pillars', __name__)
 
@@ -20,6 +23,7 @@ pillar_bp = Blueprint('judge_pillars', __name__)
 @pillar_bp.route('/pillars', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def list_pillars():
     """
     List all pillars with thread counts.
@@ -72,6 +76,7 @@ def list_pillars():
 @pillar_bp.route('/pillars/<int:pillar_number>/threads', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
 def get_pillar_threads(pillar_number: int):
     """
     Get threads assigned to a specific pillar.
@@ -104,6 +109,7 @@ def get_pillar_threads(pillar_number: int):
 @pillar_bp.route('/pillars/<int:pillar_number>/assign', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')
+@handle_api_errors(logger_name='judge')
 def assign_thread_to_pillar(pillar_number: int):
     """
     Assign a thread to a pillar.
@@ -119,12 +125,12 @@ def assign_thread_to_pillar(pillar_number: int):
     thread_id = data.get('thread_id')
 
     if not thread_id:
-        return jsonify({'error': 'thread_id ist erforderlich'}), 400
+        raise ValidationError('thread_id ist erforderlich')
 
     # Check if thread exists
     thread = EmailThread.query.get(thread_id)
     if not thread:
-        return jsonify({'error': 'Thread nicht gefunden'}), 404
+        raise NotFoundError('Thread nicht gefunden')
 
     # Check if already assigned
     existing = PillarThread.query.filter_by(
@@ -133,7 +139,7 @@ def assign_thread_to_pillar(pillar_number: int):
     ).first()
 
     if existing:
-        return jsonify({'error': 'Thread ist bereits dieser Säule zugeordnet'}), 400
+        raise ConflictError('Thread ist bereits dieser Säule zugeordnet')
 
     pillar_names = {
         1: "Rollenspiele",

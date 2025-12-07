@@ -13,6 +13,9 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
 
 export_bp = Blueprint('judge_export', __name__)
 
@@ -24,6 +27,7 @@ export_bp = Blueprint('judge_export', __name__)
 @export_bp.route('/sessions/<int:session_id>/export', methods=['GET'])
 @authentik_required
 @require_permission('data:export')
+@handle_api_errors(logger_name='judge')
 def export_session(session_id: int):
     """
     Export session results as JSON.
@@ -31,7 +35,9 @@ def export_session(session_id: int):
     Returns:
         JSON with complete session data
     """
-    session = JudgeSession.query.get_or_404(session_id)
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
 
     # Get all comparisons with evaluations
     comparisons = JudgeComparison.query.filter_by(

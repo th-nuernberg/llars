@@ -1,65 +1,139 @@
-# LLARS - Labeling und Leistungsbewertung von Antworten in Sprachmodellen
+# LLARS - LLM-Assisted Rating System
 
-LLARS (Labeling und Leistungsbewertung von Antworten in Sprachmodellen) ist ein System zur Bewertung und zum Ranking von Outputs generierter Antworten durch verschiedene Sprachmodelle. Es hilft dabei, die Leistungsfähigkeit der Modelle durch menschliche und automatische Bewertung zu analysieren.
+LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-Im Englischen wird LLARS als **BARS** bezeichnet, was für **Benchmarking and Review System** steht.
+## Features
+
+- **Multi-User Collaboration** - Echtzeit-Zusammenarbeit mit YJS CRDT
+- **LLM-Integration** - OpenAI, LiteLLM/Mistral
+- **LLM-as-Judge** - Automatisierte paarweise Vergleiche
+- **RAG-Pipeline** - Dokumenten-basierte Antworten mit ChromaDB
+- **RBAC Permission System** - Rollenbasierte Zugriffskontrolle
+- **Authentik Auth** - OAuth2/OIDC Authentifizierung
+- **Chatbot Builder** - Chatbots mit RAG-Integration erstellen
 
 ## Voraussetzungen
 
-Um LLARS auszuführen, müssen folgende Voraussetzungen erfüllt sein:
+- **Docker** & **Docker Compose** ([Installation](https://docs.docker.com/get-docker/))
+- **Git**
 
-- **Docker** muss installiert sein. Du kannst Docker [hier herunterladen](https://docs.docker.com/get-docker/).
-
-## Installation
-
-1. **Docker installieren**: Falls Docker noch nicht installiert ist, folge den Anweisungen in der [offiziellen Docker-Dokumentation](https://docs.docker.com/get-docker/), um es auf deinem System zu installieren.
-
-2. **Projekt klonen**: Klone das LLARS-Projekt auf deinen Rechner:
-
-   ```bash
-   git clone https://github.com/dein-repo/llars.git
-   cd llars
-   ```
-
-## Projekt starten
-
-Sobald Docker installiert ist, kannst du das Projekt mit folgendem Skript starten:
+## Schnellstart
 
 ```bash
+# 1. Repository klonen
+git clone https://github.com/dein-repo/llars.git
+cd llars
+
+# 2. Umgebungsvariablen konfigurieren
+cp .env.template.development .env
+
+# 3. LLARS starten
 ./start_llars.sh
 ```
 
-Das Skript startet die notwendigen Docker-Container und konfiguriert das System entsprechend.
+Das Skript startet alle Docker-Container und konfiguriert Authentik automatisch.
 
-## Verwendung
+## URLs (Development)
 
-Nachdem das Projekt gestartet wurde, kannst du über deinen Webbrowser auf das LLARS-Dashboard zugreifen. Der Standardzugangspunkt ist:
+| Service | URL |
+|---------|-----|
+| **Frontend** | http://localhost:55080 |
+| **Backend API** | http://localhost:55080/api |
+| **Authentik Admin** | http://localhost:55095 |
 
-```
-http://localhost:PORT
-```
+## Test-Benutzer
 
-(Den richtigen `PORT` kannst du der `docker-compose.yml` Datei entnehmen.)
+| User | Passwort | Rolle |
+|------|----------|-------|
+| admin | admin123 | Administrator |
+| researcher | admin123 | Researcher |
+| viewer | admin123 | Viewer |
 
 ## Projektstruktur
 
-* `start_llars.sh`: Skript zum Starten des Projekts mit Docker.
-* `docker-compose.yml`: Konfigurationsdatei für Docker-Container.
-* `backend/`: Backend-Komponenten des Projekts.
-* `frontend/`: Frontend-Komponenten des Projekts.
+```
+llars/
+├── app/                    # Flask Backend
+│   ├── auth/              # Authentifizierung
+│   ├── routes/            # API Endpoints
+│   ├── services/          # Business Logic
+│   └── db/                # Database Models
+├── llars-frontend/        # Vue 3 Frontend
+│   ├── src/components/    # Vue Komponenten
+│   └── src/composables/   # Vue Composables
+├── docker/                # Docker Konfiguration
+├── scripts/               # Hilfs-Skripte
+├── start_llars.sh         # Start-Skript
+├── docker-compose.yml     # Docker Compose
+├── CLAUDE.md              # Entwickler-Dokumentation
+└── REFACTORING_TODO.md    # Offene Refactoring-Tasks
+```
+
+## Architektur
+
+```
+nginx (:80) → Reverse Proxy
+├── /          → Vue Frontend (:5173)
+├── /api/      → Flask Backend (:8081)
+├── /auth/     → Flask Auth (:8081)
+└── /collab/   → YJS WebSocket (:8082)
+
+Databases:
+├── MariaDB (:3306)        → Anwendungsdaten
+├── PostgreSQL (:5432)     → Authentik
+└── ChromaDB               → RAG Vektoren
+```
+
+## Wichtige Befehle
+
+```bash
+# Starten
+./start_llars.sh              # Development Mode
+./start_llars.sh prod         # Production Mode
+
+# Komplett-Neustart (LÖSCHT ALLE DATEN!)
+REMOVE_VOLUMES=True ./start_llars.sh
+
+# Logs anzeigen
+docker compose logs -f backend-flask-service
+docker compose logs -f frontend-vite-service
+
+# Authentik Setup
+./scripts/setup_authentik.sh
+./scripts/verify_authentik.sh
+```
+
+## Konfiguration
+
+Wichtige Umgebungsvariablen in `.env`:
+
+```bash
+PROJECT_STATE=development     # oder production
+PROJECT_HOST=localhost
+NGINX_INTERNAL_PORT=80        # MUSS 80 sein!
+OPENAI_API_KEY=sk-...         # Für LLM-Features
+LITELLM_API_KEY=...           # Optional für Mistral
+```
 
 ## Troubleshooting
 
-Falls beim Start des Projekts Fehler auftreten, überprüfe die folgenden Punkte:
+| Problem | Lösung |
+|---------|--------|
+| LLARS nicht erreichbar | `NGINX_INTERNAL_PORT=80` in .env prüfen |
+| Auth-Fehler | `./scripts/setup_authentik.sh` ausführen |
+| Container starten nicht | `docker compose down && ./start_llars.sh` |
+| Datenbank-Fehler | `REMOVE_VOLUMES=True ./start_llars.sh` |
 
-* **Docker ist installiert und läuft korrekt.** Überprüfe dies mit:
+## Dokumentation
 
-  ```bash
-  docker --version
-  ```
-
-* **Keine Port-Konflikte**: Stelle sicher, dass der Port, auf dem der LLARS-Dienst läuft, nicht von anderen Prozessen belegt ist.
+- **CLAUDE.md** - Ausführliche Entwickler-Dokumentation
+- **REFACTORING_TODO.md** - Offene Refactoring-Aufgaben
+- **MIGRATION_ERROR_HANDLING.md** - Error-Handling Migration
 
 ## Lizenz
 
-Dieses Projekt steht unter der [Lizenzname]-Lizenz. Details findest du in der Datei `LICENSE`.
+Dieses Projekt steht unter der MIT-Lizenz.
+
+---
+
+**Entwickler:** Philipp Steigerwald

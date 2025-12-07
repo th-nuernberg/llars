@@ -98,15 +98,14 @@
 
           <!-- Actions -->
           <v-card-actions class="px-4 pb-4">
-            <v-btn
+            <LBtn
               size="small"
               variant="text"
-              color="primary"
               prepend-icon="mdi-play"
               @click="$emit('test', chatbot)"
             >
               Testen
-            </v-btn>
+            </LBtn>
             <v-spacer />
             <v-menu>
               <template #activator="{ props }">

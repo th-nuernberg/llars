@@ -1,6 +1,6 @@
 # LLARS - LLM-Assisted Rating System
 
-**Version:** 2.6 | **Stand:** 28. November 2025
+**Version:** 2.7 | **Stand:** 7. Dezember 2025
 
 ## Projekt-Übersicht
 
@@ -129,6 +129,81 @@ const { hasPermission, isAdmin } = usePermissions()
 <template>
   <v-card v-if="hasPermission('feature:mail_rating:view')">...</v-card>
 </template>
+```
+
+---
+
+## Error Handling
+
+**Decorator:** `app/decorators/error_handler.py`
+**Migration Guide:** `MIGRATION_ERROR_HANDLING.md`
+
+### Pattern - ALLE Routes MÜSSEN @handle_api_errors nutzen
+
+```python
+from decorators.error_handler import (
+    handle_api_errors, NotFoundError, ValidationError, ConflictError
+)
+
+@bp.route('/items/<int:id>')
+@require_permission('feature:items:view')
+@handle_api_errors(logger_name='module_name')
+def get_item(id):
+    item = Item.query.get(id)
+    if not item:
+        raise NotFoundError(f'Item {id} not found')
+    return jsonify({'success': True, 'item': item.to_dict()})
+```
+
+### Exception Klassen
+
+| Exception | Status | Verwendung |
+|-----------|--------|------------|
+| `NotFoundError` | 404 | Ressource nicht gefunden |
+| `ValidationError` | 400 | Validierungsfehler, fehlende Felder |
+| `ConflictError` | 409 | Duplikat, Konflikt |
+| `UnauthorizedError` | 401 | Authentifizierung fehlgeschlagen |
+| `ForbiddenError` | 403 | Keine Berechtigung |
+| `APIError` | Custom | Benutzerdefinierter Status-Code |
+
+### Response Format (Standard)
+
+```json
+{
+  "success": false,
+  "error": "Human-readable message",
+  "error_type": "not_found|validation_error|conflict|...",
+  "details": {}  // Optional
+}
+```
+
+### Decorator-Reihenfolge - WICHTIG!
+
+```python
+@bp.route('/endpoint')
+@require_permission('feature:x:view')  # 1. Permission zuerst
+@handle_api_errors(logger_name='x')    # 2. Error handling danach
+def endpoint():
+    ...
+```
+
+### Anti-Patterns - NICHT verwenden!
+
+```python
+# ❌ FALSCH - Manuelles try/except
+try:
+    item = get_item()
+    return jsonify({'success': True})
+except Exception as e:
+    return jsonify({'error': str(e)}), 500
+
+# ❌ FALSCH - Direkte Error-Response
+if not item:
+    return jsonify({'error': 'Not found'}), 404
+
+# ✅ RICHTIG - Exception werfen
+if not item:
+    raise NotFoundError('Item not found')
 ```
 
 ---
@@ -284,7 +359,9 @@ EOF
 ```
 app/
 ├── auth/oidc_validator.py         # JWT Validation
-├── decorators/permission_decorator.py
+├── decorators/
+│   ├── permission_decorator.py    # Permission checks
+│   └── error_handler.py           # Standardized error handling
 ├── services/
 │   ├── permission_service.py
 │   └── judge/                     # LLM-as-Judge
@@ -305,15 +382,17 @@ llars-frontend/src/
 
 ## Status
 
-**Stand:** 28. November 2025
+**Stand:** 7. Dezember 2025
 
 | Feature | Status |
 |---------|--------|
 | Authentik-Integration | ✅ 100% |
 | Permission-System | ✅ 100% |
+| Error-Handling System | ✅ 100% (Decorator + Exceptions) |
 | LLM-as-Judge | ✅ 100% |
 | RAG-Pipeline | ✅ 100% |
 | Theme-System | ✅ 100% |
+| Error-Handling Migration | ⚠️ 20% (chatbot_routes done, ~25 files to go) |
 | SSL/TLS | ⚠️ 0% |
 
 ---

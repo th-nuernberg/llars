@@ -10,7 +10,7 @@ from db.tables import (
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
 
-pillar_bp = Blueprint('judge_pillars', __name__, url_prefix='/api/judge')
+pillar_bp = Blueprint('judge_pillars', __name__)
 
 
 # ============================================================================

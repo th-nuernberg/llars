@@ -49,8 +49,8 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if authentik container is running
-if ! docker compose ps | grep -q "authentik-server.*running"; then
+# Check if authentik container is running (matches both "running" and "healthy")
+if ! docker compose ps | grep -q "authentik-server.*\(running\|healthy\)"; then
     print_error "Authentik server is not running. Start it with: docker compose up -d"
     exit 1
 fi

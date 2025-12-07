@@ -22,6 +22,7 @@ import logging
 from .chat_manager import ChatManager
 from .events_connection import register_connection_events
 from .events_chat import register_chat_events
+from .events_chatbot import register_chatbot_events
 from .events_judge import register_judge_events
 from .events_oncoco import register_oncoco_events
 from .events_crawler import register_crawler_events
@@ -52,6 +53,11 @@ def configure_socket_routes(socketio, verbose=True):
         Chat (events_chat.py):
             - chat_stream: Streaming chat with RAG integration
             - test_prompt_stream: Test prompt execution
+
+        Chatbot (events_chatbot.py):
+            - chatbot:stream: Streaming chat with specific chatbot (Multi-Collection RAG)
+            - chatbot:join: Join chatbot session room
+            - chatbot:leave: Leave chatbot session room
 
         Judge (events_judge.py):
             - judge:join_session: Join evaluation session room
@@ -88,6 +94,7 @@ def configure_socket_routes(socketio, verbose=True):
     # Register event handlers
     register_connection_events(socketio, chat_manager)
     register_chat_events(socketio, chat_manager)
+    register_chatbot_events(socketio)
     register_judge_events(socketio)
     register_oncoco_events(socketio)
     register_crawler_events(socketio)

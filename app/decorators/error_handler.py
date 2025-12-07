@@ -151,23 +151,90 @@ class APIError(Exception):
         raise APIError('Invalid configuration', status_code=400)
         raise APIError('Resource not found', status_code=404)
     """
-    def __init__(self, message: str, status_code: int = 400, error_type: str = 'api_error'):
+    def __init__(self, message: str, status_code: int = 400, error_type: str = 'api_error', details: dict = None):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.error_type = error_type
+        self.details = details or {}
+
+
+class NotFoundError(APIError):
+    """
+    Exception for 404 Not Found errors.
+
+    Usage:
+        raise NotFoundError('Chatbot not found')
+        raise NotFoundError('Document #123 not found')
+    """
+    def __init__(self, message: str = 'Resource not found', details: dict = None):
+        super().__init__(message, status_code=404, error_type='not_found', details=details)
+
+
+class ValidationError(APIError):
+    """
+    Exception for 400 Bad Request / Validation errors.
+
+    Usage:
+        raise ValidationError('name and display_name are required')
+        raise ValidationError('Invalid email format', details={'field': 'email'})
+    """
+    def __init__(self, message: str, details: dict = None):
+        super().__init__(message, status_code=400, error_type='validation_error', details=details)
+
+
+class UnauthorizedError(APIError):
+    """
+    Exception for 401 Unauthorized errors.
+
+    Usage:
+        raise UnauthorizedError('Invalid credentials')
+        raise UnauthorizedError()  # Uses default message
+    """
+    def __init__(self, message: str = 'Unauthorized', details: dict = None):
+        super().__init__(message, status_code=401, error_type='unauthorized', details=details)
+
+
+class ForbiddenError(APIError):
+    """
+    Exception for 403 Forbidden errors.
+
+    Usage:
+        raise ForbiddenError('Insufficient permissions')
+    """
+    def __init__(self, message: str = 'Forbidden', details: dict = None):
+        super().__init__(message, status_code=403, error_type='forbidden', details=details)
+
+
+class ConflictError(APIError):
+    """
+    Exception for 409 Conflict errors (e.g., duplicate resource).
+
+    Usage:
+        raise ConflictError('Case with this name already exists')
+        raise ConflictError('Duplicate file detected', details={'existing_id': 123})
+    """
+    def __init__(self, message: str, details: dict = None):
+        super().__init__(message, status_code=409, error_type='conflict', details=details)
 
 
 def handle_api_errors(logger_name: Optional[str] = None):
     """
-    Extended decorator that also handles APIError exceptions.
+    Extended decorator that also handles APIError exceptions and its subclasses.
 
     Usage:
         @handle_api_errors(logger_name='chatbot')
         def create_chatbot():
             if not valid_config:
-                raise APIError('Invalid config', status_code=400)
+                raise ValidationError('Invalid config')
             return {'success': True}
+
+        @handle_api_errors()
+        def get_item(item_id):
+            item = Item.query.get(item_id)
+            if not item:
+                raise NotFoundError(f'Item {item_id} not found')
+            return jsonify({'success': True, 'item': item.to_dict()})
     """
     def decorator(f):
         @wraps(f)
@@ -178,12 +245,16 @@ def handle_api_errors(logger_name: Optional[str] = None):
                 return f(*args, **kwargs)
 
             except APIError as e:
+                # Covers APIError and all subclasses (NotFoundError, ValidationError, etc.)
                 logger.warning(f"APIError in {f.__name__}: {e.message}")
-                return jsonify({
+                response = {
                     'success': False,
                     'error': e.message,
                     'error_type': e.error_type
-                }), e.status_code
+                }
+                if e.details:
+                    response['details'] = e.details
+                return jsonify(response), e.status_code
 
             except ValueError as e:
                 logger.warning(f"ValueError in {f.__name__}: {str(e)}")

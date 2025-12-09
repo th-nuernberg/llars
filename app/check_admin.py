@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from app.db.tables import UserRole, Role
-from app.db import db
-from app.main import app
+from db.tables import UserRole, Role
+from db import db
+from main import app
 
 with app.app_context():
     # Check admin user roles

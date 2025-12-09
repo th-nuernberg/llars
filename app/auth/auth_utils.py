@@ -7,7 +7,7 @@ This eliminates code duplication across routes and ensures consistent token hand
 
 from typing import Optional, Dict
 from flask import request
-from app.auth.oidc_validator import validate_token, get_token_from_request
+from auth.oidc_validator import validate_token, get_token_from_request
 
 
 class AuthUtils:

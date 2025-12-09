@@ -1,11 +1,11 @@
-# YJS Server - Real-time Collaboration with Keycloak Authentication
+# YJS Server - Real-time Collaboration with Authentik Authentication
 
-This is a WebSocket server for real-time collaborative editing using YJS (Yjs CRDT library) and Socket.IO, secured with Keycloak JWT authentication.
+This is a WebSocket server for real-time collaborative editing using YJS (Yjs CRDT library) and Socket.IO, secured with Authentik JWT authentication.
 
 ## Features
 
 - **Real-time Collaboration**: Multiple users can edit documents simultaneously
-- **JWT Authentication**: All WebSocket connections are secured with Keycloak tokens
+- **JWT Authentication**: All WebSocket connections are secured with Authentik tokens
 - **User Tracking**: Track active users and their cursors in real-time
 - **Database Persistence**: Documents are automatically saved to MySQL database
 - **Awareness**: See other users' cursors and presence
@@ -13,20 +13,20 @@ This is a WebSocket server for real-time collaborative editing using YJS (Yjs CR
 ## Authentication Flow
 
 ### 1. Client Connection
-The client must provide a valid Keycloak JWT token when connecting to the WebSocket:
+The client must provide a valid Authentik JWT token when connecting to the WebSocket:
 
 ```javascript
 const socket = io('http://localhost:8082', {
   path: '/collab/socket.io/',
   auth: {
-    token: keycloakToken  // Get this from Keycloak after login
+    token: authToken  // Token von Authentik nach dem Login
   }
 });
 ```
 
 ### 2. Token Validation
 The server automatically validates the token using the `authenticateSocket` middleware:
-- Fetches Keycloak public keys from JWKS endpoint
+- Fetches Authentik public keys from JWKS endpoint
 - Verifies JWT signature with RS256 algorithm
 - Checks token expiration and issuer
 - Extracts user information (username, userId, roles)
@@ -161,27 +161,34 @@ Broadcast cursor position changes.
 ## Security Features
 
 ### Authentication
-- **Mandatory JWT**: All connections require valid Keycloak token
+- **Mandatory JWT**: All connections require valid Authentik token
 - **Token Expiration**: Expired tokens are rejected
-- **Signature Verification**: Tokens are verified with Keycloak public keys
+- **Signature Verification**: Tokens are verified with Authentik public keys
 - **User Spoofing Prevention**: Username/userId cannot be spoofed by client
 
 ### Authorization (Future Enhancement)
-- Room-level permissions based on Keycloak roles
+- Room-level permissions based on Authentik roles
 - Admin-only document deletion
 - Read-only mode for viewers
 
 ## Environment Variables
 
+Bevorzugt Authentik nutzen:
+
 ```bash
-KEYCLOAK_URL=http://keycloak-service:8080  # Keycloak server URL
-KEYCLOAK_REALM=llars                       # Keycloak realm name
-PORT=8082                                   # Server port
-MYSQL_HOST=db-maria-service                # Database host
-MYSQL_PORT=3306                            # Database port
-MYSQL_USER=user_feature                    # Database user
-MYSQL_PASSWORD=password_feature            # Database password
-MYSQL_DATABASE=database_llars              # Database name
+AUTHENTIK_ISSUER_URL=http://authentik-server:9000/application/o/llars-backend/
+PORT=8082
+MYSQL_HOST=db-maria-service
+MYSQL_PORT=3306
+MYSQL_USER=user_feature
+MYSQL_PASSWORD=password_feature
+MYSQL_DATABASE=database_llars
+```
+
+Legacy (nur falls alte KEYCLOAK_* Variablen noch genutzt werden):
+```bash
+KEYCLOAK_URL=http://keycloak-service:8080
+KEYCLOAK_REALM=llars
 ```
 
 ## Installation
@@ -280,11 +287,11 @@ Frontend should refresh tokens before they expire to maintain connection.
 
 ### "Authentication failed: jwt expired"
 - Token has expired
-- Frontend needs to refresh the token using Keycloak
+- Frontend needs to refresh the token using Authentik
 
 ### "Error fetching signing key"
-- Keycloak URL is incorrect
-- Keycloak is not reachable from the YJS server
+- Authentik URL is incorrect
+- Authentik is not reachable from the YJS server
 - Realm name is incorrect
 
 ### Connection refused
@@ -296,5 +303,5 @@ Frontend should refresh tokens before they expire to maintain connection.
 
 - [Y.js Documentation](https://docs.yjs.dev/)
 - [Socket.IO Documentation](https://socket.io/docs/v4/)
-- [Keycloak Documentation](https://www.keycloak.org/documentation)
+- [Authentik Documentation](https://docs.goauthentik.io/)
 - [jsonwebtoken npm](https://www.npmjs.com/package/jsonwebtoken)

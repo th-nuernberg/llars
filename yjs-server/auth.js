@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 
-// OIDC configuration (Authentik-first, Keycloak fallback)
+// OIDC configuration (Authentik-first; KEYCLOAK_* fallback nur für Alt-Setups)
 const AUTHENTIK_ISSUER =
   process.env.AUTHENTIK_ISSUER_URL ||
   (process.env.KEYCLOAK_URL && process.env.KEYCLOAK_REALM

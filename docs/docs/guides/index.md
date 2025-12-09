@@ -1,21 +1,21 @@
 # Guides & Anleitungen
 
-Praktische Anleitungen für die Einrichtung und Nutzung von LLARS.
+Praktische Hinweise für Einrichtung und Betrieb von LLARS.
 
 ## Authentifizierung
 
 | Guide | Beschreibung |
 |-------|--------------|
-| [Quick Start](quick-start.md) | Schnellstart-Anleitung für Authentik |
+| [Quick Start](quick-start.md) | Schnellstart für Authentik |
 | [Authentik Setup](authentik-setup.md) | Ausführliche Setup-Anleitung |
-| [Login Anleitung](login-anleitung.md) | Benutzeranleitung für Login (DE) |
+| [Login Anleitung](login-anleitung.md) | Login-Schritte für Nutzer |
 
 ## Konfiguration
 
 | Guide | Beschreibung |
 |-------|--------------|
-| [Project State](project-state.md) | Development vs Production Mode |
-| [Permission System](permission-system.md) | RBAC Berechtigungssystem |
+| [Projektstatus](project-state.md) | Development vs. Production |
+| [Berechtigungssystem](permission-system.md) | RBAC-Rechtemodell |
 
 ## Weitere Ressourcen
 

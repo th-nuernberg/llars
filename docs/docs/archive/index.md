@@ -24,4 +24,4 @@ Historische Dokumentation und abgeschlossene Session-Berichte.
 
 | Dokument | Beschreibung | Ersetzt durch |
 |----------|--------------|---------------|
-| [Keycloak Integration](keycloak-integration.md) | Alte Keycloak-Dokumentation | Authentik |
+| [Keycloak Integration](keycloak-integration.md) | Historische Keycloak-Dokumentation (ersetzt) | Authentik |

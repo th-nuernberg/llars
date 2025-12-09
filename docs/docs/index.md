@@ -1,56 +1,53 @@
-# LLARS Documentation
+# LLARS Dokumentation
 
-Welcome to the LLARS (LLM-Assisted Rating System) Platform documentation.
+Willkommen zur Dokumentation des **LLM Assisted Research System (LLARS)**.
 
-## Overview
+## Überblick
 
-LLARS is a comprehensive platform for email rating and analysis using Large Language Models (LLMs). The system provides:
+LLARS ist eine Plattform zur KI-gestützten Analyse und Bewertung von E-Mail-Konversationen. Kernfunktionen:
 
-- **Email Thread Management**: Organize and rate email conversations
-- **LLM Integration**: Leverage advanced AI models for content analysis
-- **User Management**: Keycloak-based authentication and authorization
-- **Collaborative Editing**: Real-time document collaboration with Yjs
-- **RAG Pipeline**: Retrieval-Augmented Generation for contextual responses
+- **Mail-Rating & Ranking**: Strukturiertes Bewerten und Vergleichen von Threads
+- **LLM-Integration**: OpenAI und LiteLLM/Mistral
+- **Authentifizierung**: Authentik (OIDC) mit Rollen- und Rechtemodell
+- **Kollaboration**: Yjs für Echtzeit-Synchronisation
+- **RAG-Pipeline**: Wissensbasierte Antworten über ChromaDB
 
-## Architecture
+## Architektur
 
-**Service-Übersicht (interne Ports)**  
-```text
-┌──────────────────┐
-│  nginx (Port 80) │  ← Reverse Proxy + Load Balancer
-└─────────┬────────┘
-          │
-    ┌─────┼─────────────────┬──────────────────┬────────────────┐
-    │     │                 │                  │                │
-┌───▼──┐ ┌▼────────┐  ┌────▼─────┐  ┌────────▼──────┐  ┌──────▼───────┐
-│ Vue  │ │ Flask   │  │ Keycloak │  │ YJS WebSocket │  │  Supervisor  │
-│:5173 │ │ :8081   │  │  :8090   │  │     :8082     │  │   Service    │
-└──────┘ └─────┬───┘  └────┬─────┘  └───────┬───────┘  └──────┬───────┘
-               │           │                 │                 │
-        ┌──────┴─────┐     │           ┌─────┴─────┐
-        │  MariaDB   │◀────┘           │ PostgreSQL│◀──── Keycloak
-        │   :3306    │ (Flask/YJS)     │   :5432   │
-        └────────────┘                 └───────────┘
+**Service-Übersicht (interne Ports)**
+
+```mermaid
+flowchart LR
+    client((Browser)) -->|HTTP 80/443| nginx[nginx<br/>(:80)]
+    nginx -->|/ ->| frontend[Vue<br/>Vite Dev :5173<br/>Static Build]
+    nginx -->|/api ->| backend[Flask API<br/>:8081]
+    nginx -->|/authentik/ ->| authentik[Authentik<br/>:9000]
+    nginx -->|/collab/ ->| yjs[Yjs WebSocket<br/>:8082]
+
+    backend <--> mariadb[(MariaDB<br/>:3306)]
+    authentik <--> pg[(PostgreSQL<br/>Authentik DB)]
+
+    backend -->|OIDC| authentik
+    yjs -->|JWT Validate| authentik
 ```
 
-**Externe Ports (Development-Defaults)**  
-- 55080 → nginx (http)  
-- 55173 → Vue Dev Server  
-- 55081 → Flask (direct dev access)  
-- 55090 → Keycloak  
-- 55082 → YJS Server  
-- 55306 → MariaDB (falls explizit freigegeben)  
+**Standard-Ports (Development)**
+- 55080 → nginx (Frontend + API)
+- 55173 → Vite Dev Server (direkter Zugriff)
+- 55081 → Flask (direkter Dev-Zugriff)
+- 55095 → Authentik
+- 55082 → Yjs
+- 55306 → MariaDB (nur für Debugging)
 
-**Production**  
-- Nur 443/80 nach nginx; alle anderen Services sind intern erreichbar.
+In Production werden nur 80/443 nach außen exponiert.
 
-## Quick Start
+## Schnellstart
 
-1. Clone the repository
-2. Copy `.env.example` to `.env` and configure
-3. Run `docker compose up -d`
-4. Access the application at `http://localhost:55080`
+1. Repository klonen  
+2. `.env.template.development` nach `.env` kopieren und anpassen  
+3. Startskript ausführen: `./start_llars.sh`  
+4. Aufrufen: `http://localhost:55080`
 
-## Development
+## Weiterführende Infos
 
-See the [Getting Started](getting-started/installation.md) section for detailed installation and configuration instructions.
+Siehe [Getting Started](getting-started/installation.md) für Details zu Installation und Konfiguration.

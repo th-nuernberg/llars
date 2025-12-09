@@ -843,4 +843,4 @@ UPLOAD_DIR = "/app/rag_docs"
 
 **Autor:** Claude (AI Assistant)
 **Erstellt:** 26. November 2025
-**Projekt:** LLARS - LLM-Assisted Rating System
+**Projekt:** LLARS - LLM Assisted Research System

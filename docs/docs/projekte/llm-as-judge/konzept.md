@@ -9,7 +9,7 @@
 
 ## Inhaltsverzeichnis
 
-1. [Executive Summary](#1-executive-summary)
+1. [Zusammenfassung](#1-zusammenfassung)
 2. [Recherche-Ergebnisse](#2-recherche-ergebnisse)
 3. [Architektur-Überblick](#3-architektur-überblick)
 4. [Phasen-Plan](#4-phasen-plan)
@@ -22,7 +22,7 @@
 
 ---
 
-## 1. Executive Summary
+## 1. Zusammenfassung
 
 ### Ziel
 Implementierung eines automatisierten **LLM-as-Judge** Systems in LLARS, das:

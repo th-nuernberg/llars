@@ -1,4 +1,4 @@
-# LLARS - LLM-Assisted Rating System
+# LLARS - LLM Assisted Research System
 
 **Version:** 2.6 | **Stand:** 28. November 2025
 

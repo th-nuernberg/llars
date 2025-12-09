@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Executive Summary
+## 1. Zusammenfassung
 
 Dieses Konzept beschreibt die Integration des **OnCoCo-Klassifikators** (Online Counseling Conversations) in LLARS zur automatisierten Analyse von E-Mail-Beratungsverläufen aus dem KIA-Datenrepository. Das Ziel ist eine tiefgreifende, satzbasierte Analyse der Beratungsgespräche mit Visualisierungen wie Transition-Matrizen, Sankey-Diagrammen und Säulen-Vergleichen.
 

@@ -1,203 +1,135 @@
-# Configuration
+# Konfiguration
 
-## Environment Variables
+## .env als zentrale Stelle
 
-LLARS uses a `.env` file for configuration. All services read from this central configuration.
+Alle Services lesen ihre Einstellungen aus `.env`. Kopiere dafür eine Vorlage (`.env.template.development` oder `.env.template.production`) nach `.env` und passe die Werte an.
 
-## Database Configuration
-
-### MariaDB (Main Database)
+## Datenbank (MariaDB)
 
 ```bash
-MYSQL_ROOT_PASSWORD=root_password_feature
+MYSQL_ROOT_PASSWORD=...
 MYSQL_DATABASE=database_llars
-MYSQL_USER=user_feature
-MYSQL_PASSWORD=password_feature
+MYSQL_USER=dev_user
+MYSQL_PASSWORD=...
 ```
 
-**Internal Connection:**
-- Host: `db-maria-service`
-- Port: `3306` (internal)
-- External Port: `55306` (for debugging only)
+**Verbindungen**
+- Intern: Host `db-maria-service`, Port `3306`
+- Extern (nur Debug): Port `55306`
 
-## Keycloak Authentication
-
-### Database (PostgreSQL)
+## Authentik (OIDC)
 
 ```bash
-KEYCLOAK_DB_NAME=keycloak
-KEYCLOAK_DB_USER=keycloak
-KEYCLOAK_DB_PASSWORD=keycloak_db_secure_password_123
+AUTHENTIK_SECRET_KEY=...                # mind. 50 Zeichen
+AUTHENTIK_DB_NAME=authentik_dev
+AUTHENTIK_DB_USER=authentik_dev
+AUTHENTIK_DB_PASSWORD=...
+AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
+AUTHENTIK_BOOTSTRAP_PASSWORD=admin123
+
+AUTHENTIK_FRONTEND_CLIENT_ID=llars-frontend
+AUTHENTIK_BACKEND_CLIENT_ID=llars-backend
+AUTHENTIK_BACKEND_CLIENT_SECRET=llars-backend-secret-change-in-production
+AUTHENTIK_ISSUER_URL=http://authentik-server:9000/application/o/llars-backend/
+
+AUTHENTIK_INTERNAL_PORT=9000
+AUTHENTIK_EXTERNAL_PORT=55095
+AUTHENTIK_DB_INTERNAL_PORT=5432
 ```
 
-### Admin Access
+## Port-Belegung
 
 ```bash
-KC_BOOTSTRAP_ADMIN_USERNAME=admin
-KC_BOOTSTRAP_ADMIN_PASSWORD=admin_secure_password_123
+# Extern (Host)
+NGINX_EXTERNAL_PORT=55080      # Haupt-Einstieg (Frontend + API)
+FLASK_EXTERNAL_PORT=55081      # Direkter Backend-Zugriff (Dev)
+FRONTEND_EXTERNAL_PORT=55173   # Vite Dev Server
+DB_EXTERNAL_PORT=55306         # MariaDB Debug
+YJS_EXTERNAL_PORT=55082
+AUTHENTIK_EXTERNAL_PORT=55095
+MKDOCS_EXTERNAL_PORT=55800
+
+# Intern (Container-zu-Container)
+NGINX_INTERNAL_PORT=80
+FLASK_INTERNAL_PORT=8081
+FRONTEND_INTERNAL_PORT=5173
+DB_INTERNAL_PORT=3306
+YJS_INTERNAL_PORT=8082
 ```
 
-Access admin console: http://localhost:55090/admin
-
-### Realm Configuration
-
-```bash
-KEYCLOAK_REALM=llars
-KEYCLOAK_HOSTNAME=localhost
-KEYCLOAK_EXTERNAL_URL=http://localhost:55090
-```
-
-### Client Configuration
-
-The realm is auto-imported from `docker/keycloak/realm-import.json`:
-
-**Frontend Client:** `llars-frontend`
-- Type: Public Client
-- PKCE: Enabled (S256)
-- Redirect URIs: `http://localhost:55080/*`, `http://localhost:55173/*`
-- Web Origins: `+` (auto-allows all redirect URIs)
-
-**Backend Client:** `llars-backend`
-- Type: Confidential Client
-- Service Account: Enabled
-- Client Secret: `llars-backend-secret-change-in-production`
-
-## CORS Configuration
+## CORS
 
 ```bash
 ALLOWED_ORIGINS=http://localhost,http://localhost:55080,http://localhost:55173,http://127.0.0.1,http://127.0.0.1:55080,http://127.0.0.1:55173
 ```
 
-Add additional origins as comma-separated values.
+Mehrere Einträge mit Komma trennen.
 
-## Port Configuration
-
-All LLARS ports are in the 55000 range to avoid conflicts:
+## LLM-Konfiguration
 
 ```bash
-# External Ports (exposed to host)
-NGINX_EXTERNAL_PORT=55080      # Main entry point
-FLASK_EXTERNAL_PORT=55081      # Backend API (direct access)
-FRONTEND_EXTERNAL_PORT=55173   # Frontend dev server
-DB_EXTERNAL_PORT=55306         # Database (debugging only)
-KEYCLOAK_EXTERNAL_PORT=55090   # Authentication
-YJS_EXTERNAL_PORT=55082        # Collaborative editing
-MKDOCS_EXTERNAL_PORT=55800     # Documentation
-
-# Internal Ports (inside Docker network)
-NGINX_INTERNAL_PORT=8100
-FLASK_INTERNAL_PORT=8081
-FRONTEND_INTERNAL_PORT=5173
-DB_INTERNAL_PORT=3306
-KEYCLOAK_INTERNAL_PORT=8080
-YJS_INTERNAL_PORT=8082
-```
-
-## LLM Configuration
-
-### OpenAI
-
-```bash
-OPENAI_API_KEY=sk-test-placeholder-replace-with-real-key
-```
-
-### LiteLLM Proxy (TH Nürnberg)
-
-LLARS uses LiteLLM Proxy for accessing Mistral models hosted by TH Nürnberg:
-
-```bash
-LITELLM_API_KEY=sk-RgzbaiE9HM8w0I5IWgZz6g
+OPENAI_API_KEY=sk-...
+LITELLM_API_KEY=...
 LITELLM_BASE_URL=https://kiz1.in.ohmportal.de/llmproxy/v1
 ```
 
-**Configuration:**
-- **Proxy URL:** https://kiz1.in.ohmportal.de/llmproxy/v1
-- **Default Model:** `mistralai/Mistral-Small-3.2-24B-Instruct-2506`
-- **Metadata Tags:** ["Technische Hochschule Nürnberg", "KIA"]
-- **Interface:** OpenAI-compatible API
+Standardmodell: `mistralai/Mistral-Small-3.2-24B-Instruct-2506` (siehe `app/llm/litellm_client.py`).
 
-**Features:**
-- Streaming responses
-- JSON mode support
-- Automatic metadata tagging for usage tracking
-- Integration in `app/llm/litellm_client.py`
+## RAG-Pipeline
 
-**Web Interface:**
-- View available endpoints: https://kiz1.in.ohmportal.de/llmproxy/
+- Embeddings: `sentence-transformers/all-MiniLM-L6-v2`
+- Vector Store: ChromaDB
+- Chunk Size: 1000 Zeichen, Overlap: 200 Zeichen
+- Speicherpfad: `/app/storage/vectorstore`
 
-### RAG Pipeline
+Einstellungen: `app/rag_pipeline.py`
 
-The RAG (Retrieval-Augmented Generation) pipeline uses:
-
-- **Embedding Model:** `sentence-transformers/all-MiniLM-L6-v2`
-- **Vector Store:** ChromaDB
-- **Chunk Size:** 1000 characters
-- **Chunk Overlap:** 200 characters
-- **Storage:** `/app/storage/vectorstore`
-
-Configuration in `app/rag_pipeline.py:22-36`
-
-## Volume Management
+## Volumes
 
 ```bash
-REMOVE_VOLUMES=False  # Set to True to delete data on restart
+REMOVE_VOLUMES=False   # True löscht Daten beim nächsten Start
 ```
 
-**LLARS Volumes:**
-- `llars_llarsdb` - Main database data
-- `llars_keycloakdb` - Authentication data
-- `llars_model_volume` - ML models and embeddings (~2GB)
+- `llars_llarsdb` – MariaDB-Daten
+- `llars_model_volume` – Modelle/Embeddings
+- `llars_authentikdb` – Authentik-PostgreSQL
 
 ## Development vs Production
 
 ```bash
-PROJECT_STATE=development  # or production
-FLASK_ENV=development      # or production
+PROJECT_STATE=development   # oder production
+FLASK_ENV=development       # oder production
 ```
 
-**Development Mode:**
-- Hot-reload enabled
-- Debug logs
-- Source code mounted as volumes
-- Vite dev server for frontend
+**Development**
+- Hot-Reload (Frontend + Backend)
+- Umfangreiches Logging
+- Quellcode als Volumes gemountet
 
-**Production Mode:**
-- Optimized builds
-- Minimal logging
-- No volume mounts
-- Static frontend serving
+**Production**
+- Optimierte Builds, kein Hot-Reload
+- Reduziertes Logging
+- Frontend statisch über nginx
 
-## Security Considerations
+## Sicherheit
 
-### Change Default Passwords
-
-Before production deployment:
+### Standard-Passwörter ändern
 
 ```bash
-# Database
-MYSQL_ROOT_PASSWORD=<strong-password>
-MYSQL_PASSWORD=<strong-password>
-
-# Keycloak
-KEYCLOAK_DB_PASSWORD=<strong-password>
-KC_BOOTSTRAP_ADMIN_PASSWORD=<strong-password>
-KEYCLOAK_BACKEND_CLIENT_SECRET=<strong-random-secret>
-
-# Flask
-JWT_SECRET_KEY=<strong-random-secret>
+MYSQL_ROOT_PASSWORD=<stark>
+MYSQL_PASSWORD=<stark>
+AUTHENTIK_DB_PASSWORD=<stark>
+AUTHENTIK_BOOTSTRAP_PASSWORD=<stark>
+AUTHENTIK_BACKEND_CLIENT_SECRET=<stark>
+SYSTEM_ADMIN_API_KEY=<stark>
+ADMIN_REGISTRATION_KEY=<uuid>
 ```
 
-### SSL/TLS
+### SSL/TLS aktivieren
 
-For production, enable HTTPS:
-
-1. Add SSL certificates to `docker/nginx/certs/`
-2. Update Nginx configuration
-3. Update Keycloak settings:
-   ```bash
-   KEYCLOAK_EXTERNAL_URL=https://your-domain.com
-   KC_HOSTNAME=your-domain.com
-   ```
+1. Zertifikate nach `docker/nginx/certs/` legen  
+2. nginx-Konfiguration anpassen  
+3. Authentik-URLs auf HTTPS umstellen (z. B. `AUTHENTIK_EXTERNAL_PORT=443`, `AUTHENTIK_ISSUER_URL=https://<domain>/application/o/llars-backend/`)
 
 ### External Port Exposure
 
@@ -219,9 +151,9 @@ services:
       - CUSTOM_VAR=value
 ```
 
-### Keycloak Theme Customization
+### Authentik Theme/Branding
 
-Place custom themes in `docker/keycloak/themes/` and mount in docker-compose.yml.
+Authentik-Themes lassen sich über die Admin-UI konfigurieren (Flows/Branding). Eigene Logos/Farben können dort hinterlegt werden; kein separates Theme-Verzeichnis nötig.
 
 ### Nginx Custom Configuration
 

@@ -697,4 +697,4 @@ CREATE TABLE thread_elo_scores (
 ---
 
 **Autor:** Claude (AI Assistant)
-**Projekt:** LLARS - LLM-Assisted Rating System
+**Projekt:** LLARS - LLM Assisted Research System

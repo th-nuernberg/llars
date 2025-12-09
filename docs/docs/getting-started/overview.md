@@ -1,4 +1,4 @@
-# LLARS - LLM-Assisted Rating System
+# LLARS - LLM Assisted Research System
 
 **Eine Forschungsplattform zur KI-gestützten Analyse und Evaluation von Online-Beratungskommunikation**
 
@@ -6,7 +6,7 @@
 
 ## 1. Was ist LLARS?
 
-LLARS (LLM-Assisted Rating System) ist eine webbasierte Forschungsplattform, die speziell für die wissenschaftliche Analyse und Evaluation von E-Mail-Beratungskommunikation entwickelt wurde. Das System kombiniert moderne Large Language Models (LLMs) mit kollaborativen Bewertungswerkzeugen und automatisierten Analysemethoden.
+LLARS (LLM Assisted Research System) ist eine webbasierte Forschungsplattform, die speziell für die wissenschaftliche Analyse und Evaluation von E-Mail-Beratungskommunikation entwickelt wurde. Das System kombiniert moderne Large Language Models (LLMs) mit kollaborativen Bewertungswerkzeugen und automatisierten Analysemethoden.
 
 ### Kernziele
 
@@ -349,4 +349,4 @@ Für Dissertationen im Bereich E-Beratung, KI-gestützte Kommunikationsanalyse o
 **Entwickler:** Philipp Steigerwald
 **Version:** 2.2
 **Stand:** November 2025
-**Repository:** LLARS (LLM-Assisted Rating System)
+**Repository:** LLARS (LLM Assisted Research System)

@@ -1,4 +1,4 @@
-# LLARS - LLM-Assisted Rating System
+# LLARS - LLM Assisted Research System
 
 LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 

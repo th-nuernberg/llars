@@ -1,5 +1,5 @@
-site_name: LLARS Documentation
-site_description: Documentation for the LLARS (LLM-Assisted Rating System) Platform
+site_name: LLARS Dokumentation
+site_description: Dokumentation für das LLARS (LLM Assisted Research System)
 site_author: LLARS Team
 dev_addr: 0.0.0.0:8000
 use_directory_urls: true
@@ -28,18 +28,18 @@ theme:
     - content.code.copy
 
 nav:
-  - Home: index.md
-  - Getting Started:
+  - Startseite: index.md
+  - Einstieg:
       - Übersicht: getting-started/overview.md
       - Installation: getting-started/installation.md
-      - Configuration: getting-started/configuration.md
-  - Guides:
+      - Konfiguration: getting-started/configuration.md
+  - Anleitungen:
       - Übersicht: guides/index.md
-      - Quick Start: guides/quick-start.md
+      - Schnellstart: guides/quick-start.md
       - Authentik Setup: guides/authentik-setup.md
       - Login Anleitung: guides/login-anleitung.md
-      - Project State: guides/project-state.md
-      - Permission System: guides/permission-system.md
+      - Projektstatus: guides/project-state.md
+      - Berechtigungssystem: guides/permission-system.md
   - Projekte:
       - Übersicht: projekte/index.md
       - How-To: projekte/how-to-project.md
@@ -60,25 +60,25 @@ nav:
           - Integration Konzept: projekte/kaimo/integration-konzept.md
       - Authentik:
           - Übersicht: projekte/authentik/index.md
-          - Overview: projekte/authentik/overview.md
+          - Überblick: projekte/authentik/overview.md
           - Migration: projekte/authentik/migration.md
-          - Testing Plan: projekte/authentik/testing-plan.md
+          - Testplan: projekte/authentik/testing-plan.md
       - Splitting & Refactoring:
           - Konzept: projekte/splitting-refactoring/konzept.md
           - Umsetzung: projekte/splitting-refactoring/umsetzung.md
-          - Progress: projekte/splitting-refactoring/progress.md
+          - Fortschritt: projekte/splitting-refactoring/progress.md
       - Templates:
           - Konzept: projekte/templates/konzept-template.md
           - Umsetzung: projekte/templates/umsetzung-template.md
-          - Progress: projekte/templates/progress-template.md
+          - Fortschritt: projekte/templates/progress-template.md
   - Archiv:
       - Übersicht: archive/index.md
-      - Refactoring Complete: archive/refactoring-complete.md
-      - Refactoring Scenarios: archive/refactoring-scenarios.md
+      - Refactoring (Complete): archive/refactoring-complete.md
+      - Refactoring (Scenarios): archive/refactoring-scenarios.md
       - Session 2025-11-20: archive/session-2025-11-20.md
-      - Work Summary: archive/work-summary.md
-      - Testing Report: archive/testing-report.md
-      - Keycloak Integration: archive/keycloak-integration.md
+      - Arbeitszusammenfassung: archive/work-summary.md
+      - Testbericht: archive/testing-report.md
+      - Keycloak (Archiv): archive/keycloak-integration.md
 
 markdown_extensions:
   - pymdownx.highlight:

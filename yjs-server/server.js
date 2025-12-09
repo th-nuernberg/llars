@@ -15,7 +15,7 @@ app.use(cors());
 // HTTP-Server
 const server = http.createServer(app);
 
-// Socket.IO mit Keycloak JWT Authentication
+// Socket.IO mit Authentik (OIDC) JWT Authentication
 const io = new Server(server, {
   cors: {
     origin: "*",

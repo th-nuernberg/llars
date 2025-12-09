@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Create a test user in Keycloak using kcadm.sh
+# DEPRECATED: Keycloak wird nicht mehr verwendet (Authentik ersetzt die Authentifizierung).
+# Skript bleibt nur für Archivzwecke bestehen.
+
+# Legacy helper: Create a test user in Keycloak using kcadm.sh (nicht mehr produktiv genutzt)
 # Usage: ./create_keycloak_user.sh <username> <password> <email> <firstname> <lastname>
 
 USERNAME="${1:-testuser}"
@@ -9,7 +12,7 @@ EMAIL="${3:-${USERNAME}@example.com}"
 FIRSTNAME="${4:-Test}"
 LASTNAME="${5:-User}"
 
-echo "Creating Keycloak user..."
+echo "Creating legacy Keycloak user (deprecated)..."
 echo "Username: $USERNAME"
 echo "Email: $EMAIL"
 echo ""
@@ -24,7 +27,7 @@ docker exec llars_keycloak_service /opt/keycloak/bin/kcadm.sh config credentials
 
 if [ $? -ne 0 ]; then
   echo "❌ Failed to configure kcadm credentials"
-  echo "   Make sure Keycloak container is running: docker ps | grep keycloak"
+  echo "   Make sure legacy Keycloak container is running: docker ps | grep keycloak"
   exit 1
 fi
 
@@ -32,7 +35,7 @@ echo "✓ kcadm configured"
 echo ""
 
 # Create user
-echo "2. Creating user in Keycloak..."
+echo "2. Creating user in legacy Keycloak..."
 USER_ID=$(docker exec llars_keycloak_service /opt/keycloak/bin/kcadm.sh create users \
   -r llars \
   -s username="$USERNAME" \

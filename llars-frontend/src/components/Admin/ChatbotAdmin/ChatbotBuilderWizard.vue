@@ -366,8 +366,10 @@ const overallProgressPercent = computed(() => {
 const headerStatusText = computed(() => {
   if (isCrawling.value) {
     const stage = crawlProgress.value.stage
-    if (stage === 'planning') return 'URL-Erkundung'
-    if (stage === 'planning_done') return 'Crawling startet'
+    if (stage === 'planning') return 'Phase 1: URL-Erkundung'
+    if (stage === 'planning_done') return 'Phase 2: Inhalte erfassen'
+    if (stage === 'crawling') return 'Phase 2: Inhalte erfassen'
+    if (stage === 'completed') return 'Crawling abgeschlossen'
     return 'Crawling'
   }
   if (isEmbedding.value) {
@@ -388,6 +390,17 @@ const currentProgressText = computed(() => {
       return total > 0 ? `${total} URLs gefunden` : 'Suche URLs...'
     }
 
+    // Transition from planning to crawling
+    if (p.stage === 'planning_done') {
+      return `${total} URLs, starte Erfassung...`
+    }
+
+    // Crawling completed
+    if (p.stage === 'completed') {
+      return `${total} URLs, ${docs} Dokumente`
+    }
+
+    // During crawling phase
     if (total > 0) {
       return `${completed}/${total} URLs, ${docs} Docs`
     }

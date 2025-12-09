@@ -369,8 +369,10 @@ const statusTitle = computed(() => {
 
   if (isCrawling.value) {
     const stage = props.crawlProgress.stage
-    if (stage === 'planning') return 'URL-Erkundung läuft...'
-    if (stage === 'planning_done') return 'Plan fertig, Crawling startet...'
+    if (stage === 'planning') return 'Phase 1: URL-Erkundung läuft...'
+    if (stage === 'planning_done') return 'Phase 2: Inhalte erfassen...'
+    if (stage === 'crawling') return 'Phase 2: Inhalte erfassen...'
+    if (stage === 'completed') return 'Crawling abgeschlossen'
     return 'Crawling läuft...'
   }
 
@@ -398,7 +400,10 @@ const statusDescription = computed(() => {
       }
       return 'Erkunde verfügbare URLs...'
     }
-    if (stage === 'planning_done') return `${props.crawlProgress.urlsTotal} URLs gefunden, Crawling startet...`
+    if (stage === 'planning_done') {
+      const total = props.crawlProgress.urlsTotal || 0
+      return `${total} URLs gefunden, starte Inhaltserfassung...`
+    }
 
     // Regular crawling stage
     const total = props.crawlProgress.urlsTotal || props.crawlProgress.pagesTotal
@@ -487,7 +492,7 @@ function getStatusLabel(status) {
 function getStageIcon(stage) {
   switch (stage) {
     case 'planning': return 'mdi-map-search'
-    case 'planning_done': return 'mdi-map-check'
+    case 'planning_done': return 'mdi-spider-web'  // Show crawling icon as transition
     case 'crawling': return 'mdi-spider-web'
     case 'completed': return 'mdi-check-circle'
     default: return 'mdi-clock-outline'
@@ -497,7 +502,7 @@ function getStageIcon(stage) {
 function getStageColor(stage) {
   switch (stage) {
     case 'planning': return 'warning'
-    case 'planning_done': return 'info'
+    case 'planning_done': return 'primary'  // Same as crawling - transition state
     case 'crawling': return 'primary'
     case 'completed': return 'success'
     default: return 'grey'
@@ -507,7 +512,7 @@ function getStageColor(stage) {
 function getStageLabel(stage) {
   switch (stage) {
     case 'planning': return 'Phase 1: URL-Erkundung'
-    case 'planning_done': return 'Phase 1 abgeschlossen'
+    case 'planning_done': return 'Phase 2: Inhalte erfassen'  // Don't show "abgeschlossen", transition to Phase 2
     case 'crawling': return 'Phase 2: Inhalte erfassen'
     case 'completed': return 'Crawling abgeschlossen'
     default: return 'Initialisierung...'

@@ -90,8 +90,8 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style
 
 ## Additional Security Measures
 
-### 1. Keycloak Authentication
-All API endpoints protected with JWT tokens validated by Keycloak.
+### 1. Authentik Authentication
+Alle API-Endpunkte sind per JWT abgesichert, validiert über Authentik (OIDC).
 
 ### 2. Rate Limiting
 Flask-Limiter configured with:

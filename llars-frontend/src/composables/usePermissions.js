@@ -58,9 +58,11 @@ export function usePermissions() {
       })
 
       if (response.data.success) {
-        permissions.value = response.data.permissions || []
-        roles.value = response.data.roles || []
-        username.value = response.data.username || null
+        // Backend returns payload under data: { username, permissions, roles }
+        const payload = response.data.data || response.data
+        permissions.value = payload.permissions || []
+        roles.value = payload.roles || []
+        username.value = payload.username || null
         lastFetch.value = Date.now()
 
         console.log(`✓ Loaded ${permissions.value.length} permissions for user ${username.value}`)

@@ -6,11 +6,8 @@
 </head>
 <body>
     <script>
-        // This page is used by Keycloak for silent SSO checks
-        // It runs in an invisible iframe to check authentication status
-        // without disrupting the user experience
-
-        // The parent window should be the Keycloak JavaScript adapter
+        // Legacy helper (Keycloak silent SSO). Authentik nutzt dies nicht mehr.
+        // Läuft in einem unsichtbaren iframe, um den Auth-Status zu prüfen.
         parent.postMessage(location.href, location.origin);
     </script>
 </body>

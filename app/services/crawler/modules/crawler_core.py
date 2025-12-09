@@ -82,11 +82,32 @@ class WebCrawler:
         # URL filtering patterns
         self.include_patterns = [re.compile(p) for p in (include_patterns or [])]
         self.exclude_patterns = [re.compile(p) for p in (exclude_patterns or [
+            # Binary/Media files
             r'\.pdf$', r'\.zip$', r'\.exe$', r'\.dmg$',
-            r'\.mp3$', r'\.mp4$', r'\.avi$', r'\.mov$',
+            r'\.mp3$', r'\.mp4$', r'\.avi$', r'\.mov$', r'\.webm$',
+            r'\.png$', r'\.jpg$', r'\.jpeg$', r'\.gif$', r'\.svg$', r'\.ico$', r'\.webp$',
+            r'\.woff$', r'\.woff2$', r'\.ttf$', r'\.eot$',
+            # Code/Style files - these are NOT content
+            r'\.css$', r'\.js$', r'\.json$', r'\.xml$',
+            r'\.map$', r'\.min\.js$', r'\.min\.css$',
+            # WordPress specific non-content
+            r'/wp-content/plugins/.*\.(css|js)$',
+            r'/wp-content/themes/.*\.(css|js)$',
+            r'/wp-content/uploads/.*\.(css|js)$',
+            r'/wp-includes/.*\.(css|js)$',
+            r'/xmlrpc\.php',
+            r'/wp-json/',
+            # Feeds
+            r'/feed/?$', r'/feed/.*$', r'/rss/?$', r'/atom/?$',
+            r'/comments/feed',
+            # Auth/Account pages
             r'/login', r'/logout', r'/signin', r'/signup',
             r'/cart', r'/checkout', r'/account',
-            r'\?.*utm_', r'#'
+            r'/wp-login', r'/wp-admin',
+            # Tracking/Analytics
+            r'\?.*utm_', r'#',
+            # Common non-content paths
+            r'/cdn-cgi/', r'/ajax/', r'/api/',
         ])]
 
         # State tracking
@@ -164,17 +185,22 @@ class WebCrawler:
             """Fetch a page and extract all links quickly."""
             try:
                 # Use shorter timeout for discovery
+                # Don't use stream=True because we need automatic decompression
                 response = self.session.get(
                     url,
                     timeout=min(10, self.timeout),
-                    allow_redirects=True,
-                    stream=True  # Don't download full content immediately
+                    allow_redirects=True
                 )
                 response.raise_for_status()
 
-                # Only read first 500KB for link extraction
-                content = response.raw.read(500 * 1024).decode('utf-8', errors='ignore')
-                response.close()
+                # Check content type - only process HTML
+                content_type = response.headers.get('Content-Type', '')
+                if 'text/html' not in content_type and 'application/xhtml' not in content_type:
+                    return []
+
+                # Use response.text for automatic decompression and encoding handling
+                # Limit to first 500KB worth of text
+                content = response.text[:500 * 1024]
 
                 # Quick regex-based link extraction (faster than BeautifulSoup for discovery)
                 links = []

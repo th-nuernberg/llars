@@ -184,7 +184,7 @@ const props = defineProps({
     default: () => ({})
   },
   embeddingProgress: {
-    type: Number,
+    type: [Number, Object],
     default: 0
   },
   generatingFields: {
@@ -217,11 +217,18 @@ const isProcessing = computed(() => {
   return ['crawling', 'embedding'].includes(props.buildStatus)
 })
 
+const embeddingPercent = computed(() => {
+  if (typeof props.embeddingProgress === 'number') {
+    return Math.round(props.embeddingProgress)
+  }
+  return Math.round(props.embeddingProgress?.progress || 0)
+})
+
 const statusText = computed(() => {
   if (props.buildStatus === 'crawling') {
     return `${props.crawlProgress.pagesProcessed || 0} Seiten`
   } else if (props.buildStatus === 'embedding') {
-    return `${props.embeddingProgress}%`
+    return `${embeddingPercent.value}%`
   }
   return ''
 })

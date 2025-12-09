@@ -133,6 +133,127 @@ class WebCrawler:
             '', '', ''
         ))
 
+    # ------------------------------------------------------------------
+    # Discovery phase: quickly collect URLs without heavy extraction
+    # ------------------------------------------------------------------
+
+    def discover_urls(
+        self,
+        max_pages: int,
+        max_depth: int,
+        progress_callback=None
+    ) -> List[str]:
+        """
+        Fast discovery of URLs (BFS), without text/image extraction.
+
+        Uses parallel requests for speed. Returns a de-duplicated list of URLs.
+
+        Args:
+            max_pages: Maximum URLs to discover
+            max_depth: Maximum crawl depth
+            progress_callback: Optional callback(discovered_count, current_url)
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        discovered = []
+        queue: List[Tuple[str, int]] = [(self.base_url, 0)]
+        self.visited_urls = set()
+        pending_urls: Set[str] = {self.base_url}
+
+        def fetch_links(url: str) -> List[str]:
+            """Fetch a page and extract all links quickly."""
+            try:
+                # Use shorter timeout for discovery
+                response = self.session.get(
+                    url,
+                    timeout=min(10, self.timeout),
+                    allow_redirects=True,
+                    stream=True  # Don't download full content immediately
+                )
+                response.raise_for_status()
+
+                # Only read first 500KB for link extraction
+                content = response.raw.read(500 * 1024).decode('utf-8', errors='ignore')
+                response.close()
+
+                # Quick regex-based link extraction (faster than BeautifulSoup for discovery)
+                links = []
+                # Match href="..." or href='...'
+                href_pattern = r'href=["\']([^"\']+)["\']'
+                for match in re.finditer(href_pattern, content, re.IGNORECASE):
+                    href = match.group(1)
+                    if href.startswith(('javascript:', 'mailto:', 'tel:', '#', 'data:')):
+                        continue
+                    try:
+                        normalized = urljoin(url, href)
+                        normalized = self._normalize_url(normalized)
+                        if self._should_crawl(normalized):
+                            links.append(normalized)
+                    except Exception:
+                        continue
+                return links
+            except Exception as e:
+                logger.debug(f"[Discovery] Skip {url}: {e}")
+                return []
+
+        # Use thread pool for parallel discovery
+        max_workers = min(8, max(2, max_pages // 5))
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            while queue and len(discovered) < max_pages:
+                # Take batch from queue
+                batch_size = min(max_workers * 2, len(queue), max_pages - len(discovered))
+                batch = []
+
+                for _ in range(batch_size):
+                    if not queue:
+                        break
+                    url, depth = queue.pop(0)
+
+                    if url in self.visited_urls:
+                        continue
+
+                    if depth > max_depth:
+                        continue
+
+                    self.visited_urls.add(url)
+                    batch.append((url, depth))
+
+                if not batch:
+                    break
+
+                # Submit batch for parallel fetching
+                future_to_url = {
+                    executor.submit(fetch_links, url): (url, depth)
+                    for url, depth in batch
+                }
+
+                for future in as_completed(future_to_url):
+                    url, depth = future_to_url[future]
+                    discovered.append(url)
+
+                    if progress_callback:
+                        try:
+                            progress_callback(len(discovered), url)
+                        except Exception:
+                            pass
+
+                    # Add discovered links to queue
+                    try:
+                        new_links = future.result()
+                        for link in new_links:
+                            if link not in self.visited_urls and link not in pending_urls:
+                                pending_urls.add(link)
+                                queue.append((link, depth + 1))
+                    except Exception as e:
+                        logger.debug(f"[Discovery] Error processing {url}: {e}")
+
+                    if len(discovered) >= max_pages:
+                        break
+
+        logger.info(f"[Discovery] Found {len(discovered)} URLs")
+        return discovered
+
     def _is_same_domain(self, url: str) -> bool:
         """Check if URL belongs to the same domain."""
         return urlparse(url).netloc.lower() == self.base_domain.lower()
@@ -594,6 +715,41 @@ class WebCrawler:
             self.stats['errors'] += 1
 
         return None
+
+    def fetch_page_content(self, url: str) -> Optional[Dict]:
+        """
+        Fetch a single page and extract text, metadata, and images.
+        Designed for worker usage in multi-threaded fetch.
+        """
+        html = self._fetch_page(url)
+        if not html:
+            return None
+
+        text, metadata = self._extract_text(html, url)
+        if not text or len(text) < 50:
+            return None
+
+        content_hash = hashlib.sha256(text.encode()).hexdigest()
+
+        images = []
+        if self.extract_images:
+            images = self._extract_images(html, url, content_hash[:16])
+
+        structured_data = self._extract_structured_data(html, url)
+
+        page_data = {
+            'url': url,
+            'depth': 0,
+            'content': text,
+            'content_length': len(text),
+            'content_hash': content_hash,
+            'metadata': metadata,
+            'structured_data': structured_data,
+            'images': images,
+            'crawled_at': datetime.now().isoformat(),
+            'crawler_type': 'basic'
+        }
+        return page_data
 
     def crawl(self, progress_callback=None, page_callback=None) -> List[Dict]:
         """

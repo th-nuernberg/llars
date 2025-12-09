@@ -34,9 +34,9 @@ class PlaywrightCrawler:
 
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-    # Screenshot settings
-    SCREENSHOT_WIDTH = 1920
-    SCREENSHOT_HEIGHT = 1080
+    # Screenshot settings - Browser-like viewport
+    SCREENSHOT_WIDTH = 1280
+    SCREENSHOT_HEIGHT = 800
 
     def __init__(
         self,
@@ -104,11 +104,32 @@ class PlaywrightCrawler:
         # URL filtering
         self.include_patterns = [re.compile(p) for p in (include_patterns or [])]
         self.exclude_patterns = [re.compile(p) for p in (exclude_patterns or [
+            # Binary/Media files
             r'\.pdf$', r'\.zip$', r'\.exe$', r'\.dmg$',
-            r'\.mp3$', r'\.mp4$', r'\.avi$', r'\.mov$',
+            r'\.mp3$', r'\.mp4$', r'\.avi$', r'\.mov$', r'\.webm$',
+            r'\.png$', r'\.jpg$', r'\.jpeg$', r'\.gif$', r'\.svg$', r'\.ico$', r'\.webp$',
+            r'\.woff$', r'\.woff2$', r'\.ttf$', r'\.eot$',
+            # Code/Style files - these are NOT content
+            r'\.css$', r'\.js$', r'\.json$', r'\.xml$',
+            r'\.map$', r'\.min\.js$', r'\.min\.css$',
+            # WordPress specific non-content
+            r'/wp-content/plugins/.*\.(css|js)$',
+            r'/wp-content/themes/.*\.(css|js)$',
+            r'/wp-content/uploads/.*\.(css|js)$',
+            r'/wp-includes/.*\.(css|js)$',
+            r'/xmlrpc\.php',
+            r'/wp-json/',
+            # Feeds
+            r'/feed/?$', r'/feed/.*$', r'/rss/?$', r'/atom/?$',
+            r'/comments/feed',
+            # Auth/Account pages
             r'/login', r'/logout', r'/signin', r'/signup',
             r'/cart', r'/checkout', r'/account',
-            r'\?.*utm_', r'#'
+            r'/wp-login', r'/wp-admin',
+            # Tracking/Analytics
+            r'\?.*utm_', r'#',
+            # Common non-content paths
+            r'/cdn-cgi/', r'/ajax/', r'/api/',
         ])]
 
         # State
@@ -240,10 +261,12 @@ class PlaywrightCrawler:
                             continue
                         self.content_hashes.add(content_hash)
 
-                        # Take screenshot
-                        screenshot_data = await self.screenshot_capture.capture_full_page(page, url, content_hash)
+                        # Take screenshot (handles long pages automatically)
+                        screenshot_data = await self.screenshot_capture.capture_long_page(
+                            page, url, content_hash, self.SCREENSHOT_HEIGHT
+                        )
                         if screenshot_data:
-                            self.stats['screenshots_taken'] += 1
+                            self.stats['screenshots_taken'] += screenshot_data.get('screenshot_count', 1)
 
                         # Extract structured data
                         structured_data = await self._extract_structured_data(screenshot_data, html, url)

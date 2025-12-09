@@ -140,6 +140,7 @@
               :documents="documents"
               :collections="collections"
               :loading="loading.documents"
+              :initial-collection-filter="documentCollectionFilter"
               @upload="openUploadDialog"
               @view="viewDocument"
               @delete="confirmDeleteDocument"
@@ -197,12 +198,20 @@
     <!-- Delete Confirmation -->
     <v-dialog v-model="dialogs.deleteConfirm" max-width="400">
       <v-card>
-        <v-card-title class="text-h6">
-          {{ deleteType === 'chatbot' ? 'Chatbot löschen?' : deleteType === 'collection' ? 'Collection löschen?' : 'Dokument löschen?' }}
-        </v-card-title>
-        <v-card-text>
-          {{ deleteMessage }}
-        </v-card-text>
+    <v-card-title class="text-h6">
+      {{ deleteType === 'chatbot' ? 'Chatbot löschen?' : deleteType === 'collection' ? 'Collection löschen?' : 'Dokument löschen?' }}
+    </v-card-title>
+    <v-card-text>
+      {{ deleteMessage }}
+      <v-checkbox
+        v-if="deleteType === 'chatbot'"
+        v-model="deleteChatbotCollections"
+        label="Primäre Collection und Dokumente mit löschen"
+        density="compact"
+        hide-details
+        class="mt-3"
+      />
+    </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="dialogs.deleteConfirm = false">Abbrechen</v-btn>
@@ -226,7 +235,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import ChatbotList from './ChatbotList.vue'
 import ChatbotEditor from './ChatbotEditor.vue'
@@ -276,6 +285,8 @@ const isEditMode = ref(false)
 const isCollectionEditMode = ref(false)
 const deleteType = ref('')
 const deleteTarget = ref(null)
+const deleteChatbotCollections = ref(false)
+const documentCollectionFilter = ref(null)
 
 const snackbar = ref({
   show: false,
@@ -418,6 +429,7 @@ async function duplicateChatbot(chatbot) {
 function confirmDelete(chatbot) {
   deleteType.value = 'chatbot'
   deleteTarget.value = chatbot
+  deleteChatbotCollections.value = false
   dialogs.value.deleteConfirm = true
 }
 
@@ -437,11 +449,17 @@ async function executeDelete() {
   try {
     let response
     if (deleteType.value === 'chatbot') {
-      response = await axios.delete(`/api/chatbots/${deleteTarget.value.id}`)
+      const params = deleteChatbotCollections.value ? '?delete_collections=true' : ''
+      response = await axios.delete(`/api/chatbots/${deleteTarget.value.id}${params}`)
       if (response.data.success) {
-        showSnackbar('Chatbot gelöscht', 'success')
+        const extra = deleteChatbotCollections.value ? ' (inkl. Collection)' : ''
+        showSnackbar(`Chatbot gelöscht${extra}`, 'success')
         await loadChatbots()
         await loadStats()
+        if (deleteChatbotCollections.value) {
+          await loadCollections()
+          await loadDocuments()
+        }
       }
     } else if (deleteType.value === 'collection') {
       response = await axios.delete(`/api/rag/collections/${deleteTarget.value.id}`)
@@ -464,6 +482,7 @@ async function executeDelete() {
   } finally {
     dialogs.value.deleteConfirm = false
     deleteTarget.value = null
+    deleteChatbotCollections.value = false
   }
 }
 
@@ -501,8 +520,9 @@ async function saveCollection(collectionData) {
 }
 
 function viewCollectionDocuments(collection) {
+  // Set collection filter and switch to documents tab
+  documentCollectionFilter.value = collection.name
   activeTab.value = 'documents'
-  // Filter documents by collection (implement in DocumentManager)
 }
 
 // Document methods
@@ -586,6 +606,13 @@ async function openTestDialogById(chatbotId) {
     showSnackbar('Fehler beim Laden des Chatbots', 'error')
   }
 }
+
+// Clear document collection filter when switching tabs
+watch(activeTab, (newTab) => {
+  if (newTab !== 'documents') {
+    documentCollectionFilter.value = null
+  }
+})
 
 // Lifecycle
 onMounted(() => {

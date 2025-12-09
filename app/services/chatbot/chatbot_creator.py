@@ -86,7 +86,13 @@ class ChatbotCreator:
         }
 
     @staticmethod
-    def start_crawl(chatbot_id: int, max_pages: int = 50, max_depth: int = 3) -> Dict[str, Any]:
+    def start_crawl(
+        chatbot_id: int,
+        max_pages: int = 50,
+        max_depth: int = 3,
+        use_playwright: bool = True,
+        use_vision_llm: bool = False
+    ) -> Dict[str, Any]:
         """
         Start crawling the source URL for a chatbot.
 
@@ -94,6 +100,8 @@ class ChatbotCreator:
             chatbot_id: The chatbot ID
             max_pages: Maximum pages to crawl
             max_depth: Maximum crawl depth
+            use_playwright: Whether to use Playwright for JavaScript rendering
+            use_vision_llm: Whether to use Vision LLM for screenshot extraction
 
         Returns:
             Dict with status and job_id for tracking
@@ -163,6 +171,8 @@ class ChatbotCreator:
             max_pages_per_site=max_pages,
             max_depth=max_depth,
             existing_collection_id=collection.id,
+            use_playwright=use_playwright,
+            use_vision_llm=use_vision_llm,
             app=app
         )
 

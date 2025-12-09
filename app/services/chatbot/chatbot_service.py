@@ -246,7 +246,7 @@ class ChatbotService:
         return ChatbotService.get_chatbot(chatbot_id)
 
     @staticmethod
-    def delete_chatbot(chatbot_id: int) -> bool:
+    def delete_chatbot(chatbot_id: int, delete_collections: bool = False) -> bool:
         """
         Delete a chatbot and all related data.
         """
@@ -255,11 +255,61 @@ class ChatbotService:
             return False
 
         name = chatbot.name
-        db.session.delete(chatbot)
-        db.session.commit()
-        logger.info(f"Deleted chatbot '{name}'")
 
-        return True
+        try:
+            # Optionally delete associated collections (primary + linked)
+            if delete_collections:
+                ChatbotService._delete_associated_collections(chatbot)
+
+            # Delete chatbot (ChatbotCollection relations cascade via FK/ondelete)
+            db.session.delete(chatbot)
+            db.session.commit()
+            logger.info(f"Deleted chatbot '{name}' (delete_collections={delete_collections})")
+            return True
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error deleting chatbot '{name}': {e}")
+            return False
+
+    @staticmethod
+    def _delete_associated_collections(chatbot: Chatbot):
+        """
+        Cascade delete collections associated to the chatbot (primary + linked).
+        Deletes documents/chunks as well.
+        """
+        from db.tables import (
+            RAGCollection,
+            RAGDocument,
+            RAGDocumentChunk,
+            CollectionDocumentLink,
+            ChatbotCollection
+        )
+
+        # Collect collection IDs (primary + any linked)
+        collection_ids = set()
+        if chatbot.primary_collection_id:
+            collection_ids.add(chatbot.primary_collection_id)
+
+        linked = ChatbotCollection.query.filter_by(chatbot_id=chatbot.id).all()
+        for link in linked:
+            if link.collection_id:
+                collection_ids.add(link.collection_id)
+
+        for cid in collection_ids:
+            collection = RAGCollection.query.get(cid)
+            if not collection:
+                continue
+
+            # Delete chunks -> documents -> links -> collection
+            documents = RAGDocument.query.filter_by(collection_id=cid).all()
+            for doc in documents:
+                RAGDocumentChunk.query.filter_by(document_id=doc.id).delete()
+            RAGDocument.query.filter_by(collection_id=cid).delete()
+            CollectionDocumentLink.query.filter_by(collection_id=cid).delete()
+            ChatbotCollection.query.filter_by(collection_id=cid).delete()
+            db.session.delete(collection)
+
+        db.session.commit()
 
     @staticmethod
     def duplicate_chatbot(chatbot_id: int, username: str) -> Optional[Dict[str, Any]]:

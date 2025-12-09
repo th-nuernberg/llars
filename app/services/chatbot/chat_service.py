@@ -169,6 +169,74 @@ class ChatService:
             'test_mode': True
         }
 
+    def test_chat_stream(self, message: str):
+        """
+        Stream test chat response tokens (Server-Sent Events friendly).
+        Yields dicts with delta chunks and a final done payload.
+        """
+        start_time = time.time()
+
+        # Get RAG context if enabled
+        rag_context = ""
+        sources = []
+        if self.chatbot.rag_enabled and self.chatbot.collections:
+            rag_context, sources = self._get_multi_collection_context(message)
+
+        # Build messages (no history in test mode)
+        messages = [
+            {"role": "system", "content": self.chatbot.system_prompt}
+        ]
+
+        if rag_context:
+            messages.append({
+                "role": "system",
+                "content": f"Kontext aus Dokumenten:\n\n{rag_context}"
+            })
+
+        messages.append({"role": "user", "content": message})
+
+        try:
+            stream = self.llm_client.chat.completions.create(
+                model=self.chatbot.model_name,
+                messages=messages,
+                temperature=self.chatbot.temperature,
+                max_tokens=self.chatbot.max_tokens,
+                top_p=self.chatbot.top_p,
+                stream=True
+            )
+
+            accumulated = ""
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if not delta:
+                    continue
+                # Handle list-of-parts vs string
+                if isinstance(delta, list):
+                    delta_text = "".join([getattr(part, 'text', '') if hasattr(part, 'text') else str(part) for part in delta])
+                else:
+                    delta_text = delta
+
+                if not delta_text:
+                    continue
+
+                accumulated += delta_text
+                yield {"delta": delta_text}
+
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            yield {
+                "done": True,
+                "full_response": accumulated,
+                "sources": sources if self.chatbot.rag_include_sources else [],
+                "tokens": None,
+                "response_time_ms": response_time_ms,
+                "test_mode": True
+            }
+
+        except Exception as e:
+            logger.error(f"[ChatService] Streaming test_chat failed: {e}")
+            yield {"error": str(e)}
+
     def _get_or_create_conversation(self, session_id: str, username: str = None) -> ChatbotConversation:
         """
         Get existing conversation or create a new one.

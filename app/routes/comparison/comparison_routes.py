@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flask import request, jsonify
 
-from . import data_blueprint
+from routes.auth import data_bp as data_blueprint
 from db.db import db
 from db.tables import (
     User,

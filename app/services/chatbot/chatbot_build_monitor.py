@@ -111,7 +111,11 @@ class ChatbotBuildMonitor:
             logger.info(f"[ChatbotBuildMonitor] Starting embedding for chatbot {chatbot_id}, collection {collection_id}")
 
             service = get_collection_embedding_service()
-            service.start_embedding(collection_id)
+            result = service.start_embedding(collection_id)
+            if not result.get('success'):
+                raise ValueError(result.get('error', 'Embedding start failed'))
+            if result.get('message'):
+                logger.info(f"[ChatbotBuildMonitor] {result.get('message')}")
 
             # Start a thread to monitor embedding completion
             logger.info(f"[ChatbotBuildMonitor] Starting embedding monitor thread for chatbot {chatbot_id}")

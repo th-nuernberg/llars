@@ -27,15 +27,10 @@ def register_all_blueprints(app: Flask) -> None:
 
     # Legacy auth routes (backwards compatibility)
     from routes.auth import auth_bp, data_bp
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(data_bp, url_prefix='/api')
 
-    # Authentik OIDC authentication
-    from routes.authentik_routes import authentik_auth_blueprint
-    app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
-
-    # Permissions & Roles management
-    # Note: Uses data_bp which is already registered above
+    # Import all modules that attach routes to the shared data blueprint
+    # BEFORE registering the blueprint. Flask disallows adding routes to a
+    # blueprint after it has been registered.
     from routes import permissions
 
     # ============================================================
@@ -43,20 +38,19 @@ def register_all_blueprints(app: Flask) -> None:
     # ============================================================
 
     # Rating & Ranking (Email thread rating and feature ranking)
-    # Note: Uses data_bp which is already registered above
     from routes import rating
 
     # User Prompts (Prompt management and sharing)
-    # Note: Uses data_bp which is already registered above
     from routes import prompts
 
     # Comparison (LLM comparison sessions)
-    # Note: Uses data_bp which is already registered above
     from routes import comparison
 
     # Scenarios (Scenario management and distribution)
-    # Note: Uses data_bp which is already registered above
     from routes import scenarios
+
+    # Authentik OIDC authentication
+    from routes.authentik_routes import authentik_auth_blueprint
 
     # ============================================================
     # LLM & AI Features
@@ -96,6 +90,13 @@ def register_all_blueprints(app: Flask) -> None:
 
     # KAIMO Project
     from routes.kaimo import kaimo_bp
+
+    # ============================================================
+    # Register blueprints AFTER all routes have been attached
+    # ============================================================
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(data_bp, url_prefix='/api')
+    app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
     app.register_blueprint(kaimo_bp)
 
 

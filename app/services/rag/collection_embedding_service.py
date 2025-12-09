@@ -10,6 +10,7 @@ import threading
 import hashlib
 import uuid
 import re
+import time
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -80,12 +81,14 @@ class CollectionEmbeddingService:
         self._active_jobs: Dict[int, threading.Thread] = {}
         self._stop_events: Dict[int, threading.Event] = {}
 
-    def start_embedding(self, collection_id: int) -> Dict[str, Any]:
+    def start_embedding(self, collection_id: int, wait_for_more: bool = False, source_job_id: str = None) -> Dict[str, Any]:
         """
         Start embedding process for a collection.
 
         Args:
             collection_id: ID of the collection to embed
+            wait_for_more: If True, keep waiting for new documents (live crawl)
+            source_job_id: Optional crawler job id to detect when crawling is finished
 
         Returns:
             Dict with status and message
@@ -98,7 +101,7 @@ class CollectionEmbeddingService:
             return {'success': False, 'error': 'Collection not found'}
 
         if collection.embedding_status == 'processing':
-            return {'success': False, 'error': 'Collection is already being processed'}
+            return {'success': True, 'message': 'Collection already processing'}
 
         # Update collection status
         collection.embedding_status = 'processing'
@@ -108,6 +111,14 @@ class CollectionEmbeddingService:
 
         # Create stop event for this collection
         self._stop_events[collection_id] = threading.Event()
+        # Track live mode metadata
+        if wait_for_more or source_job_id:
+            if not hasattr(self, '_live_mode'):
+                self._live_mode = {}
+            self._live_mode[collection_id] = {
+                'wait_for_more': wait_for_more,
+                'source_job_id': source_job_id
+            }
 
         # Start background thread
         app = current_app._get_current_object()
@@ -226,25 +237,9 @@ class CollectionEmbeddingService:
             db.session.commit()
             logger.info(f"[CollectionEmbedding] Set chroma_collection_name: {collection_name}")
 
-        # Get all documents linked to this collection
-        doc_links = CollectionDocumentLink.query.filter_by(
-            collection_id=collection_id
-        ).all()
-
-        documents = [link.document for link in doc_links if link.document and link.document.status in ('pending', 'failed')]
-        total_docs = len(documents)
-
-        if total_docs == 0:
-            # Check if all docs are already indexed
-            all_docs = [link.document for link in doc_links if link.document]
-            indexed = sum(1 for d in all_docs if d.status == 'indexed')
-            if indexed == len(all_docs):
-                self._complete_collection(collection_id, collection.total_chunks, len(all_docs))
-                return
-
-            logger.info(f"[CollectionEmbedding] No pending documents for collection {collection_id}")
-            self._complete_collection(collection_id, collection.total_chunks, 0)
-            return
+        live_meta = getattr(self, '_live_mode', {}).get(collection_id, {'wait_for_more': False, 'source_job_id': None})
+        wait_for_more = live_meta.get('wait_for_more', False)
+        source_job_id = live_meta.get('source_job_id')
 
         # Initialize vectorstore directory
         vectorstore_dir = os.path.join(pipeline.storage_dir, "vectorstore", pipeline.model_name.replace('/', '_'))
@@ -258,123 +253,166 @@ class CollectionEmbeddingService:
         )
 
         processed_count = 0
-        total_chunks = 0
+        total_chunks_total = 0
 
-        for doc in documents:
+        def crawl_still_running() -> bool:
+            if not source_job_id:
+                return False
+            try:
+                from services.crawler.web_crawler import crawler_service
+                job = crawler_service.get_job_status(source_job_id)
+                return job and job.get('status') in ('queued', 'running')
+            except Exception as e:
+                logger.debug(f"[CollectionEmbedding] Could not read crawler job {source_job_id}: {e}")
+                return False
+
+        while True:
             if stop_event and stop_event.is_set():
                 logger.info(f"[CollectionEmbedding] Embedding paused for collection {collection_id}")
                 return
 
-            try:
-                # Update document status
-                doc.status = 'processing'
-                db.session.commit()
+            # Get all documents linked to this collection
+            doc_links = CollectionDocumentLink.query.filter_by(
+                collection_id=collection_id
+            ).all()
 
-                # Emit progress
-                progress = int((processed_count / total_docs) * 100)
-                self._emit_progress(collection_id, progress, doc.filename, processed_count, total_docs)
+            documents = [link.document for link in doc_links if link.document and link.document.status in ('pending', 'failed')]
+            total_docs = processed_count + len(documents)
 
-                # Load document content
-                content = self._load_document_content(doc)
-                if not content:
-                    doc.status = 'failed'
-                    doc.processing_error = 'Could not load document content'
-                    db.session.commit()
-                    processed_count += 1
+            if not documents:
+                if wait_for_more and crawl_still_running():
+                    time.sleep(1)
                     continue
 
-                # Split into chunks
-                chunks = text_splitter.split_text(content)
-                logger.info(f"[CollectionEmbedding] Document {doc.id} split into {len(chunks)} chunks")
+                # No documents and crawl finished -> finalize
+                all_docs = [link.document for link in doc_links if link.document]
+                indexed = sum(1 for d in all_docs if d and d.status == 'indexed')
+                collection.total_chunks = collection.total_chunks or 0
+                db.session.commit()
+                self._complete_collection(collection_id, collection.total_chunks, indexed)
+                return
 
-                # Create chunks and embeddings - track new chunks separately
-                new_chunks = []
-                new_vector_ids = []
-                all_vector_ids = []
+            batch_chunks = 0
 
-                for i, chunk_text in enumerate(chunks):
-                    # Check for existing chunk with same hash
-                    content_hash = self._hash_content(chunk_text)
-                    existing_chunk = RAGDocumentChunk.query.filter_by(
-                        document_id=doc.id,
-                        content_hash=content_hash
-                    ).first()
+            for doc in documents:
+                if stop_event and stop_event.is_set():
+                    logger.info(f"[CollectionEmbedding] Embedding paused for collection {collection_id}")
+                    return
 
-                    if existing_chunk:
-                        # Reuse existing chunk - don't add to ChromaDB again
-                        all_vector_ids.append(existing_chunk.vector_id)
+                try:
+                    # Update document status
+                    doc.status = 'processing'
+                    db.session.commit()
+
+                    # Emit progress
+                    progress = int((processed_count / max(total_docs, 1)) * 100)
+                    self._emit_progress(collection_id, progress, doc.filename, processed_count, total_docs)
+
+                    # Load document content
+                    content = self._load_document_content(doc)
+                    if not content:
+                        doc.status = 'failed'
+                        doc.processing_error = 'Could not load document content'
+                        db.session.commit()
+                        processed_count += 1
                         continue
 
-                    # Create new chunk with unique ID
-                    chunk_id = f"doc_{doc.id}_chunk_{i}_{uuid.uuid4().hex[:8]}"
-                    db_chunk = RAGDocumentChunk(
-                        document_id=doc.id,
-                        chunk_index=i,
-                        content=chunk_text,
-                        content_hash=content_hash,
-                        vector_id=chunk_id,
-                        embedding_model=pipeline.model_name,
-                        embedding_status='completed'
-                    )
-                    db.session.add(db_chunk)
-                    new_chunks.append(chunk_text)
-                    new_vector_ids.append(chunk_id)
-                    all_vector_ids.append(chunk_id)
+                    # Split into chunks
+                    chunks = text_splitter.split_text(content)
+                    logger.info(f"[CollectionEmbedding] Document {doc.id} split into {len(chunks)} chunks")
 
-                db.session.commit()
+                    # Create chunks and embeddings - track new chunks separately
+                    new_chunks = []
+                    new_vector_ids = []
+                    all_vector_ids = []
 
-                # Only add NEW chunks to ChromaDB (skip already embedded ones)
-                if new_chunks:
-                    try:
-                        vectorstore = Chroma(
-                            collection_name=collection_name,
-                            persist_directory=vectorstore_dir,
-                            embedding_function=pipeline.embeddings
+                    for i, chunk_text in enumerate(chunks):
+                        # Check for existing chunk with same hash
+                        content_hash = self._hash_content(chunk_text)
+                        existing_chunk = RAGDocumentChunk.query.filter_by(
+                            document_id=doc.id,
+                            content_hash=content_hash
+                        ).first()
+
+                        if existing_chunk:
+                            # Reuse existing chunk - don't add to ChromaDB again
+                            all_vector_ids.append(existing_chunk.vector_id)
+                            continue
+
+                        # Create new chunk with unique ID
+                        chunk_id = f"doc_{doc.id}_chunk_{i}_{uuid.uuid4().hex[:8]}"
+                        db_chunk = RAGDocumentChunk(
+                            document_id=doc.id,
+                            chunk_index=i,
+                            content=chunk_text,
+                            content_hash=content_hash,
+                            vector_id=chunk_id,
+                            embedding_model=pipeline.model_name,
+                            embedding_status='completed'
                         )
+                        db.session.add(db_chunk)
+                        new_chunks.append(chunk_text)
+                        new_vector_ids.append(chunk_id)
+                        all_vector_ids.append(chunk_id)
 
-                        vectorstore.add_texts(
-                            texts=new_chunks,
-                            ids=new_vector_ids,
-                            metadatas=[{
-                                'document_id': doc.id,
-                                'chunk_index': i,
-                                'filename': doc.filename,
-                                'collection_id': collection_id
-                            } for i in range(len(new_chunks))]
-                        )
-                        logger.info(f"[CollectionEmbedding] Added {len(new_chunks)} new chunks to ChromaDB (skipped {len(chunks) - len(new_chunks)} existing)")
+                    db.session.commit()
 
-                    except Exception as e:
-                        logger.error(f"[CollectionEmbedding] ChromaDB error: {e}")
-                        raise
-                else:
-                    logger.info(f"[CollectionEmbedding] All {len(chunks)} chunks already exist, skipping ChromaDB insert")
+                    # Only add NEW chunks to ChromaDB (skip already embedded ones)
+                    if new_chunks:
+                        try:
+                            vectorstore = Chroma(
+                                collection_name=collection_name,
+                                persist_directory=vectorstore_dir,
+                                embedding_function=pipeline.embeddings
+                            )
 
-                # Update document status
-                doc.status = 'indexed'
-                doc.processed_at = datetime.now()
-                doc.indexed_at = datetime.now()
-                doc.chunk_count = len(chunks)
-                doc.vector_ids = all_vector_ids
-                doc.embedding_model = pipeline.model_name
-                db.session.commit()
+                            vectorstore.add_texts(
+                                texts=new_chunks,
+                                ids=new_vector_ids,
+                                metadatas=[{
+                                    'document_id': doc.id,
+                                    'chunk_index': i,
+                                    'filename': doc.filename,
+                                    'collection_id': collection_id
+                                } for i in range(len(new_chunks))]
+                            )
+                            logger.info(f"[CollectionEmbedding] Added {len(new_chunks)} new chunks to ChromaDB (skipped {len(chunks) - len(new_chunks)} existing)")
 
-                total_chunks += len(new_chunks)
-                processed_count += 1
+                        except Exception as e:
+                            logger.error(f"[CollectionEmbedding] ChromaDB error: {e}")
+                            raise
+                    else:
+                        logger.info(f"[CollectionEmbedding] All {len(chunks)} chunks already exist, skipping ChromaDB insert")
 
-                # Emit progress after each document
-                progress = int((processed_count / total_docs) * 100)
-                self._emit_progress(collection_id, progress, doc.filename, processed_count, total_docs)
+                    # Update document status
+                    doc.status = 'indexed'
+                    doc.processed_at = datetime.now()
+                    doc.indexed_at = datetime.now()
+                    doc.chunk_count = len(chunks)
+                    doc.vector_ids = all_vector_ids
+                    doc.embedding_model = pipeline.model_name
+                    db.session.commit()
 
-            except Exception as e:
-                logger.error(f"[CollectionEmbedding] Error processing document {doc.id}: {e}")
-                doc.status = 'failed'
-                doc.processing_error = str(e)[:500]
-                db.session.commit()
-                processed_count += 1
+                    batch_chunks += len(new_chunks)
+                    total_chunks_total += len(new_chunks)
+                    processed_count += 1
 
-        # Update collection stats
-        self._complete_collection(collection_id, total_chunks, processed_count)
+                    # Emit progress after each document
+                    progress = int((processed_count / max(total_docs, 1)) * 100)
+                    self._emit_progress(collection_id, progress, doc.filename, processed_count, total_docs)
+
+                except Exception as e:
+                    logger.error(f"[CollectionEmbedding] Error processing document {doc.id}: {e}")
+                    doc.status = 'failed'
+                    doc.processing_error = str(e)[:500]
+                    db.session.commit()
+                    processed_count += 1
+
+            # Update collection stats after each batch
+            collection.total_chunks = (collection.total_chunks or 0) + batch_chunks
+            collection.embedding_progress = int((processed_count / max(total_docs, 1)) * 100)
+            collection.last_indexed_at = datetime.now()
+            db.session.commit()
 
     def _load_document_content(self, doc) -> str:
         """Load content from document file."""
@@ -439,6 +477,10 @@ class CollectionEmbeddingService:
 
             logger.info(f"[CollectionEmbedding] Collection {collection_id} completed: {total_chunks} chunks, {docs_processed} docs")
 
+            # Cleanup live mode tracking
+            if hasattr(self, '_live_mode'):
+                self._live_mode.pop(collection_id, None)
+
         except Exception as e:
             logger.error(f"[CollectionEmbedding] Error completing collection: {e}")
 
@@ -461,6 +503,9 @@ class CollectionEmbeddingService:
 
         except Exception as e:
             logger.error(f"[CollectionEmbedding] Error setting collection error: {e}")
+        finally:
+            if hasattr(self, '_live_mode'):
+                self._live_mode.pop(collection_id, None)
 
 
 # Global service instance

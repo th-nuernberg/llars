@@ -263,8 +263,8 @@ def has_role(token_payload: Dict, role: str) -> bool:
     Check if the token has a specific role.
 
     Supports multiple token formats:
-    - Keycloak: realm_access.roles, resource_access.<client>.roles
     - Authentik: groups (array of group names)
+    - Legacy Keycloak: realm_access.roles, resource_access.<client>.roles
 
     For Authentik, maps common group names to roles:
     - 'authentik Admins' -> 'admin'
@@ -278,13 +278,7 @@ def has_role(token_payload: Dict, role: str) -> bool:
     Returns:
         True if user has the role, False otherwise
     """
-    # === Keycloak format ===
-    # Check realm_access.roles
-    keycloak_roles = token_payload.get('realm_access', {}).get('roles', [])
-    # Check resource_access.<client_id>.roles
-    client_roles = token_payload.get('resource_access', {}).get(oidc_config.client_id, {}).get('roles', [])
-
-    # === Authentik format ===
+    # === Authentik format (primär) ===
     # Authentik sends groups in the 'groups' claim (from profile scope)
     authentik_groups = token_payload.get('groups', [])
 
@@ -312,6 +306,12 @@ def has_role(token_payload: Dict, role: str) -> bool:
         authentik_roles.append(group.lower())
         # And the original group name
         authentik_roles.append(group)
+
+    # === Legacy Keycloak format (Kompatibilität) ===
+    # Check realm_access.roles
+    keycloak_roles = token_payload.get('realm_access', {}).get('roles', [])
+    # Check resource_access.<client_id>.roles
+    client_roles = token_payload.get('resource_access', {}).get(oidc_config.client_id, {}).get('roles', [])
 
     # Combine all roles from all sources
     all_roles = keycloak_roles + client_roles + authentik_roles

@@ -5,7 +5,10 @@ API routes for chatbot management and chat functionality.
 
 import uuid
 import logging
-from flask import Blueprint, request, jsonify, g
+import json
+from flask import Blueprint, request, jsonify, g, Response, stream_with_context
+from db.tables import Chatbot
+from services.rag.document_service import DocumentService
 from decorators.permission_decorator import require_permission, require_any_permission
 from decorators.error_handler import handle_errors
 from services.chatbot.chatbot_service import ChatbotService
@@ -91,10 +94,15 @@ def update_chatbot(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def delete_chatbot(chatbot_id):
     """Delete a chatbot"""
-    success = ChatbotService.delete_chatbot(chatbot_id)
+    delete_collections = request.args.get('delete_collections', 'false').lower() == 'true'
+    success = ChatbotService.delete_chatbot(chatbot_id, delete_collections=delete_collections)
     if not success:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
-    return jsonify({'success': True, 'message': 'Chatbot deleted successfully'})
+    return jsonify({
+        'success': True,
+        'message': 'Chatbot deleted successfully',
+        'delete_collections': delete_collections
+    })
 
 
 @chatbot_blueprint.route('/<int:chatbot_id>/duplicate', methods=['POST'])
@@ -127,6 +135,32 @@ def get_chatbot_collections(chatbot_id):
         'success': True,
         'collections': collections,
         'count': len(collections)
+    })
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/wizard/collection-documents', methods=['GET'])
+@require_permission('feature:chatbots:view')
+@handle_errors(logger_name='chatbot')
+def get_wizard_collection_documents(chatbot_id):
+    """List documents for the wizard's primary collection (for live preview during crawling/embedding)."""
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+
+    if not chatbot.primary_collection_id:
+        return jsonify({'success': True, 'documents': [], 'collection_id': None})
+
+    per_page = request.args.get('per_page', 25, type=int)
+    documents, _ = DocumentService.get_documents(
+        collection_id=chatbot.primary_collection_id,
+        page=1,
+        per_page=per_page
+    )
+
+    return jsonify({
+        'success': True,
+        'collection_id': chatbot.primary_collection_id,
+        'documents': [DocumentService.serialize_document(d) for d in documents]
     })
 
 
@@ -284,13 +318,29 @@ def get_capabilities(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def test_chat(chatbot_id):
     """Test a chatbot without saving the conversation"""
+    from flask import Response, stream_with_context
     data = request.get_json()
     if not data or 'message' not in data:
         raise ValueError('message is required')
 
+    stream = bool(data.get('stream'))
     chat_service = ChatService(chatbot_id)
-    result = chat_service.test_chat(data['message'])
-    return jsonify({'success': True, **result})
+    if not stream:
+        result = chat_service.test_chat(data['message'])
+        return jsonify({'success': True, **result})
+
+    def event_stream():
+        try:
+            for chunk in chat_service.test_chat_stream(data['message']):
+                yield f"data: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            logger.error(f"[ChatbotTest] Streaming failed: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    response = Response(stream_with_context(event_stream()), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
 
 
 # ============================================================================
@@ -411,7 +461,20 @@ def create_wizard_chatbot():
 def start_wizard_crawl(chatbot_id):
     """Start the crawl process for a wizard chatbot."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
-    result = ChatbotBuilderService.start_crawl(chatbot_id)
+
+    data = request.get_json() or {}
+    max_pages = data.get('max_pages', 50)
+    max_depth = data.get('max_depth', 3)
+    use_playwright = data.get('use_playwright', True)
+    use_vision_llm = data.get('use_vision_llm', False)
+
+    result = ChatbotBuilderService.start_crawl(
+        chatbot_id,
+        max_pages=max_pages,
+        max_depth=max_depth,
+        use_playwright=use_playwright,
+        use_vision_llm=use_vision_llm
+    )
     return jsonify(result), 200 if result['success'] else 400
 
 
@@ -426,12 +489,34 @@ def generate_chatbot_field(chatbot_id):
     if not data or 'field' not in data:
         raise ValueError('field is required')
 
-    result = ChatbotBuilderService.generate_field(
-        chatbot_id=chatbot_id,
-        field=data['field'],
-        context=data.get('context')
-    )
-    return jsonify(result), 200 if result['success'] else 400
+    stream = bool(data.get('stream'))
+
+    # Fast path: classic non-streaming behaviour
+    if not stream:
+        result = ChatbotBuilderService.generate_field(
+            chatbot_id=chatbot_id,
+            field=data['field'],
+            context=data.get('context')
+        )
+        return jsonify(result), 200 if result['success'] else 400
+
+    # Streaming mode (Server-Sent Events)
+    def event_stream():
+        try:
+            for chunk in ChatbotBuilderService.stream_field(
+                chatbot_id=chatbot_id,
+                field=data['field'],
+                context=data.get('context')
+            ):
+                yield f"data: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            logger.error(f"[ChatbotWizard] Streaming generation failed: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    response = Response(stream_with_context(event_stream()), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
 
 
 @chatbot_blueprint.route('/<int:chatbot_id>/wizard/status', methods=['GET'])

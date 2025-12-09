@@ -13,7 +13,7 @@ Responsible for:
 import logging
 import os
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Iterable
 
 from openai import OpenAI
 
@@ -183,6 +183,70 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
         )
 
         return response.choices[0].message.content.strip()
+
+    @staticmethod
+    def stream_field_generation(chatbot_id: int, field: str, context: Optional[str] = None) -> Iterable[Dict[str, Any]]:
+        """
+        Stream generation for a field as SSE-friendly dicts.
+
+        Yields:
+            {"delta": "..."} for incremental tokens and a final {"done": True, "value": "..."}.
+        """
+        chatbot = Chatbot.query.get(chatbot_id)
+        if not chatbot:
+            raise ValueError('Chatbot not found')
+
+        if field not in ChatbotFieldGenerator.PROMPTS:
+            raise ValueError(f'Unknown field: {field}')
+
+        collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)
+        prompt_config = ChatbotFieldGenerator.PROMPTS[field]
+        user_prompt = prompt_config['user_template'].format(
+            url=chatbot.source_url or 'N/A',
+            collection_info=collection_info
+        )
+
+        # Use LiteLLM endpoint in streaming mode
+        client = OpenAI(
+            base_url=os.environ.get('LITELLM_BASE_URL', 'https://kiz1.in.ohmportal.de/llmproxy/v1'),
+            api_key=os.environ.get('LITELLM_API_KEY', 'dummy')
+        )
+
+        stream = client.chat.completions.create(
+            model=ChatbotFieldGenerator.DEFAULT_MODEL,
+            messages=[
+                {"role": "system", "content": prompt_config['system']},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500,
+            stream=True
+        )
+
+        accumulated = ""
+        for chunk in stream:
+            content = chunk.choices[0].delta.content
+            delta = ""
+            if isinstance(content, list):
+                delta = "".join([
+                    getattr(part, 'text', '') if hasattr(part, 'text') else str(part)
+                    for part in content
+                ])
+            elif isinstance(content, str):
+                delta = content
+
+            if not delta:
+                continue
+
+            accumulated += delta
+            yield {"delta": delta}
+
+        # Final clean-up for name field
+        final_value = accumulated
+        if field == 'name':
+            final_value = ChatbotFieldGenerator._clean_name(final_value)
+
+        yield {"done": True, "value": final_value}
 
     @staticmethod
     def _clean_name(name: str) -> str:

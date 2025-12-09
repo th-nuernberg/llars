@@ -54,7 +54,13 @@ class ChatbotBuilderService:
             return {'success': False, 'error': str(e)}
 
     @staticmethod
-    def start_crawl(chatbot_id: int, max_pages: int = 50, max_depth: int = 3) -> Dict[str, Any]:
+    def start_crawl(
+        chatbot_id: int,
+        max_pages: int = 50,
+        max_depth: int = 3,
+        use_playwright: bool = True,
+        use_vision_llm: bool = False
+    ) -> Dict[str, Any]:
         """
         Start crawling the source URL for a chatbot.
 
@@ -64,12 +70,16 @@ class ChatbotBuilderService:
             chatbot_id: The chatbot ID
             max_pages: Maximum pages to crawl
             max_depth: Maximum crawl depth
+            use_playwright: Whether to use Playwright for JavaScript rendering
+            use_vision_llm: Whether to use Vision LLM for screenshot extraction
 
         Returns:
             Dict with status and job_id for tracking
         """
         try:
-            return ChatbotCreator.start_crawl(chatbot_id, max_pages, max_depth)
+            return ChatbotCreator.start_crawl(
+                chatbot_id, max_pages, max_depth, use_playwright, use_vision_llm
+            )
         except ValueError as e:
             return {'success': False, 'error': str(e)}
 
@@ -191,6 +201,16 @@ class ChatbotBuilderService:
         except Exception as e:
             logger.error(f"[ChatbotBuilder] Field generation error: {e}")
             return {'success': False, 'error': str(e)}
+
+    @staticmethod
+    def stream_field(chatbot_id: int, field: str, context: Optional[str] = None):
+        """
+        Stream field generation tokens for live updates.
+
+        Yields:
+            Dicts with delta tokens and optional final value.
+        """
+        return ChatbotFieldGenerator.stream_field_generation(chatbot_id, field, context)
 
     # ========== Build Monitoring ==========
 

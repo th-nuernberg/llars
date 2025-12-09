@@ -5,8 +5,7 @@ from unicodedata import category
 
 from flask import Blueprint, jsonify, request, g, Response
 from werkzeug.security import check_password_hash
-from . import data_blueprint
-from . import auth_blueprint
+from routes.auth import data_bp as data_blueprint, auth_bp as auth_blueprint
 from auth.decorators import authentik_required, admin_required, roles_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError

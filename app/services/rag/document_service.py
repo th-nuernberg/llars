@@ -522,7 +522,13 @@ class DocumentService:
                 'embedding_model': document.embedding_model,
                 'is_public': document.is_public,
                 'processed_at': document.processed_at.isoformat() if document.processed_at else None,
-                'archived_at': document.archived_at.isoformat() if document.archived_at else None
+                'archived_at': document.archived_at.isoformat() if document.archived_at else None,
+                # Screenshot info for web-crawled documents
+                'screenshot_path': document.screenshot_path,
+                'screenshot_url': document.screenshot_url,
+                'has_screenshot': bool(document.screenshot_path),
+                # Source URL for web-crawled documents
+                'source_url': document.source_url
             })
 
         return base_data
@@ -539,5 +545,11 @@ class DocumentService:
             'end_char': chunk.end_char,
             'retrieval_count': chunk.retrieval_count,
             'avg_relevance_score': chunk.avg_relevance_score,
-            'last_retrieved_at': chunk.last_retrieved_at.isoformat() if chunk.last_retrieved_at else None
+            'last_retrieved_at': chunk.last_retrieved_at.isoformat() if chunk.last_retrieved_at else None,
+            # Image info for chunks with embedded images
+            'has_image': chunk.has_image,
+            'image_path': chunk.image_path,
+            'image_url': chunk.image_url,
+            'image_alt_text': chunk.image_alt_text,
+            'image_mime_type': chunk.image_mime_type
         }

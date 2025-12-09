@@ -2,7 +2,7 @@
   <v-dialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    max-width="900"
+    max-width="1100"
     scrollable
   >
     <v-card v-if="document">
@@ -19,11 +19,15 @@
 
       <v-divider></v-divider>
 
-      <v-card-text class="pa-0" style="height: 600px;">
+      <v-card-text class="pa-0" style="height: 650px;">
         <v-tabs v-model="activeTab" bg-color="surface-variant">
           <v-tab value="info">
             <v-icon icon="mdi-information" class="mr-2"></v-icon>
-            Informationen
+            Info
+          </v-tab>
+          <v-tab v-if="documentDetails?.has_screenshot" value="screenshot">
+            <v-icon icon="mdi-image" class="mr-2"></v-icon>
+            Screenshot
           </v-tab>
           <v-tab value="content">
             <v-icon icon="mdi-text" class="mr-2"></v-icon>
@@ -77,6 +81,35 @@
                         </v-list-item-subtitle>
                       </v-list-item>
                     </v-list>
+                  </div>
+                </v-col>
+
+                <!-- Source URL section if available -->
+                <v-col cols="12" v-if="documentDetails?.source_url">
+                  <div class="info-section">
+                    <div class="text-subtitle-2 text-medium-emphasis mb-2">Quelle</div>
+                    <v-card variant="outlined">
+                      <v-card-text class="pa-3">
+                        <div class="d-flex align-center">
+                          <v-icon size="small" color="info" class="mr-2">mdi-web</v-icon>
+                          <a
+                            :href="documentDetails.source_url"
+                            target="_blank"
+                            class="text-truncate source-url-link"
+                          >
+                            {{ documentDetails.source_url }}
+                          </a>
+                          <v-spacer></v-spacer>
+                          <v-btn
+                            size="small"
+                            icon="mdi-open-in-new"
+                            variant="text"
+                            :href="documentDetails.source_url"
+                            target="_blank"
+                          ></v-btn>
+                        </div>
+                      </v-card-text>
+                    </v-card>
                   </div>
                 </v-col>
 
@@ -138,6 +171,68 @@
             </v-container>
           </v-window-item>
 
+          <!-- Screenshot Tab -->
+          <v-window-item value="screenshot">
+            <div class="pa-4">
+              <v-skeleton-loader
+                v-if="loadingScreenshot"
+                type="image"
+                height="400"
+              ></v-skeleton-loader>
+
+              <div v-else class="screenshot-container">
+                <!-- Source URL Info -->
+                <v-alert
+                  v-if="documentDetails?.source_url"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-3"
+                >
+                  <div class="d-flex align-center">
+                    <v-icon size="small" class="mr-2">mdi-web</v-icon>
+                    <span class="text-caption text-truncate">{{ documentDetails.source_url }}</span>
+                    <v-spacer></v-spacer>
+                    <v-btn
+                      size="x-small"
+                      variant="text"
+                      :href="documentDetails.source_url"
+                      target="_blank"
+                    >
+                      <v-icon size="small">mdi-open-in-new</v-icon>
+                    </v-btn>
+                  </div>
+                </v-alert>
+
+                <!-- Screenshot Image -->
+                <v-card variant="outlined" class="overflow-hidden">
+                  <v-img
+                    v-if="screenshotUrl"
+                    :src="screenshotUrl"
+                    max-height="500"
+                    contain
+                    class="screenshot-image"
+                    @click="showFullScreenshot = true"
+                  >
+                    <template #placeholder>
+                      <div class="d-flex align-center justify-center fill-height">
+                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                      </div>
+                    </template>
+                  </v-img>
+                  <div v-else class="text-center pa-8 text-medium-emphasis">
+                    <v-icon size="48" class="mb-2">mdi-image-off</v-icon>
+                    <div>Screenshot nicht verfügbar</div>
+                  </div>
+                </v-card>
+
+                <div class="text-caption text-medium-emphasis mt-2 text-center">
+                  Klicken zum Vergrößern
+                </div>
+              </div>
+            </div>
+          </v-window-item>
+
           <!-- Content Tab -->
           <v-window-item value="content">
             <div class="pa-4">
@@ -177,14 +272,46 @@
                     <v-expansion-panel-title>
                       <div class="d-flex align-center">
                         <v-chip size="small" class="mr-2">{{ index + 1 }}</v-chip>
-                        <span class="text-truncate">{{ chunk.text.substring(0, 100) }}...</span>
+                        <v-icon v-if="chunk.has_image" size="small" color="info" class="mr-1">mdi-image</v-icon>
+                        <span class="text-truncate">{{ chunk.text ? chunk.text.substring(0, 100) + '...' : '[Bild]' }}</span>
                       </div>
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
-                      <div class="chunk-text">{{ chunk.text }}</div>
+                      <!-- Chunk Image if available -->
+                      <div v-if="chunk.has_image" class="mb-3">
+                        <v-card variant="outlined" class="overflow-hidden">
+                          <v-img
+                            :src="getChunkImageUrl(chunk)"
+                            max-height="300"
+                            contain
+                            class="chunk-image"
+                          >
+                            <template #placeholder>
+                              <div class="d-flex align-center justify-center fill-height">
+                                <v-progress-circular indeterminate color="primary" size="24"></v-progress-circular>
+                              </div>
+                            </template>
+                            <template #error>
+                              <div class="d-flex align-center justify-center fill-height text-medium-emphasis">
+                                <v-icon class="mr-1">mdi-image-broken</v-icon>
+                                Bild konnte nicht geladen werden
+                              </div>
+                            </template>
+                          </v-img>
+                        </v-card>
+                        <div v-if="chunk.image_alt_text" class="text-caption text-medium-emphasis mt-1">
+                          Alt: {{ chunk.image_alt_text }}
+                        </div>
+                      </div>
+
+                      <!-- Chunk Text -->
+                      <div v-if="chunk.text" class="chunk-text">{{ chunk.text }}</div>
+
                       <v-divider class="my-2"></v-divider>
-                      <div class="text-caption text-medium-emphasis">
-                        Chunk ID: {{ chunk.id }} | Zeichen: {{ chunk.text.length }}
+                      <div class="text-caption text-medium-emphasis d-flex flex-wrap ga-2">
+                        <span>Chunk ID: {{ chunk.id }}</span>
+                        <span v-if="chunk.text">| Zeichen: {{ chunk.text.length }}</span>
+                        <span v-if="chunk.has_image">| Hat Bild</span>
                       </div>
                     </v-expansion-panel-text>
                   </v-expansion-panel>
@@ -232,10 +359,39 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Fullscreen Screenshot Dialog -->
+  <v-dialog
+    v-model="showFullScreenshot"
+    fullscreen
+    transition="dialog-bottom-transition"
+  >
+    <v-card class="d-flex flex-column" style="background: rgba(0,0,0,0.95);">
+      <v-toolbar color="transparent" class="flex-grow-0">
+        <v-toolbar-title class="text-white">{{ document?.filename }}</v-toolbar-title>
+        <v-spacer></v-spacer>
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          color="white"
+          @click="showFullScreenshot = false"
+        ></v-btn>
+      </v-toolbar>
+      <div class="flex-grow-1 d-flex align-center justify-center pa-4">
+        <v-img
+          v-if="screenshotUrl"
+          :src="screenshotUrl"
+          contain
+          max-height="90vh"
+          class="fullscreen-screenshot"
+        ></v-img>
+      </div>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -256,6 +412,16 @@ const content = ref('')
 const chunks = ref([])
 const loadingContent = ref(false)
 const loadingChunks = ref(false)
+
+// Screenshot state
+const documentDetails = ref(null)
+const screenshotUrl = ref(null)
+const loadingScreenshot = ref(false)
+const showFullScreenshot = ref(false)
+
+// Chunk image state
+const loadingChunkImage = ref({})
+const chunkImageUrls = ref({})
 
 const getFileIcon = (fileType) => {
   const iconMap = {
@@ -343,6 +509,8 @@ const loadChunks = async () => {
   try {
     const response = await axios.get(`/api/rag/documents/${props.document.id}/chunks`)
     chunks.value = response.data.chunks || []
+    // Reset chunk image urls
+    chunkImageUrls.value = {}
   } catch (error) {
     console.error('Error loading chunks:', error)
     chunks.value = []
@@ -351,11 +519,51 @@ const loadChunks = async () => {
   }
 }
 
+const loadDocumentDetails = async () => {
+  if (!props.document?.id) return
+
+  try {
+    const response = await axios.get(`/api/rag/documents/${props.document.id}`)
+    documentDetails.value = response.data.document || null
+
+    // Build screenshot URL if available
+    if (documentDetails.value?.has_screenshot) {
+      screenshotUrl.value = `/api/rag/documents/${props.document.id}/screenshot`
+    } else {
+      screenshotUrl.value = null
+    }
+  } catch (error) {
+    console.error('Error loading document details:', error)
+    documentDetails.value = null
+    screenshotUrl.value = null
+  }
+}
+
+const loadScreenshot = async () => {
+  if (!props.document?.id || !documentDetails.value?.has_screenshot) return
+
+  loadingScreenshot.value = true
+  try {
+    // Screenshot URL is already set in loadDocumentDetails
+    // This function just manages the loading state
+    screenshotUrl.value = `/api/rag/documents/${props.document.id}/screenshot`
+  } finally {
+    loadingScreenshot.value = false
+  }
+}
+
+const getChunkImageUrl = (chunk) => {
+  if (!chunk.has_image) return null
+  return `/api/rag/chunks/${chunk.id}/image`
+}
+
 watch(activeTab, (newTab) => {
   if (newTab === 'content' && !content.value && !loadingContent.value) {
     loadContent()
   } else if (newTab === 'chunks' && chunks.value.length === 0 && !loadingChunks.value) {
     loadChunks()
+  } else if (newTab === 'screenshot' && !screenshotUrl.value && !loadingScreenshot.value) {
+    loadScreenshot()
   }
 })
 
@@ -364,6 +572,14 @@ watch(() => props.modelValue, (isOpen) => {
     activeTab.value = 'info'
     content.value = ''
     chunks.value = []
+    // Reset screenshot state
+    documentDetails.value = null
+    screenshotUrl.value = null
+    loadingScreenshot.value = false
+    showFullScreenshot.value = false
+    chunkImageUrls.value = {}
+    // Load document details (including screenshot info)
+    loadDocumentDetails()
   }
 })
 
@@ -416,5 +632,36 @@ pre {
   white-space: pre-wrap;
   word-wrap: break-word;
   color: rgb(var(--v-theme-on-surface));
+}
+
+.screenshot-container {
+  max-width: 100%;
+}
+
+.screenshot-image {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.screenshot-image:hover {
+  opacity: 0.9;
+}
+
+.fullscreen-screenshot {
+  max-width: 95vw;
+}
+
+.chunk-image {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.source-url-link {
+  color: rgb(var(--v-theme-info));
+  text-decoration: none;
+  max-width: 80%;
+}
+
+.source-url-link:hover {
+  text-decoration: underline;
 }
 </style>

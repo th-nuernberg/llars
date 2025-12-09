@@ -181,41 +181,25 @@
               ></v-skeleton-loader>
 
               <div v-else class="screenshot-container">
-                <!-- Source URL Info -->
-                <v-alert
-                  v-if="documentDetails?.source_url"
-                  type="info"
-                  variant="tonal"
-                  density="compact"
-                  class="mb-3"
-                >
-                  <div class="d-flex align-center">
-                    <v-icon size="small" class="mr-2">mdi-web</v-icon>
-                    <span class="text-caption text-truncate">{{ documentDetails.source_url }}</span>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                      size="x-small"
-                      variant="text"
-                      :href="documentDetails.source_url"
-                      target="_blank"
-                    >
-                      <v-icon size="small">mdi-open-in-new</v-icon>
-                    </v-btn>
-                  </div>
-                </v-alert>
+                <!-- Source URL -->
+                <div v-if="documentDetails?.source_url" class="d-flex align-center mb-2 text-caption text-medium-emphasis">
+                  <v-icon size="14" class="mr-1">mdi-web</v-icon>
+                  <a :href="documentDetails.source_url" target="_blank" class="source-link text-truncate">
+                    {{ documentDetails.source_url }}
+                  </a>
+                </div>
 
-                <!-- Screenshot Image -->
-                <v-card variant="outlined" class="overflow-hidden">
+                <!-- Screenshot -->
+                <v-card variant="outlined" class="screenshot-card">
                   <v-img
                     v-if="screenshotUrl"
                     :src="screenshotUrl"
-                    max-height="500"
-                    contain
+                    max-height="450"
                     class="screenshot-image"
                     @click="showFullScreenshot = true"
                   >
                     <template #placeholder>
-                      <div class="d-flex align-center justify-center fill-height">
+                      <div class="d-flex align-center justify-center fill-height" style="min-height: 200px;">
                         <v-progress-circular indeterminate color="primary"></v-progress-circular>
                       </div>
                     </template>
@@ -273,7 +257,7 @@
                       <div class="d-flex align-center">
                         <v-chip size="small" class="mr-2">{{ index + 1 }}</v-chip>
                         <v-icon v-if="chunk.has_image" size="small" color="info" class="mr-1">mdi-image</v-icon>
-                        <span class="text-truncate">{{ chunk.text ? chunk.text.substring(0, 100) + '...' : '[Bild]' }}</span>
+                        <span class="text-truncate">{{ chunk.content ? chunk.content.substring(0, 100) + '...' : '[Bild]' }}</span>
                       </div>
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
@@ -305,12 +289,12 @@
                       </div>
 
                       <!-- Chunk Text -->
-                      <div v-if="chunk.text" class="chunk-text">{{ chunk.text }}</div>
+                      <div v-if="chunk.content" class="chunk-text">{{ chunk.content }}</div>
 
                       <v-divider class="my-2"></v-divider>
                       <div class="text-caption text-medium-emphasis d-flex flex-wrap ga-2">
                         <span>Chunk ID: {{ chunk.id }}</span>
-                        <span v-if="chunk.text">| Zeichen: {{ chunk.text.length }}</span>
+                        <span v-if="chunk.content">| Zeichen: {{ chunk.content.length }}</span>
                         <span v-if="chunk.has_image">| Hat Bild</span>
                       </div>
                     </v-expansion-panel-text>
@@ -511,11 +495,30 @@ const loadChunks = async () => {
     chunks.value = response.data.chunks || []
     // Reset chunk image urls
     chunkImageUrls.value = {}
+
+    // Load chunk images as blobs (to include auth headers)
+    for (const chunk of chunks.value) {
+      if (chunk.has_image) {
+        loadChunkImage(chunk.id)
+      }
+    }
   } catch (error) {
     console.error('Error loading chunks:', error)
     chunks.value = []
   } finally {
     loadingChunks.value = false
+  }
+}
+
+const loadChunkImage = async (chunkId) => {
+  try {
+    const response = await axios.get(`/api/rag/chunks/${chunkId}/image`, {
+      responseType: 'blob'
+    })
+    chunkImageUrls.value[chunkId] = URL.createObjectURL(response.data)
+  } catch (error) {
+    console.error(`Error loading chunk ${chunkId} image:`, error)
+    chunkImageUrls.value[chunkId] = null
   }
 }
 
@@ -526,9 +529,9 @@ const loadDocumentDetails = async () => {
     const response = await axios.get(`/api/rag/documents/${props.document.id}`)
     documentDetails.value = response.data.document || null
 
-    // Build screenshot URL if available
+    // Load screenshot as blob if available (to include auth headers)
     if (documentDetails.value?.has_screenshot) {
-      screenshotUrl.value = `/api/rag/documents/${props.document.id}/screenshot`
+      await loadScreenshotBlob()
     } else {
       screenshotUrl.value = null
     }
@@ -539,22 +542,35 @@ const loadDocumentDetails = async () => {
   }
 }
 
-const loadScreenshot = async () => {
-  if (!props.document?.id || !documentDetails.value?.has_screenshot) return
+const loadScreenshotBlob = async () => {
+  if (!props.document?.id) return
 
   loadingScreenshot.value = true
   try {
-    // Screenshot URL is already set in loadDocumentDetails
-    // This function just manages the loading state
-    screenshotUrl.value = `/api/rag/documents/${props.document.id}/screenshot`
+    // Fetch screenshot with auth headers and convert to blob URL
+    const response = await axios.get(`/api/rag/documents/${props.document.id}/screenshot`, {
+      responseType: 'blob'
+    })
+    screenshotUrl.value = URL.createObjectURL(response.data)
+  } catch (error) {
+    console.error('Error loading screenshot:', error)
+    screenshotUrl.value = null
   } finally {
     loadingScreenshot.value = false
   }
 }
 
+const loadScreenshot = async () => {
+  if (!props.document?.id || !documentDetails.value?.has_screenshot) return
+  if (screenshotUrl.value) return // Already loaded
+
+  await loadScreenshotBlob()
+}
+
 const getChunkImageUrl = (chunk) => {
   if (!chunk.has_image) return null
-  return `/api/rag/chunks/${chunk.id}/image`
+  // Return blob URL from cache if available
+  return chunkImageUrls.value[chunk.id] || null
 }
 
 watch(activeTab, (newTab) => {
@@ -580,6 +596,16 @@ watch(() => props.modelValue, (isOpen) => {
     chunkImageUrls.value = {}
     // Load document details (including screenshot info)
     loadDocumentDetails()
+  } else {
+    // Clean up blob URLs to prevent memory leaks
+    if (screenshotUrl.value && screenshotUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(screenshotUrl.value)
+    }
+    for (const url of Object.values(chunkImageUrls.value)) {
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url)
+      }
+    }
   }
 })
 
@@ -638,6 +664,10 @@ pre {
   max-width: 100%;
 }
 
+.screenshot-card {
+  overflow: hidden;
+}
+
 .screenshot-image {
   cursor: pointer;
   transition: opacity 0.2s;
@@ -645,6 +675,15 @@ pre {
 
 .screenshot-image:hover {
   opacity: 0.9;
+}
+
+.source-link {
+  color: rgb(var(--v-theme-primary));
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
 }
 
 .fullscreen-screenshot {

@@ -631,99 +631,13 @@
       </v-card>
     </v-dialog>
 
-    <!-- Document Preview Dialog -->
-    <v-dialog v-model="documentPreviewDialog" max-width="1000" scrollable>
-      <v-card v-if="previewDocument">
-        <v-card-title class="d-flex align-center">
-          <v-icon start :color="getFileTypeColor(previewDocument.file_type || getFileExtension(previewDocument.filename))">
-            {{ getFileTypeIcon(previewDocument.file_type || getFileExtension(previewDocument.filename)) }}
-          </v-icon>
-          {{ previewDocument.title || previewDocument.filename }}
-          <v-spacer></v-spacer>
-          <LIconBtn icon="mdi-close" @click="documentPreviewDialog = false" />
-        </v-card-title>
-
-        <v-divider></v-divider>
-
-        <v-card-text>
-          <!-- Document Metadata -->
-          <v-sheet class="pa-3 mb-4 rounded" color="grey-lighten-4">
-            <v-row dense>
-              <v-col cols="6" md="3">
-                <div class="text-caption text-medium-emphasis">Dateiname</div>
-                <div class="text-body-2 font-weight-medium">{{ previewDocument.filename }}</div>
-              </v-col>
-              <v-col cols="6" md="3">
-                <div class="text-caption text-medium-emphasis">Größe</div>
-                <div class="text-body-2">{{ formatFileSize(previewDocument.file_size_bytes || previewDocument.file_size) }}</div>
-              </v-col>
-              <v-col cols="6" md="3">
-                <div class="text-caption text-medium-emphasis">Status</div>
-                <v-chip :color="getStatusColor(previewDocument.status)" size="x-small">{{ previewDocument.status }}</v-chip>
-              </v-col>
-              <v-col cols="6" md="3">
-                <div class="text-caption text-medium-emphasis">Chunks</div>
-                <div class="text-body-2">{{ previewDocument.chunk_count || 0 }}</div>
-              </v-col>
-              <v-col cols="12" md="6">
-                <div class="text-caption text-medium-emphasis">Hochgeladen</div>
-                <div class="text-body-2">{{ formatDate(previewDocument.uploaded_at) }}</div>
-              </v-col>
-              <v-col cols="12" md="6">
-                <div class="text-caption text-medium-emphasis">MIME-Type</div>
-                <div class="text-body-2">{{ previewDocument.mime_type || '-' }}</div>
-              </v-col>
-            </v-row>
-          </v-sheet>
-
-          <!-- PDF Preview -->
-          <div v-if="isPdfDocument(previewDocument)" class="pdf-preview-container">
-            <div class="text-subtitle-1 mb-2 d-flex align-center">
-              <v-icon start color="red">mdi-file-pdf-box</v-icon>
-              PDF Vorschau
-            </div>
-            <iframe
-              :src="getDocumentPreviewUrl(previewDocument)"
-              class="pdf-iframe"
-              frameborder="0"
-            ></iframe>
-          </div>
-
-          <!-- Text/Markdown Preview -->
-          <div v-else-if="isTextDocument(previewDocument)" class="text-preview-container">
-            <div class="text-subtitle-1 mb-2 d-flex align-center">
-              <v-icon start color="blue">mdi-file-document-outline</v-icon>
-              Textvorschau
-            </div>
-            <v-skeleton-loader v-if="loadingPreviewContent" type="paragraph@5"></v-skeleton-loader>
-            <pre v-else class="text-preview pa-3 rounded bg-grey-lighten-4">{{ previewContent }}</pre>
-          </div>
-
-          <!-- Unsupported Format -->
-          <div v-else class="text-center pa-8">
-            <v-icon size="64" color="grey">mdi-file-question</v-icon>
-            <div class="text-h6 mt-2">Vorschau nicht verfügbar</div>
-            <div class="text-body-2 text-grey">
-              Für diesen Dateityp ist keine Vorschau möglich.
-            </div>
-          </div>
-        </v-card-text>
-
-        <v-divider></v-divider>
-
-        <v-card-actions>
-          <LBtn
-            variant="secondary"
-            @click="downloadDocument(previewDocument)"
-            prepend-icon="mdi-download"
-          >
-            Download
-          </LBtn>
-          <v-spacer></v-spacer>
-          <LBtn variant="text" @click="documentPreviewDialog = false">Schließen</LBtn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Document Viewer Dialog (with Screenshot & Chunks support) -->
+    <DocumentViewer
+      v-model="documentPreviewDialog"
+      :document="previewDocumentForViewer"
+      @download="downloadDocument"
+      @delete="handleDeleteFromViewer"
+    />
   </div>
 </template>
 
@@ -732,6 +646,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { getSocket } from '@/services/socketService';
+import DocumentViewer from '@/components/RAG/DocumentViewer.vue';
 import {
   useRAGStats,
   useRAGDocuments,
@@ -811,10 +726,6 @@ const {
   getFileTypeColor,
   getStatusColor,
   getStatusIcon,
-  getFileExtension,
-  isPdfDocument,
-  isTextDocument,
-  getDocumentPreviewUrl,
   downloadDocument,
   acceptedFileTypes
 } = useRAGHelpers();
@@ -822,8 +733,42 @@ const {
 // Document Preview Dialog
 const documentPreviewDialog = ref(false);
 const previewDocument = ref(null);
-const previewContent = ref('');
-const loadingPreviewContent = ref(false);
+
+// Computed property to transform previewDocument for DocumentViewer format
+const previewDocumentForViewer = computed(() => {
+  if (!previewDocument.value) return null;
+  const doc = previewDocument.value;
+  // Map to DocumentViewer expected format
+  return {
+    id: doc.id,
+    filename: doc.filename,
+    file_type: doc.file_type || getFileExtension(doc.filename),
+    file_size: doc.file_size_bytes || doc.file_size,
+    status: doc.status,
+    chunk_count: doc.chunk_count,
+    collection_name: doc.collection_name || selectedCollection.value?.display_name || selectedCollection.value?.name,
+    uploaded_at: doc.uploaded_at,
+    indexed_at: doc.indexed_at,
+    retrieval_count: doc.retrieval_count,
+    metadata: doc.metadata,
+    md5_hash: doc.file_hash
+  };
+});
+
+// Helper function to extract file extension
+function getFileExtension(filename) {
+  if (!filename) return '';
+  const parts = filename.split('.');
+  return parts.length > 1 ? parts.pop().toLowerCase() : '';
+}
+
+// Handle delete from DocumentViewer
+async function handleDeleteFromViewer(doc) {
+  documentPreviewDialog.value = false;
+  // Use the existing delete flow
+  documentToDelete.value = doc;
+  deleteDocDialog.value = true;
+}
 
 // Computed: Collection embedding progress based on collectionDocuments
 const collectionEmbeddingProgress = computed(() => {
@@ -879,26 +824,9 @@ const deleteCollection = async (force = false) => {
 };
 
 // Document Preview Functions (local - not in composables)
-const openDocumentPreview = async (doc) => {
+const openDocumentPreview = (doc) => {
   previewDocument.value = doc;
-  previewContent.value = '';
   documentPreviewDialog.value = true;
-
-  if (isTextDocument(doc)) {
-    await loadTextContent(doc);
-  }
-};
-
-const loadTextContent = async (doc) => {
-  loadingPreviewContent.value = true;
-  try {
-    const response = await axios.get(`/api/rag/documents/${doc.id}/content`);
-    previewContent.value = response.data.content || 'Inhalt konnte nicht geladen werden.';
-  } catch (error) {
-    console.error('Error loading document content:', error);
-    previewContent.value = 'Fehler beim Laden des Inhalts.';
-  }
-  loadingPreviewContent.value = false;
 };
 
 // WebSocket für Echtzeit-Updates
@@ -983,27 +911,5 @@ onUnmounted(() => {
 
 .cursor-pointer tbody tr:hover {
   background-color: rgba(var(--v-theme-primary), 0.08);
-}
-
-.pdf-iframe {
-  width: 100%;
-  height: 600px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
-}
-
-.text-preview {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.pdf-preview-container,
-.text-preview-container {
-  margin-bottom: 16px;
 }
 </style>

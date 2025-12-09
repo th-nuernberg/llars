@@ -400,6 +400,11 @@ class CrawlerService:
 
         crawler_type = "Playwright" if use_playwright else "Basic"
 
+        # Wait a moment for frontend to subscribe to the room
+        # This prevents race condition where events are emitted before client joins
+        import time
+        time.sleep(1.5)
+
         # Emit started event
         self._emit_progress(job_id, {
             'status': 'running',
@@ -480,10 +485,13 @@ class CrawlerService:
                 """Callback to emit progress during discovery."""
                 import time
                 now = time.time()
-                # Throttle emissions to max 2 per second
-                if now - last_emit_time[0] < 0.5:
+                # Throttle emissions to max 4 per second for responsive UI
+                if now - last_emit_time[0] < 0.25:
                     return
                 last_emit_time[0] = now
+
+                self.active_crawls[job_id]['urls_total'] = count
+                self.active_crawls[job_id]['current_url'] = current_url
 
                 self._emit_progress(job_id, {
                     'status': 'planning',

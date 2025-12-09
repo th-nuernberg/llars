@@ -391,12 +391,22 @@ const statusDescription = computed(() => {
       return props.crawlProgress.message
     }
 
-    if (stage === 'planning') return 'Erkunde verfügbare URLs...'
-    if (stage === 'planning_done') return `${props.crawlProgress.urlsTotal} URLs gefunden`
+    if (stage === 'planning') {
+      const count = props.crawlProgress.urlsTotal || 0
+      if (count > 0) {
+        return `${count} URLs gefunden, suche weiter...`
+      }
+      return 'Erkunde verfügbare URLs...'
+    }
+    if (stage === 'planning_done') return `${props.crawlProgress.urlsTotal} URLs gefunden, Crawling startet...`
 
+    // Regular crawling stage
     const total = props.crawlProgress.urlsTotal || props.crawlProgress.pagesTotal
     const completed = props.crawlProgress.urlsCompleted || props.crawlProgress.pagesProcessed
-    return `${completed} / ${total || '?'} Seiten verarbeitet`
+    if (total > 0) {
+      return `${completed} / ${total} Seiten verarbeitet`
+    }
+    return 'Crawling läuft...'
   }
 
   if (isEmbedding.value) {

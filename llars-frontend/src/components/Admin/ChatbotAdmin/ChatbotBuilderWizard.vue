@@ -509,6 +509,16 @@ async function startCrawl() {
       if (response.data.collection_id) {
         setCollectionId(response.data.collection_id)
       }
+
+      // Immediately set initial crawl progress to show UI feedback
+      updateCrawlProgress({
+        stage: 'planning',
+        urlsTotal: 0,
+        urlsCompleted: 0,
+        message: 'URL-Erkundung startet...',
+        crawlerType: crawlerConfig.value.usePlaywright ? 'Playwright' : 'Basic'
+      })
+
       return response.data // Return the result so caller can use job_id
     } else {
       setError('crawl', response.data.error || 'Fehler beim Starten des Crawlings')

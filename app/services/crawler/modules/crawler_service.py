@@ -153,6 +153,7 @@ class CrawlerService:
                     # Emit WebSocket progress update
                     self._emit_progress(job_id, {
                         'status': 'running',
+                        'stage': 'crawling',
                         'pages_crawled': total_pages + current,
                         'max_pages': max_pages_per_site * len(urls),
                         'current_url': page_url,
@@ -405,11 +406,14 @@ class CrawlerService:
         import time
         time.sleep(1.5)
 
-        # Emit started event
+        # Emit started event - use 'planning' stage since discovery starts first
         self._emit_progress(job_id, {
-            'status': 'running',
+            'status': 'planning',
+            'stage': 'planning',
             'pages_crawled': 0,
             'max_pages': max_pages_per_site * len(urls),
+            'urls_total': 0,
+            'urls_completed': 0,
             'message': f'Crawl gestartet ({crawler_type})...',
             'crawler_type': crawler_type,
             'use_vision_llm': use_vision_llm
@@ -875,16 +879,26 @@ class CrawlerService:
     ) -> int:
         """
         Fetch URLs with Playwright (screenshots + vision) using a bounded async worker pool.
+        Emits progress updates in real-time as each URL is processed.
         """
         if not urls:
             return 0
+
+        total_pages = 0
+        total_urls = len(urls)
+
+        # Use a queue to collect results and process them with progress updates
+        from queue import Queue
+        import threading
+
+        result_queue = Queue()
+        processing_complete = threading.Event()
 
         async def run():
             from .playwright_crawler import PlaywrightCrawler
 
             max_workers = min(4, max(1, len(urls)))
             sem = asyncio.Semaphore(max_workers)
-            results = []
 
             async def fetch_url(target_url: str):
                 async with sem:
@@ -900,7 +914,6 @@ class CrawlerService:
                             litellm_api_key=os.environ.get('LITELLM_API_KEY')
                         )
                         pages = await crawler.crawl_async()
-                        # Return the first (only) page and stats
                         page = pages[0] if pages else None
                         return target_url, page, crawler.stats
                     except Exception as e:
@@ -909,50 +922,76 @@ class CrawlerService:
 
             tasks = [fetch_url(u) for u in urls]
             for coro in asyncio.as_completed(tasks):
-                results.append(await coro)
+                result = await coro
+                result_queue.put(result)
 
-            return results
+            processing_complete.set()
 
-        loop_results = asyncio.run(run())
+        # Start async crawling in a separate thread
+        def run_async():
+            asyncio.run(run())
 
-        total_pages = 0
-        for url, page_data, stats in loop_results:
-            self.active_crawls[job_id]['urls_completed'] += 1
-            if page_data:
-                total_pages += 1
-                self.active_crawls[job_id]['pages_crawled'] = self.active_crawls[job_id]['urls_completed']
-                self._process_crawled_page(
-                    job_id,
-                    page_data,
-                    collection_id,
-                    created_by,
-                    seen_hashes_global
-                )
+        async_thread = threading.Thread(target=run_async, daemon=True)
+        async_thread.start()
 
-            # Aggregate Playwright-specific stats
-            self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + stats.get('screenshots_taken', 0)
-            self.active_crawls[job_id]['vision_extractions'] = self.active_crawls[job_id].get('vision_extractions', 0) + stats.get('vision_extractions', 0)
+        # Process results as they come in (this runs in the main thread)
+        processed_count = 0
+        while processed_count < total_urls:
+            try:
+                # Wait for next result with timeout
+                result = result_queue.get(timeout=120)
+                url, page_data, stats = result
+                processed_count += 1
 
-            self._emit_progress(job_id, {
-                'status': 'running',
-                'stage': 'crawling',
-                'pages_crawled': self.active_crawls[job_id]['urls_completed'],
-                'max_pages': len(urls),
-                'current_url': url,
-                'urls_total': len(urls),
-                'urls_completed': self.active_crawls[job_id]['urls_completed'],
-                'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
-                'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0),
-                'crawler_type': crawler_type
-            })
-            self._emit_page_crawled(job_id, {
-                'url': url,
-                'page_number': self.active_crawls[job_id]['urls_completed'],
-                'documents_created': self.active_crawls[job_id]['documents_created'],
-                'documents_linked': self.active_crawls[job_id]['documents_linked'],
-                'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
-                'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0)
-            })
+                self.active_crawls[job_id]['urls_completed'] = processed_count
+
+                if page_data:
+                    total_pages += 1
+                    self.active_crawls[job_id]['pages_crawled'] = total_pages
+                    self._process_crawled_page(
+                        job_id,
+                        page_data,
+                        collection_id,
+                        created_by,
+                        seen_hashes_global
+                    )
+
+                # Aggregate Playwright-specific stats
+                self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + stats.get('screenshots_taken', 0)
+                self.active_crawls[job_id]['vision_extractions'] = self.active_crawls[job_id].get('vision_extractions', 0) + stats.get('vision_extractions', 0)
+
+                # Emit progress update immediately
+                self._emit_progress(job_id, {
+                    'status': 'running',
+                    'stage': 'crawling',
+                    'pages_crawled': total_pages,
+                    'max_pages': total_urls,
+                    'current_url': url,
+                    'urls_total': total_urls,
+                    'urls_completed': processed_count,
+                    'documents_created': self.active_crawls[job_id]['documents_created'],
+                    'documents_linked': self.active_crawls[job_id]['documents_linked'],
+                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
+                    'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0),
+                    'crawler_type': crawler_type
+                })
+                self._emit_page_crawled(job_id, {
+                    'url': url,
+                    'page_number': processed_count,
+                    'documents_created': self.active_crawls[job_id]['documents_created'],
+                    'documents_linked': self.active_crawls[job_id]['documents_linked'],
+                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
+                    'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0)
+                })
+
+            except Exception as e:
+                if processing_complete.is_set() and result_queue.empty():
+                    break
+                logger.warning(f"[Job {job_id}] Error processing result: {e}")
+                continue
+
+        # Wait for async thread to finish
+        async_thread.join(timeout=10)
 
         return total_pages
 

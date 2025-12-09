@@ -9,11 +9,13 @@ import os
 import uuid
 import logging
 import threading
+import asyncio
 from datetime import datetime
 from typing import List, Dict, Optional
 from urllib.parse import urlparse
 
 from .crawler_core import WebCrawler
+from services.rag.collection_embedding_service import get_collection_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -391,7 +393,7 @@ class CrawlerService:
             use_vision_llm: Use Vision-LLM for extraction (default: True)
         """
         from db.db import db
-        from db.tables import RAGCollection, RAGDocument, RAGProcessingQueue, CollectionDocumentLink
+        from db.tables import RAGCollection, RAGDocument, RAGProcessingQueue, CollectionDocumentLink, RAGDocumentChunk
 
         self.active_crawls[job_id]['status'] = 'running'
         self.active_crawls[job_id]['started_at'] = datetime.now().isoformat()
@@ -438,81 +440,115 @@ class CrawlerService:
 
             self.active_crawls[job_id]['collection_id'] = collection_id
             self.active_crawls[job_id]['documents_linked'] = 0
+            self.active_crawls[job_id]['urls_total'] = 0
+            self.active_crawls[job_id]['urls_completed'] = 0
+            self.active_crawls[job_id]['images_extracted'] = 0
+
+            # Start embedding early so chunks are indexed while crawling continues
+            try:
+                embedding_service = get_collection_embedding_service()
+                embedding_service.start_embedding(
+                    collection_id,
+                    wait_for_more=True,
+                    source_job_id=job_id
+                )
+                logger.info(f"[Job {job_id}] Embedding started in live mode for collection {collection_id}")
+            except Exception as e:
+                logger.warning(f"[Job {job_id}] Could not start early embedding: {e}")
 
             total_pages = 0
+            seen_hashes_global = set()
+
+            # ---------- Phase 1: Discovery ----------
+            # Emit initial planning status
+            self._emit_progress(job_id, {
+                'status': 'planning',
+                'stage': 'planning',
+                'pages_crawled': 0,
+                'max_pages': max_pages_per_site * len(urls),
+                'urls_total': 0,
+                'urls_completed': 0,
+                'current_url': urls[0] if urls else '',
+                'crawler_type': crawler_type,
+                'message': 'URL-Erkundung gestartet...'
+            })
+
+            discovered_urls: List[str] = []
+            last_emit_time = [0]  # Use list for closure mutability
+
+            def discovery_progress_callback(count: int, current_url: str):
+                """Callback to emit progress during discovery."""
+                import time
+                now = time.time()
+                # Throttle emissions to max 2 per second
+                if now - last_emit_time[0] < 0.5:
+                    return
+                last_emit_time[0] = now
+
+                self._emit_progress(job_id, {
+                    'status': 'planning',
+                    'stage': 'planning',
+                    'pages_crawled': 0,
+                    'max_pages': max(count, max_pages_per_site * len(urls)),
+                    'urls_total': count,
+                    'urls_completed': 0,
+                    'current_url': current_url,
+                    'crawler_type': crawler_type,
+                    'message': f'{count} URLs gefunden...'
+                })
 
             for url_index, url in enumerate(urls):
-                logger.info(f"[Job {job_id}] Crawling URL {url_index + 1}/{len(urls)}: {url} (using {crawler_type})")
-
-                # Track seen hashes for deduplication during this crawl
-                seen_hashes_in_crawl = set()
-
-                # Choose crawler based on use_playwright flag
-                if use_playwright and PLAYWRIGHT_AVAILABLE:
-                    # Use Playwright crawler with Vision-LLM support
-                    crawler = PlaywrightCrawler(
-                        base_url=url,
-                        max_pages=max_pages_per_site,
-                        max_depth=max_depth,
-                        delay_seconds=1.5,
-                        use_vision_llm=use_vision_llm
+                logger.info(f"[Job {job_id}] Discovery URL {url_index + 1}/{len(urls)}: {url}")
+                crawler = WebCrawler(
+                    base_url=url,
+                    max_pages=max_pages_per_site,
+                    max_depth=max_depth,
+                    delay_seconds=0.1  # Faster for discovery
+                )
+                discovered_urls.extend(
+                    crawler.discover_urls(
+                        max_pages_per_site,
+                        max_depth,
+                        progress_callback=discovery_progress_callback
                     )
-                else:
-                    # Fallback to basic WebCrawler
-                    crawler = WebCrawler(
-                        base_url=url,
-                        max_pages=max_pages_per_site,
-                        max_depth=max_depth,
-                        delay_seconds=1.0
-                    )
+                )
 
-                def progress_callback(current, total, page_url):
-                    self.active_crawls[job_id]['pages_crawled'] = total_pages + current
-                    self.active_crawls[job_id]['current_url'] = page_url
-                    docs_created = self.active_crawls[job_id]['documents_created']
-                    docs_linked = self.active_crawls[job_id]['documents_linked']
-                    screenshots = self.active_crawls[job_id].get('screenshots_taken', 0)
-                    vision_extractions = self.active_crawls[job_id].get('vision_extractions', 0)
-                    self._emit_progress(job_id, {
-                        'status': 'running',
-                        'pages_crawled': total_pages + current,
-                        'max_pages': max_pages_per_site * len(urls),
-                        'current_url': page_url,
-                        'current_url_index': url_index + 1,
-                        'total_urls': len(urls),
-                        'documents_created': docs_created,
-                        'documents_linked': docs_linked,
-                        'screenshots_taken': screenshots,
-                        'vision_extractions': vision_extractions,
-                        'crawler_type': crawler_type
-                    })
-                    self._emit_page_crawled(job_id, {
-                        'url': page_url,
-                        'page_number': total_pages + current,
-                        'documents_created': docs_created,
-                        'documents_linked': docs_linked
-                    })
+            # De-duplicate URLs
+            discovered_urls = list(dict.fromkeys(discovered_urls))
+            self.active_crawls[job_id]['urls_total'] = len(discovered_urls)
 
-                def page_callback(page_data):
-                    """Process each page immediately as it's crawled."""
-                    # Update stats from Playwright crawler
-                    if page_data.get('screenshot'):
-                        self.active_crawls[job_id]['screenshots_taken'] = \
-                            self.active_crawls[job_id].get('screenshots_taken', 0) + 1
-                    if page_data.get('structured_data') and page_data.get('crawler_type') == 'playwright':
-                        # Check if vision extraction was used (non-empty structured data)
-                        if any(v for v in page_data.get('structured_data', {}).values() if v):
-                            self.active_crawls[job_id]['vision_extractions'] = \
-                                self.active_crawls[job_id].get('vision_extractions', 0) + 1
+            logger.info(f"[Job {job_id}] Discovery complete: {len(discovered_urls)} unique URLs found")
 
-                    self._process_crawled_page(
-                        job_id, page_data, collection_id, created_by,
-                        seen_hashes_in_crawl
-                    )
+            self._emit_progress(job_id, {
+                'status': 'running',
+                'stage': 'planning_done',
+                'pages_crawled': 0,
+                'max_pages': len(discovered_urls),
+                'urls_total': len(discovered_urls),
+                'urls_completed': 0,
+                'crawler_type': crawler_type,
+                'message': f'{len(discovered_urls)} URLs gefunden, Crawling startet...'
+            })
 
-                pages = crawler.crawl(progress_callback=progress_callback, page_callback=page_callback)
-                total_pages += len(pages)
-                # Pages are already processed via page_callback during crawling
+            if use_playwright and PLAYWRIGHT_AVAILABLE:
+                total_pages = self._process_urls_playwright(
+                    job_id,
+                    discovered_urls,
+                    collection_id,
+                    created_by,
+                    seen_hashes_global,
+                    use_vision_llm,
+                    crawler_type
+                )
+            else:
+                total_pages = self._process_urls_basic(
+                    job_id,
+                    discovered_urls,
+                    collection_id,
+                    created_by,
+                    seen_hashes_global,
+                    crawler_type
+                )
 
             # Update collection stats
             try:
@@ -538,6 +574,7 @@ class CrawlerService:
 
             self._emit_complete(job_id, {
                 'status': 'completed',
+                'stage': 'completed',
                 'collection_id': collection_id,
                 'pages_crawled': total_pages,
                 'documents_created': docs_created,
@@ -726,6 +763,10 @@ class CrawlerService:
                 db.session.commit()
 
                 self.active_crawls[job_id]['documents_created'] += 1
+                if images:
+                    self.active_crawls[job_id]['images_extracted'] = self.active_crawls[job_id].get('images_extracted', 0) + len(images)
+                if screenshot_data and screenshot_path:
+                    self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + 1
                 crawler_type = page.get('crawler_type', 'basic')
                 logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']} (crawler: {crawler_type})")
 
@@ -736,6 +777,176 @@ class CrawlerService:
                 'url': page['url'],
                 'error': str(e)
             })
+
+    def _process_urls_basic(
+        self,
+        job_id: str,
+        urls: List[str],
+        collection_id: int,
+        created_by: str,
+        seen_hashes_global: set,
+        crawler_type: str
+    ) -> int:
+        """
+        Fetch URLs in parallel using the basic crawler (requests + BeautifulSoup).
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        if not urls:
+            return 0
+
+        fetch_workers = max(2, min(8, len(urls)))
+
+        def fetch_single(target_url: str):
+            worker = WebCrawler(
+                base_url=target_url,
+                max_pages=1,
+                max_depth=0,
+                delay_seconds=0.05,
+                extract_images=True
+            )
+            return worker.fetch_page_content(target_url)
+
+        total_pages = 0
+        with ThreadPoolExecutor(max_workers=fetch_workers) as executor:
+            future_map = {executor.submit(fetch_single, u): u for u in urls}
+            for future in as_completed(future_map):
+                url = future_map[future]
+                try:
+                    page_data = future.result()
+                except Exception as e:
+                    logger.error(f"[Job {job_id}] Fetch failed for {url}: {e}")
+                    self.active_crawls[job_id]['errors'].append({'url': url, 'error': str(e)})
+                    self.active_crawls[job_id]['urls_completed'] += 1
+                    continue
+
+                self.active_crawls[job_id]['urls_completed'] += 1
+
+                if page_data:
+                    total_pages += 1
+                    self.active_crawls[job_id]['pages_crawled'] = self.active_crawls[job_id]['urls_completed']
+                    self._process_crawled_page(
+                        job_id,
+                        page_data,
+                        collection_id,
+                        created_by,
+                        seen_hashes_global
+                    )
+
+                # Emit progress after each processed page (even on failures)
+                self._emit_progress(job_id, {
+                    'status': 'running',
+                    'stage': 'crawling',
+                    'pages_crawled': self.active_crawls[job_id]['urls_completed'],
+                    'max_pages': len(urls),
+                    'current_url': url,
+                    'urls_total': len(urls),
+                    'urls_completed': self.active_crawls[job_id]['urls_completed'],
+                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
+                    'crawler_type': crawler_type
+                })
+                self._emit_page_crawled(job_id, {
+                    'url': url,
+                    'page_number': self.active_crawls[job_id]['urls_completed'],
+                    'documents_created': self.active_crawls[job_id]['documents_created'],
+                    'documents_linked': self.active_crawls[job_id]['documents_linked'],
+                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0)
+                })
+
+        return total_pages
+
+    def _process_urls_playwright(
+        self,
+        job_id: str,
+        urls: List[str],
+        collection_id: int,
+        created_by: str,
+        seen_hashes_global: set,
+        use_vision_llm: bool,
+        crawler_type: str
+    ) -> int:
+        """
+        Fetch URLs with Playwright (screenshots + vision) using a bounded async worker pool.
+        """
+        if not urls:
+            return 0
+
+        async def run():
+            from .playwright_crawler import PlaywrightCrawler
+
+            max_workers = min(4, max(1, len(urls)))
+            sem = asyncio.Semaphore(max_workers)
+            results = []
+
+            async def fetch_url(target_url: str):
+                async with sem:
+                    try:
+                        crawler = PlaywrightCrawler(
+                            base_url=target_url,
+                            max_pages=1,
+                            max_depth=0,
+                            delay_seconds=0.5,
+                            extract_images=True,
+                            use_vision_llm=use_vision_llm,
+                            litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
+                            litellm_api_key=os.environ.get('LITELLM_API_KEY')
+                        )
+                        pages = await crawler.crawl_async()
+                        # Return the first (only) page and stats
+                        page = pages[0] if pages else None
+                        return target_url, page, crawler.stats
+                    except Exception as e:
+                        logger.error(f"[Job {job_id}] Playwright fetch failed for {target_url}: {e}")
+                        return target_url, None, {'screenshots_taken': 0, 'vision_extractions': 0}
+
+            tasks = [fetch_url(u) for u in urls]
+            for coro in asyncio.as_completed(tasks):
+                results.append(await coro)
+
+            return results
+
+        loop_results = asyncio.run(run())
+
+        total_pages = 0
+        for url, page_data, stats in loop_results:
+            self.active_crawls[job_id]['urls_completed'] += 1
+            if page_data:
+                total_pages += 1
+                self.active_crawls[job_id]['pages_crawled'] = self.active_crawls[job_id]['urls_completed']
+                self._process_crawled_page(
+                    job_id,
+                    page_data,
+                    collection_id,
+                    created_by,
+                    seen_hashes_global
+                )
+
+            # Aggregate Playwright-specific stats
+            self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + stats.get('screenshots_taken', 0)
+            self.active_crawls[job_id]['vision_extractions'] = self.active_crawls[job_id].get('vision_extractions', 0) + stats.get('vision_extractions', 0)
+
+            self._emit_progress(job_id, {
+                'status': 'running',
+                'stage': 'crawling',
+                'pages_crawled': self.active_crawls[job_id]['urls_completed'],
+                'max_pages': len(urls),
+                'current_url': url,
+                'urls_total': len(urls),
+                'urls_completed': self.active_crawls[job_id]['urls_completed'],
+                'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
+                'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0),
+                'crawler_type': crawler_type
+            })
+            self._emit_page_crawled(job_id, {
+                'url': url,
+                'page_number': self.active_crawls[job_id]['urls_completed'],
+                'documents_created': self.active_crawls[job_id]['documents_created'],
+                'documents_linked': self.active_crawls[job_id]['documents_linked'],
+                'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
+                'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0)
+            })
+
+        return total_pages
 
 
 # Singleton instance

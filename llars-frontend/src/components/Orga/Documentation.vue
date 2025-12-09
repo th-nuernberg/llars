@@ -108,7 +108,7 @@
             <li><strong>Framework:</strong> Flask (Python)</li>
             <li><strong>Datenbank:</strong> MariaDB</li>
             <li><strong>ORM:</strong> SQLAlchemy</li>
-            <li><strong>Authentifizierung:</strong> Keycloak 26.0.7 (OpenID Connect)</li>
+            <li><strong>Authentifizierung:</strong> Authentik (OIDC, RS256)</li>
           </ul>
 
           <h3>Services</h3>
@@ -208,7 +208,7 @@ docker compose logs -f</code></pre>
         <section id="authentication">
           <h2>5. Authentifizierung</h2>
           <p>
-            LLars verwendet Keycloak für die Authentifizierung mit dem Resource Owner Password Credentials Flow
+            LLars nutzt Authentik für die Authentifizierung (OIDC Authorization Code Flow)
             (Direct Access Grant). Dies ermöglicht eine nahtlose Anmeldung direkt in der LLars-Oberfläche.
           </p>
 

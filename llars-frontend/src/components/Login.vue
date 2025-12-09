@@ -36,6 +36,31 @@
           <v-alert v-if="errorMessage" type="error" class="ma-4">
             {{ errorMessage }}
           </v-alert>
+
+          <!-- Dev Mode Quick Login Buttons -->
+          <template v-if="isDevelopment">
+            <v-divider class="my-2" />
+            <v-card-text class="pt-0">
+              <div class="text-caption text-medium-emphasis text-center mb-2">
+                <v-icon size="x-small" class="mr-1">mdi-wrench</v-icon>
+                Development Quick Login
+              </div>
+              <div class="d-flex justify-center ga-2 flex-wrap">
+                <v-btn
+                  v-for="user in devUsers"
+                  :key="user.username"
+                  size="small"
+                  variant="tonal"
+                  :color="user.color"
+                  :prepend-icon="user.icon"
+                  @click="quickLogin(user)"
+                  :loading="loadingUser === user.username"
+                >
+                  {{ user.label }}
+                </v-btn>
+              </div>
+            </v-card-text>
+          </template>
         </v-card>
       </v-col>
     </v-row>
@@ -50,8 +75,19 @@ import {useAuth} from '@/composables/useAuth';
 const username = ref('');
 const password = ref('');
 const errorMessage = ref('');
+const loadingUser = ref(null);
 const router = useRouter();
 const auth = useAuth();
+
+// Development mode detection (Vite built-in)
+const isDevelopment = import.meta.env.DEV;
+
+// Development test users (credentials from CLAUDE.md / .env.template.development)
+const devUsers = [
+  { username: 'admin', password: 'admin123', label: 'Admin', icon: 'mdi-shield-crown', color: 'error' },
+  { username: 'researcher', password: 'admin123', label: 'Researcher', icon: 'mdi-flask', color: 'primary' },
+  { username: 'viewer', password: 'admin123', label: 'Viewer', icon: 'mdi-eye', color: 'secondary' }
+];
 
 // Check if already authenticated on mount
 onMounted(() => {
@@ -79,6 +115,32 @@ async function handleLogin() {
     router.push('/Home');
   } else {
     // Login failed, show error
+    errorMessage.value = result.error;
+  }
+}
+
+/**
+ * Quick login for development mode
+ * Fills in credentials and triggers login
+ */
+async function quickLogin(user) {
+  if (!isDevelopment) return;
+
+  loadingUser.value = user.username;
+  errorMessage.value = '';
+
+  // Fill in credentials
+  username.value = user.username;
+  password.value = user.password;
+
+  // Trigger login
+  const result = await auth.login(user.username, user.password);
+
+  loadingUser.value = null;
+
+  if (result.success) {
+    router.push('/Home');
+  } else {
     errorMessage.value = result.error;
   }
 }

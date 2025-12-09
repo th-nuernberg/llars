@@ -316,22 +316,14 @@ async function sendMessage() {
   try {
     const startTime = performance.now()
 
-    // Build request with optional test settings
-    const requestData = {
-      message: userMessage,
-      conversation_history: messages.value.filter(m => !m.isSystemInfo).slice(0, -1)
+    const streamingRequest = buildRequestData(userMessage, true)
+
+    const streamed = await streamTestMessage(startTime, streamingRequest)
+    if (streamed) {
+      return
     }
 
-    // Include test settings if applied
-    if (activeSettings.value) {
-      requestData.test_settings = {
-        temperature: activeSettings.value.temperature,
-        max_tokens: activeSettings.value.maxTokens,
-        retrieval_k: activeSettings.value.retrievalK,
-        min_relevance: activeSettings.value.minRelevance,
-        system_prompt_override: activeSettings.value.systemPromptOverride || null
-      }
-    }
+    const requestData = buildRequestData(userMessage, false)
 
     const response = await axios.post(`/api/chatbots/${props.chatbot.id}/test`, requestData)
 
@@ -345,7 +337,9 @@ async function sendMessage() {
         sources: response.data.sources || [],
         metadata: {
           response_time: responseTime,
-          tokens: response.data.tokens
+          tokens: (response.data.tokens && response.data.tokens.output !== undefined)
+            ? response.data.tokens.output
+            : (response.data.tokens ?? null)
         }
       }
       messages.value.push(assistantMessage)
@@ -366,6 +360,108 @@ async function sendMessage() {
   } finally {
     loading.value = false
     scrollToBottom()
+  }
+}
+
+async function streamTestMessage(startTime, requestData) {
+  let assistantMessage = null
+  try {
+    const response = await fetch(`/api/chatbots/${props.chatbot.id}/test`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestData)
+    })
+
+    if (!response.ok || !response.body) {
+      return false
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    assistantMessage = {
+      role: 'assistant',
+      content: '',
+      sources: [],
+      metadata: null
+    }
+    messages.value.push(assistantMessage)
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() || ''
+
+      for (const part of parts) {
+        const line = part.trim()
+        if (!line.startsWith('data:')) continue
+        try {
+          const payload = JSON.parse(line.replace(/^data:\s*/, ''))
+
+          if (payload.delta) {
+            assistantMessage.content += payload.delta
+            scrollToBottom()
+          }
+
+          if (payload.done) {
+            assistantMessage.sources = payload.sources || []
+            assistantMessage.metadata = {
+              response_time: payload.response_time_ms || Math.round(performance.now() - startTime),
+              tokens: (payload.tokens && payload.tokens.output !== undefined)
+                ? payload.tokens.output
+                : (payload.tokens ?? null)
+            }
+            loading.value = false
+            scrollToBottom()
+            return true
+          }
+
+          if (payload.error) {
+            throw new Error(payload.error)
+          }
+        } catch (e) {
+          console.error('Failed to parse stream chunk', e, line)
+        }
+      }
+    }
+
+    // Process any remaining buffered data
+    if (buffer.trim().startsWith('data:')) {
+      try {
+        const payload = JSON.parse(buffer.replace(/^data:\s*/, ''))
+        if (payload.delta) {
+          assistantMessage.content += payload.delta
+        }
+        if (payload.done) {
+          assistantMessage.sources = payload.sources || []
+          assistantMessage.metadata = {
+            response_time: payload.response_time_ms || Math.round(performance.now() - startTime),
+            tokens: (payload.tokens && payload.tokens.output !== undefined)
+              ? payload.tokens.output
+              : (payload.tokens ?? null)
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse final stream chunk', e, buffer)
+      }
+    }
+
+    loading.value = false
+    scrollToBottom()
+    return true
+  } catch (error) {
+    console.error('Streaming test message failed:', error)
+    if (assistantMessage && assistantMessage.content.length === 0) {
+      messages.value.pop()
+    }
+    // Let caller fall back to non-streaming path
+    return false
   }
 }
 
@@ -417,6 +513,29 @@ watch(() => props.modelValue, (newVal) => {
     showSettings.value = false
   }
 })
+
+function buildRequestData(userMessage, includeStream = false) {
+  const data = {
+    message: userMessage,
+    conversation_history: messages.value.filter(m => !m.isSystemInfo).slice(0, -1)
+  }
+
+  if (activeSettings.value) {
+    data.test_settings = {
+      temperature: activeSettings.value.temperature,
+      max_tokens: activeSettings.value.maxTokens,
+      retrieval_k: activeSettings.value.retrievalK,
+      min_relevance: activeSettings.value.minRelevance,
+      system_prompt_override: activeSettings.value.systemPromptOverride || null
+    }
+  }
+
+  if (includeStream) {
+    data.stream = true
+  }
+
+  return data
+}
 </script>
 
 <style scoped>

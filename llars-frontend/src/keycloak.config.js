@@ -1,12 +1,10 @@
 /**
- * Keycloak Configuration for LLARS Frontend
- *
- * This configuration is used to initialize the Keycloak client
- * Environment variables are injected by Vite at build time
+ * Legacy Keycloak configuration (nicht mehr aktiv verwendet; Authentik ist Standard).
+ * Bleibt für historische Kompatibilität und Referenz bestehen.
  */
 
 export const keycloakConfig = {
-  // Keycloak server URL - defaults to localhost for development
+  // Legacy Keycloak server URL - defaults to localhost for development
   url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:55090',
 
   // Realm name
@@ -23,7 +21,7 @@ export const keycloakInitOptions = {
   onLoad: 'check-sso',
 
   // Check login iframe for session status monitoring
-  // DISABLED: Can cause redirect loops in development (common Keycloak issue)
+  // DISABLED: Can cause redirect loops in development (historic Keycloak issue)
   checkLoginIframe: false,
 
   // Enable PKCE (Proof Key for Code Exchange) for added security

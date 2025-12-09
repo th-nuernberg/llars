@@ -16,7 +16,9 @@
       variant="outlined"
       :rules="[rules.required, rules.url]"
       :error-messages="errorMessage"
-      @keyup.enter="$emit('start')"
+      :disabled="loading"
+      autofocus
+      @keyup.enter="handleStart"
       @update:model-value="updateUrl"
     />
 
@@ -29,7 +31,7 @@
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <v-row>
-            <v-col cols="6">
+            <v-col cols="12" sm="6">
               <v-text-field
                 v-model.number="localConfig.maxPages"
                 label="Max. Seiten"
@@ -38,10 +40,17 @@
                 max="500"
                 variant="outlined"
                 density="compact"
+                hint="Maximale Anzahl zu crawlender Seiten"
+                persistent-hint
+                :disabled="loading"
                 @update:model-value="updateConfig"
-              />
+              >
+                <template #prepend-inner>
+                  <v-icon size="small">mdi-file-document-multiple</v-icon>
+                </template>
+              </v-text-field>
             </v-col>
-            <v-col cols="6">
+            <v-col cols="12" sm="6">
               <v-text-field
                 v-model.number="localConfig.maxDepth"
                 label="Max. Tiefe"
@@ -50,19 +59,96 @@
                 max="10"
                 variant="outlined"
                 density="compact"
+                hint="Wie tief Links verfolgt werden"
+                persistent-hint
+                :disabled="loading"
                 @update:model-value="updateConfig"
-              />
+              >
+                <template #prepend-inner>
+                  <v-icon size="small">mdi-sitemap</v-icon>
+                </template>
+              </v-text-field>
             </v-col>
           </v-row>
+
+          <v-divider class="my-4" />
+
+          <!-- Crawler Mode -->
+          <div class="text-subtitle-2 mb-2">Crawler-Modus</div>
+
+          <v-switch
+            v-model="localConfig.usePlaywright"
+            color="primary"
+            density="compact"
+            hide-details
+            :disabled="loading"
+            @update:model-value="updateConfig"
+          >
+            <template #label>
+              <div class="d-flex align-center">
+                <v-icon size="small" class="mr-2" :color="localConfig.usePlaywright ? 'primary' : 'grey'">
+                  mdi-web
+                </v-icon>
+                <span>Playwright Browser (JavaScript-Rendering)</span>
+              </div>
+            </template>
+          </v-switch>
+
+          <v-expand-transition>
+            <div v-if="localConfig.usePlaywright" class="ml-8 mt-2">
+              <v-switch
+                v-model="localConfig.useVisionLlm"
+                color="deep-purple"
+                density="compact"
+                hide-details
+                :disabled="loading"
+                @update:model-value="updateConfig"
+              >
+                <template #label>
+                  <div class="d-flex align-center">
+                    <v-icon size="small" class="mr-2" :color="localConfig.useVisionLlm ? 'deep-purple' : 'grey'">
+                      mdi-eye
+                    </v-icon>
+                    <span>Vision-LLM Extraktion (Experimentell)</span>
+                  </div>
+                </template>
+              </v-switch>
+              <p class="text-caption text-medium-emphasis mt-1 ml-8">
+                Verwendet ein Vision-LLM um Screenshots intelligent zu analysieren
+              </p>
+            </div>
+          </v-expand-transition>
+
+          <p class="text-caption text-medium-emphasis mt-3">
+            <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
+            <strong>Playwright:</strong> Rendert JavaScript, macht Screenshots, extrahiert Bilder.
+            <strong>Basic:</strong> Schneller, nur statisches HTML.
+          </p>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
+
+    <!-- Info Card -->
+    <v-card variant="tonal" color="info" class="mt-4 pa-3">
+      <div class="d-flex align-start">
+        <v-icon class="mr-3 mt-1">mdi-information</v-icon>
+        <div>
+          <div class="text-subtitle-2">So funktioniert's:</div>
+          <ol class="text-body-2 text-medium-emphasis pl-4 mb-0">
+            <li>Der Crawler erkundet die Website und sammelt Inhalte</li>
+            <li>Texte werden in Chunks aufgeteilt und als Embeddings gespeichert</li>
+            <li>Der Chatbot nutzt diese Wissensbasis zur Beantwortung von Fragen</li>
+          </ol>
+        </div>
+      </div>
+    </v-card>
 
     <v-alert
       v-if="errorMessage"
       type="error"
       variant="tonal"
       class="mt-4"
+      closable
     >
       {{ errorMessage }}
     </v-alert>
@@ -81,12 +167,18 @@ const props = defineProps({
     type: Object,
     default: () => ({
       maxPages: 50,
-      maxDepth: 3
+      maxDepth: 3,
+      usePlaywright: true,
+      useVisionLlm: false
     })
   },
   errorMessage: {
     type: String,
     default: null
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -94,15 +186,23 @@ const emit = defineEmits(['update:url', 'update:config', 'start'])
 
 // Local state
 const localUrl = ref(props.url)
-const localConfig = ref({ ...props.config })
+const localConfig = ref({
+  maxPages: props.config.maxPages || 50,
+  maxDepth: props.config.maxDepth || 3,
+  usePlaywright: props.config.usePlaywright !== false,
+  useVisionLlm: props.config.useVisionLlm || false
+})
 
 // Validation rules
 const rules = {
-  required: v => !!v || 'Pflichtfeld',
+  required: v => !!v || 'URL ist erforderlich',
   url: v => {
     if (!v) return true
     try {
-      new URL(v)
+      const url = new URL(v)
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return 'URL muss mit http:// oder https:// beginnen'
+      }
       return true
     } catch {
       return 'Ungültige URL'
@@ -116,7 +216,18 @@ const updateUrl = () => {
 }
 
 const updateConfig = () => {
-  emit('update:config', localConfig.value)
+  emit('update:config', { ...localConfig.value })
+}
+
+const handleStart = () => {
+  if (localUrl.value && !props.loading) {
+    try {
+      new URL(localUrl.value)
+      emit('start')
+    } catch {
+      // Invalid URL, don't emit
+    }
+  }
 }
 
 // Watch props for external updates
@@ -125,10 +236,21 @@ watch(() => props.url, (newVal) => {
 })
 
 watch(() => props.config, (newVal) => {
-  localConfig.value = { ...newVal }
+  localConfig.value = {
+    maxPages: newVal.maxPages || 50,
+    maxDepth: newVal.maxDepth || 3,
+    usePlaywright: newVal.usePlaywright !== false,
+    useVisionLlm: newVal.useVisionLlm || false
+  }
 }, { deep: true })
 </script>
 
 <style scoped>
-/* Styles inherited from parent */
+ol {
+  margin-top: 4px;
+}
+
+ol li {
+  margin-bottom: 2px;
+}
 </style>

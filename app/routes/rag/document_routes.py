@@ -257,3 +257,47 @@ def delete_document(document_id):
         'success': True,
         'message': f"Document '{filename}' deleted successfully"
     }), 200
+
+
+@rag_document_bp.route('/documents/<int:document_id>/screenshot', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def get_document_screenshot(document_id):
+    """Get screenshot image for a document"""
+    document = DocumentService.get_document_by_id(document_id)
+    if not document:
+        raise NotFoundError(f'Document with ID {document_id} not found')
+
+    if not document.screenshot_path:
+        raise NotFoundError('No screenshot available for this document')
+
+    if not os.path.exists(document.screenshot_path):
+        raise NotFoundError('Screenshot file not found on disk')
+
+    return send_file(
+        document.screenshot_path,
+        mimetype='image/png'
+    )
+
+
+@rag_document_bp.route('/chunks/<int:chunk_id>/image', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def get_chunk_image(chunk_id):
+    """Get image for a chunk"""
+    from db.models.rag import RAGDocumentChunk
+
+    chunk = RAGDocumentChunk.query.get(chunk_id)
+    if not chunk:
+        raise NotFoundError(f'Chunk with ID {chunk_id} not found')
+
+    if not chunk.image_path:
+        raise NotFoundError('No image available for this chunk')
+
+    if not os.path.exists(chunk.image_path):
+        raise NotFoundError('Image file not found on disk')
+
+    return send_file(
+        chunk.image_path,
+        mimetype=chunk.image_mime_type or 'image/png'
+    )

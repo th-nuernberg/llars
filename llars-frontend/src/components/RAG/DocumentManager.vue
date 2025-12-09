@@ -199,7 +199,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 const props = defineProps({
   documents: {
@@ -213,6 +213,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  initialCollectionFilter: {
+    type: String,
+    default: null
   }
 })
 
@@ -335,6 +339,13 @@ const formatDate = (dateString) => {
 const handleBulkDelete = () => {
   emit('delete', selected.value)
 }
+
+// Apply initial collection filter
+watch(() => props.initialCollectionFilter, (newFilter) => {
+  if (newFilter) {
+    selectedCollection.value = newFilter
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

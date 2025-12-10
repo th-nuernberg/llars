@@ -154,7 +154,8 @@ def list_sessions():
     Returns:
         JSON array of session objects with progress info
     """
-    username = g.authentik_user
+    user = g.authentik_user
+    username = user.username if hasattr(user, 'username') else str(user)
 
     sessions = JudgeSession.query.filter_by(
         user_id=username
@@ -257,7 +258,8 @@ def create_session():
     """
     import logging
     data = request.get_json() or {}
-    username = g.authentik_user
+    user = g.authentik_user
+    username = user.username if hasattr(user, 'username') else str(user)
 
     # Support both 'name' and 'session_name' for flexibility
     session_name = data.get('session_name') or data.get('name') or f'Evaluation {datetime.now().strftime("%Y-%m-%d %H:%M")}'

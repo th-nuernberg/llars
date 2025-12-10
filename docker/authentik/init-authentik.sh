@@ -99,7 +99,11 @@ else:
     if auth_flow:
         print(f'  Using authorization flow: {auth_flow.slug}')
 
-    # Create provider
+    # Create provider with authorization flow
+    if not auth_flow:
+        print('  ERROR: No authorization flow found! Login will not work.')
+        raise Exception('No authorization flow found')
+
     provider = OAuth2Provider.objects.create(
         name='llars-backend',
         client_id='$BACKEND_CLIENT_ID',

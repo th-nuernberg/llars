@@ -564,6 +564,7 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
+  pointer-events: auto;
 }
 
 .feature-card {
@@ -576,6 +577,8 @@ onMounted(async () => {
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .feature-card:hover {

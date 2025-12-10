@@ -1,35 +1,12 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 2.7 | **Stand:** 7. Dezember 2025
+**Version:** 2.8 | **Stand:** 10. Dezember 2025
 
 ## Projekt-Übersicht
 
 LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-**Features:** Multi-User Collaboration (YJS CRDT) | LLM-Integration (OpenAI, LiteLLM/Mistral) | RBAC Permission System | Authentik Auth | Light/Dark Mode | RAG-Pipeline (ChromaDB) | LLM-as-Judge
-
----
-
-## Claude Code Workflow
-
-### Komplexe Tasks parallelisieren
-
-```
-1. Problem analysieren → Unabhängige Teilaufgaben identifizieren
-2. Agents parallel starten für unabhängige Probleme
-3. Nach Ausführung validieren: Dateien existieren? Änderungen korrekt? System funktioniert?
-4. Bei Fehlern: Iterativ korrigieren
-5. CLAUDE.md aktualisieren bei signifikanten Änderungen
-```
-
-### Best Practices
-
-| Regel | Beschreibung |
-|-------|--------------|
-| TodoWrite nutzen | Tasks tracken bei >2 Schritten |
-| Agents parallelisieren | Unabhängige Tasks gleichzeitig |
-| Validieren | Nach jeder Änderung prüfen |
-| Keine Annahmen | Erst lesen, dann ändern |
+**Features:** Rating/Ranking-System | LLM-as-Judge | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions
 
 ---
 
@@ -37,12 +14,8 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 ```bash
 # Ersteinrichtung
-cp .env.template.development .env  # oder .env.template.production
+cp .env.template.development .env
 ./start_llars.sh
-
-# Täglicher Start
-./start_llars.sh              # Nutzt .env
-./start_llars.sh dev|prod     # Mode überschreiben
 
 # Komplett-Neustart (LÖSCHT ALLE DATEN!)
 REMOVE_VOLUMES=True ./start_llars.sh
@@ -55,24 +28,18 @@ REMOVE_VOLUMES=True ./start_llars.sh
 | Frontend | http://localhost:55080 |
 | Backend API | http://localhost:55080/api |
 | Authentik | http://localhost:55095 |
-| Database | localhost:55306 |
 
-### Wichtige .env Variablen
+### Test-Benutzer
 
-```bash
-PROJECT_STATE=development|production
-PROJECT_HOST=localhost
-NGINX_INTERNAL_PORT=80    # MUSS 80 sein!
-REMOVE_VOLUMES=False
-```
+| User | Passwort | Rolle |
+|------|----------|-------|
+| admin | admin123 | admin |
+| researcher | admin123 | researcher (RATER) |
+| viewer | admin123 | viewer (VIEWER) |
 
 ---
 
 ## Architektur
-
-**Backend:** Flask 3.0 + MariaDB 11.2 + OpenAI + ChromaDB
-**Frontend:** Vue 3.4 + Vuetify 3.5 + Vite 5.1 + Socket.IO + Y.js
-**Auth:** Authentik (OAuth2/OIDC, RS256 JWT)
 
 ```
 nginx (:80) → Reverse Proxy
@@ -83,51 +50,125 @@ nginx (:80) → Reverse Proxy
 Databases: MariaDB (:3306), PostgreSQL (:5432 - Authentik)
 ```
 
+**Backend:** Flask 3.0 + MariaDB 11.2 + ChromaDB
+**Frontend:** Vue 3.4 + Vuetify 3.5 + Vite 5.1 + Socket.IO
+
+---
+
+## Rating/Ranking System
+
+Das Kernfeature von LLARS: Bewertung von LLM-generierten Features für E-Mail-Konversationen.
+
+### Konzept
+
+```
+EmailThread (Beratungs-E-Mail)
+├── Messages[] (Klient ↔ Berater Dialog)
+└── Features[] (LLM-generierte Analysen)
+    ├── GPT-4: "Situation Summary", "Client Needs", ...
+    ├── Claude-3: "Situation Summary", "Client Needs", ...
+    └── Mistral-7B: "Situation Summary", "Client Needs", ...
+
+Scenario (Rating oder Ranking)
+├── ScenarioUsers[] (User + Rolle: VIEWER oder RATER)
+├── ScenarioThreads[] (zugewiesene Threads)
+└── ScenarioThreadDistribution[] (welcher RATER bewertet welchen Thread)
+```
+
+### Function Types
+
+| ID | Name | Beschreibung |
+|----|------|--------------|
+| 1 | ranking | Features nach Qualität sortieren (Drag & Drop) |
+| 2 | rating | Features einzeln bewerten (Sterne/Skala) |
+| 3 | mail_rating | Gesamte E-Mail-Konversation bewerten |
+
+### Wichtige Tabellen
+
+```sql
+feature_function_types  -- ranking(1), rating(2), mail_rating(3)
+rating_scenarios        -- Szenarien mit begin/end Zeitraum
+scenario_users          -- User-Rollen: VIEWER oder RATER
+scenario_threads        -- Threads im Szenario
+scenario_thread_distribution  -- RATER → Thread Zuweisung
+email_threads           -- E-Mail-Konversationen (function_type_id!)
+features                -- LLM-generierte Inhalte (thread_id, type_id, llm_id)
+```
+
+### Zugriffskontrolle
+
+```python
+# app/routes/HelperFunctions.py
+def get_user_threads(user_id, function_type_id):
+    """
+    VIEWER: Sieht alle Threads im Szenario
+    RATER: Sieht nur zugewiesene Threads (via ScenarioThreadDistribution)
+
+    Zeitprüfung: RatingScenarios.begin <= NOW <= RatingScenarios.end
+    """
+```
+
+### API Endpoints
+
+```
+GET /api/email_threads/rankings      # Ranking-Threads für User
+GET /api/email_threads/ratings       # Rating-Threads für User
+GET /api/email_threads/rankings/<id> # Thread-Details mit Features
+POST /api/save_ranking/<id>          # Ranking speichern
+```
+
+### Demo-Szenarien (Development)
+
+Im Dev-Mode werden automatisch Demo-Szenarien erstellt (`app/db/seeders/scenarios.py`):
+
+- **Demo Rating Szenario**: 2 Threads (function_type_id=2), researcher=RATER, viewer=VIEWER
+- **Demo Ranking Szenario**: 1 Thread (function_type_id=1), researcher=RATER, viewer=VIEWER
+- **Demo Verlauf Bewerter Szenario**: 2 Threads (function_type_id=3), researcher=RATER, viewer=VIEWER
+- 5 E-Mail-Threads mit realistischen Beratungsanfragen
+- Features für alle Threads (4 Typen × 3 LLMs)
+
+---
+
+## Auth Decorator - WICHTIG!
+
+`g.authentik_user` ist ein **User-Objekt** (nicht String!):
+
+```python
+# app/auth/decorators.py
+@authentik_required
+def my_route():
+    user = g.authentik_user  # User-Objekt mit .id, .username
+    user_id = user.id        # Für DB-Queries
+```
+
+Bei Login wird der User automatisch in der DB erstellt (`get_or_create_user`).
+
 ---
 
 ## Permission System
 
-**Sicherheitsmodell:** Deny-by-Default | User-Permissions überschreiben Rollen | Explizites Deny schlägt Grant
+**Sicherheitsmodell:** Deny-by-Default | User überschreibt Rolle | Deny schlägt Grant
 
-### Permissions (17 total)
-
-```
-feature:mail_rating:{view,edit,delete}  feature:ranking:{view,edit}
-feature:rating:{view,edit}              feature:prompt_engineering:{view,edit}
-feature:comparison:{view,edit}          feature:history_generation:view
-admin:{permissions,roles}:manage        admin:users:view
-data:{export,import}
-```
-
-### Rollen
-
-| Rolle | Beschreibung |
-|-------|--------------|
-| admin | Alle 17 Permissions |
-| researcher | Alle View + Edit (11) |
-| viewer | Nur View (5) |
-
-### Backend-Nutzung
+### Backend
 
 ```python
-from app.decorators.permission_decorator import require_permission
+from decorators.permission_decorator import require_permission
 
-@route('/api/feature')
-@require_permission('feature:my_feature:view')
-def my_feature(): ...
-
-# Weitere: @require_any_permission(), @require_all_permissions()
+@bp.route('/api/feature')
+@require_permission('feature:ranking:view')
+@handle_api_errors(logger_name='ranking')
+def my_route(): ...
 ```
 
-### Frontend-Nutzung
+### Frontend
 
 ```vue
 <script setup>
 import { usePermissions } from '@/composables/usePermissions'
-const { hasPermission, isAdmin } = usePermissions()
+const { hasPermission } = usePermissions()
 </script>
 <template>
-  <v-card v-if="hasPermission('feature:mail_rating:view')">...</v-card>
+  <v-card v-if="hasPermission('feature:ranking:view')">...</v-card>
 </template>
 ```
 
@@ -135,15 +176,10 @@ const { hasPermission, isAdmin } = usePermissions()
 
 ## Error Handling
 
-**Decorator:** `app/decorators/error_handler.py`
-**Migration Guide:** `MIGRATION_ERROR_HANDLING.md`
-
-### Pattern - ALLE Routes MÜSSEN @handle_api_errors nutzen
+**ALLE Routes MÜSSEN `@handle_api_errors` nutzen:**
 
 ```python
-from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError
-)
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 
 @bp.route('/items/<int:id>')
 @require_permission('feature:items:view')
@@ -155,202 +191,52 @@ def get_item(id):
     return jsonify({'success': True, 'item': item.to_dict()})
 ```
 
-### Exception Klassen
+| Exception | Status |
+|-----------|--------|
+| `NotFoundError` | 404 |
+| `ValidationError` | 400 |
+| `ConflictError` | 409 |
 
-| Exception | Status | Verwendung |
-|-----------|--------|------------|
-| `NotFoundError` | 404 | Ressource nicht gefunden |
-| `ValidationError` | 400 | Validierungsfehler, fehlende Felder |
-| `ConflictError` | 409 | Duplikat, Konflikt |
-| `UnauthorizedError` | 401 | Authentifizierung fehlgeschlagen |
-| `ForbiddenError` | 403 | Keine Berechtigung |
-| `APIError` | Custom | Benutzerdefinierter Status-Code |
+---
 
-### Response Format (Standard)
+## RAG-Pipeline / Webcrawler
 
-```json
-{
-  "success": false,
-  "error": "Human-readable message",
-  "error_type": "not_found|validation_error|conflict|...",
-  "details": {}  // Optional
-}
-```
-
-### Decorator-Reihenfolge - WICHTIG!
+### Crawler-Konfiguration
 
 ```python
-@bp.route('/endpoint')
-@require_permission('feature:x:view')  # 1. Permission zuerst
-@handle_api_errors(logger_name='x')    # 2. Error handling danach
-def endpoint():
-    ...
+# app/services/crawler/modules/playwright_crawler.py
+exclude_patterns = [
+    r'\.css$', r'\.js$', r'\.json$',  # Keine Code-Dateien
+    r'/feed/?$', r'/rss/?$',           # Keine Feeds
+    r'/wp-admin', r'/wp-login',        # Keine Admin-Seiten
+]
 ```
 
-### Anti-Patterns - NICHT verwenden!
+### Screenshots (lange Seiten)
 
 ```python
-# ❌ FALSCH - Manuelles try/except
-try:
-    item = get_item()
-    return jsonify({'success': True})
-except Exception as e:
-    return jsonify({'error': str(e)}), 500
+# app/services/crawler/modules/screenshot_capture.py
+capture_long_page()  # Splittet Seiten >4000px in mehrere Screenshots
+```
 
-# ❌ FALSCH - Direkte Error-Response
-if not item:
-    return jsonify({'error': 'Not found'}), 404
+### Embedding Model
 
-# ✅ RICHTIG - Exception werfen
-if not item:
-    raise NotFoundError('Item not found')
+```
+Model: llamaindex/vdr-2b-multi-v1 (1024 Dimensionen)
+Storage: ChromaDB in /app/chroma_db
 ```
 
 ---
 
-## Theme System
+## LLM-as-Judge
 
-**Config:** `llars-frontend/src/config/theme.js`
-**Speicherung:** `localStorage.setItem('theme-preference', 'dark')`
-
-### Light Mode Textfarben - WICHTIG!
-
-Bei Custom Backgrounds IMMER explizite Textfarbe setzen:
-
-```css
-/* RICHTIG */
-.custom-element {
-  background: rgba(var(--v-theme-surface-variant), 0.5);
-  color: rgb(var(--v-theme-on-surface));
-}
-```
-
----
-
-## Skeleton Loading
-
-**Composable:** `llars-frontend/src/composables/useSkeletonLoading.js`
-
-**Regel:** ALLE Seiten MÜSSEN Skeleton Loading verwenden.
-
-```javascript
-const { isLoading, setLoading, withLoading } = useSkeletonLoading(['stats', 'table'])
-await withLoading('table', async () => await fetchData())
-```
-
-```vue
-<v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
-<v-card v-else>...</v-card>
-```
-
----
-
-## LLM-as-Judge System
-
-Automatisierte paarweise Vergleiche von E-Mail-Konversationen aus 5 Säulen (GitLab: `kia-data`).
-
-### API Endpoints
+Automatisierte paarweise Vergleiche von E-Mail-Konversationen.
 
 ```
-GET/POST /api/judge/sessions          # Session CRUD
+GET/POST /api/judge/sessions
 POST     /api/judge/sessions/<id>/start|pause
-GET      /api/judge/sessions/<id>/current|queue|comparisons
-GET      /api/judge/pillars           # Verfügbare Säulen
-POST     /api/judge/sync              # GitLab Sync
+GET      /api/judge/pillars
 ```
-
-### Socket.IO Events
-
-```javascript
-// Client → Server
-socket.emit('judge:join_session', { session_id })
-
-// Server → Client
-socket.on('judge:progress', { session_id, status, completed, total })
-socket.on('judge:llm_stream', { session_id, token })
-socket.on('judge:comparison_complete', { comparison_id, winner, confidence })
-```
-
----
-
-## Authentik Integration
-
-### Setup
-
-```bash
-./scripts/setup_authentik.sh    # Automatisches Setup
-./scripts/verify_authentik.sh   # Verifizieren
-```
-
-### Test-Benutzer
-
-| User | Passwort | Rolle |
-|------|----------|-------|
-| admin | admin123 | admin |
-| researcher | admin123 | researcher |
-| viewer | admin123 | viewer |
-
-### Token-Validierung (Backend)
-
-```python
-from app.auth.oidc_validator import validate_token, get_token_from_request
-payload = validate_token(get_token_from_request())
-```
-
-### Frontend
-
-```javascript
-import { useAuth } from '@/composables/useAuth'
-const auth = useAuth()
-await auth.login(username, password)
-// Token in sessionStorage: auth_token, auth_llars_roles
-```
-
-### ⚠️ Authentik Invarianten - NICHT ÄNDERN!
-
-| Invariante | Wert |
-|------------|------|
-| Service-Namen | authentik-server, authentik-worker, authentik-db, authentik-redis |
-| Client-IDs | llars-backend, llars-frontend |
-| Flow-Slug | llars-api-authentication |
-| Interner Port | 9000 |
-| SECRET_KEY | ≥50 Zeichen, nie committen |
-
-**Bei Änderung von Client-ID/Flow-Slug:** Login bricht komplett ab!
-
----
-
-## Git Commits
-
-**Format:** Conventional Commits
-
-```bash
-git commit -m "$(cat <<'EOF'
-<type>(<scope>): <description>
-
-<body>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-Co-Authored-By: Claude <noreply@anthropic.com>
-EOF
-)"
-```
-
-**Types:** feat | fix | docs | refactor | style | test | chore | security | perf
-**Scopes:** frontend | backend | auth | judge | rag | chatbot | crawler | db | docker
-
-**Nicht committen:** .env, *.pem, *.safetensors, *.bin, __pycache__/, node_modules/
-
----
-
-## Troubleshooting
-
-| Problem | Lösung |
-|---------|--------|
-| LLARS nicht erreichbar | `NGINX_INTERNAL_PORT=80` in .env prüfen |
-| Auth-Fehler | `./scripts/setup_authentik.sh` ausführen |
-| Permission-System fehlt | `docker compose restart backend-flask-service` |
-| Session startet nicht | Session-Status muss created/queued/paused sein |
 
 ---
 
@@ -358,43 +244,226 @@ EOF
 
 ```
 app/
-├── auth/oidc_validator.py         # JWT Validation
+├── auth/decorators.py            # @authentik_required, get_or_create_user
 ├── decorators/
-│   ├── permission_decorator.py    # Permission checks
-│   └── error_handler.py           # Standardized error handling
-├── services/
-│   ├── permission_service.py
-│   └── judge/                     # LLM-as-Judge
+│   ├── permission_decorator.py
+│   └── error_handler.py
 ├── routes/
-│   ├── judge/judge_routes.py
-│   └── rag/RAGRoutes.py
-└── db/tables.py                   # Alle Models
+│   ├── HelperFunctions.py        # get_user_threads, can_access_thread
+│   └── rating/ranking_routes.py
+├── services/crawler/             # Webcrawler + Screenshots
+├── db/
+│   ├── tables.py                 # Alle Models
+│   └── seeders/scenarios.py      # Demo-Szenarien
+└── main.py
 
 llars-frontend/src/
-├── composables/
-│   ├── usePermissions.js
-│   └── useAuth.js
-├── components/Judge/
-└── config/theme.js
+├── components/
+│   ├── Ranker/Ranker.vue
+│   └── Rater/Rater.vue
+└── composables/
+    ├── usePermissions.js
+    └── useAuth.js
 ```
 
 ---
 
-## Status
+## Frontend Viewport Layout
 
-**Stand:** 7. Dezember 2025
+Seiten die den gesamten Viewport nutzen sollen (ohne Scrolling) müssen AppBar + App-Footer berücksichtigen.
 
-| Feature | Status |
-|---------|--------|
-| Authentik-Integration | ✅ 100% |
-| Permission-System | ✅ 100% |
-| Error-Handling System | ✅ 100% (Decorator + Exceptions) |
-| LLM-as-Judge | ✅ 100% |
-| RAG-Pipeline | ✅ 100% |
-| Theme-System | ✅ 100% |
-| Error-Handling Migration | ⚠️ 20% (chatbot_routes done, ~25 files to go) |
-| SSL/TLS | ⚠️ 0% |
+### Höhenberechnung
+
+```
+AppBar:     64px
+App-Footer: 30px
+━━━━━━━━━━━━━━━━
+Gesamt:     94px → height: calc(100vh - 94px)
+```
+
+### Korrektes Layout-Pattern
+
+```vue
+<template>
+  <div class="page-container">
+    <div class="main-content">
+      <div class="left-panel">
+        <div class="panel-header">...</div>
+        <div class="panel-content">...</div>  <!-- overflow-y: auto -->
+      </div>
+      <div class="right-panel">
+        <div class="panel-header">...</div>
+        <div class="panel-content">...</div>  <!-- overflow-y: auto -->
+      </div>
+    </div>
+    <div class="action-bar">...</div>  <!-- flex-shrink: 0 -->
+  </div>
+</template>
+
+<style scoped>
+.page-container {
+  height: calc(100vh - 94px);  /* 64px AppBar + 30px Footer */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;  /* WICHTIG! */
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;  /* WICHTIG! */
+}
+
+.left-panel, .right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;  /* Nur hier scrollen! */
+}
+
+.action-bar {
+  flex-shrink: 0;  /* Fixiert am unteren Rand */
+  padding: 8px 16px;
+}
+</style>
+```
+
+### Wichtige Regeln
+
+1. **Keine Vuetify Container** für Viewport-Layouts: `v-container`, `v-row`, `v-col` haben eigene Styles die Flexbox stören
+2. **overflow: hidden** auf allen Containern außer dem scrollbaren Bereich
+3. **flex-shrink: 0** für fixierte Elemente (Header, Action-Bar)
+4. **Plain `<div>`** statt Vuetify-Komponenten für Layout-Struktur
+
+### Resizable Panels
+
+Für Layouts mit verstellbaren Panels das `usePanelResize` Composable verwenden:
+
+```javascript
+import { usePanelResize } from '@/composables/usePanelResize'
+
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 50,
+  minLeftPercent: 25,
+  maxLeftPercent: 75,
+  storageKey: 'my-panel-width'  // Speichert Position in localStorage
+})
+```
+
+```vue
+<template>
+  <div ref="containerRef" class="main-content">
+    <div class="left-panel" :style="leftPanelStyle()">...</div>
+    <div class="resize-divider" :class="{ resizing: isResizing }" @mousedown="startResize">
+      <div class="resize-handle"></div>
+    </div>
+    <div class="right-panel" :style="rightPanelStyle()">...</div>
+  </div>
+</template>
+```
+
+### Beispiel-Komponenten
+
+- `llars-frontend/src/components/Home.vue`
+- `llars-frontend/src/components/Ranker/RankerDetail.vue`
+- `llars-frontend/src/components/Rater/RaterDetail.vue`
+- `llars-frontend/src/components/Judge/JudgeOverview.vue`
+- `llars-frontend/src/components/Judge/JudgeSession.vue`
+- `llars-frontend/src/components/Judge/JudgeConfig.vue`
+- `llars-frontend/src/composables/usePanelResize.js`
 
 ---
 
-**Entwickler:** Philipp Steigerwald
+## Git Commits
+
+```bash
+git commit -m "$(cat <<'EOF'
+<type>(<scope>): <description>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
+
+**Types:** feat | fix | docs | refactor | chore
+**Scopes:** frontend | backend | auth | judge | rag | crawler | db
+
+---
+
+## Datenbank-Zugriff
+
+### MariaDB (LLARS Hauptdatenbank)
+
+```bash
+# Via Docker (empfohlen)
+docker exec -it llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars
+
+# SQL-Datei ausführen
+docker cp migration.sql llars_db_service:/tmp/migration.sql
+docker exec llars_db_service bash -c "mariadb -u dev_user -pdev_password_change_me database_llars < /tmp/migration.sql"
+
+# Einzelnen SQL-Befehl ausführen
+docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars -e "SHOW TABLES;"
+```
+
+### Zugangsdaten (Development)
+
+| Parameter | Wert |
+|-----------|------|
+| Host | llars_db_service (intern) / localhost:55306 (extern) |
+| User | dev_user |
+| Passwort | dev_password_change_me |
+| Datenbank | database_llars |
+| Root-Passwort | dev_root_password_change_me |
+
+### PostgreSQL (Authentik)
+
+```bash
+docker exec -it llars_authentik_db psql -U authentik_dev -d authentik_dev
+```
+
+| Parameter | Wert |
+|-----------|------|
+| Host | llars_authentik_db (intern) |
+| User | authentik_dev |
+| Datenbank | authentik_dev |
+
+---
+
+## Troubleshooting
+
+| Problem | Lösung |
+|---------|--------|
+| Ranking/Rating leer | Zeitraum prüfen (begin/end), User-Rolle prüfen (RATER vs VIEWER) |
+| User nicht in DB | Login erstellt User automatisch via `get_or_create_user` |
+| Auth-Fehler | `./scripts/setup_authentik.sh` |
+| Crawler findet nichts | gzip-Decompression, exclude_patterns prüfen |
+| DB-Migration nötig | SQL via `docker exec` ausführen (siehe Datenbank-Zugriff) |
+
+---
+
+## Authentik - NICHT ÄNDERN!
+
+| Invariante | Wert |
+|------------|------|
+| Client-IDs | llars-backend, llars-frontend |
+| Flow-Slug | llars-api-authentication |
+| Interner Port | 9000 |
+
+**Bei Änderung von Client-ID/Flow-Slug:** Login bricht ab!
+
+---
+
+**Stand:** 10. Dezember 2025

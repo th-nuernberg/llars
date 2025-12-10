@@ -121,6 +121,11 @@ class JudgeComparison(db.Model):
     started_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
 
+    # Retry and timeout tracking
+    attempt_count: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
+    last_heartbeat: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(db.String(500), nullable=True)
+
     thread_a = db.relationship('EmailThread', foreign_keys=[thread_a_id], backref='comparisons_as_a')
     thread_b = db.relationship('EmailThread', foreign_keys=[thread_b_id], backref='comparisons_as_b')
     evaluations = db.relationship('JudgeEvaluation', backref='comparison', cascade='all, delete-orphan')

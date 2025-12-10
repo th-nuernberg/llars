@@ -94,6 +94,11 @@ init_crawler_socketio(socketio)
 from workers.embedding_worker import start_embedding_worker
 start_embedding_worker(app)
 
+# Initialize Stale Job Detector for LLM-as-Judge
+# Checks every 5 minutes for comparisons stuck in RUNNING state and resets them
+from services.judge.stale_job_detection import start_stale_job_detector
+start_stale_job_detector(app)
+
 # Fix missing chroma_collection_name for existing collections
 # This is a one-time migration for collections created before the fix
 def fix_missing_chroma_collection_names():

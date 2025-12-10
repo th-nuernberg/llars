@@ -1,300 +1,215 @@
 <template>
-  <v-container class="judge-overview">
-    <!-- Header -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <div class="d-flex align-center">
-          <div>
-            <h1 class="text-h4 font-weight-bold">LLM-as-Judge</h1>
-            <p class="text-subtitle-1 text-medium-emphasis">
-              Automatisierte Bewertung von Prompt-Säulen mit KI
-            </p>
+  <div class="judge-overview-page">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1 class="text-h5 font-weight-bold">LLM-as-Judge</h1>
+        <p class="text-caption text-medium-emphasis mb-0">
+          Automatisierte Bewertung von Prompt-Säulen mit KI
+        </p>
+      </div>
+      <v-spacer></v-spacer>
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-plus"
+        @click="navigateToConfig"
+      >
+        Neue Session
+      </v-btn>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card" v-for="stat in stats" :key="stat.label">
+        <v-skeleton-loader v-if="loadingStats" type="text" width="60"></v-skeleton-loader>
+        <template v-else>
+          <v-avatar :color="stat.color" size="40" class="stat-avatar">
+            <v-icon :icon="stat.icon" color="white" size="20"></v-icon>
+          </v-avatar>
+          <div class="stat-content">
+            <div class="stat-value">{{ stat.value }}</div>
+            <div class="stat-label">{{ stat.label }}</div>
           </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div ref="containerRef" class="main-content">
+      <!-- Left Panel: Sessions Table -->
+      <div class="left-panel" :style="leftPanelStyle()">
+        <div class="panel-header">
+          <v-icon class="mr-2" size="small">mdi-format-list-bulleted</v-icon>
+          <span class="font-weight-medium">Meine Sessions</span>
           <v-spacer></v-spacer>
+          <v-chip-group v-model="statusFilter" mandatory density="compact" class="filter-chips">
+            <v-chip value="all" size="x-small" variant="tonal">Alle</v-chip>
+            <v-chip value="running" size="x-small" variant="tonal" color="info">Laufend</v-chip>
+            <v-chip value="completed" size="x-small" variant="tonal" color="success">Fertig</v-chip>
+            <v-chip value="failed" size="x-small" variant="tonal" color="error">Fehler</v-chip>
+          </v-chip-group>
           <v-btn
-            color="primary"
-            prepend-icon="mdi-plus"
-            size="large"
-            @click="navigateToConfig"
-          >
-            Neue Session erstellen
-          </v-btn>
-        </div>
-      </v-col>
-    </v-row>
-
-    <!-- Stats Cards with Skeleton Loading -->
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" lg="3">
-        <v-skeleton-loader
-          v-if="loadingStats"
-          type="card"
-          height="100"
-        ></v-skeleton-loader>
-        <v-card v-else class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="primary" size="56" class="mr-4">
-              <v-icon icon="mdi-folder-multiple" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ totalSessions }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Gesamt Sessions</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" lg="3">
-        <v-skeleton-loader
-          v-if="loadingStats"
-          type="card"
-          height="100"
-        ></v-skeleton-loader>
-        <v-card v-else class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="success" size="56" class="mr-4">
-              <v-icon icon="mdi-check-circle" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ completedSessions }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Abgeschlossen</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" lg="3">
-        <v-skeleton-loader
-          v-if="loadingStats"
-          type="card"
-          height="100"
-        ></v-skeleton-loader>
-        <v-card v-else class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="info" size="56" class="mr-4">
-              <v-icon icon="mdi-play-circle" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ runningSessions }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Laufend</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" lg="3">
-        <v-skeleton-loader
-          v-if="loadingStats"
-          type="card"
-          height="100"
-        ></v-skeleton-loader>
-        <v-card v-else class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="warning" size="56" class="mr-4">
-              <v-icon icon="mdi-clock-outline" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ queuedSessions }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">In Warteschlange</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Sessions Table with Skeleton Loading (moved above KIA Data Sync) -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <v-skeleton-loader
-          v-if="loadingTable"
-          type="table-heading, table-thead, table-tbody, table-tfoot"
-        ></v-skeleton-loader>
-        <v-card v-else>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
-            Meine Judge Sessions
-            <v-spacer></v-spacer>
-            <!-- Filter Chips -->
-            <v-chip-group v-model="statusFilter" mandatory class="mr-2">
-              <v-chip value="all" size="small">Alle</v-chip>
-              <v-chip value="running" size="small" color="info">Laufend</v-chip>
-              <v-chip value="completed" size="small" color="success">Abgeschlossen</v-chip>
-              <v-chip value="failed" size="small" color="error">Fehlgeschlagen</v-chip>
-            </v-chip-group>
-            <v-btn
-              icon="mdi-refresh"
-              variant="text"
-              @click="loadSessions"
-              :loading="loading"
-            ></v-btn>
-          </v-card-title>
-          <v-divider></v-divider>
-
-          <!-- Loading State for refresh (not initial load) -->
-          <v-progress-linear v-if="loading && !loadingTable" indeterminate></v-progress-linear>
-
-          <!-- Sessions Data Table -->
-          <v-data-table
-            :headers="headers"
-            :items="filteredSessions"
+            icon="mdi-refresh"
+            variant="text"
+            size="small"
+            @click="loadSessions"
             :loading="loading"
-            :items-per-page="10"
-            class="sessions-table"
-            @click:row="navigateToSession"
-          >
-            <!-- Session Name -->
-            <template v-slot:item.session_name="{ item }">
-              <div class="font-weight-medium">{{ item.session_name }}</div>
-            </template>
+          ></v-btn>
+        </div>
+        <div class="panel-content">
+          <v-skeleton-loader
+            v-if="loadingTable"
+            type="table-heading, table-tbody"
+          ></v-skeleton-loader>
+          <template v-else>
+            <v-progress-linear v-if="loading && !loadingTable" indeterminate></v-progress-linear>
 
-            <!-- Status -->
-            <template v-slot:item.status="{ item }">
-              <v-chip
-                :color="getStatusColor(item.status)"
-                :prepend-icon="getStatusIcon(item.status)"
+            <!-- Sessions List -->
+            <div v-if="filteredSessions.length === 0" class="empty-state">
+              <v-icon size="48" color="grey-lighten-1">mdi-folder-open</v-icon>
+              <div class="text-body-1 mt-2 text-medium-emphasis">Keine Sessions</div>
+              <v-btn
+                color="primary"
                 size="small"
-                variant="flat"
+                variant="tonal"
+                prepend-icon="mdi-plus"
+                class="mt-2"
+                @click="navigateToConfig"
               >
-                {{ getStatusText(item.status) }}
-              </v-chip>
-            </template>
+                Neue Session
+              </v-btn>
+            </div>
 
-            <!-- Progress -->
-            <template v-slot:item.progress="{ item }">
-              <div class="d-flex align-center" style="width: 200px;">
-                <v-progress-linear
-                  :model-value="item.progress || 0"
-                  height="20"
-                  rounded
-                  :color="item.progress === 100 ? 'success' : 'primary'"
-                >
-                  <template v-slot:default="{ value }">
-                    <strong>{{ Math.round(value) }}%</strong>
-                  </template>
-                </v-progress-linear>
-              </div>
-            </template>
-
-            <!-- Pillars -->
-            <template v-slot:item.pillar_count="{ item }">
-              <v-chip size="small" variant="outlined">
-                {{ item.pillar_count }} Säulen
-              </v-chip>
-            </template>
-
-            <!-- Comparisons -->
-            <template v-slot:item.total_comparisons="{ item }">
-              <div class="text-center">
-                <div class="text-subtitle-2 font-weight-bold">
-                  {{ item.completed_comparisons || 0 }} / {{ item.total_comparisons || 0 }}
+            <div v-else class="sessions-list">
+              <div
+                v-for="session in filteredSessions"
+                :key="session.session_id"
+                class="session-item"
+                @click="navigateToSession(session)"
+              >
+                <div class="session-main">
+                  <div class="session-name">{{ session.session_name }}</div>
+                  <div class="session-meta">
+                    <v-chip
+                      :color="getStatusColor(session.status)"
+                      size="x-small"
+                      variant="flat"
+                    >
+                      {{ getStatusText(session.status) }}
+                    </v-chip>
+                    <span class="session-date">{{ formatDate(session.created_at) }}</span>
+                  </div>
                 </div>
-                <div class="text-caption text-medium-emphasis">Vergleiche</div>
-              </div>
-            </template>
-
-            <!-- Created At -->
-            <template v-slot:item.created_at="{ item }">
-              {{ formatDate(item.created_at) }}
-            </template>
-
-            <!-- Actions -->
-            <template v-slot:item.actions="{ item }">
-              <div class="d-flex gap-1">
-                <v-tooltip text="Details anzeigen" location="top">
-                  <template v-slot:activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      icon="mdi-eye"
-                      size="small"
-                      variant="text"
-                      @click.stop="navigateToSession(null, { item })"
-                    ></v-btn>
-                  </template>
-                </v-tooltip>
-                <v-tooltip v-if="item.status === 'completed'" text="Ergebnisse anzeigen" location="top">
-                  <template v-slot:activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      icon="mdi-chart-box"
-                      size="small"
-                      variant="text"
-                      color="success"
-                      @click.stop="navigateToResults(item.session_id)"
-                    ></v-btn>
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="Löschen" location="top">
-                  <template v-slot:activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      icon="mdi-delete"
-                      size="small"
-                      variant="text"
-                      color="error"
-                      @click.stop="confirmDelete(item)"
-                    ></v-btn>
-                  </template>
-                </v-tooltip>
-              </div>
-            </template>
-
-            <!-- Empty State -->
-            <template v-slot:no-data>
-              <div class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-1">mdi-folder-open</v-icon>
-                <div class="text-h6 mt-4 text-medium-emphasis">Keine Sessions gefunden</div>
-                <div class="text-body-2 text-medium-emphasis mb-4">
-                  Erstellen Sie Ihre erste Judge Session, um zu beginnen
+                <div class="session-progress">
+                  <div class="progress-label">
+                    {{ session.completed_comparisons || 0 }}/{{ session.total_comparisons || 0 }}
+                  </div>
+                  <v-progress-linear
+                    :model-value="session.progress || 0"
+                    height="6"
+                    rounded
+                    :color="session.progress === 100 ? 'success' : 'primary'"
+                  ></v-progress-linear>
                 </div>
-                <v-btn color="primary" prepend-icon="mdi-plus" @click="navigateToConfig">
-                  Neue Session erstellen
-                </v-btn>
+                <div class="session-actions">
+                  <v-btn
+                    icon="mdi-eye"
+                    size="x-small"
+                    variant="text"
+                    @click.stop="navigateToSession(session)"
+                  ></v-btn>
+                  <v-btn
+                    v-if="session.status === 'completed'"
+                    icon="mdi-chart-box"
+                    size="x-small"
+                    variant="text"
+                    color="success"
+                    @click.stop="navigateToResults(session.session_id)"
+                  ></v-btn>
+                  <v-btn
+                    icon="mdi-delete"
+                    size="x-small"
+                    variant="text"
+                    color="error"
+                    @click.stop="confirmDelete(session)"
+                  ></v-btn>
+                </div>
               </div>
-            </template>
-          </v-data-table>
-        </v-card>
-      </v-col>
-    </v-row>
+            </div>
+          </template>
+        </div>
+      </div>
 
-    <!-- KIA Data Sync with Skeleton Loading -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <v-skeleton-loader
-          v-if="loadingKIA"
-          type="card"
-          height="200"
-        ></v-skeleton-loader>
-        <KIADataSync v-else @loaded="loadingKIA = false" />
-      </v-col>
-    </v-row>
+      <!-- Resize Divider -->
+      <div
+        class="resize-divider"
+        :class="{ resizing: isResizing }"
+        @mousedown="startResize"
+      >
+        <div class="resize-handle"></div>
+      </div>
+
+      <!-- Right Panel: KIA Data Sync -->
+      <div class="right-panel" :style="rightPanelStyle()">
+        <div class="panel-header">
+          <v-icon class="mr-2" size="small">mdi-database-sync</v-icon>
+          <span class="font-weight-medium">KIA Daten-Sync</span>
+        </div>
+        <div class="panel-content">
+          <v-skeleton-loader
+            v-if="loadingKIA"
+            type="card"
+            height="200"
+          ></v-skeleton-loader>
+          <KIADataSync v-else @loaded="loadingKIA = false" />
+        </div>
+      </div>
+    </div>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="deleteDialog" max-width="500">
+    <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-h5">
-          <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+        <v-card-title class="text-subtitle-1">
+          <v-icon class="mr-2" color="error" size="small">mdi-alert-circle</v-icon>
           Session löschen?
         </v-card-title>
-        <v-card-text>
-          Möchten Sie die Session <strong>{{ deleteItem?.session_name }}</strong> wirklich löschen?
-          Diese Aktion kann nicht rückgängig gemacht werden.
+        <v-card-text class="text-body-2">
+          <strong>{{ deleteItem?.session_name }}</strong> wird unwiderruflich gelöscht.
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="deleteDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" variant="flat" @click="deleteSession" :loading="deleting">
+          <v-btn variant="text" size="small" @click="deleteDialog = false">Abbrechen</v-btn>
+          <v-btn color="error" variant="flat" size="small" @click="deleteSession" :loading="deleting">
             Löschen
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { usePanelResize } from '@/composables/usePanelResize';
 import KIADataSync from './KIADataSync.vue';
 
 const router = useRouter();
+
+// Panel Resize
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 65,
+  minLeftPercent: 50,
+  maxLeftPercent: 80,
+  storageKey: 'judge-overview-panel-width'
+});
 
 // State
 const sessions = ref([]);
@@ -309,17 +224,6 @@ const loadingStats = ref(true);
 const loadingTable = ref(true);
 const loadingKIA = ref(true);
 
-// Table Headers
-const headers = [
-  { title: 'Session Name', key: 'session_name', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Fortschritt', key: 'progress', sortable: true },
-  { title: 'Säulen', key: 'pillar_count', sortable: true },
-  { title: 'Vergleiche', key: 'total_comparisons', sortable: true },
-  { title: 'Erstellt am', key: 'created_at', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'center' }
-];
-
 // Computed Stats
 const totalSessions = computed(() => sessions.value.length);
 const completedSessions = computed(() =>
@@ -331,6 +235,13 @@ const runningSessions = computed(() =>
 const queuedSessions = computed(() =>
   sessions.value.filter(s => s.status === 'queued').length
 );
+
+const stats = computed(() => [
+  { label: 'Gesamt', value: totalSessions.value, icon: 'mdi-folder-multiple', color: 'primary' },
+  { label: 'Fertig', value: completedSessions.value, icon: 'mdi-check-circle', color: 'success' },
+  { label: 'Laufend', value: runningSessions.value, icon: 'mdi-play-circle', color: 'info' },
+  { label: 'Wartend', value: queuedSessions.value, icon: 'mdi-clock-outline', color: 'warning' }
+]);
 
 // Filtered Sessions
 const filteredSessions = computed(() => {
@@ -364,13 +275,9 @@ const navigateToConfig = () => {
   router.push({ name: 'JudgeConfig' });
 };
 
-const navigateToSession = (event, row) => {
-  // Handle both @click:row event signature and direct button click
-  const item = row?.item || row;
-  if (item?.session_id) {
-    router.push({ name: 'JudgeSession', params: { id: item.session_id } });
-  } else {
-    console.error('Missing session_id in item:', item);
+const navigateToSession = (session) => {
+  if (session?.session_id) {
+    router.push({ name: 'JudgeSession', params: { id: session.session_id } });
   }
 };
 
@@ -413,26 +320,14 @@ const getStatusColor = (status) => {
   return colors[status] || 'grey';
 };
 
-const getStatusIcon = (status) => {
-  const icons = {
-    created: 'mdi-file-document',
-    queued: 'mdi-clock-outline',
-    running: 'mdi-play-circle',
-    paused: 'mdi-pause-circle',
-    completed: 'mdi-check-circle',
-    failed: 'mdi-alert-circle'
-  };
-  return icons[status] || 'mdi-help-circle';
-};
-
 const getStatusText = (status) => {
   const texts = {
     created: 'Erstellt',
-    queued: 'In Warteschlange',
+    queued: 'Wartend',
     running: 'Läuft',
     paused: 'Pausiert',
-    completed: 'Abgeschlossen',
-    failed: 'Fehlgeschlagen'
+    completed: 'Fertig',
+    failed: 'Fehler'
   };
   return texts[status] || status;
 };
@@ -441,9 +336,8 @@ const formatDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
   return date.toLocaleString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
     day: '2-digit',
+    month: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
   });
@@ -451,9 +345,7 @@ const formatDate = (dateString) => {
 
 // Lifecycle
 onMounted(() => {
-  // Initial load with skeleton states
   loadSessions(true);
-  // KIA Data Sync handles its own loading, set to false after a short delay
   setTimeout(() => {
     loadingKIA.value = false;
   }, 100);
@@ -461,27 +353,221 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.judge-overview {
-  max-width: 1400px;
-  margin: 0 auto;
+.judge-overview-page {
+  height: calc(100vh - 94px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgb(var(--v-theme-background));
+}
+
+/* Page Header */
+.page-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+}
+
+.header-content h1 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Stats Row */
+.stats-row {
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 .stat-card {
-  height: 100%;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.sessions-table :deep(tbody tr) {
+.stat-avatar {
+  flex-shrink: 0;
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-top: 2px;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Panels */
+.left-panel,
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+}
+
+.panel-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.filter-chips {
+  margin: 0;
+}
+
+.filter-chips :deep(.v-chip) {
+  margin: 0 2px;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* Resize Divider */
+.resize-divider {
+  width: 6px;
+  background: rgba(var(--v-border-color), var(--v-border-opacity));
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing {
+  background: rgba(var(--v-theme-primary), 0.3);
+}
+
+.resize-handle {
+  width: 2px;
+  height: 32px;
+  background: rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 1px;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background: rgb(var(--v-theme-primary));
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+/* Sessions List */
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s, transform 0.2s;
 }
 
-.sessions-table :deep(tbody tr:hover) {
-  background-color: rgba(var(--v-theme-primary), 0.05);
+.session-item:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  transform: translateX(4px);
+}
+
+.session-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.session-date {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.session-progress {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.progress-label {
+  font-size: 0.7rem;
+  text-align: right;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-bottom: 2px;
+}
+
+.session-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
 }
 </style>

@@ -1,61 +1,86 @@
 <template>
-  <v-container fluid>
-    <!-- Skeleton Loading for entire page -->
-    <v-skeleton-loader v-if="isLoading('data')" type="article, article"></v-skeleton-loader>
+  <div class="rater-page">
+    <!-- Skeleton Loading -->
+    <div v-if="isLoading('data')" class="skeleton-container">
+      <v-skeleton-loader type="article, article"></v-skeleton-loader>
+    </div>
 
-    <v-row v-else>
-      <v-col cols="12" md="6">
-        <h2>Features</h2>
-        <v-expansion-panels>
-          <v-expansion-panel v-for="featureGroup in groupedFeatures" :key="featureGroup.type">
-            <v-expansion-panel-title>
-              <div>{{ translateFeatureType(featureGroup.type) }}</div>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <div v-for="feature in featureGroup.details" :key="feature.feature_id" class="feature-item">
-                <v-card class="mb-4" @click="navigateToFeatureDetail(featureGroup.type, feature.feature_id)">
-                  <v-card-title>{{ feature.model_name }}</v-card-title>
-                  <v-card-text>{{ feature.content }}</v-card-text>
-                </v-card>
-              </div>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
-      </v-col>
+    <!-- Haupt-Content-Bereich -->
+    <div v-else ref="containerRef" class="main-content">
+      <!-- Feature-Bereich (links) -->
+      <div class="features-panel" :style="leftPanelStyle()">
+        <div class="panel-header">
+          <h2>Features</h2>
+        </div>
+        <div class="panel-content">
+          <v-expansion-panels>
+            <v-expansion-panel v-for="featureGroup in groupedFeatures" :key="featureGroup.type">
+              <v-expansion-panel-title>
+                <div>{{ translateFeatureType(featureGroup.type) }}</div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <div v-for="feature in featureGroup.details" :key="feature.feature_id" class="feature-item">
+                  <v-card class="feature-card" @click="navigateToFeatureDetail(featureGroup.type, feature.feature_id)">
+                    <v-card-title class="feature-card-title">{{ feature.model_name }}</v-card-title>
+                    <v-card-text class="feature-card-text">{{ feature.content }}</v-card-text>
+                  </v-card>
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </div>
+      </div>
 
-      <v-col cols="12" md="6">
-        <h2>E-Mail Verlauf</h2>
-        <div class="email-thread-container">
-          <div class="email-thread">
-            <div
-              v-for="message in messages"
-              :key="message.message_id"
-              class="email-message no-select"
-              :class="getMessageClass(message.sender)"
-            >
-              <div class="message-header">
-                <span class="message-sender">{{ message.sender }}</span>
-                <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-              </div>
-              <div class="message-body">
-                <p>{{ message.content }}</p>
-              </div>
+      <!-- Resize Divider -->
+      <div
+        class="resize-divider"
+        :class="{ 'resizing': isResizing }"
+        @mousedown="startResize"
+      >
+        <div class="resize-handle"></div>
+      </div>
+
+      <!-- E-Mail Verlauf (rechts) -->
+      <div class="email-panel" :style="rightPanelStyle()">
+        <div class="panel-header">
+          <h2>E-Mail Verlauf</h2>
+        </div>
+        <div class="panel-content">
+          <div
+            v-for="message in messages"
+            :key="message.message_id"
+            class="email-message"
+            :class="getMessageClass(message.sender)"
+          >
+            <div class="message-header">
+              <span class="message-sender">{{ message.sender }}</span>
+              <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
+            </div>
+            <div class="message-body">
+              <p>{{ message.content }}</p>
             </div>
           </div>
-          <div class="fade-overlay top"></div>
-          <div class="fade-overlay bottom"></div>
         </div>
-      </v-col>
-    </v-row>
-    <v-spacer></v-spacer>
-    <v-container fluid>
-      <v-col cols="12" class="button-class">
-        <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
-        <v-btn @click="navigateToPreviousCase">Vorheriger Fall</v-btn>
-        <v-btn @click="navigateToNextCase">Nächster Fall</v-btn>
-      </v-col>
-    </v-container>
-  </v-container>
+      </div>
+    </div>
+
+    <!-- Action Bar mit Buttons -->
+    <div class="action-bar">
+      <v-btn variant="tonal" size="small" @click="saveFeaturesServerSide">
+        <v-icon start size="small">mdi-content-save</v-icon>
+        Speichern
+      </v-btn>
+      <v-spacer></v-spacer>
+      <v-btn variant="tonal" size="small" class="mr-2" @click="navigateToPreviousCase">
+        <v-icon start size="small">mdi-arrow-left</v-icon>
+        Vorheriger
+      </v-btn>
+      <v-btn variant="tonal" size="small" @click="navigateToNextCase">
+        Nächster
+        <v-icon end size="small">mdi-arrow-right</v-icon>
+      </v-btn>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -63,6 +88,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { usePanelResize } from '@/composables/usePanelResize';
 
 const route = useRoute();
 const router = useRouter();
@@ -75,6 +101,20 @@ const localStorageKey = ref('');
 // Skeleton Loading
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['data']);
 
+// Panel Resize
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 50,
+  minLeftPercent: 25,
+  maxLeftPercent: 75,
+  storageKey: 'rater-panel-width'
+});
+
 onMounted(async () => {
   await withLoading('data', async () => {
     const threadData = await fetchEmailThreads(route.params.id);
@@ -82,7 +122,7 @@ onMounted(async () => {
 
     features.value = threadData.features;
     messages.value = threadData.messages;
-    console.log('Features:', features.value);
+
     const featureMap = new Map();
     features.value.forEach((f, index) => {
       if (!featureMap.has(f.type)) {
@@ -103,6 +143,7 @@ onMounted(async () => {
     localStorageKey.value = `featureOrder_${route.params.id}`;
     await loadFeatureOrder();
 
+    // Sender-Farben zuweisen
     let lastSender = '';
     let currentColor = 'same-sender';
     messages.value.forEach(message => {
@@ -186,15 +227,6 @@ function formatTimestamp(timestamp) {
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
 }
 
-function handleDragStart() {
-  document.body.classList.add("dragging");
-}
-
-function handleDragEnd() {
-  document.body.classList.remove("dragging");
-  saveFeatureOrderToLocalStorage();
-}
-
 function saveFeatureOrderToLocalStorage() {
   const orderedFeatures = groupedFeatures.value.map(group => ({
     type: group.type,
@@ -269,130 +301,198 @@ function saveFeaturesServerSide() {
 }
 
 async function navigateToFeatureDetail(featureType, featureId) {
-  //console.log("FeatureGroup:", featureId);
   const threadId = route.params.id;
-  //console.log('Navigating to feature detail:', featureType, featureId, threadId)
   const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/feature_type_mapping/${featureType}`);
-  //console.log(response.data.type_id);
   const featureTypeId = response.data.type_id;
 
   const response1 = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/ratings/${threadId}`);
   const featureId1 = response1.data.feature_id;
-  //console.log(response1.data);
-  //console.log('Navigating to feature detail:', featureId, threadId);
+
   router.push({ name: 'RaterDetailFeature', params: { id: threadId, feature: featureId } });
 }
 </script>
 
 <style scoped>
-.button-class {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  border: 1px solid #8AC007;
-  margin-top: 5px;
-  position: sticky;
-}
-
-.email-thread-container {
-  max-height: 500px;
-  overflow-y: auto;
-  min-height: 80vh;
+/* ============================================
+   HAUPT-LAYOUT: Feste Viewport-Höhe, kein Scroll
+   64px AppBar + 30px Footer = 94px
+   ============================================ */
+.rater-page {
+  height: calc(100vh - 94px);
   display: flex;
   flex-direction: column;
-  position: relative;
+  overflow: hidden;
+  background-color: rgb(var(--v-theme-background));
 }
 
-.fade-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 5px;
-  pointer-events: none;
-}
-
-.fade-overlay.top {
-  top: 0;
-  background: linear-gradient(to bottom, white, transparent);
-}
-
-.fade-overlay.bottom {
-  bottom: 0;
-  background: linear-gradient(to top, white, transparent);
-}
-
-.email-thread {
-  max-height: 100%;
-  overflow-y: auto;
-}
-
-.email-message {
+.skeleton-container {
   padding: 16px;
-  margin-bottom: 10px;
-  border-radius: 10px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ============================================
+   FEATURE-PANEL (links)
+   ============================================ */
+.features-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 200px;
+}
+
+/* ============================================
+   RESIZE DIVIDER
+   ============================================ */
+.resize-divider {
+  width: 6px;
+  background-color: rgb(var(--v-theme-surface-variant));
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.resize-handle {
+  width: 4px;
+  height: 40px;
+  background-color: rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================
+   E-MAIL-PANEL (rechts)
+   ============================================ */
+.email-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: rgb(var(--v-theme-surface));
+  min-width: 200px;
+}
+
+/* ============================================
+   PANEL-HEADER & CONTENT
+   ============================================ */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgb(var(--v-theme-surface-variant));
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* ============================================
+   FEATURE CARDS
+   ============================================ */
+.feature-item {
+  margin-bottom: 12px;
+}
+
+.feature-card {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.feature-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding-bottom: 4px;
+}
+
+.feature-card-text {
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.85;
+}
+
+/* ============================================
+   E-MAIL NACHRICHTEN
+   ============================================ */
+.email-message {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  user-select: none;
 }
 
 .same-sender {
-  background-color: #B2EBF2;
+  background-color: rgba(var(--v-theme-primary), 0.1);
 }
 
 .different-sender {
-  background-color: #C8E6C9;
+  background-color: rgba(var(--v-theme-secondary), 0.12);
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .message-sender {
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .message-timestamp {
-  color: #666;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
 }
 
 .message-body p {
   margin: 0;
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+  line-height: 1.5;
 }
 
-.draggable-item {
-  background-color: #F0F4C3;
-  border-radius: 33px 12px;
-  padding: 15px;
-  margin-bottom: 8px;
-  cursor: grab;
-}
-
-.draggable-item:active {
-  cursor: grabbing !important;
-}
-
-.fallbackStyleClass {
-  background-color: #528dc6;
-  border-radius: 33px 12px;
-  padding: 15px;
-  margin-bottom: 8px;
-  transform: rotate(1deg);
-}
-
-.no-select {
-  user-select: none;
-}
-
-body.dragging * {
-  cursor: grabbing !important;
-}
-
-.ghost {
-  opacity: 0.1;
-  background: #c8ebfb;
-}
-
-.feature-item {
-  margin-bottom: 10px;
+/* ============================================
+   ACTION BAR (kompakt, über dem App-Footer)
+   ============================================ */
+.action-bar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 1px solid rgb(var(--v-theme-surface-variant));
+  background-color: rgb(var(--v-theme-surface));
+  flex-shrink: 0;
 }
 </style>

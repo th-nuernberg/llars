@@ -162,37 +162,46 @@ class KIASyncService:
                 continue
 
             try:
-                # Check if directory exists via repository tree API
-                encoded_path = requests.utils.quote(config["path"], safe='')
+                # Check if directory exists via repository tree API with pagination
                 url = f"{self.base_url}/projects/{project_id}/repository/tree"
-                params = {"path": config["path"], "per_page": 100}
+                all_json_files = []
+                page = 1
 
-                response = requests.get(
-                    url,
-                    headers=self._get_headers(),
-                    params=params,
-                    timeout=10
-                )
+                while True:
+                    params = {"path": config["path"], "per_page": 100, "page": page}
+                    response = requests.get(
+                        url,
+                        headers=self._get_headers(),
+                        params=params,
+                        timeout=10
+                    )
 
-                if response.status_code == 200:
-                    files = response.json()
-                    json_files = [f for f in files if f.get('name', '').endswith('.json')]
-
-                    if json_files:
-                        status.status = SyncStatus.AVAILABLE
-                        status.file_count = len(json_files)
-                        logger.info(f"[KIASync] Säule {pillar_num}: {len(json_files)} JSON files found")
-                    else:
+                    if response.status_code == 200:
+                        files = response.json()
+                        if not files:
+                            break
+                        json_files = [f for f in files if f.get('name', '').endswith('.json')]
+                        all_json_files.extend(json_files)
+                        page += 1
+                        # Safety limit
+                        if page > 20:
+                            break
+                    elif response.status_code == 404:
                         status.status = SyncStatus.NOT_FOUND
-                        status.error_message = "Directory exists but no JSON files found"
+                        status.error_message = f"Path not found: {config['path']}"
+                        logger.info(f"[KIASync] Säule {pillar_num}: Not found (yet)")
+                        break
+                    else:
+                        status.status = SyncStatus.ERROR
+                        status.error_message = f"API error: {response.status_code}"
+                        break
 
-                elif response.status_code == 404:
-                    status.status = SyncStatus.NOT_FOUND
-                    status.error_message = f"Path not found: {config['path']}"
-                    logger.info(f"[KIASync] Säule {pillar_num}: Not found (yet)")
-                else:
-                    status.status = SyncStatus.ERROR
-                    status.error_message = f"API error: {response.status_code}"
+                if all_json_files:
+                    status.status = SyncStatus.AVAILABLE
+                    status.file_count = len(all_json_files)
+                    logger.info(f"[KIASync] Säule {pillar_num}: {len(all_json_files)} JSON files found")
+                elif status.status == SyncStatus.NOT_FOUND and not status.error_message:
+                    status.error_message = "Directory exists but no JSON files found"
 
             except requests.RequestException as e:
                 status.status = SyncStatus.ERROR

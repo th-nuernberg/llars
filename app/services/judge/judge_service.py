@@ -35,6 +35,9 @@ class JudgeService:
     and determine which one is better based on multiple criteria.
     """
 
+    # Timeout configuration (5 minutes for LLM evaluation)
+    DEFAULT_TIMEOUT = 300  # seconds
+
     # System prompt for the LLM Judge
     SYSTEM_PROMPT = """Du bist ein Experte für die Bewertung von Beratungsgesprächen im Kontext psychologischer Online-Beratung.
 
@@ -207,12 +210,13 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
                 # Streaming mode
                 full_response = self._stream_evaluate(messages, metadata, stream_callback)
             else:
-                # Non-streaming mode
+                # Non-streaming mode with timeout
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     temperature=0.3,  # Low for consistency
                     max_tokens=4000,
+                    timeout=self.DEFAULT_TIMEOUT,
                     extra_body={
                         "metadata": metadata,
                         "response_format": {"type": "json_object"}
@@ -252,7 +256,7 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
         callback: Callable[[str], None]
     ) -> str:
         """
-        Perform streaming evaluation with callback.
+        Perform streaming evaluation with callback and timeout.
 
         Args:
             messages: Chat messages
@@ -268,6 +272,7 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
             temperature=0.3,
             max_tokens=4000,
             stream=True,
+            timeout=self.DEFAULT_TIMEOUT,
             extra_body={
                 "metadata": metadata,
                 "response_format": {"type": "json_object"}

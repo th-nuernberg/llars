@@ -119,7 +119,18 @@ class PooledJudgeWorker:
 
     Each worker runs in its own thread and fetches comparisons
     from the queue using database-level locking.
+
+    Features:
+    - Heartbeat mechanism (updates every 30s during processing)
+    - Retry logic with exponential backoff (max 3 attempts)
     """
+
+    # Retry configuration
+    MAX_ATTEMPTS = 3
+    BACKOFF_BASE = 2  # seconds
+
+    # Heartbeat configuration
+    HEARTBEAT_INTERVAL = 30  # seconds
 
     def __init__(self, session_id: int, worker_id: int, pool: JudgeWorkerPool, app):
         self.session_id = session_id
@@ -255,18 +266,10 @@ class PooledJudgeWorker:
                     time.sleep(0.5)
                     continue
 
-            # Process this comparison
+            # Process this comparison with retry logic
             self.current_comparison_id = comparison.id
             try:
-                self._process_comparison(comparison, session, judge_service)
-            except Exception as e:
-                logger.error(
-                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
-                    f"Comparison {comparison.id} failed: {e}"
-                )
-                comparison.status = JudgeComparisonStatus.FAILED
-                comparison.worker_id = None
-                db.session.commit()
+                self._process_comparison_with_retry(comparison, session, judge_service)
             finally:
                 self.current_comparison_id = None
 
@@ -321,6 +324,103 @@ class PooledJudgeWorker:
             )
             db.session.rollback()
             return None
+
+    def _process_comparison_with_retry(self, comparison, session, judge_service):
+        """
+        Process comparison with retry logic and heartbeat.
+
+        - Increments attempt_count before processing
+        - Spawns heartbeat thread during processing
+        - On failure: Reset to PENDING if under max attempts, else mark FAILED
+        - Uses exponential backoff between retries
+        """
+        from db.db import db
+        from db.tables import JudgeComparisonStatus
+
+        # Increment attempt count
+        attempt = comparison.attempt_count + 1
+        comparison.attempt_count = attempt
+        comparison.last_heartbeat = datetime.now()
+        db.session.commit()
+
+        logger.info(
+            f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+            f"Processing comparison {comparison.id} (attempt {attempt}/{self.MAX_ATTEMPTS})"
+        )
+
+        # Start heartbeat thread
+        heartbeat_stop = threading.Event()
+        heartbeat_thread = threading.Thread(
+            target=self._heartbeat_loop,
+            args=(comparison.id, heartbeat_stop),
+            daemon=True
+        )
+        heartbeat_thread.start()
+
+        try:
+            self._process_comparison(comparison, session, judge_service)
+        except Exception as e:
+            logger.error(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Comparison {comparison.id} failed (attempt {attempt}): {e}"
+            )
+
+            if attempt >= self.MAX_ATTEMPTS:
+                # Max retries exceeded - mark as failed
+                comparison.status = JudgeComparisonStatus.FAILED
+                comparison.error_message = f"Failed after {attempt} attempts: {str(e)[:400]}"
+                comparison.worker_id = None
+                db.session.commit()
+                logger.warning(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Comparison {comparison.id} permanently FAILED after {attempt} attempts"
+                )
+            else:
+                # Reset for retry
+                comparison.status = JudgeComparisonStatus.PENDING
+                comparison.worker_id = None
+                comparison.started_at = None
+                comparison.last_heartbeat = None
+                comparison.error_message = f"Attempt {attempt} failed: {str(e)[:400]}"
+                db.session.commit()
+
+                # Exponential backoff
+                backoff = self.BACKOFF_BASE ** attempt
+                logger.info(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Comparison {comparison.id} will retry (backoff: {backoff}s)"
+                )
+                time.sleep(backoff)
+        finally:
+            # Stop heartbeat thread
+            heartbeat_stop.set()
+            heartbeat_thread.join(timeout=2.0)
+
+    def _heartbeat_loop(self, comparison_id: int, stop_event: threading.Event):
+        """
+        Send heartbeat every HEARTBEAT_INTERVAL seconds while processing.
+
+        Updates last_heartbeat timestamp in database to indicate the worker is alive.
+        The stale job detector uses this to identify stuck comparisons.
+        """
+        while not stop_event.wait(timeout=self.HEARTBEAT_INTERVAL):
+            try:
+                with self.app.app_context():
+                    from db.db import db
+                    from db.tables import JudgeComparison
+                    comparison = db.session.get(JudgeComparison, comparison_id)
+                    if comparison:
+                        comparison.last_heartbeat = datetime.now()
+                        db.session.commit()
+                        logger.debug(
+                            f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                            f"Heartbeat for comparison {comparison_id}"
+                        )
+            except Exception as e:
+                logger.warning(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Heartbeat update failed: {e}"
+                )
 
     def _process_comparison(self, comparison, session, judge_service):
         """Process a single comparison."""

@@ -4,6 +4,7 @@ Provides decorators for protecting routes with bearer tokens
 """
 
 import os
+import uuid
 import logging
 from functools import wraps
 from flask import request, jsonify, g
@@ -17,6 +18,39 @@ from .oidc_validator import (
 
 logger = logging.getLogger(__name__)
 
+
+def get_or_create_user(username: str):
+    """
+    Get existing user from database or create a new one.
+
+    Args:
+        username: The username from Authentik token
+
+    Returns:
+        User object from database
+    """
+    from db.db import db
+    from db.tables import User, UserGroup
+
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        # Get default user group
+        default_group = UserGroup.query.filter_by(name='Standard').first()
+        group_id = default_group.id if default_group else 1
+
+        # Create new user
+        user = User(
+            username=username,
+            password_hash='',  # Auth via Authentik, no local password
+            api_key=str(uuid.uuid4()),
+            group_id=group_id
+        )
+        db.session.add(user)
+        db.session.commit()
+        logger.info(f"Created new user from Authentik login: {username}")
+
+    return user
+
 # System Admin API Key (loaded from environment)
 SYSTEM_ADMIN_API_KEY = os.environ.get('SYSTEM_ADMIN_API_KEY')
 SYSTEM_ADMIN_USERNAME = 'admin'  # The username this API key is linked to
@@ -24,14 +58,16 @@ SYSTEM_ADMIN_USERNAME = 'admin'  # The username this API key is linked to
 
 def authentik_required(f):
     """
-    Decorator to require valid Authentik authentication
+    Decorator to require valid Authentik authentication.
+
+    Sets g.authentik_user to the User object from database (not just username string).
 
     Usage:
         @app.route('/protected')
         @authentik_required
         def protected_route():
-            username = g.authentik_user
-            return jsonify({'message': f'Hello {username}'})
+            user = g.authentik_user  # User object with .id, .username, etc.
+            return jsonify({'message': f'Hello {user.username}'})
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -55,7 +91,8 @@ def authentik_required(f):
 
         # Store token payload in Flask's g object for access in route
         g.authentik_token = token_payload
-        g.authentik_user = get_username(token_payload)
+        username = get_username(token_payload)
+        g.authentik_user = get_or_create_user(username)  # User object from DB
         g.authentik_user_id = get_user_id(token_payload)
 
         return f(*args, **kwargs)
@@ -145,7 +182,8 @@ def optional_auth(f):
             token_payload = validate_token(token)
             if token_payload:
                 g.authentik_token = token_payload
-                g.authentik_user = get_username(token_payload)
+                username = get_username(token_payload)
+                g.authentik_user = get_or_create_user(username)  # User object from DB
                 g.authentik_user_id = get_user_id(token_payload)
 
         return f(*args, **kwargs)
@@ -198,7 +236,7 @@ def system_api_key_required(f):
             }), 401
 
         # Set user context for compatibility with existing code
-        g.authentik_user = SYSTEM_ADMIN_USERNAME
+        g.authentik_user = get_or_create_user(SYSTEM_ADMIN_USERNAME)  # User object from DB
         g.authentik_user_id = SYSTEM_ADMIN_USERNAME
         g.is_system_api_key = True
 

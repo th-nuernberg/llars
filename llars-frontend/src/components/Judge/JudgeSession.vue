@@ -1,187 +1,225 @@
 <template>
-  <v-container fluid class="judge-session">
-    <!-- Header -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <div class="d-flex align-center">
-          <v-btn
-            icon="mdi-arrow-left"
-            variant="text"
-            @click="$router.push({ name: 'JudgeOverview' })"
-          ></v-btn>
-          <div class="ml-2">
-            <h1 class="text-h4 font-weight-bold">{{ session?.session_name || 'Judge Session' }}</h1>
-            <div class="d-flex align-center mt-1">
-              <v-chip
-                :color="getStatusColor(session?.status)"
-                :prepend-icon="getStatusIcon(session?.status)"
+  <div class="judge-session-page">
+    <!-- Loading State -->
+    <div v-if="loading && !session" class="loading-container">
+      <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
+      <p class="mt-4 text-medium-emphasis">Session wird geladen...</p>
+    </div>
+
+    <!-- Main Content -->
+    <template v-else>
+      <!-- Resizable Two-Panel Layout -->
+      <div ref="containerRef" class="main-content">
+        <!-- Left Panel: Session Info + Workers + Queue -->
+        <div class="left-panel" :style="leftPanelStyle()">
+          <div class="panel-header">
+            <div class="d-flex align-center">
+              <v-btn
+                icon="mdi-arrow-left"
+                variant="text"
                 size="small"
-                class="mr-2"
-              >
-                {{ getStatusText(session?.status) }}
-              </v-chip>
-              <span class="text-caption text-medium-emphasis">
-                Session ID: {{ sessionId }}
-              </span>
+                @click="$router.push({ name: 'JudgeOverview' })"
+              ></v-btn>
+              <div class="ml-2">
+                <h2 class="panel-title">{{ session?.session_name || 'Judge Session' }}</h2>
+                <div class="d-flex align-center gap-2">
+                  <v-chip
+                    :color="getStatusColor(session?.status)"
+                    :prepend-icon="getStatusIcon(session?.status)"
+                    size="x-small"
+                  >
+                    {{ getStatusText(session?.status) }}
+                  </v-chip>
+                  <span class="text-caption text-medium-emphasis">ID: {{ sessionId }}</span>
+                </div>
+              </div>
             </div>
           </div>
-          <v-spacer></v-spacer>
 
-          <!-- Action Buttons - Intelligent State-Based -->
-          <div class="d-flex gap-2 align-center">
-            <!-- Recovery Warning Badge -->
-            <v-chip
-              v-if="sessionHealth?.needs_recovery"
-              color="warning"
-              size="small"
-              prepend-icon="mdi-alert"
-              class="mr-2"
-            >
-              Wiederherstellung nötig
-            </v-chip>
+          <div class="panel-content">
+            <!-- Session Progress -->
+            <SessionProgressBar
+              :session="session"
+              :progress="progress"
+              :worker-count="workerCount"
+              :format-date="formatDate"
+              class="mb-4"
+            />
 
-            <!-- START: Only for created/queued sessions -->
-            <v-btn
-              v-if="session?.status === 'created' || session?.status === 'queued'"
-              color="success"
-              prepend-icon="mdi-play"
-              @click="startSession"
-              :loading="actionLoading"
-            >
-              Starten
-            </v-btn>
+            <!-- Worker Status Grid -->
+            <div v-if="workerCount > 1 && session?.status === 'running'" class="section mb-4">
+              <h3 class="section-title">Worker Pool</h3>
+              <WorkerLaneGrid
+                :worker-count="workerCount"
+                :active-worker-count="activeWorkerCount"
+                :session="session"
+                :progress="progress"
+                :session-pillars="sessionPillars"
+                :pillar-pairs="pillarPairs"
+                :worker-streams="workerStreams"
+                :get-pillar-color="getPillarColor"
+                :get-pillar-icon="getPillarIcon"
+                :is-pair-active="isPairActive"
+                compact
+                @open-fullscreen="openMultiWorkerFullscreen"
+                @refresh="loadWorkerPoolStatus"
+                @open-worker-fullscreen="openWorkerFullscreen"
+              />
+            </div>
 
-            <!-- PAUSE: Only when workers are actually running -->
-            <v-btn
-              v-if="isActuallyRunning"
-              color="warning"
-              prepend-icon="mdi-pause"
-              @click="pauseSession"
-              :loading="actionLoading"
-            >
-              Pause
-            </v-btn>
+            <!-- Queue Panel -->
+            <div class="section">
+              <h3 class="section-title">Warteschlange</h3>
+              <SessionQueuePanel
+                :queue="queue"
+                :all-queue-items="allQueueItems"
+                :headers="queueHeaders"
+                :loading="queueLoading"
+                :get-queue-status-color="getQueueStatusColor"
+                :get-queue-status-icon="getQueueStatusIcon"
+                :get-queue-status-text="getQueueStatusText"
+                compact
+                @refresh="loadQueue"
+              />
+            </div>
+          </div>
+        </div>
 
-            <!-- RESUME/RECOVER: When session needs recovery or is paused -->
-            <v-btn
-              v-if="showResumeButton"
-              :color="sessionHealth?.needs_recovery ? 'error' : 'info'"
-              :prepend-icon="sessionHealth?.needs_recovery ? 'mdi-restart-alert' : 'mdi-play'"
-              @click="resumeSession"
-              :loading="actionLoading"
-            >
-              {{ sessionHealth?.needs_recovery ? 'Wiederherstellen' : 'Fortsetzen' }}
-            </v-btn>
+        <!-- Resize Divider -->
+        <div
+          class="resize-divider"
+          :class="{ resizing: isResizing }"
+          @mousedown="startResize"
+        >
+          <div class="resize-handle"></div>
+        </div>
 
-            <!-- RESULTS: Completed sessions -->
-            <v-btn
-              v-if="session?.status === 'completed'"
-              color="primary"
-              prepend-icon="mdi-chart-box"
-              @click="navigateToResults"
-            >
-              Ergebnisse
-            </v-btn>
-
-            <!-- Refresh -->
+        <!-- Right Panel: Current Comparison + History -->
+        <div class="right-panel" :style="rightPanelStyle()">
+          <div class="panel-header">
+            <h2 class="panel-title">Aktueller Vergleich</h2>
             <v-btn
               icon="mdi-refresh"
               variant="text"
+              size="small"
               @click="refreshAll"
               :loading="loading"
-              title="Seite aktualisieren"
+              title="Aktualisieren"
             ></v-btn>
           </div>
+
+          <div class="panel-content">
+            <!-- Current Comparison View -->
+            <CurrentComparisonView
+              v-if="currentComparison"
+              :current-comparison="currentComparison"
+              :session="session"
+              :reconnecting="reconnecting"
+              :is-streaming="isStreaming"
+              :llm-stream-content="llmStreamContent"
+              :parsed-stream-json="parsedStreamJson"
+              :expanded-panels="expandedPanels"
+              :auto-scroll-enabled="autoScrollEnabled"
+              :format-criterion-name="formatCriterionName"
+              :get-score-color="getScoreColor"
+              compact
+              @reconnect="reconnectToStream"
+              @open-fullscreen="openFullscreen"
+              @copy-stream="copyStreamToClipboard"
+              @stream-scroll="handleStreamScroll"
+              @enable-auto-scroll="enableAutoScroll"
+              @update:expanded-panels="expandedPanels = $event"
+            />
+            <v-alert v-else type="info" variant="tonal" class="mb-4">
+              <template #prepend>
+                <v-icon>mdi-information-outline</v-icon>
+              </template>
+              Kein aktiver Vergleich. Starten Sie die Session um Vergleiche zu generieren.
+            </v-alert>
+
+            <!-- Comparison History -->
+            <div class="section mt-4">
+              <h3 class="section-title">Verlauf</h3>
+              <ComparisonHistoryTable
+                :completed-comparisons="completedComparisons"
+                :headers="historyHeaders"
+                :get-confidence-color="getConfidenceColor"
+                :format-date="formatDate"
+                compact
+                @view-comparison="viewComparison"
+              />
+            </div>
+          </div>
         </div>
-      </v-col>
-    </v-row>
+      </div>
 
-    <!-- Progress Bar -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <SessionProgressBar
-          :session="session"
-          :progress="progress"
-          :worker-count="workerCount"
-          :format-date="formatDate"
-        />
-      </v-col>
-    </v-row>
+      <!-- Action Bar (fixed at bottom) -->
+      <div class="action-bar">
+        <!-- Recovery Warning -->
+        <v-chip
+          v-if="sessionHealth?.needs_recovery"
+          color="warning"
+          size="small"
+          prepend-icon="mdi-alert"
+          class="mr-2"
+        >
+          Wiederherstellung nötig
+        </v-chip>
 
-    <!-- Multi-Worker Live View (when worker_count > 1) -->
-    <v-row v-if="workerCount > 1 && session?.status === 'running'" class="mb-4">
-      <v-col cols="12">
-        <WorkerLaneGrid
-          :worker-count="workerCount"
-          :active-worker-count="activeWorkerCount"
-          :session="session"
-          :progress="progress"
-          :session-pillars="sessionPillars"
-          :pillar-pairs="pillarPairs"
-          :worker-streams="workerStreams"
-          :get-pillar-color="getPillarColor"
-          :get-pillar-icon="getPillarIcon"
-          :is-pair-active="isPairActive"
-          @open-fullscreen="openMultiWorkerFullscreen"
-          @refresh="loadWorkerPoolStatus"
-          @open-worker-fullscreen="openWorkerFullscreen"
-        />
-      </v-col>
-    </v-row>
+        <v-spacer></v-spacer>
 
-    <!-- Queue Display - Shows ALL pending comparisons -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <SessionQueuePanel
-          :queue="queue"
-          :all-queue-items="allQueueItems"
-          :headers="queueHeaders"
-          :loading="queueLoading"
-          :get-queue-status-color="getQueueStatusColor"
-          :get-queue-status-icon="getQueueStatusIcon"
-          :get-queue-status-text="getQueueStatusText"
-          @refresh="loadQueue"
-        />
-      </v-col>
-    </v-row>
+        <!-- Action Buttons -->
+        <div class="d-flex gap-2 align-center">
+          <!-- START -->
+          <v-btn
+            v-if="session?.status === 'created' || session?.status === 'queued'"
+            color="success"
+            size="small"
+            prepend-icon="mdi-play"
+            @click="startSession"
+            :loading="actionLoading"
+          >
+            Starten
+          </v-btn>
 
-    <!-- Current Comparison View -->
-    <v-row v-if="currentComparison">
-      <v-col cols="12">
-        <CurrentComparisonView
-          :current-comparison="currentComparison"
-          :session="session"
-          :reconnecting="reconnecting"
-          :is-streaming="isStreaming"
-          :llm-stream-content="llmStreamContent"
-          :parsed-stream-json="parsedStreamJson"
-          :expanded-panels="expandedPanels"
-          :auto-scroll-enabled="autoScrollEnabled"
-          :format-criterion-name="formatCriterionName"
-          :get-score-color="getScoreColor"
-          @reconnect="reconnectToStream"
-          @open-fullscreen="openFullscreen"
-          @copy-stream="copyStreamToClipboard"
-          @stream-scroll="handleStreamScroll"
-          @enable-auto-scroll="enableAutoScroll"
-          @update:expanded-panels="expandedPanels = $event"
-        />
-      </v-col>
-    </v-row>
+          <!-- PAUSE -->
+          <v-btn
+            v-if="isActuallyRunning"
+            color="warning"
+            size="small"
+            prepend-icon="mdi-pause"
+            @click="pauseSession"
+            :loading="actionLoading"
+          >
+            Pause
+          </v-btn>
 
-    <!-- Comparison History -->
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <ComparisonHistoryTable
-          :completed-comparisons="completedComparisons"
-          :headers="historyHeaders"
-          :get-confidence-color="getConfidenceColor"
-          :format-date="formatDate"
-          @view-comparison="viewComparison"
-        />
-      </v-col>
-    </v-row>
-  </v-container>
+          <!-- RESUME/RECOVER -->
+          <v-btn
+            v-if="showResumeButton"
+            :color="sessionHealth?.needs_recovery ? 'error' : 'info'"
+            size="small"
+            :prepend-icon="sessionHealth?.needs_recovery ? 'mdi-restart-alert' : 'mdi-play'"
+            @click="resumeSession"
+            :loading="actionLoading"
+          >
+            {{ sessionHealth?.needs_recovery ? 'Wiederherstellen' : 'Fortsetzen' }}
+          </v-btn>
+
+          <!-- RESULTS -->
+          <v-btn
+            v-if="session?.status === 'completed'"
+            color="primary"
+            size="small"
+            prepend-icon="mdi-chart-box"
+            @click="navigateToResults"
+          >
+            Ergebnisse
+          </v-btn>
+        </div>
+      </div>
+    </template>
+  </div>
 
   <!-- Single Worker Fullscreen Dialog -->
   <SingleWorkerFullscreenDialog
@@ -267,10 +305,25 @@ import {
   useSessionSocket,
   useFullscreen
 } from './JudgeSession/composables';
+import { usePanelResize } from '@/composables/usePanelResize';
 
 const route = useRoute();
 const router = useRouter();
 const sessionId = route.params.id;
+
+// Initialize panel resize composable
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 40,
+  minLeftPercent: 25,
+  maxLeftPercent: 60,
+  storageKey: 'judge-session-panel-width'
+});
 
 // Initialize composables
 const helpers = useSessionHelpers();
@@ -415,11 +468,128 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.judge-session {
-  max-width: 1600px;
-  margin: 0 auto;
+/* ============================================
+   FIXED VIEWPORT LAYOUT (Design Policy)
+   ============================================ */
+.judge-session-page {
+  height: calc(100vh - 94px); /* 64px AppBar + 30px Footer */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: rgb(var(--v-theme-background));
 }
 
+.loading-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* Left Panel */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 300px;
+  background-color: rgb(var(--v-theme-surface));
+}
+
+/* Right Panel */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 400px;
+  background-color: rgb(var(--v-theme-background));
+}
+
+/* Panel Header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgb(var(--v-theme-surface-variant));
+  background-color: rgb(var(--v-theme-surface));
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Panel Content (scrollable) */
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Section Titles */
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Resize Divider */
+.resize-divider {
+  width: 6px;
+  background-color: rgb(var(--v-theme-surface-variant));
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.resize-handle {
+  width: 4px;
+  height: 40px;
+  background-color: rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Action Bar (fixed at bottom) */
+.action-bar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 1px solid rgb(var(--v-theme-surface-variant));
+  background-color: rgb(var(--v-theme-surface));
+  flex-shrink: 0;
+}
+
+/* ============================================
+   LEGACY STYLES (kept for sub-components)
+   ============================================ */
 .thread-container {
   height: 100%;
 }

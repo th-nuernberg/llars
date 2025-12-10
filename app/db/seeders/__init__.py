@@ -11,6 +11,7 @@ from .kaimo import initialize_kaimo_defaults
 from .users import seed_user_groups
 from .permissions import initialize_permissions
 from .rag import initialize_rag_system
+from .scenarios import seed_demo_scenarios
 
 
 def run_all_seeders(db):
@@ -42,6 +43,13 @@ def run_all_seeders(db):
     else:
         print(f"Seeder übersprungen (START_SEEDER={start_seeder})")
 
+    # Seed demo scenarios in development mode
+    project_state = os.getenv('PROJECT_STATE', 'development').lower()
+    if project_state == 'development':
+        seed_demo_scenarios(db)
+    else:
+        print(f"Demo-Szenarien übersprungen (PROJECT_STATE={project_state})")
+
 
 __all__ = [
     'run_all_seeders',
@@ -51,4 +59,5 @@ __all__ = [
     'seed_user_groups',
     'initialize_permissions',
     'initialize_rag_system',
+    'seed_demo_scenarios',
 ]

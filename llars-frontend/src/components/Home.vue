@@ -1,328 +1,683 @@
 <template>
-  <v-container class="home-container">
-    <!-- Logo und Titelbereich -->
-    <v-row justify="center" class="header mb-5">
-      <v-col cols="12" class="text-center">
-        <img src="@/assets/logo/llars-logo.png" alt="LLars Logo" height="120" class="mb-2">
-        <h1 class="header-title">Willkommen bei LLars</h1>
-        <div class="subtitle-text mb-4">Ihre Plattform für Ranking, Labeling, Rating und Mail-Generierung!</div>
-      </v-col>
-    </v-row>
-    <!-- Feature Cards -->
-    <v-row class="equal-size-cards">
-      <!-- Skeleton Loading -->
-      <template v-if="isSkelLoading('permissions')">
-        <v-col v-for="n in 6" :key="'skeleton-' + n" cols="12" sm="6" class="d-flex card-col">
-          <v-skeleton-loader type="card" class="mb-4 w-100" height="200"></v-skeleton-loader>
-        </v-col>
-      </template>
+  <div class="home-page">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="logo" />
+        <div class="header-text">
+          <h1 class="title">Willkommen bei LLARS</h1>
+          <p class="subtitle">Ihre Plattform für Ranking, Labeling, Rating und KI-Analyse</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <v-chip color="primary" variant="flat" class="user-chip">
+          <v-icon start>mdi-account</v-icon>
+          {{ username }}
+        </v-chip>
+      </div>
+    </div>
 
-      <!-- Actual Content -->
-      <v-col
-        v-else
-        v-for="item in items"
-        :key="item.title"
-        cols="12" sm="6"
-        class="d-flex card-col"
-      >
-        <v-card
-          class="mb-4 feature-card d-flex flex-column"
-          color="primary"
-          dark
-          @click="navigateTo(item.route)"
-          :elevation="item.elevation"
-          @mouseover="() => item.elevation = 5"
-          @mouseleave="() => item.elevation = 1"
-        >
-          <div class="icon-container flex-grow-0">
-            <v-icon large class="icon-center" color="white">{{ item.icon }}</v-icon>
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <v-icon color="primary">mdi-view-grid</v-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ filteredItems.length }}</span>
+          <span class="stat-label">Features</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <v-icon color="success">mdi-folder-multiple</v-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ categories.length }}</span>
+          <span class="stat-label">Kategorien</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <v-icon color="info">mdi-flask</v-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ researchCount }}</span>
+          <span class="stat-label">Forschung</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <v-icon color="warning">mdi-cog</v-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ adminCount }}</span>
+          <span class="stat-label">Admin</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div ref="containerRef" class="main-content">
+      <!-- Left Panel: Categories -->
+      <div class="left-panel" :style="leftPanelStyle()">
+        <div class="panel-header">
+          <v-icon class="mr-2">mdi-filter-variant</v-icon>
+          <span>Kategorien</span>
+        </div>
+        <div class="panel-content">
+          <div class="categories-list">
+            <div
+              v-for="cat in categories"
+              :key="cat.id"
+              class="category-item"
+              :class="{ active: selectedCategory === cat.id }"
+              @click="selectCategory(cat.id)"
+            >
+              <v-icon class="category-icon" :color="selectedCategory === cat.id ? 'primary' : undefined">
+                {{ cat.icon }}
+              </v-icon>
+              <div class="category-info">
+                <span class="category-name">{{ cat.name }}</span>
+                <span class="category-count">{{ getCategoryCount(cat.id) }} Features</span>
+              </div>
+              <v-icon v-if="selectedCategory === cat.id" class="category-check" color="primary">
+                mdi-check-circle
+              </v-icon>
+            </div>
           </div>
-          <v-card-title class="text-h5 flex-grow-0">{{ item.title }}</v-card-title>
-          <v-card-text class="flex-grow-1">{{ item.description }}</v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+        </div>
+      </div>
+
+      <!-- Resize Divider -->
+      <div
+        class="resize-divider"
+        :class="{ resizing: isResizing }"
+        @mousedown="startResize"
+      >
+        <div class="resize-handle"></div>
+      </div>
+
+      <!-- Right Panel: Features Grid -->
+      <div class="right-panel" :style="rightPanelStyle()">
+        <div class="panel-header">
+          <v-icon class="mr-2">mdi-apps</v-icon>
+          <span>{{ selectedCategoryName }}</span>
+          <v-spacer />
+          <v-chip size="small" color="primary" variant="tonal">
+            {{ filteredItems.length }} verfügbar
+          </v-chip>
+        </div>
+        <div class="panel-content">
+          <!-- Skeleton Loading -->
+          <div v-if="isSkelLoading('permissions')" class="features-grid">
+            <v-skeleton-loader
+              v-for="n in 6"
+              :key="'skeleton-' + n"
+              type="card"
+              class="feature-skeleton"
+            />
+          </div>
+
+          <!-- Features Grid -->
+          <div v-else class="features-grid">
+            <div
+              v-for="item in filteredItems"
+              :key="item.title"
+              class="feature-card"
+              @click="navigateTo(item.route)"
+            >
+              <div class="feature-icon">
+                <v-icon size="32" color="primary">{{ item.icon }}</v-icon>
+              </div>
+              <div class="feature-title">{{ item.title }}</div>
+              <div class="feature-description">{{ item.description }}</div>
+              <div class="feature-badge" v-if="item.badge">
+                <v-chip size="x-small" :color="item.badgeColor || 'info'" variant="flat">
+                  {{ item.badge }}
+                </v-chip>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="filteredItems.length === 0" class="empty-state">
+              <v-icon size="64" color="grey">mdi-folder-open-outline</v-icon>
+              <p>Keine Features in dieser Kategorie verfügbar</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { usePermissions } from '@/composables/usePermissions';
-import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { usePermissions } from '@/composables/usePermissions'
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { usePanelResize } from '@/composables/usePanelResize'
+import { useAuth } from '@/composables/useAuth'
 
-const router = useRouter();
-const { hasPermission, fetchPermissions, isLoading } = usePermissions();
-const { isLoading: isSkelLoading, withLoading } = useSkeletonLoading(['permissions']);
+const router = useRouter()
+const { hasPermission, fetchPermissions } = usePermissions()
+const { isLoading: isSkelLoading, withLoading } = useSkeletonLoading(['permissions'])
+const { tokenParsed } = useAuth()
+
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 25,
+  minLeftPercent: 15,
+  maxLeftPercent: 40,
+  storageKey: 'home-panel-width'
+})
+
+// Categories
+const categories = [
+  { id: 'all', name: 'Alle Features', icon: 'mdi-view-grid-outline' },
+  { id: 'research', name: 'Forschung', icon: 'mdi-flask-outline' },
+  { id: 'rating', name: 'Bewertung', icon: 'mdi-star-outline' },
+  { id: 'ai', name: 'KI-Tools', icon: 'mdi-robot-outline' },
+  { id: 'admin', name: 'Administration', icon: 'mdi-shield-account-outline' }
+]
+
+const selectedCategory = ref('all')
 
 // All available features with their required permissions
 const allItems = ref([
   {
     title: 'Ranking',
-    description: 'Ranken Sie Ihre Daten',
+    description: 'Features nach Qualität sortieren und vergleichen',
     route: '/Ranker',
     icon: 'mdi-chart-bar-stacked',
-    elevation: 1,
-    permission: 'feature:ranking:view'
+    permission: 'feature:ranking:view',
+    category: 'rating'
   },
   {
     title: 'Verlaufsbewertung',
     description: 'Bewertung von KI generierten Mail-Verläufen (Säule 4)',
     route: '/HistoryGeneration',
     icon: 'mdi-timeline-text-outline',
-    elevation: 1,
-    permission: 'feature:mail_rating:view'
+    permission: 'feature:mail_rating:view',
+    category: 'rating'
   },
   {
     title: 'Rating',
-    description: 'Raten Sie Ihre Daten',
+    description: 'Features einzeln mit Sternen/Skala bewerten',
     route: '/Rater',
     icon: 'mdi-star-outline',
-    elevation: 1,
-    permission: 'feature:rating:view'
+    permission: 'feature:rating:view',
+    category: 'rating'
   },
   {
-    title: 'Chatbot (Alpha)',
-    description: "Chaten mit LLars",
+    title: 'Chatbot',
+    description: 'Interaktiver Chat mit LLars KI-Assistent',
     route: '/chat',
-    icon: 'mdi-laptop-account',
-    elevation: 1,
-    permission: null  // No permission required - available to all
+    icon: 'mdi-chat-outline',
+    permission: null,
+    category: 'ai',
+    badge: 'Alpha',
+    badgeColor: 'warning'
   },
   {
-    title: 'Prompt Engineering (Beta)',
-    description: "Kollaboratives entwerfen von Prompts",
+    title: 'Prompt Engineering',
+    description: 'Kollaboratives Entwerfen und Testen von Prompts',
     route: '/PromptEngineering',
     icon: 'mdi-text-search',
-    elevation: 1,
-    permission: 'feature:prompt_engineering:view'
+    permission: 'feature:prompt_engineering:view',
+    category: 'research',
+    badge: 'Beta',
+    badgeColor: 'info'
   },
   {
     title: 'Gegenüberstellung',
-    description: "Gegenüberstellung von zwei KI-Modellen und Bewertung, welches besser ist",
+    description: 'Zwei KI-Modelle direkt vergleichen und bewerten',
     route: '/comparison',
     icon: 'mdi-compare-horizontal',
-    elevation: 1,
-    permission: 'feature:comparison:view'
+    permission: 'feature:comparison:view',
+    category: 'research'
   },
   {
     title: 'LLM-as-Judge',
-    description: "Automatisierte Bewertung und Vergleich von Prompt-Säulen mit KI",
+    description: 'Automatisierte Bewertung und Vergleich von Prompt-Säulen',
     route: '/judge',
     icon: 'mdi-gavel',
-    elevation: 1,
-    permission: null  // Available to all authenticated users
+    permission: null,
+    category: 'ai'
   },
   {
     title: 'KAIMO',
-    description: 'Fallvignetten durcharbeiten und als Researcher neue Fälle anlegen',
+    description: 'Fallvignetten durcharbeiten und neue Fälle anlegen',
     route: '/kaimo',
-    icon: 'mdi-shield-account',
-    elevation: 1,
-    permission: 'feature:kaimo:view'
+    icon: 'mdi-account-school-outline',
+    permission: 'feature:kaimo:view',
+    category: 'research'
   },
   {
     title: 'OnCoCo Analyse',
-    description: "Klassifikation von Beratungsgesprächen auf Satzebene mit dem OnCoCo Modell (68 Kategorien)",
+    description: 'Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)',
     route: '/oncoco',
     icon: 'mdi-chart-timeline-variant-shimmer',
-    elevation: 1,
-    permission: 'feature:comparison:view'  // Reuse comparison permission
+    permission: 'feature:comparison:view',
+    category: 'ai'
   },
   {
     title: 'Admin Dashboard',
     description: 'Benutzer, Rollen und Berechtigungen verwalten',
     route: '/AdminPermissions',
     icon: 'mdi-shield-account',
-    elevation: 1,
-    permission: 'admin:permissions:manage'
+    permission: 'admin:permissions:manage',
+    category: 'admin'
   },
   {
     title: 'RAG Verwaltung',
-    description: 'Dokumente für die RAG-Pipeline verwalten, hochladen und löschen',
+    description: 'Dokumente für die RAG-Pipeline verwalten und hochladen',
     route: '/AdminRAG',
     icon: 'mdi-database-search',
-    elevation: 1,
-    permission: 'feature:rag:view'
-  },
-]);
+    permission: 'feature:rag:view',
+    category: 'admin'
+  }
+])
 
-// Filter items based on permissions
+// Computed
+const username = computed(() => tokenParsed.value?.preferred_username || 'Gast')
+
 const items = computed(() => {
   return allItems.value.filter(item => {
-    // If no permission required, show to everyone
-    if (!item.permission) {
-      return true;
-    }
-    // Check if user has the required permission
-    return hasPermission(item.permission);
-  });
-});
+    if (!item.permission) return true
+    return hasPermission(item.permission)
+  })
+})
+
+const filteredItems = computed(() => {
+  if (selectedCategory.value === 'all') return items.value
+  return items.value.filter(item => item.category === selectedCategory.value)
+})
+
+const selectedCategoryName = computed(() => {
+  const cat = categories.find(c => c.id === selectedCategory.value)
+  return cat ? cat.name : 'Features'
+})
+
+const researchCount = computed(() => {
+  return items.value.filter(i => i.category === 'research').length
+})
+
+const adminCount = computed(() => {
+  return items.value.filter(i => i.category === 'admin').length
+})
+
+// Methods
+function selectCategory(id) {
+  selectedCategory.value = id
+}
+
+function getCategoryCount(categoryId) {
+  if (categoryId === 'all') return items.value.length
+  return items.value.filter(i => i.category === categoryId).length
+}
 
 function navigateTo(route) {
-  router.push(route);
+  router.push(route)
 }
 
 onMounted(async () => {
-  // Fetch permissions on component mount
   await withLoading('permissions', async () => {
-    await fetchPermissions();
-  });
-
-  equalizeCardSizes();
-  window.addEventListener('resize', equalizeCardSizes);
-});
-
-function equalizeCardSizes() {
-  const cardCols = document.querySelectorAll('.card-col');
-  let maxWidth = 0;
-  let maxHeight = 0;
-
-  // Reset sizes and find the maximum natural width and height
-  cardCols.forEach(col => {
-    col.style.width = '';
-    col.style.height = '';
-    const width = col.offsetWidth;
-    const height = col.offsetHeight;
-    if (width > maxWidth) maxWidth = width;
-    if (height > maxHeight) maxHeight = height;
-  });
-
-  // Set all cards to the maximum width and height
-  cardCols.forEach(col => {
-    col.style.width = `${maxWidth}px`;
-    col.style.height = `${maxHeight}px`;
-  });
-}
+    await fetchPermissions()
+  })
+})
 </script>
 
-
 <style scoped>
-.home-container {
-  padding: 16px;
-  border-radius: 8px;
-  max-width: 1200px;
+.home-page {
+  height: calc(100vh - 94px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: rgb(var(--v-theme-background));
 }
 
-.header {
-  position: relative;
-  z-index: 1;
-  padding-top: 64px;
-}
-
-.equal-size-cards {
+/* Page Header */
+.page-header {
+  flex-shrink: 0;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.card-col {
-  display: flex;
-  justify-content: center;
-  padding: 10px;
-}
-
-.feature-card {
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
   background-color: rgb(var(--v-theme-surface));
-  border: 1px solid rgb(var(--v-theme-primary));
-  border-radius: 8px;
-  cursor: pointer;
-  transition: box-shadow 0.3s ease, background-color 0.3s ease;
-  text-align: center;
-  padding: 20px;
-  height: 100%;
-  width: 100%;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  height: 48px;
+  width: auto;
+}
+
+.header-text {
   display: flex;
   flex-direction: column;
 }
 
-.feature-card:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  background-color: rgba(var(--v-theme-secondary), 0.1);
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+  line-height: 1.2;
 }
 
-.icon-container {
+.subtitle {
+  font-size: 0.875rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin: 0;
+}
+
+.user-chip {
+  font-weight: 500;
+}
+
+/* Stats Row */
+.stats-row {
+  flex-shrink: 0;
+  display: flex;
+  gap: 16px;
+  padding: 16px 24px;
+  background-color: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.stat-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: rgba(var(--v-theme-primary), 0.04);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.1);
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: rgba(var(--v-theme-primary), 0.1);
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Left Panel */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: rgb(var(--v-theme-surface));
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  min-width: 200px;
+}
+
+/* Right Panel */
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 400px;
+}
+
+/* Panel Header */
+.panel-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Panel Content */
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Resize Divider */
+.resize-divider {
+  flex-shrink: 0;
+  width: 6px;
+  background-color: rgb(var(--v-theme-surface));
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+}
+
+.resize-handle {
+  width: 2px;
+  height: 40px;
+  background-color: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 1px;
+  transition: background-color 0.2s, height 0.2s;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background-color: rgb(var(--v-theme-primary));
+  height: 60px;
+}
+
+/* Categories List */
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.category-item:hover {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.category-item.active {
+  background-color: rgba(var(--v-theme-primary), 0.12);
+}
+
+.category-icon {
+  font-size: 24px;
+}
+
+.category-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.category-name {
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.category-count {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.category-check {
+  font-size: 20px;
+}
+
+/* Features Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.feature-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.feature-card:hover {
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.15);
+  transform: translateY(-2px);
+}
+
+.feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background-color: rgba(var(--v-theme-primary), 0.1);
   margin-bottom: 16px;
 }
 
-.feature-card .v-card-title {
-  color: rgb(var(--v-theme-on-primary));
-  margin-top: 10px;
-  font-family: Arial, sans-serif;
-  font-weight: bold;
+.feature-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 8px;
 }
 
-.feature-card .v-card-text {
-  color: rgb(var(--v-theme-on-primary));
-  flex-grow: 1;
-  font-family: Arial, sans-serif;
+.feature-description {
+  font-size: 0.875rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.feature-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.feature-skeleton {
+  min-height: 160px;
+}
+
+/* Empty State */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  text-align: center;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.empty-state p {
+  margin-top: 16px;
   font-size: 0.9rem;
 }
 
-.disabled-card {
-  opacity: 0.8;
-  background-color: rgb(var(--v-theme-surface-variant));
-}
-
-.disabled-card:hover {
-  transform: scale(1.01);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.lock-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
-}
-
-.disabled-card:hover .lock-overlay {
-  opacity: 1;
-}
-
-.lock-icon {
-  font-size: 48px;
-  animation: lockBounce 1s ease-in-out infinite;
-  color: rgb(var(--v-theme-grey-darken-3));
-}
-
-@keyframes lockBounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@media (max-width: 600px) {
-  .header {
-    padding-top: 80px;
+/* Responsive */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
   }
 
-  .card-col {
-    flex-basis: 100%;
+  .header-left {
+    flex-direction: column;
+  }
+
+  .stats-row {
+    flex-wrap: wrap;
+  }
+
+  .stat-card {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 140px;
+  }
+
+  .main-content {
+    flex-direction: column;
+  }
+
+  .left-panel {
+    min-width: 100%;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  }
+
+  .resize-divider {
+    display: none;
+  }
+
+  .right-panel {
+    min-width: 100%;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
   }
 }
-
-.header-title {
-  color: rgb(var(--v-theme-on-background));
-  font-family: Arial, sans-serif;
-  font-weight: bold;
-}
-
-.subtitle-text {
-  color: rgba(var(--v-theme-on-background), 0.7);
-  font-family: 'Verdana', sans-serif;
-  font-size: 1.1rem;
-}
-
 </style>

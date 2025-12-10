@@ -1,101 +1,153 @@
 <template>
-  <v-container fluid>
-    <v-row>
-      <v-col cols="12" md="6">
-        <h2>Feature Detail</h2>
-        <v-card class="mb-4">
-          <v-card-title>{{ feature.model_name }}</v-card-title>
-          <v-card-subtitle>{{ translateFeatureType(feature.type) }}</v-card-subtitle>
-          <v-card-text>{{ feature.content }}</v-card-text>
-        </v-card>
-        <h3>Bewerten Sie dieses Feature</h3>
-        <div class="likert-scale-container">
-          <span class="likert-label-text">Gut</span>
-          <div class="likert-scale">
-            <div
-              v-for="rating in 5"
-              :key="rating"
-              @click="rateFeature(rating)"
-              :class="['likert-option', {
-                'selected-rating': rating === selectedRating,
-                'size-1': rating === 1 || rating === 5,
-                'size-2': rating === 2 || rating === 4,
-                'size-3': rating === 3,
-                'green-tone': rating === 1 || rating === 2,
-                'purple-tone': rating === 4 || rating === 5,
-                'gray-tone': rating === 3
-              }]"
-            >
-              <span class="likert-circle">
-                <template v-if="rating === selectedRating">
-                  <v-icon class="white-icon">mdi-check</v-icon>
-                </template>
-              </span>
-            </div>
-          </div>
-          <span class="likert-label-text">Schlecht</span>
+  <div class="rater-feature-page">
+    <!-- Haupt-Content-Bereich -->
+    <div ref="containerRef" class="main-content">
+      <!-- Feature-Bereich (links) -->
+      <div class="feature-panel" :style="leftPanelStyle()">
+        <div class="panel-header">
+          <h2>Feature Detail</h2>
         </div>
-        <div class="expandable-padding"></div>
-        <v-expansion-panels>
-          <v-expansion-panel>
-            <v-expansion-panel-title>
-              Feature bearbeiten
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <v-form>
-                <v-text-field
-                  label="Model Name"
-                  v-model="editableFeature.model_name"
-                ></v-text-field>
-                <v-textarea
-                  label="Feature Content"
-                  v-model="editableFeature.content"
-                ></v-textarea>
-                <v-btn @click="saveFeaturesServerSide">Speichern</v-btn>
-              </v-form>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
-      </v-col>
-      <v-col cols="12" md="6">
-        <h2>E-Mail Verlauf</h2>
-        <div class="email-thread-container">
-          <div class="email-thread">
-            <div
-              v-for="message in messages"
-              :key="message.message_id"
-              class="email-message no-select"
-              :class="getMessageClass(message.sender)"
-            >
-              <div class="message-header">
-                <span class="message-sender">{{ message.sender }}</span>
-                <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-              </div>
-              <div class="message-body">
-                <p>{{ message.content }}</p>
+        <div class="panel-content">
+          <v-card class="feature-card mb-4">
+            <v-card-title class="feature-card-title">{{ feature.model_name }}</v-card-title>
+            <v-card-subtitle>{{ translateFeatureType(feature.type) }}</v-card-subtitle>
+            <v-card-text class="feature-card-text">{{ feature.content }}</v-card-text>
+          </v-card>
+
+          <h3 class="section-title">Bewerten Sie dieses Feature</h3>
+          <div class="likert-scale-container">
+            <span class="likert-label-text">Gut</span>
+            <div class="likert-scale">
+              <div
+                v-for="rating in 5"
+                :key="rating"
+                @click="rateFeature(rating)"
+                :class="['likert-option', {
+                  'selected-rating': rating === selectedRating,
+                  'size-1': rating === 1 || rating === 5,
+                  'size-2': rating === 2 || rating === 4,
+                  'size-3': rating === 3,
+                  'good-tone': rating === 1 || rating === 2,
+                  'bad-tone': rating === 4 || rating === 5,
+                  'neutral-tone': rating === 3
+                }]"
+              >
+                <span class="likert-circle">
+                  <template v-if="rating === selectedRating">
+                    <v-icon class="check-icon" size="small">mdi-check</v-icon>
+                  </template>
+                </span>
               </div>
             </div>
+            <span class="likert-label-text">Schlecht</span>
           </div>
-          <div class="fade-overlay top"></div>
-          <div class="fade-overlay bottom"></div>
+
+          <v-expansion-panels class="mt-6">
+            <v-expansion-panel>
+              <v-expansion-panel-title>Feature bearbeiten</v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-form>
+                  <v-text-field
+                    label="Model Name"
+                    v-model="editableFeature.model_name"
+                    variant="outlined"
+                    density="compact"
+                    class="mb-2"
+                  ></v-text-field>
+                  <v-textarea
+                    label="Feature Content"
+                    v-model="editableFeature.content"
+                    variant="outlined"
+                    density="compact"
+                    rows="4"
+                  ></v-textarea>
+                  <v-btn variant="tonal" size="small" @click="saveFeaturesServerSide">
+                    <v-icon start size="small">mdi-content-save</v-icon>
+                    Speichern
+                  </v-btn>
+                </v-form>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </div>
-      </v-col>
-    </v-row>
-  </v-container>
+      </div>
+
+      <!-- Resize Divider -->
+      <div
+        class="resize-divider"
+        :class="{ 'resizing': isResizing }"
+        @mousedown="startResize"
+      >
+        <div class="resize-handle"></div>
+      </div>
+
+      <!-- E-Mail Verlauf (rechts) -->
+      <div class="email-panel" :style="rightPanelStyle()">
+        <div class="panel-header">
+          <h2>E-Mail Verlauf</h2>
+        </div>
+        <div class="panel-content">
+          <div
+            v-for="message in messages"
+            :key="message.message_id"
+            class="email-message"
+            :class="getMessageClass(message.sender)"
+          >
+            <div class="message-header">
+              <span class="message-sender">{{ message.sender }}</span>
+              <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
+            </div>
+            <div class="message-body">
+              <p>{{ message.content }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <v-btn variant="tonal" size="small" @click="saveFeaturesServerSide">
+        <v-icon start size="small">mdi-content-save</v-icon>
+        Speichern
+      </v-btn>
+      <v-spacer></v-spacer>
+      <v-btn variant="tonal" size="small" @click="goBack">
+        <v-icon start size="small">mdi-arrow-left</v-icon>
+        Zurück zur Übersicht
+      </v-btn>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import { useRoute, onBeforeRouteUpdate } from 'vue-router';
+import { useRoute, useRouter, onBeforeRouteUpdate } from 'vue-router';
 import axios from 'axios';
+import { usePanelResize } from '@/composables/usePanelResize';
 
 const route = useRoute();
+const router = useRouter();
 const feature = ref({});
 const editableFeature = ref({});
 const messages = ref([]);
 const senderColors = ref({});
 const selectedRating = ref(null);
 const localStorageKey = ref('');
+
+// Panel Resize
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 50,
+  minLeftPercent: 30,
+  maxLeftPercent: 70,
+  storageKey: 'rater-feature-panel-width'
+});
 
 onMounted(async () => {
   await loadFeatureDetail();
@@ -174,7 +226,7 @@ function translateFeatureType(type) {
 }
 
 function formatTimestamp(timestamp) {
-  const options = {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'};
+  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
   const date = new Date(timestamp);
   return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
 }
@@ -212,6 +264,10 @@ function saveFeaturesServerSide() {
     });
 }
 
+function goBack() {
+  router.push({ name: 'RaterDetail', params: { id: route.params.id } });
+}
+
 onBeforeRouteUpdate(async (to, from, next) => {
   await loadFeatureDetail(to.params.id, to.params.feature);
   loadFromLocalStorageOrServer();
@@ -221,84 +277,148 @@ onBeforeRouteUpdate(async (to, from, next) => {
 // Watch the editableFeature for changes and save to local storage immediately
 watch(editableFeature, () => {
   saveRatingToLocalStorage();
-}, {deep: true});
+}, { deep: true });
 </script>
 
 <style scoped>
-.email-thread-container {
-  max-height: 500px;
-  overflow-y: auto;
-  min-height: 80vh;
+/* ============================================
+   HAUPT-LAYOUT: Feste Viewport-Höhe, kein Scroll
+   64px AppBar + 30px Footer = 94px
+   ============================================ */
+.rater-feature-page {
+  height: calc(100vh - 94px);
   display: flex;
   flex-direction: column;
-  position: relative;
+  overflow: hidden;
+  background-color: rgb(var(--v-theme-background));
 }
 
-.fade-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 5px;
-  pointer-events: none;
-}
-
-.fade-overlay.top {
-  top: 0;
-  background: linear-gradient(to bottom, white, transparent);
-}
-
-.fade-overlay.bottom {
-  bottom: 0;
-  background: linear-gradient(to top, white, transparent);
-}
-
-.email-thread {
-  max-height: 100%;
-  overflow-y: auto;
-}
-
-.email-message {
-  padding: 16px;
-  margin-bottom: 10px;
-  border-radius: 10px;
-}
-
-.same-sender {
-  background-color: #B2EBF2;
-}
-
-.different-sender {
-  background-color: #C8E6C9;
-}
-
-.message-header {
+.main-content {
+  flex: 1;
   display: flex;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ============================================
+   FEATURE-PANEL (links)
+   ============================================ */
+.feature-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 300px;
+}
+
+/* ============================================
+   RESIZE DIVIDER
+   ============================================ */
+.resize-divider {
+  width: 6px;
+  background-color: rgb(var(--v-theme-surface-variant));
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing {
+  background-color: rgb(var(--v-theme-primary));
+}
+
+.resize-handle {
+  width: 4px;
+  height: 40px;
+  background-color: rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================
+   E-MAIL-PANEL (rechts)
+   ============================================ */
+.email-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: rgb(var(--v-theme-surface));
+  min-width: 250px;
+}
+
+/* ============================================
+   PANEL-HEADER & CONTENT
+   ============================================ */
+.panel-header {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgb(var(--v-theme-surface-variant));
 }
 
-.message-sender {
-  font-weight: bold;
-}
-
-.message-timestamp {
-  color: #666;
-  font-size: 0.8rem;
-}
-
-.message-body p {
+.panel-header h2 {
   margin: 0;
+  font-size: 1.1rem;
+  color: rgb(var(--v-theme-on-surface));
 }
 
-.no-select {
-  user-select: none;
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
 }
 
+/* ============================================
+   FEATURE CARD
+   ============================================ */
+.feature-card {
+  margin-bottom: 16px;
+}
+
+.feature-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.feature-card-text {
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* ============================================
+   LIKERT SCALE
+   ============================================ */
 .likert-scale-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 10px;
+  padding: 16px 0;
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.likert-label-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.8;
 }
 
 .likert-scale {
@@ -306,7 +426,7 @@ watch(editableFeature, () => {
   justify-content: space-around;
   align-items: center;
   margin: 0 20px;
-  gap: 5vh; /* Add padding between the options */
+  gap: 24px;
 }
 
 .likert-option {
@@ -317,10 +437,9 @@ watch(editableFeature, () => {
 }
 
 .likert-circle {
-  border: 2.5px solid #C8E6C9;
+  border: 2.5px solid rgb(var(--v-theme-surface-variant));
   border-radius: 50%;
-  margin-bottom: 4px;
-  transition: background-color 0.3s, border-color 0.3s, transform 0.3s;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -341,77 +460,104 @@ watch(editableFeature, () => {
   height: 28px;
 }
 
-.green-tone .likert-circle {
-  border-color: #66BB6A;
+/* Good tone (green/success) */
+.good-tone .likert-circle {
+  border-color: rgb(var(--v-theme-success));
 }
 
-.purple-tone .likert-circle {
-  border-color: #AB47BC;
-}
-
-.gray-tone .likert-circle {
-  border-color: #BDBDBD;
-}
-
-.selected-rating.green-tone .likert-circle {
-  background-color: #66BB6A; /* Füllt den Kreis mit grün */
-}
-
-.selected-rating.purple-tone .likert-circle {
-  background-color: #AB47BC; /* Füllt den Kreis mit lila */
-}
-
-.selected-rating.gray-tone .likert-circle {
-  background-color: #BDBDBD; /* Füllt den Kreis mit grau */
-}
-
-.likert-option:hover .likert-circle {
-  background-color: #E0F7FA;
-  border-color: #00ACC1;
+.good-tone:hover .likert-circle {
+  background-color: rgba(var(--v-theme-success), 0.15);
   transform: scale(1.1);
 }
 
-.green-tone:hover .likert-circle {
-  background-color: #E8F5E9;
-  border-color: #66BB6A;
+.selected-rating.good-tone .likert-circle {
+  background-color: rgb(var(--v-theme-success));
 }
 
-.purple-tone:hover .likert-circle {
-  background-color: #F3E5F5;
-  border-color: #AB47BC;
+/* Bad tone (error/red) */
+.bad-tone .likert-circle {
+  border-color: rgb(var(--v-theme-error));
 }
 
-.gray-tone:hover .likert-circle {
-  background-color: #F5F5F5;
-  border-color: #BDBDBD;
-}
-
-/* Neue Regeln für ausgewählte Punkte */
-.selected-rating .likert-circle:hover {
+.bad-tone:hover .likert-circle {
+  background-color: rgba(var(--v-theme-error), 0.15);
   transform: scale(1.1);
 }
 
-.selected-rating.green-tone .likert-circle:hover {
-  background-color: #66BB6A; /* Bleibt grün */
-  border-color: #66BB6A;
+.selected-rating.bad-tone .likert-circle {
+  background-color: rgb(var(--v-theme-error));
 }
 
-.selected-rating.purple-tone .likert-circle:hover {
-  background-color: #AB47BC; /* Bleibt lila */
-  border-color: #AB47BC;
+/* Neutral tone (gray) */
+.neutral-tone .likert-circle {
+  border-color: rgb(var(--v-theme-surface-variant));
 }
 
-.selected-rating.gray-tone .likert-circle:hover {
-  background-color: #BDBDBD; /* Bleibt grau */
-  border-color: #BDBDBD;
+.neutral-tone:hover .likert-circle {
+  background-color: rgba(var(--v-theme-on-surface), 0.1);
+  transform: scale(1.1);
 }
 
-
-.expandable-padding {
-  padding-top: 20px;
+.selected-rating.neutral-tone .likert-circle {
+  background-color: rgb(var(--v-theme-surface-variant));
 }
 
-.white-icon {
+.check-icon {
   color: white;
+}
+
+/* ============================================
+   E-MAIL NACHRICHTEN
+   ============================================ */
+.email-message {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  user-select: none;
+}
+
+.same-sender {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+}
+
+.different-sender {
+  background-color: rgba(var(--v-theme-secondary), 0.12);
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.message-sender {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.message-timestamp {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
+}
+
+.message-body p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+  line-height: 1.5;
+}
+
+/* ============================================
+   ACTION BAR
+   ============================================ */
+.action-bar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 1px solid rgb(var(--v-theme-surface-variant));
+  background-color: rgb(var(--v-theme-surface));
+  flex-shrink: 0;
 }
 </style>

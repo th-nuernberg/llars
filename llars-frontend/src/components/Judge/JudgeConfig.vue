@@ -411,8 +411,24 @@
                 </div>
               </div>
 
+              <!-- No Data Warning -->
+              <v-alert
+                v-if="selectedThreadCount === 0 && !estimateLoading"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mt-3"
+              >
+                <div class="text-caption">
+                  <strong>Keine Threads verfügbar.</strong><br>
+                  Bitte synchronisieren Sie zuerst KIA-Daten unter
+                  <router-link to="/judge" class="text-primary">LLM-as-Judge Übersicht</router-link>.
+                </div>
+              </v-alert>
+
               <!-- Info Alert -->
               <v-alert
+                v-else
                 type="info"
                 variant="tonal"
                 density="compact"

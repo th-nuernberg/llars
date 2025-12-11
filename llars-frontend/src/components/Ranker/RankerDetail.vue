@@ -177,18 +177,15 @@
         Lädt...
       </v-chip>
       <v-spacer></v-spacer>
-      <v-btn variant="tonal" size="small" class="mr-2" @click="saveFeaturesServerSide">
-        <v-icon start size="small">mdi-content-save</v-icon>
+      <LBtn variant="primary" prepend-icon="mdi-content-save" class="mr-2" @click="saveFeaturesServerSide">
         Speichern
-      </v-btn>
-      <v-btn variant="tonal" size="small" class="mr-2" @click="navigateToPreviousCase">
-        <v-icon start size="small">mdi-arrow-left</v-icon>
+      </LBtn>
+      <LBtn variant="secondary" prepend-icon="mdi-arrow-left" class="mr-2" @click="navigateToPreviousCase">
         Vorheriger
-      </v-btn>
-      <v-btn variant="tonal" size="small" @click="navigateToNextCase">
+      </LBtn>
+      <LBtn variant="secondary" append-icon="mdi-arrow-right" @click="navigateToNextCase">
         Nächster
-        <v-icon end size="small">mdi-arrow-right</v-icon>
-      </v-btn>
+      </LBtn>
     </div>
   </div>
 </template>

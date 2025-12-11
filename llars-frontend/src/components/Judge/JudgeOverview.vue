@@ -9,13 +9,13 @@
         </p>
       </div>
       <v-spacer></v-spacer>
-      <v-btn
-        color="primary"
+      <LBtn
+        variant="primary"
         prepend-icon="mdi-plus"
         @click="navigateToConfig"
       >
         Neue Session
-      </v-btn>
+      </LBtn>
     </div>
 
     <!-- Stats Row -->
@@ -68,16 +68,14 @@
             <div v-if="filteredSessions.length === 0" class="empty-state">
               <v-icon size="48" color="grey-lighten-1">mdi-folder-open</v-icon>
               <div class="text-body-1 mt-2 text-medium-emphasis">Keine Sessions</div>
-              <v-btn
-                color="primary"
-                size="small"
-                variant="tonal"
+              <LBtn
+                variant="primary"
                 prepend-icon="mdi-plus"
                 class="mt-2"
                 @click="navigateToConfig"
               >
                 Neue Session
-              </v-btn>
+              </LBtn>
             </div>
 
             <div v-else class="sessions-list">
@@ -178,10 +176,10 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" size="small" @click="deleteDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" variant="flat" size="small" @click="deleteSession" :loading="deleting">
+          <LBtn variant="cancel" @click="deleteDialog = false">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="deleteSession" :loading="deleting">
             Löschen
-          </v-btn>
+          </LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>

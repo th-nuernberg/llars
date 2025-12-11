@@ -430,24 +430,23 @@
 
     <!-- Action Bar -->
     <div class="action-bar">
-      <v-btn
-        variant="text"
+      <LBtn
+        variant="cancel"
         prepend-icon="mdi-arrow-left"
         @click="$router.push({ name: 'JudgeOverview' })"
       >
         Abbrechen
-      </v-btn>
+      </LBtn>
       <v-spacer></v-spacer>
-      <v-btn
-        color="primary"
-        size="large"
+      <LBtn
+        variant="primary"
         prepend-icon="mdi-play"
         :disabled="!canCreate"
         :loading="creating"
         @click="createSession"
       >
         Session erstellen & starten
-      </v-btn>
+      </LBtn>
     </div>
   </div>
 </template>

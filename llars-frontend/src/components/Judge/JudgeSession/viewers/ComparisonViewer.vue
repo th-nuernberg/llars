@@ -343,6 +343,7 @@ watch(() => streamContent.value, () => {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
   background: rgb(var(--v-theme-surface));
   border-radius: 8px;

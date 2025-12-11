@@ -609,14 +609,32 @@ onUnmounted(() => {
 .tab-content {
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Force v-window to fill available space */
+.tab-content :deep(.v-window__container) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-content :deep(.v-window-item) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .tab-window-item {
-  height: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 12px;
+  min-height: 0;
 }
 
 /* Comparison Section (fills available space) */
@@ -625,7 +643,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 /* Empty State */

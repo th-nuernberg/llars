@@ -31,7 +31,7 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="secondary" @click="handleLogin">Login</v-btn>
+            <LBtn variant="primary" @click="handleLogin">Login</LBtn>
           </v-card-actions>
           <v-alert v-if="errorMessage" type="error" class="ma-4">
             {{ errorMessage }}
@@ -46,18 +46,16 @@
                 Development Quick Login
               </div>
               <div class="d-flex justify-center ga-2 flex-wrap">
-                <v-btn
+                <LBtn
                   v-for="user in devUsers"
                   :key="user.username"
-                  size="small"
-                  variant="tonal"
-                  :color="user.color"
+                  :variant="user.username === 'admin' ? 'danger' : user.username === 'researcher' ? 'primary' : 'secondary'"
                   :prepend-icon="user.icon"
                   @click="quickLogin(user)"
                   :loading="loadingUser === user.username"
                 >
                   {{ user.label }}
-                </v-btn>
+                </LBtn>
               </div>
             </v-card-text>
           </template>

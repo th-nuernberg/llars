@@ -117,14 +117,13 @@
 
       <v-card-actions class="pa-4">
         <v-spacer></v-spacer>
-        <v-btn
-          color="primary"
-          variant="elevated"
+        <LBtn
+          variant="primary"
+          prepend-icon="mdi-check"
           @click="closeDialog"
         >
-          <v-icon start>mdi-check</v-icon>
           Fertig
-        </v-btn>
+        </LBtn>
       </v-card-actions>
     </v-card>
   </v-dialog>

@@ -379,8 +379,9 @@ watch(() => streamContent.value, () => {
 /* Content: Three columns */
 .viewer-content {
   display: flex;
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
+  max-height: 40%;
+  min-height: 120px;
   overflow: hidden;
 }
 
@@ -563,12 +564,13 @@ watch(() => streamContent.value, () => {
 
 /* Stream Section */
 .stream-section {
-  height: 180px;
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgba(var(--v-theme-surface-variant), 0.1);
+  overflow: hidden;
 }
 
 .stream-header {

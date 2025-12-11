@@ -42,9 +42,14 @@ def get_current_user():
     Uses Authentik token to return user details
     Rate limit: 100 requests per hour per IP
     """
+    # g.authentik_user is now a User object after decorators.py fix
+    user = g.authentik_user
+    username = user.username if hasattr(user, 'username') else str(user)
+    user_id = user.id if hasattr(user, 'id') else g.authentik_user_id
+
     return jsonify({
-        "username": g.authentik_user,
-        "user_id": g.authentik_user_id,
+        "username": username,
+        "user_id": user_id,
         "roles": g.authentik_token.get('realm_access', {}).get('roles', []),
         "email": g.authentik_token.get('email'),
         "name": g.authentik_token.get('name'),

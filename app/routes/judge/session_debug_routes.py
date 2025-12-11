@@ -108,8 +108,26 @@ def create_session_debug():
             db.session.commit()
         except Exception as e:
             import logging
-            logging.getLogger(__name__).warning(f"Auto-configure failed: {e}")
+            logging.getLogger(__name__).error(f"Auto-configure failed: {e}")
+            # Delete the session if configuration failed
             db.session.rollback()
+            db.session.delete(session)
+            db.session.commit()
+            return jsonify({
+                'error': 'Configuration failed',
+                'message': f'Failed to create comparisons: {str(e)}',
+                'hint': 'Database might be busy. Please try again.'
+            }), 500
+
+    # Verify comparisons were created
+    if session.total_comparisons == 0:
+        db.session.delete(session)
+        db.session.commit()
+        return jsonify({
+            'error': 'No comparisons created',
+            'message': 'Session would have 0 comparisons. Check pillar selection.',
+            'hint': 'Select at least 2 pillars with threads for pillar_sample mode.'
+        }), 400
 
     return jsonify({
         'session_id': session.id,

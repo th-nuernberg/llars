@@ -14,6 +14,7 @@ from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
+from workers.judge_worker_pool import get_worker_streams
 
 comparison_bp = Blueprint('judge_comparisons', __name__)
 
@@ -37,10 +38,18 @@ def get_current_comparison(session_id: int):
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
 
-    if not session.current_comparison_id:
-        return jsonify(None)
+    # Multi-worker support: find any running comparison, not just current_comparison_id
+    comparison = None
+    if session.current_comparison_id:
+        comparison = JudgeComparison.query.get(session.current_comparison_id)
 
-    comparison = JudgeComparison.query.get(session.current_comparison_id)
+    # Fallback: find first RUNNING comparison for this session
+    if not comparison:
+        comparison = JudgeComparison.query.filter_by(
+            session_id=session_id,
+            status=JudgeComparisonStatus.RUNNING
+        ).order_by(JudgeComparison.queue_position).first()
+
     if not comparison:
         return jsonify(None)
 
@@ -222,6 +231,79 @@ def get_session_queue(session_id: int):
             'progress_percent': round((completed_count / session.total_comparisons * 100) if session.total_comparisons > 0 else 0, 1)
         }
     })
+
+
+@comparison_bp.route('/sessions/<int:session_id>/workers/streams', methods=['GET'])
+@authentik_required
+@require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge')
+def get_session_worker_streams(session_id: int):
+    """
+    Get current stream state of all workers for reconnect support.
+
+    Returns accumulated stream content for each worker so clients
+    can resume mid-stream without losing previous content.
+    This allows users to join/rejoin a running session and see
+    all output that was streamed before they connected.
+
+    Returns:
+        JSON with worker states including stream content:
+        {
+            "session_id": 123,
+            "worker_count": 5,
+            "running": true,
+            "workers": [
+                {
+                    "worker_id": 0,
+                    "running": true,
+                    "is_streaming": true,
+                    "current_comparison_id": 456,
+                    "comparison": {
+                        "comparison_id": 456,
+                        "pillar_a": 1,
+                        "pillar_b": 3,
+                        ...
+                    },
+                    "stream_content": "...accumulated LLM output...",
+                    "stream_length": 1234
+                },
+                ...
+            ]
+        }
+    """
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
+
+    # Get worker streams from the pool
+    streams = get_worker_streams(session_id)
+
+    if not streams:
+        # No active pool - return empty state
+        return jsonify({
+            'session_id': session_id,
+            'worker_count': 0,
+            'running': False,
+            'workers': [],
+            'message': 'No active worker pool for this session'
+        })
+
+    # Enrich worker data with pillar names
+    pillar_names = {
+        1: "Rollenspiele",
+        2: "Feature Säule 1",
+        3: "Anonymisierte Daten",
+        4: "Synthetisch",
+        5: "Live-Test"
+    }
+
+    for worker in streams.get('workers', []):
+        if worker.get('comparison'):
+            comp = worker['comparison']
+            comp['pillar_a_name'] = pillar_names.get(comp.get('pillar_a'), f"Säule {comp.get('pillar_a')}")
+            comp['pillar_b_name'] = pillar_names.get(comp.get('pillar_b'), f"Säule {comp.get('pillar_b')}")
+
+    return jsonify(streams)
 
 
 @comparison_bp.route('/sessions/<int:session_id>/comparisons', methods=['GET'])

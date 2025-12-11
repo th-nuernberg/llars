@@ -9,8 +9,8 @@
         icon="mdi-refresh"
         variant="text"
         :loading="checking"
-        @click="checkStatus"
-        title="Status aktualisieren"
+        @click="forceRefresh"
+        title="Status neu laden"
       ></v-btn>
     </v-card-title>
     <v-divider></v-divider>
@@ -239,18 +239,24 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useKIAStatusCache } from '@/composables/useKIAStatusCache';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-// State
+// Use cached KIA status
+const { state: kiaState, fetchStatus, updateAfterSync, clearCache } = useKIAStatusCache();
+
+// Local state
 const loading = ref(true);
 const checking = ref(false);
-const pillars = ref({});
-const totalThreads = ref(0);
-const gitlabConnected = ref(false);
 const syncing = ref({});
 const syncingAll = ref(false);
 const lastSyncResult = ref(null);
+
+// Reactive bindings to cache state
+const pillars = computed(() => kiaState.pillars);
+const totalThreads = computed(() => kiaState.totalThreads);
+const gitlabConnected = computed(() => kiaState.gitlabConnected);
 
 // Token Dialog
 const showTokenDialog = ref(false);
@@ -315,13 +321,13 @@ const formatDate = (isoString) => {
   });
 };
 
-const checkStatus = async () => {
+const checkStatus = async (force = false) => {
   checking.value = true;
   try {
-    const response = await axios.get(`${API_BASE}/api/judge/kia/status`);
-    pillars.value = response.data.pillars || {};
-    totalThreads.value = response.data.total_threads || 0;
-    gitlabConnected.value = response.data.gitlab_connected || false;
+    const result = await fetchStatus(force);
+    if (result.fromCache) {
+      console.log('[KIADataSync] Using cached status');
+    }
   } catch (error) {
     console.error('Error checking KIA status:', error);
     if (error.response?.status !== 401) {
@@ -339,7 +345,10 @@ const checkStatus = async () => {
 
 const syncPillar = async (pillarNumber) => {
   syncing.value[pillarNumber] = true;
-  pillars.value[pillarNumber].gitlab_status = 'syncing';
+  // Update local state for UI feedback
+  if (kiaState.pillars[pillarNumber]) {
+    kiaState.pillars[pillarNumber].gitlab_status = 'syncing';
+  }
 
   try {
     const response = await axios.post(`${API_BASE}/api/judge/kia/sync/${pillarNumber}`);
@@ -354,8 +363,9 @@ const syncPillar = async (pillarNumber) => {
         : response.data.errors?.join(', ') || 'Unbekannter Fehler'
     };
 
-    // Refresh status
-    await checkStatus();
+    // Force refresh status and clear cache
+    clearCache();
+    await checkStatus(true);
   } catch (error) {
     console.error('Error syncing pillar:', error);
     lastSyncResult.value = {
@@ -363,7 +373,9 @@ const syncPillar = async (pillarNumber) => {
       message: `Fehler bei Säule ${pillarNumber}`,
       details: error.response?.data?.error || error.message
     };
-    pillars.value[pillarNumber].gitlab_status = 'error';
+    if (kiaState.pillars[pillarNumber]) {
+      kiaState.pillars[pillarNumber].gitlab_status = 'error';
+    }
   } finally {
     syncing.value[pillarNumber] = false;
   }
@@ -383,8 +395,9 @@ const syncAll = async () => {
         `${response.data.total_threads_updated} aktualisiert`
     };
 
-    // Refresh status
-    await checkStatus();
+    // Force refresh status and clear cache
+    clearCache();
+    await checkStatus(true);
   } catch (error) {
     console.error('Error syncing all:', error);
     lastSyncResult.value = {
@@ -414,8 +427,9 @@ const saveToken = async () => {
         message: 'GitLab Token erfolgreich konfiguriert',
         details: 'Verbindung zum Repository hergestellt'
       };
-      // Refresh status
-      await checkStatus();
+      // Force refresh status after token change
+      clearCache();
+      await checkStatus(true);
     } else {
       lastSyncResult.value = {
         success: false,
@@ -435,9 +449,12 @@ const saveToken = async () => {
   }
 };
 
+// Force refresh when refresh button is clicked
+const forceRefresh = () => checkStatus(true);
+
 // Lifecycle
 onMounted(() => {
-  checkStatus();
+  checkStatus(); // Uses cache if available
 });
 </script>
 

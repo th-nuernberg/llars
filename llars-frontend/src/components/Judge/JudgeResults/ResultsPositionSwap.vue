@@ -1,29 +1,25 @@
 <template>
   <!-- Detailed Position Swap Analysis -->
-  <v-row class="mt-4" v-if="detailedAnalysis && detailedAnalysis.summary">
-    <v-col cols="12">
-      <v-card>
-        <v-card-title class="d-flex align-center flex-wrap">
-          <v-icon class="mr-2">mdi-swap-horizontal</v-icon>
-          Position-Swap Konsistenz (MT-Bench Methodik)
-          <v-chip
-            class="ml-3"
-            :color="getConsistencyQualityColor(detailedAnalysis.interpretation?.overall_quality)"
-            size="small"
-          >
-            {{ Math.round(detailedAnalysis.summary.consistency_rate * 100) }}% konsistent
-          </v-chip>
-          <v-chip
-            class="ml-2"
-            :color="detailedAnalysis.position_bias?.dominant_bias === 'balanced' ? 'success' : 'warning'"
-            size="small"
-            variant="outlined"
-          >
-            {{ getBiasLabel(detailedAnalysis.position_bias?.dominant_bias) }}
-          </v-chip>
-        </v-card-title>
-        <v-divider></v-divider>
-        <v-card-text>
+  <div class="results-card position-swap-card" v-if="detailedAnalysis && detailedAnalysis.summary">
+    <div class="card-header">
+      <v-icon class="header-icon">mdi-swap-horizontal</v-icon>
+      <span class="header-title">Position-Swap Konsistenz (MT-Bench Methodik)</span>
+      <div class="header-tags">
+        <LTag
+          :variant="getConsistencyVariant(detailedAnalysis.interpretation?.overall_quality)"
+          size="small"
+        >
+          {{ Math.round(detailedAnalysis.summary.consistency_rate * 100) }}% konsistent
+        </LTag>
+        <LTag
+          :variant="detailedAnalysis.position_bias?.dominant_bias === 'balanced' ? 'success' : 'warning'"
+          size="small"
+        >
+          {{ getBiasLabel(detailedAnalysis.position_bias?.dominant_bias) }}
+        </LTag>
+      </div>
+    </div>
+    <div class="card-content">
           <v-skeleton-loader v-if="loading" type="card, table" />
           <template v-else>
             <!-- Interpretation Alert -->
@@ -349,10 +345,8 @@
               </v-expansion-panel>
             </v-expansion-panels>
           </template>
-        </v-card-text>
-      </v-card>
-    </v-col>
-  </v-row>
+    </div>
+  </div>
 
   <!-- Legacy Position Swap Analysis (Fallback) -->
   <v-row class="mt-4" v-else-if="legacyAnalysis && legacyAnalysis.pairs.length > 0">
@@ -432,9 +426,61 @@ const expandedSwapPairs = ref([]);
 const swapHeaders = SWAP_HEADERS;
 const detailedSwapHeaders = DETAILED_SWAP_HEADERS;
 const likertMetrics = LIKERT_METRICS;
+
+// Map quality to LTag variant
+const getConsistencyVariant = (quality) => {
+  switch (quality) {
+    case 'excellent': return 'success';
+    case 'good': return 'info';
+    case 'fair': return 'warning';
+    default: return 'danger';
+  }
+};
 </script>
 
 <style scoped>
+/* LLARS Card Styles */
+.position-swap-card {
+  margin-bottom: var(--llars-spacing-lg);
+}
+
+.results-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: var(--llars-radius);
+  box-shadow: var(--llars-shadow-sm);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--llars-spacing-sm);
+  padding: var(--llars-spacing-md) var(--llars-spacing-lg);
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.12);
+}
+
+.header-icon {
+  color: var(--llars-primary);
+}
+
+.header-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.header-tags {
+  display: flex;
+  gap: var(--llars-spacing-xs);
+  margin-left: auto;
+}
+
+.card-content {
+  padding: var(--llars-spacing-lg);
+}
+
+/* Original Styles */
 .expanded-content {
   background-color: rgba(var(--v-theme-surface-variant), 0.3);
 }

@@ -1,66 +1,65 @@
 <template>
-  <v-row class="mb-4">
-    <v-col cols="12" sm="6" lg="3">
-      <v-skeleton-loader v-if="loading" type="card" height="90" />
-      <v-card v-else class="stat-card">
-        <v-card-text class="d-flex align-center">
-          <v-avatar color="primary" size="56" class="mr-4">
-            <v-icon icon="mdi-compare" color="white" size="28"></v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-h4 font-weight-bold">{{ totalComparisons }}</div>
-            <div class="text-subtitle-2 text-medium-emphasis">Gesamt Vergleiche</div>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-col>
-    <v-col cols="12" sm="6" lg="3">
-      <v-skeleton-loader v-if="loading" type="card" height="90" />
-      <v-card v-else class="stat-card">
-        <v-card-text class="d-flex align-center">
-          <v-avatar color="success" size="56" class="mr-4">
-            <v-icon icon="mdi-trophy" color="white" size="28"></v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-h4 font-weight-bold">{{ topPillar?.name || '-' }}</div>
-            <div class="text-subtitle-2 text-medium-emphasis">Beste Säule</div>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-col>
-    <v-col cols="12" sm="6" lg="3">
-      <v-skeleton-loader v-if="loading" type="card" height="90" />
-      <v-card v-else class="stat-card">
-        <v-card-text class="d-flex align-center">
-          <v-avatar color="info" size="56" class="mr-4">
-            <v-icon icon="mdi-percent" color="white" size="28"></v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-h4 font-weight-bold">{{ averageConfidence }}%</div>
-            <div class="text-subtitle-2 text-medium-emphasis">Ø Konfidenz</div>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-col>
-    <v-col cols="12" sm="6" lg="3">
-      <v-skeleton-loader v-if="loading" type="card" height="90" />
-      <v-card v-else class="stat-card">
-        <v-card-text class="d-flex align-center">
-          <v-avatar color="warning" size="56" class="mr-4">
-            <v-icon icon="mdi-clock-outline" color="white" size="28"></v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-h4 font-weight-bold">{{ duration }}</div>
-            <div class="text-subtitle-2 text-medium-emphasis">Laufzeit</div>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-col>
-  </v-row>
+  <div class="stats-grid">
+    <!-- Total Comparisons -->
+    <div class="stat-card">
+      <v-skeleton-loader v-if="loading" type="avatar, text" />
+      <template v-else>
+        <div class="stat-icon stat-icon--primary">
+          <v-icon size="28">mdi-compare</v-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ totalComparisons }}</div>
+          <div class="stat-label">Gesamt Vergleiche</div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Top Pillar -->
+    <div class="stat-card">
+      <v-skeleton-loader v-if="loading" type="avatar, text" />
+      <template v-else>
+        <div class="stat-icon stat-icon--success">
+          <v-icon size="28">mdi-trophy</v-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ topPillar?.name || '-' }}</div>
+          <div class="stat-label">Beste Säule</div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Average Confidence -->
+    <div class="stat-card">
+      <v-skeleton-loader v-if="loading" type="avatar, text" />
+      <template v-else>
+        <div class="stat-icon stat-icon--info">
+          <v-icon size="28">mdi-percent</v-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ averageConfidence }}%</div>
+          <div class="stat-label">Ø Konfidenz</div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Duration -->
+    <div class="stat-card">
+      <v-skeleton-loader v-if="loading" type="avatar, text" />
+      <template v-else>
+        <div class="stat-icon stat-icon--warning">
+          <v-icon size="28">mdi-clock-outline</v-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ duration }}</div>
+          <div class="stat-label">Laufzeit</div>
+        </div>
+      </template>
+    </div>
+  </div>
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   loading: { type: Boolean, default: false },
   totalComparisons: { type: Number, default: 0 },
   topPillar: { type: Object, default: null },
@@ -70,13 +69,78 @@ const props = defineProps({
 </script>
 
 <style scoped>
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--llars-spacing-md);
+  margin-bottom: var(--llars-spacing-lg);
+}
+
 .stat-card {
-  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--llars-spacing-md);
+  padding: var(--llars-spacing-md) var(--llars-spacing-lg);
+  background: rgb(var(--v-theme-surface));
+  border-radius: var(--llars-radius);
+  box-shadow: var(--llars-shadow-sm);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 90px;
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--llars-shadow-md);
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--llars-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon--primary {
+  background: rgba(176, 202, 151, 0.2);
+  color: var(--llars-primary-active);
+}
+
+.stat-icon--success {
+  background: rgba(152, 212, 187, 0.2);
+  color: var(--llars-success-active);
+}
+
+.stat-icon--info {
+  background: rgba(168, 197, 226, 0.2);
+  color: var(--llars-info-active);
+}
+
+.stat-icon--warning {
+  background: rgba(232, 200, 122, 0.2);
+  color: var(--llars-warning-active);
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-top: 2px;
 }
 </style>

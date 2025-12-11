@@ -1,33 +1,37 @@
 <template>
-  <v-container class="judge-results">
-    <!-- Header -->
-    <v-row class="mb-4">
-      <v-col cols="12">
-        <div class="d-flex align-center">
-          <v-btn
-            icon="mdi-arrow-left"
-            variant="text"
-            @click="$router.push({ name: 'JudgeSession', params: { id: sessionId } })"
-          ></v-btn>
-          <div class="ml-2">
-            <v-skeleton-loader v-if="isLoading('header')" type="heading, text" />
-            <template v-else>
-              <h1 class="text-h4 font-weight-bold">Auswertung</h1>
-              <p class="text-subtitle-1 text-medium-emphasis">
-                {{ session?.session_name }} - {{ session?.pillar_count }} Säulen
-              </p>
-            </template>
-          </div>
-          <v-spacer></v-spacer>
-
-          <!-- Export Buttons -->
-          <ResultsExport
-            @export-csv="exportCSV"
-            @export-json="exportJSON"
-          />
+  <div class="judge-results">
+    <!-- Page Header -->
+    <div class="results-header">
+      <div class="header-left">
+        <LBtn
+          variant="text"
+          size="small"
+          prepend-icon="mdi-arrow-left"
+          @click="$router.push({ name: 'JudgeSession', params: { id: sessionId } })"
+        >
+          Zurück
+        </LBtn>
+        <div class="header-title-section">
+          <v-skeleton-loader v-if="isLoading('header')" type="heading" width="300" />
+          <template v-else>
+            <h1 class="page-title">
+              <v-icon class="mr-2" color="primary">mdi-chart-box</v-icon>
+              Auswertung
+            </h1>
+            <div class="page-subtitle">
+              <LTag variant="primary" size="small">{{ session?.session_name }}</LTag>
+              <LTag variant="gray" size="small">{{ session?.pillar_count }} Säulen</LTag>
+            </div>
+          </template>
         </div>
-      </v-col>
-    </v-row>
+      </div>
+      <div class="header-right">
+        <ResultsExport
+          @export-csv="exportCSV"
+          @export-json="exportJSON"
+        />
+      </div>
+    </div>
 
     <!-- Session Summary Cards -->
     <ResultsOverview
@@ -93,7 +97,7 @@
       :format-date="formatDate"
       :format-criterion-name="formatCriterionName"
     />
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -211,5 +215,49 @@ onMounted(async () => {
 .judge-results {
   max-width: 1600px;
   margin: 0 auto;
+  padding: var(--llars-spacing-lg);
+}
+
+/* Page Header */
+.results-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--llars-spacing-lg);
+  padding-bottom: var(--llars-spacing-md);
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.12);
+}
+
+.header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--llars-spacing-md);
+}
+
+.header-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--llars-spacing-xs);
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.page-subtitle {
+  display: flex;
+  gap: var(--llars-spacing-sm);
+  flex-wrap: wrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--llars-spacing-sm);
 }
 </style>

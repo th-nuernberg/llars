@@ -264,6 +264,7 @@ services:
       - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}
       - AUTHENTIK_BACKEND_CLIENT_ID=${AUTHENTIK_BACKEND_CLIENT_ID}
       - AUTHENTIK_BACKEND_CLIENT_SECRET=${AUTHENTIK_BACKEND_CLIENT_SECRET}
+      - PROJECT_STATE=${PROJECT_STATE}
     volumes:
       - ./docker/authentik/init-authentik.sh:/init-authentik.sh:ro
     working_dir: /

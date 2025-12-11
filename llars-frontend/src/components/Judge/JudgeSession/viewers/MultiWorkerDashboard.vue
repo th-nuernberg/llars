@@ -229,7 +229,7 @@ const CRITERIA_SHORT = {
   solution_orientation: 'LÖ'
 };
 
-const viewMode = ref('grid');
+const viewMode = ref('list');
 const selectedWorkerId = ref(null);
 const detailStreamRef = ref(null);
 

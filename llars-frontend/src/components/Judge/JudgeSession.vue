@@ -171,51 +171,47 @@
         <!-- Action Buttons -->
         <div class="d-flex gap-2 align-center">
           <!-- START -->
-          <v-btn
+          <LBtn
             v-if="session?.status === 'created' || session?.status === 'queued'"
-            color="success"
-            size="small"
+            variant="primary"
             prepend-icon="mdi-play"
             @click="startSession"
             :loading="actionLoading"
           >
             Starten
-          </v-btn>
+          </LBtn>
 
           <!-- PAUSE -->
-          <v-btn
+          <LBtn
             v-if="isActuallyRunning"
-            color="warning"
-            size="small"
+            variant="accent"
             prepend-icon="mdi-pause"
             @click="pauseSession"
             :loading="actionLoading"
           >
             Pause
-          </v-btn>
+          </LBtn>
 
           <!-- RESUME/RECOVER -->
-          <v-btn
+          <LBtn
             v-if="showResumeButton"
-            :color="sessionHealth?.needs_recovery ? 'error' : 'info'"
-            size="small"
+            :variant="sessionHealth?.needs_recovery ? 'danger' : 'secondary'"
             :prepend-icon="sessionHealth?.needs_recovery ? 'mdi-restart-alert' : 'mdi-play'"
             @click="resumeSession"
             :loading="actionLoading"
           >
             {{ sessionHealth?.needs_recovery ? 'Wiederherstellen' : 'Fortsetzen' }}
-          </v-btn>
+          </LBtn>
 
           <!-- RESULTS -->
-          <v-btn
+          <LBtn
             v-if="session?.status === 'completed'"
-            color="primary"
-            size="small"
+            variant="primary"
             prepend-icon="mdi-chart-box"
             @click="navigateToResults"
           >
             Ergebnisse
-          </v-btn>
+          </LBtn>
         </div>
       </div>
     </template>

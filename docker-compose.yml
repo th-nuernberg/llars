@@ -59,7 +59,7 @@ services:
       - ./llars-frontend:/vue
     environment:
       - TZ=Europe/Berlin
-      - NODE_ENV=${PROJECT_STATE}
+      # Note: Don't set NODE_ENV here - it breaks npm install for build
       # All URLs derived from PROJECT_URL (includes protocol)
       - VITE_API_BASE_URL=${PROJECT_URL}
       - VITE_PROJECT_STATE=${PROJECT_STATE}

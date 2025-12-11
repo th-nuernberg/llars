@@ -172,9 +172,12 @@ else:
     print('  Warning: authentik Admins group not found')
 "
 
-echo "[5/6] Creating additional users (researcher, viewer)..."
+# Only create additional dev users in development mode
+PROJECT_STATE="${PROJECT_STATE:-development}"
+if [ "$PROJECT_STATE" = "development" ]; then
+    echo "[5/6] Creating additional users (researcher, viewer) - DEVELOPMENT MODE..."
 
-ak shell -c "
+    ak shell -c "
 from authentik.core.models import User
 
 # Researcher user
@@ -209,6 +212,9 @@ if created:
 else:
     print('  Viewer user already exists')
 "
+else
+    echo "[5/6] Skipping dev users (researcher, viewer) - PRODUCTION MODE"
+fi
 
 echo "[6/6] Verifying configuration..."
 
@@ -239,17 +245,20 @@ print(f'  User admin: {\"OK\" if admin else \"MISSING\"}')"
 echo ""
 echo "======================================="
 echo "  Authentik Configuration Complete!"
+echo "  Mode: $PROJECT_STATE"
 echo "======================================="
 echo ""
 echo "Login credentials:"
 echo "  Username: admin"
 echo "  Password: $ADMIN_PASSWORD"
+if [ "$PROJECT_STATE" = "development" ]; then
 echo ""
 echo "  Username: researcher"
 echo "  Password: $ADMIN_PASSWORD"
 echo ""
 echo "  Username: viewer"
 echo "  Password: $ADMIN_PASSWORD"
+fi
 echo ""
 echo "Authentik Admin UI: http://localhost:55095"
 echo ""

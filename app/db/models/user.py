@@ -19,7 +19,7 @@ class User(db.Model):
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(db.String(255))
     password_hash: Mapped[str] = mapped_column(db.String(255))
-    api_key: Mapped[str] = mapped_column(db.String(36), unique=True)
+    api_key: Mapped[str] = mapped_column(db.String(100), unique=True)
     group_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('user_groups.id'), default=1)
 
     group = db.relationship('UserGroup', backref='users')

@@ -1,354 +1,233 @@
 <template>
-  <v-card>
-    <v-card-title class="d-flex align-center">
-      <v-icon class="mr-2">mdi-eye</v-icon>
-      Aktueller Vergleich
-      <v-spacer></v-spacer>
-      <!-- Live Stream Button -->
-      <v-btn
-        v-if="session?.status === 'running'"
-        color="error"
-        variant="tonal"
-        size="small"
-        class="mr-2"
-        :loading="reconnecting"
-        @click="$emit('reconnect')"
-      >
-        <v-icon start :class="{ 'pulse-icon': isStreaming }">mdi-broadcast</v-icon>
-        {{ isStreaming ? 'Live' : 'Verbinden' }}
-      </v-btn>
-      <!-- Fullscreen Button -->
-      <v-btn
-        color="primary"
-        variant="tonal"
-        size="small"
-        class="mr-2"
-        @click="$emit('open-fullscreen')"
-      >
-        <v-icon start>mdi-fullscreen</v-icon>
-        Vollbild
-      </v-btn>
-      <v-chip size="small" variant="outlined">
-        Vergleich {{ (currentComparison.comparison_index || 0) + 1 }} von {{ session?.total_comparisons }}
-      </v-chip>
-    </v-card-title>
-    <v-divider></v-divider>
+  <div class="comparison-view">
+    <!-- Header Bar -->
+    <div class="comparison-header" :class="{ 'historical-header': isHistorical }">
+      <div class="d-flex align-center gap-2">
+        <v-icon size="20">{{ isHistorical ? 'mdi-history' : 'mdi-eye' }}</v-icon>
+        <span class="header-title">{{ isHistorical ? 'Verlauf Detail' : 'Aktueller Vergleich' }}</span>
+        <v-chip size="x-small" variant="outlined">
+          #{{ (currentComparison.comparison_index || currentComparison.queue_position || 0) + 1 }} / {{ session?.total_comparisons }}
+        </v-chip>
+        <v-chip v-if="isHistorical && currentComparison.winner" size="x-small" :color="currentComparison.winner === 'A' ? 'blue' : 'green'">
+          Gewinner: {{ currentComparison.winner }}
+        </v-chip>
+      </div>
+      <div class="d-flex align-center gap-2">
+        <!-- Close button for historical view -->
+        <v-btn
+          v-if="isHistorical"
+          variant="tonal"
+          size="x-small"
+          color="grey"
+          @click="$emit('close')"
+        >
+          <v-icon start size="14">mdi-arrow-left</v-icon>
+          Zurück
+        </v-btn>
+        <v-btn
+          v-if="session?.status === 'running' && !isHistorical"
+          color="error"
+          variant="tonal"
+          size="x-small"
+          :loading="reconnecting"
+          @click="$emit('reconnect')"
+        >
+          <v-icon start size="14" :class="{ 'pulse-icon': isStreaming }">mdi-broadcast</v-icon>
+          {{ isStreaming ? 'Live' : 'Verbinden' }}
+        </v-btn>
+        <v-btn
+          variant="text"
+          size="x-small"
+          @click="$emit('open-fullscreen')"
+          title="Vollbild"
+        >
+          <v-icon size="18">mdi-fullscreen</v-icon>
+        </v-btn>
+      </div>
+    </div>
 
-    <v-card-text>
-      <v-row>
-        <!-- Thread A -->
-        <v-col cols="12" md="5">
-          <div class="thread-container">
-            <div class="thread-header">
-              <v-chip color="blue" variant="flat" prepend-icon="mdi-alpha-a-circle">
-                Thread A - {{ currentComparison.pillar_a_name }}
-              </v-chip>
+    <!-- Main Content Area (fills remaining height) -->
+    <div class="comparison-content">
+      <!-- Thread A -->
+      <div class="thread-panel thread-a">
+        <div class="thread-header-bar">
+          <v-chip color="blue" variant="flat" size="small" prepend-icon="mdi-alpha-a-circle">
+            Thread A - {{ currentComparison.pillar_a_name }}
+          </v-chip>
+        </div>
+        <div class="thread-messages">
+          <div v-for="(msg, idx) in currentComparison.thread_a_messages" :key="idx" class="message-item">
+            <div class="message-role" :class="msg.role === 'assistant' ? 'role-counsellor' : 'role-client'">
+              <v-icon size="12" class="mr-1">
+                {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
+              </v-icon>
+              {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
             </div>
-            <v-card variant="outlined" class="mt-2 thread-card">
-              <v-card-text class="pa-3">
-                <div v-for="(msg, idx) in currentComparison.thread_a_messages" :key="idx" class="message-item mb-3">
-                  <div class="message-role text-caption font-weight-bold mb-1" :class="msg.role === 'assistant' ? 'text-primary' : 'text-secondary'">
-                    <v-icon size="small" class="mr-1">
-                      {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
-                    </v-icon>
-                    {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
-                  </div>
-                  <div class="message-content">{{ msg.content }}</div>
-                </div>
-              </v-card-text>
-            </v-card>
+            <div class="message-text">{{ msg.content }}</div>
           </div>
-        </v-col>
+        </div>
+      </div>
 
-        <!-- Center: LLM Evaluation -->
-        <v-col cols="12" md="2">
-          <div class="evaluation-center">
-            <!-- LLM Status -->
-            <v-card variant="outlined" class="text-center mb-3">
-              <v-card-text class="pa-2">
-                <v-icon
-                  :color="currentComparison.llm_status === 'completed' ? 'success' : 'info'"
-                  size="32"
-                  :class="{ 'rotating': currentComparison.llm_status === 'running' }"
-                >
-                  {{ currentComparison.llm_status === 'completed' ? 'mdi-check-circle' : 'mdi-loading' }}
-                </v-icon>
-                <div class="text-caption mt-1">
-                  {{ currentComparison.llm_status === 'completed' ? 'Bewertet' : 'Bewertet...' }}
-                </div>
-              </v-card-text>
-            </v-card>
-
-            <!-- Winner Display -->
-            <v-card
-              v-if="currentComparison.winner"
-              variant="outlined"
-              :color="currentComparison.winner === 'A' ? 'blue' : 'green'"
-              class="text-center winner-card"
-            >
-              <v-card-text class="pa-3">
-                <v-icon size="48" color="warning">mdi-trophy</v-icon>
-                <div class="text-h5 font-weight-bold mt-2">
-                  {{ currentComparison.winner }}
-                </div>
-                <div class="text-caption">Gewinner</div>
-              </v-card-text>
-            </v-card>
-
-            <!-- Confidence Score -->
-            <v-card v-if="currentComparison.confidence_score" variant="outlined" class="text-center mt-3">
-              <v-card-text class="pa-2">
-                <div class="text-caption text-medium-emphasis">Konfidenz</div>
-                <div class="text-h6 font-weight-bold">
-                  {{ Math.round(currentComparison.confidence_score * 100) }}%
-                </div>
-              </v-card-text>
-            </v-card>
+      <!-- Center: Evaluation Status -->
+      <div class="evaluation-panel">
+        <div class="eval-status-card">
+          <v-icon
+            :color="currentComparison.llm_status === 'completed' ? 'success' : 'info'"
+            size="28"
+            :class="{ 'rotating': currentComparison.llm_status === 'running' }"
+          >
+            {{ currentComparison.llm_status === 'completed' ? 'mdi-check-circle' : 'mdi-loading' }}
+          </v-icon>
+          <div class="eval-status-text">
+            {{ currentComparison.llm_status === 'completed' ? 'Bewertet' : 'Bewertet...' }}
           </div>
-        </v-col>
+        </div>
 
-        <!-- Thread B -->
-        <v-col cols="12" md="5">
-          <div class="thread-container">
-            <div class="thread-header">
-              <v-chip color="green" variant="flat" prepend-icon="mdi-alpha-b-circle">
-                Thread B - {{ currentComparison.pillar_b_name }}
-              </v-chip>
+        <div v-if="currentComparison.winner" class="winner-display" :class="'winner-' + currentComparison.winner.toLowerCase()">
+          <v-icon size="32" color="warning">mdi-trophy</v-icon>
+          <div class="winner-letter">{{ currentComparison.winner }}</div>
+          <div class="winner-label">Gewinner</div>
+        </div>
+
+        <div v-if="currentComparison.confidence_score" class="confidence-display">
+          <div class="confidence-label">Konfidenz</div>
+          <div class="confidence-value">{{ Math.round(currentComparison.confidence_score * 100) }}%</div>
+        </div>
+      </div>
+
+      <!-- Thread B -->
+      <div class="thread-panel thread-b">
+        <div class="thread-header-bar">
+          <v-chip color="green" variant="flat" size="small" prepend-icon="mdi-alpha-b-circle">
+            Thread B - {{ currentComparison.pillar_b_name }}
+          </v-chip>
+        </div>
+        <div class="thread-messages">
+          <div v-for="(msg, idx) in currentComparison.thread_b_messages" :key="idx" class="message-item">
+            <div class="message-role" :class="msg.role === 'assistant' ? 'role-counsellor' : 'role-client'">
+              <v-icon size="12" class="mr-1">
+                {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
+              </v-icon>
+              {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
             </div>
-            <v-card variant="outlined" class="mt-2 thread-card">
-              <v-card-text class="pa-3">
-                <div v-for="(msg, idx) in currentComparison.thread_b_messages" :key="idx" class="message-item mb-3">
-                  <div class="message-role text-caption font-weight-bold mb-1" :class="msg.role === 'assistant' ? 'text-primary' : 'text-secondary'">
-                    <v-icon size="small" class="mr-1">
-                      {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
-                    </v-icon>
-                    {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
-                  </div>
-                  <div class="message-content">{{ msg.content }}</div>
-                </div>
-              </v-card-text>
-            </v-card>
+            <div class="message-text">{{ msg.content }}</div>
           </div>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
+    </div>
 
-      <!-- LLM Prompt Display -->
-      <v-expansion-panels class="mt-4" :model-value="expandedPanels" @update:model-value="$emit('update:expanded-panels', $event)">
-        <v-expansion-panel value="prompt">
-          <v-expansion-panel-title>
-            <v-icon class="mr-2">mdi-message-text</v-icon>
-            LLM Prompt (an das Modell gesendet)
-            <v-chip size="x-small" class="ml-2" color="info">{{ currentComparison.llm_prompt?.length || 0 }} Zeichen</v-chip>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-              <strong>System Prompt:</strong> {{ currentComparison.llm_system_prompt }}
-            </v-alert>
-            <pre class="prompt-preview">{{ currentComparison.llm_prompt }}</pre>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
+    <!-- Stream Output Section (fixed height) -->
+    <div class="stream-section">
+      <div class="stream-header">
+        <div class="d-flex align-center gap-2">
+          <v-icon size="16" :class="{ 'rotating': isStreaming }">
+            {{ isStreaming ? 'mdi-loading' : 'mdi-robot' }}
+          </v-icon>
+          <span class="stream-title">LLM Ausgabe</span>
+          <v-chip size="x-small" :color="isStreaming ? 'warning' : (llmStreamContent ? 'success' : 'grey')">
+            {{ isStreaming ? 'Streamt...' : (llmStreamContent ? 'Fertig' : 'Warte...') }}
+          </v-chip>
+          <v-chip size="x-small" color="info" v-if="llmStreamContent">
+            {{ llmStreamContent.length }} Z.
+          </v-chip>
+        </div>
+        <div class="d-flex align-center gap-1">
+          <v-btn-toggle v-model="viewMode" density="compact" mandatory>
+            <v-btn value="formatted" size="x-small" variant="text">
+              <v-icon size="14">mdi-format-list-bulleted</v-icon>
+            </v-btn>
+            <v-btn value="raw" size="x-small" variant="text">
+              <v-icon size="14">mdi-code-braces</v-icon>
+            </v-btn>
+          </v-btn-toggle>
+          <v-btn
+            size="x-small"
+            variant="text"
+            @click="$emit('copy-stream')"
+            :disabled="!llmStreamContent"
+            title="Kopieren"
+          >
+            <v-icon size="14">mdi-content-copy</v-icon>
+          </v-btn>
+        </div>
+      </div>
 
-        <!-- LLM Stream Output - Live Formatted -->
-        <v-expansion-panel value="stream">
-          <v-expansion-panel-title>
-            <v-icon class="mr-2" :class="{ 'rotating': isStreaming }">
-              {{ isStreaming ? 'mdi-loading' : 'mdi-robot' }}
-            </v-icon>
-            LLM Ausgabe (Live Stream)
-            <v-chip size="x-small" class="ml-2" :color="isStreaming ? 'warning' : (llmStreamContent ? 'success' : 'grey')">
-              {{ isStreaming ? 'Streamt...' : (llmStreamContent ? 'Fertig' : 'Warte...') }}
-            </v-chip>
-            <v-chip size="x-small" class="ml-1" color="info" v-if="llmStreamContent">
-              {{ llmStreamContent.length }} Zeichen
-            </v-chip>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text class="stream-panel-content">
-            <!-- Stream Status Header -->
-            <v-alert
-              :type="isStreaming ? 'warning' : 'info'"
-              variant="tonal"
-              density="compact"
-              class="mb-3"
-            >
-              <div class="d-flex align-center justify-space-between">
-                <span>
-                  <strong>Vergleich #{{ currentComparison.comparison_index + 1 }}:</strong>
-                  {{ currentComparison.pillar_a_name }} vs {{ currentComparison.pillar_b_name }}
-                </span>
-                <v-chip
-                  size="x-small"
-                  :color="isStreaming ? 'warning' : 'success'"
-                  class="ml-2"
-                >
-                  <v-icon start size="x-small" :class="{ 'rotating': isStreaming }">
-                    {{ isStreaming ? 'mdi-loading' : 'mdi-check' }}
-                  </v-icon>
-                  {{ isStreaming ? 'LLM generiert...' : 'Abgeschlossen' }}
+      <div class="stream-content" ref="streamOutput" @scroll="$emit('stream-scroll', $event)">
+        <!-- Formatted View -->
+        <template v-if="viewMode === 'formatted' && parsedStreamJson">
+          <div class="formatted-view">
+            <!-- Winner & Confidence Row -->
+            <div class="result-row">
+              <div class="result-side result-a" :class="{ 'is-winner': parsedStreamJson.winner === 'A' }">
+                <div class="result-letter">A</div>
+                <div class="result-pillar">{{ currentComparison.pillar_a_name }}</div>
+              </div>
+              <div class="result-center">
+                <v-chip :color="parsedStreamJson.winner === 'TIE' ? 'warning' : 'success'" size="small">
+                  <v-icon start size="14">mdi-trophy</v-icon>
+                  {{ parsedStreamJson.winner || '?' }}
                 </v-chip>
+                <div v-if="parsedStreamJson.confidence" class="confidence-bar">
+                  <div class="confidence-fill" :style="{ width: (parsedStreamJson.confidence * 100) + '%' }"></div>
+                  <span class="confidence-text">{{ Math.round(parsedStreamJson.confidence * 100) }}%</span>
+                </div>
               </div>
-            </v-alert>
-
-            <!-- Formatted JSON Output (when valid JSON detected) -->
-            <div v-if="parsedStreamJson" class="formatted-json-output mb-3">
-              <v-card variant="outlined" class="pa-3">
-                <div class="text-subtitle-2 font-weight-bold mb-2 d-flex align-center">
-                  <v-icon class="mr-1" size="small" color="success">mdi-check-circle</v-icon>
-                  Strukturierte Bewertung
-                </div>
-
-                <!-- Winner Display -->
-                <v-row class="mb-3">
-                  <v-col cols="4">
-                    <v-card
-                      :color="parsedStreamJson.winner === 'A' ? 'success' : 'grey-lighten-3'"
-                      variant="tonal"
-                      class="text-center pa-2"
-                    >
-                      <div class="text-h5 font-weight-bold">A</div>
-                      <div class="text-caption">{{ currentComparison.pillar_a_name }}</div>
-                    </v-card>
-                  </v-col>
-                  <v-col cols="4" class="d-flex align-center justify-center">
-                    <v-chip
-                      :color="parsedStreamJson.winner === 'TIE' ? 'warning' : 'primary'"
-                      size="large"
-                    >
-                      <v-icon start>mdi-trophy</v-icon>
-                      {{ parsedStreamJson.winner || '?' }}
-                    </v-chip>
-                  </v-col>
-                  <v-col cols="4">
-                    <v-card
-                      :color="parsedStreamJson.winner === 'B' ? 'success' : 'grey-lighten-3'"
-                      variant="tonal"
-                      class="text-center pa-2"
-                    >
-                      <div class="text-h5 font-weight-bold">B</div>
-                      <div class="text-caption">{{ currentComparison.pillar_b_name }}</div>
-                    </v-card>
-                  </v-col>
-                </v-row>
-
-                <!-- Confidence -->
-                <div v-if="parsedStreamJson.confidence" class="mb-3">
-                  <div class="text-caption text-medium-emphasis">Konfidenz</div>
-                  <v-progress-linear
-                    :model-value="parsedStreamJson.confidence * 100"
-                    :color="parsedStreamJson.confidence >= 0.8 ? 'success' : parsedStreamJson.confidence >= 0.6 ? 'info' : 'warning'"
-                    height="20"
-                    rounded
-                  >
-                    <template v-slot:default="{ value }">
-                      <strong>{{ Math.round(value) }}%</strong>
-                    </template>
-                  </v-progress-linear>
-                </div>
-
-                <!-- Criteria Scores -->
-                <div v-if="parsedStreamJson.criteria_scores" class="criteria-scores">
-                  <div class="text-subtitle-2 font-weight-bold mb-2">Kriterien-Bewertungen</div>
-                  <v-table density="compact">
-                    <thead>
-                      <tr>
-                        <th>Kriterium</th>
-                        <th class="text-center">A</th>
-                        <th class="text-center">B</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(scores, criterion) in parsedStreamJson.criteria_scores" :key="criterion">
-                        <td>{{ formatCriterionName(criterion) }}</td>
-                        <td class="text-center">
-                          <v-chip size="x-small" :color="getScoreColor(scores.score_a)">
-                            {{ scores.score_a }}/5
-                          </v-chip>
-                        </td>
-                        <td class="text-center">
-                          <v-chip size="x-small" :color="getScoreColor(scores.score_b)">
-                            {{ scores.score_b }}/5
-                          </v-chip>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </v-table>
-                </div>
-
-                <!-- Final Justification -->
-                <div v-if="parsedStreamJson.final_justification" class="mt-3">
-                  <div class="text-subtitle-2 font-weight-bold mb-1">Begründung</div>
-                  <div class="text-body-2 justification-text">{{ parsedStreamJson.final_justification }}</div>
-                </div>
-              </v-card>
-            </div>
-
-            <!-- Raw Stream Output -->
-            <div class="stream-output-container">
-              <div class="d-flex align-center justify-space-between mb-2">
-                <span class="text-subtitle-2">Raw Stream Output</span>
-                <v-btn
-                  size="x-small"
-                  variant="text"
-                  @click="$emit('copy-stream')"
-                  :disabled="!llmStreamContent"
-                >
-                  <v-icon start size="small">mdi-content-copy</v-icon>
-                  Kopieren
-                </v-btn>
-              </div>
-              <div class="stream-output" ref="streamOutput" @scroll="$emit('stream-scroll', $event)">
-                <pre v-if="llmStreamContent" class="stream-pre">{{ llmStreamContent }}<span v-if="isStreaming" class="cursor-blink">|</span></pre>
-                <div v-else class="text-center text-medium-emphasis py-4">
-                  <v-progress-circular v-if="isStreaming" indeterminate color="primary" class="mb-2"></v-progress-circular>
-                  <v-icon v-else size="32" class="mb-2">mdi-text-box-outline</v-icon>
-                  <div>{{ isStreaming ? 'Warte auf LLM-Ausgabe...' : 'Stream startet wenn der Vergleich beginnt' }}</div>
-                </div>
-                <!-- Follow Button (appears when user scrolls up) -->
-                <v-btn
-                  v-if="!autoScrollEnabled && isStreaming"
-                  class="follow-btn"
-                  color="primary"
-                  size="small"
-                  rounded
-                  @click="$emit('enable-auto-scroll')"
-                >
-                  <v-icon start>mdi-arrow-down</v-icon>
-                  Folgen
-                </v-btn>
+              <div class="result-side result-b" :class="{ 'is-winner': parsedStreamJson.winner === 'B' }">
+                <div class="result-letter">B</div>
+                <div class="result-pillar">{{ currentComparison.pillar_b_name }}</div>
               </div>
             </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
 
-        <!-- Chain of Thought -->
-        <v-expansion-panel v-if="currentComparison.chain_of_thought" value="cot">
-          <v-expansion-panel-title>
-            <v-icon class="mr-2">mdi-brain</v-icon>
-            Chain-of-Thought Reasoning
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <div v-for="(step, idx) in currentComparison.chain_of_thought" :key="idx" class="cot-step mb-3">
-              <div class="text-subtitle-2 font-weight-bold">{{ step.step_name }}</div>
-              <div class="text-body-2 mt-1">{{ step.reasoning }}</div>
+            <!-- Criteria Scores -->
+            <div v-if="parsedStreamJson.criteria_scores" class="criteria-grid">
+              <div v-for="(scores, criterion) in parsedStreamJson.criteria_scores" :key="criterion" class="criteria-row">
+                <div class="criteria-label">{{ formatCriterionName(criterion) }}</div>
+                <div class="criteria-scores-row">
+                  <div class="score-chip score-a" :class="getScoreClass(scores.score_a)">{{ scores.score_a }}</div>
+                  <div class="score-vs">vs</div>
+                  <div class="score-chip score-b" :class="getScoreClass(scores.score_b)">{{ scores.score_b }}</div>
+                </div>
+              </div>
             </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
 
-        <!-- JSON Preview -->
-        <v-expansion-panel value="json">
-          <v-expansion-panel-title>
-            <v-icon class="mr-2">mdi-code-json</v-icon>
-            JSON Rohdaten
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <pre class="json-preview">{{ JSON.stringify(currentComparison, null, 2) }}</pre>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
-    </v-card-text>
-  </v-card>
+            <!-- Justification -->
+            <div v-if="parsedStreamJson.final_justification" class="justification-box">
+              <div class="justification-label">Begründung</div>
+              <div class="justification-text">{{ parsedStreamJson.final_justification }}</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Raw View / Streaming -->
+        <template v-else>
+          <pre v-if="llmStreamContent" class="stream-pre">{{ llmStreamContent }}<span v-if="isStreaming" class="cursor-blink">|</span></pre>
+          <div v-else class="stream-empty">
+            <v-progress-circular v-if="isStreaming" indeterminate color="primary" size="24"></v-progress-circular>
+            <v-icon v-else size="24">mdi-text-box-outline</v-icon>
+            <span>{{ isStreaming ? 'Warte auf Ausgabe...' : 'Stream startet wenn Vergleich beginnt' }}</span>
+          </div>
+        </template>
+
+        <!-- Follow Button -->
+        <v-btn
+          v-if="!autoScrollEnabled && isStreaming"
+          class="follow-btn"
+          color="primary"
+          size="x-small"
+          rounded
+          @click="$emit('enable-auto-scroll')"
+        >
+          <v-icon start size="14">mdi-arrow-down</v-icon>
+          Folgen
+        </v-btn>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
+import { ref } from 'vue';
+
 defineProps({
   currentComparison: {
     type: Object,
@@ -382,6 +261,10 @@ defineProps({
     type: Boolean,
     default: true
   },
+  isHistorical: {
+    type: Boolean,
+    default: false
+  },
   formatCriterionName: {
     type: Function,
     required: true
@@ -392,124 +275,214 @@ defineProps({
   }
 });
 
-defineEmits(['reconnect', 'open-fullscreen', 'copy-stream', 'stream-scroll', 'enable-auto-scroll', 'update:expanded-panels']);
+defineEmits(['reconnect', 'open-fullscreen', 'copy-stream', 'stream-scroll', 'enable-auto-scroll', 'update:expanded-panels', 'close']);
+
+const viewMode = ref('formatted');
+
+const getScoreClass = (score) => {
+  if (score >= 4) return 'score-high';
+  if (score >= 3) return 'score-mid';
+  return 'score-low';
+};
 </script>
 
 <style scoped>
-.thread-container {
+/* ============================================
+   FIXED HEIGHT LAYOUT
+   ============================================ */
+.comparison-view {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
-.thread-header {
+/* Header */
+.comparison-header {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  flex-shrink: 0;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.comparison-header.historical-header {
+  background: linear-gradient(135deg, rgba(var(--v-theme-info), 0.1) 0%, rgba(var(--v-theme-surface-variant), 0.3) 100%);
+  border-left: 3px solid rgb(var(--v-theme-info));
+}
+
+.header-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Main Content - Three Columns */
+.comparison-content {
+  display: flex;
+  flex: 1;
+  min-height: 0; /* Important for flex children to shrink */
+  overflow: hidden;
+}
+
+/* Thread Panels */
+.thread-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.thread-a {
+  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.thread-b {
+  border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.thread-header-bar {
+  padding: 8px;
+  flex-shrink: 0;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+}
+
+.thread-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
 }
 
 .message-item {
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .message-item:last-child {
   border-bottom: none;
-  padding-bottom: 0;
 }
 
 .message-role {
-  color: rgb(var(--v-theme-primary));
+  font-size: 10px;
+  font-weight: 600;
   text-transform: uppercase;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
 }
 
-.message-content {
+.role-counsellor {
+  color: rgb(var(--v-theme-primary));
+}
+
+.role-client {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.message-text {
+  font-size: 12px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
 
-.evaluation-center {
+/* Evaluation Panel */
+.evaluation-panel {
+  width: 120px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  height: 100%;
+  justify-content: center;
+  padding: 12px 8px;
+  gap: 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.15);
 }
 
-.winner-card {
-  animation: winnerPulse 1s ease-in-out;
+.eval-status-card {
+  text-align: center;
 }
 
-@keyframes winnerPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+.eval-status-text {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-top: 4px;
 }
 
-.rotating {
-  animation: rotate 2s linear infinite;
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.cot-step {
+.winner-display {
+  text-align: center;
   padding: 12px;
-  background-color: rgba(var(--v-theme-surface), 0.5);
-  border-left: 3px solid rgb(var(--v-theme-primary));
-  border-radius: 4px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-success), 0.1);
 }
 
-.json-preview {
-  background-color: rgba(var(--v-theme-surface), 0.5);
-  padding: 16px;
-  border-radius: 4px;
-  overflow-x: auto;
+.winner-display.winner-a {
+  background: rgba(33, 150, 243, 0.15);
+}
+
+.winner-display.winner-b {
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.winner-letter {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 4px 0;
+}
+
+.winner-label {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.confidence-display {
+  text-align: center;
+}
+
+.confidence-label {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.confidence-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Stream Section - Fixed Height */
+.stream-section {
+  height: 200px; /* Fixed height */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface-variant), 0.1);
+}
+
+.stream-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  flex-shrink: 0;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+}
+
+.stream-title {
   font-size: 12px;
-  font-family: 'Courier New', monospace;
+  font-weight: 600;
 }
 
-.prompt-preview {
-  background-color: rgba(var(--v-theme-info), 0.08);
-  padding: 16px;
-  border-radius: 4px;
-  overflow-x: auto;
-  font-size: 13px;
-  font-family: 'Courier New', monospace;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  max-height: 500px;
+.stream-content {
+  flex: 1;
   overflow-y: auto;
-}
-
-.stream-output {
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-  padding: 16px;
-  max-height: 400px;
-  overflow-y: auto;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  position: relative;
-}
-
-.stream-output pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.thread-card {
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.stream-panel-content :deep(.v-expansion-panel-text__wrapper) {
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.stream-output-container {
-  margin-top: 16px;
+  padding: 8px 12px;
   position: relative;
 }
 
@@ -518,14 +491,24 @@ defineEmits(['reconnect', 'open-fullscreen', 'copy-stream', 'stream-scroll', 'en
   white-space: pre-wrap;
   word-wrap: break-word;
   font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.stream-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
   font-size: 12px;
-  line-height: 1.5;
 }
 
 .cursor-blink {
   animation: blink 1s step-end infinite;
   color: rgb(var(--v-theme-primary));
-  font-weight: bold;
 }
 
 @keyframes blink {
@@ -533,29 +516,182 @@ defineEmits(['reconnect', 'open-fullscreen', 'copy-stream', 'stream-scroll', 'en
   50% { opacity: 0; }
 }
 
-.formatted-json-output {
-  border: 1px solid rgba(var(--v-theme-success), 0.3);
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(var(--v-theme-success), 0.05) 0%, rgba(var(--v-theme-success), 0.02) 100%);
-  max-height: 350px;
-  overflow-y: auto;
+/* Formatted View */
+.formatted-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.justification-text {
-  background-color: rgba(var(--v-theme-surface), 0.8);
-  padding: 12px;
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.result-side {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
   border-radius: 6px;
-  font-style: italic;
-  line-height: 1.6;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  transition: all 0.3s ease;
+}
+
+.result-side.is-winner {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(var(--v-theme-success), 0.3);
+}
+
+.result-a.is-winner {
+  background: rgba(33, 150, 243, 0.2);
+}
+
+.result-b.is-winner {
+  background: rgba(76, 175, 80, 0.2);
+}
+
+.result-letter {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.result-pillar {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.result-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.confidence-bar {
+  width: 80px;
+  height: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: rgb(var(--v-theme-success));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.confidence-text {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* Criteria Grid */
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.criteria-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+  border-radius: 4px;
+}
+
+.criteria-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.criteria-scores-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.score-chip {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+}
+
+.score-a {
+  background: rgb(33, 150, 243);
+}
+
+.score-b {
+  background: rgb(76, 175, 80);
+}
+
+.score-high {
+  opacity: 1;
+}
+
+.score-mid {
+  opacity: 0.7;
+}
+
+.score-low {
+  opacity: 0.5;
+}
+
+.score-vs {
+  font-size: 9px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* Justification */
+.justification-box {
+  padding: 8px;
+  background: rgba(var(--v-theme-primary), 0.05);
+  border-radius: 4px;
   border-left: 3px solid rgb(var(--v-theme-primary));
 }
 
+.justification-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 4px;
+}
+
+.justification-text {
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+}
+
+/* Follow Button */
 .follow-btn {
   position: absolute;
-  bottom: 16px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+}
+
+/* Animations */
+.rotating {
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .pulse-icon {

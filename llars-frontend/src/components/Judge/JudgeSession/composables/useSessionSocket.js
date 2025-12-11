@@ -24,7 +24,8 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     loadSession,
     loadQueue,
     loadCurrentComparison,
-    loadCompletedComparisons
+    loadCompletedComparisons,
+    loadWorkerStreams
   } = api;
 
   const { getPillarName } = helpers;
@@ -56,9 +57,11 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     };
 
     // Re-join room when socket reconnects
-    socket.value.on('connect', () => {
+    socket.value.on('connect', async () => {
       console.log('[Judge Socket] Connected/Reconnected, socket id:', socket.value.id);
       joinSessionRoom();
+      // Restore accumulated stream content from workers
+      await loadWorkerStreams();
       loadSession();
       loadQueue();
     });
@@ -69,9 +72,11 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     });
 
     // Handle reconnect event
-    socket.value.on('reconnect', (attemptNumber) => {
+    socket.value.on('reconnect', async (attemptNumber) => {
       console.log(`[Judge Socket] Reconnected after ${attemptNumber} attempts`);
       joinSessionRoom();
+      // Restore accumulated stream content from workers
+      await loadWorkerStreams();
       loadSession();
       loadQueue();
     });
@@ -80,6 +85,8 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     if (socket.value.connected) {
       console.log('[Judge Socket] Already connected, joining room immediately');
       joinSessionRoom();
+      // Restore accumulated stream content from workers
+      loadWorkerStreams();
     }
 
     // Handle join confirmation
@@ -268,9 +275,17 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
   // Reconnect to live stream
   const reconnectToStream = async () => {
-    llmStreamContent.value = '';
     socket.value = getSocket();
     socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
+
+    // Restore accumulated stream content from workers
+    const restored = await loadWorkerStreams();
+
+    // Only clear if we couldn't restore
+    if (!restored) {
+      llmStreamContent.value = '';
+    }
+
     await loadCurrentComparison();
     if (!expandedPanels.value.includes('stream')) {
       expandedPanels.value = ['stream', 'prompt'];
@@ -281,7 +296,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
         llm_status: 'running'
       };
     }
-    console.log('[Judge] Reconnected to live stream');
+    console.log('[Judge] Reconnected to live stream, restored:', restored);
   };
 
   // Cleanup socket

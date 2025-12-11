@@ -36,19 +36,19 @@
             </div>
           </div>
 
-          <div class="panel-content">
-            <!-- Session Progress -->
-            <SessionProgressBar
-              :session="session"
-              :progress="progress"
-              :worker-count="workerCount"
-              :format-date="formatDate"
-              class="mb-4"
-            />
+          <div class="panel-content-left">
+            <!-- Session Progress (compact, fixed height) -->
+            <div class="progress-section">
+              <SessionProgressBar
+                :session="session"
+                :progress="progress"
+                :worker-count="workerCount"
+                :format-date="formatDate"
+              />
+            </div>
 
-            <!-- Worker Status Grid -->
-            <div v-if="workerCount > 1 && session?.status === 'running'" class="section mb-4">
-              <h3 class="section-title">Worker Pool</h3>
+            <!-- Worker Status Grid (when applicable) -->
+            <div v-if="workerCount > 1 && session?.status === 'running'" class="workers-section">
               <WorkerLaneGrid
                 :worker-count="workerCount"
                 :active-worker-count="activeWorkerCount"
@@ -67,9 +67,8 @@
               />
             </div>
 
-            <!-- Queue Panel -->
-            <div class="section">
-              <h3 class="section-title">Warteschlange</h3>
+            <!-- Queue Panel (fills remaining space) -->
+            <div class="queue-section">
               <SessionQueuePanel
                 :queue="queue"
                 :all-queue-items="allQueueItems"
@@ -94,10 +93,34 @@
           <div class="resize-handle"></div>
         </div>
 
-        <!-- Right Panel: Current Comparison + History -->
+        <!-- Right Panel: Tab-based navigation -->
         <div class="right-panel" :style="rightPanelStyle()">
-          <div class="panel-header">
-            <h2 class="panel-title">Aktueller Vergleich</h2>
+          <!-- Tab Navigation -->
+          <div class="panel-header tabs-header">
+            <v-tabs v-model="activeTab" density="compact" color="primary">
+              <v-tab value="live" :disabled="session?.status === 'completed'">
+                <v-icon start size="18">mdi-play-circle</v-icon>
+                Live
+                <v-chip
+                  v-if="isStreaming"
+                  size="x-small"
+                  color="success"
+                  class="ml-2 pulse-chip"
+                >
+                  <v-icon size="10" class="mr-1">mdi-circle</v-icon>
+                </v-chip>
+              </v-tab>
+              <v-tab v-if="workerCount > 1" value="workers">
+                <v-icon start size="18">mdi-account-group</v-icon>
+                Workers
+                <v-chip size="x-small" color="primary" class="ml-2">{{ activeWorkerCount }}</v-chip>
+              </v-tab>
+              <v-tab value="history">
+                <v-icon start size="18">mdi-history</v-icon>
+                Verlauf
+                <v-chip size="x-small" class="ml-2">{{ completedComparisons.length }}</v-chip>
+              </v-tab>
+            </v-tabs>
             <v-btn
               icon="mdi-refresh"
               variant="text"
@@ -108,48 +131,59 @@
             ></v-btn>
           </div>
 
-          <div class="panel-content">
-            <!-- Current Comparison View -->
-            <CurrentComparisonView
-              v-if="currentComparison"
-              :current-comparison="currentComparison"
-              :session="session"
-              :reconnecting="reconnecting"
-              :is-streaming="isStreaming"
-              :llm-stream-content="llmStreamContent"
-              :parsed-stream-json="parsedStreamJson"
-              :expanded-panels="expandedPanels"
-              :auto-scroll-enabled="autoScrollEnabled"
-              :format-criterion-name="formatCriterionName"
-              :get-score-color="getScoreColor"
-              compact
-              @reconnect="reconnectToStream"
-              @open-fullscreen="openFullscreen"
-              @copy-stream="copyStreamToClipboard"
-              @stream-scroll="handleStreamScroll"
-              @enable-auto-scroll="enableAutoScroll"
-              @update:expanded-panels="expandedPanels = $event"
-            />
-            <v-alert v-else type="info" variant="tonal" class="mb-4">
-              <template #prepend>
-                <v-icon>mdi-information-outline</v-icon>
-              </template>
-              Kein aktiver Vergleich. Starten Sie die Session um Vergleiche zu generieren.
-            </v-alert>
+          <!-- Tab Content -->
+          <v-window v-model="activeTab" class="tab-content">
+            <!-- Live Tab: Current Comparison -->
+            <v-window-item value="live" class="tab-window-item">
+              <div class="comparison-section">
+                <ComparisonViewer
+                  v-if="currentComparison"
+                  :comparison="currentComparison"
+                  :session="session"
+                  :is-streaming="isStreaming"
+                  :llm-stream-content="llmStreamContent"
+                  :auto-scroll-enabled="autoScrollEnabled"
+                  mode="live"
+                  @open-fullscreen="openUnifiedFullscreen('live-single')"
+                  @stream-scroll="handleStreamScroll"
+                  @enable-auto-scroll="enableAutoScroll"
+                />
+                <div v-else class="empty-state">
+                  <v-icon size="48" color="grey">mdi-compare-horizontal</v-icon>
+                  <p class="mt-2 text-medium-emphasis">Kein aktiver Vergleich</p>
+                  <p class="text-caption text-medium-emphasis">
+                    {{ session?.status === 'completed' ? 'Session abgeschlossen. Siehe Verlauf.' : 'Starten Sie die Session um Vergleiche zu generieren.' }}
+                  </p>
+                </div>
+              </div>
+            </v-window-item>
 
-            <!-- Comparison History -->
-            <div class="section mt-4">
-              <h3 class="section-title">Verlauf</h3>
-              <ComparisonHistoryTable
-                :completed-comparisons="completedComparisons"
-                :headers="historyHeaders"
-                :get-confidence-color="getConfidenceColor"
-                :format-date="formatDate"
-                compact
-                @view-comparison="viewComparison"
+            <!-- Workers Tab: Multi-Worker Dashboard -->
+            <v-window-item v-if="workerCount > 1" value="workers" class="tab-window-item">
+              <MultiWorkerDashboard
+                :worker-count="workerCount"
+                :worker-streams="workerStreams"
+                :session="session"
+                :score-criteria="SCORE_CRITERIA"
+                :get-worker-parsed-result="getWorkerParsedResult"
+                :get-worker-score-a="getWorkerScoreA"
+                :get-worker-score-b="getWorkerScoreB"
+                @open-fullscreen="openUnifiedFullscreen('live-multi')"
+                @view-worker="focusWorker"
               />
-            </div>
-          </div>
+            </v-window-item>
+
+            <!-- History Tab: Completed Comparisons -->
+            <v-window-item value="history" class="tab-window-item">
+              <HistoryTab
+                :comparisons="completedComparisons"
+                :loading="loading"
+                @view-detail="viewHistoricalComparison"
+                @view-fullscreen="openHistoricalFullscreen"
+                @refresh="loadCompletedComparisons"
+              />
+            </v-window-item>
+          </v-window>
         </div>
       </div>
 
@@ -217,74 +251,51 @@
     </template>
   </div>
 
-  <!-- Single Worker Fullscreen Dialog -->
-  <SingleWorkerFullscreenDialog
-    v-model="fullscreenMode"
-    :current-comparison="currentComparison"
+  <!-- Unified Fullscreen Dialog (replaces Single + Multi Worker dialogs) -->
+  <UnifiedFullscreenDialog
+    v-model="unifiedFullscreenOpen"
+    :mode="fullscreenMode"
     :session="session"
+    :progress="progress"
+    :current-comparison="fullscreenComparison"
     :is-streaming="isStreaming"
     :llm-stream-content="llmStreamContent"
-    :parsed-stream-json="parsedStreamJson"
-    :stream-display-mode="streamDisplayMode"
     :auto-scroll-enabled="autoScrollEnabled"
-    :progress="progress"
-    :score-criteria="SCORE_CRITERIA"
-    :step-definitions="STEP_DEFINITIONS"
-    :get-step-by-key="getStepByKey"
-    :get-status-color="getStatusColor"
-    :get-status-icon="getStatusIcon"
-    :get-status-text="getStatusText"
-    @update:stream-display-mode="streamDisplayMode = $event"
-    @close="closeFullscreen"
-    @copy-stream="copyStreamToClipboard"
-    @stream-scroll="handleStreamScroll"
-    @enable-auto-scroll="enableAutoScroll"
-  />
-
-  <!-- Multi-Worker Fullscreen Dialog -->
-  <MultiWorkerFullscreenDialog
-    v-model="multiWorkerFullscreenMode"
-    :display-mode="multiWorkerDisplayMode"
-    :session="session"
-    :active-worker-count="activeWorkerCount"
-    :session-pillars="sessionPillars"
-    :progress="progress"
     :worker-count="workerCount"
     :worker-streams="workerStreams"
-    :worker-colors="WORKER_COLORS"
+    :focused-worker-id="focusedWorkerId"
     :score-criteria="SCORE_CRITERIA"
     :step-definitions="STEP_DEFINITIONS"
-    :focused-worker-id="focusedWorkerId"
-    :get-multi-worker-col-size="getMultiWorkerColSize"
-    :get-pillar-color="getPillarColor"
-    :get-pillar-icon="getPillarIcon"
-    :get-status-color="getStatusColor"
-    :get-status-icon="getStatusIcon"
-    :get-status-text="getStatusText"
     :get-worker-parsed-result="getWorkerParsedResult"
     :get-worker-score-a="getWorkerScoreA"
     :get-worker-score-b="getWorkerScoreB"
     :get-worker-step="getWorkerStep"
+    :get-step-by-key="getStepByKey"
+    :get-status-color="getStatusColor"
+    :get-status-icon="getStatusIcon"
+    :get-status-text="getStatusText"
     :get-confidence-color="getConfidenceColor"
-    @update:display-mode="multiWorkerDisplayMode = $event"
-    @update:focused-worker-id="focusedWorkerId = $event"
-    @close="closeMultiWorkerFullscreen"
+    @close="closeUnifiedFullscreen"
+    @stream-scroll="handleStreamScroll"
+    @enable-auto-scroll="enableAutoScroll"
+    @focus-worker="focusWorker"
   />
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import WorkerLane from './WorkerLane.vue';
 
 // Import extracted components
 import SessionProgressBar from './JudgeSession/SessionProgressBar.vue';
 import WorkerLaneGrid from './JudgeSession/WorkerLaneGrid.vue';
 import SessionQueuePanel from './JudgeSession/SessionQueuePanel.vue';
-import CurrentComparisonView from './JudgeSession/CurrentComparisonView.vue';
-import ComparisonHistoryTable from './JudgeSession/ComparisonHistoryTable.vue';
-import SingleWorkerFullscreenDialog from './JudgeSession/SingleWorkerFullscreenDialog.vue';
-import MultiWorkerFullscreenDialog from './JudgeSession/MultiWorkerFullscreenDialog.vue';
+
+// Import new unified components
+import ComparisonViewer from './JudgeSession/viewers/ComparisonViewer.vue';
+import MultiWorkerDashboard from './JudgeSession/viewers/MultiWorkerDashboard.vue';
+import HistoryTab from './JudgeSession/tabs/HistoryTab.vue';
+import UnifiedFullscreenDialog from './JudgeSession/fullscreen/UnifiedFullscreenDialog.vue';
 
 // Import composables
 import {
@@ -340,15 +351,12 @@ const {
   actionLoading,
   queueLoading,
   reconnecting,
-  fullscreenMode,
   expandedPanels,
   autoScrollEnabled,
   streamDisplayMode,
   llmStreamContent,
   workerCount,
   workerStreams,
-  multiWorkerFullscreenMode,
-  multiWorkerDisplayMode,
   focusedWorkerId,
   streamOutput,
   fullscreenStreamOutput,
@@ -388,7 +396,8 @@ const {
 const {
   loadSession,
   loadQueue,
-  loadWorkerPoolStatus
+  loadWorkerPoolStatus,
+  loadCompletedComparisons
 } = api;
 
 // Destructure parsing methods
@@ -415,19 +424,64 @@ const {
 
 // Destructure fullscreen methods
 const {
-  openFullscreen: openFullscreenBase,
-  closeFullscreen,
   openMultiWorkerFullscreen,
   closeMultiWorkerFullscreen,
   openWorkerFullscreen
 } = fullscreen;
 
-// Wrap openFullscreen to pass reconnectToStream
-const openFullscreen = () => openFullscreenBase(reconnectToStream);
-
 // Table headers
 const queueHeaders = QUEUE_HEADERS;
-const historyHeaders = HISTORY_HEADERS;
+
+// ============================================
+// TAB-BASED NAVIGATION STATE
+// ============================================
+const activeTab = ref('live');  // 'live', 'workers', or 'history'
+
+// ============================================
+// UNIFIED FULLSCREEN STATE
+// ============================================
+const unifiedFullscreenOpen = ref(false);
+const fullscreenMode = ref('live-single');  // 'live-single', 'live-multi', 'historical'
+const fullscreenComparison = ref(null);     // Comparison to show in fullscreen
+
+// Open unified fullscreen dialog
+const openUnifiedFullscreen = (mode) => {
+  fullscreenMode.value = mode;
+  if (mode === 'live-single') {
+    fullscreenComparison.value = currentComparison.value;
+  } else if (mode === 'live-multi') {
+    fullscreenComparison.value = null;
+  }
+  unifiedFullscreenOpen.value = true;
+};
+
+// Close unified fullscreen dialog
+const closeUnifiedFullscreen = () => {
+  unifiedFullscreenOpen.value = false;
+  fullscreenComparison.value = null;
+};
+
+// View historical comparison in detail (switches to live tab with detail view)
+const viewHistoricalComparison = (comparison) => {
+  fullscreenMode.value = 'historical';
+  fullscreenComparison.value = comparison;
+  unifiedFullscreenOpen.value = true;
+};
+
+// Open historical comparison in fullscreen
+const openHistoricalFullscreen = (comparison) => {
+  fullscreenMode.value = 'historical';
+  fullscreenComparison.value = comparison;
+  unifiedFullscreenOpen.value = true;
+};
+
+// Focus on a specific worker (from dashboard)
+const focusWorker = (workerId) => {
+  focusedWorkerId.value = workerId;
+  if (!unifiedFullscreenOpen.value) {
+    openUnifiedFullscreen('live-multi');
+  }
+};
 
 // Session control actions (wrap API methods to pass polling callbacks)
 const startSession = () => api.startSession(startPolling);
@@ -440,12 +494,6 @@ const navigateToResults = () => {
   router.push({ name: 'JudgeResults', params: { id: sessionId } });
 };
 
-// View comparison in detail
-const viewComparison = (comparison) => {
-  currentComparison.value = comparison;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
 // Copy stream content to clipboard
 const copyStreamToClipboard = () => copyToClipboard(llmStreamContent.value);
 
@@ -455,6 +503,10 @@ onMounted(async () => {
   setupSocket();
   if (session.value?.status === 'running') {
     startPolling();
+  }
+  // Set initial tab based on session status
+  if (session.value?.status === 'completed') {
+    activeTab.value = 'history';
   }
 });
 
@@ -531,6 +583,117 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+}
+
+/* Panel Content Split Layout (for right panel) */
+.panel-content-split {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+  gap: 12px;
+}
+
+/* Tab Header */
+.tabs-header {
+  padding: 0 16px 0 0;
+  gap: 8px;
+}
+
+.tabs-header .v-tabs {
+  flex: 1;
+}
+
+/* Tab Content Container */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.tab-window-item {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+}
+
+/* Comparison Section (fills available space) */
+.comparison-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Empty State */
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+  border-radius: 8px;
+  border: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+/* History Section (fixed height at bottom) */
+.history-section {
+  height: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  overflow: hidden;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  flex-shrink: 0;
+}
+
+.history-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Left Panel Split Layout */
+.panel-content-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+  gap: 12px;
+}
+
+/* Progress Section (compact) */
+.progress-section {
+  flex-shrink: 0;
+}
+
+/* Workers Section (when visible) */
+.workers-section {
+  flex-shrink: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Queue Section (fills remaining space) */
+.queue-section {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Section Titles */

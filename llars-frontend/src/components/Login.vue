@@ -17,6 +17,7 @@
                 v-model="username"
                 color="primary"
                 required
+                :disabled="isLogging"
               ></v-text-field>
               <v-text-field
                 label="Passwort"
@@ -25,13 +26,14 @@
                 type="password"
                 color="primary"
                 required
+                :disabled="isLogging"
                 @keyup.enter="handleLogin"
               ></v-text-field>
             </v-form>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <LBtn variant="primary" @click="handleLogin">Login</LBtn>
+            <LBtn variant="primary" @click="handleLogin" :loading="isLogging" :disabled="isLogging">Login</LBtn>
           </v-card-actions>
           <v-alert v-if="errorMessage" type="error" class="ma-4">
             {{ errorMessage }}
@@ -73,6 +75,7 @@ import {useAuth} from '@/composables/useAuth';
 const username = ref('');
 const password = ref('');
 const errorMessage = ref('');
+const isLogging = ref(false);
 const loadingUser = ref(null);
 const router = useRouter();
 const auth = useAuth();
@@ -105,15 +108,23 @@ async function handleLogin() {
     return;
   }
 
-  // Attempt login
-  const result = await auth.login(username.value, password.value);
+  // Start loading
+  isLogging.value = true;
 
-  if (result.success) {
-    // Login successful, redirect to Home (admins see all tiles there)
-    router.push('/Home');
-  } else {
-    // Login failed, show error
-    errorMessage.value = result.error;
+  try {
+    // Attempt login
+    const result = await auth.login(username.value, password.value);
+
+    if (result.success) {
+      // Login successful, redirect to Home (admins see all tiles there)
+      router.push('/Home');
+    } else {
+      // Login failed, show error
+      errorMessage.value = result.error;
+    }
+  } finally {
+    // Stop loading
+    isLogging.value = false;
   }
 }
 

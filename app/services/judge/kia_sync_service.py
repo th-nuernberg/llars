@@ -430,13 +430,19 @@ class KIASyncService:
         from db.tables import EmailThread, Message, PillarThread
 
         # Extract thread info - handle various JSON structures
-        thread_id = data.get('thread_id') or data.get('id')
+        # KIA JSON uses 'conversation_id', older formats use 'thread_id' or 'id'
+        thread_id = data.get('thread_id') or data.get('id') or data.get('conversation_id')
         if not thread_id:
             # Generate ID from filename hash
             thread_id = int(hashlib.md5(source_file.encode()).hexdigest()[:8], 16)
 
         chat_id = data.get('chat_id', thread_id)
+        # KIA JSON uses 'subject' field
         subject = data.get('subject', f"KIA Säule {pillar_number} - {source_file}")
+        # Add counsellee to subject if available
+        counsellee = data.get('counsellee')
+        if counsellee and subject and counsellee not in subject:
+            subject = f"{subject} ({counsellee})"
         messages_data = data.get('messages', data.get('conversation', []))
 
         if not messages_data:

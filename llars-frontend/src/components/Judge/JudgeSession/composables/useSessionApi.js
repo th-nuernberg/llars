@@ -58,8 +58,8 @@ export function useSessionApi(sessionId, state, helpers) {
         initializeWorkerStreams(workerCount.value);
       }
 
-      // Load current comparison
-      if (session.value.current_comparison_id || session.value.current_comparison) {
+      // Load current comparison (always load when running, might have active comparisons)
+      if (session.value.status === 'running' || session.value.current_comparison_id || session.value.current_comparison) {
         await loadCurrentComparison();
       }
 
@@ -105,6 +105,60 @@ export function useSessionApi(sessionId, state, helpers) {
       }
     } catch (error) {
       console.error('Error loading worker pool status:', error);
+    }
+  };
+
+  // Load worker streams with full accumulated content (for reconnect support)
+  const loadWorkerStreams = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/workers/streams`
+      );
+
+      console.log('[Judge] Loaded worker streams for reconnect:', response.data);
+
+      if (!response.data.running || !response.data.workers?.length) {
+        console.log('[Judge] No active worker pool, skipping stream restore');
+        return false;
+      }
+
+      // Update worker count from pool
+      if (response.data.worker_count) {
+        workerCount.value = response.data.worker_count;
+        initializeWorkerStreams(response.data.worker_count);
+      }
+
+      // Restore each worker's accumulated stream content
+      response.data.workers.forEach(worker => {
+        const workerId = worker.worker_id;
+
+        if (!workerStreams[workerId]) {
+          workerStreams[workerId] = {
+            content: '',
+            comparison: null,
+            isStreaming: false
+          };
+        }
+
+        // Restore accumulated stream content
+        if (worker.stream_content) {
+          workerStreams[workerId].content = worker.stream_content;
+          console.log(`[Judge] Restored ${worker.stream_length} chars for worker ${workerId}`);
+        }
+
+        // Restore comparison info
+        if (worker.comparison) {
+          workerStreams[workerId].comparison = worker.comparison;
+        }
+
+        // Restore streaming state
+        workerStreams[workerId].isStreaming = worker.is_streaming || false;
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error loading worker streams:', error);
+      return false;
     }
   };
 
@@ -208,6 +262,7 @@ export function useSessionApi(sessionId, state, helpers) {
     loadSession,
     loadSessionHealth,
     loadWorkerPoolStatus,
+    loadWorkerStreams,
     loadCurrentComparison,
     loadCompletedComparisons,
     loadQueue,

@@ -12,7 +12,7 @@ Date: November 2025
 import logging
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -140,6 +140,7 @@ class PooledJudgeWorker:
 
     # Heartbeat configuration
     HEARTBEAT_INTERVAL = 30  # seconds
+    STALE_TIMEOUT = 120  # seconds - comparisons without heartbeat for this long are considered stuck
 
     def __init__(self, session_id: int, worker_id: int, pool: JudgeWorkerPool, app):
         self.session_id = session_id
@@ -225,6 +226,10 @@ class PooledJudgeWorker:
             f"[JudgeWorker:{self.session_id}:{self.worker_id}] Processing queue..."
         )
 
+        # First, recover any stale comparisons (only worker 0 does this to avoid conflicts)
+        if self.worker_id == 0:
+            self._recover_stale_comparisons()
+
         # Initialize judge service
         try:
             judge_service = JudgeService()
@@ -284,7 +289,9 @@ class PooledJudgeWorker:
                     self._try_complete_session(session)
                     break
                 elif pending_count == 0 and running_count > 0:
-                    # Other workers still processing, wait a bit and check again
+                    # Other workers might still be processing, but also check for stale jobs
+                    # This prevents infinite waiting if workers crashed
+                    self._recover_stale_comparisons()
                     time.sleep(2)
                     continue
                 else:
@@ -301,6 +308,74 @@ class PooledJudgeWorker:
 
             # Brief pause between comparisons
             time.sleep(0.5)
+
+    def _recover_stale_comparisons(self):
+        """
+        Recover stale comparisons that have been RUNNING too long without heartbeat.
+
+        This handles cases where:
+        - A worker crashed mid-comparison
+        - LLM request timed out without proper cleanup
+        - Backend was restarted while comparisons were running
+        """
+        from db.db import db
+        from db.tables import JudgeComparison, JudgeComparisonStatus
+        from sqlalchemy import text
+
+        try:
+            stale_threshold = datetime.now() - timedelta(seconds=self.STALE_TIMEOUT)
+
+            # Find stale RUNNING comparisons
+            stale_comparisons = JudgeComparison.query.filter(
+                JudgeComparison.session_id == self.session_id,
+                JudgeComparison.status == JudgeComparisonStatus.RUNNING,
+                db.or_(
+                    JudgeComparison.last_heartbeat == None,
+                    JudgeComparison.last_heartbeat < stale_threshold
+                )
+            ).all()
+
+            if stale_comparisons:
+                logger.warning(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Found {len(stale_comparisons)} stale comparisons, recovering..."
+                )
+
+                for comp in stale_comparisons:
+                    # Check attempt count
+                    if comp.attempt_count >= self.MAX_ATTEMPTS:
+                        # Mark as failed
+                        comp.status = JudgeComparisonStatus.FAILED
+                        comp.error_message = f"Stale after {comp.attempt_count} attempts (no heartbeat)"
+                        logger.warning(
+                            f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                            f"Comparison {comp.id} marked FAILED (stale, max attempts)"
+                        )
+                    else:
+                        # Reset to pending for retry
+                        comp.status = JudgeComparisonStatus.PENDING
+                        comp.error_message = f"Reset from stale RUNNING (attempt {comp.attempt_count})"
+                        logger.info(
+                            f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                            f"Comparison {comp.id} reset to PENDING (was stale)"
+                        )
+
+                    comp.worker_id = None
+                    comp.started_at = None
+                    comp.last_heartbeat = None
+
+                db.session.commit()
+                logger.info(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Recovered {len(stale_comparisons)} stale comparisons"
+                )
+
+        except Exception as e:
+            logger.error(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Error recovering stale comparisons: {e}"
+            )
+            db.session.rollback()
 
     def _get_next_comparison(self):
         """

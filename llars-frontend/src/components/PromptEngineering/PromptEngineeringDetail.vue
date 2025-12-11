@@ -34,8 +34,8 @@
             class="block-input"
           />
           <div class="dialog-buttons">
-            <button class="success-button" @click="handleCreateBlock">Erstellen</button>
-            <button class="cancel-button" @click="closeAddBlockDialog">Abbrechen</button>
+            <LBtn variant="primary" @click="handleCreateBlock">Erstellen</LBtn>
+            <LBtn variant="cancel" @click="closeAddBlockDialog">Abbrechen</LBtn>
           </div>
         </div>
       </div>
@@ -46,8 +46,8 @@
           <h3>Block "{{ blockToDelete?.title }}" löschen?</h3>
           <p>Soll der Block wirklich entfernt werden?</p>
           <div class="dialog-buttons">
-            <button class="danger-button" @click="handleConfirmDeleteBlock">Löschen</button>
-            <button class="cancel-button" @click="closeDeleteBlockDialog">Abbrechen</button>
+            <LBtn variant="danger" @click="handleConfirmDeleteBlock">Löschen</LBtn>
+            <LBtn variant="cancel" @click="closeDeleteBlockDialog">Abbrechen</LBtn>
           </div>
         </div>
       </div>
@@ -58,15 +58,9 @@
           <h3>JSON-Blocks hochladen</h3>
           <p>Sollen die vorhandenen Blöcke überschrieben oder neue Blocks nur angehängt werden?</p>
           <div class="dialog-buttons">
-            <button class="danger-button" @click="handleOverrideJsonBlocks">
-              Überschreiben
-            </button>
-            <button class="success-button" @click="handleAppendJsonBlocks">
-              Anhängen
-            </button>
-            <button class="cancel-button" @click="closeUploadChoiceDialog">
-              Abbrechen
-            </button>
+            <LBtn variant="danger" @click="handleOverrideJsonBlocks">Überschreiben</LBtn>
+            <LBtn variant="primary" @click="handleAppendJsonBlocks">Anhängen</LBtn>
+            <LBtn variant="cancel" @click="closeUploadChoiceDialog">Abbrechen</LBtn>
           </div>
         </div>
       </div>

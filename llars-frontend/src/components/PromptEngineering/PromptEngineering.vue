@@ -8,15 +8,13 @@
         <p>Wählen Sie ein Prompt aus, um es zu bearbeiten oder zu teilen.</p>
       </v-col>
       <v-col cols="12" sm="4" class="d-flex justify-end">
-        <v-btn
-          color="primary"
-          class="prompt-create-button"
+        <LBtn
+          variant="primary"
+          prepend-icon="mdi-plus"
           @click="showCreateDialog = true"
-          style="border-radius: 16px 4px 16px 4px"
         >
-          <v-icon class="mr-2">mdi-plus</v-icon>
           Neues Prompt erstellen
-        </v-btn>
+        </LBtn>
       </v-col>
     </v-row>
 
@@ -135,26 +133,43 @@
                 </button>
               </div>
             </div>
-            <input
-              v-model="currentUser"
-              @keydown.enter.prevent="addUser"
-              type="text"
-              placeholder="Benutzername eingeben und Enter drücken"
-              class="block-input"
-            />
+            <div class="autocomplete-container">
+              <input
+                v-model="currentUser"
+                @input="searchUsers"
+                @keydown.enter.prevent="addUser"
+                @keydown.down.prevent="navigateSuggestions(1)"
+                @keydown.up.prevent="navigateSuggestions(-1)"
+                @blur="hideSuggestionsDelayed"
+                type="text"
+                placeholder="Benutzername eingeben..."
+                class="block-input"
+                autocomplete="off"
+              />
+              <div v-if="userSuggestions.length > 0" class="suggestions-dropdown">
+                <div
+                  v-for="(user, index) in userSuggestions"
+                  :key="user.id"
+                  class="suggestion-item"
+                  :class="{ 'suggestion-active': index === selectedSuggestionIndex }"
+                  @mousedown.prevent="selectSuggestion(user)"
+                >
+                  {{ user.username }}
+                </div>
+              </div>
+            </div>
+            <span v-if="userSearchError" class="error-text">{{ userSearchError }}</span>
           </div>
 
           <div class="dialog-buttons">
-            <button type="button" class="cancel-button" @click="closeCreateDialog">
-              Abbrechen
-            </button>
-            <button
-              type="submit"
-              class="success-button"
+            <LBtn variant="cancel" @click="closeCreateDialog">Abbrechen</LBtn>
+            <LBtn
+              variant="primary"
               :disabled="!newPrompt.name"
+              @click="savePrompt"
             >
               Erstellen
-            </button>
+            </LBtn>
           </div>
         </form>
       </div>
@@ -215,6 +230,10 @@ const prompts = ref([]);
 const sharedPrompts = ref([]);
 const selectedUsers = ref([]);
 const currentUser = ref('');
+const userSuggestions = ref([]);
+const selectedSuggestionIndex = ref(-1);
+const userSearchError = ref('');
+let searchTimeout = null;
 
 // Form State
 const newPrompt = ref({ name: '' });
@@ -348,8 +367,6 @@ async function confirmDeletePrompt() {
 }
 
 // Aktualisierte savePrompt Funktion
-// Aktualisierte savePrompt Funktion
-// Aktualisierte savePrompt Funktion
 async function savePrompt() {
   if (!newPrompt.value.name) return;
 
@@ -367,6 +384,11 @@ async function savePrompt() {
         },
       }
     );
+
+    // Prüfen ob die Response das erwartete Format hat
+    if (!response.data?.prompt?.id) {
+      throw new Error('Ungültige Server-Antwort: Prompt-ID fehlt');
+    }
 
     const promptId = response.data.prompt.id;
     const newPromptData = {
@@ -407,39 +429,105 @@ async function savePrompt() {
 
   } catch (error) {
     console.error('Fehler beim Speichern des Prompts:', error);
-    alert(error.response?.data?.error || 'Fehler beim Speichern des Prompts');
+    // Spezifische Fehlermeldung für 409 CONFLICT (Name existiert bereits)
+    if (error.response?.status === 409) {
+      alert(`Ein Prompt mit dem Namen "${newPrompt.value.name}" existiert bereits. Bitte wählen Sie einen anderen Namen.`);
+    } else {
+      alert(error.response?.data?.error || error.message || 'Fehler beim Speichern des Prompts');
+    }
   }
 }
 function removeUser(user) {
   selectedUsers.value = selectedUsers.value.filter(u => u !== user);
 }
-// Zuerst fügen wir eine neue Funktion zur Überprüfung des Usernamens hinzu
-async function checkUserExists(username) {
+
+// Debounced User-Suche für Autocomplete
+async function searchUsers() {
+  userSearchError.value = '';
+  selectedSuggestionIndex.value = -1;
+
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+
+  const query = currentUser.value.trim();
+  if (query.length < 2) {
+    userSuggestions.value = [];
+    return;
+  }
+
+  searchTimeout = setTimeout(async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/users/search`,
+        { params: { q: query, limit: 5 } }
+      );
+      // Filter out already selected users
+      userSuggestions.value = response.data.users.filter(
+        u => !selectedUsers.value.includes(u.username)
+      );
+    } catch (error) {
+      console.error('Fehler bei der Benutzersuche:', error);
+      userSearchError.value = 'Fehler bei der Benutzersuche';
+      userSuggestions.value = [];
+    }
+  }, 300);
+}
+
+// Navigation durch Suggestions mit Pfeiltasten
+function navigateSuggestions(direction) {
+  if (userSuggestions.value.length === 0) return;
+
+  const newIndex = selectedSuggestionIndex.value + direction;
+  if (newIndex >= -1 && newIndex < userSuggestions.value.length) {
+    selectedSuggestionIndex.value = newIndex;
+  }
+}
+
+// Suggestion auswählen
+function selectSuggestion(user) {
+  if (!selectedUsers.value.includes(user.username)) {
+    selectedUsers.value.push(user.username);
+  }
+  currentUser.value = '';
+  userSuggestions.value = [];
+  selectedSuggestionIndex.value = -1;
+}
+
+// Suggestions ausblenden (mit Verzögerung für Click-Events)
+function hideSuggestionsDelayed() {
+  setTimeout(() => {
+    userSuggestions.value = [];
+    selectedSuggestionIndex.value = -1;
+  }, 200);
+}
+
+// User mit Enter hinzufügen (aus Autocomplete oder Direkteingabe)
+async function addUser() {
+  // Wenn eine Suggestion ausgewählt ist
+  if (selectedSuggestionIndex.value >= 0 && userSuggestions.value.length > 0) {
+    selectSuggestion(userSuggestions.value[selectedSuggestionIndex.value]);
+    return;
+  }
+
+  const username = currentUser.value.trim();
+  if (!username || selectedUsers.value.includes(username)) return;
+
   try {
     const response = await axios.get(
       `${import.meta.env.VITE_API_BASE_URL}/api/users/check/${username}`
     );
-    return response.status === 200;
+    if (response.data.exists) {
+      selectedUsers.value.push(username);
+      currentUser.value = '';
+      userSuggestions.value = [];
+      userSearchError.value = '';
+    }
   } catch (error) {
-    return false;
-  }
-}
-
-// Dann aktualisieren wir die addUser Funktion
-async function addUser() {
-  const username = currentUser.value.trim();
-  if (username && !selectedUsers.value.includes(username)) {
-    try {
-      const userExists = await checkUserExists(username);
-      if (userExists) {
-        selectedUsers.value.push(username);
-        currentUser.value = ''; // Input leeren
-      } else {
-        alert(`Der Benutzer "${username}" existiert nicht.`);
-      }
-    } catch (error) {
-      console.error('Fehler bei der Benutzerüberprüfung:', error);
-      alert('Fehler bei der Überprüfung des Benutzers.');
+    if (error.response?.status === 404) {
+      userSearchError.value = `Benutzer "${username}" existiert nicht.`;
+    } else {
+      userSearchError.value = 'Fehler bei der Überprüfung des Benutzers.';
     }
   }
 }
@@ -752,5 +840,47 @@ function closeCreateDialog() {
 
 .remove-user-btn:hover {
   color: #e74c3c;
+}
+
+/* Autocomplete Styles */
+.autocomplete-container {
+  position: relative;
+  width: 100%;
+}
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.suggestion-item:hover,
+.suggestion-active {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+}
+
+.suggestion-active {
+  background-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.error-text {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  display: block;
 }
 </style>

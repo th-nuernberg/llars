@@ -419,3 +419,40 @@ def delete_prompt(prompt_id):
     db.session.commit()
 
     return jsonify({'message': 'Prompt deleted successfully'}), 200
+
+
+@data_blueprint.route('/users/check/<username>', methods=['GET'])
+@authentik_required
+def check_user_exists(username):
+    """
+    Route zum Überprüfen, ob ein Benutzer existiert.
+    Wird für das Teilen von Prompts verwendet.
+    """
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return jsonify({'exists': True, 'username': user.username}), 200
+    return jsonify({'exists': False, 'error': f'User "{username}" not found'}), 404
+
+
+@data_blueprint.route('/users/search', methods=['GET'])
+@authentik_required
+def search_users():
+    """
+    Route zum Suchen von Benutzern für Autocomplete.
+    Query-Parameter: q (Suchbegriff), limit (max. Ergebnisse, default 10)
+    """
+    current_user = g.authentik_user
+    query = request.args.get('q', '').strip()
+    limit = min(int(request.args.get('limit', 10)), 50)
+
+    if len(query) < 2:
+        return jsonify({'users': [], 'message': 'Search query must be at least 2 characters'}), 200
+
+    users = User.query.filter(
+        User.username.ilike(f'%{query}%'),
+        User.id != current_user.id
+    ).limit(limit).all()
+
+    return jsonify({
+        'users': [{'id': u.id, 'username': u.username} for u in users]
+    }), 200

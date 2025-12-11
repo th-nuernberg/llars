@@ -307,8 +307,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <LBtn variant="text" @click="closeDialog">Abbrechen</LBtn>
-          <LBtn variant="success" @click="validateAndSubmitScenario">Anlegen</LBtn>
+          <LBtn variant="cancel" @click="closeDialog">Abbrechen</LBtn>
+          <LBtn variant="primary" @click="validateAndSubmitScenario">Anlegen</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>

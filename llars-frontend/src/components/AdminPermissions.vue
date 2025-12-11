@@ -41,9 +41,9 @@
                 @keyup.enter="loadUserPermissions"
               ></v-text-field>
 
-              <v-btn color="primary" @click="loadUserPermissions" :loading="loadingUser">
+              <LBtn variant="primary" @click="loadUserPermissions" :loading="loadingUser">
                 Benutzer laden
-              </v-btn>
+              </LBtn>
 
               <!-- User info card -->
               <v-card v-if="selectedUser" class="mt-4" elevation="2">
@@ -80,14 +80,13 @@
                       density="compact"
                       style="max-width: 300px"
                     ></v-select>
-                    <v-btn
-                      size="small"
-                      color="success"
+                    <LBtn
+                      variant="primary"
                       @click="assignRole(selectedUser.username, selectedRoleToAssign)"
                       :disabled="!selectedRoleToAssign"
                     >
                       Rolle zuweisen
-                    </v-btn>
+                    </LBtn>
                   </div>
                 </v-card-text>
 

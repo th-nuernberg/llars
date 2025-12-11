@@ -61,13 +61,13 @@
 
             <div class="text-medium-emphasis mb-4">oder</div>
 
-            <v-btn
-              color="primary"
+            <LBtn
+              variant="primary"
               prepend-icon="mdi-file-plus"
               @click="$refs.fileInput.click()"
             >
               Dateien auswählen
-            </v-btn>
+            </LBtn>
 
             <input
               ref="fileInput"
@@ -184,22 +184,21 @@
 
       <v-card-actions class="pa-4">
         <v-spacer></v-spacer>
-        <v-btn
-          variant="text"
+        <LBtn
+          variant="cancel"
           @click="handleClose"
           :disabled="isUploading"
         >
           {{ uploadComplete ? 'Schließen' : 'Abbrechen' }}
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="elevated"
+        </LBtn>
+        <LBtn
+          variant="primary"
           @click="handleUpload"
           :disabled="!canUpload"
           :loading="isUploading"
         >
           Hochladen
-        </v-btn>
+        </LBtn>
       </v-card-actions>
     </v-card>
   </v-dialog>

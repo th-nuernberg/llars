@@ -118,10 +118,9 @@
                   ></v-select>
                 </v-col>
                 <v-col cols="12" md="2">
-                  <v-btn color="primary" block @click="loadDocuments" :loading="loadingDocuments">
-                    <v-icon left>mdi-refresh</v-icon>
+                  <LBtn variant="primary" block prepend-icon="mdi-refresh" @click="loadDocuments" :loading="loadingDocuments">
                     Laden
-                  </v-btn>
+                  </LBtn>
                 </v-col>
               </v-row>
 
@@ -174,14 +173,14 @@
             <v-card-text>
               <v-row class="mb-4">
                 <v-col cols="12" class="d-flex justify-end">
-                  <v-btn
+                  <LBtn
                     v-if="hasPermission('feature:rag:edit')"
-                    color="success"
+                    variant="primary"
+                    prepend-icon="mdi-plus"
                     @click="showCreateCollectionDialog = true"
                   >
-                    <v-icon left>mdi-plus</v-icon>
                     Neue Collection
-                  </v-btn>
+                  </LBtn>
                 </v-col>
               </v-row>
 
@@ -269,17 +268,17 @@
                         class="mt-4"
                       ></v-select>
 
-                      <v-btn
-                        color="primary"
+                      <LBtn
+                        variant="primary"
                         size="large"
+                        prepend-icon="mdi-upload"
                         class="mt-4"
                         :loading="uploading"
                         :disabled="!filesToUpload || filesToUpload.length === 0"
                         @click="uploadFiles"
                       >
-                        <v-icon left>mdi-upload</v-icon>
                         {{ filesToUpload?.length || 0 }} Datei(en) hochladen
-                      </v-btn>
+                      </LBtn>
                     </div>
                   </v-card>
 
@@ -457,12 +456,11 @@
           </v-row>
         </v-card-text>
         <v-card-actions>
-          <v-btn @click="downloadDocument(selectedDocument)">
-            <v-icon left>mdi-download</v-icon>
+          <LBtn variant="secondary" prepend-icon="mdi-download" @click="downloadDocument(selectedDocument)">
             Download
-          </v-btn>
+          </LBtn>
           <v-spacer></v-spacer>
-          <v-btn @click="showDocumentDialog = false">Schließen</v-btn>
+          <LBtn variant="cancel" @click="showDocumentDialog = false">Schließen</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -495,10 +493,10 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="showCreateCollectionDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" @click="createCollection" :loading="creatingCollection">
+          <LBtn variant="cancel" @click="showCreateCollectionDialog = false">Abbrechen</LBtn>
+          <LBtn variant="primary" @click="createCollection" :loading="creatingCollection">
             Erstellen
-          </v-btn>
+          </LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -513,10 +511,10 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn @click="showDeleteDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" @click="deleteDocument" :loading="deleting">
+          <LBtn variant="cancel" @click="showDeleteDialog = false">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="deleteDocument" :loading="deleting">
             Löschen
-          </v-btn>
+          </LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>

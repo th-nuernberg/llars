@@ -4,12 +4,14 @@
     <div class="sidebar-content">
       <v-spacer></v-spacer>
       <!-- Zurück-Button -->
-      <button
+      <LBtn
+        variant="primary"
+        block
+        prepend-icon="mdi-arrow-left"
         @click="goToOverview"
-        class="action-button back-button">
-        <v-icon class="button-icon">mdi-arrow-left</v-icon>
+      >
         Zur Übersicht
-      </button>
+      </LBtn>
 
       <!-- Online Users Liste -->
       <div class="users-list">
@@ -22,37 +24,63 @@
 
       <!-- Buttons für Aktionen -->
       <!-- Vorschau anzeigen -->
-      <button @click="showPreview = true" class="action-button preview-button">
-        <v-icon class="button-icon"> mdi-eye</v-icon>
+      <LBtn
+        variant="primary"
+        block
+        prepend-icon="mdi-eye"
+        @click="showPreview = true"
+      >
         Vorschau anzeigen
-      </button>
+      </LBtn>
 
       <!-- Neuen Block hinzufügen -->
-      <button @click="$emit('showAddBlockDialog')" class="action-button add-block-button">
-        <v-icon class="button-icon"> mdi-plus</v-icon>
+      <LBtn
+        variant="accent"
+        block
+        prepend-icon="mdi-plus"
+        @click="$emit('showAddBlockDialog')"
+      >
         Neuer Block
-      </button>
+      </LBtn>
 
       <!-- Download Prompt Button -->
-      <button @click="downloadPrompt" class="action-button download-button">
-        <v-icon class="button-icon">mdi-download</v-icon>
+      <LBtn
+        variant="secondary"
+        block
+        prepend-icon="mdi-download"
+        @click="downloadPrompt"
+      >
         Download Prompt
-      </button>
-      <!-- Copy Prompt Button -->
-      <button @click="copyPrompt" class="action-button copy-button">
-        <v-icon class="button-icon">mdi-content-copy</v-icon>
-        Copy Prompt
-      </button>
+      </LBtn>
 
-      <button @click="triggerJsonUpload" class="action-button upload-button">
-        <v-icon class="button-icon">mdi-upload</v-icon>
+      <!-- Copy Prompt Button -->
+      <LBtn
+        variant="secondary"
+        block
+        prepend-icon="mdi-content-copy"
+        @click="copyPrompt"
+      >
+        Copy Prompt
+      </LBtn>
+
+      <LBtn
+        variant="secondary"
+        block
+        prepend-icon="mdi-upload"
+        @click="triggerJsonUpload"
+      >
         Upload Prompt
-      </button>
+      </LBtn>
+
       <!-- Prompt testen Button -->
-      <button @click="$emit('triggerTestPrompt')" class="action-button test-prompt-button">
-        <v-icon class="button-icon">mdi-rocket</v-icon>
+      <LBtn
+        variant="accent"
+        block
+        prepend-icon="mdi-rocket"
+        @click="$emit('triggerTestPrompt')"
+      >
         Prompt testen
-      </button>
+      </LBtn>
 
       <input
         type="file"
@@ -95,9 +123,13 @@
           placeholder="Username eingeben..."
           class="share-input"
         />
-        <button @click="sharePromptWithUser" class="share-button">
+        <LBtn
+          variant="primary"
+          block
+          @click="sharePromptWithUser"
+        >
           Teilen
-        </button>
+        </LBtn>
       </div>
       <!-- Anzeige von Fehlern -->
       <p v-if="shareError" class="error-message">{{ shareError }}</p>

@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 2.8 | **Stand:** 10. Dezember 2025
+**Version:** 2.9 | **Stand:** 11. Dezember 2025
 
 ## Projekt-Übersicht
 
@@ -385,6 +385,125 @@ const {
 
 ---
 
+## LLARS Design System
+
+LLARS verwendet ein einheitliches Design-System mit Pastel-Farbpalette und asymmetrischem Styling.
+
+### Signatur-Element: Asymmetrischer Border-Radius
+
+Das charakteristische LLARS-Design nutzt asymmetrische Ecken:
+
+```css
+/* Buttons */
+border-radius: 16px 4px 16px 4px;
+
+/* Tags/Chips */
+border-radius: 6px 2px 6px 2px;
+```
+
+### Farbpalette (Pastel Theme)
+
+| Farbe | Hex | Verwendung |
+|-------|-----|------------|
+| **Primary** | `#b0ca97` | Hauptaktionen (Sage Green) |
+| **Secondary** | `#D1BC8A` | Sekundäre Aktionen (Golden Beige) |
+| **Accent** | `#88c4c8` | Hervorgehobene Aktionen (Soft Teal) |
+| **Success** | `#98d4bb` | Erfolg (Soft Mint) |
+| **Info** | `#a8c5e2` | Information (Soft Blue) |
+| **Warning** | `#e8c87a` | Warnung (Soft Gold) |
+| **Danger** | `#e8a087` | Destruktive Aktionen (Soft Coral) |
+| **Gray** | `#9e9e9e` | Neutral/Abbrechen |
+
+### Globale Komponenten
+
+Alle globalen Komponenten sind in `main.js` registriert und überall verfügbar:
+
+#### LBtn - Button
+
+```vue
+<LBtn variant="primary" prepend-icon="mdi-plus">Erstellen</LBtn>
+<LBtn variant="secondary">Download</LBtn>
+<LBtn variant="accent">Spezial-Aktion</LBtn>
+<LBtn variant="danger">Löschen</LBtn>
+<LBtn variant="cancel">Abbrechen</LBtn>
+<LBtn variant="text">Text Button</LBtn>
+<LBtn variant="outlined">Outlined</LBtn>
+```
+
+**Props:**
+- `variant`: primary | secondary | accent | success | danger | cancel | text | outlined
+- `size`: small | default | large
+- `prepend-icon` / `append-icon`: MDI Icon Name
+- `loading`: Boolean
+- `disabled`: Boolean
+- `block`: Boolean (volle Breite)
+
+#### LTag - Tag/Chip
+
+```vue
+<LTag variant="primary">Status</LTag>
+<LTag variant="success" prepend-icon="mdi-check">Fertig</LTag>
+<LTag variant="danger" closable @close="handleClose">Entfernen</LTag>
+```
+
+**Props:**
+- `variant`: primary | secondary | accent | success | info | warning | danger | gray
+- `size`: small | default | large
+- `prepend-icon` / `append-icon`: MDI Icon Name
+- `closable`: Boolean
+
+### CSS Custom Properties
+
+Alle Design-Variablen sind in `llars-frontend/src/styles/global.css` definiert:
+
+```css
+:root {
+  /* Farben */
+  --llars-primary: #b0ca97;
+  --llars-secondary: #D1BC8A;
+  --llars-accent: #88c4c8;
+
+  /* Border-Radius */
+  --llars-radius: 16px 4px 16px 4px;
+  --llars-radius-sm: 8px 2px 8px 2px;
+  --llars-radius-xs: 6px 2px 6px 2px;
+
+  /* Spacing */
+  --llars-spacing-sm: 8px;
+  --llars-spacing-md: 16px;
+  --llars-spacing-lg: 24px;
+
+  /* Shadows */
+  --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --llars-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+```
+
+### Button-Verwendung nach Kontext
+
+| Kontext | Variant | Beispiel |
+|---------|---------|----------|
+| Hauptaktion | `primary` | Speichern, Erstellen, Starten |
+| Sekundäre Aktion | `secondary` | Download, Export |
+| Spezial/Hervorhebung | `accent` | Neuer Block, Testen |
+| Destruktiv | `danger` | Löschen, Abmelden |
+| Abbrechen/Schließen | `cancel` | Abbrechen, Schließen |
+| Dezent | `text` | Weniger wichtige Aktionen |
+
+### Dateien
+
+```
+llars-frontend/src/
+├── styles/global.css              # CSS Custom Properties, globale Styles
+├── components/common/
+│   ├── LBtn.vue                   # Button Komponente
+│   ├── LTag.vue                   # Tag/Chip Komponente
+│   └── LIconBtn.vue               # Icon Button
+└── main.js                        # Globale Registrierung
+```
+
+---
+
 ## Git Commits
 
 ```bash
@@ -466,4 +585,4 @@ docker exec -it llars_authentik_db psql -U authentik_dev -d authentik_dev
 
 ---
 
-**Stand:** 10. Dezember 2025
+**Stand:** 11. Dezember 2025

@@ -1,0 +1,281 @@
+/**
+ * LLARS Global Styles
+ *
+ * Shared styles and CSS custom properties for consistent UI across the application.
+ *
+ * Design Philosophy:
+ * - Asymmetric border-radius creates unique visual identity
+ * - Pastel color palette for calming, professional appearance
+ * - Consistent spacing and typography
+ */
+
+/* ========================================
+   LLARS Color Palette (Pastel Theme)
+   ======================================== */
+:root {
+  /* Primary Colors (Sage Green) */
+  --llars-primary: #b0ca97;
+  --llars-primary-hover: #9bb582;
+  --llars-primary-active: #8aa572;
+
+  /* Secondary Colors (Golden Beige) */
+  --llars-secondary: #D1BC8A;
+  --llars-secondary-hover: #c4ac76;
+  --llars-secondary-active: #aa9768;
+
+  /* Accent Colors (Soft Teal) */
+  --llars-accent: #88c4c8;
+  --llars-accent-hover: #74b3b7;
+  --llars-accent-active: #5fa0a4;
+
+  /* Tertiary (Forest Green - for emphasis) */
+  --llars-tertiary: #81b68b;
+  --llars-tertiary-hover: #6ca077;
+  --llars-tertiary-active: #5a8a66;
+
+  /* Semantic Colors */
+  --llars-success: #98d4bb;
+  --llars-success-hover: #7cc5a6;
+  --llars-success-active: #65b593;
+
+  --llars-info: #a8c5e2;
+  --llars-info-hover: #8fb3d4;
+  --llars-info-active: #76a0c6;
+
+  --llars-warning: #e8c87a;
+  --llars-warning-hover: #ddb85e;
+  --llars-warning-active: #d2a847;
+
+  --llars-danger: #e8a087;
+  --llars-danger-hover: #df8a6d;
+  --llars-danger-active: #d57454;
+
+  /* Neutral Colors */
+  --llars-gray: #9e9e9e;
+  --llars-gray-hover: #8a8a8a;
+  --llars-gray-active: #7e7e7e;
+  --llars-gray-light: #c5c5c5;
+
+  /* LLARS Signature Border Radius */
+  --llars-radius: 16px 4px 16px 4px;
+  --llars-radius-sm: 8px 2px 8px 2px;
+  --llars-radius-xs: 6px 2px 6px 2px;
+
+  /* Spacing */
+  --llars-spacing-xs: 4px;
+  --llars-spacing-sm: 8px;
+  --llars-spacing-md: 16px;
+  --llars-spacing-lg: 24px;
+  --llars-spacing-xl: 32px;
+
+  /* Shadows */
+  --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --llars-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+  --llars-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   Dialog Styles (shared across components)
+   ======================================== */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.dialog-box {
+  background: rgb(var(--v-theme-surface));
+  padding: 24px;
+  border-radius: 8px;
+  min-width: 320px;
+  max-width: 90vw;
+  box-shadow: var(--llars-shadow-lg);
+}
+
+.dialog-box h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ========================================
+   Form Input Styles
+   ======================================== */
+.block-input {
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.23);
+  border-radius: 4px;
+  font-size: 0.95rem;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  transition: border-color 0.2s ease;
+}
+
+.block-input:focus {
+  outline: none;
+  border-color: var(--llars-primary);
+  box-shadow: 0 0 0 2px rgba(176, 202, 151, 0.2);
+}
+
+.block-input::placeholder {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* ========================================
+   Card Styles
+   ======================================== */
+.llars-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 8px;
+  box-shadow: var(--llars-shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.llars-card:hover {
+  box-shadow: var(--llars-shadow-md);
+}
+
+.llars-card--clickable {
+  cursor: pointer;
+}
+
+.llars-card--clickable:hover {
+  transform: translateY(-2px);
+}
+
+/* ========================================
+   Panel Styles
+   ======================================== */
+.panel-header {
+  padding: 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  font-weight: 600;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* ========================================
+   Scrollbar Styles
+   ======================================== */
+.panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 3px;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-on-surface), 0.3);
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.error-text {
+  color: var(--llars-danger);
+  font-size: 0.85rem;
+}
+
+.success-text {
+  color: var(--llars-success);
+  font-size: 0.85rem;
+}
+
+/* ========================================
+   LLARS Tag/Chip Base Styles
+   ======================================== */
+.llars-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: var(--llars-radius-xs);
+  transition: all 0.2s ease;
+}
+
+.llars-tag--sm {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+.llars-tag--lg {
+  padding: 6px 14px;
+  font-size: 0.9rem;
+}
+
+/* Tag Color Variants */
+.llars-tag--primary {
+  background-color: rgba(176, 202, 151, 0.2);
+  color: #6a8a5a;
+}
+
+.llars-tag--secondary {
+  background-color: rgba(209, 188, 138, 0.2);
+  color: #8a7a50;
+}
+
+.llars-tag--accent {
+  background-color: rgba(136, 196, 200, 0.2);
+  color: #4a8a8e;
+}
+
+.llars-tag--success {
+  background-color: rgba(152, 212, 187, 0.2);
+  color: #4a8a6e;
+}
+
+.llars-tag--info {
+  background-color: rgba(168, 197, 226, 0.2);
+  color: #4a6a8a;
+}
+
+.llars-tag--warning {
+  background-color: rgba(232, 200, 122, 0.2);
+  color: #8a7a3a;
+}
+
+.llars-tag--danger {
+  background-color: rgba(232, 160, 135, 0.2);
+  color: #8a4a3a;
+}
+
+.llars-tag--gray {
+  background-color: rgba(158, 158, 158, 0.2);
+  color: #5a5a5a;
+}

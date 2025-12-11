@@ -1,194 +1,293 @@
 <template>
-  <v-btn
-    v-bind="buttonProps"
+  <button
     :class="buttonClasses"
+    :disabled="disabled || loading"
     @click="$emit('click', $event)"
   >
-    <v-icon v-if="prependIcon" :icon="prependIcon" class="mr-2" />
-    <slot />
-    <v-icon v-if="appendIcon" :icon="appendIcon" class="ml-2" />
-  </v-btn>
+    <v-progress-circular
+      v-if="loading"
+      indeterminate
+      size="18"
+      width="2"
+      class="mr-2"
+    />
+    <v-icon v-else-if="prependIcon" :icon="prependIcon" class="l-btn__icon l-btn__icon--prepend" />
+    <span class="l-btn__content"><slot /></span>
+    <v-icon v-if="appendIcon" :icon="appendIcon" class="l-btn__icon l-btn__icon--append" />
+  </button>
 </template>
 
 <script setup>
 /**
  * LBtn - LLARS Global Button Component
  *
- * A consistent, themeable button component for the entire application.
- * Wraps Vuetify's v-btn with standardized styling and variants.
+ * A consistent, themeable button component with the signature LLARS styling.
+ * Features the unique asymmetric border-radius: 16px 4px 16px 4px
+ *
+ * Variants:
+ *   - primary: Main action (Sage Green #b0ca97)
+ *   - secondary: Secondary action (Golden Beige #D1BC8A)
+ *   - accent: Emphasis action (Soft Teal #88c4c8)
+ *   - success: Success action (Soft Mint #98d4bb)
+ *   - danger: Destructive action (Soft Coral #e8a087)
+ *   - cancel: Neutral gray (#9e9e9e)
+ *   - text: Text-only button
+ *   - outlined: Outlined style
  *
  * Usage:
  *   <LBtn>Default Button</LBtn>
  *   <LBtn variant="primary">Primary Action</LBtn>
- *   <LBtn variant="secondary">Secondary Action</LBtn>
+ *   <LBtn variant="secondary" prepend-icon="mdi-download">Download</LBtn>
  *   <LBtn variant="danger">Delete</LBtn>
- *   <LBtn variant="success" prepend-icon="mdi-check">Confirm</LBtn>
- *   <LBtn variant="text">Cancel</LBtn>
+ *   <LBtn variant="cancel">Cancel</LBtn>
  */
 import { computed } from 'vue'
 
 const props = defineProps({
-  /**
-   * Button variant style
-   * - primary: Main action button (filled, primary color)
-   * - secondary: Secondary action (outlined, primary color)
-   * - success: Positive action (filled, success color)
-   * - danger: Destructive action (filled, error color)
-   * - warning: Caution action (filled, warning color)
-   * - text: Text-only button (no background)
-   * - tonal: Subtle filled button
-   */
   variant: {
     type: String,
     default: 'primary',
-    validator: (v) => ['primary', 'secondary', 'success', 'danger', 'warning', 'text', 'tonal'].includes(v)
+    validator: (v) => ['primary', 'secondary', 'accent', 'success', 'danger', 'cancel', 'text', 'outlined'].includes(v)
   },
-
-  /**
-   * Button size
-   */
   size: {
     type: String,
     default: 'default',
-    validator: (v) => ['x-small', 'small', 'default', 'large', 'x-large'].includes(v)
+    validator: (v) => ['small', 'default', 'large'].includes(v)
   },
-
-  /**
-   * Prepend icon (mdi-* format)
-   */
   prependIcon: {
     type: String,
     default: null
   },
-
-  /**
-   * Append icon (mdi-* format)
-   */
   appendIcon: {
     type: String,
     default: null
   },
-
-  /**
-   * Loading state
-   */
   loading: {
     type: Boolean,
     default: false
   },
-
-  /**
-   * Disabled state
-   */
   disabled: {
     type: Boolean,
     default: false
   },
-
-  /**
-   * Block (full-width) button
-   */
   block: {
     type: Boolean,
     default: false
-  },
-
-  /**
-   * Rounded corners
-   */
-  rounded: {
-    type: [Boolean, String],
-    default: 'lg'
-  },
-
-  /**
-   * Elevation (shadow depth)
-   */
-  elevation: {
-    type: [Number, String],
-    default: 0
   }
 })
 
 defineEmits(['click'])
 
-// Map our variants to Vuetify props
-const variantMapping = {
-  primary: { color: 'primary', variant: 'flat' },
-  secondary: { color: 'primary', variant: 'outlined' },
-  success: { color: 'success', variant: 'flat' },
-  danger: { color: 'error', variant: 'flat' },
-  warning: { color: 'warning', variant: 'flat' },
-  text: { color: undefined, variant: 'text' },
-  tonal: { color: 'primary', variant: 'tonal' }
-}
-
-const buttonProps = computed(() => {
-  const mapping = variantMapping[props.variant] || variantMapping.primary
-
-  return {
-    color: mapping.color,
-    variant: mapping.variant,
-    size: props.size,
-    loading: props.loading,
-    disabled: props.disabled,
-    block: props.block,
-    rounded: props.rounded,
-    elevation: props.elevation
-  }
-})
-
 const buttonClasses = computed(() => ({
   'l-btn': true,
-  [`l-btn--${props.variant}`]: true
+  [`l-btn--${props.variant}`]: true,
+  [`l-btn--${props.size}`]: props.size !== 'default',
+  'l-btn--block': props.block,
+  'l-btn--loading': props.loading,
+  'l-btn--disabled': props.disabled
 }))
 </script>
 
 <style scoped>
+/* Base Button Styles - LLARS Signature Design */
 .l-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  min-height: 40px;
+  border: none;
+  border-radius: 16px 4px 16px 4px; /* Signature LLARS corner style */
+  cursor: pointer;
+  font-size: 0.9rem;
   font-weight: 500;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: none;
+  text-decoration: none;
+  white-space: nowrap;
   transition: all 0.2s ease;
+  color: white;
 }
 
-.l-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
+.l-btn:focus-visible {
+  outline: 2px solid var(--llars-primary);
+  outline-offset: 2px;
 }
 
-.l-btn:active:not(:disabled) {
-  transform: translateY(0);
+/* Icon Styling */
+.l-btn__icon {
+  font-size: 1.2em;
+  line-height: 1;
 }
 
-/* Primary variant - enhanced styling */
+.l-btn__icon--prepend {
+  margin-right: 4px;
+}
+
+.l-btn__icon--append {
+  margin-left: 4px;
+}
+
+/* Size Variants */
+.l-btn--small {
+  padding: 6px 12px;
+  min-height: 32px;
+  font-size: 0.85rem;
+}
+
+.l-btn--large {
+  padding: 14px 24px;
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+/* Block (Full Width) */
+.l-btn--block {
+  width: 100%;
+}
+
+/* States */
+.l-btn--disabled,
+.l-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.l-btn--loading {
+  cursor: wait;
+}
+
+/* ========================================
+   VARIANT STYLES - LLARS Pastel Palette
+   ======================================== */
+
+/* Primary - Sage Green (Main Action) */
 .l-btn--primary {
-  box-shadow: 0 2px 4px rgba(var(--v-theme-primary), 0.2);
+  background-color: #b0ca97;
+  color: white;
 }
 
 .l-btn--primary:hover:not(:disabled) {
-  box-shadow: 0 4px 8px rgba(var(--v-theme-primary), 0.3);
+  background-color: #9bb582;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(176, 202, 151, 0.3);
 }
 
-/* Secondary variant */
+.l-btn--primary:active:not(:disabled) {
+  background-color: #8aa572;
+  transform: translateY(0);
+}
+
+/* Secondary - Golden Beige */
 .l-btn--secondary {
-  border-width: 2px;
+  background-color: #D1BC8A;
+  color: white;
 }
 
-/* Danger variant */
-.l-btn--danger {
-  box-shadow: 0 2px 4px rgba(var(--v-theme-error), 0.2);
+.l-btn--secondary:hover:not(:disabled) {
+  background-color: #c4ac76;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(209, 188, 138, 0.3);
 }
 
-.l-btn--danger:hover:not(:disabled) {
-  box-shadow: 0 4px 8px rgba(var(--v-theme-error), 0.3);
+.l-btn--secondary:active:not(:disabled) {
+  background-color: #aa9768;
 }
 
-/* Success variant */
+/* Accent - Soft Teal */
+.l-btn--accent {
+  background-color: #88c4c8;
+  color: white;
+}
+
+.l-btn--accent:hover:not(:disabled) {
+  background-color: #74b3b7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(136, 196, 200, 0.3);
+}
+
+.l-btn--accent:active:not(:disabled) {
+  background-color: #5fa0a4;
+}
+
+/* Success - Soft Mint */
 .l-btn--success {
-  box-shadow: 0 2px 4px rgba(var(--v-theme-success), 0.2);
+  background-color: #98d4bb;
+  color: white;
 }
 
 .l-btn--success:hover:not(:disabled) {
-  box-shadow: 0 4px 8px rgba(var(--v-theme-success), 0.3);
+  background-color: #7cc5a6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(152, 212, 187, 0.3);
+}
+
+.l-btn--success:active:not(:disabled) {
+  background-color: #65b593;
+}
+
+/* Danger - Soft Coral */
+.l-btn--danger {
+  background-color: #e8a087;
+  color: white;
+}
+
+.l-btn--danger:hover:not(:disabled) {
+  background-color: #df8a6d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(232, 160, 135, 0.3);
+}
+
+.l-btn--danger:active:not(:disabled) {
+  background-color: #d57454;
+}
+
+/* Cancel - Neutral Gray */
+.l-btn--cancel {
+  background-color: #9e9e9e;
+  color: white;
+}
+
+.l-btn--cancel:hover:not(:disabled) {
+  background-color: #8a8a8a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(158, 158, 158, 0.3);
+}
+
+.l-btn--cancel:active:not(:disabled) {
+  background-color: #7e7e7e;
+}
+
+/* Text - No Background */
+.l-btn--text {
+  background-color: transparent;
+  color: rgb(var(--v-theme-on-surface));
+  padding: 10px 12px;
+}
+
+.l-btn--text:hover:not(:disabled) {
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.l-btn--text:active:not(:disabled) {
+  background-color: rgba(var(--v-theme-on-surface), 0.12);
+}
+
+/* Outlined */
+.l-btn--outlined {
+  background-color: transparent;
+  color: #b0ca97;
+  border: 2px solid #b0ca97;
+}
+
+.l-btn--outlined:hover:not(:disabled) {
+  background-color: rgba(176, 202, 151, 0.1);
+  transform: translateY(-1px);
+}
+
+.l-btn--outlined:active:not(:disabled) {
+  background-color: rgba(176, 202, 151, 0.2);
 }
 </style>

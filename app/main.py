@@ -99,6 +99,11 @@ start_embedding_worker(app)
 from services.judge.stale_job_detection import start_stale_job_detector
 start_stale_job_detector(app)
 
+# Initialize KIA Auto-Sync for LLM-as-Judge
+# Automatically syncs KIA data from GitLab if no pillar threads exist
+from services.judge.kia_auto_sync import start_kia_auto_sync
+start_kia_auto_sync(app)
+
 # Fix missing chroma_collection_name for existing collections
 # This is a one-time migration for collections created before the fix
 def fix_missing_chroma_collection_names():

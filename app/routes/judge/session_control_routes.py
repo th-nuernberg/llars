@@ -152,6 +152,62 @@ def resume_session(session_id: int):
     })
 
 
+@session_control_bp.route('/sessions/<int:session_id>/internal-resume', methods=['POST'])
+@handle_api_errors(logger_name='judge')
+def internal_resume_session(session_id: int):
+    """
+    Internal-only endpoint to resume a session without auth.
+    Only accessible from localhost/127.0.0.1.
+
+    Used for recovering stuck sessions after backend restarts.
+    """
+    # Check if request is from localhost
+    client_ip = request.remote_addr
+    if client_ip not in ['127.0.0.1', 'localhost', '::1']:
+        return jsonify({'error': 'Forbidden', 'message': 'Internal endpoint only'}), 403
+
+    session = JudgeSession.query.get(session_id)
+    if not session:
+        raise NotFoundError(f'Session {session_id} not found')
+
+    # Allow resuming from RUNNING, PAUSED, or QUEUED status
+    if session.status not in [JudgeSessionStatus.RUNNING, JudgeSessionStatus.PAUSED, JudgeSessionStatus.QUEUED]:
+        raise ValidationError(
+            f'Session kann nicht fortgesetzt werden (Status: {session.status.value})'
+        )
+
+    # Reset any "running" comparisons back to "pending"
+    reset_count = JudgeComparison.query.filter(
+        JudgeComparison.session_id == session_id,
+        JudgeComparison.status == JudgeComparisonStatus.RUNNING
+    ).update({
+        'status': JudgeComparisonStatus.PENDING,
+        'worker_id': None
+    })
+
+    session.status = JudgeSessionStatus.RUNNING
+    if not session.started_at:
+        session.started_at = datetime.now()
+    db.session.commit()
+
+    # Get worker_count from session config
+    worker_count = 1
+    if session.config_json:
+        worker_count = session.config_json.get('worker_count', 1)
+
+    # Trigger background worker pool
+    from workers.judge_worker_pool import trigger_judge_worker_pool
+    trigger_judge_worker_pool(session_id, worker_count)
+
+    return jsonify({
+        'session_id': session.id,
+        'status': 'running',
+        'worker_count': worker_count,
+        'comparisons_reset': reset_count,
+        'message': f'Internal resume: Session {session_id} restarted with {worker_count} workers'
+    })
+
+
 @session_control_bp.route('/sessions/<int:session_id>/pause', methods=['POST'])
 @authentik_required
 @require_permission('feature:comparison:edit')

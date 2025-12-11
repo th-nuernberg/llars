@@ -112,6 +112,15 @@ class JudgeWorkerPool:
             ]
         }
 
+    def get_worker_streams(self) -> Dict:
+        """Get full stream state of all workers for reconnect support."""
+        return {
+            'session_id': self.session_id,
+            'worker_count': self.worker_count,
+            'running': self.running,
+            'workers': [w.get_stream_state() for w in self.workers]
+        }
+
 
 class PooledJudgeWorker:
     """
@@ -141,6 +150,23 @@ class PooledJudgeWorker:
         self.thread: Optional[threading.Thread] = None
         self.current_comparison_id: Optional[int] = None
         self._stop_event = threading.Event()
+
+        # Stream state storage for reconnect support
+        self.stream_content: str = ""  # Accumulated stream content
+        self.comparison_data: Optional[Dict] = None  # Current comparison info
+        self.is_streaming: bool = False  # Whether currently streaming
+
+    def get_stream_state(self) -> Dict:
+        """Get current stream state for reconnect support."""
+        return {
+            'worker_id': self.worker_id,
+            'running': self.running,
+            'is_streaming': self.is_streaming,
+            'current_comparison_id': self.current_comparison_id,
+            'comparison': self.comparison_data,
+            'stream_content': self.stream_content,
+            'stream_length': len(self.stream_content)
+        }
 
     def start(self):
         """Start the worker thread."""
@@ -668,6 +694,20 @@ class PooledJudgeWorker:
 
     def _broadcast_comparison_start(self, comparison):
         """Broadcast when a comparison starts."""
+        # Reset stream state for new comparison
+        self.stream_content = ""
+        self.is_streaming = True
+
+        # Store comparison data for reconnect support
+        self.comparison_data = {
+            'comparison_id': comparison.id,
+            'thread_a_id': comparison.thread_a_id,
+            'thread_b_id': comparison.thread_b_id,
+            'pillar_a': comparison.pillar_a,
+            'pillar_b': comparison.pillar_b,
+            'position_order': comparison.position_order
+        }
+
         socketio = self._get_socketio()
         if not socketio:
             logger.warning(f"[JudgeWorker:{self.session_id}:{self.worker_id}] Cannot broadcast - no socketio")
@@ -678,16 +718,15 @@ class PooledJudgeWorker:
         socketio.emit('judge:comparison_start', {
             'session_id': self.session_id,
             'worker_id': self.worker_id,
-            'comparison_id': comparison.id,
-            'thread_a_id': comparison.thread_a_id,
-            'thread_b_id': comparison.thread_b_id,
-            'pillar_a': comparison.pillar_a,
-            'pillar_b': comparison.pillar_b,
-            'position_order': comparison.position_order
+            **self.comparison_data
         }, room=room)
 
     def _broadcast_stream(self, chunk: str):
-        """Broadcast LLM streaming chunk."""
+        """Broadcast LLM streaming chunk and accumulate content."""
+        # Accumulate stream content for reconnect support
+        self.stream_content += chunk
+        self.is_streaming = True
+
         socketio = self._get_socketio()
         if not socketio:
             return
@@ -697,11 +736,15 @@ class PooledJudgeWorker:
             'session_id': self.session_id,
             'worker_id': self.worker_id,
             'token': chunk,
-            'content': chunk
+            'content': chunk,
+            'accumulated_length': len(self.stream_content)  # For debugging
         }, room=room)
 
     def _broadcast_comparison_complete(self, comparison, result):
         """Broadcast when a comparison completes."""
+        # Mark streaming as complete (keep stream_content for late joiners to see final result)
+        self.is_streaming = False
+
         socketio = self._get_socketio()
         if not socketio:
             return
@@ -713,7 +756,8 @@ class PooledJudgeWorker:
             'comparison_id': comparison.id,
             'winner': result.winner,
             'confidence': result.confidence,
-            'reasoning': result.final_justification
+            'reasoning': result.final_justification,
+            'final_stream_content': self.stream_content  # Include final content for verification
         }, room=room)
 
     def _broadcast_progress(self, session):
@@ -797,4 +841,17 @@ def get_pool_status(session_id: int) -> Optional[Dict]:
     with _pool_lock:
         if session_id in _pools:
             return _pools[session_id].get_status()
+        return None
+
+
+def get_worker_streams(session_id: int) -> Optional[Dict]:
+    """
+    Get full stream state of all workers for reconnect support.
+
+    Returns accumulated stream content for each worker so clients
+    can resume mid-stream without losing previous content.
+    """
+    with _pool_lock:
+        if session_id in _pools:
+            return _pools[session_id].get_worker_streams()
         return None

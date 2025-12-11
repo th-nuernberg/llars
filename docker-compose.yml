@@ -33,8 +33,8 @@ services:
       - TZ=Europe/Berlin
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_APP=/app/main.py
-      # CORS origins derived from PROJECT_HOST
-      - ALLOWED_ORIGINS=http://${PROJECT_HOST},http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT},http://${PROJECT_HOST}:${FRONTEND_EXTERNAL_PORT},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT},http://127.0.0.1:${FRONTEND_EXTERNAL_PORT}
+      # CORS origins derived from PROJECT_URL
+      - ALLOWED_ORIGINS=${PROJECT_URL},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT},http://localhost,http://localhost:${NGINX_EXTERNAL_PORT}
       # OnCoCo model path
       - ONCOCO_MODEL_PATH=/app/models/oncoco
     depends_on:
@@ -59,11 +59,12 @@ services:
       - ./llars-frontend:/vue
     environment:
       - TZ=Europe/Berlin
-      # All URLs derived from PROJECT_HOST
-      - VITE_API_BASE_URL=http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}
+      - NODE_ENV=${PROJECT_STATE}
+      # All URLs derived from PROJECT_URL (includes protocol)
+      - VITE_API_BASE_URL=${PROJECT_URL}
       - VITE_PROJECT_STATE=${PROJECT_STATE}
-      - VITE_MKDOCS_URL=http://${PROJECT_HOST}:${MKDOCS_EXTERNAL_PORT}
-      - VITE_KEYCLOAK_URL=http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}/authentik
+      - VITE_MKDOCS_URL=${PROJECT_URL}/docs
+      - VITE_KEYCLOAK_URL=${PROJECT_URL}/authentik
       - VITE_KEYCLOAK_REALM=llars   # legacy variable; Authentik uses apps, not realms
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
     develop:
@@ -128,8 +129,9 @@ services:
       dockerfile: docker/yjs-server/Dockerfile-yjs
     environment:
       - TZ=Europe/Berlin
-      # Derived from PROJECT_HOST
-      - BASE_URL=http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}
+      - NODE_ENV=${PROJECT_STATE}
+      # Derived from PROJECT_URL
+      - BASE_URL=${PROJECT_URL}
       - PORT=8082
       - MYSQL_HOST=db-maria-service
       - MYSQL_PORT=3306

@@ -9,12 +9,16 @@ import { registerPlugins } from '@/plugins'
 import router from '@/router.js'
 import axios from 'axios'
 
+// Global Styles
+import '@/styles/global.css'
+
 // Components
 import App from './App.vue'
 
 // Global LLARS Components
 import LBtn from '@/components/common/LBtn.vue'
 import LIconBtn from '@/components/common/LIconBtn.vue'
+import LTag from '@/components/common/LTag.vue'
 
 // Composables
 import { createApp } from 'vue'
@@ -27,6 +31,7 @@ registerPlugins(app)
 // Register global LLARS components
 app.component('LBtn', LBtn)
 app.component('LIconBtn', LIconBtn)
+app.component('LTag', LTag)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

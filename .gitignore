@@ -97,6 +97,9 @@ docker/nginx/certs/*.pem
 # MkDocs compiled documentation (production)
 /docs/site/
 
+# Project Archiv
+/docs/docs/projekte/anonymize
+
 # OS
 Thumbs.db
 desktop.ini

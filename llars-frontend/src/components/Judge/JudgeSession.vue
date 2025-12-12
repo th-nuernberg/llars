@@ -49,28 +49,6 @@
               />
             </div>
 
-            <!-- Worker Status Grid (when applicable) -->
-            <div v-if="workerCount > 1 && session?.status === 'running'" class="workers-section">
-              <WorkerLaneGrid
-                :worker-count="workerCount"
-                :active-worker-count="activeWorkerCount"
-                :session="session"
-                :progress="progress"
-                :session-pillars="sessionPillars"
-                :pillar-pairs="pillarPairs"
-                :worker-streams="workerStreams"
-                :get-pillar-color="getPillarColor"
-                :get-pillar-icon="getPillarIcon"
-                :is-pair-active="isPairActive"
-                :completed-count="completedCount"
-                :confirmed-total="confirmedTotal"
-                compact
-                @open-fullscreen="openMultiWorkerFullscreen"
-                @refresh="loadWorkerPoolStatus"
-                @open-worker-fullscreen="openWorkerFullscreen"
-              />
-            </div>
-
             <!-- Queue Panel (fills remaining space) -->
             <div class="queue-section">
               <SessionQueuePanel
@@ -123,11 +101,6 @@
                   <v-icon size="10" class="mr-1">mdi-circle</v-icon>
                 </v-chip>
               </v-tab>
-              <v-tab v-if="workerCount > 1" value="workers">
-                <v-icon start size="18">mdi-account-group</v-icon>
-                Workers
-                <v-chip size="x-small" color="primary" class="ml-2">{{ activeWorkerCount }}</v-chip>
-              </v-tab>
               <v-tab value="history">
                 <v-icon start size="18">mdi-history</v-icon>
                 Verlauf
@@ -148,23 +121,74 @@
           <v-window v-model="activeTab" class="tab-content">
             <!-- Live Tab: Current Comparison -->
             <v-window-item value="live" class="tab-window-item">
-              <!-- Multi-Worker Grid View (like Worker Pool Live View) -->
-              <div v-if="workerCount > 1" class="live-worker-grid">
-                <v-row>
-                  <v-col
-                    v-for="i in workerCount"
-                    :key="i - 1"
-                    :cols="workerCount <= 2 ? 6 : (workerCount <= 3 ? 4 : 3)"
-                  >
-                    <WorkerLane
-                      :worker-id="i - 1"
-                      :current-comparison="workerStreams[i - 1]?.comparison"
-                      :stream-content="workerStreams[i - 1]?.content || ''"
-                      :is-streaming="workerStreams[i - 1]?.isStreaming || false"
-                      @open-fullscreen="openUnifiedFullscreen('live-multi')"
-                    />
-                  </v-col>
-                </v-row>
+              <!-- Multi-Worker View with Toggle -->
+              <div v-if="workerCount > 1" class="live-multi-worker-container">
+                <!-- View Toggle Header -->
+                <div class="live-view-header">
+                  <div class="live-view-info">
+                    <v-icon size="18" class="mr-2">mdi-account-group</v-icon>
+                    <span class="live-view-title">{{ activeWorkerCount }}/{{ workerCount }} Worker aktiv</span>
+                    <v-chip
+                      v-if="activeWorkerCount > 0"
+                      size="x-small"
+                      color="secondary"
+                      class="ml-2"
+                    >
+                      {{ activeWorkerCount }} streaming
+                    </v-chip>
+                  </div>
+                  <div class="live-view-actions">
+                    <v-btn-toggle v-model="liveViewMode" density="compact" mandatory color="primary">
+                      <v-btn value="detailed" size="small" variant="text" title="Detaillierte Ansicht">
+                        <v-icon size="18">mdi-view-grid</v-icon>
+                      </v-btn>
+                      <v-btn value="compact" size="small" variant="text" title="Kompakte Ansicht">
+                        <v-icon size="18">mdi-view-list</v-icon>
+                      </v-btn>
+                    </v-btn-toggle>
+                    <v-btn
+                      icon="mdi-fullscreen"
+                      variant="text"
+                      size="small"
+                      @click="openUnifiedFullscreen('live-multi')"
+                      title="Vollbild"
+                    ></v-btn>
+                  </div>
+                </div>
+
+                <!-- Detailed View: WorkerLane Grid -->
+                <div v-if="liveViewMode === 'detailed'" class="live-worker-grid">
+                  <v-row>
+                    <v-col
+                      v-for="i in workerCount"
+                      :key="i - 1"
+                      :cols="workerCount <= 2 ? 6 : (workerCount <= 3 ? 4 : 3)"
+                    >
+                      <WorkerLane
+                        :worker-id="i - 1"
+                        :current-comparison="workerStreams[i - 1]?.comparison"
+                        :stream-content="workerStreams[i - 1]?.content || ''"
+                        :is-streaming="workerStreams[i - 1]?.isStreaming || false"
+                        @open-fullscreen="openUnifiedFullscreen('live-multi')"
+                      />
+                    </v-col>
+                  </v-row>
+                </div>
+
+                <!-- Compact View: MultiWorkerDashboard -->
+                <div v-else class="live-worker-compact">
+                  <MultiWorkerDashboard
+                    :worker-count="workerCount"
+                    :worker-streams="workerStreams"
+                    :session="session"
+                    :score-criteria="SCORE_CRITERIA"
+                    :get-worker-parsed-result="getWorkerParsedResult"
+                    :get-worker-score-a="getWorkerScoreA"
+                    :get-worker-score-b="getWorkerScoreB"
+                    @open-fullscreen="openUnifiedFullscreen('live-multi')"
+                    @view-worker="focusWorker"
+                  />
+                </div>
               </div>
 
               <!-- Single Worker View -->
@@ -189,21 +213,6 @@
                   </p>
                 </div>
               </div>
-            </v-window-item>
-
-            <!-- Workers Tab: Multi-Worker Dashboard -->
-            <v-window-item v-if="workerCount > 1" value="workers" class="tab-window-item">
-              <MultiWorkerDashboard
-                :worker-count="workerCount"
-                :worker-streams="workerStreams"
-                :session="session"
-                :score-criteria="SCORE_CRITERIA"
-                :get-worker-parsed-result="getWorkerParsedResult"
-                :get-worker-score-a="getWorkerScoreA"
-                :get-worker-score-b="getWorkerScoreB"
-                @open-fullscreen="openUnifiedFullscreen('live-multi')"
-                @view-worker="focusWorker"
-              />
             </v-window-item>
 
             <!-- History Tab: Completed Comparisons -->
@@ -323,7 +332,6 @@ import { useRoute, useRouter } from 'vue-router';
 
 // Import extracted components
 import SessionProgressBar from './JudgeSession/SessionProgressBar.vue';
-import WorkerLaneGrid from './JudgeSession/WorkerLaneGrid.vue';
 import SessionQueuePanel from './JudgeSession/SessionQueuePanel.vue';
 import WorkerLane from './WorkerLane.vue';
 
@@ -477,7 +485,8 @@ const queueHeaders = QUEUE_HEADERS;
 // ============================================
 // TAB-BASED NAVIGATION STATE
 // ============================================
-const activeTab = ref('live');  // 'live', 'workers', or 'history'
+const activeTab = ref('live');  // 'live' or 'history'
+const liveViewMode = ref('detailed');  // 'detailed' (WorkerLane grid) or 'compact' (Dashboard)
 
 // ============================================
 // UNIFIED FULLSCREEN STATE
@@ -686,6 +695,44 @@ onUnmounted(() => {
   min-height: 0;
 }
 
+/* Live Multi-Worker Container */
+.live-multi-worker-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Live View Header with Toggle */
+.live-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.live-view-info {
+  display: flex;
+  align-items: center;
+}
+
+.live-view-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.live-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Live Worker Grid (Multi-Worker View in Live Tab) */
 .live-worker-grid {
   flex: 1;
@@ -699,6 +746,13 @@ onUnmounted(() => {
 
 .live-worker-grid .v-col {
   padding: 6px;
+}
+
+/* Live Worker Compact View */
+.live-worker-compact {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* Comparison Section (fills available space) */
@@ -762,13 +816,6 @@ onUnmounted(() => {
 /* Progress Section (compact) */
 .progress-section {
   flex-shrink: 0;
-}
-
-/* Workers Section (when visible) */
-.workers-section {
-  flex-shrink: 0;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 /* Queue Section (fills remaining space) */

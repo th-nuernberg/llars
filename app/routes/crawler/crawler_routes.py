@@ -122,6 +122,11 @@ def start_crawl():
         }
     }
 
+    # If collection was pre-created, expose its ID immediately
+    job_status = crawler_service.get_job_status(job_id) or {}
+    if job_status.get('collection_id'):
+        response_data['collection_id'] = job_status['collection_id']
+
     if existing_collection_id:
         response_data['mode'] = 'add_to_existing'
         response_data['existing_collection_id'] = existing_collection_id

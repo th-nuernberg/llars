@@ -10,6 +10,7 @@ import uuid
 import logging
 import threading
 import asyncio
+import re
 from datetime import datetime
 from typing import List, Dict, Optional
 from urllib.parse import urlparse
@@ -36,11 +37,72 @@ class CrawlerService:
     """
 
     RAG_DOCS_PATH = '/app/rag_docs'
+    DEFAULT_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
+    DEFAULT_CHUNK_SIZE = 1000
+    DEFAULT_CHUNK_OVERLAP = 200
+    DEFAULT_ICON = 'mdi-web'
+    DEFAULT_COLOR = '#2196F3'
 
     def __init__(self):
         self.active_crawls: Dict[str, Dict] = {}
         self._socketio = None
         self._background_threads: Dict[str, threading.Thread] = {}
+
+    def _slugify(self, value: str, max_length: int = 200) -> str:
+        """Create a safe slug for internal collection names."""
+        value = (value or '').strip().lower()
+        value = re.sub(r'[^a-z0-9]+', '_', value)
+        value = value.strip('_')
+        if not value:
+            value = 'site'
+        return value[:max_length].rstrip('_')
+
+    def _build_crawl_collection_name(self, urls: List[str], display_name: str, job_id: str) -> str:
+        """Build a unique, safe internal name for crawl collections."""
+        domain = ''
+        if urls:
+            try:
+                domain = urlparse(urls[0]).netloc
+            except Exception:
+                domain = ''
+        base = domain or display_name or 'site'
+        slug = self._slugify(base, max_length=180)
+        return f"crawl_{slug}_{job_id[:8]}"
+
+    def _create_crawl_collection(
+        self,
+        urls: List[str],
+        display_name: str,
+        description: str,
+        created_by: str,
+        job_id: str
+    ):
+        """Create and persist a new RAGCollection for a crawl."""
+        from db.db import db
+        from db.tables import RAGCollection
+
+        internal_name = self._build_crawl_collection_name(urls, display_name, job_id)
+
+        collection = RAGCollection(
+            name=internal_name,
+            display_name=display_name,
+            description=description or (f"Webcrawl von: {', '.join(urls)}" if urls else ''),
+            icon=self.DEFAULT_ICON,
+            color=self.DEFAULT_COLOR,
+            embedding_model=self.DEFAULT_EMBEDDING_MODEL,
+            chunk_size=self.DEFAULT_CHUNK_SIZE,
+            chunk_overlap=self.DEFAULT_CHUNK_OVERLAP,
+            is_active=True,
+            is_public=True,
+            created_by=created_by,
+            created_at=datetime.now(),
+            source_type='crawler',
+            source_url=urls[0] if urls else None,
+            crawl_job_id=job_id
+        )
+        db.session.add(collection)
+        db.session.flush()
+        return collection
 
     def set_socketio(self, socketio):
         """Set the SocketIO instance for live updates."""
@@ -100,26 +162,18 @@ class CrawlerService:
             Dict with job_id and status
         """
         from db.db import db
-        from db.tables import RAGCollection, RAGDocument, RAGProcessingQueue
+        from db.tables import RAGDocument, RAGProcessingQueue
 
         job_id = str(uuid.uuid4())
 
-        # Create collection
-        collection = RAGCollection(
-            name=f"crawl_{collection_name.lower().replace(' ', '_')}_{job_id[:8]}",
+        # Create collection (synchronous mode)
+        collection = self._create_crawl_collection(
+            urls=urls,
             display_name=collection_name,
-            description=collection_description or f"Webcrawl von: {', '.join(urls)}",
-            icon='mdi-web',
-            color='#2196F3',
-            embedding_model='sentence-transformers/all-MiniLM-L6-v2',
-            chunk_size=1000,
-            chunk_overlap=200,
-            is_active=True,
+            description=collection_description,
             created_by=created_by,
-            created_at=datetime.now()
+            job_id=job_id
         )
-        db.session.add(collection)
-        db.session.flush()
 
         collection_id = collection.id
 
@@ -318,6 +372,7 @@ class CrawlerService:
             'urls': urls,
             'collection_name': collection_name,
             'existing_collection_id': existing_collection_id,
+            'collection_id': existing_collection_id,
             'max_pages': max_pages_per_site * len(urls),
             'pages_crawled': 0,
             'documents_created': 0,
@@ -329,6 +384,49 @@ class CrawlerService:
             'use_playwright': actual_use_playwright,
             'use_vision_llm': use_vision_llm
         }
+
+        # Create collection synchronously when starting a new crawl (so frontend gets ID immediately)
+        if not existing_collection_id:
+            try:
+                new_collection_id = None
+                if app:
+                    with app.app_context():
+                        collection = self._create_crawl_collection(
+                            urls=urls,
+                            display_name=collection_name,
+                            description=collection_description,
+                            created_by=created_by,
+                            job_id=job_id
+                        )
+                        from db.db import db
+                        db.session.commit()
+                        new_collection_id = collection.id
+                else:
+                    collection = self._create_crawl_collection(
+                        urls=urls,
+                        display_name=collection_name,
+                        description=collection_description,
+                        created_by=created_by,
+                        job_id=job_id
+                    )
+                    from db.db import db
+                    db.session.commit()
+                    new_collection_id = collection.id
+
+                if not new_collection_id:
+                    raise RuntimeError("Collection creation returned no ID")
+
+                existing_collection_id = new_collection_id
+                self.active_crawls[job_id]['collection_id'] = new_collection_id
+                self.active_crawls[job_id]['existing_collection_id'] = new_collection_id
+                logger.info(f"[Job {job_id}] Pre-created crawl collection {new_collection_id}")
+            except Exception as e:
+                logger.error(f"[Job {job_id}] Could not create collection: {e}")
+                self.active_crawls[job_id]['status'] = 'failed'
+                self.active_crawls[job_id]['error'] = str(e)
+                self._emit_error(job_id, str(e))
+                self._emit_jobs_updated()
+                raise
 
         # Notify all clients about new job
         self._emit_jobs_updated()
@@ -427,23 +525,23 @@ class CrawlerService:
                     raise ValueError(f"Collection with ID {existing_collection_id} not found")
                 collection_id = collection.id
                 logger.info(f"[Job {job_id}] Adding to existing collection: {collection.display_name} (ID: {collection_id})")
+
+                # Update source metadata for existing collections
+                collection.crawl_job_id = job_id
+                if collection.source_type == 'upload':
+                    collection.source_type = 'mixed'
+                if not collection.source_url and urls:
+                    collection.source_url = urls[0]
+                db.session.commit()
             else:
-                # Create new collection
-                collection = RAGCollection(
-                    name=f"crawl_{collection_name.lower().replace(' ', '_')}_{job_id[:8]}",
+                # Create new collection (fallback if not pre-created)
+                collection = self._create_crawl_collection(
+                    urls=urls,
                     display_name=collection_name,
-                    description=collection_description or f"Webcrawl von: {', '.join(urls)}",
-                    icon='mdi-web',
-                    color='#2196F3',
-                    embedding_model='sentence-transformers/all-MiniLM-L6-v2',
-                    chunk_size=1000,
-                    chunk_overlap=200,
-                    is_active=True,
+                    description=collection_description,
                     created_by=created_by,
-                    created_at=datetime.now()
+                    job_id=job_id
                 )
-                db.session.add(collection)
-                db.session.flush()
                 collection_id = collection.id
                 logger.info(f"[Job {job_id}] Created new collection: {collection.display_name} (ID: {collection_id})")
 

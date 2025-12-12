@@ -17,6 +17,8 @@ import threading
 import time
 import uuid
 from datetime import datetime
+from datetime import timedelta
+import os
 from typing import Optional
 
 from flask import current_app
@@ -137,6 +139,56 @@ class EmbeddingWorker:
         from db.db import db
         from db.tables import RAGDocument, RAGDocumentChunk, RAGCollection, RAGProcessingQueue
 
+        # Requeue stale "processing" documents after restarts/crashes
+        try:
+            stale_seconds = int(os.environ.get("EMBEDDING_STALE_SECONDS", "900"))  # 15 min default
+        except Exception:
+            stale_seconds = 900
+
+        cutoff = datetime.now() - timedelta(seconds=stale_seconds)
+
+        stale_queue_entries = RAGProcessingQueue.query.filter(
+            RAGProcessingQueue.status == 'processing',
+            RAGProcessingQueue.started_at.isnot(None),
+            RAGProcessingQueue.started_at < cutoff
+        ).all()
+
+        if stale_queue_entries:
+            logger.warning(f"[EmbeddingWorker] Requeuing {len(stale_queue_entries)} stale processing documents")
+
+            for entry in stale_queue_entries:
+                doc = entry.document
+                if not doc:
+                    continue
+                if entry.retry_count >= entry.max_retries:
+                    entry.status = 'failed'
+                    entry.error_message = 'Stuck in processing; max retries reached'
+                    doc.status = 'failed'
+                    doc.processing_error = entry.error_message[:500]
+                else:
+                    entry.retry_count += 1
+                    entry.status = 'queued'
+                    entry.progress_percent = 0
+                    entry.current_step = 'Requeued after stale processing'
+                    entry.error_message = None
+                    entry.started_at = None
+                    doc.status = 'pending'
+
+            db.session.commit()
+
+        # Also reset documents stuck in processing without queue info
+        stale_docs = RAGDocument.query.filter(
+            RAGDocument.status == 'processing',
+            RAGDocument.updated_at.isnot(None),
+            RAGDocument.updated_at < cutoff
+        ).all()
+
+        if stale_docs:
+            logger.warning(f"[EmbeddingWorker] Resetting {len(stale_docs)} stale docs without active queue")
+            for doc in stale_docs:
+                doc.status = 'pending'
+            db.session.commit()
+
         # Get pending documents
         pending_docs = RAGDocument.query.filter_by(
             status='pending'
@@ -256,6 +308,11 @@ class EmbeddingWorker:
         from services.rag.collection_embedding_service import sanitize_chroma_collection_name
         primary_collection = linked_collections[0]
         collection_name = sanitize_chroma_collection_name(primary_collection.name, self._pipeline.model_name)
+
+        # Ensure stored chroma_collection_name matches actual Chroma collection
+        for coll in linked_collections:
+            if coll and coll.chroma_collection_name != collection_name:
+                coll.chroma_collection_name = collection_name
 
         # Get or create Chroma collection
         vectorstore_dir = os.path.join(self._pipeline.storage_dir, "vectorstore", self._pipeline.model_name.replace('/', '_'))

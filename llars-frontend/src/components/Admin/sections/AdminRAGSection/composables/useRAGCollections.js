@@ -59,7 +59,18 @@ export function useRAGCollections() {
 
     creatingCollection.value = true;
     try {
-      await axios.post('/api/rag/collections', { name: newCollectionName.value });
+      const displayName = newCollectionName.value.trim();
+      const internalName = displayName
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+      await axios.post('/api/rag/collections', {
+        name: internalName || `collection_${Date.now()}`,
+        display_name: displayName
+      });
       newCollectionName.value = '';
       if (onSuccess) onSuccess();
     } catch (error) {

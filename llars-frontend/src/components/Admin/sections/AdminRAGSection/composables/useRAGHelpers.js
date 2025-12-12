@@ -58,6 +58,26 @@ export function useRAGHelpers() {
     return parts.length > 1 ? parts.pop().toLowerCase() : '';
   };
 
+  // Webcrawl detection (for better iconography)
+  const isWebcrawlDocument = (doc) => {
+    if (!doc) return false;
+    if (doc.source_url) return true;
+    const name = doc.filename || '';
+    return name.startsWith('webcrawl_') || name.startsWith('crawl_');
+  };
+
+  const getDocumentIcon = (doc) => {
+    if (isWebcrawlDocument(doc)) return 'mdi-spider-web';
+    const ext = doc?.file_type || getFileExtension(doc?.filename);
+    return getFileTypeIcon(ext);
+  };
+
+  const getDocumentColor = (doc) => {
+    if (isWebcrawlDocument(doc)) return 'info';
+    const ext = doc?.file_type || getFileExtension(doc?.filename);
+    return getFileTypeColor(ext);
+  };
+
   // Status helpers
   const getStatusColor = (status) => {
     const colors = {
@@ -134,6 +154,9 @@ export function useRAGHelpers() {
     getFileTypeIcon,
     getFileTypeColor,
     getFileExtension,
+    isWebcrawlDocument,
+    getDocumentIcon,
+    getDocumentColor,
 
     // Status helpers
     getStatusColor,

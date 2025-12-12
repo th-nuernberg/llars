@@ -622,25 +622,63 @@ class PooledJudgeWorker:
         # Update comparison status
         comparison.status = JudgeComparisonStatus.COMPLETED
         comparison.completed_at = datetime.now()
-
-        # Update session progress (thread-safe increment)
-        session.completed_comparisons = (
-            JudgeComparison.query.filter_by(
-                session_id=self.session_id,
-                status=JudgeComparisonStatus.COMPLETED
-            ).count()
-        )
         db.session.commit()
 
-        # Broadcast completion
-        self._broadcast_comparison_complete(comparison, result)
-        self._broadcast_progress(session)
+        # Atomic increment of session progress (prevents race condition)
+        # This returns the NEW value after increment
+        new_completed = self._atomic_increment_progress()
+
+        # Broadcast completion with the atomic count
+        self._broadcast_comparison_complete(comparison, result, new_completed)
+        self._broadcast_progress_atomic(new_completed, session.total_comparisons)
 
         logger.info(
             f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
             f"Comparison {comparison.id} complete: "
             f"winner={result.winner}, confidence={result.confidence:.2f}"
         )
+
+    def _atomic_increment_progress(self):
+        """
+        Atomically increment session progress and return the NEW value.
+
+        This prevents race conditions where multiple workers read/write
+        completed_comparisons simultaneously and get inconsistent values.
+        """
+        from db.db import db
+        from sqlalchemy import text
+
+        try:
+            # MariaDB atomic increment with result
+            result = db.session.execute(
+                text("""
+                    UPDATE judge_sessions
+                    SET completed_comparisons = completed_comparisons + 1
+                    WHERE id = :session_id
+                """),
+                {'session_id': self.session_id}
+            )
+            db.session.commit()
+
+            # Fetch the new value (MariaDB doesn't support RETURNING)
+            new_value = db.session.execute(
+                text("SELECT completed_comparisons FROM judge_sessions WHERE id = :session_id"),
+                {'session_id': self.session_id}
+            ).scalar()
+
+            logger.debug(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Atomic increment: completed_comparisons = {new_value}"
+            )
+            return new_value or 0
+
+        except Exception as e:
+            logger.error(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Error in atomic increment: {e}"
+            )
+            db.session.rollback()
+            return 0
 
     def _load_messages(self, thread_id: int):
         """Load messages for a thread."""
@@ -841,7 +879,7 @@ class PooledJudgeWorker:
             'accumulated_length': len(self.stream_content)  # For debugging
         }, room=room)
 
-    def _broadcast_comparison_complete(self, comparison, result):
+    def _broadcast_comparison_complete(self, comparison, result, atomic_completed=None):
         """Broadcast when a comparison completes."""
         from db.tables import JudgeSession
 
@@ -854,9 +892,9 @@ class PooledJudgeWorker:
 
         room = f"judge_session_{self.session_id}"
 
-        # Get current progress from session for robust frontend tracking
+        # Use atomic count if provided, otherwise fall back to DB read
         session = JudgeSession.query.get(self.session_id)
-        completed = session.completed_comparisons if session else 0
+        completed = atomic_completed if atomic_completed is not None else (session.completed_comparisons if session else 0)
         total = session.total_comparisons if session else 0
 
         event_data = {
@@ -874,8 +912,28 @@ class PooledJudgeWorker:
         # Also broadcast to overview room for live updates on overview page
         socketio.emit('judge:comparison_complete', event_data, room='judge_overview')
 
+    def _broadcast_progress_atomic(self, completed, total):
+        """Broadcast session progress update with atomic values (prevents race conditions)."""
+        socketio = self._get_socketio()
+        if not socketio:
+            return
+
+        room = f"judge_session_{self.session_id}"
+        progress = (completed / total * 100) if total > 0 else 0
+
+        event_data = {
+            'session_id': self.session_id,
+            'status': 'running',
+            'completed': completed,
+            'total': total,
+            'percent': progress
+        }
+        socketio.emit('judge:progress', event_data, room=room)
+        # Also broadcast to overview room for live updates on overview page
+        socketio.emit('judge:progress', event_data, room='judge_overview')
+
     def _broadcast_progress(self, session):
-        """Broadcast session progress update."""
+        """Broadcast session progress update (legacy, use _broadcast_progress_atomic when possible)."""
         socketio = self._get_socketio()
         if not socketio:
             return

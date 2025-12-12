@@ -19,7 +19,9 @@ export function useSessionApi(sessionId, state, helpers) {
     workerCount,
     workerStreams,
     workerPoolStatus,
-    initializeWorkerStreams
+    initializeWorkerStreams,
+    initializeProgressFromApi,
+    resetProgressTracking
   } = state;
 
   const { getPillarName } = helpers;
@@ -50,6 +52,14 @@ export function useSessionApi(sessionId, state, helpers) {
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}`
       );
       session.value = response.data;
+
+      // Initialize progress counter from authoritative API data
+      // API data is the source of truth for initialization
+      // Always call initializeProgressFromApi - it handles null/undefined internally
+      initializeProgressFromApi(
+        response.data.completed_comparisons,
+        response.data.total_comparisons
+      );
 
       // Extract worker_count from config
       const sessionConfig = session.value.config || session.value.config_json;
@@ -129,6 +139,8 @@ export function useSessionApi(sessionId, state, helpers) {
       }
 
       // Restore each worker's accumulated stream content
+      const threadLoadPromises = [];
+
       response.data.workers.forEach(worker => {
         const workerId = worker.worker_id;
 
@@ -149,11 +161,25 @@ export function useSessionApi(sessionId, state, helpers) {
         // Restore comparison info
         if (worker.comparison) {
           workerStreams[workerId].comparison = worker.comparison;
+
+          // Queue thread message loading if we have thread IDs
+          if (worker.comparison.thread_a_id && worker.comparison.thread_b_id) {
+            threadLoadPromises.push(
+              loadThreadMessagesForWorker(workerId, worker.comparison.thread_a_id, worker.comparison.thread_b_id)
+            );
+          }
         }
 
         // Restore streaming state
         workerStreams[workerId].isStreaming = worker.is_streaming || false;
       });
+
+      // Load thread messages in parallel (don't block return)
+      if (threadLoadPromises.length > 0) {
+        Promise.all(threadLoadPromises).then(() => {
+          console.log('[Judge] Thread messages loaded for all workers');
+        });
+      }
 
       return true;
     } catch (error) {
@@ -171,6 +197,32 @@ export function useSessionApi(sessionId, state, helpers) {
       currentComparison.value = response.data;
     } catch (error) {
       console.error('Error loading current comparison:', error);
+    }
+  };
+
+  // Load thread messages for a specific worker's comparison
+  const loadThreadMessagesForWorker = async (workerId, threadAId, threadBId) => {
+    try {
+      // Load both threads in parallel
+      const [threadAResponse, threadBResponse] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadAId}`),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email_threads/generations/${threadBId}`)
+      ]);
+
+      // Update worker stream with thread messages
+      if (workerStreams[workerId]) {
+        workerStreams[workerId].comparison = {
+          ...workerStreams[workerId].comparison,
+          thread_a_messages: threadAResponse.data.messages || [],
+          thread_b_messages: threadBResponse.data.messages || []
+        };
+      }
+
+      console.log(`[Judge] Loaded thread messages for worker ${workerId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error loading thread messages for worker ${workerId}:`, error);
+      return false;
     }
   };
 
@@ -264,6 +316,7 @@ export function useSessionApi(sessionId, state, helpers) {
     loadWorkerPoolStatus,
     loadWorkerStreams,
     loadCurrentComparison,
+    loadThreadMessagesForWorker,
     loadCompletedComparisons,
     loadQueue,
     startSession,

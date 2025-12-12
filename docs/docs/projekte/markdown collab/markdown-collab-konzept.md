@@ -1,809 +1,403 @@
-# Markdown Collab Workspace - Konzept
+# Markdown Collab Workspace – Konzept
 
-!!! warning "Status: Konzept" Dieses Projekt befindet sich in der Konzeptphase. Das Design wird erarbeitet und kann sich noch aendern.
+!!! warning "Status: Konzept" Dieses Dokument beschreibt das Zielbild und die geplante Umsetzung. Details können sich in der Implementierung noch ändern.
 
-**Erstellt:** 2025-12-12  
-**Autor:** Codex (AI Assistant)  
-**Version:** 1.0
-
----
-
-## Ziel
-
-Ein kollaborativer Markdown-Arbeitsplatz, der die bestehende LLARS-Infrastruktur (YJS, RBAC, Authentik, Theme-System, Skeleton-Loading, Home-Kachel-Startseite) nutzt. Benutzer koennen Markdown-Dateien gemeinsam in Echtzeit bearbeiten, live rendern und git-artig nachvollziehen, wer was geaendert hat. Drei Ansichten (Editor Only, Split View, Preview Only) orientieren sich an PyCharm und koennen jederzeit umgeschaltet werden.
+**Stand:** 2025-12-12  
+**Autor:** Philipp Steigerwald / Codex  
+**Version:** 1.1
 
 ---
 
-## Anforderungen
+## 1. Zielbild und Nutzen
 
-### Funktionale Anforderungen
+Der **Markdown Collab Workspace** ist eine kollaborative Arbeitsfläche für Markdown-Dateien innerhalb von LLARS.  
+Er nutzt die vorhandene Plattform‑Infrastruktur (YJS‑Service, RBAC, Authentik, Theme‑System, Skeleton‑Loading, Home‑Kachel‑Startseite), um:
 
-ID
+-   Markdown‑Dateien in Echtzeit gemeinsam zu bearbeiten
+-   eine Live‑Preview parallel zum Editor zu rendern
+-   Änderungen pro Nutzer git‑ähnlich nachvollziehbar zu machen (Highlights, Commits, History)
+-   Dateien/Ordner kontrolliert zu teilen (view/edit/share)
 
-Anforderung
+**Abgrenzung (Out of Scope, v1):**
 
-Prioritaet
-
-F01
-
-Home-Kachel "Markdown Collab" fuehrt in eigene Workspace-Startseite mit kompakter Ordnerstruktur und zuletzt bearbeiteten Dateien.
-
-Hoch
-
-F02
-
-Ordnerbaum in der Standardansicht; neue Markdown-Dateien und Unterordner anlegen, umbenennen, loeschen, duplizieren; Drag-and-Drop fuer Reihung.
-
-Hoch
-
-F03
-
-Drei View-Modi: Editor, Split (Editor links, Preview rechts), Preview. Umschaltbar ohne Reload, Auswahl je User persistent.
-
-Hoch
-
-F04
-
-Live-Preview mit identischem Markdown-Renderer wie Doku; automatisches Rendern ohne manuellen Save.
-
-Hoch
-
-F05
-
-YJS-basierte Echtzeit-Kollaboration mit Presence (Avatare/Initialen, Cursor- und Selection-Farben), inklusive Anzeige, wer im Dokument ist und wo tippt.
-
-Hoch
-
-F06
-
-Teilen von Dateien und Ordnern: Einladungen per Nutzer- und Rollen-Auswahl; Link-Sharing optional mit RBAC-Check; Rechte: view, edit, share.
-
-Hoch
-
-F07
-
-Git-artige Aenderungsverfolgung: Farbliche Highlights pro User fuer uncommitted Aenderungen; Farben frei waehlbar, Konflikt-Autoresolution bei Doppelbelegung.
-
-Hoch
-
-F08
-
-Commit-Flow im UI: Aenderungsliste, Commit-Message, Reset der Highlights nach Commit; History mit Diff-Preview pro Commit.
-
-Hoch
-
-F09
-
-Auto-Save: Alle Aenderungen werden sofort ueber WebSockets zum Server gespiegelt; kein manueller Save-Button.
-
-Hoch
-
-F10
-
-Benutzerdefinierte Shortcuts (z. B. Umschalten der View-Modi) im lokalen Profil speichern.
-
-Mittel
-
-F11
-
-Quick-Share Button fuer aktuelle Datei (kopiert Freigabe-Link, zeigt aktuelle Berechtigungen).
-
-Mittel
-
-F12
-
-Schnellsuche ueber Dateien im Workspace (Titel, Inhalt, Ersteller).
-
-Mittel
-
-F13
-
-Onboarding-Tooltip-Tour fuer Modi-Umschaltung, Git-Panel, Sharing.
-
-Niedrig
-
-### Nicht-funktionale Anforderungen
-
-ID
-
-Anforderung
-
-Prioritaet
-
-NF01
-
-Realtime-Latenz fuer Kollaboration und Preview < 250 ms im lokalen Netz.
-
-Hoch
-
-NF02
-
-Sichtbare Skeleton-Loader fuer Ordnerbaum, Editor, Preview und Git-Panel (Verwendung des bestehenden `useSkeletonLoading`).
-
-Hoch
-
-NF03
-
-Rollen- und Berechtigungspruefung ueber Authentik/RBAC vor jedem API- und WebSocket-Zugriff; Deny-by-Default.
-
-Hoch
-
-NF04
-
-Stabil bei Browser-Refresh: Reconnect stellt YJS-Dokument, Presence und Git-Status wieder her.
-
-Hoch
-
-NF05
-
-Farbkontrast: Bei individuellen Highlights immer Textfarbe explizit setzen, auch bei Custom-Backgrounds (Theme-Vorgabe).
-
-Hoch
-
-NF06
-
-Skalierung: Mindestens 50 gleichzeitige Sessions pro Dokument ohne sichtbare Degradation.
-
-Mittel
-
-NF07
-
-Auditierbarkeit: Commit-Historie speichert Author, Timestamp, Delta-Hash.
-
-Mittel
-
-NF08
-
-Barrierefreiheit: Tastatursteuerung fuer Moduswechsel, Tabs und Git-Panel.
-
-Mittel
+-   Vollwertige Git‑Integration mit Branching/Merging außerhalb der App
+-   Offline‑Modus
+-   Externe Datei‑Synchronisation (z. B. direktes Repo‑Mount)
 
 ---
 
-## Datenbank-Design
+## 2. Nutzer‑Flow (Kurz)
 
-### Neue Tabellen
+1.  **Home → Markdown Collab**  
+    Einstieg über Kachel in eine Workspace‑Übersicht.
+2.  **Workspace wählen/erstellen**  
+    Ordnerbaum und „Zuletzt bearbeitet“ sichtbar.
+3.  **Datei öffnen**  
+    Editor/Split/Preview wählen, Live‑Preview läuft automatisch.
+4.  **Gemeinsam arbeiten**  
+    Presence (Cursors/Selections), Auto‑Save, Highlights.
+5.  **Committen & Teilen**  
+    Changes reviewen, Commit‑Message setzen, History anschauen, Links/Einladungen verwalten.
+
+---
+
+## 3. Anforderungen
+
+### 3.1 Funktionale Anforderungen
+
+**Workspace & Navigation**
+
+-   **F01 (hoch)**: Home‑Kachel „Markdown Collab“ führt in eine Workspace‑Startseite mit Ordnerstruktur und zuletzt bearbeiteten Dateien.
+-   **F02 (hoch)**: Ordnerbaum mit CRUD für Dateien/Ordner (anlegen, umbenennen, löschen, duplizieren) sowie Drag‑and‑Drop zum Sortieren/Verschieben.
+
+**Ansichten & Rendering**
+
+-   **F03 (hoch)**: Drei View‑Modi: **Editor**, **Split** (Editor links, Preview rechts), **Preview**. Umschaltbar ohne Reload, pro User persistent.
+-   **F04 (hoch)**: Live‑Preview mit **gleichem Markdown‑Renderer wie im LLARS‑Frontend** (aktuell `marked` + DOMPurify, siehe Chat‑Rendering). Preview rendert automatisch ohne Save‑Aktion.
+
+**Kollaboration & Presence**
+
+-   **F05 (hoch)**: YJS‑Realtime‑Kollaboration inkl. Presence (Avatare/Initialen, Cursor‑ und Selection‑Farben) sowie Anzeige aktiver Nutzer im Dokument.
+-   **F06 (hoch)**: Auto‑Save über WebSockets: jede Änderung wird sofort synchronisiert, kein Save‑Button.
+
+**Teilen & Rechte**
+
+-   **F07 (hoch)**: Teilen von Dateien/Ordnern über Einladungen (User/Rolle) und optionalen Freigabe‑Link. Rechte: **view / edit / share**; Ordner‑Freigaben vererben sich rekursiv auf alle enthaltenen Dokumente, sofern nicht überschrieben.
+-   **F08 (mittel)**: Quick‑Share‑Button im Header der aktuellen Datei (kopiert Link, zeigt aktuelle Freigaben).
+
+**Git‑Flow & Nachvollziehbarkeit**
+
+-   **F09 (hoch)**: Git‑artige Änderungsverfolgung: farbliche Highlights pro User für uncommitted Änderungen; Farbkollisionen werden automatisch auf freie Töne verschoben.
+-   **F10 (hoch)**: Commit‑Flow im UI: Änderungsliste, Commit‑Message Pflicht, Highlights resetten; History mit Diff‑Preview pro Commit.
+
+**Produktivität**
+
+-   **F11 (mittel)**: Benutzerdefinierte Shortcuts (z. B. View‑Modus‑Wechsel) im lokalen Profil speichern.
+-   **F12 (mittel)**: Schnellsuche über Dateien im Workspace (Titel, Inhalt, Ersteller).
+-   **F13 (niedrig)**: Onboarding‑Tour (Tooltip‑Walkthrough) für Modi, Git‑Panel, Sharing.
+
+### 3.2 Nicht‑funktionale Anforderungen
+
+**Performance & Stabilität**
+
+-   **NF01 (hoch)**: Realtime‑Latenz für Kollaboration und Preview < 250 ms im lokalen Netz.
+-   **NF02 (hoch)**: Rejoin/Reload stellt YJS‑Dokument, Presence und Git‑Status nahtlos wieder her.
+
+**Feedback & UX**
+
+-   **NF03 (hoch)**: Skeleton‑Loader für Ordnerbaum, Editor, Preview und Git‑Panel (bestehendes `useSkeletonLoading`).
+-   **NF04 (hoch)**: Farbkontrast im Light‑Mode sicherstellen; bei farbigen Hintergründen immer explizite Textfarbe setzen.
+-   **NF05 (mittel)**: Barrierefreiheit: Tastatursteuerung für Moduswechsel, Tabs und Git‑Panel.
+
+**Sicherheit, Skalierung & Audit**
+
+-   **NF06 (hoch)**: RBAC‑Check via Authentik vor jedem API‑ und WebSocket‑Zugriff; Deny‑by‑Default.
+-   **NF07 (mittel)**: ≥50 gleichzeitige Sessions pro Dokument ohne sichtbare Degradation.
+-   **NF08 (mittel)**: Auditierbarkeit: Commit‑Historie speichert Autor, Timestamp und Delta‑Hash.
+
+---
+
+## 4. Technische Einordnung in LLARS
+
+-   **Realtime‑Sync:** Nutzung des bestehenden `yjs-service` (`/collab/socket.io/`).  
+    Das Event‑API ist identisch zum Prompt‑Engineering‑Modul (`join_room`, `sync_update`, `cursor_update` usw.).  
+    Für Markdown‑Collab wird ein eigener Room‑Prefix verwendet (z. B. `markdown_{documentId}`), damit keine Kollisionen mit Prompt‑Rooms entstehen.
+-   **Persistenz:** Der YJS‑Service speichert aktuell Prompts in `user_prompts`. Für Markdown‑Collab wird die Persistenz auf `markdown_documents` erweitert (Adapter nach Room‑Prefix).
+-   **Backend:** Flask‑REST‑API unter `/api/markdown-collab/*`, abgesichert via `@require_permission`.
+-   **Frontend:** Vue/Vuetify‑Views analog Prompt‑Engineering‑Struktur; Skeleton‑Loading verpflichtend.
+
+---
+
+## 5. Datenbank‑Design
+
+### 5.1 Neue Tabellen
 
 #### `markdown_workspaces`
-
-Spalte
-
-Typ
-
-Nullable
-
-Beschreibung
-
-id
-
-INT (PK)
-
-Nein
-
-Eindeutige Workspace-ID
-
-name
-
-VARCHAR(255)
-
-Nein
-
-Anzeigename der Arbeitsflaeche
-
-owner_user_id
-
-INT (FK)
-
-Nein
-
-Besitzer, Default ist Anlegender
-
-visibility
-
-ENUM
-
-Nein
-
-private, team, org
-
-created_at
-
-DATETIME
-
-Nein
-
-Erstellt
-
-updated_at
-
-DATETIME
-
-Ja
-
-Geaendert
+| Spalte | Typ | Null | Beschreibung |
+|---|---|---|---|
+| id | INT (PK) | nein | Eindeutige Workspace‑ID |
+| name | VARCHAR(255) | nein | Anzeigename der Arbeitsfläche |
+| owner_user_id | INT (FK) | nein | Besitzer (Default: Anlegender) |
+| visibility | ENUM | nein | `private`, `team`, `org` |
+| created_at | DATETIME | nein | Erstellt |
+| updated_at | DATETIME | ja | Geändert |
 
 #### `markdown_documents`
-
-Spalte
-
-Typ
-
-Nullable
-
-Beschreibung
-
-id
-
-INT (PK)
-
-Nein
-
-Dokument-ID
-
-workspace_id
-
-INT (FK)
-
-Nein
-
-Zuordnung zu Workspace
-
-parent_id
-
-INT (FK)
-
-Ja
-
-Ordner-Hierarchie (self-reference)
-
-title
-
-VARCHAR(255)
-
-Nein
-
-Dateiname (ohne Endung)
-
-slug
-
-VARCHAR(255)
-
-Nein
-
-URL-Slug
-
-yjs_doc_id
-
-VARCHAR(255)
-
-Nein
-
-Referenz auf YJS-Dokument
-
-last_editor_user_id
-
-INT (FK)
-
-Ja
-
-Letzter Bearbeiter
-
-last_commit_id
-
-INT (FK)
-
-Ja
-
-Letzter Commit
-
-created_at
-
-DATETIME
-
-Nein
-
-Erstellt
-
-updated_at
-
-DATETIME
-
-Ja
-
-Geaendert
+| Spalte | Typ | Null | Beschreibung |
+|---|---|---|---|
+| id | INT (PK) | nein | Dokument‑ID |
+| workspace_id | INT (FK) | nein | Zuordnung zum Workspace |
+| parent_id | INT (FK) | ja | Ordner‑Hierarchie (Self‑Reference) |
+| title | VARCHAR(255) | nein | Dateiname (ohne Endung) |
+| slug | VARCHAR(255) | nein | URL‑Slug |
+| yjs_doc_id | VARCHAR(255) | nein | Referenz auf YJS‑Room |
+| last_editor_user_id | INT (FK) | ja | Letzter Bearbeiter |
+| last_commit_id | INT (FK) | ja | Letzter Commit |
+| created_at | DATETIME | nein | Erstellt |
+| updated_at | DATETIME | ja | Geändert |
 
 #### `markdown_shares`
+| Spalte | Typ | Null | Beschreibung |
+|---|---|---|---|
+| id | INT (PK) | nein | Freigabe‑ID |
+| document_id | INT (FK) | nein | Geteiltes Dokument/Ordner |
+| grantee_type | ENUM | nein | `user` oder `role` |
+| grantee_id | INT | ja | User‑ oder Rollen‑ID |
+| permission | ENUM | nein | `view`, `edit`, `share` |
+| created_by | INT (FK) | nein | Wer teilte |
+| expires_at | DATETIME | ja | Optionale Ablaufzeit |
+| created_at | DATETIME | nein | Erstellt |
 
-Spalte
-
-Typ
-
-Nullable
-
-Beschreibung
-
-id
-
-INT (PK)
-
-Nein
-
-Freigabe-ID
-
-document_id
-
-INT (FK)
-
-Nein
-
-Geteiltes Dokument/Ordner
-
-grantee_type
-
-ENUM
-
-Nein
-
-user, role
-
-grantee_id
-
-INT
-
-Ja
-
-User- oder Rollen-ID
-
-permission
-
-ENUM
-
-Nein
-
-view, edit, share
-
-created_by
-
-INT (FK)
-
-Nein
-
-Wer teilte
-
-expires_at
-
-DATETIME
-
-Ja
-
-Optionale Ablaufzeit
-
-created_at
-
-DATETIME
-
-Nein
-
-Erstellt
+Freigaben können auf **Dokument‑ oder Ordner‑Nodes** gesetzt werden. Ordner‑Freigaben gelten standardmäßig für alle Unterordner und Dokumente, bis eine spezifischere Regel (z. B. explizites Deny oder engeres Grant) greift.
 
 #### `markdown_commits`
-
-Spalte
-
-Typ
-
-Nullable
-
-Beschreibung
-
-id
-
-INT (PK)
-
-Nein
-
-Commit-ID
-
-document_id
-
-INT (FK)
-
-Nein
-
-Bezogenes Dokument
-
-author_user_id
-
-INT (FK)
-
-Nein
-
-Autor
-
-message
-
-TEXT
-
-Nein
-
-Commit-Message
-
-diff_summary
-
-TEXT
-
-Ja
-
-Aggregierte Aenderungsliste
-
-created_at
-
-DATETIME
-
-Nein
-
-Zeitstempel
+| Spalte | Typ | Null | Beschreibung |
+|---|---|---|---|
+| id | INT (PK) | nein | Commit‑ID |
+| document_id | INT (FK) | nein | Bezogenes Dokument |
+| author_user_id | INT (FK) | nein | Autor |
+| message | TEXT | nein | Commit‑Message |
+| diff_summary | TEXT | ja | Aggregierte Änderungsliste |
+| created_at | DATETIME | nein | Zeitstempel |
 
 #### `markdown_commit_deltas`
+| Spalte | Typ | Null | Beschreibung |
+|---|---|---|---|
+| id | INT (PK) | nein | Delta‑ID |
+| commit_id | INT (FK) | nein | Zugehöriger Commit |
+| user_color | VARCHAR(16) | ja | Farbe zum Zeitpunkt des Commits |
+| line_range | VARCHAR(64) | nein | Bereich, der geändert wurde |
+| hash | VARCHAR(64) | nein | Hash des Blocks |
 
-Spalte
-
-Typ
-
-Nullable
-
-Beschreibung
-
-id
-
-INT (PK)
-
-Nein
-
-Delta-ID
-
-commit_id
-
-INT (FK)
-
-Nein
-
-Zugehoeriger Commit
-
-user_color
-
-VARCHAR(16)
-
-Ja
-
-Farbe zum Zeitpunkt des Commits
-
-line_range
-
-VARCHAR(64)
-
-Nein
-
-Bereich, der geaendert wurde
-
-hash
-
-VARCHAR(64)
-
-Nein
-
-Hash des Blocks
-
-### Relationen (vereinfacht)
+### 5.2 Relationen (vereinfacht)
 
 ```
-workspace ──< documents (self-referencing fuer Ordnerbaum)
+workspace ──< documents (Self‑Reference für Ordnerbaum)
 documents ──< shares
 documents ──< commits ──< commit_deltas
-documents ── yjs_doc_id mapped auf yjs-server Room
+documents ── yjs_doc_id → yjs‑server Room
 ```
 
-### Aenderungen an bestehenden Tabellen
-
-Tabelle
-
-Aenderung
-
-Beschreibung
-
-permission_service (RBAC)
-
-Neue Permissions `feature:markdown_collab:{view,edit,share}`
-
-Konsistente Deny-by-Default Integration
-
-user_settings (falls vorhanden)
-
-Neues Feld `markdown_collab_view_mode`
-
-Persistiert Modus je User
+### 5.3 Änderungen an bestehenden Tabellen
+| Tabelle | Änderung | Beschreibung |
+|---|---|---|
+| permission_service (RBAC) | Neue Permissions `feature:markdown_collab:{view,edit,share}` | Konsistente Deny‑by‑Default‑Integration |
+| user_settings (falls vorhanden) | Neues Feld `markdown_collab_view_mode` | Persistiert Modus je User |
 
 ---
 
-## API-Design
+## 6. API‑Design (REST)
+| Methode | Pfad | Beschreibung | Permission |
+|---|---|---|---|
+| GET | `/api/markdown-collab/workspaces` | Liste der Workspaces | `feature:markdown_collab:view` |
+| POST | `/api/markdown-collab/workspaces` | Workspace anlegen | `feature:markdown_collab:edit` |
+| GET | `/api/markdown-collab/workspaces/:id/tree` | Ordner‑/Dateistruktur laden | `feature:markdown_collab:view` |
+| POST | `/api/markdown-collab/documents` | Datei/Ordner anlegen | `feature:markdown_collab:edit` |
+| PATCH | `/api/markdown-collab/documents/:id` | Umbenennen, verschieben | `feature:markdown_collab:edit` |
+| DELETE | `/api/markdown-collab/documents/:id` | Löschen | `feature:markdown_collab:edit` |
+| GET | `/api/markdown-collab/documents/:id/commits` | Commit‑Historie | `feature:markdown_collab:view` |
+| POST | `/api/markdown-collab/documents/:id/commit` | Commit anlegen (inkl. `diff_summary`) | `feature:markdown_collab:edit` |
+| POST | `/api/markdown-collab/documents/:id/share` | Sharing‑Regel setzen | `feature:markdown_collab:share` |
+| GET | `/api/markdown-collab/search` | Suche über Dateien/Content | `feature:markdown_collab:view` |
 
-Methode
-
-Pfad
-
-Beschreibung
-
-Permission
-
-GET
-
-/api/markdown-collab/workspaces
-
-Liste der Workspaces
-
-feature:markdown_collab:view
-
-POST
-
-/api/markdown-collab/workspaces
-
-Workspace anlegen
-
-feature:markdown_collab:edit
-
-GET
-
-/api/markdown-collab/workspaces/:id/tree
-
-Ordner- und Dateistruktur laden
-
-feature:markdown_collab:view
-
-POST
-
-/api/markdown-collab/documents
-
-Datei/Ordner anlegen
-
-feature:markdown_collab:edit
-
-PATCH
-
-/api/markdown-collab/documents/:id
-
-Umbenennen, verschieben
-
-feature:markdown_collab:edit
-
-DELETE
-
-/api/markdown-collab/documents/:id
-
-Loeschen
-
-feature:markdown_collab:edit
-
-GET
-
-/api/markdown-collab/documents/:id/commits
-
-Commit-Historie
-
-feature:markdown_collab:view
-
-POST
-
-/api/markdown-collab/documents/:id/commit
-
-Commit anlegen (inkl. diff_summary)
-
-feature:markdown_collab:edit
-
-POST
-
-/api/markdown-collab/documents/:id/share
-
-Sharing-Regel setzen
-
-feature:markdown_collab:share
-
-GET
-
-/api/markdown-collab/search
-
-Suche ueber Dateien/Content
-
-feature:markdown_collab:view
-
-**Responses werden als strukturierte Felder beschrieben (kein Code im Konzept):** listen von Workspaces, Baumknoten (id, type, title, hasChildren), Commits mit Author und Delta-Hash, Share-Infos (grantee, permission, expiry).
+**Response‑Formate (nur strukturell):**  
+Workspaces‑Liste, Tree‑Nodes (`id`, `type`, `title`, `hasChildren`), Commits inkl. Autor/Hash, Share‑Infos (`grantee`, `permission`, `expiry`).
 
 ---
 
-## WebSocket-Design
+## 7. Realtime‑Design (YJS‑Service)
 
--   Namespace: `/collab/markdown` auf bestehendem YJS-Server, analog Prompt-Engineering.
--   Rooms:
-    -   `markdown-doc-{id}` fuer Inhalt
-    -   `markdown-doc-{id}-presence` fuer Cursor, Selections, Farben
-    -   `markdown-doc-{id}-git` fuer Uncommitted-Highlights und Commit-Broadcast
--   Client -> Server Events:
-    -   `presence:update` (user_id, cursor, selection, color)
-    -   `mode:update` (view_mode)
-    -   `git:stage` (block_hash, user_color)
-    -   `git:commit` (commit_id, cleared_highlights=true)
-    -   `share:request_link` (document_id)
--   Server -> Client Events:
-    -   `presence:joined/left` (user, color)
-    -   `render:update` (latest markdown AST hash fuer Preview)
-    -   `git:highlight` (block_hash, user_id, color, timestamp)
-    -   `git:reset` (clears highlights after commit)
-    -   `share:link_ready` (url, permission)
--   Reconnect-Mechanik: bei Wiederbeitritt werden Cursor, farbliche Highlights und letzter View-Modus aus dem Room-State geladen.
+Der bestehende YJS‑Service wird wiederverwendet. Für Markdown‑Collab gelten dieselben Basisevents wie im Prompt‑Engineering‑Modul:
+
+-   **Socket.IO Path:** `/collab/socket.io/`
+-   **Room‑Namen:** `markdown_{documentId}` (eigener Prefix; Persistenzadapter im YJS‑Service erforderlich)
+
+**Client → Server**
+
+-   `join_room` `{ room }`  
+    Liefert `snapshot_document` und `room_state`, broadcastet `user_joined`.
+-   `sync_update` `{ room, update }`  
+    Überträgt YJS‑Updates für Inhalt und kollaborative Metadaten (z. B. Highlights).
+-   `cursor_update` `{ room, blockId, range|null }`  
+    Presence für Cursor/Selection.
+
+**Server → Client**
+
+-   `snapshot_document` (voller YJS‑State)
+-   `room_state` (User‑Liste + Cursors)
+-   `user_joined` / `user_left`
+-   `sync_update`
+-   `cursor_updated`
+
+**Git‑Highlights & Commit‑Reset**
+
+-   Uncommitted‑Highlights werden als kollaborative Metadaten im selben YJS‑Dokument gehalten (z. B. `Y.Map` pro Block/Line‑Range).  
+    Dadurch reicht `sync_update` für Broadcast/Replay.
+-   Nach einem Commit wird der Highlight‑State serverseitig (REST) geleert und über YJS‑Update synchronisiert.
 
 ---
 
-## Frontend-Design
+## 8. Frontend‑Design
 
-### Neue Komponenten
+### 8.1 Neue Views/Komponenten
+| Komponente | Pfad | Zweck |
+|---|---|---|
+| `MarkdownCollabHome.vue` | `llars-frontend/src/views/MarkdownCollab/MarkdownCollabHome.vue` | Workspace‑Einstieg, zuletzt bearbeitet |
+| `MarkdownCollabWorkspace.vue` | `llars-frontend/src/views/MarkdownCollab/MarkdownCollabWorkspace.vue` | Hauptansicht mit Baum, Toolbar, Editor/Preview |
+| `MarkdownTreePanel.vue` | `llars-frontend/src/components/MarkdownCollab/MarkdownTreePanel.vue` | Ordnerbaum + Actions + Skeleton |
+| `MarkdownEditorPane.vue` | `llars-frontend/src/components/MarkdownCollab/MarkdownEditorPane.vue` | Editor mit YJS‑Binding und Presence |
+| `MarkdownPreviewPane.vue` | `llars-frontend/src/components/MarkdownCollab/MarkdownPreviewPane.vue` | Live‑Preview (marked + Sanitize) |
+| `MarkdownModeToggle.vue` | `llars-frontend/src/components/MarkdownCollab/MarkdownModeToggle.vue` | Umschalter Editor/Split/Preview |
+| `MarkdownGitPanel.vue` | `llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue` | Highlights, Commit‑Form, History |
+| `MarkdownShareDialog.vue` | `llars-frontend/src/components/MarkdownCollab/MarkdownShareDialog.vue` | Teilen nach User/Rolle, Link‑Sharing |
 
-Komponente
+### 8.1.1 Standard View (Workspace‑Übersicht)
 
-Pfad-Vorschlag
+Die Standardansicht ist der Datei‑ und Ordner‑Explorer eines Workspaces. Hier sieht man **alle Dateien**, kann die Struktur bearbeiten und Freigaben direkt am Baum setzen (Datei **oder** Ordner).  
+Wird ein User auf Ordner‑Ebene hinzugefügt, kann er alle enthaltenen Dokumente gemeinsam mit dem Besitzer bearbeiten (rekursive Vererbung).  
+Ein Klick auf eine Markdown‑Datei öffnet anschließend die Editor‑Ansicht gemäß Abschnitt **8.2**.
 
-Beschreibung
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Header: [Workspace] [Suche] [Neue Datei] [Neuer Ordner] [Upload]         │
+├───────────────────────────────┬──────────────────────────────────────────┤
+│ Ordnerbaum / Dateien          │ Details & Freigaben                        │
+│ (kompletter Workspace)        │                                           │
+│ ├─ Research/            [S]   │ Auswahl: Research/                         │
+│ │   ├─ intro.md   [S]         │ Besitzer: philipp                          │
+│ │   ├─ notes.md   [S]         │ Mitbearbeiter: alice, bob                  │
+│ │   └─ drafts/    [S]         │ Rechte: view/edit/share                    │
+│ │       ├─ v1.md [S]          │ Aktionen: [User/Rolle hinzufügen] [Link]   │
+│ │       └─ v2.md [S]          │ (Ordner‑Freigaben vererben sich)           │
+│ └─ Archive/                   │                                           │
+└───────────────────────────────┴──────────────────────────────────────────┘
+[S] = Freigabe/Mitbearbeiter‑Icon pro Node (Datei oder Ordner)
+```
 
-MarkdownCollabHome.vue
-
-llars-frontend/src/views/MarkdownCollab/MarkdownCollabHome.vue
-
-Einstieg mit Kachel-Liste und letzter Aktivitaet
-
-MarkdownCollabWorkspace.vue
-
-llars-frontend/src/views/MarkdownCollab/MarkdownCollabWorkspace.vue
-
-Hauptansicht mit Baum, Toolbar, Editor/Preview
-
-MarkdownTreePanel.vue
-
-llars-frontend/src/components/MarkdownCollab/MarkdownTreePanel.vue
-
-Ordnerbaum mit Actions und Skeleton
-
-MarkdownEditorPane.vue
-
-llars-frontend/src/components/MarkdownCollab/MarkdownEditorPane.vue
-
-Editor mit YJS-Binding, Presence-Avatare
-
-MarkdownPreviewPane.vue
-
-llars-frontend/src/components/MarkdownCollab/MarkdownPreviewPane.vue
-
-Live-Preview, nutzt bestehende Markdown-Render-Pipeline
-
-MarkdownModeToggle.vue
-
-llars-frontend/src/components/MarkdownCollab/MarkdownModeToggle.vue
-
-Schalter Editor/Split/Preview
-
-MarkdownGitPanel.vue
-
-llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue
-
-Uncommitted-Highlights, Commit-Form, History
-
-MarkdownShareDialog.vue
-
-llars-frontend/src/components/MarkdownCollab/MarkdownShareDialog.vue
-
-Teilen nach User/Rolle, Link-Sharing
-
-### Layout (Default Split View)
+### 8.2 Layout (Default Split View)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Header: [Breadcrumb] [Search] [Mode Toggle] [Share] [Git Status]         │
 ├───────────────┬─────────────────────────────────────┬────────────────────┤
 │ Ordnerbaum    │ Editor (YJS, Presence, Highlights)  │ Live Preview        │
-│ (3/12 Breite) │                                     │ (identischer MD)    │
-│ - Workspace   │ ▒▒▒▒▒▒ Skeleton beim Laden          │ ▒▒▒▒▒▒ Skeleton     │
+│ (3/12 Breite) │ ▒▒▒▒▒▒ Skeleton beim Laden          │ ▒▒▒▒▒▒ Skeleton     │
+│ - Workspace   │                                     │ (gleicher Renderer) │
 │ - Files ...   │                                     │                    │
 ├───────────────┴─────────────────────────────────────┴────────────────────┤
 │ Git Panel (History, Commit Message, Diff Preview, Highlights Reset)      │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### View-Modus Toggle (PyCharm-inspiriert)
+### 8.3 View‑Modus Toggle (PyCharm‑inspiriert)
 
 ```
 [Editor] [Split] [Preview]
    |        |        |
-   |        |        +-- rendert gesamte Flaeche (Preview Pane nimmt Editor ein)
+   |        |        +-- Preview Pane übernimmt die Fläche
    |        +----------- Editor links, Preview rechts
    +-------------------- Editor Vollbild
 ```
 
-### Presence und Farben
 
--   Avatare/Initialen in Toolbar und im Editor (Cursor + Selection).
--   User waehlt Farbe in Profileinstellungen; falls Farbe bereits von anderem Nutzer im gleichen Dokument aktiv genutzt wird, automatische Verschiebung zum naechstliegenden freien Farbton und UI-Hinweis.
--   Highlights auf Textbausteinen bleiben bis zum naechsten Commit sichtbar; danach Reset per `git:reset`.
+### 8.4 Presence, Git‑UX, Sharing, Styling
 
-### Git-UX und Highlights
+-   **Presence/Farben:** Avatare/Initialen im Header und Cursor/Selections im Editor; Farbkollisionen werden auf freie Töne verschoben.
+-   **Git‑UX:** Live‑Highlighting pro User‑Farbe, Uncommitted‑Liste mit Sprung ins Dokument, Commit‑Pflichtmessage, History‑Diffs.
+-   **Sharing:** Freigaben direkt im Baum (Datei/Ordner) oder via Quick‑Share im Header; Dialog für User/Rollen‑Freigaben inkl. Ablaufzeit; Ordner‑Freigaben vererben sich und werden entsprechend markiert.
+-   **Skeleton‑Loading:** TreePanel/Editor/Preview/GitPanel verwenden `useSkeletonLoading` je Abschnitt.
+-   **Theme:** Keine neue Palette außer Highlights; bei Highlights immer `color: rgb(var(--v-theme-on-surface))` setzen.
 
--   Live-Highlighting wie Textmarker pro User-Farbe; Hover zeigt User + Timestamp.
--   Uncommitted-Panel listet geaenderte Textbloecke mit Sprung ins Dokument.
--   Commit-Dialog zwingt zu Message; nach Commit verschwinden Highlights, History-Tab zeigt diff-summaries.
--   Konfliktanzeige: parallele Aenderungen werden nebeneinander dargestellt; YJS-CRDT loest Content, Farbhinterlegung bleibt pro Nutzer sichtbar bis Commit.
+### 8.4.1 Git‑Panel & Highlighting (Detailansicht)
 
-### Sharing UX
+Die Editor‑Ansicht kombiniert zwei unabhängige Hervorhebungs‑Ebenen:
 
--   Quick-Share im Header: kopiert Link, zeigt aktuelle Rechte.
--   Share-Dialog: User/Rolle Auswahl, Rechte (view/edit/share), optionale Ablaufzeit; Audit-Log-Eintrag in Historie.
--   In Baum sichtbar, welche Ordner oder Dateien geteilt sind.
+- **Syntax‑Highlighting (Textfarbe):** Markdown‑Tokens (Überschriften, Listen, Links, Inline‑/Block‑Code, Zitate usw.) werden farblich gemäß Light/Dark‑Theme eingefärbt. Implementierung über einen Markdown‑fähigen Code‑Editor (z. B. CodeMirror 6 oder Monaco) mit LLARS‑Theme‑Tokens.
+- **Git‑Highlighting (Hintergrundfarbe):** Uncommitted Änderungen werden halbtransparent im Hintergrund markiert – **in der Farbe des Users**, der den Block zuletzt geändert hat. Syntax‑Farben bleiben sichtbar, da nur der Hintergrund eingefärbt wird.
 
-### Skeleton Loading
+**Farblegende (live‑Beispiel im Doc):**
 
--   TreePanel: Skeleton-Zeilen fuer Ordner/File-Items.
--   EditorPane: Placeholder-Lines; GitPanel: Skeleton Cards; PreviewPane: Placeholder-Blocks.
--   Nutzung des bestehenden `useSkeletonLoading` Composable, inkl. isLoading pro Abschnitt.
+- Syntax‑Beispiele (Textfarbe):
+    - <span style="color:#1976D2; font-weight:700"># *Überschrift*</span>
+    - <span style="color:#2E7D32">- *Liste / Bullet*</span>
+    - <span style="color:#9C27B0">`inline code` / ```fenced code```</span>
+    - <span style="color:#1565C0">[*Link*](...)</span>
+- Git‑Change‑Beispiele (Hintergrundfarbe pro User):
+    - <span style="background-color:rgba(255,105,180,0.25)">Alice‑Änderung</span>
+    - <span style="background-color:rgba(0,188,212,0.25)">Bob‑Änderung</span>
 
-### Styling und Theme
+**Beispiel – Editor‑Ausschnitt mit Syntax‑ und Change‑Highlights:**
 
--   Dark/Light wird ueber bestehendes Theme-System gesteuert.
--   Bei farbigen Highlights und Panels immer `color: rgb(var(--v-theme-on-surface))` oder on-surface-variant erzwingen, um Kontrast im Light Mode sicherzustellen.
--   Keine neue Farbpalette ausser User-Highlight-Farben; restliche UI nutzt Vuetify Tokens.
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Editor (Syntax‑Farben + Git‑Hintergründe)                                 │
+├──────────────────────────────────────────────────────────────────────────┤
+│  12 │ <H1># Projekt‑Ziel</H1>                                             │
+│  13 │ <P>Dieser Workspace erlaubt …</P>                                   │
+│  14 │                                                                    │
+│  15 │ [BG‑Alice] <H2>## Vorgehen</H2>                                     │
+│  16 │ [BG‑Alice] - <LI>Schritt 1</LI>                                     │
+│  17 │ [BG‑Bob  ] - <LI>Schritt 2</LI>                                     │
+│  18 │                                                                    │
+│  19 │ <CODE>```python</CODE>                                              │
+│  20 │ [BG‑Bob  ] <CODE>def hello():</CODE>                                │
+│  21 │ [BG‑Bob  ] <CODE>    return "hi"</CODE>                             │
+│  22 │ <CODE>```</CODE>                                                   │
+└──────────────────────────────────────────────────────────────────────────┘
+
+Legende:
+<H1>/<H2>/<P>/<LI>/<CODE>/<LINK> = Syntax‑Textfarben (Theme‑abhängig)
+[BG‑User]                        = Git‑Change‑Hintergrund (User‑Farbe, ~20–30% Opazität)
+```
+
+**Beispiel – Git‑Panel mit Changes, Diff und History:**
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Git Panel                                                                 │
+├────────────── Uncommitted Changes ────────────────┬────────── History ───┤
+│ Alice (pink)                                      │  a1b2c3  "Intro"       │
+│  • lines 15‑16  ## Vorgehen                       │  d4e5f6  "Fix typos"   │
+│ Bob (cyan)                                        │  g7h8i9  "Add code"    │
+│  • lines 17,20‑21  Liste + Code‑Block             │                        │
+├────────────────────────── Commit ─────────────────┴──────────────────────┤
+│ Message: [_____________________________________]  [Commit] [Discard]     │
+│ Diff Preview (selected change)                                            │
+│  - old: …                                                                 │
+│  + new: …   (Raw Diff / Rendered Diff toggle)                             │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+Nach erfolgreichem Commit werden die Uncommitted‑Highlights geleert und die History um den neuen Commit ergänzt.
 
 ---
 
-## Sicherheit und Berechtigungen
-
-Permission
-
-Zweck
-
-feature:markdown_collab:view
-
-Kachel sehen, Workspaces und Dateien lesen
-
-feature:markdown_collab:edit
-
-Dateien bearbeiten, Commits erstellen, Modi wechseln
-
-feature:markdown_collab:share
-
-Sharing-Regeln setzen, Links erzeugen
+## 9. Sicherheit und Berechtigungen
+| Permission | Zweck |
+|---|---|
+| `feature:markdown_collab:view` | Kachel sehen, Workspaces/Dateien lesen |
+| `feature:markdown_collab:edit` | Dateien bearbeiten, Commits erstellen, Modi wechseln |
+| `feature:markdown_collab:share` | Sharing‑Regeln setzen, Links erzeugen |
 
 Weitere Checks:
 
--   Jede WebSocket-Verbindung validiert Authentik-JWT (RS256) und mapped Rollen auf Permissions.
--   Deny-by-Default, explizite Deny-Regeln uebersteuern Grants.
--   Keine Speicherung von Tokens im LocalStorage; SessionStorage analog Frontend-Auth.
--   Rate Limits fuer Share-Links und Commits (pro User) auf API-Ebene.
+-   Jede WebSocket‑Verbindung validiert Authentik‑JWT (RS256). User‑Infos kommen **nur** aus dem Token.
+-   Deny‑by‑Default; explizite Deny‑Regeln übersteuern Grants.
+-   Tokens bleiben in `sessionStorage` (analog Frontend‑Auth).
+-   Rate‑Limits für Share‑Links und Commits pro User auf API‑Ebene.
 
 ---
 
-## Offene Fragen
+## 10. Offene Fragen
 
--   Soll ein Workspace git-multiples Dokumente als ein Repository behandeln oder Commit-Historie je Datei fuehren? (aktueller Vorschlag: pro Dokument).
--   Wie viele Farbschritte fuer Autoresolution sind erlaubt, bevor ein Konflikt als Fehler angezeigt wird?
--   Sollen Diff-Previews rein textbasiert bleiben oder gerenderte Markdown-Sections zeigen?
--   Ist Link-Sharing auf Rollen-Basis ausreichend oder wird anonymes Lesen fuer bestimmte Faelle erwuenscht?
+-   Sollen Commits **pro Dokument** (aktueller Vorschlag) oder als Workspace‑Repository geführt werden?
+-   Wie viele automatische Farbschritte sind ok, bevor ein Konflikt sichtbar angezeigt wird?
+-   Diff‑Preview: rein textuell oder mit gerenderten Markdown‑Sections?
+-   Reicht Rollen‑basiertes Link‑Sharing oder wird anonymes Lesen benötigt?
 
 ---
 
-## Abnahme
-
-Reviewer
-
-Datum
-
-Status
-
-Philipp Steigerwald
-
-offen
-
-Ausstehend
+## 11. Abnahme
+| Reviewer | Datum | Status |
+|---|---|---|
+| Philipp Steigerwald | offen | ausstehend |

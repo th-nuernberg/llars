@@ -10,6 +10,7 @@ Date: November 2025
 """
 
 import logging
+import random
 import threading
 import time
 from datetime import datetime, timedelta
@@ -292,11 +293,17 @@ class PooledJudgeWorker:
                     # Other workers might still be processing, but also check for stale jobs
                     # This prevents infinite waiting if workers crashed
                     self._recover_stale_comparisons()
-                    time.sleep(2)
+                    # Add jitter to prevent all workers polling at same time
+                    time.sleep(1.5 + random.uniform(0, 1))
                     continue
                 else:
-                    # Race condition: retry
-                    time.sleep(0.5)
+                    # pending_count > 0 but we didn't get a job
+                    # This means other workers grabbed them - retry with jitter
+                    logger.debug(
+                        f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                        f"Missed job claim, {pending_count} pending, retrying..."
+                    )
+                    time.sleep(random.uniform(0.2, 0.8))
                     continue
 
             # Process this comparison with retry logic
@@ -379,41 +386,56 @@ class PooledJudgeWorker:
 
     def _get_next_comparison(self):
         """
-        Get next pending comparison with database-level locking.
+        Get next pending comparison with atomic claim.
 
-        Uses FOR UPDATE SKIP LOCKED to prevent race conditions
-        when multiple workers are grabbing comparisons.
+        Uses a single UPDATE statement to atomically claim the next available job.
+        This prevents race conditions better than SELECT FOR UPDATE + separate UPDATE.
         """
         from db.db import db
         from db.tables import JudgeComparison, JudgeComparisonStatus
         from sqlalchemy import text
 
         try:
-            # Use raw SQL for FOR UPDATE SKIP LOCKED (not all ORMs support this well)
+            # Atomic claim: UPDATE with subquery to get next pending job
+            # This is more robust than SELECT FOR UPDATE + separate UPDATE
             result = db.session.execute(
                 text("""
-                    SELECT id FROM judge_comparisons
-                    WHERE session_id = :session_id
-                    AND status = 'pending'
-                    ORDER BY queue_position
-                    LIMIT 1
-                    FOR UPDATE SKIP LOCKED
+                    UPDATE judge_comparisons
+                    SET status = 'running',
+                        worker_id = :worker_id,
+                        started_at = NOW(),
+                        last_heartbeat = NOW()
+                    WHERE id = (
+                        SELECT id FROM judge_comparisons
+                        WHERE session_id = :session_id
+                        AND status = 'pending'
+                        ORDER BY queue_position
+                        LIMIT 1
+                        FOR UPDATE SKIP LOCKED
+                    )
                 """),
-                {'session_id': self.session_id}
-            ).fetchone()
+                {'session_id': self.session_id, 'worker_id': self.worker_id}
+            )
+            db.session.commit()
 
-            if not result:
+            if result.rowcount == 0:
+                # No job claimed - add jitter before retry to prevent thundering herd
+                jitter = random.uniform(0.1, 0.5)
+                time.sleep(jitter)
                 return None
 
-            comparison_id = result[0]
+            # Fetch the comparison we just claimed
+            comparison = JudgeComparison.query.filter_by(
+                session_id=self.session_id,
+                worker_id=self.worker_id,
+                status=JudgeComparisonStatus.RUNNING
+            ).order_by(JudgeComparison.started_at.desc()).first()
 
-            # Update the comparison
-            comparison = db.session.get(JudgeComparison, comparison_id)
-            if comparison and comparison.status == JudgeComparisonStatus.PENDING:
-                comparison.status = JudgeComparisonStatus.RUNNING
-                comparison.worker_id = self.worker_id
-                comparison.started_at = datetime.now()
-                db.session.commit()
+            if comparison:
+                logger.debug(
+                    f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                    f"Claimed comparison {comparison.id}"
+                )
                 return comparison
 
             return None

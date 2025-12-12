@@ -843,6 +843,8 @@ class PooledJudgeWorker:
 
     def _broadcast_comparison_complete(self, comparison, result):
         """Broadcast when a comparison completes."""
+        from db.tables import JudgeSession
+
         # Mark streaming as complete (keep stream_content for late joiners to see final result)
         self.is_streaming = False
 
@@ -889,6 +891,8 @@ class PooledJudgeWorker:
 
     def _broadcast_session_complete(self):
         """Broadcast when session completes."""
+        from db.tables import JudgeSession
+
         socketio = self._get_socketio()
         if not socketio:
             return

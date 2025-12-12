@@ -4,7 +4,7 @@
     <div class="progress-header">
       <span class="progress-label">Fortschritt</span>
       <span class="progress-count">
-        {{ session?.completed_comparisons || 0 }} / {{ session?.total_comparisons || 0 }}
+        {{ displayCompleted }} / {{ displayTotal }}
       </span>
     </div>
 
@@ -13,11 +13,11 @@
       <div class="progress-bar-bg">
         <div
           class="progress-bar-fill"
-          :class="{ 'progress-complete': progress === 100 }"
-          :style="{ width: progress + '%' }"
+          :class="{ 'progress-complete': progress >= 100 }"
+          :style="{ width: Math.min(progress, 100) + '%' }"
         ></div>
       </div>
-      <span class="progress-percent">{{ Math.round(progress) }}%</span>
+      <span class="progress-percent">{{ Math.round(Math.min(progress, 100)) }}%</span>
     </div>
 
     <!-- Session Meta (compact row) -->
@@ -43,7 +43,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed, watchEffect } from 'vue';
+
+const props = defineProps({
   session: {
     type: Object,
     default: null
@@ -59,7 +61,44 @@ defineProps({
   formatDate: {
     type: Function,
     required: true
+  },
+  // Event-based counting values (optional - falls back to session values)
+  completedCount: {
+    type: Number,
+    default: null
+  },
+  confirmedTotal: {
+    type: Number,
+    default: null
   }
+});
+
+// Debug: Watch props to see what we receive on each change
+watchEffect(() => {
+  console.log('[SessionProgressBar] Props:', {
+    progress: props.progress,
+    completedCount: props.completedCount,
+    confirmedTotal: props.confirmedTotal,
+    sessionCompleted: props.session?.completed_comparisons,
+    sessionTotal: props.session?.total_comparisons
+  });
+});
+
+// Use event-based counting if available, otherwise fall back to session values
+const displayCompleted = computed(() => {
+  // Prefer completedCount if available and valid
+  if (props.completedCount !== null && props.completedCount >= 0) {
+    return props.completedCount;
+  }
+  return props.session?.completed_comparisons || 0;
+});
+
+const displayTotal = computed(() => {
+  // Prefer confirmedTotal if available and valid
+  if (props.confirmedTotal !== null && props.confirmedTotal > 0) {
+    return props.confirmedTotal;
+  }
+  return props.session?.total_comparisons || 0;
 });
 </script>
 

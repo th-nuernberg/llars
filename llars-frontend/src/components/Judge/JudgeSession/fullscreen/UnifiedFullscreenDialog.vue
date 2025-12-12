@@ -28,7 +28,7 @@
           <!-- Session Progress -->
           <div v-if="session" class="session-progress">
             <div class="progress-stat">
-              <span class="stat-value">{{ session.completed_comparisons || 0 }}</span>
+              <span class="stat-value">{{ displayCompleted }}</span>
               <span class="stat-label">Fertig</span>
             </div>
             <v-progress-linear
@@ -39,7 +39,7 @@
               class="progress-bar"
             ></v-progress-linear>
             <div class="progress-stat">
-              <span class="stat-value">{{ session.total_comparisons || 0 }}</span>
+              <span class="stat-value">{{ displayTotal }}</span>
               <span class="stat-label">Gesamt</span>
             </div>
           </div>
@@ -438,7 +438,7 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   mode: { type: String, default: 'live-single' }, // 'live-single', 'live-multi', 'historical'
   session: { type: Object, default: null },
-  progress: { type: Object, default: null },
+  progress: { type: Number, default: 0 },
   currentComparison: { type: Object, default: null },
   isStreaming: { type: Boolean, default: false },
   llmStreamContent: { type: String, default: '' },
@@ -447,7 +447,7 @@ const props = defineProps({
   workerStreams: { type: Object, default: () => ({}) },
   focusedWorkerId: { type: Number, default: 0 },
   scoreCriteria: { type: Array, default: () => [] },
-  stepDefinitions: { type: Array, default: () => [] },
+  stepDefinitions: { type: Object, default: () => ({}) },
   getWorkerParsedResult: { type: Function, default: () => null },
   getWorkerScoreA: { type: Function, default: () => 0 },
   getWorkerScoreB: { type: Function, default: () => 0 },
@@ -456,7 +456,10 @@ const props = defineProps({
   getStatusColor: { type: Function, default: () => 'grey' },
   getStatusIcon: { type: Function, default: () => 'mdi-circle' },
   getStatusText: { type: Function, default: () => '' },
-  getConfidenceColor: { type: Function, default: () => 'grey' }
+  getConfidenceColor: { type: Function, default: () => 'grey' },
+  // Event-based counting values (optional)
+  completedCount: { type: Number, default: null },
+  confirmedTotal: { type: Number, default: null }
 });
 
 const emit = defineEmits(['update:modelValue', 'close', 'stream-scroll', 'enable-auto-scroll', 'focus-worker']);
@@ -526,9 +529,24 @@ const modeSubtitle = computed(() => {
   return '';
 });
 
+// Use event-based counting if available, otherwise fall back to session values
+const displayCompleted = computed(() => {
+  if (props.completedCount !== null && props.completedCount >= 0) {
+    return props.completedCount;
+  }
+  return props.session?.completed_comparisons || 0;
+});
+
+const displayTotal = computed(() => {
+  if (props.confirmedTotal !== null && props.confirmedTotal > 0) {
+    return props.confirmedTotal;
+  }
+  return props.session?.total_comparisons || 0;
+});
+
 const progressPercent = computed(() => {
-  if (!props.session?.total_comparisons) return 0;
-  return (props.session.completed_comparisons / props.session.total_comparisons) * 100;
+  if (!displayTotal.value) return 0;
+  return Math.min(100, (displayCompleted.value / displayTotal.value) * 100);
 });
 
 const focusedWorker = computed(() => {

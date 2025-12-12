@@ -28,7 +28,7 @@ const props = defineProps({
   size: {
     type: String,
     default: 'md',
-    validator: (v) => ['sm', 'md', 'lg'].includes(v)
+    validator: (v) => ['sm', 'small', 'md', 'default', 'lg', 'large'].includes(v)
   },
   prependIcon: {
     type: String,
@@ -50,11 +50,21 @@ const props = defineProps({
 
 defineEmits(['click', 'close']);
 
+// Normalize size to internal format
+const normalizedSize = computed(() => {
+  const sizeMap = {
+    small: 'sm',
+    default: 'md',
+    large: 'lg'
+  };
+  return sizeMap[props.size] || props.size;
+});
+
 const tagClasses = computed(() => {
   const classes = ['llars-tag', `llars-tag--${props.variant}`];
 
-  if (props.size !== 'md') {
-    classes.push(`llars-tag--${props.size}`);
+  if (normalizedSize.value !== 'md') {
+    classes.push(`llars-tag--${normalizedSize.value}`);
   }
 
   if (props.clickable) {
@@ -70,7 +80,7 @@ const iconSize = computed(() => {
     md: 14,
     lg: 16
   };
-  return sizes[props.size] || 14;
+  return sizes[normalizedSize.value] || 14;
 });
 
 const handleClick = (e) => {

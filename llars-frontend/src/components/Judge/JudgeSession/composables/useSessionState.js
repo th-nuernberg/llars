@@ -4,7 +4,7 @@
  * Manages all reactive state for JudgeSession component.
  */
 
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { PILLAR_CONFIG } from './useSessionConstants';
 
 export function useSessionState(sessionId) {
@@ -13,6 +13,12 @@ export function useSessionState(sessionId) {
   const currentComparison = ref(null);
   const completedComparisons = ref([]);
   const queue = ref({ pending: [], current: null, stats: {} });
+
+  // Robust progress tracking (event-based counting)
+  // Instead of trusting reported values, we count completion events ourselves
+  const completedCount = ref(0);      // Counted by us from events
+  const confirmedTotal = ref(0);      // Total from API (doesn't change during session)
+  const isCounterInitialized = ref(false);  // Track if we've initialized from API
 
   // Loading states
   const loading = ref(false);
@@ -49,11 +55,59 @@ export function useSessionState(sessionId) {
   // Socket ref
   const socket = ref(null);
 
-  // Computed: Progress percentage
+  // Computed: Progress percentage (uses event-based counting)
   const progress = computed(() => {
-    if (!session.value || !session.value.total_comparisons) return 0;
-    return (session.value.completed_comparisons / session.value.total_comparisons) * 100;
+    const total = confirmedTotal.value || session.value?.total_comparisons || 0;
+    if (!total) return 0;
+    // Clamp to 100% max
+    return Math.min(100, (completedCount.value / total) * 100);
   });
+
+  // Initialize counter from API data (called once when session loads)
+  const initializeProgressFromApi = (completed, total) => {
+    console.log(`[Progress] initializeProgressFromApi called with: completed=${completed}, total=${total}`);
+
+    // Handle null/undefined by converting to 0
+    const safeCompleted = typeof completed === 'number' ? completed : 0;
+    const safeTotal = typeof total === 'number' ? total : 0;
+
+    // Always update total from API (even if 0, to track that we tried)
+    if (safeTotal > 0) {
+      confirmedTotal.value = safeTotal;
+      console.log(`[Progress] Set confirmedTotal to ${safeTotal}`);
+    }
+
+    // Only initialize completed count if not already initialized,
+    // or if API value is higher (handles page refresh mid-session)
+    if (!isCounterInitialized.value || safeCompleted > completedCount.value) {
+      completedCount.value = safeCompleted;
+      isCounterInitialized.value = true;
+      console.log(`[Progress] Initialized from API: ${safeCompleted}/${safeTotal}`);
+    }
+  };
+
+  // Increment counter when a comparison completes (called on socket event)
+  const incrementCompleted = () => {
+    // Use confirmedTotal or fall back to session.total_comparisons
+    const total = confirmedTotal.value || session.value?.total_comparisons || 0;
+
+    // Always increment if we don't have a total yet (defensive)
+    // or if we haven't reached the total
+    if (total === 0 || completedCount.value < total) {
+      completedCount.value++;
+      console.log(`[Progress] Incremented: ${completedCount.value}/${total} (confirmedTotal: ${confirmedTotal.value})`);
+    } else {
+      console.log(`[Progress] Already at max: ${completedCount.value}/${total}`);
+    }
+  };
+
+  // Reset progress tracking (for new session or session restart)
+  const resetProgressTracking = () => {
+    completedCount.value = 0;
+    confirmedTotal.value = 0;
+    isCounterInitialized.value = false;
+    console.log('[Progress] Tracking reset');
+  };
 
   // Computed: Is LLM currently streaming
   const isStreaming = computed(() => {
@@ -136,6 +190,30 @@ export function useSessionState(sessionId) {
     return 4;
   });
 
+  // Computed: Selected worker's comparison (for Live tab)
+  const selectedWorkerComparison = computed(() => {
+    if (workerCount.value <= 1) {
+      return currentComparison.value;
+    }
+    return workerStreams[focusedWorkerId.value]?.comparison || null;
+  });
+
+  // Computed: Selected worker's stream content (for Live tab)
+  const selectedWorkerStreamContent = computed(() => {
+    if (workerCount.value <= 1) {
+      return llmStreamContent.value;
+    }
+    return workerStreams[focusedWorkerId.value]?.content || '';
+  });
+
+  // Computed: Is selected worker currently streaming
+  const isSelectedWorkerStreaming = computed(() => {
+    if (workerCount.value <= 1) {
+      return isStreaming.value;
+    }
+    return workerStreams[focusedWorkerId.value]?.isStreaming || false;
+  });
+
   // Check if a pair is currently being worked on
   const isPairActive = (pair) => {
     for (let i = 0; i < workerCount.value; i++) {
@@ -170,6 +248,10 @@ export function useSessionState(sessionId) {
     completedComparisons,
     queue,
     sessionHealth,
+
+    // Robust progress tracking (event-based counting)
+    completedCount,
+    confirmedTotal,
 
     // Loading states
     loading,
@@ -207,9 +289,15 @@ export function useSessionState(sessionId) {
     pillarPairs,
     allQueueItems,
     getMultiWorkerColSize,
+    selectedWorkerComparison,
+    selectedWorkerStreamContent,
+    isSelectedWorkerStreaming,
 
     // Methods
     isPairActive,
-    initializeWorkerStreams
+    initializeWorkerStreams,
+    initializeProgressFromApi,
+    incrementCompleted,
+    resetProgressTracking
   };
 }

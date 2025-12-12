@@ -17,7 +17,9 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     streamOutput,
     fullscreenStreamOutput,
     workerCount,
-    workerStreams
+    workerStreams,
+    incrementCompleted,
+    resetProgressTracking
   } = state;
 
   const {
@@ -25,7 +27,8 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     loadQueue,
     loadCurrentComparison,
     loadCompletedComparisons,
-    loadWorkerStreams
+    loadWorkerStreams,
+    loadThreadMessagesForWorker
   } = api;
 
   const { getPillarName } = helpers;
@@ -35,7 +38,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
   // Setup Socket.IO for Live Updates
   const setupSocket = () => {
     socket.value = getSocket();
-    console.log('[Judge Socket] Setting up socket, connected:', socket.value.connected);
+    console.log('[Judge Socket] Setting up socket, connected:', socket.value.connected, 'id:', socket.value.id);
 
     // Remove existing listeners to prevent duplicates
     socket.value.off('connect');
@@ -99,22 +102,23 @@ export function useSessionSocket(sessionId, state, api, helpers) {
       console.error('[Judge Socket] Error:', data.message);
     });
 
-    // Progress updates from worker
+    // Progress updates from worker (only used for status updates, not counting)
     socket.value.on('judge:progress', (data) => {
       console.log('[Judge Socket] Progress:', data);
       if (data.session_id == sessionId) {
+        // Only update status - we count completions ourselves via comparison_complete events
         const newStatus = data.status || session.value?.status;
-        session.value = {
-          ...session.value,
-          status: newStatus,
-          completed_comparisons: data.completed,
-          total_comparisons: data.total
-        };
+        if (session.value) {
+          session.value = {
+            ...session.value,
+            status: newStatus
+          };
+        }
       }
     });
 
     // Comparison started
-    socket.value.on('judge:comparison_start', (data) => {
+    socket.value.on('judge:comparison_start', async (data) => {
       console.log('[Judge Socket] Comparison started:', data);
       if (!data.session_id || data.session_id == sessionId) {
         const workerId = data.worker_id ?? 0;
@@ -138,6 +142,9 @@ export function useSessionSocket(sessionId, state, api, helpers) {
             pillar_a_name: getPillarName(data.pillar_a),
             pillar_b_name: getPillarName(data.pillar_b)
           };
+
+          // Load thread messages for this worker
+          loadThreadMessagesForWorker(workerId, data.thread_a_id, data.thread_b_id);
         }
 
         // Reset stream content for new comparison
@@ -202,10 +209,11 @@ export function useSessionSocket(sessionId, state, api, helpers) {
       }
     });
 
-    // Comparison completed
+    // Comparison completed - INCREMENT our counter (not trusting reported values)
     socket.value.on('judge:comparison_complete', async (data) => {
-      console.log('[Judge Socket] Comparison complete:', data);
+      console.log('[Judge Socket] Comparison complete:', data, 'for session:', sessionId);
       if (data.session_id == sessionId) {
+        console.log('[Judge Socket] Session ID matches, processing...');
         const workerId = data.worker_id ?? 0;
 
         // Multi-worker mode: mark worker as not streaming
@@ -213,6 +221,11 @@ export function useSessionSocket(sessionId, state, api, helpers) {
           workerStreams[workerId].isStreaming = false;
           workerStreams[workerId].comparison = null;
         }
+
+        // INCREMENT our counter - this is the key change!
+        // We count events ourselves instead of trusting reported values
+        console.log('[Judge Socket] Calling incrementCompleted...');
+        incrementCompleted();
 
         // Update current comparison with result
         if (currentComparison.value) {
@@ -228,26 +241,28 @@ export function useSessionSocket(sessionId, state, api, helpers) {
       }
     });
 
-    // Session completed
+    // Session completed - session is done, reload to get final state
     socket.value.on('judge:session_complete', async (data) => {
       console.log('[Judge Socket] Session complete:', data);
       if (data.session_id == sessionId) {
+        // Reload session to get authoritative final state (will set counter to total)
         await loadSession();
       }
     });
 
-    // Status response
+    // Status response (only used for status updates, not counting)
     socket.value.on('judge:status', (data) => {
       console.log('[Judge Socket] Status:', data);
       if (data.session_id == sessionId) {
+        // Only update status - we count completions ourselves
         const newStatus = data.status || session.value?.status;
-        session.value = {
-          ...session.value,
-          status: newStatus,
-          completed_comparisons: data.completed,
-          total_comparisons: data.total,
-          current_comparison_id: data.current_comparison_id
-        };
+        if (session.value) {
+          session.value = {
+            ...session.value,
+            status: newStatus,
+            current_comparison_id: data.current_comparison_id
+          };
+        }
       }
     });
   };

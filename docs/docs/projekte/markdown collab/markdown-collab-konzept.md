@@ -326,47 +326,47 @@ Die Editor‑Ansicht kombiniert zwei unabhängige Hervorhebungs‑Ebenen:
     - <span style="background-color:rgba(255,105,180,0.25)">Alice‑Änderung</span>
     - <span style="background-color:rgba(0,188,212,0.25)">Bob‑Änderung</span>
 
-**Beispiel – Editor‑Ausschnitt mit Syntax‑ und Change‑Highlights:**
+**Beispiel – Editor‑Ausschnitt mit Syntax‑ und Change‑Highlights (mit echten Farben):**
 
-```
+<pre style="font-family: monospace; white-space: pre; line-height: 1.3;">
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Editor (Syntax‑Farben + Git‑Hintergründe)                                 │
+│ Editor (Syntax‑Farben + Git‑Hintergründe)                                │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  12 │ <H1># Projekt‑Ziel</H1>                                             │
-│  13 │ <P>Dieser Workspace erlaubt …</P>                                   │
+│  12 │ <span style="color:#1976D2; font-weight:700"># Projekt‑Ziel</span>                                                     │
+│  13 │ Dieser Workspace erlaubt …                                         │
 │  14 │                                                                    │
-│  15 │ [BG‑Alice] <H2>## Vorgehen</H2>                                     │
-│  16 │ [BG‑Alice] - <LI>Schritt 1</LI>                                     │
-│  17 │ [BG‑Bob  ] - <LI>Schritt 2</LI>                                     │
+│  15 │ <span style="background-color:rgba(255,105,180,0.25); color:#1976D2; font-weight:600">## Vorgehen</span>                                                        │
+│  16 │ <span style="background-color:rgba(255,105,180,0.25); color:#2E7D32">- Schritt 1</span>                                                        │
+│  17 │ <span style="background-color:rgba(0,188,212,0.25); color:#2E7D32">- Schritt 2</span>                                                        │
 │  18 │                                                                    │
-│  19 │ <CODE>```python</CODE>                                              │
-│  20 │ [BG‑Bob  ] <CODE>def hello():</CODE>                                │
-│  21 │ [BG‑Bob  ] <CODE>    return "hi"</CODE>                             │
-│  22 │ <CODE>```</CODE>                                                   │
+│  19 │ <span style="color:#9C27B0">```python</span>                                                          │
+│  20 │ <span style="background-color:rgba(0,188,212,0.25); color:#9C27B0">def hello():</span>                                                       │
+│  21 │ <span style="background-color:rgba(0,188,212,0.25); color:#9C27B0">    return "hi"</span>                                                    │
+│  22 │ <span style="color:#9C27B0">```</span>                                                                │
 └──────────────────────────────────────────────────────────────────────────┘
+</pre>
 
 Legende:
-<H1>/<H2>/<P>/<LI>/<CODE>/<LINK> = Syntax‑Textfarben (Theme‑abhängig)
-[BG‑User]                        = Git‑Change‑Hintergrund (User‑Farbe, ~20–30% Opazität)
-```
+Syntax‑Textfarben = farbige Markdown‑Tokens (Theme‑abhängig)  
+Git‑Hintergrund   = halbtransparente User‑Farbe pro uncommitted Change
 
-**Beispiel – Git‑Panel mit Changes, Diff und History:**
+**Beispiel – Git‑Panel mit Changes, Diff und History (mit Farben):**
 
-```
+<pre style="font-family: monospace; white-space: pre; line-height: 1.3;">
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Git Panel                                                                 │
 ├────────────── Uncommitted Changes ────────────────┬────────── History ───┤
-│ Alice (pink)                                      │  a1b2c3  "Intro"       │
-│  • lines 15‑16  ## Vorgehen                       │  d4e5f6  "Fix typos"   │
-│ Bob (cyan)                                        │  g7h8i9  "Add code"    │
-│  • lines 17,20‑21  Liste + Code‑Block             │                        │
+│ <span style="color:#E91E63; font-weight:600">Alice (pink)</span>                                      │  a1b2c3  "Intro"       │
+│  • <span style="background-color:rgba(255,105,180,0.25)">lines 15‑16  ## Vorgehen</span>                       │  d4e5f6  "Fix typos"   │
+│ <span style="color:#00BCD4; font-weight:600">Bob (cyan)</span>                                        │  g7h8i9  "Add code"    │
+│  • <span style="background-color:rgba(0,188,212,0.25)">lines 17,20‑21  Liste + Code‑Block</span>             │                        │
 ├────────────────────────── Commit ─────────────────┴──────────────────────┤
 │ Message: [_____________________________________]  [Commit] [Discard]     │
 │ Diff Preview (selected change)                                            │
 │  - old: …                                                                 │
 │  + new: …   (Raw Diff / Rendered Diff toggle)                             │
 └──────────────────────────────────────────────────────────────────────────┘
-```
+</pre>
 
 Nach erfolgreichem Commit werden die Uncommitted‑Highlights geleert und die History um den neuen Commit ergänzt.
 

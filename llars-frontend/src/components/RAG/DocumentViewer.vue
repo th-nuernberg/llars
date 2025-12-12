@@ -44,6 +44,14 @@
           <v-window-item value="info">
             <v-container class="pa-4">
               <v-row>
+                <v-col cols="12" v-if="documentDetails?.has_screenshot">
+                  <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+                    Dieses Webcrawl-Dokument enthält Text‑Chunks und zusätzlich Screenshots/Bilder.
+                    Den Text findest du unter <strong>Inhalt</strong> (gesamt) oder <strong>Chunks → Text</strong>.
+                    Bilder/Screenshots siehst du unter <strong>Screenshot</strong> oder <strong>Chunks → Bild</strong>.
+                  </v-alert>
+                </v-col>
+
                 <v-col cols="12" md="6">
                   <div class="info-section">
                     <div class="text-subtitle-2 text-medium-emphasis mb-2">Dateiinformationen</div>
@@ -248,58 +256,94 @@
               ></v-skeleton-loader>
 
               <div v-else>
-                <v-expansion-panels v-if="chunks && chunks.length > 0" variant="accordion">
-                  <v-expansion-panel
-                    v-for="(chunk, index) in chunks"
-                    :key="index"
-                  >
-                    <v-expansion-panel-title>
-                      <div class="d-flex align-center">
-                        <v-chip size="small" class="mr-2">{{ index + 1 }}</v-chip>
-                        <v-icon v-if="chunk.has_image" size="small" color="info" class="mr-1">mdi-image</v-icon>
-                        <span class="text-truncate">{{ chunk.content ? chunk.content.substring(0, 100) + '...' : '[Bild]' }}</span>
-                      </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                      <!-- Chunk Image if available -->
-                      <div v-if="chunk.has_image" class="mb-3">
-                        <v-card variant="outlined" class="overflow-hidden">
-                          <v-img
-                            :src="getChunkImageUrl(chunk)"
-                            max-height="300"
-                            contain
-                            class="chunk-image"
-                          >
-                            <template #placeholder>
-                              <div class="d-flex align-center justify-center fill-height">
-                                <v-progress-circular indeterminate color="primary" size="24"></v-progress-circular>
-                              </div>
-                            </template>
-                            <template #error>
-                              <div class="d-flex align-center justify-center fill-height text-medium-emphasis">
-                                <v-icon class="mr-1">mdi-image-broken</v-icon>
-                                Bild konnte nicht geladen werden
-                              </div>
-                            </template>
-                          </v-img>
-                        </v-card>
-                        <div v-if="chunk.image_alt_text" class="text-caption text-medium-emphasis mt-1">
-                          Alt: {{ chunk.image_alt_text }}
-                        </div>
-                      </div>
+                <div v-if="chunks && chunks.length > 0">
+                  <!-- Text Chunks -->
+                  <div v-if="textChunks.length > 0">
+                    <div class="text-subtitle-2 text-medium-emphasis mb-2 d-flex align-center">
+                      <v-icon size="18" class="mr-1">mdi-text</v-icon>
+                      Text‑Chunks ({{ textChunks.length }})
+                    </div>
+                    <v-expansion-panels variant="accordion">
+                      <v-expansion-panel
+                        v-for="(chunk, index) in textChunks"
+                        :key="chunk.id"
+                      >
+                        <v-expansion-panel-title>
+                          <div class="d-flex align-center">
+                            <v-chip size="small" class="mr-2">{{ index + 1 }}</v-chip>
+                            <span class="text-truncate">{{ chunk.content ? chunk.content.substring(0, 100) + '...' : '[Text]' }}</span>
+                          </div>
+                        </v-expansion-panel-title>
+                        <v-expansion-panel-text>
+                          <div v-if="chunk.content" class="chunk-text">{{ chunk.content }}</div>
+                          <v-divider class="my-2"></v-divider>
+                          <div class="text-caption text-medium-emphasis d-flex flex-wrap ga-2">
+                            <span>Chunk ID: {{ chunk.id }}</span>
+                            <span v-if="chunk.content">| Zeichen: {{ chunk.content.length }}</span>
+                          </div>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
+                  </div>
 
-                      <!-- Chunk Text -->
-                      <div v-if="chunk.content" class="chunk-text">{{ chunk.content }}</div>
+                  <!-- Image / Screenshot Chunks -->
+                  <div v-if="imageChunks.length > 0" class="mt-4">
+                    <div class="text-subtitle-2 text-medium-emphasis mb-2 d-flex align-center">
+                      <v-icon size="18" class="mr-1" color="info">mdi-image</v-icon>
+                      Bild‑/Screenshot‑Chunks ({{ imageChunks.length }})
+                    </div>
+                    <v-expansion-panels variant="accordion">
+                      <v-expansion-panel
+                        v-for="(chunk, index) in imageChunks"
+                        :key="chunk.id"
+                      >
+                        <v-expansion-panel-title>
+                          <div class="d-flex align-center">
+                            <v-chip size="small" class="mr-2">{{ index + 1 }}</v-chip>
+                            <v-icon size="small" color="info" class="mr-1">mdi-image</v-icon>
+                            <span class="text-truncate">{{ chunk.content ? chunk.content.substring(0, 100) + '...' : '[Bild/Screenshot]' }}</span>
+                          </div>
+                        </v-expansion-panel-title>
+                        <v-expansion-panel-text>
+                          <div class="mb-3">
+                            <v-card variant="outlined" class="overflow-hidden">
+                              <v-img
+                                :src="getChunkImageUrl(chunk)"
+                                max-height="300"
+                                contain
+                                class="chunk-image"
+                              >
+                                <template #placeholder>
+                                  <div class="d-flex align-center justify-center fill-height">
+                                    <v-progress-circular indeterminate color="primary" size="24"></v-progress-circular>
+                                  </div>
+                                </template>
+                                <template #error>
+                                  <div class="d-flex align-center justify-center fill-height text-medium-emphasis">
+                                    <v-icon class="mr-1">mdi-image-broken</v-icon>
+                                    Bild konnte nicht geladen werden
+                                  </div>
+                                </template>
+                              </v-img>
+                            </v-card>
+                            <div v-if="chunk.image_alt_text" class="text-caption text-medium-emphasis mt-1">
+                              Alt: {{ chunk.image_alt_text }}
+                            </div>
+                          </div>
 
-                      <v-divider class="my-2"></v-divider>
-                      <div class="text-caption text-medium-emphasis d-flex flex-wrap ga-2">
-                        <span>Chunk ID: {{ chunk.id }}</span>
-                        <span v-if="chunk.content">| Zeichen: {{ chunk.content.length }}</span>
-                        <span v-if="chunk.has_image">| Hat Bild</span>
-                      </div>
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
+                          <div v-if="chunk.content" class="chunk-text">{{ chunk.content }}</div>
+
+                          <v-divider class="my-2"></v-divider>
+                          <div class="text-caption text-medium-emphasis d-flex flex-wrap ga-2">
+                            <span>Chunk ID: {{ chunk.id }}</span>
+                            <span v-if="chunk.content">| Zeichen: {{ chunk.content.length }}</span>
+                            <span>| Hat Bild</span>
+                          </div>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
+                  </div>
+                </div>
 
                 <v-card v-else variant="outlined">
                   <v-card-text class="text-center pa-8">
@@ -396,6 +440,19 @@ const content = ref('')
 const chunks = ref([])
 const loadingContent = ref(false)
 const loadingChunks = ref(false)
+
+// Split chunks into text vs image/screenshot for clearer UI
+const textChunks = computed(() =>
+  (chunks.value || [])
+    .filter(c => !c.has_image)
+    .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))
+)
+
+const imageChunks = computed(() =>
+  (chunks.value || [])
+    .filter(c => c.has_image)
+    .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))
+)
 
 // Screenshot state
 const documentDetails = ref(null)

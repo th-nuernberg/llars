@@ -162,9 +162,8 @@ def create_collection():
     if existing:
         raise ConflictError(f"Collection with name '{data['name']}' already exists")
 
-    # Create ChromaDB collection name
+    # Embedding model (actual Chroma collection name is set by embedding services/worker)
     embedding_model = data.get('embedding_model', 'sentence-transformers/all-MiniLM-L6-v2')
-    chroma_name = f"llars_{data['name']}_{embedding_model.replace('/', '_').replace('-', '_')}"
 
     # Create new collection
     collection = RAGCollection(
@@ -178,7 +177,6 @@ def create_collection():
         chunk_overlap=data.get('chunk_overlap', 200),
         retrieval_k=data.get('retrieval_k', 4),
         is_public=data.get('is_public', True),
-        chroma_collection_name=chroma_name,
         created_by=username
     )
 

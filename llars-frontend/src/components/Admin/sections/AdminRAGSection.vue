@@ -575,12 +575,40 @@
             >
               <template v-slot:item.filename="{ item }">
                 <div class="d-flex align-center">
-                  <v-icon :color="getFileTypeColor(item.file_type || getFileExtension(item.filename))" class="mr-2">
-                    {{ getFileTypeIcon(item.file_type || getFileExtension(item.filename)) }}
+                  <v-icon :color="getDocumentColor(item)" class="mr-2">
+                    {{ getDocumentIcon(item) }}
                   </v-icon>
                   <div>
-                    <div class="font-weight-medium text-primary">{{ item.title || item.filename }}</div>
-                    <div class="text-caption text-medium-emphasis">{{ item.filename }}</div>
+                    <div class="font-weight-medium text-primary d-flex align-center flex-wrap">
+                      <span>{{ item.title || item.filename }}</span>
+                      <v-chip
+                        v-if="isWebcrawlDocument(item)"
+                        size="x-small"
+                        color="info"
+                        variant="tonal"
+                        class="ml-2"
+                      >
+                        Webcrawl
+                      </v-chip>
+                      <v-chip
+                        v-if="item.link_type === 'linked'"
+                        size="x-small"
+                        color="secondary"
+                        variant="tonal"
+                        class="ml-2"
+                      >
+                        verlinkt
+                      </v-chip>
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ item.filename }}
+                    </div>
+                    <div v-if="item.source_url" class="text-caption text-medium-emphasis d-flex align-center mt-1">
+                      <v-icon size="12" class="mr-1">mdi-web</v-icon>
+                      <a :href="item.source_url" target="_blank" class="text-truncate">
+                        {{ item.source_url }}
+                      </a>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -724,6 +752,9 @@ const {
   formatDate,
   getFileTypeIcon,
   getFileTypeColor,
+  getDocumentIcon,
+  getDocumentColor,
+  isWebcrawlDocument,
   getStatusColor,
   getStatusIcon,
   downloadDocument,

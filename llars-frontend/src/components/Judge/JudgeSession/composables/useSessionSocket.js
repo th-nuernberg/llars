@@ -164,6 +164,8 @@ export function useSessionSocket(sessionId, state, api, helpers) {
         // Expand stream panel
         expandedPanels.value = ['stream', 'prompt'];
         loadCurrentComparison();
+        // Refresh queue to show updated running count
+        loadQueue();
       }
     });
 

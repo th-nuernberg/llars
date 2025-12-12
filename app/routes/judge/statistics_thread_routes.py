@@ -13,6 +13,7 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import handle_api_errors
 
 statistics_thread_bp = Blueprint('judge_statistics_thread', __name__)
 
@@ -23,6 +24,7 @@ LIKERT_METRICS = ['counsellor_coherence', 'client_coherence', 'quality', 'empath
 @statistics_thread_bp.route('/sessions/<int:session_id>/thread-performance', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge_statistics')
 def get_thread_performance(session_id: int):
     """
     Analyze individual thread performance within a session.
@@ -210,7 +212,10 @@ def get_thread_performance(session_id: int):
             'evenly_sampled_count': total_threads - len(over_sampled) - len(under_sampled)
         },
         'threads': threads_list,
-        'pillar_summary': dict(pillar_summary),
+        'pillar_summary': {
+            k: {**v, 'threads': list(v['threads'])}
+            for k, v in pillar_summary.items()
+        },
         'consistent_winners': [t for t in threads_list if t['is_consistent_winner']],
         'consistent_losers': [t for t in threads_list if t['is_consistent_loser']],
         'likert_consistency': {

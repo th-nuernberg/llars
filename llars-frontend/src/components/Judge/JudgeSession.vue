@@ -282,10 +282,9 @@
         </div>
       </div>
     </template>
-  </div>
 
-  <!-- Unified Fullscreen Dialog (replaces Single + Multi Worker dialogs) -->
-  <UnifiedFullscreenDialog
+    <!-- Unified Fullscreen Dialog (replaces Single + Multi Worker dialogs) -->
+    <UnifiedFullscreenDialog
     v-model="unifiedFullscreenOpen"
     :mode="fullscreenMode"
     :session="session"
@@ -314,7 +313,8 @@
     @stream-scroll="handleStreamScroll"
     @enable-auto-scroll="enableAutoScroll"
     @focus-worker="focusWorker"
-  />
+    />
+  </div>
 </template>
 
 <script setup>

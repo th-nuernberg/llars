@@ -168,14 +168,15 @@ export function useSessionState(sessionId) {
     return pairs;
   });
 
-  // Computed: Combine current and pending items for queue display
+  // Computed: Combine running and pending items for queue display
   const allQueueItems = computed(() => {
     const items = [];
-    if (queue.value.current) {
-      items.push({
-        ...queue.value.current,
+    // Add all running comparisons (multi-worker support)
+    if (queue.value.running && Array.isArray(queue.value.running)) {
+      items.push(...queue.value.running.map(item => ({
+        ...item,
         status: 'running'
-      });
+      })));
     }
     if (queue.value.pending) {
       items.push(...queue.value.pending);

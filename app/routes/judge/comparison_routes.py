@@ -190,10 +190,11 @@ def get_session_queue(session_id: int):
         status=JudgeComparisonStatus.PENDING
     ).order_by(JudgeComparison.queue_position).all()
 
+    # Get ALL running comparisons (multiple workers can run in parallel)
     running = JudgeComparison.query.filter_by(
         session_id=session_id,
         status=JudgeComparisonStatus.RUNNING
-    ).first()
+    ).order_by(JudgeComparison.queue_position).all()
 
     completed_count = JudgeComparison.query.filter_by(
         session_id=session_id,
@@ -220,12 +221,12 @@ def get_session_queue(session_id: int):
     return jsonify({
         'session_id': session_id,
         'session_status': session.status.value,
-        'current': format_comparison(running) if running else None,
+        'running': [format_comparison(c) for c in running],
         'pending': [format_comparison(c) for c in pending],
         'stats': {
             'total': session.total_comparisons,
             'pending': len(pending),
-            'running': 1 if running else 0,
+            'running': len(running),
             'completed': completed_count,
             'failed': failed_count,
             'progress_percent': round((completed_count / session.total_comparisons * 100) if session.total_comparisons > 0 else 0, 1)

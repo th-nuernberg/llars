@@ -44,6 +44,8 @@
                 :progress="progress"
                 :worker-count="workerCount"
                 :format-date="formatDate"
+                :completed-count="completedCount"
+                :confirmed-total="confirmedTotal"
               />
             </div>
 
@@ -60,6 +62,8 @@
                 :get-pillar-color="getPillarColor"
                 :get-pillar-icon="getPillarIcon"
                 :is-pair-active="isPairActive"
+                :completed-count="completedCount"
+                :confirmed-total="confirmedTotal"
                 compact
                 @open-fullscreen="openMultiWorkerFullscreen"
                 @refresh="loadWorkerPoolStatus"
@@ -102,7 +106,16 @@
                 <v-icon start size="18">mdi-play-circle</v-icon>
                 Live
                 <v-chip
-                  v-if="isStreaming"
+                  v-if="workerCount > 1 && activeWorkerCount > 0"
+                  size="x-small"
+                  color="warning"
+                  class="ml-2 pulse-chip"
+                >
+                  <v-icon size="10" class="mr-1">mdi-circle</v-icon>
+                  {{ activeWorkerCount }}
+                </v-chip>
+                <v-chip
+                  v-else-if="isStreaming"
                   size="x-small"
                   color="success"
                   class="ml-2 pulse-chip"
@@ -135,13 +148,33 @@
           <v-window v-model="activeTab" class="tab-content">
             <!-- Live Tab: Current Comparison -->
             <v-window-item value="live" class="tab-window-item">
-              <div class="comparison-section">
+              <!-- Multi-Worker Grid View (like Worker Pool Live View) -->
+              <div v-if="workerCount > 1" class="live-worker-grid">
+                <v-row>
+                  <v-col
+                    v-for="i in workerCount"
+                    :key="i - 1"
+                    :cols="workerCount <= 2 ? 6 : (workerCount <= 3 ? 4 : 3)"
+                  >
+                    <WorkerLane
+                      :worker-id="i - 1"
+                      :current-comparison="workerStreams[i - 1]?.comparison"
+                      :stream-content="workerStreams[i - 1]?.content || ''"
+                      :is-streaming="workerStreams[i - 1]?.isStreaming || false"
+                      @open-fullscreen="openUnifiedFullscreen('live-multi')"
+                    />
+                  </v-col>
+                </v-row>
+              </div>
+
+              <!-- Single Worker View -->
+              <div v-else class="comparison-section">
                 <ComparisonViewer
-                  v-if="currentComparison"
-                  :comparison="currentComparison"
+                  v-if="selectedWorkerComparison"
+                  :comparison="selectedWorkerComparison"
                   :session="session"
-                  :is-streaming="isStreaming"
-                  :llm-stream-content="llmStreamContent"
+                  :is-streaming="isSelectedWorkerStreaming"
+                  :llm-stream-content="selectedWorkerStreamContent"
                   :auto-scroll-enabled="autoScrollEnabled"
                   mode="live"
                   @open-fullscreen="openUnifiedFullscreen('live-single')"
@@ -275,6 +308,8 @@
     :get-status-icon="getStatusIcon"
     :get-status-text="getStatusText"
     :get-confidence-color="getConfidenceColor"
+    :completed-count="completedCount"
+    :confirmed-total="confirmedTotal"
     @close="closeUnifiedFullscreen"
     @stream-scroll="handleStreamScroll"
     @enable-auto-scroll="enableAutoScroll"
@@ -290,6 +325,7 @@ import { useRoute, useRouter } from 'vue-router';
 import SessionProgressBar from './JudgeSession/SessionProgressBar.vue';
 import WorkerLaneGrid from './JudgeSession/WorkerLaneGrid.vue';
 import SessionQueuePanel from './JudgeSession/SessionQueuePanel.vue';
+import WorkerLane from './WorkerLane.vue';
 
 // Import new unified components
 import ComparisonViewer from './JudgeSession/viewers/ComparisonViewer.vue';
@@ -360,6 +396,9 @@ const {
   focusedWorkerId,
   streamOutput,
   fullscreenStreamOutput,
+  // Robust progress tracking (event-based counting)
+  completedCount,
+  confirmedTotal,
   // Computed
   progress,
   isStreaming,
@@ -370,6 +409,9 @@ const {
   pillarPairs,
   allQueueItems,
   getMultiWorkerColSize,
+  selectedWorkerComparison,
+  selectedWorkerStreamContent,
+  isSelectedWorkerStreaming,
   // Methods
   isPairActive
 } = state;
@@ -475,11 +517,12 @@ const openHistoricalFullscreen = (comparison) => {
   unifiedFullscreenOpen.value = true;
 };
 
-// Focus on a specific worker (from dashboard)
+// Focus on a specific worker (from dashboard or selector)
 const focusWorker = (workerId) => {
   focusedWorkerId.value = workerId;
+  // If in fullscreen, keep it open, otherwise switch to Live tab
   if (!unifiedFullscreenOpen.value) {
-    openUnifiedFullscreen('live-multi');
+    activeTab.value = 'live';
   }
 };
 
@@ -499,19 +542,25 @@ const copyStreamToClipboard = () => copyToClipboard(llmStreamContent.value);
 
 // Lifecycle
 onMounted(async () => {
+  console.log('[JudgeSession] Mounted, loading session...');
   await loadSession();
+  console.log('[JudgeSession] Session loaded, setting up socket...');
   setupSocket();
   if (session.value?.status === 'running') {
+    console.log('[JudgeSession] Session is running, starting polling');
     startPolling();
   }
   // Set initial tab based on session status
   if (session.value?.status === 'completed') {
     activeTab.value = 'history';
   }
+  console.log('[JudgeSession] Mount complete');
 });
 
 onUnmounted(() => {
+  console.log('[JudgeSession] Unmounting, cleaning up socket...');
   cleanupSocket();
+  console.log('[JudgeSession] Cleanup complete');
 });
 </script>
 
@@ -635,6 +684,21 @@ onUnmounted(() => {
   overflow: hidden;
   padding: 12px;
   min-height: 0;
+}
+
+/* Live Worker Grid (Multi-Worker View in Live Tab) */
+.live-worker-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.live-worker-grid .v-row {
+  margin: 0;
+}
+
+.live-worker-grid .v-col {
+  padding: 6px;
 }
 
 /* Comparison Section (fills available space) */

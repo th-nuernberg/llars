@@ -633,18 +633,19 @@ class PooledJudgeWorker:
 
         db.session.add(evaluation)
 
-        # Update statistics
+        # Update comparison status and commit evaluation together
+        # IMPORTANT: Commit before _update_statistics because it may rollback on IntegrityError
+        comparison.status = JudgeComparisonStatus.COMPLETED
+        comparison.completed_at = datetime.now()
+        db.session.commit()
+
+        # Update statistics (has its own transaction handling with retry logic)
         self._update_statistics(
             comparison.pillar_a,
             comparison.pillar_b,
             result.winner,
             result.confidence
         )
-
-        # Update comparison status
-        comparison.status = JudgeComparisonStatus.COMPLETED
-        comparison.completed_at = datetime.now()
-        db.session.commit()
 
         # Atomic increment of session progress (prevents race condition)
         # This returns the NEW value after increment

@@ -12,6 +12,7 @@ from db.tables import (
 )
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import handle_api_errors
 
 statistics_verbosity_bp = Blueprint('judge_statistics_verbosity', __name__)
 
@@ -19,6 +20,7 @@ statistics_verbosity_bp = Blueprint('judge_statistics_verbosity', __name__)
 @statistics_verbosity_bp.route('/sessions/<int:session_id>/verbosity-analysis', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge_statistics')
 def get_verbosity_analysis(session_id: int):
     """
     Analyze if there's a verbosity bias in the evaluations.
@@ -54,9 +56,9 @@ def get_verbosity_analysis(session_id: int):
         if not thread_a or not thread_b:
             continue
 
-        # Use message_count as proxy for verbosity (or could calculate actual length)
-        len_a = thread_a.message_count or 0
-        len_b = thread_b.message_count or 0
+        # Use message count from related EmailThread as proxy for verbosity
+        len_a = len(thread_a.thread.messages) if thread_a.thread else 0
+        len_b = len(thread_b.thread.messages) if thread_b.thread else 0
 
         winner = evaluation.winner.value if evaluation.winner else None
 

@@ -859,7 +859,7 @@ class PooledJudgeWorker:
         completed = session.completed_comparisons if session else 0
         total = session.total_comparisons if session else 0
 
-        socketio.emit('judge:comparison_complete', {
+        event_data = {
             'session_id': self.session_id,
             'worker_id': self.worker_id,
             'comparison_id': comparison.id,
@@ -869,7 +869,10 @@ class PooledJudgeWorker:
             'final_stream_content': self.stream_content,  # Include final content for verification
             'completed': completed,  # Include for robust progress tracking
             'total': total  # Include for robust progress tracking
-        }, room=room)
+        }
+        socketio.emit('judge:comparison_complete', event_data, room=room)
+        # Also broadcast to overview room for live updates on overview page
+        socketio.emit('judge:comparison_complete', event_data, room='judge_overview')
 
     def _broadcast_progress(self, session):
         """Broadcast session progress update."""
@@ -881,13 +884,16 @@ class PooledJudgeWorker:
         progress = (session.completed_comparisons / session.total_comparisons * 100) \
             if session.total_comparisons > 0 else 0
 
-        socketio.emit('judge:progress', {
+        event_data = {
             'session_id': self.session_id,
             'status': session.status.value if hasattr(session.status, 'value') else str(session.status),
             'completed': session.completed_comparisons,
             'total': session.total_comparisons,
             'percent': progress
-        }, room=room)
+        }
+        socketio.emit('judge:progress', event_data, room=room)
+        # Also broadcast to overview room for live updates on overview page
+        socketio.emit('judge:progress', event_data, room='judge_overview')
 
     def _broadcast_session_complete(self):
         """Broadcast when session completes."""
@@ -903,11 +909,14 @@ class PooledJudgeWorker:
         session = JudgeSession.query.get(self.session_id)
         total = session.total_comparisons if session else 0
 
-        socketio.emit('judge:session_complete', {
+        event_data = {
             'session_id': self.session_id,
             'total': total,  # Include for robust progress tracking (100%)
             'completed': total  # Both should be equal when complete
-        }, room=room)
+        }
+        socketio.emit('judge:session_complete', event_data, room=room)
+        # Also broadcast to overview room for live updates on overview page
+        socketio.emit('judge:session_complete', event_data, room='judge_overview')
 
 
 # ============================================================================

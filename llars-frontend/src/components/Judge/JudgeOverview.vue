@@ -187,13 +187,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { usePanelResize } from '@/composables/usePanelResize';
 import KIADataSync from './KIADataSync.vue';
 
 const router = useRouter();
+const socket = ref(null);
 
 // Panel Resize
 const {
@@ -341,12 +343,102 @@ const formatDate = (dateString) => {
   });
 };
 
+// WebSocket Setup for Live Updates
+const setupSocket = () => {
+  const socketUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+
+  socket.value = io(socketUrl, {
+    path: '/socket.io',
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
+
+  socket.value.on('connect', () => {
+    console.log('[JudgeOverview] Socket connected');
+    // Join overview room to receive updates for all sessions
+    socket.value.emit('judge:join_overview');
+  });
+
+  socket.value.on('disconnect', () => {
+    console.log('[JudgeOverview] Socket disconnected');
+  });
+
+  // Listen for progress updates from any session
+  socket.value.on('judge:progress', (data) => {
+    console.log('[JudgeOverview] Progress update:', data);
+    updateSessionProgress(data.session_id, data.completed, data.total, data.percent);
+  });
+
+  // Listen for comparison completions (also updates progress)
+  socket.value.on('judge:comparison_complete', (data) => {
+    console.log('[JudgeOverview] Comparison complete:', data);
+    if (data.completed !== undefined && data.total !== undefined) {
+      const percent = data.total > 0 ? (data.completed / data.total) * 100 : 0;
+      updateSessionProgress(data.session_id, data.completed, data.total, percent);
+    }
+  });
+
+  // Listen for session status changes
+  socket.value.on('judge:session_complete', (data) => {
+    console.log('[JudgeOverview] Session complete:', data);
+    updateSessionStatus(data.session_id, 'completed');
+    if (data.total !== undefined) {
+      updateSessionProgress(data.session_id, data.total, data.total, 100);
+    }
+  });
+
+  // Listen for session start
+  socket.value.on('judge:session_started', (data) => {
+    console.log('[JudgeOverview] Session started:', data);
+    updateSessionStatus(data.session_id, 'running');
+  });
+
+  // Listen for session pause
+  socket.value.on('judge:session_paused', (data) => {
+    console.log('[JudgeOverview] Session paused:', data);
+    updateSessionStatus(data.session_id, 'paused');
+  });
+};
+
+const cleanupSocket = () => {
+  if (socket.value) {
+    socket.value.emit('judge:leave_overview');
+    socket.value.disconnect();
+    socket.value = null;
+  }
+};
+
+// Update session progress in local state
+const updateSessionProgress = (sessionId, completed, total, percent) => {
+  const session = sessions.value.find(s => s.session_id === sessionId);
+  if (session) {
+    session.completed_comparisons = completed;
+    session.total_comparisons = total;
+    session.progress = percent;
+  }
+};
+
+// Update session status in local state
+const updateSessionStatus = (sessionId, status) => {
+  const session = sessions.value.find(s => s.session_id === sessionId);
+  if (session) {
+    session.status = status;
+  }
+};
+
 // Lifecycle
 onMounted(() => {
   loadSessions(true);
+  setupSocket();
   setTimeout(() => {
     loadingKIA.value = false;
   }, 100);
+});
+
+onUnmounted(() => {
+  cleanupSocket();
 });
 </script>
 

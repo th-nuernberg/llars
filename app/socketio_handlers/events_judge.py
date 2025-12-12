@@ -72,6 +72,26 @@ def register_judge_events(socketio):
             'room': room
         })
 
+    @socketio.on('judge:join_overview')
+    def handle_join_overview():
+        """
+        Handle client joining the Judge overview room.
+        This room receives updates for ALL sessions (for the overview page).
+        """
+        room = "judge_overview"
+        join_room(room)
+        logger.info(f"[Judge Socket] Client {request.sid} joined overview room")
+        emit('judge:overview_joined', {'room': room})
+
+    @socketio.on('judge:leave_overview')
+    def handle_leave_overview():
+        """
+        Handle client leaving the Judge overview room.
+        """
+        room = "judge_overview"
+        leave_room(room)
+        logger.info(f"[Judge Socket] Client {request.sid} left overview room")
+
     @socketio.on('judge:get_status')
     def handle_get_status(data):
         """

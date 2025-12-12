@@ -851,6 +851,12 @@ class PooledJudgeWorker:
             return
 
         room = f"judge_session_{self.session_id}"
+
+        # Get current progress from session for robust frontend tracking
+        session = JudgeSession.query.get(self.session_id)
+        completed = session.completed_comparisons if session else 0
+        total = session.total_comparisons if session else 0
+
         socketio.emit('judge:comparison_complete', {
             'session_id': self.session_id,
             'worker_id': self.worker_id,
@@ -858,7 +864,9 @@ class PooledJudgeWorker:
             'winner': result.winner,
             'confidence': result.confidence,
             'reasoning': result.final_justification,
-            'final_stream_content': self.stream_content  # Include final content for verification
+            'final_stream_content': self.stream_content,  # Include final content for verification
+            'completed': completed,  # Include for robust progress tracking
+            'total': total  # Include for robust progress tracking
         }, room=room)
 
     def _broadcast_progress(self, session):
@@ -886,8 +894,15 @@ class PooledJudgeWorker:
             return
 
         room = f"judge_session_{self.session_id}"
+
+        # Get total from session for robust frontend tracking (100% complete)
+        session = JudgeSession.query.get(self.session_id)
+        total = session.total_comparisons if session else 0
+
         socketio.emit('judge:session_complete', {
-            'session_id': self.session_id
+            'session_id': self.session_id,
+            'total': total,  # Include for robust progress tracking (100%)
+            'completed': total  # Both should be equal when complete
         }, room=room)
 
 

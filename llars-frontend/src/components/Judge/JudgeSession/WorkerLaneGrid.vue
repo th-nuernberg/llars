@@ -19,13 +19,13 @@
         <div class="header-stats">
           <div class="stat-item">
             <v-icon size="16">mdi-check-circle-outline</v-icon>
-            <span class="stat-value">{{ session?.completed_comparisons || 0 }}</span>
-            <span class="stat-label">/{{ session?.total_comparisons || 0 }}</span>
+            <span class="stat-value">{{ displayCompleted }}</span>
+            <span class="stat-label">/{{ displayTotal }}</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
             <v-icon size="16">mdi-percent</v-icon>
-            <span class="stat-value">{{ Math.round(progress) }}%</span>
+            <span class="stat-value">{{ Math.round(Math.min(progress, 100)) }}%</span>
           </div>
         </div>
 
@@ -110,9 +110,10 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import WorkerLane from '../WorkerLane.vue';
 
-defineProps({
+const props = defineProps({
   workerCount: {
     type: Number,
     required: true
@@ -152,10 +153,34 @@ defineProps({
   isPairActive: {
     type: Function,
     required: true
+  },
+  // Event-based counting values (optional)
+  completedCount: {
+    type: Number,
+    default: null
+  },
+  confirmedTotal: {
+    type: Number,
+    default: null
   }
 });
 
 defineEmits(['open-fullscreen', 'refresh', 'open-worker-fullscreen']);
+
+// Use event-based counting if available, otherwise fall back to session values
+const displayCompleted = computed(() => {
+  if (props.completedCount !== null && props.completedCount >= 0) {
+    return props.completedCount;
+  }
+  return props.session?.completed_comparisons || 0;
+});
+
+const displayTotal = computed(() => {
+  if (props.confirmedTotal !== null && props.confirmedTotal > 0) {
+    return props.confirmedTotal;
+  }
+  return props.session?.total_comparisons || 0;
+});
 </script>
 
 <style scoped>

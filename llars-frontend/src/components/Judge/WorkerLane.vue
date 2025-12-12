@@ -411,8 +411,8 @@ watch(() => props.isStreaming, (streaming) => {
 }
 
 .worker-lane.lane-streaming {
-  border-color: rgb(var(--v-theme-warning));
-  box-shadow: 0 0 20px rgba(var(--v-theme-warning), 0.2);
+  border-color: rgb(var(--v-theme-secondary));
+  box-shadow: 0 0 20px rgba(var(--v-theme-secondary), 0.2);
 }
 
 .worker-lane.lane-complete {
@@ -524,8 +524,8 @@ watch(() => props.isStreaming, (streaming) => {
 }
 
 .status-indicator.status-streaming {
-  background: rgba(var(--v-theme-warning), 0.15);
-  color: rgb(var(--v-theme-warning));
+  background: rgba(var(--v-theme-secondary), 0.15);
+  color: rgb(var(--v-theme-secondary));
 }
 
 .status-indicator.status-active {
@@ -992,9 +992,9 @@ watch(() => props.isStreaming, (streaming) => {
 }
 
 .timeline-step.step-active .step-node {
-  background: rgb(var(--v-theme-warning));
+  background: rgb(var(--v-theme-secondary));
   color: white;
-  box-shadow: 0 0 10px rgba(var(--v-theme-warning), 0.4);
+  box-shadow: 0 0 10px rgba(var(--v-theme-secondary), 0.4);
 }
 
 .step-label {
@@ -1031,9 +1031,9 @@ watch(() => props.isStreaming, (streaming) => {
 .live-preview {
   margin-top: 6px;
   padding: 4px 6px;
-  background: rgba(var(--v-theme-warning), 0.1);
+  background: rgba(var(--v-theme-secondary), 0.1);
   border-radius: 4px;
-  border-left: 2px solid rgb(var(--v-theme-warning));
+  border-left: 2px solid rgb(var(--v-theme-secondary));
 }
 
 .preview-header {
@@ -1042,7 +1042,7 @@ watch(() => props.isStreaming, (streaming) => {
   gap: 4px;
   font-size: 8px;
   font-weight: 600;
-  color: rgb(var(--v-theme-warning));
+  color: rgb(var(--v-theme-secondary));
   margin-bottom: 2px;
 }
 

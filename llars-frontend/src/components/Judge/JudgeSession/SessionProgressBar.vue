@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { computed, watchEffect } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
   session: {
@@ -71,17 +71,6 @@ const props = defineProps({
     type: Number,
     default: null
   }
-});
-
-// Debug: Watch props to see what we receive on each change
-watchEffect(() => {
-  console.log('[SessionProgressBar] Props:', {
-    progress: props.progress,
-    completedCount: props.completedCount,
-    confirmedTotal: props.confirmedTotal,
-    sessionCompleted: props.session?.completed_comparisons,
-    sessionTotal: props.session?.total_comparisons
-  });
 });
 
 // Use event-based counting if available, otherwise fall back to session values

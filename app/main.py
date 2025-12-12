@@ -67,6 +67,9 @@ def exempt_endpoints():
     # Exempt judge session polling endpoints (queue, current, comparisons, workers)
     if request.path and '/api/judge/sessions/' in request.path:
         return True
+    # Exempt email thread endpoints (frequently accessed by judge workers)
+    if request.path and '/api/email_threads/' in request.path:
+        return True
     return False
 
 # JWT Configuration (for legacy auth routes)

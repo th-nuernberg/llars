@@ -722,15 +722,41 @@ class PooledJudgeWorker:
     def _try_complete_session(self, session):
         """Try to mark session as complete (thread-safe)."""
         from db.db import db
-        from db.tables import JudgeSessionStatus
+        from db.tables import JudgeSessionStatus, JudgeComparison, JudgeComparisonStatus
 
         # Double-check under lock that session isn't already completed
-        if session.status == JudgeSessionStatus.RUNNING:
-            session.status = JudgeSessionStatus.COMPLETED
-            session.completed_at = datetime.now()
-            session.current_comparison_id = None
-            db.session.commit()
-            self._broadcast_session_complete()
+        if session.status != JudgeSessionStatus.RUNNING:
+            return
+
+        # CRITICAL: Re-check that there are truly no pending or running comparisons
+        # This prevents race conditions where another worker reset a comparison to PENDING
+        pending_count = JudgeComparison.query.filter_by(
+            session_id=self.session_id,
+            status=JudgeComparisonStatus.PENDING
+        ).count()
+
+        running_count = JudgeComparison.query.filter_by(
+            session_id=self.session_id,
+            status=JudgeComparisonStatus.RUNNING
+        ).count()
+
+        if pending_count > 0 or running_count > 0:
+            logger.info(
+                f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+                f"Cannot complete session - still has {pending_count} pending, {running_count} running"
+            )
+            return
+
+        # All comparisons done - mark session complete
+        session.status = JudgeSessionStatus.COMPLETED
+        session.completed_at = datetime.now()
+        session.current_comparison_id = None
+        db.session.commit()
+        logger.info(
+            f"[JudgeWorker:{self.session_id}:{self.worker_id}] "
+            f"Session {self.session_id} marked as COMPLETED"
+        )
+        self._broadcast_session_complete()
 
     # ========================================================================
     # Socket.IO Broadcasts (with worker_id)

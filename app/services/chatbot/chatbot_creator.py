@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 
 from db.db import db
 from db.tables import Chatbot, ChatbotCollection, RAGCollection
+from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +62,13 @@ class ChatbotCreator:
             counter += 1
 
         # Create draft chatbot
+        default_model = LLMModel.get_default_model()
         chatbot = Chatbot(
             name=name,
             display_name=f"Chatbot for {parsed.netloc}",
             description=f"Auto-generated chatbot from {url}",
             system_prompt="Du bist ein hilfreicher Assistent.",
+            model_name=default_model.model_id if default_model else 'mistralai/Mistral-Small-3.2-24B-Instruct-2506',
             build_status='draft',
             source_url=url,
             is_active=False,  # Not active until ready
@@ -235,6 +238,8 @@ class ChatbotCreator:
             chatbot.description = data['description']
         if 'system_prompt' in data:
             chatbot.system_prompt = data['system_prompt']
+        if 'model_name' in data and data['model_name']:
+            chatbot.model_name = data['model_name']
         if 'welcome_message' in data:
             chatbot.welcome_message = data['welcome_message']
         if 'icon' in data:

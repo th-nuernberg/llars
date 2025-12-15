@@ -1,31 +1,23 @@
 <template>
-  <v-container fluid>
-    <!-- Header -->
+  <div class="admin-chatbots">
+    <!-- Actions -->
     <v-row class="mb-4">
-      <v-col cols="12">
-        <div class="d-flex justify-space-between align-center">
-          <div>
-            <h1 class="text-h4 font-weight-bold">Chatbot & RAG Verwaltung</h1>
-            <p class="text-medium-emphasis mt-1">
-              Erstellen und verwalten Sie Chatbots mit RAG-Integration
-            </p>
-          </div>
-          <div class="d-flex gap-2">
-            <v-btn
-              color="secondary"
-              prepend-icon="mdi-wizard-hat"
-              @click="dialogs.wizard = true"
-            >
-              Builder Wizard
-            </v-btn>
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-plus"
-              @click="openCreateDialog"
-            >
-              Neuer Chatbot
-            </v-btn>
-          </div>
+      <v-col cols="12" class="d-flex justify-end">
+        <div class="d-flex flex-wrap ga-2">
+          <LBtn
+            variant="secondary"
+            prepend-icon="mdi-wizard-hat"
+            @click="dialogs.wizard = true"
+          >
+            Builder Wizard
+          </LBtn>
+          <LBtn
+            variant="primary"
+            prepend-icon="mdi-plus"
+            @click="openCreateDialog"
+          >
+            Neuer Chatbot
+          </LBtn>
         </div>
       </v-col>
     </v-row>
@@ -34,56 +26,48 @@
     <v-row class="mb-4">
       <v-col cols="12" sm="6" md="3">
         <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else class="stat-card">
+        <v-card v-else variant="tonal" color="primary">
           <v-card-text class="d-flex align-center">
-            <v-avatar color="primary" size="48" class="mr-4">
-              <v-icon color="white">mdi-robot</v-icon>
-            </v-avatar>
+            <v-icon size="32" class="mr-3">mdi-robot</v-icon>
             <div>
-              <div class="text-h4 font-weight-bold">{{ stats.total_chatbots }}</div>
-              <div class="text-medium-emphasis">Chatbots</div>
+              <div class="text-h5 font-weight-bold">{{ stats.total_chatbots }}</div>
+              <div class="text-caption">Chatbots</div>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
         <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else class="stat-card">
+        <v-card v-else variant="tonal" color="success">
           <v-card-text class="d-flex align-center">
-            <v-avatar color="success" size="48" class="mr-4">
-              <v-icon color="white">mdi-check-circle</v-icon>
-            </v-avatar>
+            <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
             <div>
-              <div class="text-h4 font-weight-bold">{{ stats.active_chatbots }}</div>
-              <div class="text-medium-emphasis">Aktiv</div>
+              <div class="text-h5 font-weight-bold">{{ stats.active_chatbots }}</div>
+              <div class="text-caption">Aktiv</div>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
         <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else class="stat-card">
+        <v-card v-else variant="tonal" color="info">
           <v-card-text class="d-flex align-center">
-            <v-avatar color="info" size="48" class="mr-4">
-              <v-icon color="white">mdi-message-text</v-icon>
-            </v-avatar>
+            <v-icon size="32" class="mr-3">mdi-message-text</v-icon>
             <div>
-              <div class="text-h4 font-weight-bold">{{ stats.total_conversations }}</div>
-              <div class="text-medium-emphasis">Gespräche</div>
+              <div class="text-h5 font-weight-bold">{{ stats.total_conversations }}</div>
+              <div class="text-caption">Gespräche</div>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
         <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else class="stat-card">
+        <v-card v-else variant="tonal" color="warning">
           <v-card-text class="d-flex align-center">
-            <v-avatar color="warning" size="48" class="mr-4">
-              <v-icon color="white">mdi-folder-multiple</v-icon>
-            </v-avatar>
+            <v-icon size="32" class="mr-3">mdi-folder-multiple</v-icon>
             <div>
-              <div class="text-h4 font-weight-bold">{{ collectionsCount }}</div>
-              <div class="text-medium-emphasis">Collections</div>
+              <div class="text-h5 font-weight-bold">{{ collectionsCount }}</div>
+              <div class="text-caption">Collections</div>
             </div>
           </v-card-text>
         </v-card>
@@ -92,7 +76,7 @@
 
     <!-- Tabs -->
     <v-card>
-      <v-tabs v-model="activeTab" color="primary">
+      <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="chatbots">
           <v-icon start>mdi-robot</v-icon>
           Chatbots
@@ -214,8 +198,8 @@
     </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="dialogs.deleteConfirm = false">Abbrechen</v-btn>
-          <v-btn color="error" variant="flat" @click="executeDelete">Löschen</v-btn>
+          <LBtn variant="cancel" @click="dialogs.deleteConfirm = false">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="executeDelete">Löschen</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -231,7 +215,7 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.text }}
     </v-snackbar>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -624,11 +608,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.stat-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.admin-chatbots {
+  width: 100%;
 }
 </style>

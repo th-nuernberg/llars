@@ -11,6 +11,8 @@ from .kaimo import initialize_kaimo_defaults
 from .users import seed_user_groups, seed_bootstrap_admin
 from .permissions import initialize_permissions
 from .rag import initialize_rag_system
+from .chatbots import initialize_default_chatbots
+from .markdown_collab import initialize_markdown_collab_defaults
 from .scenarios import seed_demo_scenarios
 
 
@@ -43,6 +45,15 @@ def run_all_seeders(db):
     # This ensures the admin user exists for API access
     seed_bootstrap_admin(db)
 
+    # Initialize RAG system (default collection + scan /app/rag_docs)
+    initialize_rag_system(db)
+
+    # Create default chatbots (admin-only standard bot)
+    initialize_default_chatbots(db)
+
+    # Create Markdown Collab demo workspace/tree
+    initialize_markdown_collab_defaults(db)
+
     # Seed demo scenarios in development mode only
     project_state = os.getenv('PROJECT_STATE', 'development').lower()
     if project_state == 'development':
@@ -60,5 +71,7 @@ __all__ = [
     'seed_bootstrap_admin',
     'initialize_permissions',
     'initialize_rag_system',
+    'initialize_default_chatbots',
+    'initialize_markdown_collab_defaults',
     'seed_demo_scenarios',
 ]

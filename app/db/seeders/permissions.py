@@ -84,6 +84,25 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Erstellen und Bearbeiten von Prompts'
         },
+        # Feature: Markdown Collab
+        {
+            'permission_key': 'feature:markdown_collab:view',
+            'display_name': 'Markdown Collab ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Markdown Collab Workspaces und Dokumenten'
+        },
+        {
+            'permission_key': 'feature:markdown_collab:edit',
+            'display_name': 'Markdown Collab bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Markdown Collab Dokumenten'
+        },
+        {
+            'permission_key': 'feature:markdown_collab:share',
+            'display_name': 'Markdown Collab teilen',
+            'category': 'feature',
+            'description': 'Erlaubt das Teilen von Markdown Collab Dateien und Ordnern'
+        },
         # Admin: Permissions Management
         {
             'permission_key': 'admin:permissions:manage',
@@ -233,6 +252,9 @@ def initialize_permissions(db):
                 'feature:comparison:edit',
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
+                'feature:markdown_collab:view',
+                'feature:markdown_collab:edit',
+                'feature:markdown_collab:share',
                 'feature:rag:view',
                 'feature:rag:edit',
                 'feature:chatbots:view',
@@ -256,6 +278,7 @@ def initialize_permissions(db):
                 'feature:prompt_engineering:view',
                 'feature:rag:view',
                 'feature:chatbots:view',
+                'feature:markdown_collab:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
             ]

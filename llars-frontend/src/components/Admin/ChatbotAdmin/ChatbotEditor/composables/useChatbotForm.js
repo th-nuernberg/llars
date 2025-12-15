@@ -8,6 +8,20 @@
 import { ref, computed, watch } from 'vue';
 
 export function useChatbotForm() {
+  const defaultPromptSettings = {
+    rag_require_citations: true,
+    rag_unknown_answer: 'Ich weiß es nicht',
+    rag_citation_instructions: [
+      'WICHTIG - Antworten mit Quellen:',
+      '- Beantworte die Frage NUR mit Hilfe des Kontexts.',
+      '- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).',
+      '- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.',
+      '- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: \"{{UNKNOWN_ANSWER}}\"'
+    ].join('\n'),
+    rag_context_prefix: 'Kontext:',
+    rag_context_item_template: '[{{id}}] {{title}}:\n{{excerpt}}'
+  };
+
   // Form data with defaults
   const formData = ref({
     name: '',
@@ -28,7 +42,8 @@ export function useChatbotForm() {
     fallback_message: '',
     is_active: true,
     is_public: false,
-    collection_ids: []
+    collection_ids: [],
+    prompt_settings: { ...defaultPromptSettings }
   });
 
   const activeTab = ref('general');
@@ -123,7 +138,8 @@ export function useChatbotForm() {
       fallback_message: '',
       is_active: true,
       is_public: false,
-      collection_ids: []
+      collection_ids: [],
+      prompt_settings: { ...defaultPromptSettings }
     };
     promptLineCount.value = 10;
   }
@@ -131,9 +147,13 @@ export function useChatbotForm() {
   // Load chatbot data into form
   function loadChatbot(chatbot) {
     if (chatbot) {
+      const promptSettings = chatbot.prompt_settings
+        ? { ...defaultPromptSettings, ...chatbot.prompt_settings }
+        : { ...defaultPromptSettings };
       formData.value = {
         ...formData.value,
         ...chatbot,
+        prompt_settings: promptSettings,
         collection_ids: chatbot.collections?.map(c => c.id) || []
       };
       updateLineCount();
@@ -153,6 +173,15 @@ export function useChatbotForm() {
     }
     return dataToSave;
   }
+
+  watch(
+    () => formData.value.prompt_settings?.rag_require_citations,
+    (required) => {
+      if (required) {
+        formData.value.rag_include_sources = true;
+      }
+    }
+  );
 
   return {
     // State

@@ -408,11 +408,78 @@
                       v-model="formData.rag_include_sources"
                       label="Quellen in Antwort einbeziehen"
                       color="primary"
+                      :disabled="formData.prompt_settings?.rag_require_citations"
                       hide-details
                     />
                     <div class="text-caption text-medium-emphasis mt-2">
                       Zeigt Quellenangaben in den Antworten an
+                      <template v-if="formData.prompt_settings?.rag_require_citations">
+                        (für Zitationen erforderlich)
+                      </template>
                     </div>
+                  </v-col>
+
+                  <v-col cols="12">
+                    <v-card variant="outlined">
+                      <v-card-title class="text-subtitle-1">
+                        <v-icon start>mdi-format-quote-close</v-icon>
+                        Quellen & Antwortregeln
+                      </v-card-title>
+                      <v-card-text>
+                        <v-switch
+                          v-model="formData.prompt_settings.rag_require_citations"
+                          label="Zitationen [1], [2], ... erzwingen"
+                          color="primary"
+                          hide-details
+                          class="mb-4"
+                        />
+
+                        <v-text-field
+                          v-model="formData.prompt_settings.rag_unknown_answer"
+                          label="Antwort bei Unklarheit (exakt)"
+                          hint="Wird verwendet, wenn die Antwort nicht aus dem Kontext ableitbar ist."
+                          persistent-hint
+                          variant="outlined"
+                          density="comfortable"
+                          class="mb-4"
+                        />
+
+                        <v-textarea
+                          v-model="formData.prompt_settings.rag_citation_instructions"
+                          label="Zitations-Instruktionen (Template)"
+                          hint='Platzhalter: {{UNKNOWN_ANSWER}}'
+                          persistent-hint
+                          rows="6"
+                          variant="outlined"
+                          density="comfortable"
+                          class="mb-4"
+                        />
+
+                        <v-row>
+                          <v-col cols="12" md="4">
+                            <v-text-field
+                              v-model="formData.prompt_settings.rag_context_prefix"
+                              label="Kontext-Prefix"
+                              hint="Überschrift vor den Quellen im Prompt"
+                              persistent-hint
+                              variant="outlined"
+                              density="comfortable"
+                            />
+                          </v-col>
+                          <v-col cols="12" md="8">
+                            <v-textarea
+                              v-model="formData.prompt_settings.rag_context_item_template"
+                              label="Kontext-Eintrag Template"
+                              hint="Platzhalter: {{id}}, {{title}}, {{excerpt}}, {{page_number}}, {{chunk_index}}, {{collection_name}}"
+                              persistent-hint
+                              rows="4"
+                              variant="outlined"
+                              density="comfortable"
+                            />
+                          </v-col>
+                        </v-row>
+                      </v-card-text>
+                    </v-card>
                   </v-col>
                 </template>
               </v-row>

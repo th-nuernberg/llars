@@ -66,6 +66,7 @@ from db.models.markdown_collab import (
     MarkdownWorkspaceVisibility,
     MarkdownNodeType,
     MarkdownWorkspace,
+    MarkdownWorkspaceMember,
     MarkdownDocument,
     MarkdownCommit,
 )
@@ -164,6 +165,7 @@ __all__ = [
     'MarkdownWorkspaceVisibility',
     'MarkdownNodeType',
     'MarkdownWorkspace',
+    'MarkdownWorkspaceMember',
     'MarkdownDocument',
     'MarkdownCommit',
     # LLM Model

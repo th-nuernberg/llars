@@ -84,12 +84,27 @@ function extractUserInfo(decodedToken) {
   const realmRoles = decodedToken.realm_access?.roles || [];
   const clientRoles = decodedToken.resource_access?.['llars-backend']?.roles || [];
   const mappedRoles = decodedToken.roles || [];
+  const groups = Array.isArray(decodedToken.groups) ? decodedToken.groups : [];
+
+  const groupRoles = [];
+  for (const g of groups) {
+    if (typeof g !== 'string' || !g.trim()) continue;
+    const raw = g.trim();
+    groupRoles.push(raw);
+    groupRoles.push(raw.toLowerCase());
+    // Backwards compatible admin mapping for Authentik default groups
+    if (raw.toLowerCase() === 'authentik admins') {
+      groupRoles.push('admin');
+    }
+  }
+
+  const roles = Array.from(new Set([...mappedRoles, ...realmRoles, ...clientRoles, ...groupRoles].filter(Boolean)));
   return {
     username: decodedToken.preferred_username || decodedToken.sub,
     userId: decodedToken.sub,
     email: decodedToken.email,
-    roles: [...mappedRoles, ...realmRoles, ...clientRoles],
-    isAdmin: [...mappedRoles, ...realmRoles, ...clientRoles].includes('admin')
+    roles,
+    isAdmin: roles.includes('admin')
   };
 }
 

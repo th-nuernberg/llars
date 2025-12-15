@@ -57,6 +57,40 @@ function parseRoom(roomName) {
   return null;
 }
 
+async function canAccessMarkdownDocument(documentId, username, isAdmin) {
+  try {
+    if (isAdmin) return true;
+    if (!username) return false;
+
+    const [rows] = await pool.query(
+      `SELECT md.workspace_id AS workspace_id, mw.owner_username AS owner_username
+       FROM markdown_documents md
+       JOIN markdown_workspaces mw ON mw.id = md.workspace_id
+       WHERE md.id = ?
+       LIMIT 1`,
+      [documentId]
+    );
+
+    if (!rows || rows.length === 0) return false;
+    const workspaceId = rows[0].workspace_id;
+    const ownerUsername = rows[0].owner_username;
+    if (ownerUsername === username) return true;
+
+    const [memberRows] = await pool.query(
+      `SELECT 1
+       FROM markdown_workspace_members
+       WHERE workspace_id = ? AND username = ?
+       LIMIT 1`,
+      [workspaceId, username]
+    );
+
+    return !!(memberRows && memberRows.length > 0);
+  } catch (e) {
+    console.error(`[AuthZ] Failed to check markdown access for doc ${documentId}:`, e);
+    return false;
+  }
+}
+
 /**
  * Speichert das Y.Doc in der Datenbank für das gegebene prompt_id (= roomName).
  * - Falls bereits ein Eintrag existiert → UPDATE
@@ -192,6 +226,18 @@ function setupSocketHandlers(io) {
       const userId = authenticatedUser.userId;
 
       console.log(`User "${username}" (${userId}) joined room "${room}"`);
+
+      // Authorization for Markdown Collab rooms (prevents guessing document IDs)
+      const parsed = parseRoom(room);
+      if (parsed?.kind === 'markdown') {
+        const allowed = await canAccessMarkdownDocument(parsed.id, username, authenticatedUser.isAdmin);
+        if (!allowed) {
+          console.warn(`[AuthZ] Denied access for user "${username}" to room "${room}"`);
+          socket.emit('collab:error', { error: 'Forbidden' });
+          socket.disconnect(true);
+          return;
+        }
+      }
 
       socket.join(room);
       let doc = ydocs.get(room);

@@ -205,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -216,6 +216,10 @@ const props = defineProps({
   collections: {
     type: Array,
     default: () => []
+  },
+  initialCollectionId: {
+    type: Number,
+    default: null
   }
 })
 
@@ -231,7 +235,8 @@ const uploadComplete = ref(false)
 
 const collectionItems = computed(() => {
   return props.collections.map(c => ({
-    value: c.name,
+    value: c.id,
+    name: c.name,
     display_name: c.display_name || c.name,
     icon: c.icon,
     color: c.color
@@ -333,7 +338,7 @@ const handleUpload = async () => {
   uploadErrors.value = {}
 
   const formData = new FormData()
-  formData.append('collection_name', selectedCollection.value)
+  formData.append('collection_id', String(selectedCollection.value))
 
   files.value.forEach((file, index) => {
     formData.append('files', file)
@@ -402,6 +407,20 @@ const handleClose = () => {
 
   emit('update:modelValue', false)
 }
+
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (!isOpen) return
+    if (props.initialCollectionId && props.collections.some(c => c.id === props.initialCollectionId)) {
+      selectedCollection.value = props.initialCollectionId
+      return
+    }
+    if (props.collections.length === 1) {
+      selectedCollection.value = props.collections[0].id
+    }
+  }
+)
 </script>
 
 <style scoped>

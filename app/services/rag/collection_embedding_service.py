@@ -393,6 +393,14 @@ class CollectionEmbeddingService:
                     doc.embedding_model = pipeline.model_name
                     db.session.commit()
 
+                    # Emit per-document status update (no polling needed in UIs)
+                    try:
+                        from main import socketio
+                        from socketio_handlers.events_rag import emit_document_processed
+                        emit_document_processed(socketio, doc.id, 'indexed', None, collection_id=collection_id)
+                    except Exception:
+                        pass
+
                     batch_chunks += len(new_chunks)
                     total_chunks_total += len(new_chunks)
                     processed_count += 1
@@ -406,6 +414,12 @@ class CollectionEmbeddingService:
                     doc.status = 'failed'
                     doc.processing_error = str(e)[:500]
                     db.session.commit()
+                    try:
+                        from main import socketio
+                        from socketio_handlers.events_rag import emit_document_processed
+                        emit_document_processed(socketio, doc.id, 'failed', str(e), collection_id=collection_id)
+                    except Exception:
+                        pass
                     processed_count += 1
 
             # Update collection stats after each batch

@@ -95,7 +95,8 @@ export function useBuilderState() {
     documentsTotal: 0,
     documentsProcessed: 0,
     chunksTotal: 0,
-    chunksProcessed: 0
+    chunksProcessed: 0,
+    currentDocument: ''
   })
 
   // ===== Collection Info =====
@@ -240,7 +241,21 @@ export function useBuilderState() {
       crawlProgress.value.currentUrl = data.current_url || data.currentUrl
     }
     if (data.stage) {
-      crawlProgress.value.stage = data.stage
+      // Prevent stage regression (causes UI flicker between Phase 1/2)
+      const stageRank = {
+        [CRAWL_STAGE.IDLE]: 0,
+        [CRAWL_STAGE.PLANNING]: 1,
+        [CRAWL_STAGE.PLANNING_DONE]: 2,
+        [CRAWL_STAGE.CRAWLING]: 3,
+        [CRAWL_STAGE.COMPLETED]: 4
+      }
+      const current = crawlProgress.value.stage
+      const next = data.stage
+      const currentRank = stageRank[current] ?? 0
+      const nextRank = stageRank[next]
+      if (nextRank !== undefined && nextRank >= currentRank) {
+        crawlProgress.value.stage = next
+      }
     }
     if (data.crawler_type || data.crawlerType) {
       crawlProgress.value.crawlerType = data.crawler_type || data.crawlerType
@@ -271,6 +286,9 @@ export function useBuilderState() {
     } else if (typeof data === 'object') {
       if (data.progress !== undefined) {
         embeddingProgress.value.progress = data.progress
+      }
+      if (data.current_document !== undefined || data.currentDocument !== undefined) {
+        embeddingProgress.value.currentDocument = data.current_document ?? data.currentDocument ?? ''
       }
       if (data.documents_total !== undefined) {
         embeddingProgress.value.documentsTotal = data.documents_total

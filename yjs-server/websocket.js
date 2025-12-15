@@ -18,6 +18,7 @@ const ydocs = new Map();
  * };
  */
 const rooms = {};
+const saveTimers = new Map();
 
 // Farbpalette für neue Benutzer
 const COLORS = [
@@ -43,6 +44,19 @@ function jsonToYdoc(jsonString) {
   return doc;
 }
 
+function parseRoom(roomName) {
+  if (typeof roomName !== 'string') return null;
+  const promptMatch = roomName.match(/^room_(\d+)$/);
+  if (promptMatch) {
+    return { kind: 'prompt', id: parseInt(promptMatch[1], 10) };
+  }
+  const markdownMatch = roomName.match(/^markdown_(\d+)$/);
+  if (markdownMatch) {
+    return { kind: 'markdown', id: parseInt(markdownMatch[1], 10) };
+  }
+  return null;
+}
+
 /**
  * Speichert das Y.Doc in der Datenbank für das gegebene prompt_id (= roomName).
  * - Falls bereits ein Eintrag existiert → UPDATE
@@ -52,36 +66,62 @@ function jsonToYdoc(jsonString) {
  * @param {Y.Doc} doc              Das Yjs-Dokument
  * @param {string} name            Optionaler Prompt-Name
  * @param {number|null} userId     ID des Besitzers (kann auch null sein)
+ * @param {string|null} username   Optional (für markdown_documents last_editor_username)
  */
-async function saveYdocToDB(roomName, doc, name, userId) {
-  // Entferne den Präfix "room_" aus der Raum-ID (falls vorhanden)
-  const roomId = parseInt(roomName.replace(/^room_/, ''), 10);
+async function saveYdocToDB(roomName, doc, name, userId, username = null) {
+  const parsed = parseRoom(roomName);
+  if (!parsed) return;
+
+  const roomId = parsed.id;
   const jsonString = ydocToJson(doc);
 
   try {
-    const [rows] = await pool.query(
-      'SELECT prompt_id FROM user_prompts WHERE prompt_id = ?',
-      [roomId]
-    );
+    if (parsed.kind === 'prompt') {
+      const [rows] = await pool.query(
+        'SELECT prompt_id FROM user_prompts WHERE prompt_id = ?',
+        [roomId]
+      );
 
-    if (rows.length > 0) {
-      // Existiert bereits → UPDATE
-      await pool.query(
-        `UPDATE user_prompts
-         SET content = ?, updated_at = NOW()
-         WHERE prompt_id = ?`,
-        [jsonString, roomId]
-      );
-    } else {
-      // Noch nicht vorhanden → INSERT
-      await pool.query(
-        `INSERT INTO user_prompts (prompt_id, user_id, name, content, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NOW(), NOW())`,
-        [roomId, userId, name || 'Untitled', jsonString]
-      );
+      if (rows.length > 0) {
+        // Existiert bereits → UPDATE
+        await pool.query(
+          `UPDATE user_prompts
+           SET content = ?, updated_at = NOW()
+           WHERE prompt_id = ?`,
+          [jsonString, roomId]
+        );
+      } else {
+        // Noch nicht vorhanden → INSERT
+        await pool.query(
+          `INSERT INTO user_prompts (prompt_id, user_id, name, content, created_at, updated_at)
+           VALUES (?, ?, ?, ?, NOW(), NOW())`,
+          [roomId, userId, name || 'Untitled', jsonString]
+        );
+      }
+
+      console.log(`Y.Doc für Raum ${roomName} (prompt_id=${roomId}) gespeichert.`);
+      return;
     }
 
-    console.log(`Y.Doc für Raum ${roomName} (prompt_id=${roomId}) gespeichert.`);
+    if (parsed.kind === 'markdown') {
+      const [rows] = await pool.query(
+        'SELECT id FROM markdown_documents WHERE id = ?',
+        [roomId]
+      );
+
+      if (rows.length === 0) {
+        console.warn(`Markdown document ${roomId} not found; cannot persist Y.Doc for room ${roomName}`);
+        return;
+      }
+
+      await pool.query(
+        `UPDATE markdown_documents
+         SET content = ?, updated_at = NOW(), last_editor_username = COALESCE(?, last_editor_username)
+         WHERE id = ?`,
+        [jsonString, username, roomId]
+      );
+      console.log(`Y.Doc für Raum ${roomName} (markdown_documents.id=${roomId}) gespeichert.`);
+    }
   } catch (err) {
     console.error(`Fehler beim Speichern des Y.Doc für Raum ${roomName}:`, err);
   }
@@ -96,14 +136,32 @@ async function saveYdocToDB(roomName, doc, name, userId) {
  */
 async function loadYdocFromDB(roomName) {
   try {
-    const roomId = parseInt(roomName.replace(/^room_/, ''), 10);
-    const [rows] = await pool.query(
-      'SELECT content FROM user_prompts WHERE prompt_id = ?',
-      [roomId]
-    );
+    const parsed = parseRoom(roomName);
+    if (!parsed) return new Y.Doc();
 
-    if (rows.length > 0 && rows[0].content) {
-      return jsonToYdoc(rows[0].content);
+    const roomId = parsed.id;
+
+    if (parsed.kind === 'prompt') {
+      const [rows] = await pool.query(
+        'SELECT content FROM user_prompts WHERE prompt_id = ?',
+        [roomId]
+      );
+
+      if (rows.length > 0 && rows[0].content) {
+        return jsonToYdoc(rows[0].content);
+      }
+      return new Y.Doc();
+    }
+
+    if (parsed.kind === 'markdown') {
+      const [rows] = await pool.query(
+        'SELECT content FROM markdown_documents WHERE id = ?',
+        [roomId]
+      );
+      if (rows.length > 0 && rows[0].content) {
+        return jsonToYdoc(rows[0].content);
+      }
+      return new Y.Doc();
     }
   } catch (err) {
     console.error(`Fehler beim Laden des Y.Doc für Raum ${roomName}:`, err);
@@ -186,6 +244,20 @@ function setupSocketHandlers(io) {
 
         // Weiterleiten an alle anderen Clients im Raum
         socket.to(room).emit('sync_update', { update });
+
+        // Debounced persistence to reduce data-loss on server restarts.
+        // (Prompt saving on empty-room remains as a final flush.)
+        const existingTimer = saveTimers.get(room);
+        if (existingTimer) clearTimeout(existingTimer);
+        saveTimers.set(room, setTimeout(async () => {
+          try {
+            await saveYdocToDB(room, doc, `Room ${room}`, authenticatedUser.userId || null, authenticatedUser.username || null);
+          } catch (e) {
+            console.error(`Debounced save failed for room ${room}:`, e);
+          } finally {
+            saveTimers.delete(room);
+          }
+        }, 2000));
       } catch (error) {
         console.error('Error applying update:', error);
       }
@@ -245,11 +317,16 @@ async function handleUserLeave(socket, room) {
 
     // Räume den Raum auf, wenn er leer ist
     if (Object.keys(roomObj.users).length === 0) {
+      const existingTimer = saveTimers.get(room);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        saveTimers.delete(room);
+      }
       const doc = ydocs.get(room);
       if (doc) {
         // Beispiel: Raum-Name als Prompt-Name speichern
         // Wenn du einen anderen Namen willst, kannst du das anpassen
-        await saveYdocToDB(room, doc, `Room ${room}`, null);
+        await saveYdocToDB(room, doc, `Room ${room}`, null, socket.user?.username || null);
         ydocs.delete(room);
       }
       delete rooms[room];

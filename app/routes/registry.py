@@ -80,6 +80,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.chatbot import chatbot_bp
     app.register_blueprint(chatbot_bp)
 
+    # Markdown Collab
+    from routes.markdown_collab import markdown_collab_bp
+    app.register_blueprint(markdown_collab_bp)
+
     # Web Crawler
     from routes.crawler import crawler_bp
     app.register_blueprint(crawler_bp)
@@ -131,6 +135,7 @@ def get_blueprint_info() -> dict:
             {'name': 'rag', 'prefix': '/api/rag', 'description': 'RAG document management and search'},
             {'name': 'chatbot', 'prefix': '/api/chatbot', 'description': 'Chatbot interface'},
             {'name': 'crawler', 'prefix': '/api/crawler', 'description': 'Web crawler'},
+            {'name': 'markdown_collab', 'prefix': '/api/markdown-collab', 'description': 'Markdown Collab workspaces and documents'},
         ],
         'projects': [
             {'name': 'kaimo', 'prefix': '/api/kaimo', 'description': 'KAIMO project routes'},

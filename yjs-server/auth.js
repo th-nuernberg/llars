@@ -12,7 +12,8 @@ const ISSUER = AUTHENTIK_ISSUER.replace(/\/$/, '');
 
 // JWKS client to fetch public keys
 const client = jwksClient({
-  jwksUri: `${ISSUER}/.well-known/jwks.json`,
+  // Authentik exposes per-application JWKS at /jwks/
+  jwksUri: `${ISSUER}/jwks/`,
   cache: true,
   cacheMaxAge: 600000, // 10 minutes
   rateLimit: true,
@@ -44,13 +45,29 @@ function verifyToken(token) {
       token,
       getKey,
       {
-        algorithms: ['RS256'],
-        issuer: ISSUER
+        algorithms: ['RS256']
       },
       (err, decoded) => {
         if (err) {
           console.error('JWT verification failed:', err.message);
           return reject(err);
+        }
+        try {
+          const expectedPath = new URL(`${ISSUER}/`).pathname.replace(/\/$/, '');
+          const tokenIss = decoded?.iss || '';
+          if (!tokenIss) {
+            return reject(new Error('Missing issuer'));
+          }
+          const tokenPath = new URL(tokenIss).pathname.replace(/\/$/, '');
+
+          // In dev/proxy setups the hostname may differ (localhost vs container DNS),
+          // but the application path must match to avoid accepting tokens from other issuers.
+          if (expectedPath && tokenPath !== expectedPath) {
+            return reject(new Error(`Invalid issuer path: ${tokenPath}`));
+          }
+        } catch (e) {
+          console.error('Issuer validation failed:', e?.message || e);
+          return reject(new Error('Invalid issuer'));
         }
         resolve(decoded);
       }

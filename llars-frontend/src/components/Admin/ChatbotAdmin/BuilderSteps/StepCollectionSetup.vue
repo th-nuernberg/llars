@@ -1,9 +1,9 @@
 <template>
-  <v-card flat class="pa-4">
-    <v-row>
+  <v-card flat class="pa-4 h-100 d-flex flex-column">
+    <v-row class="flex-grow-1 align-stretch">
       <!-- Left side: Progress Section -->
-      <v-col cols="12" md="6">
-        <v-card variant="outlined" class="pa-4 h-100">
+      <v-col cols="12" md="6" class="d-flex">
+        <v-card variant="outlined" class="pa-4 flex-grow-1 d-flex flex-column">
           <!-- Status Header -->
           <div class="d-flex align-center mb-4">
             <v-progress-circular
@@ -39,10 +39,47 @@
 
           <!-- Crawling Phase Details -->
           <template v-if="isCrawling">
+            <!-- Phase Chips -->
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <v-chip
+                size="small"
+                :color="phase1Done ? 'success' : (phase1Active ? 'primary' : 'grey')"
+                variant="tonal"
+              >
+                <v-icon start size="small">{{ phase1Done ? 'mdi-check' : 'mdi-map-search' }}</v-icon>
+                Phase 1: Exploration
+              </v-chip>
+              <v-chip
+                size="small"
+                :color="phase2Done ? 'success' : (phase2Active ? 'primary' : 'grey')"
+                variant="tonal"
+              >
+                <v-icon start size="small">{{ phase2Done ? 'mdi-check' : 'mdi-spider-web' }}</v-icon>
+                Phase 2: Crawling
+              </v-chip>
+            </div>
+
             <!-- Current URL -->
             <div v-if="crawlProgress.currentUrl" class="mb-3">
-              <div class="text-caption text-medium-emphasis">Aktuelle Seite:</div>
+              <div class="text-caption text-medium-emphasis d-flex align-center">
+                <v-progress-circular
+                  v-if="phase2Active"
+                  indeterminate
+                  size="14"
+                  width="2"
+                  color="primary"
+                  class="mr-2"
+                />
+                Aktuelle Seite wird gecrawlt:
+              </div>
               <div class="text-body-2 text-truncate">{{ crawlProgress.currentUrl }}</div>
+              <v-progress-linear
+                v-if="phase2Active"
+                indeterminate
+                height="3"
+                rounded
+                class="mt-2"
+              />
             </div>
 
             <!-- Crawl Stats -->
@@ -86,7 +123,7 @@
             <!-- Recent Pages -->
             <div v-if="crawlProgress.recentPages && crawlProgress.recentPages.length > 0">
               <div class="text-caption text-medium-emphasis mb-2">Zuletzt gecrawlt:</div>
-              <v-list density="compact" class="bg-transparent" max-height="150" style="overflow-y: auto">
+              <v-list density="compact" class="bg-transparent flex-grow-1" style="overflow-y: auto">
                 <v-list-item
                   v-for="(page, index) in displayRecentPages"
                   :key="index"
@@ -124,6 +161,20 @@
             <div v-if="embeddingProgress.documentsProcessed" class="mt-3 text-body-2 text-medium-emphasis">
               Verarbeitet: {{ embeddingProgress.documentsProcessed }} / {{ embeddingProgress.documentsTotal || '?' }} Dokumente
             </div>
+
+            <div v-if="embeddingProgress.currentDocument" class="mt-3">
+              <div class="text-caption text-medium-emphasis d-flex align-center">
+                <v-progress-circular
+                  indeterminate
+                  size="14"
+                  width="2"
+                  color="primary"
+                  class="mr-2"
+                />
+                Aktuelles Dokument:
+              </div>
+              <div class="text-body-2 text-truncate">{{ embeddingProgress.currentDocument }}</div>
+            </div>
           </template>
 
           <!-- Stage Indicator -->
@@ -142,9 +193,9 @@
       </v-col>
 
       <!-- Right side: Document Preview & Actions -->
-      <v-col cols="12" md="6">
+      <v-col cols="12" md="6" class="d-flex flex-column">
         <!-- Collection Preview -->
-        <v-card variant="outlined" class="pa-4 mb-4">
+        <v-card variant="outlined" class="pa-4 mb-4 flex-grow-1 d-flex flex-column">
           <div class="d-flex align-center mb-3">
             <v-icon size="32" color="primary" class="mr-2">mdi-folder-text-outline</v-icon>
             <div class="text-h6">Collection-Vorschau</div>
@@ -177,8 +228,7 @@
           <v-list
             v-else
             density="comfortable"
-            class="bg-transparent"
-            max-height="200"
+            class="bg-transparent flex-grow-1"
             style="overflow-y: auto"
           >
             <v-list-item
@@ -306,6 +356,14 @@ const isEmbedding = computed(() => props.buildStatus === 'embedding')
 const isActiveProcess = computed(() => ['crawling', 'embedding'].includes(props.buildStatus))
 const isCompleted = computed(() => ['configuring', 'ready'].includes(props.buildStatus))
 const hasError = computed(() => props.buildStatus === 'error')
+
+const crawlStage = computed(() => props.crawlProgress.stage)
+
+// Phase helpers (Crawling step)
+const phase1Active = computed(() => isCrawling.value && crawlStage.value === 'planning')
+const phase1Done = computed(() => isCrawling.value && ['planning_done', 'crawling', 'completed'].includes(crawlStage.value))
+const phase2Active = computed(() => isCrawling.value && ['planning_done', 'crawling'].includes(crawlStage.value))
+const phase2Done = computed(() => isCrawling.value && crawlStage.value === 'completed')
 
 const totalDocuments = computed(() => {
   return (props.crawlProgress.documentsCreated || 0) + (props.crawlProgress.documentsLinked || 0)

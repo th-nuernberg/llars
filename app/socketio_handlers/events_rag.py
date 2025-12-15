@@ -7,6 +7,7 @@ Events:
         - rag:unsubscribe_queue: Unsubscribe from queue updates
         - rag:subscribe_collection: Subscribe to a collection's embedding progress
         - rag:unsubscribe_collection: Unsubscribe from collection progress
+        - rag:get_collection_documents: Request recent documents for a collection
 
     Server → Client:
         - rag:queue_list: Initial processing queue after subscribing
@@ -15,6 +16,7 @@ Events:
         - rag:collection_progress: Embedding progress for a collection
         - rag:collection_completed: Collection embedding completed
         - rag:collection_error: Collection embedding failed
+        - rag:collection_documents: Recent documents for a collection
 """
 
 import logging
@@ -128,6 +130,46 @@ def register_rag_events(socketio):
         except Exception as e:
             logger.error(f"[RAG Socket] Error unsubscribing from collection: {e}")
 
+    @socketio.on('rag:get_collection_documents')
+    def handle_get_collection_documents(data):
+        """Fetch recent documents for a collection (includes linked documents via CollectionDocumentLink)."""
+        try:
+            data = data or {}
+            collection_id = data.get('collection_id')
+            if not collection_id:
+                emit('rag:error', {'error': 'collection_id required'})
+                return
+
+            limit = data.get('limit', data.get('per_page', 25))
+            try:
+                limit = int(limit)
+            except Exception:
+                limit = 25
+            limit = max(1, min(limit, 200))
+
+            from sqlalchemy import desc
+            from db.tables import CollectionDocumentLink
+            from services.rag.document_service import DocumentService
+
+            links = (
+                CollectionDocumentLink.query
+                .filter_by(collection_id=collection_id)
+                .order_by(desc(CollectionDocumentLink.linked_at))
+                .limit(limit)
+                .all()
+            )
+            docs = [l.document for l in links if l.document]
+
+            emit('rag:collection_documents', {
+                'collection_id': collection_id,
+                'documents': [DocumentService.serialize_document(d) for d in docs],
+                'count': len(docs)
+            })
+
+        except Exception as e:
+            logger.error(f"[RAG Socket] Error fetching collection documents: {e}")
+            emit('rag:error', {'error': str(e)})
+
     logger.info("[RAG Socket] Events registered")
 
 
@@ -172,7 +214,13 @@ def emit_rag_queue_updated(socketio, queue: list = None):
         logger.error(f"[RAG Socket] Error emitting queue update: {e}")
 
 
-def emit_document_processed(socketio, document_id: int, status: str, error_message: str = None):
+def emit_document_processed(
+    socketio,
+    document_id: int,
+    status: str,
+    error_message: str = None,
+    collection_id: int = None
+):
     """
     Emit notification when a document has finished processing.
 
@@ -184,16 +232,27 @@ def emit_document_processed(socketio, document_id: int, status: str, error_messa
     """
     try:
         from db.tables import RAGDocument
+        from services.rag.document_service import DocumentService
 
         document = RAGDocument.query.get(document_id)
 
-        socketio.emit('rag:document_processed', {
+        effective_collection_id = collection_id or (document.collection_id if document else None)
+        payload = {
             'document_id': document_id,
             'filename': document.filename if document else None,
             'status': status,
             'error_message': error_message,
-            'chunk_count': document.chunk_count if document else 0
-        }, room=RAG_QUEUE_ROOM)
+            'chunk_count': document.chunk_count if document else 0,
+            'collection_id': effective_collection_id,
+            'document': DocumentService.serialize_document(document) if document else None
+        }
+
+        # Emit to global room
+        socketio.emit('rag:document_processed', payload, room=RAG_QUEUE_ROOM)
+
+        # Also emit to the collection room (so UIs can subscribe without global queue)
+        if effective_collection_id:
+            socketio.emit('rag:document_processed', payload, room=f"rag_collection_{effective_collection_id}")
 
         logger.info(f"[RAG Socket] Emitted document processed event for {document_id}")
 

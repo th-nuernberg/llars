@@ -70,6 +70,12 @@ def exempt_endpoints():
     # Exempt email thread endpoints (frequently accessed by judge workers)
     if request.path and '/api/email_threads/' in request.path:
         return True
+    # Exempt chatbot wizard endpoints (high-frequency polling/updates)
+    if request.path and '/api/chatbots/' in request.path and '/wizard/' in request.path:
+        return True
+    # Exempt crawler job status polling endpoints
+    if request.path and request.path.startswith('/api/crawler/jobs'):
+        return True
     return False
 
 # JWT Configuration (for legacy auth routes)

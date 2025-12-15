@@ -752,7 +752,7 @@ class CrawlerService:
 
             if content_hash in seen_hashes:
                 logger.debug(f"Skipping duplicate content within crawl for {page['url']}")
-                return
+                return None
             seen_hashes.add(content_hash)
 
             existing_doc = RAGDocument.query.filter_by(file_hash=content_hash).first()
@@ -765,7 +765,7 @@ class CrawlerService:
 
                 if existing_link:
                     logger.debug(f"Document already linked to collection for {page['url']}")
-                    return
+                    return None
 
                 link = CollectionDocumentLink(
                     collection_id=collection_id,
@@ -781,6 +781,15 @@ class CrawlerService:
 
                 self.active_crawls[job_id]['documents_linked'] += 1
                 logger.info(f"[Job {job_id}] Linked existing document {existing_doc.id} to collection {collection_id}")
+
+                try:
+                    from services.rag.document_service import DocumentService
+                    return {
+                        'action': 'linked',
+                        'document': DocumentService.serialize_document(existing_doc)
+                    }
+                except Exception:
+                    return None
 
             else:
                 filename = f"webcrawl_{job_id[:8]}_{uuid.uuid4().hex[:8]}.md"
@@ -880,6 +889,17 @@ class CrawlerService:
                 crawler_type = page.get('crawler_type', 'basic')
                 logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']} (crawler: {crawler_type})")
 
+                try:
+                    from services.rag.document_service import DocumentService
+                    return {
+                        'action': 'new',
+                        'document': DocumentService.serialize_document(doc)
+                    }
+                except Exception:
+                    return None
+
+            return None
+
         except Exception as e:
             logger.error(f"Error processing document for {page['url']}: {e}")
             db.session.rollback()
@@ -887,6 +907,7 @@ class CrawlerService:
                 'url': page['url'],
                 'error': str(e)
             })
+            return None
 
     def _process_urls_basic(
         self,
@@ -932,10 +953,11 @@ class CrawlerService:
 
                 self.active_crawls[job_id]['urls_completed'] += 1
 
+                doc_update = None
                 if page_data:
                     total_pages += 1
                     self.active_crawls[job_id]['pages_crawled'] = self.active_crawls[job_id]['urls_completed']
-                    self._process_crawled_page(
+                    doc_update = self._process_crawled_page(
                         job_id,
                         page_data,
                         collection_id,
@@ -955,13 +977,20 @@ class CrawlerService:
                     'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
                     'crawler_type': crawler_type
                 })
-                self._emit_page_crawled(job_id, {
+                page_payload = {
                     'url': url,
                     'page_number': self.active_crawls[job_id]['urls_completed'],
                     'documents_created': self.active_crawls[job_id]['documents_created'],
                     'documents_linked': self.active_crawls[job_id]['documents_linked'],
                     'images_extracted': self.active_crawls[job_id].get('images_extracted', 0)
-                })
+                }
+                if doc_update:
+                    page_payload.update({
+                        'collection_id': collection_id,
+                        'document_action': doc_update.get('action'),
+                        'document': doc_update.get('document')
+                    })
+                self._emit_page_crawled(job_id, page_payload)
 
         return total_pages
 
@@ -1043,10 +1072,11 @@ class CrawlerService:
 
                 self.active_crawls[job_id]['urls_completed'] = processed_count
 
+                doc_update = None
                 if page_data:
                     total_pages += 1
                     self.active_crawls[job_id]['pages_crawled'] = total_pages
-                    self._process_crawled_page(
+                    doc_update = self._process_crawled_page(
                         job_id,
                         page_data,
                         collection_id,
@@ -1073,14 +1103,21 @@ class CrawlerService:
                     'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0),
                     'crawler_type': crawler_type
                 })
-                self._emit_page_crawled(job_id, {
+                page_payload = {
                     'url': url,
                     'page_number': processed_count,
                     'documents_created': self.active_crawls[job_id]['documents_created'],
                     'documents_linked': self.active_crawls[job_id]['documents_linked'],
                     'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
                     'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0)
-                })
+                }
+                if doc_update:
+                    page_payload.update({
+                        'collection_id': collection_id,
+                        'document_action': doc_update.get('action'),
+                        'document': doc_update.get('document')
+                    })
+                self._emit_page_crawled(job_id, page_payload)
 
             except Exception as e:
                 if processing_complete.is_set() and result_queue.empty():

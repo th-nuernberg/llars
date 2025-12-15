@@ -56,6 +56,7 @@ export function useBuilderState() {
     name: '',
     displayName: '',
     systemPrompt: 'Du bist ein hilfreicher Assistent.',
+    modelName: '',
     welcomeMessage: '',
     fallbackMessage: 'Entschuldigung, ich konnte keine passende Antwort finden.',
     icon: 'mdi-robot',
@@ -390,6 +391,7 @@ export function useBuilderState() {
       name: '',
       displayName: '',
       systemPrompt: 'Du bist ein hilfreicher Assistent.',
+      modelName: '',
       welcomeMessage: '',
       fallbackMessage: 'Entschuldigung, ich konnte keine passende Antwort finden.',
       icon: 'mdi-robot',
@@ -431,6 +433,9 @@ export function useBuilderState() {
     }
     if (chatbot.system_prompt) {
       wizardData.value.systemPrompt = chatbot.system_prompt
+    }
+    if (chatbot.model_name) {
+      wizardData.value.modelName = chatbot.model_name
     }
     if (chatbot.welcome_message) {
       wizardData.value.welcomeMessage = chatbot.welcome_message

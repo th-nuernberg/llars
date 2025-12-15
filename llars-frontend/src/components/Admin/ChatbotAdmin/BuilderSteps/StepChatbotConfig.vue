@@ -111,6 +111,58 @@
       </template>
     </v-textarea>
 
+    <v-autocomplete
+      v-model="localConfig.modelName"
+      :items="modelItems"
+      item-title="title"
+      item-value="value"
+      label="LLM Modell"
+      prepend-inner-icon="mdi-brain"
+      variant="outlined"
+      :rules="[rules.required]"
+      :loading="modelsLoading"
+      clearable
+      @update:model-value="updateConfig"
+    >
+      <template #append>
+        <v-btn
+          icon
+          variant="text"
+          size="small"
+          :loading="modelsLoading"
+          @click="$emit('refresh-models')"
+        >
+          <v-icon>mdi-refresh</v-icon>
+          <v-tooltip activator="parent" location="top">
+            Modelle synchronisieren
+          </v-tooltip>
+        </v-btn>
+      </template>
+
+      <template #item="{ props: itemProps, item }">
+        <v-list-item v-bind="itemProps">
+          <template #prepend>
+            <v-icon :color="item.raw.supports_vision ? 'success' : 'grey'">
+              {{ item.raw.supports_vision ? 'mdi-image' : 'mdi-text' }}
+            </v-icon>
+          </template>
+          <v-list-item-title>{{ item.raw.display_name }}</v-list-item-title>
+          <v-list-item-subtitle class="text-caption">
+            {{ item.raw.provider }} · {{ item.raw.model_id }}
+          </v-list-item-subtitle>
+        </v-list-item>
+      </template>
+
+      <template #selection="{ item }">
+        <div class="d-flex align-center">
+          <v-icon class="mr-2" size="18" :color="item.raw.supports_vision ? 'success' : 'grey'">
+            {{ item.raw.supports_vision ? 'mdi-image' : 'mdi-text' }}
+          </v-icon>
+          <span class="text-truncate">{{ item.raw.display_name }}</span>
+        </div>
+      </template>
+    </v-autocomplete>
+
     <v-textarea
       v-model="localConfig.welcomeMessage"
       label="Willkommensnachricht"
@@ -170,6 +222,7 @@ const props = defineProps({
       name: '',
       displayName: '',
       systemPrompt: 'Du bist ein hilfreicher Assistent.',
+      modelName: '',
       welcomeMessage: '',
       icon: 'mdi-robot',
       color: '#5d7a4a'
@@ -199,10 +252,18 @@ const props = defineProps({
   canGenerate: {
     type: Boolean,
     default: false
+  },
+  models: {
+    type: Array,
+    default: () => []
+  },
+  modelsLoading: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:config', 'generate-field'])
+const emit = defineEmits(['update:config', 'generate-field', 'refresh-models'])
 
 // Local state
 const localConfig = ref({ ...props.config })
@@ -231,6 +292,27 @@ const statusText = computed(() => {
     return `${embeddingPercent.value}%`
   }
   return ''
+})
+
+const modelItems = computed(() => {
+  // Allow showing an existing model value even if it's not in the registry yet
+  const current = localConfig.value?.modelName
+  const items = Array.isArray(props.models) ? [...props.models] : []
+  const hasCurrent = current && items.some(m => m.model_id === current)
+  if (current && !hasCurrent) {
+    items.unshift({
+      model_id: current,
+      display_name: current,
+      provider: 'custom',
+      supports_vision: false
+    })
+  }
+
+  return items.map(m => ({
+    title: m.display_name || m.model_id,
+    value: m.model_id,
+    ...m
+  }))
 })
 
 // Update handler

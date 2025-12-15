@@ -34,7 +34,7 @@ from db.db import db
 from db.tables import (
     Chatbot, ChatbotConversation, ChatbotMessage, ChatbotMessageRole
 )
-from services.chatbot.chat_service import ChatService, UNKNOWN_ANSWER
+from services.chatbot.chat_service import ChatService
 from services.chatbot.file_processor import FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
 from services.permission_service import PermissionService
@@ -95,8 +95,9 @@ def _build_messages_with_footnotes(chat_service, conversation, user_message, rag
 
     # System prompt with footnote instructions
     footnote_instruction = ""
-    if sources:
-        footnote_instruction = ChatService._build_citation_instructions()
+    require_citations = bool(getattr(chatbot.prompt_settings, 'rag_require_citations', True)) if chatbot else True
+    if sources and require_citations:
+        footnote_instruction = chat_service._build_citation_instructions()
 
     # Add vision instruction if applicable
     if is_vision and rag_images:
@@ -109,7 +110,7 @@ Du hast auch Bilder aus den Dokumenten erhalten. Analysiere diese Bilder sorgfä
 
     # RAG context with numbered documents
     if sources:
-        numbered_context = ChatService._build_numbered_context(sources)
+        numbered_context = chat_service._build_numbered_context(sources)
         if numbered_context:
             messages.append({"role": "system", "content": numbered_context})
     elif rag_context:
@@ -343,7 +344,7 @@ def register_chatbot_events(socketio):
                 }, room=client_id)
             elif chatbot.rag_enabled and chatbot.collections:
                 # RAG is enabled but produced no sources. Avoid hallucinations by returning fallback directly.
-                fallback = UNKNOWN_ANSWER
+                fallback = chat_service.get_unknown_answer()
 
                 response_time_ms = int((time.time() - start_time) * 1000)
                 tokens_input = 0

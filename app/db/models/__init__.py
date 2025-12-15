@@ -55,6 +55,7 @@ from db.models.oncoco import (
 from db.models.chatbot import (
     ChatbotMessageRole,
     Chatbot,
+    ChatbotPromptSettings,
     ChatbotUserAccess,
     ChatbotCollection,
     ChatbotConversation,

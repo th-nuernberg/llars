@@ -81,6 +81,55 @@ class Chatbot(db.Model):
     conversations = db.relationship('ChatbotConversation', backref='chatbot', cascade='all, delete-orphan')
     primary_collection = db.relationship('RAGCollection', foreign_keys=[primary_collection_id], backref='primary_chatbots')
     user_access = db.relationship('ChatbotUserAccess', backref='chatbot', cascade='all, delete-orphan')
+    prompt_settings = db.relationship(
+        'ChatbotPromptSettings',
+        backref='chatbot',
+        uselist=False,
+        cascade='all, delete-orphan'
+    )
+
+
+DEFAULT_RAG_UNKNOWN_ANSWER = "Ich weiß es nicht"
+
+DEFAULT_RAG_CITATION_INSTRUCTIONS = """
+WICHTIG - Antworten mit Quellen:
+- Beantworte die Frage NUR mit Hilfe des Kontexts.
+- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).
+- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.
+- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: "{{UNKNOWN_ANSWER}}"
+""".strip()
+
+DEFAULT_RAG_CONTEXT_PREFIX = "Kontext:"
+DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE = "[{{id}}] {{title}}:\n{{excerpt}}"
+
+
+class ChatbotPromptSettings(db.Model):
+    """RAG prompt configuration for a chatbot (DB-backed, editable in Admin UI)."""
+    __tablename__ = 'chatbot_prompt_settings'
+
+    chatbot_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('chatbots.id', ondelete='CASCADE'),
+        primary_key=True
+    )
+
+    rag_require_citations: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
+    rag_unknown_answer: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_UNKNOWN_ANSWER, nullable=False)
+    rag_citation_instructions: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_CITATION_INSTRUCTIONS, nullable=False)
+    rag_context_prefix: Mapped[str] = mapped_column(db.String(100), default=DEFAULT_RAG_CONTEXT_PREFIX, nullable=False)
+    rag_context_item_template: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_dict(self) -> dict:
+        return {
+            'rag_require_citations': self.rag_require_citations,
+            'rag_unknown_answer': self.rag_unknown_answer,
+            'rag_citation_instructions': self.rag_citation_instructions,
+            'rag_context_prefix': self.rag_context_prefix,
+            'rag_context_item_template': self.rag_context_item_template,
+        }
 
 
 class ChatbotUserAccess(db.Model):

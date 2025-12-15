@@ -10,7 +10,7 @@ from sqlalchemy import func
 from db.db import db
 from db.tables import (
     Chatbot, ChatbotCollection, ChatbotConversation, ChatbotMessage,
-    RAGCollection
+    RAGCollection, ChatbotPromptSettings
 )
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,42 @@ logger = logging.getLogger(__name__)
 
 class ChatbotService:
     """Service for chatbot management operations"""
+
+    @staticmethod
+    def _serialize_prompt_settings(bot: Chatbot) -> Dict[str, Any]:
+        settings = getattr(bot, 'prompt_settings', None)
+        return settings.to_dict() if settings else None
+
+    @staticmethod
+    def _upsert_prompt_settings(bot: Chatbot, data: Dict[str, Any]) -> None:
+        payload = data.get('prompt_settings') or {}
+        # Backwards compatible: accept flat keys too
+        flat_keys = [
+            'rag_require_citations',
+            'rag_unknown_answer',
+            'rag_citation_instructions',
+            'rag_context_prefix',
+            'rag_context_item_template',
+        ]
+        for key in flat_keys:
+            if key in data and key not in payload:
+                payload[key] = data[key]
+
+        if not payload:
+            return
+
+        settings = getattr(bot, 'prompt_settings', None)
+        if not settings:
+            settings = ChatbotPromptSettings(chatbot_id=bot.id)
+            db.session.add(settings)
+
+        for key, value in payload.items():
+            if hasattr(settings, key):
+                setattr(settings, key, value)
+
+        # Citations need sources for clickable [n] references.
+        if getattr(settings, 'rag_require_citations', False):
+            bot.rag_include_sources = True
 
     @staticmethod
     def get_all_chatbots(include_inactive: bool = False, username: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -86,7 +122,8 @@ class ChatbotService:
                 'build_status': bot.build_status,
                 'build_error': bot.build_error,
                 'source_url': bot.source_url,
-                'primary_collection_id': bot.primary_collection_id
+                'primary_collection_id': bot.primary_collection_id,
+                'prompt_settings': ChatbotService._serialize_prompt_settings(bot)
             })
 
         return result
@@ -148,7 +185,8 @@ class ChatbotService:
             'build_status': bot.build_status,
             'build_error': bot.build_error,
             'source_url': bot.source_url,
-            'primary_collection_id': bot.primary_collection_id
+            'primary_collection_id': bot.primary_collection_id,
+            'prompt_settings': ChatbotService._serialize_prompt_settings(bot)
         }
 
     @staticmethod
@@ -196,6 +234,13 @@ class ChatbotService:
         db.session.add(chatbot)
         db.session.flush()
 
+        # Ensure prompt settings row exists (DB is source of truth)
+        if not chatbot.prompt_settings:
+            db.session.add(ChatbotPromptSettings(chatbot_id=chatbot.id))
+            db.session.flush()
+
+        ChatbotService._upsert_prompt_settings(chatbot, data)
+
         # Assign collections if provided
         collection_ids = data.get('collection_ids', [])
         for i, coll_id in enumerate(collection_ids):
@@ -224,6 +269,10 @@ class ChatbotService:
         if not chatbot:
             return None
 
+        # Ensure prompt settings row exists (DB is source of truth)
+        if not chatbot.prompt_settings:
+            db.session.add(ChatbotPromptSettings(chatbot_id=chatbot.id))
+
         # Update fields
         updatable_fields = [
             'display_name', 'description', 'icon', 'avatar_url', 'color',
@@ -243,6 +292,8 @@ class ChatbotService:
             if existing:
                 raise ValueError(f"Chatbot with name '{data['name']}' already exists")
             chatbot.name = data['name']
+
+        ChatbotService._upsert_prompt_settings(chatbot, data)
 
         db.session.commit()
         logger.info(f"Updated chatbot '{chatbot.name}'")
@@ -355,7 +406,8 @@ class ChatbotService:
             'is_active': False,  # Start inactive
             'is_public': original.is_public,
             'allowed_roles': original.allowed_roles,
-            'collection_ids': [cc.collection_id for cc in original.collections]
+            'collection_ids': [cc.collection_id for cc in original.collections],
+            'prompt_settings': ChatbotService._serialize_prompt_settings(original),
         }
 
         return ChatbotService.create_chatbot(copy_data, username)

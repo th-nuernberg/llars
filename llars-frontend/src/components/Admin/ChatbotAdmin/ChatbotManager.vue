@@ -142,6 +142,8 @@
       :collections="collections"
       :is-edit="isEditMode"
       @save="saveChatbot"
+      @collection-created="loadCollections"
+      @documents-uploaded="onDocumentsUploaded"
     />
 
     <!-- Collection Editor Dialog -->

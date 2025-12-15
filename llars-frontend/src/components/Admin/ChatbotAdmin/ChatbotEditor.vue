@@ -368,23 +368,67 @@
                 Keine Collections verfügbar
               </div>
             </div>
-            <v-list v-else>
-              <v-list-item
-                v-for="collection in collections"
-                :key="collection.id"
-              >
-                <template #prepend>
-                  <v-checkbox-btn
-                    :model-value="isCollectionSelected(collection.id)"
-                    @update:model-value="toggleCollection(collection.id)"
-                  />
-                </template>
-                <v-list-item-title>{{ collection.display_name }}</v-list-item-title>
-                <v-list-item-subtitle>
-                  {{ collection.document_count || 0 }} Dokumente
-                </v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
+            <template v-else>
+              <v-list>
+                <v-list-item
+                  v-for="collection in collections"
+                  :key="collection.id"
+                >
+                  <template #prepend>
+                    <v-checkbox-btn
+                      :model-value="isCollectionSelected(collection.id)"
+                      @update:model-value="toggleCollection(collection.id)"
+                    />
+                  </template>
+                  <v-list-item-title>{{ collection.display_name }}</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ collection.document_count || 0 }} Dokumente
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+
+              <v-divider class="my-4" />
+
+              <div class="d-flex align-center mb-2">
+                <v-icon class="mr-2" color="primary">mdi-upload</v-icon>
+                <span class="text-subtitle-1 font-weight-medium">Dokumente hinzufügen</span>
+              </div>
+              <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+                Laden Sie PDFs, Markdown oder TXT direkt in eine zugewiesene Collection hoch.
+              </v-alert>
+
+              <v-row v-if="selectedCollectionsForUpload.length > 0">
+                <v-col
+                  v-for="collection in selectedCollectionsForUpload"
+                  :key="collection.id"
+                  cols="12"
+                  md="6"
+                >
+                  <v-card variant="outlined">
+                    <v-card-title class="d-flex align-center">
+                      <v-icon class="mr-2">mdi-folder</v-icon>
+                      <span class="text-truncate">{{ collection.display_name || collection.name }}</span>
+                      <v-spacer />
+                      <LBtn
+                        size="small"
+                        variant="primary"
+                        prepend-icon="mdi-upload"
+                        @click="openUploadDialogForCollection(collection.id)"
+                      >
+                        Upload
+                      </LBtn>
+                    </v-card-title>
+                    <v-card-text class="text-caption text-medium-emphasis">
+                      {{ collection.document_count || 0 }} Dokumente
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
+              <div v-else class="text-center pa-6 text-medium-emphasis">
+                <v-icon size="48" class="mb-2">mdi-folder-plus</v-icon>
+                <div>Bitte zuerst mindestens eine Collection auswählen.</div>
+              </div>
+            </template>
           </v-window-item>
 
           <!-- Web Crawler Tab -->
@@ -538,11 +582,19 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <DocumentUploadDialog
+    v-model="uploadDialogOpen"
+    :collections="selectedCollectionsForUpload"
+    :initial-collection-id="uploadInitialCollectionId"
+    @uploaded="handleDocumentsUploaded"
+  />
 </template>
 
 <script setup>
-import { watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue';
 import {
   useChatbotForm,
   useChatbotCrawler
@@ -558,7 +610,7 @@ const props = defineProps({
   isEdit: Boolean
 });
 
-const emit = defineEmits(['update:modelValue', 'save', 'collection-created']);
+const emit = defineEmits(['update:modelValue', 'save', 'collection-created', 'documents-uploaded']);
 
 // Skeleton Loading
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['crawler']);
@@ -592,11 +644,28 @@ const {
   resetCrawler
 } = useChatbotCrawler();
 
+const uploadDialogOpen = ref(false);
+const uploadInitialCollectionId = ref(null);
+
+const selectedCollectionsForUpload = computed(() => {
+  const ids = formData.value?.collection_ids || [];
+  return (props.collections || []).filter(c => ids.includes(c.id));
+});
+
 // Methods
 function closeDialog() {
   emit('update:modelValue', false);
   activeTab.value = 'general';
   resetCrawler();
+}
+
+function openUploadDialogForCollection(collectionId) {
+  uploadInitialCollectionId.value = collectionId;
+  uploadDialogOpen.value = true;
+}
+
+function handleDocumentsUploaded() {
+  emit('documents-uploaded', { collection_id: uploadInitialCollectionId.value });
 }
 
 async function startCrawlForChatbot() {

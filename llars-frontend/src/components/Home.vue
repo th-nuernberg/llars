@@ -235,6 +235,16 @@ const allItems = ref([
     badgeColor: 'info'
   },
   {
+    title: 'Markdown Collab',
+    description: 'Kollaboratives Arbeiten an Markdown-Dateien mit Live-Preview',
+    route: '/MarkdownCollab',
+    icon: 'mdi-language-markdown',
+    permission: 'feature:markdown_collab:view',
+    category: 'research',
+    badge: 'Beta',
+    badgeColor: 'info'
+  },
+  {
     title: 'Gegenüberstellung',
     description: 'Zwei KI-Modelle direkt vergleichen und bewerten',
     route: '/comparison',

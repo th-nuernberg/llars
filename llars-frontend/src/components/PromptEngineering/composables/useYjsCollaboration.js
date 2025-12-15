@@ -2,14 +2,21 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import * as Y from 'yjs'
 import { io } from 'socket.io-client'
 
-export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCursor) {
+export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCursor, options = {}) {
   const ydoc = ref(null)
   const socket = ref(null)
   const users = ref({})
+  const { autoSync = false } = options || {}
+
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null
+    return sessionStorage.getItem('auth_token')
+  }
 
   const initializeSocket = () => {
     socket.value = io(import.meta.env.VITE_API_BASE_URL, {
       path: '/collab/socket.io/',
+      auth: { token: getAuthToken() },
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000
@@ -21,6 +28,10 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
         room: roomId.value,
         username
       })
+    })
+
+    socket.value.on('connect_error', (err) => {
+      console.error('Socket.IO connect_error:', err?.message || err)
     })
 
     socket.value.on('snapshot_document', (fullUpdate) => {
@@ -64,14 +75,13 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     ydoc.value = new Y.Doc()
     initializeSocket()
 
-    ydoc.value.on('update', (update) => {
+    ydoc.value.on('update', (update, origin, doc, transaction) => {
       onProcessYDoc()
 
-      if (update.transaction?.local && socket.value?.connected) {
-        const fullState = Y.encodeStateAsUpdate(ydoc.value)
+      if (autoSync && transaction?.local && socket.value?.connected) {
         socket.value.emit('sync_update', {
           room: roomId.value,
-          update: Array.from(fullState)
+          update: Array.from(update)
         })
       }
     })

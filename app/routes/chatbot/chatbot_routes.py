@@ -6,7 +6,7 @@ API routes for chatbot management and chat functionality.
 import uuid
 import logging
 import json
-from flask import Blueprint, request, jsonify, g, Response, stream_with_context
+from flask import Blueprint, request, jsonify, Response, stream_with_context
 from db.tables import Chatbot
 from services.rag.document_service import DocumentService
 from decorators.permission_decorator import require_permission, require_any_permission
@@ -14,6 +14,8 @@ from decorators.error_handler import handle_errors
 from services.chatbot.chatbot_service import ChatbotService
 from services.chatbot.chat_service import ChatService
 from services.chatbot.file_processor import file_processor, FileProcessor
+from services.chatbot.chatbot_access_service import ChatbotAccessService
+from auth.auth_utils import AuthUtils
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +29,85 @@ chatbot_blueprint = Blueprint('chatbot', __name__, url_prefix='/api/chatbots')
 # CHATBOT CRUD ROUTES
 # ============================================================================
 
+@chatbot_blueprint.route('/access/overview', methods=['GET'])
+@require_permission('admin:permissions:manage')
+@handle_errors(logger_name='chatbot')
+def get_chatbot_access_overview():
+    """Get an overview of chatbot access assignments (admin only)."""
+    include_inactive = request.args.get('include_inactive', 'false').lower() == 'true'
+
+    query = Chatbot.query
+    if not include_inactive:
+        query = query.filter(Chatbot.is_active == True)
+
+    bots = query.order_by(Chatbot.created_at.desc()).all()
+    chatbots = []
+    for bot in bots:
+        chatbots.append({
+            'id': bot.id,
+            'name': bot.name,
+            'display_name': bot.display_name,
+            'description': bot.description,
+            'is_active': bot.is_active,
+            'is_public': bot.is_public,
+            'created_by': bot.created_by,
+            'allowed_usernames': ChatbotAccessService.get_allowed_usernames_for_chatbot(bot.id),
+            'allowed_roles': ChatbotAccessService.get_allowed_roles_for_chatbot(bot.id),
+        })
+
+    return jsonify({'success': True, 'chatbots': chatbots, 'count': len(chatbots)})
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/access', methods=['GET'])
+@require_permission('admin:permissions:manage')
+@handle_errors(logger_name='chatbot')
+def get_chatbot_access(chatbot_id: int):
+    """Get allowed usernames for a chatbot (admin only)."""
+    return jsonify({
+        'success': True,
+        'chatbot_id': chatbot_id,
+        'allowed_usernames': ChatbotAccessService.get_allowed_usernames_for_chatbot(chatbot_id),
+        'allowed_roles': ChatbotAccessService.get_allowed_roles_for_chatbot(chatbot_id),
+    })
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/access', methods=['PUT'])
+@require_permission('admin:permissions:manage')
+@handle_errors(logger_name='chatbot')
+def set_chatbot_access(chatbot_id: int):
+    """Replace allowed usernames for a chatbot (admin only)."""
+    data = request.get_json() or {}
+    usernames = data.get('usernames', data.get('allowed_usernames', [])) or []
+    role_names = (
+        data.get('role_names')
+        or data.get('roles')
+        or data.get('allowed_roles')
+        or []
+    )
+    admin_username = AuthUtils.extract_username_without_validation()
+
+    access = ChatbotAccessService.set_chatbot_access(
+        chatbot_id=chatbot_id,
+        usernames=usernames,
+        role_names=role_names,
+        granted_by=admin_username,
+    )
+    return jsonify({
+        'success': True,
+        'chatbot_id': chatbot_id,
+        'allowed_usernames': access.get('allowed_usernames', []),
+        'allowed_roles': access.get('allowed_roles', []),
+    })
+
+
 @chatbot_blueprint.route('', methods=['GET'])
 @require_permission('feature:chatbots:view')
 @handle_errors(logger_name='chatbot')
 def get_chatbots():
     """Get all chatbots"""
     include_inactive = request.args.get('include_inactive', 'false').lower() == 'true'
-    chatbots = ChatbotService.get_all_chatbots(include_inactive=include_inactive)
+    username = AuthUtils.extract_username_without_validation()
+    chatbots = ChatbotService.get_all_chatbots(include_inactive=include_inactive, username=username)
     return jsonify({
         'success': True,
         'chatbots': chatbots,
@@ -46,6 +120,10 @@ def get_chatbots():
 @handle_errors(logger_name='chatbot')
 def get_chatbot(chatbot_id):
     """Get a single chatbot by ID"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     chatbot = ChatbotService.get_chatbot(chatbot_id)
     if not chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
@@ -61,7 +139,7 @@ def create_chatbot():
     if not data:
         raise ValueError('No data provided')
 
-    username = g.get('username', 'unknown')
+    username = AuthUtils.extract_username_without_validation() or 'unknown'
     chatbot = ChatbotService.create_chatbot(data, username)
     return jsonify({
         'success': True,
@@ -110,7 +188,7 @@ def delete_chatbot(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def duplicate_chatbot(chatbot_id):
     """Duplicate a chatbot"""
-    username = g.get('username', 'unknown')
+    username = AuthUtils.extract_username_without_validation() or 'unknown'
     chatbot = ChatbotService.duplicate_chatbot(chatbot_id, username)
     if not chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
@@ -173,7 +251,7 @@ def assign_collection(chatbot_id):
     if not data or 'collection_id' not in data:
         raise ValueError('collection_id is required')
 
-    username = g.get('username', 'unknown')
+    username = AuthUtils.extract_username_without_validation() or 'unknown'
     assignment = ChatbotService.assign_collection(
         chatbot_id=chatbot_id,
         collection_id=data['collection_id'],
@@ -240,6 +318,10 @@ def remove_collection(chatbot_id, collection_id):
 @handle_errors(logger_name='chatbot')
 def chat(chatbot_id):
     """Send a message to a chatbot and get a response (supports file uploads)"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     # Handle both JSON and multipart form data
     if request.content_type and 'multipart/form-data' in request.content_type:
         # File upload via form data
@@ -282,7 +364,6 @@ def chat(chatbot_id):
     if not message.strip() and not processed_files:
         raise ValueError('message or files required')
 
-    username = g.get('username')
     chat_service = ChatService(chatbot_id)
     result = chat_service.chat(
         message=message,
@@ -299,6 +380,10 @@ def chat(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def get_capabilities(chatbot_id):
     """Get chatbot capabilities including vision support"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     chat_service = ChatService(chatbot_id)
     return jsonify({
         'success': True,
@@ -352,6 +437,10 @@ def test_chat(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def get_conversations(chatbot_id):
     """Get all conversations for a chatbot"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     limit = request.args.get('limit', 50, type=int)
     conversations = ChatService.get_conversations(chatbot_id, limit=limit)
     return jsonify({
@@ -366,6 +455,10 @@ def get_conversations(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def get_conversation(chatbot_id, conversation_id):
     """Get a single conversation with all messages"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     conversation = ChatService.get_conversation(conversation_id)
     if not conversation or conversation['chatbot_id'] != chatbot_id:
         return jsonify({'success': False, 'error': 'Conversation not found'}), 404
@@ -377,6 +470,10 @@ def get_conversation(chatbot_id, conversation_id):
 @handle_errors(logger_name='chatbot')
 def delete_conversation(chatbot_id, conversation_id):
     """Delete a conversation"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     conversation = ChatService.get_conversation(conversation_id)
     if not conversation or conversation['chatbot_id'] != chatbot_id:
         return jsonify({'success': False, 'error': 'Conversation not found'}), 404
@@ -429,6 +526,10 @@ def get_overview_stats():
 @handle_errors(logger_name='chatbot')
 def get_chatbot_stats(chatbot_id):
     """Get statistics for a specific chatbot"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     stats = ChatbotService.get_stats(chatbot_id)
     if not stats:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
@@ -450,7 +551,7 @@ def create_wizard_chatbot():
     if not data or 'url' not in data:
         raise ValueError('url is required')
 
-    username = g.get('username', 'unknown')
+    username = AuthUtils.extract_username_without_validation() or 'unknown'
     result = ChatbotBuilderService.create_wizard_chatbot(data['url'], username)
     return jsonify(result), 201 if result['success'] else 400
 

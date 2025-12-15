@@ -36,6 +36,9 @@ from db.tables import (
 )
 from services.chatbot.chat_service import ChatService
 from services.chatbot.file_processor import FileProcessor
+from services.chatbot.chatbot_access_service import ChatbotAccessService
+from services.permission_service import PermissionService
+from auth.oidc_validator import validate_token
 
 logger = logging.getLogger(__name__)
 
@@ -232,10 +235,37 @@ def register_chatbot_events(socketio):
         start_time = time.time()
 
         try:
+            data = data or {}
+
+            token = data.get("token")
+            if not token:
+                emit("chatbot:error", {"error": "Authentication required"}, room=client_id)
+                return
+
+            payload = validate_token(token)
+            if not payload:
+                emit("chatbot:error", {"error": "Authentication failed"}, room=client_id)
+                return
+
+            username_from_token = (
+                payload.get('preferred_username') or
+                payload.get('username') or
+                payload.get('name') or
+                payload.get('uid') or
+                payload.get('sub')
+            )
+            if not username_from_token:
+                emit("chatbot:error", {"error": "Authentication failed"}, room=client_id)
+                return
+
+            if not PermissionService.check_permission(username_from_token, 'feature:chatbots:view'):
+                emit("chatbot:error", {"error": "Forbidden"}, room=client_id)
+                return
+
             chatbot_id = data.get("chatbot_id")
             user_message = data.get("message", "").strip()
             session_id = data.get("session_id")
-            username = data.get("username")
+            username = username_from_token
 
             if not chatbot_id:
                 emit("chatbot:error", {"error": "chatbot_id is required"}, room=client_id)
@@ -253,6 +283,10 @@ def register_chatbot_events(socketio):
             chatbot = Chatbot.query.get(chatbot_id)
             if not chatbot:
                 emit("chatbot:error", {"error": f"Chatbot {chatbot_id} not found"}, room=client_id)
+                return
+
+            if not ChatbotAccessService.user_can_access_chatbot(username, chatbot):
+                emit("chatbot:error", {"error": "Forbidden"}, room=client_id)
                 return
 
             if not chatbot.is_active:

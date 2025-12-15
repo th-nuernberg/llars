@@ -11,7 +11,8 @@ Handles all permission-related business logic including:
 Performance optimizations with caching will be added in later phases.
 """
 
-from typing import List, Optional, Set
+import re
+from typing import List, Optional, Set, Dict, Any
 from datetime import datetime
 from sqlalchemy import select, and_, or_
 from db.db import db
@@ -459,6 +460,7 @@ class PermissionService:
         admin_username: str,
         target_username: Optional[str] = None,
         permission_key: Optional[str] = None,
+        role_name: Optional[str] = None,
         details: Optional[dict] = None
     ) -> None:
         """
@@ -477,6 +479,7 @@ class PermissionService:
                 admin_username=admin_username,
                 target_username=target_username,
                 permission_key=permission_key,
+                role_name=role_name,
                 details=details,
                 created_at=datetime.now()
             )
@@ -516,19 +519,177 @@ class PermissionService:
         Returns:
             List of role dictionaries
         """
-        roles = db.session.execute(
-            select(Role).order_by(Role.role_name)
-        ).scalars().all()
+        roles = db.session.execute(select(Role).order_by(Role.role_name)).scalars().all()
+
+        role_ids = [r.id for r in roles]
+        permissions_by_role_id: Dict[int, List[str]] = {rid: [] for rid in role_ids}
+
+        if role_ids:
+            rows = db.session.execute(
+                select(RolePermission.role_id, Permission.permission_key)
+                .join(Permission, Permission.id == RolePermission.permission_id)
+                .where(RolePermission.role_id.in_(role_ids))
+                .order_by(RolePermission.role_id, Permission.permission_key)
+            ).all()
+
+            for rid, perm_key in rows:
+                permissions_by_role_id.setdefault(rid, []).append(perm_key)
 
         return [
             {
                 'id': r.id,
                 'role_name': r.role_name,
                 'display_name': r.display_name,
-                'description': r.description
+                'description': r.description,
+                'permissions': permissions_by_role_id.get(r.id, []),
             }
             for r in roles
         ]
+
+    @staticmethod
+    def create_role(
+        role_name: str,
+        display_name: str,
+        description: Optional[str],
+        permission_keys: Optional[List[str]],
+        admin_username: str,
+    ) -> dict:
+        """Create a new role and optionally assign permissions."""
+        from decorators.error_handler import ValidationError, ConflictError
+
+        name = (role_name or '').strip().lower()
+        disp = (display_name or '').strip()
+        desc = (description or '').strip() or None
+
+        if not name:
+            raise ValidationError('role_name is required')
+        if not disp:
+            raise ValidationError('display_name is required')
+        if not re.match(r'^[a-z0-9][a-z0-9_-]{0,99}$', name):
+            raise ValidationError('role_name must match ^[a-z0-9][a-z0-9_-]{0,99}$')
+
+        existing = db.session.execute(select(Role).where(Role.role_name == name)).scalar_one_or_none()
+        if existing:
+            raise ConflictError(f"Role '{name}' already exists")
+
+        normalized_keys = sorted({(k or '').strip() for k in (permission_keys or []) if (k or '').strip()})
+        perms = []
+        if normalized_keys:
+            perms = db.session.execute(
+                select(Permission).where(Permission.permission_key.in_(normalized_keys))
+            ).scalars().all()
+            found = {p.permission_key for p in perms}
+            missing = [k for k in normalized_keys if k not in found]
+            if missing:
+                raise ValidationError('Unknown permission keys', details={'missing': missing})
+
+        try:
+            role = Role(role_name=name, display_name=disp, description=desc, created_at=datetime.now())
+            db.session.add(role)
+            db.session.flush()
+
+            for p in perms:
+                db.session.add(RolePermission(role_id=role.id, permission_id=p.id))
+
+            PermissionService._log_permission_change(
+                action='ROLE_CREATE',
+                admin_username=admin_username,
+                role_name=name,
+                details={'display_name': disp, 'permission_count': len(normalized_keys)},
+            )
+
+            db.session.commit()
+            return {
+                'id': role.id,
+                'role_name': role.role_name,
+                'display_name': role.display_name,
+                'description': role.description,
+                'permissions': normalized_keys,
+            }
+        except Exception:
+            db.session.rollback()
+            raise
+
+    @staticmethod
+    def set_role_permissions(
+        role_name: str,
+        permission_keys: List[str],
+        admin_username: str,
+    ) -> dict:
+        """Replace permissions assigned to a role."""
+        from decorators.error_handler import ValidationError, NotFoundError
+
+        name = (role_name or '').strip().lower()
+        if not name:
+            raise ValidationError('role_name is required')
+
+        role = db.session.execute(select(Role).where(Role.role_name == name)).scalar_one_or_none()
+        if not role:
+            raise NotFoundError(f"Role '{name}' not found")
+
+        normalized_keys = sorted({(k or '').strip() for k in (permission_keys or []) if (k or '').strip()})
+
+        perms = []
+        if normalized_keys:
+            perms = db.session.execute(
+                select(Permission).where(Permission.permission_key.in_(normalized_keys))
+            ).scalars().all()
+            found = {p.permission_key for p in perms}
+            missing = [k for k in normalized_keys if k not in found]
+            if missing:
+                raise ValidationError('Unknown permission keys', details={'missing': missing})
+
+        desired_perm_ids = {p.id for p in perms}
+
+        existing = db.session.execute(
+            select(RolePermission).where(RolePermission.role_id == role.id)
+        ).scalars().all()
+        existing_perm_ids = {rp.permission_id for rp in existing}
+
+        to_add_ids = desired_perm_ids - existing_perm_ids
+        to_remove_ids = existing_perm_ids - desired_perm_ids
+
+        if to_remove_ids:
+            db.session.execute(
+                RolePermission.__table__.delete().where(
+                    and_(
+                        RolePermission.role_id == role.id,
+                        RolePermission.permission_id.in_(to_remove_ids),
+                    )
+                )
+            )
+
+        if to_add_ids:
+            for pid in sorted(to_add_ids):
+                db.session.add(RolePermission(role_id=role.id, permission_id=pid))
+
+        PermissionService._log_permission_change(
+            action='ROLE_PERMISSIONS_SET',
+            admin_username=admin_username,
+            role_name=name,
+            details={
+                'granted': sorted([p.permission_key for p in perms if p.id in to_add_ids]),
+                'revoked': sorted([
+                    row[0]
+                    for row in db.session.execute(
+                        select(Permission.permission_key).where(Permission.id.in_(to_remove_ids))
+                    ).all()
+                ]),
+                'permission_count': len(normalized_keys),
+            },
+        )
+        try:
+            db.session.commit()
+            return {
+                'id': role.id,
+                'role_name': role.role_name,
+                'display_name': role.display_name,
+                'description': role.description,
+                'permissions': normalized_keys,
+            }
+        except Exception:
+            db.session.rollback()
+            raise
 
     @staticmethod
     def get_all_users_with_roles() -> List[dict]:

@@ -32,6 +32,9 @@ def get_all_permissions():
     permissions = PermissionService.get_all_permissions()
     return jsonify({
         'success': True,
+        # Preferred (frontend expects this)
+        'permissions': permissions,
+        # Backwards compatibility
         'data': permissions
     }), 200
 
@@ -44,8 +47,55 @@ def get_all_roles():
     roles = PermissionService.get_all_roles()
     return jsonify({
         'success': True,
+        # Preferred (frontend expects this)
+        'roles': roles,
+        # Backwards compatibility
         'data': roles
     }), 200
+
+
+@data_blueprint.route('/permissions/roles', methods=['POST'])
+@require_permission('admin:roles:manage')
+@handle_api_errors(logger_name='auth')
+def create_role():
+    """Create a new role (admin only)."""
+    data = request.get_json() or {}
+    role_name = data.get('role_name') or data.get('name')
+    display_name = data.get('display_name') or data.get('title')
+    description = data.get('description')
+    permission_keys = data.get('permission_keys') or data.get('permissions') or []
+
+    if not role_name or not display_name:
+        raise ValidationError('role_name and display_name are required')
+
+    admin_username = AuthUtils.extract_username_without_validation()
+    role = PermissionService.create_role(
+        role_name=role_name,
+        display_name=display_name,
+        description=description,
+        permission_keys=permission_keys,
+        admin_username=admin_username,
+    )
+
+    return jsonify({'success': True, 'role': role, 'data': role}), 201
+
+
+@data_blueprint.route('/permissions/roles/<role_name>/permissions', methods=['PUT'])
+@require_permission('admin:roles:manage')
+@handle_api_errors(logger_name='auth')
+def set_role_permissions(role_name: str):
+    """Replace the permissions for a role (admin only)."""
+    data = request.get_json() or {}
+    permission_keys = data.get('permission_keys') or data.get('permissions') or []
+
+    admin_username = AuthUtils.extract_username_without_validation()
+    role = PermissionService.set_role_permissions(
+        role_name=role_name,
+        permission_keys=permission_keys,
+        admin_username=admin_username,
+    )
+
+    return jsonify({'success': True, 'role': role, 'data': role}), 200
 
 
 @data_blueprint.route('/permissions/user/<username>', methods=['GET'])
@@ -56,13 +106,17 @@ def get_user_permissions(username):
     permissions = PermissionService.get_user_permissions(username)
     roles = PermissionService.get_user_roles(username)
 
+    payload = {
+        'username': username,
+        'permissions': permissions,
+        'roles': roles
+    }
+
     return jsonify({
         'success': True,
-        'data': {
-            'username': username,
-            'permissions': permissions,
-            'roles': roles
-        }
+        **payload,
+        # Backwards compatibility
+        'data': payload
     }), 200
 
 
@@ -74,6 +128,9 @@ def get_users_with_roles():
     users = PermissionService.get_all_users_with_roles()
     return jsonify({
         'success': True,
+        # Preferred (frontend expects this)
+        'users': users,
+        # Backwards compatibility
         'data': users
     }), 200
 
@@ -91,13 +148,58 @@ def get_my_permissions():
     permissions = PermissionService.get_user_permissions(username)
     roles = PermissionService.get_user_roles(username)
 
+    payload = {'username': username, 'permissions': permissions, 'roles': roles}
+    return jsonify({'success': True, 'data': payload, **payload}), 200
+
+
+@data_blueprint.route('/permissions/audit-log', methods=['GET'])
+@require_permission('admin:permissions:manage')
+@handle_api_errors(logger_name='auth')
+def get_audit_log():
+    """Get recent permission change audit log entries."""
+    from db.tables import PermissionAuditLog
+
+    limit = request.args.get('limit', 200, type=int)
+    limit = max(1, min(limit, 500))
+
+    rows = (
+        PermissionAuditLog.query
+        .order_by(PermissionAuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    def format_details(entry: PermissionAuditLog) -> str:
+        if entry.permission_key:
+            return entry.permission_key
+        if entry.role_name:
+            return f"role: {entry.role_name}"
+        details = entry.details or {}
+        if isinstance(details, dict):
+            role_name = details.get('role_name')
+            if role_name:
+                return f"role: {role_name}"
+            return ", ".join([f"{k}={v}" for k, v in details.items()]) if details else ''
+        return str(details) if details else ''
+
+    entries = [
+        {
+            'id': r.id,
+            'action': r.action,
+            'performed_by': r.admin_username,
+            'target_username': r.target_username,
+            'details': format_details(r),
+            'raw_details': r.details,
+            'timestamp': r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
     return jsonify({
         'success': True,
-        'data': {
-            'username': username,
-            'permissions': permissions,
-            'roles': roles
-        }
+        'entries': entries,
+        # Backwards compatibility
+        'data': entries
     }), 200
 
 

@@ -80,6 +80,28 @@ class Chatbot(db.Model):
     collections = db.relationship('ChatbotCollection', backref='chatbot', cascade='all, delete-orphan')
     conversations = db.relationship('ChatbotConversation', backref='chatbot', cascade='all, delete-orphan')
     primary_collection = db.relationship('RAGCollection', foreign_keys=[primary_collection_id], backref='primary_chatbots')
+    user_access = db.relationship('ChatbotUserAccess', backref='chatbot', cascade='all, delete-orphan')
+
+
+class ChatbotUserAccess(db.Model):
+    """Per-user allowlist for private chatbots."""
+    __tablename__ = 'chatbot_user_access'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    chatbot_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('chatbots.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+    username: Mapped[str] = mapped_column(db.String(255), nullable=False, index=True)
+
+    granted_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    granted_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now)
+
+    __table_args__ = (
+        db.UniqueConstraint('chatbot_id', 'username', name='unique_chatbot_user_access'),
+    )
 
 
 class ChatbotCollection(db.Model):

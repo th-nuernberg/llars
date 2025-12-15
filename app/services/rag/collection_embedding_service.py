@@ -215,7 +215,6 @@ class CollectionEmbeddingService:
         from db.db import db
         from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink
         from rag_pipeline import RAGPipeline
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
         from langchain_chroma import Chroma
         import os
 
@@ -244,13 +243,6 @@ class CollectionEmbeddingService:
         # Initialize vectorstore directory
         vectorstore_dir = os.path.join(pipeline.storage_dir, "vectorstore", pipeline.model_name.replace('/', '_'))
         os.makedirs(vectorstore_dir, exist_ok=True)
-
-        # Text splitter
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=collection.chunk_size or 1000,
-            chunk_overlap=collection.chunk_overlap or 200,
-            separators=["# ", "## ", "\n\n", "\n", ". ", "! ", "? "]
-        )
 
         processed_count = 0
         total_chunks_total = 0
@@ -309,24 +301,31 @@ class CollectionEmbeddingService:
                     self._emit_progress(collection_id, progress, doc.filename, processed_count, total_docs)
 
                     # Load document content
-                    content = self._load_document_content(doc)
-                    if not content:
+                    from services.rag.lumber_chunker import chunk_file
+
+                    chunks = chunk_file(
+                        doc.file_path,
+                        doc.mime_type,
+                        chunk_size=collection.chunk_size or 1000,
+                        chunk_overlap=collection.chunk_overlap or 200,
+                    )
+                    if not chunks:
                         doc.status = 'failed'
-                        doc.processing_error = 'Could not load document content'
+                        doc.processing_error = 'Could not extract any document content'
                         db.session.commit()
                         processed_count += 1
                         continue
 
-                    # Split into chunks
-                    chunks = text_splitter.split_text(content)
                     logger.info(f"[CollectionEmbedding] Document {doc.id} split into {len(chunks)} chunks")
 
                     # Create chunks and embeddings - track new chunks separately
                     new_chunks = []
                     new_vector_ids = []
+                    new_metadatas = []
                     all_vector_ids = []
 
-                    for i, chunk_text in enumerate(chunks):
+                    for i, chunk in enumerate(chunks):
+                        chunk_text = chunk.text
                         # Check for existing chunk with same hash
                         content_hash = self._hash_content(chunk_text)
                         existing_chunk = RAGDocumentChunk.query.filter_by(
@@ -347,12 +346,25 @@ class CollectionEmbeddingService:
                             content=chunk_text,
                             content_hash=content_hash,
                             vector_id=chunk_id,
+                            page_number=chunk.page_number,
+                            start_char=chunk.start_char,
+                            end_char=chunk.end_char,
                             embedding_model=pipeline.model_name,
                             embedding_status='completed'
                         )
                         db.session.add(db_chunk)
                         new_chunks.append(chunk_text)
                         new_vector_ids.append(chunk_id)
+                        new_metadatas.append({
+                            'document_id': doc.id,
+                            'chunk_index': i,
+                            'filename': doc.filename,
+                            'collection_id': collection_id,
+                            'page_number': chunk.page_number,
+                            'start_char': chunk.start_char,
+                            'end_char': chunk.end_char,
+                            'vector_id': chunk_id
+                        })
                         all_vector_ids.append(chunk_id)
 
                     db.session.commit()
@@ -369,12 +381,7 @@ class CollectionEmbeddingService:
                             vectorstore.add_texts(
                                 texts=new_chunks,
                                 ids=new_vector_ids,
-                                metadatas=[{
-                                    'document_id': doc.id,
-                                    'chunk_index': i,
-                                    'filename': doc.filename,
-                                    'collection_id': collection_id
-                                } for i in range(len(new_chunks))]
+                                metadatas=new_metadatas
                             )
                             logger.info(f"[CollectionEmbedding] Added {len(new_chunks)} new chunks to ChromaDB (skipped {len(chunks) - len(new_chunks)} existing)")
 

@@ -279,9 +279,72 @@ class CollectionEmbeddingService:
                 # No documents and crawl finished -> finalize
                 all_docs = [link.document for link in doc_links if link.document]
                 indexed = sum(1 for d in all_docs if d and d.status == 'indexed')
-                collection.total_chunks = collection.total_chunks or 0
+
+                # Recompute stats from DB (don't rely on incremental counters which can miss reused chunks)
+                linked_doc_ids = db.session.query(CollectionDocumentLink.document_id).filter(
+                    CollectionDocumentLink.collection_id == collection_id
+                ).subquery()
+                total_chunks_db = RAGDocumentChunk.query.filter(
+                    RAGDocumentChunk.document_id.in_(linked_doc_ids)
+                ).count()
+                collection.document_count = len(all_docs)
+                collection.total_chunks = total_chunks_db
                 db.session.commit()
-                self._complete_collection(collection_id, collection.total_chunks, indexed)
+
+                # Self-heal: if Chroma collection is empty but DB has chunks, backfill all chunks into Chroma.
+                # This can happen when a document was deduplicated and linked from another collection.
+                if total_chunks_db > 0:
+                    try:
+                        vectorstore = Chroma(
+                            collection_name=collection_name,
+                            persist_directory=vectorstore_dir,
+                            embedding_function=pipeline.embeddings,
+                        )
+                        if vectorstore._collection.count() == 0:
+                            logger.warning(
+                                f"[CollectionEmbedding] Chroma collection '{collection_name}' is empty but DB has {total_chunks_db} chunks; backfilling"
+                            )
+
+                            # Load chunks via joins to avoid reading files again
+                            chunks_to_backfill = (
+                                db.session.query(RAGDocumentChunk)
+                                .join(RAGDocument, RAGDocument.id == RAGDocumentChunk.document_id)
+                                .join(CollectionDocumentLink, CollectionDocumentLink.document_id == RAGDocument.id)
+                                .filter(CollectionDocumentLink.collection_id == collection_id)
+                                .order_by(RAGDocumentChunk.document_id.asc(), RAGDocumentChunk.chunk_index.asc())
+                                .all()
+                            )
+
+                            # Batch upserts to keep memory bounded
+                            batch_size = 256
+                            for start in range(0, len(chunks_to_backfill), batch_size):
+                                batch = chunks_to_backfill[start : start + batch_size]
+                                texts = [c.content for c in batch]
+                                ids = [c.vector_id for c in batch]
+                                metadatas = []
+                                for c in batch:
+                                    # Fetch filename from document relationship via join (safe in same session)
+                                    filename = getattr(c.document, "filename", None)
+                                    metadatas.append({
+                                        'document_id': c.document_id,
+                                        'chunk_index': c.chunk_index,
+                                        'filename': filename,
+                                        'collection_id': collection_id,
+                                        'page_number': c.page_number,
+                                        'start_char': c.start_char,
+                                        'end_char': c.end_char,
+                                        'vector_id': c.vector_id,
+                                    })
+
+                                # Chroma.add_texts uses upsert, so repeated IDs are safe
+                                vectorstore.add_texts(texts=texts, ids=ids, metadatas=metadatas)
+
+                            logger.info(f"[CollectionEmbedding] Backfilled {len(chunks_to_backfill)} chunks into ChromaDB collection {collection_name}")
+
+                    except Exception as e:
+                        logger.error(f"[CollectionEmbedding] Failed to backfill Chroma collection {collection_name}: {e}")
+
+                self._complete_collection(collection_id, total_chunks_db, indexed)
                 return
 
             batch_chunks = 0
@@ -318,10 +381,10 @@ class CollectionEmbeddingService:
 
                     logger.info(f"[CollectionEmbedding] Document {doc.id} split into {len(chunks)} chunks")
 
-                    # Create chunks and embeddings - track new chunks separately
-                    new_chunks = []
-                    new_vector_ids = []
-                    new_metadatas = []
+                    # Create chunks + upsert into Chroma (also for already-existing chunks, to support deduplicated documents)
+                    chroma_texts = []
+                    chroma_ids = []
+                    chroma_metadatas = []
                     all_vector_ids = []
 
                     for i, chunk in enumerate(chunks):
@@ -334,8 +397,33 @@ class CollectionEmbeddingService:
                         ).first()
 
                         if existing_chunk:
-                            # Reuse existing chunk - don't add to ChromaDB again
-                            all_vector_ids.append(existing_chunk.vector_id)
+                            # Reuse existing DB chunk, but still upsert into THIS collection's Chroma index.
+                            if not existing_chunk.vector_id:
+                                existing_chunk.vector_id = f"doc_{doc.id}_chunk_{i}_{uuid.uuid4().hex[:8]}"
+                            # Fill missing metadata if needed
+                            if existing_chunk.page_number is None:
+                                existing_chunk.page_number = chunk.page_number
+                            if existing_chunk.start_char is None:
+                                existing_chunk.start_char = chunk.start_char
+                            if existing_chunk.end_char is None:
+                                existing_chunk.end_char = chunk.end_char
+                            if not existing_chunk.embedding_model:
+                                existing_chunk.embedding_model = pipeline.model_name
+
+                            chunk_id = existing_chunk.vector_id
+                            all_vector_ids.append(chunk_id)
+                            chroma_texts.append(chunk_text)
+                            chroma_ids.append(chunk_id)
+                            chroma_metadatas.append({
+                                'document_id': doc.id,
+                                'chunk_index': i,
+                                'filename': doc.filename,
+                                'collection_id': collection_id,
+                                'page_number': chunk.page_number,
+                                'start_char': chunk.start_char,
+                                'end_char': chunk.end_char,
+                                'vector_id': chunk_id
+                            })
                             continue
 
                         # Create new chunk with unique ID
@@ -353,9 +441,9 @@ class CollectionEmbeddingService:
                             embedding_status='completed'
                         )
                         db.session.add(db_chunk)
-                        new_chunks.append(chunk_text)
-                        new_vector_ids.append(chunk_id)
-                        new_metadatas.append({
+                        chroma_texts.append(chunk_text)
+                        chroma_ids.append(chunk_id)
+                        chroma_metadatas.append({
                             'document_id': doc.id,
                             'chunk_index': i,
                             'filename': doc.filename,
@@ -369,27 +457,38 @@ class CollectionEmbeddingService:
 
                     db.session.commit()
 
-                    # Only add NEW chunks to ChromaDB (skip already embedded ones)
-                    if new_chunks:
-                        try:
-                            vectorstore = Chroma(
-                                collection_name=collection_name,
-                                persist_directory=vectorstore_dir,
-                                embedding_function=pipeline.embeddings
-                            )
+                    # Upsert all chunks into ChromaDB for this collection (idempotent)
+                    try:
+                        vectorstore = Chroma(
+                            collection_name=collection_name,
+                            persist_directory=vectorstore_dir,
+                            embedding_function=pipeline.embeddings
+                        )
+
+                        if chroma_texts:
+                            # Avoid duplicates within the same batch (shouldn't happen, but protects against malformed data)
+                            seen = set()
+                            texts_unique = []
+                            ids_unique = []
+                            metadatas_unique = []
+                            for text, vid, meta in zip(chroma_texts, chroma_ids, chroma_metadatas):
+                                if not vid or vid in seen:
+                                    continue
+                                seen.add(vid)
+                                texts_unique.append(text)
+                                ids_unique.append(vid)
+                                metadatas_unique.append(meta)
 
                             vectorstore.add_texts(
-                                texts=new_chunks,
-                                ids=new_vector_ids,
-                                metadatas=new_metadatas
+                                texts=texts_unique,
+                                ids=ids_unique,
+                                metadatas=metadatas_unique
                             )
-                            logger.info(f"[CollectionEmbedding] Added {len(new_chunks)} new chunks to ChromaDB (skipped {len(chunks) - len(new_chunks)} existing)")
+                            logger.info(f"[CollectionEmbedding] Upserted {len(ids_unique)} chunks into ChromaDB collection {collection_name}")
 
-                        except Exception as e:
-                            logger.error(f"[CollectionEmbedding] ChromaDB error: {e}")
-                            raise
-                    else:
-                        logger.info(f"[CollectionEmbedding] All {len(chunks)} chunks already exist, skipping ChromaDB insert")
+                    except Exception as e:
+                        logger.error(f"[CollectionEmbedding] ChromaDB error: {e}")
+                        raise
 
                     # Update document status
                     doc.status = 'indexed'
@@ -408,8 +507,8 @@ class CollectionEmbeddingService:
                     except Exception:
                         pass
 
-                    batch_chunks += len(new_chunks)
-                    total_chunks_total += len(new_chunks)
+                    batch_chunks += len(chunks)
+                    total_chunks_total += len(chunks)
                     processed_count += 1
 
                     # Emit progress after each document
@@ -430,7 +529,14 @@ class CollectionEmbeddingService:
                     processed_count += 1
 
             # Update collection stats after each batch
-            collection.total_chunks = (collection.total_chunks or 0) + batch_chunks
+            # Recompute total chunks for the collection to avoid drift (e.g., when reusing existing chunks)
+            linked_doc_ids = db.session.query(CollectionDocumentLink.document_id).filter(
+                CollectionDocumentLink.collection_id == collection_id
+            ).subquery()
+            collection.total_chunks = RAGDocumentChunk.query.filter(
+                RAGDocumentChunk.document_id.in_(linked_doc_ids)
+            ).count()
+            collection.document_count = len([link for link in doc_links if link.document])
             collection.embedding_progress = int((processed_count / max(total_docs, 1)) * 100)
             collection.last_indexed_at = datetime.now()
             db.session.commit()

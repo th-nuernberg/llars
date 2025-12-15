@@ -3,10 +3,9 @@
     :model-value="modelValue"
     max-width="1000"
     persistent
-    scrollable
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <v-card>
+    <v-card class="chatbot-editor-card">
       <!-- Header -->
       <v-card-title class="d-flex align-center justify-space-between bg-primary">
         <div class="d-flex align-center">
@@ -45,11 +44,8 @@
       </v-tabs>
 
       <!-- Content -->
-      <v-card-text style="height: 500px; overflow-y: auto;">
-        <!-- Skeleton Loading for Crawler -->
-        <v-skeleton-loader v-if="isLoading('crawler')" type="article"></v-skeleton-loader>
-
-        <v-window v-else v-model="activeTab" class="h-100">
+      <v-card-text class="chatbot-editor-body">
+        <v-window v-model="activeTab" class="h-100">
           <!-- General Tab -->
           <v-window-item value="general" eager>
             <v-form ref="formGeneral">
@@ -659,7 +655,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import axios from 'axios';
-import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue';
 import {
   useChatbotForm,
@@ -677,9 +672,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'save', 'collection-created', 'documents-uploaded']);
-
-// Skeleton Loading
-const { isLoading, setLoading, withLoading } = useSkeletonLoading(['crawler']);
 
 // Initialize composables
 const {
@@ -818,17 +810,15 @@ function handleDocumentsUploaded() {
 async function startCrawlForChatbot() {
   const chatbotName = formData.value.display_name || formData.value.name || 'Chatbot';
 
-  await withLoading('crawler', async () => {
-    await startCrawl(chatbotName, {
-      onComplete: (data) => {
-        // Auto-add the new collection to the chatbot
-        if (data.collection_id && !formData.value.collection_ids.includes(data.collection_id)) {
-          formData.value.collection_ids.push(data.collection_id);
-        }
-        // Emit event to refresh collections list in parent
-        emit('collection-created', data.collection_id);
+  await startCrawl(chatbotName, {
+    onComplete: (data) => {
+      // Auto-add the new collection to the chatbot
+      if (data.collection_id && !formData.value.collection_ids.includes(data.collection_id)) {
+        formData.value.collection_ids.push(data.collection_id);
       }
-    });
+      // Emit event to refresh collections list in parent
+      emit('collection-created', data.collection_id);
+    }
   });
 }
 
@@ -888,5 +878,17 @@ watch(() => props.modelValue, (isOpen) => {
 
 .text-medium-emphasis {
   color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.chatbot-editor-card {
+  display: flex;
+  flex-direction: column;
+  height: min(90vh, 860px);
+}
+
+.chatbot-editor-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
 }
 </style>

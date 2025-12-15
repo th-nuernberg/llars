@@ -21,9 +21,35 @@ from services.chatbot.file_processor import FileProcessor, file_processor
 
 logger = logging.getLogger(__name__)
 
+UNKNOWN_ANSWER = "Ich weiß es nicht."
+
 
 class ChatService:
     """Service for chatbot chat interactions with Multi-Collection RAG"""
+
+    @staticmethod
+    def _build_citation_instructions() -> str:
+        return f"""
+
+WICHTIG - Antworten mit Quellen:
+- Beantworte die Frage NUR mit Hilfe des Kontexts.
+- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).
+- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.
+- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: "{UNKNOWN_ANSWER}"
+"""
+
+    @staticmethod
+    def _build_numbered_context(sources: List[Dict[str, Any]]) -> str:
+        if not sources:
+            return ""
+
+        parts = ["Kontext:\n"]
+        for idx, source in enumerate(sources):
+            footnote_id = source.get("footnote_id") or (idx + 1)
+            title = source.get("title") or source.get("filename") or "Unbekannt"
+            excerpt = source.get("excerpt") or ""
+            parts.append(f"[{footnote_id}] {title}:\n{excerpt}\n")
+        return "\n".join(parts)
 
     def __init__(self, chatbot_id: int):
         self.chatbot = Chatbot.query.get(chatbot_id)
@@ -73,8 +99,47 @@ class ChatService:
         if self.chatbot.rag_enabled and self.chatbot.collections:
             rag_context, sources = self._get_multi_collection_context(message)
 
+        # If RAG is enabled but no context could be retrieved, avoid hallucinations.
+        # File uploads count as additional context, so only short-circuit when there are no files.
+        if self.chatbot.rag_enabled and self.chatbot.collections and not sources and not files:
+            response_text = UNKNOWN_ANSWER
+            response_time_ms = int((time.time() - start_time) * 1000)
+            tokens_input = 0
+            tokens_output = 0
+
+            assistant_msg = self._save_message(
+                conversation.id,
+                ChatbotMessageRole.ASSISTANT,
+                response_text,
+                rag_context=None,
+                rag_sources=[],
+                tokens_input=tokens_input,
+                tokens_output=tokens_output,
+                response_time_ms=response_time_ms
+            )
+
+            conversation.message_count += 2
+            conversation.last_message_at = datetime.now()
+            if not conversation.title and len(message) > 0:
+                conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+            db.session.commit()
+
+            return {
+                'response': response_text,
+                'sources': [],
+                'conversation_id': conversation.id,
+                'session_id': session_id,
+                'message_id': assistant_msg.id,
+                'tokens': {
+                    'input': tokens_input,
+                    'output': tokens_output
+                },
+                'response_time_ms': response_time_ms,
+                'files_processed': len(files) if files else 0
+            }
+
         # 4. Build prompt with context, history, and files
-        messages = self._build_messages(conversation, message, rag_context, files)
+        messages = self._build_messages(conversation, message, rag_context, files, sources=sources)
 
         # 5. Call LLM (with vision support if needed)
         has_images = files and any(
@@ -140,16 +205,30 @@ class ChatService:
         if self.chatbot.rag_enabled and self.chatbot.collections:
             rag_context, sources = self._get_multi_collection_context(message)
 
-        # Build messages (no history in test mode)
-        messages = [
-            {"role": "system", "content": self.chatbot.system_prompt}
-        ]
+        if self.chatbot.rag_enabled and self.chatbot.collections and not sources:
+            response_time_ms = int((time.time() - start_time) * 1000)
+            return {
+                'response': UNKNOWN_ANSWER,
+                'sources': [],
+                'tokens': {
+                    'input': 0,
+                    'output': 0
+                },
+                'response_time_ms': response_time_ms,
+                'test_mode': True
+            }
 
-        if rag_context:
-            messages.append({
-                "role": "system",
-                "content": f"Kontext aus Dokumenten:\n\n{rag_context}"
-            })
+        # Build messages (no history in test mode)
+        system_prompt = self.chatbot.system_prompt
+        if sources:
+            system_prompt += self._build_citation_instructions()
+
+        messages = [{"role": "system", "content": system_prompt}]
+
+        if sources:
+            messages.append({"role": "system", "content": self._build_numbered_context(sources)})
+        elif rag_context:
+            messages.append({"role": "system", "content": f"Kontext:\n\n{rag_context}"})
 
         messages.append({"role": "user", "content": message})
 
@@ -182,16 +261,30 @@ class ChatService:
         if self.chatbot.rag_enabled and self.chatbot.collections:
             rag_context, sources = self._get_multi_collection_context(message)
 
-        # Build messages (no history in test mode)
-        messages = [
-            {"role": "system", "content": self.chatbot.system_prompt}
-        ]
+        if self.chatbot.rag_enabled and self.chatbot.collections and not sources:
+            response_time_ms = int((time.time() - start_time) * 1000)
+            yield {"delta": UNKNOWN_ANSWER}
+            yield {
+                "done": True,
+                "full_response": UNKNOWN_ANSWER,
+                "sources": [],
+                "tokens": None,
+                "response_time_ms": response_time_ms,
+                "test_mode": True
+            }
+            return
 
-        if rag_context:
-            messages.append({
-                "role": "system",
-                "content": f"Kontext aus Dokumenten:\n\n{rag_context}"
-            })
+        # Build messages (no history in test mode)
+        system_prompt = self.chatbot.system_prompt
+        if sources:
+            system_prompt += self._build_citation_instructions()
+
+        messages = [{"role": "system", "content": system_prompt}]
+
+        if sources:
+            messages.append({"role": "system", "content": self._build_numbered_context(sources)})
+        elif rag_context:
+            messages.append({"role": "system", "content": f"Kontext:\n\n{rag_context}"})
 
         messages.append({"role": "user", "content": message})
 
@@ -464,7 +557,9 @@ class ChatService:
         conversation: ChatbotConversation,
         current_message: str,
         rag_context: str,
-        files: List[Dict[str, Any]] = None
+        files: List[Dict[str, Any]] = None,
+        *,
+        sources: Optional[List[Dict[str, Any]]] = None
     ) -> List[Dict[str, Any]]:
         """
         Build the message list for LLM including history, context, and files.
@@ -473,17 +568,22 @@ class ChatService:
         messages = []
 
         # System prompt
+        system_prompt = self.chatbot.system_prompt
+        if sources:
+            system_prompt += self._build_citation_instructions()
+
         messages.append({
             "role": "system",
-            "content": self.chatbot.system_prompt
+            "content": system_prompt
         })
 
-        # RAG context as system message
-        if rag_context:
-            messages.append({
-                "role": "system",
-                "content": f"Nutze den folgenden Kontext aus der Wissensdatenbank, um die Frage zu beantworten:\n\n{rag_context}"
-            })
+        # RAG context as system message (prefer numbered sources for citations)
+        if sources:
+            numbered_context = self._build_numbered_context(sources)
+            if numbered_context:
+                messages.append({"role": "system", "content": numbered_context})
+        elif rag_context:
+            messages.append({"role": "system", "content": f"Kontext:\n\n{rag_context}"})
 
         # Add document content from files (non-image)
         if files:

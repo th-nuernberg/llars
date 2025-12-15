@@ -230,3 +230,19 @@ def delete_model(model_id):
         'success': True,
         'message': f'Model "{model.display_name}" deleted successfully'
     })
+
+
+@llm_bp.route('/models/sync', methods=['POST'])
+@handle_api_errors(logger_name='llm')
+def sync_models():
+    """
+    Sync LLM models from the configured LiteLLM/OpenAI-compatible endpoint.
+
+    Uses:
+      - LITELLM_BASE_URL
+      - LITELLM_API_KEY (optional depending on gateway)
+    """
+    from services.llm.model_sync_service import LLMModelSyncService
+
+    result = LLMModelSyncService.sync_from_litellm()
+    return jsonify(result), 200 if result.get('success') else 400

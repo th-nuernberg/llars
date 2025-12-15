@@ -308,6 +308,10 @@
               <v-icon start>mdi-text-box</v-icon>
               Ausschnitt
             </v-tab>
+            <v-tab value="screenshot" :disabled="!sourcePanel.source?.screenshot_url">
+              <v-icon start>mdi-image</v-icon>
+              Screenshot
+            </v-tab>
             <v-tab value="document" :disabled="!sourcePanel.source?.content_url">
               <v-icon start>mdi-file-document</v-icon>
               Dokument
@@ -367,6 +371,35 @@
                     </v-btn>
                   </div>
                 </template>
+              </div>
+            </v-window-item>
+
+            <v-window-item value="screenshot">
+              <div class="sources-panel-content">
+                <v-skeleton-loader v-if="sourcePanel.loadingScreenshot" type="image" height="320" />
+                <v-alert
+                  v-else-if="sourcePanel.screenshotError"
+                  type="error"
+                  variant="tonal"
+                  density="compact"
+                >
+                  {{ sourcePanel.screenshotError }}
+                </v-alert>
+                <div v-else class="sources-panel-screenshot">
+                  <div v-if="!sourcePanel.screenshotBlobUrl" class="text-center pa-6 text-medium-emphasis">
+                    <v-icon size="48" class="mb-2">mdi-image-off</v-icon>
+                    <div>Kein Screenshot verfügbar</div>
+                  </div>
+                  <v-card v-else variant="outlined" class="overflow-hidden">
+                    <v-img :src="sourcePanel.screenshotBlobUrl" contain max-height="420">
+                      <template #placeholder>
+                        <div class="d-flex align-center justify-center fill-height">
+                          <v-progress-circular indeterminate color="primary" size="24" />
+                        </div>
+                      </template>
+                    </v-img>
+                  </v-card>
+                </div>
               </div>
             </v-window-item>
 
@@ -506,6 +539,10 @@ const sourcePanel = ref({
   source: null,
   documentContent: '',
   loadedDocumentId: null,
+  screenshotBlobUrl: null,
+  loadedScreenshotDocumentId: null,
+  loadingScreenshot: false,
+  screenshotError: null,
   loadingContent: false,
   contentError: null
 })
@@ -879,10 +916,19 @@ function openSourceInPanel(source) {
   sourcePanel.value.source = source
   sourcePanel.value.tab = 'excerpt'
   sourcePanel.value.contentError = null
+  sourcePanel.value.screenshotError = null
 
   if (sourcePanel.value.loadedDocumentId !== source?.document_id) {
     sourcePanel.value.documentContent = ''
     sourcePanel.value.loadedDocumentId = source?.document_id || null
+  }
+
+  if (sourcePanel.value.loadedScreenshotDocumentId !== source?.document_id) {
+    if (sourcePanel.value.screenshotBlobUrl && String(sourcePanel.value.screenshotBlobUrl).startsWith('blob:')) {
+      URL.revokeObjectURL(sourcePanel.value.screenshotBlobUrl)
+    }
+    sourcePanel.value.screenshotBlobUrl = null
+    sourcePanel.value.loadedScreenshotDocumentId = source?.document_id || null
   }
 }
 
@@ -907,11 +953,34 @@ async function loadPanelDocumentContent() {
   }
 }
 
+async function loadPanelScreenshot() {
+  const source = sourcePanel.value.source
+  if (!source?.screenshot_url && !source?.document_id) return
+  if (sourcePanel.value.screenshotBlobUrl) return
+
+  const url = source.screenshot_url || `/api/rag/documents/${source.document_id}/screenshot`
+
+  sourcePanel.value.loadingScreenshot = true
+  sourcePanel.value.screenshotError = null
+  try {
+    const response = await axios.get(url, { responseType: 'blob' })
+    sourcePanel.value.screenshotBlobUrl = URL.createObjectURL(response.data)
+  } catch (error) {
+    sourcePanel.value.screenshotError = error.response?.data?.error || 'Konnte Screenshot nicht laden'
+    sourcePanel.value.screenshotBlobUrl = null
+  } finally {
+    sourcePanel.value.loadingScreenshot = false
+  }
+}
+
 watch(
   () => sourcePanel.value.tab,
   async (tab) => {
     if (tab === 'document') {
       await loadPanelDocumentContent()
+    }
+    if (tab === 'screenshot') {
+      await loadPanelScreenshot()
     }
   }
 )
@@ -1306,6 +1375,10 @@ onUnmounted(() => {
   white-space: pre-wrap;
   line-height: 1.6;
   font-size: 0.85rem;
+}
+
+.sources-panel-screenshot :deep(img) {
+  cursor: zoom-in;
 }
 
 .file-preview {

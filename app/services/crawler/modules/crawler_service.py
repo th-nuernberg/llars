@@ -827,6 +827,10 @@ class CrawlerService:
                 db.session.add(doc)
                 db.session.flush()
 
+                # Persist an API URL so UIs (and chats) can fetch the screenshot with auth
+                if screenshot_path and not getattr(doc, 'screenshot_url', None):
+                    doc.screenshot_url = f"/api/rag/documents/{doc.id}/screenshot"
+
                 # Store extracted images as chunks
                 images = page.get('images', [])
                 if images:
@@ -842,24 +846,37 @@ class CrawlerService:
                             image_mime_type=img.get('mime_type', 'image/jpeg'),
                             embedding_status='completed'  # Images don't need text embedding
                         )
-                        db.session.add(image_chunk)
-                    logger.info(f"[Job {job_id}] Stored {len(images)} images for document {doc.id}")
+                    db.session.add(image_chunk)
+                logger.info(f"[Job {job_id}] Stored {len(images)} images for document {doc.id}")
 
-                # Store screenshot as a special chunk (for Vision-LLM queries)
-                if screenshot_data and screenshot_path:
-                    screenshot_chunk = RAGDocumentChunk(
-                        document_id=doc.id,
-                        chunk_index=99999,  # Special index for page screenshot
-                        content=f"[Screenshot der Webseite: {page['url']}]",
-                        has_image=True,
-                        image_path=screenshot_path,
-                        image_url=page['url'],
-                        image_alt_text=f"Screenshot von {page['metadata'].get('title', page['url'])}",
-                        image_mime_type='image/png',
-                        embedding_status='completed'
-                    )
-                    db.session.add(screenshot_chunk)
-                    logger.info(f"[Job {job_id}] Stored screenshot for document {doc.id}")
+                # Store screenshot(s) as special chunks (for Vision-LLM queries and UI inspection)
+                if screenshot_data:
+                    screenshot_entries = screenshot_data.get('screenshots') or []
+                    if not screenshot_entries and screenshot_path:
+                        screenshot_entries = [{'screenshot_path': screenshot_path}]
+
+                    stored = 0
+                    for idx, shot in enumerate(screenshot_entries):
+                        shot_path = (shot or {}).get('screenshot_path')
+                        if not shot_path:
+                            continue
+
+                        screenshot_chunk = RAGDocumentChunk(
+                            document_id=doc.id,
+                            chunk_index=99999 + idx,  # Keep legacy index for first screenshot
+                            content=f"[Screenshot der Webseite: {page['url']}]",
+                            has_image=True,
+                            image_path=shot_path,
+                            image_url=page['url'],
+                            image_alt_text=f"Screenshot von {page['metadata'].get('title', page['url'])}",
+                            image_mime_type='image/png',
+                            embedding_status='completed'
+                        )
+                        db.session.add(screenshot_chunk)
+                        stored += 1
+
+                    if stored:
+                        logger.info(f"[Job {job_id}] Stored {stored} screenshot(s) for document {doc.id}")
 
                 link = CollectionDocumentLink(
                     collection_id=collection_id,
@@ -885,7 +902,7 @@ class CrawlerService:
                 if images:
                     self.active_crawls[job_id]['images_extracted'] = self.active_crawls[job_id].get('images_extracted', 0) + len(images)
                 if screenshot_data and screenshot_path:
-                    self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + 1
+                    self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + screenshot_data.get('screenshot_count', 1)
                 crawler_type = page.get('crawler_type', 'basic')
                 logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']} (crawler: {crawler_type})")
 

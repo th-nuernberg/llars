@@ -58,7 +58,11 @@ export function useAppTheme() {
     }
 
     // Update Vuetify theme
-    vuetifyTheme.global.name.value = targetTheme
+    if (typeof vuetifyTheme.change === 'function') {
+      vuetifyTheme.change(targetTheme)
+    } else {
+      vuetifyTheme.global.name.value = targetTheme
+    }
 
     // Update HTML attribute for custom CSS
     document.documentElement.setAttribute('data-theme', targetTheme)

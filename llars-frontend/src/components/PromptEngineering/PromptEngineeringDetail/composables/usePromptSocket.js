@@ -13,9 +13,15 @@ export function usePromptSocket(roomIdRef, username, ydocRef, processYDoc, updat
   const socket = ref(null);
   const users = ref({});
 
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('auth_token');
+  };
+
   const initializeSocket = () => {
     socket.value = io(import.meta.env.VITE_API_BASE_URL, {
       path: '/collab/socket.io/',
+      auth: { token: getAuthToken() },
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000
@@ -27,6 +33,10 @@ export function usePromptSocket(roomIdRef, username, ydocRef, processYDoc, updat
         room: roomIdRef.value,
         username
       });
+    });
+
+    socket.value.on('connect_error', (err) => {
+      console.error('Socket.IO connect_error:', err?.message || err);
     });
 
     socket.value.on('snapshot_document', (fullUpdate) => {

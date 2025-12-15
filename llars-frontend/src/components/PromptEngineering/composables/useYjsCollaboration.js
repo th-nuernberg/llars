@@ -13,6 +13,21 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     return sessionStorage.getItem('auth_token')
   }
 
+  const clearAuthAndRedirectToLogin = () => {
+    try {
+      sessionStorage.removeItem('auth_token')
+      sessionStorage.removeItem('auth_refreshToken')
+      sessionStorage.removeItem('auth_idToken')
+      sessionStorage.removeItem('auth_llars_roles')
+      localStorage.removeItem('username')
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      window.location.href = `/login?redirect=${encodeURIComponent(current)}`
+    }
+  }
+
   const initializeSocket = () => {
     socket.value = io(import.meta.env.VITE_API_BASE_URL, {
       path: '/collab/socket.io/',
@@ -31,7 +46,16 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     })
 
     socket.value.on('connect_error', (err) => {
-      console.error('Socket.IO connect_error:', err?.message || err)
+      const msg = String(err?.message || err || '')
+      console.error('Socket.IO connect_error:', msg)
+
+      const lower = msg.toLowerCase()
+      if (lower.includes('jwt expired') || lower.includes('authentication failed') || lower.includes('authentication required')) {
+        try {
+          socket.value?.disconnect()
+        } catch {}
+        clearAuthAndRedirectToLogin()
+      }
     })
 
     socket.value.on('snapshot_document', (fullUpdate) => {

@@ -8,6 +8,33 @@ const idToken = ref(null);
 const tokenParsed = ref(null);
 const llarsRoles = ref([]);
 
+const parseJwt = (jwtToken) => {
+  if (!jwtToken) return null;
+  try {
+    const parts = jwtToken.split('.');
+    if (parts.length < 2) return null;
+    return JSON.parse(atob(parts[1]));
+  } catch (e) {
+    return null;
+  }
+};
+
+const isTokenExpired = (jwtToken, skewSeconds = 30) => {
+  const payload = parseJwt(jwtToken);
+  const exp = payload?.exp;
+  if (!exp) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return now >= (exp - skewSeconds);
+};
+
+const clearStoredTokens = () => {
+  sessionStorage.removeItem('auth_token');
+  sessionStorage.removeItem('auth_refreshToken');
+  sessionStorage.removeItem('auth_idToken');
+  sessionStorage.removeItem('auth_llars_roles');
+  localStorage.removeItem('username');
+};
+
 // Load tokens from sessionStorage on init
 const loadTokensFromStorage = () => {
   token.value = sessionStorage.getItem('auth_token');
@@ -26,10 +53,18 @@ const loadTokensFromStorage = () => {
   }
 
   if (token.value) {
-    try {
-      tokenParsed.value = JSON.parse(atob(token.value.split('.')[1]));
-    } catch (e) {
-      console.error('Failed to parse token:', e);
+    tokenParsed.value = parseJwt(token.value);
+    if (!tokenParsed.value) {
+      console.error('Failed to parse token');
+    }
+    if (isTokenExpired(token.value, 0)) {
+      // Token expired → treat as logged out (avoids getting stuck with stale tokens)
+      token.value = null;
+      refreshToken.value = null;
+      idToken.value = null;
+      tokenParsed.value = null;
+      llarsRoles.value = [];
+      clearStoredTokens();
     }
   }
 };
@@ -38,7 +73,7 @@ const loadTokensFromStorage = () => {
 loadTokensFromStorage();
 
 export const useAuth = () => {
-  const isAuthenticated = computed(() => !!token.value);
+  const isAuthenticated = computed(() => !!token.value && !isTokenExpired(token.value));
 
   const userRoles = computed(() => {
     // Use stored LLARS roles (from backend response, based on Authentik groups)
@@ -130,13 +165,7 @@ export const useAuth = () => {
     tokenParsed.value = null;
     llarsRoles.value = [];
 
-    sessionStorage.removeItem('auth_token');
-    sessionStorage.removeItem('auth_refreshToken');
-    sessionStorage.removeItem('auth_idToken');
-    sessionStorage.removeItem('auth_llars_roles');
-
-    // Remove username from localStorage
-    localStorage.removeItem('username');
+    clearStoredTokens();
   };
 
   const getToken = () => token.value;
@@ -148,6 +177,7 @@ export const useAuth = () => {
     tokenParsed,
     login,
     logout,
-    getToken
+    getToken,
+    isTokenExpired
   };
 };

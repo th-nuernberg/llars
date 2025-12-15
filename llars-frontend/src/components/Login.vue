@@ -69,7 +69,7 @@
 
 <script setup>
 import {ref, onMounted} from 'vue';
-import {useRouter} from 'vue-router';
+import {useRoute, useRouter} from 'vue-router';
 import {useAuth} from '@/composables/useAuth';
 
 const username = ref('');
@@ -78,6 +78,7 @@ const errorMessage = ref('');
 const isLogging = ref(false);
 const loadingUser = ref(null);
 const router = useRouter();
+const route = useRoute();
 const auth = useAuth();
 
 // Development mode detection (Vite built-in)
@@ -93,7 +94,11 @@ const devUsers = [
 // Check if already authenticated on mount
 onMounted(() => {
   if (auth.isAuthenticated.value) {
-    // Already logged in, redirect to Home (admins see all tiles there)
+    const redirect = route.query.redirect;
+    if (typeof redirect === 'string' && redirect.startsWith('/')) {
+      router.push(redirect);
+      return;
+    }
     router.push('/Home');
   }
 });
@@ -116,8 +121,12 @@ async function handleLogin() {
     const result = await auth.login(username.value, password.value);
 
     if (result.success) {
-      // Login successful, redirect to Home (admins see all tiles there)
-      router.push('/Home');
+      const redirect = route.query.redirect;
+      if (typeof redirect === 'string' && redirect.startsWith('/')) {
+        router.push(redirect);
+      } else {
+        router.push('/Home');
+      }
     } else {
       // Login failed, show error
       errorMessage.value = result.error;
@@ -148,7 +157,12 @@ async function quickLogin(user) {
   loadingUser.value = null;
 
   if (result.success) {
-    router.push('/Home');
+    const redirect = route.query.redirect;
+    if (typeof redirect === 'string' && redirect.startsWith('/')) {
+      router.push(redirect);
+    } else {
+      router.push('/Home');
+    }
   } else {
     errorMessage.value = result.error;
   }

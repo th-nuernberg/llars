@@ -151,10 +151,33 @@ router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
 
+    const clearAuthStorage = () => {
+        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('auth_refreshToken');
+        sessionStorage.removeItem('auth_idToken');
+        sessionStorage.removeItem('auth_llars_roles');
+        localStorage.removeItem('username');
+    };
+
+    const isJwtExpired = (jwtToken, skewSeconds = 30) => {
+        try {
+            const parts = String(jwtToken || '').split('.');
+            if (parts.length < 2) return false;
+            const payload = JSON.parse(atob(parts[1]));
+            const exp = payload?.exp;
+            if (!exp) return false;
+            const now = Math.floor(Date.now() / 1000);
+            return now >= (exp - skewSeconds);
+        } catch (e) {
+            return false;
+        }
+    };
+
     // Get auth instance from useAuth composable
     // We need to import it here instead of using useAuth() directly
     // because router guards run before components are mounted
-    const isAuthenticated = !!sessionStorage.getItem('auth_token');
+    const rawToken = sessionStorage.getItem('auth_token');
+    const isAuthenticated = !!rawToken && !isJwtExpired(rawToken);
 
     let userRoles = [];
     let isAdmin = false;
@@ -176,6 +199,9 @@ router.beforeEach((to, from, next) => {
         } catch (e) {
             console.error('Failed to parse token/roles in router guard:', e);
         }
+    } else if (rawToken) {
+        // Token exists but is expired → clear to avoid UI getting stuck
+        clearAuthStorage();
     }
 
     console.log("Navigating to:", to.path);

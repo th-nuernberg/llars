@@ -63,8 +63,10 @@ axios.interceptors.response.use(
       sessionStorage.removeItem('auth_refreshToken')
       sessionStorage.removeItem('auth_idToken')
       sessionStorage.removeItem('auth_llars_roles')
+      localStorage.removeItem('username')
       // Redirect to login
-      window.location.href = '/login'
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      window.location.href = `/login?redirect=${encodeURIComponent(current)}`
     }
 
     return Promise.reject(error)

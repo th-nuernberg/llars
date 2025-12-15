@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-chatbots">
+  <div ref="layoutRoot" class="admin-chatbots">
     <template v-if="wizardOpen">
       <ChatbotBuilderWizard
         @created="onWizardChatbotCreated"
@@ -84,8 +84,8 @@
       </v-row>
 
       <!-- Tabs -->
-      <v-card>
-        <v-tabs v-model="activeTab" bg-color="primary">
+      <v-card ref="tabsCard" class="chatbots-tabs-card" :style="tabsCardStyle">
+        <v-tabs v-model="activeTab" bg-color="primary" show-arrows>
           <v-tab value="chatbots">
             <v-icon start>mdi-robot</v-icon>
             Chatbots
@@ -100,7 +100,7 @@
           </v-tab>
         </v-tabs>
 
-        <v-card-text>
+        <v-card-text class="chatbots-tabs-body">
           <v-window v-model="activeTab">
             <!-- Chatbots Tab -->
             <v-window-item value="chatbots">
@@ -224,7 +224,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import axios from 'axios'
 import ChatbotList from './ChatbotList.vue'
 import ChatbotEditor from './ChatbotEditor.vue'
@@ -282,6 +282,28 @@ const snackbar = ref({
   show: false,
   text: '',
   color: 'success'
+})
+
+// Layout / viewport sizing
+const layoutRoot = ref(null)
+const tabsCard = ref(null)
+const tabsCardHeight = ref(null)
+
+let layoutResizeObserver = null
+
+function updateTabsCardHeight() {
+  const cardEl = tabsCard.value?.$el
+  if (!cardEl || typeof cardEl.getBoundingClientRect !== 'function') return
+
+  const rect = cardEl.getBoundingClientRect()
+  const bottomPadding = 24
+  const available = Math.floor(window.innerHeight - rect.top - bottomPadding)
+  tabsCardHeight.value = Math.max(280, available)
+}
+
+const tabsCardStyle = computed(() => {
+  if (!tabsCardHeight.value) return {}
+  return { height: `${tabsCardHeight.value}px` }
 })
 
 // Computed
@@ -602,6 +624,10 @@ watch(activeTab, (newTab) => {
   if (newTab !== 'documents') {
     documentCollectionFilter.value = null
   }
+
+  nextTick(() => {
+    updateTabsCardHeight()
+  })
 })
 
 // Lifecycle
@@ -610,11 +636,56 @@ onMounted(() => {
   loadCollections()
   loadDocuments()
   loadStats()
+
+  nextTick(() => {
+    updateTabsCardHeight()
+  })
+
+  window.addEventListener('resize', updateTabsCardHeight)
+
+  try {
+    layoutResizeObserver = new ResizeObserver(() => {
+      updateTabsCardHeight()
+    })
+
+    if (layoutRoot.value) {
+      layoutResizeObserver.observe(layoutRoot.value)
+    }
+  } catch {}
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateTabsCardHeight)
+  if (layoutResizeObserver) {
+    try {
+      layoutResizeObserver.disconnect()
+    } catch {}
+    layoutResizeObserver = null
+  }
+})
+
+watch(wizardOpen, () => {
+  nextTick(() => {
+    updateTabsCardHeight()
+  })
 })
 </script>
 
 <style scoped>
 .admin-chatbots {
   width: 100%;
+}
+
+.chatbots-tabs-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chatbots-tabs-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 </style>

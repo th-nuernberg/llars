@@ -338,6 +338,13 @@ class ChatService:
         if not filtered_results:
             return "", []
 
+        # Optional reranking (keeps filtering based on vector score)
+        try:
+            from services.rag.reranker import rerank_results
+            filtered_results = rerank_results(query, filtered_results)
+        except Exception as e:
+            logger.debug(f"[ChatService] Reranking skipped: {e}")
+
         # Build context string
         context_parts = []
         sources = []
@@ -363,8 +370,17 @@ class ChatService:
                 'filename': filename,
                 'collection_name': result.get('collection_name'),
                 'relevance': round(result['score'], 3),
+                'chunk_index': result.get('chunk_index') if result.get('chunk_index') is not None else metadata.get('chunk_index'),
+                'page_number': result.get('page_number') if result.get('page_number') is not None else metadata.get('page_number'),
+                'start_char': result.get('start_char') if result.get('start_char') is not None else metadata.get('start_char'),
+                'end_char': result.get('end_char') if result.get('end_char') is not None else metadata.get('end_char'),
+                'vector_id': result.get('vector_id') if result.get('vector_id') is not None else metadata.get('vector_id'),
+                'rerank': result.get('rerank'),
                 'excerpt': result['content'],
-                'download_url': f"/api/rag/documents/{doc_id}/download" if doc_id else None
+                'download_url': f"/api/rag/documents/{doc_id}/download" if doc_id else None,
+                'content_url': f"/api/rag/documents/{doc_id}/content" if doc_id else None,
+                'chunks_url': f"/api/rag/documents/{doc_id}/chunks" if doc_id else None,
+                'document_url': f"/api/rag/documents/{doc_id}" if doc_id else None
             })
 
         context = "\n\n---\n\n".join(context_parts)
@@ -400,9 +416,10 @@ class ChatService:
             results = []
             for doc, score in docs_with_scores:
                 # Get document info from metadata
-                doc_id = doc.metadata.get('document_id')
-                filename = doc.metadata.get('filename') or doc.metadata.get('source')
-                title = doc.metadata.get('title') or filename or 'Unbekannt'
+                metadata = doc.metadata or {}
+                doc_id = metadata.get('document_id')
+                filename = metadata.get('filename') or metadata.get('source')
+                title = metadata.get('title') or filename or 'Unbekannt'
 
                 if doc_id and (not title or title == 'Unbekannt'):
                     db_doc = RAGDocument.query.get(doc_id)
@@ -422,7 +439,12 @@ class ChatService:
                     'document_id': doc_id,
                     'title': title,
                     'filename': filename,
-                    'metadata': doc.metadata
+                    'chunk_index': metadata.get('chunk_index'),
+                    'page_number': metadata.get('page_number'),
+                    'start_char': metadata.get('start_char'),
+                    'end_char': metadata.get('end_char'),
+                    'vector_id': metadata.get('vector_id'),
+                    'metadata': metadata
                 })
 
             return results

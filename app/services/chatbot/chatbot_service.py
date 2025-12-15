@@ -20,15 +20,19 @@ class ChatbotService:
     """Service for chatbot management operations"""
 
     @staticmethod
-    def get_all_chatbots(include_inactive: bool = False) -> List[Dict[str, Any]]:
+    def get_all_chatbots(include_inactive: bool = False, username: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get all chatbots with their collection counts and conversation stats.
         """
-        query = Chatbot.query
-        if not include_inactive:
-            query = query.filter(Chatbot.is_active == True)
+        if username:
+            from services.chatbot.chatbot_access_service import ChatbotAccessService
+            chatbots = ChatbotAccessService.get_accessible_chatbots(username, include_inactive=include_inactive)
+        else:
+            query = Chatbot.query
+            if not include_inactive:
+                query = query.filter(Chatbot.is_active == True)
 
-        chatbots = query.order_by(Chatbot.created_at.desc()).all()
+            chatbots = query.order_by(Chatbot.created_at.desc()).all()
 
         result = []
         for bot in chatbots:

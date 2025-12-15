@@ -344,12 +344,27 @@ class ChatService:
 
         for i, result in enumerate(filtered_results):
             context_parts.append(f"[Dokument {i+1}]\n{result['content']}")
+
+            doc_id = result.get('document_id')
+            metadata = result.get('metadata') or {}
+            filename = metadata.get('filename') or metadata.get('source')
+            title = result.get('title') or filename or 'Unbekannt'
+
+            if doc_id:
+                doc = RAGDocument.query.get(doc_id)
+                if doc:
+                    filename = doc.filename or filename
+                    title = doc.title or doc.original_filename or filename or title
+
             sources.append({
+                'footnote_id': i + 1,
                 'document_id': result.get('document_id'),
-                'title': result.get('title', 'Unbekannt'),
+                'title': title,
+                'filename': filename,
                 'collection_name': result.get('collection_name'),
                 'relevance': round(result['score'], 3),
-                'excerpt': result['content'][:200] + '...' if len(result['content']) > 200 else result['content']
+                'excerpt': result['content'],
+                'download_url': f"/api/rag/documents/{doc_id}/download" if doc_id else None
             })
 
         context = "\n\n---\n\n".join(context_parts)
@@ -386,7 +401,14 @@ class ChatService:
             for doc, score in docs_with_scores:
                 # Get document info from metadata
                 doc_id = doc.metadata.get('document_id')
-                title = doc.metadata.get('title', doc.metadata.get('source', 'Unbekannt'))
+                filename = doc.metadata.get('filename') or doc.metadata.get('source')
+                title = doc.metadata.get('title') or filename or 'Unbekannt'
+
+                if doc_id and (not title or title == 'Unbekannt'):
+                    db_doc = RAGDocument.query.get(doc_id)
+                    if db_doc:
+                        filename = db_doc.filename or filename
+                        title = db_doc.title or db_doc.original_filename or filename or title
 
                 # Convert L2 distance to cosine similarity for normalized vectors
                 # For normalized vectors: L2_distance^2 = 2 * (1 - cosine_similarity)
@@ -399,6 +421,7 @@ class ChatService:
                     'score': similarity,
                     'document_id': doc_id,
                     'title': title,
+                    'filename': filename,
                     'metadata': doc.metadata
                 })
 

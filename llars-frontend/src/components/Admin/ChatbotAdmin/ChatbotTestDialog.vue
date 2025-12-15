@@ -23,11 +23,22 @@
             </v-chip>
           </div>
         </div>
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          @click="closeDialog"
-        />
+        <div class="d-flex align-center">
+          <v-btn
+            icon="mdi-fullscreen"
+            variant="text"
+            @click="openInFullScreen"
+          >
+            <v-tooltip activator="parent" location="bottom">
+              Vollbild öffnen
+            </v-tooltip>
+          </v-btn>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="closeDialog"
+          />
+        </div>
       </v-card-title>
 
       <!-- Messages Area -->
@@ -72,8 +83,15 @@
                 size="x-small"
                 variant="outlined"
                 class="mr-1 mb-1"
+                @click="showSourceDetail(source)"
               >
-                {{ source.filename }}
+                <span class="font-weight-bold mr-1">[{{ source.footnote_id || (i + 1) }}]</span>
+                <span class="text-truncate" style="max-width: 240px;">
+                  {{ source.title || source.filename || 'Quelle' }}
+                </span>
+                <v-tooltip activator="parent" location="top">
+                  {{ source.title || source.filename || 'Quelle' }}
+                </v-tooltip>
               </v-chip>
             </div>
 
@@ -246,6 +264,51 @@
         </v-expand-transition>
       </v-card-text>
     </v-card>
+
+    <!-- Source Detail Dialog -->
+    <v-dialog v-model="sourceDialog.show" max-width="700">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-chip v-if="sourceDialog.source?.footnote_id" size="small" color="primary" class="mr-2">
+            [{{ sourceDialog.source.footnote_id }}]
+          </v-chip>
+          {{ sourceDialog.source?.title || sourceDialog.source?.filename || 'Quelle' }}
+          <v-spacer />
+          <LIconBtn icon="mdi-close" @click="sourceDialog.show = false" />
+        </v-card-title>
+        <v-card-subtitle v-if="sourceDialog.source?.collection_name" class="d-flex align-center">
+          <v-icon size="14" class="mr-1">mdi-folder</v-icon>
+          {{ sourceDialog.source.collection_name }}
+          <v-chip v-if="sourceDialog.source?.relevance !== undefined" size="x-small" class="ml-2" color="success" variant="tonal">
+            {{ ((sourceDialog.source.relevance || 0) * 100).toFixed(0) }}% relevant
+          </v-chip>
+        </v-card-subtitle>
+        <v-divider />
+        <v-card-text class="source-excerpt">
+          {{ sourceDialog.source?.excerpt || '-' }}
+        </v-card-text>
+        <v-card-actions>
+          <v-btn
+            v-if="sourceDialog.source?.download_url"
+            :href="sourceDialog.source.download_url"
+            target="_blank"
+            rel="noopener"
+            color="primary"
+            variant="tonal"
+          >
+            <v-icon start>mdi-download</v-icon>
+            Dokument
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="sourceDialog.show = false">Schließen</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3500">
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-dialog>
 </template>
 
@@ -266,6 +329,19 @@ const inputMessage = ref('')
 const loading = ref(false)
 const messagesContainer = ref(null)
 const showSettings = ref(false)
+
+// Source detail dialog
+const sourceDialog = ref({
+  show: false,
+  source: null
+})
+
+// Snackbar
+const snackbar = ref({
+  show: false,
+  text: '',
+  color: 'success'
+})
 
 // Admin Test Settings
 const testSettings = ref({
@@ -366,10 +442,12 @@ async function sendMessage() {
 async function streamTestMessage(startTime, requestData) {
   let assistantMessage = null
   try {
+    const token = sessionStorage.getItem('auth_token')
     const response = await fetch(`/api/chatbots/${props.chatbot.id}/test`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify(requestData)
     })
@@ -475,6 +553,42 @@ function scrollToBottom() {
 
 function closeDialog() {
   emit('update:modelValue', false)
+}
+
+function showSourceDetail(source) {
+  sourceDialog.value = { show: true, source }
+}
+
+function showSnackbar(text, color = 'success') {
+  snackbar.value = { show: true, text, color }
+}
+
+function openInFullScreen() {
+  if (!props.chatbot?.id) return
+
+  try {
+    const sessionId = crypto.randomUUID()
+    const converted = messages.value
+      .filter(m => !m.isSystemInfo && (m.role === 'user' || m.role === 'assistant'))
+      .map((m, idx) => ({
+        id: Date.now() + idx,
+        content: m.content,
+        sender: m.role === 'assistant' ? 'bot' : 'user',
+        timestamp: new Date().toLocaleTimeString(),
+        streaming: false,
+        ...(m.sources ? { sources: m.sources } : {})
+      }))
+
+    localStorage.setItem(`chat_${props.chatbot.id}`, JSON.stringify({
+      messages: converted,
+      sessionId
+    }))
+
+    window.location.href = `/chat?chatbot_id=${props.chatbot.id}`
+  } catch (e) {
+    console.error('Failed to open chat in fullscreen:', e)
+    showSnackbar('Konnte Vollbild nicht öffnen', 'error')
+  }
 }
 
 function resetChat() {
@@ -596,6 +710,17 @@ function buildRequestData(userMessage, includeStream = false) {
 
 .text-medium-emphasis {
   color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+/* Source dialog excerpt */
+.source-excerpt {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 /* System Info Messages */

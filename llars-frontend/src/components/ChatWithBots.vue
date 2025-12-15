@@ -168,7 +168,9 @@
                       @click="showSourceDetail(source)"
                     >
                       <span class="font-weight-bold mr-1">[{{ source.footnote_id }}]</span>
-                      <span class="text-truncate" style="max-width: 150px;">{{ source.title }}</span>
+                      <span class="text-truncate" style="max-width: 240px;">
+                        {{ source.title || source.filename || 'Quelle' }}
+                      </span>
                     </v-chip>
                   </div>
                 </div>
@@ -270,7 +272,7 @@
           <v-chip size="small" color="primary" class="mr-2">
             [{{ sourceDialog.source?.footnote_id }}]
           </v-chip>
-          {{ sourceDialog.source?.title || 'Quelle' }}
+          {{ sourceDialog.source?.title || sourceDialog.source?.filename || 'Quelle' }}
         </v-card-title>
         <v-card-subtitle v-if="sourceDialog.source?.collection_name">
           <v-icon size="14" class="mr-1">mdi-folder</v-icon>
@@ -279,11 +281,26 @@
             {{ ((sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% relevant
           </v-chip>
         </v-card-subtitle>
+        <v-card-subtitle v-if="sourceDialog.source?.filename">
+          <v-icon size="14" class="mr-1">mdi-file</v-icon>
+          {{ sourceDialog.source.filename }}
+        </v-card-subtitle>
         <v-divider />
         <v-card-text class="source-excerpt">
           {{ sourceDialog.source?.excerpt }}
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            v-if="sourceDialog.source?.download_url"
+            :href="sourceDialog.source.download_url"
+            target="_blank"
+            rel="noopener"
+            color="primary"
+            variant="tonal"
+          >
+            <v-icon start>mdi-download</v-icon>
+            Dokument
+          </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="sourceDialog.show = false">
             Schließen
@@ -296,6 +313,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 import DOMPurify from 'dompurify'
@@ -320,6 +338,8 @@ const { isLoading, withLoading } = useSkeletonLoading(['chatbots'])
 
 // Socket.IO connection
 const socket = ref(null)
+
+const route = useRoute()
 
 // Chatbot data
 const chatbots = ref([])
@@ -385,6 +405,21 @@ async function loadChatbots() {
     console.error('Error loading chatbots:', error)
     showSnackbar('Fehler beim Laden der Chatbots', 'error')
   }
+}
+
+async function maybeAutoSelectFromRoute() {
+  const raw = route.query.chatbot_id || route.query.bot
+  const id = raw ? parseInt(String(raw), 10) : null
+  if (!id || Number.isNaN(id)) return
+  if (selectedChatbot.value?.id === id) return
+
+  const bot = chatbots.value.find(b => b.id === id)
+  if (!bot) {
+    showSnackbar('Chatbot nicht verfügbar oder keine Berechtigung', 'warning')
+    return
+  }
+
+  await selectChatbot(bot)
 }
 
 /**
@@ -516,7 +551,8 @@ async function sendMessage() {
       chatbot_id: selectedChatbot.value.id,
       message: userMessage,
       session_id: sessionId.value,
-      username: null
+      username: null,
+      token: sessionStorage.getItem('auth_token')
     })
   }
 }
@@ -762,6 +798,7 @@ onMounted(async () => {
   await withLoading('chatbots', async () => {
     await loadChatbots()
   })
+  await maybeAutoSelectFromRoute()
   initSocket()
 })
 
@@ -772,12 +809,13 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-page {
-  height: 100%;
+  height: calc(100vh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px));
+  overflow: hidden;
   background-color: rgb(var(--v-theme-background));
 }
 
 .chat-container {
-  height: calc(100vh - 64px);
+  height: 100%;
 }
 
 .chatbot-sidebar {

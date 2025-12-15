@@ -2,7 +2,6 @@
   <div class="admin-chatbots">
     <template v-if="wizardOpen">
       <ChatbotBuilderWizard
-        class="mb-4"
         @created="onWizardChatbotCreated"
         @test="openTestDialogById"
         @close="wizardOpen = false"

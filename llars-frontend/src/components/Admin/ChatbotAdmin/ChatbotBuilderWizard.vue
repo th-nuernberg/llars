@@ -1,107 +1,108 @@
 <template>
-  <v-card class="wizard-card d-flex flex-column" variant="outlined">
-    <!-- Header -->
-    <v-card-title class="d-flex align-center pa-4">
-      <v-icon class="mr-2" color="primary">mdi-wizard-hat</v-icon>
-      <div>
-        <div class="text-h6">Chatbot Builder</div>
-        <div class="text-caption text-medium-emphasis">
-          Website crawlen, Chunks erstellen und Chatbot konfigurieren
+  <div ref="wizardHost" class="wizard-host">
+    <v-card class="wizard-card d-flex flex-column" :style="wizardCardStyle" variant="outlined">
+      <!-- Header -->
+      <v-card-title class="d-flex align-center pa-4">
+        <v-icon class="mr-2" color="primary">mdi-wizard-hat</v-icon>
+        <div>
+          <div class="text-h6">Chatbot Builder</div>
+          <div class="text-caption text-medium-emphasis">
+            Website crawlen, Chunks erstellen und Chatbot konfigurieren
+          </div>
         </div>
-      </div>
-      <v-spacer />
+        <v-spacer />
 
-      <!-- Processing Indicator with Progress -->
-      <template v-if="isProcessing">
-        <div class="d-flex align-center mr-3">
-          <v-progress-circular
-            v-if="overallProgressPercent === 0"
-            indeterminate
-            size="18"
-            width="2"
-            color="primary"
-            class="mr-2"
-          />
-          <v-progress-circular
-            v-else
-            :model-value="overallProgressPercent"
-            size="22"
-            width="3"
-            color="primary"
-            class="mr-2"
-          >
-            <span class="text-caption">{{ overallProgressPercent }}</span>
-          </v-progress-circular>
-          <span class="text-caption text-medium-emphasis">
-            {{ headerStatusText }}
-            <span v-if="currentProgressText">({{ currentProgressText }})</span>
-          </span>
-        </div>
-      </template>
-
-      <LBtn
-        variant="text"
-        size="small"
-        prepend-icon="mdi-arrow-left"
-        @click="handleClose"
-      >
-        Zurück
-      </LBtn>
-    </v-card-title>
-
-    <v-divider />
-
-      <!-- Custom Stepper Header with Clickable Steps -->
-      <div class="wizard-steps pa-4">
-        <div class="d-flex justify-space-between align-center">
-          <template v-for="(item, index) in stepItems" :key="item.value">
-            <!-- Step Circle + Title -->
-            <div
-              class="step-item text-center"
-              :class="{
-                'step-active': currentStep === item.value,
-                'step-complete': currentStep > item.value,
-                'step-clickable': canNavigateToStep(item.value),
-                'step-disabled': !canNavigateToStep(item.value)
-              }"
-              @click="handleStepClick(item.value)"
-            >
-              <div class="step-circle mx-auto mb-1">
-                <v-icon v-if="currentStep > item.value" size="small" color="white">mdi-check</v-icon>
-                <span v-else>{{ item.value }}</span>
-              </div>
-              <div class="step-title text-caption">{{ item.title }}</div>
-
-              <!-- Mini Progress under active step -->
-              <div v-if="getStepProgress(item.value) !== null" class="step-progress mt-1">
-                <v-progress-linear
-                  :model-value="getStepProgress(item.value)"
-                  :indeterminate="getStepProgress(item.value) === 0"
-                  height="3"
-                  rounded
-                  :color="currentStep === item.value ? 'primary' : 'grey'"
-                />
-              </div>
-            </div>
-
-            <!-- Connector Line -->
-            <div
-              v-if="index < stepItems.length - 1"
-              class="step-connector flex-grow-1 mx-2"
-              :class="{ 'step-connector-complete': currentStep > item.value }"
+        <!-- Processing Indicator with Progress -->
+        <template v-if="isProcessing">
+          <div class="d-flex align-center mr-3">
+            <v-progress-circular
+              v-if="overallProgressPercent === 0"
+              indeterminate
+              size="18"
+              width="2"
+              color="primary"
+              class="mr-2"
             />
-          </template>
-        </div>
-      </div>
+            <v-progress-circular
+              v-else
+              :model-value="overallProgressPercent"
+              size="22"
+              width="3"
+              color="primary"
+              class="mr-2"
+            >
+              <span class="text-caption">{{ overallProgressPercent }}</span>
+            </v-progress-circular>
+            <span class="text-caption text-medium-emphasis">
+              {{ headerStatusText }}
+              <span v-if="currentProgressText">({{ currentProgressText }})</span>
+            </span>
+          </div>
+        </template>
 
-      <!-- Stepper Content -->
-      <v-stepper
-        v-model="currentStep"
-        :items="stepItems"
-        flat
-        hide-actions
-        class="stepper-content flex-grow-1"
-      >
+        <LBtn
+          variant="text"
+          size="small"
+          prepend-icon="mdi-arrow-left"
+          @click="handleClose"
+        >
+          Zurück
+        </LBtn>
+      </v-card-title>
+
+      <v-divider />
+
+        <!-- Custom Stepper Header with Clickable Steps -->
+        <div class="wizard-steps pa-4">
+          <div class="d-flex justify-space-between align-center">
+            <template v-for="(item, index) in stepItems" :key="item.value">
+              <!-- Step Circle + Title -->
+              <div
+                class="step-item text-center"
+                :class="{
+                  'step-active': currentStep === item.value,
+                  'step-complete': currentStep > item.value,
+                  'step-clickable': canNavigateToStep(item.value),
+                  'step-disabled': !canNavigateToStep(item.value)
+                }"
+                @click="handleStepClick(item.value)"
+              >
+                <div class="step-circle mx-auto mb-1">
+                  <v-icon v-if="currentStep > item.value" size="small" color="white">mdi-check</v-icon>
+                  <span v-else>{{ item.value }}</span>
+                </div>
+                <div class="step-title text-caption">{{ item.title }}</div>
+
+                <!-- Mini Progress under active step -->
+                <div v-if="getStepProgress(item.value) !== null" class="step-progress mt-1">
+                  <v-progress-linear
+                    :model-value="getStepProgress(item.value)"
+                    :indeterminate="getStepProgress(item.value) === 0"
+                    height="3"
+                    rounded
+                    :color="currentStep === item.value ? 'primary' : 'grey'"
+                  />
+                </div>
+              </div>
+
+              <!-- Connector Line -->
+              <div
+                v-if="index < stepItems.length - 1"
+                class="step-connector flex-grow-1 mx-2"
+                :class="{ 'step-connector-complete': currentStep > item.value }"
+              />
+            </template>
+          </div>
+        </div>
+
+        <!-- Stepper Content -->
+        <v-stepper
+          v-model="currentStep"
+          :items="stepItems"
+          flat
+          hide-actions
+          class="stepper-content flex-grow-1"
+        >
 
         <!-- Step 1: URL Input -->
         <template #item.1>
@@ -243,18 +244,19 @@
         </v-btn>
       </v-card-actions>
 
-      <!-- Error Alert -->
-      <v-alert
-        v-if="hasAnyError"
-        type="error"
-        variant="tonal"
-        class="mx-4 mb-4"
-        closable
-        @click:close="clearError()"
-      >
-        {{ errors.general || errors.crawl || errors.embedding || errors.config || errors.url }}
-      </v-alert>
-  </v-card>
+        <!-- Error Alert -->
+        <v-alert
+          v-if="hasAnyError"
+          type="error"
+          variant="tonal"
+          class="mx-4 mb-4"
+          closable
+          @click:close="clearError()"
+        >
+          {{ errors.general || errors.crawl || errors.embedding || errors.config || errors.url }}
+        </v-alert>
+    </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -273,6 +275,25 @@ const emit = defineEmits(['created', 'test', 'close'])
 const { isConnected } = useSocketState()
 const socket = ref(null)
 const socketSubscribed = ref(false)
+
+// ===== Layout / Height =====
+const wizardHost = ref(null)
+const availableHeight = ref(null)
+
+function updateAvailableHeight() {
+  const host = wizardHost.value
+  if (!host) return
+  const rect = host.getBoundingClientRect()
+  // Matches the Admin container bottom padding (`pa-6` => 24px)
+  const bottomPadding = 24
+  const next = Math.floor(window.innerHeight - rect.top - bottomPadding)
+  availableHeight.value = Math.max(0, next)
+}
+
+const wizardCardStyle = computed(() => {
+  if (!availableHeight.value) return undefined
+  return { height: `${availableHeight.value}px` }
+})
 
 // ===== Local State =====
 const collectionDocuments = ref([])
@@ -1067,13 +1088,29 @@ watch(currentStep, async (newStep) => {
 onMounted(async () => {
   await loadModels()
 })
+
+onMounted(() => {
+  // Ensure the wizard fits the viewport without scrolling the page.
+  requestAnimationFrame(updateAvailableHeight)
+  window.addEventListener('resize', updateAvailableHeight, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateAvailableHeight)
+})
 </script>
 
 <style scoped>
+.wizard-host {
+  width: 100%;
+}
+
 .wizard-card {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  overflow: hidden; /* prevent page scroll; step panes handle their own scrolling */
+  min-height: 0;
 }
 
 .stepper-content {

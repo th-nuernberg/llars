@@ -234,14 +234,79 @@
 
                 <!-- Model Settings -->
                 <v-col cols="12">
-                  <v-text-field
+                  <v-combobox
                     v-model="formData.model_name"
+                    :items="llmModelItems"
+                    item-title="title"
+                    item-value="value"
                     label="Modell"
-                    hint="z.B. gpt-4, gpt-3.5-turbo"
+                    hint="Wähle ein Modell aus der Registry oder gib eine Model-ID ein"
                     persistent-hint
                     variant="outlined"
                     density="comfortable"
-                  />
+                    :loading="llmModelsLoading"
+                    clearable
+                  >
+                    <template #append>
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        :loading="llmModelsLoading"
+                        @click="syncAndLoadModels"
+                      >
+                        <v-icon>mdi-refresh</v-icon>
+                        <v-tooltip activator="parent" location="top">
+                          Modelle synchronisieren
+                        </v-tooltip>
+                      </v-btn>
+                    </template>
+
+                    <template #item="{ props: itemProps, item }">
+                      <v-list-item v-bind="itemProps">
+                        <template #prepend>
+                          <v-icon :color="item.raw.supports_vision ? 'success' : 'grey'">
+                            {{ item.raw.supports_vision ? 'mdi-image' : 'mdi-text' }}
+                          </v-icon>
+                        </template>
+                        <v-list-item-title>{{ item.raw.display_name }}</v-list-item-title>
+                        <v-list-item-subtitle class="text-caption">
+                          {{ item.raw.provider }} · {{ item.raw.model_id }}
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </template>
+                  </v-combobox>
+
+                  <v-alert
+                    v-if="selectedLlmModel"
+                    type="info"
+                    variant="tonal"
+                    class="mt-2"
+                  >
+                    <div class="d-flex align-center justify-space-between">
+                      <div class="text-caption">
+                        {{ selectedLlmModel.provider }} · {{ formatNumber(selectedLlmModel.context_window) }} Kontext · Max Output {{ formatNumber(selectedLlmModel.max_output_tokens) }}
+                      </div>
+                      <div class="d-flex ga-2">
+                        <v-chip
+                          v-if="selectedLlmModel.supports_vision"
+                          size="x-small"
+                          color="success"
+                          variant="flat"
+                        >
+                          Vision
+                        </v-chip>
+                        <v-chip
+                          v-if="selectedLlmModel.supports_reasoning"
+                          size="x-small"
+                          color="primary"
+                          variant="flat"
+                        >
+                          Reasoning
+                        </v-chip>
+                      </div>
+                    </div>
+                  </v-alert>
                 </v-col>
 
                 <!-- Temperature Slider -->
@@ -593,6 +658,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue';
 import {
@@ -652,6 +718,87 @@ const selectedCollectionsForUpload = computed(() => {
   return (props.collections || []).filter(c => ids.includes(c.id));
 });
 
+// ===== LLM Models =====
+const llmModels = ref([]);
+const llmModelsLoading = ref(false);
+
+const selectedLlmModel = computed(() => {
+  const modelId = formData.value?.model_name;
+  if (!modelId) return null;
+  return llmModels.value.find(m => m.model_id === modelId) || null;
+});
+
+const llmModelItems = computed(() => {
+  const current = formData.value?.model_name;
+  const items = Array.isArray(llmModels.value) ? [...llmModels.value] : [];
+  const hasCurrent = current && items.some(m => m.model_id === current);
+
+  if (current && !hasCurrent) {
+    items.unshift({
+      model_id: current,
+      display_name: current,
+      provider: 'custom',
+      supports_vision: false,
+      supports_reasoning: false,
+      context_window: 0,
+      max_output_tokens: 0
+    });
+  }
+
+  return items.map(m => ({
+    title: m.display_name || m.model_id,
+    value: m.model_id,
+    ...m
+  }));
+});
+
+function formatNumber(value) {
+  if (typeof value !== 'number') return value || '';
+  try {
+    return value.toLocaleString();
+  } catch {
+    return String(value);
+  }
+}
+
+async function loadModels() {
+  llmModelsLoading.value = true;
+  try {
+    const response = await axios.get('/api/llm/models?active_only=true');
+    if (response.data?.success) {
+      llmModels.value = response.data.models || [];
+
+      // Default selection for "create" mode only
+      if (!props.isEdit) {
+        const current = formData.value?.model_name;
+        const def = llmModels.value.find(m => m.is_default) || llmModels.value[0];
+        if (def?.model_id && (!current || current === 'gpt-4')) {
+          formData.value.model_name = def.model_id;
+        }
+      }
+    } else {
+      llmModels.value = [];
+    }
+  } catch (error) {
+    console.warn('[ChatbotEditor] Error loading LLM models:', error);
+    llmModels.value = [];
+  } finally {
+    llmModelsLoading.value = false;
+  }
+}
+
+async function syncAndLoadModels() {
+  llmModelsLoading.value = true;
+  try {
+    await axios.post('/api/llm/models/sync');
+  } catch (error) {
+    console.warn('[ChatbotEditor] Model sync failed:', error);
+  } finally {
+    llmModelsLoading.value = false;
+  }
+  await loadModels();
+}
+
 // Methods
 function closeDialog() {
   emit('update:modelValue', false);
@@ -693,6 +840,15 @@ function saveChanges() {
 // Watch for chatbot changes
 watch(() => props.chatbot, (newChatbot) => {
   loadChatbot(newChatbot);
+}, { immediate: true });
+
+// Load models when dialog opens
+watch(() => props.modelValue, (isOpen) => {
+  if (!isOpen) {
+    llmModels.value = [];
+    return;
+  }
+  loadModels();
 }, { immediate: true });
 </script>
 

@@ -16,7 +16,7 @@ export function useChatbotForm() {
     icon: 'mdi-robot',
     color: '#b0ca97',
     system_prompt: '',
-    model_name: 'gpt-4',
+    model_name: '',
     temperature: 0.7,
     max_tokens: 2000,
     top_p: 1.0,
@@ -111,7 +111,7 @@ export function useChatbotForm() {
       icon: 'mdi-robot',
       color: '#b0ca97',
       system_prompt: '',
-      model_name: 'gpt-4',
+      model_name: '',
       temperature: 0.7,
       max_tokens: 2000,
       top_p: 1.0,
@@ -145,6 +145,9 @@ export function useChatbotForm() {
   // Prepare data for saving
   function prepareForSave(isEdit, chatbotId) {
     const dataToSave = { ...formData.value };
+    if (!dataToSave.model_name) {
+      delete dataToSave.model_name;
+    }
     if (isEdit && chatbotId) {
       dataToSave.id = chatbotId;
     }

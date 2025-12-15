@@ -80,6 +80,7 @@ const view = ref(null)
 let ytext = null
 let yhighlights = null
 
+const isConnected = ref(false)
 const remoteCursors = ref({})
 let cursorSendTimer = null
 
@@ -417,7 +418,9 @@ defineExpose({ clearHighlights, refresh })
 const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, { autoSync: true })
 const { ydoc, socket, users } = collaboration
 
-const isConnected = computed(() => socket.value?.connected === true)
+let onSocketConnect = null
+let onSocketDisconnect = null
+let onSocketConnectError = null
 
 onMounted(async () => {
   error.value = ''
@@ -426,16 +429,26 @@ onMounted(async () => {
     await nextTick()
     processYDoc()
 
-    socket.value?.on('connect', () => {
+    const sock = socket.value
+    isConnected.value = sock?.connected === true
+
+    onSocketConnect = () => {
+      isConnected.value = true
       error.value = ''
-    })
-    socket.value?.on('connect_error', (err) => {
+    }
+    onSocketConnectError = (err) => {
+      isConnected.value = false
       const msg = err?.message || err
       error.value = `Collab-Verbindung fehlgeschlagen: ${msg}`
-    })
-    socket.value?.on('disconnect', () => {
+    }
+    onSocketDisconnect = () => {
+      isConnected.value = false
       if (!props.readonly) error.value = 'Collab-Verbindung getrennt (Reconnecting …)'
-    })
+    }
+
+    sock?.on('connect', onSocketConnect)
+    sock?.on('connect_error', onSocketConnectError)
+    sock?.on('disconnect', onSocketDisconnect)
   } catch (e) {
     error.value = e?.message || String(e)
   }
@@ -473,6 +486,11 @@ onUnmounted(() => {
   } catch {}
 
   if (cursorSendTimer) clearTimeout(cursorSendTimer)
+  if (socket.value) {
+    if (onSocketConnect) socket.value.off('connect', onSocketConnect)
+    if (onSocketConnectError) socket.value.off('connect_error', onSocketConnectError)
+    if (onSocketDisconnect) socket.value.off('disconnect', onSocketDisconnect)
+  }
   view.value?.destroy()
   view.value = null
   collaboration.cleanup()

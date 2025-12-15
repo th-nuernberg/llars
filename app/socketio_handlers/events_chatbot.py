@@ -34,7 +34,7 @@ from db.db import db
 from db.tables import (
     Chatbot, ChatbotConversation, ChatbotMessage, ChatbotMessageRole
 )
-from services.chatbot.chat_service import ChatService
+from services.chatbot.chat_service import ChatService, UNKNOWN_ANSWER
 from services.chatbot.file_processor import FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
 from services.permission_service import PermissionService
@@ -96,15 +96,7 @@ def _build_messages_with_footnotes(chat_service, conversation, user_message, rag
     # System prompt with footnote instructions
     footnote_instruction = ""
     if sources:
-        unknown_answer = "Ich weiß es nicht"
-        footnote_instruction = f"""
-
-WICHTIG - Antworten mit Quellen:
-- Beantworte die Frage NUR mit Hilfe des Kontexts.
-- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).
-- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.
-- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: "{unknown_answer}"
-"""
+        footnote_instruction = ChatService._build_citation_instructions()
 
     # Add vision instruction if applicable
     if is_vision and rag_images:
@@ -116,18 +108,12 @@ Du hast auch Bilder aus den Dokumenten erhalten. Analysiere diese Bilder sorgfä
     messages.append({"role": "system", "content": system_prompt})
 
     # RAG context with numbered documents
-    if rag_context and sources:
-        numbered_context = "Kontext:\n\n"
-        for source in sources:
-            footnote_id = source.get('footnote_id', 0)
-            title = source.get('title', 'Unbekannt')
-            excerpt = source.get('excerpt', '')
-            numbered_context += f"[{footnote_id}] {title}:\n{excerpt}\n\n"
-
-        messages.append({
-            "role": "system",
-            "content": numbered_context
-        })
+    if sources:
+        numbered_context = ChatService._build_numbered_context(sources)
+        if numbered_context:
+            messages.append({"role": "system", "content": numbered_context})
+    elif rag_context:
+        messages.append({"role": "system", "content": f"Kontext:\n\n{rag_context}"})
 
     # Chat history (limited)
     history = ChatbotMessage.query.filter_by(
@@ -357,7 +343,7 @@ def register_chatbot_events(socketio):
                 }, room=client_id)
             elif chatbot.rag_enabled and chatbot.collections:
                 # RAG is enabled but produced no sources. Avoid hallucinations by returning fallback directly.
-                fallback = "Ich weiß es nicht"
+                fallback = UNKNOWN_ANSWER
 
                 response_time_ms = int((time.time() - start_time) * 1000)
                 tokens_input = 0

@@ -96,21 +96,14 @@ def _build_messages_with_footnotes(chat_service, conversation, user_message, rag
     # System prompt with footnote instructions
     footnote_instruction = ""
     if sources:
-        fallback = (chatbot.fallback_message or "").strip() or "Ich konnte leider keine passende Antwort finden."
-        footnote_instruction = """
+        unknown_answer = "Ich weiß es nicht."
+        footnote_instruction = f"""
 
-WICHTIG - Quellenangaben:
-Du hast Zugriff auf die folgenden nummerierten Dokumente. Wenn du Informationen aus diesen Dokumenten verwendest, MUSST du Fußnoten im Format [1], [2], etc. direkt im Text setzen.
-- Setze die Fußnote DIREKT nach dem Satz oder der Information, die aus der Quelle stammt.
-- Verwende NUR die Nummern der Dokumente, die du tatsächlich verwendest.
-- Beispiel: "Die Hauptstadt von Frankreich ist Paris [1]."
-"""
-        footnote_instruction += f"""
-
-WICHTIG - Keine Halluzination:
-Wenn die Antwort nicht eindeutig aus den Dokumenten ableitbar ist, antworte exakt mit:
-{fallback}
-und setze keine Fußnoten.
+WICHTIG - Antworten mit Quellen:
+- Beantworte die Frage NUR mit Hilfe des Kontexts.
+- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).
+- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.
+- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: "{unknown_answer}"
 """
 
     # Add vision instruction if applicable
@@ -124,7 +117,7 @@ Du hast auch Bilder aus den Dokumenten erhalten. Analysiere diese Bilder sorgfä
 
     # RAG context with numbered documents
     if rag_context and sources:
-        numbered_context = "Verfügbare Dokumente:\n\n"
+        numbered_context = "Kontext:\n\n"
         for source in sources:
             footnote_id = source.get('footnote_id', 0)
             title = source.get('title', 'Unbekannt')
@@ -364,7 +357,7 @@ def register_chatbot_events(socketio):
                 }, room=client_id)
             elif chatbot.rag_enabled and chatbot.collections:
                 # RAG is enabled but produced no sources. Avoid hallucinations by returning fallback directly.
-                fallback = (chatbot.fallback_message or "").strip() or "Ich konnte leider keine passenden Quellen finden."
+                fallback = "Ich weiß es nicht."
 
                 response_time_ms = int((time.time() - start_time) * 1000)
                 tokens_input = 0

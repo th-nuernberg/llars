@@ -513,6 +513,10 @@ class DocumentService:
         }
 
         if include_details:
+            screenshot_url = document.screenshot_url
+            if document.screenshot_path and not screenshot_url:
+                screenshot_url = f"/api/rag/documents/{document.id}/screenshot"
+
             base_data.update({
                 'original_filename': document.original_filename,
                 'keywords': document.keywords,
@@ -525,7 +529,7 @@ class DocumentService:
                 'archived_at': document.archived_at.isoformat() if document.archived_at else None,
                 # Screenshot info for web-crawled documents
                 'screenshot_path': document.screenshot_path,
-                'screenshot_url': document.screenshot_url,
+                'screenshot_url': screenshot_url,
                 'has_screenshot': bool(document.screenshot_path),
                 # Source URL for web-crawled documents
                 'source_url': document.source_url

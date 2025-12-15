@@ -362,6 +362,11 @@ class ChatService:
                 if doc:
                     filename = doc.filename or filename
                     title = doc.title or doc.original_filename or filename or title
+                    screenshot_url = doc.screenshot_url or (f"/api/rag/documents/{doc_id}/screenshot" if doc.screenshot_path else None)
+                else:
+                    screenshot_url = None
+            else:
+                screenshot_url = None
 
             sources.append({
                 'footnote_id': i + 1,
@@ -380,7 +385,8 @@ class ChatService:
                 'download_url': f"/api/rag/documents/{doc_id}/download" if doc_id else None,
                 'content_url': f"/api/rag/documents/{doc_id}/content" if doc_id else None,
                 'chunks_url': f"/api/rag/documents/{doc_id}/chunks" if doc_id else None,
-                'document_url': f"/api/rag/documents/{doc_id}" if doc_id else None
+                'document_url': f"/api/rag/documents/{doc_id}" if doc_id else None,
+                'screenshot_url': screenshot_url
             })
 
         context = "\n\n---\n\n".join(context_parts)

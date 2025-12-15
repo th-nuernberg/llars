@@ -43,6 +43,34 @@ from auth.oidc_validator import validate_token
 logger = logging.getLogger(__name__)
 
 
+def _classify_token_error(token: str) -> str:
+    """Best-effort classification of auth failures for frontend handling."""
+    if not token:
+        return 'missing token'
+    try:
+        import jwt as pyjwt
+
+        decoded = pyjwt.decode(
+            token,
+            options={
+                "verify_signature": False,
+                "verify_exp": False,
+                "verify_aud": False,
+                "verify_iss": False,
+            }
+        )
+        exp = decoded.get('exp')
+        if exp is None:
+            return 'invalid token'
+
+        exp_int = int(exp)
+        if exp_int < int(time.time()):
+            return 'jwt expired'
+        return 'invalid token'
+    except Exception:
+        return 'invalid token'
+
+
 def _build_messages_with_footnotes(chat_service, conversation, user_message, rag_context, sources, rag_images=None):
     """
     Build LLM messages with instructions to use footnote references.
@@ -239,12 +267,20 @@ def register_chatbot_events(socketio):
 
             token = data.get("token")
             if not token:
-                emit("chatbot:error", {"error": "Authentication required"}, room=client_id)
+                emit("chatbot:error", {"error": "Authentication required", "code": "AUTH_REQUIRED"}, room=client_id)
                 return
 
             payload = validate_token(token)
             if not payload:
-                emit("chatbot:error", {"error": "Authentication failed"}, room=client_id)
+                reason = _classify_token_error(token)
+                emit(
+                    "chatbot:error",
+                    {
+                        "error": f"Authentication failed: {reason}",
+                        "code": "AUTH_EXPIRED" if reason == "jwt expired" else "AUTH_FAILED",
+                    },
+                    room=client_id
+                )
                 return
 
             username_from_token = (
@@ -255,11 +291,11 @@ def register_chatbot_events(socketio):
                 payload.get('sub')
             )
             if not username_from_token:
-                emit("chatbot:error", {"error": "Authentication failed"}, room=client_id)
+                emit("chatbot:error", {"error": "Authentication failed", "code": "AUTH_FAILED"}, room=client_id)
                 return
 
             if not PermissionService.check_permission(username_from_token, 'feature:chatbots:view'):
-                emit("chatbot:error", {"error": "Forbidden"}, room=client_id)
+                emit("chatbot:error", {"error": "Forbidden", "code": "FORBIDDEN"}, room=client_id)
                 return
 
             chatbot_id = data.get("chatbot_id")
@@ -286,11 +322,11 @@ def register_chatbot_events(socketio):
                 return
 
             if not ChatbotAccessService.user_can_access_chatbot(username, chatbot):
-                emit("chatbot:error", {"error": "Forbidden"}, room=client_id)
+                emit("chatbot:error", {"error": "Forbidden", "code": "FORBIDDEN"}, room=client_id)
                 return
 
             if not chatbot.is_active:
-                emit("chatbot:error", {"error": "Chatbot is not active"}, room=client_id)
+                emit("chatbot:error", {"error": "Chatbot is not active", "code": "BOT_INACTIVE"}, room=client_id)
                 return
 
             # Initialize service (for RAG and conversation management)

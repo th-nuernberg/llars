@@ -9,6 +9,7 @@ import requests
 from functools import lru_cache
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List
+from urllib.parse import urlparse
 from flask import request, jsonify
 
 
@@ -180,9 +181,17 @@ def validate_token(token: str, verify_signature: bool = True) -> Optional[Dict]:
                 return None
 
             token_iss = decoded.get('iss')
-            if token_iss and oidc_config.issuer not in token_iss:
-                print(f"Invalid issuer. Expected issuer '{oidc_config.issuer}' in {token_iss}")
-                return None
+            if token_iss:
+                # Accept different hostnames in proxy/dev setups, but ensure the issuer path matches.
+                try:
+                    expected_path = urlparse(f"{oidc_config.issuer.rstrip('/')}/").path.rstrip('/')
+                    token_path = urlparse(f"{str(token_iss).rstrip('/')}/").path.rstrip('/')
+                    if expected_path and token_path != expected_path:
+                        print(f"Invalid issuer path. Expected: {expected_path}, got: {token_path}")
+                        return None
+                except Exception as e:
+                    print(f"Invalid issuer. Could not parse issuer URL: {e}")
+                    return None
         else:
             decoded = jwt.decode(token, options={'verify_signature': False})
 

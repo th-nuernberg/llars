@@ -43,7 +43,7 @@ def require_permission(permission_key: str):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_without_validation()
+            username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({
@@ -88,7 +88,7 @@ def require_any_permission(*permission_keys):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_without_validation()
+            username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({
@@ -136,7 +136,7 @@ def require_all_permissions(*permission_keys):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_without_validation()
+            username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({

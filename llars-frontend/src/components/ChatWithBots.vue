@@ -889,6 +889,13 @@ function showSourceDetail(source) {
   sourceDialog.value = { show: true, source }
 }
 
+function openSourceFromCitation(source) {
+  if (!source) return
+  sourcePanel.value.open = true
+  sourcePanel.value.pinned = true
+  openSourceInPanel(source)
+}
+
 function toggleSourcePanel() {
   if (sourcePanel.value.open) {
     closeSourcePanel()
@@ -995,7 +1002,7 @@ function handleFootnoteClick(event, sources) {
     if (sources && sources.length > 0) {
       const source = sources.find(s => s.footnote_id === footnoteId)
       if (source) {
-        showSourceDetail(source)
+        openSourceFromCitation(source)
       }
     }
   }

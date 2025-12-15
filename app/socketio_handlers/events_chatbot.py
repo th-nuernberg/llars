@@ -96,6 +96,7 @@ def _build_messages_with_footnotes(chat_service, conversation, user_message, rag
     # System prompt with footnote instructions
     footnote_instruction = ""
     if sources:
+        fallback = (chatbot.fallback_message or "").strip() or "Ich konnte leider keine passende Antwort finden."
         footnote_instruction = """
 
 WICHTIG - Quellenangaben:
@@ -103,6 +104,13 @@ Du hast Zugriff auf die folgenden nummerierten Dokumente. Wenn du Informationen 
 - Setze die Fußnote DIREKT nach dem Satz oder der Information, die aus der Quelle stammt.
 - Verwende NUR die Nummern der Dokumente, die du tatsächlich verwendest.
 - Beispiel: "Die Hauptstadt von Frankreich ist Paris [1]."
+"""
+        footnote_instruction += f"""
+
+WICHTIG - Keine Halluzination:
+Wenn die Antwort nicht eindeutig aus den Dokumenten ableitbar ist, antworte exakt mit:
+{fallback}
+und setze keine Fußnoten.
 """
 
     # Add vision instruction if applicable
@@ -354,6 +362,41 @@ def register_chatbot_events(socketio):
                 emit("chatbot:sources", {
                     "sources": sources_with_ids
                 }, room=client_id)
+            elif chatbot.rag_enabled and chatbot.collections:
+                # RAG is enabled but produced no sources. Avoid hallucinations by returning fallback directly.
+                fallback = (chatbot.fallback_message or "").strip() or "Ich konnte leider keine passenden Quellen finden."
+
+                response_time_ms = int((time.time() - start_time) * 1000)
+                tokens_input = 0
+                tokens_output = 0
+
+                assistant_msg = chat_service._save_message(
+                    conversation.id,
+                    ChatbotMessageRole.ASSISTANT,
+                    fallback,
+                    rag_context=None,
+                    rag_sources=[],
+                    tokens_input=tokens_input,
+                    tokens_output=tokens_output,
+                    response_time_ms=response_time_ms
+                )
+
+                conversation.message_count += 2
+                conversation.last_message_at = datetime.now()
+                if not conversation.title and len(user_message) > 0:
+                    conversation.title = user_message[:50] + ('...' if len(user_message) > 50 else '')
+                db.session.commit()
+
+                emit("chatbot:response", {"content": fallback, "complete": False}, room=client_id)
+                emit("chatbot:complete", {
+                    "conversation_id": conversation.id,
+                    "message_id": assistant_msg.id,
+                    "tokens": {"input": tokens_input, "output": tokens_output},
+                    "response_time_ms": response_time_ms
+                }, room=client_id)
+                emit("chatbot:response", {"content": "", "complete": True}, room=client_id)
+                logger.info(f"Chatbot {chatbot.name} returned fallback (no sources) in {response_time_ms}ms")
+                return
 
             # Check if model supports vision and load RAG images if so
             is_vision_model = FileProcessor.is_vision_model(chatbot.model_name)

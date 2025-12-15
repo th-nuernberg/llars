@@ -55,9 +55,19 @@ from db.models.oncoco import (
 from db.models.chatbot import (
     ChatbotMessageRole,
     Chatbot,
+    ChatbotUserAccess,
     ChatbotCollection,
     ChatbotConversation,
     ChatbotMessage,
+)
+
+# Markdown Collab models
+from db.models.markdown_collab import (
+    MarkdownWorkspaceVisibility,
+    MarkdownNodeType,
+    MarkdownWorkspace,
+    MarkdownDocument,
+    MarkdownCommit,
 )
 
 # LLM Model configuration
@@ -146,9 +156,16 @@ __all__ = [
     # Chatbot
     'ChatbotMessageRole',
     'Chatbot',
+    'ChatbotUserAccess',
     'ChatbotCollection',
     'ChatbotConversation',
     'ChatbotMessage',
+    # Markdown Collab
+    'MarkdownWorkspaceVisibility',
+    'MarkdownNodeType',
+    'MarkdownWorkspace',
+    'MarkdownDocument',
+    'MarkdownCommit',
     # LLM Model
     'LLMModel',
     'DEFAULT_LLM_MODELS',

@@ -63,7 +63,7 @@
       </v-col>
 
       <!-- Main Chat Area -->
-      <v-col cols="12" :md="sidebarCollapsed ? 12 : 9" class="chat-main">
+      <v-col cols="12" :md="mainChatMd" class="chat-main">
         <!-- Chat Header -->
         <div v-if="selectedChatbot" class="chat-header">
           <div class="d-flex align-center">
@@ -80,14 +80,24 @@
               </div>
             </div>
           </div>
-          <v-btn
-            icon
-            variant="text"
-            @click="clearChat"
-            title="Chat leeren"
-          >
-            <v-icon>mdi-delete-outline</v-icon>
-          </v-btn>
+          <div class="d-flex align-center ga-1">
+            <v-btn
+              icon
+              variant="text"
+              @click="toggleSourcePanel"
+              title="Quellen"
+            >
+              <v-icon>{{ sourcePanel.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              variant="text"
+              @click="clearChat"
+              title="Chat leeren"
+            >
+              <v-icon>mdi-delete-outline</v-icon>
+            </v-btn>
+          </div>
         </div>
 
         <!-- Empty State -->
@@ -258,6 +268,133 @@
           </div>
         </div>
       </v-col>
+
+      <!-- Sources Side Panel -->
+      <v-col v-if="sourcePanel.open" cols="12" md="3" class="sources-panel">
+        <v-card class="sources-panel-card" variant="outlined">
+          <div class="sources-panel-header">
+            <div class="d-flex align-center text-truncate">
+              <v-icon class="mr-2">mdi-bookmark-multiple</v-icon>
+              <span class="font-weight-bold text-truncate">
+                {{ sourcePanel.source?.title || sourcePanel.source?.filename || 'Quelle' }}
+              </span>
+            </div>
+            <div class="d-flex align-center">
+              <v-btn
+                icon
+                variant="text"
+                size="small"
+                @click="sourcePanel.pinned = !sourcePanel.pinned"
+                :title="sourcePanel.pinned ? 'Lösen' : 'Anheften'"
+              >
+                <v-icon>{{ sourcePanel.pinned ? 'mdi-pin' : 'mdi-pin-outline' }}</v-icon>
+              </v-btn>
+              <v-btn
+                icon
+                variant="text"
+                size="small"
+                @click="closeSourcePanel"
+                title="Schließen"
+              >
+                <v-icon>mdi-close</v-icon>
+              </v-btn>
+            </div>
+          </div>
+
+          <v-divider />
+
+          <v-tabs v-model="sourcePanel.tab" bg-color="primary" density="compact">
+            <v-tab value="excerpt">
+              <v-icon start>mdi-text-box</v-icon>
+              Ausschnitt
+            </v-tab>
+            <v-tab value="document" :disabled="!sourcePanel.source?.content_url">
+              <v-icon start>mdi-file-document</v-icon>
+              Dokument
+            </v-tab>
+          </v-tabs>
+
+          <v-window v-model="sourcePanel.tab" class="sources-panel-window">
+            <v-window-item value="excerpt">
+              <div class="sources-panel-content">
+                <div v-if="!sourcePanel.source" class="text-center pa-6 text-medium-emphasis">
+                  <v-icon size="48" class="mb-2">mdi-bookmark-outline</v-icon>
+                  <div>Quelle auswählen</div>
+                </div>
+                <template v-else>
+                  <div class="d-flex flex-wrap ga-2 mb-3">
+                    <v-chip v-if="sourcePanel.source.collection_name" size="small" variant="tonal" color="primary">
+                      <v-icon start size="14">mdi-folder</v-icon>
+                      {{ sourcePanel.source.collection_name }}
+                    </v-chip>
+                    <v-chip v-if="sourcePanel.source.page_number" size="small" variant="outlined">
+                      <v-icon start size="14">mdi-book-open-page-variant</v-icon>
+                      Seite {{ sourcePanel.source.page_number }}
+                    </v-chip>
+                    <v-chip v-if="sourcePanel.source.chunk_index !== null && sourcePanel.source.chunk_index !== undefined" size="small" variant="outlined">
+                      <v-icon start size="14">mdi-text</v-icon>
+                      Chunk {{ sourcePanel.source.chunk_index }}
+                    </v-chip>
+                    <v-chip v-if="sourcePanel.source.relevance !== null && sourcePanel.source.relevance !== undefined" size="small" variant="tonal" color="success">
+                      {{ ((sourcePanel.source.relevance || 0) * 100).toFixed(0) }}% relevant
+                    </v-chip>
+                  </div>
+
+                  <div class="sources-panel-excerpt">
+                    {{ sourcePanel.source.excerpt }}
+                  </div>
+
+                  <div class="d-flex align-center mt-4">
+                    <v-btn
+                      v-if="sourcePanel.source.download_url"
+                      :href="sourcePanel.source.download_url"
+                      target="_blank"
+                      rel="noopener"
+                      color="primary"
+                      variant="tonal"
+                    >
+                      <v-icon start>mdi-download</v-icon>
+                      Dokument
+                    </v-btn>
+                    <v-spacer />
+                    <v-btn
+                      variant="text"
+                      @click="sourcePanel.tab = 'document'"
+                      :disabled="!sourcePanel.source.content_url"
+                    >
+                      <v-icon start>mdi-file-search</v-icon>
+                      Text anzeigen
+                    </v-btn>
+                  </div>
+                </template>
+              </div>
+            </v-window-item>
+
+            <v-window-item value="document">
+              <div class="sources-panel-content">
+                <v-skeleton-loader v-if="sourcePanel.loadingContent" type="article" />
+                <v-alert
+                  v-else-if="sourcePanel.contentError"
+                  type="error"
+                  variant="tonal"
+                  density="compact"
+                >
+                  {{ sourcePanel.contentError }}
+                </v-alert>
+                <div v-else class="sources-panel-document">
+                  <div v-if="!sourcePanel.documentContent" class="text-center pa-6 text-medium-emphasis">
+                    <v-icon size="48" class="mb-2">mdi-file-document-outline</v-icon>
+                    <div>Kein Inhalt verfügbar</div>
+                  </div>
+                  <div v-else class="sources-panel-text">
+                    {{ sourcePanel.documentContent }}
+                  </div>
+                </div>
+              </div>
+            </v-window-item>
+          </v-window>
+        </v-card>
+      </v-col>
     </v-row>
 
     <!-- Snackbar -->
@@ -290,6 +427,13 @@
           {{ sourceDialog.source?.excerpt }}
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            variant="text"
+            @click="pinSourceToPanel(sourceDialog.source)"
+          >
+            <v-icon start>mdi-pin</v-icon>
+            Anheften
+          </v-btn>
           <v-btn
             v-if="sourceDialog.source?.download_url"
             :href="sourceDialog.source.download_url"
@@ -355,6 +499,17 @@ const sessionId = ref(null)
 const sidebarCollapsed = ref(false)
 const selectedFiles = ref([])
 
+const sourcePanel = ref({
+  open: false,
+  pinned: false,
+  tab: 'excerpt',
+  source: null,
+  documentContent: '',
+  loadedDocumentId: null,
+  loadingContent: false,
+  contentError: null
+})
+
 // Refs
 const chatContainer = ref(null)
 const fileInput = ref(null)
@@ -387,6 +542,13 @@ const fileUploadTooltip = computed(() => {
     return 'Bilder und Dokumente hochladen'
   }
   return 'Dokumente hochladen (PDF, Word, Excel, PowerPoint)'
+})
+
+const mainChatMd = computed(() => {
+  if (sourcePanel.value.open) {
+    return sidebarCollapsed.value ? 9 : 6
+  }
+  return sidebarCollapsed.value ? 12 : 9
 })
 
 // ==================== CHATBOT MANAGEMENT ====================
@@ -682,11 +844,77 @@ function formatFileSize(bytes) {
  * Show source detail dialog
  */
 function showSourceDetail(source) {
-  sourceDialog.value = {
-    show: true,
-    source: source
+  if (sourcePanel.value.pinned) {
+    openSourceInPanel(source)
+    return
+  }
+
+  sourceDialog.value = { show: true, source }
+}
+
+function toggleSourcePanel() {
+  if (sourcePanel.value.open) {
+    closeSourcePanel()
+    return
+  }
+  sourcePanel.value.open = true
+  sourcePanel.value.pinned = true
+}
+
+function closeSourcePanel() {
+  sourcePanel.value.open = false
+  sourcePanel.value.pinned = false
+  sourcePanel.value.tab = 'excerpt'
+}
+
+function pinSourceToPanel(source) {
+  if (!source) return
+  sourcePanel.value.open = true
+  sourcePanel.value.pinned = true
+  sourceDialog.value.show = false
+  openSourceInPanel(source)
+}
+
+function openSourceInPanel(source) {
+  sourcePanel.value.source = source
+  sourcePanel.value.tab = 'excerpt'
+  sourcePanel.value.contentError = null
+
+  if (sourcePanel.value.loadedDocumentId !== source?.document_id) {
+    sourcePanel.value.documentContent = ''
+    sourcePanel.value.loadedDocumentId = source?.document_id || null
   }
 }
+
+async function loadPanelDocumentContent() {
+  const source = sourcePanel.value.source
+  if (!source?.content_url) return
+  if (sourcePanel.value.documentContent) return
+
+  sourcePanel.value.loadingContent = true
+  sourcePanel.value.contentError = null
+  try {
+    const response = await axios.get(source.content_url)
+    if (response.data?.success) {
+      sourcePanel.value.documentContent = response.data.content || ''
+    } else {
+      sourcePanel.value.contentError = response.data?.error || 'Konnte Dokumenttext nicht laden'
+    }
+  } catch (error) {
+    sourcePanel.value.contentError = error.response?.data?.error || 'Konnte Dokumenttext nicht laden'
+  } finally {
+    sourcePanel.value.loadingContent = false
+  }
+}
+
+watch(
+  () => sourcePanel.value.tab,
+  async (tab) => {
+    if (tab === 'document') {
+      await loadPanelDocumentContent()
+    }
+  }
+)
 
 /**
  * Handle click on footnote references in message content
@@ -1025,6 +1253,59 @@ onUnmounted(() => {
   padding: 16px 24px;
   background: rgb(var(--v-theme-surface));
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.sources-panel {
+  background: rgb(var(--v-theme-surface));
+  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sources-panel-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sources-panel-header {
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-primary), 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sources-panel-window {
+  flex: 1;
+  overflow: hidden;
+}
+
+.sources-panel-window :deep(.v-window__container),
+.sources-panel-window :deep(.v-window-item) {
+  height: 100%;
+}
+
+.sources-panel-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.sources-panel-excerpt {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.9rem;
+}
+
+.sources-panel-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 0.85rem;
 }
 
 .file-preview {

@@ -56,14 +56,15 @@
         <v-divider />
 
         <div class="content-body">
-          <v-skeleton-loader
-            v-if="isLoading('document')"
-            type="card"
-            class="ma-4"
-            height="320"
-          />
+          <div v-if="isLoading('document')" class="document-loading-overlay">
+            <v-skeleton-loader
+              type="card"
+              class="document-loading-skeleton"
+              height="320"
+            />
+          </div>
 
-          <div v-else class="h-100">
+          <div class="h-100">
             <v-alert
               v-if="!hasPermission('feature:markdown_collab:view')"
               type="warning"
@@ -333,6 +334,21 @@ onMounted(async () => {
   flex: 1;
   overflow: hidden;
   position: relative;
+}
+
+.document-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(var(--v-theme-background), 0.55);
+}
+
+.document-loading-skeleton {
+  width: 100%;
+  max-width: 980px;
 }
 
 .pane-grid {

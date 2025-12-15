@@ -1061,15 +1061,40 @@ function initSocket() {
 
   // Error handling
   socket.value.on('chatbot:error', (data) => {
-    console.error('Chatbot error:', data.error)
+    const errMsg = String(data?.error || '')
+    console.error('Chatbot error:', errMsg)
+
+    const code = String(data?.code || '')
+    const lower = errMsg.toLowerCase()
+    const isAuthError = (
+      code.startsWith('AUTH_') ||
+      lower.includes('authentication required') ||
+      lower.includes('authentication failed') ||
+      lower.includes('jwt expired')
+    )
+
+    if (isAuthError) {
+      try {
+        sessionStorage.removeItem('auth_token')
+        sessionStorage.removeItem('auth_refreshToken')
+        sessionStorage.removeItem('auth_idToken')
+        sessionStorage.removeItem('auth_llars_roles')
+        localStorage.removeItem('username')
+      } catch {}
+
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      window.location.href = `/login?redirect=${encodeURIComponent(current)}`
+      return
+    }
+
     const lastIdx = messages.value.length - 1
     if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot') {
-      messages.value[lastIdx].content = data.error || 'Ein Fehler ist aufgetreten.'
+      messages.value[lastIdx].content = errMsg || 'Ein Fehler ist aufgetreten.'
       messages.value[lastIdx].streaming = false
       messages.value[lastIdx].timestamp = new Date().toLocaleTimeString()
     }
     isProcessing.value = false
-    showSnackbar(data.error || 'Fehler beim Senden', 'error')
+    showSnackbar(errMsg || 'Fehler beim Senden', 'error')
   })
 }
 

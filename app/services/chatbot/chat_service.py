@@ -21,7 +21,7 @@ from services.chatbot.file_processor import FileProcessor, file_processor
 
 logger = logging.getLogger(__name__)
 
-UNKNOWN_ANSWER = "Ich weiß es nicht."
+UNKNOWN_ANSWER = "Ich weiß es nicht"
 
 
 class ChatService:

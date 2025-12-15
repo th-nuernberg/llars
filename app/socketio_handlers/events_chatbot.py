@@ -96,7 +96,7 @@ def _build_messages_with_footnotes(chat_service, conversation, user_message, rag
     # System prompt with footnote instructions
     footnote_instruction = ""
     if sources:
-        unknown_answer = "Ich weiß es nicht."
+        unknown_answer = "Ich weiß es nicht"
         footnote_instruction = f"""
 
 WICHTIG - Antworten mit Quellen:
@@ -357,7 +357,7 @@ def register_chatbot_events(socketio):
                 }, room=client_id)
             elif chatbot.rag_enabled and chatbot.collections:
                 # RAG is enabled but produced no sources. Avoid hallucinations by returning fallback directly.
-                fallback = "Ich weiß es nicht."
+                fallback = "Ich weiß es nicht"
 
                 response_time_ms = int((time.time() - start_time) * 1000)
                 tokens_input = 0

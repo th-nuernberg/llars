@@ -238,8 +238,6 @@ class EmbeddingWorker:
             db: Database session
         """
         from db.tables import RAGDocumentChunk, RAGCollection, RAGProcessingQueue, CollectionDocumentLink
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-        from langchain_community.document_loaders import TextLoader
         from langchain_chroma import Chroma
         import os
 
@@ -261,11 +259,6 @@ class EmbeddingWorker:
         # Emit progress
         self._emit_progress(doc, 'processing', progress=10, step='Loading document')
 
-        # Load document content
-        content = self._load_document_content(doc)
-        if not content:
-            raise ValueError(f"Could not load content from {doc.file_path}")
-
         # Update progress
         if queue_entry:
             queue_entry.current_step = 'Splitting into chunks'
@@ -273,13 +266,18 @@ class EmbeddingWorker:
             db.session.commit()
         self._emit_progress(doc, 'processing', progress=30, step='Splitting into chunks')
 
-        # Split into chunks
-        text_splitter = RecursiveCharacterTextSplitter(
+        # Split into chunks (PDF-aware, with offsets)
+        from services.rag.lumber_chunker import chunk_file
+
+        chunks = chunk_file(
+            doc.file_path,
+            doc.mime_type,
             chunk_size=1000,
             chunk_overlap=200,
-            separators=["# ", "## ", "\n\n", "\n", ". ", "! ", "? "]
         )
-        chunks = text_splitter.split_text(content)
+        if not chunks:
+            raise ValueError(f"Could not extract any text from {doc.file_path}")
+
         logger.info(f"[EmbeddingWorker] Document {doc.id} split into {len(chunks)} chunks")
 
         # Update progress
@@ -320,8 +318,9 @@ class EmbeddingWorker:
 
         # Create embeddings and store in ChromaDB
         vector_ids = []
-        for i, chunk_text in enumerate(chunks):
+        for i, chunk in enumerate(chunks):
             try:
+                chunk_text = chunk.text
                 # Generate unique ID for this chunk
                 chunk_id = f"doc_{doc.id}_chunk_{i}_{uuid.uuid4().hex[:8]}"
 
@@ -334,8 +333,9 @@ class EmbeddingWorker:
                     chunk_index=i,
                     content=chunk_text,
                     content_hash=self._hash_content(chunk_text),
-                    start_char=0,  # Would need proper tracking for accurate values
-                    end_char=len(chunk_text),
+                    page_number=chunk.page_number,
+                    start_char=chunk.start_char,
+                    end_char=chunk.end_char,
                     embedding_model=self._pipeline.model_name,
                     embedding_status='completed',
                     vector_id=chunk_id
@@ -369,14 +369,18 @@ class EmbeddingWorker:
             # Add texts with IDs - store all linked collection IDs in metadata
             collection_ids = [c.id for c in linked_collections]
             vectorstore.add_texts(
-                texts=chunks,
+                texts=[c.text for c in chunks],
                 ids=vector_ids,
                 metadatas=[{
                     'document_id': doc.id,
                     'chunk_index': i,
                     'filename': doc.filename,
                     'collection_id': primary_collection.id,  # Primary collection
-                    'collection_ids': ','.join(map(str, collection_ids))  # All linked collections
+                    'collection_ids': ','.join(map(str, collection_ids)),  # All linked collections
+                    'page_number': chunks[i].page_number,
+                    'start_char': chunks[i].start_char,
+                    'end_char': chunks[i].end_char,
+                    'vector_id': vector_ids[i]
                 } for i in range(len(chunks))]
             )
             logger.info(f"[EmbeddingWorker] Added {len(chunks)} chunks to ChromaDB collection {collection_name}")

@@ -1,0 +1,403 @@
+<template>
+  <div class="tree-panel">
+    <div class="tree-header">
+      <div class="d-flex align-center">
+        <v-icon class="mr-2">mdi-file-tree</v-icon>
+        <span class="font-weight-medium">Workspace</span>
+      </div>
+      <v-spacer />
+      <v-btn
+        icon="mdi-file-document-plus-outline"
+        variant="text"
+        :disabled="!canEdit"
+        title="Neue Datei"
+        @click="openCreateDialog('file')"
+      />
+      <v-btn
+        icon="mdi-folder-plus-outline"
+        variant="text"
+        :disabled="!canEdit"
+        title="Neuer Ordner"
+        @click="openCreateDialog('folder')"
+      />
+    </div>
+
+    <div class="px-3 pt-3">
+      <v-text-field
+        v-model="filterText"
+        density="compact"
+        variant="outlined"
+        hide-details
+        placeholder="Suchen…"
+        prepend-inner-icon="mdi-magnify"
+        class="tree-search"
+      />
+    </div>
+
+    <div class="tree-body">
+      <v-skeleton-loader v-if="loading" type="list-item@10" class="px-3 pt-2" />
+
+      <div v-else class="tree-scroll px-2 pb-2">
+        <draggable
+          v-if="dragEnabled"
+          :list="localNodes"
+          item-key="id"
+          :group="{ name: 'markdown-tree', pull: true, put: true }"
+          handle=".drag-handle"
+          :animation="150"
+          @change="(evt) => emitMove(evt, null)"
+        >
+          <template #item="{ element }">
+            <div class="drag-wrapper">
+              <span class="drag-handle" title="Ziehen">
+                <v-icon size="14" class="text-medium-emphasis">mdi-drag</v-icon>
+              </span>
+              <MarkdownTreeNode
+                :node="element"
+                :selected-id="selectedId"
+                :expanded-ids="expandedIds"
+                :can-edit="canEdit"
+                :drag-enabled="dragEnabled"
+                @select="$emit('select', $event)"
+                @toggle="toggleExpand"
+                @create="(p) => openCreateDialog(p.type, p.parentId)"
+                @rename="openRenameDialog"
+                @remove="openDeleteDialog"
+                @move="$emit('move', $event)"
+              />
+            </div>
+          </template>
+        </draggable>
+
+        <template v-else>
+          <MarkdownTreeNode
+            v-for="node in filteredNodes"
+            :key="node.id"
+            :node="node"
+            :selected-id="selectedId"
+            :expanded-ids="expandedIds"
+            :can-edit="canEdit"
+            :drag-enabled="false"
+            @select="$emit('select', $event)"
+            @toggle="toggleExpand"
+            @create="(p) => openCreateDialog(p.type, p.parentId)"
+            @rename="openRenameDialog"
+            @remove="openDeleteDialog"
+            @move="$emit('move', $event)"
+          />
+        </template>
+      </div>
+    </div>
+
+    <!-- Create -->
+    <v-dialog v-model="createDialog" max-width="520">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">{{ createType === 'folder' ? 'mdi-folder-plus-outline' : 'mdi-file-document-plus-outline' }}</v-icon>
+          {{ createType === 'folder' ? 'Neuer Ordner' : 'Neue Datei' }}
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="createDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-alert v-if="createError" type="error" variant="tonal" class="mb-4">
+            {{ createError }}
+          </v-alert>
+          <v-text-field
+            v-model="createTitle"
+            label="Name"
+            :placeholder="createType === 'folder' ? 'z. B. Research' : 'z. B. intro.md'"
+            variant="outlined"
+            density="comfortable"
+            autofocus
+          />
+          <div class="text-caption text-medium-emphasis">
+            Ziel: {{ createParentLabel }}
+          </div>
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" @click="createDialog = false">Abbrechen</v-btn>
+          <v-btn color="primary" :disabled="!canSubmitCreate" @click="submitCreate">
+            Erstellen
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Rename -->
+    <v-dialog v-model="renameDialog" max-width="520">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-rename-box</v-icon>
+          Umbenennen
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="renameDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-alert v-if="renameError" type="error" variant="tonal" class="mb-4">
+            {{ renameError }}
+          </v-alert>
+          <v-text-field
+            v-model="renameTitle"
+            label="Name"
+            variant="outlined"
+            density="comfortable"
+            autofocus
+          />
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" @click="renameDialog = false">Abbrechen</v-btn>
+          <v-btn color="primary" :disabled="!canSubmitRename" @click="submitRename">Speichern</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete -->
+    <v-dialog v-model="deleteDialog" max-width="520">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2" color="error">mdi-delete-outline</v-icon>
+          Löschen
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="deleteDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <div class="text-body-1">
+            Möchtest du <strong>{{ pendingDelete?.title }}</strong> wirklich löschen?
+          </div>
+          <div class="text-caption text-medium-emphasis mt-2">
+            Ordner werden rekursiv gelöscht.
+          </div>
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" @click="deleteDialog = false">Abbrechen</v-btn>
+          <v-btn color="error" @click="submitDelete">Löschen</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+
+<script setup>
+import { computed, ref, watch } from 'vue'
+import draggable from 'vuedraggable'
+import MarkdownTreeNode from './MarkdownTreeNode.vue'
+
+const props = defineProps({
+  workspaceId: { type: Number, required: true },
+  nodes: { type: Array, default: () => [] },
+  selectedId: { type: Number, default: null },
+  loading: { type: Boolean, default: false },
+  canEdit: { type: Boolean, default: false }
+})
+
+const emit = defineEmits(['select', 'create', 'rename', 'remove', 'move'])
+
+const localNodes = ref([])
+const filterText = ref('')
+
+const expandedIds = ref(new Set())
+const EXPANDED_KEY = computed(() => `markdown-collab-expanded-${props.workspaceId}`)
+
+function persistExpanded() {
+  try {
+    localStorage.setItem(EXPANDED_KEY.value, JSON.stringify(Array.from(expandedIds.value)))
+  } catch {}
+}
+
+function restoreExpanded() {
+  try {
+    const raw = localStorage.getItem(EXPANDED_KEY.value)
+    if (!raw) {
+      // Default: expand top-level folders for first-time users
+      expandedIds.value = new Set(
+        (localNodes.value || [])
+          .filter(n => n.type === 'folder')
+          .map(n => Number(n.id))
+      )
+      return
+    }
+    const ids = JSON.parse(raw)
+    if (Array.isArray(ids)) expandedIds.value = new Set(ids.map(Number))
+  } catch {}
+}
+
+watch(
+  () => props.nodes,
+  (val) => {
+    localNodes.value = JSON.parse(JSON.stringify(val || []))
+    restoreExpanded()
+  },
+  { immediate: true }
+)
+
+const dragEnabled = computed(() => props.canEdit && filterText.value.trim().length === 0)
+
+function toggleExpand(id) {
+  const next = new Set(expandedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expandedIds.value = next
+  persistExpanded()
+}
+
+function findNodeById(nodes, id) {
+  for (const n of nodes) {
+    if (n.id === id) return n
+    if (n.children?.length) {
+      const found = findNodeById(n.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function filterTree(nodes, query) {
+  const q = query.trim().toLowerCase()
+  if (!q) return nodes
+  const out = []
+  for (const n of nodes) {
+    const children = n.children?.length ? filterTree(n.children, query) : []
+    const match = (n.title || '').toLowerCase().includes(q)
+    if (match || children.length) out.push({ ...n, children })
+  }
+  return out
+}
+
+const filteredNodes = computed(() => filterTree(localNodes.value, filterText.value))
+
+function emitMove(evt, parentId) {
+  const moved = evt?.moved
+  const added = evt?.added
+  const element = moved?.element || added?.element
+  const newIndex = moved?.newIndex ?? added?.newIndex
+  if (!element || typeof newIndex !== 'number') return
+  emit('move', { id: element.id, parentId: parentId ?? null, orderIndex: newIndex })
+}
+
+// Create dialog state
+const createDialog = ref(false)
+const createType = ref('file')
+const createParentId = ref(null)
+const createTitle = ref('')
+const createError = ref('')
+
+const createParentLabel = computed(() => {
+  if (!createParentId.value) return 'Workspace Root'
+  const node = findNodeById(localNodes.value, createParentId.value)
+  return node ? node.title : `#${createParentId.value}`
+})
+
+const canSubmitCreate = computed(() => createTitle.value.trim().length > 0 && props.canEdit)
+
+function openCreateDialog(type, explicitParentId = null) {
+  createError.value = ''
+  createType.value = type
+
+  const selectedNode = props.selectedId ? findNodeById(localNodes.value, props.selectedId) : null
+  let parentId = explicitParentId
+
+  if (!parentId && selectedNode) {
+    if (selectedNode.type === 'folder') parentId = selectedNode.id
+    else parentId = selectedNode.parent_id ?? null
+  }
+
+  createParentId.value = parentId ?? null
+  createTitle.value = type === 'folder' ? 'New Folder' : 'new.md'
+  createDialog.value = true
+}
+
+function submitCreate() {
+  if (!canSubmitCreate.value) return
+  emit('create', { parentId: createParentId.value, type: createType.value, title: createTitle.value.trim() })
+  createDialog.value = false
+}
+
+// Rename dialog state
+const renameDialog = ref(false)
+const pendingRename = ref(null)
+const renameTitle = ref('')
+const renameError = ref('')
+const canSubmitRename = computed(() => props.canEdit && renameTitle.value.trim().length > 0)
+
+function openRenameDialog(node) {
+  renameError.value = ''
+  pendingRename.value = node
+  renameTitle.value = node.title
+  renameDialog.value = true
+}
+
+function submitRename() {
+  if (!pendingRename.value || !canSubmitRename.value) return
+  emit('rename', { id: pendingRename.value.id, parentId: pendingRename.value.parent_id ?? null, title: renameTitle.value.trim() })
+  renameDialog.value = false
+}
+
+// Delete dialog state
+const deleteDialog = ref(false)
+const pendingDelete = ref(null)
+
+function openDeleteDialog(node) {
+  pendingDelete.value = node
+  deleteDialog.value = true
+}
+
+function submitDelete() {
+  if (!pendingDelete.value || !props.canEdit) return
+  emit('remove', { id: pendingDelete.value.id })
+  deleteDialog.value = false
+}
+</script>
+
+<style scoped>
+.tree-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.tree-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.tree-scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.drag-wrapper {
+  display: flex;
+  align-items: stretch;
+}
+
+.drag-handle {
+  width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  opacity: 0.5;
+}
+
+.drag-wrapper:hover .drag-handle {
+  opacity: 0.9;
+}
+
+.tree-search :deep(.v-field__outline) {
+  opacity: 0.9;
+}
+</style>

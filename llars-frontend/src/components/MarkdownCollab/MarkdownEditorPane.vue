@@ -1,0 +1,526 @@
+<template>
+  <div class="editor-pane">
+    <div class="editor-topbar">
+      <div class="d-flex align-center">
+        <v-chip v-if="readonly" size="small" color="warning" variant="tonal" class="mr-2">
+          <v-icon start size="small">mdi-lock</v-icon>
+          Read-only
+        </v-chip>
+        <v-chip v-else-if="isConnected" size="small" color="success" variant="tonal" class="mr-2">
+          <v-icon start size="small">mdi-cloud-check-outline</v-icon>
+          Live Sync
+        </v-chip>
+        <v-chip v-else size="small" color="warning" variant="tonal" class="mr-2">
+          <v-icon start size="small">mdi-cloud-alert-outline</v-icon>
+          Reconnecting…
+        </v-chip>
+      </div>
+      <v-spacer />
+      <div class="d-flex align-center ga-2 users">
+        <v-chip
+          v-for="u in activeUsers"
+          :key="u.userId"
+          size="small"
+          variant="tonal"
+          :style="{ borderColor: u.color }"
+          class="user-chip"
+        >
+          <span class="user-dot" :style="{ backgroundColor: u.color }" />
+          {{ u.username }}
+        </v-chip>
+      </div>
+    </div>
+
+    <div v-if="error" class="px-3 pb-3">
+      <v-alert type="error" variant="tonal">
+        {{ error }}
+      </v-alert>
+    </div>
+
+    <v-textarea
+      v-if="fallbackMode"
+      v-model="fallbackText"
+      class="editor-surface"
+      :readonly="readonly"
+      variant="outlined"
+      density="comfortable"
+      auto-grow
+      hide-details
+      @update:modelValue="onFallbackInput"
+    />
+    <div v-else ref="editorEl" class="editor-surface" />
+  </div>
+</template>
+
+<script setup>
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import * as Y from 'yjs'
+import { EditorState, StateEffect, StateField } from '@codemirror/state'
+import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap } from '@codemirror/view'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { markdown } from '@codemirror/lang-markdown'
+import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
+
+import { useAuth } from '@/composables/useAuth'
+import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
+
+const props = defineProps({
+  document: { type: Object, required: true },
+  readonly: { type: Boolean, default: false }
+})
+
+const emit = defineEmits(['content-change', 'git-summary'])
+
+const editorEl = ref(null)
+const error = ref('')
+const fallbackMode = ref(false)
+const fallbackText = ref('')
+
+const view = ref(null)
+let ytext = null
+let yhighlights = null
+
+const remoteCursors = ref({})
+let cursorSendTimer = null
+
+const { tokenParsed } = useAuth()
+const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
+
+const roomId = computed(() => props.document?.yjs_doc_id || `markdown_${props.document?.id}`)
+
+const activeUsers = computed(() => {
+  const list = []
+  for (const [userId, u] of Object.entries(users.value || {})) {
+    list.push({ userId, username: u.username, color: u.color })
+  }
+  return list
+})
+
+// Decorations (git highlights + remote cursors)
+const setDecorations = StateEffect.define()
+const decorationsField = StateField.define({
+  create() {
+    return Decoration.none
+  },
+  update(deco, tr) {
+    let next = deco.map(tr.changes)
+    for (const e of tr.effects) {
+      if (e.is(setDecorations)) next = e.value
+    }
+    return next
+  },
+  provide: f => EditorView.decorations.from(f)
+})
+
+class CaretWidget extends WidgetType {
+  constructor(color, label) {
+    super()
+    this.color = color
+    this.label = label
+  }
+  toDOM() {
+    const wrap = document.createElement('span')
+    wrap.className = 'remote-caret'
+    wrap.style.borderLeftColor = this.color
+    wrap.title = this.label || ''
+    return wrap
+  }
+}
+
+let applyingYjsToEditor = false
+let skipNextTextSync = false
+let applyingDecorations = false
+
+function clampPos(pos, max) {
+  if (typeof pos !== 'number' || Number.isNaN(pos)) return 0
+  return Math.max(0, Math.min(pos, max))
+}
+
+function rgbaFromHex(hex, alpha = 0.18) {
+  if (!hex || typeof hex !== 'string') return `rgba(0,0,0,${alpha})`
+  const raw = hex.replace('#', '')
+  if (raw.length !== 6) return `rgba(0,0,0,${alpha})`
+  const r = parseInt(raw.slice(0, 2), 16)
+  const g = parseInt(raw.slice(2, 4), 16)
+  const b = parseInt(raw.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+function updateDecorations() {
+  if (!view.value) return
+  if (applyingDecorations) return
+  const decorations = []
+
+  // Git highlights: line-level background
+  if (yhighlights) {
+    const maxLine = view.value.state.doc.lines
+    for (const [lineKey, meta] of yhighlights.entries()) {
+      const lineNo = Number(lineKey)
+      if (!lineNo || lineNo < 1 || lineNo > maxLine) continue
+      const line = view.value.state.doc.line(lineNo)
+      const color = meta?.color || '#4ECDC4'
+      const bg = rgbaFromHex(color, 0.18)
+      decorations.push(
+        Decoration.line({ attributes: { style: `background:${bg};` } }).range(line.from)
+      )
+    }
+  }
+
+  // Remote cursors / selections
+  const docLen = view.value.state.doc.length
+  for (const [userId, cursor] of Object.entries(remoteCursors.value || {})) {
+    if (!cursor || cursor.blockId != String(props.document.id) || !cursor.range) continue
+    const color = cursor.color || '#FF6B6B'
+    const from = clampPos(cursor.range.from, docLen)
+    const to = clampPos(cursor.range.to, docLen)
+    if (from !== to) {
+      decorations.push(
+        Decoration.mark({
+          attributes: { style: `background:${rgbaFromHex(color, 0.12)}; border-radius:4px;` }
+        }).range(Math.min(from, to), Math.max(from, to))
+      )
+    }
+    decorations.push(
+      Decoration.widget({
+        widget: new CaretWidget(color, cursor.username),
+        side: 1
+      }).range(to)
+    )
+  }
+
+  const decoSet = Decoration.set(decorations, true)
+  applyingDecorations = true
+  try {
+    view.value.dispatch({ effects: setDecorations.of(decoSet) })
+  } finally {
+    applyingDecorations = false
+  }
+
+  emit('git-summary', computeGitSummary())
+}
+
+function computeGitSummary() {
+  if (!yhighlights) return { users: [], totalChangedLines: 0 }
+  const byUser = new Map()
+  let total = 0
+  for (const [, meta] of yhighlights.entries()) {
+    const u = meta?.username || 'unknown'
+    const color = meta?.color || '#4ECDC4'
+    total += 1
+    const cur = byUser.get(u) || { username: u, color, changedLines: 0 }
+    cur.changedLines += 1
+    byUser.set(u, cur)
+  }
+  return { users: Array.from(byUser.values()).sort((a, b) => b.changedLines - a.changedLines), totalChangedLines: total }
+}
+
+function syncEditorFromYjs() {
+  if (!ytext) return
+  const text = ytext.toString()
+  emit('content-change', text)
+
+  if (fallbackMode.value || !view.value) {
+    fallbackText.value = text
+    emit('git-summary', computeGitSummary())
+    return
+  }
+
+  if (skipNextTextSync) {
+    skipNextTextSync = false
+    return
+  }
+
+  if (text === view.value.state.doc.toString()) {
+    updateDecorations()
+    return
+  }
+
+  applyingYjsToEditor = true
+  try {
+    const sel = view.value.state.selection.main
+    view.value.dispatch({
+      changes: { from: 0, to: view.value.state.doc.length, insert: text },
+      selection: {
+        anchor: clampPos(sel.anchor, text.length),
+        head: clampPos(sel.head, text.length)
+      }
+    })
+  } finally {
+    applyingYjsToEditor = false
+    updateDecorations()
+  }
+}
+
+function updateLocalHighlights(cmUpdate, userColor) {
+  if (!yhighlights) return
+  const changedLines = new Set()
+  cmUpdate.changes.iterChanges((fromA, toA, fromB, toB) => {
+    const startLine = cmUpdate.state.doc.lineAt(fromB).number
+    const endLine = cmUpdate.state.doc.lineAt(toB).number
+    for (let ln = startLine; ln <= endLine; ln += 1) changedLines.add(ln)
+  })
+
+  for (const ln of changedLines) {
+    yhighlights.set(String(ln), { username: username.value, color: userColor, ts: Date.now() })
+  }
+}
+
+function sendCursorUpdate(rangeOrNull) {
+  if (!socket.value?.connected) return
+  socket.value.emit('cursor_update', {
+    room: roomId.value,
+    blockId: String(props.document.id),
+    range: rangeOrNull
+  })
+}
+
+function scheduleCursorUpdate() {
+  if (!view.value || props.readonly) return
+  if (cursorSendTimer) clearTimeout(cursorSendTimer)
+  cursorSendTimer = setTimeout(() => {
+    const sel = view.value?.state?.selection?.main
+    if (!sel) return
+    sendCursorUpdate({ from: sel.from, to: sel.to })
+  }, 50)
+}
+
+function initEditorIfNeeded() {
+  if (!editorEl.value || view.value || !ytext || fallbackMode.value) return
+
+  try {
+    const theme = EditorView.theme({
+      '&': {
+        height: '100%',
+        backgroundColor: 'rgb(var(--v-theme-surface))',
+        color: 'rgb(var(--v-theme-on-surface))',
+        borderRadius: '10px',
+        border: '1px solid rgba(var(--v-theme-on-surface), 0.08)'
+      },
+      '.cm-content': {
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+        fontSize: '13px'
+      },
+      '.cm-gutters': {
+        backgroundColor: 'transparent',
+        borderRight: '1px solid rgba(var(--v-theme-on-surface), 0.08)',
+        color: 'rgba(var(--v-theme-on-surface), 0.55)'
+      },
+      '.cm-activeLineGutter': {
+        backgroundColor: 'rgba(var(--v-theme-primary), 0.10)'
+      },
+      '.cm-activeLine': {
+        backgroundColor: 'rgba(var(--v-theme-primary), 0.06)'
+      }
+    }, { dark: false })
+
+    const extensions = [
+      lineNumbers(),
+      highlightSpecialChars(),
+      drawSelection(),
+      highlightActiveLine(),
+      history(),
+      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+      markdown(),
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      EditorView.lineWrapping,
+      decorationsField,
+      theme
+    ]
+
+    if (props.readonly) {
+      extensions.push(EditorState.readOnly.of(true))
+      extensions.push(EditorView.editable.of(false))
+    }
+
+    const state = EditorState.create({
+      doc: ytext.toString(),
+      extensions: [
+        ...extensions,
+        EditorView.updateListener.of((update) => {
+          if (applyingDecorations) return
+          if (applyingYjsToEditor) return
+
+          if (update.selectionSet) scheduleCursorUpdate()
+
+          if (!update.docChanged || props.readonly) {
+            updateDecorations()
+            return
+          }
+
+          const userColor = users.value?.[socket.value?.id]?.color || '#4ECDC4'
+
+          // Apply CM changes to Yjs text and update git highlights in one transaction
+          const changes = []
+          update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+            changes.push({ from: fromA, to: toA, insert: inserted.toString() })
+          })
+
+          skipNextTextSync = true
+          ydoc.value.transact(() => {
+            // Apply in reverse order to keep positions stable
+            changes.sort((a, b) => b.from - a.from)
+            for (const ch of changes) {
+              const delLen = ch.to - ch.from
+              if (delLen > 0) ytext.delete(ch.from, delLen)
+              if (ch.insert) ytext.insert(ch.from, ch.insert)
+            }
+            updateLocalHighlights(update, userColor)
+          }, 'cm')
+
+          emit('content-change', update.state.doc.toString())
+          updateDecorations()
+        })
+      ]
+    })
+
+    view.value = new EditorView({ state, parent: editorEl.value })
+    nextTick(() => view.value?.focus())
+  } catch (e) {
+    console.error('CodeMirror init failed:', e)
+    error.value = `Editor-Initialisierung fehlgeschlagen: ${e?.message || String(e)}`
+    fallbackMode.value = true
+    fallbackText.value = ytext?.toString?.() || ''
+  }
+}
+
+function processYDoc() {
+  if (!ydoc.value) return
+  ytext = ydoc.value.getText('content')
+  yhighlights = ydoc.value.getMap('highlights')
+  fallbackText.value = ytext.toString()
+  initEditorIfNeeded()
+  syncEditorFromYjs()
+}
+
+function onUpdateCursor(userId, cursor) {
+  const next = { ...(remoteCursors.value || {}) }
+  if (!cursor) delete next[userId]
+  else next[userId] = cursor
+  remoteCursors.value = next
+  updateDecorations()
+}
+
+function clearHighlights() {
+  if (!yhighlights || !ydoc.value) return
+  ydoc.value.transact(() => {
+    yhighlights.clear()
+  }, 'git')
+  updateDecorations()
+}
+
+function refresh() {
+  view.value?.requestMeasure?.()
+}
+
+defineExpose({ clearHighlights, refresh })
+
+const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, { autoSync: true })
+const { ydoc, socket, users } = collaboration
+
+const isConnected = computed(() => socket.value?.connected === true)
+
+onMounted(async () => {
+  error.value = ''
+  try {
+    collaboration.initialize()
+    await nextTick()
+    processYDoc()
+
+    socket.value?.on('connect', () => {
+      error.value = ''
+    })
+    socket.value?.on('connect_error', (err) => {
+      const msg = err?.message || err
+      error.value = `Collab-Verbindung fehlgeschlagen: ${msg}`
+    })
+    socket.value?.on('disconnect', () => {
+      if (!props.readonly) error.value = 'Collab-Verbindung getrennt (Reconnecting …)'
+    })
+  } catch (e) {
+    error.value = e?.message || String(e)
+  }
+})
+
+watch(
+  () => props.readonly,
+  () => {
+    // Recreate editor on mode change (small component; keeps logic simple)
+    view.value?.destroy()
+    view.value = null
+    initEditorIfNeeded()
+  }
+)
+
+function onFallbackInput(val) {
+  if (props.readonly) return
+  if (!ydoc.value || !ytext) return
+  const nextText = String(val ?? '')
+  const current = ytext.toString()
+  if (nextText === current) return
+
+  ydoc.value.transact(() => {
+    ytext.delete(0, current.length)
+    if (nextText) ytext.insert(0, nextText)
+  }, 'fallback')
+
+  emit('content-change', nextText)
+  emit('git-summary', computeGitSummary())
+}
+
+onUnmounted(() => {
+  try {
+    sendCursorUpdate(null)
+  } catch {}
+
+  if (cursorSendTimer) clearTimeout(cursorSendTimer)
+  view.value?.destroy()
+  view.value = null
+  collaboration.cleanup()
+})
+</script>
+
+<style scoped>
+.editor-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editor-topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-surface {
+  flex: 1;
+  min-height: 240px;
+}
+
+.users {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 60%;
+}
+
+.user-chip {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+:global(.remote-caret) {
+  border-left: 2px solid;
+  margin-left: -1px;
+  height: 1.2em;
+  display: inline-block;
+}
+</style>

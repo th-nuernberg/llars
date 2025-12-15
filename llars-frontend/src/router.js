@@ -50,6 +50,10 @@ import KaimoNewCase from "@/components/Kaimo/KaimoNewCase.vue";
 import KaimoCase from "@/components/Kaimo/KaimoCase.vue";
 import KaimoCaseEditor from "@/components/Kaimo/KaimoCaseEditor.vue";
 
+// Markdown Collab
+import MarkdownCollabHome from "@/views/MarkdownCollab/MarkdownCollabHome.vue";
+import MarkdownCollabWorkspace from "@/views/MarkdownCollab/MarkdownCollabWorkspace.vue";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -111,6 +115,11 @@ const routes = [
 
     { path: '/chat', component: ChatWithBots, name: 'ChatWithBots', meta: { requiresAuth: true } },
     { path: '/chat-legacy', component: Chat, meta: { requiresAuth: true } },
+
+    // Markdown Collab
+    { path: '/MarkdownCollab', name: 'MarkdownCollabHome', component: MarkdownCollabHome, meta: { requiresAuth: true } },
+    { path: '/MarkdownCollab/workspace/:workspaceId', name: 'MarkdownCollabWorkspace', component: MarkdownCollabWorkspace, meta: { requiresAuth: true } },
+    { path: '/MarkdownCollab/workspace/:workspaceId/document/:documentId', name: 'MarkdownCollabWorkspaceDocument', component: MarkdownCollabWorkspace, meta: { requiresAuth: true } },
 
     { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
 

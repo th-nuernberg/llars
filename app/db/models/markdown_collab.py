@@ -40,6 +40,33 @@ class MarkdownWorkspace(db.Model):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
+    members = db.relationship(
+        "MarkdownWorkspaceMember",
+        backref=db.backref("workspace", lazy="selectin"),
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class MarkdownWorkspaceMember(db.Model):
+    """Explicit workspace membership (sharing/invites)."""
+    __tablename__ = "markdown_workspace_members"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey("markdown_workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    username: Mapped[str] = mapped_column(db.String(255), nullable=False, index=True)
+    added_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    added_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("workspace_id", "username", name="unique_markdown_workspace_member"),
+    )
+
 
 class MarkdownDocument(db.Model):
     """

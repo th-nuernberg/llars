@@ -11,10 +11,18 @@ from datetime import datetime
 from typing import Optional
 
 from flask import Blueprint, jsonify, request
+from sqlalchemy import or_
 
 from auth.auth_utils import AuthUtils
 from db.db import db
-from db.tables import MarkdownWorkspace, MarkdownDocument, MarkdownCommit, MarkdownNodeType, MarkdownWorkspaceVisibility
+from db.tables import (
+    MarkdownWorkspace,
+    MarkdownWorkspaceMember,
+    MarkdownDocument,
+    MarkdownCommit,
+    MarkdownNodeType,
+    MarkdownWorkspaceVisibility,
+)
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from decorators.permission_decorator import require_permission
 from services.permission_service import PermissionService
@@ -32,6 +40,16 @@ def _require_workspace_access(workspace: MarkdownWorkspace, username: str) -> No
     if _is_admin(username):
         return
     if workspace.owner_username != username:
+        member = MarkdownWorkspaceMember.query.filter_by(workspace_id=workspace.id, username=username).first()
+        if not member:
+            raise ForbiddenError("Kein Zugriff auf diesen Workspace")
+
+
+def _require_workspace_manage(workspace: MarkdownWorkspace, username: str) -> None:
+    """Owner/admin-only access (used for sharing/membership management)."""
+    if _is_admin(username):
+        return
+    if workspace.owner_username != username:
         raise ForbiddenError("Kein Zugriff auf diesen Workspace")
 
 
@@ -39,6 +57,9 @@ def _require_document_access(document: MarkdownDocument, username: str) -> None:
     if _is_admin(username):
         return
     if document.workspace and document.workspace.owner_username == username:
+        return
+    member = MarkdownWorkspaceMember.query.filter_by(workspace_id=document.workspace_id, username=username).first()
+    if member:
         return
     raise ForbiddenError("Kein Zugriff auf dieses Dokument")
 
@@ -117,7 +138,15 @@ def list_workspaces():
 
     query = MarkdownWorkspace.query.order_by(MarkdownWorkspace.updated_at.desc())
     if not _is_admin(username):
-        query = query.filter(MarkdownWorkspace.owner_username == username)
+        member_rows = MarkdownWorkspaceMember.query.filter_by(username=username).all()
+        member_workspace_ids = {r.workspace_id for r in member_rows}
+        if member_workspace_ids:
+            query = query.filter(or_(
+                MarkdownWorkspace.owner_username == username,
+                MarkdownWorkspace.id.in_(member_workspace_ids),
+            ))
+        else:
+            query = query.filter(MarkdownWorkspace.owner_username == username)
 
     workspaces = [_workspace_to_dict(ws) for ws in query.all()]
     return jsonify({"success": True, "workspaces": workspaces}), 200
@@ -150,6 +179,165 @@ def create_workspace():
     db.session.add(ws)
     db.session.commit()
     return jsonify({"success": True, "workspace": _workspace_to_dict(ws)}), 201
+
+
+@markdown_collab_bp.route("/workspaces/<int:workspace_id>/members", methods=["GET"])
+@require_permission("feature:markdown_collab:view")
+@handle_api_errors(logger_name="markdown_collab")
+def list_workspace_members(workspace_id: int):
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = MarkdownWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+    _require_workspace_access(ws, username)
+
+    members = (
+        MarkdownWorkspaceMember.query
+        .filter_by(workspace_id=workspace_id)
+        .order_by(MarkdownWorkspaceMember.username.asc())
+        .all()
+    )
+
+    payload = [
+        {
+            "username": m.username,
+            "added_by": m.added_by,
+            "added_at": m.added_at.isoformat() if m.added_at else None,
+        }
+        for m in members
+    ]
+
+    return jsonify({
+        "success": True,
+        "workspace_id": workspace_id,
+        "owner_username": ws.owner_username,
+        "members": payload,
+        "count": len(payload),
+    }), 200
+
+
+@markdown_collab_bp.route("/workspaces/<int:workspace_id>/members", methods=["POST"])
+@require_permission("feature:markdown_collab:share")
+@handle_api_errors(logger_name="markdown_collab")
+def add_workspace_members(workspace_id: int):
+    """Invite/share workspace with other users (owner/admin only)."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = MarkdownWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+    _require_workspace_manage(ws, username)
+
+    data = request.get_json() or {}
+    raw = data.get("usernames") or data.get("members") or data.get("username")
+    if raw is None:
+        raise ValidationError("username(s) is required")
+
+    if isinstance(raw, str):
+        usernames = [raw]
+    elif isinstance(raw, (list, tuple, set)):
+        usernames = list(raw)
+    else:
+        raise ValidationError("username(s) must be a string or list")
+
+    normalized = sorted({str(u).strip() for u in usernames if u and str(u).strip()})
+    normalized = [u for u in normalized if u != ws.owner_username]
+    if not normalized:
+        raise ValidationError("No valid usernames provided")
+
+    existing_rows = MarkdownWorkspaceMember.query.filter(
+        MarkdownWorkspaceMember.workspace_id == workspace_id,
+        MarkdownWorkspaceMember.username.in_(normalized),
+    ).all()
+    existing_usernames = {r.username for r in existing_rows}
+
+    created = 0
+    for u in normalized:
+        if u in existing_usernames:
+            continue
+        db.session.add(MarkdownWorkspaceMember(
+            workspace_id=workspace_id,
+            username=u,
+            added_by=username,
+            added_at=datetime.utcnow(),
+        ))
+        created += 1
+
+    if created:
+        ws.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    members = (
+        MarkdownWorkspaceMember.query
+        .filter_by(workspace_id=workspace_id)
+        .order_by(MarkdownWorkspaceMember.username.asc())
+        .all()
+    )
+    return jsonify({
+        "success": True,
+        "workspace_id": workspace_id,
+        "owner_username": ws.owner_username,
+        "members": [
+            {
+                "username": m.username,
+                "added_by": m.added_by,
+                "added_at": m.added_at.isoformat() if m.added_at else None,
+            }
+            for m in members
+        ],
+        "added": created,
+        "count": len(members),
+    }), 200
+
+
+@markdown_collab_bp.route("/workspaces/<int:workspace_id>/members/<member_username>", methods=["DELETE"])
+@require_permission("feature:markdown_collab:share")
+@handle_api_errors(logger_name="markdown_collab")
+def remove_workspace_member(workspace_id: int, member_username: str):
+    """Remove a shared workspace member (owner/admin only)."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = MarkdownWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+    _require_workspace_manage(ws, username)
+
+    member = MarkdownWorkspaceMember.query.filter_by(
+        workspace_id=workspace_id,
+        username=member_username,
+    ).first()
+    if member:
+        db.session.delete(member)
+        ws.updated_at = datetime.utcnow()
+        db.session.commit()
+
+    members = (
+        MarkdownWorkspaceMember.query
+        .filter_by(workspace_id=workspace_id)
+        .order_by(MarkdownWorkspaceMember.username.asc())
+        .all()
+    )
+    return jsonify({
+        "success": True,
+        "workspace_id": workspace_id,
+        "owner_username": ws.owner_username,
+        "members": [
+            {
+                "username": m.username,
+                "added_by": m.added_by,
+                "added_at": m.added_at.isoformat() if m.added_at else None,
+            }
+            for m in members
+        ],
+        "count": len(members),
+    }), 200
 
 
 @markdown_collab_bp.route("/workspaces/<int:workspace_id>/tree", methods=["GET"])

@@ -34,6 +34,14 @@
 
           <v-spacer />
 
+          <v-btn
+            v-if="canShareWorkspace"
+            icon="mdi-account-multiple-plus"
+            variant="text"
+            title="Workspace teilen"
+            @click="openShareDialog"
+          />
+
           <v-btn-toggle
             v-model="viewMode"
             mandatory
@@ -114,6 +122,82 @@
         </div>
       </v-col>
     </v-row>
+
+    <!-- Share / Members Dialog -->
+    <v-dialog v-model="shareDialog" max-width="640">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-account-multiple-plus</v-icon>
+          Workspace teilen
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="shareDialog = false" />
+        </v-card-title>
+        <v-divider />
+
+        <v-card-text>
+          <v-alert v-if="shareError" type="error" variant="tonal" class="mb-4">
+            {{ shareError }}
+          </v-alert>
+
+          <div class="text-caption text-medium-emphasis mb-2">
+            Owner: <strong>{{ workspace?.owner_username || '—' }}</strong>
+          </div>
+
+          <v-combobox
+            v-model="inviteUsername"
+            v-model:search="inviteSearch"
+            :items="userSuggestions"
+            :loading="userSearchLoading"
+            label="Nutzer hinzufügen"
+            variant="outlined"
+            density="comfortable"
+            clearable
+            hide-details
+          />
+
+          <div class="d-flex justify-end mt-3">
+            <v-btn
+              color="primary"
+              :loading="inviting"
+              :disabled="!inviteUsername || inviting"
+              @click="inviteMember"
+            >
+              Hinzufügen
+            </v-btn>
+          </div>
+
+          <v-divider class="my-4" />
+
+          <div class="text-subtitle-2 mb-2">Mitglieder</div>
+          <v-skeleton-loader v-if="membersLoading" type="list-item@4" />
+          <v-alert
+            v-else-if="members.length === 0"
+            type="info"
+            variant="tonal"
+          >
+            Noch keine eingeladenen Mitglieder.
+          </v-alert>
+          <v-list v-else density="compact">
+            <v-list-item v-for="m in members" :key="m.username">
+              <v-list-item-title>{{ m.username }}</v-list-item-title>
+              <v-list-item-subtitle v-if="m.added_at">
+                hinzugefügt: {{ formatDate(m.added_at) }}
+              </v-list-item-subtitle>
+              <template #append>
+                <v-btn
+                  v-if="canShareWorkspace"
+                  icon="mdi-delete"
+                  variant="text"
+                  color="error"
+                  :loading="removingUsername === m.username"
+                  @click="removeMember(m.username)"
+                />
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -131,7 +215,7 @@ import MarkdownGitPanel from '@/components/MarkdownCollab/MarkdownGitPanel.vue'
 const route = useRoute()
 const router = useRouter()
 
-const { hasPermission, fetchPermissions } = usePermissions()
+const { hasPermission, fetchPermissions, username: currentUsername, isAdmin } = usePermissions()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'document'])
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
@@ -144,6 +228,18 @@ const currentText = ref('')
 const gitSummary = ref({ users: [], totalChangedLines: 0 })
 const editorRef = ref(null)
 const pendingDocId = ref(null)
+
+// Sharing / members
+const shareDialog = ref(false)
+const members = ref([])
+const membersLoading = ref(false)
+const shareError = ref('')
+const inviting = ref(false)
+const removingUsername = ref('')
+const inviteUsername = ref('')
+const inviteSearch = ref('')
+const userSuggestions = ref([])
+const userSearchLoading = ref(false)
 
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 watch(viewMode, (val) => localStorage.setItem(VIEWMODE_KEY, val))
@@ -161,6 +257,12 @@ const selectedNode = computed(() => {
   return nodesFlat.value.find(n => n.id === selectedNodeId.value) || null
 })
 
+const canShareWorkspace = computed(() => {
+  if (!workspace.value) return false
+  if (!hasPermission('feature:markdown_collab:share')) return false
+  return isAdmin.value || (currentUsername.value && currentUsername.value === workspace.value.owner_username)
+})
+
 function onEditorContentChange(text) {
   currentText.value = text
   if (pendingDocId.value && pendingDocId.value === selectedNodeId.value) {
@@ -173,6 +275,102 @@ function authHeaders() {
   const token = sessionStorage.getItem('auth_token')
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
+
+function formatDate(iso) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString()
+  } catch {
+    return iso
+  }
+}
+
+async function loadMembers() {
+  if (!workspaceId.value) return
+  membersLoading.value = true
+  shareError.value = ''
+  try {
+    const res = await axios.get(`${API_BASE}/api/markdown-collab/workspaces/${workspaceId.value}/members`, {
+      headers: authHeaders()
+    })
+    members.value = res.data.members || []
+  } catch (e) {
+    members.value = []
+    shareError.value = e?.response?.data?.error || e?.message || 'Mitglieder konnten nicht geladen werden'
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+function openShareDialog() {
+  shareDialog.value = true
+  inviteUsername.value = ''
+  inviteSearch.value = ''
+  userSuggestions.value = []
+  loadMembers()
+}
+
+async function inviteMember() {
+  if (!inviteUsername.value) return
+  inviting.value = true
+  shareError.value = ''
+  try {
+    await axios.post(
+      `${API_BASE}/api/markdown-collab/workspaces/${workspaceId.value}/members`,
+      { username: String(inviteUsername.value).trim() },
+      { headers: authHeaders() }
+    )
+    inviteUsername.value = ''
+    inviteSearch.value = ''
+    await loadMembers()
+  } catch (e) {
+    shareError.value = e?.response?.data?.error || e?.message || 'Einladung fehlgeschlagen'
+  } finally {
+    inviting.value = false
+  }
+}
+
+async function removeMember(username) {
+  if (!username) return
+  removingUsername.value = username
+  shareError.value = ''
+  try {
+    await axios.delete(`${API_BASE}/api/markdown-collab/workspaces/${workspaceId.value}/members/${encodeURIComponent(username)}`, {
+      headers: authHeaders()
+    })
+    await loadMembers()
+  } catch (e) {
+    shareError.value = e?.response?.data?.error || e?.message || 'Entfernen fehlgeschlagen'
+  } finally {
+    removingUsername.value = ''
+  }
+}
+
+let suggestionTimer = null
+watch(inviteSearch, (q) => {
+  if (suggestionTimer) clearTimeout(suggestionTimer)
+  const query = String(q || '').trim()
+  if (query.length < 2) {
+    userSuggestions.value = []
+    userSearchLoading.value = false
+    return
+  }
+  suggestionTimer = setTimeout(async () => {
+    userSearchLoading.value = true
+    try {
+      const res = await axios.get(`${API_BASE}/api/users/search`, {
+        headers: authHeaders(),
+        params: { q: query, limit: 10 }
+      })
+      const users = res.data.users || []
+      userSuggestions.value = users.map(u => u.username).filter(Boolean)
+    } catch (e) {
+      userSuggestions.value = []
+    } finally {
+      userSearchLoading.value = false
+    }
+  }, 250)
+})
 
 function buildTree(flat) {
   const byId = new Map(flat.map(n => [n.id, { ...n, children: [] }]))

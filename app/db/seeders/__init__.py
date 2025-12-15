@@ -12,6 +12,7 @@ from .users import seed_user_groups, seed_bootstrap_admin
 from .permissions import initialize_permissions
 from .rag import initialize_rag_system
 from .chatbots import initialize_default_chatbots
+from .chatbot_prompt_settings import initialize_chatbot_prompt_settings
 from .markdown_collab import initialize_markdown_collab_defaults
 from .scenarios import seed_demo_scenarios
 
@@ -51,6 +52,9 @@ def run_all_seeders(db):
     # Create default chatbots (admin-only standard bot)
     initialize_default_chatbots(db)
 
+    # Ensure every chatbot has prompt settings
+    initialize_chatbot_prompt_settings(db)
+
     # Create Markdown Collab demo workspace/tree
     initialize_markdown_collab_defaults(db)
 
@@ -72,6 +76,7 @@ __all__ = [
     'initialize_permissions',
     'initialize_rag_system',
     'initialize_default_chatbots',
+    'initialize_chatbot_prompt_settings',
     'initialize_markdown_collab_defaults',
     'seed_demo_scenarios',
 ]

@@ -18,38 +18,87 @@ from db.tables import (
 )
 from rag_pipeline import RAGPipeline
 from services.chatbot.file_processor import FileProcessor, file_processor
+from db.models.chatbot import (
+    DEFAULT_RAG_CITATION_INSTRUCTIONS,
+    DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE,
+    DEFAULT_RAG_CONTEXT_PREFIX,
+    DEFAULT_RAG_UNKNOWN_ANSWER,
+)
 
 logger = logging.getLogger(__name__)
-
-UNKNOWN_ANSWER = "Ich weiß es nicht"
 
 
 class ChatService:
     """Service for chatbot chat interactions with Multi-Collection RAG"""
 
     @staticmethod
-    def _build_citation_instructions() -> str:
-        return f"""
+    def _render_placeholders(template: str, mapping: Dict[str, Any]) -> str:
+        rendered = template or ""
+        for key, value in mapping.items():
+            placeholder = f"{{{{{key}}}}}"
+            rendered = rendered.replace(placeholder, "" if value is None else str(value))
+        return rendered
 
-WICHTIG - Antworten mit Quellen:
-- Beantworte die Frage NUR mit Hilfe des Kontexts.
-- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).
-- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.
-- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: "{UNKNOWN_ANSWER}"
-"""
+    def _get_prompt_settings(self):
+        return getattr(self.chatbot, 'prompt_settings', None)
 
-    @staticmethod
-    def _build_numbered_context(sources: List[Dict[str, Any]]) -> str:
+    def get_unknown_answer(self) -> str:
+        settings = self._get_prompt_settings()
+        unknown = getattr(settings, 'rag_unknown_answer', None) if settings else None
+        if unknown is None or str(unknown).strip() == "":
+            return DEFAULT_RAG_UNKNOWN_ANSWER
+        return str(unknown)
+
+    def _build_citation_instructions(self) -> str:
+        settings = self._get_prompt_settings()
+        template = getattr(settings, 'rag_citation_instructions', None) if settings else None
+        if template is None or str(template).strip() == "":
+            template = DEFAULT_RAG_CITATION_INSTRUCTIONS
+
+        unknown_answer = self.get_unknown_answer()
+        rendered = (
+            str(template)
+            .replace("{{UNKNOWN_ANSWER}}", unknown_answer)
+            .replace("{UNKNOWN_ANSWER}", unknown_answer)
+        )
+
+        return "\n\n" + rendered.strip() + "\n"
+
+    def _build_numbered_context(self, sources: List[Dict[str, Any]]) -> str:
         if not sources:
             return ""
 
-        parts = ["Kontext:\n"]
+        settings = self._get_prompt_settings()
+        prefix = getattr(settings, 'rag_context_prefix', None) if settings else None
+        item_template = getattr(settings, 'rag_context_item_template', None) if settings else None
+
+        if prefix is None or str(prefix).strip() == "":
+            prefix = DEFAULT_RAG_CONTEXT_PREFIX
+        if item_template is None or str(item_template).strip() == "":
+            item_template = DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE
+
+        parts = [f"{str(prefix).strip()}\n"]
         for idx, source in enumerate(sources):
             footnote_id = source.get("footnote_id") or (idx + 1)
             title = source.get("title") or source.get("filename") or "Unbekannt"
             excerpt = source.get("excerpt") or ""
-            parts.append(f"[{footnote_id}] {title}:\n{excerpt}\n")
-        return "\n".join(parts)
+
+            mapping = {
+                "id": footnote_id,
+                "title": title,
+                "filename": source.get("filename") or "",
+                "collection_name": source.get("collection_name") or "",
+                "page_number": source.get("page_number") or "",
+                "chunk_index": source.get("chunk_index") if source.get("chunk_index") is not None else "",
+                "relevance": source.get("relevance") if source.get("relevance") is not None else "",
+                "document_id": source.get("document_id") or "",
+                "excerpt": excerpt,
+            }
+
+            parts.append(self._render_placeholders(str(item_template), mapping).strip())
+            parts.append("")  # spacing
+
+        return "\n".join(parts).strip()
 
     def __init__(self, chatbot_id: int):
         self.chatbot = Chatbot.query.get(chatbot_id)
@@ -102,7 +151,7 @@ WICHTIG - Antworten mit Quellen:
         # If RAG is enabled but no context could be retrieved, avoid hallucinations.
         # File uploads count as additional context, so only short-circuit when there are no files.
         if self.chatbot.rag_enabled and self.chatbot.collections and not sources and not files:
-            response_text = UNKNOWN_ANSWER
+            response_text = self.get_unknown_answer()
             response_time_ms = int((time.time() - start_time) * 1000)
             tokens_input = 0
             tokens_output = 0
@@ -208,7 +257,7 @@ WICHTIG - Antworten mit Quellen:
         if self.chatbot.rag_enabled and self.chatbot.collections and not sources:
             response_time_ms = int((time.time() - start_time) * 1000)
             return {
-                'response': UNKNOWN_ANSWER,
+                'response': self.get_unknown_answer(),
                 'sources': [],
                 'tokens': {
                     'input': 0,
@@ -220,7 +269,8 @@ WICHTIG - Antworten mit Quellen:
 
         # Build messages (no history in test mode)
         system_prompt = self.chatbot.system_prompt
-        if sources:
+        require_citations = bool(getattr(self._get_prompt_settings(), 'rag_require_citations', True))
+        if sources and require_citations:
             system_prompt += self._build_citation_instructions()
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -263,10 +313,11 @@ WICHTIG - Antworten mit Quellen:
 
         if self.chatbot.rag_enabled and self.chatbot.collections and not sources:
             response_time_ms = int((time.time() - start_time) * 1000)
-            yield {"delta": UNKNOWN_ANSWER}
+            unknown = self.get_unknown_answer()
+            yield {"delta": unknown}
             yield {
                 "done": True,
-                "full_response": UNKNOWN_ANSWER,
+                "full_response": unknown,
                 "sources": [],
                 "tokens": None,
                 "response_time_ms": response_time_ms,
@@ -276,7 +327,8 @@ WICHTIG - Antworten mit Quellen:
 
         # Build messages (no history in test mode)
         system_prompt = self.chatbot.system_prompt
-        if sources:
+        require_citations = bool(getattr(self._get_prompt_settings(), 'rag_require_citations', True))
+        if sources and require_citations:
             system_prompt += self._build_citation_instructions()
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -569,7 +621,8 @@ WICHTIG - Antworten mit Quellen:
 
         # System prompt
         system_prompt = self.chatbot.system_prompt
-        if sources:
+        require_citations = bool(getattr(self._get_prompt_settings(), 'rag_require_citations', True))
+        if sources and require_citations:
             system_prompt += self._build_citation_instructions()
 
         messages.append({

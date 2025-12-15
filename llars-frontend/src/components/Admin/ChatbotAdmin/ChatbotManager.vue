@@ -1,139 +1,150 @@
 <template>
   <div class="admin-chatbots">
-    <!-- Actions -->
-    <v-row class="mb-4">
-      <v-col cols="12" class="d-flex justify-end">
-        <div class="d-flex flex-wrap ga-2">
-          <LBtn
-            variant="secondary"
-            prepend-icon="mdi-wizard-hat"
-            @click="dialogs.wizard = true"
-          >
-            Builder Wizard
-          </LBtn>
-          <LBtn
-            variant="primary"
-            prepend-icon="mdi-plus"
-            @click="openCreateDialog"
-          >
-            Neuer Chatbot
-          </LBtn>
-        </div>
-      </v-col>
-    </v-row>
+    <template v-if="wizardOpen">
+      <ChatbotBuilderWizard
+        class="mb-4"
+        @created="onWizardChatbotCreated"
+        @test="openTestDialogById"
+        @close="wizardOpen = false"
+      />
+    </template>
 
-    <!-- Stats Cards -->
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="3">
-        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else variant="tonal" color="primary">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-robot</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ stats.total_chatbots }}</div>
-              <div class="text-caption">Chatbots</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else variant="tonal" color="success">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ stats.active_chatbots }}</div>
-              <div class="text-caption">Aktiv</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else variant="tonal" color="info">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-message-text</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ stats.total_conversations }}</div>
-              <div class="text-caption">Gespräche</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-        <v-card v-else variant="tonal" color="warning">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-folder-multiple</v-icon>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ collectionsCount }}</div>
-              <div class="text-caption">Collections</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <template v-else>
+      <!-- Actions -->
+      <v-row class="mb-4">
+        <v-col cols="12" class="d-flex justify-end">
+          <div class="d-flex flex-wrap ga-2">
+            <LBtn
+              variant="secondary"
+              prepend-icon="mdi-wizard-hat"
+              @click="wizardOpen = true"
+            >
+              Builder Wizard
+            </LBtn>
+            <LBtn
+              variant="primary"
+              prepend-icon="mdi-plus"
+              @click="openCreateDialog"
+            >
+              Neuer Chatbot
+            </LBtn>
+          </div>
+        </v-col>
+      </v-row>
 
-    <!-- Tabs -->
-    <v-card>
-      <v-tabs v-model="activeTab" bg-color="primary">
-        <v-tab value="chatbots">
-          <v-icon start>mdi-robot</v-icon>
-          Chatbots
-        </v-tab>
-        <v-tab value="collections">
-          <v-icon start>mdi-folder-multiple</v-icon>
-          Collections
-        </v-tab>
-        <v-tab value="documents">
-          <v-icon start>mdi-file-document-multiple</v-icon>
-          Dokumente
-        </v-tab>
-      </v-tabs>
+      <!-- Stats Cards -->
+      <v-row class="mb-4">
+        <v-col cols="12" sm="6" md="3">
+          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+          <v-card v-else variant="tonal" color="primary">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-robot</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ stats.total_chatbots }}</div>
+                <div class="text-caption">Chatbots</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" sm="6" md="3">
+          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+          <v-card v-else variant="tonal" color="success">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ stats.active_chatbots }}</div>
+                <div class="text-caption">Aktiv</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" sm="6" md="3">
+          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+          <v-card v-else variant="tonal" color="info">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-message-text</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ stats.total_conversations }}</div>
+                <div class="text-caption">Gespräche</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" sm="6" md="3">
+          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
+          <v-card v-else variant="tonal" color="warning">
+            <v-card-text class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-folder-multiple</v-icon>
+              <div>
+                <div class="text-h5 font-weight-bold">{{ collectionsCount }}</div>
+                <div class="text-caption">Collections</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
 
-      <v-card-text>
-        <v-window v-model="activeTab">
-          <!-- Chatbots Tab -->
-          <v-window-item value="chatbots">
-            <ChatbotList
-              :chatbots="chatbots"
-              :loading="loading.chatbots"
-              @edit="openEditDialog"
-              @delete="confirmDelete"
-              @duplicate="duplicateChatbot"
-              @test="openTestDialog"
-              @manage-collections="openCollectionManager"
-            />
-          </v-window-item>
+      <!-- Tabs -->
+      <v-card>
+        <v-tabs v-model="activeTab" bg-color="primary">
+          <v-tab value="chatbots">
+            <v-icon start>mdi-robot</v-icon>
+            Chatbots
+          </v-tab>
+          <v-tab value="collections">
+            <v-icon start>mdi-folder-multiple</v-icon>
+            Collections
+          </v-tab>
+          <v-tab value="documents">
+            <v-icon start>mdi-file-document-multiple</v-icon>
+            Dokumente
+          </v-tab>
+        </v-tabs>
 
-          <!-- Collections Tab -->
-          <v-window-item value="collections">
-            <CollectionManager
-              :collections="collections"
-              :loading="loading.collections"
-              @create="openCreateCollectionDialog"
-              @edit="openEditCollectionDialog"
-              @delete="confirmDeleteCollection"
-              @view-documents="viewCollectionDocuments"
-            />
-          </v-window-item>
+        <v-card-text>
+          <v-window v-model="activeTab">
+            <!-- Chatbots Tab -->
+            <v-window-item value="chatbots">
+              <ChatbotList
+                :chatbots="chatbots"
+                :loading="loading.chatbots"
+                @edit="openEditDialog"
+                @delete="confirmDelete"
+                @duplicate="duplicateChatbot"
+                @test="openTestDialog"
+                @manage-collections="openCollectionManager"
+              />
+            </v-window-item>
 
-          <!-- Documents Tab -->
-          <v-window-item value="documents">
-            <DocumentManager
-              :documents="documents"
-              :collections="collections"
-              :loading="loading.documents"
-              :initial-collection-filter="documentCollectionFilter"
-              @upload="openUploadDialog"
-              @view="viewDocument"
-              @delete="confirmDeleteDocument"
-              @download="downloadDocument"
-            />
-          </v-window-item>
-        </v-window>
-      </v-card-text>
-    </v-card>
+            <!-- Collections Tab -->
+            <v-window-item value="collections">
+              <CollectionManager
+                :collections="collections"
+                :loading="loading.collections"
+                @create="openCreateCollectionDialog"
+                @edit="openEditCollectionDialog"
+                @delete="confirmDeleteCollection"
+                @view-documents="viewCollectionDocuments"
+              />
+            </v-window-item>
+
+            <!-- Documents Tab -->
+            <v-window-item value="documents">
+              <DocumentManager
+                :documents="documents"
+                :collections="collections"
+                :loading="loading.documents"
+                :initial-collection-filter="documentCollectionFilter"
+                @upload="openUploadDialog"
+                @view="viewDocument"
+                @delete="confirmDeleteDocument"
+                @download="downloadDocument"
+              />
+            </v-window-item>
+          </v-window>
+        </v-card-text>
+      </v-card>
+    </template>
 
     <!-- Chatbot Editor Dialog -->
     <ChatbotEditor
@@ -206,13 +217,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Chatbot Builder Wizard -->
-    <ChatbotBuilderWizard
-      v-model="dialogs.wizard"
-      @created="onWizardChatbotCreated"
-      @test="openTestDialogById"
-    />
-
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.text }}
@@ -260,9 +264,10 @@ const dialogs = ref({
   documentViewer: false,
   upload: false,
   collectionAssignment: false,
-  deleteConfirm: false,
-  wizard: false
+  deleteConfirm: false
 })
+
+const wizardOpen = ref(false)
 
 const selectedChatbot = ref(null)
 const selectedCollection = ref(null)

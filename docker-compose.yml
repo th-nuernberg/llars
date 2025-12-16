@@ -24,6 +24,8 @@ services:
     # Mount application code for hot-reloading in development
     volumes:
       - ./app:/app
+      # Offline Anonymize Ressourcen (großes NER-Modell bleibt in docs/, wird hier nur gemountet)
+      - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
       - rag_storage:/app/storage
       - rag_docs:/app/rag_docs
       # OnCoCo model is now included in app/models/oncoco (part of ./app mount)
@@ -37,6 +39,8 @@ services:
       - ALLOWED_ORIGINS=${PROJECT_URL},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT},http://localhost,http://localhost:${NGINX_EXTERNAL_PORT}
       # OnCoCo model path
       - ONCOCO_MODEL_PATH=/app/models/oncoco
+      # Disable ChromaDB telemetry (prevents log spam)
+      - ANONYMIZED_TELEMETRY=False
     depends_on:
       db-maria-service:
         condition: service_healthy

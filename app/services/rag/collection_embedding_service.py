@@ -19,6 +19,24 @@ from flask import current_app
 logger = logging.getLogger(__name__)
 
 
+def sanitize_chroma_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    ChromaDB metadata must only contain primitive values (str/int/float/bool) and must not contain None.
+    """
+    if not metadata:
+        return {}
+
+    cleaned: Dict[str, Any] = {}
+    for key, value in metadata.items():
+        if value is None:
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            cleaned[key] = value
+        else:
+            cleaned[key] = str(value)
+    return cleaned
+
+
 def sanitize_chroma_collection_name(name: str, model_name: str) -> str:
     """
     Create a valid ChromaDB collection name.
@@ -101,13 +119,45 @@ class CollectionEmbeddingService:
             return {'success': False, 'error': 'Collection not found'}
 
         if collection.embedding_status == 'processing':
-            return {'success': True, 'message': 'Collection already processing'}
+            # If the status says "processing" but no thread is running anymore (e.g. crash),
+            # allow restarting the job instead of getting stuck forever.
+            if collection_id in self._active_jobs:
+                return {'success': True, 'message': 'Collection already processing'}
+            logger.warning(
+                f"[CollectionEmbedding] Collection {collection_id} marked 'processing' but no active job found; restarting"
+            )
+            collection.embedding_status = 'idle'
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
         # Update collection status
         collection.embedding_status = 'processing'
         collection.embedding_progress = 0
         collection.embedding_error = None
         db.session.commit()
+
+        # Recover documents stuck in 'processing' from interrupted runs.
+        try:
+            from db.tables import RAGDocument, CollectionDocumentLink
+
+            stuck_docs = (
+                db.session.query(RAGDocument)
+                .join(CollectionDocumentLink, RAGDocument.id == CollectionDocumentLink.document_id)
+                .filter(CollectionDocumentLink.collection_id == collection_id, RAGDocument.status == 'processing')
+                .all()
+            )
+            if stuck_docs:
+                for doc in stuck_docs:
+                    doc.status = 'pending'
+                db.session.commit()
+                logger.info(
+                    f"[CollectionEmbedding] Reset {len(stuck_docs)} documents from 'processing' to 'pending' for collection {collection_id}"
+                )
+        except Exception as e:
+            db.session.rollback()
+            logger.warning(f"[CollectionEmbedding] Failed to reset stuck documents for collection {collection_id}: {e}")
 
         # Create stop event for this collection
         self._stop_events[collection_id] = threading.Event()
@@ -197,6 +247,11 @@ class CollectionEmbeddingService:
                 self._do_embedding(collection_id)
             except Exception as e:
                 logger.error(f"[CollectionEmbedding] Error processing collection {collection_id}: {e}")
+                try:
+                    from db.db import db
+                    db.session.rollback()
+                except Exception:
+                    pass
                 self._set_collection_error(collection_id, str(e))
             finally:
                 # Cleanup
@@ -325,7 +380,7 @@ class CollectionEmbeddingService:
                                 for c in batch:
                                     # Fetch filename from document relationship via join (safe in same session)
                                     filename = getattr(c.document, "filename", None)
-                                    metadatas.append({
+                                    metadatas.append(sanitize_chroma_metadata({
                                         'document_id': c.document_id,
                                         'chunk_index': c.chunk_index,
                                         'filename': filename,
@@ -334,7 +389,7 @@ class CollectionEmbeddingService:
                                         'start_char': c.start_char,
                                         'end_char': c.end_char,
                                         'vector_id': c.vector_id,
-                                    })
+                                    }))
 
                                 # Chroma.add_texts uses upsert, so repeated IDs are safe
                                 vectorstore.add_texts(texts=texts, ids=ids, metadatas=metadatas)
@@ -414,7 +469,7 @@ class CollectionEmbeddingService:
                             all_vector_ids.append(chunk_id)
                             chroma_texts.append(chunk_text)
                             chroma_ids.append(chunk_id)
-                            chroma_metadatas.append({
+                            chroma_metadatas.append(sanitize_chroma_metadata({
                                 'document_id': doc.id,
                                 'chunk_index': i,
                                 'filename': doc.filename,
@@ -423,7 +478,7 @@ class CollectionEmbeddingService:
                                 'start_char': chunk.start_char,
                                 'end_char': chunk.end_char,
                                 'vector_id': chunk_id
-                            })
+                            }))
                             continue
 
                         # Create new chunk with unique ID
@@ -443,7 +498,7 @@ class CollectionEmbeddingService:
                         db.session.add(db_chunk)
                         chroma_texts.append(chunk_text)
                         chroma_ids.append(chunk_id)
-                        chroma_metadatas.append({
+                        chroma_metadatas.append(sanitize_chroma_metadata({
                             'document_id': doc.id,
                             'chunk_index': i,
                             'filename': doc.filename,
@@ -452,7 +507,7 @@ class CollectionEmbeddingService:
                             'start_char': chunk.start_char,
                             'end_char': chunk.end_char,
                             'vector_id': chunk_id
-                        })
+                        }))
                         all_vector_ids.append(chunk_id)
 
                     db.session.commit()
@@ -517,9 +572,16 @@ class CollectionEmbeddingService:
 
                 except Exception as e:
                     logger.error(f"[CollectionEmbedding] Error processing document {doc.id}: {e}")
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
                     doc.status = 'failed'
                     doc.processing_error = str(e)[:500]
-                    db.session.commit()
+                    try:
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
                     try:
                         from main import socketio
                         from socketio_handlers.events_rag import emit_document_processed

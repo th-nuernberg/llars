@@ -19,6 +19,33 @@ from .oidc_validator import (
 logger = logging.getLogger(__name__)
 
 
+def _check_user_account_state(user):
+    """
+    Deny access for locked/deleted users based on DB state.
+
+    Returns:
+        (response, status_code) tuple if access should be denied, otherwise None.
+    """
+    if user is None:
+        return None
+
+    if getattr(user, 'deleted_at', None) is not None:
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Account has been deleted',
+            'code': 'ACCOUNT_DELETED'
+        }), 403
+
+    if not bool(getattr(user, 'is_active', True)):
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Account is locked',
+            'code': 'ACCOUNT_LOCKED'
+        }), 403
+
+    return None
+
+
 def get_or_create_user(username: str):
     """
     Get existing user from database or create a new one.
@@ -94,6 +121,10 @@ def authentik_required(f):
         username = get_username(token_payload)
         g.authentik_user = get_or_create_user(username)  # User object from DB
         g.authentik_user_id = get_user_id(token_payload)
+
+        denied = _check_user_account_state(g.authentik_user)
+        if denied is not None:
+            return denied
 
         return f(*args, **kwargs)
 
@@ -185,6 +216,9 @@ def optional_auth(f):
                 username = get_username(token_payload)
                 g.authentik_user = get_or_create_user(username)  # User object from DB
                 g.authentik_user_id = get_user_id(token_payload)
+                denied = _check_user_account_state(g.authentik_user)
+                if denied is not None:
+                    return denied
 
         return f(*args, **kwargs)
 
@@ -239,6 +273,10 @@ def system_api_key_required(f):
         g.authentik_user = get_or_create_user(SYSTEM_ADMIN_USERNAME)  # User object from DB
         g.authentik_user_id = SYSTEM_ADMIN_USERNAME
         g.is_system_api_key = True
+
+        denied = _check_user_account_state(g.authentik_user)
+        if denied is not None:
+            return denied
 
         logger.debug(f"System API key authenticated for {request.path}")
         return f(*args, **kwargs)

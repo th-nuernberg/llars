@@ -158,6 +158,7 @@ __all__ = [
     # Chatbot
     'ChatbotMessageRole',
     'Chatbot',
+    'ChatbotPromptSettings',
     'ChatbotUserAccess',
     'ChatbotCollection',
     'ChatbotConversation',

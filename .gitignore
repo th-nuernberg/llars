@@ -68,6 +68,7 @@ yarn-error.log*
 /app/rag_docs/
 /app/rag_docs_old/
 /app/storage/models/
+/app/data/legal_docs/
 /data/*.csv
 /data/*.json
 !data/.gitkeep

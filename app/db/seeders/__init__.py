@@ -16,6 +16,7 @@ from .chatbots import initialize_default_chatbots
 from .chatbot_prompt_settings import initialize_chatbot_prompt_settings
 from .markdown_collab import initialize_markdown_collab_defaults
 from .scenarios import seed_demo_scenarios
+from .legal_assistant import initialize_legal_assistant
 
 
 def run_all_seeders(db):
@@ -59,6 +60,9 @@ def run_all_seeders(db):
     # Ensure every chatbot has prompt settings
     initialize_chatbot_prompt_settings(db)
 
+    # Initialize Legal Assistant chatbot with German laws
+    initialize_legal_assistant(db)
+
     # Create Markdown Collab demo workspace/tree
     initialize_markdown_collab_defaults(db)
 
@@ -82,6 +86,7 @@ __all__ = [
     'initialize_rag_system',
     'initialize_default_chatbots',
     'initialize_chatbot_prompt_settings',
+    'initialize_legal_assistant',
     'initialize_markdown_collab_defaults',
     'seed_demo_scenarios',
 ]

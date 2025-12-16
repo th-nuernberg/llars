@@ -30,6 +30,11 @@
           Suchen
         </LBtn>
       </v-col>
+      <v-col cols="12" md="3">
+        <LBtn variant="primary" @click="openCreateDialog" block prepend-icon="mdi-account-plus">
+          Neuer Benutzer
+        </LBtn>
+      </v-col>
     </v-row>
 
     <!-- User Details Card (when user is selected) -->
@@ -44,12 +49,57 @@
             <div class="text-caption text-medium-emphasis">Benutzerdetails</div>
           </div>
           <v-spacer></v-spacer>
+          <v-chip
+            v-if="selectedUserStatus"
+            :color="selectedUserStatus.color"
+            size="small"
+            variant="flat"
+            class="mr-2"
+          >
+            {{ selectedUserStatus.label }}
+          </v-chip>
+          <LIconBtn
+            v-if="selectedUser.db_record_exists"
+            :icon="selectedUser.is_active ? 'mdi-lock' : 'mdi-lock-open-variant'"
+            :tooltip="selectedUser.is_active ? 'Sperren' : 'Entsperren'"
+            :loading="togglingUser === selectedUser.username"
+            :disabled="selectedUser.username === 'admin' || selectedUser.deleted_at"
+            @click="toggleUserLock(selectedUser)"
+          />
+          <LIconBtn
+            v-if="selectedUser.db_record_exists"
+            icon="mdi-delete"
+            tooltip="Löschen"
+            variant="error"
+            :disabled="selectedUser.username === 'admin'"
+            @click="confirmDelete(selectedUser)"
+          />
           <LIconBtn icon="mdi-close" @click="selectedUser = null" />
         </v-card-title>
 
         <v-divider></v-divider>
 
         <v-card-text>
+          <v-alert
+            v-if="selectedUser && !selectedUser.db_record_exists"
+            type="warning"
+            variant="tonal"
+            class="mb-4"
+          >
+            Dieser Benutzer ist noch nicht in der LLARS-Datenbank angelegt. Rollen können bereits verwaltet werden,
+            aber Sperren/Löschen ist erst nach dem Anlegen möglich.
+            <div class="mt-3">
+              <LBtn
+                variant="primary"
+                size="small"
+                prepend-icon="mdi-account-plus"
+                @click="openCreateDialog(selectedUser.username)"
+              >
+                In DB anlegen
+              </LBtn>
+            </div>
+          </v-alert>
+
           <v-row>
             <!-- Roles Section -->
             <v-col cols="12" md="6">
@@ -132,9 +182,9 @@
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2">mdi-account-group</v-icon>
-        Benutzer mit Rollen
+        Benutzer
         <v-spacer></v-spacer>
-        <LBtn variant="text" @click="loadAllUsersWithRoles" :loading="loadingUsers" prepend-icon="mdi-refresh">
+        <LBtn variant="text" @click="loadUsers" :loading="loadingUsers" prepend-icon="mdi-refresh">
           Aktualisieren
         </LBtn>
       </v-card-title>
@@ -158,6 +208,12 @@
             </div>
           </template>
 
+          <template v-slot:item.status="{ item }">
+            <v-chip :color="getStatusColor(item)" size="small" variant="flat">
+              {{ getStatusLabel(item) }}
+            </v-chip>
+          </template>
+
           <template v-slot:item.roles="{ item }">
             <v-chip
               v-for="role in item.roles"
@@ -172,12 +228,28 @@
           </template>
 
           <template v-slot:item.actions="{ item }">
-            <LIconBtn
-              icon="mdi-pencil"
-              tooltip="Bearbeiten"
-              @click="selectUser(item.username)"
-              :loading="loadingUser === item.username"
-            />
+            <div class="d-flex justify-end gap-2">
+              <LIconBtn
+                icon="mdi-pencil"
+                tooltip="Bearbeiten"
+                @click="selectUser(item.username)"
+                :loading="loadingUser === item.username"
+              />
+              <LIconBtn
+                :icon="item.is_active ? 'mdi-lock' : 'mdi-lock-open-variant'"
+                :tooltip="item.is_active ? 'Sperren' : 'Entsperren'"
+                :loading="togglingUser === item.username"
+                :disabled="item.username === 'admin' || item.deleted_at"
+                @click="toggleUserLock(item)"
+              />
+              <LIconBtn
+                icon="mdi-delete"
+                tooltip="Löschen"
+                variant="error"
+                :disabled="item.username === 'admin'"
+                @click="confirmDelete(item)"
+              />
+            </div>
           </template>
 
           <template v-slot:no-data>
@@ -191,6 +263,92 @@
         </v-data-table>
       </v-card-text>
     </v-card>
+
+    <!-- Create User Dialog -->
+    <v-dialog v-model="createDialog" max-width="560">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-account-plus</v-icon>
+          Benutzer anlegen
+          <v-spacer></v-spacer>
+          <LIconBtn icon="mdi-close" @click="createDialog = false" />
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          <v-text-field
+            v-model="newUserUsername"
+            label="Username"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-account"
+            :disabled="creatingUser"
+          />
+          <v-select
+            v-model="newUserRoles"
+            :items="allRoles"
+            item-title="display_name"
+            item-value="role_name"
+            label="Initiale Rollen"
+            variant="outlined"
+            density="comfortable"
+            multiple
+            chips
+            clearable
+            :disabled="creatingUser"
+          />
+          <v-switch
+            v-model="newUserActive"
+            color="success"
+            inset
+            label="Account aktiv"
+            :disabled="creatingUser"
+          />
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <LBtn variant="text" @click="createDialog = false" :disabled="creatingUser">Abbrechen</LBtn>
+          <LBtn
+            variant="primary"
+            prepend-icon="mdi-check"
+            @click="createUser"
+            :loading="creatingUser"
+            :disabled="!newUserUsername"
+          >
+            Anlegen
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirm Dialog -->
+    <v-dialog v-model="deleteDialog" max-width="520">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2" color="error">mdi-alert</v-icon>
+          Benutzer löschen
+          <v-spacer></v-spacer>
+          <LIconBtn icon="mdi-close" @click="deleteDialog = false" />
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          Möchtest du den Benutzer <strong>{{ userToDelete?.username }}</strong> wirklich löschen?
+          <div class="text-caption text-medium-emphasis mt-2">
+            Der Account wird in LLARS deaktiviert und aus Rollen/Berechtigungen entfernt.
+          </div>
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <LBtn variant="text" @click="deleteDialog = false" :disabled="deletingUser">Abbrechen</LBtn>
+          <LBtn
+            variant="error"
+            prepend-icon="mdi-delete"
+            @click="deleteUser"
+            :loading="deletingUser"
+            :disabled="!userToDelete"
+          >
+            Löschen
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -207,17 +365,27 @@ const roleToAssign = ref(null);
 const showAllPermissions = ref(false);
 const users = ref([]);
 const allRoles = ref([]);
+const createDialog = ref(false);
+const deleteDialog = ref(false);
+const userToDelete = ref(null);
+const newUserUsername = ref('');
+const newUserRoles = ref([]);
+const newUserActive = ref(true);
 
 // Loading states
 const loadingSearch = ref(false);
 const loadingUsers = ref(false);
 const loadingUser = ref(null);
 const assigningRole = ref(false);
+const creatingUser = ref(false);
+const deletingUser = ref(false);
+const togglingUser = ref(null);
 const { isLoading, withLoading } = useSkeletonLoading(['table']);
 
 // Table headers
 const headers = [
   { title: 'Benutzer', key: 'username', sortable: true },
+  { title: 'Status', key: 'status', sortable: false },
   { title: 'Rollen', key: 'roles', sortable: false },
   { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' },
 ];
@@ -252,6 +420,25 @@ const getRoleColor = (roleName) => {
   return colors[roleName] || 'grey';
 };
 
+const getStatusLabel = (user) => {
+  if (user.deleted_at) return 'Gelöscht';
+  return user.is_active ? 'Aktiv' : 'Gesperrt';
+};
+
+const getStatusColor = (user) => {
+  if (user.deleted_at) return 'grey';
+  return user.is_active ? 'success' : 'warning';
+};
+
+const selectedUserStatus = computed(() => {
+  if (!selectedUser.value) return null;
+  if (!selectedUser.value.db_record_exists) return { label: 'Nicht angelegt', color: 'warning' };
+  return {
+    label: getStatusLabel(selectedUser.value),
+    color: getStatusColor(selectedUser.value),
+  };
+});
+
 // Load all roles
 const loadRoles = async () => {
   try {
@@ -262,16 +449,15 @@ const loadRoles = async () => {
   }
 };
 
-// Load all users with roles
-const loadAllUsersWithRoles = async () => {
+// Load all users
+const loadUsers = async () => {
   loadingUsers.value = true;
   await withLoading('table', async () => {
     try {
-      const response = await axios.get('/api/permissions/users-with-roles');
+      const response = await axios.get('/api/admin/users');
       users.value = response.data.users || [];
     } catch (error) {
       console.error('Error loading users:', error);
-      // Fallback: Try to get from user_roles table
       users.value = [];
     }
   });
@@ -280,41 +466,129 @@ const loadAllUsersWithRoles = async () => {
 
 // Search for a specific user
 const searchUser = async () => {
-  if (!searchQuery.value) return;
-
-  loadingSearch.value = true;
   try {
-    const response = await axios.get(`/api/permissions/user/${searchQuery.value}`);
-    selectedUser.value = response.data;
-    showAllPermissions.value = false;
-
-    // Add to users list if not already there
-    const existingIndex = users.value.findIndex(u => u.username === response.data.username);
-    if (existingIndex === -1) {
-      users.value.unshift({
-        username: response.data.username,
-        roles: response.data.roles
-      });
-    }
+    if (!searchQuery.value) return;
+    loadingSearch.value = true;
+    await selectUser(searchQuery.value);
   } catch (error) {
     console.error('Error searching user:', error);
     selectedUser.value = null;
+  } finally {
+    loadingSearch.value = false;
   }
-  loadingSearch.value = false;
 };
 
 // Select user for editing
 const selectUser = async (username) => {
   loadingUser.value = username;
   try {
-    const response = await axios.get(`/api/permissions/user/${username}`);
-    selectedUser.value = response.data;
+    const [permResponse, metaResponse] = await Promise.all([
+      axios.get(`/api/permissions/user/${encodeURIComponent(username)}`),
+      axios.get(`/api/admin/users?q=${encodeURIComponent(username)}&include_deleted=true`),
+    ]);
+
+    const metaUsers = metaResponse.data.users || [];
+    const meta = metaUsers.find(u => u.username === username) || null;
+    selectedUser.value = {
+      ...permResponse.data,
+      ...(meta || {}),
+      db_record_exists: Boolean(meta && meta.id),
+    };
     showAllPermissions.value = false;
     roleToAssign.value = null;
+
+    // Ensure user appears in table (if present in DB)
+    if (meta && meta.id) {
+      const existingIndex = users.value.findIndex(u => u.username === username);
+      if (existingIndex === -1) {
+        users.value.unshift(meta);
+      } else {
+        users.value[existingIndex] = { ...users.value[existingIndex], ...meta };
+      }
+    }
   } catch (error) {
     console.error('Error loading user:', error);
   }
   loadingUser.value = null;
+};
+
+const openCreateDialog = (prefillUsername = '') => {
+  newUserUsername.value = prefillUsername || '';
+  newUserActive.value = true;
+  newUserRoles.value = [];
+
+  if (prefillUsername && selectedUser.value?.roles?.length) {
+    newUserRoles.value = selectedUser.value.roles.map(r => r.role_name);
+  }
+
+  createDialog.value = true;
+};
+
+const createUser = async () => {
+  if (!newUserUsername.value) return;
+  creatingUser.value = true;
+  try {
+    await axios.post('/api/admin/users', {
+      username: newUserUsername.value,
+      is_active: newUserActive.value,
+      role_names: newUserRoles.value,
+    });
+    createDialog.value = false;
+    await loadUsers();
+    if (selectedUser.value?.username === newUserUsername.value) {
+      await selectUser(newUserUsername.value);
+    }
+  } catch (error) {
+    console.error('Error creating user:', error);
+  } finally {
+    creatingUser.value = false;
+  }
+};
+
+const toggleUserLock = async (user) => {
+  if (!user?.username || user.username === 'admin') return;
+  togglingUser.value = user.username;
+  try {
+    const desiredActive = !user.is_active;
+    const response = await axios.patch(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+      is_active: desiredActive,
+    });
+
+    const updated = response.data.user;
+    const idx = users.value.findIndex(u => u.username === user.username);
+    if (idx !== -1) users.value[idx] = { ...users.value[idx], ...updated };
+    if (selectedUser.value?.username === user.username) {
+      selectedUser.value = { ...selectedUser.value, ...updated };
+    }
+  } catch (error) {
+    console.error('Error toggling user lock:', error);
+  } finally {
+    togglingUser.value = null;
+  }
+};
+
+const confirmDelete = (user) => {
+  if (!user?.username || user.username === 'admin') return;
+  userToDelete.value = user;
+  deleteDialog.value = true;
+};
+
+const deleteUser = async () => {
+  if (!userToDelete.value?.username) return;
+  deletingUser.value = true;
+  try {
+    await axios.delete(`/api/admin/users/${encodeURIComponent(userToDelete.value.username)}`);
+    users.value = users.value.filter(u => u.username !== userToDelete.value.username);
+    if (selectedUser.value?.username === userToDelete.value.username) {
+      selectedUser.value = null;
+    }
+    deleteDialog.value = false;
+    userToDelete.value = null;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+  } finally {
+    deletingUser.value = false;
+  }
 };
 
 // Assign role to user
@@ -330,7 +604,7 @@ const assignRole = async () => {
 
     // Reload user data
     await selectUser(selectedUser.value.username);
-    await loadAllUsersWithRoles();
+    await loadUsers();
     roleToAssign.value = null;
   } catch (error) {
     console.error('Error assigning role:', error);
@@ -350,7 +624,7 @@ const unassignRole = async (roleName) => {
 
     // Reload user data
     await selectUser(selectedUser.value.username);
-    await loadAllUsersWithRoles();
+    await loadUsers();
   } catch (error) {
     console.error('Error unassigning role:', error);
   }
@@ -358,7 +632,7 @@ const unassignRole = async (roleName) => {
 
 onMounted(() => {
   loadRoles();
-  loadAllUsersWithRoles();
+  loadUsers();
 });
 </script>
 

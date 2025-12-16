@@ -4,6 +4,7 @@ Handles RAG pipeline, prompt management, and chat history.
 """
 
 import logging
+import os
 from prompt_manager import PromptManager
 from rag_pipeline import RAGPipeline
 
@@ -24,7 +25,10 @@ class ChatManager:
         """Initializes the RAG Pipeline."""
         try:
             rag = RAGPipeline(docs_dir=docs_dir)
-            rag.load_and_index_docs()
+            build_on_startup = os.environ.get("RAG_PIPELINE_BUILD_ON_STARTUP", "false").strip().lower() in (
+                "1", "true", "yes", "on"
+            )
+            rag.load_and_index_docs(allow_rebuild=build_on_startup)
             return rag
         except Exception as e:
             logging.error(f"Failed to initialize RAG pipeline: {str(e)}")

@@ -8,6 +8,7 @@ import os
 from .feature_types import initialize_feature_function_types
 from .categories import initialize_consulting_category_types
 from .kaimo import initialize_kaimo_defaults
+from .schema_patches import apply_schema_patches
 from .users import seed_user_groups, seed_bootstrap_admin
 from .permissions import initialize_permissions
 from .rag import initialize_rag_system
@@ -27,6 +28,9 @@ def run_all_seeders(db):
     Args:
         db: SQLAlchemy database instance
     """
+    # Apply idempotent schema patches before any model queries run.
+    apply_schema_patches(db)
+
     # Seed feature function types
     initialize_feature_function_types(db)
 
@@ -68,6 +72,7 @@ def run_all_seeders(db):
 
 __all__ = [
     'run_all_seeders',
+    'apply_schema_patches',
     'initialize_feature_function_types',
     'initialize_consulting_category_types',
     'initialize_kaimo_defaults',

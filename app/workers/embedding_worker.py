@@ -108,6 +108,11 @@ class EmbeddingWorker:
 
                     except Exception as e:
                         logger.error(f"[EmbeddingWorker] Error in processing loop: {e}")
+                        try:
+                            from db.db import db
+                            db.session.rollback()
+                        except Exception:
+                            pass
                         # Wait a bit before retrying
                         self._stop_event.wait(timeout=5)
 
@@ -138,6 +143,12 @@ class EmbeddingWorker:
         """
         from db.db import db
         from db.tables import RAGDocument, RAGDocumentChunk, RAGCollection, RAGProcessingQueue
+
+        # Ensure a clean session at the beginning of each batch.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
         # Requeue stale "processing" documents after restarts/crashes
         try:
@@ -209,6 +220,10 @@ class EmbeddingWorker:
                 processed_count += 1
             except Exception as e:
                 logger.error(f"[EmbeddingWorker] Error processing document {doc.id}: {e}")
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
                 doc.status = 'failed'
                 doc.processing_error = str(e)[:500]
                 db.session.commit()
@@ -303,7 +318,7 @@ class EmbeddingWorker:
             raise ValueError(f"Document {doc.id} has no collection assigned")
 
         # Use first collection for ChromaDB naming (embeddings are shared)
-        from services.rag.collection_embedding_service import sanitize_chroma_collection_name
+        from services.rag.collection_embedding_service import sanitize_chroma_collection_name, sanitize_chroma_metadata
         primary_collection = linked_collections[0]
         collection_name = sanitize_chroma_collection_name(primary_collection.name, self._pipeline.model_name)
 
@@ -316,16 +331,48 @@ class EmbeddingWorker:
         vectorstore_dir = os.path.join(self._pipeline.storage_dir, "vectorstore", self._pipeline.model_name.replace('/', '_'))
         os.makedirs(vectorstore_dir, exist_ok=True)
 
-        # Create embeddings and store in ChromaDB
+        # Clean up existing chunks/vectors for retries (prevents unique constraint errors and stale vectors).
+        try:
+            existing_chunks = RAGDocumentChunk.query.filter_by(document_id=doc.id).all()
+            existing_vector_ids = [c.vector_id for c in existing_chunks if c and c.vector_id]
+
+            if existing_chunks:
+                try:
+                    vectorstore = Chroma(
+                        collection_name=collection_name,
+                        persist_directory=vectorstore_dir,
+                        embedding_function=self._pipeline.embeddings,
+                    )
+                    if existing_vector_ids:
+                        try:
+                            vectorstore._collection.delete(ids=existing_vector_ids)
+                        except Exception:
+                            # Fallback for different langchain-chroma versions
+                            try:
+                                vectorstore.delete(ids=existing_vector_ids)
+                            except Exception:
+                                pass
+                except Exception as e:
+                    logger.warning(f"[EmbeddingWorker] Could not delete old vectors for doc {doc.id}: {e}")
+
+                RAGDocumentChunk.query.filter_by(document_id=doc.id).delete()
+                doc.vector_ids = None
+                doc.chunk_count = 0
+                db.session.commit()
+        except Exception as e:
+            logger.warning(f"[EmbeddingWorker] Cleanup skipped for doc {doc.id}: {e}")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+        # Create chunks and store in DB + ChromaDB
         vector_ids = []
         for i, chunk in enumerate(chunks):
             try:
                 chunk_text = chunk.text
                 # Generate unique ID for this chunk
                 chunk_id = f"doc_{doc.id}_chunk_{i}_{uuid.uuid4().hex[:8]}"
-
-                # Create embedding
-                embedding = self._pipeline.embeddings.embed_query(chunk_text)
 
                 # Store in database chunk table
                 db_chunk = RAGDocumentChunk(
@@ -371,17 +418,20 @@ class EmbeddingWorker:
             vectorstore.add_texts(
                 texts=[c.text for c in chunks],
                 ids=vector_ids,
-                metadatas=[{
-                    'document_id': doc.id,
-                    'chunk_index': i,
-                    'filename': doc.filename,
-                    'collection_id': primary_collection.id,  # Primary collection
-                    'collection_ids': ','.join(map(str, collection_ids)),  # All linked collections
-                    'page_number': chunks[i].page_number,
-                    'start_char': chunks[i].start_char,
-                    'end_char': chunks[i].end_char,
-                    'vector_id': vector_ids[i]
-                } for i in range(len(chunks))]
+                metadatas=[
+                    sanitize_chroma_metadata({
+                        'document_id': doc.id,
+                        'chunk_index': i,
+                        'filename': doc.filename,
+                        'collection_id': primary_collection.id,  # Primary collection
+                        'collection_ids': ','.join(map(str, collection_ids)),  # All linked collections
+                        'page_number': chunks[i].page_number,
+                        'start_char': chunks[i].start_char,
+                        'end_char': chunks[i].end_char,
+                        'vector_id': vector_ids[i]
+                    })
+                    for i in range(len(chunks))
+                ]
             )
             logger.info(f"[EmbeddingWorker] Added {len(chunks)} chunks to ChromaDB collection {collection_name}")
 

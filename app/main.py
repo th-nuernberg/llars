@@ -100,18 +100,31 @@ init_crawler_socketio(socketio)
 
 # Initialize Embedding Worker for background document processing
 # The worker automatically processes pending documents and creates embeddings
-from workers.embedding_worker import start_embedding_worker
-start_embedding_worker(app)
+def _should_start_background_threads() -> bool:
+    """
+    Prevent duplicate background threads when the Flask reloader is active.
+
+    In development, `flask run` spawns a reloader parent process and a child process.
+    The child sets `WERKZEUG_RUN_MAIN=true`. Background threads must only start once.
+    """
+    if os.environ.get('FLASK_ENV', 'production') == 'development':
+        return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    return True
+
+
+if _should_start_background_threads():
+    from workers.embedding_worker import start_embedding_worker
+    start_embedding_worker(app)
 
 # Initialize Stale Job Detector for LLM-as-Judge
 # Checks every 5 minutes for comparisons stuck in RUNNING state and resets them
-from services.judge.stale_job_detection import start_stale_job_detector
-start_stale_job_detector(app)
+    from services.judge.stale_job_detection import start_stale_job_detector
+    start_stale_job_detector(app)
 
 # Initialize KIA Auto-Sync for LLM-as-Judge
 # Automatically syncs KIA data from GitLab if no pillar threads exist
-from services.judge.kia_auto_sync import start_kia_auto_sync
-start_kia_auto_sync(app)
+    from services.judge.kia_auto_sync import start_kia_auto_sync
+    start_kia_auto_sync(app)
 
 # Fix missing chroma_collection_name for existing collections
 # This is a one-time migration for collections created before the fix

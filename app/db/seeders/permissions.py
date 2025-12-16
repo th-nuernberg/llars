@@ -185,6 +185,12 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Löschen von Chatbots'
         },
+        {
+            'permission_key': 'feature:chatbots:advanced',
+            'display_name': 'Erweiterte Chatbot-Modi',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen von Chatbots mit erweiterten Agent-Modi (ReAct, Reflection, ReflAct)'
+        },
         # Feature: KAIMO
         {
             'permission_key': 'feature:kaimo:view',
@@ -259,6 +265,7 @@ def initialize_permissions(db):
                 'feature:rag:edit',
                 'feature:chatbots:view',
                 'feature:chatbots:edit',
+                'feature:chatbots:advanced',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
                 'admin:kaimo:manage',

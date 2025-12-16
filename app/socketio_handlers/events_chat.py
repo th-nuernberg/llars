@@ -24,6 +24,7 @@ import requests
 from flask import request
 from flask_socketio import emit
 from openai import OpenAI
+from llm.openai_utils import extract_delta_text
 
 
 def register_chat_events(socketio, chat_manager):
@@ -178,7 +179,7 @@ def register_chat_events(socketio, chat_manager):
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
-                content = getattr(delta, "content", "")
+                content = extract_delta_text(delta)
                 if content:
                     assistant_message += content
                     emit("chat_response", {
@@ -261,7 +262,7 @@ def register_chat_events(socketio, chat_manager):
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
-                content = getattr(delta, "content", "")
+                content = extract_delta_text(delta)
                 if content:
                     emit(
                         "test_prompt_response",

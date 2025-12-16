@@ -16,6 +16,7 @@ import re
 from typing import Dict, Any, Optional, Iterable
 
 from openai import OpenAI
+from llm.openai_utils import extract_delta_text, extract_message_text
 
 from db.tables import Chatbot, RAGCollection, CollectionDocumentLink
 
@@ -182,7 +183,8 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
             max_tokens=500
         )
 
-        return response.choices[0].message.content.strip()
+        text = extract_message_text(response.choices[0].message)
+        return (text or "").strip()
 
     @staticmethod
     def stream_field_generation(chatbot_id: int, field: str, context: Optional[str] = None) -> Iterable[Dict[str, Any]]:
@@ -225,15 +227,7 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
 
         accumulated = ""
         for chunk in stream:
-            content = chunk.choices[0].delta.content
-            delta = ""
-            if isinstance(content, list):
-                delta = "".join([
-                    getattr(part, 'text', '') if hasattr(part, 'text') else str(part)
-                    for part in content
-                ])
-            elif isinstance(content, str):
-                delta = content
+            delta = extract_delta_text(chunk.choices[0].delta)
 
             if not delta:
                 continue

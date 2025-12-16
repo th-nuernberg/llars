@@ -19,7 +19,70 @@ export function useChatbotForm() {
       '- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: \"{{UNKNOWN_ANSWER}}\"'
     ].join('\n'),
     rag_context_prefix: 'Kontext:',
-    rag_context_item_template: '[{{id}}] {{title}}:\n{{excerpt}}'
+    rag_context_item_template: '[{{id}}] {{title}}:\n{{excerpt}}',
+    // Agent mode settings
+    agent_mode: 'standard',
+    task_type: 'lookup',
+    agent_max_iterations: 5,
+    // Web search settings
+    web_search_enabled: false,
+    web_search_max_results: 5,
+    // Tools configuration
+    tools_enabled: ['rag_search', 'lexical_search', 'respond'],
+    // ACT mode prompt
+    act_system_prompt: [
+      'Du hast Zugriff auf folgende Tools:',
+      '- rag_search(query): Semantische Suche in den Dokumenten',
+      '- lexical_search(query): Wörtliche Suche in den Dokumenten',
+      '- web_search(query): Web-Suche für aktuelle Informationen',
+      '- respond(answer): Finale Antwort geben',
+      '',
+      'Führe die passende Aktion aus, um die Frage zu beantworten.',
+      'Format: ACTION: tool_name(parameter)'
+    ].join('\n'),
+    // Reflection mode prompt
+    reflection_prompt: [
+      'Überprüfe deine vorherige Antwort kritisch:',
+      '1. Sind alle Quellenverweise [1], [2], ... korrekt und belegt?',
+      '2. Wurden nur Informationen aus dem Kontext verwendet?',
+      '3. Ist die Antwort vollständig und beantwortet alle Aspekte der Frage?',
+      '4. Gibt es Halluzinationen oder unbelegte Behauptungen?',
+      '',
+      'Falls Fehler gefunden wurden, korrigiere die Antwort. Sonst bestätige die Antwort.'
+    ].join('\n'),
+    react_system_prompt: [
+      'Du bist ein Assistent, der strukturiert denkt und handelt.',
+      '',
+      'Bei jeder Anfrage folgst du diesem Prozess:',
+      '1. THOUGHT: Analysiere die Frage und überlege, welche Informationen benötigt werden',
+      '2. ACTION: Führe eine der verfügbaren Aktionen aus',
+      '3. OBSERVATION: Analysiere das Ergebnis der Aktion',
+      '4. Wiederhole bis du genug Informationen hast',
+      '5. FINAL ANSWER: Gib eine fundierte Antwort mit Quellenverweisen',
+      '',
+      'Verfügbare Aktionen:',
+      '- rag_search(query): Semantische Suche in den Dokumenten',
+      '- lexical_search(query): Wörtliche Suche in den Dokumenten',
+      '- respond(answer): Finale Antwort geben'
+    ].join('\n'),
+    react_tools_enabled: ['rag_search', 'lexical_search', 'respond'],
+    reflact_system_prompt: [
+      'Du bist ein zielorientierter Assistent, der vor jeder Aktion sein Ziel reflektiert.',
+      '',
+      'Bei jeder Anfrage folgst du diesem Prozess:',
+      '1. GOAL: Definiere das übergeordnete Ziel der Anfrage',
+      '2. REFLECTION: Reflektiere, wie weit du vom Ziel entfernt bist',
+      '3. THOUGHT: Überlege den nächsten sinnvollen Schritt',
+      '4. ACTION: Führe eine Aktion aus',
+      '5. OBSERVATION: Analysiere das Ergebnis',
+      '6. Wiederhole ab Schritt 2 bis das Ziel erreicht ist',
+      '7. FINAL ANSWER: Gib eine fundierte Antwort mit Quellenverweisen',
+      '',
+      'Verfügbare Aktionen:',
+      '- rag_search(query): Semantische Suche in den Dokumenten',
+      '- lexical_search(query): Wörtliche Suche in den Dokumenten',
+      '- respond(answer): Finale Antwort geben'
+    ].join('\n')
   };
 
   // Form data with defaults

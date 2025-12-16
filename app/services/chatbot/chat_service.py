@@ -25,6 +25,7 @@ from db.models.chatbot import (
     DEFAULT_RAG_CONTEXT_PREFIX,
     DEFAULT_RAG_UNKNOWN_ANSWER,
 )
+from llm.openai_utils import extract_delta_text, extract_message_text
 
 logger = logging.getLogger(__name__)
 
@@ -370,18 +371,7 @@ class ChatService:
             for chunk in stream:
                 choice = chunk.choices[0] if chunk.choices else None
                 delta_obj = getattr(choice, "delta", None) if choice else None
-                delta = (
-                    getattr(delta_obj, "content", None)
-                    or getattr(delta_obj, "reasoning_content", None)
-                )
-                if not delta:
-                    continue
-                # Handle list-of-parts vs string
-                if isinstance(delta, list):
-                    delta_text = "".join([getattr(part, 'text', '') if hasattr(part, 'text') else str(part) for part in delta])
-                else:
-                    delta_text = delta
-
+                delta_text = extract_delta_text(delta_obj)
                 if not delta_text:
                     continue
 
@@ -854,40 +844,8 @@ class ChatService:
             )
 
             response_text = ""
-            choice = response.choices[0] if getattr(response, 'choices', None) else None
-            message = getattr(choice, 'message', None) if choice else None
-            content = getattr(message, 'content', None) if message is not None else None
-            reasoning_content = getattr(message, 'reasoning_content', None) if message is not None else None
-
-            if content is None and isinstance(message, dict):
-                content = message.get('content')
-                reasoning_content = message.get('reasoning_content')
-
-            if (content is None or (isinstance(content, str) and not content.strip())) and reasoning_content:
-                content = reasoning_content
-
-            # Some providers may return content blocks (list) instead of a plain string.
-            if isinstance(content, list):
-                parts: List[str] = []
-                for part in content:
-                    if part is None:
-                        continue
-                    if hasattr(part, 'text'):
-                        parts.append(getattr(part, 'text') or "")
-                    elif isinstance(part, dict) and isinstance(part.get('text'), str):
-                        parts.append(part.get('text') or "")
-                    else:
-                        parts.append(str(part))
-                response_text = "".join(parts)
-            elif isinstance(content, str):
-                response_text = content
-            elif content is None:
-                tool_calls = getattr(message, 'tool_calls', None) if message is not None else None
-                if tool_calls:
-                    logger.warning("[ChatService] LLM returned tool_calls without content; using empty response.")
-                response_text = ""
-            else:
-                response_text = str(content)
+            if getattr(response, 'choices', None):
+                response_text = extract_message_text(response.choices[0].message)
 
             tokens_input = response.usage.prompt_tokens if response.usage else 0
             tokens_output = response.usage.completion_tokens if response.usage else 0

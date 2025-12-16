@@ -35,6 +35,7 @@ from db.tables import (
     Chatbot, ChatbotConversation, ChatbotMessage, ChatbotMessageRole
 )
 from services.chatbot.chat_service import ChatService
+from services.chatbot.agent_chat_service import AgentChatService
 from services.chatbot.file_processor import FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
 from services.permission_service import PermissionService
@@ -204,6 +205,202 @@ def _get_rag_images_for_sources(sources):
     return images
 
 
+def _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time):
+    """
+    Handle streaming chat with agent modes (ACT, ReAct, ReflAct).
+
+    Emits:
+        chatbot:agent_status - Agent reasoning steps
+        chatbot:response - Streaming content
+        chatbot:sources - RAG sources
+        chatbot:complete - Final metadata
+    """
+    try:
+        # Emit initial agent mode info
+        agent_mode = agent_service.get_agent_mode()
+        task_type = agent_service.get_task_type()
+
+        emit("chatbot:agent_status", {
+            "type": "init",
+            "mode": agent_mode,
+            "task_type": task_type,
+            "max_iterations": agent_service.get_max_iterations()
+        }, room=client_id)
+
+        final_response = ""
+        all_sources = []
+        reasoning_steps = []
+        conversation_id = None
+        message_id = None
+
+        # Stream agent responses
+        for event in agent_service.chat_agent(user_message, session_id, username):
+            event_status = event.get("status")
+
+            if event_status == "starting":
+                emit("chatbot:agent_status", {
+                    "type": "starting",
+                    "mode": event.get("mode")
+                }, room=client_id)
+
+            elif event_status == "iteration":
+                emit("chatbot:agent_status", {
+                    "type": "iteration",
+                    "iteration": event.get("iteration"),
+                    "max": event.get("max")
+                }, room=client_id)
+
+            elif event_status == "context_retrieved":
+                emit("chatbot:agent_status", {
+                    "type": "context",
+                    "sources_count": event.get("sources_count", 0)
+                }, room=client_id)
+
+            elif event_status == "defining_goal":
+                emit("chatbot:agent_status", {
+                    "type": "defining_goal"
+                }, room=client_id)
+
+            elif event_status == "goal_defined":
+                reasoning_steps.append({"type": "goal", "content": event.get("goal")})
+                emit("chatbot:agent_status", {
+                    "type": "goal",
+                    "goal": event.get("goal")
+                }, room=client_id)
+
+            elif event_status == "reflecting":
+                emit("chatbot:agent_status", {
+                    "type": "reflecting",
+                    "iteration": event.get("iteration")
+                }, room=client_id)
+
+            elif event_status == "reflection":
+                reasoning_steps.append({"type": "reflection", "content": event.get("reflection")})
+                emit("chatbot:agent_status", {
+                    "type": "reflection",
+                    "content": event.get("reflection"),
+                    "iteration": event.get("iteration")
+                }, room=client_id)
+
+            elif event_status == "thinking":
+                emit("chatbot:agent_status", {
+                    "type": "thinking",
+                    "iteration": event.get("iteration")
+                }, room=client_id)
+
+            elif event_status == "thought":
+                reasoning_steps.append({"type": "thought", "content": event.get("thought")})
+                emit("chatbot:agent_status", {
+                    "type": "thought",
+                    "content": event.get("thought"),
+                    "iteration": event.get("iteration")
+                }, room=client_id)
+
+            elif event_status == "getting_action":
+                emit("chatbot:agent_status", {
+                    "type": "getting_action",
+                    "iteration": event.get("iteration")
+                }, room=client_id)
+
+            elif event_status == "action":
+                reasoning_steps.append({
+                    "type": "action",
+                    "action": event.get("action"),
+                    "param": event.get("param")
+                })
+                emit("chatbot:agent_status", {
+                    "type": "action",
+                    "action": event.get("action"),
+                    "param": event.get("param"),
+                    "iteration": event.get("iteration")
+                }, room=client_id)
+
+            elif event_status == "observation":
+                reasoning_steps.append({
+                    "type": "observation",
+                    "content": event.get("result_preview")
+                })
+                emit("chatbot:agent_status", {
+                    "type": "observation",
+                    "content": event.get("result_preview"),
+                    "iteration": event.get("iteration")
+                }, room=client_id)
+
+            elif event_status == "generating":
+                emit("chatbot:agent_status", {
+                    "type": "generating"
+                }, room=client_id)
+
+            elif event_status == "final_answer":
+                emit("chatbot:agent_status", {
+                    "type": "final_answer"
+                }, room=client_id)
+
+            elif event_status == "max_iterations_reached":
+                emit("chatbot:agent_status", {
+                    "type": "max_iterations"
+                }, room=client_id)
+
+            elif "delta" in event:
+                # Streaming response chunk
+                emit("chatbot:response", {
+                    "content": event["delta"],
+                    "complete": False
+                }, room=client_id)
+                final_response += event["delta"]
+
+            elif "error" in event:
+                emit("chatbot:error", {
+                    "error": event["error"]
+                }, room=client_id)
+
+            elif event.get("done"):
+                # Final response
+                final_response = event.get("full_response", final_response)
+                all_sources = event.get("sources", [])
+                reasoning_steps = event.get("reasoning_steps", reasoning_steps)
+
+        # Send sources
+        if all_sources:
+            # Add footnote IDs
+            for idx, source in enumerate(all_sources):
+                source['footnote_id'] = idx + 1
+            emit("chatbot:sources", {"sources": all_sources}, room=client_id)
+
+        # Calculate response time
+        response_time_ms = int((time.time() - start_time) * 1000)
+
+        # Emit completion
+        emit("chatbot:complete", {
+            "mode": agent_mode,
+            "task_type": task_type,
+            "tokens": {
+                "input": len(user_message) // 4,  # Rough estimate
+                "output": len(final_response) // 4
+            },
+            "response_time_ms": response_time_ms,
+            "reasoning_steps": reasoning_steps
+        }, room=client_id)
+
+        # Signal completion
+        emit("chatbot:response", {
+            "content": "",
+            "complete": True
+        }, room=client_id)
+
+        logger.info(f"Agent {agent_mode} responded to chatbot {chatbot.name} in {response_time_ms}ms")
+
+    except Exception as e:
+        logger.error(f"Agent stream error: {e}", exc_info=True)
+        emit("chatbot:error", {
+            "error": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+        }, room=client_id)
+        emit("chatbot:response", {
+            "content": "",
+            "complete": True
+        }, room=client_id)
+
+
 def register_chatbot_events(socketio):
     """
     Register chatbot-related SocketIO events.
@@ -327,8 +524,17 @@ def register_chatbot_events(socketio):
                 emit("chatbot:error", {"error": "Chatbot is not active", "code": "BOT_INACTIVE"}, room=client_id)
                 return
 
-            # Initialize service (for RAG and conversation management)
-            chat_service = ChatService(chatbot_id)
+            # Initialize service - use AgentChatService for agent modes
+            agent_service = AgentChatService(chatbot_id)
+            agent_mode = agent_service.get_agent_mode()
+
+            # Route to agent handler for non-standard modes
+            if agent_mode != 'standard':
+                _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time)
+                return
+
+            # Standard mode - use regular ChatService
+            chat_service = agent_service  # AgentChatService extends ChatService
 
             # Get or create conversation
             conversation = chat_service._get_or_create_conversation(session_id, username)

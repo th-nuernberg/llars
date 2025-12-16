@@ -14,6 +14,20 @@ class ChatbotMessageRole(Enum):
     SYSTEM = 'system'
 
 
+class AgentMode(Enum):
+    """Agent reasoning mode for chatbot responses"""
+    STANDARD = 'standard'  # Single-shot response, no reasoning
+    ACT = 'act'            # Action-only, no explicit reasoning traces
+    REACT = 'react'        # Reasoning + Acting interleaved
+    REFLACT = 'reflact'    # Goal-state reflection before each action
+
+
+class TaskType(Enum):
+    """Task complexity type"""
+    LOOKUP = 'lookup'      # Simple fact retrieval (1-2 tool calls)
+    MULTIHOP = 'multihop'  # Complex reasoning requiring multiple steps
+
+
 class Chatbot(db.Model):
     """Configurable chatbots with RAG integration"""
     __tablename__ = 'chatbots'
@@ -102,6 +116,64 @@ WICHTIG - Antworten mit Quellen:
 DEFAULT_RAG_CONTEXT_PREFIX = "Kontext:"
 DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE = "[{{id}}] {{title}}:\n{{excerpt}}"
 
+# Agent mode prompts
+DEFAULT_REFLECTION_PROMPT = """
+Überprüfe deine vorherige Antwort kritisch:
+1. Sind alle Quellenverweise [1], [2], ... korrekt und belegt?
+2. Wurden nur Informationen aus dem Kontext verwendet?
+3. Ist die Antwort vollständig und beantwortet alle Aspekte der Frage?
+4. Gibt es Halluzinationen oder unbelegte Behauptungen?
+
+Falls Fehler gefunden wurden, korrigiere die Antwort. Sonst bestätige die Antwort.
+""".strip()
+
+DEFAULT_ACT_SYSTEM_PROMPT = """
+Du hast Zugriff auf folgende Tools:
+- rag_search(query): Semantische Suche in den Dokumenten
+- lexical_search(query): Wörtliche Suche in den Dokumenten
+- web_search(query): Web-Suche für aktuelle Informationen
+- respond(answer): Finale Antwort geben
+
+Führe die passende Aktion aus, um die Frage zu beantworten.
+Format: ACTION: tool_name(parameter)
+""".strip()
+
+DEFAULT_REACT_SYSTEM_PROMPT = """
+Du bist ein Assistent, der strukturiert denkt und handelt.
+
+Bei jeder Anfrage folgst du diesem Prozess:
+1. THOUGHT: Analysiere die Frage und überlege, welche Informationen benötigt werden
+2. ACTION: Führe eine der verfügbaren Aktionen aus
+3. OBSERVATION: Analysiere das Ergebnis der Aktion
+4. Wiederhole bis du genug Informationen hast
+5. FINAL ANSWER: Gib eine fundierte Antwort mit Quellenverweisen
+
+Verfügbare Aktionen:
+- rag_search(query): Semantische Suche in den Dokumenten
+- lexical_search(query): Wörtliche Suche in den Dokumenten
+- web_search(query): Web-Suche für aktuelle Informationen
+- respond(answer): Finale Antwort geben
+""".strip()
+
+DEFAULT_REFLACT_SYSTEM_PROMPT = """
+Du bist ein zielorientierter Assistent, der vor jeder Aktion sein Ziel reflektiert.
+
+Bei jeder Anfrage folgst du diesem Prozess:
+1. GOAL: Definiere das übergeordnete Ziel der Anfrage
+2. REFLECTION: Reflektiere, wie weit du vom Ziel entfernt bist
+3. THOUGHT: Überlege den nächsten sinnvollen Schritt
+4. ACTION: Führe eine Aktion aus
+5. OBSERVATION: Analysiere das Ergebnis
+6. Wiederhole ab Schritt 2 bis das Ziel erreicht ist
+7. FINAL ANSWER: Gib eine fundierte Antwort mit Quellenverweisen
+
+Verfügbare Aktionen:
+- rag_search(query): Semantische Suche in den Dokumenten
+- lexical_search(query): Wörtliche Suche in den Dokumenten
+- web_search(query): Web-Suche für aktuelle Informationen
+- respond(answer): Finale Antwort geben
+""".strip()
+
 
 class ChatbotPromptSettings(db.Model):
     """RAG prompt configuration for a chatbot (DB-backed, editable in Admin UI)."""
@@ -113,22 +185,69 @@ class ChatbotPromptSettings(db.Model):
         primary_key=True
     )
 
+    # RAG Citation Settings
     rag_require_citations: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
     rag_unknown_answer: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_UNKNOWN_ANSWER, nullable=False)
     rag_citation_instructions: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_CITATION_INSTRUCTIONS, nullable=False)
     rag_context_prefix: Mapped[str] = mapped_column(db.String(100), default=DEFAULT_RAG_CONTEXT_PREFIX, nullable=False)
     rag_context_item_template: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE, nullable=False)
 
+    # Agent Mode Configuration
+    agent_mode: Mapped[str] = mapped_column(
+        db.Enum('standard', 'act', 'react', 'reflact', name='agent_mode_enum'),
+        default='standard',
+        nullable=False
+    )
+    task_type: Mapped[str] = mapped_column(
+        db.Enum('lookup', 'multihop', name='task_type_enum'),
+        default='lookup',
+        nullable=False
+    )
+    agent_max_iterations: Mapped[int] = mapped_column(db.Integer, default=5, nullable=False)
+
+    # Web Search Configuration
+    web_search_enabled: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False)
+    tavily_api_key: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    web_search_max_results: Mapped[int] = mapped_column(db.Integer, default=5, nullable=False)
+
+    # Tool Permissions (JSON array of enabled tools)
+    tools_enabled: Mapped[Optional[dict]] = mapped_column(
+        db.JSON,
+        default=['rag_search', 'lexical_search', 'respond'],
+        nullable=False
+    )
+
+    # Agent Prompts (customizable per chatbot)
+    reflection_prompt: Mapped[str] = mapped_column(db.Text, default=DEFAULT_REFLECTION_PROMPT, nullable=False)
+    act_system_prompt: Mapped[str] = mapped_column(db.Text, default=DEFAULT_ACT_SYSTEM_PROMPT, nullable=False)
+    react_system_prompt: Mapped[str] = mapped_column(db.Text, default=DEFAULT_REACT_SYSTEM_PROMPT, nullable=False)
+    reflact_system_prompt: Mapped[str] = mapped_column(db.Text, default=DEFAULT_REFLACT_SYSTEM_PROMPT, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
     def to_dict(self) -> dict:
         return {
+            # RAG Settings
             'rag_require_citations': self.rag_require_citations,
             'rag_unknown_answer': self.rag_unknown_answer,
             'rag_citation_instructions': self.rag_citation_instructions,
             'rag_context_prefix': self.rag_context_prefix,
             'rag_context_item_template': self.rag_context_item_template,
+            # Agent Settings
+            'agent_mode': self.agent_mode,
+            'task_type': self.task_type,
+            'agent_max_iterations': self.agent_max_iterations,
+            # Web Search
+            'web_search_enabled': self.web_search_enabled,
+            'web_search_max_results': self.web_search_max_results,
+            # Tools
+            'tools_enabled': self.tools_enabled or ['rag_search', 'lexical_search', 'respond'],
+            # Agent Prompts
+            'reflection_prompt': self.reflection_prompt,
+            'act_system_prompt': self.act_system_prompt,
+            'react_system_prompt': self.react_system_prompt,
+            'reflact_system_prompt': self.reflact_system_prompt,
         }
 
 

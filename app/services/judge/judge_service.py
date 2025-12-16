@@ -18,6 +18,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from openai import OpenAI
+from llm.openai_utils import extract_delta_text, extract_message_text
 
 from .judge_schema import (
     JudgeEvaluationResult,
@@ -222,7 +223,7 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
                         "response_format": {"type": "json_object"}
                     }
                 )
-                full_response = response.choices[0].message.content
+                full_response = extract_message_text(response.choices[0].message)
                 token_count = response.usage.total_tokens if response.usage else None
 
             # Parse JSON response
@@ -281,10 +282,13 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
 
         full_response = ""
         for chunk in stream:
-            if chunk.choices and chunk.choices[0].delta.content:
-                content = chunk.choices[0].delta.content
-                full_response += content
-                callback(content)
+            if not chunk.choices:
+                continue
+            content = extract_delta_text(chunk.choices[0].delta)
+            if not content:
+                continue
+            full_response += content
+            callback(content)
 
         return full_response
 

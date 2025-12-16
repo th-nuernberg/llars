@@ -54,6 +54,8 @@ from db.models.oncoco import (
 # Chatbot models
 from db.models.chatbot import (
     ChatbotMessageRole,
+    AgentMode,
+    TaskType,
     Chatbot,
     ChatbotPromptSettings,
     ChatbotUserAccess,
@@ -157,6 +159,8 @@ __all__ = [
     'OnCoCoTransitionMatrix',
     # Chatbot
     'ChatbotMessageRole',
+    'AgentMode',
+    'TaskType',
     'Chatbot',
     'ChatbotPromptSettings',
     'ChatbotUserAccess',

@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 
+from llm.openai_utils import extract_delta_text, extract_message_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,7 +97,7 @@ class LiteLLMClient:
             )
 
             if response.choices:
-                content = response.choices[0].message.content
+                content = extract_message_text(response.choices[0].message)
                 logger.debug(f"[LiteLLM] Generated {len(content)} characters")
                 return content
 
@@ -139,18 +141,12 @@ class LiteLLMClient:
             )
 
             for chunk in stream:
-                if chunk.choices:
-                    delta = chunk.choices[0].delta
-
-                    # Handle both content and reasoning_content (Magistral model)
-                    content = None
-                    if hasattr(delta, 'content') and delta.content:
-                        content = delta.content
-                    elif hasattr(delta, 'reasoning_content') and delta.reasoning_content:
-                        content = delta.reasoning_content
-
-                    if content:
-                        yield content
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                content = extract_delta_text(delta)
+                if content:
+                    yield content
 
         except Exception as e:
             logger.error(f"[LiteLLM] Error during streaming: {e}")

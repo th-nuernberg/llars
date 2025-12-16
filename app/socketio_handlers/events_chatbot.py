@@ -424,7 +424,20 @@ def register_chatbot_events(socketio):
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
-                content = getattr(delta, "content", "")
+                content = (
+                    getattr(delta, "content", None)
+                    or getattr(delta, "reasoning_content", None)
+                    or ""
+                )
+
+                if isinstance(content, list):
+                    content = "".join(
+                        [
+                            getattr(part, 'text', '') if hasattr(part, 'text') else str(part)
+                            for part in content
+                            if part is not None
+                        ]
+                    )
 
                 if content:
                     assistant_message += content

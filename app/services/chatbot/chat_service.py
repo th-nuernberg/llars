@@ -215,9 +215,10 @@ class ChatService:
             use_vision=has_images
         )
 
-        # 6. Handle fallback if no RAG results and empty response
-        if not sources and self.chatbot.fallback_message and not response_text.strip():
-            response_text = self.chatbot.fallback_message
+        # 6. Handle fallback on empty response (some providers may return tool calls / blocks)
+        if response_text is None or not str(response_text).strip():
+            fallback = (self.chatbot.fallback_message or "").strip()
+            response_text = fallback or (self.get_unknown_answer() if self.chatbot.rag_enabled else "")
 
         # Calculate response time
         response_time_ms = int((time.time() - start_time) * 1000)
@@ -367,7 +368,12 @@ class ChatService:
 
             accumulated = ""
             for chunk in stream:
-                delta = chunk.choices[0].delta.content if chunk.choices else None
+                choice = chunk.choices[0] if chunk.choices else None
+                delta_obj = getattr(choice, "delta", None) if choice else None
+                delta = (
+                    getattr(delta_obj, "content", None)
+                    or getattr(delta_obj, "reasoning_content", None)
+                )
                 if not delta:
                     continue
                 # Handle list-of-parts vs string
@@ -847,7 +853,42 @@ class ChatService:
                 top_p=self.chatbot.top_p
             )
 
-            response_text = response.choices[0].message.content
+            response_text = ""
+            choice = response.choices[0] if getattr(response, 'choices', None) else None
+            message = getattr(choice, 'message', None) if choice else None
+            content = getattr(message, 'content', None) if message is not None else None
+            reasoning_content = getattr(message, 'reasoning_content', None) if message is not None else None
+
+            if content is None and isinstance(message, dict):
+                content = message.get('content')
+                reasoning_content = message.get('reasoning_content')
+
+            if (content is None or (isinstance(content, str) and not content.strip())) and reasoning_content:
+                content = reasoning_content
+
+            # Some providers may return content blocks (list) instead of a plain string.
+            if isinstance(content, list):
+                parts: List[str] = []
+                for part in content:
+                    if part is None:
+                        continue
+                    if hasattr(part, 'text'):
+                        parts.append(getattr(part, 'text') or "")
+                    elif isinstance(part, dict) and isinstance(part.get('text'), str):
+                        parts.append(part.get('text') or "")
+                    else:
+                        parts.append(str(part))
+                response_text = "".join(parts)
+            elif isinstance(content, str):
+                response_text = content
+            elif content is None:
+                tool_calls = getattr(message, 'tool_calls', None) if message is not None else None
+                if tool_calls:
+                    logger.warning("[ChatService] LLM returned tool_calls without content; using empty response.")
+                response_text = ""
+            else:
+                response_text = str(content)
+
             tokens_input = response.usage.prompt_tokens if response.usage else 0
             tokens_output = response.usage.completion_tokens if response.usage else 0
 

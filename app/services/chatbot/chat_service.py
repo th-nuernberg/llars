@@ -8,6 +8,7 @@ import os
 import logging
 import uuid
 import time
+import re
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 from openai import OpenAI
@@ -30,6 +31,20 @@ logger = logging.getLogger(__name__)
 
 class ChatService:
     """Service for chatbot chat interactions with Multi-Collection RAG"""
+
+    _TOKEN_RE = re.compile(r"[\wäöüÄÖÜß]+", re.UNICODE)
+    _STOPWORDS_DE = {
+        'a', 'aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch', 'daher',
+        'darum', 'das', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dich', 'die', 'dies', 'diese', 'dieser',
+        'dieses', 'dir', 'doch', 'dort', 'du', 'durch', 'ein', 'eine', 'einem', 'einen', 'einer', 'eines', 'er', 'es',
+        'euer', 'eure', 'für', 'hatte', 'hatten', 'hattest', 'hattet', 'hier', 'hinter', 'ich', 'ihr', 'ihre', 'im',
+        'in', 'ist', 'ja', 'jede', 'jedem', 'jeden', 'jeder', 'jedes', 'jener', 'jenes', 'jetzt', 'kann', 'kannst',
+        'können', 'könnt', 'machen', 'mein', 'meine', 'mit', 'muss', 'musst', 'müssen', 'müsst', 'nach', 'nachdem',
+        'nein', 'nicht', 'nun', 'oder', 'seid', 'sein', 'seine', 'sich', 'sie', 'sind', 'so', 'soll', 'sollen',
+        'sollst', 'sollt', 'sonst', 'soweit', 'sowie', 'und', 'unser', 'unsere', 'unter', 'vom', 'von', 'vor', 'wann',
+        'warum', 'was', 'weiter', 'weitere', 'wenn', 'wer', 'werde', 'werden', 'werdet', 'weshalb', 'wie', 'wieder',
+        'wieso', 'wir', 'wird', 'wirst', 'wo', 'woher', 'wohin', 'zu', 'zum', 'zur', 'über'
+    }
 
     @staticmethod
     def _render_placeholders(template: str, mapping: Dict[str, Any]) -> str:
@@ -429,6 +444,77 @@ class ChatService:
         db.session.flush()
         return message
 
+    def _extract_lexical_tokens(self, query: str) -> List[str]:
+        tokens = [t.lower() for t in self._TOKEN_RE.findall(query or '')]
+        tokens = [t for t in tokens if len(t) >= 3 and t not in self._STOPWORDS_DE]
+        # De-duplicate while keeping order
+        seen = set()
+        unique: List[str] = []
+        for t in tokens:
+            if t in seen:
+                continue
+            seen.add(t)
+            unique.append(t)
+        return unique[:6]
+
+    def _lexical_search_collection(self, collection: RAGCollection, tokens: List[str], limit: int) -> List[Dict[str, Any]]:
+        if not collection or not tokens:
+            return []
+
+        from sqlalchemy import or_
+        from db.tables import CollectionDocumentLink
+
+        clauses = [RAGDocumentChunk.content.ilike(f"%{t}%") for t in tokens]
+        if not clauses:
+            return []
+
+        rows = (
+            db.session.query(RAGDocumentChunk, RAGDocument)
+            .join(RAGDocument, RAGDocument.id == RAGDocumentChunk.document_id)
+            .join(CollectionDocumentLink, CollectionDocumentLink.document_id == RAGDocument.id)
+            .filter(CollectionDocumentLink.collection_id == collection.id)
+            .filter(or_(*clauses))
+            .order_by(RAGDocumentChunk.document_id.desc(), RAGDocumentChunk.chunk_index.asc())
+            .limit(limit)
+            .all()
+        )
+
+        results: List[Dict[str, Any]] = []
+        for chunk, doc in rows:
+            filename = doc.filename if doc else None
+            title = (
+                (doc.title if doc else None)
+                or (doc.original_filename if doc else None)
+                or filename
+                or 'Unbekannt'
+            )
+
+            results.append({
+                'content': chunk.content,
+                # Lexical hits are explicit string matches; assign a high score and let the reranker order them.
+                'score': 1.0,
+                'document_id': chunk.document_id,
+                'title': title,
+                'filename': filename,
+                'chunk_index': chunk.chunk_index,
+                'page_number': chunk.page_number,
+                'start_char': chunk.start_char,
+                'end_char': chunk.end_char,
+                'vector_id': chunk.vector_id,
+                'metadata': {
+                    'document_id': chunk.document_id,
+                    'chunk_index': chunk.chunk_index,
+                    'filename': filename,
+                    'collection_id': collection.id,
+                    'page_number': chunk.page_number,
+                    'start_char': chunk.start_char,
+                    'end_char': chunk.end_char,
+                    'vector_id': chunk.vector_id,
+                }
+            })
+
+        return results
+
     def _get_multi_collection_context(self, query: str) -> Tuple[str, List[Dict]]:
         """
         Retrieve context from multiple collections with weighting.
@@ -438,6 +524,12 @@ class ChatService:
         """
         if not self.rag_pipeline:
             return "", []
+
+        # Retrieve more candidates than we finally include in the prompt, so the reranker
+        # can surface exact matches (e.g. names, emails) even if they are not in the top-K
+        # vector results.
+        final_k = max(1, int(self.chatbot.rag_retrieval_k or 4))
+        candidate_k = max(final_k * 4, 12)
 
         all_results = []
 
@@ -452,7 +544,7 @@ class ChatService:
                 results = self._search_collection(
                     collection,
                     query,
-                    k=self.chatbot.rag_retrieval_k
+                    k=candidate_k
                 )
 
                 # Apply weight and add collection info
@@ -467,12 +559,30 @@ class ChatService:
                 logger.error(f"Error searching collection {collection.name}: {e}")
                 continue
 
-        if not all_results:
+        # Lexical fallback for fact lookups that vector search can miss (names, emails, roles).
+        lexical_results: List[Dict[str, Any]] = []
+        lexical_tokens = self._extract_lexical_tokens(query)
+        if lexical_tokens:
+            for cc in sorted(self.chatbot.collections, key=lambda x: -x.priority):
+                collection = cc.collection
+                if not collection:
+                    continue
+                try:
+                    hits = self._lexical_search_collection(collection, lexical_tokens, limit=final_k)
+                    for hit in hits:
+                        hit['score'] *= cc.weight
+                        hit['collection_id'] = collection.id
+                        hit['collection_name'] = collection.display_name
+                    lexical_results.extend(hits)
+                except Exception as e:
+                    logger.debug(f"[ChatService] Lexical fallback skipped for collection {collection.id}: {e}")
+
+        if not all_results and not lexical_results:
             return "", []
 
         # Sort by score and take top K
         all_results.sort(key=lambda x: x['score'], reverse=True)
-        top_results = all_results[:self.chatbot.rag_retrieval_k]
+        top_results = all_results[:candidate_k]
 
         # Filter by minimum relevance
         filtered_results = [
@@ -480,8 +590,22 @@ class ChatService:
             if r['score'] >= self.chatbot.rag_min_relevance
         ]
 
+        # If everything is below threshold, keep the best candidates anyway and rely on
+        # citation instructions + "unknown answer" to prevent hallucinations.
         if not filtered_results:
-            return "", []
+            filtered_results = top_results[:final_k]
+
+        # Merge lexical matches (dedupe by vector_id / document+chunk).
+        if lexical_results:
+            seen = set()
+            merged: List[Dict[str, Any]] = []
+            for r in filtered_results + lexical_results:
+                key = r.get('vector_id') or (r.get('document_id'), r.get('chunk_index'))
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(r)
+            filtered_results = merged
 
         # Optional reranking (keeps filtering based on vector score)
         try:
@@ -489,6 +613,8 @@ class ChatService:
             filtered_results = rerank_results(query, filtered_results)
         except Exception as e:
             logger.debug(f"[ChatService] Reranking skipped: {e}")
+
+        filtered_results = filtered_results[:final_k]
 
         # Build context string
         context_parts = []

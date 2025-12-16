@@ -196,7 +196,7 @@ HINWEIS: Dies ist ein Informationsdienst. Für konkrete Rechtsfragen sollte imme
             is_active=True,
             is_public=True,  # Available to all users
             allowed_roles=None,
-            build_status='pending',  # Needs embedding
+            build_status='draft',  # Needs embedding via Build button
             primary_collection_id=collection.id,
             created_by='system',
             created_at=datetime.now(),

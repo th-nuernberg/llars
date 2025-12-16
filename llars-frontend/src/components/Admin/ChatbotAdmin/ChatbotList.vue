@@ -48,11 +48,11 @@
               </div>
             </div>
             <v-chip
-              :color="chatbot.is_active ? 'success' : 'grey'"
+              :color="getStatusColor(chatbot)"
               size="small"
               variant="flat"
             >
-              {{ chatbot.is_active ? 'Aktiv' : 'Inaktiv' }}
+              {{ getStatusLabel(chatbot) }}
             </v-chip>
           </v-card-title>
 
@@ -117,6 +117,15 @@
                 />
               </template>
               <v-list>
+                <v-list-item
+                  v-if="chatbot.build_status && chatbot.build_status !== 'ready'"
+                  @click="$emit('resume', chatbot)"
+                >
+                  <template #prepend>
+                    <v-icon>mdi-wizard-hat</v-icon>
+                  </template>
+                  <v-list-item-title>Konfiguration fortsetzen</v-list-item-title>
+                </v-list-item>
                 <v-list-item @click="$emit('edit', chatbot)">
                   <template #prepend>
                     <v-icon>mdi-pencil</v-icon>
@@ -165,7 +174,57 @@ defineProps({
   }
 })
 
-defineEmits(['edit', 'delete', 'duplicate', 'test', 'manage-collections'])
+defineEmits(['edit', 'delete', 'duplicate', 'test', 'manage-collections', 'resume'])
+
+function getBuildStatusLabel(status) {
+  switch (status) {
+    case 'draft':
+      return 'Entwurf'
+    case 'crawling':
+      return 'Crawling'
+    case 'embedding':
+      return 'Embedding'
+    case 'configuring':
+      return 'Konfiguration'
+    case 'paused':
+      return 'Pausiert'
+    case 'error':
+      return 'Fehler'
+    default:
+      return status || 'Status'
+  }
+}
+
+function getBuildStatusColor(status) {
+  switch (status) {
+    case 'draft':
+      return 'info'
+    case 'crawling':
+      return 'info'
+    case 'embedding':
+      return 'info'
+    case 'configuring':
+      return 'warning'
+    case 'paused':
+      return 'warning'
+    case 'error':
+      return 'error'
+    default:
+      return 'grey'
+  }
+}
+
+function getStatusLabel(chatbot) {
+  const status = chatbot?.build_status
+  if (status && status !== 'ready') return getBuildStatusLabel(status)
+  return chatbot?.is_active ? 'Aktiv' : 'Inaktiv'
+}
+
+function getStatusColor(chatbot) {
+  const status = chatbot?.build_status
+  if (status && status !== 'ready') return getBuildStatusColor(status)
+  return chatbot?.is_active ? 'success' : 'grey'
+}
 </script>
 
 <style scoped>

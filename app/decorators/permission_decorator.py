@@ -23,6 +23,36 @@ from auth.auth_utils import AuthUtils
 import os
 
 
+def _deny_if_user_locked(username: str):
+    """
+    Ensure the authenticated user exists in DB and is allowed to access the system.
+
+    Returns:
+        A Flask (json, status) tuple if access should be denied, otherwise None.
+    """
+    from auth.decorators import get_or_create_user
+
+    user = get_or_create_user(username)
+    if user is None:
+        return None
+
+    if getattr(user, 'deleted_at', None) is not None:
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Account has been deleted',
+            'code': 'ACCOUNT_DELETED'
+        }), 403
+
+    if not bool(getattr(user, 'is_active', True)):
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Account is locked',
+            'code': 'ACCOUNT_LOCKED'
+        }), 403
+
+    return None
+
+
 def require_permission(permission_key: str):
     """
     Decorator to require a specific permission for a route.
@@ -50,6 +80,10 @@ def require_permission(permission_key: str):
                     'error': 'Unauthorized',
                     'message': 'No valid authorization token provided or username not found'
                 }), 401
+
+            denied = _deny_if_user_locked(username)
+            if denied is not None:
+                return denied
 
             # Check permission
             has_permission = PermissionService.check_permission(username, permission_key)
@@ -95,6 +129,10 @@ def require_any_permission(*permission_keys):
                     'error': 'Unauthorized',
                     'message': 'No valid authorization token provided or username not found'
                 }), 401
+
+            denied = _deny_if_user_locked(username)
+            if denied is not None:
+                return denied
 
             # Check if user has ANY of the required permissions
             has_any_permission = False
@@ -143,6 +181,10 @@ def require_all_permissions(*permission_keys):
                     'error': 'Unauthorized',
                     'message': 'No valid authorization token provided or username not found'
                 }), 401
+
+            denied = _deny_if_user_locked(username)
+            if denied is not None:
+                return denied
 
             # Check if user has ALL of the required permissions
             missing_permissions = []

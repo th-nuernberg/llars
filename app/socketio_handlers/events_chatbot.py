@@ -282,6 +282,16 @@ def register_chatbot_events(socketio):
                 emit("chatbot:error", {"error": "Authentication failed", "code": "AUTH_FAILED"}, room=client_id)
                 return
 
+            # Ensure user exists in DB and enforce account state (locked/deleted)
+            from auth.decorators import get_or_create_user
+            user_obj = get_or_create_user(username_from_token)
+            if getattr(user_obj, 'deleted_at', None) is not None:
+                emit("chatbot:error", {"error": "Account has been deleted", "code": "ACCOUNT_DELETED"}, room=client_id)
+                return
+            if not bool(getattr(user_obj, 'is_active', True)):
+                emit("chatbot:error", {"error": "Account is locked", "code": "ACCOUNT_LOCKED"}, room=client_id)
+                return
+
             if not PermissionService.check_permission(username_from_token, 'feature:chatbots:view'):
                 emit("chatbot:error", {"error": "Forbidden", "code": "FORBIDDEN"}, room=client_id)
                 return

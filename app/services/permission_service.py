@@ -56,6 +56,22 @@ class PermissionService:
         if not username or not permission_key:
             return False
 
+        # Account state enforcement (locked/deleted users are denied)
+        try:
+            from db.models import User
+
+            user = db.session.execute(
+                select(User).where(User.username == username)
+            ).scalar_one_or_none()
+            if user is not None:
+                if getattr(user, 'deleted_at', None) is not None:
+                    return False
+                if not bool(getattr(user, 'is_active', True)):
+                    return False
+        except Exception:
+            # If user lookup fails, fall back to permission checks
+            pass
+
         # Get the permission ID
         permission = db.session.execute(
             select(Permission).where(Permission.permission_key == permission_key)

@@ -235,6 +235,7 @@ class ChatbotBuildMonitor:
                 result['collection'] = {
                     'id': collection.id,
                     'name': collection.name,
+                    'crawl_job_id': collection.crawl_job_id,
                     'embedding_status': collection.embedding_status,
                     'embedding_progress': collection.embedding_progress or 0,
                     'document_count': collection.document_count,

@@ -1,6 +1,7 @@
 """User-related database models."""
 
 from typing import Optional
+from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import db
@@ -21,6 +22,8 @@ class User(db.Model):
     password_hash: Mapped[str] = mapped_column(db.String(255))
     api_key: Mapped[str] = mapped_column(db.String(100), unique=True)
     group_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('user_groups.id'), default=1)
+    is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
 
     group = db.relationship('UserGroup', backref='users')
 

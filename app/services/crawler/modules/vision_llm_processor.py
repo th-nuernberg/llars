@@ -11,6 +11,8 @@ import json
 import logging
 from typing import Dict, Optional
 
+from llm.openai_utils import extract_message_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -128,13 +130,10 @@ Wichtig:
                 temperature=self.temperature
             )
 
-            # Handle None response content
-            response_content = response.choices[0].message.content
-            if not response_content:
+            response_text = extract_message_text(response.choices[0].message).strip()
+            if not response_text:
                 logger.warning(f"Vision-LLM returned empty response for {url}")
                 return {}
-
-            response_text = response_content.strip()
 
             # Parse JSON response
             extracted = self._parse_json_response(response_text)

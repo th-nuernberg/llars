@@ -1,9 +1,9 @@
 <!-- ChatWithBots.vue - Chat interface with chatbot selection and file upload -->
 <template>
-  <v-container fluid class="chat-page pa-0">
-    <v-row no-gutters class="chat-container">
+  <div class="chat-page">
+    <div class="chat-container" ref="containerRef">
       <!-- Chatbot Selection Sidebar -->
-      <v-col cols="12" md="3" class="chatbot-sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+      <div class="chatbot-sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
         <div class="sidebar-header">
           <div class="d-flex align-center justify-space-between">
             <div class="d-flex align-center">
@@ -60,10 +60,10 @@
             </div>
           </template>
         </div>
-      </v-col>
+      </div>
 
       <!-- Main Chat Area -->
-      <v-col cols="12" :md="mainChatMd" class="chat-main">
+      <div class="chat-main" :style="sourcePanel.open ? leftPanelStyle() : {}">
         <!-- Chat Header -->
         <div v-if="selectedChatbot" class="chat-header">
           <div class="d-flex align-center">
@@ -111,6 +111,13 @@
 
         <!-- Chat Messages -->
         <div v-else class="chat-messages" ref="chatContainer">
+          <!-- Agent Reasoning Display (for ACT, ReAct, ReflAct modes) -->
+          <AgentReasoningDisplay
+            ref="agentReasoningRef"
+            :agent-status="agentStatus"
+            :is-processing="isProcessing"
+          />
+
           <!-- Welcome Message -->
           <div v-if="messages.length === 0 && selectedChatbot.welcome_message" class="welcome-message">
             <v-card variant="tonal" color="primary" class="pa-4">
@@ -267,10 +274,20 @@
             </template>
           </div>
         </div>
-      </v-col>
+      </div>
+
+      <!-- Resize Divider -->
+      <div
+        v-if="sourcePanel.open"
+        class="resize-divider"
+        :class="{ resizing: isResizing }"
+        @mousedown="startResize"
+      >
+        <div class="resize-handle"></div>
+      </div>
 
       <!-- Sources Side Panel -->
-      <v-col v-if="sourcePanel.open" cols="12" md="3" class="sources-panel">
+      <div v-if="sourcePanel.open" class="sources-panel" :style="rightPanelStyle()">
         <v-card class="sources-panel-card" variant="outlined">
           <div class="sources-panel-header">
             <div class="d-flex align-center text-truncate">
@@ -390,15 +407,32 @@
                     <v-icon size="48" class="mb-2">mdi-image-off</v-icon>
                     <div>Kein Screenshot verfügbar</div>
                   </div>
-                  <v-card v-else variant="outlined" class="overflow-hidden">
-                    <v-img :src="sourcePanel.screenshotBlobUrl" contain max-height="420">
-                      <template #placeholder>
-                        <div class="d-flex align-center justify-center fill-height">
-                          <v-progress-circular indeterminate color="primary" size="24" />
-                        </div>
-                      </template>
-                    </v-img>
-                  </v-card>
+                  <template v-else>
+                    <div class="d-flex justify-end mb-2">
+                      <v-btn
+                        size="small"
+                        variant="tonal"
+                        color="primary"
+                        @click="openFullscreen('screenshot')"
+                      >
+                        <v-icon start>mdi-fullscreen</v-icon>
+                        Vergrößern
+                      </v-btn>
+                    </div>
+                    <v-card
+                      variant="outlined"
+                      class="overflow-hidden screenshot-card"
+                      @click="openFullscreen('screenshot')"
+                    >
+                      <v-img :src="sourcePanel.screenshotBlobUrl" contain max-height="420">
+                        <template #placeholder>
+                          <div class="d-flex align-center justify-center fill-height">
+                            <v-progress-circular indeterminate color="primary" size="24" />
+                          </div>
+                        </template>
+                      </v-img>
+                    </v-card>
+                  </template>
                 </div>
               </div>
             </v-window-item>
@@ -419,16 +453,66 @@
                     <v-icon size="48" class="mb-2">mdi-file-document-outline</v-icon>
                     <div>Kein Inhalt verfügbar</div>
                   </div>
-                  <div v-else class="sources-panel-text">
-                    {{ sourcePanel.documentContent }}
-                  </div>
+                  <template v-else>
+                    <div class="d-flex justify-end mb-2">
+                      <v-btn
+                        size="small"
+                        variant="tonal"
+                        color="primary"
+                        @click="openFullscreen('document')"
+                      >
+                        <v-icon start>mdi-fullscreen</v-icon>
+                        Vergrößern
+                      </v-btn>
+                    </div>
+                    <div class="sources-panel-text">
+                      {{ sourcePanel.documentContent }}
+                    </div>
+                  </template>
                 </div>
               </div>
             </v-window-item>
           </v-window>
         </v-card>
-      </v-col>
-    </v-row>
+      </div>
+    </div>
+
+    <!-- Fullscreen Dialog for Screenshot/Document -->
+    <v-dialog v-model="fullscreenDialog.show" fullscreen transition="dialog-bottom-transition">
+      <v-card class="fullscreen-dialog-card">
+        <v-toolbar color="primary" density="compact">
+          <v-toolbar-title class="d-flex align-center">
+            <v-icon class="mr-2">{{ fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</v-icon>
+            {{ sourcePanel.source?.title || sourcePanel.source?.filename || 'Quelle' }}
+          </v-toolbar-title>
+          <v-spacer />
+          <v-btn icon @click="fullscreenDialog.show = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-toolbar>
+        <div class="fullscreen-content">
+          <!-- Screenshot Fullscreen -->
+          <template v-if="fullscreenDialog.type === 'screenshot'">
+            <div class="fullscreen-image-container">
+              <img
+                v-if="sourcePanel.screenshotBlobUrl"
+                :src="sourcePanel.screenshotBlobUrl"
+                alt="Screenshot"
+                class="fullscreen-image"
+              />
+            </div>
+          </template>
+          <!-- Document Fullscreen -->
+          <template v-else-if="fullscreenDialog.type === 'document'">
+            <div class="fullscreen-document-container">
+              <div class="fullscreen-document-text">
+                {{ sourcePanel.documentContent }}
+              </div>
+            </div>
+          </template>
+        </div>
+      </v-card>
+    </v-dialog>
 
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000">
@@ -485,7 +569,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -497,6 +581,8 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { useChatMessages } from './ChatWithBots/composables/useChatMessages.js'
+import { usePanelResize } from '@/composables/usePanelResize'
+import AgentReasoningDisplay from './Chat/AgentReasoningDisplay.vue'
 
 // Composable for chat message operations
 const {
@@ -512,6 +598,20 @@ const {
 
 // Skeleton Loading
 const { isLoading, withLoading } = useSkeletonLoading(['chatbots'])
+
+// Panel Resize - for sources panel
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 65,
+  minLeftPercent: 40,
+  maxLeftPercent: 80,
+  storageKey: 'chat-sources-panel-width'
+})
 
 // Socket.IO connection
 const socket = ref(null)
@@ -564,6 +664,16 @@ const sourceDialog = ref({
   source: null
 })
 
+// Fullscreen dialog state
+const fullscreenDialog = ref({
+  show: false,
+  type: null // 'screenshot' or 'document'
+})
+
+// Agent reasoning display state
+const agentStatus = ref(null)
+const agentReasoningRef = ref(null)
+
 // ==================== COMPUTED PROPERTIES ====================
 
 const acceptedFileTypes = computed(() => {
@@ -579,13 +689,6 @@ const fileUploadTooltip = computed(() => {
     return 'Bilder und Dokumente hochladen'
   }
   return 'Dokumente hochladen (PDF, Word, Excel, PowerPoint)'
-})
-
-const mainChatMd = computed(() => {
-  if (sourcePanel.value.open) {
-    return sidebarCollapsed.value ? 9 : 6
-  }
-  return sidebarCollapsed.value ? 12 : 9
 })
 
 // ==================== CHATBOT MANAGEMENT ====================
@@ -629,6 +732,11 @@ async function selectChatbot(bot) {
   messages.value = []
   selectedFiles.value = []
   sessionId.value = crypto.randomUUID()
+  // Reset agent reasoning display
+  agentStatus.value = null
+  if (agentReasoningRef.value?.reset) {
+    agentReasoningRef.value.reset()
+  }
 
   // Load capabilities
   try {
@@ -679,6 +787,11 @@ function clearChat() {
     localStorage.removeItem(storageKey)
   }
   sessionId.value = crypto.randomUUID()
+  // Reset agent reasoning display
+  agentStatus.value = null
+  if (agentReasoningRef.value?.reset) {
+    agentReasoningRef.value.reset()
+  }
 }
 
 // ==================== FILE HANDLING ====================
@@ -1008,6 +1121,13 @@ function handleFootnoteClick(event, sources) {
   }
 }
 
+/**
+ * Open fullscreen dialog for screenshot or document
+ */
+function openFullscreen(type) {
+  fullscreenDialog.value = { show: true, type }
+}
+
 // ==================== SOCKET.IO SETUP ====================
 
 /**
@@ -1064,6 +1184,16 @@ function initSocket() {
   // Completion metadata
   socket.value.on('chatbot:complete', (data) => {
     console.log('Chatbot response complete:', data)
+    // Reset agent status on completion
+    if (data.mode && data.mode !== 'standard') {
+      agentStatus.value = { type: 'complete', ...data }
+    }
+  })
+
+  // Agent status updates (for ACT, ReAct, ReflAct modes)
+  socket.value.on('chatbot:agent_status', (data) => {
+    agentStatus.value = data
+    console.log('Agent status:', data)
   })
 
   // Error handling
@@ -1138,26 +1268,31 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-page {
-  height: calc(100vh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px));
+  height: calc(100vh - 94px); /* 64px AppBar + 30px Footer */
   overflow: hidden;
   background-color: rgb(var(--v-theme-background));
 }
 
 .chat-container {
   height: 100%;
+  display: flex;
+  overflow: hidden;
 }
 
 .chatbot-sidebar {
+  width: 280px;
+  min-width: 280px;
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: width 0.3s ease, min-width 0.3s ease;
+  flex-shrink: 0;
 }
 
 .sidebar-collapsed {
-  max-width: 60px !important;
-  flex: 0 0 60px !important;
+  width: 60px !important;
+  min-width: 60px !important;
 }
 
 .sidebar-header {
@@ -1179,10 +1314,13 @@ onUnmounted(() => {
 }
 
 .chat-main {
+  flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
   background: rgb(var(--v-theme-surface));
+  overflow: hidden;
+  min-width: 0; /* wichtig für flex */
 }
 
 .chat-header {
@@ -1358,10 +1496,40 @@ onUnmounted(() => {
 
 .sources-panel {
   background: rgb(var(--v-theme-surface));
-  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  min-width: 0; /* wichtig für flex */
+}
+
+/* Resize Divider */
+.resize-divider {
+  width: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing {
+  background: rgba(var(--v-theme-primary), 0.3);
+}
+
+.resize-handle {
+  width: 4px;
+  height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 2px;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background: rgb(var(--v-theme-primary));
 }
 
 .sources-panel-card {
@@ -1434,6 +1602,68 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
+/* Screenshot Card clickable */
+.screenshot-card {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.screenshot-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Fullscreen Dialog */
+.fullscreen-dialog-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--v-theme-surface));
+}
+
+.fullscreen-image-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+}
+
+.fullscreen-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.fullscreen-document-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 32px;
+}
+
+.fullscreen-document-text {
+  max-width: 900px;
+  margin: 0 auto;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  font-size: 1rem;
+  background: rgb(var(--v-theme-surface-variant));
+  border-radius: 12px;
+  padding: 32px;
+}
+
 @media (max-width: 960px) {
   .chatbot-sidebar {
     display: none;
@@ -1441,6 +1671,20 @@ onUnmounted(() => {
 
   .message-container {
     max-width: 90%;
+  }
+
+  .resize-divider {
+    display: none;
+  }
+
+  .sources-panel {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: 30px;
+    width: 100% !important;
+    z-index: 100;
   }
 }
 </style>

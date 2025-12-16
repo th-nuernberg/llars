@@ -2,6 +2,7 @@ import json
 import os
 from openai import OpenAI
 from typing import Dict
+from llm.openai_utils import extract_message_text
 
 PROMPT = """Du bist ein erfahrener Psychologe mit 20 Jahren Erfahrung in psychosozialer Beratung. Du kennst typische Kommunikationsmuster von Klienten in Beratungsgesprächen sehr genau.
 
@@ -122,7 +123,7 @@ class SingleEvaluator:
                 ]
             )
 
-            result_text = response.choices[0].message.content.strip()
+            result_text = extract_message_text(response.choices[0].message).strip()
 
             token_usage = {
                 'prompt_tokens': response.usage.prompt_tokens,

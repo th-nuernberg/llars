@@ -10,6 +10,7 @@ import threading
 from typing import Optional, Dict, Any, List
 
 from openai import OpenAI
+from llm.openai_utils import extract_delta_text, extract_message_text
 
 from .session_service import ComparisonSessionService
 from .prompt_generator import ComparisonPromptGenerator
@@ -155,7 +156,7 @@ class LLMResponseGenerator:
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
-                content = getattr(delta, "content", "")
+                content = extract_delta_text(delta)
 
                 if content:
                     full_response += content
@@ -262,7 +263,7 @@ class LLMResponseGenerator:
                     max_tokens=150
                 )
 
-                suggestion = response.choices[0].message.content.strip()
+                suggestion = extract_message_text(response.choices[0].message).strip()
                 return suggestion
 
         except Exception as e:

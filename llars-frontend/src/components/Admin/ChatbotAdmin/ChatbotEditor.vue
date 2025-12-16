@@ -33,6 +33,11 @@
           <v-icon start>mdi-magnify</v-icon>
           RAG
         </v-tab>
+        <v-tab v-if="canUseAdvancedModes" value="agent">
+          <v-icon start>mdi-robot-outline</v-icon>
+          Agent
+          <v-chip size="x-small" color="warning" variant="flat" class="ml-2">PRO</v-chip>
+        </v-tab>
         <v-tab value="collections">
           <v-icon start>mdi-folder-multiple</v-icon>
           Collections
@@ -486,6 +491,238 @@
             </v-form>
           </v-window-item>
 
+          <!-- Agent Mode Tab (PRO) -->
+          <v-window-item v-if="canUseAdvancedModes" value="agent" eager>
+            <v-form ref="formAgent">
+              <v-row>
+                <v-col cols="12">
+                  <v-alert type="info" variant="tonal" class="mb-4">
+                    <template #prepend>
+                      <v-icon>mdi-robot-outline</v-icon>
+                    </template>
+                    <div class="text-subtitle-2">Agent-Modi & Task-Typen</div>
+                    <div class="text-body-2">
+                      Konfiguriere Reasoning-Modus und Aufgaben-Komplexität. Die Kombination bestimmt wie der Agent Fragen beantwortet.
+                    </div>
+                  </v-alert>
+                </v-col>
+
+                <!-- Agent Mode Selection Cards -->
+                <v-col cols="12">
+                  <div class="text-subtitle-2 mb-2">Agent-Modus</div>
+                  <div class="agent-mode-grid">
+                    <v-card
+                      v-for="mode in agentModes"
+                      :key="mode.value"
+                      :class="['agent-mode-card', { 'agent-mode-card--selected': formData.prompt_settings.agent_mode === mode.value }]"
+                      variant="outlined"
+                      @click="formData.prompt_settings.agent_mode = mode.value"
+                    >
+                      <v-card-text>
+                        <div class="d-flex align-center mb-2">
+                          <v-icon :color="mode.color" size="24" class="mr-2">{{ mode.icon }}</v-icon>
+                          <span class="font-weight-bold">{{ mode.label }}</span>
+                          <v-chip v-if="mode.badge" size="x-small" :color="mode.badgeColor" variant="flat" class="ml-auto">
+                            {{ mode.badge }}
+                          </v-chip>
+                        </div>
+                        <div class="text-body-2 text-medium-emphasis mb-2">{{ mode.description }}</div>
+                        <div class="d-flex align-center ga-2">
+                          <v-chip size="x-small" variant="tonal" color="primary">
+                            {{ mode.calls }}
+                          </v-chip>
+                          <v-chip v-if="mode.tools" size="x-small" variant="tonal" color="success">
+                            <v-icon start size="small">mdi-tools</v-icon>
+                            Tools
+                          </v-chip>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </div>
+                </v-col>
+
+                <!-- Task Type Selection (for non-standard modes) -->
+                <v-col v-if="formData.prompt_settings.agent_mode !== 'standard'" cols="12">
+                  <div class="text-subtitle-2 mb-2">Task-Typ</div>
+                  <div class="task-type-grid">
+                    <v-card
+                      v-for="task in taskTypes"
+                      :key="task.value"
+                      :class="['task-type-card', { 'task-type-card--selected': formData.prompt_settings.task_type === task.value }]"
+                      variant="outlined"
+                      @click="formData.prompt_settings.task_type = task.value"
+                    >
+                      <v-card-text class="pa-3">
+                        <div class="d-flex align-center mb-1">
+                          <v-icon color="primary" size="20" class="mr-2">{{ task.icon }}</v-icon>
+                          <span class="font-weight-medium">{{ task.label }}</span>
+                          <v-chip v-if="task.badge" size="x-small" :color="task.badgeColor" variant="flat" class="ml-auto">
+                            {{ task.badge }}
+                          </v-chip>
+                        </div>
+                        <div class="text-caption text-medium-emphasis">{{ task.description }}</div>
+                      </v-card-text>
+                    </v-card>
+                  </div>
+                </v-col>
+
+                <!-- Configuration Matrix Info -->
+                <v-col v-if="formData.prompt_settings.agent_mode !== 'standard'" cols="12">
+                  <v-alert type="success" variant="tonal" density="compact">
+                    <div class="d-flex align-center">
+                      <v-icon start>mdi-information</v-icon>
+                      <span>
+                        Aktuelle Konfiguration:
+                        <strong>{{ agentModes.find(m => m.value === formData.prompt_settings.agent_mode)?.label }}</strong>
+                        +
+                        <strong>{{ taskTypes.find(t => t.value === formData.prompt_settings.task_type)?.label }}</strong>
+                      </span>
+                    </div>
+                  </v-alert>
+                </v-col>
+
+                <!-- Max Iterations (for agent modes) -->
+                <v-col v-if="['act', 'react', 'reflact'].includes(formData.prompt_settings.agent_mode)" cols="12" md="6">
+                  <v-text-field
+                    v-model.number="formData.prompt_settings.agent_max_iterations"
+                    label="Max. Iterationen"
+                    type="number"
+                    :min="1"
+                    :max="10"
+                    hint="Maximale Anzahl an Agent-Zyklen"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+
+                <!-- Tools Configuration -->
+                <v-col v-if="['act', 'react', 'reflact'].includes(formData.prompt_settings.agent_mode)" cols="12" md="6">
+                  <v-select
+                    v-model="formData.prompt_settings.tools_enabled"
+                    :items="availableAgentTools"
+                    label="Aktivierte Tools"
+                    multiple
+                    chips
+                    closable-chips
+                    hint="Welche Tools der Agent nutzen darf"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+
+                <!-- Web Search Configuration -->
+                <v-col v-if="['act', 'react', 'reflact'].includes(formData.prompt_settings.agent_mode)" cols="12">
+                  <v-card variant="outlined">
+                    <v-card-title class="text-subtitle-1 d-flex align-center">
+                      <v-icon start color="info">mdi-web</v-icon>
+                      Web-Suche (Tavily)
+                      <v-chip v-if="formData.prompt_settings.web_search_enabled" size="x-small" color="success" variant="flat" class="ml-2">
+                        Aktiv
+                      </v-chip>
+                    </v-card-title>
+                    <v-card-text>
+                      <v-switch
+                        v-model="formData.prompt_settings.web_search_enabled"
+                        label="Web-Suche aktivieren"
+                        color="info"
+                        hide-details
+                        class="mb-3"
+                      />
+                      <div v-if="formData.prompt_settings.web_search_enabled" class="mt-3">
+                        <v-text-field
+                          v-model.number="formData.prompt_settings.web_search_max_results"
+                          label="Max. Web-Ergebnisse"
+                          type="number"
+                          :min="1"
+                          :max="10"
+                          hint="Anzahl der Web-Suchergebnisse pro Anfrage"
+                          persistent-hint
+                          variant="outlined"
+                          density="comfortable"
+                        />
+                        <v-alert type="info" variant="tonal" density="compact" class="mt-3">
+                          <v-icon start size="small">mdi-key</v-icon>
+                          Der Tavily API-Key wird über Umgebungsvariablen konfiguriert (TAVILY_API_KEY)
+                        </v-alert>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+
+                <!-- ACT Settings -->
+                <v-col v-if="formData.prompt_settings.agent_mode === 'act'" cols="12">
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title>
+                        <v-icon start>mdi-play</v-icon>
+                        ACT System-Prompt anpassen
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-textarea
+                          v-model="formData.prompt_settings.act_system_prompt"
+                          label="ACT System-Prompt"
+                          hint="Instruktionen für den Action-only Prozess"
+                          persistent-hint
+                          rows="8"
+                          variant="outlined"
+                          density="comfortable"
+                        />
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-col>
+
+                <!-- ReAct Settings -->
+                <v-col v-if="formData.prompt_settings.agent_mode === 'react'" cols="12">
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title>
+                        <v-icon start>mdi-thought-bubble</v-icon>
+                        ReAct System-Prompt anpassen
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-textarea
+                          v-model="formData.prompt_settings.react_system_prompt"
+                          label="ReAct System-Prompt"
+                          hint="Instruktionen für den THOUGHT → ACTION → OBSERVATION Prozess"
+                          persistent-hint
+                          rows="12"
+                          variant="outlined"
+                          density="comfortable"
+                        />
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-col>
+
+                <!-- ReflAct Settings -->
+                <v-col v-if="formData.prompt_settings.agent_mode === 'reflact'" cols="12">
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title>
+                        <v-icon start>mdi-target</v-icon>
+                        ReflAct System-Prompt anpassen
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-textarea
+                          v-model="formData.prompt_settings.reflact_system_prompt"
+                          label="ReflAct System-Prompt"
+                          hint="Instruktionen für den GOAL → REFLECTION → ACTION Prozess"
+                          persistent-hint
+                          rows="14"
+                          variant="outlined"
+                          density="comfortable"
+                        />
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-col>
+              </v-row>
+            </v-form>
+          </v-window-item>
+
           <!-- Collections Tab -->
           <v-window-item value="collections" eager>
             <div v-if="collections.length === 0" class="text-center pa-8">
@@ -723,10 +960,86 @@
 import { computed, ref, watch } from 'vue';
 import axios from 'axios';
 import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue';
+import { usePermissions } from '@/composables/usePermissions';
 import {
   useChatbotForm,
   useChatbotCrawler
 } from './ChatbotEditor/composables';
+
+// Permission check for advanced chatbot features
+const { hasPermission } = usePermissions();
+const canUseAdvancedModes = computed(() => hasPermission('feature:chatbots:advanced'));
+
+// Agent mode configuration
+const agentModes = [
+  {
+    value: 'standard',
+    label: 'Standard',
+    icon: 'mdi-lightning-bolt',
+    color: 'grey',
+    description: 'Schnelle Single-Shot Antwort ohne Reasoning',
+    calls: '1 LLM-Call'
+  },
+  {
+    value: 'act',
+    label: 'ACT',
+    icon: 'mdi-play',
+    color: 'primary',
+    description: 'Nur Aktionen, ohne explizite Denkschritte - schneller',
+    calls: '1-3 LLM-Calls',
+    tools: true
+  },
+  {
+    value: 'react',
+    label: 'ReAct',
+    icon: 'mdi-thought-bubble',
+    color: 'success',
+    description: 'Denken → Handeln → Beobachten Zyklen',
+    calls: '2-5 LLM-Calls',
+    tools: true,
+    badge: 'Empfohlen',
+    badgeColor: 'success'
+  },
+  {
+    value: 'reflact',
+    label: 'ReflAct',
+    icon: 'mdi-target',
+    color: 'warning',
+    description: 'Ziel-Reflexion vor jeder Aktion für komplexe Fragen',
+    calls: '3-7 LLM-Calls',
+    tools: true,
+    badge: 'Experimentell',
+    badgeColor: 'warning'
+  }
+];
+
+// Task type configuration
+const taskTypes = [
+  {
+    value: 'lookup',
+    label: 'Look Up',
+    icon: 'mdi-magnify',
+    description: 'Einfache Fakten-Suche (1-2 Tool-Aufrufe)',
+    iterations: '1-2'
+  },
+  {
+    value: 'multihop',
+    label: 'Multi-hop',
+    icon: 'mdi-transit-connection-variant',
+    description: 'Komplexe Fragen mit mehreren Schritten',
+    iterations: '3-5',
+    badge: 'Mehr Tokens',
+    badgeColor: 'warning'
+  }
+];
+
+// Available tools for agent modes
+const availableAgentTools = [
+  { title: 'RAG-Suche (Semantisch)', value: 'rag_search' },
+  { title: 'Lexikalische Suche', value: 'lexical_search' },
+  { title: 'Web-Suche', value: 'web_search' },
+  { title: 'Antworten', value: 'respond' }
+];
 
 const props = defineProps({
   modelValue: Boolean,
@@ -957,5 +1270,63 @@ watch(() => props.modelValue, (isOpen) => {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+}
+
+/* Agent Mode Grid */
+.agent-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .agent-mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.agent-mode-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.agent-mode-card:hover {
+  border-color: rgba(var(--v-theme-primary), 0.5);
+  background-color: rgba(var(--v-theme-primary), 0.04);
+}
+
+.agent-mode-card--selected {
+  border-color: rgb(var(--v-theme-primary)) !important;
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+/* Task Type Grid */
+.task-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .task-type-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.task-type-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.task-type-card:hover {
+  border-color: rgba(var(--v-theme-info), 0.5);
+  background-color: rgba(var(--v-theme-info), 0.04);
+}
+
+.task-type-card--selected {
+  border-color: rgb(var(--v-theme-info)) !important;
+  background-color: rgba(var(--v-theme-info), 0.08) !important;
 }
 </style>

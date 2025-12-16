@@ -121,19 +121,23 @@ class RAGPipeline:
                     hash_md5.update(f.read())
         return hash_md5.hexdigest()
 
-    def load_and_index_docs(self):
+    def load_and_index_docs(self, allow_rebuild: bool = True):
         docs_hash_path = os.path.join(self.vectorstore_dir, "docs_hash.json")
-        current_docs_hash = self._get_docs_hash()
         model_info_path = os.path.join(self.vectorstore_dir, "model_info.json")
+        current_docs_hash = None
 
-        if os.path.exists(self.vectorstore_dir) and os.path.exists(docs_hash_path) and os.path.exists(model_info_path):
-            with open(docs_hash_path, "r") as f:
-                saved_docs_hash = json.load(f).get("hash")
+        has_saved_index = (
+            os.path.exists(self.vectorstore_dir)
+            and os.path.exists(docs_hash_path)
+            and os.path.exists(model_info_path)
+        )
+
+        if has_saved_index:
             with open(model_info_path, "r") as f:
                 saved_model = json.load(f).get("model_name")
 
-            if saved_docs_hash == current_docs_hash and saved_model == self.model_name:
-                logging.info("Attempting to load existing vectorstore...")
+            if saved_model == self.model_name and not allow_rebuild:
+                logging.info("Attempting to load existing vectorstore (rebuild disabled)...")
                 try:
                     self.vectorstore = Chroma(
                         collection_name=self.collection_name,
@@ -144,8 +148,42 @@ class RAGPipeline:
                     return
                 except Exception as e:
                     logging.error(f"Error loading vectorstore: {str(e)}")
+                    return 0
+
+            if saved_model == self.model_name:
+                with open(docs_hash_path, "r") as f:
+                    saved_docs_hash = json.load(f).get("hash")
+                current_docs_hash = self._get_docs_hash()
+
+                if saved_docs_hash == current_docs_hash:
+                    logging.info("Attempting to load existing vectorstore...")
+                    try:
+                        self.vectorstore = Chroma(
+                            collection_name=self.collection_name,
+                            persist_directory=self.vectorstore_dir,
+                            embedding_function=self.embeddings
+                        )
+                        logging.info("Vectorstore loaded successfully")
+                        return
+                    except Exception as e:
+                        logging.error(f"Error loading vectorstore: {str(e)}")
+
+            if not allow_rebuild:
+                logging.info(
+                    "Vectorstore is missing or outdated and rebuild is disabled "
+                    "(set RAG_PIPELINE_BUILD_ON_STARTUP=true to rebuild)."
+                )
+                return 0
+        elif not allow_rebuild:
+            logging.info(
+                "No existing vectorstore found and rebuild is disabled "
+                "(set RAG_PIPELINE_BUILD_ON_STARTUP=true to build)."
+            )
+            return 0
 
         logging.info(f"Creating new vectorstore for {self.model_name}")
+        if current_docs_hash is None:
+            current_docs_hash = self._get_docs_hash()
         if self.vectorstore:
             self.delete_index()
 

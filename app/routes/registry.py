@@ -32,6 +32,7 @@ def register_all_blueprints(app: Flask) -> None:
     # BEFORE registering the blueprint. Flask disallows adding routes to a
     # blueprint after it has been registered.
     from routes import permissions
+    from routes import users
 
     # ============================================================
     # Core Features

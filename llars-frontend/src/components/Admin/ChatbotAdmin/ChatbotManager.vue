@@ -237,6 +237,18 @@ import DocumentViewer from '@/components/RAG/DocumentViewer.vue'
 import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue'
 import CollectionAssignmentDialog from './CollectionAssignmentDialog.vue'
 
+const WIZARD_SESSION_KEY = 'llars_chatbot_wizard_session_v1'
+
+function readWizardSession() {
+  try {
+    const raw = sessionStorage.getItem(WIZARD_SESSION_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 // State
 const activeTab = ref('chatbots')
 const chatbots = ref([])
@@ -632,6 +644,11 @@ watch(activeTab, (newTab) => {
 
 // Lifecycle
 onMounted(() => {
+  const wizardSession = readWizardSession()
+  if (wizardSession?.is_open && (wizardSession?.chatbot_id || wizardSession?.wizard_data?.url)) {
+    wizardOpen.value = true
+  }
+
   loadChatbots()
   loadCollections()
   loadDocuments()

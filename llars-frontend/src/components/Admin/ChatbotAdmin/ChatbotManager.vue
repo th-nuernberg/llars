@@ -2,9 +2,10 @@
   <div ref="layoutRoot" class="admin-chatbots">
     <template v-if="wizardOpen">
       <ChatbotBuilderWizard
+        :resume-chatbot-id="wizardResumeChatbotId"
         @created="onWizardChatbotCreated"
         @test="openTestDialogById"
-        @close="wizardOpen = false"
+        @close="handleWizardClose"
       />
     </template>
 
@@ -16,7 +17,7 @@
             <LBtn
               variant="secondary"
               prepend-icon="mdi-wizard-hat"
-              @click="wizardOpen = true"
+              @click="openWizard()"
             >
               Builder Wizard
             </LBtn>
@@ -112,6 +113,7 @@
                 @duplicate="duplicateChatbot"
                 @test="openTestDialog"
                 @manage-collections="openCollectionManager"
+                @resume="resumeChatbotBuild"
               />
             </v-window-item>
 
@@ -279,6 +281,7 @@ const dialogs = ref({
 })
 
 const wizardOpen = ref(false)
+const wizardResumeChatbotId = ref(null)
 
 const selectedChatbot = ref(null)
 const selectedCollection = ref(null)
@@ -398,6 +401,22 @@ function openCreateDialog() {
   selectedChatbot.value = null
   isEditMode.value = false
   dialogs.value.editor = true
+}
+
+function openWizard() {
+  wizardResumeChatbotId.value = null
+  wizardOpen.value = true
+}
+
+function resumeChatbotBuild(chatbot) {
+  if (!chatbot?.id) return
+  wizardResumeChatbotId.value = chatbot.id
+  wizardOpen.value = true
+}
+
+function handleWizardClose() {
+  wizardOpen.value = false
+  wizardResumeChatbotId.value = null
 }
 
 function openEditDialog(chatbot) {

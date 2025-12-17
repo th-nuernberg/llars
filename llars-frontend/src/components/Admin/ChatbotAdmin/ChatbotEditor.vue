@@ -36,7 +36,7 @@
         <v-tab v-if="canUseAdvancedModes" value="agent">
           <v-icon start>mdi-robot-outline</v-icon>
           Agent
-          <v-chip size="x-small" color="warning" variant="flat" class="ml-2">PRO</v-chip>
+          <LTag variant="warning" size="sm" class="ml-2">PRO</LTag>
         </v-tab>
         <v-tab value="collections">
           <v-icon start>mdi-folder-multiple</v-icon>
@@ -50,7 +50,7 @@
 
       <!-- Content -->
       <v-card-text class="chatbot-editor-body">
-        <v-window v-model="activeTab" class="h-100">
+        <v-window v-model="activeTab">
           <!-- General Tab -->
           <v-window-item value="general" eager>
             <v-form ref="formGeneral">
@@ -1223,6 +1223,42 @@ watch(() => props.modelValue, (isOpen) => {
 </script>
 
 <style scoped>
+/* Dialog Card - fills viewport with max constraints */
+.chatbot-editor-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  height: 90vh;
+}
+
+/* Body scrolls - uses flex to fill available space */
+.chatbot-editor-body {
+  flex: 1;
+  min-height: 0; /* Critical for flex children to scroll */
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Window fills body and items scroll */
+.chatbot-editor-body :deep(.v-window) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chatbot-editor-body :deep(.v-window__container) {
+  height: 100%;
+}
+
+.chatbot-editor-body :deep(.v-window-item) {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Prompt Editor */
 .prompt-editor {
   font-family: 'Courier New', monospace;
   font-size: 14px;
@@ -1250,26 +1286,15 @@ watch(() => props.modelValue, (isOpen) => {
   font-family: 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.5;
-  resize: none;
-  min-height: 300px;
+  resize: vertical;
+  min-height: 200px;
+  max-height: 400px;
   background: transparent;
   color: rgb(var(--v-theme-on-surface));
 }
 
 .text-medium-emphasis {
   color: rgba(var(--v-theme-on-surface), 0.75);
-}
-
-.chatbot-editor-card {
-  display: flex;
-  flex-direction: column;
-  height: min(90vh, 860px);
-}
-
-.chatbot-editor-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
 }
 
 /* Agent Mode Grid */
@@ -1328,5 +1353,14 @@ watch(() => props.modelValue, (isOpen) => {
 .task-type-card--selected {
   border-color: rgb(var(--v-theme-info)) !important;
   background-color: rgba(var(--v-theme-info), 0.08) !important;
+}
+
+/* Responsive - smaller screens get fullscreen dialog */
+@media (max-width: 960px) {
+  .chatbot-editor-card {
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+  }
 }
 </style>

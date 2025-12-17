@@ -88,13 +88,9 @@
                 <div class="session-main">
                   <div class="session-name">{{ session.session_name }}</div>
                   <div class="session-meta">
-                    <v-chip
-                      :color="getStatusColor(session.status)"
-                      size="x-small"
-                      variant="flat"
-                    >
+                    <LTag :variant="getStatusVariant(session.status)" size="sm">
                       {{ getStatusText(session.status) }}
-                    </v-chip>
+                    </LTag>
                     <span class="session-date">{{ formatDate(session.created_at) }}</span>
                   </div>
                 </div>
@@ -330,6 +326,18 @@ const getStatusText = (status) => {
     failed: 'Fehler'
   };
   return texts[status] || status;
+};
+
+const getStatusVariant = (status) => {
+  const variants = {
+    created: 'gray',
+    queued: 'warning',
+    running: 'info',
+    paused: 'warning',
+    completed: 'success',
+    failed: 'danger'
+  };
+  return variants[status] || 'gray';
 };
 
 const formatDate = (dateString) => {

@@ -91,7 +91,7 @@
                     <div class="radio-label">
                       <div class="d-flex align-center">
                         <span class="font-weight-medium">Säulen-Stichprobe</span>
-                        <v-chip size="x-small" color="success" class="ml-2">Schnell</v-chip>
+                        <LTag variant="success" size="sm" class="ml-2">Schnell</LTag>
                       </div>
                       <div class="text-caption text-medium-emphasis">
                         Zufällige Samples pro Säulen-Paar
@@ -106,7 +106,7 @@
                     <div class="radio-label">
                       <div class="d-flex align-center">
                         <span class="font-weight-medium">Round Robin</span>
-                        <v-chip size="x-small" color="warning" class="ml-2">Mittel</v-chip>
+                        <LTag variant="warning" size="sm" class="ml-2">Mittel</LTag>
                       </div>
                       <div class="text-caption text-medium-emphasis">
                         Jeder Thread gegen jeden Thread der anderen Säule
@@ -121,7 +121,7 @@
                     <div class="radio-label">
                       <div class="d-flex align-center">
                         <span class="font-weight-medium">Jeder gegen Jeden</span>
-                        <v-chip size="x-small" color="error" class="ml-2">Umfangreich</v-chip>
+                        <LTag variant="danger" size="sm" class="ml-2">Umfangreich</LTag>
                       </div>
                       <div class="text-caption text-medium-emphasis">
                         Vollständiges Ranking mit ELO-Scores

@@ -104,9 +104,9 @@
           <v-icon class="mr-2">mdi-apps</v-icon>
           <span>{{ selectedCategoryName }}</span>
           <v-spacer />
-          <v-chip size="small" color="primary" variant="tonal">
+          <LTag variant="primary" size="sm">
             {{ filteredItems.length }} verfügbar
-          </v-chip>
+          </LTag>
         </div>
         <div class="panel-content">
           <!-- Skeleton Loading -->
@@ -133,9 +133,9 @@
               <div class="feature-title">{{ item.title }}</div>
               <div class="feature-description">{{ item.description }}</div>
               <div class="feature-badge" v-if="item.badge">
-                <v-chip size="x-small" :color="item.badgeColor || 'info'" variant="flat">
+                <LTag :variant="getBadgeVariant(item.badgeColor)" size="sm">
                   {{ item.badge }}
-                </v-chip>
+                </LTag>
               </div>
             </div>
 
@@ -261,6 +261,16 @@ const allItems = ref([
     category: 'ai'
   },
   {
+    title: 'Anonymisierung',
+    description: 'Texte, DOCX und PDFs offline pseudonymisieren',
+    route: '/Anonymize',
+    icon: 'mdi-incognito',
+    permission: 'feature:anonymize:view',
+    category: 'ai',
+    badge: 'Beta',
+    badgeColor: 'info'
+  },
+  {
     title: 'KAIMO',
     description: 'Fallvignetten durcharbeiten und neue Fälle anlegen',
     route: '/kaimo',
@@ -279,7 +289,7 @@ const allItems = ref([
   {
     title: 'Admin Dashboard',
     description: 'Benutzer, Rollen und Berechtigungen verwalten',
-    route: '/AdminPermissions',
+    route: '/admin?tab=permissions',
     icon: 'mdi-shield-account',
     permission: 'admin:permissions:manage',
     category: 'admin'
@@ -287,7 +297,7 @@ const allItems = ref([
   {
     title: 'RAG Verwaltung',
     description: 'Dokumente für die RAG-Pipeline verwalten und hochladen',
-    route: '/AdminRAG',
+    route: '/admin?tab=rag',
     icon: 'mdi-database-search',
     permission: 'feature:rag:view',
     category: 'admin'
@@ -334,6 +344,17 @@ function getCategoryCount(categoryId) {
 
 function navigateTo(route) {
   router.push(route)
+}
+
+function getBadgeVariant(badgeColor) {
+  const colorMap = {
+    'info': 'info',
+    'warning': 'warning',
+    'success': 'success',
+    'error': 'danger',
+    'primary': 'primary'
+  }
+  return colorMap[badgeColor] || 'info'
 }
 
 onMounted(async () => {

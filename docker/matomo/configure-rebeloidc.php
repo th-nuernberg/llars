@@ -62,9 +62,22 @@ try {
     }
 
     $authentikPublicUrl = trim((string) (getenv('AUTHENTIK_PUBLIC_URL') ?: ''));
-    $authentikExternalBase = $authentikPublicUrl !== ''
-        ? rtrim($authentikPublicUrl, '/')
-        : (rtrim($baseUrl, '/') . '/authentik');
+    $authentikExternalBase = '';
+    if ($authentikPublicUrl !== '') {
+        $authentikExternalBase = rtrim($authentikPublicUrl, '/');
+    } else {
+        $authentikExternalPort = trim((string) (getenv('AUTHENTIK_EXTERNAL_PORT') ?: ''));
+        $baseScheme = str_starts_with($baseUrl, 'https://') ? 'https' : 'http';
+
+        // In development, Authentik is exposed on its own port by default (AUTHENTIK_EXTERNAL_PORT=55095).
+        // Authentik is NOT reliably usable behind a subpath proxy (/authentik/) without additional proxy_redirect
+        // and prefix handling, because it issues redirects to absolute paths like "/flows/...".
+        if ($projectState !== 'production' && $authentikExternalPort !== '') {
+            $authentikExternalBase = $baseScheme . '://' . $projectHost . ':' . $authentikExternalPort;
+        } else {
+            $authentikExternalBase = rtrim($baseUrl, '/') . '/authentik';
+        }
+    }
     $authentikInternalBase = rtrim((string) (getenv('AUTHENTIK_INTERNAL_URL') ?: 'http://authentik-server:9000'), '/');
 
     $clientId = trim((string) (getenv('AUTHENTIK_MATOMO_CLIENT_ID') ?: ''));
@@ -84,12 +97,19 @@ try {
     $force = filter_var(getenv('MATOMO_OIDC_FORCE_CONFIG') ?: 'false', FILTER_VALIDATE_BOOLEAN);
 
     $configuredFlag = 'llars_matomo_rebeloidc_configured';
-    if (!$force && Option::get($configuredFlag) === '1') {
-        echo "[matomo-oidc] RebelOIDC already configured; skipping (set MATOMO_OIDC_FORCE_CONFIG=true to overwrite).\n";
+    $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
+    $alreadyConfigured = Option::get($configuredFlag) === '1';
+    $alreadyMatches =
+        trim((string) $settings->authorizeUrl->getValue()) === $authorizeUrl &&
+        trim((string) $settings->tokenUrl->getValue()) === $tokenUrl &&
+        trim((string) $settings->userInfoUrl->getValue()) === $userInfoUrl &&
+        trim((string) $settings->endSessionUrl->getValue()) === $endSessionUrl &&
+        trim((string) $settings->clientId->getValue()) === $clientId;
+
+    if (!$force && $alreadyConfigured && $alreadyMatches) {
+        echo "[matomo-oidc] RebelOIDC already configured; skipping.\n";
         exit(0);
     }
-
-    $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
 
     Access::getInstance();
     Access::doAsSuperUser(static function () use (

@@ -49,15 +49,14 @@
             <div class="text-caption text-medium-emphasis">Benutzerdetails</div>
           </div>
           <v-spacer></v-spacer>
-          <v-chip
+          <LTag
             v-if="selectedUserStatus"
-            :color="selectedUserStatus.color"
-            size="small"
-            variant="flat"
+            :variant="selectedUserStatus.variant"
+            size="sm"
             class="mr-2"
           >
             {{ selectedUserStatus.label }}
-          </v-chip>
+          </LTag>
           <LIconBtn
             v-if="selectedUser.db_record_exists"
             :icon="selectedUser.is_active ? 'mdi-lock' : 'mdi-lock-open-variant'"
@@ -108,19 +107,19 @@
                 Zugewiesene Rollen
               </h4>
               <div class="d-flex flex-wrap gap-2 mb-3">
-                <v-chip
+                <LTag
                   v-for="role in selectedUser.roles"
                   :key="role.id"
-                  color="primary"
-                  variant="flat"
+                  variant="primary"
+                  size="sm"
                   closable
-                  @click:close="unassignRole(role.role_name)"
+                  @close="unassignRole(role.role_name)"
                 >
                   {{ role.display_name }}
-                </v-chip>
-                <v-chip v-if="selectedUser.roles.length === 0" variant="outlined">
+                </LTag>
+                <LTag v-if="selectedUser.roles.length === 0" variant="gray" size="sm">
                   Keine Rollen zugewiesen
-                </v-chip>
+                </LTag>
               </div>
 
               <!-- Add Role -->
@@ -154,15 +153,15 @@
                 Effektive Berechtigungen ({{ selectedUser.permissions.length }})
               </h4>
               <div class="permissions-list">
-                <v-chip
+                <LTag
                   v-for="perm in selectedUser.permissions.slice(0, showAllPermissions ? undefined : 8)"
                   :key="perm"
-                  size="small"
-                  variant="tonal"
+                  variant="info"
+                  size="sm"
                   class="ma-1"
                 >
                   {{ perm }}
-                </v-chip>
+                </LTag>
                 <LBtn
                   v-if="selectedUser.permissions.length > 8"
                   variant="text"
@@ -209,21 +208,21 @@
           </template>
 
           <template v-slot:item.status="{ item }">
-            <v-chip :color="getStatusColor(item)" size="small" variant="flat">
+            <LTag :variant="getStatusVariant(item)" size="sm">
               {{ getStatusLabel(item) }}
-            </v-chip>
+            </LTag>
           </template>
 
           <template v-slot:item.roles="{ item }">
-            <v-chip
+            <LTag
               v-for="role in item.roles"
               :key="role.id"
-              size="small"
-              :color="getRoleColor(role.role_name)"
+              size="sm"
+              :variant="getRoleVariant(role.role_name)"
               class="ma-1"
             >
               {{ role.display_name }}
-            </v-chip>
+            </LTag>
             <span v-if="item.roles.length === 0" class="text-medium-emphasis">-</span>
           </template>
 
@@ -420,6 +419,15 @@ const getRoleColor = (roleName) => {
   return colors[roleName] || 'grey';
 };
 
+const getRoleVariant = (roleName) => {
+  const variants = {
+    'admin': 'danger',
+    'researcher': 'primary',
+    'viewer': 'info'
+  };
+  return variants[roleName] || 'gray';
+};
+
 const getStatusLabel = (user) => {
   if (user.deleted_at) return 'Gelöscht';
   return user.is_active ? 'Aktiv' : 'Gesperrt';
@@ -430,12 +438,17 @@ const getStatusColor = (user) => {
   return user.is_active ? 'success' : 'warning';
 };
 
+const getStatusVariant = (user) => {
+  if (user.deleted_at) return 'gray';
+  return user.is_active ? 'success' : 'warning';
+};
+
 const selectedUserStatus = computed(() => {
   if (!selectedUser.value) return null;
-  if (!selectedUser.value.db_record_exists) return { label: 'Nicht angelegt', color: 'warning' };
+  if (!selectedUser.value.db_record_exists) return { label: 'Nicht angelegt', variant: 'warning' };
   return {
     label: getStatusLabel(selectedUser.value),
-    color: getStatusColor(selectedUser.value),
+    variant: getStatusVariant(selectedUser.value),
   };
 });
 

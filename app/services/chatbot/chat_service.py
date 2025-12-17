@@ -863,13 +863,24 @@ class ChatService:
     # ========== Conversation Management Methods ==========
 
     @staticmethod
-    def get_conversations(chatbot_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_conversations(chatbot_id: int, username: str = None, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        Get all conversations for a chatbot.
+        Get conversations for a chatbot, filtered by username for data isolation.
+
+        Args:
+            chatbot_id: The chatbot ID
+            username: Filter by this user (required for non-admin access)
+            limit: Maximum number of conversations to return
         """
-        conversations = ChatbotConversation.query.filter_by(
-            chatbot_id=chatbot_id
-        ).order_by(ChatbotConversation.last_message_at.desc()).limit(limit).all()
+        query = ChatbotConversation.query.filter_by(chatbot_id=chatbot_id)
+
+        # SECURITY: Always filter by username to ensure data isolation
+        if username:
+            query = query.filter_by(username=username)
+
+        conversations = query.order_by(
+            ChatbotConversation.last_message_at.desc()
+        ).limit(limit).all()
 
         return [
             {
@@ -886,12 +897,24 @@ class ChatService:
         ]
 
     @staticmethod
-    def get_conversation(conversation_id: int) -> Optional[Dict[str, Any]]:
+    def get_conversation(conversation_id: int, username: str = None) -> Optional[Dict[str, Any]]:
         """
         Get a single conversation with all messages.
+
+        Args:
+            conversation_id: The conversation ID
+            username: If provided, verify the conversation belongs to this user
+
+        Returns:
+            Conversation dict or None if not found/not authorized
         """
         conversation = ChatbotConversation.query.get(conversation_id)
         if not conversation:
+            return None
+
+        # SECURITY: Verify ownership if username is provided
+        if username and conversation.username != username:
+            logger.warning(f"User {username} attempted to access conversation {conversation_id} owned by {conversation.username}")
             return None
 
         messages = ChatbotMessage.query.filter_by(
@@ -925,18 +948,30 @@ class ChatService:
         }
 
     @staticmethod
-    def delete_conversation(conversation_id: int) -> bool:
+    def delete_conversation(conversation_id: int, username: str = None) -> bool:
         """
         Delete a conversation and all its messages.
+
+        Args:
+            conversation_id: The conversation ID
+            username: If provided, verify the conversation belongs to this user
+
+        Returns:
+            True if deleted, False if not found/not authorized
         """
         conversation = ChatbotConversation.query.get(conversation_id)
         if not conversation:
             return False
 
+        # SECURITY: Verify ownership if username is provided
+        if username and conversation.username != username:
+            logger.warning(f"User {username} attempted to delete conversation {conversation_id} owned by {conversation.username}")
+            return False
+
         db.session.delete(conversation)
         db.session.commit()
 
-        logger.info(f"Deleted conversation {conversation_id}")
+        logger.info(f"User {username or 'admin'} deleted conversation {conversation_id}")
         return True
 
     @staticmethod

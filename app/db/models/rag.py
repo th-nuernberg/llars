@@ -206,8 +206,8 @@ class RAGDocumentChunk(db.Model):
     )
     chunk_index: Mapped[int] = mapped_column(db.Integer, nullable=False)
 
-    # Content
-    content: Mapped[str] = mapped_column(db.Text, nullable=False)
+    # Content - MEDIUMTEXT to support large chunks (up to 16MB)
+    content: Mapped[str] = mapped_column(db.Text(16777215), nullable=False)
     content_hash: Mapped[Optional[str]] = mapped_column(db.String(64), nullable=True)  # MD5 of content
 
     # Image data for Vision-enabled RAG

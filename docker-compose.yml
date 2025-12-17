@@ -62,7 +62,7 @@ services:
             BASE_URL="http://$${PROJECT_HOST}:$${NGINX_EXTERNAL_PORT}"
           fi
         fi
-        MATOMO_ARCHIVE_URL="$${MATOMO_ARCHIVE_URL:-$${BASE_URL}/matomo/}"
+        MATOMO_ARCHIVE_URL="$${MATOMO_ARCHIVE_URL:-$${BASE_URL}/analytics/}"
         while true; do
           echo "[matomo-archiver] Running core:archive..."
           chown -R www-data:www-data /var/www/html/tmp /var/www/html/config || true
@@ -177,7 +177,7 @@ services:
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
       # Matomo (self-hosted analytics)
       - VITE_MATOMO_ENABLED=${VITE_MATOMO_ENABLED:-true}
-      - VITE_MATOMO_BASE_URL=${VITE_MATOMO_BASE_URL:-/matomo/}
+      - VITE_MATOMO_BASE_URL=${VITE_MATOMO_BASE_URL:-/analytics/}
       - VITE_MATOMO_SITE_ID=${VITE_MATOMO_SITE_ID:-1}
       - VITE_MATOMO_SET_USER_ID=${VITE_MATOMO_SET_USER_ID:-true}
       - VITE_MATOMO_TRACK_CLICKS=${VITE_MATOMO_TRACK_CLICKS:-true}

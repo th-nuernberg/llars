@@ -28,6 +28,7 @@ REMOVE_VOLUMES=True ./start_llars.sh
 | Frontend | http://localhost:55080 |
 | Backend API | http://localhost:55080/api |
 | Authentik | http://localhost:55095 |
+| Matomo | http://localhost:55080/matomo/ |
 
 ### Test-Benutzer
 
@@ -45,13 +46,27 @@ REMOVE_VOLUMES=True ./start_llars.sh
 nginx (:80) → Reverse Proxy
 ├── / → Vue Frontend (:5173)
 ├── /api/, /auth/ → Flask Backend (:8081)
+├── /matomo/ → Matomo Analytics (:80)
 └── /collab/ → YJS WebSocket (:8082)
 
-Databases: MariaDB (:3306), PostgreSQL (:5432 - Authentik)
+Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 - Authentik)
 ```
 
 **Backend:** Flask 3.0 + MariaDB 11.2 + ChromaDB
 **Frontend:** Vue 3.4 + Vuetify 3.5 + Vite 5.1 + Socket.IO
+
+---
+
+## Matomo Analytics (Self-hosted)
+
+- Auto-Setup via Docker Compose Service `matomo-init` (DB + Superuser + Site)
+- Frontend Tracking: `llars-frontend/src/plugins/llars-metrics.js` (SPA Pageviews + Click Events + optional User-ID)
+- Optional SSO: `MATOMO_OIDC_ENABLED=true` + `AUTHENTIK_PUBLIC_URL` + `AUTHENTIK_MATOMO_*` (RebelOIDC Plugin)
+- Config über `.env` / Templates: `.env.template.development`, `.env.template.production` (Matomo + `VITE_MATOMO_*`)
+
+## Docker Base Images
+
+- Wenn Docker Hub Probleme macht (z.B. OAuth Token 500), nutzt LLARS für die offiziellen Images die Public ECR Mirror-Registry: `public.ecr.aws/docker/library/*` (Python/Node/Nginx/Postgres/Redis/MariaDB/Matomo).
 
 ---
 

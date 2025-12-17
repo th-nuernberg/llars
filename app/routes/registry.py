@@ -33,6 +33,7 @@ def register_all_blueprints(app: Flask) -> None:
     # blueprint after it has been registered.
     from routes import permissions
     from routes import users
+    from routes import analytics
 
     # ============================================================
     # Core Features

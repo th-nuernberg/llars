@@ -97,8 +97,10 @@ const matomoBasePath = computed(() => {
   return configured.endsWith('/') ? configured : `${configured}/`
 })
 
+const matomoSsoUrl = computed(() => `${matomoBasePath.value}index.php?module=RebelOIDC&action=signIn&provider=oidc`)
+
 const openMatomo = () => {
-  window.open(matomoBasePath.value, '_blank', 'noopener')
+  window.open(matomoSsoUrl.value, '_blank', 'noopener')
 }
 </script>
 

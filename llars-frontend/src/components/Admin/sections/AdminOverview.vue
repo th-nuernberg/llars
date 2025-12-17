@@ -191,18 +191,28 @@ const warnings = ref([]);
 // Active scenarios
 const activeScenarios = ref([]);
 
+const buildMatomoBaseUrl = () => {
+  const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/matomo/').trim();
+  if (configured.startsWith('http://') || configured.startsWith('https://')) {
+    return configured.endsWith('/') ? configured : `${configured}/`;
+  }
+  if (configured.startsWith('/')) {
+    return configured.endsWith('/') ? configured : `${configured}/`;
+  }
+  return `/${configured.endsWith('/') ? configured : `${configured}/`}`;
+};
+
+const openMatomoSso = () => {
+  const baseUrl = buildMatomoBaseUrl();
+  window.open(`${baseUrl}index.php?module=RebelOIDC&action=signIn&provider=oidc`, '_blank', 'noopener');
+};
+
 // Quick actions
 const quickActions = [
   {
     title: 'Matomo Analytics öffnen',
     icon: 'mdi-chart-bar',
-    action: () => {
-      const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/matomo/').trim();
-      const url = configured.startsWith('http://') || configured.startsWith('https://')
-        ? (configured.endsWith('/') ? configured : `${configured}/`)
-        : (configured.startsWith('/') ? (configured.endsWith('/') ? configured : `${configured}/`) : `/${configured}/`);
-      window.open(url, '_blank', 'noopener');
-    }
+    action: openMatomoSso
   },
   {
     title: 'Neues Szenario erstellen',

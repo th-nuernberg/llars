@@ -8,14 +8,14 @@
 import { ref, nextTick } from 'vue';
 import { io } from 'socket.io-client';
 import * as Y from 'yjs';
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage';
 
 export function usePromptSocket(roomIdRef, username, ydocRef, processYDoc, updateCursor) {
   const socket = ref(null);
   const users = ref({});
 
   const getAuthToken = () => {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('auth_token');
+    return getAuthStorageItem(AUTH_STORAGE_KEYS.token);
   };
 
   const initializeSocket = () => {

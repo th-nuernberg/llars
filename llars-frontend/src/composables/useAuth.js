@@ -1,5 +1,12 @@
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { matomoResetUserId, matomoSetUserId } from '@/plugins/llars-metrics';
+import {
+  AUTH_STORAGE_KEYS,
+  clearAuthStorage,
+  getAuthStorageItem,
+  setAuthStorageItem
+} from '@/utils/authStorage';
 
 // Auth state
 const token = ref(null);
@@ -28,21 +35,22 @@ const isTokenExpired = (jwtToken, skewSeconds = 30) => {
 };
 
 const clearStoredTokens = () => {
-  sessionStorage.removeItem('auth_token');
-  sessionStorage.removeItem('auth_refreshToken');
-  sessionStorage.removeItem('auth_idToken');
-  sessionStorage.removeItem('auth_llars_roles');
-  localStorage.removeItem('username');
+  clearAuthStorage();
+  try {
+    localStorage.removeItem('username');
+  } catch (e) {
+    // ignore
+  }
 };
 
 // Load tokens from sessionStorage on init
 const loadTokensFromStorage = () => {
-  token.value = sessionStorage.getItem('auth_token');
-  refreshToken.value = sessionStorage.getItem('auth_refreshToken');
-  idToken.value = sessionStorage.getItem('auth_idToken');
+  token.value = getAuthStorageItem(AUTH_STORAGE_KEYS.token);
+  refreshToken.value = getAuthStorageItem(AUTH_STORAGE_KEYS.refreshToken);
+  idToken.value = getAuthStorageItem(AUTH_STORAGE_KEYS.idToken);
 
   // Load LLARS roles from storage
-  const storedRoles = sessionStorage.getItem('auth_llars_roles');
+  const storedRoles = getAuthStorageItem(AUTH_STORAGE_KEYS.roles);
   if (storedRoles) {
     try {
       llarsRoles.value = JSON.parse(storedRoles);
@@ -119,20 +127,26 @@ export const useAuth = () => {
         console.error('Failed to parse token:', e);
       }
 
-      // Store in sessionStorage
-      sessionStorage.setItem('auth_token', access_token);
-      sessionStorage.setItem('auth_refreshToken', refresh_token);
+      // Store in sessionStorage (with safe fallback)
+      setAuthStorageItem(AUTH_STORAGE_KEYS.token, access_token);
+      setAuthStorageItem(AUTH_STORAGE_KEYS.refreshToken, refresh_token);
       if (id_token) {
-        sessionStorage.setItem('auth_idToken', id_token);
+        setAuthStorageItem(AUTH_STORAGE_KEYS.idToken, id_token);
       }
       // Store LLARS roles for router guard access
-      sessionStorage.setItem('auth_llars_roles', JSON.stringify(roles || []));
+      setAuthStorageItem(AUTH_STORAGE_KEYS.roles, JSON.stringify(roles || []));
 
       // Store username in localStorage for App.vue compatibility
       if (tokenParsed.value?.preferred_username) {
         localStorage.setItem('username', tokenParsed.value.preferred_username);
       } else if (username) {
         localStorage.setItem('username', username);
+      }
+
+      // Matomo User-ID tracking (optional)
+      const matomoUserId = tokenParsed.value?.preferred_username || tokenParsed.value?.sub || username;
+      if (matomoUserId) {
+        matomoSetUserId(matomoUserId);
       }
 
       return { success: true };
@@ -166,6 +180,9 @@ export const useAuth = () => {
     llarsRoles.value = [];
 
     clearStoredTokens();
+
+    // Matomo: end user association
+    matomoResetUserId();
   };
 
   const getToken = () => token.value;

@@ -602,6 +602,7 @@ import { marked } from 'marked'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { useChatMessages } from './ChatWithBots/composables/useChatMessages.js'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { AUTH_STORAGE_KEYS, clearAuthStorage, getAuthStorageItem } from '@/utils/authStorage'
 import AgentReasoningDisplay from './Chat/AgentReasoningDisplay.vue'
 
 // Composable for chat message operations
@@ -926,7 +927,7 @@ async function sendMessage() {
       message: userMessage,
       session_id: sessionId.value,
       username: null,
-      token: sessionStorage.getItem('auth_token')
+      token: getAuthStorageItem(AUTH_STORAGE_KEYS.token)
     })
   }
 }
@@ -1275,11 +1276,8 @@ function initSocket() {
     )
 
     if (isAuthError) {
+      clearAuthStorage()
       try {
-        sessionStorage.removeItem('auth_token')
-        sessionStorage.removeItem('auth_refreshToken')
-        sessionStorage.removeItem('auth_idToken')
-        sessionStorage.removeItem('auth_llars_roles')
         localStorage.removeItem('username')
       } catch {}
 

@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as Y from 'yjs'
 import { io } from 'socket.io-client'
+import { AUTH_STORAGE_KEYS, clearAuthStorage, getAuthStorageItem } from '@/utils/authStorage'
 
 export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCursor, options = {}) {
   const ydoc = ref(null)
@@ -10,15 +11,12 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
-    return sessionStorage.getItem('auth_token')
+    return getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   }
 
   const clearAuthAndRedirectToLogin = () => {
+    clearAuthStorage()
     try {
-      sessionStorage.removeItem('auth_token')
-      sessionStorage.removeItem('auth_refreshToken')
-      sessionStorage.removeItem('auth_idToken')
-      sessionStorage.removeItem('auth_llars_roles')
       localStorage.removeItem('username')
     } catch {}
 

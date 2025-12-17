@@ -19,6 +19,8 @@ import App from './App.vue'
 import LBtn from '@/components/common/LBtn.vue'
 import LIconBtn from '@/components/common/LIconBtn.vue'
 import LTag from '@/components/common/LTag.vue'
+import { initMatomo } from '@/plugins/llars-metrics'
+import { useAuth } from '@/composables/useAuth'
 
 // Composables
 import { createApp } from 'vue'
@@ -36,9 +38,11 @@ app.component('LTag', LTag)
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'
 
+const auth = useAuth()
+
 // Setup Axios interceptor for adding Bearer token to all requests
 axios.interceptors.request.use(config => {
-  const token = sessionStorage.getItem('auth_token')
+  const token = auth.getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -58,12 +62,7 @@ axios.interceptors.response.use(
     // If 401 Unauthorized on non-login requests, redirect to login
     if (error.response?.status === 401 && !isLoginRequest) {
       console.log('Token expired or invalid, redirecting to login')
-      // Clear tokens
-      sessionStorage.removeItem('auth_token')
-      sessionStorage.removeItem('auth_refreshToken')
-      sessionStorage.removeItem('auth_idToken')
-      sessionStorage.removeItem('auth_llars_roles')
-      localStorage.removeItem('username')
+      auth.logout()
       // Redirect to login
       const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
       window.location.href = `/login?redirect=${encodeURIComponent(current)}`
@@ -75,6 +74,9 @@ axios.interceptors.response.use(
 
 // Use router
 app.use(router)
+
+// Matomo (Analytics)
+initMatomo({ router })
 
 // Mount the app
 app.mount('#app')

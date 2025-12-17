@@ -17,6 +17,7 @@ import Impressum from "@/components/Orga/Impressum.vue";
 import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import Documentation from "@/components/Orga/Documentation.vue";
+import { useAuth } from "@/composables/useAuth";
 
 import AdminTester from "@/components/Admin/AdminTester.vue";
 
@@ -157,67 +158,23 @@ router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
 
-    const clearAuthStorage = () => {
-        sessionStorage.removeItem('auth_token');
-        sessionStorage.removeItem('auth_refreshToken');
-        sessionStorage.removeItem('auth_idToken');
-        sessionStorage.removeItem('auth_llars_roles');
-        localStorage.removeItem('username');
-    };
+    const auth = useAuth();
+    const rawToken = auth.getToken();
+    const isAuthenticated = auth.isAuthenticated.value;
+    const isAdmin = auth.isAdmin.value;
 
-    const isJwtExpired = (jwtToken, skewSeconds = 30) => {
-        try {
-            const parts = String(jwtToken || '').split('.');
-            if (parts.length < 2) return false;
-            const payload = JSON.parse(atob(parts[1]));
-            const exp = payload?.exp;
-            if (!exp) return false;
-            const now = Math.floor(Date.now() / 1000);
-            return now >= (exp - skewSeconds);
-        } catch (e) {
-            return false;
-        }
-    };
-
-    // Get auth instance from useAuth composable
-    // We need to import it here instead of using useAuth() directly
-    // because router guards run before components are mounted
-    const rawToken = sessionStorage.getItem('auth_token');
-    const isAuthenticated = !!rawToken && !isJwtExpired(rawToken);
-
-    let userRoles = [];
-    let isAdmin = false;
-
-    if (isAuthenticated) {
-        try {
-            // Use stored LLARS roles from backend response (based on Authentik groups)
-            const storedRoles = sessionStorage.getItem('auth_llars_roles');
-            if (storedRoles) {
-                userRoles = JSON.parse(storedRoles);
-            } else {
-                // Fallback: Try to get groups from token (Authentik uses 'groups' not 'realm_access.roles')
-                const token = sessionStorage.getItem('auth_token');
-                const parsed = JSON.parse(atob(token.split('.')[1]));
-                userRoles = parsed?.groups || [];
-            }
-            // Check for 'admin' role or 'authentik Admins' group
-            isAdmin = userRoles.includes('admin') || userRoles.includes('authentik Admins');
-        } catch (e) {
-            console.error('Failed to parse token/roles in router guard:', e);
-        }
-    } else if (rawToken) {
-        // Token exists but is expired → clear to avoid UI getting stuck
-        clearAuthStorage();
+    if (rawToken && !isAuthenticated) {
+        auth.logout();
     }
 
     console.log("Navigating to:", to.path);
     console.log("Authenticated:", isAuthenticated);
-    console.log("User roles:", userRoles);
+    console.log("Is admin:", isAdmin);
 
     // If route requires authentication and user is not authenticated
     if (requiresAuth && !isAuthenticated) {
         console.log("Route requires auth, redirecting to login");
-        next('/login');
+        next({ path: '/login', query: { redirect: to.fullPath } });
         return;
     }
 

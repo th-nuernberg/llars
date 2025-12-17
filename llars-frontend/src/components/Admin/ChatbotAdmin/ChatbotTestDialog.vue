@@ -315,6 +315,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import axios from 'axios'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -442,7 +443,7 @@ async function sendMessage() {
 async function streamTestMessage(startTime, requestData) {
   let assistantMessage = null
   try {
-    const token = sessionStorage.getItem('auth_token')
+    const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
     const response = await fetch(`/api/chatbots/${props.chatbot.id}/test`, {
       method: 'POST',
       headers: {

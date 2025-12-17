@@ -151,6 +151,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const router = useRouter()
 const { hasPermission, fetchPermissions } = usePermissions()
@@ -177,7 +178,7 @@ const canCreate = computed(() => {
 })
 
 function authHeaders() {
-  const token = sessionStorage.getItem('auth_token')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -257,4 +258,3 @@ onMounted(async () => {
   color: rgb(var(--v-theme-on-surface));
 }
 </style>
-

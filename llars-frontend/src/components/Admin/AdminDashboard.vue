@@ -1,130 +1,79 @@
 <template>
-  <v-app>
-    <!-- Navigation Drawer (Sidebar) -->
-    <v-navigation-drawer
-      v-model="drawer"
-      :rail="rail"
-      permanent
-      class="admin-drawer"
-      @click="rail && (rail = false)"
-    >
-      <v-list-item
-        prepend-icon="mdi-shield-crown"
-        :title="rail ? '' : 'Admin'"
-        :subtitle="rail ? '' : 'Dashboard'"
-        class="drawer-header"
-      >
-        <template v-slot:append v-if="!rail">
-          <v-btn
-            variant="text"
-            icon="mdi-chevron-left"
-            @click.stop="rail = true"
-          ></v-btn>
-        </template>
-      </v-list-item>
-
-      <!-- Rail mode: Show expand button at top -->
-      <div v-if="rail" class="text-center py-2">
-        <v-btn
-          variant="text"
-          icon="mdi-chevron-right"
-          size="small"
-          @click.stop="rail = false"
-        ></v-btn>
-      </div>
-
-      <v-divider></v-divider>
-
-      <v-list density="compact" nav>
-        <v-list-item
-          v-for="item in navItems"
-          :key="item.value"
-          :prepend-icon="item.icon"
-          :title="item.title"
-          :value="item.value"
-          :active="activeSection === item.value"
-          @click="activeSection = item.value"
-          rounded="xl"
-          class="nav-item"
-        ></v-list-item>
-      </v-list>
-
-      <template v-slot:append>
-        <v-divider></v-divider>
-        <v-list-item
-          prepend-icon="mdi-home"
-          :title="rail ? '' : 'Zurück zur Home'"
-          @click="$router.push('/Home')"
-          class="nav-item home-link"
-          rounded="xl"
-        ></v-list-item>
-      </template>
-    </v-navigation-drawer>
+  <div class="admin-page">
+    <!-- Sidebar -->
+    <AppSidebar
+      v-model="activeSection"
+      :items="navItems"
+      title="Admin"
+      subtitle="Dashboard"
+      icon="mdi-shield-crown"
+      storage-key="admin"
+      :show-home-link="true"
+    />
 
     <!-- Main Content -->
-    <v-main class="admin-main">
-      <v-container fluid class="pa-6">
-        <!-- Header -->
-        <v-row class="mb-4">
-          <v-col cols="12">
-            <div class="d-flex align-center">
-              <div>
-                <h1 class="text-h4 font-weight-bold">{{ currentSectionTitle }}</h1>
-                <p class="text-subtitle-1 text-medium-emphasis">{{ currentSectionSubtitle }}</p>
-              </div>
-              <v-spacer></v-spacer>
-              <v-chip color="primary" variant="flat" class="mr-2">
-                <v-icon start>mdi-account</v-icon>
-                {{ username }}
-              </v-chip>
-            </div>
-          </v-col>
-        </v-row>
+    <main class="admin-main">
+      <!-- Header (hidden when chatbot wizard is open) -->
+      <div v-if="!isChatbotWizardOpen" class="admin-header pa-4 pb-2">
+        <div class="d-flex align-center">
+          <div>
+            <h1 class="text-h4 font-weight-bold">{{ currentSectionTitle }}</h1>
+            <p class="text-subtitle-1 text-medium-emphasis">{{ currentSectionSubtitle }}</p>
+          </div>
+          <v-spacer></v-spacer>
+          <v-chip color="primary" variant="flat" class="mr-2">
+            <v-icon start>mdi-account</v-icon>
+            {{ username }}
+          </v-chip>
+        </div>
+      </div>
 
-        <!-- Dynamic Content based on active section -->
+      <!-- Dynamic Content based on active section -->
+      <div class="admin-content" :class="isChatbotWizardOpen ? 'pa-0' : 'pa-4 pt-0'">
         <v-fade-transition mode="out-in">
           <!-- Overview Section -->
-          <div v-if="activeSection === 'overview'" key="overview">
+          <div v-if="activeSection === 'overview'" key="overview" class="section-container">
             <AdminOverview />
           </div>
 
           <!-- Users Section -->
-          <div v-else-if="activeSection === 'users'" key="users">
+          <div v-else-if="activeSection === 'users'" key="users" class="section-container">
             <AdminUsersSection />
           </div>
 
           <!-- Scenarios Section -->
-          <div v-else-if="activeSection === 'scenarios'" key="scenarios">
+          <div v-else-if="activeSection === 'scenarios'" key="scenarios" class="section-container">
             <AdminScenariosSection />
           </div>
 
           <!-- Chatbots Section -->
-          <div v-else-if="activeSection === 'chatbots'" key="chatbots">
-            <ChatbotManager />
+          <div v-else-if="activeSection === 'chatbots'" key="chatbots" class="section-container section-container--full">
+            <ChatbotManager ref="chatbotManagerRef" />
           </div>
 
           <!-- Web Crawler Section -->
-          <div v-else-if="activeSection === 'crawler'" key="crawler">
+          <div v-else-if="activeSection === 'crawler'" key="crawler" class="section-container">
             <WebCrawlerTool />
           </div>
 
           <!-- RAG Section -->
-          <div v-else-if="activeSection === 'rag'" key="rag">
+          <div v-else-if="activeSection === 'rag'" key="rag" class="section-container">
             <AdminRAGSection />
           </div>
 
           <!-- Permissions Section -->
-          <div v-else-if="activeSection === 'permissions'" key="permissions">
+          <div v-else-if="activeSection === 'permissions'" key="permissions" class="section-container">
             <AdminPermissionsSection />
           </div>
         </v-fade-transition>
-      </v-container>
-    </v-main>
-  </v-app>
+      </div>
+    </main>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 
 // Import section components
@@ -135,16 +84,21 @@ import AdminRAGSection from './sections/AdminRAGSection.vue';
 import AdminPermissionsSection from './sections/AdminPermissionsSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
+import AppSidebar from '@/components/common/AppSidebar.vue';
 
 const auth = useAuth();
+const route = useRoute();
+const router = useRouter();
 const username = computed(() => auth.tokenParsed.value?.preferred_username || 'Admin');
 
-// Drawer state
-const drawer = ref(true);
-const rail = ref(false);
-
-// Active section
+// Active section (synced with route query)
 const activeSection = ref('overview');
+
+// ChatbotManager ref for wizard state
+const chatbotManagerRef = ref(null);
+const isChatbotWizardOpen = computed(() => {
+  return activeSection.value === 'chatbots' && chatbotManagerRef.value?.wizardOpen;
+});
 
 // Navigation items
 const navItems = [
@@ -170,43 +124,75 @@ const sectionInfo = {
 
 const currentSectionTitle = computed(() => sectionInfo[activeSection.value]?.title || '');
 const currentSectionSubtitle = computed(() => sectionInfo[activeSection.value]?.subtitle || '');
+
+// Route query sync for tab navigation (e.g., /admin?tab=rag)
+function initFromRoute() {
+  const tab = route.query.tab;
+  if (tab && navItems.some(item => item.value === tab)) {
+    activeSection.value = tab;
+  }
+}
+
+// Update URL when section changes
+watch(activeSection, (newVal) => {
+  if (route.query.tab !== newVal) {
+    router.replace({ query: { ...route.query, tab: newVal } });
+  }
+});
+
+// Watch for route changes (e.g., from Home page tiles)
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && navItems.some(item => item.value === newTab) && activeSection.value !== newTab) {
+    activeSection.value = newTab;
+  }
+});
+
+onMounted(() => {
+  initFromRoute();
+});
 </script>
 
 <style scoped>
-.admin-drawer {
-  background: linear-gradient(180deg, rgb(var(--v-theme-surface)) 0%, rgb(var(--v-theme-surface-variant)) 100%);
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.drawer-header {
-  min-height: 64px;
-}
-
-.nav-item {
-  margin: 4px 8px;
-  transition: all 0.2s ease;
-}
-
-.nav-item:hover {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-}
-
-.nav-item.v-list-item--active {
-  background-color: rgba(var(--v-theme-primary), 0.15);
-  color: rgb(var(--v-theme-primary));
+/* Admin page fills viewport minus AppBar (64px) and Footer (30px) */
+.admin-page {
+  height: calc(100vh - 94px);
+  display: flex;
+  overflow: hidden;
 }
 
 .admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: rgb(var(--v-theme-background));
-  min-height: 100vh;
+  min-width: 0;
 }
 
-.home-link {
-  margin-bottom: 8px;
+.admin-header {
+  flex-shrink: 0;
 }
 
-.home-link:hover {
-  background-color: rgba(var(--v-theme-info), 0.15);
-  color: rgb(var(--v-theme-info));
+.admin-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Full-height sections that manage their own scrolling */
+.section-container--full {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 </style>

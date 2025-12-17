@@ -360,6 +360,14 @@ def _handle_agent_stream(agent_service, chatbot, user_message, session_id, usern
                 all_sources = event.get("sources", [])
                 reasoning_steps = event.get("reasoning_steps", reasoning_steps)
 
+        # IMPORTANT: Send the final response content to frontend
+        # Agent modes don't stream char-by-char, so we need to send the full response at once
+        if final_response:
+            emit("chatbot:response", {
+                "content": final_response,
+                "complete": False
+            }, room=client_id)
+
         # Send sources
         if all_sources:
             # Add footnote IDs

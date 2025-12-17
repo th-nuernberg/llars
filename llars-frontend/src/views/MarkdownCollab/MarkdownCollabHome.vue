@@ -11,14 +11,14 @@
         </div>
       </div>
       <v-spacer />
-      <v-btn
-        color="primary"
+      <LBtn
+        variant="primary"
         prepend-icon="mdi-plus"
         :disabled="!hasPermission('feature:markdown_collab:edit')"
         @click="createDialog = true"
       >
         Workspace erstellen
-      </v-btn>
+      </LBtn>
     </div>
 
     <v-alert
@@ -34,113 +34,119 @@
       <v-col cols="12">
         <v-skeleton-loader v-if="isLoading('workspaces')" type="card@3" />
 
-        <v-card v-else variant="outlined">
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-folder-multiple-outline</v-icon>
-            Workspaces
-            <v-spacer />
-            <v-btn variant="text" icon="mdi-refresh" @click="loadWorkspaces(true)" />
-          </v-card-title>
-          <v-divider />
-
-          <v-card-text>
-            <v-row v-if="workspaces.length > 0">
-              <v-col
-                v-for="ws in workspaces"
-                :key="ws.id"
-                cols="12"
-                md="6"
-                lg="4"
-              >
-                <v-card class="workspace-card" variant="tonal" @click="openWorkspace(ws.id)">
-                  <v-card-title class="d-flex align-center">
-                    <v-icon class="mr-2" color="primary">mdi-folder</v-icon>
-                    <span class="text-truncate">{{ ws.name }}</span>
-                    <v-spacer />
-                    <v-chip size="small" variant="tonal" color="info">
-                      #{{ ws.id }}
-                    </v-chip>
-                  </v-card-title>
-                  <v-card-subtitle class="text-medium-emphasis">
-                    Besitzer: {{ ws.owner_username }}
-                  </v-card-subtitle>
-                  <v-card-text class="text-body-2">
-                    <div class="d-flex align-center">
-                      <v-icon size="16" class="mr-1">mdi-clock-outline</v-icon>
-                      <span>Zuletzt geändert: {{ formatDate(ws.updated_at) }}</span>
-                    </div>
-                  </v-card-text>
-                  <v-card-actions class="justify-end">
-                    <v-btn variant="text" color="primary" @click.stop="openWorkspace(ws.id)">
-                      Öffnen
-                    </v-btn>
-                  </v-card-actions>
-                </v-card>
-              </v-col>
-            </v-row>
-
-            <div v-else class="empty-state">
-              <v-icon size="56" class="mb-3" color="grey">mdi-folder-open-outline</v-icon>
-              <div class="text-subtitle-1 mb-1">Noch keine Workspaces</div>
-              <div class="text-body-2 text-medium-emphasis mb-4">
-                Erstelle deinen ersten Markdown Collab Workspace.
-              </div>
-              <v-btn
-                color="primary"
-                prepend-icon="mdi-plus"
-                :disabled="!hasPermission('feature:markdown_collab:edit')"
-                @click="createDialog = true"
-              >
-                Workspace erstellen
-              </v-btn>
+        <LCard v-else outlined>
+          <template #header>
+            <div class="d-flex align-center w-100">
+              <v-icon class="mr-2">mdi-folder-multiple-outline</v-icon>
+              <span class="text-h6">Workspaces</span>
+              <v-spacer />
+              <v-btn variant="text" icon="mdi-refresh" @click="loadWorkspaces(true)" />
             </div>
-          </v-card-text>
-        </v-card>
+          </template>
+
+          <v-row v-if="workspaces.length > 0">
+            <v-col
+              v-for="ws in workspaces"
+              :key="ws.id"
+              cols="12"
+              md="6"
+              lg="4"
+            >
+              <LCard
+                :title="ws.name"
+                icon="mdi-folder"
+                color="#b0ca97"
+                outlined
+                clickable
+                @click="openWorkspace(ws.id)"
+              >
+                <template #status>
+                  <v-chip size="small" variant="tonal" color="info">
+                    #{{ ws.id }}
+                  </v-chip>
+                </template>
+
+                <div class="text-medium-emphasis mb-2">
+                  Besitzer: {{ ws.owner_username }}
+                </div>
+                <div class="d-flex align-center text-caption">
+                  <v-icon size="16" class="mr-1">mdi-clock-outline</v-icon>
+                  <span>Zuletzt geändert: {{ formatDate(ws.updated_at) }}</span>
+                </div>
+
+                <template #actions>
+                  <v-spacer />
+                  <LBtn variant="text" size="small" @click.stop="openWorkspace(ws.id)">
+                    Öffnen
+                  </LBtn>
+                </template>
+              </LCard>
+            </v-col>
+          </v-row>
+
+          <div v-else class="empty-state">
+            <v-icon size="56" class="mb-3" color="grey">mdi-folder-open-outline</v-icon>
+            <div class="text-subtitle-1 mb-1">Noch keine Workspaces</div>
+            <div class="text-body-2 text-medium-emphasis mb-4">
+              Erstelle deinen ersten Markdown Collab Workspace.
+            </div>
+            <LBtn
+              variant="primary"
+              prepend-icon="mdi-plus"
+              :disabled="!hasPermission('feature:markdown_collab:edit')"
+              @click="createDialog = true"
+            >
+              Workspace erstellen
+            </LBtn>
+          </div>
+        </LCard>
       </v-col>
     </v-row>
 
     <v-dialog v-model="createDialog" max-width="520">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-plus-circle</v-icon>
-          Workspace erstellen
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2">mdi-plus-circle</v-icon>
+            <span class="text-h6">Workspace erstellen</span>
+            <v-spacer />
+            <v-btn icon="mdi-close" variant="text" @click="createDialog = false" />
+          </div>
+        </template>
+
+        <v-alert v-if="createError" type="error" variant="tonal" class="mb-4">
+          {{ createError }}
+        </v-alert>
+        <v-text-field
+          v-model="newWorkspaceName"
+          label="Name"
+          placeholder="z. B. Dissertation Notes"
+          prepend-inner-icon="mdi-folder"
+          variant="outlined"
+          density="comfortable"
+        />
+        <v-select
+          v-model="newWorkspaceVisibility"
+          :items="visibilityItems"
+          label="Sichtbarkeit"
+          prepend-inner-icon="mdi-eye-outline"
+          variant="outlined"
+          density="comfortable"
+        />
+
+        <template #actions>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="createDialog = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text>
-          <v-alert v-if="createError" type="error" variant="tonal" class="mb-4">
-            {{ createError }}
-          </v-alert>
-          <v-text-field
-            v-model="newWorkspaceName"
-            label="Name"
-            placeholder="z. B. Dissertation Notes"
-            prepend-inner-icon="mdi-folder"
-            variant="outlined"
-            density="comfortable"
-          />
-          <v-select
-            v-model="newWorkspaceVisibility"
-            :items="visibilityItems"
-            label="Sichtbarkeit"
-            prepend-inner-icon="mdi-eye-outline"
-            variant="outlined"
-            density="comfortable"
-          />
-        </v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="createDialog = false">Abbrechen</v-btn>
-          <v-btn
-            color="primary"
+          <LBtn variant="cancel" @click="createDialog = false">Abbrechen</LBtn>
+          <LBtn
+            variant="primary"
             :loading="creating"
             :disabled="!canCreate"
             @click="createWorkspace"
           >
             Erstellen
-          </v-btn>
-        </v-card-actions>
-      </v-card>
+          </LBtn>
+        </template>
+      </LCard>
     </v-dialog>
   </v-container>
 </template>
@@ -239,16 +245,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.workspace-card {
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.workspace-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(var(--v-theme-primary), 0.12);
-}
-
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -256,5 +252,9 @@ onMounted(async () => {
   text-align: center;
   padding: 40px 16px;
   color: rgb(var(--v-theme-on-surface));
+}
+
+.w-100 {
+  width: 100%;
 }
 </style>

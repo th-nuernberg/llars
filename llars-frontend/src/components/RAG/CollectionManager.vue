@@ -3,14 +3,14 @@
     <v-row>
       <!-- Neue Collection Button -->
       <v-col cols="12">
-        <v-btn
-          color="primary"
+        <LBtn
+          variant="primary"
           prepend-icon="mdi-plus"
-          @click="$emit('create')"
           size="large"
+          @click="$emit('create')"
         >
           Neue Collection erstellen
-        </v-btn>
+        </LBtn>
       </v-col>
 
       <!-- Loading Skeletons -->
@@ -37,88 +37,75 @@
           md="4"
           lg="3"
         >
-          <v-card
-            class="collection-card"
-            elevation="2"
-            :style="{ borderTop: `4px solid ${collection.color || '#1976D2'}` }"
+          <LCard
+            :title="collection.display_name || collection.name"
+            :subtitle="collection.name"
+            :icon="getIcon(collection.icon)"
+            :color="collection.color || '#1976D2'"
           >
-            <v-card-item>
-              <template v-slot:prepend>
-                <v-avatar :color="collection.color || '#1976D2'" size="48">
-                  <v-icon size="28" color="white">{{ getIcon(collection.icon) }}</v-icon>
-                </v-avatar>
-              </template>
+            <!-- Description -->
+            <p class="description-text">
+              {{ collection.description || 'Keine Beschreibung vorhanden' }}
+            </p>
 
-              <v-card-title>{{ collection.display_name || collection.name }}</v-card-title>
-              <v-card-subtitle class="text-medium-emphasis">{{ collection.name }}</v-card-subtitle>
-            </v-card-item>
-
-            <v-card-text>
-              <p class="text-body-2 text-medium-emphasis mb-3">
-                {{ collection.description || 'Keine Beschreibung vorhanden' }}
-              </p>
-
-              <v-divider class="mb-3"></v-divider>
-
-              <div class="d-flex justify-space-between">
-                <div class="text-center">
-                  <div class="text-h6">{{ collection.document_count || 0 }}</div>
-                  <div class="text-caption text-medium-emphasis">Dokumente</div>
+            <!-- Stats -->
+            <template #stats>
+              <div class="collection-stats">
+                <div class="stat-item">
+                  <div class="stat-value">{{ collection.document_count || 0 }}</div>
+                  <div class="stat-label">Dokumente</div>
                 </div>
-                <div class="text-center">
-                  <div class="text-h6">{{ formatSize(collection.total_size_bytes) }}</div>
-                  <div class="text-caption text-medium-emphasis">Größe</div>
+                <div class="stat-item">
+                  <div class="stat-value">{{ formatSize(collection.total_size_bytes) }}</div>
+                  <div class="stat-label">Größe</div>
                 </div>
               </div>
-            </v-card-text>
+            </template>
 
-            <v-card-actions>
-              <v-btn
+            <!-- Actions -->
+            <template #actions>
+              <LBtn
                 variant="text"
-                color="primary"
                 prepend-icon="mdi-file-document-multiple"
+                size="small"
                 @click="$emit('view-documents', collection)"
               >
                 Dokumente
-              </v-btn>
-
-              <v-spacer></v-spacer>
-
+              </LBtn>
+              <v-spacer />
               <v-btn
                 icon="mdi-pencil"
                 size="small"
                 variant="text"
                 @click="$emit('edit', collection)"
-              ></v-btn>
-
+              />
               <v-btn
                 icon="mdi-delete"
                 size="small"
                 variant="text"
                 color="error"
                 @click="$emit('delete', collection)"
-              ></v-btn>
-            </v-card-actions>
-          </v-card>
+              />
+            </template>
+          </LCard>
         </v-col>
 
         <!-- Empty State -->
         <v-col v-if="!collections || collections.length === 0" cols="12">
-          <v-card class="text-center pa-8" variant="outlined">
+          <LCard outlined class="text-center pa-8">
             <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open</v-icon>
-            <v-card-title class="text-h5 mb-2">Keine Collections vorhanden</v-card-title>
-            <v-card-text class="text-medium-emphasis">
+            <div class="text-h5 mb-2">Keine Collections vorhanden</div>
+            <div class="text-medium-emphasis mb-4">
               Erstellen Sie Ihre erste Collection, um Dokumente zu organisieren.
-            </v-card-text>
-            <v-btn
-              color="primary"
+            </div>
+            <LBtn
+              variant="primary"
               prepend-icon="mdi-plus"
               @click="$emit('create')"
-              class="mt-4"
             >
               Erste Collection erstellen
-            </v-btn>
-          </v-card>
+            </LBtn>
+          </LCard>
         </v-col>
       </template>
     </v-row>
@@ -162,19 +149,33 @@ const formatSize = (bytes) => {
 </script>
 
 <style scoped>
-.collection-card {
-  height: 100%;
+.description-text {
+  min-height: 48px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.collection-stats {
   display: flex;
-  flex-direction: column;
-  transition: transform 0.2s, box-shadow 0.2s;
+  justify-content: space-around;
+  width: 100%;
 }
 
-.collection-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+.stat-item {
+  text-align: center;
 }
 
-.v-card-text {
-  flex-grow: 1;
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 </style>

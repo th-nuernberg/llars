@@ -475,6 +475,54 @@ Alle globalen Komponenten sind in `main.js` registriert und überall verfügbar:
 - `prepend-icon` / `append-icon`: MDI Icon Name
 - `closable`: Boolean
 
+#### LCard - Card
+
+Flexible Card-Komponente für Entity-Listen (Chatbots, Collections, Workspaces).
+
+```vue
+<LCard
+  title="Mein Chatbot"
+  subtitle="chatbot-id"
+  icon="mdi-robot"
+  color="#b0ca97"
+  status="Aktiv"
+  status-variant="success"
+  :stats="[
+    { icon: 'mdi-folder', value: 3, label: 'Collections' },
+    { icon: 'mdi-message', value: 12, label: 'Gespräche' }
+  ]"
+>
+  <p>Beschreibung hier</p>
+
+  <template #tags>
+    <LTag variant="info" size="sm">RAG</LTag>
+  </template>
+
+  <template #actions>
+    <LBtn variant="text" size="small">Bearbeiten</LBtn>
+  </template>
+</LCard>
+```
+
+**Props:**
+- `title` / `subtitle`: Titel und Untertitel
+- `icon`: MDI Icon Name für Avatar
+- `color`: Akzentfarbe (Border-Top + Avatar)
+- `status` / `status-variant`: Status-Badge (LTag)
+- `stats`: Array von `{ icon, value, label }` für Stats-Row
+- `clickable`: Macht Card klickbar mit Hover-Effekt
+- `flat`: Ohne Schatten
+- `outlined`: Outline-Style statt elevated
+
+**Slots:**
+- `default`: Hauptinhalt (Beschreibung)
+- `header`: Custom Header (ersetzt Standard-Header)
+- `avatar`: Custom Avatar-Inhalt
+- `status`: Custom Status-Badge
+- `stats`: Custom Stats-Row
+- `tags`: Tags/Badges unter Stats
+- `actions`: Action-Buttons unten
+
 ### CSS Custom Properties
 
 Alle Design-Variablen sind in `llars-frontend/src/styles/global.css` definiert:
@@ -521,6 +569,7 @@ llars-frontend/src/
 ├── components/common/
 │   ├── LBtn.vue                   # Button Komponente
 │   ├── LTag.vue                   # Tag/Chip Komponente
+│   ├── LCard.vue                  # Card Komponente
 │   └── LIconBtn.vue               # Icon Button
 └── main.js                        # Globale Registrierung
 ```

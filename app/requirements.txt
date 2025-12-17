@@ -38,6 +38,10 @@ y-py==0.6.2
 python-socketio==5.11.4
 python-dateutil==2.9.0
 
+# Offline Anonymize Tool (NER + Recommender)
+flair==0.15.1
+scikit-learn==1.2.2
+
 # System monitoring for OnCoCo
 psutil==6.1.0
 

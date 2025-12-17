@@ -35,6 +35,8 @@ services:
       - TZ=Europe/Berlin
       - FLASK_ENV=${FLASK_ENV}
       - FLASK_APP=/app/main.py
+      # Disable Chroma telemetry (avoids noisy posthog signature errors and external telemetry calls)
+      - ANONYMIZED_TELEMETRY=False
       # CORS origins derived from PROJECT_URL
       - ALLOWED_ORIGINS=${PROJECT_URL},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT},http://localhost,http://localhost:${NGINX_EXTERNAL_PORT}
       # OnCoCo model path

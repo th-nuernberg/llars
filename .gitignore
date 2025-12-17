@@ -100,6 +100,9 @@ docker/nginx/certs/*.pem
 
 # Project Archiv
 /docs/docs/projekte/anonymize
+/docs/docs/projekte/ReAct
+
+app/data/anonymize/pseudonymize.db
 
 # OS
 Thumbs.db
@@ -111,3 +114,9 @@ desktop.ini
 # Scripts output
 *.pyc
 scripts/*.log
+
+# ML Models (downloaded on demand)
+app/models/anonymize/
+
+# Runtime data
+app/data/

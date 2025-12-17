@@ -33,12 +33,16 @@ services:
       - TZ=Europe/Berlin
       - FLASK_ENV=production
       - FLASK_DEBUG=False
+      # Disable Chroma telemetry (avoids noisy posthog signature errors and external telemetry calls)
+      - ANONYMIZED_TELEMETRY=False
       # Stricter CORS for production
       - ALLOWED_ORIGINS=https://${PROJECT_HOST}
     # Production volumes (no code hot-reload, but persistent RAG data)
     volumes:
       - rag_storage:/app/storage
       - rag_docs:/app/rag_docs
+      # Offline Anonymize Ressourcen (großes NER-Modell wird von Host gemountet)
+      - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
     # No expose of port to host (only internal)
     ports: []
     restart: unless-stopped

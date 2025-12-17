@@ -12,6 +12,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    libgomp1 \
     # Playwright dependencies
     libnss3 \
     libnspr4 \

@@ -33,6 +33,9 @@ import ComparisonDetail from "@/components/comparison/ComparisonDetail.vue";
 import AdminUserProgressStats from "@/components/Admin/AdminUserProgressStats.vue";
 import AdminRAG from "@/components/Admin/AdminRAG.vue"; // RAG Document Management
 
+// Anonymize Tool
+import AnonymizeTool from "@/components/Anonymize/AnonymizeTool.vue";
+
 // Judge Components
 import JudgeOverview from "@/components/Judge/JudgeOverview.vue";
 import JudgeConfig from "@/components/Judge/JudgeConfig.vue";
@@ -80,6 +83,9 @@ const routes = [
       meta: { requiresAuth: true }
     },
 
+    // Anonymize Tool
+    { path: '/Anonymize', alias: '/anonymize', name: 'AnonymizeTool', component: AnonymizeTool, meta: { requiresAuth: true } },
+
     // Judge Routes
     { path: '/judge', name: 'JudgeOverview', component: JudgeOverview, meta: { requiresAuth: true } },
     { path: '/judge/config', name: 'JudgeConfig', component: JudgeConfig, meta: { requiresAuth: true } },
@@ -101,11 +107,11 @@ const routes = [
     // New unified Admin Dashboard
     { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },
 
-    // Legacy Admin Routes (redirect to new dashboard)
+    // Legacy Admin Routes (redirect to new dashboard with appropriate tab)
     { path: '/AdminDashboard', redirect: '/admin' },
-    { path: '/AdminRanker', redirect: '/admin' },
-    { path: '/AdminPermissions', redirect: '/admin' },
-    { path: '/AdminRAG', redirect: '/admin' },
+    { path: '/AdminRanker', redirect: '/admin?tab=scenarios' },
+    { path: '/AdminPermissions', redirect: '/admin?tab=permissions' },
+    { path: '/AdminRAG', redirect: '/admin?tab=rag' },
     { path: '/AdminUserProgressStats/:id', name:'AdminUserProgressStats', component: AdminUserProgressStats, props: true, meta: { requiresAuth: true, requiresAdmin: true } },
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } },
 

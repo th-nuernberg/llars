@@ -191,6 +191,13 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Erstellen von Chatbots mit erweiterten Agent-Modi (ReAct, Reflection, ReflAct)'
         },
+        # Feature: Anonymize
+        {
+            'permission_key': 'feature:anonymize:view',
+            'display_name': 'Anonymisierung ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt den Zugriff auf das Offline-Anonymisierungstool'
+        },
         # Feature: KAIMO
         {
             'permission_key': 'feature:kaimo:view',
@@ -266,6 +273,7 @@ def initialize_permissions(db):
                 'feature:chatbots:view',
                 'feature:chatbots:edit',
                 'feature:chatbots:advanced',
+                'feature:anonymize:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
                 'admin:kaimo:manage',
@@ -286,6 +294,7 @@ def initialize_permissions(db):
                 'feature:rag:view',
                 'feature:chatbots:view',
                 'feature:markdown_collab:view',
+                'feature:anonymize:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
             ]

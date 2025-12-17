@@ -1,18 +1,25 @@
-const parseBoolean = (value, defaultValue = false) => {
-  if (value === undefined || value === null) return defaultValue
-  const normalized = String(value).trim().toLowerCase()
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false
-  return defaultValue
-}
-
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const parseNumber = (value, defaultValue) => {
-  if (value === undefined || value === null) return defaultValue
-  const num = Number(String(value).trim())
-  return Number.isFinite(num) ? num : defaultValue
-}
+const DEFAULT_ANALYTICS_CONFIG = Object.freeze({
+  matomo_enabled: true,
+  matomo_base_url: '/analytics/',
+  matomo_site_id: 1,
+  include_query: false,
+  disable_cookies: false,
+  require_consent: false,
+  require_cookie_consent: false,
+  set_user_id: true,
+  track_clicks: true,
+  track_hovers: false,
+  hover_min_ms: 400,
+  hover_sample_rate: 1,
+  heartbeat_enabled: true,
+  heartbeat_seconds: 15
+})
+
+let runtimeConfig = { ...DEFAULT_ANALYTICS_CONFIG }
+let listenersInstalled = false
+let hasTrackedInitialPageView = false
 
 const parseJwt = (jwtToken) => {
   if (!jwtToken) return null
@@ -25,8 +32,8 @@ const parseJwt = (jwtToken) => {
   }
 }
 
-const computeMatomoBaseUrl = () => {
-  const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '').trim()
+const computeMatomoBaseUrl = (baseUrlSetting) => {
+  const configured = String(baseUrlSetting || '').trim()
   if (configured) {
     if (configured.startsWith('http://') || configured.startsWith('https://')) {
       return configured.endsWith('/') ? configured : `${configured}/`
@@ -55,8 +62,7 @@ const buildRouteLabel = (route) => {
   return String(route.name || route.path || 'unknown')
 }
 
-const buildCustomUrl = (route) => {
-  const includeQuery = parseBoolean(import.meta.env.VITE_MATOMO_INCLUDE_QUERY, false)
+const buildCustomUrl = (route, includeQuery) => {
   const raw = includeQuery ? route?.fullPath : route?.path
   const path = String(raw || window.location.pathname || '/')
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
@@ -141,33 +147,40 @@ const getClickName = (el) => {
   return firstClass ? `.${firstClass}` : el.tagName.toLowerCase()
 }
 
-export const matomoTrackEvent = (category, action, name, value) => {
-  if (!window?._paq) return
-  const payload = ['trackEvent', String(category), String(action)]
-  if (name !== undefined) payload.push(String(name))
-  if (value !== undefined) payload.push(Number(value))
-  window._paq.push(payload)
+const normalizeConfig = (config) => {
+  if (!config || typeof config !== 'object') return { ...DEFAULT_ANALYTICS_CONFIG }
+
+  const merged = { ...DEFAULT_ANALYTICS_CONFIG, ...config }
+  merged.matomo_enabled = Boolean(merged.matomo_enabled)
+  merged.matomo_base_url = String(merged.matomo_base_url || '/analytics/').trim() || '/analytics/'
+  merged.matomo_site_id = Math.max(1, Number(merged.matomo_site_id || 1))
+  merged.include_query = Boolean(merged.include_query)
+  merged.disable_cookies = Boolean(merged.disable_cookies)
+  merged.require_consent = Boolean(merged.require_consent)
+  merged.require_cookie_consent = Boolean(merged.require_cookie_consent)
+  merged.set_user_id = Boolean(merged.set_user_id)
+  merged.track_clicks = Boolean(merged.track_clicks)
+  merged.track_hovers = Boolean(merged.track_hovers)
+  merged.hover_min_ms = Math.max(0, Math.round(Number(merged.hover_min_ms ?? 400)))
+  merged.hover_sample_rate = Math.min(1, Math.max(0, Number(merged.hover_sample_rate ?? 1)))
+  merged.heartbeat_enabled = Boolean(merged.heartbeat_enabled)
+  merged.heartbeat_seconds = Math.max(5, Math.round(Number(merged.heartbeat_seconds ?? 15)))
+
+  return merged
 }
 
-export const matomoSetUserId = (userId) => {
-  if (!window?._paq) return
-  if (!userId) return
-  window._paq.push(['setUserId', String(userId)])
-}
-
-export const matomoResetUserId = () => {
-  if (!window?._paq) return
-  window._paq.push(['resetUserId'])
-}
-
-export const initMatomo = ({ router } = {}) => {
-  const enabled = parseBoolean(import.meta.env.VITE_MATOMO_ENABLED, false)
-  if (!enabled) return
+const applyMatomoConfigToPaq = (config, router) => {
+  if (!config?.matomo_enabled) {
+    if (window?._paq) {
+      window._paq.push(['disableHeartBeatTimer'])
+    }
+    return
+  }
 
   window._paq = window._paq || []
 
-  const baseUrl = computeMatomoBaseUrl()
-  const siteId = String(import.meta.env.VITE_MATOMO_SITE_ID || '1')
+  const baseUrl = computeMatomoBaseUrl(config.matomo_base_url)
+  const siteId = String(config.matomo_site_id || '1')
 
   let trackerUrl = `${baseUrl}matomo.php`
   let scriptUrl = `${baseUrl}matomo.js`
@@ -181,27 +194,28 @@ export const initMatomo = ({ router } = {}) => {
     // Fall back to default URLs
   }
 
-  if (parseBoolean(import.meta.env.VITE_MATOMO_DISABLE_COOKIES, false)) {
+  if (config.disable_cookies) {
     window._paq.push(['disableCookies'])
   }
 
-  if (parseBoolean(import.meta.env.VITE_MATOMO_REQUIRE_CONSENT, false)) {
+  if (config.require_consent) {
     window._paq.push(['requireConsent'])
-  } else if (parseBoolean(import.meta.env.VITE_MATOMO_REQUIRE_COOKIE_CONSENT, false)) {
+  } else if (config.require_cookie_consent) {
     window._paq.push(['requireCookieConsent'])
   }
 
   // More accurate "time on page" tracking (sends periodic pings while user is active)
-  if (parseBoolean(import.meta.env.VITE_MATOMO_HEARTBEAT, true)) {
-    const heartBeatSeconds = Math.max(5, Math.round(parseNumber(import.meta.env.VITE_MATOMO_HEARTBEAT_SECONDS, 15)))
-    window._paq.push(['enableHeartBeatTimer', heartBeatSeconds])
+  if (config.heartbeat_enabled) {
+    window._paq.push(['enableHeartBeatTimer', config.heartbeat_seconds])
+  } else {
+    window._paq.push(['disableHeartBeatTimer'])
   }
 
   window._paq.push(['setTrackerUrl', trackerUrl])
   window._paq.push(['setSiteId', siteId])
   window._paq.push(['enableLinkTracking'])
 
-  if (parseBoolean(import.meta.env.VITE_MATOMO_SET_USER_ID, true)) {
+  if (config.set_user_id) {
     const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
     const payload = parseJwt(token)
     let storedUsername = null
@@ -210,97 +224,157 @@ export const initMatomo = ({ router } = {}) => {
     } catch (e) {
       storedUsername = null
     }
-    const userId =
-      payload?.preferred_username ||
-      payload?.sub ||
-      storedUsername
+    const userId = payload?.preferred_username || payload?.sub || storedUsername
     if (userId) {
       matomoSetUserId(userId)
     }
   }
 
-  if (router) {
-    router.afterEach((to) => {
-      window._paq.push(['setCustomUrl', buildCustomUrl(to)])
-      window._paq.push(['setDocumentTitle', buildDocumentTitle(to)])
+  if (!hasTrackedInitialPageView && router) {
+    const current = router.currentRoute?.value
+    if (current) {
+      window._paq.push(['setCustomUrl', buildCustomUrl(current, config.include_query)])
+      window._paq.push(['setDocumentTitle', buildDocumentTitle(current)])
       window._paq.push(['trackPageView'])
-    })
-
-    if (parseBoolean(import.meta.env.VITE_MATOMO_TRACK_CLICKS, true)) {
-      document.addEventListener(
-        'click',
-        (event) => {
-          const clickable = findClickableTarget(event.target)
-          if (!clickable) return
-          if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
-
-          const routeLabel = buildRouteLabel(router.currentRoute?.value)
-          const clickName = getClickName(clickable)
-
-          matomoTrackEvent(routeLabel, 'click', clickName)
-        },
-        true
-      )
-    }
-
-    if (parseBoolean(import.meta.env.VITE_MATOMO_TRACK_HOVERS, false)) {
-      let supportsHover = true
-      try {
-        supportsHover = window.matchMedia ? window.matchMedia('(hover: hover)').matches : true
-      } catch (e) {
-        supportsHover = true
-      }
-
-      if (supportsHover) {
-        const minHoverMs = Math.max(0, Math.round(parseNumber(import.meta.env.VITE_MATOMO_HOVER_MIN_MS, 400)))
-        const sampleRate = Math.min(1, Math.max(0, parseNumber(import.meta.env.VITE_MATOMO_HOVER_SAMPLE_RATE, 1)))
-        const hoverStarts = new WeakMap()
-
-        const shouldSample = () => sampleRate >= 1 || Math.random() < sampleRate
-        const overEvent = 'onpointerover' in window ? 'pointerover' : 'mouseover'
-        const outEvent = 'onpointerout' in window ? 'pointerout' : 'mouseout'
-
-        document.addEventListener(
-          overEvent,
-          (event) => {
-            const clickable = findClickableTarget(event.target)
-            if (!clickable) return
-            if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
-
-            const related = event.relatedTarget
-            if (related instanceof Element && clickable.contains(related)) return
-            hoverStarts.set(clickable, Date.now())
-          },
-          true
-        )
-
-        document.addEventListener(
-          outEvent,
-          (event) => {
-            const clickable = findClickableTarget(event.target)
-            if (!clickable) return
-            if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
-
-            const related = event.relatedTarget
-            if (related instanceof Element && clickable.contains(related)) return
-
-            const startedAt = hoverStarts.get(clickable)
-            if (!startedAt) return
-            hoverStarts.delete(clickable)
-
-            const durationMs = Math.min(60_000, Math.max(0, Date.now() - startedAt))
-            if (durationMs < minHoverMs) return
-            if (!shouldSample()) return
-
-            const routeLabel = buildRouteLabel(router.currentRoute?.value)
-            const clickName = getClickName(clickable)
-            matomoTrackEvent(routeLabel, 'hover', clickName, durationMs)
-          },
-          true
-        )
-      }
+      hasTrackedInitialPageView = true
     }
   }
 
   ensureMatomoScriptLoaded(scriptUrl)
+}
+
+export const getAnalyticsConfig = () => ({ ...runtimeConfig })
+
+export const setAnalyticsConfig = (config, { router } = {}) => {
+  runtimeConfig = normalizeConfig(config)
+  if (!runtimeConfig.matomo_enabled) {
+    hasTrackedInitialPageView = false
+  }
+  applyMatomoConfigToPaq(runtimeConfig, router)
+  return getAnalyticsConfig()
+}
+
+export const loadAnalyticsConfig = async () => {
+  try {
+    const response = await fetch('/api/analytics/config', { credentials: 'same-origin' })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const json = await response.json()
+    return normalizeConfig(json)
+  } catch (e) {
+    return getAnalyticsConfig()
+  }
+}
+
+export const matomoTrackEvent = (category, action, name, value) => {
+  if (!runtimeConfig?.matomo_enabled) return
+  if (!window?._paq) return
+  const payload = ['trackEvent', String(category), String(action)]
+  if (name !== undefined) payload.push(String(name))
+  if (value !== undefined) payload.push(Number(value))
+  window._paq.push(payload)
+}
+
+export const matomoSetUserId = (userId) => {
+  if (!runtimeConfig?.matomo_enabled) return
+  if (!runtimeConfig?.set_user_id) return
+  if (!window?._paq) return
+  if (!userId) return
+  window._paq.push(['setUserId', String(userId)])
+}
+
+export const matomoResetUserId = () => {
+  if (!window?._paq) return
+  window._paq.push(['resetUserId'])
+}
+
+export const initMatomo = ({ router, config } = {}) => {
+  if (router && !listenersInstalled) {
+    listenersInstalled = true
+
+    router.afterEach((to) => {
+      if (!runtimeConfig?.matomo_enabled) return
+      window._paq = window._paq || []
+      window._paq.push(['setCustomUrl', buildCustomUrl(to, runtimeConfig.include_query)])
+      window._paq.push(['setDocumentTitle', buildDocumentTitle(to)])
+      window._paq.push(['trackPageView'])
+    })
+
+    document.addEventListener(
+      'click',
+      (event) => {
+        if (!runtimeConfig?.matomo_enabled || !runtimeConfig?.track_clicks) return
+        const clickable = findClickableTarget(event.target)
+        if (!clickable) return
+        if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
+
+        const routeLabel = buildRouteLabel(router.currentRoute?.value)
+        const clickName = getClickName(clickable)
+
+        matomoTrackEvent(routeLabel, 'click', clickName)
+      },
+      true
+    )
+
+    let supportsHover = true
+    try {
+      supportsHover = window.matchMedia ? window.matchMedia('(hover: hover)').matches : true
+    } catch (e) {
+      supportsHover = true
+    }
+
+    if (supportsHover) {
+      const hoverStarts = new WeakMap()
+      const overEvent = 'onpointerover' in window ? 'pointerover' : 'mouseover'
+      const outEvent = 'onpointerout' in window ? 'pointerout' : 'mouseout'
+
+      document.addEventListener(
+        overEvent,
+        (event) => {
+          if (!runtimeConfig?.matomo_enabled || !runtimeConfig?.track_hovers) return
+          const clickable = findClickableTarget(event.target)
+          if (!clickable) return
+          if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
+
+          const related = event.relatedTarget
+          if (related instanceof Element && clickable.contains(related)) return
+          hoverStarts.set(clickable, Date.now())
+        },
+        true
+      )
+
+      document.addEventListener(
+        outEvent,
+        (event) => {
+          if (!runtimeConfig?.matomo_enabled || !runtimeConfig?.track_hovers) return
+          const clickable = findClickableTarget(event.target)
+          if (!clickable) return
+          if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
+
+          const related = event.relatedTarget
+          if (related instanceof Element && clickable.contains(related)) return
+
+          const startedAt = hoverStarts.get(clickable)
+          if (!startedAt) return
+          hoverStarts.delete(clickable)
+
+          const durationMs = Math.min(60_000, Math.max(0, Date.now() - startedAt))
+          if (durationMs < runtimeConfig.hover_min_ms) return
+          if (runtimeConfig.hover_sample_rate < 1 && Math.random() >= runtimeConfig.hover_sample_rate) return
+
+          const routeLabel = buildRouteLabel(router.currentRoute?.value)
+          const clickName = getClickName(clickable)
+          matomoTrackEvent(routeLabel, 'hover', clickName, durationMs)
+        },
+        true
+      )
+    }
+  }
+
+  if (config) {
+    setAnalyticsConfig(config, { router })
+  } else {
+    loadAnalyticsConfig().then((loadedConfig) => {
+      setAnalyticsConfig(loadedConfig, { router })
+    })
+  }
 }

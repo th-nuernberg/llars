@@ -143,7 +143,12 @@ const cleanupOldChatMessages = () => {
 };
 
 function updateUsername() {
-  const user = localStorage.getItem('username') || '';
+  let user = '';
+  try {
+    user = localStorage.getItem('username') || '';
+  } catch (e) {
+    user = '';
+  }
   username.value = user;
   isAdminUser.value = isAdmin(user); // Prüfen, ob der Benutzer ein Admin ist
 }
@@ -175,37 +180,45 @@ function logout() {
   auth.logout();
 
   // Alte localStorage-Items löschen (für Kompatibilität mit altem System)
-  localStorage.removeItem('token');
-  localStorage.removeItem('username');
-  localStorage.removeItem('api_key');
-  localStorage.removeItem('chat_messages');
-  localStorage.removeItem('chat_messages_timestamp');
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('api_key');
+    localStorage.removeItem('chat_messages');
+    localStorage.removeItem('chat_messages_timestamp');
 
-  Object.keys(localStorage).forEach((key) => {
-    if (
-      key.startsWith('featureOrder_') ||
-      key.startsWith('featureRating_') ||
-      key.startsWith('rankerDetail_data_') ||
-      key.startsWith('hasUnsaved_ratingChanges_') ||
-      key.startsWith('local_rating_changes_') ||
-      key.startsWith('local_messageRating_changes')
-    ) {
-      localStorage.removeItem(key);
-    }
-  });
+    Object.keys(localStorage).forEach((key) => {
+      if (
+        key.startsWith('featureOrder_') ||
+        key.startsWith('featureRating_') ||
+        key.startsWith('rankerDetail_data_') ||
+        key.startsWith('hasUnsaved_ratingChanges_') ||
+        key.startsWith('local_rating_changes_') ||
+        key.startsWith('local_messageRating_changes')
+      ) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (e) {
+    // ignore (e.g., Safari private mode / blocked storage)
+  }
 
   username.value = '';
   router.push('/login');
 }
 
 function containsLocalStorageItemWithString(string) {
+  try {
     for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i); // Holen des Keys an Index i
-        if (key.includes(string)) {
-            return true; // Ein Item mit dem String im Namen wurde gefunden
-        }
+      const key = localStorage.key(i); // Holen des Keys an Index i
+      if (key.includes(string)) {
+        return true; // Ein Item mit dem String im Namen wurde gefunden
+      }
     }
     return false; // Kein Item mit dem String im Namen
+  } catch (e) {
+    return false;
+  }
 }
 
 

@@ -128,7 +128,7 @@ def login():
         client_id = os.getenv('AUTHENTIK_BACKEND_CLIENT_ID', 'llars-backend')
         client_secret = os.getenv('AUTHENTIK_BACKEND_CLIENT_SECRET', 'llars-backend-secret-change-in-production')
 
-        # Create a session to maintain cookies
+        # Create a session to maintain cookies (Authentik browser session)
         session = http_requests.Session()
 
         # Step 1: Start the authentication flow
@@ -244,7 +244,26 @@ def login():
                         # Enrich with LLARS roles
                         _enrich_token_with_roles(token_data, username)
 
-                        return jsonify(token_data), 200
+                        response = jsonify(token_data)
+
+                        # Optional but important for real SSO:
+                        # If the user later opens another OIDC-protected app (e.g., Matomo),
+                        # Authentik will only skip the login prompt if the browser has an
+                        # Authentik session cookie. Our login is server-side, so we propagate
+                        # the Authentik session cookie to the browser here.
+                        authentik_session_cookie = session.cookies.get('authentik_session')
+                        if authentik_session_cookie:
+                            forwarded_proto = request.headers.get('X-Forwarded-Proto', request.scheme)
+                            response.set_cookie(
+                                'authentik_session',
+                                authentik_session_cookie,
+                                httponly=True,
+                                secure=(forwarded_proto == 'https'),
+                                samesite='Lax',
+                                path='/'
+                            )
+
+                        return response, 200
                     else:
                         current_app.logger.error(f"Token exchange failed: {token_response.text}")
 

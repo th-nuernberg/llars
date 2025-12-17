@@ -17,6 +17,7 @@ from .chatbot_prompt_settings import initialize_chatbot_prompt_settings
 from .markdown_collab import initialize_markdown_collab_defaults
 from .scenarios import seed_demo_scenarios
 from .legal_assistant import initialize_legal_assistant
+from .analytics_settings import initialize_analytics_settings
 
 
 def run_all_seeders(db):
@@ -46,6 +47,9 @@ def run_all_seeders(db):
 
     # Seed permissions and roles (includes RAG system initialization)
     initialize_permissions(db)
+
+    # Create default analytics settings (Matomo tracking config)
+    initialize_analytics_settings(db)
 
     # ALWAYS create bootstrap admin user (uses SYSTEM_ADMIN_API_KEY from .env)
     # This ensures the admin user exists for API access
@@ -88,5 +92,6 @@ __all__ = [
     'initialize_chatbot_prompt_settings',
     'initialize_legal_assistant',
     'initialize_markdown_collab_defaults',
+    'initialize_analytics_settings',
     'seed_demo_scenarios',
 ]

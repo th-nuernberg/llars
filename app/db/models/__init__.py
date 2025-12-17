@@ -18,6 +18,9 @@ from db.models.permission import (
     PermissionAuditLog,
 )
 
+# Analytics settings
+from db.models.analytics_settings import AnalyticsSettings
+
 # Judge models
 from db.models.judge import (
     JudgeSessionStatus,
@@ -133,6 +136,8 @@ __all__ = [
     'UserPermission',
     'UserRole',
     'PermissionAuditLog',
+    # Analytics
+    'AnalyticsSettings',
     # Judge
     'JudgeSessionStatus',
     'JudgeComparisonStatus',

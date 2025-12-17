@@ -137,10 +137,14 @@ export const useAuth = () => {
       setAuthStorageItem(AUTH_STORAGE_KEYS.roles, JSON.stringify(roles || []));
 
       // Store username in localStorage for App.vue compatibility
-      if (tokenParsed.value?.preferred_username) {
-        localStorage.setItem('username', tokenParsed.value.preferred_username);
-      } else if (username) {
-        localStorage.setItem('username', username);
+      try {
+        if (tokenParsed.value?.preferred_username) {
+          localStorage.setItem('username', tokenParsed.value.preferred_username);
+        } else if (username) {
+          localStorage.setItem('username', username);
+        }
+      } catch (e) {
+        // ignore (e.g., Safari private mode / blocked storage)
       }
 
       // Matomo User-ID tracking (optional)

@@ -151,10 +151,16 @@ export const initMatomo = ({ router } = {}) => {
   if (parseBoolean(import.meta.env.VITE_MATOMO_SET_USER_ID, true)) {
     const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
     const payload = parseJwt(token)
+    let storedUsername = null
+    try {
+      storedUsername = localStorage.getItem('username')
+    } catch (e) {
+      storedUsername = null
+    }
     const userId =
       payload?.preferred_username ||
       payload?.sub ||
-      localStorage.getItem('username')
+      storedUsername
     if (userId) {
       matomoSetUserId(userId)
     }

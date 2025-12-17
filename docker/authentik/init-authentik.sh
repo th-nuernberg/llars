@@ -29,13 +29,16 @@ if [ -z "$BASE_URL" ]; then
   fi
 fi
 
-MATOMO_REDIRECT_URI="${BASE_URL}/matomo/index.php?module=RebelOIDC&action=callback&provider=oidc"
+MATOMO_REDIRECT_URI_MATOMO="${BASE_URL}/matomo/index.php?module=RebelOIDC&action=callback&provider=oidc"
+MATOMO_REDIRECT_URI_ANALYTICS="${BASE_URL}/analytics/index.php?module=RebelOIDC&action=callback&provider=oidc"
 
 echo ""
 echo "Configuration:"
 echo "  Backend Client ID: $BACKEND_CLIENT_ID"
 echo "  Matomo OIDC Client ID: $MATOMO_CLIENT_ID"
-echo "  Matomo Redirect URI: $MATOMO_REDIRECT_URI"
+echo "  Matomo Redirect URIs:"
+echo "    - $MATOMO_REDIRECT_URI_MATOMO"
+echo "    - $MATOMO_REDIRECT_URI_ANALYTICS"
 echo "  Admin Password: (set from env)"
 echo ""
 
@@ -168,22 +171,35 @@ from authentik.flows.models import Flow
 from authentik.core.models import Application
 
 existing = OAuth2Provider.objects.filter(name='llars-matomo').first()
+cert = CertificateKeyPair.objects.filter(name__icontains='Self-signed').first()
+if not cert:
+    cert = CertificateKeyPair.objects.first()
+if cert:
+    print(f'  Using certificate: {cert.name}')
+
+auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
+if not auth_flow:
+    auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
+if not auth_flow:
+    print('  ERROR: No authorization flow found!')
+    raise Exception('No authorization flow found')
+
+desired_redirects = [
+    {'matching_mode': 'strict', 'url': '$MATOMO_REDIRECT_URI_MATOMO'},
+    {'matching_mode': 'strict', 'url': '$MATOMO_REDIRECT_URI_ANALYTICS'},
+]
+
 if existing:
-    print('  OAuth2 provider already exists, skipping creation')
+    existing.client_id = '$MATOMO_CLIENT_ID'
+    existing.client_secret = '$MATOMO_CLIENT_SECRET'
+    existing.client_type = 'confidential'
+    existing.authorization_flow = auth_flow
+    existing.signing_key = cert
+    existing._redirect_uris = desired_redirects
+    existing.save()
+    provider = existing
+    print('  OAuth2 provider already exists, updated redirect URIs')
 else:
-    cert = CertificateKeyPair.objects.filter(name__icontains='Self-signed').first()
-    if not cert:
-        cert = CertificateKeyPair.objects.first()
-    if cert:
-        print(f'  Using certificate: {cert.name}')
-
-    auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
-    if not auth_flow:
-        auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
-    if not auth_flow:
-        print('  ERROR: No authorization flow found!')
-        raise Exception('No authorization flow found')
-
     provider = OAuth2Provider.objects.create(
         name='llars-matomo',
         client_id='$MATOMO_CLIENT_ID',
@@ -191,28 +207,28 @@ else:
         client_type='confidential',
         authorization_flow=auth_flow,
         signing_key=cert,
-        _redirect_uris=[{'matching_mode': 'strict', 'url': '$MATOMO_REDIRECT_URI'}]
+        _redirect_uris=desired_redirects
     )
     print(f'  Created provider: {provider.name}')
 
-    scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
-    provider.property_mappings.set(scopes)
-    provider.save()
-    print(f'  Added {scopes.count()} scope mappings')
+scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
+provider.property_mappings.set(scopes)
+provider.save()
+print(f'  Added {scopes.count()} scope mappings')
 
-    app, created = Application.objects.get_or_create(
-        slug='$MATOMO_APP_SLUG',
-        defaults={
-            'name': 'LLARS Matomo',
-            'provider': provider
-        }
-    )
-    if created:
-        print(f'  Created application: {app.slug}')
-    else:
-        app.provider = provider
-        app.save()
-        print(f'  Updated application: {app.slug}')
+app, created = Application.objects.get_or_create(
+    slug='$MATOMO_APP_SLUG',
+    defaults={
+        'name': 'LLARS Matomo',
+        'provider': provider
+    }
+)
+if created:
+    print(f'  Created application: {app.slug}')
+else:
+    app.provider = provider
+    app.save()
+    print(f'  Updated application: {app.slug}')
 "
 
 echo "[5/7] Creating admin user..."

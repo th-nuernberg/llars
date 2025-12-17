@@ -116,9 +116,9 @@
           </template>
 
           <template v-slot:item.function_type_name="{ item }">
-            <v-chip size="small" :color="getTypeColor(item.function_type_name)" variant="flat">
+            <LTag :variant="getTypeVariant(item.function_type_name)" size="sm">
               {{ getFunctionTypeName(item.function_type_name) }}
-            </v-chip>
+            </LTag>
           </template>
 
           <template v-slot:item.begin_date="{ item }">
@@ -132,9 +132,9 @@
           </template>
 
           <template v-slot:item.status="{ item }">
-            <v-chip :color="getStatusColor(item.status)" size="small">
+            <LTag :variant="getStatusVariant(item.status)" size="sm">
               {{ item.status }}
-            </v-chip>
+            </LTag>
           </template>
 
           <template v-slot:item.actions="{ item }">
@@ -361,6 +361,24 @@ const getStatusColor = (status) => {
     'ausstehend': 'warning'
   };
   return colorMap[status] || 'error';
+};
+
+const getTypeVariant = (type) => {
+  const variantMap = {
+    'mail_rating': 'accent',
+    'rating': 'warning',
+    'ranking': 'info'
+  };
+  return variantMap[type] || 'gray';
+};
+
+const getStatusVariant = (status) => {
+  const variantMap = {
+    'aktiv': 'success',
+    'beendet': 'gray',
+    'ausstehend': 'warning'
+  };
+  return variantMap[status] || 'danger';
 };
 
 const isExpiringSoon = (dateString) => {

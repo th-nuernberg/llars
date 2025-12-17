@@ -4,13 +4,13 @@
       <v-icon icon="mdi-file-document-multiple" class="mr-2"></v-icon>
       Dokumente
       <v-spacer></v-spacer>
-      <v-btn
-        color="primary"
+      <LBtn
+        variant="primary"
         prepend-icon="mdi-upload"
         @click="$emit('upload')"
       >
         Hochladen
-      </v-btn>
+      </LBtn>
     </v-card-title>
 
     <v-divider></v-divider>
@@ -70,14 +70,14 @@
             <div class="d-flex align-center">
               <span>{{ selected.length }} Dokument(e) ausgewählt</span>
               <v-spacer></v-spacer>
-              <v-btn
-                color="error"
-                variant="text"
+              <LBtn
+                variant="danger"
+                size="small"
                 prepend-icon="mdi-delete"
                 @click="handleBulkDelete"
               >
                 Ausgewählte löschen
-              </v-btn>
+              </LBtn>
             </div>
           </v-alert>
         </v-col>
@@ -113,12 +113,12 @@
 
       <!-- Collection Badge -->
       <template v-slot:item.collection="{ item }">
-        <v-chip
-          size="small"
-          :color="getCollectionColor(item.collection_name)"
+        <LTag
+          :variant="getCollectionVariant(item.collection_name)"
+          size="sm"
         >
           {{ getCollectionDisplayName(item.collection_name) }}
-        </v-chip>
+        </LTag>
       </template>
 
       <!-- Größe formatiert -->
@@ -128,19 +128,19 @@
 
       <!-- Status Badge -->
       <template v-slot:item.status="{ item }">
-        <v-chip
-          size="small"
-          :color="getStatusColor(item.status)"
+        <LTag
+          :variant="getStatusVariant(item.status)"
+          size="sm"
         >
           {{ getStatusText(item.status) }}
-        </v-chip>
+        </LTag>
       </template>
 
       <!-- Chunks -->
       <template v-slot:item.chunk_count="{ item }">
-        <v-chip size="small" variant="outlined">
+        <LTag variant="gray" size="sm">
           {{ item.chunk_count || 0 }}
-        </v-chip>
+        </LTag>
       </template>
 
       <!-- Abrufe -->
@@ -155,25 +155,22 @@
 
       <!-- Aktionen -->
       <template v-slot:item.actions="{ item }">
-        <v-btn
+        <LIconBtn
           icon="mdi-eye"
-          size="small"
-          variant="text"
+          tooltip="Ansehen"
           @click="$emit('view', item)"
-        ></v-btn>
-        <v-btn
+        />
+        <LIconBtn
           icon="mdi-download"
-          size="small"
-          variant="text"
+          tooltip="Download"
           @click="$emit('download', item)"
-        ></v-btn>
-        <v-btn
+        />
+        <LIconBtn
           icon="mdi-delete"
-          size="small"
-          variant="text"
-          color="error"
+          tooltip="Löschen"
+          variant="danger"
           @click="$emit('delete', item)"
-        ></v-btn>
+        />
       </template>
 
       <!-- Empty State -->
@@ -184,14 +181,14 @@
           <div class="text-medium-emphasis mb-4">
             {{ search || selectedCollection || selectedStatus ? 'Versuchen Sie, Ihre Filter anzupassen.' : 'Laden Sie Ihr erstes Dokument hoch.' }}
           </div>
-          <v-btn
+          <LBtn
             v-if="!search && !selectedCollection && !selectedStatus"
-            color="primary"
+            variant="primary"
             prepend-icon="mdi-upload"
             @click="$emit('upload')"
           >
             Dokument hochladen
-          </v-btn>
+          </LBtn>
         </div>
       </template>
     </v-data-table>
@@ -304,6 +301,23 @@ const getStatusColor = (status) => {
     'failed': 'error'
   }
   return colorMap[status] || 'grey'
+}
+
+const getStatusVariant = (status) => {
+  const variantMap = {
+    'pending': 'warning',
+    'processing': 'info',
+    'indexed': 'success',
+    'failed': 'danger'
+  }
+  return variantMap[status] || 'gray'
+}
+
+const getCollectionVariant = (collectionName) => {
+  // Rotate through variants based on collection name hash
+  const variants = ['primary', 'secondary', 'accent', 'info']
+  const hash = collectionName?.split('').reduce((a, b) => a + b.charCodeAt(0), 0) || 0
+  return variants[hash % variants.length]
 }
 
 const getStatusText = (status) => {

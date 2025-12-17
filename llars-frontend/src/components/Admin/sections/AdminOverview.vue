@@ -1,185 +1,197 @@
 <template>
   <div class="admin-overview">
     <!-- Stats Cards Row -->
-    <v-row>
+    <div class="stats-grid">
       <template v-if="isLoading('stats')">
-        <v-col cols="12" sm="6" lg="3" v-for="n in 4" :key="'skeleton-stat-' + n">
-          <v-skeleton-loader type="card" height="100"></v-skeleton-loader>
-        </v-col>
+        <v-skeleton-loader
+          v-for="n in 4"
+          :key="'skeleton-stat-' + n"
+          type="card"
+          height="100"
+        />
       </template>
-      <v-col v-else cols="12" sm="6" lg="3" v-for="stat in stats" :key="stat.title">
-        <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-avatar :color="stat.color" size="56" class="mr-4">
-              <v-icon :icon="stat.icon" color="white" size="28"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h4 font-weight-bold">{{ stat.value }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">{{ stat.title }}</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+      <template v-else>
+        <LCard
+          v-for="stat in stats"
+          :key="stat.title"
+          :icon="stat.icon"
+          :color="stat.color"
+          :title="stat.value"
+          :subtitle="stat.title"
+          :avatar-size="48"
+          class="stat-card"
+        />
+      </template>
+    </div>
 
-    <!-- Charts Row -->
-    <v-row class="mt-4">
+    <!-- Main Content Row -->
+    <div class="content-grid">
       <!-- Recent Activity -->
-      <v-col cols="12" lg="8">
-        <v-card>
-          <v-card-title class="d-flex align-center">
+      <LCard class="activity-card">
+        <template #header>
+          <div class="d-flex align-center w-100">
             <v-icon class="mr-2">mdi-clock-outline</v-icon>
-            Letzte Aktivitäten
-          </v-card-title>
-          <v-divider></v-divider>
-          <v-card-text>
-            <v-list lines="two" v-if="recentActivities.length > 0">
-              <v-list-item
-                v-for="(activity, index) in recentActivities"
-                :key="index"
-                :prepend-icon="activity.icon"
-              >
-                <v-list-item-title>{{ activity.title }}</v-list-item-title>
-                <v-list-item-subtitle>{{ activity.subtitle }}</v-list-item-subtitle>
-                <template v-slot:append>
-                  <span class="text-caption text-medium-emphasis">{{ activity.time }}</span>
-                </template>
-              </v-list-item>
-            </v-list>
-            <div v-else class="text-center py-8 text-medium-emphasis">
-              <v-icon size="48" class="mb-2">mdi-information-outline</v-icon>
-              <div>Keine kürzlichen Aktivitäten</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
+            <span class="text-h6">Letzte Aktivitäten</span>
+          </div>
+        </template>
 
-      <!-- Quick Actions -->
-      <v-col cols="12" lg="4">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-lightning-bolt</v-icon>
-            Schnellaktionen
-          </v-card-title>
-          <v-divider></v-divider>
-          <v-card-text>
-            <v-list>
-              <v-list-item
-                v-for="action in quickActions"
-                :key="action.title"
-                :prepend-icon="action.icon"
-                @click="action.action"
-                class="quick-action-item"
-                rounded
-              >
-                <v-list-item-title>{{ action.title }}</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-card-text>
-        </v-card>
+        <v-list lines="two" v-if="recentActivities.length > 0" class="bg-transparent">
+          <v-list-item
+            v-for="(activity, index) in recentActivities"
+            :key="index"
+            :prepend-icon="activity.icon"
+            class="activity-item"
+          >
+            <v-list-item-title>{{ activity.title }}</v-list-item-title>
+            <v-list-item-subtitle>{{ activity.subtitle }}</v-list-item-subtitle>
+            <template v-slot:append>
+              <LTag variant="gray" size="sm">{{ activity.time }}</LTag>
+            </template>
+          </v-list-item>
+        </v-list>
+        <div v-else class="empty-state">
+          <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-information-outline</v-icon>
+          <div class="text-medium-emphasis">Keine kürzlichen Aktivitäten</div>
+        </div>
+      </LCard>
+
+      <!-- Right Column: Quick Actions + Warnings -->
+      <div class="side-column">
+        <!-- Quick Actions -->
+        <LCard class="quick-actions-card">
+          <template #header>
+            <div class="d-flex align-center w-100">
+              <v-icon class="mr-2">mdi-lightning-bolt</v-icon>
+              <span class="text-h6">Schnellaktionen</span>
+            </div>
+          </template>
+
+          <div class="quick-actions-list">
+            <div
+              v-for="action in quickActions"
+              :key="action.title"
+              class="quick-action-item"
+              @click="action.action"
+            >
+              <v-icon :icon="action.icon" class="mr-3" />
+              <span>{{ action.title }}</span>
+              <v-icon class="ml-auto" size="small">mdi-chevron-right</v-icon>
+            </div>
+          </div>
+        </LCard>
 
         <!-- Warnings Card -->
-        <v-card class="mt-4" v-if="warnings.length > 0">
-          <v-card-title class="d-flex align-center text-warning">
-            <v-icon class="mr-2" color="warning">mdi-alert</v-icon>
-            Hinweise
-          </v-card-title>
-          <v-divider></v-divider>
-          <v-card-text>
-            <v-alert
-              v-for="(warning, index) in warnings"
-              :key="index"
-              :type="warning.type"
-              variant="tonal"
-              density="compact"
-              class="mb-2"
-            >
-              {{ warning.message }}
-            </v-alert>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+        <LCard v-if="warnings.length > 0" color="#e8c87a" class="warnings-card">
+          <template #header>
+            <div class="d-flex align-center w-100">
+              <v-icon class="mr-2" color="warning">mdi-alert</v-icon>
+              <span class="text-h6">Hinweise</span>
+            </div>
+          </template>
+
+          <v-alert
+            v-for="(warning, index) in warnings"
+            :key="index"
+            :type="warning.type"
+            variant="tonal"
+            density="compact"
+            class="mb-2"
+          >
+            {{ warning.message }}
+          </v-alert>
+        </LCard>
+      </div>
+    </div>
 
     <!-- Scenarios Overview -->
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
+    <LCard class="scenarios-card">
+      <template #header>
+        <div class="d-flex align-center justify-space-between w-100">
+          <div class="d-flex align-center">
             <v-icon class="mr-2">mdi-clipboard-list</v-icon>
-            Aktive Szenarien
-            <v-spacer></v-spacer>
-            <LBtn variant="text" append-icon="mdi-arrow-right" @click="$parent.$parent.activeSection = 'scenarios'">
-              Alle anzeigen
-            </LBtn>
-          </v-card-title>
-          <v-divider></v-divider>
-          <v-card-text>
-            <v-skeleton-loader v-if="isLoading('scenarios')" type="table"></v-skeleton-loader>
-            <v-table v-else-if="activeScenarios.length > 0">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Typ</th>
-                  <th>Status</th>
-                  <th>Fortschritt</th>
-                  <th>Enddatum</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="scenario in activeScenarios" :key="scenario.scenario_id">
-                  <td>{{ scenario.name }}</td>
-                  <td>
-                    <v-chip size="small" variant="outlined">
-                      {{ getFunctionTypeName(scenario.function_type_name) }}
-                    </v-chip>
-                  </td>
-                  <td>
-                    <v-chip :color="getStatusColor(scenario.status)" size="small">
-                      {{ scenario.status }}
-                    </v-chip>
-                  </td>
-                  <td style="width: 200px;">
-                    <v-progress-linear
-                      :model-value="scenario.progress || 0"
-                      height="20"
-                      rounded
-                      color="primary"
-                    >
-                      <template v-slot:default="{ value }">
-                        <strong>{{ Math.round(value) }}%</strong>
-                      </template>
-                    </v-progress-linear>
-                  </td>
-                  <td>{{ formatDate(scenario.end_date) }}</td>
-                </tr>
-              </tbody>
-            </v-table>
-            <div v-else class="text-center py-8 text-medium-emphasis">
-              <v-icon size="48" class="mb-2">mdi-clipboard-outline</v-icon>
-              <div>Keine aktiven Szenarien</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+            <span class="text-h6">Aktive Szenarien</span>
+          </div>
+          <LBtn variant="text" append-icon="mdi-arrow-right" @click="$parent.$parent.activeSection = 'scenarios'">
+            Alle anzeigen
+          </LBtn>
+        </div>
+      </template>
+
+      <v-skeleton-loader v-if="isLoading('scenarios')" type="table" />
+
+      <v-data-table
+        v-else-if="activeScenarios.length > 0"
+        :headers="scenarioHeaders"
+        :items="activeScenarios"
+        :items-per-page="5"
+        density="comfortable"
+        class="scenarios-table"
+      >
+        <template v-slot:item.name="{ item }">
+          <div class="d-flex align-center">
+            <v-icon :color="getTypeColor(item.function_type_name)" class="mr-2" size="small">
+              {{ getTypeIcon(item.function_type_name) }}
+            </v-icon>
+            <span class="font-weight-medium">{{ item.name }}</span>
+          </div>
+        </template>
+
+        <template v-slot:item.function_type_name="{ item }">
+          <LTag :variant="getTypeVariant(item.function_type_name)" size="sm">
+            {{ getFunctionTypeName(item.function_type_name) }}
+          </LTag>
+        </template>
+
+        <template v-slot:item.status="{ item }">
+          <LTag :variant="getStatusVariant(item.status)" size="sm">
+            {{ item.status }}
+          </LTag>
+        </template>
+
+        <template v-slot:item.progress="{ item }">
+          <div class="progress-cell">
+            <v-progress-linear
+              :model-value="item.progress || 0"
+              height="8"
+              rounded
+              color="primary"
+            />
+            <span class="progress-label">{{ Math.round(item.progress || 0) }}%</span>
+          </div>
+        </template>
+
+        <template v-slot:item.end_date="{ item }">
+          <LTag
+            :variant="isExpiringSoon(item.end_date) ? 'warning' : 'gray'"
+            size="sm"
+          >
+            {{ formatDate(item.end_date) }}
+          </LTag>
+        </template>
+      </v-data-table>
+
+      <div v-else class="empty-state">
+        <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-clipboard-outline</v-icon>
+        <div class="text-medium-emphasis">Keine aktiven Szenarien</div>
+      </div>
+    </LCard>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { getAnalyticsConfig } from '@/plugins/llars-metrics';
 
-const loading = ref(true);
 const { isLoading, withLoading } = useSkeletonLoading(['stats', 'activities', 'scenarios']);
 
 // Stats data
 const stats = ref([
-  { title: 'Benutzer', value: '0', icon: 'mdi-account-group', color: 'primary' },
-  { title: 'Aktive Szenarien', value: '0', icon: 'mdi-clipboard-check', color: 'success' },
-  { title: 'RAG Dokumente', value: '0', icon: 'mdi-file-document-multiple', color: 'info' },
-  { title: 'Abschlussrate', value: '0%', icon: 'mdi-chart-line', color: 'warning' },
+  { title: 'Benutzer', value: '0', icon: 'mdi-account-group', color: '#b0ca97' },
+  { title: 'Aktive Szenarien', value: '0', icon: 'mdi-clipboard-check', color: '#98d4bb' },
+  { title: 'RAG Dokumente', value: '0', icon: 'mdi-file-document-multiple', color: '#a8c5e2' },
+  { title: 'Abschlussrate', value: '0%', icon: 'mdi-chart-line', color: '#e8c87a' },
 ]);
 
 // Recent activities
@@ -191,8 +203,17 @@ const warnings = ref([]);
 // Active scenarios
 const activeScenarios = ref([]);
 
+// Table headers
+const scenarioHeaders = [
+  { title: 'Name', key: 'name', sortable: true },
+  { title: 'Typ', key: 'function_type_name', sortable: true },
+  { title: 'Status', key: 'status', sortable: true },
+  { title: 'Fortschritt', key: 'progress', sortable: true, width: '180px' },
+  { title: 'Enddatum', key: 'end_date', sortable: true },
+];
+
 const buildMatomoBaseUrl = () => {
-  const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/analytics/').trim();
+  const configured = String(getAnalyticsConfig()?.matomo_base_url || '/analytics/').trim();
   if (configured.startsWith('http://') || configured.startsWith('https://')) {
     return configured.endsWith('/') ? configured : `${configured}/`;
   }
@@ -209,26 +230,10 @@ const openMatomoSso = () => {
 
 // Quick actions
 const quickActions = [
-  {
-    title: 'Matomo Analytics öffnen',
-    icon: 'mdi-chart-bar',
-    action: openMatomoSso
-  },
-  {
-    title: 'Neues Szenario erstellen',
-    icon: 'mdi-plus-circle',
-    action: () => { /* Will be handled by parent */ }
-  },
-  {
-    title: 'Benutzer verwalten',
-    icon: 'mdi-account-cog',
-    action: () => { /* Will be handled by parent */ }
-  },
-  {
-    title: 'Dokument hochladen',
-    icon: 'mdi-upload',
-    action: () => { /* Will be handled by parent */ }
-  },
+  { title: 'Matomo Analytics öffnen', icon: 'mdi-chart-bar', action: openMatomoSso },
+  { title: 'Neues Szenario erstellen', icon: 'mdi-plus-circle', action: () => {} },
+  { title: 'Benutzer verwalten', icon: 'mdi-account-cog', action: () => {} },
+  { title: 'Dokument hochladen', icon: 'mdi-upload', action: () => {} },
 ];
 
 // Helper functions
@@ -241,13 +246,47 @@ const getFunctionTypeName = (type) => {
   return typeMap[type] || type;
 };
 
-const getStatusColor = (status) => {
+const getTypeIcon = (type) => {
+  const iconMap = {
+    'mail_rating': 'mdi-email-check',
+    'rating': 'mdi-star',
+    'ranking': 'mdi-format-list-numbered'
+  };
+  return iconMap[type] || 'mdi-clipboard-outline';
+};
+
+const getTypeColor = (type) => {
   const colorMap = {
+    'mail_rating': 'accent',
+    'rating': 'warning',
+    'ranking': 'info'
+  };
+  return colorMap[type] || 'grey';
+};
+
+const getTypeVariant = (type) => {
+  const variantMap = {
+    'mail_rating': 'accent',
+    'rating': 'warning',
+    'ranking': 'info'
+  };
+  return variantMap[type] || 'gray';
+};
+
+const getStatusVariant = (status) => {
+  const variantMap = {
     'aktiv': 'success',
-    'beendet': 'grey',
+    'beendet': 'gray',
     'ausstehend': 'warning'
   };
-  return colorMap[status] || 'error';
+  return variantMap[status] || 'danger';
+};
+
+const isExpiringSoon = (dateString) => {
+  if (!dateString) return false;
+  const endDate = new Date(dateString);
+  const daysUntilEnd = (endDate - new Date()) / (1000 * 60 * 60 * 24);
+  return daysUntilEnd <= 7 && daysUntilEnd > 0;
 };
 
 const formatDate = (dateString) => {
@@ -261,11 +300,8 @@ const formatDate = (dateString) => {
 
 // Fetch dashboard data
 const fetchDashboardData = async () => {
-  loading.value = true;
-
   await withLoading('stats', async () => {
     try {
-      // Fetch RAG stats
       const ragResponse = await axios.get('/api/rag/stats');
       const totalDocs = ragResponse.data.total_documents
         || ragResponse.data.stats?.documents?.total
@@ -276,7 +312,6 @@ const fetchDashboardData = async () => {
     }
 
     try {
-      // Fetch user count (from permissions API)
       const permResponse = await axios.get('/api/permissions/roles');
       stats.value[0].value = '-';
     } catch (error) {
@@ -286,18 +321,14 @@ const fetchDashboardData = async () => {
 
   await withLoading('scenarios', async () => {
     try {
-      // Fetch scenarios
       const scenariosResponse = await axios.get('/api/admin/scenarios');
       const scenarios = scenariosResponse.data.scenarios || [];
 
-      // Calculate stats
       const activeCount = scenarios.filter(s => s.status === 'aktiv').length;
       stats.value[1].value = activeCount.toString();
 
-      // Filter active scenarios for display
       activeScenarios.value = scenarios.filter(s => s.status === 'aktiv').slice(0, 5);
 
-      // Check for warnings
       const expiringScenarios = scenarios.filter(s => {
         if (!s.end_date || s.status !== 'aktiv') return false;
         const endDate = new Date(s.end_date);
@@ -315,8 +346,6 @@ const fetchDashboardData = async () => {
       console.error('Error fetching scenarios:', error);
     }
   });
-
-  loading.value = false;
 };
 
 onMounted(() => {
@@ -325,22 +354,127 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.admin-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .stat-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+}
+
+/* Content Grid */
+.content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 1200px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Activity Card */
+.activity-card {
+  min-height: 300px;
+}
+
+.activity-item {
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.activity-item:hover {
+  background: rgba(var(--v-theme-primary), 0.05);
+}
+
+/* Quick Actions */
+.quick-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .quick-action-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  margin: 4px 0;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .quick-action-item:hover {
-  background-color: rgba(var(--v-theme-primary), 0.1);
+  background: rgba(var(--v-theme-primary), 0.1);
+  transform: translateX(4px);
+}
+
+/* Scenarios Card */
+.scenarios-card {
+  min-height: 200px;
+}
+
+.scenarios-table {
+  background: transparent !important;
+}
+
+.progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-width: 40px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+/* Utilities */
+.w-100 {
+  width: 100%;
 }
 </style>

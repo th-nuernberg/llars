@@ -1,5 +1,6 @@
 """User-related database models."""
 
+import secrets
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
@@ -14,6 +15,11 @@ class UserGroup(db.Model):
     name: Mapped[str] = mapped_column(db.String(255), unique=True)
 
 
+def generate_avatar_seed():
+    """Generate a random seed for avatar generation."""
+    return secrets.token_hex(8)
+
+
 class User(db.Model):
     """User model for authentication and authorization."""
     __tablename__ = 'users'
@@ -24,6 +30,7 @@ class User(db.Model):
     group_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('user_groups.id'), default=1)
     is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    avatar_seed: Mapped[Optional[str]] = mapped_column(db.String(32), nullable=True, default=generate_avatar_seed)
 
     group = db.relationship('UserGroup', backref='users')
 
@@ -32,3 +39,9 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def get_avatar_seed(self):
+        """Get the avatar seed, generating one if not exists."""
+        if not self.avatar_seed:
+            self.avatar_seed = generate_avatar_seed()
+        return self.avatar_seed

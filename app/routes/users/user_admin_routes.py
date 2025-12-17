@@ -35,6 +35,7 @@ def _serialize_user(user: User, roles: List[dict]) -> Dict[str, Any]:
         "group": user.group.name if getattr(user, "group", None) else None,
         "is_active": bool(getattr(user, "is_active", True)),
         "deleted_at": user.deleted_at.isoformat() if getattr(user, "deleted_at", None) else None,
+        "avatar_seed": user.get_avatar_seed() if hasattr(user, "get_avatar_seed") else None,
         "roles": roles or [],
     }
 

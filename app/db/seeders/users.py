@@ -83,3 +83,27 @@ def seed_bootstrap_admin(db):
     print(f"Created bootstrap admin user with API key from environment.")
     print(f"  Username: admin")
     print(f"  API Key: {api_key[:8]}...{api_key[-4:]}")
+
+
+def seed_avatar_seeds(db) -> None:
+    """
+    Ensure all users have a stable avatar seed.
+
+    This prevents per-request generation and keeps avatars consistent across sessions.
+    """
+    # Lazy import to avoid circular dependencies
+    from ..tables import User
+
+    users_missing_seed = User.query.filter(User.avatar_seed.is_(None)).all()
+    if not users_missing_seed:
+        return
+
+    changed = False
+    for user in users_missing_seed:
+        if hasattr(user, "get_avatar_seed"):
+            user.get_avatar_seed()
+            changed = True
+
+    if changed:
+        db.session.commit()
+        print("✅ Avatar seeds backfilled")

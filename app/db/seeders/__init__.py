@@ -9,7 +9,7 @@ from .feature_types import initialize_feature_function_types
 from .categories import initialize_consulting_category_types
 from .kaimo import initialize_kaimo_defaults
 from .schema_patches import apply_schema_patches
-from .users import seed_user_groups, seed_bootstrap_admin
+from .users import seed_user_groups, seed_bootstrap_admin, seed_avatar_seeds
 from .permissions import initialize_permissions
 from .rag import initialize_rag_system
 from .chatbots import initialize_default_chatbots
@@ -55,6 +55,9 @@ def run_all_seeders(db):
     # This ensures the admin user exists for API access
     seed_bootstrap_admin(db)
 
+    # Ensure stable avatar seeds for all users
+    seed_avatar_seeds(db)
+
     # Initialize RAG system (default collection + scan /app/rag_docs)
     initialize_rag_system(db)
 
@@ -86,6 +89,7 @@ __all__ = [
     'initialize_kaimo_defaults',
     'seed_user_groups',
     'seed_bootstrap_admin',
+    'seed_avatar_seeds',
     'initialize_permissions',
     'initialize_rag_system',
     'initialize_default_chatbots',

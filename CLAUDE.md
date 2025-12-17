@@ -523,6 +523,36 @@ Flexible Card-Komponente für Entity-Listen (Chatbots, Collections, Workspaces).
 - `tags`: Tags/Badges unter Stats
 - `actions`: Action-Buttons unten
 
+#### LTabs - Tab Navigation
+
+Moderne Tab-Navigation mit LLARS-Design (Primary-Hintergrund, asymmetrischer Border-Radius).
+
+```vue
+<LTabs
+  v-model="activeTab"
+  :tabs="[
+    { value: 'chatbots', label: 'Chatbots', icon: 'mdi-robot' },
+    { value: 'collections', label: 'Collections', icon: 'mdi-folder-multiple' },
+    { value: 'documents', label: 'Dokumente', icon: 'mdi-file-document-multiple', badge: 5 }
+  ]"
+/>
+
+<!-- Tab Content (mit v-window oder v-if) -->
+<v-window v-model="activeTab">
+  <v-window-item value="chatbots">...</v-window-item>
+  <v-window-item value="collections">...</v-window-item>
+</v-window>
+```
+
+**Props:**
+- `modelValue` (v-model): Aktiver Tab-Wert
+- `tabs`: Array von `{ value, label, icon?, badge? }`
+- `variant`: `filled` (default) | `outlined` | `underlined`
+- `grow`: Boolean - Tabs nehmen gleiche Breite ein
+
+**Events:**
+- `update:modelValue`: Bei Tab-Wechsel
+
 ### CSS Custom Properties
 
 Alle Design-Variablen sind in `llars-frontend/src/styles/global.css` definiert:
@@ -570,6 +600,7 @@ llars-frontend/src/
 │   ├── LBtn.vue                   # Button Komponente
 │   ├── LTag.vue                   # Tag/Chip Komponente
 │   ├── LCard.vue                  # Card Komponente
+│   ├── LTabs.vue                  # Tab Navigation Komponente
 │   └── LIconBtn.vue               # Icon Button
 └── main.js                        # Globale Registrierung
 ```

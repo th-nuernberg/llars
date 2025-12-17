@@ -86,23 +86,17 @@
       </div>
 
       <!-- Tabs (fills remaining space) -->
-      <v-card ref="tabsCard" class="chatbots-tabs-card">
-        <v-tabs v-model="activeTab" bg-color="primary" show-arrows>
-          <v-tab value="chatbots">
-            <v-icon start>mdi-robot</v-icon>
-            Chatbots
-          </v-tab>
-          <v-tab value="collections">
-            <v-icon start>mdi-folder-multiple</v-icon>
-            Collections
-          </v-tab>
-          <v-tab value="documents">
-            <v-icon start>mdi-file-document-multiple</v-icon>
-            Dokumente
-          </v-tab>
-        </v-tabs>
+      <div ref="tabsCard" class="chatbots-tabs-card">
+        <LTabs
+          v-model="activeTab"
+          :tabs="[
+            { value: 'chatbots', label: 'Chatbots', icon: 'mdi-robot' },
+            { value: 'collections', label: 'Collections', icon: 'mdi-folder-multiple' },
+            { value: 'documents', label: 'Dokumente', icon: 'mdi-file-document-multiple' }
+          ]"
+        />
 
-        <v-card-text class="chatbots-tabs-body">
+        <div class="chatbots-tabs-body">
           <v-window v-model="activeTab">
             <!-- Chatbots Tab -->
             <v-window-item value="chatbots">
@@ -144,8 +138,8 @@
               />
             </v-window-item>
           </v-window>
-        </v-card-text>
-      </v-card>
+        </div>
+      </div>
     </template>
 
     <!-- Chatbot Editor Dialog -->

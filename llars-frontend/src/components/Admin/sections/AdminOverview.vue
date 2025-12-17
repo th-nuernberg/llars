@@ -192,7 +192,7 @@ const warnings = ref([]);
 const activeScenarios = ref([]);
 
 const buildMatomoBaseUrl = () => {
-  const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/matomo/').trim();
+  const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/analytics/').trim();
   if (configured.startsWith('http://') || configured.startsWith('https://')) {
     return configured.endsWith('/') ? configured : `${configured}/`;
   }

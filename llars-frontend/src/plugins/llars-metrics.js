@@ -31,7 +31,7 @@ const computeMatomoBaseUrl = () => {
     return `${window.location.origin}/${configured.endsWith('/') ? configured : `${configured}/`}`
   }
 
-  return `${window.location.origin}/matomo/`
+  return `${window.location.origin}/analytics/`
 }
 
 const ensureMatomoScriptLoaded = (scriptUrl) => {
@@ -53,7 +53,12 @@ const buildCustomUrl = (route) => {
   const includeQuery = parseBoolean(import.meta.env.VITE_MATOMO_INCLUDE_QUERY, false)
   const raw = includeQuery ? route?.fullPath : route?.path
   const path = String(raw || window.location.pathname || '/')
-  return path.startsWith('/') ? path : `/${path}`
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  try {
+    return `${window.location.origin}${normalizedPath}`
+  } catch (e) {
+    return normalizedPath
+  }
 }
 
 const buildDocumentTitle = (route) => {
@@ -131,8 +136,17 @@ export const initMatomo = ({ router } = {}) => {
   const baseUrl = computeMatomoBaseUrl()
   const siteId = String(import.meta.env.VITE_MATOMO_SITE_ID || '1')
 
-  const trackerUrl = `${baseUrl}matomo.php`
-  const scriptUrl = `${baseUrl}matomo.js`
+  let trackerUrl = `${baseUrl}matomo.php`
+  let scriptUrl = `${baseUrl}matomo.js`
+  try {
+    const baseOrigin = new URL(baseUrl).origin
+    if (baseOrigin === window.location.origin) {
+      trackerUrl = `${window.location.origin}/metrics.php`
+      scriptUrl = `${window.location.origin}/metrics.js`
+    }
+  } catch (e) {
+    // Fall back to default URLs
+  }
 
   if (parseBoolean(import.meta.env.VITE_MATOMO_DISABLE_COOKIES, false)) {
     window._paq.push(['disableCookies'])

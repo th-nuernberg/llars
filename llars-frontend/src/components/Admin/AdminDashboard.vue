@@ -70,6 +70,11 @@
           <div v-else-if="activeSection === 'permissions'" key="permissions" class="section-container">
             <AdminPermissionsSection />
           </div>
+
+          <!-- System Monitor Section -->
+          <div v-else-if="activeSection === 'system'" key="system" class="section-container">
+            <AdminSystemMonitorSection />
+          </div>
         </v-fade-transition>
       </div>
     </main>
@@ -88,6 +93,7 @@ import AdminUsersSection from './sections/AdminUsersSection.vue';
 import AdminScenariosSection from './sections/AdminScenariosSection.vue';
 import AdminRAGSection from './sections/AdminRAGSection.vue';
 import AdminPermissionsSection from './sections/AdminPermissionsSection.vue';
+import AdminSystemMonitorSection from './sections/AdminSystemMonitorSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -110,6 +116,7 @@ const isChatbotWizardOpen = computed(() => {
 const navItems = [
   { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard' },
   { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar' },
+  { title: 'System Monitor', value: 'system', icon: 'mdi-monitor-dashboard' },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group' },
   { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list' },
   { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot' },
@@ -122,6 +129,7 @@ const navItems = [
 const sectionInfo = {
   overview: { title: 'Dashboard Übersicht', subtitle: 'Schnellübersicht aller wichtigen Kennzahlen' },
   analytics: { title: 'Analytics', subtitle: 'Matomo Dashboard und Tracking-Status' },
+  system: { title: 'System Monitor', subtitle: 'Live System-Events, Admin-Aktionen und Health-Status' },
   users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },
   scenarios: { title: 'Szenario-Verwaltung', subtitle: 'Bewertungs-Szenarien erstellen und verwalten' },
   chatbots: { title: 'Chatbot-Verwaltung', subtitle: 'Chatbots mit RAG-Collections erstellen und konfigurieren' },

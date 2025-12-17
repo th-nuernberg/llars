@@ -21,6 +21,9 @@ from db.models.permission import (
 # Analytics settings
 from db.models.analytics_settings import AnalyticsSettings
 
+# System monitor events
+from db.models.system_event import SystemEvent
+
 # Judge models
 from db.models.judge import (
     JudgeSessionStatus,
@@ -138,6 +141,8 @@ __all__ = [
     'PermissionAuditLog',
     # Analytics
     'AnalyticsSettings',
+    # System Monitor
+    'SystemEvent',
     # Judge
     'JudgeSessionStatus',
     'JudgeComparisonStatus',

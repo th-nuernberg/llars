@@ -19,6 +19,7 @@ import App from './App.vue'
 import LBtn from '@/components/common/LBtn.vue'
 import LIconBtn from '@/components/common/LIconBtn.vue'
 import LTag from '@/components/common/LTag.vue'
+import LCard from '@/components/common/LCard.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 
@@ -34,6 +35,7 @@ registerPlugins(app)
 app.component('LBtn', LBtn)
 app.component('LIconBtn', LIconBtn)
 app.component('LTag', LTag)
+app.component('LCard', LCard)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

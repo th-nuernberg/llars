@@ -47,13 +47,9 @@
                 </div>
               </div>
             </div>
-            <v-chip
-              :color="getStatusColor(chatbot)"
-              size="small"
-              variant="flat"
-            >
+            <LTag :variant="getStatusVariant(chatbot)" size="sm">
               {{ getStatusLabel(chatbot) }}
-            </v-chip>
+            </LTag>
           </v-card-title>
 
           <!-- Description -->
@@ -84,16 +80,15 @@
             </v-row>
 
             <!-- RAG Badge -->
-            <v-chip
+            <LTag
               v-if="chatbot.rag_enabled"
-              size="x-small"
-              color="info"
-              variant="outlined"
+              variant="info"
+              size="sm"
+              prepend-icon="mdi-magnify"
               class="mt-2"
             >
-              <v-icon start size="12">mdi-magnify</v-icon>
-              RAG aktiviert
-            </v-chip>
+              RAG
+            </LTag>
           </v-card-text>
 
           <!-- Actions -->
@@ -224,6 +219,17 @@ function getStatusColor(chatbot) {
   const status = chatbot?.build_status
   if (status && status !== 'ready') return getBuildStatusColor(status)
   return chatbot?.is_active ? 'success' : 'grey'
+}
+
+function getStatusVariant(chatbot) {
+  const colorMap = {
+    'success': 'success',
+    'info': 'info',
+    'warning': 'warning',
+    'error': 'danger',
+    'grey': 'gray'
+  }
+  return colorMap[getStatusColor(chatbot)] || 'gray'
 }
 </script>
 

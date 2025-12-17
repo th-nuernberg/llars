@@ -3,64 +3,84 @@
   <div class="chat-page">
     <div class="chat-container" ref="containerRef">
       <!-- Chatbot Selection Sidebar -->
-      <div class="chatbot-sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+      <aside class="chatbot-sidebar" :class="{ collapsed: sidebarCollapsed }">
+        <!-- Header -->
         <div class="sidebar-header">
-          <div class="d-flex align-center justify-space-between">
-            <div class="d-flex align-center">
-              <v-icon class="mr-2">mdi-robot</v-icon>
-              <span v-if="!sidebarCollapsed" class="font-weight-bold">Chatbots</span>
-            </div>
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              @click="sidebarCollapsed = !sidebarCollapsed"
-            >
-              <v-icon>{{ sidebarCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
-            </v-btn>
+          <div class="header-content" :class="{ 'justify-center': sidebarCollapsed }">
+            <template v-if="!sidebarCollapsed">
+              <v-icon class="header-icon" size="24">mdi-robot</v-icon>
+              <div class="header-text">
+                <span class="header-title">Chatbots</span>
+              </div>
+            </template>
+            <v-icon v-else class="header-icon-collapsed" size="24">mdi-robot</v-icon>
           </div>
+          <button
+            class="collapse-btn"
+            @click="toggleSidebar"
+            :title="sidebarCollapsed ? 'Erweitern' : 'Zuklappen'"
+          >
+            <v-icon size="20">{{ sidebarCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
+          </button>
         </div>
 
-        <v-divider />
+        <div class="sidebar-divider"></div>
 
         <!-- Chatbot List -->
-        <div v-if="!sidebarCollapsed" class="chatbot-list">
+        <nav class="sidebar-nav">
           <v-skeleton-loader v-if="isLoading('chatbots')" type="list-item@3" />
           <template v-else>
-            <v-list density="compact" class="pa-0">
-              <v-list-item
-                v-for="bot in chatbots"
-                :key="bot.id"
-                :active="selectedChatbot?.id === bot.id"
-                @click="selectChatbot(bot)"
-                class="chatbot-item"
-              >
-                <template #prepend>
-                  <v-avatar :color="bot.color || 'primary'" size="36">
-                    <v-icon color="white">{{ bot.icon || 'mdi-robot' }}</v-icon>
-                  </v-avatar>
-                </template>
-                <v-list-item-title class="font-weight-medium">
-                  {{ bot.display_name }}
-                </v-list-item-title>
-                <v-list-item-subtitle class="text-truncate">
-                  {{ bot.description || 'Keine Beschreibung' }}
-                </v-list-item-subtitle>
-                <template #append>
-                  <v-chip v-if="bot.rag_enabled" size="x-small" color="info" variant="tonal">
-                    RAG
-                  </v-chip>
-                </template>
-              </v-list-item>
-            </v-list>
+            <button
+              v-for="bot in chatbots"
+              :key="bot.id"
+              class="nav-item chatbot-item"
+              :class="{ active: selectedChatbot?.id === bot.id }"
+              @click="selectChatbot(bot)"
+              :title="sidebarCollapsed ? bot.display_name : undefined"
+            >
+              <div class="nav-icon">
+                <v-avatar :color="bot.color || 'primary'" size="32">
+                  <v-icon color="white" size="18">{{ bot.icon || 'mdi-robot' }}</v-icon>
+                </v-avatar>
+              </div>
+              <template v-if="!sidebarCollapsed">
+                <div class="chatbot-info">
+                  <span class="nav-label">{{ bot.display_name }}</span>
+                  <span class="chatbot-description">{{ bot.description || 'Keine Beschreibung' }}</span>
+                </div>
+                <LTag
+                  v-if="getChatbotTypeTag(bot)"
+                  :variant="getChatbotTypeTag(bot).variant"
+                  size="sm"
+                  class="nav-badge"
+                >
+                  {{ getChatbotTypeTag(bot).label }}
+                </LTag>
+              </template>
+            </button>
 
-            <div v-if="chatbots.length === 0" class="text-center pa-4 text-medium-emphasis">
+            <div v-if="chatbots.length === 0 && !sidebarCollapsed" class="text-center pa-4 text-medium-emphasis">
               <v-icon size="32" class="mb-2">mdi-robot-off</v-icon>
               <div>Keine Chatbots verfügbar</div>
             </div>
           </template>
+        </nav>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+          <div class="sidebar-divider"></div>
+          <button
+            class="nav-item"
+            @click="router.push('/Home')"
+            :title="sidebarCollapsed ? 'Zur Startseite' : undefined"
+          >
+            <div class="nav-icon">
+              <v-icon size="20">mdi-home</v-icon>
+            </div>
+            <span v-if="!sidebarCollapsed" class="nav-label">Zur Startseite</span>
+          </button>
         </div>
-      </div>
+      </aside>
 
       <!-- Main Chat Area -->
       <div class="chat-main" :style="sourcePanel.open ? leftPanelStyle() : {}">
@@ -74,9 +94,9 @@
               <div class="font-weight-bold">{{ selectedChatbot.display_name }}</div>
               <div class="text-caption text-medium-emphasis">
                 {{ selectedChatbot.model_name }}
-                <v-chip v-if="capabilities?.vision" size="x-small" color="success" variant="tonal" class="ml-1">
+                <LTag v-if="capabilities?.vision" variant="success" size="sm" class="ml-1">
                   Vision
-                </v-chip>
+                </LTag>
               </div>
             </div>
           </div>
@@ -531,9 +551,9 @@
         <v-card-subtitle v-if="sourceDialog.source?.collection_name">
           <v-icon size="14" class="mr-1">mdi-folder</v-icon>
           {{ sourceDialog.source?.collection_name }}
-          <v-chip size="x-small" class="ml-2" color="success" variant="tonal">
+          <LTag variant="success" size="sm" class="ml-2">
             {{ ((sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% relevant
-          </v-chip>
+          </LTag>
         </v-card-subtitle>
         <v-card-subtitle v-if="sourceDialog.source?.filename">
           <v-icon size="14" class="mr-1">mdi-file</v-icon>
@@ -574,7 +594,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { io } from 'socket.io-client'
 import axios from 'axios'
 import DOMPurify from 'dompurify'
@@ -617,6 +637,7 @@ const {
 const socket = ref(null)
 
 const route = useRoute()
+const router = useRouter()
 
 // Chatbot data
 const chatbots = ref([])
@@ -628,8 +649,20 @@ const messages = ref([])
 const newMessage = ref('')
 const sessionId = ref(null)
 
-// UI state
+// UI state - sidebar with localStorage persistence
 const sidebarCollapsed = ref(false)
+
+// Load sidebar state from localStorage
+const storedSidebar = localStorage.getItem('sidebar_chat')
+if (storedSidebar !== null) {
+  sidebarCollapsed.value = storedSidebar === 'true'
+}
+
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('sidebar_chat', String(sidebarCollapsed.value))
+}
+
 const selectedFiles = ref([])
 
 const sourcePanel = ref({
@@ -672,7 +705,36 @@ const fullscreenDialog = ref({
 
 // Agent reasoning display state
 const agentStatus = ref(null)
+const agentEventCounter = ref(0)
 const agentReasoningRef = ref(null)
+
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Get the appropriate tag info for a chatbot based on its type
+ * Priority: Agent Mode > RAG > null
+ */
+function getChatbotTypeTag(bot) {
+  const agentMode = bot.prompt_settings?.agent_mode
+
+  // Agent modes take priority
+  if (agentMode && agentMode !== 'standard') {
+    const agentTags = {
+      'act': { label: 'ACT', variant: 'success' },
+      'react': { label: 'ReAct', variant: 'accent' },
+      'reflact': { label: 'ReflAct', variant: 'secondary' }
+    }
+    return agentTags[agentMode] || null
+  }
+
+  // RAG-enabled chatbot
+  if (bot.rag_enabled) {
+    return { label: 'RAG', variant: 'info' }
+  }
+
+  // Simple chatbot - no tag
+  return null
+}
 
 // ==================== COMPUTED PROPERTIES ====================
 
@@ -1192,8 +1254,10 @@ function initSocket() {
 
   // Agent status updates (for ACT, ReAct, ReflAct modes)
   socket.value.on('chatbot:agent_status', (data) => {
-    agentStatus.value = data
-    console.log('Agent status:', data)
+    // Add unique counter to ensure Vue detects each event
+    agentEventCounter.value++
+    agentStatus.value = { ...data, _eventId: agentEventCounter.value }
+    console.log('Agent status:', data.type, agentEventCounter.value)
   })
 
   // Error handling
@@ -1279,38 +1343,223 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+/* Sidebar - matching AppSidebar styling */
 .chatbot-sidebar {
-  width: 280px;
-  min-width: 280px;
-  background: rgb(var(--v-theme-surface));
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  width: 260px;
+  min-width: 260px;
+  height: 100%;
+  background: linear-gradient(180deg, rgb(var(--v-theme-surface)) 0%, rgba(var(--v-theme-surface-variant), 0.5) 100%);
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease, min-width 0.3s ease;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
   flex-shrink: 0;
 }
 
-.sidebar-collapsed {
-  width: 60px !important;
-  min-width: 60px !important;
+.chatbot-sidebar.collapsed {
+  width: 64px;
+  min-width: 64px;
+  position: relative;
 }
 
+/* Header */
 .sidebar-header {
-  padding: 16px;
-  background: rgba(var(--v-theme-primary), 0.05);
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  min-height: 64px;
+  gap: 8px;
+  position: relative;
 }
 
-.chatbot-list {
+.header-content {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  transition: justify-content 0.25s ease;
+}
+
+.header-content.justify-center {
+  justify-content: center;
+}
+
+.header-icon {
+  color: rgb(var(--v-theme-primary));
+  flex-shrink: 0;
+}
+
+.header-icon-collapsed {
+  color: rgb(var(--v-theme-primary));
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.header-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.collapse-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.collapse-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+}
+
+.collapsed .sidebar-header {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 8px;
+  gap: 8px;
+}
+
+.collapsed .collapse-btn {
+  position: static;
+  margin-top: 4px;
+}
+
+/* Divider */
+.sidebar-divider {
+  height: 1px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  margin: 0 12px;
+}
+
+/* Navigation */
+.sidebar-nav {
+  flex: 1;
+  padding: 8px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.chatbot-item {
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+.nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-size: 14px;
+  margin-bottom: 4px;
 }
 
-.chatbot-item:hover {
-  background: rgba(var(--v-theme-primary), 0.05);
+.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px;
+}
+
+.nav-item:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.nav-item.active {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
+}
+
+.nav-item.active .nav-icon {
+  color: rgb(var(--v-theme-primary));
+}
+
+.nav-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  transition: color 0.2s ease;
+}
+
+.nav-item:hover .nav-icon {
+  color: rgb(var(--v-theme-primary));
+}
+
+.nav-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collapsed .nav-label {
+  display: none;
+}
+
+.nav-badge {
+  flex-shrink: 0;
+}
+
+.collapsed .nav-badge {
+  display: none;
+}
+
+/* Chatbot-specific styles */
+.chatbot-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.chatbot-description {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Footer */
+.sidebar-footer {
+  margin-top: auto;
+  padding-bottom: 8px;
+}
+
+.sidebar-footer .sidebar-divider {
+  margin-bottom: 8px;
+}
+
+.sidebar-footer .nav-item {
+  margin: 0 8px 0;
+  width: calc(100% - 16px);
+}
+
+.collapsed .sidebar-footer .nav-item {
+  width: calc(100% - 16px);
 }
 
 .chat-main {

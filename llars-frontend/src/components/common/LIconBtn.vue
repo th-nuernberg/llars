@@ -2,6 +2,8 @@
   <v-btn
     v-bind="buttonProps"
     :class="buttonClasses"
+    :aria-label="ariaLabel"
+    :data-matomo-name="matomoName"
     @click="$emit('click', $event)"
   >
     <v-icon :icon="icon" :size="iconSize" />
@@ -22,7 +24,9 @@
  *   <LIconBtn icon="mdi-delete" variant="danger" tooltip="Löschen" />
  *   <LIconBtn icon="mdi-chart-bar" variant="primary" tooltip="Statistiken" />
  */
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
+
+const attrs = useAttrs()
 
 const props = defineProps({
   /**
@@ -124,6 +128,26 @@ const buttonClasses = computed(() => ({
   'l-icon-btn': true,
   [`l-icon-btn--${props.variant}`]: true
 }))
+
+const matomoName = computed(() => {
+  const explicit =
+    attrs['data-matomo-name'] ||
+    attrs['data-track'] ||
+    attrs['data-testid'] ||
+    attrs['aria-label'] ||
+    attrs['title']
+
+  if (explicit) return String(explicit)
+  if (props.tooltip) return String(props.tooltip)
+  return String(props.icon)
+})
+
+const ariaLabel = computed(() => {
+  const explicit = attrs['aria-label'] || attrs['title']
+  if (explicit) return String(explicit)
+  if (props.tooltip) return String(props.tooltip)
+  return String(props.icon)
+})
 </script>
 
 <style scoped>

@@ -87,7 +87,7 @@ const matomoTrackClicks = computed(() => String(import.meta.env.VITE_MATOMO_TRAC
 const matomoSetUserId = computed(() => String(import.meta.env.VITE_MATOMO_SET_USER_ID ?? 'true'))
 
 const matomoBasePath = computed(() => {
-  const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/matomo/').trim()
+  const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/analytics/').trim()
   if (configured.startsWith('http://') || configured.startsWith('https://')) {
     return configured.endsWith('/') ? configured : `${configured}/`
   }

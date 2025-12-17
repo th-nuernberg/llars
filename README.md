@@ -10,6 +10,7 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 - **RAG-Pipeline** - Dokumenten-basierte Antworten mit ChromaDB
 - **RBAC Permission System** - Rollenbasierte Zugriffskontrolle
 - **Authentik Auth** - OAuth2/OIDC Authentifizierung
+- **Matomo Analytics** - Self-hosted Tracking (Pageviews + UI Events, optional SSO via Authentik/OIDC)
 - **Chatbot Builder** - Chatbots mit RAG-Integration erstellen
 
 ## Voraussetzungen
@@ -40,6 +41,7 @@ Das Skript startet alle Docker-Container und konfiguriert Authentik automatisch.
 | **Frontend** | http://localhost:55080 |
 | **Backend API** | http://localhost:55080/api |
 | **Authentik Admin** | http://localhost:55095 |
+| **Matomo** | http://localhost:55080/matomo/ |
 
 ## Test-Benutzer
 
@@ -76,10 +78,12 @@ nginx (:80) → Reverse Proxy
 ├── /          → Vue Frontend (:5173)
 ├── /api/      → Flask Backend (:8081)
 ├── /auth/     → Flask Auth (:8081)
+├── /matomo/   → Matomo Analytics (:80)
 └── /collab/   → YJS WebSocket (:8082)
 
 Databases:
 ├── MariaDB (:3306)        → Anwendungsdaten
+├── MariaDB (:3306)        → Matomo
 ├── PostgreSQL (:5432)     → Authentik
 └── ChromaDB               → RAG Vektoren
 ```

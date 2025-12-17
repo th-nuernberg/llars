@@ -11,18 +11,40 @@ BACKEND_CLIENT_ID="${AUTHENTIK_BACKEND_CLIENT_ID:-llars-backend}"
 BACKEND_CLIENT_SECRET="${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-change-in-production}"
 ADMIN_PASSWORD="${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}"
 
+MATOMO_CLIENT_ID="${AUTHENTIK_MATOMO_CLIENT_ID:-llars-matomo}"
+MATOMO_CLIENT_SECRET="${AUTHENTIK_MATOMO_CLIENT_SECRET:-llars-matomo-secret-change-in-production}"
+MATOMO_APP_SLUG="${AUTHENTIK_MATOMO_APP_SLUG:-llars-matomo}"
+
+PROJECT_STATE="${PROJECT_STATE:-development}"
+PROJECT_URL="${PROJECT_URL:-}"
+PROJECT_HOST="${PROJECT_HOST:-localhost}"
+NGINX_EXTERNAL_PORT="${NGINX_EXTERNAL_PORT:-80}"
+
+BASE_URL="${PROJECT_URL%/}"
+if [ -z "$BASE_URL" ]; then
+  if [ "$PROJECT_STATE" = "production" ]; then
+    BASE_URL="https://${PROJECT_HOST}"
+  else
+    BASE_URL="http://${PROJECT_HOST}:${NGINX_EXTERNAL_PORT}"
+  fi
+fi
+
+MATOMO_REDIRECT_URI="${BASE_URL}/matomo/index.php?module=RebelOIDC&action=callback&provider=oidc"
+
 echo ""
 echo "Configuration:"
 echo "  Backend Client ID: $BACKEND_CLIENT_ID"
+echo "  Matomo OIDC Client ID: $MATOMO_CLIENT_ID"
+echo "  Matomo Redirect URI: $MATOMO_REDIRECT_URI"
 echo "  Admin Password: (set from env)"
 echo ""
 
 # Wait for database to be fully ready
-echo "[1/6] Waiting for database connection..."
+echo "[1/7] Waiting for database connection..."
 sleep 5
 
 # Run all configuration via ak shell (Python Django shell)
-echo "[2/6] Creating authentication flow 'llars-api-authentication'..."
+echo "[2/7] Creating authentication flow 'llars-api-authentication'..."
 
 ak shell -c "
 from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
@@ -70,7 +92,7 @@ else:
     print('  Stage bindings created')
 "
 
-echo "[3/6] Creating OAuth2 provider 'llars-backend'..."
+echo "[3/7] Creating OAuth2 provider 'llars-backend'..."
 
 ak shell -c "
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
@@ -137,7 +159,63 @@ else:
         print(f'  Updated application: {app.slug}')
 "
 
-echo "[4/6] Creating admin user..."
+echo "[4/7] Creating OAuth2 provider 'llars-matomo'..."
+
+ak shell -c "
+from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
+from authentik.crypto.models import CertificateKeyPair
+from authentik.flows.models import Flow
+from authentik.core.models import Application
+
+existing = OAuth2Provider.objects.filter(name='llars-matomo').first()
+if existing:
+    print('  OAuth2 provider already exists, skipping creation')
+else:
+    cert = CertificateKeyPair.objects.filter(name__icontains='Self-signed').first()
+    if not cert:
+        cert = CertificateKeyPair.objects.first()
+    if cert:
+        print(f'  Using certificate: {cert.name}')
+
+    auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
+    if not auth_flow:
+        auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
+    if not auth_flow:
+        print('  ERROR: No authorization flow found!')
+        raise Exception('No authorization flow found')
+
+    provider = OAuth2Provider.objects.create(
+        name='llars-matomo',
+        client_id='$MATOMO_CLIENT_ID',
+        client_secret='$MATOMO_CLIENT_SECRET',
+        client_type='confidential',
+        authorization_flow=auth_flow,
+        signing_key=cert,
+        _redirect_uris=[{'matching_mode': 'strict', 'url': '$MATOMO_REDIRECT_URI'}]
+    )
+    print(f'  Created provider: {provider.name}')
+
+    scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
+    provider.property_mappings.set(scopes)
+    provider.save()
+    print(f'  Added {scopes.count()} scope mappings')
+
+    app, created = Application.objects.get_or_create(
+        slug='$MATOMO_APP_SLUG',
+        defaults={
+            'name': 'LLARS Matomo',
+            'provider': provider
+        }
+    )
+    if created:
+        print(f'  Created application: {app.slug}')
+    else:
+        app.provider = provider
+        app.save()
+        print(f'  Updated application: {app.slug}')
+"
+
+echo "[5/7] Creating admin user..."
 
 ak shell -c "
 from authentik.core.models import User, Group
@@ -172,10 +250,8 @@ else:
     print('  Warning: authentik Admins group not found')
 "
 
-# Only create additional dev users in development mode
-PROJECT_STATE="${PROJECT_STATE:-development}"
 if [ "$PROJECT_STATE" = "development" ]; then
-    echo "[5/6] Creating additional users (researcher, viewer) - DEVELOPMENT MODE..."
+    echo "[6/7] Creating additional users (researcher, viewer) - DEVELOPMENT MODE..."
 
     ak shell -c "
 from authentik.core.models import User
@@ -213,10 +289,10 @@ else:
     print('  Viewer user already exists')
 "
 else
-    echo "[5/6] Skipping dev users (researcher, viewer) - PRODUCTION MODE"
+    echo "[6/7] Skipping dev users (researcher, viewer) - PRODUCTION MODE"
 fi
 
-echo "[6/6] Verifying configuration..."
+echo "[7/7] Verifying configuration..."
 
 ak shell -c "
 from authentik.flows.models import Flow
@@ -233,9 +309,19 @@ provider = OAuth2Provider.objects.filter(name='llars-backend').first()
 print(f'  OAuth2 Provider llars-backend: {\"OK\" if provider else \"MISSING\"}')"
 
 ak shell -c "
+from authentik.providers.oauth2.models import OAuth2Provider
+provider = OAuth2Provider.objects.filter(name='llars-matomo').first()
+print(f'  OAuth2 Provider llars-matomo: {\"OK\" if provider else \"MISSING\"}')"
+
+ak shell -c "
 from authentik.core.models import Application
 app = Application.objects.filter(slug='llars-backend').first()
 print(f'  Application llars-backend: {\"OK\" if app else \"MISSING\"}')"
+
+ak shell -c "
+from authentik.core.models import Application
+app = Application.objects.filter(slug='$MATOMO_APP_SLUG').first()
+print(f'  Application $MATOMO_APP_SLUG: {\"OK\" if app else \"MISSING\"}')"
 
 ak shell -c "
 from authentik.core.models import User

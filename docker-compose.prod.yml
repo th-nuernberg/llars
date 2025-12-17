@@ -65,6 +65,16 @@ services:
       - VITE_KEYCLOAK_URL=https://${PROJECT_HOST}/authentik
       - VITE_KEYCLOAK_REALM=llars
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
+      # Matomo (self-hosted analytics)
+      - VITE_MATOMO_ENABLED=${VITE_MATOMO_ENABLED:-true}
+      - VITE_MATOMO_BASE_URL=${VITE_MATOMO_BASE_URL:-/matomo/}
+      - VITE_MATOMO_SITE_ID=${VITE_MATOMO_SITE_ID:-1}
+      - VITE_MATOMO_SET_USER_ID=${VITE_MATOMO_SET_USER_ID:-true}
+      - VITE_MATOMO_TRACK_CLICKS=${VITE_MATOMO_TRACK_CLICKS:-true}
+      - VITE_MATOMO_INCLUDE_QUERY=${VITE_MATOMO_INCLUDE_QUERY:-false}
+      - VITE_MATOMO_REQUIRE_CONSENT=${VITE_MATOMO_REQUIRE_CONSENT:-false}
+      - VITE_MATOMO_DISABLE_COOKIES=${VITE_MATOMO_DISABLE_COOKIES:-false}
+      - VITE_MATOMO_REQUIRE_COOKIE_CONSENT=${VITE_MATOMO_REQUIRE_COOKIE_CONSENT:-false}
     # Remove volume mounts and develop mode
     volumes: []
     develop: {}
@@ -137,6 +147,28 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # ============================================
+  # Matomo Analytics (self-hosted)
+  # ============================================
+  matomo-service:
+    restart: unless-stopped
+
+  matomo-db-service:
+    ports: []
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 30s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  matomo-init:
+    restart: "no"
+
+  matomo-archiver:
+    restart: unless-stopped
 
   # ============================================
   # Authentik Stack (OIDC Provider)

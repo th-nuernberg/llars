@@ -38,3 +38,17 @@ def configure_database(app):
         # Run all database seeders
         from .seeders import run_all_seeders
         run_all_seeders(db)
+
+        try:
+            from services.system_event_service import SystemEventService
+
+            SystemEventService.log_event(
+                event_type="system.startup",
+                severity="info",
+                message="LLARS backend started",
+                details={"project_state": os.getenv("PROJECT_STATE", "development")},
+                throttle_key="backend_startup",
+                throttle_seconds=30,
+            )
+        except Exception:
+            pass

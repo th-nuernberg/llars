@@ -75,6 +75,21 @@ def get_or_create_user(username: str):
         db.session.add(user)
         db.session.commit()
         logger.info(f"Created new user from Authentik login: {username}")
+        try:
+            from services.system_event_service import SystemEventService
+
+            SystemEventService.log_event(
+                event_type="user.created",
+                severity="info",
+                username=username,
+                entity_type="user",
+                entity_id=username,
+                message=f"User '{username}' created from Authentik login",
+                details={"source": "authentik"},
+            )
+        except Exception:
+            # Never block auth flow on telemetry
+            pass
 
     return user
 

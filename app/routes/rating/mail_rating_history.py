@@ -5,6 +5,7 @@ Handles getting and saving mail history (thread-level) ratings.
 
 import logging
 import traceback
+from datetime import datetime
 from flask import jsonify, request, g
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
@@ -12,7 +13,7 @@ from db.db import db
 from db.tables import (UserMailHistoryRating, ConsultingCategoryType,
                        UserConsultingCategorySelection, ProgressionStatus)
 from .. import data_blueprint
-from ..HelperFunctions import can_access_thread
+from ..HelperFunctions import can_access_thread, get_thread_progression_state
 
 
 @data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
@@ -133,6 +134,11 @@ def save_mail_rating(thread_id):
     else:
         rating_status = ProgressionStatus.DONE
 
+    became_done = (
+        rating_status == ProgressionStatus.DONE and
+        (existing_rating is None or existing_rating.status != ProgressionStatus.DONE)
+    )
+
     # if a rating or category already exists, check if changes occurred
     if existing_rating:
         has_rating_changes = not (
@@ -182,5 +188,85 @@ def save_mail_rating(thread_id):
         db.session.add(new_selected_category)
 
     db.session.commit()
+
+    if became_done:
+        try:
+            from services.system_event_service import SystemEventService
+
+            SystemEventService.log_event(
+                event_type="rating.thread_completed",
+                severity="info",
+                username=user.username,
+                entity_type="thread",
+                entity_id=str(thread_id),
+                message=f"User '{user.username}' completed thread {thread_id} (mail rating)",
+                details={"thread_id": int(thread_id), "function_type_id": 3},
+            )
+        except Exception:
+            pass
+
+        # Scenario completion (only for active scenarios where the user is a rater)
+        try:
+            from db.tables import RatingScenarios, ScenarioRoles, ScenarioThreads, ScenarioThreadDistribution, ScenarioUsers
+            from services.system_event_service import SystemEventService
+
+            current_time = datetime.utcnow()
+            scenario_users = (
+                db.session.query(ScenarioUsers)
+                .join(RatingScenarios, RatingScenarios.id == ScenarioUsers.scenario_id)
+                .join(ScenarioThreadDistribution, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
+                .join(ScenarioThreads, ScenarioThreads.id == ScenarioThreadDistribution.scenario_thread_id)
+                .filter(
+                    ScenarioUsers.user_id == user.id,
+                    ScenarioUsers.role == ScenarioRoles.RATER,
+                    ScenarioThreads.thread_id == thread_id,
+                    RatingScenarios.begin <= current_time,
+                    RatingScenarios.end >= current_time,
+                )
+                .all()
+            )
+
+            for scenario_user in scenario_users:
+                scenario = getattr(scenario_user, "rating_scenario", None)
+                if not scenario:
+                    continue
+
+                distributions = (
+                    db.session.query(ScenarioThreadDistribution)
+                    .filter(
+                        ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                        ScenarioThreadDistribution.scenario_id == scenario_user.scenario_id,
+                    )
+                    .all()
+                )
+
+                total_threads = 0
+                done_threads = 0
+                for distribution in distributions:
+                    thread = getattr(getattr(distribution, "scenario_thread", None), "thread", None)
+                    if not thread:
+                        continue
+                    total_threads += 1
+                    if get_thread_progression_state(thread, user.id, scenario.function_type_id) == ProgressionStatus.DONE:
+                        done_threads += 1
+
+                if total_threads > 0 and done_threads == total_threads:
+                    SystemEventService.log_event(
+                        event_type="scenario.completed",
+                        severity="success",
+                        username=user.username,
+                        entity_type="scenario",
+                        entity_id=str(scenario.id),
+                        message=f"User '{user.username}' completed scenario '{scenario.scenario_name}'",
+                        details={
+                            "scenario_id": int(scenario.id),
+                            "scenario_name": scenario.scenario_name,
+                            "function_type_id": int(scenario.function_type_id),
+                            "total_threads": total_threads,
+                        },
+                        dedupe=True,
+                    )
+        except Exception:
+            pass
 
     return jsonify({'status': 'Mail rating and feedback saved successfully'}), 201

@@ -7,6 +7,7 @@ from flask import jsonify, request
 from db import db
 from db.models.analytics_settings import AnalyticsSettings
 from decorators.permission_decorator import require_permission
+from auth.auth_utils import AuthUtils
 from routes.auth import data_bp
 
 
@@ -128,5 +129,21 @@ def patch_admin_analytics_settings():
         return jsonify({"error": "Bad Request", "message": "Validation failed", "details": errors}), 400
 
     db.session.commit()
-    return jsonify(_serialize_settings(settings))
 
+    try:
+        from services.system_event_service import SystemEventService
+
+        acting_username = AuthUtils.extract_username_without_validation() or "admin"
+        SystemEventService.log_event(
+            event_type="admin.analytics_settings_updated",
+            severity="info",
+            username=acting_username,
+            entity_type="analytics",
+            entity_id="settings",
+            message=f"Analytics settings updated by '{acting_username}'",
+            details={"updated_fields": [k for k in updatable_fields.keys() if k in payload]},
+        )
+    except Exception:
+        pass
+
+    return jsonify(_serialize_settings(settings))

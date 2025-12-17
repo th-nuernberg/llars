@@ -2,7 +2,7 @@
 # syntax=docker/dockerfile:1
 
 # Verwenden eines offiziellen Python-Images als Basis
-FROM python:3.10-slim
+FROM public.ecr.aws/docker/library/python:3.10-slim
 RUN apt-get -y update; apt-get -y install curl
 
 # Setzt das Arbeitsverzeichnis im Container

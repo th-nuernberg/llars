@@ -232,7 +232,7 @@ services:
 
   authentik-db:
     container_name: llars_authentik_db
-    image: postgres:16-alpine
+    image: public.ecr.aws/docker/library/postgres:16-alpine
     environment:
       - POSTGRES_DB=${AUTHENTIK_DB_NAME}
       - POSTGRES_USER=${AUTHENTIK_DB_USER}
@@ -248,7 +248,7 @@ services:
 
   authentik-redis:
     container_name: llars_authentik_redis
-    image: redis:7-alpine
+    image: public.ecr.aws/docker/library/redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

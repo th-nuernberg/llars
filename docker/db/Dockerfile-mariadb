@@ -1,5 +1,5 @@
 # Basis-Image auswählen
-FROM mariadb:11.2.2
+FROM public.ecr.aws/docker/library/mariadb:11.2.2
 LABEL authors="philippsteigerwald"
 
 # Umgebungsvariablen setzen

@@ -8,13 +8,13 @@
     </v-row>
 
     <!-- Empty State -->
-    <v-card v-else-if="chatbots.length === 0" class="text-center pa-8">
+    <LCard v-else-if="chatbots.length === 0" flat class="text-center pa-8">
       <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-robot-outline</v-icon>
       <div class="text-h6 mb-2">Keine Chatbots vorhanden</div>
       <div class="text-medium-emphasis">
         Erstellen Sie Ihren ersten Chatbot, um zu beginnen
       </div>
-    </v-card>
+    </LCard>
 
     <!-- Chatbot Cards -->
     <v-row v-else>
@@ -25,74 +25,37 @@
         md="6"
         lg="4"
       >
-        <v-card
-          class="chatbot-card"
-          :style="{ borderTop: `4px solid ${chatbot.color || '#b0ca97'}` }"
-          elevation="2"
+        <LCard
+          :title="chatbot.display_name"
+          :subtitle="chatbot.name"
+          :icon="chatbot.icon || 'mdi-robot'"
+          :color="chatbot.color || '#b0ca97'"
+          :status="getStatusLabel(chatbot)"
+          :status-variant="getStatusVariant(chatbot)"
+          :stats="[
+            { icon: 'mdi-folder-multiple', value: chatbot.collections?.length || 0, label: 'Collections' },
+            { icon: 'mdi-message-text', value: chatbot.conversation_count || 0, label: 'Gespräche' }
+          ]"
         >
-          <!-- Header -->
-          <v-card-title class="d-flex align-center justify-space-between">
-            <div class="d-flex align-center">
-              <v-avatar
-                :color="chatbot.color || 'primary'"
-                size="40"
-                class="mr-3"
-              >
-                <v-icon color="white">{{ chatbot.icon || 'mdi-robot' }}</v-icon>
-              </v-avatar>
-              <div>
-                <div class="text-h6">{{ chatbot.display_name }}</div>
-                <div class="text-caption text-medium-emphasis">
-                  {{ chatbot.name }}
-                </div>
-              </div>
-            </div>
-            <LTag :variant="getStatusVariant(chatbot)" size="sm">
-              {{ getStatusLabel(chatbot) }}
-            </LTag>
-          </v-card-title>
-
           <!-- Description -->
-          <v-card-text>
-            <div class="text-medium-emphasis mb-3" style="min-height: 48px">
-              {{ chatbot.description || 'Keine Beschreibung vorhanden' }}
-            </div>
+          <div class="description-text">
+            {{ chatbot.description || 'Keine Beschreibung vorhanden' }}
+          </div>
 
-            <!-- Stats -->
-            <v-divider class="mb-3" />
-            <v-row dense class="text-caption">
-              <v-col cols="6">
-                <div class="d-flex align-center">
-                  <v-icon size="16" class="mr-1">mdi-folder-multiple</v-icon>
-                  <span class="text-medium-emphasis">
-                    {{ chatbot.collections?.length || 0 }} Collections
-                  </span>
-                </div>
-              </v-col>
-              <v-col cols="6">
-                <div class="d-flex align-center">
-                  <v-icon size="16" class="mr-1">mdi-message-text</v-icon>
-                  <span class="text-medium-emphasis">
-                    {{ chatbot.conversation_count || 0 }} Gespräche
-                  </span>
-                </div>
-              </v-col>
-            </v-row>
-
-            <!-- RAG Badge -->
+          <!-- Tags -->
+          <template #tags>
             <LTag
               v-if="chatbot.rag_enabled"
               variant="info"
               size="sm"
               prepend-icon="mdi-magnify"
-              class="mt-2"
             >
               RAG
             </LTag>
-          </v-card-text>
+          </template>
 
           <!-- Actions -->
-          <v-card-actions class="px-4 pb-4">
+          <template #actions>
             <LBtn
               size="small"
               variant="text"
@@ -150,8 +113,8 @@
                 </v-list-item>
               </v-list>
             </v-menu>
-          </v-card-actions>
-        </v-card>
+          </template>
+        </LCard>
       </v-col>
     </v-row>
   </div>
@@ -234,24 +197,11 @@ function getStatusVariant(chatbot) {
 </script>
 
 <style scoped>
-.chatbot-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.chatbot-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-}
-
-.v-card-text {
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.text-medium-emphasis {
-  color: rgba(var(--v-theme-on-surface), 0.75);
+.description-text {
+  min-height: 48px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>

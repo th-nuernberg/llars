@@ -6,7 +6,7 @@
 
 LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-**Features:** Rating/Ranking-System | LLM-as-Judge | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions
+**Features:** Rating/Ranking-System | LLM-as-Judge | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool
 
 ---
 
@@ -52,6 +52,14 @@ Databases: MariaDB (:3306), PostgreSQL (:5432 - Authentik)
 
 **Backend:** Flask 3.0 + MariaDB 11.2 + ChromaDB
 **Frontend:** Vue 3.4 + Vuetify 3.5 + Vite 5.1 + Socket.IO
+
+---
+
+## Offline Anonymize Tool
+
+- Frontend: `/Anonymize` (Kachel auf Home), Permission: `feature:anonymize:view`
+- Backend: `GET /api/anonymize/health`, `POST /api/anonymize/pseudonymize`, `POST /api/anonymize/pseudonymize-file`
+- Ressourcen: SQLite/Reco liegen in `app/`, das große Flair-NER Modell wird via Docker Compose aus `docs/docs/projekte/anonymize/models/ner-german-large` gemountet
 
 ---
 

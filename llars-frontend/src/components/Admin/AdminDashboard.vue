@@ -36,6 +36,11 @@
             <AdminOverview />
           </div>
 
+          <!-- Analytics Section -->
+          <div v-else-if="activeSection === 'analytics'" key="analytics" class="section-container">
+            <AdminAnalyticsSection />
+          </div>
+
           <!-- Users Section -->
           <div v-else-if="activeSection === 'users'" key="users" class="section-container">
             <AdminUsersSection />
@@ -78,6 +83,7 @@ import { useAuth } from '@/composables/useAuth';
 
 // Import section components
 import AdminOverview from './sections/AdminOverview.vue';
+import AdminAnalyticsSection from './sections/AdminAnalyticsSection.vue';
 import AdminUsersSection from './sections/AdminUsersSection.vue';
 import AdminScenariosSection from './sections/AdminScenariosSection.vue';
 import AdminRAGSection from './sections/AdminRAGSection.vue';
@@ -103,6 +109,7 @@ const isChatbotWizardOpen = computed(() => {
 // Navigation items
 const navItems = [
   { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard' },
+  { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar' },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group' },
   { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list' },
   { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot' },
@@ -114,6 +121,7 @@ const navItems = [
 // Section titles and subtitles
 const sectionInfo = {
   overview: { title: 'Dashboard Übersicht', subtitle: 'Schnellübersicht aller wichtigen Kennzahlen' },
+  analytics: { title: 'Analytics', subtitle: 'Matomo Dashboard und Tracking-Status' },
   users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },
   scenarios: { title: 'Szenario-Verwaltung', subtitle: 'Bewertungs-Szenarien erstellen und verwalten' },
   chatbots: { title: 'Chatbot-Verwaltung', subtitle: 'Chatbots mit RAG-Collections erstellen und konfigurieren' },

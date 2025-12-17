@@ -42,10 +42,12 @@ class ChatbotService:
         if not payload:
             return
 
-        settings = getattr(bot, 'prompt_settings', None)
+        # Query DB directly to avoid lazy-loading issues with duplicate inserts
+        settings = ChatbotPromptSettings.query.filter_by(chatbot_id=bot.id).first()
         if not settings:
             settings = ChatbotPromptSettings(chatbot_id=bot.id)
             db.session.add(settings)
+            db.session.flush()  # Ensure it's in the session before setting attributes
 
         for key, value in payload.items():
             if hasattr(settings, key):
@@ -234,11 +236,7 @@ class ChatbotService:
         db.session.add(chatbot)
         db.session.flush()
 
-        # Ensure prompt settings row exists (DB is source of truth)
-        if not chatbot.prompt_settings:
-            db.session.add(ChatbotPromptSettings(chatbot_id=chatbot.id))
-            db.session.flush()
-
+        # _upsert_prompt_settings handles creating settings if needed
         ChatbotService._upsert_prompt_settings(chatbot, data)
 
         # Assign collections if provided
@@ -268,10 +266,6 @@ class ChatbotService:
         chatbot = Chatbot.query.get(chatbot_id)
         if not chatbot:
             return None
-
-        # Ensure prompt settings row exists (DB is source of truth)
-        if not chatbot.prompt_settings:
-            db.session.add(ChatbotPromptSettings(chatbot_id=chatbot.id))
 
         # Update fields
         updatable_fields = [

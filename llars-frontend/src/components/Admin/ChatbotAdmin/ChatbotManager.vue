@@ -1,5 +1,5 @@
 <template>
-  <div ref="layoutRoot" class="admin-chatbots">
+  <div ref="layoutRoot" class="admin-chatbots-container">
     <template v-if="wizardOpen">
       <ChatbotBuilderWizard
         :resume-chatbot-id="wizardResumeChatbotId"
@@ -10,9 +10,10 @@
     </template>
 
     <template v-else>
-      <!-- Actions -->
-      <v-row class="mb-4">
-        <v-col cols="12" class="d-flex justify-end">
+      <!-- Header Section (fixed) -->
+      <div class="chatbots-header">
+        <!-- Actions -->
+        <div class="d-flex justify-end mb-3">
           <div class="d-flex flex-wrap ga-2">
             <LBtn
               variant="secondary"
@@ -29,63 +30,63 @@
               Neuer Chatbot
             </LBtn>
           </div>
-        </v-col>
-      </v-row>
+        </div>
 
-      <!-- Stats Cards -->
-      <v-row class="mb-4">
-        <v-col cols="12" sm="6" md="3">
-          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-          <v-card v-else variant="tonal" color="primary">
-            <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-robot</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ stats.total_chatbots }}</div>
-                <div class="text-caption">Chatbots</div>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-          <v-card v-else variant="tonal" color="success">
-            <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ stats.active_chatbots }}</div>
-                <div class="text-caption">Aktiv</div>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-          <v-card v-else variant="tonal" color="info">
-            <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-message-text</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ stats.total_conversations }}</div>
-                <div class="text-caption">Gespräche</div>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-skeleton-loader v-if="loading.stats" type="card" height="100" />
-          <v-card v-else variant="tonal" color="warning">
-            <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-folder-multiple</v-icon>
-              <div>
-                <div class="text-h5 font-weight-bold">{{ collectionsCount }}</div>
-                <div class="text-caption">Collections</div>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+        <!-- Stats Cards -->
+        <div class="stats-row mb-3">
+          <div class="stats-card">
+            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-else variant="tonal" color="primary">
+              <v-card-text class="d-flex align-center py-3">
+                <v-icon size="28" class="mr-3">mdi-robot</v-icon>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ stats.total_chatbots }}</div>
+                  <div class="text-caption">Chatbots</div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+          <div class="stats-card">
+            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-else variant="tonal" color="success">
+              <v-card-text class="d-flex align-center py-3">
+                <v-icon size="28" class="mr-3">mdi-check-circle</v-icon>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ stats.active_chatbots }}</div>
+                  <div class="text-caption">Aktiv</div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+          <div class="stats-card">
+            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-else variant="tonal" color="info">
+              <v-card-text class="d-flex align-center py-3">
+                <v-icon size="28" class="mr-3">mdi-message-text</v-icon>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ stats.total_conversations }}</div>
+                  <div class="text-caption">Gespräche</div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+          <div class="stats-card">
+            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-else variant="tonal" color="warning">
+              <v-card-text class="d-flex align-center py-3">
+                <v-icon size="28" class="mr-3">mdi-folder-multiple</v-icon>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ collectionsCount }}</div>
+                  <div class="text-caption">Collections</div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+        </div>
+      </div>
 
-      <!-- Tabs -->
-      <v-card ref="tabsCard" class="chatbots-tabs-card" :style="tabsCardStyle">
+      <!-- Tabs (fills remaining space) -->
+      <v-card ref="tabsCard" class="chatbots-tabs-card">
         <v-tabs v-model="activeTab" bg-color="primary" show-arrows>
           <v-tab value="chatbots">
             <v-icon start>mdi-robot</v-icon>
@@ -226,7 +227,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import ChatbotList from './ChatbotList.vue'
 import ChatbotEditor from './ChatbotEditor.vue'
@@ -287,27 +288,9 @@ const snackbar = ref({
   color: 'success'
 })
 
-// Layout / viewport sizing
+// Layout refs
 const layoutRoot = ref(null)
 const tabsCard = ref(null)
-const tabsCardHeight = ref(null)
-
-let layoutResizeObserver = null
-
-function updateTabsCardHeight() {
-  const cardEl = tabsCard.value?.$el
-  if (!cardEl || typeof cardEl.getBoundingClientRect !== 'function') return
-
-  const rect = cardEl.getBoundingClientRect()
-  const bottomPadding = 24
-  const available = Math.floor(window.innerHeight - rect.top - bottomPadding)
-  tabsCardHeight.value = Math.max(280, available)
-}
-
-const tabsCardStyle = computed(() => {
-  if (!tabsCardHeight.value) return {}
-  return { height: `${tabsCardHeight.value}px` }
-})
 
 // Computed
 const collectionsCount = computed(() => collections.value.length)
@@ -643,10 +626,6 @@ watch(activeTab, (newTab) => {
   if (newTab !== 'documents') {
     documentCollectionFilter.value = null
   }
-
-  nextTick(() => {
-    updateTabsCardHeight()
-  })
 })
 
 // Lifecycle
@@ -655,54 +634,64 @@ onMounted(() => {
   loadCollections()
   loadDocuments()
   loadStats()
-
-  nextTick(() => {
-    updateTabsCardHeight()
-  })
-
-  window.addEventListener('resize', updateTabsCardHeight)
-
-  try {
-    layoutResizeObserver = new ResizeObserver(() => {
-      updateTabsCardHeight()
-    })
-
-    if (layoutRoot.value) {
-      layoutResizeObserver.observe(layoutRoot.value)
-    }
-  } catch {}
 })
 
-onUnmounted(() => {
-  window.removeEventListener('resize', updateTabsCardHeight)
-  if (layoutResizeObserver) {
-    try {
-      layoutResizeObserver.disconnect()
-    } catch {}
-    layoutResizeObserver = null
-  }
-})
-
-watch(wizardOpen, () => {
-  nextTick(() => {
-    updateTabsCardHeight()
-  })
+// Expose wizardOpen for parent components
+defineExpose({
+  wizardOpen
 })
 </script>
 
 <style scoped>
-.admin-chatbots {
+/* Container fills all available space from parent */
+.admin-chatbots-container {
   width: 100%;
-}
-
-.chatbots-tabs-card {
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+/* Header section with buttons and stats - fixed height */
+.chatbots-header {
+  flex-shrink: 0;
+}
+
+/* Stats row using CSS Grid for responsive layout */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 960px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stats-card {
+  min-width: 0;
+}
+
+/* Tabs card fills remaining vertical space */
+.chatbots-tabs-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tabs body scrolls internally */
 .chatbots-tabs-body {
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;

@@ -8,6 +8,12 @@ const parseBoolean = (value, defaultValue = false) => {
 
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
+const parseNumber = (value, defaultValue) => {
+  if (value === undefined || value === null) return defaultValue
+  const num = Number(String(value).trim())
+  return Number.isFinite(num) ? num : defaultValue
+}
+
 const parseJwt = (jwtToken) => {
   if (!jwtToken) return null
   try {
@@ -87,6 +93,27 @@ const sanitizeLabel = (label) => {
   return withoutLongNumbers.slice(0, 120)
 }
 
+const getDescribedByText = (el) => {
+  if (!el?.getAttribute) return ''
+  const describedById = el.getAttribute('aria-describedby')
+  if (!describedById) return ''
+  const describedBy = document.getElementById(describedById)
+  if (!describedBy) return ''
+  return sanitizeLabel(describedBy.textContent || describedBy.innerText)
+}
+
+const getIconIdentifier = (el) => {
+  if (!el?.querySelector) return ''
+  const iconEl =
+    el.querySelector('i[class*="mdi-"], span[class*="mdi-"]') ||
+    el.querySelector('i[class*="fa-"], span[class*="fa-"]')
+  if (!iconEl) return ''
+  const classes = Array.from(iconEl.classList || [])
+  const knownPrefixes = ['mdi-', 'fa-']
+  const match = classes.find((c) => knownPrefixes.some((p) => c.startsWith(p)) && c !== 'mdi' && c !== 'fa')
+  return match ? sanitizeLabel(match) : ''
+}
+
 const getClickName = (el) => {
   const explicit =
     el.getAttribute('data-matomo-name') ||
@@ -98,8 +125,14 @@ const getClickName = (el) => {
 
   if (explicit) return sanitizeLabel(explicit)
 
+  const describedBy = getDescribedByText(el)
+  if (describedBy) return describedBy
+
   const text = sanitizeLabel(el.innerText)
   if (text) return text
+
+  const icon = getIconIdentifier(el)
+  if (icon) return icon
 
   const firstClass = (el.className || '')
     .toString()
@@ -158,6 +191,12 @@ export const initMatomo = ({ router } = {}) => {
     window._paq.push(['requireCookieConsent'])
   }
 
+  // More accurate "time on page" tracking (sends periodic pings while user is active)
+  if (parseBoolean(import.meta.env.VITE_MATOMO_HEARTBEAT, true)) {
+    const heartBeatSeconds = Math.max(5, Math.round(parseNumber(import.meta.env.VITE_MATOMO_HEARTBEAT_SECONDS, 15)))
+    window._paq.push(['enableHeartBeatTimer', heartBeatSeconds])
+  }
+
   window._paq.push(['setTrackerUrl', trackerUrl])
   window._paq.push(['setSiteId', siteId])
   window._paq.push(['enableLinkTracking'])
@@ -202,6 +241,64 @@ export const initMatomo = ({ router } = {}) => {
         },
         true
       )
+    }
+
+    if (parseBoolean(import.meta.env.VITE_MATOMO_TRACK_HOVERS, false)) {
+      let supportsHover = true
+      try {
+        supportsHover = window.matchMedia ? window.matchMedia('(hover: hover)').matches : true
+      } catch (e) {
+        supportsHover = true
+      }
+
+      if (supportsHover) {
+        const minHoverMs = Math.max(0, Math.round(parseNumber(import.meta.env.VITE_MATOMO_HOVER_MIN_MS, 400)))
+        const sampleRate = Math.min(1, Math.max(0, parseNumber(import.meta.env.VITE_MATOMO_HOVER_SAMPLE_RATE, 1)))
+        const hoverStarts = new WeakMap()
+
+        const shouldSample = () => sampleRate >= 1 || Math.random() < sampleRate
+        const overEvent = 'onpointerover' in window ? 'pointerover' : 'mouseover'
+        const outEvent = 'onpointerout' in window ? 'pointerout' : 'mouseout'
+
+        document.addEventListener(
+          overEvent,
+          (event) => {
+            const clickable = findClickableTarget(event.target)
+            if (!clickable) return
+            if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
+
+            const related = event.relatedTarget
+            if (related instanceof Element && clickable.contains(related)) return
+            hoverStarts.set(clickable, Date.now())
+          },
+          true
+        )
+
+        document.addEventListener(
+          outEvent,
+          (event) => {
+            const clickable = findClickableTarget(event.target)
+            if (!clickable) return
+            if (clickable.closest('[data-matomo-ignore], [data-track-ignore]')) return
+
+            const related = event.relatedTarget
+            if (related instanceof Element && clickable.contains(related)) return
+
+            const startedAt = hoverStarts.get(clickable)
+            if (!startedAt) return
+            hoverStarts.delete(clickable)
+
+            const durationMs = Math.min(60_000, Math.max(0, Date.now() - startedAt))
+            if (durationMs < minHoverMs) return
+            if (!shouldSample()) return
+
+            const routeLabel = buildRouteLabel(router.currentRoute?.value)
+            const clickName = getClickName(clickable)
+            matomoTrackEvent(routeLabel, 'hover', clickName, durationMs)
+          },
+          true
+        )
+      }
     }
   }
 

@@ -56,6 +56,16 @@ export function useCrawlerHelpers() {
     return labels[status] || status;
   };
 
+  const getStatusVariant = (status) => {
+    const variants = {
+      completed: 'success',
+      running: 'info',
+      queued: 'warning',
+      failed: 'danger'
+    };
+    return variants[status] || 'gray';
+  };
+
   // Formatting helpers
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -94,6 +104,7 @@ export function useCrawlerHelpers() {
     getStatusColor,
     getStatusIcon,
     getStatusLabel,
+    getStatusVariant,
 
     // Formatting helpers
     formatDate,

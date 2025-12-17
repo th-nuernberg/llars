@@ -10,16 +10,14 @@
           </p>
         </div>
         <div class="d-flex align-center ga-2">
-          <v-chip
-            :color="socketConnected ? 'success' : isReconnecting ? 'warning' : 'error'"
-            :variant="socketConnected ? 'flat' : 'outlined'"
-            size="small"
-            class="font-weight-medium"
+          <LTag
+            :variant="socketConnected ? 'success' : isReconnecting ? 'warning' : 'danger'"
+            size="sm"
+            :prepend-icon="socketConnected ? 'mdi-wifi' : isReconnecting ? '' : 'mdi-wifi-off'"
           >
             <v-progress-circular v-if="isReconnecting" indeterminate size="12" width="2" class="mr-1" />
-            <v-icon v-else start size="14">{{ socketConnected ? 'mdi-wifi' : 'mdi-wifi-off' }}</v-icon>
             {{ socketConnected ? 'Live verbunden' : isReconnecting ? 'Verbinde...' : 'Offline' }}
-          </v-chip>
+          </LTag>
           <LIconBtn
             icon="mdi-refresh"
             :loading="loadingJobs"
@@ -189,9 +187,9 @@
                       <template v-slot:item="{ props, item }">
                         <v-list-item v-bind="props">
                           <template v-slot:append>
-                            <v-chip size="x-small" color="primary" variant="tonal">
+                            <LTag variant="primary" size="sm">
                               {{ item.raw.document_count }} Docs
-                            </v-chip>
+                            </LTag>
                           </template>
                         </v-list-item>
                       </template>
@@ -406,9 +404,9 @@
             <div>
               <div class="d-flex justify-space-between align-center mb-2">
                 <span class="text-body-2 font-weight-medium">Aktivitäts-Log</span>
-                <v-chip size="x-small" color="primary" variant="flat">
+                <LTag variant="primary" size="sm">
                   {{ recentPages.length }} Einträge
-                </v-chip>
+                </LTag>
               </div>
               <v-sheet
                 color="grey-darken-4"
@@ -519,11 +517,10 @@
           @click:row="(_, { item }) => onJobClick(item)"
         >
           <template v-slot:item.status="{ item }">
-            <v-chip
-              :color="getStatusColor(item.status)"
-              size="small"
-              :variant="item.status === 'running' ? 'elevated' : 'flat'"
-              class="font-weight-medium"
+            <LTag
+              :variant="getStatusVariant(item.status)"
+              size="sm"
+              :prepend-icon="item.status !== 'running' ? getStatusIcon(item.status) : ''"
             >
               <v-progress-circular
                 v-if="item.status === 'running'"
@@ -532,9 +529,8 @@
                 width="2"
                 class="mr-1"
               />
-              <v-icon v-else start size="small">{{ getStatusIcon(item.status) }}</v-icon>
               {{ getStatusLabel(item.status) }}
-            </v-chip>
+            </LTag>
           </template>
           <template v-slot:item.urls="{ item }">
             <div class="text-truncate" style="max-width: 250px;">
@@ -610,6 +606,7 @@ const {
   getStatusColor,
   getStatusIcon,
   getStatusLabel,
+  getStatusVariant,
   formatDate,
   formatNumber,
   showSnackbar,

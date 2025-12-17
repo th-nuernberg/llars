@@ -14,6 +14,7 @@ const refreshToken = ref(null);
 const idToken = ref(null);
 const tokenParsed = ref(null);
 const llarsRoles = ref([]);
+const avatarSeed = ref(null);
 
 const parseJwt = (jwtToken) => {
   if (!jwtToken) return null;
@@ -60,6 +61,12 @@ const loadTokensFromStorage = () => {
     }
   }
 
+  // Load avatar seed from storage
+  const storedAvatarSeed = getAuthStorageItem(AUTH_STORAGE_KEYS.avatarSeed);
+  if (storedAvatarSeed) {
+    avatarSeed.value = storedAvatarSeed;
+  }
+
   if (token.value) {
     tokenParsed.value = parseJwt(token.value);
     if (!tokenParsed.value) {
@@ -72,13 +79,44 @@ const loadTokensFromStorage = () => {
       idToken.value = null;
       tokenParsed.value = null;
       llarsRoles.value = [];
+      avatarSeed.value = null;
       clearStoredTokens();
     }
   }
 };
 
+// Fetch user profile to get avatar_seed
+const fetchUserProfile = async () => {
+  if (!token.value) return null;
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const response = await axios.get(`${baseUrl}/auth/authentik/me`, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    const { avatar_seed } = response.data;
+    if (avatar_seed) {
+      avatarSeed.value = avatar_seed;
+      setAuthStorageItem(AUTH_STORAGE_KEYS.avatarSeed, avatar_seed);
+    }
+
+    return response.data;
+  } catch (e) {
+    console.error('Failed to fetch user profile:', e);
+    return null;
+  }
+};
+
 // Initialize on load
 loadTokensFromStorage();
+
+// Fetch profile if we have a token but no avatar seed
+if (token.value && !avatarSeed.value) {
+  fetchUserProfile();
+}
 
 export const useAuth = () => {
   const isAuthenticated = computed(() => !!token.value && !isTokenExpired(token.value));
@@ -182,6 +220,7 @@ export const useAuth = () => {
     idToken.value = null;
     tokenParsed.value = null;
     llarsRoles.value = [];
+    avatarSeed.value = null;
 
     clearStoredTokens();
 
@@ -196,9 +235,11 @@ export const useAuth = () => {
     userRoles,
     isAdmin,
     tokenParsed,
+    avatarSeed,
     login,
     logout,
     getToken,
-    isTokenExpired
+    isTokenExpired,
+    fetchUserProfile
   };
 };

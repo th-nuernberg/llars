@@ -1,6 +1,6 @@
 <template>
   <div ref="wizardHost" class="wizard-host">
-    <v-card class="wizard-card d-flex flex-column" :style="wizardCardStyle" variant="outlined">
+    <v-card class="wizard-card" variant="outlined">
       <!-- Header -->
       <v-card-title class="d-flex align-center pa-4">
         <v-icon class="mr-2" color="primary">mdi-wizard-hat</v-icon>
@@ -322,24 +322,8 @@ const { isConnected } = useSocketState()
 const socket = ref(null)
 const socketSubscribed = ref(false)
 
-// ===== Layout / Height =====
+// ===== Layout =====
 const wizardHost = ref(null)
-const availableHeight = ref(null)
-
-function updateAvailableHeight() {
-  const host = wizardHost.value
-  if (!host) return
-  const rect = host.getBoundingClientRect()
-  // Matches the Admin container bottom padding (`pa-6` => 24px)
-  const bottomPadding = 24
-  const next = Math.floor(window.innerHeight - rect.top - bottomPadding)
-  availableHeight.value = Math.max(0, next)
-}
-
-const wizardCardStyle = computed(() => {
-  if (!availableHeight.value) return undefined
-  return { height: `${availableHeight.value}px` }
-})
 
 // ===== Local State =====
 const collectionDocuments = ref([])
@@ -1315,15 +1299,6 @@ onMounted(async () => {
   await resumeWizardForChatbot(props.resumeChatbotId)
 })
 
-onMounted(() => {
-  // Ensure the wizard fits the viewport without scrolling the page.
-  requestAnimationFrame(updateAvailableHeight)
-  window.addEventListener('resize', updateAvailableHeight, { passive: true })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateAvailableHeight)
-})
 
 // ===== Persistence Watchers =====
 watch([chatbotId, crawlerJobId, collectionId, currentStep, buildStatus], persistWizardSessionSnapshot)
@@ -1334,20 +1309,32 @@ watch(sessionOpen, persistWizardSessionSnapshot)
 </script>
 
 <style scoped>
+/* Wizard host fills all available space from parent */
 .wizard-host {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
+/* Wizard card fills all available space */
 .wizard-card {
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  overflow: hidden; /* prevent page scroll; step panes handle their own scrolling */
+  flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0;
+  border: none;
 }
 
+/* Stepper content - fills remaining space */
 .stepper-content {
-  min-height: 0; /* allow internal scrolling */
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .stepper-content :deep(.v-window),
@@ -1360,6 +1347,11 @@ watch(sessionOpen, persistWizardSessionSnapshot)
   overflow-y: auto;
 }
 
+/* Footer stays at bottom */
+.wizard-footer {
+  flex-shrink: 0;
+}
+
 /* Hide the default stepper header since we use custom */
 .stepper-content :deep(.v-stepper-header) {
   display: none;
@@ -1367,6 +1359,7 @@ watch(sessionOpen, persistWizardSessionSnapshot)
 
 /* Custom Steps Styling */
 .wizard-steps {
+  flex-shrink: 0;
   background: rgb(var(--v-theme-surface));
   border-bottom: 1px solid rgba(var(--v-border-color), 0.12);
 }

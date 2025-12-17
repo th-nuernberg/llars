@@ -194,6 +194,17 @@ const activeScenarios = ref([]);
 // Quick actions
 const quickActions = [
   {
+    title: 'Matomo Analytics öffnen',
+    icon: 'mdi-chart-bar',
+    action: () => {
+      const configured = String(import.meta.env.VITE_MATOMO_BASE_URL || '/matomo/').trim();
+      const url = configured.startsWith('http://') || configured.startsWith('https://')
+        ? (configured.endsWith('/') ? configured : `${configured}/`)
+        : (configured.startsWith('/') ? (configured.endsWith('/') ? configured : `${configured}/`) : `/${configured}/`);
+      window.open(url, '_blank', 'noopener');
+    }
+  },
+  {
     title: 'Neues Szenario erstellen',
     icon: 'mdi-plus-circle',
     action: () => { /* Will be handled by parent */ }

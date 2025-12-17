@@ -62,7 +62,7 @@ Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 
 - Auto-Setup via Docker Compose Service `matomo-init` (DB + Superuser + Site)
 - Frontend Tracking: `llars-frontend/src/plugins/llars-metrics.js` (SPA Pageviews + Click Events + optional User-ID)
 - Optional SSO: `MATOMO_OIDC_ENABLED=true` + `AUTHENTIK_PUBLIC_URL` + `AUTHENTIK_MATOMO_*` (RebelOIDC Plugin)
-- Config über `.env` / Templates: `.env.template.development`, `.env.template.production` (Matomo + `VITE_MATOMO_*`)
+- Runtime-Config über LLARS DB (Admin Panel): `GET/PATCH /api/admin/analytics/settings` (Table `analytics_settings`)
 
 ## Docker Base Images
 

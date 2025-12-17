@@ -34,6 +34,7 @@ def register_all_blueprints(app: Flask) -> None:
     from routes import permissions
     from routes import users
     from routes import analytics
+    from routes import system_monitor
 
     # ============================================================
     # Core Features

@@ -64,6 +64,12 @@ def apply_schema_patches(db) -> None:
             column_name="deleted_at",
             column_definition_sql="`deleted_at` DATETIME NULL",
         )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="avatar_seed",
+            column_definition_sql="`avatar_seed` VARCHAR(32) NULL",
+        )
 
         if changed:
             print("✅ Applied schema patches")

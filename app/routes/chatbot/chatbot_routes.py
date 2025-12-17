@@ -436,13 +436,14 @@ def test_chat(chatbot_id):
 @require_permission('feature:chatbots:view')
 @handle_errors(logger_name='chatbot')
 def get_conversations(chatbot_id):
-    """Get all conversations for a chatbot"""
+    """Get conversations for a chatbot (filtered by current user for data isolation)"""
     username = AuthUtils.extract_username_without_validation()
     if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     limit = request.args.get('limit', 50, type=int)
-    conversations = ChatService.get_conversations(chatbot_id, limit=limit)
+    # SECURITY: Filter by username to ensure users only see their own conversations
+    conversations = ChatService.get_conversations(chatbot_id, username=username, limit=limit)
     return jsonify({
         'success': True,
         'conversations': conversations,
@@ -454,12 +455,13 @@ def get_conversations(chatbot_id):
 @require_permission('feature:chatbots:view')
 @handle_errors(logger_name='chatbot')
 def get_conversation(chatbot_id, conversation_id):
-    """Get a single conversation with all messages"""
+    """Get a single conversation with all messages (ownership verified)"""
     username = AuthUtils.extract_username_without_validation()
     if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
-    conversation = ChatService.get_conversation(conversation_id)
+    # SECURITY: Verify user owns this conversation
+    conversation = ChatService.get_conversation(conversation_id, username=username)
     if not conversation or conversation['chatbot_id'] != chatbot_id:
         return jsonify({'success': False, 'error': 'Conversation not found'}), 404
     return jsonify({'success': True, 'conversation': conversation})
@@ -469,16 +471,18 @@ def get_conversation(chatbot_id, conversation_id):
 @require_permission('feature:chatbots:edit')
 @handle_errors(logger_name='chatbot')
 def delete_conversation(chatbot_id, conversation_id):
-    """Delete a conversation"""
+    """Delete a conversation (ownership verified)"""
     username = AuthUtils.extract_username_without_validation()
     if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
-    conversation = ChatService.get_conversation(conversation_id)
+    # SECURITY: Verify user owns this conversation before getting details
+    conversation = ChatService.get_conversation(conversation_id, username=username)
     if not conversation or conversation['chatbot_id'] != chatbot_id:
         return jsonify({'success': False, 'error': 'Conversation not found'}), 404
 
-    success = ChatService.delete_conversation(conversation_id)
+    # SECURITY: Pass username to ensure ownership is verified
+    success = ChatService.delete_conversation(conversation_id, username=username)
     if not success:
         return jsonify({'success': False, 'error': 'Failed to delete conversation'}), 500
     return jsonify({'success': True, 'message': 'Conversation deleted successfully'})

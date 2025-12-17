@@ -104,7 +104,8 @@ try {
         trim((string) $settings->tokenUrl->getValue()) === $tokenUrl &&
         trim((string) $settings->userInfoUrl->getValue()) === $userInfoUrl &&
         trim((string) $settings->endSessionUrl->getValue()) === $endSessionUrl &&
-        trim((string) $settings->clientId->getValue()) === $clientId;
+        trim((string) $settings->clientId->getValue()) === $clientId &&
+        $settings->disableDirectLoginUrl->getValue() === false;
 
     if (!$force && $alreadyConfigured && $alreadyMatches) {
         echo "[matomo-oidc] RebelOIDC already configured; skipping.\n";
@@ -144,6 +145,9 @@ try {
         // UX defaults
         $settings->bypassTwoFa->setValue(true);
         $settings->disablePasswordConfirmation->setValue(true);
+        // Allow starting SSO via direct URL (GET) for deep-links from LLARS UI.
+        // (Otherwise RebelOIDC only allows POST from Matomo login form)
+        $settings->disableDirectLoginUrl->setValue(false);
         $settings->disableSuperuser->setValue(false);
 
         $settings->save();

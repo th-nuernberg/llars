@@ -176,72 +176,62 @@
       </v-stepper>
 
       <!-- Footer Actions -->
-      <v-card-actions v-if="currentStep < 5" class="pa-4 wizard-footer">
-        <v-btn
+      <v-card-actions v-if="currentStep < 5" class="pa-3 wizard-footer">
+        <LBtn
           v-if="currentStep > 1"
           variant="text"
+          size="small"
           @click="handlePreviousStep"
         >
           Zurück
-        </v-btn>
+        </LBtn>
         <v-spacer />
 
         <!-- Step 1: Start Button -->
-        <v-btn
+        <LBtn
           v-if="currentStep === 1"
-          color="primary"
+          variant="primary"
           :loading="loading"
           :disabled="!wizardData.url || loading"
+          prepend-icon="mdi-rocket-launch"
           @click="handleStartWizard"
         >
-          <v-icon start>mdi-rocket-launch</v-icon>
           Crawling starten
-        </v-btn>
+        </LBtn>
 
         <!-- Step 2/3: Progress Actions -->
         <template v-if="currentStep === 2 || currentStep === 3">
-          <v-btn
+          <LBtn
             v-if="isProcessing"
-            variant="outlined"
-            color="warning"
+            variant="warning"
+            size="small"
+            prepend-icon="mdi-pause"
             class="mr-2"
             @click="handlePauseBuild"
           >
-            <v-icon start>mdi-pause</v-icon>
             Pausieren
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="text"
+          </LBtn>
+          <LBtn
+            variant="primary"
+            size="small"
+            prepend-icon="mdi-skip-forward"
             @click="handleSkipToConfig"
           >
-            <v-icon start>mdi-skip-forward</v-icon>
             Zur Konfiguration
-          </v-btn>
+          </LBtn>
         </template>
 
         <!-- Step 4: Finalize Button -->
-        <v-btn
+        <LBtn
           v-if="currentStep === 4"
-          color="primary"
+          variant="primary"
           :loading="loading"
           :disabled="isProcessing || loading || !canFinalize"
+          prepend-icon="mdi-check"
           @click="handleFinalizeChatbot"
         >
-          <template v-if="isProcessing">
-            <v-progress-circular
-              indeterminate
-              size="16"
-              width="2"
-              class="mr-2"
-            />
-            Warte auf {{ isCrawling ? 'Crawling' : 'Embedding' }}...
-          </template>
-          <template v-else>
-            <v-icon start>mdi-check</v-icon>
-            Chatbot erstellen
-          </template>
-        </v-btn>
+          {{ isProcessing ? `Warte auf ${isCrawling ? 'Crawling' : 'Embedding'}...` : 'Chatbot erstellen' }}
+        </LBtn>
       </v-card-actions>
 
         <!-- Error Alert -->
@@ -1350,6 +1340,8 @@ watch(sessionOpen, persistWizardSessionSnapshot)
 /* Footer stays at bottom */
 .wizard-footer {
   flex-shrink: 0;
+  border-top: 1px solid rgba(var(--v-border-color), 0.12);
+  background: rgb(var(--v-theme-surface));
 }
 
 /* Hide the default stepper header since we use custom */

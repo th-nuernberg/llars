@@ -3,8 +3,8 @@
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
         <span class="text-h5">
-          <v-icon class="mr-2">mdi-cog</v-icon>
-          Einstellungen
+          <v-icon class="mr-2">mdi-account-cog</v-icon>
+          Profil & Einstellungen
         </span>
         <v-btn
           icon="mdi-close"
@@ -16,6 +16,48 @@
       <v-divider></v-divider>
 
       <v-card-text class="pa-6">
+        <!-- Profile Section -->
+        <div class="mb-6">
+          <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
+            <v-icon class="mr-2">mdi-account</v-icon>
+            Mein Profil
+          </h3>
+
+          <v-card variant="outlined" class="pa-4">
+            <div class="profile-section">
+              <LAvatar
+                :seed="avatarSeed"
+                :username="username"
+                size="xl"
+                class="mr-4"
+              />
+              <div class="profile-info">
+                <div class="text-h6">{{ username || 'Nicht angemeldet' }}</div>
+                <div class="text-body-2 text-medium-emphasis">
+                  {{ userEmail || 'Keine E-Mail hinterlegt' }}
+                </div>
+                <LTag
+                  v-if="isAdmin"
+                  variant="danger"
+                  size="sm"
+                  prepend-icon="mdi-shield-account"
+                  class="mt-2"
+                >
+                  Administrator
+                </LTag>
+                <LTag
+                  v-else-if="username"
+                  variant="primary"
+                  size="sm"
+                  class="mt-2"
+                >
+                  Benutzer
+                </LTag>
+              </div>
+            </div>
+          </v-card>
+        </div>
+
         <!-- Theme Settings Section -->
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
@@ -132,6 +174,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { useAuth } from '@/composables/useAuth'
 
 // Props
 const props = defineProps({
@@ -144,7 +187,7 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['update:modelValue'])
 
-// Use theme composable
+// Use composables
 const {
   themePreference,
   themeOptions,
@@ -152,6 +195,21 @@ const {
   systemPrefersDark,
   setThemePreference,
 } = useAppTheme()
+
+const auth = useAuth()
+
+// User profile data
+const username = computed(() => {
+  try {
+    return localStorage.getItem('username') || auth.tokenParsed.value?.preferred_username || ''
+  } catch {
+    return ''
+  }
+})
+
+const avatarSeed = computed(() => auth.avatarSeed.value)
+const userEmail = computed(() => auth.tokenParsed.value?.email || '')
+const isAdmin = computed(() => auth.isAdmin.value)
 
 // Dialog state
 const dialog = computed({
@@ -187,6 +245,16 @@ function closeDialog() {
 </script>
 
 <style scoped>
+/* Profile Section */
+.profile-section {
+  display: flex;
+  align-items: center;
+}
+
+.profile-info {
+  flex: 1;
+}
+
 .theme-chip {
   flex: 1;
   justify-content: center;

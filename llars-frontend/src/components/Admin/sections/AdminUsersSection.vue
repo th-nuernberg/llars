@@ -41,9 +41,12 @@
     <v-expand-transition>
       <v-card v-if="selectedUser" class="mb-4" elevation="3">
         <v-card-title class="d-flex align-center">
-          <v-avatar color="primary" class="mr-3">
-            <v-icon>mdi-account</v-icon>
-          </v-avatar>
+          <LAvatar
+            :seed="selectedUser.avatar_seed"
+            :username="selectedUser.username"
+            size="lg"
+            class="mr-3"
+          />
           <div>
             <div class="text-h6">{{ selectedUser.username }}</div>
             <div class="text-caption text-medium-emphasis">Benutzerdetails</div>
@@ -200,9 +203,12 @@
         >
           <template v-slot:item.username="{ item }">
             <div class="d-flex align-center">
-              <v-avatar size="32" color="primary" class="mr-2">
-                <span class="text-caption">{{ item.username.charAt(0).toUpperCase() }}</span>
-              </v-avatar>
+              <LAvatar
+                :seed="item.avatar_seed"
+                :username="item.username"
+                size="sm"
+                class="mr-2"
+              />
               <span class="font-weight-medium">{{ item.username }}</span>
             </div>
           </template>

@@ -1,8 +1,7 @@
 <template>
   <v-app>
-    <!-- Normale Benutzer AppBar -->
-    <v-app-bar v-if="!isAdminUser" app dark color="primary">
-      <!--<v-app-bar-nav-icon></v-app-bar-nav-icon>-->
+    <!-- Unified AppBar -->
+    <v-app-bar app dark color="primary">
       <v-toolbar-title @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
         <v-row no-gutters align="center">
           <v-col cols="auto">
@@ -14,52 +13,45 @@
         </v-row>
       </v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-chip
-        v-if="username"
-        class="mr-2 user-chip"
-        color="secondary"
-        text-color="white"
-        prepend-icon="mdi-account"
-      >
-        {{ username }}
-      </v-chip>
-      <v-btn icon @click="openSettings" title="Einstellungen">
-        <v-icon>mdi-cog</v-icon>
-      </v-btn>
-      <v-btn icon @click="logout" title="Abmelden">
-        <v-icon>mdi-logout</v-icon>
-      </v-btn>
-    </v-app-bar>
 
-    <!-- Admin Benutzer AppBar -->
-    <v-app-bar v-else app dark color="primary"> <!-- Primärfarbe verwendet -->
-      <!--<v-app-bar-nav-icon></v-app-bar-nav-icon>-->
-      <v-toolbar-title @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
-        <v-row no-gutters align="center">
-          <v-col cols="auto">
-            <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
-          </v-col>
-          <v-col cols="auto" class="toolbar-text-wrapper">
-            <span class="toolbar-text">LLars Plattform</span>
-          </v-col>
-        </v-row>
-      </v-toolbar-title>
-      <v-spacer></v-spacer>
-      <v-chip
-        v-if="username"
-        class="mr-2 user-chip"
-        color="admin"
-        text-color="white"
-        prepend-icon="mdi-shield-account"
-      >
-        Admin: {{ username }}
-      </v-chip>
-      <v-btn icon @click="openSettings" title="Einstellungen">
-        <v-icon>mdi-cog</v-icon>
-      </v-btn>
-      <v-btn icon @click="logout" title="Abmelden">
-        <v-icon>mdi-logout</v-icon>
-      </v-btn>
+      <!-- User Menu (only when logged in) -->
+      <v-menu v-if="username" offset-y :close-on-content-click="true">
+        <template v-slot:activator="{ props }">
+          <div v-bind="props" class="user-menu-trigger">
+            <LAvatar
+              :seed="userAvatarSeed"
+              :username="username"
+              size="sm"
+              class="mr-2"
+            />
+            <div class="user-info">
+              <LTag
+                :variant="isAdminUser ? 'danger' : 'secondary'"
+                size="sm"
+                :prepend-icon="isAdminUser ? 'mdi-shield-account' : ''"
+              >
+                {{ isAdminUser ? 'Admin' : '' }} {{ username }}
+              </LTag>
+            </div>
+            <v-icon size="small" class="ml-1">mdi-chevron-down</v-icon>
+          </div>
+        </template>
+
+        <v-list density="compact" class="user-menu-list">
+          <v-list-item @click="openSettings" prepend-icon="mdi-account-cog">
+            <v-list-item-title>Profil & Einstellungen</v-list-item-title>
+          </v-list-item>
+          <v-divider class="my-1" />
+          <v-list-item @click="logout" prepend-icon="mdi-logout" class="text-error">
+            <v-list-item-title>Abmelden</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
+      <!-- Login Button (only when NOT logged in) -->
+      <LBtn v-else variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
+        Anmelden
+      </LBtn>
     </v-app-bar>
 
     <v-main>
@@ -96,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { isAdmin } from '@/services/admins';
 import { useAuth } from '@/composables/useAuth';
@@ -115,6 +107,9 @@ const username = ref('');
 const isAdminUser = ref(false);
 const links = ref(['Dokumentation', 'Impressum', 'Datenschutz', 'Kontakt']);
 const settingsDialogOpen = ref(false);
+
+// Avatar seed from auth composable
+const userAvatarSeed = computed(() => auth.avatarSeed.value);
 
 // Funktion zum Prüfen und Löschen alter Chat-Nachrichten
 const cleanupOldChatMessages = () => {
@@ -225,6 +220,10 @@ function containsLocalStorageItemWithString(string) {
 
 function goHome() {
   router.push('/home');
+}
+
+function goToLogin() {
+  router.push('/login');
 }
 
 function navigateTo(link) {
@@ -347,17 +346,27 @@ function openSettings() {
 </style>
 
 <style scoped>
-.user-chip {
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-transform: capitalize;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+/* User Menu Trigger */
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px 4px 12px 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.user-chip:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
+.user-menu-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.user-menu-list {
+  min-width: 200px;
 }
 
 .footer {

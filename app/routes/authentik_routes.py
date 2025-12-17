@@ -30,6 +30,18 @@ def rate_limit(limit_string):
 @authentik_auth_blueprint.route('/health_check', methods=['GET'])
 def health_check():
     """Health check endpoint - no authentication required"""
+    try:
+        from services.system_event_service import SystemEventService
+
+        SystemEventService.log_event(
+            event_type="system.health_check",
+            severity="info",
+            message="Authentik health check OK",
+            throttle_key="authentik_health_check_ok",
+            throttle_seconds=300,
+        )
+    except Exception:
+        pass
     return jsonify({"message": "Server is running with Authentik authentication"}), 200
 
 
@@ -169,6 +181,19 @@ def login():
 
             if flow_response.status_code != 200:
                 current_app.logger.error(f"Identification failed: {flow_response.status_code}")
+                try:
+                    from services.system_event_service import SystemEventService
+
+                    SystemEventService.log_event(
+                        event_type="auth.login_failed",
+                        severity="warning",
+                        username=username,
+                        entity_type="user",
+                        entity_id=username,
+                        message=f"Login failed for '{username}' (identification stage)",
+                    )
+                except Exception:
+                    pass
                 raise UnauthorizedError('Invalid credentials')
 
             flow_data = flow_response.json()
@@ -185,6 +210,19 @@ def login():
 
             if flow_response.status_code != 200:
                 current_app.logger.warning(f"Password validation failed for {username}")
+                try:
+                    from services.system_event_service import SystemEventService
+
+                    SystemEventService.log_event(
+                        event_type="auth.login_failed",
+                        severity="warning",
+                        username=username,
+                        entity_type="user",
+                        entity_id=username,
+                        message=f"Login failed for '{username}' (password stage)",
+                    )
+                except Exception:
+                    pass
                 raise UnauthorizedError('Invalid credentials')
 
             flow_data = flow_response.json()
@@ -249,6 +287,19 @@ def login():
                     if token_response.status_code == 200:
                         token_data = token_response.json()
                         current_app.logger.info(f"User {username} logged in successfully")
+                        try:
+                            from services.system_event_service import SystemEventService
+
+                            SystemEventService.log_event(
+                                event_type="auth.login",
+                                severity="info",
+                                username=username,
+                                entity_type="user",
+                                entity_id=username,
+                                message=f"User '{username}' logged in",
+                            )
+                        except Exception:
+                            pass
 
                         # Enrich with LLARS roles
                         _enrich_token_with_roles(token_data, username)
@@ -275,9 +326,35 @@ def login():
                         return response, 200
                     else:
                         current_app.logger.error(f"Token exchange failed: {token_response.text}")
+                        try:
+                            from services.system_event_service import SystemEventService
+
+                            SystemEventService.log_event(
+                                event_type="auth.login_error",
+                                severity="error",
+                                username=username,
+                                entity_type="user",
+                                entity_id=username,
+                                message=f"Token exchange failed for '{username}'",
+                            )
+                        except Exception:
+                            pass
 
             # If we can't get OAuth token, authentication failed
             current_app.logger.error(f"Could not obtain OAuth token for {username}")
+            try:
+                from services.system_event_service import SystemEventService
+
+                SystemEventService.log_event(
+                    event_type="auth.login_error",
+                    severity="error",
+                    username=username,
+                    entity_type="user",
+                    entity_id=username,
+                    message=f"Could not obtain OAuth token for '{username}'",
+                )
+            except Exception:
+                pass
             raise ValidationError('Could not obtain access token')
 
         # Authentication failed - check for error messages
@@ -292,9 +369,35 @@ def login():
 
     except http_requests.exceptions.ConnectionError as e:
         current_app.logger.error(f"Cannot connect to Authentik: {e}")
+        try:
+            from services.system_event_service import SystemEventService
+
+            SystemEventService.log_event(
+                event_type="auth.service_error",
+                severity="error",
+                message="Cannot connect to Authentik",
+                details={"error": str(e)},
+                throttle_key="authentik_connect_error",
+                throttle_seconds=60,
+            )
+        except Exception:
+            pass
         raise ValidationError('Authentication service unavailable')
     except http_requests.exceptions.Timeout as e:
         current_app.logger.error(f"Authentik request timeout: {e}")
+        try:
+            from services.system_event_service import SystemEventService
+
+            SystemEventService.log_event(
+                event_type="auth.service_error",
+                severity="error",
+                message="Authentik request timeout",
+                details={"error": str(e)},
+                throttle_key="authentik_timeout",
+                throttle_seconds=60,
+            )
+        except Exception:
+            pass
         raise ValidationError('Authentication service timeout')
 
 

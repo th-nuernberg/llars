@@ -302,6 +302,30 @@ def create_scenario():
         db.session.rollback()
         raise Exception(f'Scenario couldn\'t be added: {e}')
 
+    try:
+        from services.system_event_service import SystemEventService
+
+        acting_username = getattr(g.authentik_user, "username", None) or str(g.authentik_user)
+        SystemEventService.log_event(
+            event_type="admin.scenario_created",
+            severity="info",
+            username=acting_username,
+            entity_type="scenario",
+            entity_id=str(new_scenario.id),
+            message=f"Scenario '{new_scenario.scenario_name}' created by '{acting_username}'",
+            details={
+                "scenario_id": int(new_scenario.id),
+                "function_type_id": int(function_type_id),
+                "begin": begin.isoformat(),
+                "end": end.isoformat(),
+                "raters": len(client_data.get("rater") or []),
+                "viewers": len(client_data.get("viewer") or []),
+                "threads": len(threads_for_scenario),
+            },
+        )
+    except Exception:
+        pass
+
     return_msg = {
         'notification': 'successfully created scenarios',
         'not_found_users': viewer_error_list + rater_error_list,
@@ -324,8 +348,24 @@ def delete_scenario(scenario_id):
         raise NotFoundError('Scenario not found')
 
     try:
+        scenario_name = getattr(scenario, "scenario_name", None)
         db.session.delete(scenario)
         db.session.commit()
+        try:
+            from services.system_event_service import SystemEventService
+
+            acting_username = getattr(g.authentik_user, "username", None) or str(g.authentik_user)
+            SystemEventService.log_event(
+                event_type="admin.scenario_deleted",
+                severity="warning",
+                username=acting_username,
+                entity_type="scenario",
+                entity_id=str(scenario_id),
+                message=f"Scenario '{scenario_name or scenario_id}' deleted by '{acting_username}'",
+                details={"scenario_id": int(scenario_id), "scenario_name": scenario_name},
+            )
+        except Exception:
+            pass
         return jsonify({"message": "Scenario and associated records deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
@@ -379,10 +419,38 @@ def edit_scenario():
 
     # Update scenario
     try:
+        old_name = scenario.scenario_name
+        old_begin = scenario.begin.isoformat() if getattr(scenario, "begin", None) else None
+        old_end = scenario.end.isoformat() if getattr(scenario, "end", None) else None
+
         scenario.scenario_name = client_data['name']
         scenario.begin = client_data['begin']
         scenario.end = client_data['end']
         db.session.commit()
+
+        try:
+            from services.system_event_service import SystemEventService
+
+            acting_username = getattr(g.authentik_user, "username", None) or str(g.authentik_user)
+            SystemEventService.log_event(
+                event_type="admin.scenario_updated",
+                severity="info",
+                username=acting_username,
+                entity_type="scenario",
+                entity_id=str(scenario.id),
+                message=f"Scenario '{scenario.id}' updated by '{acting_username}'",
+                details={
+                    "scenario_id": int(scenario.id),
+                    "old": {"name": old_name, "begin": old_begin, "end": old_end},
+                    "new": {
+                        "name": scenario.scenario_name,
+                        "begin": scenario.begin.isoformat() if getattr(scenario, "begin", None) else None,
+                        "end": scenario.end.isoformat() if getattr(scenario, "end", None) else None,
+                    },
+                },
+            )
+        except Exception:
+            pass
     except Exception as e:
         db.session.rollback()
         raise

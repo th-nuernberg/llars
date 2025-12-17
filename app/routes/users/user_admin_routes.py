@@ -132,6 +132,22 @@ def create_admin_user():
             if not ok:
                 raise ValidationError(f"Unknown role: {role_name}")
 
+    try:
+        from services.system_event_service import SystemEventService
+
+        acting_username = AuthUtils.extract_username_without_validation() or "admin"
+        SystemEventService.log_event(
+            event_type="admin.user_created",
+            severity="info",
+            username=acting_username,
+            entity_type="user",
+            entity_id=username,
+            message=f"User '{username}' created by '{acting_username}'",
+            details={"roles": role_names or []},
+        )
+    except Exception:
+        pass
+
     roles_by_username = _get_roles_by_username([username])
     payload = _serialize_user(user, roles_by_username.get(username, []))
     return jsonify({"success": True, "user": payload, "data": payload}), 201
@@ -154,9 +170,28 @@ def update_admin_user(username: str):
         raise ForbiddenError("You cannot lock your own account")
 
     if "is_active" in data:
-        user.is_active = bool(data.get("is_active"))
+        new_is_active = bool(data.get("is_active"))
+        old_is_active = bool(getattr(user, "is_active", True))
+        user.is_active = new_is_active
 
     db.session.commit()
+
+    try:
+        from services.system_event_service import SystemEventService
+
+        if "is_active" in data and old_is_active != new_is_active:
+            event_type = "admin.user_unlocked" if new_is_active else "admin.user_locked"
+            SystemEventService.log_event(
+                event_type=event_type,
+                severity="warning" if not new_is_active else "info",
+                username=acting_username,
+                entity_type="user",
+                entity_id=username,
+                message=f"User '{username}' {'unlocked' if new_is_active else 'locked'} by '{acting_username}'",
+                details={"is_active": new_is_active},
+            )
+    except Exception:
+        pass
 
     roles_by_username = _get_roles_by_username([username])
     payload = _serialize_user(user, roles_by_username.get(username, []))
@@ -186,5 +221,18 @@ def delete_admin_user(username: str):
     db.session.execute(UserPermission.__table__.delete().where(UserPermission.username == username))
     db.session.commit()
 
-    return jsonify({"success": True, "message": f"User '{username}' deleted"}), 200
+    try:
+        from services.system_event_service import SystemEventService
 
+        SystemEventService.log_event(
+            event_type="admin.user_deleted",
+            severity="warning",
+            username=acting_username,
+            entity_type="user",
+            entity_id=username,
+            message=f"User '{username}' deleted by '{acting_username}'",
+        )
+    except Exception:
+        pass
+
+    return jsonify({"success": True, "message": f"User '{username}' deleted"}), 200

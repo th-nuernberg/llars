@@ -12,6 +12,10 @@
 /* ========================================
    LLARS Color Palette (Pastel Theme)
    ======================================== */
+
+/* ----------------------------------------
+   Light Mode (Default)
+   ---------------------------------------- */
 :root {
   /* Primary Colors (Sage Green) */
   --llars-primary: #b0ca97;
@@ -72,6 +76,59 @@
   --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
   --llars-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
   --llars-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* ----------------------------------------
+   Dark Mode - Gedämpfte, dunklere Farben
+   ---------------------------------------- */
+.v-theme--dark {
+  /* Primary Colors (Dark Sage Green) */
+  --llars-primary: #5a6b4a;
+  --llars-primary-hover: #6a7b5a;
+  --llars-primary-active: #4a5b3a;
+
+  /* Secondary Colors (Dark Golden Beige) */
+  --llars-secondary: #8a7a55;
+  --llars-secondary-hover: #9a8a65;
+  --llars-secondary-active: #7a6a45;
+
+  /* Accent Colors (Dark Soft Teal) */
+  --llars-accent: #4a7a7d;
+  --llars-accent-hover: #5a8a8d;
+  --llars-accent-active: #3a6a6d;
+
+  /* Tertiary (Dark Forest Green) */
+  --llars-tertiary: #4a7a54;
+  --llars-tertiary-hover: #5a8a64;
+  --llars-tertiary-active: #3a6a44;
+
+  /* Semantic Colors (Darker variants) */
+  --llars-success: #4a8a6e;
+  --llars-success-hover: #5a9a7e;
+  --llars-success-active: #3a7a5e;
+
+  --llars-info: #4a6a8a;
+  --llars-info-hover: #5a7a9a;
+  --llars-info-active: #3a5a7a;
+
+  --llars-warning: #8a7a3a;
+  --llars-warning-hover: #9a8a4a;
+  --llars-warning-active: #7a6a2a;
+
+  --llars-danger: #8a5a4a;
+  --llars-danger-hover: #9a6a5a;
+  --llars-danger-active: #7a4a3a;
+
+  /* Neutral Colors */
+  --llars-gray: #6a6a6a;
+  --llars-gray-hover: #7a7a7a;
+  --llars-gray-active: #5a5a5a;
+  --llars-gray-light: #4a4a4a;
+
+  /* Shadows (stärker im Dark Mode) */
+  --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --llars-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+  --llars-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 /* ========================================
@@ -239,7 +296,7 @@
   font-size: 0.9rem;
 }
 
-/* Tag Color Variants */
+/* Tag Color Variants - Light Mode */
 .llars-tag--primary {
   background-color: rgba(176, 202, 151, 0.2);
   color: #6a8a5a;
@@ -270,6 +327,37 @@
   color: #8a7a3a;
 }
 
+/* Tag Color Variants - Dark Mode */
+.v-theme--dark .llars-tag--primary {
+  background-color: rgba(90, 107, 74, 0.3);
+  color: #a8c090;
+}
+
+.v-theme--dark .llars-tag--secondary {
+  background-color: rgba(138, 122, 85, 0.3);
+  color: #c8b888;
+}
+
+.v-theme--dark .llars-tag--accent {
+  background-color: rgba(74, 122, 125, 0.3);
+  color: #88c4c8;
+}
+
+.v-theme--dark .llars-tag--success {
+  background-color: rgba(74, 138, 110, 0.3);
+  color: #88c8a8;
+}
+
+.v-theme--dark .llars-tag--info {
+  background-color: rgba(74, 106, 138, 0.3);
+  color: #88b0d0;
+}
+
+.v-theme--dark .llars-tag--warning {
+  background-color: rgba(138, 122, 58, 0.3);
+  color: #d0c080;
+}
+
 .llars-tag--danger {
   background-color: rgba(232, 160, 135, 0.2);
   color: #8a4a3a;
@@ -278,4 +366,14 @@
 .llars-tag--gray {
   background-color: rgba(158, 158, 158, 0.2);
   color: #5a5a5a;
+}
+
+.v-theme--dark .llars-tag--danger {
+  background-color: rgba(138, 90, 74, 0.3);
+  color: #d09080;
+}
+
+.v-theme--dark .llars-tag--gray {
+  background-color: rgba(106, 106, 106, 0.3);
+  color: #b0b0b0;
 }

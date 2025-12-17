@@ -161,120 +161,121 @@ const buttonClasses = computed(() => ({
 }
 
 /* ========================================
-   VARIANT STYLES - LLARS Pastel Palette
+   VARIANT STYLES - Using CSS Custom Properties
+   Automatically adapts to Light/Dark mode
    ======================================== */
 
 /* Primary - Sage Green (Main Action) */
 .l-btn--primary {
-  background-color: #b0ca97;
+  background-color: var(--llars-primary);
   color: white;
 }
 
 .l-btn--primary:hover:not(:disabled) {
-  background-color: #9bb582;
+  background-color: var(--llars-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(176, 202, 151, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .l-btn--primary:active:not(:disabled) {
-  background-color: #8aa572;
+  background-color: var(--llars-primary-active);
   transform: translateY(0);
 }
 
 /* Secondary - Golden Beige */
 .l-btn--secondary {
-  background-color: #D1BC8A;
+  background-color: var(--llars-secondary);
   color: white;
 }
 
 .l-btn--secondary:hover:not(:disabled) {
-  background-color: #c4ac76;
+  background-color: var(--llars-secondary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(209, 188, 138, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .l-btn--secondary:active:not(:disabled) {
-  background-color: #aa9768;
+  background-color: var(--llars-secondary-active);
 }
 
 /* Accent - Soft Teal */
 .l-btn--accent {
-  background-color: #88c4c8;
+  background-color: var(--llars-accent);
   color: white;
 }
 
 .l-btn--accent:hover:not(:disabled) {
-  background-color: #74b3b7;
+  background-color: var(--llars-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(136, 196, 200, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .l-btn--accent:active:not(:disabled) {
-  background-color: #5fa0a4;
+  background-color: var(--llars-accent-active);
 }
 
 /* Success - Soft Mint */
 .l-btn--success {
-  background-color: #98d4bb;
+  background-color: var(--llars-success);
   color: white;
 }
 
 .l-btn--success:hover:not(:disabled) {
-  background-color: #7cc5a6;
+  background-color: var(--llars-success-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(152, 212, 187, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .l-btn--success:active:not(:disabled) {
-  background-color: #65b593;
+  background-color: var(--llars-success-active);
 }
 
 /* Warning - Soft Gold */
 .l-btn--warning {
-  background-color: #e8c87a;
+  background-color: var(--llars-warning);
   color: white;
 }
 
 .l-btn--warning:hover:not(:disabled) {
-  background-color: #ddb85e;
+  background-color: var(--llars-warning-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(232, 200, 122, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .l-btn--warning:active:not(:disabled) {
-  background-color: #d0a648;
+  background-color: var(--llars-warning-active);
 }
 
 /* Danger - Soft Coral */
 .l-btn--danger {
-  background-color: #e8a087;
+  background-color: var(--llars-danger);
   color: white;
 }
 
 .l-btn--danger:hover:not(:disabled) {
-  background-color: #df8a6d;
+  background-color: var(--llars-danger-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(232, 160, 135, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .l-btn--danger:active:not(:disabled) {
-  background-color: #d57454;
+  background-color: var(--llars-danger-active);
 }
 
 /* Cancel - Neutral Gray */
 .l-btn--cancel {
-  background-color: #9e9e9e;
+  background-color: var(--llars-gray);
   color: white;
 }
 
 .l-btn--cancel:hover:not(:disabled) {
-  background-color: #8a8a8a;
+  background-color: var(--llars-gray-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(158, 158, 158, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .l-btn--cancel:active:not(:disabled) {
-  background-color: #7e7e7e;
+  background-color: var(--llars-gray-active);
 }
 
 /* Text - No Background */
@@ -295,16 +296,16 @@ const buttonClasses = computed(() => ({
 /* Outlined */
 .l-btn--outlined {
   background-color: transparent;
-  color: #b0ca97;
-  border: 2px solid #b0ca97;
+  color: var(--llars-primary);
+  border: 2px solid var(--llars-primary);
 }
 
 .l-btn--outlined:hover:not(:disabled) {
-  background-color: rgba(176, 202, 151, 0.1);
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
   transform: translateY(-1px);
 }
 
 .l-btn--outlined:active:not(:disabled) {
-  background-color: rgba(176, 202, 151, 0.2);
+  background-color: rgba(var(--v-theme-on-surface), 0.1);
 }
 </style>

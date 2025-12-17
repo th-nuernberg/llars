@@ -29,6 +29,7 @@
  *   - secondary: Secondary action (Golden Beige #D1BC8A)
  *   - accent: Emphasis action (Soft Teal #88c4c8)
  *   - success: Success action (Soft Mint #98d4bb)
+ *   - warning: Warning action (Soft Gold #e8c87a)
  *   - danger: Destructive action (Soft Coral #e8a087)
  *   - cancel: Neutral gray (#9e9e9e)
  *   - text: Text-only button
@@ -47,7 +48,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (v) => ['primary', 'secondary', 'accent', 'success', 'danger', 'cancel', 'text', 'outlined'].includes(v)
+    validator: (v) => ['primary', 'secondary', 'accent', 'success', 'warning', 'danger', 'cancel', 'text', 'outlined'].includes(v)
   },
   size: {
     type: String,
@@ -226,6 +227,22 @@ const buttonClasses = computed(() => ({
 
 .l-btn--success:active:not(:disabled) {
   background-color: #65b593;
+}
+
+/* Warning - Soft Gold */
+.l-btn--warning {
+  background-color: #e8c87a;
+  color: white;
+}
+
+.l-btn--warning:hover:not(:disabled) {
+  background-color: #ddb85e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(232, 200, 122, 0.3);
+}
+
+.l-btn--warning:active:not(:disabled) {
+  background-color: #d0a648;
 }
 
 /* Danger - Soft Coral */

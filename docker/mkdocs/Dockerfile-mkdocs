@@ -5,7 +5,7 @@
 # Dev mode: Hot-reload with mkdocs serve
 # Prod mode: Static build served via lightweight python http.server
 
-FROM python:3.12-alpine
+FROM public.ecr.aws/docker/library/python:3.12-alpine
 
 WORKDIR /docs
 

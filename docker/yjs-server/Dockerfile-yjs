@@ -1,5 +1,5 @@
 # 1. Offizielles Node-Image als Grundlage:
-FROM node:23-bookworm
+FROM public.ecr.aws/docker/library/node:23-bookworm
 LABEL authors="philippsteigerwald"
 # 2. Arbeitsverzeichnis erstellen und setzen
 

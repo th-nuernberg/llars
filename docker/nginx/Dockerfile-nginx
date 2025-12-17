@@ -1,4 +1,4 @@
-FROM nginx:alpine
+FROM public.ecr.aws/docker/library/nginx:alpine
 
 # Copy the files with a flattened structure
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf

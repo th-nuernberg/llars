@@ -254,6 +254,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import { getSocket, useSocketState } from '@/services/socketService'
 import { useBuilderState, BUILD_STATUS, WIZARD_STEPS } from '@/composables/useBuilderState'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import StepCrawlerConfig from './BuilderSteps/StepCrawlerConfig.vue'
 import StepCollectionSetup from './BuilderSteps/StepCollectionSetup.vue'
 import StepChatbotConfig from './BuilderSteps/StepChatbotConfig.vue'
@@ -968,7 +969,7 @@ async function handleGenerateField(field) {
 }
 
 async function streamFieldGeneration(field) {
-  const token = sessionStorage.getItem('auth_token')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
 
   const response = await fetch(`/api/chatbots/${chatbotId.value}/wizard/generate-field`, {
     method: 'POST',

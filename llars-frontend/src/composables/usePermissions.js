@@ -18,6 +18,7 @@
 
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 // Shared state across all instances
 const permissions = ref([])
@@ -40,7 +41,7 @@ export function usePermissions() {
     isLoading.value = true
 
     try {
-      const token = sessionStorage.getItem('auth_token')
+      const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
 
       if (!token) {
         console.warn('No authentication token found')

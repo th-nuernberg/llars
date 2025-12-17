@@ -211,6 +211,7 @@ import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue
 import MarkdownEditorPane from '@/components/MarkdownCollab/MarkdownEditorPane.vue'
 import MarkdownPreviewPane from '@/components/MarkdownCollab/MarkdownPreviewPane.vue'
 import MarkdownGitPanel from '@/components/MarkdownCollab/MarkdownGitPanel.vue'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const route = useRoute()
 const router = useRouter()
@@ -272,7 +273,7 @@ function onEditorContentChange(text) {
 }
 
 function authHeaders() {
-  const token = sessionStorage.getItem('auth_token')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

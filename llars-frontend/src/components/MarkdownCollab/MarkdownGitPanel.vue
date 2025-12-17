@@ -113,6 +113,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const props = defineProps({
   documentId: { type: Number, required: true },
@@ -134,7 +135,7 @@ const commitError = ref('')
 const loadError = ref('')
 
 function authHeaders() {
-  const token = sessionStorage.getItem('auth_token')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

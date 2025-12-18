@@ -28,7 +28,7 @@ REMOVE_VOLUMES=True ./start_llars.sh
 | Frontend | http://localhost:55080 |
 | Backend API | http://localhost:55080/api |
 | Authentik | http://localhost:55095 |
-| Matomo | http://localhost:55080/matomo/ |
+| Matomo | http://localhost:55080/analytics/ |
 
 ### Test-Benutzer
 
@@ -46,7 +46,7 @@ REMOVE_VOLUMES=True ./start_llars.sh
 nginx (:80) → Reverse Proxy
 ├── / → Vue Frontend (:5173)
 ├── /api/, /auth/ → Flask Backend (:8081)
-├── /matomo/ → Matomo Analytics (:80)
+├── /analytics/ → Matomo Analytics (:80)
 └── /collab/ → YJS WebSocket (:8082)
 
 Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 - Authentik)
@@ -61,6 +61,7 @@ Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 
 
 - Auto-Setup via Docker Compose Service `matomo-init` (DB + Superuser + Site)
 - Frontend Tracking: `llars-frontend/src/plugins/llars-metrics.js` (SPA Pageviews + Click Events + optional User-ID)
+- Matomo UI: `/analytics/` (Alias: `/matomo/`), Tracking: `/metrics.js` + `/metrics.php` (first-party, weniger Blocker)
 - Optional SSO: `MATOMO_OIDC_ENABLED=true` + `AUTHENTIK_PUBLIC_URL` + `AUTHENTIK_MATOMO_*` (RebelOIDC Plugin)
 - Runtime-Config über LLARS DB (Admin Panel): `GET/PATCH /api/admin/analytics/settings` (Table `analytics_settings`)
 

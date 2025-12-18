@@ -42,7 +42,9 @@ Das Skript startet alle Docker-Container und konfiguriert Authentik automatisch.
 | **Frontend** | http://localhost:55080 |
 | **Backend API** | http://localhost:55080/api |
 | **Authentik Admin** | http://localhost:55095 |
-| **Matomo** | http://localhost:55080/matomo/ |
+| **Matomo** | http://localhost:55080/analytics/ |
+
+Hinweis: Matomo ist zusätzlich unter `/matomo/` erreichbar (Alias). Das Frontend nutzt für Tracking die first-party Endpoints `/metrics.js` und `/metrics.php`.
 
 ## Test-Benutzer
 
@@ -79,7 +81,7 @@ nginx (:80) → Reverse Proxy
 ├── /          → Vue Frontend (:5173)
 ├── /api/      → Flask Backend (:8081)
 ├── /auth/     → Flask Auth (:8081)
-├── /matomo/   → Matomo Analytics (:80)
+├── /analytics/→ Matomo Analytics (:80)
 └── /collab/   → YJS WebSocket (:8082)
 
 Databases:

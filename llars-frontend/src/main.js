@@ -5,7 +5,7 @@
  */
 
 // Plugins
-import { registerPlugins } from '@/plugins'
+import { registerPlugins, vuetify } from '@/plugins'
 import router from '@/router.js'
 import axios from 'axios'
 
@@ -22,8 +22,10 @@ import LTag from '@/components/common/LTag.vue'
 import LCard from '@/components/common/LCard.vue'
 import LTabs from '@/components/common/LTabs.vue'
 import LAvatar from '@/components/common/LAvatar.vue'
+import LThemeToggle from '@/components/common/LThemeToggle.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
+import { initAppTheme } from '@/composables/useAppTheme'
 
 // Composables
 import { createApp } from 'vue'
@@ -33,6 +35,10 @@ const app = createApp(App)
 // Register Vuetify and other plugins
 registerPlugins(app)
 
+// Initialize theme early (before mount, after Vuetify is ready)
+// This ensures the correct theme is applied immediately
+initAppTheme(vuetify)
+
 // Register global LLARS components
 app.component('LBtn', LBtn)
 app.component('LIconBtn', LIconBtn)
@@ -40,6 +46,7 @@ app.component('LTag', LTag)
 app.component('LCard', LCard)
 app.component('LTabs', LTabs)
 app.component('LAvatar', LAvatar)
+app.component('LThemeToggle', LThemeToggle)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

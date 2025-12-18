@@ -154,14 +154,16 @@ export function useAppTheme() {
 
 /**
  * Initialize theme on app startup (called from main.js)
+ * This function works without Vue context and should be called
+ * after Vuetify is registered but before the app mounts.
+ *
+ * @param {Object} vuetify - The Vuetify instance (optional, for direct theme access)
  */
-export function initAppTheme() {
-  const { applyTheme } = useAppTheme()
-
+export function initAppTheme(vuetify = null) {
   // Check if window is available (SSR guard)
   if (typeof window === 'undefined') return
 
-  // Apply saved theme immediately
+  // Load saved theme preference
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system'
   themePreference.value = savedTheme
 
@@ -169,8 +171,42 @@ export function initAppTheme() {
   const mq = window.matchMedia('(prefers-color-scheme: dark)')
   systemPrefersDark.value = mq.matches
 
-  // Apply theme
-  applyTheme()
+  // Determine target theme
+  let targetTheme = 'light'
+  if (savedTheme === 'dark') {
+    targetTheme = 'dark'
+  } else if (savedTheme === 'light') {
+    targetTheme = 'light'
+  } else if (savedTheme === 'system') {
+    targetTheme = mq.matches ? 'dark' : 'light'
+  }
 
-  console.log('App theme initialized')
+  // Apply theme via Vuetify if provided
+  if (vuetify?.theme) {
+    if (typeof vuetify.theme.change === 'function') {
+      vuetify.theme.change(targetTheme)
+    } else {
+      vuetify.theme.global.name.value = targetTheme
+    }
+  }
+
+  // Update HTML attribute for custom CSS
+  document.documentElement.setAttribute('data-theme', targetTheme)
+
+  // Listen for system preference changes
+  const handleChange = (e) => {
+    systemPrefersDark.value = e.matches
+    if (themePreference.value === 'system') {
+      const newTheme = e.matches ? 'dark' : 'light'
+      document.documentElement.setAttribute('data-theme', newTheme)
+    }
+  }
+
+  if (mq.addEventListener) {
+    mq.addEventListener('change', handleChange)
+  } else {
+    mq.addListener(handleChange)
+  }
+
+  console.log(`App theme initialized: ${targetTheme} (preference: ${savedTheme})`)
 }

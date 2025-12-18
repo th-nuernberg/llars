@@ -77,7 +77,7 @@
           </div>
 
           <!-- Docker Monitor Section -->
-          <div v-else-if="activeSection === 'docker'" key="docker" class="section-container">
+          <div v-else-if="activeSection === 'docker'" key="docker" class="section-container--full">
             <AdminDockerMonitorSection />
           </div>
 

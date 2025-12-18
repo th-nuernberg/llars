@@ -193,6 +193,13 @@ export const useAuth = () => {
         // ignore - UI will refetch on demand
       }
 
+      // Fetch profile metadata (e.g., avatar_seed) immediately so UI (AppBar) stays consistent
+      try {
+        await fetchUserProfile();
+      } catch (e) {
+        // ignore - avatar can fall back to username-based seed
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);

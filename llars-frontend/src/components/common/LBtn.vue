@@ -33,6 +33,7 @@
  *   - danger: Destructive action (Soft Coral #e8a087)
  *   - cancel: Neutral gray (#9e9e9e)
  *   - text: Text-only button
+ *   - tonal: Subtle surface-variant background (Vuetify-like)
  *   - outlined: Outlined style
  *
  * Usage:
@@ -48,7 +49,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (v) => ['primary', 'secondary', 'accent', 'success', 'warning', 'danger', 'cancel', 'text', 'outlined'].includes(v)
+    validator: (v) => ['primary', 'secondary', 'accent', 'success', 'warning', 'danger', 'cancel', 'text', 'tonal', 'outlined'].includes(v)
   },
   size: {
     type: String,
@@ -291,6 +292,22 @@ const buttonClasses = computed(() => ({
 
 .l-btn--text:active:not(:disabled) {
   background-color: rgba(var(--v-theme-on-surface), 0.12);
+}
+
+/* Tonal - Subtle surface background (theme-aware) */
+.l-btn--tonal {
+  background-color: rgba(var(--v-theme-surface-variant), 0.6);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.l-btn--tonal:hover:not(:disabled) {
+  background-color: rgba(var(--v-theme-surface-variant), 0.8);
+  transform: translateY(-1px);
+}
+
+.l-btn--tonal:active:not(:disabled) {
+  background-color: rgba(var(--v-theme-surface-variant), 0.9);
+  transform: translateY(0);
 }
 
 /* Outlined */

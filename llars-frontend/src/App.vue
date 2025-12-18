@@ -48,10 +48,13 @@
         </v-list>
       </v-menu>
 
-      <!-- Login Button (only when NOT logged in) -->
-      <LBtn v-else variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
-        Anmelden
-      </LBtn>
+      <!-- Theme Toggle + Login Button (when NOT logged in) -->
+      <template v-else>
+        <LThemeToggle on-primary class="mr-2" />
+        <LBtn variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
+          Anmelden
+        </LBtn>
+      </template>
     </v-app-bar>
 
     <v-main>

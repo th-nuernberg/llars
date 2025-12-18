@@ -1,553 +1,657 @@
 <template>
-  <v-container class="mt-5 documentation">
-    <v-row justify="center">
-      <v-col cols="12" md="10">
-        <h1>LLars Dokumentation</h1>
-        <p class="subtitle">Learning & Labeling AI Rating System</p>
-        <v-divider class="my-4"></v-divider>
+  <div class="docs-page">
+    <!-- Hero Section -->
+    <div class="docs-hero">
+      <div class="hero-content">
+        <h1 class="hero-title">LLARS Dokumentation</h1>
+        <p class="hero-subtitle">Learning & Labeling AI Rating System</p>
+        <div class="hero-badges">
+          <LTag variant="primary" prepend-icon="mdi-tag">v2.9</LTag>
+          <LTag variant="accent" prepend-icon="mdi-open-source-initiative">Open Source</LTag>
+          <LTag variant="success" prepend-icon="mdi-school">TH Nürnberg</LTag>
+        </div>
+      </div>
+    </div>
 
-        <!-- Table of Contents -->
-        <v-card class="mb-6 pa-4" elevation="2">
-          <h2>Inhaltsverzeichnis</h2>
-          <ul class="toc">
-            <li><a href="#overview">1. Überblick</a></li>
-            <li><a href="#features">2. Funktionen</a></li>
-            <li><a href="#architecture">3. Architektur</a></li>
-            <li><a href="#installation">4. Installation & Setup</a></li>
-            <li><a href="#authentication">5. Authentifizierung</a></li>
-            <li><a href="#modules">6. Module & Funktionen</a>
-              <ul>
-                <li><a href="#ranking">6.1 Ranking</a></li>
-                <li><a href="#history-rating">6.2 Verlaufsbewertung</a></li>
-                <li><a href="#chatbot">6.3 Chatbot</a></li>
-                <li><a href="#prompt-engineering">6.4 Prompt Engineering</a></li>
-                <li><a href="#comparison">6.5 Gegenüberstellung</a></li>
-              </ul>
-            </li>
-            <li><a href="#api">7. API-Referenz</a></li>
-            <li><a href="#troubleshooting">8. Troubleshooting</a></li>
-            <li><a href="#contact">9. Kontakt & Support</a></li>
-          </ul>
-        </v-card>
+    <div class="docs-container">
+      <!-- Sidebar Navigation -->
+      <aside class="docs-sidebar">
+        <div class="sidebar-card">
+          <h3 class="sidebar-title">
+            <v-icon size="18">mdi-format-list-bulleted</v-icon>
+            Inhaltsverzeichnis
+          </h3>
+          <nav class="toc-nav">
+            <a href="#overview" class="toc-link" :class="{ active: activeSection === 'overview' }">
+              <span class="toc-number">1</span>
+              Überblick
+            </a>
+            <a href="#features" class="toc-link" :class="{ active: activeSection === 'features' }">
+              <span class="toc-number">2</span>
+              Funktionen
+            </a>
+            <a href="#architecture" class="toc-link" :class="{ active: activeSection === 'architecture' }">
+              <span class="toc-number">3</span>
+              Architektur
+            </a>
+            <a href="#installation" class="toc-link" :class="{ active: activeSection === 'installation' }">
+              <span class="toc-number">4</span>
+              Installation
+            </a>
+            <a href="#authentication" class="toc-link" :class="{ active: activeSection === 'authentication' }">
+              <span class="toc-number">5</span>
+              Authentifizierung
+            </a>
+            <a href="#modules" class="toc-link" :class="{ active: activeSection === 'modules' }">
+              <span class="toc-number">6</span>
+              Module
+            </a>
+            <a href="#api" class="toc-link" :class="{ active: activeSection === 'api' }">
+              <span class="toc-number">7</span>
+              API-Referenz
+            </a>
+            <a href="#troubleshooting" class="toc-link" :class="{ active: activeSection === 'troubleshooting' }">
+              <span class="toc-number">8</span>
+              Troubleshooting
+            </a>
+            <a href="#contact" class="toc-link" :class="{ active: activeSection === 'contact' }">
+              <span class="toc-number">9</span>
+              Kontakt
+            </a>
+          </nav>
 
+          <div class="sidebar-links">
+            <a :href="mkdocsUrl" target="_blank" class="sidebar-link">
+              <v-icon size="16">mdi-book-open-variant</v-icon>
+              Technische Docs
+            </a>
+            <router-link to="/Impressum" class="sidebar-link">
+              <v-icon size="16">mdi-information</v-icon>
+              Impressum
+            </router-link>
+            <router-link to="/Datenschutz" class="sidebar-link">
+              <v-icon size="16">mdi-shield-lock</v-icon>
+              Datenschutz
+            </router-link>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="docs-content">
         <!-- 1. Überblick -->
-        <section id="overview">
-          <h2>1. Überblick</h2>
-          <p>
-            LLars (Learning & Labeling AI Rating System) ist eine umfassende Plattform zur Bewertung,
-            Analyse und Verbesserung von KI-generierten Inhalten, insbesondere im Kontext der
-            E-Beratung und digitalen Kommunikation.
-          </p>
-          <p>
-            Das System wurde entwickelt, um Forschern, Entwicklern und Beratern die Möglichkeit zu geben,
-            KI-Modelle systematisch zu evaluieren, zu vergleichen und zu optimieren.
-          </p>
-          <v-alert type="info" class="my-4">
-            <strong>Zielgruppe:</strong> Forscher, KI-Entwickler, E-Berater, Datenwissenschaftler
-          </v-alert>
+        <section id="overview" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">01</span>
+            <h2>Überblick</h2>
+          </div>
+          <div class="section-body">
+            <p>
+              <strong>LLARS</strong> (Learning & Labeling AI Rating System) ist eine umfassende Plattform zur Bewertung,
+              Analyse und Verbesserung von KI-generierten Inhalten, insbesondere im Kontext der
+              E-Beratung und digitalen Kommunikation.
+            </p>
+            <p>
+              Das System wurde entwickelt, um Forschern, Entwicklern und Beratern die Möglichkeit zu geben,
+              KI-Modelle systematisch zu evaluieren, zu vergleichen und zu optimieren.
+            </p>
+            <div class="info-card">
+              <v-icon color="info" size="20">mdi-account-group</v-icon>
+              <div>
+                <strong>Zielgruppe</strong>
+                <p>Forscher, KI-Entwickler, E-Berater, Datenwissenschaftler</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 2. Funktionen -->
-        <section id="features">
-          <h2>2. Funktionen</h2>
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-card class="pa-4 mb-4" elevation="1">
-                <h3><v-icon>mdi-chart-bar-stacked</v-icon> Ranking</h3>
+        <section id="features" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">02</span>
+            <h2>Funktionen</h2>
+          </div>
+          <div class="section-body">
+            <div class="feature-grid">
+              <div class="feature-card">
+                <div class="feature-icon" style="background-color: var(--llars-primary);">
+                  <v-icon color="white">mdi-chart-bar-stacked</v-icon>
+                </div>
+                <h3>Ranking</h3>
                 <p>Vergleichen und bewerten Sie verschiedene Antworten und ordnen Sie diese nach Qualität.</p>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-card class="pa-4 mb-4" elevation="1">
-                <h3><v-icon>mdi-timeline-text-outline</v-icon> Verlaufsbewertung</h3>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-icon" style="background-color: var(--llars-accent);">
+                  <v-icon color="white">mdi-timeline-text-outline</v-icon>
+                </div>
+                <h3>Verlaufsbewertung</h3>
                 <p>Bewerten Sie komplette KI-generierte Mail-Verläufe und analysieren Sie deren Qualität.</p>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-card class="pa-4 mb-4" elevation="1">
-                <h3><v-icon>mdi-laptop-account</v-icon> Chatbot (Alpha)</h3>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-icon" style="background-color: var(--llars-secondary);">
+                  <v-icon color="white">mdi-robot</v-icon>
+                </div>
+                <h3>Chatbot</h3>
+                <LTag variant="warning" size="small">Alpha</LTag>
                 <p>Interagieren Sie direkt mit LLars und testen Sie verschiedene Konversationsszenarien.</p>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-card class="pa-4 mb-4" elevation="1">
-                <h3><v-icon>mdi-text-search</v-icon> Prompt Engineering (Beta)</h3>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-icon" style="background-color: #98d4bb;">
+                  <v-icon color="white">mdi-text-search</v-icon>
+                </div>
+                <h3>Prompt Engineering</h3>
+                <LTag variant="info" size="small">Beta</LTag>
                 <p>Entwickeln Sie kollaborativ Prompts mit Echtzeit-Synchronisation über Yjs.</p>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-card class="pa-4 mb-4" elevation="1">
-                <h3><v-icon>mdi-compare-horizontal</v-icon> Gegenüberstellung</h3>
-                <p>Vergleichen Sie zwei KI-Modelle direkt nebeneinander und bewerten Sie die Qualität der Antworten.</p>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-card class="pa-4 mb-4" elevation="1">
-                <h3><v-icon>mdi-shield-account</v-icon> Admin-Dashboard</h3>
-                <p>Verwalten Sie Benutzer, überwachen Sie Fortschritte und konfigurieren Sie Systemeinstellungen.</p>
-              </v-card>
-            </v-col>
-          </v-row>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-icon" style="background-color: #a8c5e2;">
+                  <v-icon color="white">mdi-compare-horizontal</v-icon>
+                </div>
+                <h3>Gegenüberstellung</h3>
+                <p>Vergleichen Sie zwei KI-Modelle direkt nebeneinander und bewerten Sie die Qualität.</p>
+              </div>
+
+              <div class="feature-card">
+                <div class="feature-icon" style="background-color: #e8a087;">
+                  <v-icon color="white">mdi-shield-account</v-icon>
+                </div>
+                <h3>Admin-Dashboard</h3>
+                <p>Verwalten Sie Benutzer, überwachen Sie Fortschritte und konfigurieren Sie Einstellungen.</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 3. Architektur -->
-        <section id="architecture">
-          <h2>3. Architektur</h2>
-          <p>LLars basiert auf einer modernen Microservices-Architektur:</p>
+        <section id="architecture" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">03</span>
+            <h2>Architektur</h2>
+          </div>
+          <div class="section-body">
+            <p>LLARS basiert auf einer modernen Microservices-Architektur:</p>
 
-          <h3>Frontend</h3>
-          <ul>
-            <li><strong>Framework:</strong> Vue.js 3 (Composition API)</li>
-            <li><strong>UI-Library:</strong> Vuetify 3</li>
-            <li><strong>Build-Tool:</strong> Vite</li>
-            <li><strong>Echtzeit-Kollaboration:</strong> Yjs für kollaboratives Prompt Engineering</li>
-          </ul>
+            <div class="tech-stack">
+              <div class="tech-category">
+                <h4>
+                  <v-icon size="18">mdi-monitor</v-icon>
+                  Frontend
+                </h4>
+                <ul>
+                  <li><LTag variant="primary" size="small">Vue.js 3</LTag> Composition API</li>
+                  <li><LTag variant="secondary" size="small">Vuetify 3</LTag> UI-Library</li>
+                  <li><LTag variant="accent" size="small">Vite</LTag> Build-Tool</li>
+                  <li><LTag variant="info" size="small">Yjs</LTag> Echtzeit-Kollaboration</li>
+                </ul>
+              </div>
 
-          <h3>Backend</h3>
-          <ul>
-            <li><strong>Framework:</strong> Flask (Python)</li>
-            <li><strong>Datenbank:</strong> MariaDB</li>
-            <li><strong>ORM:</strong> SQLAlchemy</li>
-            <li><strong>Authentifizierung:</strong> Authentik (OIDC, RS256)</li>
-          </ul>
+              <div class="tech-category">
+                <h4>
+                  <v-icon size="18">mdi-server</v-icon>
+                  Backend
+                </h4>
+                <ul>
+                  <li><LTag variant="primary" size="small">Flask</LTag> Python Framework</li>
+                  <li><LTag variant="secondary" size="small">MariaDB</LTag> Datenbank</li>
+                  <li><LTag variant="accent" size="small">SQLAlchemy</LTag> ORM</li>
+                  <li><LTag variant="info" size="small">Authentik</LTag> OIDC Auth</li>
+                </ul>
+              </div>
+            </div>
 
-          <h3>Services</h3>
-          <v-simple-table class="my-4">
-            <template v-slot:default>
-              <thead>
-                <tr>
-                  <th>Service</th>
-                  <th>Port</th>
-                  <th>Beschreibung</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>nginx-service</td>
-                  <td>80</td>
-                  <td>Reverse Proxy & Load Balancer</td>
-                </tr>
-                <tr>
-                  <td>frontend-vue-service</td>
-                  <td>5173</td>
-                  <td>Vue.js Frontend</td>
-                </tr>
-                <tr>
-                  <td>backend-flask-service</td>
-                  <td>8081</td>
-                  <td>Flask REST API</td>
-                </tr>
-                <tr>
-                  <td>db-maria-service</td>
-                  <td>3310</td>
-                  <td>MariaDB Datenbank</td>
-                </tr>
-                <tr>
-                  <td>yjs-service</td>
-                  <td>8082</td>
-                  <td>Yjs WebSocket Server für Echtzeit-Kollaboration</td>
-                </tr>
-                <tr>
-                  <td>backend-supervisor-service</td>
-                  <td>-</td>
-                  <td>Hintergrund-Aufgaben & Seeding</td>
-                </tr>
-              </tbody>
-            </template>
-          </v-simple-table>
+            <h4 class="subsection-title">Services</h4>
+            <div class="services-table">
+              <div class="service-row header">
+                <span>Service</span>
+                <span>Port</span>
+                <span>Beschreibung</span>
+              </div>
+              <div class="service-row">
+                <span><code>nginx-service</code></span>
+                <span>80</span>
+                <span>Reverse Proxy & Load Balancer</span>
+              </div>
+              <div class="service-row">
+                <span><code>frontend-vue-service</code></span>
+                <span>5173</span>
+                <span>Vue.js Frontend</span>
+              </div>
+              <div class="service-row">
+                <span><code>backend-flask-service</code></span>
+                <span>8081</span>
+                <span>Flask REST API</span>
+              </div>
+              <div class="service-row">
+                <span><code>db-maria-service</code></span>
+                <span>3310</span>
+                <span>MariaDB Datenbank</span>
+              </div>
+              <div class="service-row">
+                <span><code>yjs-service</code></span>
+                <span>8082</span>
+                <span>WebSocket Server für Echtzeit</span>
+              </div>
+            </div>
 
-          <v-alert type="warning" class="my-4">
-            <strong>Wichtig:</strong> Alle Services werden über Docker Compose orchestriert.
-          </v-alert>
+            <div class="warning-card">
+              <v-icon color="warning" size="20">mdi-alert</v-icon>
+              <div>
+                <strong>Wichtig</strong>
+                <p>Alle Services werden über Docker Compose orchestriert.</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 4. Installation & Setup -->
-        <section id="installation">
-          <h2>4. Installation & Setup</h2>
+        <section id="installation" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">04</span>
+            <h2>Installation & Setup</h2>
+          </div>
+          <div class="section-body">
+            <h4 class="subsection-title">Voraussetzungen</h4>
+            <div class="requirements-grid">
+              <div class="requirement-item">
+                <v-icon size="20" color="primary">mdi-docker</v-icon>
+                <span>Docker & Docker Compose</span>
+              </div>
+              <div class="requirement-item">
+                <v-icon size="20" color="primary">mdi-git</v-icon>
+                <span>Git</span>
+              </div>
+              <div class="requirement-item">
+                <v-icon size="20" color="primary">mdi-memory</v-icon>
+                <span>Mindestens 8 GB RAM</span>
+              </div>
+              <div class="requirement-item">
+                <v-icon size="20" color="primary">mdi-harddisk</v-icon>
+                <span>~10 GB Speicherplatz</span>
+              </div>
+            </div>
 
-          <h3>Voraussetzungen</h3>
-          <ul>
-            <li>Docker & Docker Compose</li>
-            <li>Git</li>
-            <li>Mindestens 8 GB RAM</li>
-            <li>Freier Speicherplatz: ~10 GB</li>
-          </ul>
-
-          <h3>Installation</h3>
-          <v-card class="code-block pa-4 my-4" color="#1e1e1e" dark>
-            <pre><code># Repository klonen
+            <h4 class="subsection-title">Installation</h4>
+            <div class="code-block">
+              <div class="code-header">
+                <span>Terminal</span>
+                <button class="copy-btn" @click="copyCode('install')">
+                  <v-icon size="16">mdi-content-copy</v-icon>
+                </button>
+              </div>
+              <pre><code id="install"># Repository klonen
 git clone &lt;repository-url&gt;
 cd llars
 
 # .env Datei erstellen
-cp .env.example .env
-
-# .env Datei anpassen
-# Wichtig: MYSQL_ROOT_PASSWORD, MYSQL_PASSWORD, KEYCLOAK Einstellungen
+cp .env.template.development .env
 
 # Docker Container starten
-docker compose up -d --build
+./start_llars.sh
 
 # Logs verfolgen
 docker compose logs -f</code></pre>
-          </v-card>
+            </div>
 
-          <h3>Erster Start</h3>
-          <ol>
-            <li>Warten Sie, bis alle Services hochgefahren sind (ca. 5-10 Minuten)</li>
-            <li>Öffnen Sie <code>http://localhost</code> im Browser</li>
-            <li>Bei der ersten Anmeldung wird ein Admin-Benutzer erstellt</li>
-          </ol>
+            <h4 class="subsection-title">Erster Start</h4>
+            <ol class="numbered-list">
+              <li>Warten Sie, bis alle Services hochgefahren sind (ca. 5-10 Minuten)</li>
+              <li>Öffnen Sie <code>http://localhost:55080</code> im Browser</li>
+              <li>Melden Sie sich mit den Standard-Zugangsdaten an</li>
+            </ol>
 
-          <v-alert type="success" class="my-4">
-            <strong>Tipp:</strong> Verwenden Sie <code>docker compose ps</code> um den Status aller Services zu überprüfen.
-          </v-alert>
+            <div class="success-card">
+              <v-icon color="success" size="20">mdi-lightbulb</v-icon>
+              <div>
+                <strong>Tipp</strong>
+                <p>Verwenden Sie <code>docker compose ps</code> um den Status aller Services zu überprüfen.</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 5. Authentifizierung -->
-        <section id="authentication">
-          <h2>5. Authentifizierung</h2>
-          <p>
-            LLars nutzt Authentik für die Authentifizierung (OIDC Authorization Code Flow)
-            (Direct Access Grant). Dies ermöglicht eine nahtlose Anmeldung direkt in der LLars-Oberfläche.
-          </p>
+        <section id="authentication" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">05</span>
+            <h2>Authentifizierung</h2>
+          </div>
+          <div class="section-body">
+            <p>
+              LLARS nutzt <strong>Authentik</strong> für die Authentifizierung (OIDC Authorization Code Flow).
+              Dies ermöglicht eine nahtlose Anmeldung direkt in der LLARS-Oberfläche.
+            </p>
 
-          <h3>Anmeldung</h3>
-          <ol>
-            <li>Öffnen Sie die LLars-Startseite</li>
-            <li>Geben Sie Ihren Benutzernamen und Ihr Passwort ein</li>
-            <li>Klicken Sie auf "Anmelden"</li>
-          </ol>
+            <h4 class="subsection-title">Benutzerrollen</h4>
+            <div class="roles-grid">
+              <div class="role-card">
+                <LTag variant="info" prepend-icon="mdi-account">User</LTag>
+                <p>Zugriff auf alle Standard-Funktionen (Ranking, Rating, Chatbot, etc.)</p>
+              </div>
+              <div class="role-card">
+                <LTag variant="danger" prepend-icon="mdi-shield-crown">Admin</LTag>
+                <p>Zusätzlich Zugriff auf Admin-Dashboard und Benutzerverwaltung</p>
+              </div>
+            </div>
 
-          <h3>Benutzerrollen</h3>
-          <ul>
-            <li><strong>User:</strong> Zugriff auf alle Standard-Funktionen (Ranking, Rating, etc.)</li>
-            <li><strong>Admin:</strong> Zusätzlich Zugriff auf Admin-Dashboard und Benutzerverwaltung</li>
-          </ul>
+            <h4 class="subsection-title">Token-Verwaltung</h4>
+            <p>Authentifizierungs-Tokens werden sicher in <code>sessionStorage</code> gespeichert:</p>
+            <ul class="token-list">
+              <li><code>auth_token</code> — Access Token (JWT)</li>
+              <li><code>auth_refreshToken</code> — Refresh Token</li>
+              <li><code>auth_idToken</code> — ID Token</li>
+            </ul>
 
-          <h3>Token-Verwaltung</h3>
-          <p>
-            Authentifizierungs-Tokens werden sicher in <code>sessionStorage</code> gespeichert:
-          </p>
-          <ul>
-            <li><code>auth_token</code> - Access Token (JWT)</li>
-            <li><code>auth_refreshToken</code> - Refresh Token</li>
-            <li><code>auth_idToken</code> - ID Token</li>
-          </ul>
-
-          <v-alert type="info" class="my-4">
-            <strong>Sicherheit:</strong> Bei Inaktivität oder ungültigen Tokens werden Sie automatisch ausgeloggt.
-          </v-alert>
+            <div class="info-card">
+              <v-icon color="info" size="20">mdi-shield-check</v-icon>
+              <div>
+                <strong>Sicherheit</strong>
+                <p>Bei Inaktivität oder ungültigen Tokens werden Sie automatisch ausgeloggt.</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 6. Module & Funktionen -->
-        <section id="modules">
-          <h2>6. Module & Funktionen</h2>
-
-          <!-- 6.1 Ranking -->
-          <div id="ranking">
-            <h3>6.1 Ranking</h3>
-            <p>
-              Das Ranking-Modul ermöglicht es Ihnen, verschiedene KI-generierte Antworten zu vergleichen
-              und nach Qualität zu ordnen.
-            </p>
-            <h4>Verwendung:</h4>
-            <ol>
-              <li>Navigieren Sie zu "Ranking" auf der Startseite</li>
-              <li>Wählen Sie ein Ranking-Projekt aus oder erstellen Sie ein neues</li>
-              <li>Bewerten Sie die präsentierten Antworten durch Drag & Drop</li>
-              <li>Speichern Sie Ihre Rankings</li>
-            </ol>
+        <section id="modules" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">06</span>
+            <h2>Module & Funktionen</h2>
           </div>
+          <div class="section-body">
+            <div class="module-accordion">
+              <v-expansion-panels variant="accordion">
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <div class="module-title">
+                      <v-icon>mdi-chart-bar-stacked</v-icon>
+                      <span>Ranking</span>
+                    </div>
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <p>
+                      Das Ranking-Modul ermöglicht es Ihnen, verschiedene KI-generierte Antworten zu vergleichen
+                      und nach Qualität zu ordnen.
+                    </p>
+                    <h5>Verwendung:</h5>
+                    <ol>
+                      <li>Navigieren Sie zu "Ranking" auf der Startseite</li>
+                      <li>Wählen Sie ein Ranking-Projekt aus</li>
+                      <li>Bewerten Sie die Antworten durch Drag & Drop</li>
+                      <li>Speichern Sie Ihre Rankings</li>
+                    </ol>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
 
-          <!-- 6.2 Verlaufsbewertung -->
-          <div id="history-rating">
-            <h3>6.2 Verlaufsbewertung</h3>
-            <p>
-              Bewerten Sie komplette E-Mail-Verläufe, die von KI-Systemen generiert wurden.
-              Dies ist besonders relevant für die Evaluierung von E-Beratungs-Szenarien.
-            </p>
-            <h4>Bewertungskriterien:</h4>
-            <ul>
-              <li>Empathie und Einfühlungsvermögen</li>
-              <li>Fachliche Korrektheit</li>
-              <li>Sprachliche Qualität</li>
-              <li>Hilfreiche Informationen</li>
-              <li>Angemessener Ton und Stil</li>
-            </ul>
-          </div>
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <div class="module-title">
+                      <v-icon>mdi-timeline-text-outline</v-icon>
+                      <span>Verlaufsbewertung</span>
+                    </div>
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <p>
+                      Bewerten Sie komplette E-Mail-Verläufe, die von KI-Systemen generiert wurden.
+                    </p>
+                    <h5>Bewertungskriterien:</h5>
+                    <ul>
+                      <li>Empathie und Einfühlungsvermögen</li>
+                      <li>Fachliche Korrektheit</li>
+                      <li>Sprachliche Qualität</li>
+                      <li>Hilfreiche Informationen</li>
+                    </ul>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
 
-          <!-- 6.3 Chatbot -->
-          <div id="chatbot">
-            <h3>6.3 Chatbot (Alpha)</h3>
-            <p>
-              Der integrierte Chatbot ermöglicht direkte Interaktion mit LLars.
-              Testen Sie verschiedene Prompts und analysieren Sie die Antwortqualität.
-            </p>
-            <v-alert type="warning" class="my-4">
-              <strong>Alpha-Version:</strong> Diese Funktion befindet sich noch in der Entwicklung.
-            </v-alert>
-          </div>
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <div class="module-title">
+                      <v-icon>mdi-robot</v-icon>
+                      <span>Chatbot</span>
+                      <LTag variant="warning" size="small" class="ml-2">Alpha</LTag>
+                    </div>
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <p>
+                      Der integrierte Chatbot ermöglicht direkte Interaktion mit LLARS.
+                      Testen Sie verschiedene Prompts und analysieren Sie die Antwortqualität.
+                    </p>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
 
-          <!-- 6.4 Prompt Engineering -->
-          <div id="prompt-engineering">
-            <h3>6.4 Prompt Engineering (Beta)</h3>
-            <p>
-              Das Prompt Engineering Modul nutzt Yjs für kollaboratives Arbeiten in Echtzeit.
-              Mehrere Benutzer können gleichzeitig an Prompts arbeiten.
-            </p>
-            <h4>Features:</h4>
-            <ul>
-              <li><strong>Echtzeit-Synchronisation:</strong> Änderungen werden sofort an alle Teilnehmer übertragen</li>
-              <li><strong>Versionshistorie:</strong> Alle Änderungen werden protokolliert</li>
-              <li><strong>Visuelle Editoren:</strong> Graph-basierte Prompt-Entwicklung</li>
-              <li><strong>Template-Bibliothek:</strong> Vorgefertigte Prompt-Templates</li>
-            </ul>
-          </div>
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <div class="module-title">
+                      <v-icon>mdi-text-search</v-icon>
+                      <span>Prompt Engineering</span>
+                      <LTag variant="info" size="small" class="ml-2">Beta</LTag>
+                    </div>
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <p>
+                      Das Prompt Engineering Modul nutzt Yjs für kollaboratives Arbeiten in Echtzeit.
+                    </p>
+                    <h5>Features:</h5>
+                    <ul>
+                      <li><strong>Echtzeit-Synchronisation:</strong> Änderungen werden sofort übertragen</li>
+                      <li><strong>Versionshistorie:</strong> Alle Änderungen werden protokolliert</li>
+                      <li><strong>Visuelle Editoren:</strong> Graph-basierte Prompt-Entwicklung</li>
+                      <li><strong>Template-Bibliothek:</strong> Vorgefertigte Prompt-Templates</li>
+                    </ul>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
 
-          <!-- 6.5 Gegenüberstellung -->
-          <div id="comparison">
-            <h3>6.5 Gegenüberstellung</h3>
-            <p>
-              Vergleichen Sie zwei verschiedene KI-Modelle direkt nebeneinander.
-              Beide Modelle erhalten dieselben Eingaben, und Sie können die Antworten bewerten.
-            </p>
-            <h4>Workflow:</h4>
-            <ol>
-              <li>Erstellen Sie eine neue Vergleichs-Session</li>
-              <li>Wählen Sie zwei KI-Modelle aus</li>
-              <li>Geben Sie eine Persona und ein Szenario ein</li>
-              <li>Starten Sie die Konversation</li>
-              <li>Bewerten Sie die Antworten beider Modelle</li>
-              <li>Analysieren Sie die Ergebnisse</li>
-            </ol>
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <div class="module-title">
+                      <v-icon>mdi-compare-horizontal</v-icon>
+                      <span>Gegenüberstellung</span>
+                    </div>
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <p>
+                      Vergleichen Sie zwei verschiedene KI-Modelle direkt nebeneinander.
+                    </p>
+                    <h5>Workflow:</h5>
+                    <ol>
+                      <li>Erstellen Sie eine neue Vergleichs-Session</li>
+                      <li>Wählen Sie zwei KI-Modelle aus</li>
+                      <li>Geben Sie eine Persona und ein Szenario ein</li>
+                      <li>Starten Sie die Konversation</li>
+                      <li>Bewerten Sie die Antworten beider Modelle</li>
+                    </ol>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </div>
           </div>
         </section>
 
         <!-- 7. API-Referenz -->
-        <section id="api">
-          <h2>7. API-Referenz</h2>
-          <p>
-            LLars bietet eine REST-API für die Integration in andere Systeme.
-          </p>
+        <section id="api" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">07</span>
+            <h2>API-Referenz</h2>
+          </div>
+          <div class="section-body">
+            <p>LLARS bietet eine REST-API für die Integration in andere Systeme.</p>
 
-          <h3>Base URL</h3>
-          <v-card class="code-block pa-4 my-4" color="#1e1e1e" dark>
-            <pre><code>http://localhost/api</code></pre>
-          </v-card>
+            <h4 class="subsection-title">Base URL</h4>
+            <div class="code-block small">
+              <pre><code>http://localhost:55080/api</code></pre>
+            </div>
 
-          <h3>Authentifizierung</h3>
-          <p>Alle API-Anfragen benötigen einen Bearer Token im Authorization Header:</p>
-          <v-card class="code-block pa-4 my-4" color="#1e1e1e" dark>
-            <pre><code>Authorization: Bearer &lt;access_token&gt;</code></pre>
-          </v-card>
+            <h4 class="subsection-title">Authentifizierung</h4>
+            <p>Alle API-Anfragen benötigen einen Bearer Token:</p>
+            <div class="code-block small">
+              <pre><code>Authorization: Bearer &lt;access_token&gt;</code></pre>
+            </div>
 
-          <h3>Wichtige Endpoints</h3>
-          <v-simple-table class="my-4">
-            <template v-slot:default>
-              <thead>
-                <tr>
-                  <th>Endpoint</th>
-                  <th>Methode</th>
-                  <th>Beschreibung</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>/api/ranking</td>
-                  <td>GET</td>
-                  <td>Liste aller Rankings abrufen</td>
-                </tr>
-                <tr>
-                  <td>/api/ranking/:id</td>
-                  <td>GET</td>
-                  <td>Einzelnes Ranking abrufen</td>
-                </tr>
-                <tr>
-                  <td>/api/rating</td>
-                  <td>POST</td>
-                  <td>Neue Bewertung erstellen</td>
-                </tr>
-                <tr>
-                  <td>/api/history-generation</td>
-                  <td>GET</td>
-                  <td>Mail-Verläufe abrufen</td>
-                </tr>
-                <tr>
-                  <td>/api/prompt-engineering</td>
-                  <td>GET/POST</td>
-                  <td>Prompt-Projekte verwalten</td>
-                </tr>
-                <tr>
-                  <td>/api/comparison</td>
-                  <td>GET/POST</td>
-                  <td>Vergleichs-Sessions verwalten</td>
-                </tr>
-              </tbody>
-            </template>
-          </v-simple-table>
-
-          <v-alert type="info" class="my-4">
-            <strong>Hinweis:</strong> Detaillierte API-Dokumentation finden Sie unter <code>/api/docs</code> (Swagger UI).
-          </v-alert>
+            <h4 class="subsection-title">Wichtige Endpoints</h4>
+            <div class="api-table">
+              <div class="api-row header">
+                <span>Endpoint</span>
+                <span>Methode</span>
+                <span>Beschreibung</span>
+              </div>
+              <div class="api-row">
+                <code>/api/email_threads/rankings</code>
+                <LTag variant="primary" size="small">GET</LTag>
+                <span>Ranking-Threads abrufen</span>
+              </div>
+              <div class="api-row">
+                <code>/api/email_threads/ratings</code>
+                <LTag variant="primary" size="small">GET</LTag>
+                <span>Rating-Threads abrufen</span>
+              </div>
+              <div class="api-row">
+                <code>/api/save_ranking/:id</code>
+                <LTag variant="success" size="small">POST</LTag>
+                <span>Ranking speichern</span>
+              </div>
+              <div class="api-row">
+                <code>/api/judge/sessions</code>
+                <LTag variant="primary" size="small">GET</LTag>
+                <span>Judge-Sessions abrufen</span>
+              </div>
+              <div class="api-row">
+                <code>/api/chatbots</code>
+                <LTag variant="primary" size="small">GET</LTag>
+                <span>Chatbots auflisten</span>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 8. Troubleshooting -->
-        <section id="troubleshooting">
-          <h2>8. Troubleshooting</h2>
+        <section id="troubleshooting" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">08</span>
+            <h2>Troubleshooting</h2>
+          </div>
+          <div class="section-body">
+            <h4 class="subsection-title">Häufige Probleme</h4>
 
-          <h3>Häufige Probleme</h3>
+            <v-expansion-panels variant="accordion" class="troubleshoot-panels">
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <v-icon color="warning" class="mr-2">mdi-alert-circle</v-icon>
+                  Services starten nicht
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <ul>
+                    <li>Überprüfen Sie die Docker-Logs: <code>docker compose logs</code></li>
+                    <li>Stellen Sie sicher, dass alle Ports frei sind</li>
+                    <li>Prüfen Sie die <code>.env</code> Datei</li>
+                    <li>Neustart: <code>docker compose down && docker compose up -d</code></li>
+                  </ul>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
 
-          <v-expansion-panels class="my-4">
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                Services starten nicht
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <p><strong>Lösung:</strong></p>
-                <ul>
-                  <li>Überprüfen Sie die Docker-Logs: <code>docker compose logs</code></li>
-                  <li>Stellen Sie sicher, dass alle Ports frei sind (80, 3310, 8081, 8082, 5173)</li>
-                  <li>Prüfen Sie die <code>.env</code> Datei auf fehlende oder fehlerhafte Einträge</li>
-                  <li>Stoppen Sie alle Container und starten Sie neu: <code>docker compose down && docker compose up -d --build</code></li>
-                </ul>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <v-icon color="warning" class="mr-2">mdi-alert-circle</v-icon>
+                  Anmeldung schlägt fehl
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <ul>
+                    <li>Überprüfen Sie, ob Authentik läuft</li>
+                    <li>Löschen Sie den Browser-Cache und sessionStorage</li>
+                    <li>Prüfen Sie die Authentik-Konfiguration</li>
+                  </ul>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
 
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                Anmeldung schlägt fehl
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <p><strong>Lösung:</strong></p>
-                <ul>
-                  <li>Überprüfen Sie, ob Authentik läuft</li>
-                  <li>Löschen Sie den Browser-Cache und sessionStorage</li>
-                  <li>Prüfen Sie die Authentik-Konfiguration in der <code>.env</code> Datei</li>
-                  <li>Stellen Sie sicher, dass der Benutzer in Authentik existiert</li>
-                </ul>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <v-icon color="warning" class="mr-2">mdi-alert-circle</v-icon>
+                  Datenbank-Verbindungsfehler
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <ul>
+                    <li>Warten Sie, bis die Datenbank gestartet ist (Healthcheck)</li>
+                    <li>Prüfen Sie die Datenbank-Credentials in <code>.env</code></li>
+                    <li>Logs prüfen: <code>docker compose logs db-maria-service</code></li>
+                  </ul>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
 
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                Datenbank-Verbindungsfehler
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <p><strong>Lösung:</strong></p>
-                <ul>
-                  <li>Warten Sie, bis die Datenbank vollständig gestartet ist (Healthcheck)</li>
-                  <li>Prüfen Sie die Datenbank-Credentials in der <code>.env</code></li>
-                  <li>Überprüfen Sie die MariaDB-Logs: <code>docker compose logs db-maria-service</code></li>
-                  <li>Bei Problemen: Datenbank-Volume löschen und neu starten (ACHTUNG: Datenverlust!)</li>
-                </ul>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                Yjs Echtzeit-Synchronisation funktioniert nicht
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <p><strong>Lösung:</strong></p>
-                <ul>
-                  <li>Überprüfen Sie die WebSocket-Verbindung in den Browser-Entwicklertools</li>
-                  <li>Prüfen Sie, ob der yjs-service läuft: <code>docker compose ps yjs-service</code></li>
-                  <li>Firewall-Einstellungen überprüfen (Port 8082)</li>
-                  <li>Browser-Konsole auf WebSocket-Fehler prüfen</li>
-                </ul>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                Beim Navigieren werde ich ausgeloggt
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <p><strong>Lösung:</strong></p>
-                <ul>
-                  <li>Löschen Sie sessionStorage und localStorage im Browser</li>
-                  <li>Melden Sie sich erneut an</li>
-                  <li>Überprüfen Sie die Token-Gültigkeit (Standard: 5 Minuten Access Token)</li>
-                  <li>Browser-Konsole auf Fehler prüfen</li>
-                </ul>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
-
-          <h3>Logs analysieren</h3>
-          <v-card class="code-block pa-4 my-4" color="#1e1e1e" dark>
-            <pre><code># Alle Service-Logs
+            <h4 class="subsection-title">Logs analysieren</h4>
+            <div class="code-block">
+              <pre><code># Alle Service-Logs
 docker compose logs -f
 
 # Nur Backend
 docker compose logs -f backend-flask-service
 
-# Nur Frontend
-docker compose logs -f frontend-vue-service
-
 # Letzte 100 Zeilen
 docker compose logs --tail=100</code></pre>
-          </v-card>
+            </div>
+          </div>
         </section>
 
         <!-- 9. Kontakt & Support -->
-        <section id="contact">
-          <h2>9. Kontakt & Support</h2>
-          <p>
-            Bei Fragen, Problemen oder Feedback wenden Sie sich bitte an:
-          </p>
+        <section id="contact" class="docs-section">
+          <div class="section-header">
+            <span class="section-number">09</span>
+            <h2>Kontakt & Support</h2>
+          </div>
+          <div class="section-body">
+            <p>Bei Fragen, Problemen oder Feedback wenden Sie sich bitte an:</p>
 
-          <v-row class="my-4">
-            <v-col cols="12" md="6">
-              <v-card class="pa-4" elevation="2">
-                <h3><v-icon>mdi-email</v-icon> E-Mail</h3>
-                <p>
-                  <a href="mailto:info@e-beratungsinstitut.de">info@e-beratungsinstitut.de</a>
-                </p>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-card class="pa-4" elevation="2">
-                <h3><v-icon>mdi-web</v-icon> Website</h3>
-                <p>
-                  <a href="https://www.e-beratungsinstitut.de" target="_blank">www.e-beratungsinstitut.de</a>
-                </p>
-              </v-card>
-            </v-col>
-          </v-row>
+            <div class="contact-grid">
+              <a href="mailto:info@e-beratungsinstitut.de" class="contact-card">
+                <v-icon size="32" color="primary">mdi-email</v-icon>
+                <h4>E-Mail</h4>
+                <p>info@e-beratungsinstitut.de</p>
+              </a>
+              <a href="https://www.e-beratungsinstitut.de" target="_blank" class="contact-card">
+                <v-icon size="32" color="accent">mdi-web</v-icon>
+                <h4>Website</h4>
+                <p>www.e-beratungsinstitut.de</p>
+              </a>
+            </div>
 
-          <h3>Weitere Informationen</h3>
-          <ul>
-            <li><a :href="mkdocsUrl" target="_blank">Technische Dokumentation (MkDocs)</a></li>
-            <li><router-link to="/Impressum">Impressum</router-link></li>
-            <li><router-link to="/Datenschutz">Datenschutz</router-link></li>
-            <li><router-link to="/Kontakt">Kontakt</router-link></li>
-          </ul>
-
-          <v-alert type="success" class="my-4">
-            <strong>Open Source:</strong> LLars ist ein Open-Source-Projekt der Technischen Hochschule Nürnberg.
-          </v-alert>
+            <div class="success-card mt-6">
+              <v-icon color="success" size="20">mdi-open-source-initiative</v-icon>
+              <div>
+                <strong>Open Source</strong>
+                <p>LLARS ist ein Open-Source-Projekt der Technischen Hochschule Nürnberg.</p>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <v-divider class="my-6"></v-divider>
-
-        <p class="text-center text-caption">
-          Letzte Aktualisierung: {{ new Date().toLocaleDateString('de-DE') }}<br>
-          Version: 1.0.0
-        </p>
-      </v-col>
-    </v-row>
-  </v-container>
+        <!-- Footer -->
+        <div class="docs-footer">
+          <p>
+            Letzte Aktualisierung: {{ new Date().toLocaleDateString('de-DE') }}
+            <span class="separator">•</span>
+            Version 2.9
+          </p>
+        </div>
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+
+const activeSection = ref('overview');
 
 // MkDocs URL aus Umgebungsvariable oder Fallback
 const mkdocsUrl = computed(() => {
   return import.meta.env.VITE_MKDOCS_URL || 'http://localhost:55800';
 });
+
+// Intersection Observer for active section tracking
+let observer = null;
 
 onMounted(() => {
   // Smooth scrolling for anchor links
@@ -563,178 +667,642 @@ onMounted(() => {
       }
     });
   });
+
+  // Track active section
+  observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          activeSection.value = entry.target.id;
+        }
+      });
+    },
+    { rootMargin: '-20% 0px -80% 0px' }
+  );
+
+  document.querySelectorAll('.docs-section').forEach((section) => {
+    observer.observe(section);
+  });
 });
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect();
+  }
+});
+
+const copyCode = (id) => {
+  const code = document.getElementById(id);
+  if (code) {
+    navigator.clipboard.writeText(code.textContent);
+  }
+};
 </script>
 
 <style scoped>
-.documentation {
-  font-family: 'Roboto', sans-serif;
-  background-color: rgb(var(--v-theme-background));
-  color: rgb(var(--v-theme-on-background));
+.docs-page {
+  min-height: calc(100vh - 94px);
+  background: rgb(var(--v-theme-background));
 }
 
-.mt-5 {
-  margin-top: 5rem;
+/* Hero Section */
+.docs-hero {
+  background: var(--llars-gradient-primary);
+  padding: 48px 24px;
+  text-align: center;
 }
 
-.subtitle {
-  font-size: 1.2rem;
-  color: rgba(var(--v-theme-on-background), 0.7);
-  margin-bottom: 1rem;
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-section {
-  margin-bottom: 3rem;
-}
-
-h1 {
-  color: rgb(var(--v-theme-primary));
+.hero-title {
   font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-h2 {
-  color: rgb(var(--v-theme-on-background));
-  font-size: 2rem;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid rgb(var(--v-theme-primary));
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 16px;
 }
 
-h3 {
-  color: rgba(var(--v-theme-on-background), 0.9);
-  font-size: 1.5rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
+.hero-badges {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-h4 {
-  color: rgba(var(--v-theme-on-background), 0.8);
-  font-size: 1.2rem;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+/* Container Layout */
+.docs-container {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+  gap: 32px;
 }
 
-p {
-  margin-bottom: 1rem;
-  line-height: 1.8;
-  color: rgb(var(--v-theme-on-background));
+/* Sidebar */
+.docs-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 88px;
+  height: fit-content;
 }
 
-ul, ol {
-  margin-bottom: 1rem;
-  margin-left: 1.5rem;
-  line-height: 1.8;
-  color: rgb(var(--v-theme-on-background));
+.sidebar-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px 4px 16px 4px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-li {
-  margin-bottom: 0.5rem;
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
 }
 
-.toc {
-  list-style: none;
-  margin-left: 0;
+.toc-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.toc li {
-  margin-bottom: 0.75rem;
-}
-
-.toc a {
-  color: rgb(var(--v-theme-info));
+.toc-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px 2px 8px 2px;
   text-decoration: none;
-  font-weight: 500;
-}
-
-.toc a:hover {
-  text-decoration: underline;
-  color: rgb(var(--v-theme-primary));
-}
-
-.toc ul {
-  margin-left: 1.5rem;
-  margin-top: 0.5rem;
-}
-
-a {
-  color: rgb(var(--v-theme-info));
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-  color: rgb(var(--v-theme-primary));
-}
-
-code {
-  background-color: rgba(var(--v-theme-surface-variant), 0.5);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   font-size: 0.9rem;
-  color: rgb(var(--v-theme-error));
+  transition: all 0.2s ease;
 }
 
+.toc-link:hover {
+  background: rgba(176, 202, 151, 0.15);
+  color: var(--llars-primary);
+}
+
+.toc-link.active {
+  background: var(--llars-primary);
+  color: white;
+}
+
+.toc-number {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px 2px 6px 2px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.toc-link.active .toc-number {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sidebar-links {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: var(--llars-primary);
+}
+
+/* Main Content */
+.docs-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.docs-section {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px 4px 16px 4px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.section-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--llars-primary);
+  opacity: 0.6;
+}
+
+.section-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+}
+
+.section-body {
+  padding: 24px;
+}
+
+.section-body p {
+  line-height: 1.8;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  margin-bottom: 16px;
+}
+
+.subsection-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 24px 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Info/Warning/Success Cards */
+.info-card, .warning-card, .success-card {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px 4px 12px 4px;
+  margin: 16px 0;
+}
+
+.info-card {
+  background: rgba(168, 197, 226, 0.15);
+  border-left: 3px solid #a8c5e2;
+}
+
+.warning-card {
+  background: rgba(232, 200, 122, 0.15);
+  border-left: 3px solid #e8c87a;
+}
+
+.success-card {
+  background: rgba(152, 212, 187, 0.15);
+  border-left: 3px solid #98d4bb;
+}
+
+.info-card p, .warning-card p, .success-card p {
+  margin: 4px 0 0 0;
+  font-size: 0.9rem;
+}
+
+/* Feature Grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.feature-card {
+  padding: 20px;
+  border-radius: 12px 4px 12px 4px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px 4px 12px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.feature-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 8px;
+}
+
+.feature-card p {
+  font-size: 0.9rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Tech Stack */
+.tech-stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.tech-category {
+  padding: 16px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 12px 4px 12px 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.tech-category h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.tech-category ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tech-category li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.9rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+/* Services Table */
+.services-table, .api-table {
+  border-radius: 12px 4px 12px 4px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  margin: 16px 0;
+}
+
+.service-row, .api-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 2fr;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  align-items: center;
+  gap: 12px;
+}
+
+.service-row:last-child, .api-row:last-child {
+  border-bottom: none;
+}
+
+.service-row.header, .api-row.header {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* Requirements Grid */
+.requirements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 8px 2px 8px 2px;
+  font-size: 0.9rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+/* Code Blocks */
 .code-block {
-  overflow-x: auto;
+  background: #1e1e1e;
+  border-radius: 12px 4px 12px 4px;
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.code-block.small {
+  margin: 8px 0;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.copy-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  padding: 4px;
   border-radius: 4px;
-  background-color: rgb(var(--v-theme-surface-variant));
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
 .code-block pre {
   margin: 0;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  line-height: 1.6;
+  padding: 16px;
+  overflow-x: auto;
 }
 
 .code-block code {
-  background-color: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.9);
-  padding: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #e0e0e0;
 }
 
-.v-card h3 {
+/* Numbered List */
+.numbered-list {
+  counter-reset: list-counter;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.numbered-list li {
+  counter-increment: list-counter;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.numbered-list li::before {
+  content: counter(list-counter);
+  min-width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0;
+  justify-content: center;
+  background: var(--llars-primary);
+  color: white;
+  border-radius: 6px 2px 6px 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.v-expansion-panel-title {
-  font-weight: 500;
-  color: rgb(var(--v-theme-on-surface));
+/* Roles Grid */
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
 }
 
-.v-simple-table {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+.role-card {
+  padding: 16px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 12px 4px 12px 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.role-card p {
+  margin: 8px 0 0 0;
+  font-size: 0.9rem;
+}
+
+/* Token List */
+.token-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.token-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 0.9rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.token-list code {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  padding: 2px 8px;
   border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--llars-danger);
 }
 
-.v-simple-table th {
-  background-color: rgb(var(--v-theme-surface-variant));
+/* Module Accordion */
+.module-accordion {
+  margin: 16px 0;
+}
+
+.module-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Troubleshoot Panels */
+.troubleshoot-panels {
+  margin: 16px 0;
+}
+
+/* Contact Grid */
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.contact-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 16px 4px 16px 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.contact-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: var(--llars-primary);
+}
+
+.contact-card h4 {
+  margin: 12px 0 4px 0;
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
 }
 
-.v-simple-table td {
-  color: rgba(var(--v-theme-on-surface), 0.8);
+.contact-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
-@media (max-width: 960px) {
-  h1 {
-    font-size: 2rem;
+/* Footer */
+.docs-footer {
+  text-align: center;
+  padding: 24px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-size: 0.85rem;
+}
+
+.docs-footer .separator {
+  margin: 0 8px;
+}
+
+/* Inline Code */
+code {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85rem;
+  color: var(--llars-danger);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .docs-sidebar {
+    display: none;
   }
 
-  h2 {
-    font-size: 1.5rem;
+  .docs-container {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: 1.75rem;
   }
 
-  h3 {
-    font-size: 1.25rem;
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .section-header {
+    padding: 16px;
+  }
+
+  .section-body {
+    padding: 16px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .service-row, .api-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .service-row.header, .api-row.header {
+    display: none;
   }
 }
 </style>

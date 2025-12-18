@@ -11,5 +11,8 @@ LABEL authors="philippsteigerwald"
 COPY ./docker/db/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 
+# Reduce noisy warnings on Docker Desktop (macOS/Windows)
+COPY ./docker/db/llars.cnf /etc/mysql/conf.d/llars.cnf
+
 # Standardport freigeben
 EXPOSE 3310

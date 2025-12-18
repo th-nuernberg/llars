@@ -17,10 +17,9 @@ HOST=${HOST:-0.0.0.0}
 PORT=${PORT:-8000}
 
 start_dev() {
-  echo "Starting MkDocs (development) at ${BIND_ADDR} with dirty reload + watchdog"
+  echo "Starting MkDocs (development) at ${BIND_ADDR}"
   exec mkdocs serve \
     --dev-addr="${BIND_ADDR}" \
-    --dirtyreload \
     --livereload \
     --watch mkdocs.yml \
     --watch docs

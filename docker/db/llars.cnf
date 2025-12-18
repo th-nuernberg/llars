@@ -1,0 +1,5 @@
+[mysqld]
+# Docker Desktop (macOS) does not support io_uring in the VM kernel, which causes noisy startup warnings.
+# Disable native AIO to avoid io_uring initialization attempts.
+innodb_use_native_aio=0
+

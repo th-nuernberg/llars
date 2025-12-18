@@ -64,6 +64,13 @@ Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 
 - Optional SSO: `MATOMO_OIDC_ENABLED=true` + `AUTHENTIK_PUBLIC_URL` + `AUTHENTIK_MATOMO_*` (RebelOIDC Plugin)
 - Runtime-Config über LLARS DB (Admin Panel): `GET/PATCH /api/admin/analytics/settings` (Table `analytics_settings`)
 
+## Admin System Tools
+
+- Docker Monitor (Admin → Docker): Live Container-Status, CPU/RAM und Logs via Socket.IO Namespace `/admin` (`docker:*`)
+  - Voraussetzung: `/var/run/docker.sock` ist gemountet und die Backend-User-Group darf schreiben (Dev: `start_llars.sh` setzt `DOCKER_SOCK_GID` und versucht `chmod g+w`).
+  - Security Hinweis: Zugriff auf `docker.sock` erlaubt prinzipiell Host-Docker Kontrolle → nur für Admins aktivieren.
+- DB Explorer (Admin → DB): Read-only Tabellen-Viewer (live) via Socket.IO Namespace `/admin` (`db:*`)
+
 ## Docker Base Images
 
 - Wenn Docker Hub Probleme macht (z.B. OAuth Token 500), nutzt LLARS für die offiziellen Images die Public ECR Mirror-Registry: `public.ecr.aws/docker/library/*` (Python/Node/Nginx/Postgres/Redis/MariaDB/Matomo).

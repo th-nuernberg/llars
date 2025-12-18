@@ -1,0 +1,21 @@
+# General
+.git
+.idea
+.claude
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.DS_Store
+*.log
+
+# Frontend
+llars-frontend/node_modules
+llars-frontend/dist
+
+# Python venvs / caches
+.venv
+venv
+
+# Large local artifacts (keep mounted instead of baked into images)
+app/models/oncoco/model.safetensors

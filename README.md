@@ -11,6 +11,7 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 - **RBAC Permission System** - Rollenbasierte Zugriffskontrolle
 - **Authentik Auth** - OAuth2/OIDC Authentifizierung
 - **Matomo Analytics** - Self-hosted Tracking (Pageviews + UI Events, optional SSO via Authentik/OIDC)
+- **Admin System Tools** - System Monitor, Docker Monitor & DB Explorer (live)
 - **Chatbot Builder** - Chatbots mit RAG-Integration erstellen
 
 ## Voraussetzungen
@@ -100,7 +101,7 @@ REMOVE_VOLUMES=True ./start_llars.sh
 
 # Logs anzeigen
 docker compose logs -f backend-flask-service
-docker compose logs -f frontend-vite-service
+docker compose logs -f frontend-vue-service
 
 # Authentik Setup
 ./scripts/setup_authentik.sh

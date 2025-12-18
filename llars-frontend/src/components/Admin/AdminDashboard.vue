@@ -72,7 +72,7 @@
           </div>
 
           <!-- System Monitor Section -->
-          <div v-else-if="activeSection === 'system'" key="system" class="section-container">
+          <div v-else-if="activeSection === 'system'" key="system" class="section-container--full">
             <AdminSystemMonitorSection />
           </div>
 

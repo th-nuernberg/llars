@@ -1,144 +1,148 @@
 <template>
   <div class="system-monitor">
-    <v-card class="mb-4">
-      <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-monitor-dashboard</v-icon>
-        System Monitor
-        <v-spacer />
-
-        <v-chip
-          :color="connectionColor"
-          variant="tonal"
-          density="compact"
-          class="mr-2"
-        >
-          <v-icon start size="16">{{ connectionIcon }}</v-icon>
+    <!-- Compact Header -->
+    <div class="monitor-header">
+      <div class="header-left">
+        <v-icon size="24" color="white">mdi-monitor-dashboard</v-icon>
+        <h2>System Monitor</h2>
+        <LTag :variant="connectionVariant" :prepend-icon="connectionIcon" size="small" class="connection-tag">
           {{ connectionLabel }}
-        </v-chip>
-
-        <LBtn
-          prepend-icon="mdi-refresh"
-          variant="tonal"
-          :loading="reloading"
-          @click="reload"
-          class="mr-2"
-        >
-          Neu laden
-        </LBtn>
-
+        </LTag>
+        <div v-if="connectionState === 'connected' && !paused" class="live-pulse"></div>
+      </div>
+      <div class="header-right">
         <LBtn
           :prepend-icon="paused ? 'mdi-play' : 'mdi-pause'"
-          variant="tonal"
+          :variant="paused ? 'primary' : 'tonal'"
+          size="small"
           @click="togglePause"
-          class="mr-2"
         >
           {{ paused ? 'Live' : 'Pause' }}
         </LBtn>
-
+        <LBtn
+          prepend-icon="mdi-refresh"
+          variant="tonal"
+          size="small"
+          :loading="reloading"
+          @click="reload"
+        >
+          Refresh
+        </LBtn>
         <LBtn
           prepend-icon="mdi-trash-can-outline"
           variant="tonal"
+          size="small"
           @click="clear"
         >
           Leeren
         </LBtn>
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model="search"
-              label="Suche (Typ, Message, User)"
-              prepend-inner-icon="mdi-magnify"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="severityFilter"
-              :items="severityOptions"
-              label="Severity"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="12" md="3">
-            <v-switch
-              v-model="autoScroll"
-              color="primary"
-              hide-details
-              label="Auto-Scroll"
-            />
-          </v-col>
-          <v-col cols="12" md="2" class="d-flex align-center justify-end">
-            <v-chip variant="tonal" density="compact">
-              {{ filteredEvents.length }} Events
-            </v-chip>
-          </v-col>
-        </v-row>
+      </div>
+    </div>
 
-        <v-skeleton-loader
-          v-if="isLoading('table')"
-          type="table"
-          height="420"
-          class="mt-3"
-        />
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+      <v-text-field
+        v-model="search"
+        placeholder="Suche (Typ, Message, User)"
+        prepend-inner-icon="mdi-magnify"
+        variant="outlined"
+        density="compact"
+        hide-details
+        clearable
+        class="search-field"
+      />
+      <v-select
+        v-model="severityFilter"
+        :items="severityOptions"
+        placeholder="Severity"
+        variant="outlined"
+        density="compact"
+        hide-details
+        clearable
+        class="severity-select"
+      />
+      <div class="filter-toggles">
+        <v-switch
+          v-model="autoScroll"
+          color="primary"
+          hide-details
+          density="compact"
+          class="auto-scroll-switch"
+        >
+          <template #label>
+            <span class="switch-label">Auto-Scroll</span>
+          </template>
+        </v-switch>
+      </div>
+      <LTag variant="gray" size="small" prepend-icon="mdi-format-list-numbered">
+        {{ filteredEvents.length }} Events
+      </LTag>
+    </div>
 
-        <div v-else class="mt-3">
-          <v-data-table
-            ref="tableRef"
-            :items="filteredEvents"
-            :headers="headers"
-            item-key="id"
-            density="compact"
-            :items-per-page="50"
-            class="events-table"
-            fixed-header
-            height="520"
-          >
-            <template v-slot:item.created_at="{ item }">
-              <span class="text-medium-emphasis">{{ formatTime(item.created_at) }}</span>
-            </template>
+    <!-- Events Table -->
+    <div class="events-container">
+      <v-skeleton-loader
+        v-if="isLoading('table')"
+        type="table"
+        class="skeleton-loader"
+      />
 
-            <template v-slot:item.severity="{ item }">
-              <v-chip :color="severityColor(item.severity)" density="compact" variant="tonal">
-                {{ item.severity }}
-              </v-chip>
-            </template>
+      <div v-else class="events-table-wrapper">
+        <table class="events-table">
+          <thead>
+            <tr>
+              <th class="col-time">Zeit</th>
+              <th class="col-severity">Severity</th>
+              <th class="col-type">Typ</th>
+              <th class="col-user">User</th>
+              <th class="col-message">Message</th>
+            </tr>
+          </thead>
+          <tbody ref="tableBody">
+            <TransitionGroup name="event-row">
+              <tr
+                v-for="event in filteredEvents"
+                :key="event.id"
+                :class="['event-row', { 'event-row--new': isNewEvent(event.id) }]"
+              >
+                <td class="col-time">
+                  <span class="time-text">{{ formatTime(event.created_at) }}</span>
+                </td>
+                <td class="col-severity">
+                  <LTag :variant="severityVariant(event.severity)" size="small">
+                    {{ event.severity }}
+                  </LTag>
+                </td>
+                <td class="col-type">
+                  <span class="type-text">{{ event.event_type }}</span>
+                </td>
+                <td class="col-user">
+                  <span class="user-text">{{ event.username || '-' }}</span>
+                </td>
+                <td class="col-message">
+                  <div class="message-content">
+                    <span class="message-text">{{ event.message }}</span>
+                    <span v-if="event.entity_type || event.entity_id" class="message-meta">
+                      {{ event.entity_type || '' }}{{ event.entity_type && event.entity_id ? ':' : '' }}{{ event.entity_id || '' }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </TransitionGroup>
+          </tbody>
+        </table>
 
-            <template v-slot:item.username="{ item }">
-              <span class="font-weight-medium">{{ item.username || '-' }}</span>
-            </template>
-
-            <template v-slot:item.message="{ item }">
-              <div class="event-message">
-                <div class="event-message__main">{{ item.message }}</div>
-                <div v-if="item.entity_type || item.entity_id" class="event-message__meta text-caption text-medium-emphasis">
-                  {{ item.entity_type || '' }}{{ item.entity_type && item.entity_id ? ':' : '' }}{{ item.entity_id || '' }}
-                </div>
-              </div>
-            </template>
-
-            <template v-slot:no-data>
-              <v-alert type="info" variant="tonal" density="compact">
-                Keine Events vorhanden.
-              </v-alert>
-            </template>
-          </v-data-table>
+        <div v-if="filteredEvents.length === 0" class="empty-state">
+          <v-icon size="48" color="grey">mdi-format-list-bulleted</v-icon>
+          <p>Keine Events vorhanden</p>
         </div>
-      </v-card-text>
-    </v-card>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { useAuth } from '@/composables/useAuth'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
@@ -146,24 +150,20 @@ import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 const auth = useAuth()
 const { isLoading, withLoading } = useSkeletonLoading(['table'])
 
-const headers = [
-  { title: 'Zeit', key: 'created_at', width: 180 },
-  { title: 'Severity', key: 'severity', width: 120 },
-  { title: 'Typ', key: 'event_type', width: 220 },
-  { title: 'User', key: 'username', width: 160 },
-  { title: 'Message', key: 'message' }
-]
-
 const events = ref([])
 const lastEventId = ref(0)
 const paused = ref(false)
 const autoScroll = ref(true)
-const tableRef = ref(null)
+const tableBody = ref(null)
 const search = ref('')
 const severityFilter = ref(null)
 const reloading = ref(false)
 
-const connectionState = ref('disconnected') // disconnected|connecting|connected|error
+// Track new events for animation
+const newEventIds = ref(new Set())
+const NEW_EVENT_DURATION = 2000 // ms to keep "new" state
+
+const connectionState = ref('disconnected')
 const streamAbortController = ref(null)
 let reconnectTimer = null
 
@@ -177,19 +177,19 @@ const severityOptions = [
 ]
 
 const connectionLabel = computed(() => {
-  if (paused.value) return 'pausiert'
-  if (connectionState.value === 'connected') return 'live'
-  if (connectionState.value === 'connecting') return 'verbinde...'
-  if (connectionState.value === 'error') return 'fehler'
-  return 'offline'
+  if (paused.value) return 'Pausiert'
+  if (connectionState.value === 'connected') return 'Live'
+  if (connectionState.value === 'connecting') return 'Verbinde...'
+  if (connectionState.value === 'error') return 'Fehler'
+  return 'Offline'
 })
 
-const connectionColor = computed(() => {
-  if (paused.value) return 'grey'
+const connectionVariant = computed(() => {
+  if (paused.value) return 'gray'
   if (connectionState.value === 'connected') return 'success'
   if (connectionState.value === 'connecting') return 'warning'
-  if (connectionState.value === 'error') return 'error'
-  return 'grey'
+  if (connectionState.value === 'error') return 'danger'
+  return 'gray'
 })
 
 const connectionIcon = computed(() => {
@@ -200,21 +200,31 @@ const connectionIcon = computed(() => {
   return 'mdi-wifi-off'
 })
 
-const severityColor = (severity) => {
+const severityVariant = (severity) => {
   const s = String(severity || '').toLowerCase()
   if (s === 'success') return 'success'
   if (s === 'warning') return 'warning'
-  if (s === 'error' || s === 'critical') return 'error'
+  if (s === 'error' || s === 'critical') return 'danger'
   return 'info'
 }
 
 const formatTime = (iso) => {
   try {
-    return new Date(iso).toLocaleString()
+    const date = new Date(iso)
+    return date.toLocaleTimeString('de-DE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + ' ' + date.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit'
+    })
   } catch {
     return iso
   }
 }
+
+const isNewEvent = (id) => newEventIds.value.has(id)
 
 const filteredEvents = computed(() => {
   const q = String(search.value || '').trim().toLowerCase()
@@ -235,10 +245,20 @@ const filteredEvents = computed(() => {
   })
 })
 
+const markAsNew = (id) => {
+  newEventIds.value.add(id)
+  setTimeout(() => {
+    newEventIds.value.delete(id)
+  }, NEW_EVENT_DURATION)
+}
+
 const addEvent = (event) => {
   if (!event?.id) return
   if (event.id <= lastEventId.value) return
   lastEventId.value = event.id
+
+  // Mark as new for animation
+  markAsNew(event.id)
 
   events.value.unshift(event)
   if (events.value.length > 500) {
@@ -246,9 +266,8 @@ const addEvent = (event) => {
   }
 
   if (autoScroll.value) {
-    requestAnimationFrame(() => {
-      const root = tableRef.value?.$el || tableRef.value
-      const wrapper = root?.querySelector?.('.v-table__wrapper')
+    nextTick(() => {
+      const wrapper = tableBody.value?.closest('.events-table-wrapper')
       if (wrapper) wrapper.scrollTop = 0
     })
   }
@@ -384,6 +403,7 @@ const reload = async () => {
 const clear = () => {
   events.value = []
   lastEventId.value = 0
+  newEventIds.value.clear()
 }
 
 const togglePause = () => {
@@ -410,21 +430,293 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.events-table :deep(.v-data-table__td) {
+.system-monitor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* Header */
+.monitor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--llars-gradient-hero-cool);
+  padding: 12px 16px;
+  border-radius: var(--llars-radius);
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-left h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+}
+
+.connection-tag {
+  margin-left: 4px;
+}
+
+/* Live pulse indicator */
+.live-pulse {
+  width: 8px;
+  height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Filters Bar */
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: var(--llars-radius-sm);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  flex-shrink: 0;
+}
+
+.search-field {
+  flex: 1;
+  max-width: 300px;
+}
+
+.severity-select {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.filter-toggles {
+  display: flex;
+  align-items: center;
+}
+
+.auto-scroll-switch {
+  margin: 0;
+}
+
+.switch-label {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+/* Events Container */
+.events-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  border-radius: var(--llars-radius-sm);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.skeleton-loader {
+  flex: 1;
+}
+
+.events-table-wrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Custom Table */
+.events-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.events-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgb(var(--v-theme-surface));
+}
+
+.events-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgb(var(--v-theme-on-surface-variant));
+  border-bottom: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: linear-gradient(180deg, rgb(var(--v-theme-surface)) 0%, rgba(var(--v-theme-surface), 0.95) 100%);
+}
+
+.events-table td {
+  padding: 8px 12px;
   vertical-align: top;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.5));
 }
 
-.event-message__main {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+/* Column widths */
+.col-time { width: 130px; }
+.col-severity { width: 100px; }
+.col-type { width: 200px; }
+.col-user { width: 140px; }
+.col-message { width: auto; }
+
+.time-text {
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+  font-size: 0.8rem;
 }
 
-.event-message__meta {
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.type-text {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+  font-size: 0.8rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.user-text {
+  font-weight: 500;
+}
+
+.message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.message-text {
+  word-break: break-word;
+}
+
+.message-meta {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+}
+
+/* Event Row Animations */
+.event-row {
+  transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.event-row:hover {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+/* New event highlight animation */
+.event-row--new {
+  animation: highlight-fade 2s ease-out;
+}
+
+@keyframes highlight-fade {
+  0% {
+    background: rgba(var(--v-theme-success), 0.25);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* TransitionGroup animations */
+.event-row-enter-active {
+  animation: slide-in 0.4s ease-out;
+}
+
+.event-row-leave-active {
+  animation: fade-out 0.2s ease-out;
+}
+
+.event-row-move {
+  transition: transform 0.3s ease;
+}
+
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  gap: 12px;
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* Dark mode adjustments */
+.v-theme--dark .monitor-header {
+  background: var(--llars-gradient-hero-cool);
+}
+
+.v-theme--dark .events-table th {
+  background: linear-gradient(180deg, rgb(var(--v-theme-surface)) 0%, rgba(var(--v-theme-surface), 0.98) 100%);
+}
+
+.v-theme--dark .event-row:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .filters-bar {
+    flex-wrap: wrap;
+  }
+
+  .search-field {
+    max-width: none;
+    flex: 1 1 200px;
+  }
 }
 </style>

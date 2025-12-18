@@ -28,11 +28,13 @@ Wichtigste Schalter:
 ```bash
 PROJECT_STATE=development   # oder production
 REMOVE_VOLUMES=False        # True löscht Daten beim nächsten Start
-NGINX_EXTERNAL_PORT=55080   # Einstiegspunkt für Frontend + API
+PROJECT_URL=http://localhost:55080   # Einstiegspunkt für Frontend + API
+
+# Optional: Host-Port Overrides (Defaults sind vorkonfiguriert)
+NGINX_EXTERNAL_PORT=55080
 AUTHENTIK_EXTERNAL_PORT=55095
-FLASK_EXTERNAL_PORT=55081
-FRONTEND_EXTERNAL_PORT=55173
-DB_EXTERNAL_PORT=55306      # Nur für Debugging
+DB_EXTERNAL_PORT=55306              # Nur für Debugging
+MKDOCS_EXTERNAL_PORT=55800
 ```
 
 ### 3. LLARS starten
@@ -64,7 +66,6 @@ Nach 2–3 Minuten (erstes Starten lädt Images):
 | Frontend | http://localhost:55080 |
 | Backend API | http://localhost:55080/api |
 | Authentik | http://localhost:55095 |
-| Vite Dev (optional) | http://localhost:55173 |
 | Docs | http://localhost:55800 |
 
 ### 5. Installation prüfen
@@ -109,7 +110,7 @@ Start:
 
 ```bash
 docker compose logs backend-flask-service --tail=50
-docker compose logs frontend-vite-service --tail=50
+docker compose logs frontend-vue-service --tail=50
 ```
 
 ### Portkonflikte
@@ -118,7 +119,7 @@ Ports in `.env` anpassen, z. B.:
 
 ```bash
 NGINX_EXTERNAL_PORT=56080
-FLASK_EXTERNAL_PORT=56081
+AUTHENTIK_EXTERNAL_PORT=56095
 ```
 
 ### Datenbank-Probleme

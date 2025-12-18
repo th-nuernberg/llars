@@ -1,8 +1,16 @@
 # Konfiguration
 
-## .env als zentrale Stelle
+## .env (bewusst klein)
 
-Alle Services lesen ihre Einstellungen aus `.env`. Kopiere dafür eine Vorlage (`.env.template.development` oder `.env.template.production`) nach `.env` und passe die Werte an.
+LLARS nutzt eine bewusst **kleine** `.env`:
+- **Secrets + Infrastruktur** bleiben in `.env` (DB-Passwörter, Authentik/Matomo Secrets, API Keys).
+- **App-Settings** sind in der **DB** konfigurierbar (z. B. Analytics/Tracking im Admin-Panel).
+
+Setup:
+
+```bash
+cp .env.template.development .env   # oder .env.template.production
+```
 
 ## Datenbank (MariaDB)
 
@@ -24,43 +32,37 @@ AUTHENTIK_SECRET_KEY=...                # mind. 50 Zeichen
 AUTHENTIK_DB_NAME=authentik_dev
 AUTHENTIK_DB_USER=authentik_dev
 AUTHENTIK_DB_PASSWORD=...
+AUTHENTIK_PUBLIC_URL=http://localhost:55095
 AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
 AUTHENTIK_BOOTSTRAP_PASSWORD=admin123
 
-AUTHENTIK_FRONTEND_CLIENT_ID=llars-frontend
-AUTHENTIK_BACKEND_CLIENT_ID=llars-backend
+# Backend OAuth client secret (Client-ID ist invariant: llars-backend)
 AUTHENTIK_BACKEND_CLIENT_SECRET=llars-backend-secret-change-in-production
-AUTHENTIK_ISSUER_URL=http://authentik-server:9000/application/o/llars-backend/
-
-AUTHENTIK_INTERNAL_PORT=9000
 AUTHENTIK_EXTERNAL_PORT=55095
-AUTHENTIK_DB_INTERNAL_PORT=5432
 ```
+
+## Analytics (Matomo)
+
+- UI: `${PROJECT_URL}/analytics/`
+- Tracking (first-party): `${PROJECT_URL}/metrics.js` und `${PROJECT_URL}/metrics.php`
+- Runtime-Settings: **Admin → Analytics** (DB-basiert, kein `.env`)
 
 ## Port-Belegung
 
 ```bash
 # Extern (Host)
-NGINX_EXTERNAL_PORT=55080      # Haupt-Einstieg (Frontend + API)
-FLASK_EXTERNAL_PORT=55081      # Direkter Backend-Zugriff (Dev)
-FRONTEND_EXTERNAL_PORT=55173   # Vite Dev Server
-DB_EXTERNAL_PORT=55306         # MariaDB Debug
-YJS_EXTERNAL_PORT=55082
-AUTHENTIK_EXTERNAL_PORT=55095
-MKDOCS_EXTERNAL_PORT=55800
-
-# Intern (Container-zu-Container)
-NGINX_INTERNAL_PORT=80
-FLASK_INTERNAL_PORT=8081
-FRONTEND_INTERNAL_PORT=5173
-DB_INTERNAL_PORT=3306
-YJS_INTERNAL_PORT=8082
+NGINX_EXTERNAL_PORT=55080      # Haupt-Einstieg (Frontend + API + Matomo + Docs Proxy)
+AUTHENTIK_EXTERNAL_PORT=55095  # Optional direkt; zusätzlich via nginx `/authentik/`
+DB_EXTERNAL_PORT=55306         # Optional direkt (nur Debugging)
+MKDOCS_EXTERNAL_PORT=55800     # Optional direkt; zusätzlich via nginx `/docs/`
 ```
 
 ## CORS
 
 ```bash
-ALLOWED_ORIGINS=http://localhost,http://localhost:55080,http://localhost:55173,http://127.0.0.1,http://127.0.0.1:55080,http://127.0.0.1:55173
+# Normalerweise nicht nötig:
+# ALLOWED_ORIGINS wird aus PROJECT_URL + localhost Defaults abgeleitet.
+ALLOWED_ORIGINS=http://localhost:55080,http://127.0.0.1:55080
 ```
 
 Mehrere Einträge mit Komma trennen.
@@ -98,7 +100,7 @@ REMOVE_VOLUMES=False   # True löscht Daten beim nächsten Start
 
 ```bash
 PROJECT_STATE=development   # oder production
-FLASK_ENV=development       # oder production
+FLASK_ENV=development       # optional; wird i. d. R. automatisch gesetzt
 ```
 
 **Development**
@@ -129,7 +131,7 @@ ADMIN_REGISTRATION_KEY=<uuid>
 
 1. Zertifikate nach `docker/nginx/certs/` legen  
 2. nginx-Konfiguration anpassen  
-3. Authentik-URLs auf HTTPS umstellen (z. B. `AUTHENTIK_EXTERNAL_PORT=443`, `AUTHENTIK_ISSUER_URL=https://<domain>/application/o/llars-backend/`)
+3. `PROJECT_URL`/`AUTHENTIK_PUBLIC_URL` auf HTTPS umstellen (z. B. `https://llars.example.de`)
 
 ### External Port Exposure
 

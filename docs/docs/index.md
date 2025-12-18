@@ -32,12 +32,10 @@ flowchart LR
 ```
 
 **Standard-Ports (Development)**
-- 55080 → nginx (Frontend + API)
-- 55173 → Vite Dev Server (direkter Zugriff)
-- 55081 → Flask (direkter Dev-Zugriff)
-- 55095 → Authentik
-- 55082 → Yjs
-- 55306 → MariaDB (nur für Debugging)
+- 55080 → nginx (Frontend + API + Matomo + Docs Proxy)
+- 55095 → Authentik (optional direkt; zusätzlich via nginx `/authentik/`)
+- 55306 → MariaDB (optional direkt; nur Debugging)
+- 55800 → Docs (MkDocs, optional direkt; zusätzlich via nginx `/docs/`)
 
 In Production werden nur 80/443 nach außen exponiert.
 

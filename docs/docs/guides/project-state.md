@@ -20,9 +20,10 @@ PROJECT_STATE=production
 
 ### Development (`development`)
 - Hot-Reload für Frontend (Vite) und Backend
-- HTTP-Zugriff auf alle Dienste (z. B. Authentik auf Port 55095)
+- Einstieg über nginx (Standard: `http://localhost:55080`)
+- Optional direkter Zugriff auf Authentik/DB/MkDocs über die externen Ports (Defaults: 55095/55306/55800)
 - Ausführliches Logging
-- Alle Ports für Debugging exponiert
+- Debug-Ports nur, wenn benötigt (Standard-Compose hält die Exposes minimal)
 
 ### Production (`production`)
 - Optimierte Builds, kein Hot-Reload
@@ -55,8 +56,8 @@ PROJECT_STATE=development ./start_llars.sh
 docker compose ps
 ```
 
-- Development: Vite (55173) und Flask (55081) sind erreichbar.
-- Production: nur nginx-Port nach außen offen; Frontend/Backend laufen intern.
+- Development: nginx (55080) und Authentik (55095) sind erreichbar; Frontend/Backend laufen intern hinter nginx.
+- Production: nur nginx-Port nach außen offen; alle internen Services laufen hinter nginx (80/443).
 
 ## Troubleshooting
 
@@ -67,7 +68,7 @@ docker compose ps
   In Production nur über nginx vorsehen; für lokale Tests `development` nutzen.
 
 - **Frontend ohne Hot-Reload?**  
-  Sicherstellen, dass `PROJECT_STATE=development` und `FRONTEND_EXTERNAL_PORT` freigeben.
+  Sicherstellen, dass `PROJECT_STATE=development` aktiv ist und der Stack neu gestartet wurde (`./start_llars.sh`).
 
 ## Best Practices
 

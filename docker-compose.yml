@@ -195,6 +195,8 @@ services:
       - VITE_KEYCLOAK_URL=${PROJECT_URL:-http://localhost:55080}/authentik
       - VITE_KEYCLOAK_REALM=llars   # legacy variable; Authentik uses apps, not realms
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
+      # When false (default), Socket.IO sticks to polling to avoid WebSocket errors with Werkzeug/threading
+      - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
     develop:
       watch:
         - action: sync

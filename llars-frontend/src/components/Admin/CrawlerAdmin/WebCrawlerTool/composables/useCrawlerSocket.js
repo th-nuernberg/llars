@@ -8,6 +8,9 @@
 import { ref } from 'vue';
 import { io } from 'socket.io-client';
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+
 export function useCrawlerSocket(callbacks = {}) {
   let socket = null;
   const socketConnected = ref(false);
@@ -29,7 +32,8 @@ export function useCrawlerSocket(callbacks = {}) {
 
     socket = io(baseUrl, {
       path: '/socket.io',
-      transports: ['polling', 'websocket'],
+      transports: socketioTransports,
+      upgrade: socketioEnableWebsocket,
       reconnection: true,
       reconnectionAttempts: maxReconnectAttempts,
       reconnectionDelay: 1000,

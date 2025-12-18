@@ -69,6 +69,8 @@ services:
       - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://${PROJECT_HOST}}/authentik
       - VITE_KEYCLOAK_REALM=llars
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
+      # When false (default), Socket.IO sticks to polling to avoid WebSocket errors with Werkzeug/threading
+      - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
     # Remove volume mounts and develop mode
     volumes: []
     develop: {}

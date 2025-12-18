@@ -7,6 +7,9 @@
 import { ref, watch, onMounted, Ref } from 'vue';
 import { io, Socket } from 'socket.io-client';
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+
 export interface Message {
   messageId: number;
   idx: number;
@@ -80,7 +83,8 @@ export function useComparisonSocket(options: UseComparisonSocketOptions) {
     const username = localStorage.getItem('username') || 'Gast';
     socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
       path: '/socket.io/',
-      transports: ['websocket'],
+      transports: socketioTransports,
+      upgrade: socketioEnableWebsocket,
       query: { username: username },
       headers: {
         'Content-Type': 'application/json; charset=utf-8'

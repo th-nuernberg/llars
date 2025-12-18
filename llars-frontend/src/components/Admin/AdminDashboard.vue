@@ -75,6 +75,16 @@
           <div v-else-if="activeSection === 'system'" key="system" class="section-container">
             <AdminSystemMonitorSection />
           </div>
+
+          <!-- Docker Monitor Section -->
+          <div v-else-if="activeSection === 'docker'" key="docker" class="section-container">
+            <AdminDockerMonitorSection />
+          </div>
+
+          <!-- DB Explorer Section -->
+          <div v-else-if="activeSection === 'db'" key="db" class="section-container">
+            <AdminDatabaseSection />
+          </div>
         </v-fade-transition>
       </div>
     </main>
@@ -94,6 +104,8 @@ import AdminScenariosSection from './sections/AdminScenariosSection.vue';
 import AdminRAGSection from './sections/AdminRAGSection.vue';
 import AdminPermissionsSection from './sections/AdminPermissionsSection.vue';
 import AdminSystemMonitorSection from './sections/AdminSystemMonitorSection.vue';
+import AdminDockerMonitorSection from './sections/AdminDockerMonitorSection.vue';
+import AdminDatabaseSection from './sections/AdminDatabaseSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -117,6 +129,8 @@ const navItems = [
   { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard' },
   { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar' },
   { title: 'System Monitor', value: 'system', icon: 'mdi-monitor-dashboard' },
+  { title: 'Docker', value: 'docker', icon: 'mdi-docker' },
+  { title: 'DB', value: 'db', icon: 'mdi-database' },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group' },
   { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list' },
   { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot' },
@@ -130,6 +144,8 @@ const sectionInfo = {
   overview: { title: 'Dashboard Übersicht', subtitle: 'Schnellübersicht aller wichtigen Kennzahlen' },
   analytics: { title: 'Analytics', subtitle: 'Matomo Dashboard und Tracking-Status' },
   system: { title: 'System Monitor', subtitle: 'Live System-Events, Admin-Aktionen und Health-Status' },
+  docker: { title: 'Docker Monitor', subtitle: 'Container Status, Logs und Ressourcen-Auslastung (live)' },
+  db: { title: 'DB Explorer', subtitle: 'Read-only Einblick in die LLARS Datenbank (live)' },
   users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },
   scenarios: { title: 'Szenario-Verwaltung', subtitle: 'Bewertungs-Szenarien erstellen und verwalten' },
   chatbots: { title: 'Chatbot-Verwaltung', subtitle: 'Chatbots mit RAG-Collections erstellen und konfigurieren' },

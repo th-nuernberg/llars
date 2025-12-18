@@ -44,6 +44,7 @@ scikit-learn==1.2.2
 
 # System monitoring for OnCoCo
 psutil==6.1.0
+docker==7.1.0
 
 # Web Crawler
 beautifulsoup4==4.12.3

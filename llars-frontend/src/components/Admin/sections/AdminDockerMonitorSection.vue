@@ -37,22 +37,27 @@
       <div class="left-panel">
         <!-- Stats Summary -->
         <div class="stats-row">
-          <div class="stat-item">
-            <span class="stat-value">{{ summary.total }}</span>
-            <span class="stat-label">Total</span>
-          </div>
-          <div class="stat-item stat-item--success">
-            <span class="stat-value">{{ summary.running }}</span>
-            <span class="stat-label">Running</span>
-          </div>
-          <div class="stat-item stat-item--info">
-            <span class="stat-value">{{ summary.exited }}</span>
-            <span class="stat-label">Exited</span>
-          </div>
-          <div class="stat-item" :class="summary.unhealthy > 0 ? 'stat-item--danger' : 'stat-item--success'">
-            <span class="stat-value">{{ summary.healthy }}/{{ summary.total }}</span>
-            <span class="stat-label">Healthy</span>
-          </div>
+          <template v-if="isLoading('summary')">
+            <v-skeleton-loader v-for="n in 4" :key="'stat-skel-' + n" type="card" height="60" />
+          </template>
+          <template v-else>
+            <div class="stat-item">
+              <span class="stat-value">{{ summary.total }}</span>
+              <span class="stat-label">Total</span>
+            </div>
+            <div class="stat-item stat-item--success">
+              <span class="stat-value">{{ summary.running }}</span>
+              <span class="stat-label">Running</span>
+            </div>
+            <div class="stat-item stat-item--info">
+              <span class="stat-value">{{ summary.exited }}</span>
+              <span class="stat-label">Exited</span>
+            </div>
+            <div class="stat-item" :class="summary.unhealthy > 0 ? 'stat-item--danger' : 'stat-item--success'">
+              <span class="stat-value">{{ summary.healthy }}/{{ summary.total }}</span>
+              <span class="stat-label">Healthy</span>
+            </div>
+          </template>
         </div>
 
         <!-- Live Charts -->
@@ -158,7 +163,8 @@
             <span>Container</span>
             <LTag variant="gray" size="small" class="ml-auto">{{ containers.length }}</LTag>
           </div>
-          <div class="table-wrapper">
+          <v-skeleton-loader v-if="isLoading('table')" type="table-thead, table-tbody" class="table-skeleton" />
+          <div v-else class="table-wrapper">
             <table class="container-table">
               <thead>
                 <tr>
@@ -238,7 +244,7 @@ const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBS
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
 const auth = useAuth()
-const { setLoading } = useSkeletonLoading(['summary', 'table', 'detail'])
+const { isLoading, setLoading } = useSkeletonLoading(['summary', 'table'])
 
 const MAX_POINTS = 60
 const MAX_LOG_LINES = 2000
@@ -352,7 +358,7 @@ const connectSocket = () => {
   if (!token) {
     connectionState.value = 'error'
     errorMessage.value = 'Kein Auth-Token gefunden.'
-    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
+    setLoading('summary', false); setLoading('table', false)
     return
   }
 
@@ -382,18 +388,18 @@ const connectSocket = () => {
   s.on('connect_error', (err) => {
     connectionState.value = 'error'
     errorMessage.value = err?.message || 'Socket Verbindung fehlgeschlagen'
-    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
+    setLoading('summary', false); setLoading('table', false)
   })
 
   s.on('docker:error', (payload) => {
     errorMessage.value = payload?.message || 'Docker Fehler'
-    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
+    setLoading('summary', false); setLoading('table', false)
   })
 
   s.on('docker:stats', (payload) => {
     if (!payload?.ok) {
       errorMessage.value = payload?.error || 'Docker Snapshot fehlgeschlagen'
-      setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
+      setLoading('summary', false); setLoading('table', false)
       return
     }
 
@@ -401,7 +407,7 @@ const connectSocket = () => {
     containers.value = Array.isArray(payload.containers) ? payload.containers : []
     const newSummary = payload.summary || summary.value
     summary.value = newSummary
-    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
+    setLoading('summary', false); setLoading('table', false)
 
     // Update history
     pushHistoryPoint(summaryCpuHistory, newSummary.cpu_total_percent)

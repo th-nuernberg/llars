@@ -216,6 +216,26 @@ configure_docker_socket_access() {
         return 0
     fi
 
+    # Docker Desktop remaps docker.sock ownership into containers as root:root (gid 0),
+    # even if the host path is a user-owned proxy socket. In that case we must add
+    # group 0 to the backend container to enable the Docker Monitor.
+    local docker_os=""
+    docker_os=$(docker info --format '{{.OperatingSystem}}' 2>/dev/null || echo "")
+    if [[ "$docker_os" == *"Docker Desktop"* ]]; then
+        if [ -n "${DOCKER_SOCK_GID:-}" ] && [ "$DOCKER_SOCK_GID" != "0" ]; then
+            echo "Warning: DOCKER_SOCK_GID override ($DOCKER_SOCK_GID) ignored on Docker Desktop; using 0."
+        fi
+        export DOCKER_SOCK_GID="0"
+        echo "Docker Desktop detected → using DOCKER_SOCK_GID=$DOCKER_SOCK_GID for Docker Monitor access."
+        return 0
+    fi
+
+    # Respect explicit overrides (e.g. in .env or exported env vars)
+    if [ -n "${DOCKER_SOCK_GID:-}" ]; then
+        echo "Docker socket group id override detected: DOCKER_SOCK_GID=$DOCKER_SOCK_GID"
+        return 0
+    fi
+
     OS_TYPE=$(uname)
     local sock_uid=""
     local sock_gid=""

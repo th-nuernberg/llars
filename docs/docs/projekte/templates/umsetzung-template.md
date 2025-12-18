@@ -2,9 +2,9 @@
 
 !!! info "🔧 Status: In Umsetzung"
     Dieses Projekt wird aktuell **implementiert**.
-    Siehe [Progress]([projektname]-progress.md) für Details.
+    Siehe [Progress Template](progress-template.md) für Details.
 
-**Konzept:** [[Projektname] Konzept]([projektname]-konzept.md)
+**Konzept:** [Konzept Template](konzept-template.md)
 **Erstellt:** YYYY-MM-DD
 **Autor:** [Name]
 

@@ -1,301 +1,178 @@
 <template>
   <div class="docker-monitor">
-    <!-- Header Section -->
+    <!-- Compact Header -->
     <div class="monitor-header">
-      <div class="header-content">
-        <div class="header-title">
-          <v-icon size="28">mdi-docker</v-icon>
-          <h1>Docker Monitor</h1>
-        </div>
-        <p class="header-subtitle">Container-Überwachung und Logs in Echtzeit</p>
-      </div>
-      <div class="header-actions">
-        <LTag
-          :variant="connectionVariant"
-          :prepend-icon="connectionIcon"
-          size="default"
-        >
+      <div class="header-left">
+        <v-icon size="24">mdi-docker</v-icon>
+        <h2>Docker Monitor</h2>
+        <LTag :variant="connectionVariant" :prepend-icon="connectionIcon" size="small">
           {{ connectionLabel }}
         </LTag>
-        <LBtn
-          prepend-icon="mdi-refresh"
-          variant="secondary"
-          size="small"
-          @click="resubscribeStats"
-        >
+      </div>
+      <div class="header-right">
+        <v-select
+          v-model="scope"
+          :items="scopeOptions"
+          variant="outlined"
+          density="compact"
+          hide-details
+          class="scope-select"
+        />
+        <LBtn prepend-icon="mdi-refresh" variant="tonal" size="small" @click="resubscribeStats">
           Refresh
         </LBtn>
       </div>
     </div>
 
-    <!-- Error Alert -->
+    <!-- Error Banner -->
     <div v-if="errorMessage" class="error-banner">
-      <v-icon size="20">mdi-alert-circle</v-icon>
+      <v-icon size="18">mdi-alert-circle</v-icon>
       <span>{{ errorMessage }}</span>
     </div>
 
+    <!-- Main Grid -->
     <div class="monitor-grid">
-      <!-- Left Column: Summary & Detail -->
+      <!-- Left Column -->
       <div class="left-column">
-        <!-- Summary Card -->
-        <div class="monitor-card">
-          <div class="card-header">
-            <v-icon size="20">mdi-chart-donut</v-icon>
-            <span>Übersicht</span>
+        <!-- Stats Row -->
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-value">{{ summary.total }}</span>
+            <span class="stat-label">Total</span>
           </div>
-
-          <div v-if="isLoading('summary')" class="card-body">
-            <v-skeleton-loader type="paragraph, paragraph" />
+          <div class="stat-item stat-item--success">
+            <span class="stat-value">{{ summary.running }}</span>
+            <span class="stat-label">Running</span>
           </div>
-
-          <div v-else class="card-body">
-            <div class="scope-select">
-              <v-select
-                v-model="scope"
-                :items="scopeOptions"
-                label="Scope"
-                variant="outlined"
-                density="compact"
-                hide-details
-              />
-            </div>
-
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-value">{{ summary.total }}</span>
-                <span class="stat-label">Total</span>
-              </div>
-              <div class="stat-item stat-item--success">
-                <span class="stat-value">{{ summary.running }}</span>
-                <span class="stat-label">Running</span>
-              </div>
-              <div class="stat-item stat-item--info">
-                <span class="stat-value">{{ summary.exited }}</span>
-                <span class="stat-label">Exited</span>
-              </div>
-              <div class="stat-item" :class="summary.unhealthy > 0 ? 'stat-item--danger' : 'stat-item--success'">
-                <span class="stat-value">{{ summary.healthy }}/{{ summary.total }}</span>
-                <span class="stat-label">Healthy</span>
-              </div>
-            </div>
-
-            <div class="resource-section">
-              <div class="resource-header">
-                <span class="resource-label">CPU</span>
-                <span class="resource-value">{{ formatPercent(summary.cpu_total_percent) }}</span>
-              </div>
-              <MiniSparkline :values="summaryCpuHistory" color="primary" />
-            </div>
-
-            <div class="resource-section">
-              <div class="resource-header">
-                <span class="resource-label">RAM</span>
-                <span class="resource-value">{{ formatBytes(summary.mem_total_bytes) }}</span>
-              </div>
-              <MiniSparkline :values="summaryMemHistoryMiB" color="accent" />
-            </div>
+          <div class="stat-item stat-item--info">
+            <span class="stat-value">{{ summary.exited }}</span>
+            <span class="stat-label">Exited</span>
+          </div>
+          <div class="stat-item" :class="summary.unhealthy > 0 ? 'stat-item--danger' : 'stat-item--success'">
+            <span class="stat-value">{{ summary.healthy }}/{{ summary.total }}</span>
+            <span class="stat-label">Healthy</span>
           </div>
         </div>
 
-        <!-- Detail Card -->
-        <div class="monitor-card">
-          <div class="card-header">
-            <v-icon size="20">mdi-chart-line</v-icon>
+        <!-- Resource Charts -->
+        <div class="resource-panel">
+          <div class="resource-item">
+            <div class="resource-header">
+              <span class="resource-label">CPU Gesamt</span>
+              <span class="resource-value">{{ formatPercent(summary.cpu_total_percent) }}</span>
+            </div>
+            <MiniSparkline :values="summaryCpuHistory" color="primary" :height="32" />
+          </div>
+          <div class="resource-item">
+            <div class="resource-header">
+              <span class="resource-label">RAM Gesamt</span>
+              <span class="resource-value">{{ formatBytes(summary.mem_total_bytes) }}</span>
+            </div>
+            <MiniSparkline :values="summaryMemHistoryMiB" color="accent" :height="32" />
+          </div>
+        </div>
+
+        <!-- Selected Container Detail -->
+        <div class="detail-panel">
+          <div class="panel-title">
+            <v-icon size="18">mdi-chart-line</v-icon>
             <span>Container Detail</span>
             <LTag v-if="selectedContainer" variant="primary" size="small" class="ml-auto">
               {{ selectedContainer.name }}
             </LTag>
           </div>
-
-          <div v-if="isLoading('detail')" class="card-body">
-            <v-skeleton-loader type="paragraph, paragraph" />
+          <div v-if="!selectedContainer" class="empty-state-small">
+            <v-icon size="24" class="empty-icon">mdi-cursor-default-click</v-icon>
+            <span>Container auswählen</span>
           </div>
-
-          <div v-else class="card-body">
-            <div v-if="!selectedContainer" class="empty-state">
-              <v-icon size="32" class="empty-icon">mdi-cursor-default-click</v-icon>
-              <p>Wähle einen Container aus der Liste</p>
+          <template v-else>
+            <div class="resource-item">
+              <div class="resource-header">
+                <span class="resource-label">CPU</span>
+                <span class="resource-value">{{ formatPercent(selectedContainer.cpu_percent) }}</span>
+              </div>
+              <MiniSparkline :values="selectedCpuHistory" color="primary" :height="28" />
             </div>
-
-            <template v-else>
-              <div class="resource-section">
-                <div class="resource-header">
-                  <span class="resource-label">CPU</span>
-                  <span class="resource-value">{{ formatPercent(selectedContainer.cpu_percent) }}</span>
-                </div>
-                <MiniSparkline :values="selectedCpuHistory" color="primary" />
-              </div>
-
-              <div class="resource-section">
-                <div class="resource-header">
-                  <span class="resource-label">RAM</span>
-                  <span class="resource-value">
-                    {{ formatBytes(selectedContainer.mem_usage) }}
-                    <span v-if="selectedContainer.mem_limit" class="resource-limit">
-                      / {{ formatBytes(selectedContainer.mem_limit) }}
-                    </span>
+            <div class="resource-item">
+              <div class="resource-header">
+                <span class="resource-label">RAM</span>
+                <span class="resource-value">
+                  {{ formatBytes(selectedContainer.mem_usage) }}
+                  <span v-if="selectedContainer.mem_limit" class="resource-limit">
+                    / {{ formatBytes(selectedContainer.mem_limit) }}
                   </span>
-                </div>
-                <MiniSparkline :values="selectedMemHistoryMiB" color="accent" />
+                </span>
               </div>
-            </template>
-          </div>
+              <MiniSparkline :values="selectedMemHistoryMiB" color="accent" :height="28" />
+            </div>
+          </template>
         </div>
       </div>
 
-      <!-- Right Column: Table & Logs -->
+      <!-- Right Column -->
       <div class="right-column">
         <!-- Container Table -->
-        <div class="monitor-card">
-          <div class="card-header">
-            <v-icon size="20">mdi-view-list</v-icon>
+        <div class="table-panel">
+          <div class="panel-title">
+            <v-icon size="18">mdi-view-list</v-icon>
             <span>Container</span>
-            <LTag variant="gray" size="small" class="ml-auto">
-              {{ containers.length }} Einträge
-            </LTag>
+            <LTag variant="gray" size="small" class="ml-auto">{{ containers.length }}</LTag>
           </div>
-
-          <div class="card-body card-body--table">
-            <v-skeleton-loader v-if="isLoading('table')" type="table" height="320" />
-
+          <div class="table-wrapper">
             <v-data-table
-              v-else
               :headers="tableHeaders"
               :items="containers"
               item-key="id"
-              density="comfortable"
-              :items-per-page="10"
+              density="compact"
+              :items-per-page="-1"
               fixed-header
-              height="320"
               class="docker-table"
               @click:row="(event, { item }) => selectContainer(item)"
               :row-props="rowProps"
             >
               <template v-slot:item.state="{ item }">
-                <LTag :variant="stateVariant(item.state)" size="small">
-                  {{ item.state }}
-                </LTag>
+                <LTag :variant="stateVariant(item.state)" size="small">{{ item.state }}</LTag>
               </template>
-
               <template v-slot:item.health="{ item }">
-                <LTag :variant="healthVariant(item.health)" size="small">
-                  {{ item.health || '—' }}
-                </LTag>
+                <LTag :variant="healthVariant(item.health)" size="small">{{ item.health || '—' }}</LTag>
               </template>
-
               <template v-slot:item.cpu_percent="{ item }">
                 <span class="table-value">{{ formatPercent(item.cpu_percent) }}</span>
               </template>
-
               <template v-slot:item.mem="{ item }">
                 <span class="table-value">{{ formatPercent(item.mem_percent) }}</span>
                 <span class="table-sub">({{ formatBytes(item.mem_usage) }})</span>
               </template>
-
-              <template v-slot:no-data>
-                <div class="empty-state">
-                  <v-icon size="32" class="empty-icon">mdi-docker</v-icon>
-                  <p>Keine Container gefunden</p>
-                </div>
-              </template>
+              <template v-slot:bottom></template>
             </v-data-table>
           </div>
         </div>
 
-        <!-- Logs Card -->
-        <div class="monitor-card">
-          <div class="card-header">
-            <v-icon size="20">mdi-text-box-outline</v-icon>
+        <!-- Logs Panel -->
+        <div class="logs-panel">
+          <div class="panel-title">
+            <v-icon size="18">mdi-text-box-outline</v-icon>
             <span>Logs</span>
-            <div class="header-controls">
-              <LTag v-if="logsPaused" variant="warning" size="small">
-                pausiert
-              </LTag>
-              <LBtn
-                :prepend-icon="logsPaused ? 'mdi-play' : 'mdi-pause'"
-                variant="tonal"
-                size="small"
-                @click="toggleLogsPause"
-              >
+            <div class="panel-controls">
+              <LTag v-if="logsPaused" variant="warning" size="small">pausiert</LTag>
+              <LBtn :prepend-icon="logsPaused ? 'mdi-play' : 'mdi-pause'" variant="tonal" size="small" @click="toggleLogsPause">
                 {{ logsPaused ? 'Live' : 'Pause' }}
               </LBtn>
-              <LBtn
-                prepend-icon="mdi-trash-can-outline"
-                variant="tonal"
-                size="small"
-                @click="clearLogs"
-              >
+              <LBtn prepend-icon="mdi-trash-can-outline" variant="tonal" size="small" @click="clearLogs">
                 Leeren
               </LBtn>
             </div>
           </div>
-
-          <div class="card-body">
-            <div class="log-controls">
-              <div class="control-row">
-                <v-select
-                  v-model="logMode"
-                  :items="logModeOptions"
-                  label="Modus"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  class="control-field"
-                />
-                <v-select
-                  v-model="logScope"
-                  :items="scopeOptions"
-                  label="Scope"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  class="control-field"
-                />
-                <v-select
-                  v-model="logContainerId"
-                  :items="containerOptions"
-                  label="Container"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  :disabled="logMode !== 'container'"
-                  class="control-field"
-                />
-              </div>
-              <div class="control-row">
-                <v-text-field
-                  v-model.number="logTail"
-                  type="number"
-                  label="Tail"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  min="0"
-                  max="5000"
-                  class="control-field control-field--small"
-                />
-                <v-switch
-                  v-model="autoScroll"
-                  color="primary"
-                  hide-details
-                  label="Auto-Scroll"
-                  density="compact"
-                  class="control-switch"
-                />
-                <LBtn
-                  prepend-icon="mdi-connection"
-                  variant="primary"
-                  size="small"
-                  @click="resubscribeLogs"
-                >
-                  Verbinden
-                </LBtn>
-              </div>
-            </div>
-
-            <div ref="logsEl" class="logs-container">
-              <pre class="logs-content">{{ logText }}</pre>
-            </div>
+          <div class="log-controls">
+            <v-select v-model="logMode" :items="logModeOptions" variant="outlined" density="compact" hide-details class="control-field" />
+            <v-select v-model="logScope" :items="scopeOptions" variant="outlined" density="compact" hide-details class="control-field" />
+            <v-select v-model="logContainerId" :items="containerOptions" variant="outlined" density="compact" hide-details :disabled="logMode !== 'container'" class="control-field" />
+            <v-text-field v-model.number="logTail" type="number" label="Tail" variant="outlined" density="compact" hide-details min="0" max="5000" class="control-field control-field--small" />
+            <v-switch v-model="autoScroll" color="primary" hide-details density="compact" class="control-switch" />
+            <LBtn prepend-icon="mdi-connection" variant="primary" size="small" @click="resubscribeLogs">Verbinden</LBtn>
+          </div>
+          <div ref="logsEl" class="logs-container">
+            <pre class="logs-content">{{ logText }}</pre>
           </div>
         </div>
       </div>
@@ -313,7 +190,7 @@ const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBS
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
 const auth = useAuth()
-const { isLoading, setLoading } = useSkeletonLoading(['summary', 'table', 'detail'])
+const { setLoading } = useSkeletonLoading(['summary', 'table', 'detail'])
 
 const MAX_POINTS = 120
 const MAX_LOG_LINES = 2000
@@ -322,40 +199,30 @@ const connectionState = ref('disconnected')
 const errorMessage = ref('')
 
 const scopeOptions = [
-  { title: 'LLARS (Project)', value: 'project' },
-  { title: 'Alle Container', value: 'all' }
+  { title: 'LLARS', value: 'project' },
+  { title: 'Alle', value: 'all' }
 ]
 
 const scope = ref('project')
-
 const containers = ref([])
 const summary = ref({
-  total: 0,
-  running: 0,
-  exited: 0,
-  restarting: 0,
-  paused: 0,
-  healthy: 0,
-  unhealthy: 0,
-  starting: 0,
-  no_healthcheck: 0,
-  cpu_total_percent: 0,
-  mem_total_bytes: 0
+  total: 0, running: 0, exited: 0, restarting: 0, paused: 0,
+  healthy: 0, unhealthy: 0, starting: 0, no_healthcheck: 0,
+  cpu_total_percent: 0, mem_total_bytes: 0
 })
 
 const summaryCpuHistory = ref([])
 const summaryMemHistory = ref([])
-
 const selectedContainerId = ref(null)
 const selectedCpuHistory = ref([])
 const selectedMemHistory = ref([])
 
 const tableHeaders = [
   { title: 'Name', key: 'name', sortable: true },
-  { title: 'State', key: 'state', sortable: true, width: 110 },
-  { title: 'Health', key: 'health', sortable: true, width: 110 },
-  { title: 'CPU', key: 'cpu_percent', sortable: true, width: 100 },
-  { title: 'RAM', key: 'mem', sortable: false, width: 140 }
+  { title: 'State', key: 'state', sortable: true, width: 100 },
+  { title: 'Health', key: 'health', sortable: true, width: 100 },
+  { title: 'CPU', key: 'cpu_percent', sortable: true, width: 90 },
+  { title: 'RAM', key: 'mem', sortable: false, width: 130 }
 ]
 
 const socket = ref(null)
@@ -377,12 +244,10 @@ const connectionVariant = computed(() => {
 const connectionIcon = computed(() => {
   if (connectionState.value === 'connected') return 'mdi-wifi'
   if (connectionState.value === 'connecting') return 'mdi-wifi-sync'
-  if (connectionState.value === 'error') return 'mdi-wifi-off'
   return 'mdi-wifi-off'
 })
 
-const formatPercent = (value) => `${Number(value || 0).toFixed(2)}%`
-
+const formatPercent = (value) => `${Number(value || 0).toFixed(1)}%`
 const formatBytes = (bytes) => {
   const b = Number(bytes || 0)
   if (!Number.isFinite(b) || b <= 0) return '0 B'
@@ -393,7 +258,6 @@ const formatBytes = (bytes) => {
 }
 
 const bytesToMiB = (bytes) => Number(bytes || 0) / 1024 / 1024
-
 const summaryMemHistoryMiB = computed(() => summaryMemHistory.value.map(bytesToMiB))
 const selectedMemHistoryMiB = computed(() => selectedMemHistory.value.map(bytesToMiB))
 
@@ -425,9 +289,7 @@ const rowProps = ({ item }) => {
 
 const pushHistoryPoint = (arrRef, value) => {
   arrRef.value.push(Number(value || 0))
-  if (arrRef.value.length > MAX_POINTS) {
-    arrRef.value.splice(0, arrRef.value.length - MAX_POINTS)
-  }
+  if (arrRef.value.length > MAX_POINTS) arrRef.value.splice(0, arrRef.value.length - MAX_POINTS)
 }
 
 const selectContainer = (item) => {
@@ -452,9 +314,7 @@ const connectSocket = () => {
   if (!token) {
     connectionState.value = 'error'
     errorMessage.value = 'Kein Auth-Token gefunden.'
-    setLoading('summary', false)
-    setLoading('table', false)
-    setLoading('detail', false)
+    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
     return
   }
 
@@ -479,47 +339,30 @@ const connectSocket = () => {
 
   socket.value = s
 
-  s.on('connect', () => {
-    connectionState.value = 'connected'
-    resubscribeStats()
-  })
-
-  s.on('disconnect', () => {
-    connectionState.value = 'disconnected'
-  })
-
+  s.on('connect', () => { connectionState.value = 'connected'; resubscribeStats() })
+  s.on('disconnect', () => { connectionState.value = 'disconnected' })
   s.on('connect_error', (err) => {
     connectionState.value = 'error'
     errorMessage.value = err?.message || 'Socket Verbindung fehlgeschlagen'
-    setLoading('summary', false)
-    setLoading('table', false)
-    setLoading('detail', false)
+    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
   })
 
   s.on('docker:error', (payload) => {
-    const message = payload?.message || 'Docker Fehler'
-    errorMessage.value = message
-    setLoading('summary', false)
-    setLoading('table', false)
-    setLoading('detail', false)
+    errorMessage.value = payload?.message || 'Docker Fehler'
+    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
   })
 
   s.on('docker:stats', (payload) => {
     if (!payload?.ok) {
       errorMessage.value = payload?.error || 'Docker Snapshot fehlgeschlagen'
-      setLoading('summary', false)
-      setLoading('table', false)
-      setLoading('detail', false)
+      setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
       return
     }
 
     errorMessage.value = ''
     containers.value = Array.isArray(payload.containers) ? payload.containers : []
     summary.value = payload.summary || summary.value
-
-    setLoading('summary', false)
-    setLoading('table', false)
-    setLoading('detail', false)
+    setLoading('summary', false); setLoading('table', false); setLoading('detail', false)
 
     pushHistoryPoint(summaryCpuHistory, summary.value.cpu_total_percent)
     pushHistoryPoint(summaryMemHistory, summary.value.mem_total_bytes)
@@ -546,9 +389,7 @@ const disconnectSocket = () => {
     socket.value?.emit('docker:unsubscribe_stats', { scope: 'project' })
     socket.value?.emit('docker:unsubscribe_stats', { scope: 'all' })
     socket.value?.emit('docker:unsubscribe_logs')
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) { /* ignore */ }
   socket.value?.disconnect()
   socket.value = null
 }
@@ -565,104 +406,55 @@ const _logLines = []
 const _pendingLogLines = []
 let logFlushTimer = null
 
-const logModeOptions = [
-  { title: 'System (alle)', value: 'system' },
-  { title: 'Container', value: 'container' }
-]
+const logModeOptions = [{ title: 'System', value: 'system' }, { title: 'Container', value: 'container' }]
 const logMode = ref('system')
 const logScope = ref('project')
 const logContainerId = ref(null)
 const logTail = ref(200)
 
-const containerOptions = computed(() => {
-  return (containers.value || []).map((c) => ({ title: c.name, value: c.id }))
-})
+const containerOptions = computed(() => (containers.value || []).map((c) => ({ title: c.name, value: c.id })))
 
-const clearLogs = () => {
-  _logLines.length = 0
-  _pendingLogLines.length = 0
-  logText.value = ''
-}
-
-const toggleLogsPause = () => {
-  logsPaused.value = !logsPaused.value
-}
+const clearLogs = () => { _logLines.length = 0; _pendingLogLines.length = 0; logText.value = '' }
+const toggleLogsPause = () => { logsPaused.value = !logsPaused.value }
 
 const scrollLogsToBottom = () => {
   if (!autoScroll.value) return
   const el = logsEl.value
   if (!el) return
-  requestAnimationFrame(() => {
-    el.scrollTop = el.scrollHeight
-  })
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight })
 }
 
 const flushLogs = () => {
   if (_pendingLogLines.length === 0) return
-
   _logLines.push(..._pendingLogLines.splice(0, _pendingLogLines.length))
-
-  if (_logLines.length > MAX_LOG_LINES) {
-    _logLines.splice(0, _logLines.length - MAX_LOG_LINES)
-  }
-
+  if (_logLines.length > MAX_LOG_LINES) _logLines.splice(0, _logLines.length - MAX_LOG_LINES)
   logText.value = _logLines.join('\n')
   scrollLogsToBottom()
 }
 
 const scheduleFlushLogs = () => {
   if (logFlushTimer) return
-  logFlushTimer = setTimeout(() => {
-    logFlushTimer = null
-    flushLogs()
-  }, LOG_FLUSH_INTERVAL_MS)
+  logFlushTimer = setTimeout(() => { logFlushTimer = null; flushLogs() }, LOG_FLUSH_INTERVAL_MS)
 }
 
 const resubscribeLogs = () => {
   if (!socket.value) return
   socket.value.emit('docker:unsubscribe_logs')
-
-  const payload = {
-    mode: logMode.value,
-    scope: logScope.value,
-    tail: Math.max(0, Math.min(5000, Number(logTail.value || 0)))
-  }
-
+  const payload = { mode: logMode.value, scope: logScope.value, tail: Math.max(0, Math.min(5000, Number(logTail.value || 0))) }
   if (logMode.value === 'container') {
-    if (!logContainerId.value) {
-      errorMessage.value = 'Bitte Container auswählen'
-      return
-    }
+    if (!logContainerId.value) { errorMessage.value = 'Bitte Container auswählen'; return }
     payload.container_id = logContainerId.value
   }
-
   errorMessage.value = ''
   socket.value.emit('docker:subscribe_logs', payload)
 }
 
-watch(scope, (newScope) => {
-  if (logScope.value === 'project' || logScope.value === 'all') {
-    logScope.value = newScope
-  }
-  resubscribeStats()
-})
-
-watch(logMode, () => {
-  if (logMode.value !== 'container') logContainerId.value = null
-})
+watch(scope, (newScope) => { if (logScope.value === 'project' || logScope.value === 'all') logScope.value = newScope; resubscribeStats() })
+watch(logMode, () => { if (logMode.value !== 'container') logContainerId.value = null })
 
 onMounted(() => {
   connectSocket()
-
-  watch(
-    containerOptions,
-    (opts) => {
-      if (logMode.value === 'container' && !logContainerId.value && opts.length > 0) {
-        logContainerId.value = opts[0].value
-      }
-    },
-    { immediate: true }
-  )
+  watch(containerOptions, (opts) => { if (logMode.value === 'container' && !logContainerId.value && opts.length > 0) logContainerId.value = opts[0].value }, { immediate: true })
 
   const attachLogHandlers = () => {
     if (!socket.value) return
@@ -672,83 +464,32 @@ onMounted(() => {
       const cname = payload?.container_name ? `[${payload.container_name}] ` : ''
       const line = String(payload?.line || '')
       _pendingLogLines.push(`${cname}${line}`)
-      if (_pendingLogLines.length > MAX_PENDING_LOG_LINES) {
-        _pendingLogLines.splice(0, _pendingLogLines.length - MAX_PENDING_LOG_LINES)
-      }
+      if (_pendingLogLines.length > MAX_PENDING_LOG_LINES) _pendingLogLines.splice(0, _pendingLogLines.length - MAX_PENDING_LOG_LINES)
       scheduleFlushLogs()
     })
   }
-
   const stop = watch(socket, () => attachLogHandlers(), { immediate: true })
-
-  onBeforeUnmount(() => {
-    stop()
-  })
+  onBeforeUnmount(() => { stop() })
 })
 
-onBeforeUnmount(() => {
-  if (logFlushTimer) {
-    clearTimeout(logFlushTimer)
-    logFlushTimer = null
-  }
-  disconnectSocket()
-})
+onBeforeUnmount(() => { if (logFlushTimer) { clearTimeout(logFlushTimer); logFlushTimer = null }; disconnectSocket() })
 
 const MiniSparkline = defineComponent({
   name: 'MiniSparkline',
-  props: {
-    values: { type: Array, default: () => [] },
-    color: { type: String, default: 'primary' },
-    height: { type: Number, default: 36 }
-  },
+  props: { values: { type: Array, default: () => [] }, color: { type: String, default: 'primary' }, height: { type: Number, default: 32 } },
   setup(props) {
     const points = computed(() => {
       const vals = (props.values || []).map((v) => Number(v || 0))
       if (vals.length < 2) return ''
-
-      const w = 200
-      const h = Number(props.height || 36)
-      const min = Math.min(...vals)
-      const max = Math.max(...vals)
-      const span = max - min || 1
-
-      return vals
-        .map((v, idx) => {
-          const x = (idx / (vals.length - 1)) * w
-          const y = h - ((v - min) / span) * h
-          return `${x.toFixed(1)},${y.toFixed(1)}`
-        })
-        .join(' ')
+      const w = 180, h = Number(props.height || 32)
+      const min = Math.min(...vals), max = Math.max(...vals), span = max - min || 1
+      return vals.map((v, idx) => { const x = (idx / (vals.length - 1)) * w; const y = h - ((v - min) / span) * h; return `${x.toFixed(1)},${y.toFixed(1)}` }).join(' ')
     })
-
     return () => {
-      const w = 200
-      const hVal = Number(props.height || 36)
-      return h(
-        'svg',
-        {
-          height: hVal,
-          viewBox: `0 0 ${w} ${hVal}`,
-          class: 'sparkline',
-          preserveAspectRatio: 'none'
-        },
-        points.value
-          ? [
-              h('polyline', {
-                points: points.value,
-                class: ['sparkline__line', `sparkline__line--${props.color}`]
-              })
-            ]
-          : [
-              h('line', {
-                x1: 0,
-                y1: hVal / 2,
-                x2: w,
-                y2: hVal / 2,
-                class: 'sparkline__empty'
-              })
-            ]
-      )
+      const w = 180, hVal = Number(props.height || 32)
+      return h('svg', { height: hVal, viewBox: `0 0 ${w} ${hVal}`, class: 'sparkline', preserveAspectRatio: 'none' },
+        points.value ? [h('polyline', { points: points.value, class: ['sparkline__line', `sparkline__line--${props.color}`] })]
+          : [h('line', { x1: 0, y1: hVal / 2, x2: w, y2: hVal / 2, class: 'sparkline__empty' })])
     }
   }
 })
@@ -756,195 +497,158 @@ const MiniSparkline = defineComponent({
 
 <style scoped>
 .docker-monitor {
-  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px;
+  gap: 12px;
 }
 
-/* Header Section */
+/* Header */
 .monitor-header {
-  background: var(--llars-gradient-primary);
-  padding: 24px;
-  border-radius: 16px 4px 16px 4px;
-  margin-bottom: 20px;
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--llars-gradient-primary);
+  border-radius: 12px 4px 12px 4px;
   gap: 16px;
 }
 
-.header-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.header-title {
+.header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   color: white;
 }
 
-.header-title h1 {
+.header-left h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 600;
 }
 
-.header-subtitle {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.9rem;
-}
-
-.header-actions {
+.header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+.scope-select {
+  width: 100px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 6px;
+}
+
+.scope-select :deep(.v-field__outline) {
+  border-color: rgba(255,255,255,0.3);
+}
+
+.scope-select :deep(.v-field__input),
+.scope-select :deep(.v-select__selection-text) {
+  color: white;
+  font-size: 0.85rem;
 }
 
 /* Error Banner */
 .error-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: rgba(232, 160, 135, 0.15);
-  border-left: 3px solid var(--llars-danger);
-  border-radius: 8px 2px 8px 2px;
-  margin-bottom: 20px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-/* Grid Layout */
-.monitor-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 20px;
-}
-
-@media (max-width: 1024px) {
-  .monitor-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.left-column,
-.right-column {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Card Styles */
-.monitor-card {
-  background: rgb(var(--v-theme-surface));
-  border-radius: 16px 4px 16px 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.header-controls {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
+  padding: 8px 12px;
+  background: rgba(232, 160, 135, 0.15);
+  border-left: 3px solid var(--llars-danger);
+  border-radius: 6px 2px 6px 2px;
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-on-surface));
 }
 
-.card-body {
-  padding: 18px;
-}
-
-.card-body--table {
-  padding: 0;
-}
-
-/* Scope Select */
-.scope-select {
-  margin-bottom: 16px;
-}
-
-/* Stats Grid */
-.stats-grid {
+/* Main Grid */
+.monitor-grid {
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 280px 1fr;
   gap: 12px;
-  margin-bottom: 20px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Left Column */
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* Stats Row */
+.stats-row {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
 .stat-item {
-  padding: 12px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  padding: 10px 8px;
+  background: rgb(var(--v-theme-surface));
   border-radius: 8px 2px 8px 2px;
   text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-.stat-item--success {
-  background: rgba(152, 212, 187, 0.15);
-}
-
-.stat-item--info {
-  background: rgba(168, 197, 226, 0.15);
-}
-
-.stat-item--warning {
-  background: rgba(232, 200, 122, 0.15);
-}
-
-.stat-item--danger {
-  background: rgba(232, 160, 135, 0.15);
-}
+.stat-item--success { background: rgba(152, 212, 187, 0.2); }
+.stat-item--info { background: rgba(168, 197, 226, 0.2); }
+.stat-item--danger { background: rgba(232, 160, 135, 0.2); }
 
 .stat-value {
   display: block;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: rgb(var(--v-theme-on-surface));
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
-/* Resource Section */
-.resource-section {
-  margin-bottom: 16px;
+/* Resource Panel */
+.resource-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 10px 3px 10px 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-.resource-section:last-child {
-  margin-bottom: 0;
+.resource-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .resource-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
 }
 
 .resource-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
-  font-weight: 500;
 }
 
 .resource-value {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -954,191 +658,168 @@ const MiniSparkline = defineComponent({
   color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
-/* Empty State */
-.empty-state {
+/* Detail Panel */
+.detail-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 10px 3px 10px 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+
+.panel-title {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.panel-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.empty-state-small {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  text-align: center;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  gap: 4px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-size: 0.8rem;
 }
 
-.empty-icon {
-  margin-bottom: 8px;
-  opacity: 0.4;
+.empty-icon { opacity: 0.4; }
+
+/* Right Column */
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
 }
 
-.empty-state p {
-  margin: 0;
-  font-size: 0.9rem;
+/* Table Panel */
+.table-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 10px 3px 10px 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  overflow: hidden;
 }
 
-/* Table Styles */
-.docker-table {
-  background: transparent;
+.table-panel .panel-title {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
+.table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.docker-table { background: transparent; }
 .docker-table :deep(thead th) {
   background: rgba(var(--v-theme-on-surface), 0.03) !important;
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
+.docker-table :deep(tbody tr) { cursor: pointer; transition: background-color 0.15s ease; }
+.docker-table :deep(tbody tr:hover) { background: rgba(var(--v-theme-on-surface), 0.04); }
+.docker-table :deep(tbody tr.selected-row) { background: rgba(176, 202, 151, 0.15); }
 
-.docker-table :deep(tbody tr) {
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
+.table-value { font-weight: 600; font-size: 0.85rem; }
+.table-sub { font-size: 0.75rem; color: rgba(var(--v-theme-on-surface), 0.5); margin-left: 2px; }
 
-.docker-table :deep(tbody tr:hover) {
-  background: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.docker-table :deep(tbody tr.selected-row) {
-  background: rgba(176, 202, 151, 0.12);
-}
-
-.table-value {
-  font-weight: 600;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.table-sub {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  margin-left: 4px;
-}
-
-/* Log Controls */
-.log-controls {
-  margin-bottom: 16px;
-}
-
-.control-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.control-row:last-child {
-  margin-bottom: 0;
-}
-
-.control-field {
+/* Logs Panel */
+.logs-panel {
   flex: 1;
-  min-width: 140px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 10px 3px 10px 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  overflow: hidden;
 }
 
-.control-field--small {
-  max-width: 100px;
-  flex: 0 0 auto;
+.logs-panel .panel-title {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.control-switch {
-  flex: 0 0 auto;
+.log-controls {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
-/* Logs Container */
+.control-field { flex: 1; min-width: 90px; max-width: 140px; }
+.control-field--small { max-width: 70px; min-width: 70px; }
+.control-switch { flex: 0 0 auto; }
+
 .logs-container {
-  height: 280px;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   background: rgba(30, 30, 30, 0.95);
-  border-radius: 8px 2px 8px 2px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  margin: 8px;
+  border-radius: 6px 2px 6px 2px;
 }
 
 .logs-content {
   margin: 0;
-  padding: 14px;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
+  padding: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
   color: #e0e0e0;
   white-space: pre;
 }
 
 /* Sparkline */
-.sparkline {
-  width: 100%;
-  display: block;
-}
+.sparkline { width: 100%; display: block; }
+.sparkline__line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sparkline__line--primary { stroke: var(--llars-primary); }
+.sparkline__line--accent { stroke: var(--llars-accent); }
+.sparkline__empty { stroke: rgba(var(--v-theme-on-surface), 0.15); stroke-width: 1; stroke-dasharray: 4 4; }
 
-.sparkline__line {
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.sparkline__line--primary {
-  stroke: var(--llars-primary);
-}
-
-.sparkline__line--accent {
-  stroke: var(--llars-accent);
-}
-
-.sparkline__line--secondary {
-  stroke: var(--llars-secondary);
-}
-
-.sparkline__empty {
-  stroke: rgba(var(--v-theme-on-surface), 0.15);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
-}
-
-/* Scrollbar Styles */
-.logs-container::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.logs-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.logs-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-.logs-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
+/* Scrollbars */
+.table-wrapper::-webkit-scrollbar,
+.logs-container::-webkit-scrollbar { width: 6px; height: 6px; }
+.table-wrapper::-webkit-scrollbar-track { background: transparent; }
+.table-wrapper::-webkit-scrollbar-thumb { background: rgba(var(--v-theme-on-surface), 0.15); border-radius: 3px; }
+.logs-container::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+.logs-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .monitor-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .control-row {
-    flex-direction: column;
-  }
-
-  .control-field {
-    width: 100%;
-    min-width: unset;
-  }
-
-  .control-field--small {
-    max-width: unset;
-  }
+@media (max-width: 900px) {
+  .monitor-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .left-column { max-height: 300px; }
 }
 </style>

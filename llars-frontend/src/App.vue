@@ -15,7 +15,7 @@
       <v-spacer></v-spacer>
 
       <!-- User Menu (only when logged in) -->
-      <v-menu v-if="username" offset-y :close-on-content-click="true">
+      <v-menu v-if="isAuthenticated" offset-y :close-on-content-click="true">
         <template v-slot:activator="{ props }">
           <div v-bind="props" class="user-menu-trigger">
             <LAvatar
@@ -30,7 +30,7 @@
                 size="sm"
                 :prepend-icon="isAdminUser ? 'mdi-shield-account' : ''"
               >
-                {{ isAdminUser ? 'Admin' : '' }} {{ username }}
+                {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
               </LTag>
             </div>
             <v-icon size="small" class="ml-1">mdi-chevron-down</v-icon>
@@ -59,7 +59,7 @@
     </v-main>
 
     <!-- Chatbot wird nur angezeigt, wenn Benutzer eingeloggt ist und ENABLE_CHAT true ist -->
-    <FloatingChat v-if="username && ENABLE_CHAT" />
+    <FloatingChat v-if="isAuthenticated && ENABLE_CHAT" />
 
     <!-- User Settings Dialog -->
     <UserSettingsDialog v-model="settingsDialogOpen" />
@@ -88,11 +88,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { isAdmin } from '@/services/admins';
 import { useAuth } from '@/composables/useAuth';
 import { useAppTheme } from '@/composables/useAppTheme';
+import { usePermissions } from '@/composables/usePermissions';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 
@@ -101,10 +101,24 @@ const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktiv
 
 const router = useRouter();
 const auth = useAuth();
+const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
 
-const username = ref('');
-const isAdminUser = ref(false);
+const isAuthenticated = computed(() => auth.isAuthenticated.value);
+const username = computed(() => {
+  const fromToken =
+    auth.tokenParsed.value?.preferred_username ||
+    auth.tokenParsed.value?.username ||
+    auth.tokenParsed.value?.name ||
+    '';
+  if (fromToken) return fromToken;
+  try {
+    return localStorage.getItem('username') || '';
+  } catch {
+    return '';
+  }
+});
+const isAdminUser = computed(() => auth.isAdmin.value);
 const links = ref(['Dokumentation', 'Impressum', 'Datenschutz', 'Kontakt']);
 const settingsDialogOpen = ref(false);
 
@@ -137,26 +151,10 @@ const cleanupOldChatMessages = () => {
   }
 };
 
-function updateUsername() {
-  let user = '';
-  try {
-    user = localStorage.getItem('username') || '';
-  } catch (e) {
-    user = '';
-  }
-  username.value = user;
-  isAdminUser.value = isAdmin(user); // Prüfen, ob der Benutzer ein Admin ist
-}
-
 onMounted(() => {
-  updateUsername();
   cleanupOldChatMessages();
   applyTheme(); // Apply theme on app mount
 });
-
-watch(() => router.currentRoute.value, () => {
-  updateUsername();
-}, {immediate: true});
 
 function logout() {
   // Prüfen, ob es unsichere Änderungen gibt
@@ -173,6 +171,7 @@ function logout() {
 
   // Logout via useAuth (löscht sessionStorage: auth_token, auth_refreshToken, auth_idToken)
   auth.logout();
+  permissions.clearPermissions();
 
   // Alte localStorage-Items löschen (für Kompatibilität mit altem System)
   try {
@@ -198,7 +197,6 @@ function logout() {
     // ignore (e.g., Safari private mode / blocked storage)
   }
 
-  username.value = '';
   router.push('/login');
 }
 

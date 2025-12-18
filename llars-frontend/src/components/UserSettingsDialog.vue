@@ -201,9 +201,9 @@ const auth = useAuth()
 // User profile data
 const username = computed(() => {
   try {
-    return localStorage.getItem('username') || auth.tokenParsed.value?.preferred_username || ''
+    return auth.tokenParsed.value?.preferred_username || localStorage.getItem('username') || ''
   } catch {
-    return ''
+    return auth.tokenParsed.value?.preferred_username || ''
   }
 })
 

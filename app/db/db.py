@@ -1,9 +1,14 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-import os
-from sqlalchemy import text
+from __future__ import annotations
 
-from . import db
+import os
+
+from flask_migrate import Migrate
+
+from . import db as db_instance
+
+# Keep the public name `db` for backwards compatibility (many modules import `from db.db import db`)
+db = db_instance
+
 migrate = Migrate()  # Initialisiere Flask-Migrate
 
 
@@ -27,17 +32,17 @@ def configure_database(app):
     app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{db_user}:{db_user_password}@db-maria-service:3306/{db_database_name}'
 
     # Initialisiere SQLAlchemy mit der App
-    db.init_app(app)
+    db_instance.init_app(app)
 
     # Flask-Migrate initialisieren
-    migrate.init_app(app, db)
+    migrate.init_app(app, db_instance)
 
     with app.app_context():
-        db.create_all()
+        db_instance.create_all()
 
         # Run all database seeders
         from .seeders import run_all_seeders
-        run_all_seeders(db)
+        run_all_seeders(db_instance)
 
         try:
             from services.system_event_service import SystemEventService

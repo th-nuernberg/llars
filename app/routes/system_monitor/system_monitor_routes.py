@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from flask import Response, jsonify, request, stream_with_context
 
-from db import db
+from db.db import db
 from db.models.system_event import SystemEvent
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
@@ -116,4 +116,3 @@ def stream_system_events():
         "X-Accel-Buffering": "no",
     }
     return Response(generate(), headers=headers)
-

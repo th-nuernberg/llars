@@ -133,7 +133,10 @@ class DockerMonitorService:
 
                 if state == "running":
                     try:
-                        stats = api.stats(container=container_id_full, stream=False)
+                        # Docker Desktop can be extremely slow with the default stats endpoint
+                        # (multiple seconds per container). `one_shot=True` returns immediately
+                        # while still including cpu/memory/precpu data needed for percentage calc.
+                        stats = api.stats(container=container_id_full, stream=False, one_shot=True)
                         cpu_percent = cls._cpu_percent(stats)
                         mem_usage, mem_limit, mem_percent = cls._memory(stats)
                     except Exception:

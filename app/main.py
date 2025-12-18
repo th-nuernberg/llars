@@ -43,8 +43,10 @@ socketio = SocketIO(
     async_mode='threading',  # Use threading for compatibility with flask run
     ping_timeout=120,  # 2 minutes - allow for long LLM responses
     ping_interval=30,  # Send ping every 30 seconds
-    logger=flask_env == 'development',  # Enable logging in development
-    engineio_logger=False
+    # Keep Socket.IO/Engine.IO debug logs opt-in: enabling them can flood container logs and
+    # can create feedback loops in the Docker Monitor when streaming backend logs.
+    logger=str(os.environ.get('SOCKETIO_LOGGER', 'false')).lower() == 'true',
+    engineio_logger=str(os.environ.get('ENGINEIO_LOGGER', 'false')).lower() == 'true'
 )
 
 # Rate Limiting - Schützt vor Brute-Force und DoS

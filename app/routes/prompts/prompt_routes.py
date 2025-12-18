@@ -443,24 +443,10 @@ def delete_prompt(prompt_id):
 # User Search Endpoints (for prompt sharing)
 # ============================================================
 
-@data_blueprint.route('/users/check/<username>', methods=['GET'])
-@authentik_required
-@handle_api_errors(logger_name='prompts')
-def check_user_exists(username):
-    """
-    Route zum Überprüfen, ob ein Benutzer existiert.
-    Wird für das Teilen von Prompts verwendet.
-    """
-    user = User.query.filter_by(username=username).first()
-    if user:
-        return jsonify({'success': True, 'exists': True, 'username': user.username}), 200
-    raise NotFoundError(f'User "{username}" not found')
-
-
 @data_blueprint.route('/users/search', methods=['GET'])
 @authentik_required
 @handle_api_errors(logger_name='prompts')
-def search_users():
+def search_users_for_sharing():
     """
     Route zum Suchen von Benutzern für Autocomplete.
     Query-Parameter: q (Suchbegriff), limit (max. Ergebnisse, default 10)

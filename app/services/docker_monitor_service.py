@@ -65,42 +65,82 @@ class DockerMonitorService:
 
     @staticmethod
     def _cpu_percent(stats: Dict[str, Any]) -> float:
-        try:
-            cpu_total = stats["cpu_stats"]["cpu_usage"]["total_usage"]
-            pre_cpu_total = stats.get("precpu_stats", {}).get("cpu_usage", {}).get("total_usage", 0)
-            cpu_delta = cpu_total - pre_cpu_total
+        """
+        Calculate CPU percentage from Docker stats.
 
-            system_total = stats["cpu_stats"]["system_cpu_usage"]
-            pre_system_total = stats.get("precpu_stats", {}).get("system_cpu_usage", 0)
+        Formula: (cpu_delta / system_delta) * num_cpus * 100
+
+        Note: one_shot=True can return empty precpu_stats, so we need
+        stream=False without one_shot to get proper delta values.
+        """
+        try:
+            cpu_stats = stats.get("cpu_stats", {})
+            precpu_stats = stats.get("precpu_stats", {})
+
+            # Current CPU usage
+            cpu_usage = cpu_stats.get("cpu_usage", {})
+            cpu_total = cpu_usage.get("total_usage", 0)
+
+            # Previous CPU usage
+            precpu_usage = precpu_stats.get("cpu_usage", {})
+            pre_cpu_total = precpu_usage.get("total_usage", 0)
+
+            # System CPU usage
+            system_total = cpu_stats.get("system_cpu_usage", 0)
+            pre_system_total = precpu_stats.get("system_cpu_usage", 0)
+
+            # Calculate deltas
+            cpu_delta = cpu_total - pre_cpu_total
             system_delta = system_total - pre_system_total
 
-            online_cpus = stats["cpu_stats"].get("online_cpus")
+            # Get number of CPUs
+            online_cpus = cpu_stats.get("online_cpus")
             if not online_cpus:
-                percpu = stats["cpu_stats"]["cpu_usage"].get("percpu_usage") or []
+                percpu = cpu_usage.get("percpu_usage") or []
                 online_cpus = max(1, len(percpu))
 
+            # Calculate percentage
             if system_delta > 0 and cpu_delta > 0:
-                return float(cpu_delta) / float(system_delta) * float(online_cpus) * 100.0
+                return (float(cpu_delta) / float(system_delta)) * float(online_cpus) * 100.0
+
+            return 0.0
         except Exception:
             return 0.0
-        return 0.0
 
     @staticmethod
     def _memory(stats: Dict[str, Any]) -> Tuple[int, int, float]:
         try:
-            mem_usage = int(stats.get("memory_stats", {}).get("usage") or 0)
-            mem_limit = int(stats.get("memory_stats", {}).get("limit") or 0)
+            mem_stats = stats.get("memory_stats", {})
+            mem_usage = int(mem_stats.get("usage") or 0)
+            # Subtract cache if available for more accurate "active" memory
+            cache = int(mem_stats.get("stats", {}).get("cache") or 0)
+            mem_usage_active = max(0, mem_usage - cache)
+            mem_limit = int(mem_stats.get("limit") or 0)
             mem_percent = 0.0
             if mem_limit > 0:
-                mem_percent = float(mem_usage) / float(mem_limit) * 100.0
-            return mem_usage, mem_limit, mem_percent
+                mem_percent = float(mem_usage_active) / float(mem_limit) * 100.0
+            return mem_usage_active, mem_limit, mem_percent
         except Exception:
             return 0, 0, 0.0
+
+    @staticmethod
+    def _network(stats: Dict[str, Any]) -> Dict[str, int]:
+        """Extract network I/O stats (aggregated across all interfaces)."""
+        try:
+            networks = stats.get("networks", {})
+            rx_bytes = 0
+            tx_bytes = 0
+            for iface_stats in networks.values():
+                rx_bytes += int(iface_stats.get("rx_bytes") or 0)
+                tx_bytes += int(iface_stats.get("tx_bytes") or 0)
+            return {"rx_bytes": rx_bytes, "tx_bytes": tx_bytes}
+        except Exception:
+            return {"rx_bytes": 0, "tx_bytes": 0}
 
     @classmethod
     def get_snapshot(cls, scope: str = "project") -> Dict[str, Any]:
         """
-        Return a snapshot of container state + computed CPU/memory stats.
+        Return a snapshot of container state + computed CPU/memory/network stats.
 
         Shape:
             {
@@ -130,20 +170,21 @@ class DockerMonitorService:
                 mem_usage = 0
                 mem_limit = 0
                 mem_percent = 0.0
+                net_rx = 0
+                net_tx = 0
 
                 if state == "running":
                     try:
-                        # Docker Desktop can be extremely slow with the default stats endpoint
-                        # (multiple seconds per container). `one_shot=True` returns immediately
-                        # while still including cpu/memory/precpu data needed for percentage calc.
-                        stats = api.stats(container=container_id_full, stream=False, one_shot=True)
+                        # Use stream=False to get a single stats snapshot with precpu_stats
+                        # Note: one_shot=True doesn't provide proper precpu_stats for CPU calculation
+                        stats = api.stats(container=container_id_full, stream=False)
                         cpu_percent = cls._cpu_percent(stats)
                         mem_usage, mem_limit, mem_percent = cls._memory(stats)
+                        net_stats = cls._network(stats)
+                        net_rx = net_stats["rx_bytes"]
+                        net_tx = net_stats["tx_bytes"]
                     except Exception:
-                        cpu_percent = 0.0
-                        mem_usage = 0
-                        mem_limit = 0
-                        mem_percent = 0.0
+                        pass
 
                 containers.append(
                     {
@@ -158,6 +199,8 @@ class DockerMonitorService:
                         "mem_usage": int(mem_usage),
                         "mem_limit": int(mem_limit),
                         "mem_percent": round(float(mem_percent), 2),
+                        "net_rx": int(net_rx),
+                        "net_tx": int(net_tx),
                     }
                 )
 
@@ -175,6 +218,8 @@ class DockerMonitorService:
 
             cpu_total = round(sum(float(c["cpu_percent"]) for c in containers), 2)
             mem_total = int(sum(int(c["mem_usage"]) for c in containers))
+            net_rx_total = int(sum(int(c["net_rx"]) for c in containers))
+            net_tx_total = int(sum(int(c["net_tx"]) for c in containers))
 
             return {
                 "ok": True,
@@ -192,6 +237,8 @@ class DockerMonitorService:
                     "no_healthcheck": no_healthcheck,
                     "cpu_total_percent": cpu_total,
                     "mem_total_bytes": mem_total,
+                    "net_rx_bytes": net_rx_total,
+                    "net_tx_bytes": net_tx_total,
                 },
                 "error": None,
             }
@@ -212,6 +259,8 @@ class DockerMonitorService:
                     "no_healthcheck": 0,
                     "cpu_total_percent": 0.0,
                     "mem_total_bytes": 0,
+                    "net_rx_bytes": 0,
+                    "net_tx_bytes": 0,
                 },
                 "error": str(exc),
             }

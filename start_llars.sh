@@ -31,6 +31,9 @@ echo "Base directory: $BASE_DIR"
 
 ENV_FILE="$BASE_DIR/.env"
 
+# Allow one-shot overrides via environment variables, even when .env defines defaults.
+REMOVE_VOLUMES_OVERRIDE="${REMOVE_VOLUMES:-}"
+
 if [ ! -f "$ENV_FILE" ]; then
     echo ""
     echo "ERROR: .env file not found!"
@@ -51,6 +54,12 @@ echo "Loading environment from: $ENV_FILE"
 set -a  # Export all variables
 source "$ENV_FILE"
 set +a
+
+# Re-apply environment override after sourcing .env (prevents accidental permanent REMOVE_VOLUMES=True in .env)
+if [ -n "$REMOVE_VOLUMES_OVERRIDE" ]; then
+    REMOVE_VOLUMES="$REMOVE_VOLUMES_OVERRIDE"
+    export REMOVE_VOLUMES
+fi
 
 # ============================================
 # Step 2: Override PROJECT_STATE if argument given
@@ -254,6 +263,17 @@ if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
         echo "All LLARS volumes removed."
     else
         echo "No additional LLARS volumes found."
+    fi
+
+    # Safety: reset REMOVE_VOLUMES in .env so the next run doesn't wipe data again.
+    # Recommended usage is one-shot: `REMOVE_VOLUMES=True ./start_llars.sh`
+    if [ -z "$REMOVE_VOLUMES_OVERRIDE" ] && [ -w "$ENV_FILE" ]; then
+        if grep -qE '^REMOVE_VOLUMES=' "$ENV_FILE"; then
+            perl -pi -e 's/^REMOVE_VOLUMES=.*/REMOVE_VOLUMES=False/' "$ENV_FILE" 2>/dev/null || true
+        else
+            echo "REMOVE_VOLUMES=False" >> "$ENV_FILE" 2>/dev/null || true
+        fi
+        echo "Safety: RESET REMOVE_VOLUMES=False in .env"
     fi
 
     echo "============================================"

@@ -43,6 +43,10 @@ services:
       - rag_docs:/app/rag_docs
       # Offline Anonymize Ressourcen (großes NER-Modell wird von Host gemountet)
       - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
+      # OnCoCo model (large, mounted to keep image slim)
+      - ./app/models/oncoco:/app/models/oncoco:ro
+      # Docker monitor (admin): needs access to Docker Engine
+      - /var/run/docker.sock:/var/run/docker.sock
     # No expose of port to host (only internal)
     ports: []
     restart: unless-stopped

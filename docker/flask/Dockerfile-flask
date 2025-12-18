@@ -45,14 +45,16 @@ RUN mkdir -p /app/models
 COPY app/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Create non-root user BEFORE installing Playwright
-RUN groupadd -r flaskuser && useradd -r -g flaskuser -u 1001 -m flaskuser
+# Playwright browser install location (shared, not user-home dependent)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Installiert Playwright Chromium Browser als flaskuser
-# Das stellt sicher, dass der Browser im Home-Verzeichnis des Users installiert wird
-USER flaskuser
-RUN playwright install chromium
-USER root
+# Create non-root user BEFORE installing Playwright
+RUN groupadd -r flaskuser && useradd -r -g flaskuser -u 1001 -m flaskuser && \
+    mkdir -p /ms-playwright
+
+# Installiert Playwright Chromium Browser (cached at /ms-playwright)
+RUN playwright install chromium && \
+    chown -R flaskuser:flaskuser /ms-playwright
 
 # Kopiert den Rest des Codes
 COPY app /app/

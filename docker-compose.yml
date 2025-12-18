@@ -15,6 +15,12 @@ services:
         condition: service_started
     environment:
       - TZ=Europe/Berlin
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
   matomo-service:
     container_name: llars_matomo_service
@@ -36,6 +42,12 @@ services:
         condition: service_completed_successfully
       matomo-db-service:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r '$$fp=@fsockopen(\"127.0.0.1\",80,$$errno,$$errstr,2); if(!$$fp) exit(1); fclose($$fp);'"]
+      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   matomo-archiver:
     container_name: llars_matomo_archiver
@@ -131,6 +143,10 @@ services:
       - rag_storage:/app/storage
       - rag_docs:/app/rag_docs
       # OnCoCo model is now included in app/models/oncoco (part of ./app mount)
+      # Docker monitor (admin): needs access to Docker Engine
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "${DOCKER_SOCK_GID:-0}"
     env_file:
       - .env
     environment:
@@ -205,6 +221,12 @@ services:
     depends_on:
       - backend-flask-service
       - db-maria-service
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import pathlib,sys; found=False\nfor p in pathlib.Path('/proc').iterdir():\n    if not p.name.isdigit():\n        continue\n    try:\n        if b'supervisor.py' in (p/'cmdline').read_bytes():\n            found=True\n            break\n    except Exception:\n        pass\nsys.exit(0 if found else 1)\""]
+      start_period: 10s
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   db-maria-service:
     container_name: llars_db_service
@@ -281,6 +303,12 @@ services:
     depends_on:
       - db-maria-service
       - authentik-server
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('net').connect(8082,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\""]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   mkdocs-service:
     container_name: llars_mkdocs_service

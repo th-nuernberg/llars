@@ -57,6 +57,13 @@ set +a
 # ============================================
 
 PROJECT_STATE_ARG="${1:-}"
+DETACH_MODE="${LLARS_DETACH:-false}"
+
+for arg in "$@"; do
+    if [ "$arg" = "--detach" ] || [ "$arg" = "--detached" ]; then
+        DETACH_MODE=true
+    fi
+done
 
 if [ "$PROJECT_STATE_ARG" = "prod" ] || [ "$PROJECT_STATE_ARG" = "production" ]; then
     PROJECT_STATE="production"
@@ -136,6 +143,67 @@ check_and_start_docker() {
 }
 
 check_and_start_docker
+
+# ============================================
+# Step 3b: Docker Socket Access (Admin Docker Monitor)
+# ============================================
+#
+# The Admin Docker Monitor reads container stats + logs via /var/run/docker.sock.
+# On Docker Desktop (macOS), the socket is usually owned by the host user and may
+# not be group-writable. We try to make it group-writable (when allowed) and
+# export DOCKER_SOCK_GID so docker-compose can add the matching group.
+#
+
+configure_docker_socket_access() {
+    DOCKER_SOCK="/var/run/docker.sock"
+
+    if [ ! -S "$DOCKER_SOCK" ]; then
+        echo "Docker socket not found at $DOCKER_SOCK (Docker Monitor disabled)."
+        return 0
+    fi
+
+    OS_TYPE=$(uname)
+    local sock_uid=""
+    local sock_gid=""
+    local sock_mode=""
+
+    if [ "$OS_TYPE" = "Darwin" ]; then
+        sock_uid=$(stat -L -f '%u' "$DOCKER_SOCK" 2>/dev/null || echo "")
+        sock_gid=$(stat -L -f '%g' "$DOCKER_SOCK" 2>/dev/null || echo "")
+        sock_mode=$(stat -L -f '%OLp' "$DOCKER_SOCK" 2>/dev/null || echo "")
+    else
+        sock_uid=$(stat -c '%u' "$DOCKER_SOCK" 2>/dev/null || echo "")
+        sock_gid=$(stat -c '%g' "$DOCKER_SOCK" 2>/dev/null || echo "")
+        sock_mode=$(stat -c '%a' "$DOCKER_SOCK" 2>/dev/null || echo "")
+    fi
+
+    if [ -n "$sock_gid" ]; then
+        export DOCKER_SOCK_GID="$sock_gid"
+        echo "Docker socket group id: $DOCKER_SOCK_GID"
+    else
+        echo "Warning: Could not determine docker.sock group id."
+    fi
+
+    # Try to ensure group-writable permissions (only if we own the socket or are root)
+    if [ -n "$sock_mode" ]; then
+        # Bash arithmetic with base-8 conversion
+        local mode_dec=$((8#$sock_mode))
+        local group_write=$((mode_dec & 020))
+        if [ "$group_write" -eq 0 ]; then
+            local current_uid
+            current_uid=$(id -u)
+            if [ -n "$sock_uid" ] && { [ "$current_uid" -eq 0 ] || [ "$current_uid" -eq "$sock_uid" ]; }; then
+                echo "docker.sock is not group-writable (mode $sock_mode) → applying chmod g+w..."
+                chmod g+w "$DOCKER_SOCK" 2>/dev/null || true
+            else
+                echo "Warning: docker.sock not group-writable (mode $sock_mode)."
+                echo "         Docker Monitor may not work unless group write is enabled."
+            fi
+        fi
+    fi
+}
+
+configure_docker_socket_access
 
 # ============================================
 # Step 4: Stop existing services
@@ -235,13 +303,24 @@ else
     echo "============================================"
     echo "Starting LLARS in DEVELOPMENT MODE"
     echo "============================================"
-    echo "Using: docker-compose.yml (with --watch for hot-reload)"
+    if [ "$DETACH_MODE" = "true" ] || [ "$DETACH_MODE" = "True" ]; then
+        echo "Using: docker-compose.yml (detached)"
+    else
+        echo "Using: docker-compose.yml (with --watch for hot-reload)"
+    fi
     echo ""
 
-    docker compose \
-        -f docker-compose.yml \
-        -p llars \
-        up --build --watch
+    if [ "$DETACH_MODE" = "true" ] || [ "$DETACH_MODE" = "True" ]; then
+        docker compose \
+            -f docker-compose.yml \
+            -p llars \
+            up --build --detach
+    else
+        docker compose \
+            -f docker-compose.yml \
+            -p llars \
+            up --build --watch
+    fi
 
     echo ""
     echo "LLARS started in DEVELOPMENT mode"

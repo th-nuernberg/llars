@@ -25,6 +25,8 @@ langchain-community==0.3.7
 langchain-core==0.3.19
 langchain-openai==0.2.9
 chromadb==0.5.20
+# Pin posthog to avoid breaking API changes (chromadb telemetry expects the legacy capture signature)
+posthog==5.4.0
 python-dotenv==1.0.1
 sentence-transformers==3.3.1
 transformers==4.46.3

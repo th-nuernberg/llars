@@ -235,6 +235,17 @@ if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
     echo "  - Model cache and embeddings"
     echo ""
 
+    # Safety check in development when REMOVE_VOLUMES comes from .env (prevents accidental repeated wipes)
+    if [ "$PROJECT_STATE" != "production" ] && [ -z "$REMOVE_VOLUMES_OVERRIDE" ]; then
+        echo "REMOVE_VOLUMES is set in .env. This is dangerous and will wipe data on every start."
+        echo "Type 'yes' to continue (or set REMOVE_VOLUMES=False in .env):"
+        read -r confirm
+        if [ "$confirm" != "yes" ]; then
+            echo "Aborted. Set REMOVE_VOLUMES=False in .env"
+            exit 1
+        fi
+    fi
+
     # Safety check in production
     if [ "$PROJECT_STATE" = "production" ]; then
         echo "PRODUCTION MODE DETECTED!"

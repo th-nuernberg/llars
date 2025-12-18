@@ -1,4 +1,5 @@
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { decodeJwtPayload } from '@/utils/jwt'
 
 const DEFAULT_ANALYTICS_CONFIG = Object.freeze({
   matomo_enabled: true,
@@ -22,14 +23,7 @@ let listenersInstalled = false
 let hasTrackedInitialPageView = false
 
 const parseJwt = (jwtToken) => {
-  if (!jwtToken) return null
-  try {
-    const parts = String(jwtToken).split('.')
-    if (parts.length < 2) return null
-    return JSON.parse(atob(parts[1]))
-  } catch (e) {
-    return null
-  }
+  return decodeJwtPayload(jwtToken)
 }
 
 const computeMatomoBaseUrl = (baseUrlSetting) => {

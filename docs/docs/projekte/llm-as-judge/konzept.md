@@ -1533,10 +1533,10 @@ onMounted(async () => {
   await loadSession()
   await loadCompletedComparisons()
 
-  // Socket verbinden
-  socket.value = io('/judge', {
-    auth: { token: sessionStorage.getItem('kc_token') }
-  })
+	  // Socket verbinden
+	  socket.value = io('/judge', {
+	    auth: { token: sessionStorage.getItem('auth_token') }
+	  })
 
   socket.value.emit('judge:join_session', { session_id: sessionId })
 

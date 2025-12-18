@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import { matomoResetUserId, matomoSetUserId } from '@/plugins/llars-metrics';
+import { usePermissions } from '@/composables/usePermissions';
 import {
   AUTH_STORAGE_KEYS,
   clearAuthStorage,
@@ -191,6 +192,15 @@ export const useAuth = () => {
         matomoSetUserId(matomoUserId);
       }
 
+      // Ensure permission cache is refreshed for the newly logged-in user
+      try {
+        const perms = usePermissions();
+        perms.clearPermissions();
+        await perms.fetchPermissions(true);
+      } catch (e) {
+        // ignore - UI will refetch on demand
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
@@ -226,6 +236,14 @@ export const useAuth = () => {
 
     // Matomo: end user association
     matomoResetUserId();
+
+    // Clear cached permissions/roles (shared state)
+    try {
+      const perms = usePermissions();
+      perms.clearPermissions();
+    } catch (e) {
+      // ignore
+    }
   };
 
   const getToken = () => token.value;

@@ -26,6 +26,7 @@ const roles = ref([])
 const username = ref(null)
 const isLoading = ref(false)
 const lastFetch = ref(null)
+const lastToken = ref(null)
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 export function usePermissions() {
@@ -33,6 +34,18 @@ export function usePermissions() {
    * Fetch user permissions from the backend
    */
   async function fetchPermissions(force = false) {
+    const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
+
+    // Invalidate cache when the auth token changes to avoid leaking permissions across users.
+    if (token !== lastToken.value) {
+      lastToken.value = token
+      lastFetch.value = null
+      permissions.value = []
+      roles.value = []
+      username.value = null
+      force = true
+    }
+
     // Use cache if available and not forced
     if (!force && lastFetch.value && (Date.now() - lastFetch.value < CACHE_DURATION)) {
       return
@@ -41,13 +54,12 @@ export function usePermissions() {
     isLoading.value = true
 
     try {
-      const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
-
       if (!token) {
         console.warn('No authentication token found')
         permissions.value = []
         roles.value = []
         username.value = null
+        lastToken.value = null
         return
       }
 
@@ -140,6 +152,7 @@ export function usePermissions() {
     roles.value = []
     username.value = null
     lastFetch.value = null
+    lastToken.value = null
   }
 
   /**

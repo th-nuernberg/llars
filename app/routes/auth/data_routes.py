@@ -183,21 +183,9 @@ def change_user_group():
     return jsonify({'success': True, 'message': f"User '{username}' has been moved to group '{new_group_name}'"}), 200
 
 
-@data_bp.route('/users/check/<username>', methods=['GET'])
-@handle_api_errors(logger_name='auth')
-def check_user_exists(username):
-    """Check if a user exists"""
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        raise UnauthorizedError('API key is missing')
-
-    # Use UserService for authentication
-    is_valid, requesting_user, error_msg = UserService.validate_api_key(api_key)
-    if not is_valid:
-        raise UnauthorizedError(error_msg)
-
-    # Use UserService to check if user exists
-    exists = UserService.user_exists(username)
-    if exists:
-        return jsonify({'success': True, 'exists': True}), 200
-    return jsonify({'success': True, 'exists': False}), 404
+#
+# NOTE:
+# The `/api/users/check/<username>` route is implemented in `routes/prompts/prompt_routes.py`
+# and is Authentik-protected (used by prompt sharing/autocomplete in the frontend).
+# The legacy API-key based version previously lived here and conflicted with the newer route.
+#

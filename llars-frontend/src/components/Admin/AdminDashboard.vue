@@ -82,7 +82,7 @@
           </div>
 
           <!-- DB Explorer Section -->
-          <div v-else-if="activeSection === 'db'" key="db" class="section-container">
+          <div v-else-if="activeSection === 'db'" key="db" class="section-container--full">
             <AdminDatabaseSection />
           </div>
         </v-fade-transition>

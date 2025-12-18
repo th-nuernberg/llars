@@ -76,6 +76,44 @@
   --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
   --llars-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
   --llars-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+
+  /* ----------------------------------------
+     Gradient Colors (Light Mode)
+     ---------------------------------------- */
+  /* Primary Gradients (Sage Green) */
+  --llars-gradient-primary: linear-gradient(135deg, #b0ca97 0%, #9ab583 100%);
+  --llars-gradient-primary-soft: linear-gradient(135deg, rgba(176, 202, 151, 0.15) 0%, rgba(154, 181, 131, 0.08) 100%);
+  --llars-gradient-primary-subtle: linear-gradient(135deg, rgba(176, 202, 151, 0.08) 0%, rgba(176, 202, 151, 0.02) 100%);
+
+  /* Secondary Gradients (Golden Beige) */
+  --llars-gradient-secondary: linear-gradient(135deg, #D1BC8A 0%, #c4ac76 100%);
+  --llars-gradient-secondary-soft: linear-gradient(135deg, rgba(209, 188, 138, 0.15) 0%, rgba(196, 172, 118, 0.08) 100%);
+  --llars-gradient-secondary-subtle: linear-gradient(135deg, rgba(209, 188, 138, 0.08) 0%, rgba(209, 188, 138, 0.02) 100%);
+
+  /* Accent Gradients (Soft Teal) */
+  --llars-gradient-accent: linear-gradient(135deg, #88c4c8 0%, #74b3b7 100%);
+  --llars-gradient-accent-soft: linear-gradient(135deg, rgba(136, 196, 200, 0.15) 0%, rgba(116, 179, 183, 0.08) 100%);
+  --llars-gradient-accent-subtle: linear-gradient(135deg, rgba(136, 196, 200, 0.08) 0%, rgba(136, 196, 200, 0.02) 100%);
+
+  /* Semantic Gradients */
+  --llars-gradient-success: linear-gradient(135deg, #98d4bb 0%, #7cc5a6 100%);
+  --llars-gradient-info: linear-gradient(135deg, #a8c5e2 0%, #8fb3d4 100%);
+  --llars-gradient-warning: linear-gradient(135deg, #e8c87a 0%, #ddb85e 100%);
+  --llars-gradient-danger: linear-gradient(135deg, #e8a087 0%, #df8a6d 100%);
+
+  /* Hero/Banner Gradients */
+  --llars-gradient-hero: linear-gradient(135deg, #b0ca97 0%, #88c4c8 100%);
+  --llars-gradient-hero-warm: linear-gradient(135deg, #b0ca97 0%, #D1BC8A 100%);
+  --llars-gradient-hero-cool: linear-gradient(135deg, #88c4c8 0%, #a8c5e2 100%);
+
+  /* Background Gradients (very subtle) */
+  --llars-gradient-bg-subtle: linear-gradient(180deg, rgba(176, 202, 151, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  --llars-gradient-bg-warm: linear-gradient(180deg, rgba(209, 188, 138, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  --llars-gradient-bg-cool: linear-gradient(180deg, rgba(136, 196, 200, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+
+  /* Card/Surface Gradients */
+  --llars-gradient-surface: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0) 100%);
+  --llars-gradient-surface-hover: linear-gradient(180deg, rgba(176, 202, 151, 0.08) 0%, rgba(176, 202, 151, 0.02) 100%);
 }
 
 /* ----------------------------------------
@@ -129,6 +167,44 @@
   --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --llars-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
   --llars-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
+
+  /* ----------------------------------------
+     Gradient Colors (Dark Mode)
+     ---------------------------------------- */
+  /* Primary Gradients (Dark Sage Green) */
+  --llars-gradient-primary: linear-gradient(135deg, #5a6b4a 0%, #4a5b3a 100%);
+  --llars-gradient-primary-soft: linear-gradient(135deg, rgba(90, 107, 74, 0.2) 0%, rgba(74, 91, 58, 0.1) 100%);
+  --llars-gradient-primary-subtle: linear-gradient(135deg, rgba(90, 107, 74, 0.1) 0%, rgba(90, 107, 74, 0.03) 100%);
+
+  /* Secondary Gradients (Dark Golden Beige) */
+  --llars-gradient-secondary: linear-gradient(135deg, #8a7a55 0%, #7a6a45 100%);
+  --llars-gradient-secondary-soft: linear-gradient(135deg, rgba(138, 122, 85, 0.2) 0%, rgba(122, 106, 69, 0.1) 100%);
+  --llars-gradient-secondary-subtle: linear-gradient(135deg, rgba(138, 122, 85, 0.1) 0%, rgba(138, 122, 85, 0.03) 100%);
+
+  /* Accent Gradients (Dark Soft Teal) */
+  --llars-gradient-accent: linear-gradient(135deg, #4a7a7d 0%, #3a6a6d 100%);
+  --llars-gradient-accent-soft: linear-gradient(135deg, rgba(74, 122, 125, 0.2) 0%, rgba(58, 106, 109, 0.1) 100%);
+  --llars-gradient-accent-subtle: linear-gradient(135deg, rgba(74, 122, 125, 0.1) 0%, rgba(74, 122, 125, 0.03) 100%);
+
+  /* Semantic Gradients */
+  --llars-gradient-success: linear-gradient(135deg, #4a8a6e 0%, #3a7a5e 100%);
+  --llars-gradient-info: linear-gradient(135deg, #4a6a8a 0%, #3a5a7a 100%);
+  --llars-gradient-warning: linear-gradient(135deg, #8a7a3a 0%, #7a6a2a 100%);
+  --llars-gradient-danger: linear-gradient(135deg, #8a5a4a 0%, #7a4a3a 100%);
+
+  /* Hero/Banner Gradients */
+  --llars-gradient-hero: linear-gradient(135deg, #5a6b4a 0%, #4a7a7d 100%);
+  --llars-gradient-hero-warm: linear-gradient(135deg, #5a6b4a 0%, #8a7a55 100%);
+  --llars-gradient-hero-cool: linear-gradient(135deg, #4a7a7d 0%, #4a6a8a 100%);
+
+  /* Background Gradients (very subtle) */
+  --llars-gradient-bg-subtle: linear-gradient(180deg, rgba(90, 107, 74, 0.08) 0%, rgba(0, 0, 0, 0) 100%);
+  --llars-gradient-bg-warm: linear-gradient(180deg, rgba(138, 122, 85, 0.08) 0%, rgba(0, 0, 0, 0) 100%);
+  --llars-gradient-bg-cool: linear-gradient(180deg, rgba(74, 122, 125, 0.08) 0%, rgba(0, 0, 0, 0) 100%);
+
+  /* Card/Surface Gradients */
+  --llars-gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+  --llars-gradient-surface-hover: linear-gradient(180deg, rgba(90, 107, 74, 0.12) 0%, rgba(90, 107, 74, 0.04) 100%);
 }
 
 /* ========================================

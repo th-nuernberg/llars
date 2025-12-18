@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: docker/nginx/Dockerfile-nginx
     ports:
-      - "${NGINX_EXTERNAL_PORT}:${NGINX_INTERNAL_PORT}"
+      - "${NGINX_EXTERNAL_PORT:-55080}:80"
     depends_on:
       backend-flask-service:
         condition: service_healthy
@@ -94,10 +94,10 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
-      - PROJECT_HOST=${PROJECT_HOST}
-      - PROJECT_URL=${PROJECT_URL}
-      - NGINX_EXTERNAL_PORT=${NGINX_EXTERNAL_PORT}
+      - PROJECT_STATE=${PROJECT_STATE:-development}
+      - PROJECT_HOST=${PROJECT_HOST:-localhost}
+      - PROJECT_URL=${PROJECT_URL:-http://localhost:55080}
+      - NGINX_EXTERNAL_PORT=${NGINX_EXTERNAL_PORT:-55080}
       - MATOMO_DATABASE_HOST=matomo-db-service
       - MATOMO_DATABASE_ADAPTER=PDO\MYSQL
       - MATOMO_DATABASE_TABLES_PREFIX=${MATOMO_DATABASE_TABLES_PREFIX:-matomo_}
@@ -151,12 +151,16 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
-      - FLASK_ENV=${FLASK_ENV}
+      - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_APP=/app/main.py
+      # MariaDB (defaults are for development; override via .env for production)
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
+      - MYSQL_USER=${MYSQL_USER:-dev_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-dev_password_change_me}
       # Disable Chroma telemetry (avoids noisy posthog signature errors and external telemetry calls)
       - ANONYMIZED_TELEMETRY=False
       # CORS origins derived from PROJECT_URL
-      - ALLOWED_ORIGINS=${PROJECT_URL},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT},http://localhost,http://localhost:${NGINX_EXTERNAL_PORT}
+      - ALLOWED_ORIGINS=${PROJECT_URL:-http://localhost:55080},http://127.0.0.1,http://127.0.0.1:${NGINX_EXTERNAL_PORT:-55080},http://localhost,http://localhost:${NGINX_EXTERNAL_PORT:-55080}
       # OnCoCo model path
       - ONCOCO_MODEL_PATH=/app/models/oncoco
       # Disable ChromaDB telemetry (prevents log spam)
@@ -185,12 +189,12 @@ services:
       - TZ=Europe/Berlin
       # Note: Don't set NODE_ENV here - it breaks npm install for build
       # All URLs derived from PROJECT_URL (includes protocol)
-      - VITE_API_BASE_URL=${PROJECT_URL}
-      - VITE_PROJECT_STATE=${PROJECT_STATE}
-      - VITE_MKDOCS_URL=${PROJECT_URL}/docs
-      - VITE_KEYCLOAK_URL=${PROJECT_URL}/authentik
+      - VITE_API_BASE_URL=${PROJECT_URL:-http://localhost:55080}
+      - VITE_PROJECT_STATE=${PROJECT_STATE:-development}
+      - VITE_MKDOCS_URL=${PROJECT_URL:-http://localhost:55080}/docs
+      - VITE_KEYCLOAK_URL=${PROJECT_URL:-http://localhost:55080}/authentik
       - VITE_KEYCLOAK_REALM=llars   # legacy variable; Authentik uses apps, not realms
-      - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
+      - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
     develop:
       watch:
         - action: sync
@@ -236,15 +240,15 @@ services:
     env_file:
       - .env
     ports:
-      - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
+      - "${DB_EXTERNAL_PORT:-55306}:3306"
     volumes:
       - llarsdb:/var/lib/mysql
     environment:
       - TZ=Europe/Berlin
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-dev_root_password_change_me}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
+      - MYSQL_USER=${MYSQL_USER:-dev_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-dev_password_change_me}
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       start_period: 20s
@@ -283,16 +287,16 @@ services:
       dockerfile: docker/yjs-server/Dockerfile-yjs
     environment:
       - TZ=Europe/Berlin
-      - NODE_ENV=${PROJECT_STATE}
+      - NODE_ENV=${PROJECT_STATE:-development}
       # Derived from PROJECT_URL
-      - BASE_URL=${PROJECT_URL}
+      - BASE_URL=${PROJECT_URL:-http://localhost:55080}
       - PORT=8082
       - MYSQL_HOST=db-maria-service
       - MYSQL_PORT=3306
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - AUTHENTIK_ISSUER_URL=${AUTHENTIK_ISSUER_URL}
+      - MYSQL_USER=${MYSQL_USER:-dev_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-dev_password_change_me}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
+      - AUTHENTIK_ISSUER_URL=${AUTHENTIK_ISSUER_URL:-http://authentik-server:9000/application/o/llars-backend/}
     develop:
       watch:
         - action: sync
@@ -318,12 +322,12 @@ services:
     expose:
       - "8000"
     ports:
-      - "${MKDOCS_EXTERNAL_PORT:-8000}:8000"
+      - "${MKDOCS_EXTERNAL_PORT:-55800}:8000"
     volumes:
       - ./docs:/docs
     environment:
       - TZ=Europe/Berlin
-      - PROJECT_STATE=${PROJECT_STATE}
+      - PROJECT_STATE=${PROJECT_STATE:-development}
       - MKDOCS_BIND_ADDR=0.0.0.0:8000
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
@@ -337,26 +341,26 @@ services:
     image: ghcr.io/goauthentik/server:latest
     command: server
     environment:
-      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
       - AUTHENTIK_POSTGRESql__HOST=authentik-db
-      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
-      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
-      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER:-authentik_dev}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME:-authentik_dev}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD:-dev_authentik_db_password}
       - AUTHENTIK_REDIS__HOST=authentik-redis
-      - AUTHENTIK_LISTEN__PORT=${AUTHENTIK_INTERNAL_PORT}
+      - AUTHENTIK_LISTEN__PORT=9000
       - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=0.0.0.0/0,::/0
       - AUTHENTIK_ERROR_REPORTING__ENABLED=false
-      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
-      - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}
+      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@example.com}
+      - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}
     ports:
-      - "${AUTHENTIK_EXTERNAL_PORT}:${AUTHENTIK_INTERNAL_PORT}"
+      - "${AUTHENTIK_EXTERNAL_PORT:-55095}:9000"
     depends_on:
       authentik-db:
         condition: service_healthy
       authentik-redis:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${AUTHENTIK_INTERNAL_PORT}/-/health/live/')\" || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:9000/-/health/live/')\" || exit 1"]
       start_period: 60s
       interval: 15s
       timeout: 10s
@@ -369,13 +373,13 @@ services:
     image: ghcr.io/goauthentik/server:latest
     command: worker
     environment:
-      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
       - AUTHENTIK_POSTGRESql__HOST=authentik-db
-      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
-      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
-      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER:-authentik_dev}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME:-authentik_dev}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD:-dev_authentik_db_password}
       - AUTHENTIK_REDIS__HOST=authentik-redis
-      - AUTHENTIK_LISTEN__PORT=${AUTHENTIK_INTERNAL_PORT}
+      - AUTHENTIK_LISTEN__PORT=9000
     depends_on:
       authentik-db:
         condition: service_healthy
@@ -388,13 +392,13 @@ services:
     container_name: llars_authentik_db
     image: public.ecr.aws/docker/library/postgres:16-alpine
     environment:
-      - POSTGRES_DB=${AUTHENTIK_DB_NAME}
-      - POSTGRES_USER=${AUTHENTIK_DB_USER}
-      - POSTGRES_PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - POSTGRES_DB=${AUTHENTIK_DB_NAME:-authentik_dev}
+      - POSTGRES_USER=${AUTHENTIK_DB_USER:-authentik_dev}
+      - POSTGRES_PASSWORD=${AUTHENTIK_DB_PASSWORD:-dev_authentik_db_password}
     volumes:
       - authentikdb:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${AUTHENTIK_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${AUTHENTIK_DB_USER:-authentik_dev}"]
       start_period: 10s
       interval: 5s
       timeout: 5s
@@ -414,23 +418,23 @@ services:
     container_name: llars_authentik_init
     image: ghcr.io/goauthentik/server:latest
     environment:
-      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
       - AUTHENTIK_POSTGRESql__HOST=authentik-db
-      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER}
-      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME}
-      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
+      - AUTHENTIK_POSTGRESql__USER=${AUTHENTIK_DB_USER:-authentik_dev}
+      - AUTHENTIK_POSTGRESql__NAME=${AUTHENTIK_DB_NAME:-authentik_dev}
+      - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD:-dev_authentik_db_password}
       - AUTHENTIK_REDIS__HOST=authentik-redis
-      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
-      - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}
-      - AUTHENTIK_BACKEND_CLIENT_ID=${AUTHENTIK_BACKEND_CLIENT_ID}
-      - AUTHENTIK_BACKEND_CLIENT_SECRET=${AUTHENTIK_BACKEND_CLIENT_SECRET}
+      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@example.com}
+      - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}
+      - AUTHENTIK_BACKEND_CLIENT_ID=${AUTHENTIK_BACKEND_CLIENT_ID:-llars-backend}
+      - AUTHENTIK_BACKEND_CLIENT_SECRET=${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-change-in-production}
       - AUTHENTIK_MATOMO_CLIENT_ID=${AUTHENTIK_MATOMO_CLIENT_ID:-llars-matomo}
       - AUTHENTIK_MATOMO_CLIENT_SECRET=${AUTHENTIK_MATOMO_CLIENT_SECRET:-llars-matomo-secret-change-in-production}
       - AUTHENTIK_MATOMO_APP_SLUG=${AUTHENTIK_MATOMO_APP_SLUG:-llars-matomo}
-      - PROJECT_HOST=${PROJECT_HOST}
-      - PROJECT_URL=${PROJECT_URL}
-      - NGINX_EXTERNAL_PORT=${NGINX_EXTERNAL_PORT}
-      - PROJECT_STATE=${PROJECT_STATE}
+      - PROJECT_HOST=${PROJECT_HOST:-localhost}
+      - PROJECT_URL=${PROJECT_URL:-http://localhost:55080}
+      - NGINX_EXTERNAL_PORT=${NGINX_EXTERNAL_PORT:-55080}
+      - PROJECT_STATE=${PROJECT_STATE:-development}
     volumes:
       - ./docker/authentik/init-authentik.sh:/init-authentik.sh:ro
     working_dir: /

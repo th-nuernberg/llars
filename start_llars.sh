@@ -88,6 +88,51 @@ fi
 export PROJECT_STATE
 
 # ============================================
+# Step 2b: Apply sane defaults (thin .env)
+# ============================================
+
+# If PROJECT_URL is provided, derive PROJECT_HOST and NGINX_EXTERNAL_PORT (for status output)
+derive_host_and_port_from_url() {
+    local url="${PROJECT_URL:-}"
+    if [ -z "$url" ]; then
+        return 0
+    fi
+
+    # Strip protocol
+    local without_proto="${url#*://}"
+    local hostport="${without_proto%%/*}"
+
+    # Basic host:port split (IPv6 not supported here; use PROJECT_HOST/NGINX_EXTERNAL_PORT explicitly in that case)
+    local derived_host="$hostport"
+    local derived_port=""
+    if [[ "$hostport" == *:* ]]; then
+        derived_host="${hostport%%:*}"
+        derived_port="${hostport##*:}"
+    fi
+
+    if [ -z "${PROJECT_HOST:-}" ] && [ -n "$derived_host" ]; then
+        PROJECT_HOST="$derived_host"
+        export PROJECT_HOST
+    fi
+
+    if [ -z "${NGINX_EXTERNAL_PORT:-}" ] && [[ "$derived_port" =~ ^[0-9]+$ ]]; then
+        NGINX_EXTERNAL_PORT="$derived_port"
+        export NGINX_EXTERNAL_PORT
+    fi
+}
+
+derive_host_and_port_from_url
+
+# Defaults consistent with docker-compose.yml
+PROJECT_HOST="${PROJECT_HOST:-localhost}"
+NGINX_EXTERNAL_PORT="${NGINX_EXTERNAL_PORT:-55080}"
+AUTHENTIK_EXTERNAL_PORT="${AUTHENTIK_EXTERNAL_PORT:-55095}"
+DB_EXTERNAL_PORT="${DB_EXTERNAL_PORT:-55306}"
+MKDOCS_EXTERNAL_PORT="${MKDOCS_EXTERNAL_PORT:-55800}"
+
+export PROJECT_HOST NGINX_EXTERNAL_PORT AUTHENTIK_EXTERNAL_PORT DB_EXTERNAL_PORT MKDOCS_EXTERNAL_PORT
+
+# ============================================
 # Step 3: Check Docker Daemon
 # ============================================
 

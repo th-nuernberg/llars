@@ -86,6 +86,9 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import { io } from 'socket.io-client';
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+
 const STORAGE_KEY = 'chat_messages';
 const messages = ref([]);
 const newMessage = ref('');
@@ -233,7 +236,8 @@ onMounted(() => {
 
   socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
     path: '/socket.io/',
-    transports: ['websocket'],
+    transports: socketioTransports,
+    upgrade: socketioEnableWebsocket,
     query: { username: username },
     headers: {
       'Content-Type': 'application/json; charset=utf-8'

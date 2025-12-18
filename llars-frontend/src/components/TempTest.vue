@@ -2,6 +2,9 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { io } from 'socket.io-client'
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
+
 const messages = ref([])
 const newMessage = ref('')
 const chatContainer = ref(null)
@@ -73,7 +76,8 @@ const addMessage = (content, sender, streaming = false) => {
 onMounted(() => {
   socket.value = io('http://localhost:80', {
     path: '/socket.io/',
-    transports: ['websocket']
+    transports: socketioTransports,
+    upgrade: socketioEnableWebsocket
   });
 
   socket.value.on('connect', () => console.log('Socket connected'));

@@ -9,6 +9,9 @@ import { ref, computed, onUnmounted } from 'vue';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+
 export function useChatbotCrawler() {
   // Crawler form state
   const crawlerUrls = ref('');
@@ -45,7 +48,8 @@ export function useChatbotCrawler() {
 
     crawlerSocket = io('/', {
       path: '/socket.io',
-      transports: ['websocket', 'polling']
+      transports: socketioTransports,
+      upgrade: socketioEnableWebsocket
     });
 
     crawlerSocket.on('connect', () => {

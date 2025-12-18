@@ -18,6 +18,9 @@ const connectionError = ref(null);
 let socket = null;
 let reconnectOnVisible = false;
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+
 /**
  * Create or get the Socket.IO connection
  * @returns {Socket} Socket.IO instance
@@ -37,7 +40,8 @@ export function getSocket() {
   console.log('[SocketService] Creating new socket connection to:', baseUrl);
 
   socket = io(baseUrl, {
-    transports: ['websocket', 'polling'],
+    transports: socketioTransports,
+    upgrade: socketioEnableWebsocket,
     reconnection: true,
     reconnectionAttempts: Infinity,  // Keep trying to reconnect
     reconnectionDelay: 1000,

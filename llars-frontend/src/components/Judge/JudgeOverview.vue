@@ -354,10 +354,13 @@ const formatDate = (dateString) => {
 // WebSocket Setup for Live Updates
 const setupSocket = () => {
   const socketUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
+  const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
 
   socket.value = io(socketUrl, {
     path: '/socket.io',
-    transports: ['websocket', 'polling'],
+    transports: socketioTransports,
+    upgrade: socketioEnableWebsocket,
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000

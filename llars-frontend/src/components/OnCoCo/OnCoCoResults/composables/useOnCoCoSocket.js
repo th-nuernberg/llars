@@ -8,6 +8,9 @@
 import { ref } from 'vue';
 import { io } from 'socket.io-client';
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+
 export function useOnCoCoSocket(analysisId, callbacks = {}) {
   let socket = null;
   const connected = ref(false);
@@ -15,7 +18,8 @@ export function useOnCoCoSocket(analysisId, callbacks = {}) {
   const setupSocket = () => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
     socket = io(baseUrl, {
-      transports: ['websocket', 'polling'],
+      transports: socketioTransports,
+      upgrade: socketioEnableWebsocket,
       reconnection: true,
       reconnectionDelay: 1000,
     });

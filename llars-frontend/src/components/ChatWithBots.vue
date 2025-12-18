@@ -1198,9 +1198,13 @@ function openFullscreen(type) {
  */
 function initSocket() {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
+  const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
+
   socket.value = io(baseUrl, {
     path: '/socket.io/',
-    transports: ['websocket', 'polling']
+    transports: socketioTransports,
+    upgrade: socketioEnableWebsocket
   })
 
   socket.value.on('connect', () => {

@@ -311,6 +311,9 @@ import { io } from 'socket.io-client'
 import { useAuth } from '@/composables/useAuth'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
+
 const auth = useAuth()
 const { isLoading, setLoading } = useSkeletonLoading(['summary', 'table', 'detail'])
 
@@ -461,7 +464,8 @@ const connectSocket = () => {
   const baseUrl = String(rawBaseUrl || '').replace(/\/+$/, '')
   const s = io(`${baseUrl}/admin`, {
     path: '/socket.io',
-    transports: ['websocket', 'polling'],
+    transports: socketioTransports,
+    upgrade: socketioEnableWebsocket,
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,

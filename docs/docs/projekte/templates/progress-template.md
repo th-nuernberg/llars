@@ -3,8 +3,8 @@
 !!! info "🔧 Status: In Umsetzung"
     **Fortschritt:** 3 / 10 Aufgaben abgeschlossen (30%)
 
-**Konzept:** [[Projektname] Konzept]([projektname]-konzept.md)
-**Umsetzung:** [[Projektname] Umsetzung]([projektname]-umsetzung.md)
+**Konzept:** [Konzept Template](konzept-template.md)
+**Umsetzung:** [Umsetzung Template](umsetzung-template.md)
 **Gestartet:** YYYY-MM-DD
 **Ziel:** YYYY-MM-DD
 

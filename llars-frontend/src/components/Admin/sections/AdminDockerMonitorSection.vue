@@ -31,10 +31,10 @@
       <span>{{ errorMessage }}</span>
     </div>
 
-    <!-- Main Content -->
+    <!-- Main Content: Left (Charts + Table) | Right (Logs) -->
     <div class="monitor-content">
-      <!-- Left Panel: Charts & Stats -->
-      <div class="charts-panel">
+      <!-- Left Panel: Charts & Container Table -->
+      <div class="left-panel">
         <!-- Stats Summary -->
         <div class="stats-row">
           <div class="stat-item">
@@ -73,7 +73,7 @@
                 :values="summaryCpuHistory"
                 :max-points="MAX_POINTS"
                 color="#b0ca97"
-                :height="100"
+                :height="80"
                 :min-value="0"
                 :max-value="100"
                 unit="%"
@@ -97,7 +97,7 @@
                 :values="summaryMemHistoryMiB"
                 :max-points="MAX_POINTS"
                 color="#88c4c8"
-                :height="100"
+                :height="80"
                 :min-value="0"
                 unit="MiB"
               />
@@ -120,7 +120,7 @@
                 :values="netRxRateHistory"
                 :max-points="MAX_POINTS"
                 color="#a8c5e2"
-                :height="100"
+                :height="80"
                 :min-value="0"
                 unit="KB/s"
               />
@@ -143,7 +143,7 @@
                 :values="netTxRateHistory"
                 :max-points="MAX_POINTS"
                 color="#e8c87a"
-                :height="100"
+                :height="80"
                 :min-value="0"
                 unit="KB/s"
               />
@@ -151,76 +151,7 @@
           </div>
         </div>
 
-        <!-- Selected Container Charts -->
-        <div v-if="selectedContainer" class="selected-charts">
-          <div class="section-header">
-            <v-icon size="18">mdi-chart-line</v-icon>
-            <span>{{ selectedContainer.name }}</span>
-            <LBtn variant="text" size="small" prepend-icon="mdi-close" @click="selectedContainerId = null">
-              Schließen
-            </LBtn>
-          </div>
-          <div class="charts-row">
-            <div class="mini-chart-card">
-              <div class="mini-chart-header">
-                <span class="mini-chart-label">CPU</span>
-                <span class="mini-chart-value">{{ formatPercent(selectedContainer.cpu_percent) }}</span>
-              </div>
-              <LiveChart
-                :values="selectedCpuHistory"
-                :max-points="MAX_POINTS"
-                color="#b0ca97"
-                :height="60"
-                :min-value="0"
-                :max-value="100"
-              />
-            </div>
-            <div class="mini-chart-card">
-              <div class="mini-chart-header">
-                <span class="mini-chart-label">Memory</span>
-                <span class="mini-chart-value">{{ formatBytes(selectedContainer.mem_usage) }}</span>
-              </div>
-              <LiveChart
-                :values="selectedMemHistoryMiB"
-                :max-points="MAX_POINTS"
-                color="#88c4c8"
-                :height="60"
-                :min-value="0"
-              />
-            </div>
-            <div class="mini-chart-card">
-              <div class="mini-chart-header">
-                <span class="mini-chart-label">Net RX</span>
-                <span class="mini-chart-value">{{ formatBytes(selectedContainer.net_rx) }}</span>
-              </div>
-              <LiveChart
-                :values="selectedNetRxHistory"
-                :max-points="MAX_POINTS"
-                color="#a8c5e2"
-                :height="60"
-                :min-value="0"
-              />
-            </div>
-            <div class="mini-chart-card">
-              <div class="mini-chart-header">
-                <span class="mini-chart-label">Net TX</span>
-                <span class="mini-chart-value">{{ formatBytes(selectedContainer.net_tx) }}</span>
-              </div>
-              <LiveChart
-                :values="selectedNetTxHistory"
-                :max-points="MAX_POINTS"
-                color="#e8c87a"
-                :height="60"
-                :min-value="0"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Panel: Table & Logs -->
-      <div class="data-panel">
-        <!-- Container Table -->
+        <!-- Container Table (below charts) -->
         <div class="table-section">
           <div class="section-header">
             <v-icon size="18">mdi-view-list</v-icon>
@@ -242,10 +173,11 @@
                 <tr
                   v-for="container in containers"
                   :key="container.id"
-                  :class="{ 'selected': container.id === selectedContainerId }"
-                  @click="selectContainer(container)"
+                  :class="{ 'selected': container.id === logContainerId && logMode === 'container' }"
                 >
-                  <td class="name-cell">{{ container.name }}</td>
+                  <td class="name-cell" @click="switchToContainerLogs(container)">
+                    <span class="name-link">{{ container.name }}</span>
+                  </td>
                   <td><LTag :variant="stateVariant(container.state)" size="small">{{ container.state }}</LTag></td>
                   <td><LTag :variant="healthVariant(container.health)" size="small">{{ container.health || '—' }}</LTag></td>
                   <td class="value-cell">{{ formatPercent(container.cpu_percent) }}</td>
@@ -258,12 +190,17 @@
             </table>
           </div>
         </div>
+      </div>
 
-        <!-- Logs Panel -->
+      <!-- Right Panel: Logs (full height) -->
+      <div class="logs-panel">
         <div class="logs-section">
           <div class="section-header">
             <v-icon size="18">mdi-text-box-outline</v-icon>
             <span>Logs</span>
+            <LTag v-if="logMode === 'container' && activeLogContainerName" variant="accent" size="small" class="ml-2">
+              {{ activeLogContainerName }}
+            </LTag>
             <div class="header-controls">
               <LTag v-if="logsPaused" variant="warning" size="small">pausiert</LTag>
               <LBtn :prepend-icon="logsPaused ? 'mdi-play' : 'mdi-pause'" variant="tonal" size="small" @click="toggleLogsPause">
@@ -277,13 +214,13 @@
           <div class="log-controls">
             <v-select v-model="logMode" :items="logModeOptions" variant="outlined" density="compact" hide-details class="log-field" />
             <v-select v-model="logScope" :items="scopeOptions" variant="outlined" density="compact" hide-details class="log-field" />
-            <v-select v-model="logContainerId" :items="containerOptions" variant="outlined" density="compact" hide-details :disabled="logMode !== 'container'" class="log-field" />
+            <v-select v-model="logContainerId" :items="containerOptions" variant="outlined" density="compact" hide-details :disabled="logMode !== 'container'" class="log-field log-field--wide" />
             <v-text-field v-model.number="logTail" type="number" label="Tail" variant="outlined" density="compact" hide-details min="0" max="5000" class="log-field log-field--small" />
             <v-switch v-model="autoScroll" color="primary" hide-details density="compact" label="Scroll" class="log-switch" />
             <LBtn prepend-icon="mdi-connection" variant="primary" size="small" @click="resubscribeLogs">Verbinden</LBtn>
           </div>
           <div ref="logsEl" class="logs-container">
-            <pre class="logs-content">{{ logText }}</pre>
+            <div class="logs-content" v-html="formattedLogHtml"></div>
           </div>
         </div>
       </div>
@@ -337,12 +274,6 @@ const netTxRate = ref(0)
 const netRxRateHistory = ref([])
 const netTxRateHistory = ref([])
 
-const selectedContainerId = ref(null)
-const selectedCpuHistory = ref([])
-const selectedMemHistory = ref([])
-const selectedNetRxHistory = ref([])
-const selectedNetTxHistory = ref([])
-
 const socket = ref(null)
 
 const connectionLabel = computed(() => {
@@ -387,12 +318,6 @@ const formatBytesRate = (bytesPerSec) => {
 const bytesToMiB = (bytes) => Number(bytes || 0) / 1024 / 1024
 const bytesToKiB = (bytes) => Number(bytes || 0) / 1024
 const summaryMemHistoryMiB = computed(() => summaryMemHistory.value.map(bytesToMiB))
-const selectedMemHistoryMiB = computed(() => selectedMemHistory.value.map(bytesToMiB))
-
-const selectedContainer = computed(() => {
-  if (!selectedContainerId.value) return null
-  return containers.value.find((c) => c.id === selectedContainerId.value) || null
-})
 
 const stateVariant = (state) => {
   const s = String(state || '').toLowerCase()
@@ -413,24 +338,6 @@ const healthVariant = (health) => {
 const pushHistoryPoint = (arrRef, value, maxPoints = MAX_POINTS) => {
   arrRef.value.push(Number(value || 0))
   if (arrRef.value.length > maxPoints) arrRef.value.splice(0, arrRef.value.length - maxPoints)
-}
-
-const selectContainer = (item) => {
-  if (selectedContainerId.value === item?.id) {
-    selectedContainerId.value = null
-    return
-  }
-  selectedContainerId.value = item?.id || null
-  selectedCpuHistory.value = []
-  selectedMemHistory.value = []
-  selectedNetRxHistory.value = []
-  selectedNetTxHistory.value = []
-  if (item) {
-    pushHistoryPoint(selectedCpuHistory, item.cpu_percent)
-    pushHistoryPoint(selectedMemHistory, item.mem_usage)
-    pushHistoryPoint(selectedNetRxHistory, bytesToKiB(item.net_rx))
-    pushHistoryPoint(selectedNetTxHistory, bytesToKiB(item.net_tx))
-  }
 }
 
 const resubscribeStats = () => {
@@ -519,21 +426,6 @@ const connectSocket = () => {
     pushHistoryPoint(summaryNetRxHistory, currentNetRx)
     pushHistoryPoint(summaryNetTxHistory, currentNetTx)
 
-    // Update selected container history
-    const selected = selectedContainer.value
-    if (selected) {
-      pushHistoryPoint(selectedCpuHistory, selected.cpu_percent)
-      pushHistoryPoint(selectedMemHistory, selected.mem_usage)
-      pushHistoryPoint(selectedNetRxHistory, bytesToKiB(selected.net_rx))
-      pushHistoryPoint(selectedNetTxHistory, bytesToKiB(selected.net_tx))
-    } else if (selectedContainerId.value) {
-      selectedContainerId.value = null
-      selectedCpuHistory.value = []
-      selectedMemHistory.value = []
-      selectedNetRxHistory.value = []
-      selectedNetTxHistory.value = []
-    }
-
     if (logMode.value === 'container' && logContainerId.value) {
       const exists = containers.value.some((c) => c.id === logContainerId.value)
       if (!exists) logContainerId.value = null
@@ -555,11 +447,10 @@ const disconnectSocket = () => {
 const logsEl = ref(null)
 const logsPaused = ref(false)
 const autoScroll = ref(true)
-const logText = ref('')
+const logLines = ref([])
 
 const LOG_FLUSH_INTERVAL_MS = 150
 const MAX_PENDING_LOG_LINES = 5000
-const _logLines = []
 const _pendingLogLines = []
 let logFlushTimer = null
 
@@ -571,7 +462,138 @@ const logTail = ref(200)
 
 const containerOptions = computed(() => (containers.value || []).map((c) => ({ title: c.name, value: c.id })))
 
-const clearLogs = () => { _logLines.length = 0; _pendingLogLines.length = 0; logText.value = '' }
+const activeLogContainerName = computed(() => {
+  if (logMode.value !== 'container' || !logContainerId.value) return null
+  const c = containers.value.find(c => c.id === logContainerId.value)
+  return c?.name || null
+})
+
+// ANSI color parsing
+const ANSI_COLORS = {
+  30: '#4a4a4a', // black
+  31: '#e8a087', // red (soft coral)
+  32: '#98d4bb', // green (soft mint)
+  33: '#e8c87a', // yellow (soft gold)
+  34: '#a8c5e2', // blue (soft blue)
+  35: '#c9a8e2', // magenta (soft purple)
+  36: '#88c4c8', // cyan (soft teal)
+  37: '#e0e0e0', // white
+  90: '#6a6a6a', // bright black (gray)
+  91: '#ff9b8a', // bright red
+  92: '#a8e4cb', // bright green
+  93: '#f8d88a', // bright yellow
+  94: '#b8d5f2', // bright blue
+  95: '#d9b8f2', // bright magenta
+  96: '#98d4d8', // bright cyan
+  97: '#f0f0f0'  // bright white
+}
+
+const BG_COLORS = {
+  40: '#4a4a4a', 41: '#e8a087', 42: '#98d4bb', 43: '#e8c87a',
+  44: '#a8c5e2', 45: '#c9a8e2', 46: '#88c4c8', 47: '#e0e0e0',
+  100: '#6a6a6a', 101: '#ff9b8a', 102: '#a8e4cb', 103: '#f8d88a',
+  104: '#b8d5f2', 105: '#d9b8f2', 106: '#98d4d8', 107: '#f0f0f0'
+}
+
+const escapeHtml = (text) => {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+const parseAnsiLine = (line) => {
+  // ANSI escape sequence regex
+  const ansiRegex = /\x1b\[([0-9;]*)m/g
+  let result = ''
+  let lastIndex = 0
+  let currentStyles = []
+  let match
+
+  while ((match = ansiRegex.exec(line)) !== null) {
+    // Add text before this escape sequence
+    if (match.index > lastIndex) {
+      const text = escapeHtml(line.slice(lastIndex, match.index))
+      if (currentStyles.length > 0) {
+        result += `<span style="${currentStyles.join(';')}">${text}</span>`
+      } else {
+        result += text
+      }
+    }
+
+    // Parse the codes
+    const codes = match[1].split(';').map(c => parseInt(c, 10) || 0)
+    for (const code of codes) {
+      if (code === 0) {
+        // Reset
+        currentStyles = []
+      } else if (code === 1) {
+        currentStyles.push('font-weight:bold')
+      } else if (code === 2) {
+        currentStyles.push('opacity:0.7')
+      } else if (code === 3) {
+        currentStyles.push('font-style:italic')
+      } else if (code === 4) {
+        currentStyles.push('text-decoration:underline')
+      } else if (ANSI_COLORS[code]) {
+        currentStyles.push(`color:${ANSI_COLORS[code]}`)
+      } else if (BG_COLORS[code]) {
+        currentStyles.push(`background-color:${BG_COLORS[code]}`)
+      }
+    }
+
+    lastIndex = ansiRegex.lastIndex
+  }
+
+  // Add remaining text
+  if (lastIndex < line.length) {
+    const text = escapeHtml(line.slice(lastIndex))
+    if (currentStyles.length > 0) {
+      result += `<span style="${currentStyles.join(';')}">${text}</span>`
+    } else {
+      result += text
+    }
+  }
+
+  return result || escapeHtml(line)
+}
+
+// Apply semantic coloring for log levels
+const applyLogLevelColors = (line) => {
+  // Colorize common log patterns
+  if (/\b(ERROR|FATAL|CRITICAL)\b/i.test(line)) {
+    return `<span class="log-error">${line}</span>`
+  }
+  if (/\b(WARN|WARNING)\b/i.test(line)) {
+    return `<span class="log-warn">${line}</span>`
+  }
+  if (/\b(INFO)\b/i.test(line)) {
+    return `<span class="log-info">${line}</span>`
+  }
+  if (/\b(DEBUG|TRACE)\b/i.test(line)) {
+    return `<span class="log-debug">${line}</span>`
+  }
+  return line
+}
+
+const formattedLogHtml = computed(() => {
+  return logLines.value.map(line => {
+    // First parse ANSI codes
+    let parsed = parseAnsiLine(line)
+    // Then apply semantic coloring if no ANSI was present
+    if (!line.includes('\x1b[')) {
+      parsed = applyLogLevelColors(parsed)
+    }
+    return parsed
+  }).join('\n')
+})
+
+const clearLogs = () => {
+  logLines.value = []
+  _pendingLogLines.length = 0
+}
+
 const toggleLogsPause = () => { logsPaused.value = !logsPaused.value }
 
 const scrollLogsToBottom = () => {
@@ -583,9 +605,8 @@ const scrollLogsToBottom = () => {
 
 const flushLogs = () => {
   if (_pendingLogLines.length === 0) return
-  _logLines.push(..._pendingLogLines.splice(0, _pendingLogLines.length))
-  if (_logLines.length > MAX_LOG_LINES) _logLines.splice(0, _logLines.length - MAX_LOG_LINES)
-  logText.value = _logLines.join('\n')
+  const newLines = _pendingLogLines.splice(0, _pendingLogLines.length)
+  logLines.value = [...logLines.value, ...newLines].slice(-MAX_LOG_LINES)
   scrollLogsToBottom()
 }
 
@@ -604,6 +625,17 @@ const resubscribeLogs = () => {
   }
   errorMessage.value = ''
   socket.value.emit('docker:subscribe_logs', payload)
+}
+
+// Click container name to switch logs
+const switchToContainerLogs = (container) => {
+  clearLogs()
+  logMode.value = 'container'
+  logContainerId.value = container.id
+  // Small delay to let Vue update, then resubscribe
+  setTimeout(() => {
+    resubscribeLogs()
+  }, 50)
 }
 
 watch(scope, (newScope) => { if (logScope.value === 'project' || logScope.value === 'all') logScope.value = newScope; resubscribeStats() })
@@ -661,7 +693,7 @@ const LiveChart = defineComponent({
 
       const w = rect.width
       const h = rect.height
-      const padding = { top: 8, right: 8, bottom: 20, left: 40 }
+      const padding = { top: 6, right: 6, bottom: 16, left: 32 }
       const chartW = w - padding.left - padding.right
       const chartH = h - padding.top - padding.bottom
 
@@ -696,7 +728,7 @@ const LiveChart = defineComponent({
       ctx.lineWidth = 1
       ctx.setLineDash([2, 2])
 
-      const gridLines = 4
+      const gridLines = 3
       for (let i = 0; i <= gridLines; i++) {
         const y = padding.top + (chartH / gridLines) * i
         ctx.beginPath()
@@ -708,14 +740,14 @@ const LiveChart = defineComponent({
 
       // Draw Y-axis labels
       ctx.fillStyle = 'rgba(150, 150, 150, 0.7)'
-      ctx.font = '10px system-ui, sans-serif'
+      ctx.font = '9px system-ui, sans-serif'
       ctx.textAlign = 'right'
       ctx.textBaseline = 'middle'
 
       for (let i = 0; i <= gridLines; i++) {
         const y = padding.top + (chartH / gridLines) * i
         const value = maxVal - (range / gridLines) * i
-        ctx.fillText(value.toFixed(value >= 100 ? 0 : 1), padding.left - 4, y)
+        ctx.fillText(value.toFixed(value >= 100 ? 0 : 1), padding.left - 3, y)
       }
 
       // Calculate points
@@ -762,11 +794,11 @@ const LiveChart = defineComponent({
       if (points.length > 0) {
         const lastPoint = points[points.length - 1]
         ctx.beginPath()
-        ctx.arc(lastPoint.x, lastPoint.y, 4, 0, Math.PI * 2)
+        ctx.arc(lastPoint.x, lastPoint.y, 3, 0, Math.PI * 2)
         ctx.fillStyle = props.color
         ctx.fill()
         ctx.beginPath()
-        ctx.arc(lastPoint.x, lastPoint.y, 6, 0, Math.PI * 2)
+        ctx.arc(lastPoint.x, lastPoint.y, 5, 0, Math.PI * 2)
         ctx.strokeStyle = props.color + '50'
         ctx.lineWidth = 2
         ctx.stroke()
@@ -883,14 +915,13 @@ const LiveChart = defineComponent({
   overflow: hidden;
 }
 
-/* Charts Panel */
-.charts-panel {
-  width: 55%;
+/* Left Panel: Charts + Table */
+.left-panel {
+  width: 50%;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-y: auto;
-  padding-right: 4px;
+  overflow: hidden;
 }
 
 /* Stats Row */
@@ -902,7 +933,7 @@ const LiveChart = defineComponent({
 }
 
 .stat-item {
-  padding: 12px 8px;
+  padding: 10px 6px;
   background: rgb(var(--v-theme-surface));
   border-radius: var(--llars-radius-sm);
   text-align: center;
@@ -915,12 +946,12 @@ const LiveChart = defineComponent({
 
 .stat-value {
   display: block;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
 }
 
 .stat-label {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -928,15 +959,16 @@ const LiveChart = defineComponent({
 
 /* Charts Grid */
 .charts-grid {
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .chart-card {
   background: rgb(var(--v-theme-surface));
   border-radius: var(--llars-radius-sm);
-  padding: 12px;
+  padding: 10px;
   box-shadow: var(--llars-shadow-sm);
 }
 
@@ -944,19 +976,19 @@ const LiveChart = defineComponent({
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .chart-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
+  gap: 5px;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
 .chart-value {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   font-family: 'SF Mono', 'Monaco', monospace;
 }
@@ -967,80 +999,13 @@ const LiveChart = defineComponent({
 .chart-value--warning { color: var(--llars-warning); }
 
 .chart-container {
-  height: 100px;
-}
-
-/* Selected Container Charts */
-.selected-charts {
-  background: rgb(var(--v-theme-surface));
-  border-radius: var(--llars-radius-sm);
-  padding: 12px;
-  box-shadow: var(--llars-shadow-sm);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  margin-bottom: 12px;
-}
-
-.header-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.charts-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.mini-chart-card {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border-radius: 8px;
-  padding: 8px;
-}
-
-.mini-chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.mini-chart-label {
-  font-size: 0.7rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  text-transform: uppercase;
-}
-
-.mini-chart-value {
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-family: 'SF Mono', monospace;
-}
-
-/* Data Panel */
-.data-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  overflow: hidden;
+  height: 80px;
 }
 
 /* Table Section */
 .table-section {
   flex: 1;
-  min-height: 200px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: rgb(var(--v-theme-surface));
@@ -1051,8 +1016,12 @@ const LiveChart = defineComponent({
 
 .table-section .section-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
   padding: 10px 14px;
-  margin-bottom: 0;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
@@ -1087,7 +1056,6 @@ const LiveChart = defineComponent({
 }
 
 .container-table tbody tr {
-  cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
@@ -1096,15 +1064,27 @@ const LiveChart = defineComponent({
 }
 
 .container-table tbody tr.selected {
-  background: rgba(176, 202, 151, 0.15);
+  background: rgba(136, 196, 200, 0.2);
 }
 
 .name-cell {
+  cursor: pointer;
+}
+
+.name-link {
   font-weight: 500;
-  max-width: 200px;
+  color: var(--llars-accent);
+  transition: color 0.15s ease;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: block;
+}
+
+.name-link:hover {
+  color: var(--llars-primary);
+  text-decoration: underline;
 }
 
 .value-cell {
@@ -1118,10 +1098,18 @@ const LiveChart = defineComponent({
   margin-left: 4px;
 }
 
+/* Right Panel: Logs (full height) */
+.logs-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* Logs Section */
 .logs-section {
   flex: 1;
-  min-height: 180px;
   display: flex;
   flex-direction: column;
   background: rgb(var(--v-theme-surface));
@@ -1132,9 +1120,20 @@ const LiveChart = defineComponent({
 
 .logs-section .section-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
   padding: 10px 14px;
-  margin-bottom: 0;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .log-controls {
@@ -1147,15 +1146,16 @@ const LiveChart = defineComponent({
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
-.log-field { flex: 1; min-width: 90px; max-width: 130px; }
-.log-field--small { max-width: 70px; min-width: 70px; }
+.log-field { flex: 1; min-width: 80px; max-width: 110px; }
+.log-field--wide { max-width: 160px; }
+.log-field--small { max-width: 60px; min-width: 60px; }
 .log-switch { flex: 0 0 auto; margin: 0; }
 
 .logs-container {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  background: rgba(30, 30, 30, 0.95);
+  background: rgba(20, 20, 25, 0.98);
   margin: 8px;
   border-radius: var(--llars-radius-xs);
 }
@@ -1163,11 +1163,28 @@ const LiveChart = defineComponent({
 .logs-content {
   margin: 0;
   padding: 10px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
   font-size: 0.75rem;
-  line-height: 1.4;
-  color: #e0e0e0;
+  line-height: 1.5;
+  color: #d0d0d0;
   white-space: pre;
+}
+
+/* Log level colors */
+.logs-content :deep(.log-error) {
+  color: #ff9b8a;
+}
+
+.logs-content :deep(.log-warn) {
+  color: #f8d88a;
+}
+
+.logs-content :deep(.log-info) {
+  color: #a8d5f2;
+}
+
+.logs-content :deep(.log-debug) {
+  color: #888;
 }
 
 /* Chart Canvas */
@@ -1176,30 +1193,27 @@ const LiveChart = defineComponent({
 }
 
 /* Scrollbars */
-.charts-panel::-webkit-scrollbar,
 .table-wrapper::-webkit-scrollbar,
 .logs-container::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.charts-panel::-webkit-scrollbar-track,
 .table-wrapper::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.charts-panel::-webkit-scrollbar-thumb,
 .table-wrapper::-webkit-scrollbar-thumb {
   background: rgba(var(--v-theme-on-surface), 0.15);
   border-radius: 3px;
 }
 
 .logs-container::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.03);
 }
 
 .logs-container::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.15);
   border-radius: 3px;
 }
 
@@ -1209,16 +1223,17 @@ const LiveChart = defineComponent({
     flex-direction: column;
   }
 
-  .charts-panel {
+  .left-panel {
     width: 100%;
-    max-height: 400px;
+    max-height: 50%;
+  }
+
+  .logs-panel {
+    flex: 1;
+    min-height: 300px;
   }
 
   .charts-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .charts-row {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -1230,10 +1245,6 @@ const LiveChart = defineComponent({
 
   .charts-grid {
     grid-template-columns: 1fr;
-  }
-
-  .charts-row {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

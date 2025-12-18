@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import axios from 'axios';
 import { matomoResetUserId, matomoSetUserId } from '@/plugins/llars-metrics';
 import { usePermissions } from '@/composables/usePermissions';
+import { decodeJwtPayload } from '@/utils/jwt';
 import {
   AUTH_STORAGE_KEYS,
   clearAuthStorage,
@@ -18,14 +19,7 @@ const llarsRoles = ref([]);
 const avatarSeed = ref(null);
 
 const parseJwt = (jwtToken) => {
-  if (!jwtToken) return null;
-  try {
-    const parts = jwtToken.split('.');
-    if (parts.length < 2) return null;
-    return JSON.parse(atob(parts[1]));
-  } catch (e) {
-    return null;
-  }
+  return decodeJwtPayload(jwtToken);
 };
 
 const isTokenExpired = (jwtToken, skewSeconds = 30) => {
@@ -131,9 +125,8 @@ export const useAuth = () => {
   });
 
   const isAdmin = computed(() => {
-    // Check for 'admin' role or 'authentik Admins' group
-    return userRoles.value.includes('admin') ||
-           userRoles.value.includes('authentik Admins');
+    // Source of truth: LLARS roles (DB-backed via backend login response)
+    return userRoles.value.includes('admin');
   });
 
   const login = async (username, password) => {
@@ -160,10 +153,9 @@ export const useAuth = () => {
       llarsRoles.value = roles || [];
 
       // Parse token
-      try {
-        tokenParsed.value = JSON.parse(atob(access_token.split('.')[1]));
-      } catch (e) {
-        console.error('Failed to parse token:', e);
+      tokenParsed.value = parseJwt(access_token);
+      if (!tokenParsed.value) {
+        console.error('Failed to parse token');
       }
 
       // Store in sessionStorage (with safe fallback)

@@ -16,82 +16,55 @@
  *   <v-btn v-if="hasPermission('feature:mail_rating:edit')">Edit</v-btn>
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
-import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 // Shared state across all instances
 const permissions = ref([])
 const roles = ref([])
 const username = ref(null)
 const isLoading = ref(false)
-const lastFetch = ref(null)
-const lastToken = ref(null)
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+let inflightRequest = null
 
 export function usePermissions() {
   /**
    * Fetch user permissions from the backend
    */
   async function fetchPermissions(force = false) {
-    const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
-
-    // Invalidate cache when the auth token changes to avoid leaking permissions across users.
-    if (token !== lastToken.value) {
-      lastToken.value = token
-      lastFetch.value = null
-      permissions.value = []
-      roles.value = []
-      username.value = null
-      force = true
-    }
-
-    // Use cache if available and not forced
-    if (!force && lastFetch.value && (Date.now() - lastFetch.value < CACHE_DURATION)) {
-      return
+    if (inflightRequest) {
+      await inflightRequest
+      if (!force) return
     }
 
     isLoading.value = true
 
-    try {
-      if (!token) {
-        console.warn('No authentication token found')
-        permissions.value = []
-        roles.value = []
-        username.value = null
-        lastToken.value = null
-        return
-      }
+    inflightRequest = (async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+        // Authorization header is injected globally via axios interceptor (main.js).
+        const response = await axios.get(`${baseUrl}/api/permissions/my-permissions`)
 
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
-      const response = await axios.get(`${baseUrl}/api/permissions/my-permissions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+        if (response.data.success) {
+          // Backend returns payload under data: { username, permissions, roles }
+          const payload = response.data.data || response.data
+          permissions.value = payload.permissions || []
+          roles.value = payload.roles || []
+          username.value = payload.username || null
         }
-      })
-
-      if (response.data.success) {
-        // Backend returns payload under data: { username, permissions, roles }
-        const payload = response.data.data || response.data
-        permissions.value = payload.permissions || []
-        roles.value = payload.roles || []
-        username.value = payload.username || null
-        lastFetch.value = Date.now()
-
-        console.log(`✓ Loaded ${permissions.value.length} permissions for user ${username.value}`)
+      } catch (error) {
+        console.error('Failed to fetch permissions:', error)
+        if (error.response?.status === 401) {
+          permissions.value = []
+          roles.value = []
+          username.value = null
+        }
+      } finally {
+        inflightRequest = null
+        isLoading.value = false
       }
-    } catch (error) {
-      console.error('Failed to fetch permissions:', error)
-      // Don't clear permissions on error - keep cached values
-      if (error.response?.status === 401) {
-        // Only clear on authentication error
-        permissions.value = []
-        roles.value = []
-        username.value = null
-      }
-    } finally {
-      isLoading.value = false
-    }
+    })()
+
+    await inflightRequest
   }
 
   /**
@@ -151,8 +124,7 @@ export function usePermissions() {
     permissions.value = []
     roles.value = []
     username.value = null
-    lastFetch.value = null
-    lastToken.value = null
+    inflightRequest = null
   }
 
   /**

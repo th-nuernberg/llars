@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from flask import jsonify, request
 
-from db import db
+from db.db import db
 from db.models.analytics_settings import AnalyticsSettings
 from decorators.permission_decorator import require_permission
 from auth.auth_utils import AuthUtils

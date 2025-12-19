@@ -116,12 +116,13 @@ const iconSizes = {
 const iconSize = computed(() => iconSizes[props.size] || 20)
 
 const buttonProps = computed(() => ({
-  icon: true,
   variant: 'text',
   size: props.size,
   color: variantColors[props.variant],
   loading: props.loading,
-  disabled: props.disabled
+  disabled: props.disabled,
+  // Don't use icon: true - we want custom LLARS styling, not circular
+  minWidth: 0
 }))
 
 const buttonClasses = computed(() => ({
@@ -152,35 +153,82 @@ const ariaLabel = computed(() => {
 
 <style scoped>
 .l-icon-btn {
+  /* LLARS signature asymmetric border-radius (smaller version for icon buttons) */
+  border-radius: 8px 2px 8px 2px !important;
   transition: all 0.2s ease;
+  /* Square dimensions for icon button */
+  padding: 6px !important;
+  min-width: 32px !important;
+  width: 32px;
+  height: 32px;
+}
+
+/* Size variants */
+.l-icon-btn.v-btn--size-x-small {
+  min-width: 24px !important;
+  width: 24px;
+  height: 24px;
+  padding: 4px !important;
+  border-radius: 6px 2px 6px 2px !important;
+}
+
+.l-icon-btn.v-btn--size-small {
+  min-width: 32px !important;
+  width: 32px;
+  height: 32px;
+  padding: 6px !important;
+}
+
+.l-icon-btn.v-btn--size-default {
+  min-width: 40px !important;
+  width: 40px;
+  height: 40px;
+  padding: 8px !important;
+  border-radius: 10px 3px 10px 3px !important;
+}
+
+.l-icon-btn.v-btn--size-large {
+  min-width: 48px !important;
+  width: 48px;
+  height: 48px;
+  padding: 10px !important;
+  border-radius: 12px 3px 12px 3px !important;
+}
+
+.l-icon-btn.v-btn--size-x-large {
+  min-width: 56px !important;
+  width: 56px;
+  height: 56px;
+  padding: 12px !important;
+  border-radius: 14px 4px 14px 4px !important;
 }
 
 .l-icon-btn:hover:not(:disabled) {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .l-icon-btn:active:not(:disabled) {
   transform: scale(0.95);
 }
 
-/* Variant-specific hover effects */
+/* Variant-specific hover effects with LLARS asymmetric shape */
 .l-icon-btn--default:hover:not(:disabled) {
   background-color: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .l-icon-btn--primary:hover:not(:disabled) {
-  background-color: rgba(var(--v-theme-primary), 0.12);
+  background-color: rgba(var(--v-theme-primary), 0.15);
 }
 
 .l-icon-btn--danger:hover:not(:disabled) {
-  background-color: rgba(var(--v-theme-error), 0.12);
+  background-color: rgba(var(--v-theme-error), 0.15);
 }
 
 .l-icon-btn--success:hover:not(:disabled) {
-  background-color: rgba(var(--v-theme-success), 0.12);
+  background-color: rgba(var(--v-theme-success), 0.15);
 }
 
 .l-icon-btn--warning:hover:not(:disabled) {
-  background-color: rgba(var(--v-theme-warning), 0.12);
+  background-color: rgba(var(--v-theme-warning), 0.15);
 }
 </style>

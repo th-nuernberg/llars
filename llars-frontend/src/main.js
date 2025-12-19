@@ -18,11 +18,15 @@ import App from './App.vue'
 // Global LLARS Components
 import LBtn from '@/components/common/LBtn.vue'
 import LIconBtn from '@/components/common/LIconBtn.vue'
+import LActionGroup from '@/components/common/LActionGroup.vue'
+import LSlider from '@/components/common/LSlider.vue'
 import LTag from '@/components/common/LTag.vue'
 import LCard from '@/components/common/LCard.vue'
 import LTabs from '@/components/common/LTabs.vue'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LThemeToggle from '@/components/common/LThemeToggle.vue'
+import LEvaluationLayout from '@/components/common/LEvaluationLayout.vue'
+import LEvaluationStatus from '@/components/common/LEvaluationStatus.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
@@ -42,11 +46,15 @@ initAppTheme(vuetify)
 // Register global LLARS components
 app.component('LBtn', LBtn)
 app.component('LIconBtn', LIconBtn)
+app.component('LActionGroup', LActionGroup)
+app.component('LSlider', LSlider)
 app.component('LTag', LTag)
 app.component('LCard', LCard)
 app.component('LTabs', LTabs)
 app.component('LAvatar', LAvatar)
 app.component('LThemeToggle', LThemeToggle)
+app.component('LEvaluationLayout', LEvaluationLayout)
+app.component('LEvaluationStatus', LEvaluationStatus)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

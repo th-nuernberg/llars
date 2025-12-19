@@ -347,8 +347,8 @@ function openSettings() {
    LLARS AppBar Styling
    ============================================ */
 .llars-appbar {
-  background: linear-gradient(135deg, var(--llars-secondary) 0%, #c4a870 100%) !important;
-  border-bottom: 3px solid var(--llars-primary) !important;
+  background: var(--llars-appbar-gradient) !important;
+  border-bottom: 3px solid var(--llars-appbar-border) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
@@ -417,8 +417,8 @@ function openSettings() {
    LLARS Footer Styling
    ============================================ */
 .llars-footer {
-  background: linear-gradient(135deg, var(--llars-secondary) 0%, #c4a870 100%) !important;
-  border-top: 2px solid var(--llars-primary) !important;
+  background: var(--llars-appbar-gradient) !important;
+  border-top: 2px solid var(--llars-appbar-border) !important;
   font-size: 0.75rem;
 }
 
@@ -442,14 +442,9 @@ function openSettings() {
 
 /* ============================================
    Dark Mode Adjustments
+   ============================================
+   AppBar/Footer colors are now handled via CSS variables:
+   --llars-appbar-gradient and --llars-appbar-border
+   defined in global.css for both light and dark modes
    ============================================ */
-.v-theme--dark .llars-appbar {
-  background: linear-gradient(135deg, #8a7a5a 0%, #6a5a40 100%) !important;
-  border-bottom-color: #5a6a52 !important;
-}
-
-.v-theme--dark .llars-footer {
-  background: linear-gradient(135deg, #8a7a5a 0%, #6a5a40 100%) !important;
-  border-top-color: #5a6a52 !important;
-}
 </style>

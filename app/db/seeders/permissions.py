@@ -368,11 +368,18 @@ def initialize_permissions(db):
             db.session.commit()
             print(f"Created role: {role_name}")
         else:
-            # Update existing role with any new permissions
+            # Sync existing role permissions (add new, remove old)
             role = existing_role
-            existing_perm_ids = {rp.permission_id for rp in
-                               RolePermission.query.filter_by(role_id=role.id).all()}
+            existing_role_perms = RolePermission.query.filter_by(role_id=role.id).all()
+            existing_perm_ids = {rp.permission_id for rp in existing_role_perms}
 
+            # Get target permission IDs
+            target_perm_ids = set()
+            for perm_key in permission_keys:
+                if perm_key in permission_map:
+                    target_perm_ids.add(permission_map[perm_key].id)
+
+            # Add missing permissions
             added_perms = []
             for perm_key in permission_keys:
                 if perm_key in permission_map:
@@ -385,9 +392,24 @@ def initialize_permissions(db):
                         db.session.add(role_perm)
                         added_perms.append(perm_key)
 
-            if added_perms:
+            # Remove permissions not in target list (sync)
+            removed_perms = []
+            for rp in existing_role_perms:
+                if rp.permission_id not in target_perm_ids:
+                    # Find permission key for logging
+                    perm_key = next(
+                        (k for k, p in permission_map.items() if p.id == rp.permission_id),
+                        f"id:{rp.permission_id}"
+                    )
+                    removed_perms.append(perm_key)
+                    db.session.delete(rp)
+
+            if added_perms or removed_perms:
                 db.session.commit()
-                print(f"Role '{role_name}' updated with new permissions: {added_perms}")
+                if added_perms:
+                    print(f"Role '{role_name}' - added: {added_perms}")
+                if removed_perms:
+                    print(f"Role '{role_name}' - removed: {removed_perms}")
             else:
                 print(f"Role already exists: {role_name}")
 

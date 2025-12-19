@@ -60,6 +60,12 @@
   --llars-gray-active: #7e7e7e;
   --llars-gray-light: #c5c5c5;
 
+  /* AppBar/Footer Colors (Light Mode) */
+  --llars-appbar-start: #D1BC8A;
+  --llars-appbar-end: #c4a870;
+  --llars-appbar-border: #b0ca97;
+  --llars-appbar-gradient: linear-gradient(135deg, #D1BC8A 0%, #c4a870 100%);
+
   /* LLARS Signature Border Radius */
   --llars-radius: 16px 4px 16px 4px;
   --llars-radius-sm: 8px 2px 8px 2px;
@@ -129,6 +135,12 @@
   --llars-secondary: #8a7a55;
   --llars-secondary-hover: #9a8a65;
   --llars-secondary-active: #7a6a45;
+
+  /* AppBar/Footer Colors (Dark Mode) */
+  --llars-appbar-start: #8a7a5a;
+  --llars-appbar-end: #6a5a40;
+  --llars-appbar-border: #5a6a52;
+  --llars-appbar-gradient: linear-gradient(135deg, #8a7a5a 0%, #6a5a40 100%);
 
   /* Accent Colors (Dark Soft Teal) */
   --llars-accent: #4a7a7d;

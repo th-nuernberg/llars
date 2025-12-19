@@ -442,7 +442,7 @@ function openSettings() {
 
 /* ============================================
    Dark Mode Adjustments
-   ============================================
+============================================
    AppBar/Footer colors are now handled via CSS variables:
    --llars-appbar-gradient and --llars-appbar-border
    defined in global.css for both light and dark modes

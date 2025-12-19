@@ -298,54 +298,65 @@ const formatDate = (dateString) => {
   });
 };
 
-// Fetch dashboard data
+// Fetch dashboard data - parallel API calls for faster loading
 const fetchDashboardData = async () => {
-  await withLoading('stats', async () => {
-    try {
-      const ragResponse = await axios.get('/api/rag/stats');
-      const totalDocs = ragResponse.data.total_documents
-        || ragResponse.data.stats?.documents?.total
-        || 0;
-      stats.value[2].value = totalDocs.toString();
-    } catch (error) {
-      console.error('Error fetching RAG stats:', error);
-    }
+  // Start all loading states
+  setLoading('stats', true);
+  setLoading('scenarios', true);
 
-    try {
-      const permResponse = await axios.get('/api/permissions/roles');
-      stats.value[0].value = '-';
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-    }
-  });
+  // Execute all API calls in parallel
+  const [ragResult, permResult, scenariosResult] = await Promise.allSettled([
+    axios.get('/api/rag/stats'),
+    axios.get('/api/permissions/roles'),
+    axios.get('/api/admin/scenarios')
+  ]);
 
-  await withLoading('scenarios', async () => {
-    try {
-      const scenariosResponse = await axios.get('/api/admin/scenarios');
-      const scenarios = scenariosResponse.data.scenarios || [];
+  // Process RAG stats
+  if (ragResult.status === 'fulfilled') {
+    const totalDocs = ragResult.value.data.total_documents
+      || ragResult.value.data.stats?.documents?.total
+      || 0;
+    stats.value[2].value = totalDocs.toString();
+  } else {
+    console.error('Error fetching RAG stats:', ragResult.reason);
+  }
 
-      const activeCount = scenarios.filter(s => s.status === 'aktiv').length;
-      stats.value[1].value = activeCount.toString();
+  // Process permissions/users
+  if (permResult.status === 'fulfilled') {
+    stats.value[0].value = '-';
+  } else {
+    console.error('Error fetching user stats:', permResult.reason);
+  }
 
-      activeScenarios.value = scenarios.filter(s => s.status === 'aktiv').slice(0, 5);
+  setLoading('stats', false);
 
-      const expiringScenarios = scenarios.filter(s => {
-        if (!s.end_date || s.status !== 'aktiv') return false;
-        const endDate = new Date(s.end_date);
-        const daysUntilEnd = (endDate - new Date()) / (1000 * 60 * 60 * 24);
-        return daysUntilEnd <= 7 && daysUntilEnd > 0;
+  // Process scenarios
+  if (scenariosResult.status === 'fulfilled') {
+    const scenarios = scenariosResult.value.data.scenarios || [];
+
+    const activeCount = scenarios.filter(s => s.status === 'aktiv').length;
+    stats.value[1].value = activeCount.toString();
+
+    activeScenarios.value = scenarios.filter(s => s.status === 'aktiv').slice(0, 5);
+
+    const expiringScenarios = scenarios.filter(s => {
+      if (!s.end_date || s.status !== 'aktiv') return false;
+      const endDate = new Date(s.end_date);
+      const daysUntilEnd = (endDate - new Date()) / (1000 * 60 * 60 * 24);
+      return daysUntilEnd <= 7 && daysUntilEnd > 0;
+    });
+
+    if (expiringScenarios.length > 0) {
+      warnings.value.push({
+        type: 'warning',
+        message: `${expiringScenarios.length} Szenario(s) laufen in den nächsten 7 Tagen ab`
       });
-
-      if (expiringScenarios.length > 0) {
-        warnings.value.push({
-          type: 'warning',
-          message: `${expiringScenarios.length} Szenario(s) laufen in den nächsten 7 Tagen ab`
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching scenarios:', error);
     }
-  });
+  } else {
+    console.error('Error fetching scenarios:', scenariosResult.reason);
+  }
+
+  setLoading('scenarios', false);
 };
 
 onMounted(() => {

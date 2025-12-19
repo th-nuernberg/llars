@@ -159,7 +159,7 @@ def _start_stats_task(socketio) -> None:
                             namespace=ADMIN_NAMESPACE,
                         )
 
-                time.sleep(1.0)
+                time.sleep(2.0)  # 2s polling interval for performance
         finally:
             with _stats_lock:
                 global _stats_task_started
@@ -241,6 +241,14 @@ def register_docker_monitor_events(socketio):
 
         _start_stats_task(socketio)
         emit("docker:subscribed", {"scope": scope}, namespace=ADMIN_NAMESPACE)
+
+        # Send immediate snapshot so client doesn't have to wait for first poll
+        try:
+            if DockerMonitorService.ping():
+                snapshot = DockerMonitorService.get_snapshot(scope=scope)
+                emit("docker:stats", snapshot, namespace=ADMIN_NAMESPACE)
+        except Exception as exc:
+            logger.warning(f"[Docker Monitor] Immediate snapshot failed: {exc}")
 
     @socketio.on("docker:unsubscribe_stats", namespace=ADMIN_NAMESPACE)
     def unsubscribe_stats(data=None):

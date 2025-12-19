@@ -347,8 +347,8 @@ function openSettings() {
    LLARS AppBar Styling
    ============================================ */
 .llars-appbar {
-  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%) !important;
-  border-bottom: 3px solid var(--llars-secondary) !important;
+  background: linear-gradient(135deg, var(--llars-secondary) 0%, #c4a870 100%) !important;
+  border-bottom: 3px solid var(--llars-primary) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
@@ -417,8 +417,8 @@ function openSettings() {
    LLARS Footer Styling
    ============================================ */
 .llars-footer {
-  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%) !important;
-  border-top: 2px solid var(--llars-secondary) !important;
+  background: linear-gradient(135deg, var(--llars-secondary) 0%, #c4a870 100%) !important;
+  border-top: 2px solid var(--llars-primary) !important;
   font-size: 0.75rem;
 }
 
@@ -444,12 +444,12 @@ function openSettings() {
    Dark Mode Adjustments
    ============================================ */
 .v-theme--dark .llars-appbar {
-  background: linear-gradient(135deg, #3a4a32 0%, #2a4a4d 100%) !important;
-  border-bottom-color: #5a5a40 !important;
+  background: linear-gradient(135deg, #8a7a5a 0%, #6a5a40 100%) !important;
+  border-bottom-color: #5a6a52 !important;
 }
 
 .v-theme--dark .llars-footer {
-  background: linear-gradient(135deg, #3a4a32 0%, #2a4a4d 100%) !important;
-  border-top-color: #5a5a40 !important;
+  background: linear-gradient(135deg, #8a7a5a 0%, #6a5a40 100%) !important;
+  border-top-color: #5a6a52 !important;
 }
 </style>

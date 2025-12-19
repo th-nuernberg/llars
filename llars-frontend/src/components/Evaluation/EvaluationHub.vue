@@ -38,26 +38,41 @@
       </div>
 
       <div v-else class="features-grid">
-        <div
+        <v-tooltip
           v-for="tool in availableTools"
           :key="tool.title"
-          class="feature-card"
-          @click="navigateTo(tool.route)"
+          :disabled="hasScenarios(tool)"
+          location="top"
         >
-          <div class="feature-icon">
-            <v-icon size="32" color="primary">{{ tool.icon }}</v-icon>
-          </div>
-          <div class="feature-title">
-            <span v-if="tool.emoji" class="feature-emoji">{{ tool.emoji }}</span>
-            {{ tool.title }}
-          </div>
-          <div class="feature-description">{{ tool.description }}</div>
-          <div class="feature-badge" v-if="tool.badge">
-            <LTag :variant="getBadgeVariant(tool.badgeColor)" size="sm">
-              {{ tool.badge }}
-            </LTag>
-          </div>
-        </div>
+          <template v-slot:activator="{ props }">
+            <div
+              v-bind="props"
+              class="feature-card"
+              :class="{ 'feature-card--disabled': !hasScenarios(tool) }"
+              @click="navigateTo(tool.route, tool)"
+            >
+              <div class="feature-icon" :class="{ 'feature-icon--disabled': !hasScenarios(tool) }">
+                <v-icon size="32" :color="hasScenarios(tool) ? 'primary' : 'grey'">{{ tool.icon }}</v-icon>
+              </div>
+              <div class="feature-title">
+                <span v-if="tool.emoji" class="feature-emoji">{{ tool.emoji }}</span>
+                {{ tool.title }}
+              </div>
+              <div class="feature-description">{{ tool.description }}</div>
+              <div class="feature-badge" v-if="tool.badge && hasScenarios(tool)">
+                <LTag :variant="getBadgeVariant(tool.badgeColor)" size="sm">
+                  {{ tool.badge }}
+                </LTag>
+              </div>
+              <div class="feature-badge" v-if="!hasScenarios(tool)">
+                <LTag variant="gray" size="sm">
+                  Keine Szenarien
+                </LTag>
+              </div>
+            </div>
+          </template>
+          <span>Keine Szenarien zugewiesen</span>
+        </v-tooltip>
       </div>
     </template>
   </v-container>
@@ -66,6 +81,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 
@@ -74,6 +90,9 @@ const router = useRouter()
 const { hasPermission, fetchPermissions } = usePermissions()
 const { isLoading, withLoading } = useSkeletonLoading(['permissions'])
 
+// Thread counts per function type (from backend)
+const threadCounts = ref({})
+
 const allTools = ref([
   {
     title: 'Ranking',
@@ -81,7 +100,8 @@ const allTools = ref([
     route: '/Ranker',
     icon: 'mdi-chart-bar-stacked',
     emoji: '🏆',
-    permission: 'feature:ranking:view'
+    permission: 'feature:ranking:view',
+    functionType: 'ranking'
   },
   {
     title: 'Verlaufsbewertung',
@@ -89,7 +109,8 @@ const allTools = ref([
     route: '/HistoryGeneration',
     icon: 'mdi-timeline-text-outline',
     emoji: '✉️',
-    permission: 'feature:mail_rating:view'
+    permission: 'feature:mail_rating:view',
+    functionType: 'mail_rating'
   },
   {
     title: 'Fake/Echt',
@@ -98,6 +119,7 @@ const allTools = ref([
     icon: 'mdi-shield-search',
     emoji: '🕵️',
     permission: 'feature:authenticity:view',
+    functionType: 'authenticity',
     badge: 'New',
     badgeColor: 'info'
   },
@@ -107,7 +129,8 @@ const allTools = ref([
     route: '/Rater',
     icon: 'mdi-star-outline',
     emoji: '⭐️',
-    permission: 'feature:rating:view'
+    permission: 'feature:rating:view',
+    functionType: 'rating'
   },
   {
     title: 'Gegenüberstellung',
@@ -115,7 +138,8 @@ const allTools = ref([
     route: '/comparison',
     icon: 'mdi-compare-horizontal',
     emoji: '⚖️',
-    permission: 'feature:comparison:view'
+    permission: 'feature:comparison:view',
+    functionType: 'comparison'
   }
 ])
 
@@ -126,8 +150,30 @@ const availableTools = computed(() => {
   })
 })
 
-function navigateTo(route) {
+// Check if tool has scenarios assigned
+function hasScenarios(tool) {
+  if (!tool.functionType) return true
+  return (threadCounts.value[tool.functionType] || 0) > 0
+}
+
+// Get scenario count for tooltip
+function getScenarioCount(tool) {
+  if (!tool.functionType) return 0
+  return threadCounts.value[tool.functionType] || 0
+}
+
+function navigateTo(route, tool) {
+  if (!hasScenarios(tool)) return
   router.push(route)
+}
+
+async function fetchThreadCounts() {
+  try {
+    const response = await axios.get('/api/evaluation/thread_counts')
+    threadCounts.value = response.data.counts || {}
+  } catch (error) {
+    console.error('Error fetching thread counts:', error)
+  }
 }
 
 function goHome() {
@@ -147,7 +193,10 @@ function getBadgeVariant(badgeColor) {
 
 onMounted(async () => {
   await withLoading('permissions', async () => {
-    await fetchPermissions()
+    await Promise.all([
+      fetchPermissions(),
+      fetchThreadCounts()
+    ])
   })
 })
 </script>
@@ -175,10 +224,25 @@ onMounted(async () => {
   transition: all 0.2s;
 }
 
-.feature-card:hover {
+.feature-card:hover:not(.feature-card--disabled) {
   border-color: rgb(var(--v-theme-primary));
   box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.15);
   transform: translateY(-2px);
+}
+
+.feature-card--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.feature-card--disabled .feature-title,
+.feature-card--disabled .feature-description {
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+.feature-icon--disabled {
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .feature-icon {

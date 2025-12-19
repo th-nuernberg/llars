@@ -317,13 +317,14 @@ class KIASyncService:
             logger.error(f"[KIASync] Request failed for {file_path}: {e}")
             return None
 
-    def sync_pillar(self, pillar_number: int, force: bool = False) -> SyncResult:
+    def sync_pillar(self, pillar_number: int, force: bool = False, function_type_id: int = 1) -> SyncResult:
         """
         Synchronize data for a specific pillar.
 
         Args:
             pillar_number: Pillar number (1-5)
             force: If True, re-import even if data exists
+            function_type_id: Function type ID for scenarios (1=ranking, 2=rating, 3=mail_rating)
 
         Returns:
             SyncResult with statistics
@@ -365,7 +366,8 @@ class KIASyncService:
                     pillar_number,
                     config['name'],
                     file_name,
-                    force
+                    force,
+                    function_type_id
                 )
 
                 if import_result == "created":
@@ -403,7 +405,8 @@ class KIASyncService:
         pillar_number: int,
         pillar_name: str,
         source_file: str,
-        force: bool = False
+        force: bool = False,
+        function_type_id: int = 1  # Default to ranking
     ) -> str:
         """
         Import a single thread from JSON data.
@@ -475,7 +478,8 @@ class KIASyncService:
                 chat_id=kia_chat_id,
                 institut_id=pillar_number,
                 subject=subject,
-                sender=f"KIA-Säule-{pillar_number}"
+                sender=f"KIA-Säule-{pillar_number}",
+                function_type_id=function_type_id
             )
             db.session.add(email_thread)
             db.session.flush()  # Get the thread_id
@@ -483,6 +487,8 @@ class KIASyncService:
         else:
             # Update existing
             email_thread.subject = subject
+            if email_thread.function_type_id is None:
+                email_thread.function_type_id = function_type_id
             if force:
                 # Delete existing messages for re-import
                 Message.query.filter_by(thread_id=email_thread.thread_id).delete()

@@ -208,7 +208,7 @@
             </template>
 
             <template v-slot:item.completed="{ item }">
-              {{ item.ranked_threads_count || 0 }} / {{ item.total_threads || 0 }}
+              {{ item.done_threads || 0 }} / {{ item.total_threads || 0 }}
             </template>
           </v-data-table>
         </v-card-text>
@@ -235,6 +235,12 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Authenticity Stats Dialog -->
+    <AuthenticityStatsDialog
+      v-model="authenticityStatsDialog"
+      :scenario="authenticityScenario"
+    />
   </div>
 </template>
 
@@ -243,6 +249,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import CreateScenarioDialog from '@/components/parts/CreateScenarioDialog.vue';
 import ScenarioDetailDialog from '@/components/parts/ScenarioDetailsDialog.vue';
+import AuthenticityStatsDialog from '@/components/Admin/sections/AuthenticityStatsDialog.vue';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // State
@@ -253,11 +260,15 @@ const typeFilter = ref('all');
 const loading = ref(false);
 const { isLoading, withLoading } = useSkeletonLoading(['stats', 'table']);
 
-// Stats dialog
+// Stats dialog (generic)
 const statsDialog = ref(false);
 const selectedScenario = ref(null);
 const userStats = ref([]);
 const loadingStats = ref(false);
+
+// Authenticity stats dialog
+const authenticityStatsDialog = ref(false);
+const authenticityScenario = ref(null);
 
 // Delete dialog
 const deleteDialog = ref(false);
@@ -401,7 +412,7 @@ const isExpired = (dateString) => {
 
 const calculateProgress = (user) => {
   if (!user.total_threads || user.total_threads === 0) return 0;
-  return ((user.ranked_threads_count || 0) / user.total_threads) * 100;
+  return ((user.done_threads || 0) / user.total_threads) * 100;
 };
 
 // API calls
@@ -422,13 +433,21 @@ const fetchScenarios = async () => {
 };
 
 const viewScenarioStats = async (scenario) => {
+  // Use specialized dialog for authenticity scenarios
+  if (scenario.function_type_name === 'authenticity') {
+    authenticityScenario.value = scenario;
+    authenticityStatsDialog.value = true;
+    return;
+  }
+
+  // Generic stats dialog for other scenario types
   selectedScenario.value = scenario;
   statsDialog.value = true;
   loadingStats.value = true;
 
   try {
-    const response = await axios.get(`/api/admin/scenario/${scenario.scenario_id}/user_stats`);
-    userStats.value = response.data.user_stats || [];
+    const response = await axios.get(`/api/admin/scenario_progress_stats/${scenario.scenario_id}`);
+    userStats.value = response.data.rater_stats || [];
   } catch (error) {
     console.error('Error fetching user stats:', error);
     userStats.value = [];

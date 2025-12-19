@@ -317,7 +317,7 @@ const filteredItems = computed(() => {
 })
 
 const selectedCategoryName = computed(() => {
-  const cat = categories.find(c => c.id === selectedCategory.value)
+  const cat = categories.value.find(c => c.id === selectedCategory.value)
   return cat ? cat.name : 'Features'
 })
 

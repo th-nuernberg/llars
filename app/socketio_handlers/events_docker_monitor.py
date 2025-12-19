@@ -477,6 +477,15 @@ def register_docker_monitor_events(socketio):
 
         emit("db:subscribed", {"table": table, "limit": limit}, namespace=ADMIN_NAMESPACE)
 
+        # Send immediate snapshot so client doesn't have to wait for first poll
+        try:
+            import time
+            snapshot = DbExplorerService.get_table_snapshot(table=table, limit=limit)
+            snapshot["polled_at"] = time.time()
+            emit("db:table", snapshot, namespace=ADMIN_NAMESPACE)
+        except Exception as exc:
+            emit("db:error", {"message": f"DB snapshot failed for {table}: {exc}", "table": table}, namespace=ADMIN_NAMESPACE)
+
     @socketio.on("db:unsubscribe_table", namespace=ADMIN_NAMESPACE)
     def db_unsubscribe_table(data=None):
         username = _require_authorized()

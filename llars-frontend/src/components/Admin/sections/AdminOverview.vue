@@ -184,7 +184,7 @@ import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { getAnalyticsConfig } from '@/plugins/llars-metrics';
 
-const { isLoading, withLoading } = useSkeletonLoading(['stats', 'activities', 'scenarios']);
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['stats', 'activities', 'scenarios']);
 
 // Stats data
 const stats = ref([

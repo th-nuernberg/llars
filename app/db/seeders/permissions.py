@@ -211,6 +211,32 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt den Zugriff auf das Offline-Anonymisierungstool'
         },
+        # Feature: LLM-as-Judge
+        {
+            'permission_key': 'feature:judge:view',
+            'display_name': 'LLM-as-Judge ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt den Zugriff auf das LLM-as-Judge Tool'
+        },
+        {
+            'permission_key': 'feature:judge:edit',
+            'display_name': 'LLM-as-Judge bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Verwalten von Judge-Sessions'
+        },
+        # Feature: OnCoCo Analyse
+        {
+            'permission_key': 'feature:oncoco:view',
+            'display_name': 'OnCoCo Analyse ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt den Zugriff auf das OnCoCo Analyse Tool'
+        },
+        {
+            'permission_key': 'feature:oncoco:edit',
+            'display_name': 'OnCoCo Analyse bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Durchführen von OnCoCo Analysen'
+        },
         # Feature: KAIMO
         {
             'permission_key': 'feature:kaimo:view',
@@ -266,8 +292,9 @@ def initialize_permissions(db):
         {
             'role_name': 'researcher',
             'display_name': 'Forscher',
-            'description': 'Zugriff auf alle Features zum Forschen und Daten exportieren',
+            'description': 'Zugriff auf Evaluierung, Chatbot, Prompt Engineering, Markdown Collab, Anonymisierung und KAIMO',
             'permissions': [
+                # Evaluierung (alle Bewertungsfeatures)
                 'feature:mail_rating:view',
                 'feature:mail_rating:edit',
                 'feature:ranking:view',
@@ -278,22 +305,20 @@ def initialize_permissions(db):
                 'feature:comparison:edit',
                 'feature:authenticity:view',
                 'feature:authenticity:edit',
+                # Chatbot (nur ansehen und nutzen)
+                'feature:chatbots:view',
+                # Prompt Engineering
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
+                # Markdown Collab
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
                 'feature:markdown_collab:share',
-                'feature:rag:view',
-                'feature:rag:edit',
-                'feature:chatbots:view',
-                'feature:chatbots:edit',
-                'feature:chatbots:advanced',
+                # Anonymisierung
                 'feature:anonymize:view',
+                # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
-                'admin:kaimo:manage',
-                'admin:kaimo:results',
-                'data:export',
             ]
         },
         {

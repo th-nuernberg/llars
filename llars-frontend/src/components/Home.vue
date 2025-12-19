@@ -180,14 +180,22 @@ const {
   storageKey: 'home-panel-width'
 })
 
-// Categories
-const categories = [
+// All categories (filtered based on available items)
+const allCategories = [
   { id: 'all', name: 'Alle Features', icon: 'mdi-view-grid-outline' },
   { id: 'research', name: 'Forschung', icon: 'mdi-flask-outline' },
   { id: 'rating', name: 'Bewertung', icon: 'mdi-star-outline' },
   { id: 'ai', name: 'KI-Tools', icon: 'mdi-robot-outline' },
   { id: 'admin', name: 'Administration', icon: 'mdi-shield-account-outline' }
 ]
+
+// Only show categories that have at least one visible item
+const categories = computed(() => {
+  return allCategories.filter(cat => {
+    if (cat.id === 'all') return true
+    return items.value.some(item => item.category === cat.id)
+  })
+})
 
 const selectedCategory = ref('all')
 
@@ -243,7 +251,7 @@ const allItems = ref([
     description: 'Automatisierte Bewertung und Vergleich von Prompt-Säulen',
     route: '/judge',
     icon: 'mdi-gavel',
-    permission: null,
+    permission: 'feature:judge:view',
     category: 'ai'
   },
   {
@@ -269,7 +277,7 @@ const allItems = ref([
     description: 'Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)',
     route: '/oncoco',
     icon: 'mdi-chart-timeline-variant-shimmer',
-    permission: 'feature:comparison:view',
+    permission: 'feature:oncoco:view',
     category: 'ai'
   },
   {

@@ -1,79 +1,111 @@
 <template>
-  <v-container class="fill-height" fluid>
+  <div class="login-page" :class="{ 'dark-mode': isDarkMode }">
     <div class="paint-strokes">
       <div v-for="n in 8" :key="n"></div>
     </div>
-    <v-row justify="center" align="center">
-      <v-col cols="12" sm="8" md="4">
-        <v-card class="elevation-12">
-          <v-toolbar color="primary" dark>
-            <v-toolbar-title>LLars Plattform Login</v-toolbar-title>
-          </v-toolbar>
-          <v-card-text>
-            <v-form @submit.prevent="handleLogin">
-              <v-text-field
-                label="Username"
-                prepend-icon="mdi-account"
-                v-model="username"
-                color="primary"
-                required
-                :disabled="isLogging"
-              ></v-text-field>
-              <v-text-field
-                label="Passwort"
-                prepend-icon="mdi-lock"
-                v-model="password"
-                type="password"
-                color="primary"
-                required
-                :disabled="isLogging"
-                @keyup.enter="handleLogin"
-              ></v-text-field>
-            </v-form>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <LBtn variant="primary" @click="handleLogin" :loading="isLogging" :disabled="isLogging">Login</LBtn>
-          </v-card-actions>
-          <v-alert v-if="errorMessage" type="error" class="ma-4">
+
+    <div class="login-container">
+      <div class="login-card">
+        <!-- Header with Logo -->
+        <div class="login-header">
+          <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="login-logo" />
+          <h1 class="login-title">LLars Plattform</h1>
+          <p class="login-subtitle">Willkommen zurück</p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="login-form">
+          <v-form @submit.prevent="handleLogin">
+            <v-text-field
+              v-model="username"
+              label="Username"
+              variant="outlined"
+              density="comfortable"
+              prepend-inner-icon="mdi-account"
+              :disabled="isLogging"
+              class="login-field"
+              hide-details="auto"
+            />
+
+            <v-text-field
+              v-model="password"
+              label="Passwort"
+              variant="outlined"
+              density="comfortable"
+              prepend-inner-icon="mdi-lock"
+              :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+              :type="showPassword ? 'text' : 'password'"
+              @click:append-inner="showPassword = !showPassword"
+              :disabled="isLogging"
+              @keyup.enter="handleLogin"
+              class="login-field"
+              hide-details="auto"
+            />
+
+            <LBtn
+              variant="primary"
+              block
+              size="large"
+              @click="handleLogin"
+              :loading="isLogging"
+              :disabled="isLogging || !username || !password"
+              prepend-icon="mdi-login"
+              class="login-button"
+            >
+              Anmelden
+            </LBtn>
+          </v-form>
+
+          <!-- Error Message -->
+          <v-alert
+            v-if="errorMessage"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="login-error"
+            closable
+            @click:close="errorMessage = ''"
+          >
             {{ errorMessage }}
           </v-alert>
+        </div>
 
-          <!-- Dev Mode Quick Login Buttons -->
-          <template v-if="isDevelopment">
-            <v-divider class="my-2" />
-            <v-card-text class="pt-0">
-              <div class="text-caption text-medium-emphasis text-center mb-2">
-                <v-icon size="x-small" class="mr-1">mdi-wrench</v-icon>
-                Development Quick Login
-              </div>
-              <div class="d-flex justify-center ga-2 flex-wrap">
-                <LBtn
-                  v-for="user in devUsers"
-                  :key="user.username"
-                  :variant="user.username === 'admin' ? 'danger' : user.username === 'researcher' ? 'primary' : 'secondary'"
-                  :prepend-icon="user.icon"
-                  @click="quickLogin(user)"
-                  :loading="loadingUser === user.username"
-                >
-                  {{ user.label }}
-                </LBtn>
-              </div>
-            </v-card-text>
-          </template>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+        <!-- Dev Mode Quick Login -->
+        <div v-if="isDevelopment" class="dev-login">
+          <div class="dev-login-divider">
+            <span>Development</span>
+          </div>
+          <div class="dev-login-buttons">
+            <LBtn
+              v-for="user in devUsers"
+              :key="user.username"
+              :variant="user.username === 'admin' ? 'danger' : user.username === 'researcher' ? 'primary' : 'secondary'"
+              :prepend-icon="user.icon"
+              size="small"
+              @click="quickLogin(user)"
+              :loading="loadingUser === user.username"
+            >
+              {{ user.label }}
+            </LBtn>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue';
+import {ref, computed, onMounted} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
+import {useTheme} from 'vuetify';
 import {useAuth} from '@/composables/useAuth';
+
+const theme = useTheme();
+const isDarkMode = computed(() => theme.global.current.value.dark);
 
 const username = ref('');
 const password = ref('');
+const showPassword = ref(false);
 const errorMessage = ref('');
 const isLogging = ref(false);
 const loadingUser = ref(null);
@@ -174,157 +206,335 @@ async function quickLogin(user) {
 </script>
 
 <style scoped>
-.fill-height {
-  min-height: 100vh;
+/* Login Page Layout - Fixed viewport, no scroll */
+.login-page {
+  height: calc(100vh - 94px); /* 64px AppBar + 30px Footer */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   background: rgb(var(--v-theme-background));
   overflow: hidden;
 }
 
+.login-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  padding: 16px;
+}
+
+/* Login Card - LLARS Signature Style */
+.login-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: var(--llars-radius);
+  box-shadow: var(--llars-shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.12));
+  overflow: hidden;
+}
+
+/* Header Section */
+.login-header {
+  background: var(--llars-gradient-primary);
+  padding: 24px 20px;
+  text-align: center;
+  color: white;
+}
+
+.login-logo {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.login-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.login-subtitle {
+  font-size: 0.85rem;
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Form Section */
+.login-form {
+  padding: 20px;
+}
+
+.login-field {
+  margin-bottom: 12px;
+}
+
+.login-field :deep(.v-field) {
+  border-radius: var(--llars-radius-sm);
+}
+
+.login-button {
+  margin-top: 4px;
+}
+
+.login-error {
+  margin-top: 12px;
+  border-radius: var(--llars-radius-xs);
+}
+
+/* Dev Login Section */
+.dev-login {
+  padding: 0 20px 20px;
+}
+
+.dev-login-divider {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dev-login-divider::before,
+.dev-login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.dev-login-divider span {
+  padding: 0 12px;
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dev-login-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ========================================
+   Paint Strokes Background - LIGHT MODE
+   Distributed across entire viewport
+   ======================================== */
 .paint-strokes {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
 .paint-strokes div {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  filter: blur(20px);
-  mix-blend-mode: multiply;
+  filter: blur(60px);
+  opacity: 0.4;
 }
 
-/* LINKE SEITE - Helle Grüntöne (Fokus auf linke Ecken) */
+/* Top Left - Sage Green */
 .paint-strokes div:nth-child(1) {
-  background: rgba(226, 234, 218, 0.5);
-  top: -50%;
-  left: -90%;
-  width: 120%;
-  height: 180%;
-  transform: rotate(-15deg);
+  background: rgba(176, 202, 151, 0.6);
+  top: -20%;
+  left: -15%;
+  width: 50%;
+  height: 45%;
   border-radius: 65% 35% 70% 30% / 55% 45% 60% 40%;
-  animation: floatStrokeLeft1 45s ease-in-out infinite;
+  animation: floatStroke1 35s ease-in-out infinite;
 }
 
+/* Top Right - Golden Beige */
 .paint-strokes div:nth-child(2) {
-  background: rgba(234, 238, 229, 0.4);
-  top: -40%;
-  left: -95%;
-  width: 130%;
-  height: 160%;
-  transform: rotate(-25deg);
-  border-radius: 55% 45% 60% 40% / 45% 55% 65% 35%;
-  animation: floatStrokeLeft2 52s ease-in-out infinite;
-}
-
-.paint-strokes div:nth-child(3) {
-  background: rgba(220, 230, 215, 0.45);
-  bottom: -60%;
-  left: -85%;
-  width: 110%;
-  height: 140%;
-  transform: rotate(-20deg);
-  border-radius: 60% 40% 65% 35% / 35% 65% 45% 55%;
-  animation: floatStrokeLeft3 48s ease-in-out infinite;
-}
-
-.paint-strokes div:nth-child(4) {
-  background: rgba(228, 235, 223, 0.35);
-  bottom: -50%;
-  left: -90%;
-  width: 125%;
-  height: 150%;
-  transform: rotate(-30deg);
-  border-radius: 70% 30% 50% 50% / 50% 50% 70% 30%;
-  animation: floatStrokeLeft4 50s ease-in-out infinite;
-}
-
-/* RECHTE SEITE - Helle Beigetöne (Fokus auf rechte Ecken) */
-.paint-strokes div:nth-child(5) {
-  background: rgba(242, 236, 228, 0.5);
-  top: -50%;
-  right: -90%;
-  width: 120%;
-  height: 170%;
-  transform: rotate(15deg);
-  border-radius: 45% 55% 40% 60% / 40% 60% 70% 30%;
-  animation: floatStrokeRight1 47s ease-in-out infinite;
-}
-
-.paint-strokes div:nth-child(6) {
-  background: rgba(238, 233, 225, 0.4);
-  top: -40%;
-  right: -95%;
-  width: 130%;
-  height: 160%;
-  transform: rotate(25deg);
+  background: rgba(209, 188, 138, 0.5);
+  top: -15%;
+  right: -20%;
+  width: 55%;
+  height: 50%;
   border-radius: 40% 60% 55% 45% / 60% 40% 50% 50%;
-  animation: floatStrokeRight2 53s ease-in-out infinite;
+  animation: floatStroke2 40s ease-in-out infinite;
 }
 
+/* Middle Left - Soft Teal */
+.paint-strokes div:nth-child(3) {
+  background: rgba(136, 196, 200, 0.45);
+  top: 25%;
+  left: -25%;
+  width: 45%;
+  height: 40%;
+  border-radius: 55% 45% 60% 40% / 45% 55% 65% 35%;
+  animation: floatStroke3 38s ease-in-out infinite;
+}
+
+/* Middle Right - Soft Gold */
+.paint-strokes div:nth-child(4) {
+  background: rgba(232, 200, 122, 0.4);
+  top: 20%;
+  right: -22%;
+  width: 42%;
+  height: 45%;
+  border-radius: 60% 40% 65% 35% / 35% 65% 45% 55%;
+  animation: floatStroke4 42s ease-in-out infinite;
+}
+
+/* Bottom Left - Soft Mint */
+.paint-strokes div:nth-child(5) {
+  background: rgba(152, 212, 187, 0.5);
+  bottom: -18%;
+  left: -18%;
+  width: 50%;
+  height: 45%;
+  border-radius: 70% 30% 50% 50% / 50% 50% 70% 30%;
+  animation: floatStroke5 36s ease-in-out infinite;
+}
+
+/* Bottom Right - Soft Blue */
+.paint-strokes div:nth-child(6) {
+  background: rgba(168, 197, 226, 0.45);
+  bottom: -15%;
+  right: -20%;
+  width: 48%;
+  height: 50%;
+  border-radius: 45% 55% 40% 60% / 40% 60% 70% 30%;
+  animation: floatStroke6 44s ease-in-out infinite;
+}
+
+/* Top Center - Soft Coral accent */
 .paint-strokes div:nth-child(7) {
-  background: rgba(240, 235, 228, 0.45);
-  bottom: -60%;
-  right: -85%;
-  width: 115%;
-  height: 150%;
-  transform: rotate(20deg);
+  background: rgba(232, 160, 135, 0.25);
+  top: -12%;
+  left: 40%;
+  width: 35%;
+  height: 30%;
   border-radius: 35% 65% 45% 55% / 55% 45% 60% 40%;
-  animation: floatStrokeRight3 49s ease-in-out infinite;
+  animation: floatStroke7 32s ease-in-out infinite;
 }
 
+/* Bottom Center - Purple accent */
 .paint-strokes div:nth-child(8) {
-  background: rgba(235, 230, 222, 0.35);
-  bottom: -50%;
-  right: -90%;
-  width: 125%;
-  height: 140%;
-  transform: rotate(30deg);
+  background: rgba(201, 168, 226, 0.2);
+  bottom: -10%;
+  left: 35%;
+  width: 40%;
+  height: 35%;
   border-radius: 45% 55% 35% 65% / 65% 35% 55% 45%;
-  animation: floatStrokeRight4 51s ease-in-out infinite;
+  animation: floatStroke8 46s ease-in-out infinite;
 }
 
-/* Animationen anpassen für sanftere Bewegungen in den Ecken */
-@keyframes floatStrokeLeft1 {
-  0%, 100% { transform: rotate(-15deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(-12deg) translate(3%, 2%) scale(1.05); }
+/* ========================================
+   DARK MODE - Different colors
+   Warmer, muted tones for dark background
+   ======================================== */
+.login-page.dark-mode .paint-strokes div {
+  filter: blur(80px);
+  opacity: 0.35;
 }
 
-@keyframes floatStrokeLeft2 {
-  0%, 100% { transform: rotate(-25deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(-22deg) translate(2%, -2%) scale(1.03); }
+.login-page.dark-mode .paint-strokes div:nth-child(1) {
+  background: rgba(90, 140, 70, 0.9);
 }
 
-@keyframes floatStrokeLeft3 {
-  0%, 100% { transform: rotate(-20deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(-18deg) translate(4%, 3%) scale(1.04); }
+.login-page.dark-mode .paint-strokes div:nth-child(2) {
+  background: rgba(160, 130, 80, 0.85);
 }
 
-@keyframes floatStrokeLeft4 {
-  0%, 100% { transform: rotate(-30deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(-27deg) translate(2%, -3%) scale(1.06); }
+.login-page.dark-mode .paint-strokes div:nth-child(3) {
+  background: rgba(70, 130, 140, 0.85);
 }
 
-@keyframes floatStrokeRight1 {
-  0%, 100% { transform: rotate(15deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(12deg) translate(-3%, 2%) scale(1.05); }
+.login-page.dark-mode .paint-strokes div:nth-child(4) {
+  background: rgba(170, 150, 90, 0.8);
 }
 
-@keyframes floatStrokeRight2 {
-  0%, 100% { transform: rotate(25deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(22deg) translate(-2%, -2%) scale(1.03); }
+.login-page.dark-mode .paint-strokes div:nth-child(5) {
+  background: rgba(90, 150, 120, 0.85);
 }
 
-@keyframes floatStrokeRight3 {
-  0%, 100% { transform: rotate(20deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(18deg) translate(-4%, 3%) scale(1.04); }
+.login-page.dark-mode .paint-strokes div:nth-child(6) {
+  background: rgba(100, 140, 180, 0.8);
 }
 
-@keyframes floatStrokeRight4 {
-  0%, 100% { transform: rotate(30deg) translate(0, 0) scale(1); }
-  50% { transform: rotate(27deg) translate(-2%, -3%) scale(1.06); }
+.login-page.dark-mode .paint-strokes div:nth-child(7) {
+  background: rgba(170, 110, 100, 0.7);
+}
+
+.login-page.dark-mode .paint-strokes div:nth-child(8) {
+  background: rgba(140, 120, 170, 0.65);
+}
+
+/* Animationen - sanfte Bewegungen */
+@keyframes floatStroke1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, 5%) scale(1.05); }
+  66% { transform: translate(-2%, 3%) scale(0.98); }
+}
+
+@keyframes floatStroke2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-4%, 3%) scale(1.03); }
+  66% { transform: translate(2%, -4%) scale(1.02); }
+}
+
+@keyframes floatStroke3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(5%, -3%) scale(1.04); }
+  66% { transform: translate(2%, 4%) scale(0.97); }
+}
+
+@keyframes floatStroke4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-3%, 4%) scale(1.02); }
+  66% { transform: translate(-5%, -2%) scale(1.05); }
+}
+
+@keyframes floatStroke5 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -4%) scale(1.03); }
+  66% { transform: translate(-3%, -2%) scale(0.98); }
+}
+
+@keyframes floatStroke6 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-2%, -5%) scale(1.04); }
+  66% { transform: translate(3%, 3%) scale(1.01); }
+}
+
+@keyframes floatStroke7 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(6%, 4%) scale(1.06); }
+  66% { transform: translate(-4%, -3%) scale(0.96); }
+}
+
+@keyframes floatStroke8 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-5%, -4%) scale(1.02); }
+  66% { transform: translate(4%, 5%) scale(1.04); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .login-header {
+    padding: 20px 16px;
+  }
+
+  .login-logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .login-title {
+    font-size: 1.2rem;
+  }
+
+  .login-form {
+    padding: 16px;
+  }
+
+  .dev-login {
+    padding: 0 16px 16px;
+  }
 }
 </style>

@@ -7,7 +7,7 @@ Seeds the FeatureFunctionType table with default feature types.
 
 def initialize_feature_function_types(db):
     """
-    Initialize feature function types (ranking, rating, mail_rating, comparison).
+    Initialize feature function types (ranking, rating, mail_rating, comparison, authenticity).
 
     Args:
         db: SQLAlchemy database instance
@@ -28,5 +28,8 @@ def initialize_feature_function_types(db):
     if not FeatureFunctionType.query.filter_by(function_type_id=4).first():
         comparison = FeatureFunctionType(function_type_id=4, name='comparison')
         db.session.add(comparison)
+    if not FeatureFunctionType.query.filter_by(function_type_id=5).first():
+        authenticity = FeatureFunctionType(function_type_id=5, name='authenticity')
+        db.session.add(authenticity)
 
     db.session.commit()

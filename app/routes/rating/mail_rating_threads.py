@@ -53,12 +53,12 @@ def list_email_threads_for_mail_ratings():
     user = g.authentik_user
 
     # get function type
-    mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first().function_type_id
+    mail_rating_function_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
     if not mail_rating_function_type:
         raise NotFoundError('Mail Rating function type not found')
 
     # get all threads the user is supposed to see
-    accessible_threads = get_user_threads(user.id, mail_rating_function_type)
+    accessible_threads = get_user_threads(user.id, mail_rating_function_type.function_type_id)
 
     threads_list = []  # this is for returning
     seen_threads = set()  # Avoiding duplicate Threads

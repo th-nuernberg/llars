@@ -49,7 +49,7 @@ def list_email_threads_for_rankings():
     threads_list = []
     for thread in email_threads:
         # Use RankingService to check if user has ranked this thread
-        ranked = RankingService.has_user_ranked_thread(user.id, thread.thread_id)
+        ranked = RankingService.has_user_fully_ranked_thread(user.id, thread.thread_id)
 
         threads_list.append({
             'thread_id': thread.thread_id,
@@ -108,7 +108,7 @@ def get_email_thread_for_rankings(thread_id):
         raise NotFoundError('Email thread not found or not for ranking')
 
     # Use RankingService to check if user has ranked this thread
-    ranked = RankingService.has_user_ranked_thread(user.id, email_thread.thread_id)
+    ranked = RankingService.has_user_fully_ranked_thread(user.id, email_thread.thread_id)
 
     thread_data = {
         'chat_id': email_thread.chat_id,
@@ -233,4 +233,3 @@ def get_user_ranking_stats():
     user_stats = RankingService.get_user_ranking_stats_for_all_users()
 
     return jsonify(user_stats), 200
-

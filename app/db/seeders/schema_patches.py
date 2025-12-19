@@ -71,6 +71,26 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`avatar_seed` VARCHAR(32) NULL",
         )
 
+        # Scenarios: per-scenario config + comparison model config
+        changed |= _ensure_column(
+            db,
+            table_name="rating_scenarios",
+            column_name="llm1_model",
+            column_definition_sql="`llm1_model` VARCHAR(255) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="rating_scenarios",
+            column_name="llm2_model",
+            column_definition_sql="`llm2_model` VARCHAR(255) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="rating_scenarios",
+            column_name="config_json",
+            column_definition_sql="`config_json` JSON NULL",
+        )
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:

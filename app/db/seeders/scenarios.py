@@ -26,7 +26,9 @@ def seed_demo_scenarios(db):
     from ..tables import (
         User, UserGroup, EmailThread, Message, Feature, FeatureType, LLM,
         FeatureFunctionType, RatingScenarios, ScenarioUsers,
-        ScenarioThreads, ScenarioThreadDistribution, ScenarioRoles
+        ScenarioThreads, ScenarioThreadDistribution, ScenarioRoles,
+        AuthenticityConversation,
+        ComparisonSession, ComparisonMessage,
     )
 
     print("Seeding demo scenarios...")
@@ -36,6 +38,7 @@ def seed_demo_scenarios(db):
     # Get or create users for demo scenarios
     viewer_user = User.query.filter_by(username='viewer').first()
     researcher_user = User.query.filter_by(username='researcher').first()
+    admin_user = User.query.filter_by(username='admin').first()
 
     # Get default user group
     default_group = UserGroup.query.filter_by(name='Standard').first()
@@ -65,14 +68,19 @@ def seed_demo_scenarios(db):
         print("  Created user: researcher")
 
     db.session.flush()
-    print(f"  Users ready: viewer (id={viewer_user.id}), researcher (id={researcher_user.id})")
+    if admin_user:
+        print(f"  Users ready: viewer (id={viewer_user.id}), researcher (id={researcher_user.id}), admin (id={admin_user.id})")
+    else:
+        print(f"  Users ready: viewer (id={viewer_user.id}), researcher (id={researcher_user.id})")
 
     # Get function types
     rating_type = FeatureFunctionType.query.filter_by(name='rating').first()
     ranking_type = FeatureFunctionType.query.filter_by(name='ranking').first()
     mail_rating_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
+    comparison_type = FeatureFunctionType.query.filter_by(name='comparison').first()
+    authenticity_type = FeatureFunctionType.query.filter_by(name='authenticity').first()
 
-    if not rating_type or not ranking_type or not mail_rating_type:
+    if not rating_type or not ranking_type or not mail_rating_type or not comparison_type or not authenticity_type:
         print("  ERROR: FeatureFunctionTypes not found. Run initialize_feature_function_types first.")
         return
 
@@ -109,10 +117,21 @@ def seed_demo_scenarios(db):
     existing_rating = RatingScenarios.query.filter_by(scenario_name='Demo Rating Szenario').first()
     existing_ranking = RatingScenarios.query.filter_by(scenario_name='Demo Ranking Szenario').first()
     existing_mail_rating = RatingScenarios.query.filter_by(scenario_name='Demo Verlauf Bewerter Szenario').first()
+    existing_comparison = RatingScenarios.query.filter_by(scenario_name='Demo Gegenüberstellung Szenario').first()
+    existing_authenticity = RatingScenarios.query.filter_by(scenario_name='Demo Fake/Echt Szenario').first()
 
-    if existing_rating and existing_ranking and existing_mail_rating:
-        print("  Demo scenarios already exist. Skipping.")
-        return
+    def _ensure_scenario_user(scenario_id: int, user_id: int, role: ScenarioRoles) -> None:
+        existing = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
+        if existing:
+            return
+        db.session.add(
+            ScenarioUsers(
+                scenario_id=scenario_id,
+                user_id=user_id,
+                role=role,
+            )
+        )
+        db.session.flush()
 
     # Create sample email threads
     threads = []
@@ -330,6 +349,143 @@ def seed_demo_scenarios(db):
 
     mail_rating_threads = [thread4, thread5]
 
+    # Threads for Fake/Echt (Authenticity)
+    authenticity_threads = []
+
+    thread6 = EmailThread.query.filter_by(chat_id=9101, institut_id=3, function_type_id=authenticity_type.function_type_id).first()
+    if not thread6:
+        thread6 = EmailThread(
+            chat_id=9101,
+            institut_id=3,
+            subject='Fake/Echt – Demo Fall (Echt)',
+            sender='demo@example.com',
+            function_type_id=authenticity_type.function_type_id
+        )
+        db.session.add(thread6)
+        db.session.flush()
+
+        messages6 = [
+            Message(
+                thread_id=thread6.thread_id,
+                sender='Ratsuchende',
+                content='Hallo, ich habe ein Problem mit meinem Chef und weiß nicht, wie ich damit umgehen soll.',
+                timestamp=datetime.now() - timedelta(days=2, hours=10),
+                generated_by='Human'
+            ),
+            Message(
+                thread_id=thread6.thread_id,
+                sender='Beratende',
+                content='Danke für deine Nachricht. Magst du kurz beschreiben, was genau passiert ist und wie oft es vorkommt?',
+                timestamp=datetime.now() - timedelta(days=2, hours=9, minutes=30),
+                generated_by='Human'
+            ),
+        ]
+        for msg in messages6:
+            db.session.add(msg)
+
+    authenticity_threads.append(thread6)
+
+    if thread6 and not AuthenticityConversation.query.filter_by(thread_id=thread6.thread_id).first():
+        meta6 = {
+            "conversation_id": 9101,
+            "augmentation_type": "reg_single_any",
+            "replaced_positions": [],
+            "num_replacements": 0,
+            "total_messages": 2,
+            "saeule": "3",
+            "split": "train",
+            "model": None,
+            "model_short": None,
+            "generated_at": datetime.now().isoformat(),
+            "format_version": "v6",
+        }
+        db.session.add(
+            AuthenticityConversation(
+                thread_id=thread6.thread_id,
+                sample_key="v6:demo-auth-9101",
+                conversation_id=9101,
+                augmentation_type=meta6.get("augmentation_type"),
+                replaced_positions=meta6.get("replaced_positions"),
+                num_replacements=meta6.get("num_replacements"),
+                total_messages=meta6.get("total_messages"),
+                saeule=meta6.get("saeule"),
+                split=meta6.get("split"),
+                model=meta6.get("model"),
+                model_short=meta6.get("model_short"),
+                generated_at=datetime.fromisoformat(meta6.get("generated_at")),
+                format_version=meta6.get("format_version"),
+                is_fake=False,
+                metadata_json=meta6,
+            )
+        )
+
+    thread7 = EmailThread.query.filter_by(chat_id=9102, institut_id=3, function_type_id=authenticity_type.function_type_id).first()
+    if not thread7:
+        thread7 = EmailThread(
+            chat_id=9102,
+            institut_id=3,
+            subject='Fake/Echt – Demo Fall (Fake)',
+            sender='demo@example.com',
+            function_type_id=authenticity_type.function_type_id
+        )
+        db.session.add(thread7)
+        db.session.flush()
+
+        messages7 = [
+            Message(
+                thread_id=thread7.thread_id,
+                sender='Ratsuchende',
+                content='Hi, ich bin total überfordert mit meinem Studium und habe Angst zu versagen.',
+                timestamp=datetime.now() - timedelta(days=1, hours=18),
+                generated_by='Human'
+            ),
+            Message(
+                thread_id=thread7.thread_id,
+                sender='Beratende',
+                content='Es tut mir leid, dass du dich so fühlst. Lass uns gemeinsam schauen, was dich am meisten belastet und welche nächsten Schritte möglich sind.',
+                timestamp=datetime.now() - timedelta(days=1, hours=17, minutes=40),
+                generated_by='gpt-5.1'
+            ),
+        ]
+        for msg in messages7:
+            db.session.add(msg)
+
+    authenticity_threads.append(thread7)
+
+    if thread7 and not AuthenticityConversation.query.filter_by(thread_id=thread7.thread_id).first():
+        meta7 = {
+            "conversation_id": 9102,
+            "augmentation_type": "reg_single_any",
+            "replaced_positions": [1],
+            "num_replacements": 1,
+            "total_messages": 2,
+            "saeule": "3",
+            "split": "train",
+            "model": "gpt-5.1",
+            "model_short": "gpt51",
+            "generated_at": datetime.now().isoformat(),
+            "format_version": "v6",
+        }
+        db.session.add(
+            AuthenticityConversation(
+                thread_id=thread7.thread_id,
+                sample_key="v6:demo-auth-9102",
+                conversation_id=9102,
+                augmentation_type=meta7.get("augmentation_type"),
+                replaced_positions=meta7.get("replaced_positions"),
+                num_replacements=meta7.get("num_replacements"),
+                total_messages=meta7.get("total_messages"),
+                saeule=meta7.get("saeule"),
+                split=meta7.get("split"),
+                model=meta7.get("model"),
+                model_short=meta7.get("model_short"),
+                generated_at=datetime.fromisoformat(meta7.get("generated_at")),
+                format_version=meta7.get("format_version"),
+                is_fake=True,
+                metadata_json=meta7,
+            )
+        )
+
     db.session.flush()
 
     # Create Features for each thread
@@ -476,6 +632,12 @@ def seed_demo_scenarios(db):
                 db.session.add(dist)
 
         print(f"  Created Rating Scenario: {rating_scenario.scenario_name}")
+    else:
+        rating_scenario = existing_rating
+
+    # Ensure admin can evaluate demo scenarios
+    if admin_user and rating_scenario:
+        _ensure_scenario_user(rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Ranking Scenario
     if not existing_ranking:
@@ -523,6 +685,11 @@ def seed_demo_scenarios(db):
             db.session.add(dist)
 
         print(f"  Created Ranking Scenario: {ranking_scenario.scenario_name}")
+    else:
+        ranking_scenario = existing_ranking
+
+    if admin_user and ranking_scenario:
+        _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Mail Rating Scenario (Verlauf Bewerter)
     if not existing_mail_rating:
@@ -575,6 +742,213 @@ def seed_demo_scenarios(db):
                 db.session.add(dist)
 
         print(f"  Created Mail Rating Scenario: {mail_rating_scenario.scenario_name}")
+    else:
+        mail_rating_scenario = existing_mail_rating
+
+    if admin_user and mail_rating_scenario:
+        _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+
+    # Create Fake/Echt Scenario (Authenticity)
+    if not existing_authenticity:
+        authenticity_scenario = RatingScenarios(
+            scenario_name='Demo Fake/Echt Szenario',
+            function_type_id=authenticity_type.function_type_id,
+            begin=datetime.now() - timedelta(days=7),
+            end=datetime.now() + timedelta(days=30),
+            timestamp=datetime.now(),
+            config_json={
+                "evaluation": "authenticity",
+                "labels": {"real": "Echt", "fake": "Fake"},
+                "format_version": "v6",
+            },
+        )
+        db.session.add(authenticity_scenario)
+        db.session.flush()
+
+        for user, role in [(viewer_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.RATER)]:
+            scenario_user = ScenarioUsers(
+                scenario_id=authenticity_scenario.id,
+                user_id=user.id,
+                role=role
+            )
+            db.session.add(scenario_user)
+
+        db.session.flush()
+
+        scenario_thread_objs = []
+        for thread in authenticity_threads:
+            st = ScenarioThreads(
+                scenario_id=authenticity_scenario.id,
+                thread_id=thread.thread_id
+            )
+            db.session.add(st)
+            scenario_thread_objs.append(st)
+
+        db.session.flush()
+
+        rater_scenario_user = ScenarioUsers.query.filter_by(
+            scenario_id=authenticity_scenario.id,
+            role=ScenarioRoles.RATER
+        ).first()
+
+        if rater_scenario_user:
+            for st in scenario_thread_objs:
+                dist = ScenarioThreadDistribution(
+                    scenario_id=authenticity_scenario.id,
+                    scenario_user_id=rater_scenario_user.id,
+                    scenario_thread_id=st.id
+                )
+                db.session.add(dist)
+
+        print(f"  Created Authenticity Scenario: {authenticity_scenario.scenario_name}")
+    else:
+        authenticity_scenario = existing_authenticity
+
+    if admin_user and authenticity_scenario:
+        _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+
+    # Create Comparison Scenario (Gegenüberstellung) – placeholder without sessions
+    if not existing_comparison:
+        comparison_scenario = RatingScenarios(
+            scenario_name='Demo Gegenüberstellung Szenario',
+            function_type_id=comparison_type.function_type_id,
+            begin=datetime.now() - timedelta(days=7),
+            end=datetime.now() + timedelta(days=30),
+            timestamp=datetime.now(),
+            llm1_model='gpt-4o-mini',
+            llm2_model='gpt-4.1-mini',
+            config_json={
+                "evaluation": "comparison",
+                "llm1_model": "gpt-4o-mini",
+                "llm2_model": "gpt-4.1-mini",
+            },
+        )
+        db.session.add(comparison_scenario)
+        db.session.flush()
+
+        for user, role in [(viewer_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.RATER)]:
+            db.session.add(
+                ScenarioUsers(
+                    scenario_id=comparison_scenario.id,
+                    user_id=user.id,
+                    role=role
+                )
+            )
+
+        print(f"  Created Comparison Scenario: {comparison_scenario.scenario_name}")
+    else:
+        comparison_scenario = existing_comparison
+
+    if admin_user and comparison_scenario:
+        _ensure_scenario_user(comparison_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+
+    # Seed demo ComparisonSessions so the dashboard is not empty
+    if comparison_scenario:
+        import json
+        from pathlib import Path
+
+        personas_path = Path(__file__).resolve().parents[2] / "static" / "vikl-personas.json"
+        personas: list[dict] = []
+        if personas_path.exists():
+            try:
+                personas_raw = json.loads(personas_path.read_text(encoding="utf-8"))
+                for p in personas_raw if isinstance(personas_raw, list) else []:
+                    if not isinstance(p, dict):
+                        continue
+                    props_raw = p.get("properties")
+                    props = {}
+                    if isinstance(props_raw, str) and props_raw.strip():
+                        try:
+                            props = json.loads(props_raw)
+                        except Exception:
+                            props = {}
+                    elif isinstance(props_raw, dict):
+                        props = props_raw
+                    personas.append(
+                        {
+                            "id": p.get("id"),
+                            "name": p.get("name"),
+                            "properties": props,
+                        }
+                    )
+            except Exception as e:
+                print(f"  WARN: Could not load personas for comparison demo: {e}")
+
+        if not personas:
+            personas = [
+                {
+                    "id": "demo",
+                    "name": "Demo Persona",
+                    "properties": {
+                        "Steckbrief": {"Alter": 30, "Geschlecht": "unbekannt"},
+                        "Hauptanliegen": "Ich möchte eine Demo-Gegenüberstellung testen.",
+                        "Nebenanliegen": [],
+                    },
+                }
+            ]
+
+        demo_pairs = [
+            (
+                "Hallo! Schön, dass Sie da sind. Worum geht es Ihnen heute?",
+                "Hallo... ich bin etwas nervös. Ich weiß nicht so richtig, wo ich anfangen soll.",
+                "Hallo, danke. Ich fühle mich gerade überfordert und bin unsicher, was ich als Erstes erzählen soll.",
+            ),
+            (
+                "Nehmen Sie sich Zeit. Was hat Sie denn in den letzten Tagen am meisten belastet?",
+                "Es ist vor allem der Stress zuhause... und ich habe Angst, dass es so weitergeht.",
+                "Am stärksten ist der Druck zuhause. Ich merke, dass mir das Angst macht und ich kaum abschalten kann.",
+            ),
+        ]
+
+        users_for_comparison = [viewer_user, researcher_user]
+        if admin_user:
+            users_for_comparison.append(admin_user)
+
+        for idx_user, user in enumerate(users_for_comparison):
+            existing = ComparisonSession.query.filter_by(
+                scenario_id=comparison_scenario.id,
+                user_id=user.id,
+            ).first()
+            if existing:
+                continue
+
+            persona = personas[idx_user % len(personas)]
+            persona_name = str(persona.get("name") or f"Persona {idx_user + 1}")
+
+            session = ComparisonSession(
+                scenario_id=comparison_scenario.id,
+                user_id=user.id,
+                persona_json=persona,
+                persona_name=persona_name,
+            )
+            db.session.add(session)
+            db.session.flush()
+
+            message_idx = 0
+            for counselor_msg, llm1_msg, llm2_msg in demo_pairs:
+                db.session.add(
+                    ComparisonMessage(
+                        session_id=session.id,
+                        idx=message_idx,
+                        type="user",
+                        content=counselor_msg,
+                        selected=None,
+                    )
+                )
+                message_idx += 1
+
+                db.session.add(
+                    ComparisonMessage(
+                        session_id=session.id,
+                        idx=message_idx,
+                        type="bot_pair",
+                        content=json.dumps({"llm1": llm1_msg, "llm2": llm2_msg}),
+                        selected=None,
+                    )
+                )
+                message_idx += 1
+
+            print(f"  Created Comparison Session for user '{user.username}': persona='{persona_name}' (session_id={session.id})")
 
     db.session.commit()
     print("Demo scenarios seeded successfully.")

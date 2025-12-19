@@ -13,6 +13,7 @@ from db.db import db
 from db.tables import (
     FeatureType, UserFeatureRating, Feature, Message
 )
+from services.feature_rating_service import FeatureRatingService
 
 from routes.HelperFunctions import can_access_thread
 
@@ -38,10 +39,14 @@ def get_email_thread_for_ratings(thread_id):
     if not email_thread:
         raise NotFoundError('Email thread not found or not for rating')
 
+    rated = FeatureRatingService.has_user_fully_rated_thread(user.id, email_thread.thread_id)
+    ratings_by_feature_id = FeatureRatingService.get_user_ratings_map_for_thread(user.id, email_thread.thread_id)
+
     thread_data = {
         'chat_id': email_thread.chat_id,
         'institut_id': email_thread.institut_id,
         'subject': email_thread.subject,
+        'rated': rated,
         'messages': [
             {
                 'message_id': msg.message_id,
@@ -55,6 +60,8 @@ def get_email_thread_for_ratings(thread_id):
                 'model_name': feature.llm.name,
                 'type': feature.feature_type.name,
                 'content': feature.content,
+                'user_rating': ratings_by_feature_id.get(feature.feature_id).rating_content
+                if ratings_by_feature_id.get(feature.feature_id) else None,
                 'feature_id': feature.feature_id  # Include the feature_id here
             } for feature in email_thread.features
         ]
@@ -129,7 +136,8 @@ def list_email_threads_for_ratings():
             'thread_id': thread.thread_id,
             'chat_id': thread.chat_id,
             'institut_id': thread.institut_id,
-            'subject': thread.subject
+            'subject': thread.subject,
+            'rated': FeatureRatingService.has_user_fully_rated_thread(user.id, thread.thread_id)
         } for thread in email_threads
     ]
 

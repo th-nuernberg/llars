@@ -10,6 +10,7 @@ from flask import jsonify, request, g
 
 from auth.decorators import authentik_required, admin_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from db.db import db
 from routes.auth import data_bp
 from services.feature_service import FeatureService
 from services.ranking_service import RankingService
@@ -37,7 +38,7 @@ def list_email_threads_for_rankings():
     threads_list = []
     for thread in email_threads:
         # Use RankingService to check if user has ranked this thread
-        ranked = RankingService.has_user_ranked_thread(user.id, thread.thread_id)
+        ranked = RankingService.has_user_fully_ranked_thread(user.id, thread.thread_id)
 
         threads_list.append({
             'thread_id': thread.thread_id,
@@ -100,7 +101,7 @@ def get_email_thread_for_rankings(thread_id):
         raise NotFoundError('Email thread not found or not for ranking')
 
     # Use RankingService to check if user has ranked this thread
-    ranked = RankingService.has_user_ranked_thread(user.id, email_thread.thread_id)
+    ranked = RankingService.has_user_fully_ranked_thread(user.id, email_thread.thread_id)
 
     thread_data = {
         'chat_id': email_thread.chat_id,
@@ -168,48 +169,62 @@ def save_ranking(thread_id):
     if not ThreadService.can_user_access_thread(user.id, thread_id, 1):
         raise ValidationError('Access denied')
 
-    data = request.get_json()
+    try:
+        data = request.get_json() or []
 
-    for feature_type in data:
-        type_name = feature_type['type']
-        for detail in feature_type['details']:
-            model_name = detail['model_name']
-            content = detail['content']
-            position = detail['position']
-            bucket = detail['bucket']
+        # Replace semantics: clear previous rankings first.
+        # This ensures moving an item back to Neutral actually removes the ranking row.
+        success, error_msg = RankingService.clear_rankings_for_thread(user.id, thread_id, commit=False)
+        if not success:
+            raise ValidationError(error_msg)
 
-            # Use FeatureService to find the FeatureType
-            feature_type_entry = FeatureService.get_feature_type_by_name(type_name)
-            if not feature_type_entry:
-                raise NotFoundError(f'Feature type {type_name} not found')
+        for feature_type in data:
+            type_name = feature_type['type']
+            for detail in feature_type['details']:
+                model_name = detail['model_name']
+                content = detail['content']
+                position = detail['position']
+                bucket = detail['bucket']
 
-            # Use FeatureService to find the LLM
-            llm_entry = FeatureService.get_llm_by_name(model_name)
-            if not llm_entry:
-                raise NotFoundError(f'LLM {model_name} not found')
+                # Use FeatureService to find the FeatureType
+                feature_type_entry = FeatureService.get_feature_type_by_name(type_name)
+                if not feature_type_entry:
+                    raise NotFoundError(f'Feature type {type_name} not found')
 
-            # Use FeatureService to find the feature
-            feature = FeatureService.get_feature_by_attributes(
-                thread_id=thread_id,
-                type_id=feature_type_entry.type_id,
-                llm_id=llm_entry.llm_id,
-                content=content
-            )
+                # Use FeatureService to find the LLM
+                llm_entry = FeatureService.get_llm_by_name(model_name)
+                if not llm_entry:
+                    raise NotFoundError(f'LLM {model_name} not found')
 
-            if feature:
-                # Use RankingService to save the ranking
-                success, error_msg = RankingService.save_ranking(
-                    user_id=user.id,
+                # Use FeatureService to find the feature
+                feature = FeatureService.get_feature_by_attributes(
                     thread_id=thread_id,
-                    feature_id=feature.feature_id,
                     type_id=feature_type_entry.type_id,
                     llm_id=llm_entry.llm_id,
-                    position=position,
-                    bucket=bucket
+                    content=content
                 )
 
-                if not success:
-                    raise ValidationError(error_msg)
+                if feature:
+                    # Use RankingService to save the ranking
+                    success, error_msg = RankingService.save_ranking(
+                        user_id=user.id,
+                        thread_id=thread_id,
+                        feature_id=feature.feature_id,
+                        type_id=feature_type_entry.type_id,
+                        llm_id=llm_entry.llm_id,
+                        position=position,
+                        bucket=bucket,
+                        commit=False
+                    )
+
+                    if not success:
+                        raise ValidationError(error_msg)
+
+        db.session.commit()
+
+    except Exception:
+        db.session.rollback()
+        raise
 
     return jsonify({'status': 'Ranking saved successfully'}), 201
 

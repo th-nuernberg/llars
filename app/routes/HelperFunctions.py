@@ -4,6 +4,7 @@ from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, Us
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
+                       UserAuthenticityVote,
                        ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles)
 from sqlalchemy import func
 from uuid import uuid4
@@ -56,6 +57,14 @@ def get_progression_mail_rating(thread: EmailThread, user_id: int) -> Progressio
     ).order_by(UserMailHistoryRating.timestamp.desc()).first()
 
     return mail_rating.status if mail_rating else ProgressionStatus.NOT_STARTED
+
+
+def get_progression_authenticity(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """ Fortschritt für Fake/Echt (function_type_id=5): DONE sobald eine Stimme existiert. """
+    vote = db.session.query(UserAuthenticityVote).filter_by(
+        user_id=user_id, thread_id=thread.thread_id
+    ).first()
+    return ProgressionStatus.DONE if vote else ProgressionStatus.NOT_STARTED
 
 
 
@@ -136,13 +145,15 @@ def get_user_threads(user_id, function_type_id):
 
         if role == ScenarioRoles.VIEWER:
             # Wenn der User Viewer ist, darf er alle Threads des Szenarios sehen
-            threads = db.session.query(EmailThread).join(ScenarioThreads).filter(
-                ScenarioThreads.scenario_id == scenario_id,
-                ScenarioThreads.thread_id == EmailThread.thread_id,
-                EmailThread.function_type_id == function_type_id,
-                RatingScenarios.begin <= current_time,
-                RatingScenarios.end >= current_time
-            ).all()
+            threads = (
+                db.session.query(EmailThread)
+                .join(ScenarioThreads, ScenarioThreads.thread_id == EmailThread.thread_id)
+                .filter(
+                    ScenarioThreads.scenario_id == scenario_id,
+                    EmailThread.function_type_id == function_type_id,
+                )
+                .all()
+            )
             allowed_threads.extend(threads)
 
         elif role == ScenarioRoles.RATER:
@@ -151,6 +162,7 @@ def get_user_threads(user_id, function_type_id):
                                     .join(ScenarioThreads, ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
                                     .join(EmailThread, ScenarioThreads.thread_id == EmailThread.thread_id).filter(
                 ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                ScenarioThreadDistribution.scenario_id == scenario_id,
                 EmailThread.function_type_id == function_type_id,
 
 
@@ -167,7 +179,8 @@ def get_thread_progression_state(thread: EmailThread, user_id: int, function_typ
     PROGRESSION_HANDLERS = {
         1: get_progression_ranking,
         2: get_progression_rating,
-        3: get_progression_mail_rating
+        3: get_progression_mail_rating,
+        5: get_progression_authenticity,
     }
     handler = PROGRESSION_HANDLERS.get(function_type_id)
 
@@ -175,5 +188,3 @@ def get_thread_progression_state(thread: EmailThread, user_id: int, function_typ
         raise NotImplementedError(f"Function Type {function_type_id} ist nicht implementiert!")
 
     return handler(thread, user_id)
-
-

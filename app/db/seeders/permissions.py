@@ -71,6 +71,19 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Durchführen von LLM-Vergleichen'
         },
+        # Feature: Authenticity (Fake/Echt)
+        {
+            'permission_key': 'feature:authenticity:view',
+            'display_name': 'Fake/Echt ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen des Fake/Echt Evaluierungstools'
+        },
+        {
+            'permission_key': 'feature:authenticity:edit',
+            'display_name': 'Fake/Echt abstimmen',
+            'category': 'feature',
+            'description': 'Erlaubt das Abgeben von Stimmen (Echt/Fake) für Verläufe'
+        },
         # Feature: Prompt Engineering
         {
             'permission_key': 'feature:prompt_engineering:view',
@@ -263,6 +276,8 @@ def initialize_permissions(db):
                 'feature:rating:edit',
                 'feature:comparison:view',
                 'feature:comparison:edit',
+                'feature:authenticity:view',
+                'feature:authenticity:edit',
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
                 'feature:markdown_collab:view',
@@ -290,6 +305,8 @@ def initialize_permissions(db):
                 'feature:ranking:view',
                 'feature:rating:view',
                 'feature:comparison:view',
+                'feature:authenticity:view',
+                'feature:authenticity:edit',
                 'feature:prompt_engineering:view',
                 'feature:rag:view',
                 'feature:chatbots:view',

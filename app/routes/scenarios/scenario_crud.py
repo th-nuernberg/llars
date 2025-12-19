@@ -140,6 +140,9 @@ def get_scenario_details(scenario_id=None):
         'func_type': func_type,
         'begin_date': scenario.begin.isoformat(),
         'end_date': scenario.end.isoformat(),
+        'llm1_model': getattr(scenario, 'llm1_model', None),
+        'llm2_model': getattr(scenario, 'llm2_model', None),
+        'config_json': getattr(scenario, 'config_json', None),
         'threads': threads,
         'raters': scenario_raters,
         'viewers': scenario_viewers,
@@ -159,6 +162,12 @@ def create_scenario():
         data = request.get_json()
     except (ValueError, TypeError) as e:
         raise ValidationError('Invalid JSON')
+
+    config_json = data.get("config_json")
+    if config_json is None:
+        config_json = data.get("config")
+    if config_json is not None and not isinstance(config_json, dict):
+        raise ValidationError("config_json must be an object")
 
     client_data = {
         "scenario_name": data.get('scenario_name'),
@@ -197,6 +206,9 @@ def create_scenario():
         function_type_id=function_type_id,
         begin=begin,
         end=end,
+        llm1_model=(str(data.get("llm1_model")).strip() if data.get("llm1_model") else None),
+        llm2_model=(str(data.get("llm2_model")).strip() if data.get("llm2_model") else None),
+        config_json=config_json,
     )
 
     rater_error_list = []
@@ -233,6 +245,16 @@ def create_scenario():
             continue
         new_scenario_users.append({"id": user.id, "role": "Viewer"})
         seen_user.add(user.id)
+
+    # Always include the creating admin user (so admins can evaluate their own scenarios).
+    try:
+        acting_user_id = getattr(g.authentik_user, "id", None)
+        if acting_user_id and acting_user_id not in seen_user:
+            new_scenario_users.append({"id": int(acting_user_id), "role": "Viewer"})
+            seen_user.add(int(acting_user_id))
+    except Exception:
+        # Never fail scenario creation because of this convenience feature
+        pass
 
     # Validate threads
     thread_error_list = []

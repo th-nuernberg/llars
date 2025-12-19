@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 2.9 | **Stand:** 11. Dezember 2025
+**Version:** 2.9 | **Stand:** 19. Dezember 2025
 
 ## Projekt-Übersicht
 
@@ -416,6 +416,68 @@ const {
 
 ---
 
+## Progressive / Staggered Loading
+
+Bei Seiten mit mehreren unabhängigen Daten-Sektionen (z.B. Admin-Dashboard, Docker Monitor) sollen die Sektionen **nacheinander erscheinen** statt alle gleichzeitig zu laden und dann auf einmal zu rendern.
+
+### Warum?
+
+- **Bessere UX**: User sieht sofort ersten Content statt lange auf leere Skeleton-Loader zu starren
+- **Gefühlte Performance**: Progressives Rendering wirkt schneller, auch wenn die Gesamtladezeit gleich ist
+- **Reduzierte kognitive Last**: Inhalte erscheinen in verdaulichen Stücken
+
+### Pattern: Staggered Loading
+
+```javascript
+// Konfigurierbare Verzögerungen pro Sektion
+const STAGGER_DELAYS = {
+  summary: 0,      // Sofort
+  charts: 150,     // 150ms später
+  table: 300,      // 300ms später
+  logs: 450        // 450ms später
+}
+
+const staggeredLoadingTimers = {}
+
+const setStaggeredLoading = (sections, loading) => {
+  // Alte Timer aufräumen
+  Object.values(staggeredLoadingTimers).forEach(timer => clearTimeout(timer))
+
+  if (loading) {
+    // Loading setzen: sofort
+    sections.forEach(section => setLoading(section, true))
+  } else {
+    // Loading entfernen: gestaffelt
+    sections.forEach(section => {
+      const delay = STAGGER_DELAYS[section] || 0
+      staggeredLoadingTimers[section] = setTimeout(() => {
+        setLoading(section, false)
+      }, delay)
+    })
+  }
+}
+
+// Cleanup in onBeforeUnmount
+onBeforeUnmount(() => {
+  Object.values(staggeredLoadingTimers).forEach(timer => clearTimeout(timer))
+})
+```
+
+### Anwendungsfälle
+
+| Szenario | Empfehlung |
+|----------|------------|
+| **Mehrere unabhängige API-Calls** | Staggered Loading |
+| **Dashboard mit Widgets** | Staggered Loading |
+| **Einzelner API-Call** | Normales Loading |
+| **Abhängige Daten (A → B)** | Sequentielles Loading |
+
+### Beispiel-Komponenten
+
+- `llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue`
+
+---
+
 ## LLARS Design System
 
 LLARS verwendet ein einheitliches Design-System mit Pastel-Farbpalette und asymmetrischem Styling.
@@ -482,6 +544,96 @@ Alle globalen Komponenten sind in `main.js` registriert und überall verfügbar:
 - `size`: small | default | large
 - `prepend-icon` / `append-icon`: MDI Icon Name
 - `closable`: Boolean
+
+#### LActionGroup - Action Button Group
+
+Gruppierte Icon-Buttons für Tabellenzeilen und Karten-Aktionen.
+
+```vue
+<!-- Einfache Preset-Nutzung -->
+<LActionGroup
+  :actions="['view', 'edit', 'delete']"
+  @action="handleAction"
+/>
+
+<!-- Mit Custom-Actions und Presets gemischt -->
+<LActionGroup
+  :actions="[
+    'stats',
+    { key: 'custom', icon: 'mdi-star', tooltip: 'Favorit' },
+    'delete'
+  ]"
+  @action="handleAction"
+/>
+
+<!-- Mit Slot für Dialog-Trigger -->
+<LActionGroup :actions="['stats', 'edit', 'delete']" @action="handleAction">
+  <template #edit>
+    <MyEditDialog :item="item" />
+  </template>
+</LActionGroup>
+```
+
+**Preset Actions:**
+- `view`: Anzeigen (mdi-eye)
+- `edit`: Bearbeiten (mdi-pencil)
+- `delete`: Löschen (mdi-delete, danger)
+- `stats`: Statistiken (mdi-chart-bar)
+- `download`: Herunterladen (mdi-download)
+- `copy`: Kopieren (mdi-content-copy)
+- `lock` / `unlock`: Sperren/Entsperren
+- `refresh`: Aktualisieren (mdi-refresh)
+- `close`: Schließen (mdi-close)
+- `add`: Hinzufügen (mdi-plus, success)
+- `play` / `pause` / `stop`: Steuerung
+
+**Props:**
+- `actions`: Array von Preset-Namen (Strings) oder Action-Objekten
+- `size`: x-small | small | default | large | x-large
+- `gap`: none | xs | sm | md | lg
+- `align`: start | center | end
+
+**Action-Objekt:**
+```javascript
+{
+  key: 'custom',      // Eindeutiger Identifier
+  icon: 'mdi-star',   // Icon
+  tooltip: 'Tooltip', // Tooltip-Text
+  variant: 'primary', // Button-Variante
+  loading: false,     // Loading-State
+  disabled: false     // Disabled-State
+}
+```
+
+#### LSlider - Farbverlauf-Slider
+
+Slider mit dynamischem Farbverlauf basierend auf dem Wert. Initial grau, wird bei Interaktion farbig.
+
+```vue
+<!-- Standard Gradient (rot → gelb → grün) -->
+<LSlider v-model="confidence" :min="0" :max="100" :step="5" />
+
+<!-- Feste Farbe -->
+<LSlider v-model="rating" :min="1" :max="5" color-mode="fixed" color="primary" />
+
+<!-- Sofort farbig (ohne initiales Grau) -->
+<LSlider v-model="value" :start-active="true" />
+```
+
+**Props:**
+- `modelValue`: v-model Wert
+- `min` / `max` / `step`: Slider-Bereich
+- `colorMode`: 'gradient' (rot→grün) | 'fixed' (feste Farbe)
+- `color`: Farbe bei colorMode='fixed'
+- `startActive`: Boolean - sofort farbig starten
+- `thumbLabel`: Boolean - Thumb-Label anzeigen
+- `density`: Vuetify density
+
+**Features:**
+- Initial grau, wird bei erster Interaktion farbig
+- Farbverlauf: niedrig=rot, mittel=gelb, hoch=grün
+- LLARS asymmetrischer Border-Radius auf Thumb
+- Smooth Transition bei Farbwechsel
 
 #### LCard - Card
 
@@ -606,10 +758,12 @@ llars-frontend/src/
 ├── styles/global.css              # CSS Custom Properties, globale Styles
 ├── components/common/
 │   ├── LBtn.vue                   # Button Komponente
+│   ├── LIconBtn.vue               # Icon Button
+│   ├── LActionGroup.vue           # Action Button Group (Tabellen-Aktionen)
+│   ├── LSlider.vue                # Farbverlauf-Slider (rot→grün)
 │   ├── LTag.vue                   # Tag/Chip Komponente
 │   ├── LCard.vue                  # Card Komponente
-│   ├── LTabs.vue                  # Tab Navigation Komponente
-│   └── LIconBtn.vue               # Icon Button
+│   └── LTabs.vue                  # Tab Navigation Komponente
 └── main.js                        # Globale Registrierung
 ```
 

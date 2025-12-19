@@ -130,7 +130,10 @@
               <div class="feature-icon">
                 <v-icon size="32" color="primary">{{ item.icon }}</v-icon>
               </div>
-              <div class="feature-title">{{ item.title }}</div>
+              <div class="feature-title">
+                <span v-if="item.emoji" class="feature-emoji">{{ item.emoji }}</span>
+                {{ item.title }}
+              </div>
               <div class="feature-description">{{ item.description }}</div>
               <div class="feature-badge" v-if="item.badge">
                 <LTag :variant="getBadgeVariant(item.badgeColor)" size="sm">
@@ -160,7 +163,7 @@ import { usePanelResize } from '@/composables/usePanelResize'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { hasPermission, fetchPermissions } = usePermissions()
+const { hasPermission, hasAnyPermission, fetchPermissions } = usePermissions()
 const { isLoading: isSkelLoading, withLoading } = useSkeletonLoading(['permissions'])
 const { tokenParsed } = useAuth()
 
@@ -191,27 +194,18 @@ const selectedCategory = ref('all')
 // All available features with their required permissions
 const allItems = ref([
   {
-    title: 'Ranking',
-    description: 'Features nach Qualität sortieren und vergleichen',
-    route: '/Ranker',
-    icon: 'mdi-chart-bar-stacked',
-    permission: 'feature:ranking:view',
-    category: 'rating'
-  },
-  {
-    title: 'Verlaufsbewertung',
-    description: 'Bewertung von KI generierten Mail-Verläufen (Säule 4)',
-    route: '/HistoryGeneration',
-    icon: 'mdi-timeline-text-outline',
-    permission: 'feature:mail_rating:view',
-    category: 'rating'
-  },
-  {
-    title: 'Rating',
-    description: 'Features einzeln mit Sternen/Skala bewerten',
-    route: '/Rater',
-    icon: 'mdi-star-outline',
-    permission: 'feature:rating:view',
+    title: 'Evaluierung',
+    description: 'Ranking, Rating, Fake/Echt, Verlaufsbewertung & Gegenüberstellung',
+    route: '/evaluation',
+    icon: 'mdi-clipboard-check-outline',
+    emoji: '🧪',
+    permissionsAny: [
+      'feature:ranking:view',
+      'feature:rating:view',
+      'feature:mail_rating:view',
+      'feature:comparison:view',
+      'feature:authenticity:view'
+    ],
     category: 'rating'
   },
   {
@@ -243,14 +237,6 @@ const allItems = ref([
     category: 'research',
     badge: 'Beta',
     badgeColor: 'info'
-  },
-  {
-    title: 'Gegenüberstellung',
-    description: 'Zwei KI-Modelle direkt vergleichen und bewerten',
-    route: '/comparison',
-    icon: 'mdi-compare-horizontal',
-    permission: 'feature:comparison:view',
-    category: 'research'
   },
   {
     title: 'LLM-as-Judge',
@@ -309,6 +295,9 @@ const username = computed(() => tokenParsed.value?.preferred_username || 'Gast')
 
 const items = computed(() => {
   return allItems.value.filter(item => {
+    const requiresAny = Array.isArray(item.permissionsAny) && item.permissionsAny.length > 0
+    if (requiresAny && !hasAnyPermission(...item.permissionsAny)) return false
+
     if (!item.permission) return true
     return hasPermission(item.permission)
   })
@@ -634,6 +623,13 @@ onMounted(async () => {
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
   margin-bottom: 8px;
+}
+
+.feature-emoji {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 .feature-description {

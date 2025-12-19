@@ -138,21 +138,17 @@
           </template>
 
           <template v-slot:item.actions="{ item }">
-            <LIconBtn
-              icon="mdi-chart-bar"
-              tooltip="Statistiken"
-              @click.stop="viewScenarioStats(item)"
-            />
-            <ScenarioDetailDialog
-              :scenario-id="item.scenario_id"
-              @scenarioEdited="fetchScenarios"
-            />
-            <LIconBtn
-              icon="mdi-delete"
-              variant="danger"
-              tooltip="Löschen"
-              @click.stop="confirmDelete(item)"
-            />
+            <LActionGroup
+              :actions="['stats', 'edit', 'delete']"
+              @action="(key) => handleAction(key, item)"
+            >
+              <template #edit>
+                <ScenarioDetailDialog
+                  :scenario-id="item.scenario_id"
+                  @scenarioEdited="fetchScenarios"
+                />
+              </template>
+            </LActionGroup>
           </template>
 
           <template v-slot:no-data>
@@ -278,9 +274,11 @@ const statusOptions = [
 
 const typeOptions = [
   { title: 'Alle', value: 'all' },
-  { title: 'Ranking', value: 'ranking' },
-  { title: 'Rating', value: 'rating' },
-  { title: 'Verlaufsbewertung', value: 'mail_rating' }
+  { title: '🏆 Ranking', value: 'ranking' },
+  { title: '⭐️ Rating', value: 'rating' },
+  { title: '✉️ Verlaufsbewertung', value: 'mail_rating' },
+  { title: '⚖️ Gegenüberstellung', value: 'comparison' },
+  { title: '🕵️ Fake/Echt', value: 'authenticity' }
 ];
 
 // Table headers
@@ -329,9 +327,11 @@ const formatDate = (dateString) => {
 
 const getFunctionTypeName = (type) => {
   const typeMap = {
-    'mail_rating': 'Verlaufsbewertung',
-    'rating': 'Rating',
-    'ranking': 'Ranking'
+    'mail_rating': '✉️ Verlaufsbewertung',
+    'rating': '⭐️ Rating',
+    'ranking': '🏆 Ranking',
+    'comparison': '⚖️ Gegenüberstellung',
+    'authenticity': '🕵️ Fake/Echt'
   };
   return typeMap[type] || type;
 };
@@ -340,7 +340,9 @@ const getTypeColor = (type) => {
   const colorMap = {
     'mail_rating': 'purple',
     'rating': 'orange',
-    'ranking': 'blue'
+    'ranking': 'blue',
+    'comparison': 'indigo',
+    'authenticity': 'teal'
   };
   return colorMap[type] || 'grey';
 };
@@ -349,7 +351,9 @@ const getTypeIcon = (type) => {
   const iconMap = {
     'mail_rating': 'mdi-email-outline',
     'rating': 'mdi-star-outline',
-    'ranking': 'mdi-format-list-numbered'
+    'ranking': 'mdi-format-list-numbered',
+    'comparison': 'mdi-compare-horizontal',
+    'authenticity': 'mdi-shield-search'
   };
   return iconMap[type] || 'mdi-clipboard-outline';
 };
@@ -367,7 +371,9 @@ const getTypeVariant = (type) => {
   const variantMap = {
     'mail_rating': 'accent',
     'rating': 'warning',
-    'ranking': 'info'
+    'ranking': 'info',
+    'comparison': 'primary',
+    'authenticity': 'secondary'
   };
   return variantMap[type] || 'gray';
 };
@@ -449,6 +455,19 @@ const deleteScenario = async () => {
     console.error('Error deleting scenario:', error);
   }
   deleting.value = false;
+};
+
+// Handle action group clicks
+const handleAction = (actionKey, item) => {
+  switch (actionKey) {
+    case 'stats':
+      viewScenarioStats(item);
+      break;
+    case 'delete':
+      confirmDelete(item);
+      break;
+    // 'edit' is handled via slot
+  }
 };
 
 onMounted(() => {

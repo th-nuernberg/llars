@@ -233,28 +233,10 @@
           </template>
 
           <template v-slot:item.actions="{ item }">
-            <div class="d-flex justify-end gap-2">
-              <LIconBtn
-                icon="mdi-pencil"
-                tooltip="Bearbeiten"
-                @click="selectUser(item.username)"
-                :loading="loadingUser === item.username"
-              />
-              <LIconBtn
-                :icon="item.is_active ? 'mdi-lock' : 'mdi-lock-open-variant'"
-                :tooltip="item.is_active ? 'Sperren' : 'Entsperren'"
-                :loading="togglingUser === item.username"
-                :disabled="item.username === 'admin' || item.deleted_at"
-                @click="toggleUserLock(item)"
-              />
-              <LIconBtn
-                icon="mdi-delete"
-                tooltip="Löschen"
-                variant="error"
-                :disabled="item.username === 'admin'"
-                @click="confirmDelete(item)"
-              />
-            </div>
+            <LActionGroup
+              :actions="getUserActions(item)"
+              @action="(key) => handleUserAction(key, item)"
+            />
           </template>
 
           <template v-slot:no-data>
@@ -457,6 +439,48 @@ const selectedUserStatus = computed(() => {
     variant: getStatusVariant(selectedUser.value),
   };
 });
+
+// Get actions for user row
+const getUserActions = (user) => {
+  return [
+    {
+      key: 'edit',
+      icon: 'mdi-pencil',
+      tooltip: 'Bearbeiten',
+      loading: loadingUser.value === user.username
+    },
+    {
+      key: 'toggle-lock',
+      icon: user.is_active ? 'mdi-lock' : 'mdi-lock-open-variant',
+      tooltip: user.is_active ? 'Sperren' : 'Entsperren',
+      variant: user.is_active ? 'warning' : 'success',
+      loading: togglingUser.value === user.username,
+      disabled: user.username === 'admin' || user.deleted_at
+    },
+    {
+      key: 'delete',
+      icon: 'mdi-delete',
+      tooltip: 'Löschen',
+      variant: 'danger',
+      disabled: user.username === 'admin'
+    }
+  ];
+};
+
+// Handle action group clicks
+const handleUserAction = (actionKey, user) => {
+  switch (actionKey) {
+    case 'edit':
+      selectUser(user.username);
+      break;
+    case 'toggle-lock':
+      toggleUserLock(user);
+      break;
+    case 'delete':
+      confirmDelete(user);
+      break;
+  }
+};
 
 // Load all roles
 const loadRoles = async () => {

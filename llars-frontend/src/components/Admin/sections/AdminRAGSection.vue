@@ -302,18 +302,9 @@
               </template>
 
               <template v-slot:item.actions="{ item }">
-                <LIconBtn
-                  icon="mdi-eye"
-                  variant="primary"
-                  tooltip="Details anzeigen"
-                  @click.stop="openCollectionDetail(item)"
-                />
-                <LIconBtn
-                  icon="mdi-delete"
-                  variant="danger"
-                  tooltip="Löschen"
-                  @click.stop="confirmDeleteCollection(item)"
-                  :disabled="item.name === 'default' || item.name === 'general'"
+                <LActionGroup
+                  :actions="getCollectionActions(item)"
+                  @action="(key) => handleCollectionAction(key, item)"
                 />
               </template>
             </v-data-table>
@@ -631,16 +622,9 @@
               </template>
 
               <template v-slot:item.actions="{ item }">
-                <LIconBtn
-                  icon="mdi-eye"
-                  variant="primary"
-                  tooltip="Vorschau"
-                  @click.stop="openDocumentPreview(item)"
-                />
-                <LIconBtn
-                  icon="mdi-download"
-                  tooltip="Download"
-                  @click.stop="downloadDocument(item)"
+                <LActionGroup
+                  :actions="['view', 'download']"
+                  @action="(key) => handleDocumentDetailAction(key, item)"
                 />
               </template>
 
@@ -858,6 +842,44 @@ const deleteCollection = async (force = false) => {
 const openDocumentPreview = (doc) => {
   previewDocument.value = doc;
   documentPreviewDialog.value = true;
+};
+
+// Get actions for collection row
+const getCollectionActions = (item) => {
+  return [
+    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' },
+    {
+      key: 'delete',
+      icon: 'mdi-delete',
+      tooltip: 'Löschen',
+      variant: 'danger',
+      disabled: item.name === 'default' || item.name === 'general'
+    }
+  ];
+};
+
+// Handle collection action group clicks
+const handleCollectionAction = (actionKey, item) => {
+  switch (actionKey) {
+    case 'view':
+      openCollectionDetail(item);
+      break;
+    case 'delete':
+      confirmDeleteCollection(item);
+      break;
+  }
+};
+
+// Handle document detail action group clicks
+const handleDocumentDetailAction = (actionKey, item) => {
+  switch (actionKey) {
+    case 'view':
+      openDocumentPreview(item);
+      break;
+    case 'download':
+      downloadDocument(item);
+      break;
+  }
 };
 
 // WebSocket für Echtzeit-Updates

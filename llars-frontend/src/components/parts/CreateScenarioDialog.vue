@@ -34,64 +34,81 @@
 
           <v-row>
             <v-col cols="12" md="6">
-              <v-menu
-                v-model="dateMenus.start"
-                :close-on-content-click="false"
-                location="start"
-                transition="scale-transition"
-                min-width="auto"
-              >
-                <template v-slot:activator="{ props }">
-                  <v-text-field
-                    :model-value="formatDate(formData.startDate)"
-                    label="Startdatum"
-                    :error-messages="errors.startDate"
-                    readonly
-                    v-bind="props"
-                    prepend-icon="mdi-calendar"
-                    outlined
-                    density="comfortable"
-                  ></v-text-field>
-                </template>
-                <v-date-picker
-                  v-model="formData.startDate"
-                  v-bind="datePickerProps"
-                  locale="de-DE"
-                  :first-day-of-week="1"
-                  color="primary"
-                  @click:save="dateMenus.start = false"
-                ></v-date-picker>
-              </v-menu>
+              <div class="date-field-col">
+                <v-menu
+                  v-model="dateMenus.start"
+                  :close-on-content-click="false"
+                  location="start"
+                  transition="scale-transition"
+                  min-width="auto"
+                >
+                  <template v-slot:activator="{ props }">
+                    <v-text-field
+                      :model-value="formatDate(formData.startDate)"
+                      label="Startdatum"
+                      :error-messages="errors.startDate"
+                      readonly
+                      v-bind="props"
+                      prepend-icon="mdi-calendar"
+                      outlined
+                      density="comfortable"
+                    ></v-text-field>
+                  </template>
+                  <v-date-picker
+                    v-model="formData.startDate"
+                    v-bind="datePickerProps"
+                    locale="de-DE"
+                    :first-day-of-week="1"
+                    color="primary"
+                    @click:save="dateMenus.start = false"
+                  ></v-date-picker>
+                </v-menu>
+                <div class="quick-date-row">
+                  <LBtn size="small" variant="tonal" prepend-icon="mdi-calendar-today" @click="setStartToday">
+                    Heute
+                  </LBtn>
+                </div>
+              </div>
             </v-col>
             <v-col cols="12" md="6">
-              <v-menu
-                v-model="dateMenus.end"
-                :close-on-content-click="false"
-                location="end"
-                transition="scale-transition"
-                min-width="auto"
-              >
-                <template v-slot:activator="{ props }">
-                  <v-text-field
-                    :model-value="formatDate(formData.endDate)"
-                    label="Enddatum"
-                    :error-messages="errors.endDate"
-                    readonly
-                    v-bind="props"
-                    prepend-icon="mdi-calendar"
-                    outlined
-                    density="comfortable"
-                  ></v-text-field>
-                </template>
-                <v-date-picker
-                  v-model="formData.endDate"
-                  v-bind="datePickerProps"
-                  locale="de-DE"
-                  :first-day-of-week="1"
-                  color="primary"
-                  @click:save="dateMenus.end = false"
-                ></v-date-picker>
-              </v-menu>
+              <div class="date-field-col">
+                <v-menu
+                  v-model="dateMenus.end"
+                  :close-on-content-click="false"
+                  location="end"
+                  transition="scale-transition"
+                  min-width="auto"
+                >
+                  <template v-slot:activator="{ props }">
+                    <v-text-field
+                      :model-value="formatDate(formData.endDate)"
+                      label="Enddatum"
+                      :error-messages="errors.endDate"
+                      readonly
+                      v-bind="props"
+                      prepend-icon="mdi-calendar"
+                      outlined
+                      density="comfortable"
+                    ></v-text-field>
+                  </template>
+                  <v-date-picker
+                    v-model="formData.endDate"
+                    v-bind="datePickerProps"
+                    locale="de-DE"
+                    :first-day-of-week="1"
+                    color="primary"
+                    @click:save="dateMenus.end = false"
+                  ></v-date-picker>
+                </v-menu>
+                <div class="quick-date-row">
+                  <LBtn size="small" variant="tonal" prepend-icon="mdi-calendar-week" @click="setEndInDays(7)">
+                    In 1 Woche
+                  </LBtn>
+                  <LBtn size="small" variant="tonal" prepend-icon="mdi-calendar-month" @click="setEndInMonths(1)">
+                    In 1 Monat
+                  </LBtn>
+                </div>
+              </div>
             </v-col>
           </v-row>
 
@@ -214,6 +231,62 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
+            <v-expansion-panel v-if="formData.selectedCategory === 5">
+              <v-expansion-panel-title>
+                Fake/Echt – Import
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-alert type="info" variant="tonal" class="mb-4">
+                  Importiere JSON-Items im v6-Format (ein Item oder Liste). Nach dem Import kannst du die Threads im nächsten Panel auswählen.
+                </v-alert>
+
+                <v-file-input
+                  v-model="authImport.files"
+                  label="JSON-Dateien (optional)"
+                  prepend-icon="mdi-file-json"
+                  variant="outlined"
+                  density="comfortable"
+                  multiple
+                  show-size
+                  accept="application/json,.json"
+                />
+
+                <v-textarea
+                  v-model="authImport.jsonText"
+                  label="Oder JSON einfügen (optional)"
+                  placeholder='{"metadata": {...}, "messages": [...]}'
+                  variant="outlined"
+                  density="comfortable"
+                  auto-grow
+                  rows="3"
+                  class="mt-3"
+                />
+
+                <div class="d-flex ga-2 mt-3">
+                  <LBtn
+                    variant="primary"
+                    prepend-icon="mdi-upload"
+                    :loading="authImport.isImporting"
+                    @click="importAuthenticity"
+                  >
+                    Importieren
+                  </LBtn>
+                  <LBtn variant="tonal" prepend-icon="mdi-refresh" @click="handleCategoryChange(formData.selectedCategory)">
+                    Threads aktualisieren
+                  </LBtn>
+                </div>
+
+                <v-alert v-if="authImport.error" type="error" variant="tonal" class="mt-3">
+                  {{ authImport.error }}
+                </v-alert>
+
+                <v-alert v-if="authImport.result" type="success" variant="tonal" class="mt-3">
+                  Import: {{ authImport.result.imported || 0 }} neu, {{ authImport.result.skipped_existing || 0 }} übersprungen,
+                  {{ (authImport.result.errors || []).length }} Fehler.
+                </v-alert>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
             <!-- Threads Panel -->
             <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }" v-if="formData.selectedCategory !== 4">
               <v-expansion-panel-title>
@@ -324,6 +397,7 @@ import {
   createScenario,
   getAvailableModels
 } from '@/services/scenarioApi';
+import { importAuthenticityDataset } from '@/services/authenticityApi';
 
 export default {
   name: 'ScenarioDialog',
@@ -365,6 +439,14 @@ export default {
       endDate: '',
       userRoles: '',
       selectedThreads: ''
+    });
+
+    const authImport = reactive({
+      files: [],
+      jsonText: '',
+      isImporting: false,
+      error: '',
+      result: null
     });
 
 
@@ -440,15 +522,16 @@ export default {
 
     const categoryNameMapping = {
       'rating': 'Rating',
-      'mail_rating': 'Verlauf Generierung',
+      'mail_rating': 'Verlaufsbewertung',
       'ranking': 'Ranking',
-      'comparison': 'Gegenüberstellung'
+      'comparison': 'Gegenüberstellung',
+      'authenticity': 'Fake/Echt'
     };
 
     const categoryItems = computed(() => {
       return state.categories.map(category => ({
         value: category.function_type_id,
-        title: categoryNameMapping[category.name] || category.name,
+        title: `${category.emoji ? category.emoji + ' ' : ''}${category.display_name || categoryNameMapping[category.name] || category.name}`.trim(),
         raw: category
       }));
     });
@@ -539,6 +622,103 @@ export default {
       }
     };
 
+    const _dateToPickerString = (date) => {
+      const d = date instanceof Date ? date : new Date(date);
+      if (!d || Number.isNaN(d.getTime())) return null;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const _parsePickerValue = (value) => {
+      if (!value) return null;
+      if (value instanceof Date) return value;
+      const s = String(value);
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m) {
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      }
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
+    const setStartToday = () => {
+      formData.startDate = _dateToPickerString(new Date());
+      if (!formData.endDate) {
+        formData.endDate = _dateToPickerString(new Date());
+      }
+    };
+
+    const setEndInDays = (days) => {
+      const base = _parsePickerValue(formData.startDate) || new Date();
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+      d.setDate(d.getDate() + Number(days || 0));
+      formData.endDate = _dateToPickerString(d);
+    };
+
+    const setEndInMonths = (months) => {
+      const base = _parsePickerValue(formData.startDate) || new Date();
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+      d.setMonth(d.getMonth() + Number(months || 0));
+      formData.endDate = _dateToPickerString(d);
+    };
+
+    const importAuthenticity = async () => {
+      authImport.error = '';
+      authImport.result = null;
+
+      const items = [];
+
+      const text = String(authImport.jsonText || '').trim();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            items.push(...parsed);
+          } else {
+            items.push(parsed);
+          }
+        } catch (e) {
+          authImport.error = 'JSON im Textfeld ist ungültig.';
+          return;
+        }
+      } else if (Array.isArray(authImport.files) && authImport.files.length > 0) {
+        try {
+          const readFile = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden.'));
+            reader.readAsText(file);
+          });
+
+          const contents = await Promise.all(authImport.files.map(readFile));
+          for (const content of contents) {
+            const parsed = JSON.parse(content);
+            if (Array.isArray(parsed)) items.push(...parsed);
+            else items.push(parsed);
+          }
+        } catch (e) {
+          authImport.error = 'Eine oder mehrere Dateien enthalten ungültiges JSON.';
+          return;
+        }
+      } else {
+        authImport.error = 'Bitte JSON einfügen oder eine Datei auswählen.';
+        return;
+      }
+
+      authImport.isImporting = true;
+      try {
+        authImport.result = await importAuthenticityDataset(items.length === 1 ? items[0] : items);
+        // Refresh threads list after successful import
+        await fetchThreads(formData.selectedCategory);
+      } catch (e) {
+        authImport.error = e?.response?.data?.message || e?.message || 'Import fehlgeschlagen.';
+      } finally {
+        authImport.isImporting = false;
+      }
+    };
+
     const handleCheckboxChange = (userId, role) => {
       if (role === 'viewer') {
         formData.userRoles[userId].rater = false;
@@ -570,6 +750,11 @@ export default {
       formData.selectedThreads = [];
       formData.llm1Model = '';
       formData.llm2Model = '';
+      authImport.files = [];
+      authImport.jsonText = '';
+      authImport.isImporting = false;
+      authImport.error = '';
+      authImport.result = null;
 
       // Sicherstellen, dass das 'userRoles' Objekt korrekt zurückgesetzt wird
       formData.userRoles = Object.fromEntries(
@@ -647,6 +832,7 @@ export default {
       dateMenus,
       state,
       formData,
+      authImport,
       threadFilter,
       categoryItems,
       modelItems,
@@ -655,6 +841,10 @@ export default {
       closeDialog,
       handleCategoryChange,
       handleCheckboxChange,
+      importAuthenticity,
+      setStartToday,
+      setEndInDays,
+      setEndInMonths,
       validateAndSubmitScenario,
       datePickerProps,
       formatDate,
@@ -707,5 +897,22 @@ export default {
 
 .select-all-row {
   margin-bottom: 2em;
+}
+
+.date-field-col {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.date-field-col :deep(.v-field) {
+  width: 100%;
+}
+
+.quick-date-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 </style>

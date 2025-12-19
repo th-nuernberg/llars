@@ -81,14 +81,18 @@ const router = useRouter();
 const route = useRoute();
 const auth = useAuth();
 
-// Development mode detection (Vite built-in)
-const isDevelopment = import.meta.env.DEV;
+// Development mode detection
+// 1. Vite DEV mode (npm run dev)
+// 2. Or explicitly enabled via VITE_DEV_LOGIN=true (for testing in built version)
+const isDevelopment = import.meta.env.DEV || import.meta.env.VITE_DEV_LOGIN === 'true';
 
-// Development test users (credentials from CLAUDE.md / .env.template.development)
+// Development test users
+// Credentials can be overridden via VITE_DEV_PASSWORD env variable
+const devPassword = import.meta.env.VITE_DEV_PASSWORD || 'admin123';
 const devUsers = [
-  { username: 'admin', password: 'admin123', label: 'Admin', icon: 'mdi-shield-crown', color: 'error' },
-  { username: 'researcher', password: 'admin123', label: 'Researcher', icon: 'mdi-flask', color: 'primary' },
-  { username: 'viewer', password: 'admin123', label: 'Viewer', icon: 'mdi-eye', color: 'secondary' }
+  { username: 'admin', password: devPassword, label: 'Admin', icon: 'mdi-shield-crown', color: 'error' },
+  { username: 'researcher', password: devPassword, label: 'Researcher', icon: 'mdi-flask', color: 'primary' },
+  { username: 'viewer', password: devPassword, label: 'Viewer', icon: 'mdi-eye', color: 'secondary' }
 ];
 
 // Check if already authenticated on mount

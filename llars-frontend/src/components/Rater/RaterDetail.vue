@@ -82,27 +82,7 @@
             <span class="panel-title">E-Mail Verlauf</span>
           </div>
           <div class="panel-content">
-            <div v-if="messages.length === 0" class="empty-state">
-              <v-icon size="48" color="grey-lighten-1">mdi-email-off-outline</v-icon>
-              <p class="text-medium-emphasis mt-2">Keine Nachrichten gefunden.</p>
-            </div>
-
-            <div v-else class="messages">
-              <div
-                v-for="message in messages"
-                :key="message.message_id"
-                class="message"
-                :class="getMessageClass(message.sender)"
-              >
-                <div class="message-header">
-                  <LTag :variant="isClientMessage(message.sender) ? 'primary' : 'secondary'" size="small">
-                    {{ message.sender }}
-                  </LTag>
-                  <span class="timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-                </div>
-                <div class="message-body">{{ message.content }}</div>
-              </div>
-            </div>
+            <LMessageList :messages="messages" />
           </div>
         </div>
       </template>
@@ -122,7 +102,6 @@ const router = useRouter()
 
 const features = ref([])
 const messages = ref([])
-const senderColors = ref({})
 const groupedFeatures = ref([])
 const rated = ref(null)
 const ratingThreadsList = ref([])
@@ -230,18 +209,6 @@ async function loadCaseData(caseId) {
       })
     })
     groupedFeatures.value = Array.from(featureMap.values())
-
-    // Sender-Farben zuweisen
-    senderColors.value = {}
-    let lastSender = ''
-    let currentColor = 'same-sender'
-    messages.value.forEach(message => {
-      if (message.sender !== lastSender) {
-        currentColor = currentColor === 'same-sender' ? 'different-sender' : 'same-sender'
-        lastSender = message.sender
-      }
-      senderColors.value[message.sender] = currentColor
-    })
   })
 }
 
@@ -254,16 +221,6 @@ watch(
   { immediate: true }
 )
 
-function getMessageClass(sender) {
-  return senderColors.value[sender]
-}
-
-function isClientMessage(sender) {
-  const normalizedSender = String(sender || '').toLowerCase().trim()
-  const clientVariants = ['ratsuchende person', 'ratsuchender', 'ratsuchend', 'ratsuchende']
-  return clientVariants.includes(normalizedSender)
-}
-
 function translateFeatureType(type) {
   const translations = {
     abstract_summary: 'Abstrakte Fallzusammenfassung',
@@ -272,12 +229,6 @@ function translateFeatureType(type) {
     order_clarification: 'Ordnungsklärung',
   }
   return translations[type] || type
-}
-
-function formatTimestamp(timestamp) {
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
-  const date = new Date(timestamp)
-  return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr'
 }
 
 function navigateToPreviousCase() {
@@ -370,16 +321,6 @@ function navigateToFeatureDetail(featureId) {
   background: rgb(var(--v-theme-primary));
 }
 
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 16px;
-  text-align: center;
-}
-
 /* Feature Cards */
 .feature-item {
   margin-bottom: 12px;
@@ -403,46 +344,5 @@ function navigateToFeatureDetail(featureId) {
 .feature-card-text {
   font-size: 0.875rem;
   opacity: 0.85;
-}
-
-/* Messages */
-.messages {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.message {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.same-sender {
-  background: rgba(var(--v-theme-primary), 0.08);
-  border-left: 3px solid rgb(var(--v-theme-primary));
-}
-
-.different-sender {
-  background: rgba(var(--v-theme-secondary), 0.08);
-  border-left: 3px solid rgb(var(--v-theme-secondary));
-}
-
-.message-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.timestamp {
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.message-body {
-  white-space: pre-wrap;
-  line-height: 1.5;
-  font-size: 0.9rem;
 }
 </style>

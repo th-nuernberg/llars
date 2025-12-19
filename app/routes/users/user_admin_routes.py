@@ -88,13 +88,55 @@ def list_admin_users():
 @require_permission("admin:users:manage")
 @handle_api_errors(logger_name="admin_users")
 def create_admin_user():
+    """
+    Create a new user.
+
+    If email and password are provided, also creates the user in Authentik.
+    Otherwise, only creates a local LLARS database record.
+    """
     data = request.get_json() or {}
     username = (data.get("username") or "").strip()
     is_active = bool(data.get("is_active", True))
     role_names = data.get("role_names") or data.get("roles") or []
 
+    # Optional Authentik fields
+    email = (data.get("email") or "").strip()
+    password = data.get("password") or ""
+    display_name = (data.get("display_name") or data.get("name") or "").strip()
+    create_in_authentik = bool(data.get("create_in_authentik", True))
+
     if not username:
         raise ValidationError("username is required")
+
+    # If creating in Authentik, email and password are required
+    authentik_user_created = False
+    authentik_warning = None
+
+    if email and password and create_in_authentik:
+        from services.authentik_admin_service import AuthentikAdminService
+
+        try:
+            success, error_msg, authentik_data = AuthentikAdminService.create_user(
+                username=username,
+                email=email,
+                password=password,
+                name=display_name or username,
+                is_active=is_active
+            )
+
+            if success:
+                authentik_user_created = True
+                if error_msg:  # Warning (e.g., password not set)
+                    authentik_warning = error_msg
+            elif "already exists" in (error_msg or ""):
+                # User exists in Authentik, that's fine - continue with local creation
+                authentik_warning = f"User existiert bereits in Authentik. Nur lokaler LLARS-Account wird erstellt."
+            else:
+                # Authentik creation failed - log warning but continue with local user
+                authentik_warning = f"Authentik-Erstellung fehlgeschlagen: {error_msg}. Lokaler LLARS-Account wurde erstellt - Login nur möglich wenn User manuell in Authentik angelegt wird."
+        except Exception as e:
+            # Don't fail the whole operation if Authentik is unreachable
+            authentik_warning = f"Authentik nicht erreichbar: {str(e)}. Lokaler LLARS-Account wurde erstellt."
 
     existing = User.query.filter_by(username=username).first()
     if existing and existing.deleted_at is None:
@@ -150,7 +192,13 @@ def create_admin_user():
 
     roles_by_username = _get_roles_by_username([username])
     payload = _serialize_user(user, roles_by_username.get(username, []))
-    return jsonify({"success": True, "user": payload, "data": payload}), 201
+    payload["authentik_created"] = authentik_user_created
+
+    response_data = {"success": True, "user": payload, "data": payload}
+    if authentik_warning:
+        response_data["warning"] = authentik_warning
+
+    return jsonify(response_data), 201
 
 
 @data_bp.route("/admin/users/<username>", methods=["PATCH"])

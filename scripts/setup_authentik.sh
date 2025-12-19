@@ -354,9 +354,46 @@ EOF
 print_success "Test users created successfully"
 
 #########################################
-# 5. Verify Setup
+# 5. Create Admin API Token
 #########################################
-print_section "5. Verifying Setup"
+print_section "5. Creating Admin API Token"
+
+print_info "Creating API token for LLARS admin operations..."
+
+# Create token and capture it
+API_TOKEN=$(docker compose exec -T authentik-server ak shell -c "
+from authentik.core.models import Token, User
+admin = User.objects.filter(username='akadmin').first()
+if admin:
+    Token.objects.filter(identifier='llars-admin-api-token').delete()
+    token = Token.objects.create(identifier='llars-admin-api-token', user=admin, intent='api', expiring=False, description='LLARS Admin API Token')
+    print(token.key)
+" 2>/dev/null | grep -v "^{" | tail -1)
+
+if [ -n "$API_TOKEN" ] && [ "$API_TOKEN" != "None" ]; then
+    print_success "API token created: ${API_TOKEN:0:20}..."
+
+    # Update .env file if it exists
+    ENV_FILE=".env"
+    if [ -f "$ENV_FILE" ]; then
+        # Remove old token if exists
+        sed -i.bak '/^AUTHENTIK_API_TOKEN=/d' "$ENV_FILE" 2>/dev/null || true
+        # Add new token
+        echo "AUTHENTIK_API_TOKEN=$API_TOKEN" >> "$ENV_FILE"
+        print_success "Token added to $ENV_FILE"
+        print_warning "Restart Flask service to apply: docker restart llars_flask_service"
+    else
+        print_warning ".env file not found. Add this to your .env:"
+        echo "  AUTHENTIK_API_TOKEN=$API_TOKEN"
+    fi
+else
+    print_warning "Could not create API token. User creation in admin panel may not work with Authentik."
+fi
+
+#########################################
+# 6. Verify Setup
+#########################################
+print_section "6. Verifying Setup"
 
 docker compose exec -T authentik-server ak shell <<'EOF'
 from authentik.flows.models import Flow

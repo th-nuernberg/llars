@@ -437,6 +437,7 @@ services:
       - PROJECT_URL=${PROJECT_URL:-http://localhost:55080}
       - NGINX_EXTERNAL_PORT=${NGINX_EXTERNAL_PORT:-55080}
       - PROJECT_STATE=${PROJECT_STATE:-development}
+      - AUTHENTIK_API_TOKEN=${AUTHENTIK_API_TOKEN:-}
     volumes:
       - ./docker/authentik/init-authentik.sh:/init-authentik.sh:ro
     working_dir: /

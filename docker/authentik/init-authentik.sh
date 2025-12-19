@@ -308,7 +308,50 @@ else
     echo "[6/7] Skipping dev users (researcher, viewer) - PRODUCTION MODE"
 fi
 
-echo "[7/7] Verifying configuration..."
+echo "[7/8] Creating Admin API Token for LLARS..."
+
+# Use predefined token from env if available (for reproducible setups)
+PREDEFINED_TOKEN="${AUTHENTIK_API_TOKEN:-}"
+
+ak shell -c "
+from authentik.core.models import Token, User
+
+# Get the akadmin (bootstrap admin) user
+admin = User.objects.filter(username='akadmin').first()
+if not admin:
+    admin = User.objects.filter(username='admin').first()
+
+if admin:
+    # Delete old token if exists
+    Token.objects.filter(identifier='llars-admin-api-token').delete()
+
+    # Create new API token (with predefined key if provided)
+    predefined_key = '$PREDEFINED_TOKEN' if '$PREDEFINED_TOKEN' else None
+    if predefined_key:
+        token = Token.objects.create(
+            identifier='llars-admin-api-token',
+            user=admin,
+            intent='api',
+            expiring=False,
+            key=predefined_key,
+            description='LLARS Admin API Token for user management'
+        )
+        print(f'  Token created with predefined key')
+    else:
+        token = Token.objects.create(
+            identifier='llars-admin-api-token',
+            user=admin,
+            intent='api',
+            expiring=False,
+            description='LLARS Admin API Token for user management'
+        )
+        print(f'  Token created: {token.key}')
+        print(f'  Add to .env: AUTHENTIK_API_TOKEN={token.key}')
+else:
+    print('  ERROR: No admin user found')
+"
+
+echo "[8/8] Verifying configuration..."
 
 ak shell -c "
 from authentik.flows.models import Flow

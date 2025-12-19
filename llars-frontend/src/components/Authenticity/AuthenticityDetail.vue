@@ -39,20 +39,7 @@
             <LTag v-if="thread?.sender" variant="gray" size="small">{{ thread.sender }}</LTag>
           </div>
           <div class="panel-content">
-            <div v-if="!thread?.messages?.length" class="empty-state">
-              <v-icon size="48" color="grey-lighten-1">mdi-email-off-outline</v-icon>
-              <p class="text-medium-emphasis mt-2">Keine Nachrichten gefunden.</p>
-            </div>
-
-            <div v-else class="messages">
-              <div v-for="m in thread.messages" :key="m.message_id" class="message">
-                <div class="message-header">
-                  <LTag variant="gray" size="small">{{ m.sender }}</LTag>
-                  <span v-if="m.timestamp" class="timestamp">{{ formatTs(m.timestamp) }}</span>
-                </div>
-                <div class="message-body">{{ m.content }}</div>
-              </div>
-            </div>
+            <LMessageList :messages="thread?.messages || []" />
           </div>
         </div>
 
@@ -225,21 +212,6 @@ function debounce(fn, delay) {
   return (...args) => {
     if (timeout) clearTimeout(timeout)
     timeout = setTimeout(() => fn(...args), delay)
-  }
-}
-
-// Format timestamp
-function formatTs(iso) {
-  try {
-    return new Date(iso).toLocaleString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch {
-    return iso
   }
 }
 
@@ -416,48 +388,6 @@ watch(() => threadId.value, async () => {
 .resize-divider:hover .resize-handle,
 .resize-divider.resizing .resize-handle {
   background: rgb(var(--v-theme-primary));
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 16px;
-  text-align: center;
-}
-
-/* Messages */
-.messages {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.message {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-surface-variant), 0.2);
-}
-
-.message-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.timestamp {
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.message-body {
-  white-space: pre-wrap;
-  line-height: 1.5;
-  font-size: 0.9rem;
 }
 
 /* Info Box */

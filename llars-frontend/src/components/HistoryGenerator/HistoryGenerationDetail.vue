@@ -45,37 +45,30 @@
             </div>
 
             <div v-else class="messages">
-              <div
+              <LMessage
                 v-for="m in messages"
                 :key="m.message_id"
-                class="message"
-                :class="getMessageClass(m.sender)"
+                :sender="m.sender"
+                :timestamp="m.timestamp"
               >
-                <div class="message-header">
-                  <LTag :variant="isClientMessage(m.sender) ? 'primary' : 'secondary'" size="small">
-                    {{ m.sender }}
-                  </LTag>
-                  <span v-if="m.timestamp" class="timestamp">{{ formatTs(m.timestamp) }}</span>
-                  <v-spacer />
-                  <div class="message-actions">
-                    <LIconBtn
-                      :icon="m.rating === 'up' ? 'mdi-thumb-up' : 'mdi-thumb-up-outline'"
-                      :variant="m.rating === 'up' ? 'success' : 'default'"
-                      size="small"
-                      tooltip="Hilfreich"
-                      @click="toggleMessageRating(m, 'up')"
-                    />
-                    <LIconBtn
-                      :icon="m.rating === 'down' ? 'mdi-thumb-down' : 'mdi-thumb-down-outline'"
-                      :variant="m.rating === 'down' ? 'danger' : 'default'"
-                      size="small"
-                      tooltip="Nicht hilfreich"
-                      @click="toggleMessageRating(m, 'down')"
-                    />
-                  </div>
-                </div>
-                <div class="message-body" v-html="formatContent(m.content)" />
-              </div>
+                <template #actions>
+                  <LIconBtn
+                    :icon="m.rating === 'up' ? 'mdi-thumb-up' : 'mdi-thumb-up-outline'"
+                    :variant="m.rating === 'up' ? 'success' : 'default'"
+                    size="small"
+                    tooltip="Hilfreich"
+                    @click="toggleMessageRating(m, 'up')"
+                  />
+                  <LIconBtn
+                    :icon="m.rating === 'down' ? 'mdi-thumb-down' : 'mdi-thumb-down-outline'"
+                    :variant="m.rating === 'down' ? 'danger' : 'default'"
+                    size="small"
+                    tooltip="Nicht hilfreich"
+                    @click="toggleMessageRating(m, 'down')"
+                  />
+                </template>
+                <div v-html="formatContent(m.content)" />
+              </LMessage>
             </div>
           </div>
         </div>
@@ -327,30 +320,6 @@ function formatContent(content) {
     ALLOWED_TAGS: ['br', 'a'],
     ALLOWED_ATTR: ['href']
   })
-}
-
-function formatTs(iso) {
-  try {
-    return new Date(iso).toLocaleString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch {
-    return iso
-  }
-}
-
-function isClientMessage(sender) {
-  const normalizedSender = String(sender || '').toLowerCase().trim()
-  const clientVariants = ['ratsuchende person', 'ratsuchender', 'ratsuchend', 'ratsuchende']
-  return clientVariants.includes(normalizedSender)
-}
-
-function getMessageClass(sender) {
-  return isClientMessage(sender) ? 'client-message' : 'counsellor-message'
 }
 
 function toggleMessageRating(message, value) {
@@ -616,45 +585,6 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.message {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.message.client-message {
-  background: rgba(var(--v-theme-primary), 0.08);
-  border-left: 3px solid rgb(var(--v-theme-primary));
-}
-
-.message.counsellor-message {
-  background: rgba(var(--v-theme-secondary), 0.08);
-  border-left: 3px solid rgb(var(--v-theme-secondary));
-}
-
-.message-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.timestamp {
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.message-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.message-body {
-  white-space: pre-wrap;
-  line-height: 1.5;
-  font-size: 0.9rem;
 }
 
 /* Rating Sections */

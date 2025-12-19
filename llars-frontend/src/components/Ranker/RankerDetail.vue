@@ -160,27 +160,7 @@
           <span class="panel-title">E-Mail Verlauf</span>
         </div>
         <div class="panel-content">
-          <div v-if="messages.length === 0" class="empty-state">
-            <v-icon size="48" color="grey-lighten-1">mdi-email-off-outline</v-icon>
-            <p class="text-medium-emphasis mt-2">Keine Nachrichten gefunden.</p>
-          </div>
-
-          <div v-else class="messages">
-            <div
-              v-for="message in messages"
-              :key="message.message_id"
-              class="message"
-              :class="getMessageClass(message.sender)"
-            >
-              <div class="message-header">
-                <LTag :variant="isClientMessage(message.sender) ? 'primary' : 'secondary'" size="small">
-                  {{ message.sender }}
-                </LTag>
-                <span class="timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-              </div>
-              <div class="message-body">{{ message.content }}</div>
-            </div>
-          </div>
+          <LMessageList :messages="messages" />
         </div>
       </div>
     </div>
@@ -238,10 +218,7 @@ const {
   toggleMinimize,
   isLongContent,
   translateFeatureType,
-  formatTimestamp,
-  formatFeatureContent,
-  getMessageClass,
-  updateSenderColors
+  formatFeatureContent
 } = useRankerHelpers()
 
 const messages = ref([])
@@ -390,8 +367,6 @@ const loadCaseData = async (caseId) => {
     features.value = threadData.features
     ranked.value = threadData.ranked
   }
-
-  updateSenderColors(messages.value)
 }
 
 onMounted(() => {
@@ -490,16 +465,6 @@ function navigateBackToRanker() {
   background: rgb(var(--v-theme-primary));
 }
 
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 16px;
-  text-align: center;
-}
-
 /* Buckets */
 .buckets-row {
   display: flex;
@@ -587,47 +552,6 @@ function navigateBackToRanker() {
   top: 4px;
   right: 4px;
   font-size: 0.625rem;
-}
-
-/* Messages */
-.messages {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.message {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.same-sender {
-  background: rgba(var(--v-theme-primary), 0.08);
-  border-left: 3px solid rgb(var(--v-theme-primary));
-}
-
-.different-sender {
-  background: rgba(var(--v-theme-secondary), 0.08);
-  border-left: 3px solid rgb(var(--v-theme-secondary));
-}
-
-.message-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.timestamp {
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.message-body {
-  white-space: pre-wrap;
-  line-height: 1.5;
-  font-size: 0.9rem;
 }
 
 /* Drag & Drop */

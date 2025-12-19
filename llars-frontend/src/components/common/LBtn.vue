@@ -164,119 +164,127 @@ const buttonClasses = computed(() => ({
 /* ========================================
    VARIANT STYLES - Using CSS Custom Properties
    Automatically adapts to Light/Dark mode
+   All buttons use subtle gradients for depth
    ======================================== */
 
 /* Primary - Sage Green (Main Action) */
 .l-btn--primary {
-  background-color: var(--llars-primary);
+  background: var(--llars-btn-primary-gradient);
   color: white;
 }
 
 .l-btn--primary:hover:not(:disabled) {
-  background-color: var(--llars-primary-hover);
+  background: var(--llars-btn-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .l-btn--primary:active:not(:disabled) {
-  background-color: var(--llars-primary-active);
+  background: var(--llars-btn-primary-gradient);
   transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* Secondary - Golden Beige */
 .l-btn--secondary {
-  background-color: var(--llars-secondary);
+  background: var(--llars-btn-secondary-gradient);
   color: white;
 }
 
 .l-btn--secondary:hover:not(:disabled) {
-  background-color: var(--llars-secondary-hover);
+  background: var(--llars-btn-secondary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .l-btn--secondary:active:not(:disabled) {
-  background-color: var(--llars-secondary-active);
+  background: var(--llars-btn-secondary-gradient);
+  transform: translateY(0);
 }
 
 /* Accent - Soft Teal */
 .l-btn--accent {
-  background-color: var(--llars-accent);
+  background: var(--llars-btn-accent-gradient);
   color: white;
 }
 
 .l-btn--accent:hover:not(:disabled) {
-  background-color: var(--llars-accent-hover);
+  background: var(--llars-btn-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .l-btn--accent:active:not(:disabled) {
-  background-color: var(--llars-accent-active);
+  background: var(--llars-btn-accent-gradient);
+  transform: translateY(0);
 }
 
 /* Success - Soft Mint */
 .l-btn--success {
-  background-color: var(--llars-success);
+  background: var(--llars-btn-success-gradient);
   color: white;
 }
 
 .l-btn--success:hover:not(:disabled) {
-  background-color: var(--llars-success-hover);
+  background: var(--llars-btn-success-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .l-btn--success:active:not(:disabled) {
-  background-color: var(--llars-success-active);
+  background: var(--llars-btn-success-gradient);
+  transform: translateY(0);
 }
 
 /* Warning - Soft Gold */
 .l-btn--warning {
-  background-color: var(--llars-warning);
+  background: var(--llars-btn-warning-gradient);
   color: white;
 }
 
 .l-btn--warning:hover:not(:disabled) {
-  background-color: var(--llars-warning-hover);
+  background: var(--llars-btn-warning-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .l-btn--warning:active:not(:disabled) {
-  background-color: var(--llars-warning-active);
+  background: var(--llars-btn-warning-gradient);
+  transform: translateY(0);
 }
 
 /* Danger - Soft Coral */
 .l-btn--danger {
-  background-color: var(--llars-danger);
+  background: var(--llars-btn-danger-gradient);
   color: white;
 }
 
 .l-btn--danger:hover:not(:disabled) {
-  background-color: var(--llars-danger-hover);
+  background: var(--llars-btn-danger-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .l-btn--danger:active:not(:disabled) {
-  background-color: var(--llars-danger-active);
+  background: var(--llars-btn-danger-gradient);
+  transform: translateY(0);
 }
 
 /* Cancel - Neutral Gray */
 .l-btn--cancel {
-  background-color: var(--llars-gray);
+  background: var(--llars-btn-cancel-gradient);
   color: white;
 }
 
 .l-btn--cancel:hover:not(:disabled) {
-  background-color: var(--llars-gray-hover);
+  background: var(--llars-btn-cancel-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .l-btn--cancel:active:not(:disabled) {
-  background-color: var(--llars-gray-active);
+  background: var(--llars-btn-cancel-gradient);
+  transform: translateY(0);
 }
 
 /* Text - No Background */

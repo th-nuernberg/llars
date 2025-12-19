@@ -932,23 +932,21 @@ function cleanupWebSocket() {
 
 // Lifecycle
 onMounted(async () => {
-  await withLoading('stats', async () => {
-    await fetchStats();
-  });
+  // Load all fast APIs in parallel - don't wait for each other
+  const fastLoads = Promise.all([
+    withLoading('stats', fetchStats),
+    withLoading('collections', fetchCollections),
+    withLoading('documents', fetchDocuments),
+    fetchProcessingQueue()
+  ]);
 
-  await withLoading('embedding', async () => {
-    await fetchEmbeddingInfo();
-  });
+  // Load embedding info independently (slow due to LiteLLM connection attempt)
+  // This doesn't block the rest of the page
+  withLoading('embedding', fetchEmbeddingInfo);
 
-  await withLoading('collections', async () => {
-    await fetchCollections();
-  });
+  // Wait for fast APIs to complete
+  await fastLoads;
 
-  await withLoading('documents', async () => {
-    await fetchDocuments();
-  });
-
-  await fetchProcessingQueue();
   setupWebSocket();
 });
 

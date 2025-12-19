@@ -60,11 +60,11 @@
   --llars-gray-active: #7e7e7e;
   --llars-gray-light: #c5c5c5;
 
-  /* AppBar/Footer Colors (Light Mode) */
-  --llars-appbar-start: #D1BC8A;
-  --llars-appbar-end: #c4a870;
-  --llars-appbar-border: #b0ca97;
-  --llars-appbar-gradient: linear-gradient(135deg, #D1BC8A 0%, #c4a870 100%);
+  /* AppBar/Footer Colors (Light Mode - Sage Green) */
+  --llars-appbar-start: #b0ca97;
+  --llars-appbar-end: #9ab583;
+  --llars-appbar-border: #D1BC8A;
+  --llars-appbar-gradient: linear-gradient(135deg, #b0ca97 0%, #9ab583 100%);
 
   /* LLARS Signature Border Radius */
   --llars-radius: 16px 4px 16px 4px;

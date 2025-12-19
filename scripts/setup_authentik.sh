@@ -49,20 +49,35 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
+# Get environment variables
+PROJECT_STATE="${PROJECT_STATE:-development}"
+PROJECT_URL="${PROJECT_URL:-http://localhost:55080}"
+LLARS_ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-admin123}"
+AUTHENTIK_BACKEND_CLIENT_SECRET="${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-change-in-production}"
+
+# Determine docker compose command based on environment
+if [ "$PROJECT_STATE" = "production" ]; then
+    COMPOSE_CMD="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+else
+    COMPOSE_CMD="docker compose"
+fi
+
 # Check if authentik container is running (matches both "running" and "healthy")
-if ! docker compose ps | grep -q "authentik-server.*\(running\|healthy\)"; then
-    print_error "Authentik server is not running. Start it with: docker compose up -d"
+if ! $COMPOSE_CMD ps | grep -q "authentik-server.*\(running\|healthy\)"; then
+    print_error "Authentik server is not running. Start it with: $COMPOSE_CMD up -d"
     exit 1
 fi
 
 print_info "Starting Authentik setup for LLARS..."
+print_info "Environment: $PROJECT_STATE"
+print_info "Project URL: $PROJECT_URL"
 
 #########################################
 # 1. Create Authentication Flow
 #########################################
 print_section "1. Creating Authentication Flow"
 
-docker compose exec -T authentik-server ak shell <<'EOF'
+$COMPOSE_CMD exec -T authentik-server ak shell <<'EOF'
 from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
 from authentik.stages.identification.models import IdentificationStage, UserFields
 from authentik.stages.password.models import PasswordStage
@@ -146,10 +161,16 @@ print_success "Authentication flow created successfully"
 #########################################
 print_section "2. Creating OAuth2 Providers"
 
-docker compose exec -T authentik-server ak shell <<'EOF'
+print_info "Client secret: ${AUTHENTIK_BACKEND_CLIENT_SECRET:0:10}..."
+
+$COMPOSE_CMD exec -T authentik-server ak shell <<EOF
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping, ClientTypes
 from authentik.crypto.models import CertificateKeyPair
 from authentik.flows.models import Flow
+
+# Environment variables passed from shell
+project_url = "$PROJECT_URL"
+client_secret = "$AUTHENTIK_BACKEND_CLIENT_SECRET"
 
 print("[1/2] Creating backend OAuth2 provider (confidential)...")
 
@@ -169,16 +190,22 @@ if not auth_flow:
     exit(1)
 print(f"  ✓ Using authorization flow: {auth_flow.slug}")
 
+# Build redirect URIs based on PROJECT_URL
+backend_redirect_uris = f"{project_url}/api/auth/callback"
+frontend_redirect_uris = f"{project_url}/\\n{project_url}/login"
+
+print(f"  ✓ Using redirect URI: {backend_redirect_uris}")
+
 # Create backend provider (confidential)
 backend_provider, created = OAuth2Provider.objects.update_or_create(
     name='llars-backend-provider',
     defaults={
         'client_id': 'llars-backend',
-        'client_secret': 'llars-backend-secret-change-in-production',
+        'client_secret': client_secret,
         'client_type': ClientTypes.CONFIDENTIAL,
         'authorization_flow': auth_flow,
         'signing_key': cert,
-        'redirect_uris': 'http://localhost:55080/auth/callback\nhttp://localhost:8081/auth/callback',
+        'redirect_uris': backend_redirect_uris,
     }
 )
 
@@ -194,10 +221,11 @@ else:
 
 print(f"    - Client ID: {backend_provider.client_id}")
 print(f"    - Client Type: {backend_provider.client_type}")
-print(f"    - Redirect URIs: {backend_provider.redirect_uris[:50]}...")
+print(f"    - Client Secret: {client_secret[:10]}...")
+print(f"    - Redirect URIs: {backend_provider.redirect_uris}")
 
 # Create frontend provider (public)
-print("\n[2/2] Creating frontend OAuth2 provider (public)...")
+print("\\n[2/2] Creating frontend OAuth2 provider (public)...")
 frontend_provider, created = OAuth2Provider.objects.update_or_create(
     name='llars-frontend-provider',
     defaults={
@@ -205,7 +233,7 @@ frontend_provider, created = OAuth2Provider.objects.update_or_create(
         'client_type': ClientTypes.PUBLIC,
         'authorization_flow': auth_flow,
         'signing_key': cert,
-        'redirect_uris': 'http://localhost:55080/\nhttp://localhost:55080/login',
+        'redirect_uris': frontend_redirect_uris,
     }
 )
 
@@ -221,7 +249,7 @@ else:
 print(f"    - Client ID: {frontend_provider.client_id}")
 print(f"    - Client Type: {frontend_provider.client_type}")
 
-print("\n✓ OAuth2 providers setup complete!")
+print("\\n✓ OAuth2 providers setup complete!")
 EOF
 
 print_success "OAuth2 providers created successfully"
@@ -231,7 +259,7 @@ print_success "OAuth2 providers created successfully"
 #########################################
 print_section "3. Creating Applications"
 
-docker compose exec -T authentik-server ak shell <<'EOF'
+$COMPOSE_CMD exec -T authentik-server ak shell <<'EOF'
 from authentik.core.models import Application
 from authentik.providers.oauth2.models import OAuth2Provider
 
@@ -277,12 +305,6 @@ print_success "Applications created successfully"
 #########################################
 print_section "4. Creating Users"
 
-# Get environment variables
-PROJECT_STATE="${PROJECT_STATE:-development}"
-LLARS_ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-admin123}"
-
-print_info "Environment: $PROJECT_STATE"
-
 if [ "$PROJECT_STATE" = "production" ]; then
     print_info "Production mode: Creating only admin user with secure password"
 
@@ -293,7 +315,7 @@ if [ "$PROJECT_STATE" = "production" ]; then
         exit 1
     fi
 
-    docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T authentik-server ak shell <<EOF
+    $COMPOSE_CMD exec -T authentik-server ak shell <<EOF
 import os
 from authentik.core.models import User, Group
 
@@ -340,7 +362,7 @@ EOF
 else
     print_info "Development mode: Creating test users (admin, researcher, viewer)"
 
-    docker compose exec -T authentik-server ak shell <<EOF
+    $COMPOSE_CMD exec -T authentik-server ak shell <<EOF
 import os
 from authentik.core.models import User, Group
 
@@ -421,7 +443,7 @@ print_section "5. Creating Admin API Token"
 print_info "Creating API token for LLARS admin operations..."
 
 # Create token and capture it
-API_TOKEN=$(docker compose exec -T authentik-server ak shell -c "
+API_TOKEN=$($COMPOSE_CMD exec -T authentik-server ak shell -c "
 from authentik.core.models import Token, User
 admin = User.objects.filter(username='akadmin').first()
 if admin:

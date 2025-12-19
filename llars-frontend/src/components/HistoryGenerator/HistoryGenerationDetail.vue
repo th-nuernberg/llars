@@ -1,460 +1,729 @@
-<!--HistoryGenerationDetail.vue-->
 <template>
-  <v-container fluid class="main-container">
-    <!-- Skeleton Loading -->
-    <v-skeleton-loader v-if="isLoading('messages')" type="article, article"></v-skeleton-loader>
+  <LEvaluationLayout
+    ref="layoutRef"
+    :title="headerTitle"
+    :subtitle="`Thread #${threadId}`"
+    back-label="Übersicht"
+    :error="loadError"
+    :status="evaluationStatus"
+    :saving="saving"
+    :can-go-prev="canGoPrev"
+    :can-go-next="canGoNext"
+    :current-index="currentIndex"
+    :total-items="caseList.length"
+    @back="goOverview"
+    @prev="goPrev"
+    @next="goNext"
+    @clear-error="loadError = ''"
+  >
+    <!-- Main Content -->
+    <div ref="containerRef" class="content-panels">
+      <!-- Loading State -->
+      <template v-if="isLoading('data')">
+        <div class="panel left-panel">
+          <v-skeleton-loader type="card" class="fill-height" />
+        </div>
+        <div class="panel right-panel">
+          <v-skeleton-loader type="card" class="fill-height" />
+        </div>
+      </template>
 
-    <v-row v-else>
-      <v-col cols="12" md="6">
+      <!-- Loaded Content -->
+      <template v-else>
+        <!-- Left Panel: Messages -->
+        <div class="panel left-panel" :style="leftPanelStyle()">
+          <div class="panel-header">
+            <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
+            <span class="panel-title">Verlauf</span>
+            <v-spacer />
+            <LTag v-if="meta?.sender" variant="gray" size="small">{{ meta.sender }}</LTag>
+          </div>
+          <div class="panel-content">
+            <div v-if="messages.length === 0" class="empty-state">
+              <v-icon size="48" color="grey-lighten-1">mdi-email-off-outline</v-icon>
+              <p class="text-medium-emphasis mt-2">Keine Nachrichten gefunden.</p>
+            </div>
 
-        <div class="email-thread-container">
-          <div class="email-thread">
-            <div
-              v-for="(message, index) in messages"
-              :key="message.message_id"
-              class="email-message no-select"
-              :class="getMessageClass(message.sender)"
-            >
-              <div class="message-header">
-                <span class="message-sender">{{ message.sender }}</span>
-                <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-              </div>
-              <div class="message-body">
-                <div v-html="formatContent(message.content)"></div>
-                <div class="message-rating no-background">
-                  <v-icon @click="rateMessage(index, 'up')" :color="message.rating === 'up' ? 'green' : ''" small>mdi-thumb-up-outline</v-icon>
-                  <v-icon @click="rateMessage(index, 'down')" :color="message.rating === 'down' ? 'red' : ''" small>mdi-thumb-down-outline</v-icon>
+            <div v-else class="messages">
+              <div
+                v-for="m in messages"
+                :key="m.message_id"
+                class="message"
+                :class="getMessageClass(m.sender)"
+              >
+                <div class="message-header">
+                  <LTag :variant="isClientMessage(m.sender) ? 'primary' : 'secondary'" size="small">
+                    {{ m.sender }}
+                  </LTag>
+                  <span v-if="m.timestamp" class="timestamp">{{ formatTs(m.timestamp) }}</span>
+                  <v-spacer />
+                  <div class="message-actions">
+                    <LIconBtn
+                      :icon="m.rating === 'up' ? 'mdi-thumb-up' : 'mdi-thumb-up-outline'"
+                      :variant="m.rating === 'up' ? 'success' : 'default'"
+                      size="small"
+                      tooltip="Hilfreich"
+                      @click="toggleMessageRating(m, 'up')"
+                    />
+                    <LIconBtn
+                      :icon="m.rating === 'down' ? 'mdi-thumb-down' : 'mdi-thumb-down-outline'"
+                      :variant="m.rating === 'down' ? 'danger' : 'default'"
+                      size="small"
+                      tooltip="Nicht hilfreich"
+                      @click="toggleMessageRating(m, 'down')"
+                    />
+                  </div>
                 </div>
+                <div class="message-body" v-html="formatContent(m.content)" />
               </div>
             </div>
           </div>
-          <div class="fade-overlay top"></div>
-          <div class="fade-overlay bottom"></div>
-        </div>
-      </v-col>
-
-      <v-col cols="12" md="6">
-        <div class="rating-section">
-          <div class="rating-category" id="rating-category-coherence">
-            <h4>1. Kohärenz und Logik</h4>
-            <p>Entsprechen die Reaktionen und Interaktionen einem natürlichen Kommunikationsmuster? Stehen die Texte in einem inhaltlichen Zusammenhang zueinander? Gibt es Brüche oder Unstimmigkeiten? Wird auf die Antwort des jeweilig anderen eingegangen und auch neue inhaltliche Aspekte generiert oder wird „stoisch“ immer das gleiche wiederholt? Gibt es Halluzinationen?</p>
         </div>
 
-          <div class="rating-category sub-rating-category" id="rating-category-coherence-client">
-            <h4>a) ratsuchende Person</h4>
-            <LikertScale v-model="ratings.client_coherence" :disabled="isDisabled.client_coherence" />
-          </div>
-
-          <div class="rating-category sub-rating-category" id="rating-category-coherence-counsellor">
-            <h4>a) beratende Person</h4>
-            <LikertScale v-model="ratings.counsellor_coherence" :disabled="isDisabled.counsellor_coherence"  />
-          </div>
-
-
-          <div class="rating-category" id="rating-category-quality">
-            <h4>2. Beratungsqualität</h4>
-            <p>Ist die Antwort gut strukturiert und verständlich? Zeigt sich die beratende Person empathisch, wertschätzend und kongruent? Setzt die beratende Person gezielt Beratungstechniken ein, um das Anliegen systematisch zu bearbeiten und Lösungen zu entwickeln?</p>
-            <LikertScale v-model="ratings.quality" :disabled="isDisabled.quality" />
-          </div>
-
-          <div class="rating-category" id="rating-category-overall">
-            <h4>3. Gesamtbewertung</h4>
-            <p>Ist der Fall in seiner Gesamtheit authentisch und realistisch? Eignet sich der Fall hinsichtlich Thema und Fachlichkeit als gutes Beispiel für Onlineberatung? </p>
-            <BinaryLikertScale v-model="ratings.overall" :disabled="isDisabled.overall"/>
-          </div>
-
-          <v-row align="center">
-    <v-spacer></v-spacer> <!-- Fügt flexiblen Raum hinzu -->
-      <CategorySelection
-      :initial-category-id="selectedCategoryId"
-      :initial-category-notes="categoryNotes"
-      @category-selected="handleCategorySelection"
-      class="CategorySelectionButton"
-      />
-    </v-row>
-
-          <v-textarea
-            v-model="feedback"
-            label="Ihre Gedanken oder Notizen"
-            rows="5"
-            outlined
-            class="mt-4"
-          ></v-textarea>
-        </div>
-      </v-col>
-    </v-row>
-
-    <!-- Bottom bar with added margin -->
-    <v-row class="bottom-bar mt-auto">
-      <v-col>
-        <v-chip
-          class="category-chip"
-          :color="ratedStatus === 'Done' ? 'green lighten-2' : ratedStatus === 'Progressing' ? 'orange lighten-2' : 'grey lighten-2'"
-          small
+        <!-- Resize Divider -->
+        <div
+          class="resize-divider"
+          :class="{ resizing: isResizing }"
+          @mousedown="startResize"
         >
-          {{ratedStatus}}
-        </v-chip>
-        <v-chip
-          v-if="hasUnsavedChanges"
-          class="category-chip"
-          color="red lighten-2"
-          small
-        >
-          Ungespeicherte Änderungen
-        </v-chip>
-      </v-col>
-      <v-spacer></v-spacer>
+          <div class="resize-handle"></div>
+        </div>
 
-      <v-col cols="auto">
-        <v-btn class="mr-2" @click="navigateToOverview">
-          <v-icon left>mdi-view-list</v-icon>
-          Zur Übersicht
-        </v-btn>
-        <v-btn class="mr-2" @click="saveRatingServerSide">
-          <v-icon left>mdi-content-save</v-icon>
-          Speichern
-        </v-btn>
-        <v-btn class="mr-2" @click="handleNavigateToPrevious">
-          <v-icon left>mdi-arrow-left</v-icon>
-          Vorheriger Fall
-        </v-btn>
-        <v-btn @click="handleNavigateToNext">
-          Nächster Fall
-          <v-icon right>mdi-arrow-right</v-icon>
-        </v-btn>
-      </v-col>
-    </v-row>
-  </v-container>
+        <!-- Right Panel: Rating Form -->
+        <div class="panel right-panel" :style="rightPanelStyle()">
+          <div class="panel-header">
+            <v-icon size="20" class="mr-2">mdi-clipboard-check-outline</v-icon>
+            <span class="panel-title">Bewertung</span>
+          </div>
+          <div class="panel-content">
+            <v-alert v-if="saveError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="saveError = ''">
+              {{ saveError }}
+            </v-alert>
+
+            <!-- Rating Section 1: Kohärenz -->
+            <div class="rating-section">
+              <div class="section-header">
+                <span class="section-number">1</span>
+                <div class="section-info">
+                  <h4>Kohärenz und Logik</h4>
+                  <p class="text-caption text-medium-emphasis">
+                    Entsprechen die Reaktionen einem natürlichen Kommunikationsmuster?
+                  </p>
+                </div>
+              </div>
+
+              <div class="subsection" :class="{ disabled: disabledStates.client }">
+                <span class="subsection-label">a) Ratsuchende Person</span>
+                <LikertScale v-model="ratings.client_coherence" :disabled="disabledStates.client" />
+              </div>
+
+              <div class="subsection" :class="{ disabled: disabledStates.counsellor }">
+                <span class="subsection-label">b) Beratende Person</span>
+                <LikertScale v-model="ratings.counsellor_coherence" :disabled="disabledStates.counsellor" />
+              </div>
+            </div>
+
+            <!-- Rating Section 2: Qualität -->
+            <div class="rating-section" :class="{ disabled: disabledStates.quality }">
+              <div class="section-header">
+                <span class="section-number">2</span>
+                <div class="section-info">
+                  <h4>Beratungsqualität</h4>
+                  <p class="text-caption text-medium-emphasis">
+                    Strukturiert, verständlich und empathisch?
+                  </p>
+                </div>
+              </div>
+              <LikertScale v-model="ratings.quality" :disabled="disabledStates.quality" />
+            </div>
+
+            <!-- Rating Section 3: Gesamt -->
+            <div class="rating-section" :class="{ disabled: disabledStates.overall }">
+              <div class="section-header">
+                <span class="section-number">3</span>
+                <div class="section-info">
+                  <h4>Gesamtbewertung</h4>
+                  <p class="text-caption text-medium-emphasis">
+                    Authentisch und als Beispiel geeignet?
+                  </p>
+                </div>
+              </div>
+              <BinaryLikertScale v-model="ratings.overall" :disabled="disabledStates.overall" />
+            </div>
+
+            <!-- Category Selection -->
+            <div class="rating-section">
+              <div class="section-header">
+                <v-icon size="18" class="section-icon">mdi-tag-outline</v-icon>
+                <div class="section-info">
+                  <h4>Fallkategorie</h4>
+                </div>
+              </div>
+              <v-select
+                v-model="selectedCategoryId"
+                :items="categories"
+                item-title="name"
+                item-value="id"
+                label="Kategorie auswählen"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+                :disabled="categories.length === 0"
+              />
+              <v-textarea
+                v-model="categoryNotes"
+                label="Anmerkungen zur Kategorie"
+                variant="outlined"
+                density="compact"
+                auto-grow
+                rows="2"
+                hide-details
+                class="mt-2"
+              />
+            </div>
+
+            <!-- Notes -->
+            <div class="rating-section">
+              <div class="section-header">
+                <v-icon size="18" class="section-icon">mdi-note-text-outline</v-icon>
+                <div class="section-info">
+                  <h4>Notizen</h4>
+                </div>
+              </div>
+              <v-textarea
+                v-model="feedback"
+                label="Ihre Gedanken oder Anmerkungen"
+                variant="outlined"
+                auto-grow
+                rows="3"
+                hide-details
+              />
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </LEvaluationLayout>
 </template>
 
-
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import LikertScale from '../parts/LikertScale.vue';
-import BinaryLikertScale from "@/components/parts/BinaryLikertScale.vue";
-import CategorySelection from '../parts/CategorySelection.vue';
-import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
-import {
-  useHistoryHelpers,
-  useHistoryNavigation,
-  useHistoryRatings
-} from './HistoryGenerationDetail/composables';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
+import DOMPurify from 'dompurify'
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { usePanelResize } from '@/composables/usePanelResize'
+import LikertScale from '@/components/parts/LikertScale.vue'
+import BinaryLikertScale from '@/components/parts/BinaryLikertScale.vue'
 
-// Setup route and thread ID
-const route = useRoute();
-const threadId = computed(() => route.params.id);
+const route = useRoute()
+const router = useRouter()
+
+const threadId = computed(() => Number(route.params.id))
+
+// Refs
+const layoutRef = ref(null)
 
 // Skeleton Loading
-const { isLoading, setLoading, withLoading } = useSkeletonLoading(['messages']);
+const { isLoading, withLoading } = useSkeletonLoading(['data'])
 
-// Initialize composables
-const { formatContent, formatTimestamp, getMessageClass } = useHistoryHelpers();
-const { navigateToPreviousCase, navigateToNextCase, navigateToOverview } = useHistoryNavigation();
+// Panel Resize
 const {
-  messages,
-  ratings,
-  feedback,
-  selectedCategoryId,
-  categoryNotes,
-  ratedStatus,
-  hasUnsavedChanges,
-  isDisabled,
-  initializeData,
-  rateMessage,
-  handleCategorySelection,
-  saveRatingServerSide,
-  setupWatchers
-} = useHistoryRatings(threadId);
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 55,
+  minLeftPercent: 30,
+  maxLeftPercent: 70,
+  storageKey: 'history-generation-panel-width'
+})
 
-// Navigation wrappers using current thread ID
-async function handleNavigateToPrevious() {
-  await navigateToPreviousCase(parseInt(route.params.id));
+// Data
+const meta = ref(null)
+const caseList = ref([])
+const categories = ref([])
+const messages = ref([])
+
+// Rating state
+const ratings = reactive({
+  counsellor_coherence: null,
+  client_coherence: null,
+  quality: null,
+  overall: null
+})
+const feedback = ref('')
+const selectedCategoryId = ref(null)
+const categoryNotes = ref('')
+const ratedStatus = ref(null)
+
+// UI state
+const loadError = ref('')
+const saving = ref(false)
+const saveError = ref('')
+const isInitialized = ref(false)
+
+const headerTitle = computed(() => meta.value?.subject || 'Verlaufsbewertung')
+
+// Evaluation status for the layout
+const evaluationStatus = computed(() => {
+  // Check if any rating has been given
+  const hasRatings = ratings.client_coherence !== null ||
+                     ratings.counsellor_coherence !== null ||
+                     ratings.quality !== null ||
+                     ratings.overall !== null
+
+  // Check if all required ratings are complete
+  const allComplete = ratings.client_coherence !== null &&
+                      ratings.counsellor_coherence !== null &&
+                      (disabledStates.value.quality || ratings.quality !== null) &&
+                      (disabledStates.value.overall || ratings.overall !== null)
+
+  if (allComplete) return 'done'
+  if (hasRatings) return 'in_progress'
+  return 'pending'
+})
+
+const disabledStates = computed(() => {
+  const client = typeof ratings.client_coherence === 'number' && ratings.client_coherence > 2
+  const counsellor = typeof ratings.counsellor_coherence === 'number' && ratings.counsellor_coherence > 2
+  const quality = client || counsellor
+  const overall = quality || (typeof ratings.quality === 'number' && ratings.quality > 2)
+  return { client, counsellor, quality, overall }
+})
+
+// Debounce helper
+function debounce(fn, delay) {
+  let timeout = null
+  return (...args) => {
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(() => fn(...args), delay)
+  }
 }
 
-async function handleNavigateToNext() {
-  await navigateToNextCase(parseInt(route.params.id));
+function normalizeScaleValue(value) {
+  if (value === 0) return null
+  if (typeof value === 'number') return value
+  return null
 }
 
-// Initialize on mount
-onMounted(async () => {
-  await withLoading('messages', async () => {
-    await initializeData();
-    setupWatchers();
-  });
-});
+function cleanedText(value) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  return text.length > 0 ? text : null
+}
+
+function toDbValue(value, isDisabled) {
+  if (isDisabled && (value === null || value === undefined)) return 0
+  return value
+}
+
+function formatContent(content) {
+  if (!content) return ''
+  const sanitizedContent = String(content).replace(/\n/g, '<br>')
+  return DOMPurify.sanitize(sanitizedContent, {
+    ALLOWED_TAGS: ['br', 'a'],
+    ALLOWED_ATTR: ['href']
+  })
+}
+
+function formatTs(iso) {
+  try {
+    return new Date(iso).toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return iso
+  }
+}
+
+function isClientMessage(sender) {
+  const normalizedSender = String(sender || '').toLowerCase().trim()
+  const clientVariants = ['ratsuchende person', 'ratsuchender', 'ratsuchend', 'ratsuchende']
+  return clientVariants.includes(normalizedSender)
+}
+
+function getMessageClass(sender) {
+  return isClientMessage(sender) ? 'client-message' : 'counsellor-message'
+}
+
+function toggleMessageRating(message, value) {
+  const next = message.rating === value ? null : value
+  messages.value = messages.value.map(m => (m.message_id === message.message_id ? { ...m, rating: next } : m))
+}
+
+// Auto-save function
+const autoSave = debounce(async () => {
+  if (!isInitialized.value) return
+
+  const id = threadId.value
+  if (!Number.isFinite(id) || id <= 0) return
+
+  saving.value = true
+  saveError.value = ''
+
+  try {
+    const base = import.meta.env.VITE_API_BASE_URL
+
+    const anyDisabled =
+      disabledStates.value.client ||
+      disabledStates.value.counsellor ||
+      disabledStates.value.quality ||
+      disabledStates.value.overall
+
+    const mailPayload = {
+      counsellor_coherence_rating: toDbValue(ratings.counsellor_coherence, disabledStates.value.counsellor),
+      client_coherence_rating: toDbValue(ratings.client_coherence, disabledStates.value.client),
+      quality_rating: toDbValue(ratings.quality, disabledStates.value.quality),
+      overall_rating: toDbValue(ratings.overall, disabledStates.value.overall),
+      feedback: cleanedText(feedback.value),
+      consulting_category_id: selectedCategoryId.value ?? null,
+      consulting_category_notes: cleanedText(categoryNotes.value),
+      consider_category_for_status: !anyDisabled
+    }
+
+    const messagePayload = {
+      message_ratings: messages.value.map(m => ({
+        message_id: m.message_id,
+        rating: m.rating ?? null
+      }))
+    }
+
+    await axios.post(`${base}/api/email_threads/save_mailhistory_rating/${id}`, mailPayload)
+    await axios.post(`${base}/api/email_threads/save_message_ratings/${id}`, messagePayload)
+
+    // Refresh status
+    try {
+      const res = await axios.get(`${base}/api/email_threads/mailhistory_ratings/${id}`)
+      ratedStatus.value = res.data?.rating?.rating_status || ratedStatus.value
+    } catch {
+      // ignore
+    }
+
+  } catch (e) {
+    saveError.value =
+      e?.response?.data?.error ||
+      e?.response?.data?.message ||
+      e?.message ||
+      'Fehler beim Speichern.'
+  } finally {
+    saving.value = false
+  }
+}, 800)
+
+async function loadData() {
+  const id = threadId.value
+  if (!Number.isFinite(id) || id <= 0) {
+    loadError.value = 'Ungültige Thread-ID.'
+    return
+  }
+
+  loadError.value = ''
+  saveError.value = ''
+  isInitialized.value = false
+
+  await withLoading('data', async () => {
+    try {
+      const base = import.meta.env.VITE_API_BASE_URL
+
+      const [threadsRes, messagesRes, msgRatingsRes, mailRatingRes, categoriesRes] = await Promise.all([
+        axios.get(`${base}/api/email_threads/mailhistory_ratings`),
+        axios.get(`${base}/api/email_threads/generations/${id}`),
+        axios.get(`${base}/api/email_threads/message_ratings/${id}`),
+        axios.get(`${base}/api/email_threads/mailhistory_ratings/${id}`),
+        axios.get(`${base}/api/email_threads/consulting_category_types`)
+      ])
+
+      caseList.value = threadsRes.data?.threads || []
+      meta.value = caseList.value.find(t => t.thread_id === id) || null
+
+      const cats = categoriesRes.data?.consulting_category_types || categoriesRes.data?.data || []
+      categories.value = Array.isArray(cats) ? cats : []
+
+      const rawMessages = messagesRes.data?.messages || []
+      const rawMsgRatings = Array.isArray(msgRatingsRes.data) ? msgRatingsRes.data : []
+      const ratingByMessageId = new Map(rawMsgRatings.map(r => [r.message_id, r.rating]))
+
+      messages.value = rawMessages.map(m => ({
+        ...m,
+        rating: ratingByMessageId.has(m.message_id) ? ratingByMessageId.get(m.message_id) : null
+      }))
+
+      const ratingData = mailRatingRes.data?.rating || {}
+      ratings.counsellor_coherence = normalizeScaleValue(ratingData.counsellor_coherence_rating)
+      ratings.client_coherence = normalizeScaleValue(ratingData.client_coherence_rating)
+      ratings.quality = normalizeScaleValue(ratingData.quality_rating)
+      ratings.overall = normalizeScaleValue(ratingData.overall_rating)
+
+      feedback.value = ratingData.feedback ?? ''
+      ratedStatus.value = ratingData.rating_status || null
+
+      const consultingCategory = mailRatingRes.data?.consulting_category || {}
+      selectedCategoryId.value = consultingCategory.consulting_category_type_id ?? null
+      categoryNotes.value = consultingCategory.consulting_category_note ?? ''
+
+      // Mark as initialized after a short delay
+      setTimeout(() => {
+        isInitialized.value = true
+      }, 100)
+
+    } catch (e) {
+      loadError.value =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        'Thread konnte nicht geladen werden.'
+    }
+  })
+}
+
+function goOverview() {
+  router.push({ name: 'HistoryGenerator' })
+}
+
+const currentIndex = computed(() => caseList.value.findIndex(t => t.thread_id === threadId.value))
+const canGoPrev = computed(() => currentIndex.value > 0)
+const canGoNext = computed(() => currentIndex.value >= 0 && currentIndex.value < caseList.value.length - 1)
+
+function goPrev() {
+  if (!canGoPrev.value) return
+  const prev = caseList.value[currentIndex.value - 1]
+  router.push({ name: 'HistoryGenerationDetail', params: { id: String(prev.thread_id) } })
+}
+
+function goNext() {
+  if (!canGoNext.value) return
+  const next = caseList.value[currentIndex.value + 1]
+  router.push({ name: 'HistoryGenerationDetail', params: { id: String(next.thread_id) } })
+}
+
+// Watch for changes and auto-save
+watch(
+  [ratings, feedback, selectedCategoryId, categoryNotes],
+  () => {
+    if (isInitialized.value) {
+      autoSave()
+    }
+  },
+  { deep: true }
+)
+
+// Watch message ratings separately
+watch(
+  () => messages.value.map(m => m.rating),
+  () => {
+    if (isInitialized.value) {
+      autoSave()
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => threadId.value,
+  async () => {
+    await loadData()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
-/* Main container setup */
-.main-container {
-  min-height: calc(100vh - 150px); /* Adjust for app footer */
+.content-panels {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Panels */
+.panel {
   display: flex;
   flex-direction: column;
-  padding-bottom: 80px; /* Space for bottom bar */
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
 }
 
-/* Email thread container adjustments */
-.email-thread-container {
-  height: calc(100vh - 25vh); /* Adjust to match rating section */
-  overflow-y: auto;
+.left-panel {
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.panel-header {
   display: flex;
-  flex-direction: column;
-  position: relative;
-  background-color: white;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  flex-shrink: 0;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
 }
 
-.email-thread {
-  max-height: 100%;
+.panel-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.panel-content {
+  flex: 1;
   overflow-y: auto;
-}
-
-.email-message {
   padding: 16px;
-  margin-bottom: 10px;
-  border-radius: 10px;
 }
 
-.same-sender {
-  background-color: #f1efd5;
+/* Resize Divider */
+.resize-divider {
+  width: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
 }
 
-.different-sender {
-  background-color: #b0ca97;
+.resize-divider:hover,
+.resize-divider.resizing {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+.resize-handle {
+  width: 3px;
+  height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background: rgb(var(--v-theme-primary));
+}
+
+/* Messages */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.message.client-message {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+.message.counsellor-message {
+  background: rgba(var(--v-theme-secondary), 0.08);
+  border-left: 3px solid rgb(var(--v-theme-secondary));
 }
 
 .message-header {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 8px;
 }
 
-.message-sender {
-  font-weight: bold;
-  color: #2F4F4F;
+.timestamp {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
-.message-timestamp {
-  color: #556B2F;
-  font-size: 0.8rem;
-}
-
-.message-body p {
-  margin: 0;
-  color: #2F4F4F;
+.message-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .message-body {
-  margin: 0;
-  word-wrap: break-word; /* Lange Wörter umbrechen */
-  overflow-wrap: break-word; /* Sicherstellen, dass es auf allen Browsern funktioniert */
-  white-space: pre-wrap; /* Erlaubt Zeilenumbrüche und behandelt Leerzeichen */
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 0.9rem;
 }
 
+/* Rating Sections */
+.rating-section {
+  padding: 16px;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
 
-.fade-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 5px;
+.rating-section.disabled {
+  opacity: 0.5;
   pointer-events: none;
 }
 
-.fade-overlay.top {
-  top: 0;
-  background: linear-gradient(to bottom, white, transparent);
-}
-
-.fade-overlay.bottom {
-  bottom: 0;
-  background: linear-gradient(to top, white, transparent);
-}
-
-.likert-scale-container {
+.section-header {
   display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-number {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.likert-scale {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  margin: 0 20px;
-  gap: 5vh;
-}
-
-.likert-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-}
-
-.likert-circle {
-  border: 2.5px solid #C8E6C9;
+  width: 24px;
+  height: 24px;
+  background: rgb(var(--v-theme-primary));
+  color: white;
   border-radius: 50%;
-  margin-bottom: 4px;
-  transition: background-color 0.3s, border-color 0.3s, transform 0.3s;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
-.size-1 .likert-circle {
-  width: 44px;
-  height: 44px;
-}
-
-.size-2 .likert-circle {
-  width: 36px;
-  height: 36px;
-}
-
-.size-3 .likert-circle {
-  width: 28px;
-  height: 28px;
-}
-
-.green-tone .likert-circle {
-  border-color: #66BB6A;
-}
-
-.purple-tone .likert-circle {
-  border-color: #AB47BC;
-}
-
-.gray-tone .likert-circle {
-  border-color: #BDBDBD;
-}
-
-.selected-rating.green-tone .likert-circle {
-  background-color: #66BB6A;
-}
-
-.selected-rating.purple-tone .likert-circle {
-  background-color: #AB47BC;
-}
-
-.selected-rating.gray-tone .likert-circle {
-  background-color: #BDBDBD;
-}
-
-.likert-option:hover .likert-circle {
-  transform: scale(1.1);
-}
-
-.green-tone:hover .likert-circle {
-  background-color: #68c66b;
-  border-color: #54a356;
-}
-
-.purple-tone:hover .likert-circle {
-  background-color: #bb55c1;
-  border-color: #8e4a9a;
-}
-
-.gray-tone:hover .likert-circle {
-  background-color: #d3d3d3;
-  border-color: #515151;
-}
-
-/* Rating section styling */
-.rating-section {
-  height: calc(100vh - 25vh); /* Adjust to match rating section */
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  background-color: white;
+.section-icon {
+  color: rgba(var(--v-theme-on-surface), 0.6);
   margin-top: 2px;
 }
 
-.rating-category {
-  background-color: #f5f5f5;
-  padding: 20px;
-  margin-bottom: 24px;
+.section-info h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.section-info p {
+  margin: 2px 0 0 0;
+}
+
+.subsection {
+  padding: 12px;
+  background: rgba(var(--v-theme-surface), 0.5);
   border-radius: 8px;
-  transition: background-color 0.3s ease;
+  margin-top: 10px;
 }
 
-.rating-category:hover {
-  background-color: #eeeeee;
+.subsection.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
-.rating-category h4 {
-  color: #2F4F4F;
-  margin-bottom: 12px;
-  font-size: 1.1em;
+.subsection-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  margin-bottom: 8px;
 }
-
-.rating-category p {
-  color: #4a4a4a;
-  margin-bottom: 16px;
-  line-height: 1.5;
-  font-size: 0.95em;
-}
-
-
-/* Bottom Bar Styling */
-.bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 16px;
-  margin-bottom: 20px;
-  border-top: 1px solid #ddd;
-  background-color: #d6f6db;
-  z-index: 100;
-}
-
-.category-chip {
-  margin-right: 8px;
-  border-radius: 12px 5px 12px 5px;
-}
-.message-rating.no-background {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 4px;
-}
-
-.message-rating .v-icon {
-  cursor: pointer;
-  font-size: 1.2em;
-  color: #757575; /* Dezentere Standardfarbe */
-  transition: color 0.3s, transform 0.3s; /* Weicher Übergang für Hover-Effekte */
-  margin-right: 8px; /* Abstand zwischen den Icons */
-}
-
-.message-rating .mdi-thumb-down-outline {
-  margin-right: 0; /* Letztes Icon hat keinen rechten Abstand */
-}
-
-.message-rating .v-icon:hover {
-  transform: scale(1.15); /* Vergrößern bei Hover */
-}
-
-.message-rating .mdi-thumb-up-outline:hover {
-  color: rgba(102, 187, 106, 0.58); /* Leichtes Grün bei Hover */
-}
-
-.message-rating .mdi-thumb-down-outline:hover {
-  color: rgba(229, 115, 115, 0.61); /* Leichtes Rot bei Hover */
-}
-
-.disabled {
-    opacity: 0.5;
-    background-color: rgba(0, 0, 0, 0.1);
-    cursor: not-allowed;
-  }
-
-.sub-rating-category{
-  margin-left: 10%;
-}
-.CategorySelectionButton{
-  margin-right: 2.5%;
-}
-
 </style>

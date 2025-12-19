@@ -1,11 +1,25 @@
 <template>
-  <div class="ranker-page">
-    <!-- Haupt-Content-Bereich -->
-    <div ref="containerRef" class="main-content">
+  <LEvaluationLayout
+    :title="threadTitle"
+    :subtitle="`Thread #${currentThreadId}`"
+    back-label="Ranking"
+    :status="evaluationStatus"
+    :saving="saving"
+    :can-go-prev="canGoPrev"
+    :can-go-next="canGoNext"
+    :current-index="currentIndex"
+    :total-items="rankingThreadsList.length"
+    @back="navigateBackToRanker"
+    @prev="navigateToPreviousCase"
+    @next="navigateToNextCase"
+  >
+    <!-- Main Content -->
+    <div ref="containerRef" class="content-panels">
       <!-- Feature-Bereich (links) -->
-      <div class="features-panel" :style="leftPanelStyle()">
+      <div class="panel features-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <h2>Features</h2>
+          <v-icon size="20" class="mr-2">mdi-format-list-bulleted</v-icon>
+          <span class="panel-title">Features</span>
         </div>
         <div class="panel-content">
           <v-expansion-panels>
@@ -23,8 +37,8 @@
                       v-model="feature.goodList"
                       class="bucket-content"
                       group="featureGroup"
-                      item-key="id"
-                      @end="saveToLocalStorage(route.params.id)"
+                      item-key="feature_id"
+                      @end="handleRankingChanged"
                     >
                       <template #item="{ element }">
                         <div class="bucket-item">
@@ -50,8 +64,8 @@
                       v-model="feature.averageList"
                       class="bucket-content"
                       group="featureGroup"
-                      item-key="id"
-                      @end="saveToLocalStorage(route.params.id)"
+                      item-key="feature_id"
+                      @end="handleRankingChanged"
                     >
                       <template #item="{ element }">
                         <div class="bucket-item">
@@ -77,8 +91,8 @@
                       v-model="feature.badList"
                       class="bucket-content"
                       group="featureGroup"
-                      item-key="id"
-                      @end="saveToLocalStorage(route.params.id)"
+                      item-key="feature_id"
+                      @end="handleRankingChanged"
                     >
                       <template #item="{ element }">
                         <div class="bucket-item">
@@ -105,8 +119,8 @@
                     v-model="feature.neutralList"
                     class="neutral-content"
                     group="featureGroup"
-                    item-key="id"
-                    @end="saveToLocalStorage(route.params.id)"
+                    item-key="feature_id"
+                    @end="handleRankingChanged"
                   >
                     <template #item="{ element }">
                       <div class="bucket-item">
@@ -140,69 +154,52 @@
       </div>
 
       <!-- E-Mail Verlauf (rechts) -->
-      <div class="email-panel" :style="rightPanelStyle()">
+      <div class="panel email-panel" :style="rightPanelStyle()">
         <div class="panel-header">
-          <h2>E-Mail Verlauf</h2>
+          <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
+          <span class="panel-title">E-Mail Verlauf</span>
         </div>
         <div class="panel-content">
-          <div
-            v-for="message in messages"
-            :key="message.message_id"
-            class="email-message"
-            :class="getMessageClass(message.sender)"
-          >
-            <div class="message-header">
-              <span class="message-sender">{{ message.sender }}</span>
-              <span class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-            </div>
-            <div class="message-body">
-              <p>{{ message.content }}</p>
+          <div v-if="messages.length === 0" class="empty-state">
+            <v-icon size="48" color="grey-lighten-1">mdi-email-off-outline</v-icon>
+            <p class="text-medium-emphasis mt-2">Keine Nachrichten gefunden.</p>
+          </div>
+
+          <div v-else class="messages">
+            <div
+              v-for="message in messages"
+              :key="message.message_id"
+              class="message"
+              :class="getMessageClass(message.sender)"
+            >
+              <div class="message-header">
+                <LTag :variant="isClientMessage(message.sender) ? 'primary' : 'secondary'" size="small">
+                  {{ message.sender }}
+                </LTag>
+                <span class="timestamp">{{ formatTimestamp(message.timestamp) }}</span>
+              </div>
+              <div class="message-body">{{ message.content }}</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Action Bar mit Buttons -->
-    <div class="action-bar">
-      <v-chip
-        v-if="ranked !== null"
-        :color="ranked ? 'success' : 'error'"
-        size="x-small"
-      >
-        {{ ranked ? 'Bewertet' : 'Nicht bewertet' }}
-      </v-chip>
-      <v-chip v-else color="grey" size="x-small">
-        <v-progress-circular indeterminate size="10" width="2" class="mr-1"></v-progress-circular>
-        Lädt...
-      </v-chip>
-      <v-spacer></v-spacer>
-      <LBtn variant="primary" prepend-icon="mdi-content-save" class="mr-2" @click="saveFeaturesServerSide">
-        Speichern
-      </LBtn>
-      <LBtn variant="secondary" prepend-icon="mdi-arrow-left" class="mr-2" @click="navigateToPreviousCase">
-        Vorheriger
-      </LBtn>
-      <LBtn variant="secondary" append-icon="mdi-arrow-right" @click="navigateToNextCase">
-        Nächster
-      </LBtn>
-    </div>
-  </div>
+  </LEvaluationLayout>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import draggable from 'vuedraggable';
+import { ref, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import draggable from 'vuedraggable'
 import {
   useRankerFeatures,
   useRankerApi,
   useRankerHelpers
-} from './RankerDetail/composables';
-import { usePanelResize } from '@/composables/usePanelResize';
+} from './RankerDetail/composables'
+import { usePanelResize } from '@/composables/usePanelResize'
 
-const route = useRoute();
-const router = useRouter();
+const route = useRoute()
+const router = useRouter()
 
 // Panel Resize
 const {
@@ -216,7 +213,7 @@ const {
   minLeftPercent: 30,
   maxLeftPercent: 80,
   storageKey: 'ranker-panel-width'
-});
+})
 
 const {
   features,
@@ -227,20 +224,17 @@ const {
   loadFromLocalStorage,
   groupFeaturesByType,
   applyServerRanking,
-  applyFeatureOrder,
-  saveFeatureOrderToLocalStorage,
   prepareForServerSave
-} = useRankerFeatures();
+} = useRankerFeatures()
 
 const {
   fetchEmailThreads,
   fetchServerRanking,
   fetchRankingThreads,
   saveRankingToServer
-} = useRankerApi();
+} = useRankerApi()
 
 const {
-  senderColors,
   toggleMinimize,
   isLongContent,
   translateFeatureType,
@@ -248,186 +242,217 @@ const {
   formatFeatureContent,
   getMessageClass,
   updateSenderColors
-} = useRankerHelpers();
+} = useRankerHelpers()
 
-const messages = ref([]);
+const messages = ref([])
+const rankingThreadsList = ref([])
+const threadTitle = ref('Feature-Ranking')
+
+// Auto-save state
+const saving = ref(false)
+const saveErrors = ref({})
+const lastSavedAt = ref({})
+
+const currentThreadId = computed(() => (route.params.id ? String(route.params.id) : ''))
+
+// Navigation
+const currentIndex = computed(() => {
+  const id = parseInt(route.params.id)
+  return rankingThreadsList.value.findIndex(t => t.thread_id === id)
+})
+const canGoPrev = computed(() => currentIndex.value > 0)
+const canGoNext = computed(() => currentIndex.value >= 0 && currentIndex.value < rankingThreadsList.value.length - 1)
+
+// Evaluation status for LEvaluationStatus component
+const evaluationStatus = computed(() => {
+  if (ranked.value === null) return 'pending'
+  return ranked.value ? 'done' : 'in_progress'
+})
+
+const saveQueue = []
+let isProcessingSaveQueue = false
+
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value))
+}
+
+function isFullyRankedPayload(payload) {
+  const total = Array.isArray(features.value) ? features.value.length : 0
+  if (total <= 0) return false
+  const rankedCount = Array.isArray(payload)
+    ? payload.reduce((acc, g) => acc + (Array.isArray(g.details) ? g.details.length : 0), 0)
+    : 0
+  return rankedCount === total
+}
+
+function enqueueAutoSave(threadId, payload) {
+  if (!threadId) return
+
+  const existingIndex = saveQueue.findIndex(t => t.threadId === threadId)
+  const task = { threadId, payload }
+
+  if (existingIndex !== -1) {
+    saveQueue[existingIndex] = task
+  } else {
+    saveQueue.push(task)
+  }
+
+  void processSaveQueue()
+}
+
+async function processSaveQueue() {
+  if (isProcessingSaveQueue) return
+  isProcessingSaveQueue = true
+
+  try {
+    while (saveQueue.length > 0) {
+      const task = saveQueue.shift()
+      saving.value = true
+
+      try {
+        const result = await saveRankingToServer(task.threadId, task.payload)
+        if (!result.success) {
+          saveErrors.value[task.threadId] = result.error?.message || 'Fehler beim Speichern.'
+          saveQueue.unshift(task)
+          break
+        }
+
+        lastSavedAt.value[task.threadId] = Date.now()
+
+        if (currentThreadId.value === task.threadId) {
+          ranked.value = isFullyRankedPayload(task.payload)
+        }
+      } finally {
+        saving.value = false
+      }
+    }
+  } finally {
+    saving.value = false
+    isProcessingSaveQueue = false
+  }
+}
+
+function handleRankingChanged() {
+  const threadId = currentThreadId.value
+  if (!threadId) return
+
+  saveToLocalStorage(threadId)
+  const orderedFeatures = deepClone(prepareForServerSave())
+  enqueueAutoSave(threadId, orderedFeatures)
+}
+
+function isClientMessage(sender) {
+  const normalizedSender = String(sender || '').toLowerCase().trim()
+  const clientVariants = ['ratsuchende person', 'ratsuchender', 'ratsuchend', 'ratsuchende']
+  return clientVariants.includes(normalizedSender)
+}
 
 const loadCaseData = async (caseId) => {
-  let dataLoadedFromLocalStorage = false;
+  // Lade Thread-Liste für Navigation
+  const threads = await fetchRankingThreads()
+  if (threads) {
+    rankingThreadsList.value = threads
+    const currentThread = threads.find(t => t.thread_id === parseInt(caseId))
+    if (currentThread) {
+      threadTitle.value = currentThread.subject || 'Feature-Ranking'
+    }
+  }
+
+  let dataLoadedFromLocalStorage = false
 
   if (loadFromLocalStorage(caseId)) {
-    dataLoadedFromLocalStorage = true;
+    dataLoadedFromLocalStorage = true
   }
 
   if (!dataLoadedFromLocalStorage) {
-    const threadData = await fetchEmailThreads(caseId);
-    if (!threadData) return;
+    const threadData = await fetchEmailThreads(caseId)
+    if (!threadData) return
 
-    const serverRanking = await fetchServerRanking(caseId);
+    const serverRanking = await fetchServerRanking(caseId)
 
-    ranked.value = threadData.ranked;
-    features.value = threadData.features;
+    ranked.value = threadData.ranked
+    features.value = threadData.features
 
-    const featureMap = groupFeaturesByType(features.value);
+    const featureMap = groupFeaturesByType(features.value)
 
     if (serverRanking) {
-      applyServerRanking(featureMap, serverRanking);
+      applyServerRanking(featureMap, serverRanking)
     }
 
-    groupedFeatures.value = Array.from(featureMap.values());
-    localStorageKey.value = `featureOrder_${caseId}`;
-    saveToLocalStorage(caseId);
+    groupedFeatures.value = Array.from(featureMap.values())
+    localStorageKey.value = `featureOrder_${caseId}`
+    saveToLocalStorage(caseId)
   }
 
-  const threadData = await fetchEmailThreads(caseId);
+  const threadData = await fetchEmailThreads(caseId)
   if (threadData) {
-    messages.value = threadData.messages;
-    ranked.value = threadData.ranked;
+    messages.value = threadData.messages
+    features.value = threadData.features
+    ranked.value = threadData.ranked
   }
 
-  updateSenderColors(messages.value);
-};
+  updateSenderColors(messages.value)
+}
 
 onMounted(() => {
-  const caseId = route.params.id;
+  const caseId = route.params.id
   if (caseId) {
-    loadCaseData(caseId);
+    loadCaseData(caseId)
   }
-});
+})
 
 watch(() => route.params.id, (newId) => {
-  loadCaseData(newId);
-}, { immediate: true });
+  if (newId) loadCaseData(newId)
+}, { immediate: true })
 
-async function navigateToPreviousCase() {
-  const currentId = parseInt(route.params.id);
-  const rankingThreads = await fetchRankingThreads();
-
-  if (!rankingThreads || rankingThreads.length === 0) return;
-
-  const currentIndex = rankingThreads.findIndex(thread => thread.thread_id === currentId);
-  if (currentIndex === -1 || currentIndex === 0) return;
-
-  const previousThread = rankingThreads[currentIndex - 1];
-  router.push({ name: 'RankerDetail', params: { id: previousThread.thread_id.toString() } });
+function navigateToPreviousCase() {
+  if (!canGoPrev.value) return
+  const prev = rankingThreadsList.value[currentIndex.value - 1]
+  router.push({ name: 'RankerDetail', params: { id: prev.thread_id.toString() } })
 }
 
-async function navigateToNextCase() {
-  const currentId = parseInt(route.params.id);
-  const rankingThreads = await fetchRankingThreads();
-
-  if (!rankingThreads || rankingThreads.length === 0) return;
-
-  const currentIndex = rankingThreads.findIndex(thread => thread.thread_id === currentId);
-  if (currentIndex === -1 || currentIndex === rankingThreads.length - 1) return;
-
-  const nextThread = rankingThreads[currentIndex + 1];
-  router.push({ name: 'RankerDetail', params: { id: nextThread.thread_id.toString() } });
+function navigateToNextCase() {
+  if (!canGoNext.value) return
+  const next = rankingThreadsList.value[currentIndex.value + 1]
+  router.push({ name: 'RankerDetail', params: { id: next.thread_id.toString() } })
 }
 
-async function saveFeaturesServerSide() {
-  const threadId = route.params.id;
-  const orderedFeatures = prepareForServerSave();
-
-  const result = await saveRankingToServer(threadId, orderedFeatures);
-  if (result.success) {
-    alert('Ranking wurde erfolgreich gespeichert!');
-    ranked.value = true;
-  } else {
-    alert('Fehler beim Speichern des Rankings.');
-  }
+function navigateBackToRanker() {
+  router.push({ name: 'Ranker' })
 }
 </script>
 
 <style scoped>
-/* ============================================
-   HAUPT-LAYOUT: Feste Viewport-Höhe, kein Scroll
-   64px AppBar + 30px Footer = 94px
-   ============================================ */
-.ranker-page {
-  height: calc(100vh - 94px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background-color: rgb(var(--v-theme-background));
-}
-
-.main-content {
+.content-panels {
   flex: 1;
   display: flex;
   overflow: hidden;
-  gap: 0;
 }
 
-/* ============================================
-   FEATURE-PANEL (links)
-   ============================================ */
+/* Panels */
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+}
+
 .features-panel {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-width: 200px;
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-/* ============================================
-   RESIZE DIVIDER
-   ============================================ */
-.resize-divider {
-  width: 6px;
-  background-color: rgb(var(--v-theme-surface-variant));
-  cursor: col-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background-color 0.15s ease;
-}
-
-.resize-divider:hover,
-.resize-divider.resizing {
-  background-color: rgb(var(--v-theme-primary));
-}
-
-.resize-handle {
-  width: 4px;
-  height: 40px;
-  background-color: rgba(var(--v-theme-on-surface), 0.3);
-  border-radius: 2px;
-  transition: background-color 0.15s ease;
-}
-
-.resize-divider:hover .resize-handle,
-.resize-divider.resizing .resize-handle {
-  background-color: rgba(255, 255, 255, 0.8);
-}
-
-/* ============================================
-   E-MAIL-PANEL (rechts)
-   ============================================ */
-.email-panel {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background-color: rgb(var(--v-theme-surface));
-  min-width: 200px;
-}
-
-/* ============================================
-   PANEL-HEADER & CONTENT
-   ============================================ */
 .panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 12px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   flex-shrink: 0;
-  border-bottom: 1px solid rgb(var(--v-theme-surface-variant));
+  background: rgba(var(--v-theme-surface-variant), 0.3);
 }
 
-.panel-header h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: rgb(var(--v-theme-on-surface));
+.panel-title {
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .panel-content {
@@ -436,9 +461,46 @@ async function saveFeaturesServerSide() {
   padding: 16px;
 }
 
-/* ============================================
-   BUCKETS (Gut / Mittel / Schlecht)
-   ============================================ */
+/* Resize Divider */
+.resize-divider {
+  width: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+.resize-handle {
+  width: 3px;
+  height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background: rgb(var(--v-theme-primary));
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+/* Buckets */
 .buckets-row {
   display: flex;
   gap: 12px;
@@ -458,7 +520,6 @@ async function saveFeaturesServerSide() {
   margin: 0 0 8px 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: rgb(var(--v-theme-on-surface));
 }
 
 .bucket-content {
@@ -481,7 +542,6 @@ async function saveFeaturesServerSide() {
   border: 1px solid rgba(var(--v-theme-error), 0.3);
 }
 
-/* Neutral Bucket */
 .neutral-bucket {
   background-color: rgba(var(--v-theme-surface-variant), 0.5);
   border: 1px solid rgb(var(--v-theme-surface-variant));
@@ -500,7 +560,6 @@ async function saveFeaturesServerSide() {
   min-height: 60px;
 }
 
-/* Bucket Items */
 .bucket-item {
   background-color: rgb(var(--v-theme-surface));
   border-radius: 6px;
@@ -510,7 +569,6 @@ async function saveFeaturesServerSide() {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   position: relative;
   font-size: 0.875rem;
-  color: rgb(var(--v-theme-on-surface));
 }
 
 .bucket-item:active {
@@ -531,63 +589,48 @@ async function saveFeaturesServerSide() {
   font-size: 0.625rem;
 }
 
-/* ============================================
-   E-MAIL NACHRICHTEN
-   ============================================ */
-.email-message {
-  padding: 12px;
-  margin-bottom: 8px;
-  border-radius: 8px;
+/* Messages */
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .same-sender {
-  background-color: rgba(var(--v-theme-primary), 0.1);
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-left: 3px solid rgb(var(--v-theme-primary));
 }
 
 .different-sender {
-  background-color: rgba(var(--v-theme-secondary), 0.12);
+  background: rgba(var(--v-theme-secondary), 0.08);
+  border-left: 3px solid rgb(var(--v-theme-secondary));
 }
 
 .message-header {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.message-sender {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.message-timestamp {
-  font-size: 0.75rem;
-  color: rgb(var(--v-theme-on-surface));
-  opacity: 0.6;
-}
-
-.message-body p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: rgb(var(--v-theme-on-surface));
-  line-height: 1.5;
-}
-
-/* ============================================
-   ACTION BAR (kompakt, über dem App-Footer)
-   ============================================ */
-.action-bar {
-  display: flex;
   align-items: center;
-  padding: 8px 16px;
-  border-top: 1px solid rgb(var(--v-theme-surface-variant));
-  background-color: rgb(var(--v-theme-surface));
-  flex-shrink: 0;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-/* ============================================
-   DRAG & DROP
-   ============================================ */
+.timestamp {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.message-body {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+/* Drag & Drop */
 .sortable-ghost {
   opacity: 0.4;
 }

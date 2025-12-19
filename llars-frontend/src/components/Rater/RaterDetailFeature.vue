@@ -1,7 +1,12 @@
 <template>
   <div class="rater-feature-page">
+    <!-- Skeleton Loading -->
+    <div v-if="isLoading('data')" class="skeleton-container">
+      <v-skeleton-loader type="card, paragraph, paragraph" height="520" />
+    </div>
+
     <!-- Haupt-Content-Bereich -->
-    <div ref="containerRef" class="main-content">
+    <div v-else ref="containerRef" class="main-content">
       <!-- Feature-Bereich (links) -->
       <div class="feature-panel" :style="leftPanelStyle()">
         <div class="panel-header">
@@ -61,10 +66,9 @@
                     density="compact"
                     rows="4"
                   ></v-textarea>
-                  <v-btn variant="tonal" size="small" @click="saveFeaturesServerSide">
-                    <v-icon start size="small">mdi-content-save</v-icon>
-                    Speichern
-                  </v-btn>
+                  <div class="text-caption text-medium-emphasis mt-2">
+                    Änderungen werden automatisch gespeichert.
+                  </div>
                 </v-form>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -107,24 +111,49 @@
 
     <!-- Action Bar -->
     <div class="action-bar">
-      <v-btn variant="tonal" size="small" @click="saveFeaturesServerSide">
-        <v-icon start size="small">mdi-content-save</v-icon>
-        Speichern
-      </v-btn>
+      <v-chip
+        v-if="saving && savingKey === currentKey"
+        color="grey"
+        size="x-small"
+      >
+        <v-progress-circular indeterminate size="10" width="2" class="mr-1"></v-progress-circular>
+        Speichert...
+      </v-chip>
+      <v-chip v-else-if="currentSaveError" color="error" size="x-small">
+        Speichern fehlgeschlagen
+      </v-chip>
+      <v-chip v-else-if="currentLastSavedAt" color="success" size="x-small">
+        Gespeichert
+      </v-chip>
+      <v-chip v-else color="grey" size="x-small">
+        Auto-Speichern aktiv
+      </v-chip>
+
       <v-spacer></v-spacer>
-      <v-btn variant="tonal" size="small" @click="goBack">
-        <v-icon start size="small">mdi-arrow-left</v-icon>
+
+      <LBtn
+        v-if="currentSaveError"
+        variant="primary"
+        prepend-icon="mdi-reload"
+        class="mr-2"
+        :loading="saving && savingKey === currentKey"
+        @click="retrySave"
+      >
+        Erneut speichern
+      </LBtn>
+      <LBtn variant="secondary" prepend-icon="mdi-arrow-left" @click="goBack">
         Zurück zur Übersicht
-      </v-btn>
+      </LBtn>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
-import { useRoute, useRouter, onBeforeRouteUpdate } from 'vue-router';
+import { ref, watch, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { usePanelResize } from '@/composables/usePanelResize';
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 const route = useRoute();
 const router = useRouter();
@@ -134,6 +163,23 @@ const messages = ref([]);
 const senderColors = ref({});
 const selectedRating = ref(null);
 const localStorageKey = ref('');
+
+// Skeleton Loading
+const { isLoading, withLoading } = useSkeletonLoading(['data']);
+
+// Auto-save state
+const saving = ref(false);
+const savingKey = ref(null);
+const saveErrors = ref({});
+const lastSavedAt = ref({});
+const initialLoadDone = ref(false);
+
+const currentKey = computed(() => `${route.params.id}_${route.params.feature}`);
+const currentSaveError = computed(() => saveErrors.value[currentKey.value] || '');
+const currentLastSavedAt = computed(() => lastSavedAt.value[currentKey.value] || 0);
+
+const saveQueue = [];
+let isProcessingSaveQueue = false;
 
 // Panel Resize
 const {
@@ -149,18 +195,45 @@ const {
   storageKey: 'rater-feature-panel-width'
 });
 
-onMounted(async () => {
-  await loadFeatureDetail();
-  loadFromLocalStorageOrServer();
-});
+watch(
+  () => [route.params.id, route.params.feature],
+  async ([threadId, featureId]) => {
+    await loadAll(threadId, featureId);
+  },
+  { immediate: true }
+);
+
+async function loadAll(threadId = route.params.id, featureId = route.params.feature) {
+  initialLoadDone.value = false;
+
+  feature.value = {};
+  editableFeature.value = {};
+  messages.value = [];
+  senderColors.value = {};
+  selectedRating.value = null;
+
+  const key = `${threadId}_${featureId}`;
+  saveErrors.value[key] = '';
+
+  await withLoading('data', async () => {
+    const ok = await loadFeatureDetail(threadId, featureId);
+    if (!ok) return;
+    await loadFromLocalStorageOrServer(threadId, featureId);
+  });
+
+  // Prevent watchers from triggering a save due to initial hydration.
+  setTimeout(() => {
+    initialLoadDone.value = true;
+  }, 0);
+}
 
 async function loadFeatureDetail(threadId = route.params.id, featureId = route.params.feature) {
   const featureDetail = await fetchFeatureDetail(threadId, featureId);
-  if (!featureDetail) return;
+  if (!featureDetail) return false;
   feature.value = featureDetail.feature;
   messages.value = featureDetail.messages;
 
-  localStorageKey.value = `featureRating_${route.params.id}_${feature.value.feature_id}`;
+  localStorageKey.value = `featureRating_${threadId}_${feature.value.feature_id}`;
 
   let lastSender = '';
   let currentColor = 'same-sender';
@@ -171,6 +244,8 @@ async function loadFeatureDetail(threadId = route.params.id, featureId = route.p
     }
     senderColors.value[message.sender] = currentColor;
   });
+
+  return true;
 }
 
 async function fetchFeatureDetail(threadId, featureId) {
@@ -183,14 +258,14 @@ async function fetchFeatureDetail(threadId, featureId) {
   }
 }
 
-async function loadFromLocalStorageOrServer() {
+async function loadFromLocalStorageOrServer(threadId = route.params.id, featureId = route.params.feature) {
   const savedRatingData = localStorage.getItem(localStorageKey.value);
   if (savedRatingData) {
     const parsedRatingData = JSON.parse(savedRatingData);
     selectedRating.value = parsedRatingData.rating_content;
     editableFeature.value = parsedRatingData.edited_feature;
   } else {
-    const serverRatingData = await fetchRatingFromServer(route.params.id, feature.value.feature_id);
+    const serverRatingData = await fetchRatingFromServer(threadId, featureId);
     if (serverRatingData) {
       selectedRating.value = serverRatingData.rating_content;
       editableFeature.value = { ...feature.value, content: serverRatingData.edited_feature };
@@ -234,6 +309,7 @@ function formatTimestamp(timestamp) {
 async function rateFeature(rating) {
   selectedRating.value = rating;
   saveRatingToLocalStorage();
+  requestAutoSave();
 }
 
 function saveRatingToLocalStorage() {
@@ -244,39 +320,109 @@ function saveRatingToLocalStorage() {
   localStorage.setItem(localStorageKey.value, JSON.stringify(ratingData));
 }
 
-function saveFeaturesServerSide() {
-  const ratingData = {
+function debounce(fn, delay) {
+  let timeout = null;
+  return (...args) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function requestAutoSave() {
+  const threadId = Number(route.params.id);
+  const featureId = Number(route.params.feature);
+  if (!Number.isFinite(threadId) || threadId <= 0) return;
+  if (!Number.isFinite(featureId) || featureId <= 0) return;
+  if (selectedRating.value === null || selectedRating.value === undefined) return;
+
+  const content = editableFeature.value?.content ?? feature.value?.content ?? '';
+  if (content === null || content === undefined) return;
+
+  const payload = {
     rating_content: selectedRating.value,
-    edited_feature: editableFeature.value.content
+    edited_feature: content
   };
 
-  axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/save_rating/${route.params.id}/${feature.value.feature_id}`, ratingData, {
-    headers: {
-      'Content-Type': 'application/json'
+  enqueueAutoSave(currentKey.value, threadId, featureId, payload);
+}
+
+const debouncedRequestAutoSave = debounce(requestAutoSave, 500);
+
+function enqueueAutoSave(key, threadId, featureId, payload) {
+  const existingIndex = saveQueue.findIndex(t => t.key === key);
+  const task = { key, threadId, featureId, payload };
+
+  if (existingIndex !== -1) {
+    saveQueue[existingIndex] = task;
+  } else {
+    saveQueue.push(task);
+  }
+
+  void processSaveQueue();
+}
+
+async function saveRatingToServer(threadId, featureId, payload) {
+  return axios.post(
+    `${import.meta.env.VITE_API_BASE_URL}/api/save_rating/${threadId}/${featureId}`,
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json'
+      }
     }
-  })
-    .then(response => {
-      alert('Rating wurde erfolgreich gespeichert!');
-    })
-    .catch(error => {
-      console.error('Error saving rating:', error);
-      alert('Fehler beim Speichern des Ratings.');
-    });
+  );
+}
+
+async function processSaveQueue() {
+  if (isProcessingSaveQueue) return;
+  isProcessingSaveQueue = true;
+
+  try {
+    while (saveQueue.length > 0) {
+      const task = saveQueue.shift();
+      saving.value = true;
+      savingKey.value = task.key;
+      saveErrors.value[task.key] = '';
+
+      try {
+        await saveRatingToServer(task.threadId, task.featureId, task.payload);
+        lastSavedAt.value[task.key] = Date.now();
+      } catch (error) {
+        const msg =
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Fehler beim Speichern.';
+        saveErrors.value[task.key] = msg;
+
+        // Re-queue the latest snapshot for this feature and stop processing.
+        saveQueue.unshift(task);
+        break;
+      } finally {
+        saving.value = false;
+        savingKey.value = null;
+      }
+    }
+  } finally {
+    saving.value = false;
+    savingKey.value = null;
+    isProcessingSaveQueue = false;
+  }
+}
+
+function retrySave() {
+  requestAutoSave();
 }
 
 function goBack() {
   router.push({ name: 'RaterDetail', params: { id: route.params.id } });
 }
 
-onBeforeRouteUpdate(async (to, from, next) => {
-  await loadFeatureDetail(to.params.id, to.params.feature);
-  loadFromLocalStorageOrServer();
-  next();
-});
-
 // Watch the editableFeature for changes and save to local storage immediately
 watch(editableFeature, () => {
   saveRatingToLocalStorage();
+  if (!initialLoadDone.value) return;
+  debouncedRequestAutoSave();
 }, { deep: true });
 </script>
 
@@ -291,6 +437,10 @@ watch(editableFeature, () => {
   flex-direction: column;
   overflow: hidden;
   background-color: rgb(var(--v-theme-background));
+}
+
+.skeleton-container {
+  padding: 16px;
 }
 
 .main-content {

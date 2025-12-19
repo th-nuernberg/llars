@@ -273,14 +273,80 @@ EOF
 print_success "Applications created successfully"
 
 #########################################
-# 4. Create Test Users
+# 4. Create Users (environment-aware)
 #########################################
-print_section "4. Creating Test Users"
+print_section "4. Creating Users"
 
-docker compose exec -T authentik-server ak shell <<'EOF'
+# Get environment variables
+PROJECT_STATE="${PROJECT_STATE:-development}"
+LLARS_ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-admin123}"
+
+print_info "Environment: $PROJECT_STATE"
+
+if [ "$PROJECT_STATE" = "production" ]; then
+    print_info "Production mode: Creating only admin user with secure password"
+
+    # Validate password is not the default
+    if [ "$LLARS_ADMIN_PASSWORD" = "admin123" ] || [ "$LLARS_ADMIN_PASSWORD" = "CHANGE_ME_STRONG_ADMIN_PASSWORD_24CHARS" ]; then
+        print_error "LLARS_ADMIN_PASSWORD is not set or uses default value!"
+        print_error "Please set a strong password in .env before running setup."
+        exit 1
+    fi
+
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T authentik-server ak shell <<EOF
+import os
 from authentik.core.models import User, Group
 
-print("Creating test users with password 'admin123'...")
+admin_password = "$LLARS_ADMIN_PASSWORD"
+
+print("Creating production admin user...")
+
+# Get or create authentik Admins group
+admin_group, _ = Group.objects.get_or_create(
+    name='authentik Admins',
+    defaults={'is_superuser': True}
+)
+
+# Create only admin user in production
+user, created = User.objects.get_or_create(
+    username='admin',
+    defaults={
+        'name': 'Administrator',
+        'email': 'admin@localhost',
+        'is_active': True
+    }
+)
+
+# Set password
+user.set_password(admin_password)
+user.save()
+
+# Add to admin group
+if admin_group not in user.ak_groups.all():
+    user.ak_groups.add(admin_group)
+    user.save()
+
+if created:
+    print(f"  ✓ Created admin user")
+else:
+    print(f"  ℹ Updated existing admin user")
+print(f"    - Added to admin group")
+
+print("\n✓ Production user setup complete!")
+print("\nAdmin Credentials:")
+print("  - Username: admin")
+print("  - Password: (from LLARS_ADMIN_PASSWORD)")
+EOF
+else
+    print_info "Development mode: Creating test users (admin, researcher, viewer)"
+
+    docker compose exec -T authentik-server ak shell <<EOF
+import os
+from authentik.core.models import User, Group
+
+admin_password = "$LLARS_ADMIN_PASSWORD"
+
+print(f"Creating test users with password from LLARS_ADMIN_PASSWORD...")
 
 # Get or create authentik Admins group
 admin_group, _ = Group.objects.get_or_create(
@@ -293,12 +359,6 @@ users_data = [
         'username': 'admin',
         'name': 'Admin User',
         'email': 'admin@localhost',
-        'is_admin': True
-    },
-    {
-        'username': 'akadmin',
-        'name': 'Authentik Admin',
-        'email': 'akadmin@localhost',
         'is_admin': True
     },
     {
@@ -326,7 +386,7 @@ for user_data in users_data:
     )
 
     # Set password
-    user.set_password('admin123')
+    user.set_password(admin_password)
     user.save()
 
     # Add admin users to admin group
@@ -343,15 +403,15 @@ for user_data in users_data:
     if user_data['is_admin']:
         print(f"    - Added to admin group")
 
-print("\n✓ Test users setup complete!")
+print("\n✓ Development users setup complete!")
 print("\nTest Credentials:")
-print("  - admin / admin123 (admin)")
-print("  - akadmin / admin123 (admin)")
-print("  - researcher / admin123 (researcher)")
-print("  - viewer / admin123 (viewer)")
+print(f"  - admin / {admin_password[:3]}*** (admin)")
+print(f"  - researcher / {admin_password[:3]}*** (researcher)")
+print(f"  - viewer / {admin_password[:3]}*** (viewer)")
 EOF
+fi
 
-print_success "Test users created successfully"
+print_success "Users created successfully"
 
 #########################################
 # 5. Create Admin API Token
@@ -437,7 +497,6 @@ echo ""
 echo -e "${BLUE}OAuth2 Providers:${NC}"
 echo "  • llars-backend-provider (confidential, RS256)"
 echo "    - Client ID: llars-backend"
-echo "    - Client Secret: llars-backend-secret-change-in-production"
 echo "  • llars-frontend-provider (public, RS256)"
 echo "    - Client ID: llars-frontend"
 echo ""
@@ -445,22 +504,33 @@ echo -e "${BLUE}Applications:${NC}"
 echo "  • LLARS Backend (linked to backend provider)"
 echo "  • LLARS Frontend (linked to frontend provider)"
 echo ""
-echo -e "${BLUE}Test Users:${NC}"
-echo "  • admin / admin123 (admin)"
-echo "  • akadmin / admin123 (admin)"
-echo "  • researcher / admin123 (researcher)"
-echo "  • viewer / admin123 (viewer)"
+echo -e "${BLUE}Users (Environment: $PROJECT_STATE):${NC}"
+if [ "$PROJECT_STATE" = "production" ]; then
+    echo "  • admin / (LLARS_ADMIN_PASSWORD) - Administrator"
+    echo ""
+    echo -e "${YELLOW}Production Mode Active:${NC}"
+    echo "  • Only admin user created"
+    echo "  • Password set from LLARS_ADMIN_PASSWORD environment variable"
+else
+    echo "  • admin / (LLARS_ADMIN_PASSWORD) - Administrator"
+    echo "  • researcher / (LLARS_ADMIN_PASSWORD) - Researcher"
+    echo "  • viewer / (LLARS_ADMIN_PASSWORD) - Viewer"
+    echo ""
+    echo -e "${YELLOW}Development Mode Active:${NC}"
+    echo "  • All test users created with same password"
+    echo "  • Default password: admin123"
+fi
 echo ""
 echo -e "${YELLOW}Next Steps:${NC}"
-echo "  1. Access Authentik UI: http://localhost:55095"
-echo "  2. Login with: akadmin / admin123"
-echo "  3. Verify providers in: Applications → Providers"
-echo "  4. Test LLARS login: http://localhost:55080/login"
-echo ""
-echo -e "${YELLOW}Important:${NC}"
-echo "  • Change client_secret in production!"
-echo "  • Change test user passwords in production!"
-echo "  • Configure proper redirect URIs for production domain"
+if [ "$PROJECT_STATE" = "production" ]; then
+    echo "  1. Test login at your production URL"
+    echo "  2. Login with: admin / (your LLARS_ADMIN_PASSWORD)"
+else
+    echo "  1. Access Authentik UI: http://localhost:55095"
+    echo "  2. Login with: admin / admin123"
+    echo "  3. Verify providers in: Applications → Providers"
+    echo "  4. Test LLARS login: http://localhost:55080/login"
+fi
 echo ""
 
 print_success "Authentik setup completed successfully!"

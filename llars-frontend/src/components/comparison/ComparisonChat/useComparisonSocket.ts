@@ -6,6 +6,7 @@
 
 import { ref, watch, onMounted, Ref } from 'vue';
 import { io, Socket } from 'socket.io-client';
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage';
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
@@ -81,11 +82,18 @@ export function useComparisonSocket(options: UseComparisonSocketOptions) {
    */
   const initializeSocket = (scrollCallback?: () => void) => {
     const username = localStorage.getItem('username') || 'Gast';
+    const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token);
+
+    const query: Record<string, string> = { username: username };
+    if (token) {
+      query.token = token;
+    }
+
     socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
       path: '/socket.io/',
       transports: socketioTransports,
       upgrade: socketioEnableWebsocket,
-      query: { username: username },
+      query,
       headers: {
         'Content-Type': 'application/json; charset=utf-8'
       }

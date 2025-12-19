@@ -155,21 +155,9 @@
 
       <!-- Aktionen -->
       <template v-slot:item.actions="{ item }">
-        <LIconBtn
-          icon="mdi-eye"
-          tooltip="Ansehen"
-          @click="$emit('view', item)"
-        />
-        <LIconBtn
-          icon="mdi-download"
-          tooltip="Download"
-          @click="$emit('download', item)"
-        />
-        <LIconBtn
-          icon="mdi-delete"
-          tooltip="Löschen"
-          variant="danger"
-          @click="$emit('delete', item)"
+        <LActionGroup
+          :actions="['view', 'download', 'delete']"
+          @action="(key) => handleDocumentAction(key, item)"
         />
       </template>
 
@@ -348,6 +336,21 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// Handle action group clicks
+const handleDocumentAction = (actionKey, item) => {
+  switch (actionKey) {
+    case 'view':
+      emit('view', item)
+      break
+    case 'download':
+      emit('download', item)
+      break
+    case 'delete':
+      emit('delete', item)
+      break
+  }
 }
 
 const handleBulkDelete = () => {

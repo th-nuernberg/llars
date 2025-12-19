@@ -1,25 +1,27 @@
 <template>
   <div>
-    <v-btn
-      prepend-icon="mdi-eye"
+    <LIconBtn
+      icon="mdi-eye"
+      tooltip="Details anzeigen"
       @click.stop="openDialog"
-      class="details-btn"
-      density="compact"
-      variant="flat"
-      size="small"
-    >
-    </v-btn>
+    />
 
     <v-dialog v-model="dialog" max-width="1000px">
       <v-card>
-        <v-card-title class="headline">
+        <v-card-title class="headline d-flex align-center">
           Szenario Details
           <v-spacer></v-spacer>
-          <v-btn
+          <LIconBtn
             v-if="!isEditing"
             icon="mdi-pencil"
+            tooltip="Bearbeiten"
             @click="startEditing"
-          ></v-btn>
+          />
+          <LIconBtn
+            icon="mdi-close"
+            tooltip="Schließen"
+            @click="closeDialog"
+          />
         </v-card-title>
 
         <v-card-text>
@@ -225,24 +227,22 @@
                 </v-row>
                 <v-row v-if="isEditing" class="select-all-row">
                   <v-col>
-                    <v-btn
-                      class="select-all-btn"
-                      color="primary"
-                      prepend-icon="mdi-check"
+                    <LBtn
+                      variant="secondary"
+                      prepend-icon="mdi-check-all"
                       @click="selectAllFilteredThreads"
                     >
                       Alle anwählen
-                    </v-btn>
+                    </LBtn>
                   </v-col>
                   <v-col>
-                    <v-btn
-                      class="select-all-btn"
-                      color="primary"
-                      prepend-icon="mdi-alpha-x-box-outline"
+                    <LBtn
+                      variant="secondary"
+                      prepend-icon="mdi-close-box-outline"
                       @click="deselectAllFilteredThreads"
                     >
                       Alle abwählen
-                    </v-btn>
+                    </LBtn>
                   </v-col>
                 </v-row>
 
@@ -343,14 +343,15 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="red" @click="closeDialog">Abbrechen</v-btn>
-          <v-btn
+          <LBtn variant="cancel" @click="closeDialog">Abbrechen</LBtn>
+          <LBtn
             v-if="isEditing"
-            color="green"
+            variant="primary"
+            prepend-icon="mdi-content-save"
             @click="saveChanges"
           >
             Speichern
-          </v-btn>
+          </LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -751,18 +752,6 @@ export default {
 
 .v-alert {
   margin-top: 10px;
-}
-
-.details-btn {
-  padding: 0;
-  min-width: 36px;
-  width: 36px;
-  height: 36px;
-}
-
-.details-btn:hover {
-  color: #9db888 !important;
-  box-shadow: 0 2px 8px rgba(176, 202, 151, 0.4);
 }
 
 .select-all-row {

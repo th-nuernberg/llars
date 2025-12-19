@@ -233,56 +233,158 @@
 
             <v-expansion-panel v-if="formData.selectedCategory === 5">
               <v-expansion-panel-title>
-                Fake/Echt – Import
+                <v-icon size="20" class="mr-2">mdi-database-import</v-icon>
+                Daten-Import
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-alert type="info" variant="tonal" class="mb-4">
-                  Importiere JSON-Items im v6-Format (ein Item oder Liste). Nach dem Import kannst du die Threads im nächsten Panel auswählen.
+                  <div class="d-flex align-center">
+                    <v-icon size="20" class="mr-2">mdi-information</v-icon>
+                    <span>Importiere JSON-Daten im v6-Format. Du kannst <strong>einzelne Dateien</strong>, <strong>mehrere Dateien</strong>, oder einen <strong>ganzen Ordner</strong> hochladen.</span>
+                  </div>
                 </v-alert>
 
-                <v-file-input
-                  v-model="authImport.files"
-                  label="JSON-Dateien (optional)"
-                  prepend-icon="mdi-file-json"
-                  variant="outlined"
-                  density="comfortable"
-                  multiple
-                  show-size
-                  accept="application/json,.json"
-                />
+                <!-- Import Mode Toggle -->
+                <v-btn-toggle
+                  v-model="authImport.mode"
+                  mandatory
+                  density="compact"
+                  class="mb-4"
+                  color="primary"
+                >
+                  <v-btn value="files" prepend-icon="mdi-file-multiple">
+                    Dateien
+                  </v-btn>
+                  <v-btn value="folder" prepend-icon="mdi-folder">
+                    Ordner
+                  </v-btn>
+                  <v-btn value="text" prepend-icon="mdi-code-json">
+                    JSON Text
+                  </v-btn>
+                </v-btn-toggle>
 
-                <v-textarea
-                  v-model="authImport.jsonText"
-                  label="Oder JSON einfügen (optional)"
-                  placeholder='{"metadata": {...}, "messages": [...]}'
-                  variant="outlined"
-                  density="comfortable"
-                  auto-grow
-                  rows="3"
-                  class="mt-3"
-                />
+                <!-- Files Mode -->
+                <div v-if="authImport.mode === 'files'" class="import-section">
+                  <v-file-input
+                    v-model="authImport.files"
+                    label="JSON-Dateien auswählen"
+                    prepend-icon="mdi-file-json"
+                    variant="outlined"
+                    density="comfortable"
+                    multiple
+                    show-size
+                    accept="application/json,.json"
+                    :hint="authImport.files?.length ? `${authImport.files.length} Datei(en) ausgewählt` : 'Eine oder mehrere .json Dateien'"
+                    persistent-hint
+                  />
+                </div>
 
-                <div class="d-flex ga-2 mt-3">
+                <!-- Folder Mode -->
+                <div v-if="authImport.mode === 'folder'" class="import-section">
+                  <div class="folder-upload-container">
+                    <input
+                      ref="folderInputRef"
+                      type="file"
+                      webkitdirectory
+                      directory
+                      multiple
+                      accept=".json,application/json"
+                      class="folder-input-hidden"
+                      @change="handleFolderSelect"
+                    />
+                    <v-card
+                      variant="outlined"
+                      class="folder-dropzone"
+                      :class="{ 'has-files': authImport.folderFiles?.length }"
+                      @click="triggerFolderSelect"
+                    >
+                      <div class="folder-dropzone-content">
+                        <v-icon size="48" :color="authImport.folderFiles?.length ? 'success' : 'grey'">
+                          {{ authImport.folderFiles?.length ? 'mdi-folder-check' : 'mdi-folder-open' }}
+                        </v-icon>
+                        <div v-if="authImport.folderFiles?.length" class="mt-2">
+                          <strong>{{ authImport.folderFiles.length }} JSON-Datei(en)</strong>
+                          <div class="text-caption text-grey">aus Ordner geladen</div>
+                        </div>
+                        <div v-else class="mt-2">
+                          <strong>Ordner auswählen</strong>
+                          <div class="text-caption text-grey">Klicken um einen Ordner mit JSON-Dateien zu wählen</div>
+                        </div>
+                      </div>
+                    </v-card>
+                    <LBtn
+                      v-if="authImport.folderFiles?.length"
+                      variant="text"
+                      size="small"
+                      prepend-icon="mdi-close"
+                      class="mt-2"
+                      @click="clearFolderFiles"
+                    >
+                      Auswahl löschen
+                    </LBtn>
+                  </div>
+                </div>
+
+                <!-- Text Mode -->
+                <div v-if="authImport.mode === 'text'" class="import-section">
+                  <v-textarea
+                    v-model="authImport.jsonText"
+                    label="JSON einfügen"
+                    placeholder='{"metadata": {...}, "messages": [...]}
+
+oder als Array:
+[{"metadata": {...}, "messages": [...]}, ...]'
+                    variant="outlined"
+                    density="comfortable"
+                    auto-grow
+                    rows="5"
+                    hint="Ein einzelnes JSON-Objekt oder ein Array von Objekten"
+                    persistent-hint
+                  />
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex ga-2 mt-4">
                   <LBtn
                     variant="primary"
                     prepend-icon="mdi-upload"
                     :loading="authImport.isImporting"
+                    :disabled="!canImport"
                     @click="importAuthenticity"
                   >
-                    Importieren
+                    {{ importButtonLabel }}
                   </LBtn>
                   <LBtn variant="tonal" prepend-icon="mdi-refresh" @click="handleCategoryChange(formData.selectedCategory)">
                     Threads aktualisieren
                   </LBtn>
                 </div>
 
-                <v-alert v-if="authImport.error" type="error" variant="tonal" class="mt-3">
-                  {{ authImport.error }}
+                <!-- Progress -->
+                <v-progress-linear
+                  v-if="authImport.isImporting"
+                  indeterminate
+                  color="primary"
+                  class="mt-3"
+                />
+
+                <!-- Error Alert -->
+                <v-alert v-if="authImport.error" type="error" variant="tonal" class="mt-3" closable @click:close="authImport.error = ''">
+                  <div class="d-flex align-center">
+                    <v-icon size="20" class="mr-2">mdi-alert-circle</v-icon>
+                    {{ authImport.error }}
+                  </div>
                 </v-alert>
 
-                <v-alert v-if="authImport.result" type="success" variant="tonal" class="mt-3">
-                  Import: {{ authImport.result.imported || 0 }} neu, {{ authImport.result.skipped_existing || 0 }} übersprungen,
-                  {{ (authImport.result.errors || []).length }} Fehler.
+                <!-- Success Alert -->
+                <v-alert v-if="authImport.result" type="success" variant="tonal" class="mt-3" closable @click:close="authImport.result = null">
+                  <div class="font-weight-medium mb-1">Import erfolgreich!</div>
+                  <div class="d-flex ga-4 flex-wrap">
+                    <span><v-icon size="16" class="mr-1">mdi-plus-circle</v-icon>{{ authImport.result.imported || 0 }} neu importiert</span>
+                    <span><v-icon size="16" class="mr-1">mdi-skip-next</v-icon>{{ authImport.result.skipped_existing || 0 }} übersprungen</span>
+                    <span v-if="(authImport.result.errors || []).length > 0" class="text-error">
+                      <v-icon size="16" class="mr-1">mdi-alert</v-icon>{{ (authImport.result.errors || []).length }} Fehler
+                    </span>
+                  </div>
                 </v-alert>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -389,7 +491,7 @@
 </template>
 
 <script>
-import {reactive, onMounted, computed,} from 'vue';
+import {reactive, onMounted, computed, ref} from 'vue';
 import {
   getFunctionTypes,
   getAllUsers,
@@ -403,6 +505,7 @@ export default {
   name: 'ScenarioDialog',
 
   setup(props, {emit}) {
+    const folderInputRef = ref(null);
     const dialogState = reactive({
       showCreateDialog: false
     });
@@ -442,12 +545,71 @@ export default {
     });
 
     const authImport = reactive({
+      mode: 'files',
       files: [],
+      folderFiles: [],
       jsonText: '',
       isImporting: false,
       error: '',
       result: null
     });
+
+    // Computed: Can import (has data to import)
+    const canImport = computed(() => {
+      if (authImport.mode === 'files') {
+        return authImport.files && authImport.files.length > 0;
+      }
+      if (authImport.mode === 'folder') {
+        return authImport.folderFiles && authImport.folderFiles.length > 0;
+      }
+      if (authImport.mode === 'text') {
+        return authImport.jsonText && authImport.jsonText.trim().length > 0;
+      }
+      return false;
+    });
+
+    // Computed: Import button label
+    const importButtonLabel = computed(() => {
+      if (authImport.mode === 'files' && authImport.files?.length) {
+        return `${authImport.files.length} Datei(en) importieren`;
+      }
+      if (authImport.mode === 'folder' && authImport.folderFiles?.length) {
+        return `${authImport.folderFiles.length} Datei(en) importieren`;
+      }
+      return 'Importieren';
+    });
+
+    // Folder upload handlers
+    const triggerFolderSelect = () => {
+      if (folderInputRef.value) {
+        folderInputRef.value.click();
+      }
+    };
+
+    const handleFolderSelect = (event) => {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      // Filter only .json files
+      const jsonFiles = Array.from(files).filter(file =>
+        file.name.toLowerCase().endsWith('.json')
+      );
+
+      authImport.folderFiles = jsonFiles;
+      authImport.error = '';
+      authImport.result = null;
+
+      if (jsonFiles.length === 0) {
+        authImport.error = 'Keine JSON-Dateien im Ordner gefunden.';
+      }
+    };
+
+    const clearFolderFiles = () => {
+      authImport.folderFiles = [];
+      if (folderInputRef.value) {
+        folderInputRef.value.value = '';
+      }
+    };
 
 
     const validateForm = () => {
@@ -670,40 +832,71 @@ export default {
 
       const items = [];
 
-      const text = String(authImport.jsonText || '').trim();
-      if (text) {
-        try {
+      const readFile = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ name: file.name, content: String(reader.result || '') });
+        reader.onerror = () => reject(new Error(`Datei "${file.name}" konnte nicht gelesen werden.`));
+        reader.readAsText(file);
+      });
+
+      try {
+        // Mode: Text
+        if (authImport.mode === 'text') {
+          const text = String(authImport.jsonText || '').trim();
+          if (!text) {
+            authImport.error = 'Bitte JSON einfügen.';
+            return;
+          }
           const parsed = JSON.parse(text);
           if (Array.isArray(parsed)) {
             items.push(...parsed);
           } else {
             items.push(parsed);
           }
-        } catch (e) {
-          authImport.error = 'JSON im Textfeld ist ungültig.';
-          return;
         }
-      } else if (Array.isArray(authImport.files) && authImport.files.length > 0) {
-        try {
-          const readFile = (file) => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result || ''));
-            reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden.'));
-            reader.readAsText(file);
-          });
-
-          const contents = await Promise.all(authImport.files.map(readFile));
-          for (const content of contents) {
-            const parsed = JSON.parse(content);
-            if (Array.isArray(parsed)) items.push(...parsed);
-            else items.push(parsed);
+        // Mode: Files
+        else if (authImport.mode === 'files') {
+          if (!authImport.files || authImport.files.length === 0) {
+            authImport.error = 'Bitte eine oder mehrere JSON-Dateien auswählen.';
+            return;
           }
-        } catch (e) {
-          authImport.error = 'Eine oder mehrere Dateien enthalten ungültiges JSON.';
-          return;
+          const fileResults = await Promise.all(authImport.files.map(readFile));
+          for (const { name, content } of fileResults) {
+            try {
+              const parsed = JSON.parse(content);
+              if (Array.isArray(parsed)) items.push(...parsed);
+              else items.push(parsed);
+            } catch (e) {
+              authImport.error = `Datei "${name}" enthält ungültiges JSON.`;
+              return;
+            }
+          }
         }
-      } else {
-        authImport.error = 'Bitte JSON einfügen oder eine Datei auswählen.';
+        // Mode: Folder
+        else if (authImport.mode === 'folder') {
+          if (!authImport.folderFiles || authImport.folderFiles.length === 0) {
+            authImport.error = 'Bitte einen Ordner mit JSON-Dateien auswählen.';
+            return;
+          }
+          const fileResults = await Promise.all(authImport.folderFiles.map(readFile));
+          for (const { name, content } of fileResults) {
+            try {
+              const parsed = JSON.parse(content);
+              if (Array.isArray(parsed)) items.push(...parsed);
+              else items.push(parsed);
+            } catch (e) {
+              authImport.error = `Datei "${name}" enthält ungültiges JSON.`;
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        authImport.error = e?.message || 'Fehler beim Lesen der Daten.';
+        return;
+      }
+
+      if (items.length === 0) {
+        authImport.error = 'Keine gültigen Items zum Importieren gefunden.';
         return;
       }
 
@@ -750,11 +943,16 @@ export default {
       formData.selectedThreads = [];
       formData.llm1Model = '';
       formData.llm2Model = '';
+      authImport.mode = 'files';
       authImport.files = [];
+      authImport.folderFiles = [];
       authImport.jsonText = '';
       authImport.isImporting = false;
       authImport.error = '';
       authImport.result = null;
+      if (folderInputRef.value) {
+        folderInputRef.value.value = '';
+      }
 
       // Sicherstellen, dass das 'userRoles' Objekt korrekt zurückgesetzt wird
       formData.userRoles = Object.fromEntries(
@@ -837,11 +1035,17 @@ export default {
       categoryItems,
       modelItems,
       filteredThreads,
+      canImport,
+      importButtonLabel,
+      folderInputRef,
       openDialog,
       closeDialog,
       handleCategoryChange,
       handleCheckboxChange,
       importAuthenticity,
+      triggerFolderSelect,
+      handleFolderSelect,
+      clearFolderFiles,
       setStartToday,
       setEndInDays,
       setEndInMonths,
@@ -914,5 +1118,52 @@ export default {
   gap: 8px;
   margin-top: 8px;
   flex-wrap: wrap;
+}
+
+/* Import Section */
+.import-section {
+  min-height: 100px;
+}
+
+/* Folder Upload */
+.folder-upload-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.folder-input-hidden {
+  display: none;
+}
+
+.folder-dropzone {
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px dashed rgba(var(--v-theme-on-surface), 0.2);
+  background: rgba(var(--v-theme-surface-variant), 0.1);
+  transition: all 0.2s ease;
+}
+
+.folder-dropzone:hover {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.05);
+}
+
+.folder-dropzone.has-files {
+  border-color: rgb(var(--v-theme-success));
+  background: rgba(var(--v-theme-success), 0.05);
+  border-style: solid;
+}
+
+.folder-dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
 }
 </style>

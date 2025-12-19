@@ -1,16 +1,12 @@
 <template>
   <v-app>
     <!-- Unified AppBar -->
-    <v-app-bar app dark color="primary">
-      <v-toolbar-title @click="goHome" style="display: flex; align-items: center; cursor: pointer;">
-        <v-row no-gutters align="center">
-          <v-col cols="auto">
-            <img src="./assets/logo/llars-logo.png" alt="Logo" height="26" class="logo-image">
-          </v-col>
-          <v-col cols="auto" class="toolbar-text-wrapper">
-            <span class="toolbar-text">LLars Plattform</span>
-          </v-col>
-        </v-row>
+    <v-app-bar app class="llars-appbar">
+      <v-toolbar-title @click="goHome" class="toolbar-title">
+        <div class="logo-wrapper">
+          <img src="./assets/logo/llars-logo.png" alt="Logo" height="28" class="logo-image">
+          <span class="toolbar-text">LLars Plattform</span>
+        </div>
       </v-toolbar-title>
       <v-spacer></v-spacer>
 
@@ -33,7 +29,7 @@
                 {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
               </LTag>
             </div>
-            <v-icon size="small" class="ml-1">mdi-chevron-down</v-icon>
+            <v-icon size="small" class="ml-1" color="white">mdi-chevron-down</v-icon>
           </div>
         </template>
 
@@ -67,7 +63,7 @@
     <!-- User Settings Dialog -->
     <UserSettingsDialog v-model="settingsDialogOpen" />
 
-    <v-footer app dark color="primary" height="30" class="px-4 footer">
+    <v-footer app height="30" class="llars-footer px-4">
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
           <span class="copyright">
@@ -347,18 +343,64 @@ function openSettings() {
 </style>
 
 <style scoped>
+/* ============================================
+   LLARS AppBar Styling
+   ============================================ */
+.llars-appbar {
+  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%) !important;
+  border-bottom: 3px solid var(--llars-secondary) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.llars-appbar :deep(.v-toolbar__content) {
+  padding: 0 16px;
+}
+
+/* Logo & Title */
+.toolbar-title {
+  cursor: pointer;
+}
+
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 8px 2px 8px 2px;
+  transition: background-color 0.2s ease;
+}
+
+.logo-wrapper:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.logo-image {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
+.toolbar-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
 /* User Menu Trigger */
 .user-menu-trigger {
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 6px 12px;
   border-radius: 12px 4px 12px 4px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
 }
 
 .user-menu-trigger:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .user-info {
@@ -368,41 +410,46 @@ function openSettings() {
 
 .user-menu-list {
   min-width: 200px;
+  border-radius: 8px 2px 8px 2px !important;
 }
 
-.footer {
+/* ============================================
+   LLARS Footer Styling
+   ============================================ */
+.llars-footer {
+  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%) !important;
+  border-top: 2px solid var(--llars-secondary) !important;
   font-size: 0.75rem;
 }
 
 .copyright {
-  color: white;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 .footer-link {
-  color: white;
+  color: #fff;
   cursor: pointer;
   margin-left: 1rem;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
 }
 
 .footer-link:hover {
+  opacity: 1;
   text-decoration: underline;
 }
 
-.logo-image {
-  transform: translateY(0px);
-  margin-top: 9px;
-  margin-right: 15px;
+/* ============================================
+   Dark Mode Adjustments
+   ============================================ */
+.v-theme--dark .llars-appbar {
+  background: linear-gradient(135deg, #3a4a32 0%, #2a4a4d 100%) !important;
+  border-bottom-color: #5a5a40 !important;
 }
 
-.toolbar-text-wrapper {
-  align-self: center;
-  margin-top: 2px;
-}
-
-.toolbar-text {
-  font-size: 1.25rem;
-  font-weight: 500;
-  letter-spacing: 0.1px;
-  color: rgb(var(--v-theme-on-primary));
+.v-theme--dark .llars-footer {
+  background: linear-gradient(135deg, #3a4a32 0%, #2a4a4d 100%) !important;
+  border-top-color: #5a5a40 !important;
 }
 </style>

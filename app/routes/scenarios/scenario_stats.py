@@ -5,7 +5,7 @@ Provides progress and completion statistics for scenarios.
 
 import logging
 from flask import jsonify, g
-from auth.decorators import admin_required
+from auth.decorators import admin_required, authentik_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
@@ -13,7 +13,7 @@ from db.db import db
 from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        ScenarioThreads, ScenarioRoles, User, ScenarioThreadDistribution,
                        ProgressionStatus)
-from ..HelperFunctions import get_thread_progression_state
+from ..HelperFunctions import get_thread_progression_state, get_user_threads
 from .. import data_blueprint
 
 
@@ -119,3 +119,35 @@ def get_scenario_user_progress_stats(scenario_id):
             viewer_stats.append(new_data)
 
     return jsonify({'rater_stats': rater_stats, "viewer_stats": viewer_stats}), 200
+
+
+@data_blueprint.route('/evaluation/thread_counts', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='scenarios')
+def get_user_thread_counts():
+    """
+    Get the count of assigned threads per function_type for the current user.
+    Used by EvaluationHub to show which tools have scenarios available.
+
+    Returns:
+        {
+            "counts": {
+                "ranking": 3,
+                "rating": 0,
+                "mail_rating": 2,
+                "comparison": 0,
+                "authenticity": 1
+            }
+        }
+    """
+    user = g.authentik_user
+
+    # Get all function types
+    function_types = db.session.query(FeatureFunctionType).all()
+
+    counts = {}
+    for ft in function_types:
+        threads = get_user_threads(user.id, ft.function_type_id)
+        counts[ft.name] = len(threads)
+
+    return jsonify({'counts': counts}), 200

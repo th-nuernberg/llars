@@ -1,47 +1,19 @@
-import random
-import json
-from pathlib import Path
+from flask import jsonify, g
 
-from flask import request, jsonify
-
-from routes.auth import data_bp as data_blueprint
-from db.db import db
-from db.tables import (
-    User,
-    ComparisonSession,
-    ComparisonMessage,
-    FeatureFunctionType,
-    RatingScenarios
-)
+from auth.decorators import authentik_required
+from decorators.error_handler import handle_api_errors, NotFoundError
+from decorators.permission_decorator import require_permission
 from routes.HelperFunctions import get_user_scenarios
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
-
-BASE_DIR = Path(__file__).parent
-PERSONAS_PATH = BASE_DIR / '../static/vikl-personas.json'
-
-
-def current_user():
-    api_key = request.headers.get("Authorization")
-    return User.query.filter_by(api_key=api_key).first()
-
-
-def require_user():
-    user = current_user()
-    if not user:
-        return jsonify({"error": "Invalid or missing API-Key"}), 401
-    return user
+from routes.auth import data_bp as data_blueprint
+from db.tables import ComparisonSession, ComparisonMessage, FeatureFunctionType
 
 
 @data_blueprint.route('/comparison/sessions', methods=['GET'])
+@authentik_required
+@require_permission("feature:comparison:view")
 @handle_api_errors(logger_name='comparison')
 def list_sessions_for_comparison():
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        raise UnauthorizedError('API key is missing')
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        raise UnauthorizedError('Invalid API key')
+    user = g.authentik_user
 
     comparison_function_type = FeatureFunctionType.query.filter_by(name='comparison').first()
     if not comparison_function_type:
@@ -57,12 +29,13 @@ def list_sessions_for_comparison():
         ).all()
         
         for session in sessions:
-            rated_messages = sum(1 for msg in session.messages if msg.selected is not None)
-            
-            if rated_messages == 0:
+            total_pairs = sum(1 for msg in session.messages if msg.type == "bot_pair")
+            rated_messages = sum(1 for msg in session.messages if msg.type == "bot_pair" and msg.selected is not None)
+
+            if total_pairs == 0 or rated_messages == 0:
                 status = 'not_started'
                 color = 'grey'
-            elif rated_messages < 30:
+            elif rated_messages < total_pairs:
                 status = 'progressing'
                 color = 'yellow'
             else:
@@ -75,6 +48,7 @@ def list_sessions_for_comparison():
                 'persona_name': session.persona_name,
                 'persona_json': session.persona_json,
                 'rated_messages': rated_messages,
+                'total_pairs': total_pairs,
                 'status': status,
                 'color': color
             })
@@ -83,11 +57,11 @@ def list_sessions_for_comparison():
 
 
 @data_blueprint.route('/comparison/session/<int:session_id>', methods=['GET'])
+@authentik_required
+@require_permission("feature:comparison:view")
 @handle_api_errors(logger_name='comparison')
 def get_session(session_id):
-    user = require_user()
-    if isinstance(user, tuple):
-        return user
+    user = g.authentik_user
 
     session = ComparisonSession.query.filter_by(id=session_id, user_id=user.id).first()
     if not session:

@@ -14,6 +14,15 @@ from db.tables import FeatureFunctionType, User, UserGroup, EmailThread
 from .. import data_blueprint
 
 
+FUNCTION_TYPE_UI_META = {
+    "ranking": {"display_name": "Ranking", "emoji": "🏆"},
+    "rating": {"display_name": "Rating", "emoji": "⭐️"},
+    "mail_rating": {"display_name": "Verlaufsbewertung", "emoji": "✉️"},
+    "comparison": {"display_name": "Gegenüberstellung", "emoji": "⚖️"},
+    "authenticity": {"display_name": "Fake/Echt", "emoji": "🕵️"},
+}
+
+
 @data_blueprint.route('/admin/get_function_types', methods=['GET'])
 @admin_required
 @handle_api_errors(logger_name='scenarios')
@@ -25,9 +34,13 @@ def get_function_types():
     feature_function_types = FeatureFunctionType.query.all()
     function_types = []
     for feature_function_type in feature_function_types:
+        name = feature_function_type.name
+        ui = FUNCTION_TYPE_UI_META.get(name, {})
         function_types.append({
             'function_type_id': feature_function_type.function_type_id,
-            'name': feature_function_type.name,
+            'name': name,
+            'display_name': ui.get("display_name") or name,
+            'emoji': ui.get("emoji") or '',
         })
 
     return jsonify(function_types), 200
@@ -37,12 +50,12 @@ def get_function_types():
 @admin_required
 @handle_api_errors(logger_name='scenarios')
 def get_users():
-    """Get all non-admin users for scenario assignment"""
+    """Get all users for scenario assignment"""
     # Authorization handled by @admin_required decorator
     # Current user available in g.authentik_user
 
-    db_users = (db.session.query(User).join(UserGroup, User.group_id == UserGroup.id)
-                .filter(UserGroup.name != "Admin").all())
+    # Include admins as well (useful for demo/testing scenarios).
+    db_users = db.session.query(User).join(UserGroup, User.group_id == UserGroup.id).all()
 
     users = []
     for db_user in db_users:

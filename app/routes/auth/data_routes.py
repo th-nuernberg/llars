@@ -129,14 +129,34 @@ def download_rankings_csv():
 @handle_api_errors(logger_name='auth')
 def get_consulting_category_types():
     """Get all consulting category types"""
-    # Use UserService for authentication
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        raise UnauthorizedError('API key is missing')
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header:
+        raise UnauthorizedError('Authorization header is missing')
 
-    is_valid, user, error_msg = UserService.validate_api_key(api_key)
-    if not is_valid:
-        raise UnauthorizedError(error_msg)
+    # Authentik Bearer token support (preferred)
+    if auth_header.startswith('Bearer '):
+        from auth.oidc_validator import validate_token, get_username
+        from auth.decorators import get_or_create_user, _check_user_account_state
+
+        token = auth_header[7:]
+        token_payload = validate_token(token)
+        if not token_payload:
+            raise UnauthorizedError('Invalid or expired token')
+
+        username = get_username(token_payload)
+        if not username:
+            raise UnauthorizedError('Token is missing username information')
+        user = get_or_create_user(username)
+
+        denied = _check_user_account_state(user)
+        if denied is not None:
+            return denied
+
+    # Legacy API-key support (backwards compatibility)
+    else:
+        is_valid, user, error_msg = UserService.validate_api_key(auth_header)
+        if not is_valid:
+            raise UnauthorizedError(error_msg)
 
     # Use ThreadService to get consulting category types
     categories = ThreadService.get_consulting_category_types()
@@ -144,7 +164,8 @@ def get_consulting_category_types():
     if not categories:
         raise NotFoundError('No consulting category types found')
 
-    return jsonify({'success': True, 'data': categories}), 200
+    # Return both the legacy and the UI-friendly shape for compatibility.
+    return jsonify({'success': True, 'data': categories, 'consulting_category_types': categories}), 200
 
 
 @data_bp.route('/admin/change_user_group', methods=['POST'])

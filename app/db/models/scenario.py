@@ -134,6 +134,8 @@ class RatingScenarios(db.Model):
     # Modellkonfiguration für Comparison-Szenarien
     llm1_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     llm2_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    # Generische, funktionsspezifische Szenario-Konfiguration (z.B. Fake/Echt, Comparison, zukünftige Evaluations)
+    config_json: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
 
     # Definiere die Beziehungen mit Cascade-Option
     scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete")

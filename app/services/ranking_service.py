@@ -182,7 +182,8 @@ class RankingService:
         type_id: int,
         llm_id: int,
         position: int,
-        bucket: str
+        bucket: str,
+        commit: bool = True
     ) -> Tuple[bool, Optional[str]]:
         """
         Save or update a ranking.
@@ -228,12 +229,44 @@ class RankingService:
                 )
                 db.session.add(new_ranking)
 
-            db.session.commit()
+            if commit:
+                db.session.commit()
             return True, None
 
         except Exception as e:
             db.session.rollback()
             return False, f"Error saving ranking: {str(e)}"
+
+    @staticmethod
+    def clear_rankings_for_thread(user_id: int, thread_id: int, commit: bool = True) -> Tuple[bool, Optional[str]]:
+        """
+        Remove all rankings for a given user and thread.
+
+        This is required for "replace" style updates, so moving an item back to
+        Neutral actually removes the corresponding ranking row.
+        """
+        from db.models import Feature, UserFeatureRanking
+
+        try:
+            feature_ids_subquery = db.session.query(Feature.feature_id).filter(Feature.thread_id == thread_id)
+
+            (
+                db.session.query(UserFeatureRanking)
+                .filter(
+                    UserFeatureRanking.user_id == user_id,
+                    UserFeatureRanking.feature_id.in_(feature_ids_subquery),
+                )
+                .delete(synchronize_session=False)
+            )
+
+            if commit:
+                db.session.commit()
+
+            return True, None
+
+        except Exception as e:
+            db.session.rollback()
+            return False, f"Error clearing rankings: {str(e)}"
 
     @staticmethod
     def get_user_ranking_stats_for_all_users() -> List[Dict[str, Any]]:

@@ -128,6 +128,12 @@ from db.models.scenario import (
     ComparisonEvaluation,
 )
 
+# Fake-vs-Real (Authenticity) models
+from db.models.authenticity import (
+    AuthenticityConversation,
+    UserAuthenticityVote,
+)
+
 __all__ = [
     # User
     'User',
@@ -218,6 +224,9 @@ __all__ = [
     'ScenarioThreadDistribution',
     'UserMailHistoryRating',
     'UserMessageRating',
+    # Authenticity
+    'AuthenticityConversation',
+    'UserAuthenticityVote',
     'UserPrompt',
     'UserPromptShare',
     'ComparisonSession',

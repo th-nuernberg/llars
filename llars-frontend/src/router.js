@@ -58,6 +58,13 @@ import KaimoCaseEditor from "@/components/Kaimo/KaimoCaseEditor.vue";
 import MarkdownCollabHome from "@/views/MarkdownCollab/MarkdownCollabHome.vue";
 import MarkdownCollabWorkspace from "@/views/MarkdownCollab/MarkdownCollabWorkspace.vue";
 
+// Evaluation Hub
+import EvaluationHub from "@/components/Evaluation/EvaluationHub.vue";
+
+// Fake/Echt (Authenticity)
+import AuthenticityOverview from "@/components/Authenticity/AuthenticityOverview.vue";
+import AuthenticityDetail from "@/components/Authenticity/AuthenticityDetail.vue";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -65,11 +72,14 @@ const routes = [
     { path: '/docs', component: Documentation, meta: { requiresAuth: false } },
 
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
+    { path: '/evaluation', name: 'EvaluationHub', component: EvaluationHub, meta: { requiresAuth: true } },
     { path: '/Ranker', component: Ranker, meta: { requiresAuth: true } },
     { path: '/Ranker/:id', name:'RankerDetail', component: RankerDetail, props: true, meta: { requiresAuth: true } },
     { path: '/Rater', component: Rater, meta: { requiresAuth: true } },
     { path: '/Rater/:id', name:'RaterDetail', component: RaterDetail, props: true, meta: { requiresAuth: true } },
     { path: '/Rater/:id/:feature', name:'RaterDetailFeature', component: RaterDetailFeature, props: true, meta: { requiresAuth: true } },
+    { path: '/authenticity', name: 'AuthenticityOverview', component: AuthenticityOverview, meta: { requiresAuth: true } },
+    { path: '/authenticity/:id', name: 'AuthenticityDetail', component: AuthenticityDetail, props: true, meta: { requiresAuth: true } },
     { path : '/HistoryGeneration', name: 'HistoryGenerator', component: HistoryGeneration, meta: { requiresAuth: true } },
     { path : '/HistoryGeneration/:id', name:'HistoryGenerationDetail', component: HistoryGenerationDetail, props: true, meta: { requiresAuth: true } },
     { path: '/PromptEngineering', name: 'PromptEngineering', component: PromptEngineering, meta: { requiresAuth: true } },

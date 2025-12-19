@@ -385,6 +385,10 @@ oder als Array:
                       <v-icon size="16" class="mr-1">mdi-alert</v-icon>{{ (authImport.result.errors || []).length }} Fehler
                     </span>
                   </div>
+                  <div v-if="authImport.result.thread_ids?.length > 0" class="mt-2 text-caption">
+                    <v-icon size="14" class="mr-1">mdi-check-circle</v-icon>
+                    {{ authImport.result.thread_ids.length }} Threads automatisch ausgewählt
+                  </div>
                 </v-alert>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -392,9 +396,19 @@ oder als Array:
             <!-- Threads Panel -->
             <v-expansion-panel :class="{ 'error-panel': errors.selectedThreads }" v-if="formData.selectedCategory !== 4">
               <v-expansion-panel-title>
-                Threads
+                <div class="d-flex align-center ga-2">
+                  <span>Threads</span>
+                  <LTag v-if="formData.selectedThreads.length > 0" variant="success" size="sm">
+                    {{ formData.selectedThreads.length }} ausgewählt
+                  </LTag>
+                </div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
+                <!-- Auto-selection info -->
+                <v-alert v-if="formData.selectedThreads.length > 0 && authImport.result?.thread_ids?.length > 0" type="info" variant="tonal" class="mb-4" density="compact">
+                  <v-icon size="16" class="mr-1">mdi-check-circle</v-icon>
+                  {{ formData.selectedThreads.length }} Threads wurden automatisch aus dem Import ausgewählt.
+                </v-alert>
                 <v-row>
                   <v-col cols="12" md="6">
                     <v-text-field
@@ -905,6 +919,15 @@ export default {
         authImport.result = await importAuthenticityDataset(items.length === 1 ? items[0] : items);
         // Refresh threads list after successful import
         await fetchThreads(formData.selectedCategory);
+
+        // Auto-select all imported threads
+        if (authImport.result?.thread_ids?.length > 0) {
+          const importedIds = authImport.result.thread_ids;
+          // Add imported thread IDs to selection (avoid duplicates)
+          const currentSelection = new Set(formData.selectedThreads);
+          importedIds.forEach(id => currentSelection.add(id));
+          formData.selectedThreads = Array.from(currentSelection);
+        }
       } catch (e) {
         authImport.error = e?.response?.data?.message || e?.message || 'Import fehlgeschlagen.';
       } finally {

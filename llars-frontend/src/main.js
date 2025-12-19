@@ -27,6 +27,8 @@ import LAvatar from '@/components/common/LAvatar.vue'
 import LThemeToggle from '@/components/common/LThemeToggle.vue'
 import LEvaluationLayout from '@/components/common/LEvaluationLayout.vue'
 import LEvaluationStatus from '@/components/common/LEvaluationStatus.vue'
+import LMessage from '@/components/common/LMessage.vue'
+import LMessageList from '@/components/common/LMessageList.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
@@ -55,6 +57,8 @@ app.component('LAvatar', LAvatar)
 app.component('LThemeToggle', LThemeToggle)
 app.component('LEvaluationLayout', LEvaluationLayout)
 app.component('LEvaluationStatus', LEvaluationStatus)
+app.component('LMessage', LMessage)
+app.component('LMessageList', LMessageList)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

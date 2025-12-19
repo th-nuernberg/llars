@@ -18,6 +18,10 @@ export { default as LActionGroup } from './LActionGroup.vue'
 // Form Components
 export { default as LSlider } from './LSlider.vue'
 
+// Message Components
+export { default as LMessage } from './LMessage.vue'
+export { default as LMessageList } from './LMessageList.vue'
+
 // Evaluation Components
 export { default as LEvaluationLayout } from './LEvaluationLayout.vue'
 export { default as LEvaluationStatus } from './LEvaluationStatus.vue'
@@ -37,6 +41,8 @@ export const LlarsComponents = {
     app.component('LIconBtn', () => import('./LIconBtn.vue'))
     app.component('LActionGroup', () => import('./LActionGroup.vue'))
     app.component('LSlider', () => import('./LSlider.vue'))
+    app.component('LMessage', () => import('./LMessage.vue'))
+    app.component('LMessageList', () => import('./LMessageList.vue'))
     app.component('LEvaluationLayout', () => import('./LEvaluationLayout.vue'))
     app.component('LEvaluationStatus', () => import('./LEvaluationStatus.vue'))
     app.component('KatexFormula', () => import('./KatexFormula.vue'))

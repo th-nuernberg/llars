@@ -62,7 +62,7 @@
           </LTag>
           <LIconBtn
             v-if="selectedUser.db_record_exists"
-            :icon="selectedUser.is_active ? 'mdi-lock' : 'mdi-lock-open-variant'"
+            :icon="selectedUser.is_active ? 'mdi-lock-open-variant' : 'mdi-lock'"
             :tooltip="selectedUser.is_active ? 'Sperren' : 'Entsperren'"
             :loading="togglingUser === selectedUser.username"
             :disabled="selectedUser.username === 'admin' || selectedUser.deleted_at"
@@ -252,7 +252,7 @@
     </v-card>
 
     <!-- Create User Dialog -->
-    <v-dialog v-model="createDialog" max-width="560">
+    <v-dialog v-model="createDialog" max-width="600">
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-account-plus</v-icon>
@@ -262,14 +262,87 @@
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>
+          <v-alert
+            v-if="createWarning"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+            closable
+            @click:close="createWarning = ''; createDialog = false"
+          >
+            <div class="font-weight-bold mb-1">Benutzer teilweise erstellt</div>
+            {{ createWarning }}
+            <div class="mt-2">
+              <LBtn variant="secondary" size="small" @click="createWarning = ''; createDialog = false">
+                Schließen
+              </LBtn>
+            </div>
+          </v-alert>
+
+          <v-alert
+            v-else
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            Erstellt einen vollwertigen Benutzer in Authentik und LLARS.
+            Der Benutzer kann sich danach sofort einloggen.
+          </v-alert>
+
           <v-text-field
             v-model="newUserUsername"
-            label="Username"
+            label="Username *"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="mdi-account"
             :disabled="creatingUser"
+            hint="Login-Name des Benutzers"
+            persistent-hint
+            class="mb-2"
           />
+
+          <v-text-field
+            v-model="newUserEmail"
+            label="E-Mail *"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-email"
+            type="email"
+            :disabled="creatingUser"
+            hint="Wird für Authentik benötigt"
+            persistent-hint
+            class="mb-2"
+          />
+
+          <v-text-field
+            v-model="newUserPassword"
+            :label="'Passwort *'"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-lock"
+            :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+            :type="showPassword ? 'text' : 'password'"
+            @click:append-inner="showPassword = !showPassword"
+            :disabled="creatingUser"
+            hint="Mindestens 8 Zeichen"
+            persistent-hint
+            class="mb-2"
+          />
+
+          <v-text-field
+            v-model="newUserDisplayName"
+            label="Anzeigename"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-card-account-details"
+            :disabled="creatingUser"
+            hint="Optional - wird sonst der Username verwendet"
+            persistent-hint
+            class="mb-2"
+          />
+
           <v-select
             v-model="newUserRoles"
             :items="allRoles"
@@ -282,7 +355,9 @@
             chips
             clearable
             :disabled="creatingUser"
+            class="mb-2"
           />
+
           <v-switch
             v-model="newUserActive"
             color="success"
@@ -298,7 +373,7 @@
             prepend-icon="mdi-check"
             @click="createUser"
             :loading="creatingUser"
-            :disabled="!newUserUsername"
+            :disabled="!newUserUsername || !newUserEmail || !newUserPassword || newUserPassword.length < 8"
           >
             Anlegen
           </LBtn>
@@ -356,8 +431,12 @@ const createDialog = ref(false);
 const deleteDialog = ref(false);
 const userToDelete = ref(null);
 const newUserUsername = ref('');
+const newUserEmail = ref('');
+const newUserPassword = ref('');
+const newUserDisplayName = ref('');
 const newUserRoles = ref([]);
 const newUserActive = ref(true);
+const showPassword = ref(false);
 
 // Loading states
 const loadingSearch = ref(false);
@@ -365,6 +444,7 @@ const loadingUsers = ref(false);
 const loadingUser = ref(null);
 const assigningRole = ref(false);
 const creatingUser = ref(false);
+const createWarning = ref('');
 const deletingUser = ref(false);
 const togglingUser = ref(null);
 const { isLoading, withLoading } = useSkeletonLoading(['table']);
@@ -451,9 +531,9 @@ const getUserActions = (user) => {
     },
     {
       key: 'toggle-lock',
-      icon: user.is_active ? 'mdi-lock' : 'mdi-lock-open-variant',
+      icon: user.is_active ? 'mdi-lock-open-variant' : 'mdi-lock',
       tooltip: user.is_active ? 'Sperren' : 'Entsperren',
-      variant: user.is_active ? 'warning' : 'success',
+      variant: user.is_active ? 'success' : 'warning',
       loading: togglingUser.value === user.username,
       disabled: user.username === 'admin' || user.deleted_at
     },
@@ -556,11 +636,18 @@ const selectUser = async (username) => {
 };
 
 const openCreateDialog = (prefillUsername = '') => {
-  newUserUsername.value = prefillUsername || '';
+  // Guard against PointerEvent being passed when called from @click without parentheses
+  const username = typeof prefillUsername === 'string' ? prefillUsername : '';
+  newUserUsername.value = username;
+  newUserEmail.value = '';
+  newUserPassword.value = '';
+  newUserDisplayName.value = '';
   newUserActive.value = true;
   newUserRoles.value = [];
+  showPassword.value = false;
+  createWarning.value = '';
 
-  if (prefillUsername && selectedUser.value?.roles?.length) {
+  if (username && selectedUser.value?.roles?.length) {
     newUserRoles.value = selectedUser.value.roles.map(r => r.role_name);
   }
 
@@ -568,14 +655,29 @@ const openCreateDialog = (prefillUsername = '') => {
 };
 
 const createUser = async () => {
-  if (!newUserUsername.value) return;
+  if (!newUserUsername.value || !newUserEmail.value || !newUserPassword.value) return;
   creatingUser.value = true;
+  createWarning.value = '';
   try {
-    await axios.post('/api/admin/users', {
+    const response = await axios.post('/api/admin/users', {
       username: newUserUsername.value,
+      email: newUserEmail.value,
+      password: newUserPassword.value,
+      display_name: newUserDisplayName.value || newUserUsername.value,
       is_active: newUserActive.value,
       role_names: newUserRoles.value,
+      create_in_authentik: true,
     });
+
+    // Check for warnings (e.g., Authentik creation failed)
+    if (response.data.warning) {
+      createWarning.value = response.data.warning;
+      // Keep dialog open to show warning
+      await loadUsers();
+      return;
+    }
+
+    // Full success
     createDialog.value = false;
     await loadUsers();
     if (selectedUser.value?.username === newUserUsername.value) {
@@ -583,6 +685,10 @@ const createUser = async () => {
     }
   } catch (error) {
     console.error('Error creating user:', error);
+    // Show error to user
+    if (error.response?.data?.error) {
+      alert(`Fehler: ${error.response.data.error}`);
+    }
   } finally {
     creatingUser.value = false;
   }

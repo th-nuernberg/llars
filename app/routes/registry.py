@@ -52,6 +52,9 @@ def register_all_blueprints(app: Flask) -> None:
     # Scenarios (Scenario management and distribution)
     from routes import scenarios
 
+    # Fake/Echt (Authenticity)
+    from routes import authenticity
+
     # Authentik OIDC authentication
     from routes.authentik_routes import authentik_auth_blueprint
 

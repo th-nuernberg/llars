@@ -365,7 +365,7 @@ def get_authenticity_scenario_stats(scenario_id: int):
     if not thread_ids:
         return jsonify({
             "scenario_id": scenario_id,
-            "scenario_name": scenario.name,
+            "scenario_name": scenario.scenario_name,
             "total_threads": 0,
             "total_users": len(scenario_users),
             "user_stats": [],
@@ -505,7 +505,7 @@ def get_authenticity_scenario_stats(scenario_id: int):
 
     return jsonify({
         "scenario_id": scenario_id,
-        "scenario_name": scenario.name,
+        "scenario_name": scenario.scenario_name,
         "total_threads": len(thread_ids),
         "total_users": len(scenario_users),
         "user_stats": user_stats,

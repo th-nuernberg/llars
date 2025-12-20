@@ -19,6 +19,27 @@ import logging
 from db.tables import ProgressionStatus
 
 
+def deterministic_shuffle(items, seed):
+    """
+    Shuffle items deterministically using a seed.
+
+    This ensures all users see the same shuffled order for the same seed.
+    The seed is typically the scenario_id, so all users in a scenario
+    see threads in the same (shuffled) order.
+
+    Args:
+        items: List of items to shuffle
+        seed: Integer seed for random generator (e.g., scenario_id)
+
+    Returns:
+        New list with items in deterministically shuffled order
+    """
+    rng = random.Random(seed)
+    shuffled = list(items)
+    rng.shuffle(shuffled)
+    return shuffled
+
+
 
 def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionStatus:
     """ Berechnet den Fortschritt für das Feature Ranking (function_type_id=1) """
@@ -130,18 +151,36 @@ def get_user_scenarios(user_id, function_type_id):
 
 
 def get_user_threads(user_id, function_type_id):
+    """
+    Get all threads accessible by a user for a specific function type.
+
+    Threads are returned in a deterministically shuffled order based on the
+    scenario_id. This ensures:
+    1. Threads are NOT in upload order (shuffled)
+    2. ALL users in the same scenario see the SAME order (deterministic)
+
+    Args:
+        user_id: The user ID
+        function_type_id: The function type ID
+
+    Returns:
+        List of EmailThread objects in deterministically shuffled order
+    """
     # Aktuellen Zeitpunkt ermitteln
     current_time = datetime.utcnow()
 
     scenario_users = get_user_scenarios(user_id, function_type_id)
 
-    # Alle EmailThreads, die der User sehen darf
-    allowed_threads = []
+    # Group threads by scenario for deterministic ordering
+    scenario_threads_map = {}
 
     # Durchlaufe alle Szenarien und deren zugeordnete Threads
     for scenario_user in scenario_users:
         scenario_id = scenario_user.scenario_id
         role = scenario_user.role
+
+        if scenario_id not in scenario_threads_map:
+            scenario_threads_map[scenario_id] = []
 
         if role == ScenarioRoles.VIEWER:
             # Wenn der User Viewer ist, darf er alle Threads des Szenarios sehen
@@ -154,7 +193,7 @@ def get_user_threads(user_id, function_type_id):
                 )
                 .all()
             )
-            allowed_threads.extend(threads)
+            scenario_threads_map[scenario_id].extend(threads)
 
         elif role == ScenarioRoles.RATER:
             # Wenn der User Rater ist, darf er nur zugeordnete Threads sehen
@@ -169,7 +208,27 @@ def get_user_threads(user_id, function_type_id):
             ).all())
 
             for distribution in thread_distributions:
-                allowed_threads.append(distribution.scenario_thread.thread)
+                scenario_threads_map[scenario_id].append(distribution.scenario_thread.thread)
+
+    # Build result with deterministic ordering per scenario
+    # Process scenarios in sorted order for consistency
+    allowed_threads = []
+    seen_thread_ids = set()  # Avoid duplicates if user is in multiple scenarios
+
+    for scenario_id in sorted(scenario_threads_map.keys()):
+        threads = scenario_threads_map[scenario_id]
+
+        # First, sort by thread_id to ensure consistent input to shuffle
+        threads_sorted = sorted(threads, key=lambda t: t.thread_id)
+
+        # Shuffle deterministically using scenario_id as seed
+        threads_shuffled = deterministic_shuffle(threads_sorted, seed=scenario_id)
+
+        # Add threads, avoiding duplicates
+        for thread in threads_shuffled:
+            if thread.thread_id not in seen_thread_ids:
+                seen_thread_ids.add(thread.thread_id)
+                allowed_threads.append(thread)
 
     return allowed_threads
 

@@ -97,6 +97,13 @@ class AuthUtils:
         Returns:
             Username string if found, None otherwise
         """
+        from flask import g
+
+        # Check if already authenticated via System API Key (set by @require_permission)
+        if getattr(g, 'is_system_api_key', False) and getattr(g, 'authentik_user', None):
+            user = g.authentik_user
+            return getattr(user, 'username', None) or 'admin'
+
         try:
             import jwt
             auth_header = request.headers.get('Authorization', '')

@@ -4,6 +4,7 @@
 # LLARS User Provisioning Script
 #########################################
 # Creates project users via LLARS Admin API
+# Loads user data from external YAML file
 # Can be run multiple times - existing users are skipped
 #########################################
 
@@ -41,23 +42,37 @@ AUTH_URL="${PROJECT_URL}/auth"
 ADMIN_USER="admin"
 ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-admin123}"
 
-# Default role for new users
-DEFAULT_ROLE="researcher"
+# Users file - can be passed as argument or via env var
+USERS_FILE="${1:-${LLARS_USERS_FILE:-}}"
 
 #########################################
-# User Definitions
+# Validate Users File
 #########################################
-# Format: username:display_name:email:password
-# Passwords are pronounceable with special character at end
 
-declare -A USERS=(
-    ["ieb-stieler"]="Stieler:stieler@e-beratungsinstitut.de:Kaffee2024!"
-    ["ieb-burghardt"]="Burghardt:burghardt@e-beratungsinstitut.de:Sommer2025#"
-    ["ieb-franz"]="Franz:franz@e-beratungsinstitut.de:Winter2024@"
-    ["ieb-bienlien"]="Bienlien:bienlien@e-beratungsinstitut.de:Herbst2025$"
-    ["ieb-steigerwald"]="Steigerwald:steigerwald@e-beratungsinstitut.de:Fruehling2024%"
-    ["ieb-test"]="Test User:test@e-beratungsinstitut.de:Testkonto2024&"
-)
+if [ -z "$USERS_FILE" ]; then
+    print_error "No users file specified!"
+    echo ""
+    echo "Usage:"
+    echo "  $0 <path-to-users.yaml>"
+    echo ""
+    echo "Or set environment variable:"
+    echo "  export LLARS_USERS_FILE=/path/to/users.yaml"
+    echo "  $0"
+    echo ""
+    echo "Expected file location:"
+    echo "  /var/llars-seeder/users.yaml"
+    echo ""
+    exit 1
+fi
+
+if [ ! -f "$USERS_FILE" ]; then
+    print_error "Users file not found: $USERS_FILE"
+    echo ""
+    echo "Make sure the llars-seeder repo is cloned:"
+    echo "  cd /var && git clone git@git.informatik.fh-nuernberg.de:kiz-nlp/llars-seeder.git"
+    echo ""
+    exit 1
+fi
 
 #########################################
 # Functions
@@ -89,14 +104,15 @@ create_user() {
     local display_name="$2"
     local email="$3"
     local password="$4"
-    local token="$5"
+    local role="$5"
+    local token="$6"
 
     print_info "Creating user: $username ($display_name)"
 
     # Build JSON body with proper escaping
     local json_body
     json_body=$(printf '{"username": "%s", "display_name": "%s", "email": "%s", "password": "%s", "is_active": true, "create_in_authentik": true, "role_names": ["%s"]}' \
-        "$username" "$display_name" "$email" "$password" "$DEFAULT_ROLE")
+        "$username" "$display_name" "$email" "$password" "$role")
 
     RESPONSE=$(curl -s -X POST "${API_URL}/admin/users" \
         -H "Content-Type: application/json" \
@@ -130,9 +146,7 @@ echo "  LLARS User Provisioning"
 echo "======================================="
 echo ""
 echo "Project URL: $PROJECT_URL"
-echo "Auth URL: $AUTH_URL"
-echo "API URL: $API_URL"
-echo "Default Role: $DEFAULT_ROLE"
+echo "Users File: $USERS_FILE"
 echo ""
 
 # Get auth token
@@ -149,42 +163,91 @@ echo "---------------------------------------"
 echo ""
 
 CREATED=0
-SKIPPED=0
 FAILED=0
 
-for username in "${!USERS[@]}"; do
-    IFS=':' read -r display_name email password <<< "${USERS[$username]}"
+# Parse YAML and create users using Python (more reliable than bash YAML parsing)
+python3 << EOF
+import yaml
+import subprocess
+import sys
+import os
 
-    if create_user "$username" "$display_name" "$email" "$password" "$TOKEN"; then
-        CREATED=$((CREATED + 1))
-    else
-        FAILED=$((FAILED + 1))
+with open("$USERS_FILE", "r") as f:
+    data = yaml.safe_load(f)
+
+default_role = data.get("default_role", "researcher")
+users = data.get("users", {})
+
+created = 0
+failed = 0
+
+for username, info in users.items():
+    display_name = info.get("display_name", username)
+    email = info.get("email", f"{username}@localhost")
+    password = info.get("password", "")
+    role = info.get("role", default_role)
+
+    if not password:
+        print(f"\033[0;31m[ERROR]\033[0m No password for {username} - skipping")
+        failed += 1
+        continue
+
+    # Output in format that bash can parse
+    print(f"USER:{username}:{display_name}:{email}:{password}:{role}")
+
+# Write counts
+print(f"COUNT:{len(users)}")
+EOF
+
+# Read the Python output and create users
+TOTAL=0
+while IFS= read -r line; do
+    if [[ "$line" == USER:* ]]; then
+        # Parse: USER:username:display_name:email:password:role
+        line="${line#USER:}"
+        IFS=':' read -r username display_name email password role <<< "$line"
+
+        if create_user "$username" "$display_name" "$email" "$password" "$role" "$TOKEN"; then
+            CREATED=$((CREATED + 1))
+        else
+            FAILED=$((FAILED + 1))
+        fi
+
+        # Small delay to avoid rate limiting
+        sleep 0.5
+    elif [[ "$line" == COUNT:* ]]; then
+        TOTAL="${line#COUNT:}"
     fi
+done < <(python3 << EOF
+import yaml
 
-    # Small delay to avoid rate limiting
-    sleep 0.5
-done
+with open("$USERS_FILE", "r") as f:
+    data = yaml.safe_load(f)
+
+default_role = data.get("default_role", "researcher")
+users = data.get("users", {})
+
+for username, info in users.items():
+    display_name = info.get("display_name", username)
+    email = info.get("email", f"{username}@localhost")
+    password = info.get("password", "")
+    role = info.get("role", default_role)
+
+    if password:
+        print(f"USER:{username}:{display_name}:{email}:{password}:{role}")
+
+print(f"COUNT:{len(users)}")
+EOF
+)
 
 echo ""
 echo "======================================="
 echo "  Summary"
 echo "======================================="
 echo ""
+echo "  Total Users: $TOTAL"
 echo "  Created/Updated: $CREATED"
 echo "  Failed: $FAILED"
-echo ""
-
-# Print credentials table
-echo "---------------------------------------"
-echo "  User Credentials"
-echo "---------------------------------------"
-echo ""
-printf "%-20s %-30s %s\n" "Username" "Email" "Password"
-printf "%-20s %-30s %s\n" "--------" "-----" "--------"
-for username in "${!USERS[@]}"; do
-    IFS=':' read -r display_name email password <<< "${USERS[$username]}"
-    printf "%-20s %-30s %s\n" "$username" "$email" "$password"
-done
 echo ""
 echo "======================================="
 

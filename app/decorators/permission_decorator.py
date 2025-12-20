@@ -10,17 +10,46 @@ Usage:
         return {'message': 'Access granted'}
 
 The decorator:
-1. Extracts username from the OIDC JWT (Authentik)
-2. Checks if user has the required permission via PermissionService
-3. Returns 403 Forbidden if permission is denied
-4. Returns 401 Unauthorized if not authenticated
+1. Checks for System Admin API Key (X-API-Key header) - bypasses permission check
+2. Extracts username from the OIDC JWT (Authentik)
+3. Checks if user has the required permission via PermissionService
+4. Returns 403 Forbidden if permission is denied
+5. Returns 401 Unauthorized if not authenticated
 """
 
 from functools import wraps
-from flask import request, jsonify
+from flask import request, jsonify, g
 from services.permission_service import PermissionService
 from auth.auth_utils import AuthUtils
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+# System Admin API Key (loaded from environment)
+SYSTEM_ADMIN_API_KEY = os.environ.get('SYSTEM_ADMIN_API_KEY')
+SYSTEM_ADMIN_USERNAME = 'admin'
+
+
+def _check_system_api_key() -> bool:
+    """
+    Check if request contains a valid System Admin API Key.
+
+    Returns:
+        True if valid API key provided, False otherwise
+    """
+    if not SYSTEM_ADMIN_API_KEY:
+        return False
+
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    if not api_key:
+        return False
+
+    if api_key == SYSTEM_ADMIN_API_KEY:
+        logger.debug(f"System API key authenticated for {request.path}")
+        return True
+
+    return False
 
 
 def _deny_if_user_locked(username: str):
@@ -57,6 +86,10 @@ def require_permission(permission_key: str):
     """
     Decorator to require a specific permission for a route.
 
+    Supports two authentication methods:
+    1. System Admin API Key (X-API-Key header) - bypasses permission check, uses admin user
+    2. OIDC JWT token (Authorization: Bearer) - checks permission via PermissionService
+
     Args:
         permission_key: The permission key required (e.g., 'feature:mail_rating:view')
 
@@ -72,6 +105,13 @@ def require_permission(permission_key: str):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            # Check for System Admin API Key first (bypasses permission check)
+            if _check_system_api_key():
+                from auth.decorators import get_or_create_user
+                g.authentik_user = get_or_create_user(SYSTEM_ADMIN_USERNAME)
+                g.is_system_api_key = True
+                return f(*args, **kwargs)
+
             # Extract username from token using centralized AuthUtils
             username = AuthUtils.extract_username_from_token()
 

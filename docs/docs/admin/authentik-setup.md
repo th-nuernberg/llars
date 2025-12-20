@@ -66,11 +66,23 @@ Dieses Skript ist ebenfalls environment-aware und verwendet `PROJECT_STATE` sowi
 
 ## Zusätzliche User anlegen
 
-Für zusätzliche User (z.B. Projektmitarbeiter) siehe:
+Für zusätzliche User (z.B. Projektmitarbeiter) das Provisionierungsskript verwenden:
 
 ```bash
+# Lokal (Development)
 ./scripts/provision_users.sh
+
+# Auf dem Server (Production)
+ssh llars "cd /var/llars && ./scripts/provision_users.sh"
 ```
+
+Das Skript:
+- Loggt sich als Admin ein
+- Erstellt User in LLARS und Authentik
+- Überspringt bereits existierende User
+- Zeigt am Ende eine Übersicht aller Zugangsdaten
+
+**Voraussetzung:** `AUTHENTIK_API_TOKEN` muss in `.env` gesetzt sein (wird beim ersten Start automatisch generiert).
 
 ## Troubleshooting
 

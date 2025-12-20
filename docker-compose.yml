@@ -165,6 +165,8 @@ services:
       - ONCOCO_MODEL_PATH=/app/models/oncoco
       # Disable ChromaDB telemetry (prevents log spam)
       - ANONYMIZED_TELEMETRY=False
+      # Authentik Admin API Token (for user management)
+      - AUTHENTIK_API_TOKEN=${AUTHENTIK_API_TOKEN:-}
     depends_on:
       db-maria-service:
         condition: service_healthy

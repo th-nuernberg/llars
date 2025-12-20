@@ -9,7 +9,9 @@ echo "======================================="
 # Environment variables
 BACKEND_CLIENT_ID="${AUTHENTIK_BACKEND_CLIENT_ID:-llars-backend}"
 BACKEND_CLIENT_SECRET="${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-change-in-production}"
-ADMIN_PASSWORD="${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}"
+# Use LLARS_ADMIN_PASSWORD for LLARS users (admin, researcher, viewer)
+# Falls back to AUTHENTIK_BOOTSTRAP_PASSWORD for backwards compatibility
+ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}}"
 
 MATOMO_CLIENT_ID="${AUTHENTIK_MATOMO_CLIENT_ID:-llars-matomo}"
 MATOMO_CLIENT_SECRET="${AUTHENTIK_MATOMO_CLIENT_SECRET:-llars-matomo-secret-change-in-production}"

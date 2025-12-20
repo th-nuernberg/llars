@@ -115,6 +115,10 @@ desktop.ini
 *.pyc
 scripts/*.log
 
+# User seeding (move to llars-seeder repo)
+scripts/users.yaml
+scripts/provision_users.sh
+
 # ML Models (downloaded on demand)
 app/models/anonymize/
 

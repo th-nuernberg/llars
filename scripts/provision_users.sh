@@ -27,12 +27,15 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Load from .env if available
 if [ -f ".env" ]; then
-    export $(grep -v '^#' .env | xargs)
+    set -a  # Export all variables
+    source .env
+    set +a
 fi
 
 # API Base URL
 PROJECT_URL="${PROJECT_URL:-http://localhost:55080}"
 API_URL="${PROJECT_URL}/api"
+AUTH_URL="${PROJECT_URL}/auth"
 
 # Admin credentials (from .env)
 ADMIN_USER="admin"
@@ -61,22 +64,23 @@ declare -A USERS=(
 #########################################
 
 get_auth_token() {
-    print_info "Logging in as admin..."
+    print_info "Logging in as admin..." >&2
 
-    RESPONSE=$(curl -s -X POST "${API_URL}/auth/login" \
+    RESPONSE=$(curl -s -X POST "${AUTH_URL}/login" \
         -H "Content-Type: application/json" \
         -d "{\"username\": \"${ADMIN_USER}\", \"password\": \"${ADMIN_PASSWORD}\"}")
 
-    if echo "$RESPONSE" | grep -q '"success":true'; then
+    # Check for access_token in response (successful login)
+    if echo "$RESPONSE" | grep -q '"access_token"'; then
         TOKEN=$(echo "$RESPONSE" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
         if [ -n "$TOKEN" ]; then
-            print_success "Login successful"
+            print_success "Login successful" >&2
             echo "$TOKEN"
             return 0
         fi
     fi
 
-    print_error "Login failed: $RESPONSE"
+    print_error "Login failed: $RESPONSE" >&2
     return 1
 }
 
@@ -89,18 +93,15 @@ create_user() {
 
     print_info "Creating user: $username ($display_name)"
 
+    # Build JSON body with proper escaping
+    local json_body
+    json_body=$(printf '{"username": "%s", "display_name": "%s", "email": "%s", "password": "%s", "is_active": true, "create_in_authentik": true, "role_names": ["%s"]}' \
+        "$username" "$display_name" "$email" "$password" "$DEFAULT_ROLE")
+
     RESPONSE=$(curl -s -X POST "${API_URL}/admin/users" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${token}" \
-        -d "{
-            \"username\": \"${username}\",
-            \"display_name\": \"${display_name}\",
-            \"email\": \"${email}\",
-            \"password\": \"${password}\",
-            \"is_active\": true,
-            \"create_in_authentik\": true,
-            \"role_names\": [\"${DEFAULT_ROLE}\"]
-        }")
+        --data-raw "$json_body")
 
     if echo "$RESPONSE" | grep -q '"success":true'; then
         if echo "$RESPONSE" | grep -q '"warning"'; then
@@ -128,12 +129,14 @@ echo "======================================="
 echo "  LLARS User Provisioning"
 echo "======================================="
 echo ""
+echo "Project URL: $PROJECT_URL"
+echo "Auth URL: $AUTH_URL"
 echo "API URL: $API_URL"
 echo "Default Role: $DEFAULT_ROLE"
 echo ""
 
 # Get auth token
-TOKEN=$(get_auth_token)
+TOKEN=$(get_auth_token) || true
 if [ -z "$TOKEN" ]; then
     print_error "Could not obtain auth token. Exiting."
     exit 1
@@ -153,9 +156,9 @@ for username in "${!USERS[@]}"; do
     IFS=':' read -r display_name email password <<< "${USERS[$username]}"
 
     if create_user "$username" "$display_name" "$email" "$password" "$TOKEN"; then
-        ((CREATED++))
+        CREATED=$((CREATED + 1))
     else
-        ((FAILED++))
+        FAILED=$((FAILED + 1))
     fi
 
     # Small delay to avoid rate limiting

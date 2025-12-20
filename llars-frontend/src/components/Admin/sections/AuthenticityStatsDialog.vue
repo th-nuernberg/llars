@@ -2,447 +2,465 @@
   <v-dialog
     v-model="dialogVisible"
     :fullscreen="isFullscreen"
-    :max-width="isFullscreen ? undefined : '1000'"
+    :max-width="isFullscreen ? undefined : '1100'"
     scrollable
-    persistent
   >
     <v-card class="stats-dialog">
-      <!-- Header -->
-      <v-card-title class="d-flex align-center pa-4">
-        <v-icon class="mr-2" color="primary">mdi-chart-bar</v-icon>
-        <div>
-          <span class="text-h6">{{ scenario?.name || 'Statistiken' }}</span>
-          <div class="text-caption text-medium-emphasis">Fake/Echt Szenario Statistiken</div>
+      <!-- Header with gradient accent -->
+      <div class="dialog-header">
+        <div class="header-content">
+          <div class="header-icon">
+            <v-icon size="28">mdi-chart-box</v-icon>
+          </div>
+          <div class="header-text">
+            <h2 class="header-title">{{ scenario?.name || 'Statistiken' }}</h2>
+            <span class="header-subtitle">Fake/Echt Szenario Auswertung</span>
+          </div>
         </div>
-        <v-spacer />
-        <LIconBtn
-          :icon="isFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
-          :tooltip="isFullscreen ? 'Vollbild beenden' : 'Vollbild'"
-          @click="toggleFullscreen"
-        />
-        <LIconBtn icon="mdi-close" tooltip="Schließen" @click="close" />
-      </v-card-title>
-
-      <v-divider />
+        <div class="header-actions">
+          <LIconBtn
+            :icon="isFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
+            :tooltip="isFullscreen ? 'Vollbild beenden' : 'Vollbild'"
+            @click="toggleFullscreen"
+          />
+          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="close" />
+        </div>
+      </div>
 
       <!-- Loading State -->
-      <v-card-text v-if="loading" class="pa-8 text-center">
-        <v-progress-circular indeterminate color="primary" size="48" />
-        <div class="text-body-1 mt-4 text-medium-emphasis">Statistiken werden geladen...</div>
-      </v-card-text>
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner">
+          <v-progress-circular indeterminate color="primary" size="56" width="4" />
+        </div>
+        <p class="loading-text">Statistiken werden geladen...</p>
+      </div>
 
       <!-- Error State -->
-      <v-card-text v-else-if="error" class="pa-8">
-        <v-alert type="error" variant="tonal">
-          {{ error }}
-        </v-alert>
-      </v-card-text>
+      <div v-else-if="error" class="error-state">
+        <div class="error-icon">
+          <v-icon size="48" color="error">mdi-alert-circle-outline</v-icon>
+        </div>
+        <p class="error-text">{{ error }}</p>
+        <LBtn variant="primary" prepend-icon="mdi-refresh" @click="fetchStats">
+          Erneut versuchen
+        </LBtn>
+      </div>
 
       <!-- Stats Content -->
-      <v-card-text v-else class="stats-content" :class="{ 'fullscreen-content': isFullscreen }">
-        <!-- Overview Cards -->
-        <div class="overview-grid mb-6">
-          <!-- Krippendorff's Alpha Card -->
-          <v-card variant="outlined" class="stat-card">
-            <v-card-text class="pa-4">
-              <div class="d-flex align-center mb-2">
-                <v-icon color="primary" class="mr-2">mdi-chart-bell-curve</v-icon>
-                <span class="text-body-2 text-medium-emphasis">Krippendorff's Alpha</span>
-              </div>
-              <div class="d-flex align-center">
-                <span class="text-h4 font-weight-bold" :class="alphaColorClass">
+      <div v-else class="stats-content" :class="{ 'fullscreen-content': isFullscreen }">
+        <!-- Key Metrics Row -->
+        <div class="metrics-grid">
+          <!-- Krippendorff's Alpha -->
+          <div class="metric-card metric-alpha">
+            <div class="metric-icon" :class="alphaIconClass">
+              <v-icon>mdi-chart-bell-curve-cumulative</v-icon>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">Krippendorff's Alpha</span>
+              <div class="metric-value-row">
+                <span class="metric-value" :class="alphaColorClass">
                   {{ formatAlpha(stats?.krippendorff_alpha) }}
                 </span>
-                <LTag :variant="alphaVariant" size="sm" class="ml-3">
+                <LTag :variant="alphaVariant" size="sm">
                   {{ stats?.alpha_interpretation || 'N/A' }}
                 </LTag>
               </div>
-              <div class="text-caption text-medium-emphasis mt-1">
-                Inter-Rater-Reliabilität
-              </div>
-            </v-card-text>
-          </v-card>
+              <span class="metric-hint">Inter-Rater-Reliabilität</span>
+            </div>
+          </div>
 
-          <!-- Accuracy Card -->
-          <v-card variant="outlined" class="stat-card">
-            <v-card-text class="pa-4">
-              <div class="d-flex align-center mb-2">
-                <v-icon color="success" class="mr-2">mdi-target</v-icon>
-                <span class="text-body-2 text-medium-emphasis">Gesamtgenauigkeit</span>
-              </div>
-              <div class="d-flex align-center">
-                <span class="text-h4 font-weight-bold text-success">
+          <!-- Accuracy -->
+          <div class="metric-card metric-accuracy">
+            <div class="metric-icon icon-success">
+              <v-icon>mdi-bullseye-arrow</v-icon>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">Gesamtgenauigkeit</span>
+              <div class="metric-value-row">
+                <span class="metric-value text-success">
                   {{ stats?.overall_accuracy != null ? stats.overall_accuracy + '%' : 'N/A' }}
                 </span>
               </div>
-              <div class="text-caption text-medium-emphasis mt-1">
-                Korrekte Einschätzungen vs. Ground Truth
-              </div>
-            </v-card-text>
-          </v-card>
+              <span class="metric-hint">vs. Ground Truth</span>
+            </div>
+          </div>
 
-          <!-- Progress Card -->
-          <v-card variant="outlined" class="stat-card">
-            <v-card-text class="pa-4">
-              <div class="d-flex align-center mb-2">
-                <v-icon color="info" class="mr-2">mdi-progress-check</v-icon>
-                <span class="text-body-2 text-medium-emphasis">Gesamtfortschritt</span>
+          <!-- Progress -->
+          <div class="metric-card metric-progress">
+            <div class="metric-icon icon-accent">
+              <v-icon>mdi-percent-circle</v-icon>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">Fortschritt</span>
+              <div class="metric-value-row">
+                <span class="metric-value text-accent">{{ overallProgress }}%</span>
               </div>
-              <div class="d-flex align-center">
-                <span class="text-h4 font-weight-bold text-info">
-                  {{ overallProgress }}%
-                </span>
-              </div>
-              <v-progress-linear
-                :model-value="overallProgress"
-                color="info"
-                height="6"
-                rounded
-                class="mt-2"
-              />
-            </v-card-text>
-          </v-card>
-
-          <!-- Threads Card -->
-          <v-card variant="outlined" class="stat-card">
-            <v-card-text class="pa-4">
-              <div class="d-flex align-center mb-2">
-                <v-icon color="secondary" class="mr-2">mdi-forum</v-icon>
-                <span class="text-body-2 text-medium-emphasis">Konversationen</span>
-              </div>
-              <div class="text-h4 font-weight-bold">
-                {{ stats?.total_threads || 0 }}
-              </div>
-              <div class="text-caption text-medium-emphasis mt-1">
-                <span class="text-success">{{ stats?.ground_truth_stats?.real_count || 0 }} Echt</span>
-                <span class="mx-1">•</span>
-                <span class="text-error">{{ stats?.ground_truth_stats?.fake_count || 0 }} Fake</span>
-              </div>
-            </v-card-text>
-          </v-card>
-        </div>
-
-        <!-- Vote Distribution -->
-        <v-card variant="outlined" class="mb-6">
-          <v-card-title class="text-subtitle-1 pa-4 pb-2">
-            <v-icon class="mr-2" size="small">mdi-chart-pie</v-icon>
-            Abstimmungsverteilung
-          </v-card-title>
-          <v-card-text class="pa-4 pt-0">
-            <div class="vote-distribution">
-              <div class="vote-bar">
-                <div
-                  class="vote-segment vote-real"
-                  :style="{ width: votePercentage('real') + '%' }"
-                >
-                  <span v-if="votePercentage('real') > 10">{{ stats?.vote_distribution?.real || 0 }}</span>
-                </div>
-                <div
-                  class="vote-segment vote-fake"
-                  :style="{ width: votePercentage('fake') + '%' }"
-                >
-                  <span v-if="votePercentage('fake') > 10">{{ stats?.vote_distribution?.fake || 0 }}</span>
-                </div>
-                <div
-                  class="vote-segment vote-pending"
-                  :style="{ width: votePercentage('pending') + '%' }"
-                >
-                  <span v-if="votePercentage('pending') > 10">{{ stats?.vote_distribution?.pending || 0 }}</span>
-                </div>
-              </div>
-              <div class="vote-legend mt-3">
-                <div class="legend-item">
-                  <span class="legend-dot bg-success"></span>
-                  <span>Echt ({{ stats?.vote_distribution?.real || 0 }})</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-dot bg-error"></span>
-                  <span>Fake ({{ stats?.vote_distribution?.fake || 0 }})</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-dot bg-grey"></span>
-                  <span>Ausstehend ({{ stats?.vote_distribution?.pending || 0 }})</span>
+              <div class="progress-bar-container">
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill" :style="{ width: overallProgress + '%' }"></div>
                 </div>
               </div>
             </div>
-          </v-card-text>
-        </v-card>
+          </div>
 
-        <!-- User Stats Table -->
-        <v-card variant="outlined">
-          <v-card-title class="text-subtitle-1 pa-4 pb-2 d-flex align-center">
-            <v-icon class="mr-2" size="small">mdi-account-group</v-icon>
-            Benutzer-Fortschritt
-            <v-spacer />
-            <v-text-field
-              v-model="userSearch"
-              density="compact"
-              variant="outlined"
-              placeholder="Suchen..."
-              prepend-inner-icon="mdi-magnify"
-              hide-details
-              class="search-field"
-              clearable
-            />
-          </v-card-title>
-          <v-card-text class="pa-0">
-            <v-data-table
-              :headers="userHeaders"
-              :items="filteredUsers"
-              :items-per-page="isFullscreen ? 15 : 5"
-              class="user-stats-table"
-              density="comfortable"
-            >
-              <!-- Username Column -->
-              <template v-slot:item.username="{ item }">
-                <div class="d-flex align-center">
-                  <v-avatar size="32" :color="getAvatarColor(item.username)" class="mr-2">
-                    <span class="text-caption text-white">{{ item.username.charAt(0).toUpperCase() }}</span>
-                  </v-avatar>
-                  <div>
-                    <div class="font-weight-medium">{{ item.username }}</div>
-                    <LTag :variant="item.role === 'rater' ? 'primary' : 'gray'" size="sm">
-                      {{ item.role === 'rater' ? 'Bewerter' : 'Betrachter' }}
-                    </LTag>
-                  </div>
-                </div>
-              </template>
+          <!-- Threads -->
+          <div class="metric-card metric-threads">
+            <div class="metric-icon icon-secondary">
+              <v-icon>mdi-message-text-outline</v-icon>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">Konversationen</span>
+              <div class="metric-value-row">
+                <span class="metric-value">{{ stats?.total_threads || 0 }}</span>
+              </div>
+              <div class="thread-breakdown">
+                <span class="breakdown-item real">
+                  <span class="breakdown-dot"></span>
+                  {{ stats?.ground_truth_stats?.real_count || 0 }} Echt
+                </span>
+                <span class="breakdown-item fake">
+                  <span class="breakdown-dot"></span>
+                  {{ stats?.ground_truth_stats?.fake_count || 0 }} Fake
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              <!-- Progress Column -->
-              <template v-slot:item.progress="{ item }">
-                <div class="progress-cell">
-                  <v-progress-linear
-                    :model-value="item.progress_percent"
-                    :color="getProgressColor(item.progress_percent)"
-                    height="8"
-                    rounded
-                    class="mb-1"
-                  />
-                  <div class="text-caption">
-                    {{ item.voted_count }} / {{ item.total_threads }}
-                    <span class="text-medium-emphasis">({{ item.progress_percent }}%)</span>
-                  </div>
-                </div>
-              </template>
+        <!-- Vote Distribution Section -->
+        <div class="section-card">
+          <div class="section-header">
+            <v-icon class="section-icon">mdi-chart-donut</v-icon>
+            <h3 class="section-title">Abstimmungsverteilung</h3>
+          </div>
+          <div class="vote-distribution">
+            <div class="vote-bar">
+              <div
+                class="vote-segment vote-real"
+                :style="{ width: votePercentage('real') + '%' }"
+                :class="{ 'has-label': votePercentage('real') > 12 }"
+              >
+                <span class="segment-label" v-if="votePercentage('real') > 12">
+                  {{ stats?.vote_distribution?.real || 0 }}
+                </span>
+              </div>
+              <div
+                class="vote-segment vote-fake"
+                :style="{ width: votePercentage('fake') + '%' }"
+                :class="{ 'has-label': votePercentage('fake') > 12 }"
+              >
+                <span class="segment-label" v-if="votePercentage('fake') > 12">
+                  {{ stats?.vote_distribution?.fake || 0 }}
+                </span>
+              </div>
+              <div
+                class="vote-segment vote-pending"
+                :style="{ width: votePercentage('pending') + '%' }"
+                :class="{ 'has-label': votePercentage('pending') > 12 }"
+              >
+                <span class="segment-label" v-if="votePercentage('pending') > 12">
+                  {{ stats?.vote_distribution?.pending || 0 }}
+                </span>
+              </div>
+            </div>
+            <div class="vote-legend">
+              <div class="legend-item">
+                <span class="legend-dot real"></span>
+                <span class="legend-text">Echt</span>
+                <span class="legend-count">{{ stats?.vote_distribution?.real || 0 }}</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot fake"></span>
+                <span class="legend-text">Fake</span>
+                <span class="legend-count">{{ stats?.vote_distribution?.fake || 0 }}</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot pending"></span>
+                <span class="legend-text">Ausstehend</span>
+                <span class="legend-count">{{ stats?.vote_distribution?.pending || 0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              <!-- Accuracy Column -->
-              <template v-slot:item.accuracy="{ item }">
-                <div v-if="item.accuracy_percent != null" class="d-flex align-center">
-                  <v-icon
-                    :color="item.accuracy_percent >= 70 ? 'success' : item.accuracy_percent >= 50 ? 'warning' : 'error'"
-                    size="small"
-                    class="mr-1"
-                  >
-                    {{ item.accuracy_percent >= 70 ? 'mdi-check-circle' : item.accuracy_percent >= 50 ? 'mdi-minus-circle' : 'mdi-close-circle' }}
-                  </v-icon>
-                  <span :class="getAccuracyClass(item.accuracy_percent)">
-                    {{ item.accuracy_percent }}%
-                  </span>
-                  <span class="text-caption text-medium-emphasis ml-2">
-                    ({{ item.correct_count }}/{{ item.correct_count + item.incorrect_count }})
-                  </span>
-                </div>
-                <span v-else class="text-medium-emphasis">—</span>
-              </template>
+        <!-- User Stats Section -->
+        <div class="section-card users-section">
+          <div class="section-header">
+            <v-icon class="section-icon">mdi-account-group</v-icon>
+            <h3 class="section-title">Benutzer-Fortschritt</h3>
+            <div class="section-actions">
+              <v-text-field
+                v-model="userSearch"
+                density="compact"
+                variant="outlined"
+                placeholder="Benutzer suchen..."
+                prepend-inner-icon="mdi-magnify"
+                hide-details
+                class="search-input"
+                clearable
+              />
+            </div>
+          </div>
 
-              <!-- Details Column -->
-              <template v-slot:item.details="{ item }">
-                <LIconBtn
-                  icon="mdi-chevron-right"
-                  size="small"
-                  tooltip="Details anzeigen"
-                  @click="showUserDetails(item)"
-                />
-              </template>
-            </v-data-table>
-          </v-card-text>
-        </v-card>
-
-        <!-- User Detail Panel (Fullscreen only) -->
-        <v-card v-if="isFullscreen && selectedUser" variant="outlined" class="mt-6">
-          <v-card-title class="text-subtitle-1 pa-4 pb-2 d-flex align-center">
-            <v-icon class="mr-2" size="small">mdi-account-details</v-icon>
-            Details: {{ selectedUser.username }}
-            <v-spacer />
-            <LIconBtn icon="mdi-close" size="small" @click="selectedUser = null" />
-          </v-card-title>
-          <v-card-text class="pa-4">
-            <v-row>
-              <!-- Voted Threads -->
-              <v-col cols="12" md="6">
-                <div class="text-subtitle-2 mb-2 d-flex align-center">
-                  <v-icon color="success" size="small" class="mr-1">mdi-check</v-icon>
-                  Bewertet ({{ selectedUser.voted_threads?.length || 0 }})
-                </div>
-                <v-list density="compact" class="thread-list">
-                  <v-list-item
-                    v-for="thread in selectedUser.voted_threads"
-                    :key="thread.thread_id"
-                    class="thread-item"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon
-                        :color="thread.is_correct ? 'success' : 'error'"
-                        size="small"
-                      >
-                        {{ thread.is_correct ? 'mdi-check-circle' : 'mdi-close-circle' }}
+          <div class="users-table-wrapper">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th class="th-user">Benutzer</th>
+                  <th class="th-progress">Fortschritt</th>
+                  <th class="th-accuracy">Genauigkeit</th>
+                  <th class="th-action"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="user in filteredUsers"
+                  :key="user.user_id"
+                  class="user-row"
+                  @click="showUserDetails(user)"
+                >
+                  <td class="td-user">
+                    <div class="user-info">
+                      <div class="user-avatar" :style="{ backgroundColor: getAvatarColor(user.username) }">
+                        {{ user.username.charAt(0).toUpperCase() }}
+                      </div>
+                      <div class="user-details">
+                        <span class="user-name">{{ user.username }}</span>
+                        <LTag :variant="user.role === 'rater' ? 'primary' : 'gray'" size="sm">
+                          {{ user.role === 'rater' ? 'Bewerter' : 'Betrachter' }}
+                        </LTag>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="td-progress">
+                    <div class="progress-cell">
+                      <div class="mini-progress-bar">
+                        <div
+                          class="mini-progress-fill"
+                          :style="{ width: user.progress_percent + '%' }"
+                          :class="getProgressClass(user.progress_percent)"
+                        ></div>
+                      </div>
+                      <span class="progress-text">
+                        {{ user.voted_count }}/{{ user.total_threads }}
+                        <span class="progress-percent">({{ user.progress_percent }}%)</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="td-accuracy">
+                    <div v-if="user.accuracy_percent != null" class="accuracy-cell">
+                      <v-icon :color="getAccuracyColor(user.accuracy_percent)" size="18">
+                        {{ getAccuracyIcon(user.accuracy_percent) }}
                       </v-icon>
-                    </template>
-                    <v-list-item-title class="text-body-2">
-                      {{ thread.subject || `Thread #${thread.thread_id}` }}
-                    </v-list-item-title>
-                    <v-list-item-subtitle>
-                      Stimme: {{ thread.vote }}
-                      <span v-if="thread.confidence"> ({{ thread.confidence }}% sicher)</span>
-                    </v-list-item-subtitle>
-                  </v-list-item>
-                  <v-list-item v-if="!selectedUser.voted_threads?.length">
-                    <v-list-item-title class="text-medium-emphasis">Keine Bewertungen</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-col>
+                      <span class="accuracy-value" :class="getAccuracyClass(user.accuracy_percent)">
+                        {{ user.accuracy_percent }}%
+                      </span>
+                      <span class="accuracy-detail">
+                        ({{ user.correct_count }}/{{ user.correct_count + user.incorrect_count }})
+                      </span>
+                    </div>
+                    <span v-else class="no-data">—</span>
+                  </td>
+                  <td class="td-action">
+                    <LIconBtn
+                      icon="mdi-chevron-right"
+                      size="small"
+                      tooltip="Details"
+                    />
+                  </td>
+                </tr>
+                <tr v-if="!filteredUsers.length">
+                  <td colspan="4" class="empty-row">
+                    <v-icon class="empty-icon">mdi-account-search</v-icon>
+                    <span>Keine Benutzer gefunden</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-              <!-- Pending Threads -->
-              <v-col cols="12" md="6">
-                <div class="text-subtitle-2 mb-2 d-flex align-center">
-                  <v-icon color="warning" size="small" class="mr-1">mdi-clock-outline</v-icon>
-                  Ausstehend ({{ selectedUser.pending_threads?.length || 0 }})
+        <!-- User Detail Panel (Fullscreen) -->
+        <div v-if="isFullscreen && selectedUser" class="section-card user-detail-panel">
+          <div class="section-header">
+            <div class="user-avatar large" :style="{ backgroundColor: getAvatarColor(selectedUser.username) }">
+              {{ selectedUser.username.charAt(0).toUpperCase() }}
+            </div>
+            <div class="detail-user-info">
+              <h3 class="section-title">{{ selectedUser.username }}</h3>
+              <LTag :variant="selectedUser.role === 'rater' ? 'primary' : 'gray'" size="sm">
+                {{ selectedUser.role === 'rater' ? 'Bewerter' : 'Betrachter' }}
+              </LTag>
+            </div>
+            <div class="section-actions">
+              <LIconBtn icon="mdi-close" @click="selectedUser = null" />
+            </div>
+          </div>
+
+          <div class="detail-stats-row">
+            <div class="detail-stat">
+              <span class="detail-stat-value">{{ selectedUser.progress_percent }}%</span>
+              <span class="detail-stat-label">Fortschritt</span>
+            </div>
+            <div class="detail-stat">
+              <span class="detail-stat-value">{{ selectedUser.accuracy_percent ?? 'N/A' }}%</span>
+              <span class="detail-stat-label">Genauigkeit</span>
+            </div>
+            <div class="detail-stat">
+              <span class="detail-stat-value">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</span>
+              <span class="detail-stat-label">Bewertet</span>
+            </div>
+          </div>
+
+          <div class="detail-threads-grid">
+            <div class="thread-column">
+              <div class="thread-column-header voted">
+                <v-icon size="18">mdi-check-circle</v-icon>
+                <span>Bewertet ({{ selectedUser.voted_threads?.length || 0 }})</span>
+              </div>
+              <div class="thread-list">
+                <div
+                  v-for="thread in selectedUser.voted_threads"
+                  :key="thread.thread_id"
+                  class="thread-item"
+                >
+                  <v-icon :color="thread.is_correct ? 'success' : 'error'" size="16">
+                    {{ thread.is_correct ? 'mdi-check-circle' : 'mdi-close-circle' }}
+                  </v-icon>
+                  <div class="thread-info">
+                    <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
+                    <div class="thread-meta">
+                      <LTag :variant="thread.vote === 'fake' ? 'danger' : 'success'" size="sm">
+                        {{ thread.vote }}
+                      </LTag>
+                      <span v-if="thread.confidence" class="confidence">{{ thread.confidence }}%</span>
+                    </div>
+                  </div>
                 </div>
-                <v-list density="compact" class="thread-list">
-                  <v-list-item
-                    v-for="thread in selectedUser.pending_threads"
-                    :key="thread.thread_id"
-                    class="thread-item"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon color="grey" size="small">mdi-minus-circle-outline</v-icon>
-                    </template>
-                    <v-list-item-title class="text-body-2">
-                      {{ thread.subject || `Thread #${thread.thread_id}` }}
-                    </v-list-item-title>
-                  </v-list-item>
-                  <v-list-item v-if="!selectedUser.pending_threads?.length">
-                    <v-list-item-title class="text-medium-emphasis">Alle bewertet!</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-      </v-card-text>
+                <div v-if="!selectedUser.voted_threads?.length" class="empty-threads">
+                  Keine Bewertungen
+                </div>
+              </div>
+            </div>
+
+            <div class="thread-column">
+              <div class="thread-column-header pending">
+                <v-icon size="18">mdi-clock-outline</v-icon>
+                <span>Ausstehend ({{ selectedUser.pending_threads?.length || 0 }})</span>
+              </div>
+              <div class="thread-list">
+                <div
+                  v-for="thread in selectedUser.pending_threads"
+                  :key="thread.thread_id"
+                  class="thread-item pending"
+                >
+                  <v-icon color="grey" size="16">mdi-minus-circle-outline</v-icon>
+                  <div class="thread-info">
+                    <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
+                  </div>
+                </div>
+                <div v-if="!selectedUser.pending_threads?.length" class="empty-threads success">
+                  Alle bewertet!
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Footer -->
-      <v-divider />
-      <v-card-actions class="pa-4">
-        <div class="text-caption text-medium-emphasis">
-          <v-icon size="x-small" class="mr-1">mdi-information-outline</v-icon>
-          Krippendorff's Alpha: ≥0.8 = Sehr gut, ≥0.667 = Akzeptabel, ≥0.4 = Moderat
+      <div class="dialog-footer">
+        <div class="footer-info">
+          <v-icon size="14" class="mr-1">mdi-information-outline</v-icon>
+          <span>Alpha: ≥0.8 Sehr gut • ≥0.667 Akzeptabel • ≥0.4 Moderat</span>
         </div>
-        <v-spacer />
         <LBtn variant="cancel" @click="close">Schließen</LBtn>
-      </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 
   <!-- User Details Dialog (Non-fullscreen) -->
-  <v-dialog v-model="userDetailsDialog" max-width="600">
-    <v-card v-if="selectedUser">
-      <v-card-title class="d-flex align-center pa-4">
-        <v-avatar size="40" :color="getAvatarColor(selectedUser.username)" class="mr-3">
-          <span class="text-white">{{ selectedUser.username.charAt(0).toUpperCase() }}</span>
-        </v-avatar>
-        <div>
-          <div class="text-h6">{{ selectedUser.username }}</div>
-          <div class="text-caption text-medium-emphasis">
+  <v-dialog v-model="userDetailsDialog" max-width="650">
+    <v-card v-if="selectedUser" class="user-detail-dialog">
+      <div class="detail-dialog-header">
+        <div class="user-avatar large" :style="{ backgroundColor: getAvatarColor(selectedUser.username) }">
+          {{ selectedUser.username.charAt(0).toUpperCase() }}
+        </div>
+        <div class="detail-user-info">
+          <h3>{{ selectedUser.username }}</h3>
+          <LTag :variant="selectedUser.role === 'rater' ? 'primary' : 'gray'" size="sm">
             {{ selectedUser.role === 'rater' ? 'Bewerter' : 'Betrachter' }}
+          </LTag>
+        </div>
+        <LIconBtn icon="mdi-close" @click="userDetailsDialog = false" />
+      </div>
+
+      <div class="detail-dialog-content">
+        <div class="detail-stats-row compact">
+          <div class="detail-stat">
+            <span class="detail-stat-value">{{ selectedUser.progress_percent }}%</span>
+            <span class="detail-stat-label">Fortschritt</span>
+          </div>
+          <div class="detail-stat">
+            <span class="detail-stat-value">{{ selectedUser.accuracy_percent ?? 'N/A' }}%</span>
+            <span class="detail-stat-label">Genauigkeit</span>
+          </div>
+          <div class="detail-stat">
+            <span class="detail-stat-value">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</span>
+            <span class="detail-stat-label">Bewertet</span>
           </div>
         </div>
-        <v-spacer />
-        <LIconBtn icon="mdi-close" @click="userDetailsDialog = false" />
-      </v-card-title>
-      <v-divider />
-      <v-card-text class="pa-4">
-        <!-- Stats Row -->
-        <div class="d-flex gap-4 mb-4">
-          <v-card variant="tonal" class="flex-1 pa-3">
-            <div class="text-caption text-medium-emphasis">Fortschritt</div>
-            <div class="text-h5 font-weight-bold">{{ selectedUser.progress_percent }}%</div>
-          </v-card>
-          <v-card variant="tonal" class="flex-1 pa-3">
-            <div class="text-caption text-medium-emphasis">Genauigkeit</div>
-            <div class="text-h5 font-weight-bold">{{ selectedUser.accuracy_percent ?? 'N/A' }}%</div>
-          </v-card>
-          <v-card variant="tonal" class="flex-1 pa-3">
-            <div class="text-caption text-medium-emphasis">Bewertet</div>
-            <div class="text-h5 font-weight-bold">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</div>
-          </v-card>
-        </div>
 
-        <!-- Thread Lists -->
-        <v-tabs v-model="detailTab" density="compact" class="mb-4">
-          <v-tab value="voted">
-            <v-icon size="small" class="mr-1">mdi-check</v-icon>
-            Bewertet ({{ selectedUser.voted_threads?.length || 0 }})
-          </v-tab>
-          <v-tab value="pending">
-            <v-icon size="small" class="mr-1">mdi-clock-outline</v-icon>
-            Ausstehend ({{ selectedUser.pending_threads?.length || 0 }})
-          </v-tab>
-        </v-tabs>
+        <LTabs
+          v-model="detailTab"
+          :tabs="[
+            { value: 'voted', label: `Bewertet (${selectedUser.voted_threads?.length || 0})`, icon: 'mdi-check-circle' },
+            { value: 'pending', label: `Ausstehend (${selectedUser.pending_threads?.length || 0})`, icon: 'mdi-clock-outline' }
+          ]"
+          class="detail-tabs"
+        />
 
-        <v-tabs-window v-model="detailTab">
-          <v-tabs-window-item value="voted">
-            <v-list density="compact" class="thread-list">
-              <v-list-item
-                v-for="thread in selectedUser.voted_threads"
-                :key="thread.thread_id"
-              >
-                <template v-slot:prepend>
-                  <v-icon
-                    :color="thread.is_correct ? 'success' : 'error'"
-                    size="small"
-                  >
-                    {{ thread.is_correct ? 'mdi-check-circle' : 'mdi-close-circle' }}
-                  </v-icon>
-                </template>
-                <v-list-item-title>{{ thread.subject || `Thread #${thread.thread_id}` }}</v-list-item-title>
-                <v-list-item-subtitle>
+        <div class="detail-thread-list">
+          <template v-if="detailTab === 'voted'">
+            <div
+              v-for="thread in selectedUser.voted_threads"
+              :key="thread.thread_id"
+              class="thread-item"
+            >
+              <v-icon :color="thread.is_correct ? 'success' : 'error'" size="18">
+                {{ thread.is_correct ? 'mdi-check-circle' : 'mdi-close-circle' }}
+              </v-icon>
+              <div class="thread-info">
+                <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
+                <div class="thread-meta">
                   <LTag :variant="thread.vote === 'fake' ? 'danger' : 'success'" size="sm">
                     {{ thread.vote }}
                   </LTag>
-                  <span v-if="thread.confidence" class="ml-2 text-medium-emphasis">
-                    {{ thread.confidence }}% sicher
-                  </span>
-                </v-list-item-subtitle>
-              </v-list-item>
-              <v-list-item v-if="!selectedUser.voted_threads?.length">
-                <v-list-item-title class="text-medium-emphasis text-center">
-                  Noch keine Bewertungen
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-tabs-window-item>
-
-          <v-tabs-window-item value="pending">
-            <v-list density="compact" class="thread-list">
-              <v-list-item
-                v-for="thread in selectedUser.pending_threads"
-                :key="thread.thread_id"
-              >
-                <template v-slot:prepend>
-                  <v-icon color="grey" size="small">mdi-minus-circle-outline</v-icon>
-                </template>
-                <v-list-item-title>{{ thread.subject || `Thread #${thread.thread_id}` }}</v-list-item-title>
-              </v-list-item>
-              <v-list-item v-if="!selectedUser.pending_threads?.length">
-                <v-list-item-title class="text-medium-emphasis text-center">
-                  Alle Threads bewertet!
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-tabs-window-item>
-        </v-tabs-window>
-      </v-card-text>
+                  <span v-if="thread.confidence" class="confidence">{{ thread.confidence }}% sicher</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="!selectedUser.voted_threads?.length" class="empty-threads">
+              Noch keine Bewertungen
+            </div>
+          </template>
+          <template v-else>
+            <div
+              v-for="thread in selectedUser.pending_threads"
+              :key="thread.thread_id"
+              class="thread-item pending"
+            >
+              <v-icon color="grey" size="18">mdi-minus-circle-outline</v-icon>
+              <div class="thread-info">
+                <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
+              </div>
+            </div>
+            <div v-if="!selectedUser.pending_threads?.length" class="empty-threads success">
+              Alle Threads bewertet!
+            </div>
+          </template>
+        </div>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -506,19 +524,21 @@ const alphaVariant = computed(() => {
 
 const alphaColorClass = computed(() => {
   const alpha = stats.value?.krippendorff_alpha
-  if (alpha == null) return 'text-medium-emphasis'
+  if (alpha == null) return 'text-muted'
   if (alpha >= 0.8) return 'text-success'
-  if (alpha >= 0.667) return 'text-info'
+  if (alpha >= 0.667) return 'text-accent'
   if (alpha >= 0.4) return 'text-warning'
-  return 'text-error'
+  return 'text-danger'
 })
 
-const userHeaders = [
-  { title: 'Benutzer', key: 'username', sortable: true },
-  { title: 'Fortschritt', key: 'progress', sortable: false, width: '200px' },
-  { title: 'Genauigkeit', key: 'accuracy', sortable: true },
-  { title: '', key: 'details', sortable: false, width: '60px', align: 'end' }
-]
+const alphaIconClass = computed(() => {
+  const alpha = stats.value?.krippendorff_alpha
+  if (alpha == null) return 'icon-muted'
+  if (alpha >= 0.8) return 'icon-success'
+  if (alpha >= 0.667) return 'icon-accent'
+  if (alpha >= 0.4) return 'icon-warning'
+  return 'icon-danger'
+})
 
 // Methods
 async function fetchStats() {
@@ -551,21 +571,33 @@ function votePercentage(type) {
   return Math.round((dist[type] || 0) / total * 100)
 }
 
-function getProgressColor(percent) {
-  if (percent >= 80) return 'success'
-  if (percent >= 50) return 'info'
-  if (percent >= 25) return 'warning'
+function getProgressClass(percent) {
+  if (percent >= 80) return 'progress-success'
+  if (percent >= 50) return 'progress-accent'
+  if (percent >= 25) return 'progress-warning'
+  return 'progress-danger'
+}
+
+function getAccuracyColor(percent) {
+  if (percent >= 70) return 'success'
+  if (percent >= 50) return 'warning'
   return 'error'
 }
 
+function getAccuracyIcon(percent) {
+  if (percent >= 70) return 'mdi-check-circle'
+  if (percent >= 50) return 'mdi-minus-circle'
+  return 'mdi-close-circle'
+}
+
 function getAccuracyClass(percent) {
-  if (percent >= 70) return 'text-success font-weight-bold'
-  if (percent >= 50) return 'text-warning font-weight-bold'
-  return 'text-error font-weight-bold'
+  if (percent >= 70) return 'accuracy-good'
+  if (percent >= 50) return 'accuracy-moderate'
+  return 'accuracy-poor'
 }
 
 function getAvatarColor(username) {
-  const colors = ['primary', 'secondary', 'info', 'success', 'warning', 'error']
+  const colors = ['#b0ca97', '#D1BC8A', '#88c4c8', '#98d4bb', '#a8c5e2', '#e8c87a']
   const index = username.charCodeAt(0) % colors.length
   return colors[index]
 }
@@ -600,70 +632,303 @@ watch(() => props.modelValue, (newVal) => {
 </script>
 
 <style scoped>
+/* LLARS Design Variables */
 .stats-dialog {
+  --llars-primary: #b0ca97;
+  --llars-secondary: #D1BC8A;
+  --llars-accent: #88c4c8;
+  --llars-success: #98d4bb;
+  --llars-warning: #e8c87a;
+  --llars-danger: #e8a087;
+  --llars-radius: 16px 4px 16px 4px;
+  --llars-radius-sm: 8px 2px 8px 2px;
+
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+  overflow: hidden;
+  border-radius: var(--llars-radius) !important;
 }
 
-.stats-content {
-  overflow-y: auto;
-  padding: 24px;
+/* Header */
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
+  color: white;
 }
 
-.fullscreen-content {
-  max-height: none;
-  padding: 32px;
-}
-
-.overview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.header-content {
+  display: flex;
+  align-items: center;
   gap: 16px;
 }
 
-.stat-card {
-  border-radius: var(--llars-radius-sm, 8px 2px 8px 2px);
+.header-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--llars-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.header-subtitle {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.header-actions :deep(.v-btn) {
+  color: white !important;
+}
+
+/* Loading & Error States */
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px;
+  gap: 16px;
+}
+
+.loading-text,
+.error-text {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 1rem;
+}
+
+.error-icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(232, 160, 135, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Content */
+.stats-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.fullscreen-content {
+  padding: 32px;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--llars-radius-sm);
+  padding: 20px;
+  display: flex;
+  gap: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--llars-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metric-icon.icon-success { background: rgba(152, 212, 187, 0.2); color: #4a9f7e; }
+.metric-icon.icon-accent { background: rgba(136, 196, 200, 0.2); color: #5a9a9e; }
+.metric-icon.icon-secondary { background: rgba(209, 188, 138, 0.2); color: #9a8a5a; }
+.metric-icon.icon-warning { background: rgba(232, 200, 122, 0.2); color: #9a8a4a; }
+.metric-icon.icon-danger { background: rgba(232, 160, 135, 0.2); color: #c87a6a; }
+.metric-icon.icon-muted { background: rgba(0, 0, 0, 0.05); color: #999; }
+
+.metric-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.metric-label {
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 500;
+}
+
+.metric-value-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.metric-value.text-success { color: #4a9f7e; }
+.metric-value.text-accent { color: #5a9a9e; }
+.metric-value.text-warning { color: #c9a84a; }
+.metric-value.text-danger { color: #c87a6a; }
+.metric-value.text-muted { color: #999; }
+
+.metric-hint {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.progress-bar-container {
+  margin-top: 4px;
+}
+
+.progress-bar-track {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--llars-accent);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.thread-breakdown {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.breakdown-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.breakdown-item.real .breakdown-dot { background: var(--llars-success); }
+.breakdown-item.fake .breakdown-dot { background: var(--llars-danger); }
+
+/* Section Cards */
+.section-card {
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--llars-radius-sm);
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.section-icon {
+  color: var(--llars-primary);
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.section-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.search-input {
+  max-width: 200px;
+}
+
+.search-input :deep(.v-field) {
+  border-radius: var(--llars-radius-sm) !important;
+}
+
+/* Vote Distribution */
 .vote-distribution {
-  padding: 8px 0;
+  padding: 20px;
 }
 
 .vote-bar {
   display: flex;
-  height: 32px;
-  border-radius: 6px;
+  height: 40px;
+  border-radius: var(--llars-radius-sm);
   overflow: hidden;
-  background: rgba(var(--v-theme-on-surface), 0.05);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .vote-segment {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: width 0.3s ease;
+  transition: width 0.5s ease;
   min-width: 0;
 }
 
-.vote-real {
-  background-color: rgb(var(--v-theme-success));
-}
+.vote-segment.vote-real { background: var(--llars-success); }
+.vote-segment.vote-fake { background: var(--llars-danger); }
+.vote-segment.vote-pending { background: #bbb; }
 
-.vote-fake {
-  background-color: rgb(var(--v-theme-error));
-}
-
-.vote-pending {
-  background-color: rgb(var(--v-theme-grey));
+.segment-label {
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .vote-legend {
   display: flex;
   gap: 24px;
+  margin-top: 16px;
   flex-wrap: wrap;
 }
 
@@ -671,56 +936,379 @@ watch(() => props.modelValue, (newVal) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.875rem;
 }
 
 .legend-dot {
   width: 12px;
   height: 12px;
-  border-radius: 50%;
+  border-radius: 4px 2px 4px 2px;
 }
 
-.search-field {
-  max-width: 200px;
+.legend-dot.real { background: var(--llars-success); }
+.legend-dot.fake { background: var(--llars-danger); }
+.legend-dot.pending { background: #bbb; }
+
+.legend-text {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.7);
 }
 
-.progress-cell {
-  min-width: 150px;
+.legend-count {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.9);
 }
 
-.thread-list {
-  max-height: 300px;
-  overflow-y: auto;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border-radius: 8px;
+/* Users Table */
+.users-table-wrapper {
+  overflow-x: auto;
 }
 
-.thread-item {
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.thread-item:last-child {
+.users-table th {
+  text-align: left;
+  padding: 12px 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.users-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.user-row {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.user-row:hover {
+  background: rgba(176, 202, 151, 0.08);
+}
+
+.user-row:last-child td {
   border-bottom: none;
 }
 
-:deep(.user-stats-table) {
-  background: transparent;
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-:deep(.user-stats-table tbody tr) {
-  cursor: pointer;
-  transition: background-color 0.2s;
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--llars-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex-shrink: 0;
 }
 
-:deep(.user-stats-table tbody tr:hover) {
-  background-color: rgba(var(--v-theme-primary), 0.05);
+.user-avatar.large {
+  width: 48px;
+  height: 48px;
+  font-size: 1.125rem;
 }
 
-.gap-4 {
-  gap: 16px;
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.flex-1 {
+.user-name {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.progress-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.mini-progress-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.mini-progress-fill.progress-success { background: var(--llars-success); }
+.mini-progress-fill.progress-accent { background: var(--llars-accent); }
+.mini-progress-fill.progress-warning { background: var(--llars-warning); }
+.mini-progress-fill.progress-danger { background: var(--llars-danger); }
+
+.progress-text {
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.progress-percent {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.accuracy-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accuracy-value {
+  font-weight: 600;
+}
+
+.accuracy-value.accuracy-good { color: #4a9f7e; }
+.accuracy-value.accuracy-moderate { color: #c9a84a; }
+.accuracy-value.accuracy-poor { color: #c87a6a; }
+
+.accuracy-detail {
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.no-data {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.empty-row {
+  text-align: center;
+  padding: 40px 20px !important;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.empty-icon {
+  margin-right: 8px;
+  opacity: 0.5;
+}
+
+/* User Detail Panel */
+.user-detail-panel {
+  margin-top: 24px;
+}
+
+.detail-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   flex: 1;
+}
+
+.detail-stats-row {
+  display: flex;
+  gap: 24px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.detail-stats-row.compact {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border-radius: var(--llars-radius-sm);
+}
+
+.detail-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.detail-stat-label {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-threads-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+}
+
+.thread-column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--llars-radius-sm);
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+
+.thread-column-header.voted {
+  background: rgba(152, 212, 187, 0.15);
+  color: #4a9f7e;
+}
+
+.thread-column-header.pending {
+  background: rgba(232, 200, 122, 0.15);
+  color: #9a8a4a;
+}
+
+.thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.thread-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.thread-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.thread-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.thread-subject {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confidence {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.empty-threads {
+  padding: 24px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.4);
+  font-size: 0.875rem;
+}
+
+.empty-threads.success {
+  color: #4a9f7e;
+}
+
+/* Footer */
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* User Detail Dialog */
+.user-detail-dialog {
+  border-radius: var(--llars-radius) !important;
+  overflow: hidden;
+}
+
+.detail-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
+  color: white;
+}
+
+.detail-dialog-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.detail-dialog-header :deep(.v-btn) {
+  color: white !important;
+}
+
+.detail-dialog-content {
+  padding: 20px;
+}
+
+.detail-tabs {
+  margin-bottom: 16px;
+}
+
+.detail-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-threads-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vote-legend {
+    gap: 16px;
+  }
+
+  .detail-stats-row {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
 }
 </style>

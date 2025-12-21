@@ -14,6 +14,11 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     return getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   }
 
+  const getCollabColor = () => {
+    if (typeof window === 'undefined') return null
+    return getAuthStorageItem(AUTH_STORAGE_KEYS.collabColor) || null
+  }
+
   const clearAuthAndRedirectToLogin = () => {
     clearAuthStorage()
     try {
@@ -29,7 +34,10 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
   const initializeSocket = () => {
     socket.value = io(import.meta.env.VITE_API_BASE_URL, {
       path: '/collab/socket.io/',
-      auth: { token: getAuthToken() },
+      auth: {
+        token: getAuthToken(),
+        color: getCollabColor()  // Send persisted collab color
+      },
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000

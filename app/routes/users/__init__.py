@@ -16,6 +16,7 @@ from routes.auth import data_bp as users_bp
 
 # Import route handlers (registers endpoints on users_bp)
 from . import user_admin_routes
+from . import user_settings_routes
 
 __all__ = ['users_bp']
 

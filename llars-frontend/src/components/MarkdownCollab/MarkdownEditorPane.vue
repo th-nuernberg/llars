@@ -85,7 +85,7 @@ const isConnected = ref(false)
 const remoteCursors = ref({})
 let cursorSendTimer = null
 
-const { tokenParsed } = useAuth()
+const { tokenParsed, collabColor } = useAuth()
 const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
 
 const roomId = computed(() => props.document?.yjs_doc_id || `markdown_${props.document?.id}`)
@@ -178,12 +178,25 @@ function updateDecorations() {
   if (applyingDecorations) return
   const decorations = []
 
-  // Character-level git diff highlighting (PyCharm-style)
+  // Character-level git diff highlighting with user colors
   const currentContent = view.value.state.doc.toString()
   const diffs = computeCharacterDiffs(currentContent)
 
   if (diffs.length > 0) {
-    const { decorations: diffDecos, deletedLines } = diffsToDecorations(diffs, view.value)
+    // Convert Yjs Map to plain object for color lookup
+    const highlightsData = {}
+    if (yhighlights) {
+      try {
+        yhighlights.forEach((value, key) => {
+          highlightsData[key] = value
+        })
+      } catch {
+        // yhighlights might not be iterable yet
+      }
+    }
+
+    // Pass highlights data to get user colors for each insertion
+    const { decorations: diffDecos, deletedLines } = diffsToDecorations(diffs, view.value, highlightsData)
     decorations.push(...diffDecos)
     deletedLinesRef.value = deletedLines
   } else {
@@ -283,7 +296,7 @@ function syncEditorFromYjs() {
   }
 }
 
-function updateLocalHighlights(cmUpdate, userColor) {
+function updateLocalHighlights(cmUpdate) {
   if (!yhighlights) return
   const changedLines = new Set()
   cmUpdate.changes.iterChanges((fromA, toA, fromB, toB) => {
@@ -291,6 +304,9 @@ function updateLocalHighlights(cmUpdate, userColor) {
     const endLine = cmUpdate.state.doc.lineAt(toB).number
     for (let ln = startLine; ln <= endLine; ln += 1) changedLines.add(ln)
   })
+
+  // Use persisted collab color from auth, fallback to socket-assigned color
+  const userColor = collabColor.value || users.value?.[socket.value?.id]?.color || '#4ECDC4'
 
   for (const ln of changedLines) {
     yhighlights.set(String(ln), { username: username.value, color: userColor, ts: Date.now() })
@@ -395,8 +411,6 @@ function initEditorIfNeeded() {
             return
           }
 
-          const userColor = users.value?.[socket.value?.id]?.color || '#4ECDC4'
-
           // Apply CM changes to Yjs text and update git highlights in one transaction
           const changes = []
           update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
@@ -412,7 +426,7 @@ function initEditorIfNeeded() {
               if (delLen > 0) ytext.delete(ch.from, delLen)
               if (ch.insert) ytext.insert(ch.from, ch.insert)
             }
-            updateLocalHighlights(update, userColor)
+            updateLocalHighlights(update)
           }, 'cm')
 
           emit('content-change', update.state.doc.toString())
@@ -618,11 +632,14 @@ onUnmounted(() => {
   display: inline-block;
 }
 
-/* Git diff highlighting - character level */
+/* Git diff highlighting - character level with underline */
 :global(.cm-diff-insert) {
-  background: rgba(72, 187, 120, 0.4) !important;
+  background: rgba(72, 187, 120, 0.35) !important;
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgba(72, 187, 120, 0.5);
+  text-decoration: underline;
+  text-decoration-color: rgba(72, 187, 120, 0.8);
+  text-underline-offset: 2px;
 }
 
 /* Diff gutter styling */
@@ -637,5 +654,10 @@ onUnmounted(() => {
   height: 100%;
   background: rgba(245, 101, 101, 0.8);
   border-radius: 1px;
+}
+
+/* Real-time user edit line highlighting */
+:global(.cm-user-edit-line) {
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 </style>

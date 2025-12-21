@@ -30,7 +30,8 @@ export const AUTH_STORAGE_KEYS = Object.freeze({
   refreshToken: 'auth_refreshToken',
   idToken: 'auth_idToken',
   roles: 'auth_llars_roles',
-  avatarSeed: 'auth_avatar_seed'
+  avatarSeed: 'auth_avatar_seed',
+  collabColor: 'auth_collab_color'
 })
 
 export const getAuthStorageItem = (key) => {

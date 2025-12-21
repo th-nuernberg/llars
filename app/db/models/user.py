@@ -31,6 +31,7 @@ class User(db.Model):
     is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     avatar_seed: Mapped[Optional[str]] = mapped_column(db.String(32), nullable=True, default=generate_avatar_seed)
+    collab_color: Mapped[Optional[str]] = mapped_column(db.String(7), nullable=True)  # #RRGGBB format
 
     group = db.relationship('UserGroup', backref='users')
 

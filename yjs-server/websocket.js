@@ -250,8 +250,8 @@ function setupSocketHandlers(io) {
 
       const roomObj = getOrCreateRoom(room);
 
-      // Weise dem Benutzer eine Farbe zu
-      const userColor = getRandomColor();
+      // Use persisted color from handshake auth, or fall back to random color
+      const userColor = socket.handshake?.auth?.color || getRandomColor();
       roomObj.users[socket.id] = {
         username,
         userId,

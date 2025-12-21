@@ -56,8 +56,16 @@ def get_or_create_user(username: str):
     Returns:
         User object from database
     """
+    import random
     from db.db import db
     from db.tables import User, UserGroup
+
+    # Color palette for collaboration highlighting
+    COLLAB_COLORS = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+        '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB',
+        '#E74C3C', '#2ECC71', '#F39C12', '#1ABC9C'
+    ]
 
     user = User.query.filter_by(username=username).first()
     if not user:
@@ -65,16 +73,20 @@ def get_or_create_user(username: str):
         default_group = UserGroup.query.filter_by(name='Standard').first()
         group_id = default_group.id if default_group else 1
 
+        # Assign random collab color
+        collab_color = random.choice(COLLAB_COLORS)
+
         # Create new user
         user = User(
             username=username,
             password_hash='',  # Auth via Authentik, no local password
             api_key=str(uuid.uuid4()),
-            group_id=group_id
+            group_id=group_id,
+            collab_color=collab_color
         )
         db.session.add(user)
         db.session.commit()
-        logger.info(f"Created new user from Authentik login: {username}")
+        logger.info(f"Created new user from Authentik login: {username} with collab_color={collab_color}")
         try:
             from services.system_event_service import SystemEventService
 

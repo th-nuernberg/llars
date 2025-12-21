@@ -92,10 +92,26 @@ export function useGitDiff() {
   }
 
   /**
+   * Helper to convert hex color to rgba
+   */
+  function rgbaFromHex(hex, alpha = 0.35) {
+    if (!hex || typeof hex !== 'string') return `rgba(72, 187, 120, ${alpha})` // fallback green
+    const raw = hex.replace('#', '')
+    if (raw.length !== 6) return `rgba(72, 187, 120, ${alpha})`
+    const r = parseInt(raw.slice(0, 2), 16)
+    const g = parseInt(raw.slice(2, 4), 16)
+    const b = parseInt(raw.slice(4, 6), 16)
+    return `rgba(${r},${g},${b},${alpha})`
+  }
+
+  /**
    * Convert diffs to CodeMirror decorations for inline highlighting
+   * @param {Array} diffs - The diff array from computeCharacterDiffs
+   * @param {EditorView} view - The CodeMirror view
+   * @param {Object|null} highlightsData - Plain object with user highlights per line { "lineNo": { color, username, ts } }
    * Returns { decorations: Decoration[], deletedLines: Set<number> }
    */
-  function diffsToDecorations(diffs, view) {
+  function diffsToDecorations(diffs, view, highlightsData = null) {
     if (!diffs || diffs.length === 0 || !view) {
       return { decorations: [], deletedLines: new Set() }
     }
@@ -109,7 +125,7 @@ export function useGitDiff() {
         // Unchanged text - just advance position
         currentPos += text.length
       } else if (op === DIFF_INSERT) {
-        // Inserted text - highlight with green background
+        // Inserted text - highlight with user color
         const from = currentPos
         const to = currentPos + text.length
 
@@ -119,11 +135,33 @@ export function useGitDiff() {
         const safeTo = Math.min(to, docLen)
 
         if (safeFrom < safeTo) {
-          decorations.push(
-            Decoration.mark({
-              class: 'cm-diff-insert'
-            }).range(safeFrom, safeTo)
-          )
+          // Get user color from highlights data for this line
+          let userColor = null
+          try {
+            const line = view.state.doc.lineAt(safeFrom)
+            const lineHighlight = highlightsData?.[String(line.number)]
+            userColor = lineHighlight?.color || null
+          } catch {
+            // ignore
+          }
+
+          // Use user color if available, otherwise use default green
+          if (userColor) {
+            decorations.push(
+              Decoration.mark({
+                attributes: {
+                  style: `background: ${rgbaFromHex(userColor, 0.35)}; border-radius: 2px; box-shadow: 0 0 0 1px ${rgbaFromHex(userColor, 0.5)}; text-decoration: underline; text-decoration-color: ${userColor}; text-underline-offset: 2px;`
+                }
+              }).range(safeFrom, safeTo)
+            )
+          } else {
+            // Fallback to CSS class (green)
+            decorations.push(
+              Decoration.mark({
+                class: 'cm-diff-insert'
+              }).range(safeFrom, safeTo)
+            )
+          }
         }
 
         currentPos += text.length

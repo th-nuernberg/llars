@@ -17,6 +17,7 @@ const idToken = ref(null);
 const tokenParsed = ref(null);
 const llarsRoles = ref([]);
 const avatarSeed = ref(null);
+const collabColor = ref(null);
 
 const parseJwt = (jwtToken) => {
   return decodeJwtPayload(jwtToken);
@@ -62,6 +63,12 @@ const loadTokensFromStorage = () => {
     avatarSeed.value = storedAvatarSeed;
   }
 
+  // Load collab color from storage
+  const storedCollabColor = getAuthStorageItem(AUTH_STORAGE_KEYS.collabColor);
+  if (storedCollabColor) {
+    collabColor.value = storedCollabColor;
+  }
+
   if (token.value) {
     tokenParsed.value = parseJwt(token.value);
     if (!tokenParsed.value) {
@@ -75,6 +82,7 @@ const loadTokensFromStorage = () => {
       tokenParsed.value = null;
       llarsRoles.value = [];
       avatarSeed.value = null;
+      collabColor.value = null;
       clearStoredTokens();
     }
   }
@@ -105,12 +113,77 @@ const fetchUserProfile = async () => {
   }
 };
 
+// Fetch user settings (collab_color, avatar_seed)
+const fetchUserSettings = async () => {
+  if (!token.value) return null;
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const response = await axios.get(`${baseUrl}/api/users/me/settings`, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    const { collab_color, avatar_seed } = response.data;
+
+    if (collab_color) {
+      collabColor.value = collab_color;
+      setAuthStorageItem(AUTH_STORAGE_KEYS.collabColor, collab_color);
+    }
+
+    if (avatar_seed) {
+      avatarSeed.value = avatar_seed;
+      setAuthStorageItem(AUTH_STORAGE_KEYS.avatarSeed, avatar_seed);
+    }
+
+    return response.data;
+  } catch (e) {
+    console.error('Failed to fetch user settings:', e);
+    return null;
+  }
+};
+
+// Update user's collab color
+const updateCollabColor = async (color) => {
+  if (!token.value) return false;
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const response = await axios.patch(`${baseUrl}/api/users/me/settings`, {
+      collab_color: color
+    }, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    if (response.data.success) {
+      collabColor.value = color;
+      if (color) {
+        setAuthStorageItem(AUTH_STORAGE_KEYS.collabColor, color);
+      } else {
+        // Remove from storage if null
+        setAuthStorageItem(AUTH_STORAGE_KEYS.collabColor, '');
+      }
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error('Failed to update collab color:', e);
+    return false;
+  }
+};
+
 // Initialize on load
 loadTokensFromStorage();
 
-// Fetch profile if we have a token but no avatar seed
+// Fetch profile and settings if we have a token
 if (token.value && !avatarSeed.value) {
   fetchUserProfile();
+}
+if (token.value && !collabColor.value) {
+  fetchUserSettings();
 }
 
 export const useAuth = () => {
@@ -230,6 +303,7 @@ export const useAuth = () => {
     tokenParsed.value = null;
     llarsRoles.value = [];
     avatarSeed.value = null;
+    collabColor.value = null;
 
     clearStoredTokens();
 
@@ -253,10 +327,13 @@ export const useAuth = () => {
     isAdmin,
     tokenParsed,
     avatarSeed,
+    collabColor,
     login,
     logout,
     getToken,
     isTokenExpired,
-    fetchUserProfile
+    fetchUserProfile,
+    fetchUserSettings,
+    updateCollabColor
   };
 };

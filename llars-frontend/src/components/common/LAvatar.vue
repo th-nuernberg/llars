@@ -60,7 +60,7 @@ const props = defineProps({
    */
   variant: {
     type: String,
-    default: 'bottts'
+    default: 'bottts-neutral'
   },
   /**
    * Background color (optional - uses LLARS colors by default)

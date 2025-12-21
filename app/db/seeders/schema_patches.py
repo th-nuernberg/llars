@@ -46,6 +46,70 @@ def _ensure_column(db, table_name: str, column_name: str, column_definition_sql:
     return True
 
 
+def _unique_constraint_exists(db, table_name: str, constraint_name: str) -> bool:
+    result = db.session.execute(
+        text(
+            """
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND CONSTRAINT_NAME = :constraint_name
+              AND CONSTRAINT_TYPE = 'UNIQUE'
+            """
+        ),
+        {"table_name": table_name, "constraint_name": constraint_name},
+    ).scalar()
+    return bool(result and int(result) > 0)
+
+
+def _unique_index_exists(db, table_name: str, column_names: list[str]) -> bool:
+    rows = db.session.execute(
+        text(
+            """
+            SELECT INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX
+            FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND NON_UNIQUE = 0
+            ORDER BY INDEX_NAME, SEQ_IN_INDEX
+            """
+        ),
+        {"table_name": table_name},
+    ).fetchall()
+    if not rows:
+        return False
+
+    index_columns: dict[str, list[str]] = {}
+    for row in rows:
+        index_columns.setdefault(row[0], []).append(row[1])
+
+    for columns in index_columns.values():
+        if columns == column_names:
+            return True
+
+    return False
+
+
+def _ensure_unique_constraint(
+    db, table_name: str, constraint_name: str, column_names: list[str]
+) -> bool:
+    if _unique_constraint_exists(db, table_name, constraint_name):
+        return False
+    if _unique_index_exists(db, table_name, column_names):
+        return False
+
+    columns_sql = ", ".join(f"`{column}`" for column in column_names)
+    db.session.execute(
+        text(
+            f"ALTER TABLE `{table_name}` "
+            f"ADD CONSTRAINT `{constraint_name}` UNIQUE ({columns_sql})"
+        )
+    )
+    db.session.commit()
+    return True
+
+
 def apply_schema_patches(db) -> None:
     """Apply required schema patches (safe to run multiple times)."""
     try:
@@ -131,6 +195,34 @@ def apply_schema_patches(db) -> None:
             table_name="rating_scenarios",
             column_name="config_json",
             column_definition_sql="`config_json` JSON NULL",
+        )
+
+        # Chatbot conversations/messages: session scoping + agent traces
+        changed |= _ensure_unique_constraint(
+            db,
+            table_name="chatbot_conversations",
+            constraint_name="uq_chatbot_session_per_bot",
+            column_names=["chatbot_id", "session_id"],
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="chatbot_messages",
+            column_name="agent_trace",
+            column_definition_sql="`agent_trace` JSON NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="chatbot_messages",
+            column_name="stream_metadata",
+            column_definition_sql="`stream_metadata` JSON NULL",
+        )
+
+        # RAG: embedding provenance
+        changed |= _ensure_column(
+            db,
+            table_name="rag_document_chunks",
+            column_name="embedding_dimensions",
+            column_definition_sql="`embedding_dimensions` INT NULL",
         )
 
         if changed:

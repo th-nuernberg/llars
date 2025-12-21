@@ -1304,7 +1304,11 @@ function openFullscreen(type) {
  * Initialize Socket.IO connection and event handlers
  */
 function initSocket() {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const rawBase = import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+  const trimmedBase = String(rawBase || '').replace(/\/+$/, '')
+  const baseUrl = trimmedBase.endsWith('/api')
+    ? trimmedBase.slice(0, -4)
+    : (trimmedBase || (typeof window !== 'undefined' ? window.location.origin : ''))
   const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
   const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 

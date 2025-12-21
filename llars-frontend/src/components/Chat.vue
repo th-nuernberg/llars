@@ -233,8 +233,13 @@ onMounted(() => {
   loadMessages();
 
   const username = localStorage.getItem('username') || 'Gast';
+  const rawBase = import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const trimmedBase = String(rawBase || '').replace(/\/+$/, '');
+  const socketBase = trimmedBase.endsWith('/api')
+    ? trimmedBase.slice(0, -4)
+    : (trimmedBase || (typeof window !== 'undefined' ? window.location.origin : ''));
 
-  socket.value = io(`${import.meta.env.VITE_API_BASE_URL}`, {
+  socket.value = io(socketBase, {
     path: '/socket.io/',
     transports: socketioTransports,
     upgrade: socketioEnableWebsocket,

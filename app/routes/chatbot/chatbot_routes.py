@@ -7,7 +7,8 @@ import uuid
 import logging
 import json
 from flask import Blueprint, request, jsonify, Response, stream_with_context
-from db.tables import Chatbot
+from db.tables import Chatbot, ChatbotConversation
+from db.db import db
 from services.rag.document_service import DocumentService
 from decorators.permission_decorator import require_permission, require_any_permission
 from decorators.error_handler import handle_errors
@@ -328,6 +329,7 @@ def chat(chatbot_id):
         message = request.form.get('message', '')
         session_id = request.form.get('session_id', str(uuid.uuid4()))
         include_sources = request.form.get('include_sources', 'true').lower() == 'true'
+        conversation_id = request.form.get('conversation_id', type=int)
 
         # Process uploaded files
         processed_files = []
@@ -359,6 +361,7 @@ def chat(chatbot_id):
         message = data.get('message', '')
         session_id = data.get('session_id', str(uuid.uuid4()))
         include_sources = data.get('include_sources', True)
+        conversation_id = data.get('conversation_id')
         processed_files = None
 
     if not message.strip() and not processed_files:
@@ -370,7 +373,8 @@ def chat(chatbot_id):
         session_id=session_id,
         username=username,
         include_sources=include_sources,
-        files=processed_files
+        files=processed_files,
+        conversation_id=conversation_id
     )
     return jsonify({'success': True, **result})
 
@@ -451,6 +455,29 @@ def get_conversations(chatbot_id):
     })
 
 
+@chatbot_blueprint.route('/<int:chatbot_id>/conversations', methods=['POST'])
+@require_permission('feature:chatbots:view')
+@handle_errors(logger_name='chatbot')
+def create_conversation(chatbot_id):
+    """Create a new conversation for a chatbot (scoped to current user)."""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    data = request.get_json() or {}
+    title = data.get('title')
+    session_id = data.get('session_id')
+
+    convo = ChatService.create_conversation(
+        chatbot_id=chatbot_id,
+        username=username,
+        title=title,
+        session_id=session_id
+    )
+
+    return jsonify({'success': True, 'conversation': convo}), 201
+
+
 @chatbot_blueprint.route('/<int:chatbot_id>/conversations/<int:conversation_id>', methods=['GET'])
 @require_permission('feature:chatbots:view')
 @handle_errors(logger_name='chatbot')
@@ -461,10 +488,48 @@ def get_conversation(chatbot_id, conversation_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     # SECURITY: Verify user owns this conversation
-    conversation = ChatService.get_conversation(conversation_id, username=username)
+    conversation = ChatService.get_conversation(conversation_id, username=username, chatbot_id=chatbot_id)
     if not conversation or conversation['chatbot_id'] != chatbot_id:
         return jsonify({'success': False, 'error': 'Conversation not found'}), 404
     return jsonify({'success': True, 'conversation': conversation})
+
+
+@chatbot_blueprint.route('/<int:chatbot_id>/conversations/<int:conversation_id>', methods=['PATCH'])
+@require_permission('feature:chatbots:view')
+@handle_errors(logger_name='chatbot')
+def update_conversation(chatbot_id, conversation_id):
+    """Update a conversation (title / active flag) scoped to current user."""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    data = request.get_json() or {}
+    convo = ChatbotConversation.query.filter_by(id=conversation_id, chatbot_id=chatbot_id).first()
+    if not convo or (convo.username and convo.username != username):
+        return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+
+    updated = False
+    if 'title' in data:
+        convo.title = data.get('title')
+        updated = True
+    if 'is_active' in data:
+        convo.is_active = bool(data.get('is_active'))
+        updated = True
+
+    if updated:
+        db.session.commit()
+
+    return jsonify({'success': True, 'conversation': {
+        'id': convo.id,
+        'session_id': convo.session_id,
+        'chatbot_id': convo.chatbot_id,
+        'username': convo.username,
+        'title': convo.title,
+        'message_count': convo.message_count,
+        'is_active': convo.is_active,
+        'started_at': convo.started_at.isoformat() if convo.started_at else None,
+        'last_message_at': convo.last_message_at.isoformat() if convo.last_message_at else None,
+    }})
 
 
 @chatbot_blueprint.route('/<int:chatbot_id>/conversations/<int:conversation_id>', methods=['DELETE'])
@@ -477,7 +542,7 @@ def delete_conversation(chatbot_id, conversation_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     # SECURITY: Verify user owns this conversation before getting details
-    conversation = ChatService.get_conversation(conversation_id, username=username)
+    conversation = ChatService.get_conversation(conversation_id, username=username, chatbot_id=chatbot_id)
     if not conversation or conversation['chatbot_id'] != chatbot_id:
         return jsonify({'success': False, 'error': 'Conversation not found'}), 404
 

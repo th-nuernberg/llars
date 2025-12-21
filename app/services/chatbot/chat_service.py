@@ -135,7 +135,8 @@ class ChatService:
         session_id: str,
         username: str = None,
         include_sources: bool = True,
-        files: List[Dict[str, Any]] = None
+        files: List[Dict[str, Any]] = None,
+        conversation_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Main method for chat interaction with RAG support and file handling.
@@ -153,7 +154,7 @@ class ChatService:
         start_time = time.time()
 
         # 1. Get or create conversation
-        conversation = self._get_or_create_conversation(session_id, username)
+        conversation = self._get_or_create_conversation(session_id, username, conversation_id)
 
         # 2. Save user message
         user_msg = self._save_message(conversation.id, ChatbotMessageRole.USER, message)
@@ -161,8 +162,11 @@ class ChatService:
         # 3. Get RAG context if enabled
         rag_context = ""
         sources = []
+        retrieval_time_ms = None
         if self.chatbot.rag_enabled and self.chatbot.collections:
+            retrieval_start = time.time()
             rag_context, sources = self._get_multi_collection_context(message)
+            retrieval_time_ms = int((time.time() - retrieval_start) * 1000)
 
         # If RAG is enabled but no context could be retrieved, avoid hallucinations.
         # File uploads count as additional context, so only short-circuit when there are no files.
@@ -180,7 +184,12 @@ class ChatService:
                 rag_sources=[],
                 tokens_input=tokens_input,
                 tokens_output=tokens_output,
-                response_time_ms=response_time_ms
+                response_time_ms=response_time_ms,
+                stream_metadata={
+                    "retrieval_time_ms": retrieval_time_ms,
+                    "sources_count": len(sources),
+                    "mode": "standard"
+                }
             )
 
             conversation.message_count += 2
@@ -234,7 +243,12 @@ class ChatService:
             rag_sources=sources_to_save,
             tokens_input=tokens_input,
             tokens_output=tokens_output,
-            response_time_ms=response_time_ms
+            response_time_ms=response_time_ms,
+            stream_metadata={
+                "retrieval_time_ms": retrieval_time_ms,
+                "sources_count": len(sources),
+                "mode": "standard"
+            }
         )
 
         # 8. Update conversation
@@ -393,11 +407,35 @@ class ChatService:
             logger.error(f"[ChatService] Streaming test_chat failed: {e}")
             yield {"error": str(e)}
 
-    def _get_or_create_conversation(self, session_id: str, username: str = None) -> ChatbotConversation:
+    def _get_or_create_conversation(
+        self,
+        session_id: str,
+        username: str = None,
+        conversation_id: Optional[int] = None
+    ) -> ChatbotConversation:
         """
         Get existing conversation or create a new one.
         """
-        conversation = ChatbotConversation.query.filter_by(session_id=session_id).first()
+        # Prefer explicit conversation_id to avoid session collisions
+        if conversation_id:
+            conversation = ChatbotConversation.query.filter_by(
+                id=conversation_id,
+                chatbot_id=self.chatbot.id
+            ).first()
+            if conversation and conversation.username and username and conversation.username != username:
+                logger.warning(f"[ChatService] User {username} attempted to access conversation {conversation_id} owned by {conversation.username}")
+                conversation = None
+            if conversation:
+                return conversation
+
+        conversation = ChatbotConversation.query.filter_by(
+            chatbot_id=self.chatbot.id,
+            session_id=session_id
+        ).first()
+
+        # If a conversation exists but belongs to a different user, isolate by creating a new one
+        if conversation and conversation.username and username and conversation.username != username:
+            conversation = None
 
         if not conversation:
             conversation = ChatbotConversation(
@@ -421,7 +459,9 @@ class ChatService:
         rag_sources: List[Dict] = None,
         tokens_input: int = None,
         tokens_output: int = None,
-        response_time_ms: int = None
+        response_time_ms: int = None,
+        agent_trace: Optional[List[Dict[str, Any]]] = None,
+        stream_metadata: Optional[Dict[str, Any]] = None
     ) -> ChatbotMessage:
         """
         Save a message to the database.
@@ -434,7 +474,9 @@ class ChatService:
             rag_sources=rag_sources,
             tokens_input=tokens_input,
             tokens_output=tokens_output,
-            response_time_ms=response_time_ms
+            response_time_ms=response_time_ms,
+            agent_trace=agent_trace,
+            stream_metadata=stream_metadata
         )
         db.session.add(message)
         db.session.flush()
@@ -574,6 +616,7 @@ class ChatService:
                     logger.debug(f"[ChatService] Lexical fallback skipped for collection {collection.id}: {e}")
 
         if not all_results and not lexical_results:
+            logger.warning(f"[ChatService] No RAG results for chatbot {self.chatbot.id} (query='{query[:50]}...') using model {self.rag_pipeline.model_name if self.rag_pipeline else 'none'}")
             return "", []
 
         # Sort by score and take top K
@@ -897,7 +940,7 @@ class ChatService:
         ]
 
     @staticmethod
-    def get_conversation(conversation_id: int, username: str = None) -> Optional[Dict[str, Any]]:
+    def get_conversation(conversation_id: int, username: str = None, chatbot_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """
         Get a single conversation with all messages.
 
@@ -908,7 +951,10 @@ class ChatService:
         Returns:
             Conversation dict or None if not found/not authorized
         """
-        conversation = ChatbotConversation.query.get(conversation_id)
+        query = ChatbotConversation.query.filter_by(id=conversation_id)
+        if chatbot_id:
+            query = query.filter_by(chatbot_id=chatbot_id)
+        conversation = query.first()
         if not conversation:
             return None
 
@@ -941,10 +987,45 @@ class ChatService:
                     'tokens_output': m.tokens_output,
                     'response_time_ms': m.response_time_ms,
                     'user_rating': m.user_rating,
-                    'created_at': m.created_at.isoformat() if m.created_at else None
+                    'created_at': m.created_at.isoformat() if m.created_at else None,
+                    'agent_trace': m.agent_trace,
+                    'stream_metadata': m.stream_metadata
                 }
                 for m in messages
             ]
+        }
+
+    @staticmethod
+    def create_conversation(
+        chatbot_id: int,
+        username: str = None,
+        title: Optional[str] = None,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a new conversation for a chatbot, scoped to the requesting user.
+        """
+        session = session_id or str(uuid.uuid4())
+        conversation = ChatbotConversation(
+            chatbot_id=chatbot_id,
+            session_id=session,
+            username=username,
+            title=title,
+            is_active=True
+        )
+        db.session.add(conversation)
+        db.session.commit()
+
+        return {
+            'id': conversation.id,
+            'session_id': conversation.session_id,
+            'chatbot_id': conversation.chatbot_id,
+            'username': conversation.username,
+            'title': conversation.title,
+            'message_count': conversation.message_count,
+            'is_active': conversation.is_active,
+            'started_at': conversation.started_at.isoformat() if conversation.started_at else None,
+            'last_message_at': conversation.last_message_at.isoformat() if conversation.last_message_at else None
         }
 
     @staticmethod

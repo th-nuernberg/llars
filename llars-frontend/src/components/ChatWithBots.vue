@@ -120,6 +120,31 @@
           </div>
         </div>
 
+        <!-- Conversation Selector -->
+        <div v-if="selectedChatbot" class="conversation-bar">
+          <div class="conversation-actions">
+            <v-btn size="small" color="primary" variant="tonal" @click="createConversation()">
+              <v-icon start size="16">mdi-plus</v-icon>
+              Neuer Chat
+            </v-btn>
+          </div>
+          <div class="conversation-list">
+            <v-skeleton-loader v-if="isLoading('conversations')" type="chip" width="140" />
+            <div v-else-if="conversations.length === 0" class="text-medium-emphasis text-caption">Keine Chats</div>
+            <v-chip
+              v-for="conv in conversations"
+              :key="conv.id"
+              class="conversation-chip"
+              :color="selectedConversation?.id === conv.id ? 'primary' : undefined"
+              :variant="selectedConversation?.id === conv.id ? 'elevated' : 'tonal'"
+              @click="selectConversation(conv)"
+            >
+              <v-icon start size="14">mdi-chat</v-icon>
+              {{ conv.title || `Chat ${conv.id}` }}
+            </v-chip>
+          </div>
+        </div>
+
         <!-- Empty State -->
         <div v-if="!selectedChatbot" class="empty-state">
           <v-icon size="80" color="grey-lighten-1">mdi-robot-confused</v-icon>
@@ -618,7 +643,7 @@ const {
 } = useChatMessages()
 
 // Skeleton Loading
-const { isLoading, withLoading } = useSkeletonLoading(['chatbots'])
+const { isLoading, withLoading } = useSkeletonLoading(['chatbots', 'conversations'])
 
 // Panel Resize - for sources panel
 const {
@@ -644,6 +669,8 @@ const router = useRouter()
 const chatbots = ref([])
 const selectedChatbot = ref(null)
 const capabilities = ref(null)
+const conversations = ref([])
+const selectedConversation = ref(null)
 
 // Chat state
 const messages = ref([])
@@ -787,6 +814,81 @@ async function maybeAutoSelectFromRoute() {
   await selectChatbot(bot)
 }
 
+// ==================== CONVERSATIONS ====================
+
+async function loadConversations(autoSelect = true) {
+  if (!selectedChatbot.value) return
+  await withLoading('conversations', async () => {
+    try {
+      const response = await axios.get(`/api/chatbots/${selectedChatbot.value.id}/conversations`)
+      conversations.value = response.data.conversations || []
+    } catch (error) {
+      console.error('Error loading conversations:', error)
+      conversations.value = []
+      showSnackbar('Fehler beim Laden der Chats', 'error')
+    }
+  })
+
+  if (conversations.value.length === 0) {
+    await createConversation()
+    return
+  }
+
+  if (autoSelect && conversations.value.length > 0) {
+    await selectConversation(conversations.value[0])
+  }
+}
+
+async function createConversation(title = null) {
+  if (!selectedChatbot.value) return
+  try {
+    const response = await axios.post(`/api/chatbots/${selectedChatbot.value.id}/conversations`, {
+      title: title || 'Neuer Chat'
+    })
+    if (response.data.success) {
+      const convo = response.data.conversation
+      conversations.value = [convo, ...conversations.value]
+      await selectConversation(convo)
+    }
+  } catch (error) {
+    console.error('Error creating conversation:', error)
+    showSnackbar('Fehler beim Anlegen des Chats', 'error')
+  }
+}
+
+async function selectConversation(conversation) {
+  if (!conversation || !selectedChatbot.value) return
+  selectedConversation.value = conversation
+  sessionId.value = conversation.session_id
+  await loadConversationMessages(conversation.id)
+}
+
+async function loadConversationMessages(conversationId) {
+  if (!selectedChatbot.value || !conversationId) return
+  try {
+    const response = await axios.get(`/api/chatbots/${selectedChatbot.value.id}/conversations/${conversationId}`)
+    if (response.data.success) {
+      const convo = response.data.conversation
+      selectedConversation.value = {
+        ...convo
+      }
+      sessionId.value = convo.session_id
+      messages.value = (convo.messages || []).map(m => ({
+        id: m.id,
+        sender: m.role === 'user' ? 'user' : 'bot',
+        content: m.content,
+        sources: m.rag_sources,
+        timestamp: m.created_at ? new Date(m.created_at).toLocaleTimeString() : '',
+        streaming: false
+      }))
+    }
+  } catch (error) {
+    console.error('Error loading conversation messages:', error)
+    showSnackbar('Fehler beim Laden des Chats', 'error')
+    messages.value = []
+  }
+}
+
 /**
  * Select a chatbot and load its chat history
  */
@@ -794,7 +896,9 @@ async function selectChatbot(bot) {
   selectedChatbot.value = bot
   messages.value = []
   selectedFiles.value = []
-  sessionId.value = crypto.randomUUID()
+  sessionId.value = null
+  selectedConversation.value = null
+  conversations.value = []
   // Reset agent reasoning display
   agentStatus.value = null
   if (agentReasoningRef.value?.reset) {
@@ -812,18 +916,7 @@ async function selectChatbot(bot) {
     capabilities.value = { vision: false, rag: bot.rag_enabled }
   }
 
-  // Load from localStorage if exists
-  const storageKey = `chat_${bot.id}`
-  const saved = localStorage.getItem(storageKey)
-  if (saved) {
-    try {
-      const data = JSON.parse(saved)
-      messages.value = data.messages || []
-      sessionId.value = data.sessionId || sessionId.value
-    } catch (e) {
-      console.error('Error loading saved chat:', e)
-    }
-  }
+  await loadConversations()
 }
 
 // ==================== CHAT PERSISTENCE ====================
@@ -832,29 +925,14 @@ async function selectChatbot(bot) {
  * Save current chat to localStorage
  */
 function saveChat() {
-  if (!selectedChatbot.value) return
-  const storageKey = `chat_${selectedChatbot.value.id}`
-  localStorage.setItem(storageKey, JSON.stringify({
-    messages: messages.value,
-    sessionId: sessionId.value
-  }))
+  // Persistence now handled server-side; keep function as no-op for compatibility
 }
 
 /**
  * Clear current chat and localStorage
  */
-function clearChat() {
-  messages.value = []
-  if (selectedChatbot.value) {
-    const storageKey = `chat_${selectedChatbot.value.id}`
-    localStorage.removeItem(storageKey)
-  }
-  sessionId.value = crypto.randomUUID()
-  // Reset agent reasoning display
-  agentStatus.value = null
-  if (agentReasoningRef.value?.reset) {
-    agentReasoningRef.value.reset()
-  }
+async function clearChat() {
+  await createConversation()
 }
 
 // ==================== FILE HANDLING ====================
@@ -899,6 +977,12 @@ function removeFile(index) {
 async function sendMessage() {
   if ((!newMessage.value.trim() && selectedFiles.value.length === 0) || isProcessing.value) return
   if (!selectedChatbot.value) return
+  if (!sessionId.value) {
+    sessionId.value = crypto.randomUUID()
+  }
+  if (!selectedConversation.value) {
+    await createConversation()
+  }
 
   const userMessage = newMessage.value.trim()
   const files = [...selectedFiles.value]
@@ -926,6 +1010,7 @@ async function sendMessage() {
       chatbot_id: selectedChatbot.value.id,
       message: userMessage,
       session_id: sessionId.value,
+      conversation_id: selectedConversation.value?.id,
       username: null,
       token: getAuthStorageItem(AUTH_STORAGE_KEYS.token)
     })
@@ -942,10 +1027,30 @@ async function sendMessageViaREST(userMessage, files = []) {
       selectedChatbot.value.id,
       userMessage,
       sessionId.value,
-      files
+      files,
+      selectedConversation.value?.id || null
     )
 
     if (result.success) {
+      if (result.sessionId) {
+        sessionId.value = result.sessionId
+      }
+      if (result.conversationId && (!selectedConversation.value || selectedConversation.value.id !== result.conversationId)) {
+        selectedConversation.value = {
+          ...(selectedConversation.value || {}),
+          id: result.conversationId,
+          session_id: result.sessionId || sessionId.value
+        }
+        conversations.value = [
+          {
+            id: result.conversationId,
+            session_id: result.sessionId || sessionId.value,
+            title: selectedConversation.value?.title || 'Chat',
+            message_count: 0
+          },
+          ...conversations.value.filter(c => c.id !== result.conversationId)
+        ]
+      }
       updateBotMessage(
         messages,
         result.content,
@@ -953,7 +1058,9 @@ async function sendMessageViaREST(userMessage, files = []) {
         false,
         result.sources
       )
-      saveChat()
+      if (selectedConversation.value) {
+        selectedConversation.value.message_count = (selectedConversation.value.message_count || 0) + 2
+      }
     } else {
       setBotError(messages)
       showSnackbar(result.error || 'Fehler beim Senden', 'error')
@@ -1241,6 +1348,9 @@ function initSocket() {
           messages.value[lastIdx].sources = currentSources.value
         }
         currentSources.value = []
+        if (selectedConversation.value) {
+          selectedConversation.value.message_count = (selectedConversation.value.message_count || 0) + 2
+        }
         isProcessing.value = false
         saveChat()
         scrollToBottom()
@@ -1251,6 +1361,20 @@ function initSocket() {
   // Completion metadata
   socket.value.on('chatbot:complete', (data) => {
     console.log('Chatbot response complete:', data)
+    if (data.conversation_id && (!selectedConversation.value || selectedConversation.value.id !== data.conversation_id)) {
+      selectedConversation.value = {
+        ...(selectedConversation.value || {}),
+        id: data.conversation_id,
+        session_id: data.session_id || sessionId.value
+      }
+      conversations.value = [
+        { id: data.conversation_id, session_id: data.session_id || sessionId.value, title: selectedConversation.value?.title || 'Chat' },
+        ...conversations.value.filter(c => c.id !== data.conversation_id)
+      ]
+    }
+    if (data.session_id && !sessionId.value) {
+      sessionId.value = data.session_id
+    }
     // Reset agent status on completion
     if (data.mode && data.mode !== 'standard') {
       agentStatus.value = { type: 'complete', ...data }
@@ -1581,6 +1705,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.conversation-bar {
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  gap: 12px;
+}
+
+.conversation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conversation-chip {
+  cursor: pointer;
 }
 
 .empty-state {

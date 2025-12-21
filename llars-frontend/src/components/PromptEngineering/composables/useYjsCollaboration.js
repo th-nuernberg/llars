@@ -96,6 +96,17 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
       setTimeout(() => onUpdateCursor(userId, cursor), 0)
     })
 
+    // Handle color updates from other users
+    socket.value.on('user_color_updated', ({ userId, username, color }) => {
+      if (users.value[userId]) {
+        users.value[userId] = { ...users.value[userId], color }
+      }
+      // Trigger callback if provided (for UI updates)
+      if (options.onColorUpdate) {
+        options.onColorUpdate(userId, color)
+      }
+    })
+
     socket.value.on('disconnect', () => {
       console.log('Disconnected from server')
     })
@@ -122,11 +133,25 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     ydoc.value?.destroy()
   }
 
+  /**
+   * Broadcast color update to all users in the current room
+   * Call this after saving a new color to the database
+   */
+  const updateColor = (newColor) => {
+    if (!socket.value?.connected || !roomId.value) return
+
+    socket.value.emit('update_color', {
+      room: roomId.value,
+      color: newColor
+    })
+  }
+
   return {
     ydoc,
     socket,
     users,
     initialize,
-    cleanup
+    cleanup,
+    updateColor
   }
 }

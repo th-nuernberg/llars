@@ -145,23 +145,16 @@ export function useGitDiff() {
             // ignore
           }
 
-          // Use user color if available, otherwise use default green
-          if (userColor) {
-            decorations.push(
-              Decoration.mark({
-                attributes: {
-                  style: `background: ${rgbaFromHex(userColor, 0.35)}; border-radius: 2px; box-shadow: 0 0 0 1px ${rgbaFromHex(userColor, 0.5)}; text-decoration: underline; text-decoration-color: ${userColor}; text-underline-offset: 2px;`
-                }
-              }).range(safeFrom, safeTo)
-            )
-          } else {
-            // Fallback to CSS class (green)
-            decorations.push(
-              Decoration.mark({
-                class: 'cm-diff-insert'
-              }).range(safeFrom, safeTo)
-            )
-          }
+          // Always use inline style for consistent coloring
+          // Use user color if available, otherwise use a nice green
+          const color = userColor || '#48BB78' // Green fallback
+          decorations.push(
+            Decoration.mark({
+              attributes: {
+                style: `background: ${rgbaFromHex(color, 0.35)}; border-radius: 2px; box-shadow: 0 0 0 1px ${rgbaFromHex(color, 0.5)}; text-decoration: underline; text-decoration-color: ${color}; text-underline-offset: 2px;`
+              }
+            }).range(safeFrom, safeTo)
+          )
         }
 
         currentPos += text.length

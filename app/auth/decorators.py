@@ -73,8 +73,13 @@ def get_or_create_user(username: str):
         default_group = UserGroup.query.filter_by(name='Standard').first()
         group_id = default_group.id if default_group else 1
 
-        # Assign random collab color
-        collab_color = random.choice(COLLAB_COLORS)
+        # Assign unique collab color - prefer one that's not already in use
+        used_colors = set(
+            u.collab_color for u in User.query.with_entities(User.collab_color).all()
+            if u.collab_color
+        )
+        available_colors = [c for c in COLLAB_COLORS if c not in used_colors]
+        collab_color = random.choice(available_colors) if available_colors else random.choice(COLLAB_COLORS)
 
         # Create new user
         user = User(

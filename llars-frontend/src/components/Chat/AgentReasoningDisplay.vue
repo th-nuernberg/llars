@@ -108,7 +108,8 @@ const mode = ref('standard');
 const taskType = ref('lookup');
 
 const visible = computed(() => {
-  return (mode.value && mode.value !== 'standard') || props.isProcessing;
+  // Only render for agent modes (act/react/reflact) when we have steps or are processing
+  return mode.value && mode.value !== 'standard' && (props.isProcessing || steps.value.length > 0 || !!props.agentStatus);
 });
 
 const modeLabel = computed(() => {

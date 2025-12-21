@@ -205,7 +205,7 @@ def _get_rag_images_for_sources(sources):
     return images
 
 
-def _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time):
+def _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time, conversation_id=None):
     """
     Handle streaming chat with agent modes (ACT, ReAct, ReflAct).
 
@@ -230,11 +230,11 @@ def _handle_agent_stream(agent_service, chatbot, user_message, session_id, usern
         final_response = ""
         all_sources = []
         reasoning_steps = []
-        conversation_id = None
+        conversation_id_result = None
         message_id = None
 
         # Stream agent responses
-        for event in agent_service.chat_agent(user_message, session_id, username):
+        for event in agent_service.chat_agent(user_message, session_id, username, conversation_id=conversation_id):
             event_status = event.get("status")
 
             if event_status == "starting":
@@ -359,6 +359,8 @@ def _handle_agent_stream(agent_service, chatbot, user_message, session_id, usern
                 final_response = event.get("full_response", final_response)
                 all_sources = event.get("sources", [])
                 reasoning_steps = event.get("reasoning_steps", reasoning_steps)
+                conversation_id_result = event.get("conversation_id") or conversation_id
+                message_id = event.get("message_id") or message_id
 
         # IMPORTANT: Send the final response content to frontend
         # Agent modes don't stream char-by-char, so we need to send the full response at once
@@ -387,7 +389,10 @@ def _handle_agent_stream(agent_service, chatbot, user_message, session_id, usern
                 "output": len(final_response) // 4
             },
             "response_time_ms": response_time_ms,
-            "reasoning_steps": reasoning_steps
+            "reasoning_steps": reasoning_steps,
+            "conversation_id": conversation_id_result,
+            "session_id": session_id,
+            "message_id": message_id
         }, room=client_id)
 
         # Signal completion
@@ -504,6 +509,7 @@ def register_chatbot_events(socketio):
             chatbot_id = data.get("chatbot_id")
             user_message = data.get("message", "").strip()
             session_id = data.get("session_id")
+            conversation_id = data.get("conversation_id")
             username = username_from_token
 
             if not chatbot_id:
@@ -538,14 +544,14 @@ def register_chatbot_events(socketio):
 
             # Route to agent handler for non-standard modes
             if agent_mode != 'standard':
-                _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time)
+                _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time, conversation_id=conversation_id)
                 return
 
             # Standard mode - use regular ChatService
             chat_service = agent_service  # AgentChatService extends ChatService
 
             # Get or create conversation
-            conversation = chat_service._get_or_create_conversation(session_id, username)
+            conversation = chat_service._get_or_create_conversation(session_id, username, conversation_id)
 
             # Save user message
             chat_service._save_message(conversation.id, ChatbotMessageRole.USER, user_message)

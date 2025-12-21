@@ -464,6 +464,8 @@ class CollectionEmbeddingService:
                                 existing_chunk.end_char = chunk.end_char
                             if not existing_chunk.embedding_model:
                                 existing_chunk.embedding_model = pipeline.model_name
+                            if not existing_chunk.embedding_dimensions:
+                                existing_chunk.embedding_dimensions = getattr(pipeline, "embedding_dimensions", None)
 
                             chunk_id = existing_chunk.vector_id
                             all_vector_ids.append(chunk_id)
@@ -493,6 +495,7 @@ class CollectionEmbeddingService:
                             start_char=chunk.start_char,
                             end_char=chunk.end_char,
                             embedding_model=pipeline.model_name,
+                            embedding_dimensions=getattr(pipeline, "embedding_dimensions", None),
                             embedding_status='completed'
                         )
                         db.session.add(db_chunk)

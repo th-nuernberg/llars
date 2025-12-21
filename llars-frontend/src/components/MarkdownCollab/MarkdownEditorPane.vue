@@ -178,29 +178,60 @@ function updateDecorations() {
   if (applyingDecorations) return
   const decorations = []
 
+  // Convert Yjs Map to plain object for color lookup
+  const highlightsData = {}
+  if (yhighlights) {
+    try {
+      yhighlights.forEach((value, key) => {
+        highlightsData[key] = value
+      })
+    } catch {
+      // yhighlights might not be iterable yet
+    }
+  }
+
   // Character-level git diff highlighting with user colors
   const currentContent = view.value.state.doc.toString()
   const diffs = computeCharacterDiffs(currentContent)
 
   if (diffs.length > 0) {
-    // Convert Yjs Map to plain object for color lookup
-    const highlightsData = {}
-    if (yhighlights) {
-      try {
-        yhighlights.forEach((value, key) => {
-          highlightsData[key] = value
-        })
-      } catch {
-        // yhighlights might not be iterable yet
-      }
-    }
-
     // Pass highlights data to get user colors for each insertion
     const { decorations: diffDecos, deletedLines } = diffsToDecorations(diffs, view.value, highlightsData)
     decorations.push(...diffDecos)
     deletedLinesRef.value = deletedLines
   } else {
     deletedLinesRef.value = new Set()
+  }
+
+  // Real-time activity indicator: subtle left border to show who is editing
+  // This does NOT replace character-level highlighting, just adds a visual cue
+  const now = Date.now()
+  const HIGHLIGHT_DURATION_MS = 15000 // 15 seconds
+  const myUsername = username.value
+
+  for (const [lineNoStr, meta] of Object.entries(highlightsData)) {
+    if (!meta || !meta.ts || !meta.color) continue
+
+    // Only show other users' recent edits (not own edits)
+    if (meta.username === myUsername) continue
+    if (now - meta.ts > HIGHLIGHT_DURATION_MS) continue
+
+    const lineNo = parseInt(lineNoStr, 10)
+    if (isNaN(lineNo) || lineNo < 1 || lineNo > view.value.state.doc.lines) continue
+
+    try {
+      const line = view.value.state.doc.line(lineNo)
+      // Only add a subtle left border - NO background to not interfere with character highlighting
+      decorations.push(
+        Decoration.line({
+          attributes: {
+            style: `border-left: 3px solid ${meta.color}; margin-left: -3px;`
+          }
+        }).range(line.from)
+      )
+    } catch {
+      // Line might not exist
+    }
   }
 
   // Remote cursors / selections
@@ -331,7 +362,14 @@ function updateLocalHighlights(cmUpdate) {
   })
 
   // Use persisted collab color from auth, fallback to socket-assigned color
-  const userColor = collabColor.value || users.value?.[socket.value?.id]?.color || '#4ECDC4'
+  // Ensure we always have a valid color
+  let userColor = collabColor.value
+  if (!userColor && socket.value?.id && users.value?.[socket.value.id]) {
+    userColor = users.value[socket.value.id].color
+  }
+  if (!userColor) {
+    userColor = '#4ECDC4' // Fallback teal
+  }
 
   for (const ln of changedLines) {
     yhighlights.set(String(ln), { username: username.value, color: userColor, ts: Date.now() })
@@ -544,8 +582,24 @@ function refresh() {
 
 defineExpose({ clearHighlights, refresh, refreshBaseline, getCurrentContent })
 
-const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, { autoSync: true })
-const { ydoc, socket, users } = collaboration
+// Callback for when another user updates their color
+function onColorUpdate(userId, newColor) {
+  // Update the remote cursor color if it exists
+  if (remoteCursors.value[userId]) {
+    remoteCursors.value[userId] = {
+      ...remoteCursors.value[userId],
+      color: newColor
+    }
+  }
+  // Update decorations to reflect new color
+  updateDecorations()
+}
+
+const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, {
+  autoSync: true,
+  onColorUpdate
+})
+const { ydoc, socket, users, updateColor } = collaboration
 
 let onSocketConnect = null
 let onSocketDisconnect = null
@@ -597,6 +651,19 @@ watch(
     view.value?.destroy()
     view.value = null
     initEditorIfNeeded()
+  }
+)
+
+// Watch for collab color changes (when user updates their color in settings)
+watch(
+  () => collabColor.value,
+  (newColor) => {
+    if (newColor && socket.value?.connected) {
+      // Broadcast color change to other users
+      updateColor(newColor)
+      // Update local decorations
+      updateDecorations()
+    }
   }
 )
 

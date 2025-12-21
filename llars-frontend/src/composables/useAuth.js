@@ -273,6 +273,13 @@ export const useAuth = () => {
         // ignore - avatar can fall back to username-based seed
       }
 
+      // Fetch user settings (collab_color) immediately after login
+      try {
+        await fetchUserSettings();
+      } catch (e) {
+        // ignore - color can fall back to default
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);

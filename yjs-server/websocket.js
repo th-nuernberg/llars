@@ -335,6 +335,33 @@ function setupSocketHandlers(io) {
       }
     });
 
+    // Handle user color updates (when user changes their color in settings)
+    socket.on('update_color', (data) => {
+      const { room, color } = data;
+      const roomObj = rooms[room];
+      if (!roomObj) return;
+
+      const user = roomObj.users[socket.id];
+      if (!user) return;
+
+      // Update user's color
+      user.color = color;
+
+      // Update cursor color if exists
+      if (roomObj.cursors[socket.id]) {
+        roomObj.cursors[socket.id].color = color;
+      }
+
+      // Broadcast color change to all other users in the room
+      socket.to(room).emit('user_color_updated', {
+        userId: socket.id,
+        username: user.username,
+        color: color
+      });
+
+      console.log(`[Color] User "${user.username}" updated color to ${color} in room "${room}"`);
+    });
+
     socket.on('leave_room', (room) => {
       handleUserLeave(socket, room);
     });

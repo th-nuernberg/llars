@@ -176,6 +176,15 @@ Bei Login wird der User automatisch in der DB erstellt (`get_or_create_user`).
 
 ---
 
+## User Profile (Avatar + Collab Color)
+
+- Einstellungen: `GET/PATCH /api/users/me/settings` (collab_color, avatar_seed, avatar_url, avatar_changes_left)
+- Avatar: `POST/PATCH/DELETE /api/users/me/avatar` (Upload, neues Standardbild, Reset)
+- Avatar-URL: `/api/users/avatar/<avatar_public_id>` (Bildauslieferung)
+- Limit: 3 Avatar-Änderungen pro Tag, Speicherort `app/storage/avatars` (Default)
+
+---
+
 ## Permission System
 
 **Sicherheitsmodell:** Deny-by-Default | User überschreibt Rolle | Deny schlägt Grant

@@ -171,6 +171,7 @@ import { usePromptDetails } from './composables/usePromptDetails';
 import { useYjsCollaboration } from './composables/useYjsCollaboration';
 import { usePromptBlocks } from './composables/usePromptBlocks';
 import { useQuillEditor } from './composables/useQuillEditor';
+import { useAuth } from '@/composables/useAuth';
 
 const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
@@ -206,6 +207,7 @@ const {
 } = useDialogs();
 
 const { promptName, promptOwner, sharedWithUsers, fetchPromptDetails } = usePromptDetails(promptId);
+const auth = useAuth();
 
 // YJS and Socket.IO setup
 const collaboration = useYjsCollaboration(
@@ -215,7 +217,7 @@ const collaboration = useYjsCollaboration(
   (userId, cursor) => updateCursor(userId, cursor)
 );
 
-const { ydoc, socket, users } = collaboration;
+const { ydoc, socket, users, updateColor } = collaboration;
 
 // Blocks management
 const blocksManager = usePromptBlocks(ydoc, roomId, socket, showMessage);
@@ -316,6 +318,15 @@ onMounted(async () => {
     );
   });
 });
+
+watch(
+  () => auth.collabColor.value,
+  (newColor) => {
+    if (newColor && socket.value?.connected) {
+      updateColor(newColor);
+    }
+  }
+);
 
 onUnmounted(() => {
   cleanupAll();

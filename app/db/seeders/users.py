@@ -5,6 +5,7 @@ Seeds user groups, bootstrap admin user, and related data.
 """
 import os
 import uuid
+import random
 
 
 def seed_user_groups(db):
@@ -107,3 +108,32 @@ def seed_avatar_seeds(db) -> None:
     if changed:
         db.session.commit()
         print("✅ Avatar seeds backfilled")
+
+
+def seed_collab_colors(db) -> None:
+    """
+    Ensure all users have a collab color assigned.
+    """
+    from ..tables import User
+    from db.models.user import DEFAULT_COLLAB_COLORS
+
+    users_missing_color = User.query.filter(User.collab_color.is_(None)).all()
+    if not users_missing_color:
+        return
+
+    used_colors = set(
+        u.collab_color for u in User.query.with_entities(User.collab_color).all()
+        if u.collab_color
+    )
+
+    changed = False
+    for user in users_missing_color:
+        available = [c for c in DEFAULT_COLLAB_COLORS if c not in used_colors]
+        color = random.choice(available) if available else random.choice(DEFAULT_COLLAB_COLORS)
+        user.collab_color = color
+        used_colors.add(color)
+        changed = True
+
+    if changed:
+        db.session.commit()
+        print("✅ Collab colors backfilled")

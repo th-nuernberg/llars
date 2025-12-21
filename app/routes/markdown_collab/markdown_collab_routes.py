@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from sqlalchemy import or_
 
 from auth.auth_utils import AuthUtils
@@ -22,6 +22,7 @@ from db.tables import (
     MarkdownCommit,
     MarkdownNodeType,
     MarkdownWorkspaceVisibility,
+    User,
 )
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from decorators.permission_decorator import require_permission
@@ -257,6 +258,7 @@ def add_workspace_members(workspace_id: int):
     existing_usernames = {r.username for r in existing_rows}
 
     created = 0
+    created_usernames = []
     for u in normalized:
         if u in existing_usernames:
             continue
@@ -267,10 +269,25 @@ def add_workspace_members(workspace_id: int):
             added_at=datetime.utcnow(),
         ))
         created += 1
+        created_usernames.append(u)
 
     if created:
         ws.updated_at = datetime.utcnow()
     db.session.commit()
+
+    if created_usernames:
+        socketio = current_app.extensions.get('socketio')
+        if socketio:
+            try:
+                from socketio_handlers.events_markdown_collab import emit_workspace_shared
+                workspace_payload = _workspace_to_dict(ws)
+                for u in created_usernames:
+                    user = User.query.filter_by(username=u).first()
+                    if user:
+                        emit_workspace_shared(socketio, user.id, workspace_payload)
+            except Exception:
+                # Do not fail the request if socket emission fails
+                pass
 
     members = (
         MarkdownWorkspaceMember.query
@@ -584,6 +601,23 @@ def create_commit(document_id: int):
     )
     db.session.add(commit)
     db.session.commit()
+
+    socketio = current_app.extensions.get('socketio')
+    if socketio:
+        try:
+            from socketio_handlers.events_markdown_collab import emit_commit_created
+            emit_commit_created(socketio, document_id, {
+                "id": commit.id,
+                "document_id": commit.document_id,
+                "author_username": commit.author_username,
+                "message": commit.message,
+                "diff_summary": commit.diff_summary,
+                "content_snapshot": commit.content_snapshot,
+                "created_at": commit.created_at.isoformat() if commit.created_at else None,
+            })
+        except Exception:
+            # Do not fail the request if socket emission fails
+            pass
 
     return jsonify({
         "success": True,

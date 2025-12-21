@@ -43,6 +43,8 @@ def register():
     password = data.get('password')
     api_key = data.get('api_key', str(uuid4()))
     group_name = data.get('group')
+    collab_color = data.get('collab_color')
+    avatar_seed = data.get('avatar_seed')
 
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
@@ -55,7 +57,9 @@ def register():
         username=username,
         password=password,
         api_key=api_key,
-        group_name=group_name
+        group_name=group_name,
+        collab_color=collab_color,
+        avatar_seed=avatar_seed
     )
 
     if not success:
@@ -326,5 +330,4 @@ def check_user_exists(username):
     if exists:
         return jsonify({'exists': True}), 200
     return jsonify({'exists': False}), 404
-
 

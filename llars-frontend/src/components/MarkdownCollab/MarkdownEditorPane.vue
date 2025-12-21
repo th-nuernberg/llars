@@ -747,11 +747,11 @@ onUnmounted(() => {
 
 /* Git diff highlighting - character level with underline */
 :global(.cm-diff-insert) {
-  background: rgba(72, 187, 120, 0.35) !important;
+  background: rgba(var(--v-theme-success), 0.2);
   border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(72, 187, 120, 0.5);
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-success), 0.45);
   text-decoration: underline;
-  text-decoration-color: rgba(72, 187, 120, 0.8);
+  text-decoration-color: rgb(var(--v-theme-success));
   text-underline-offset: 2px;
 }
 

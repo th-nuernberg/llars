@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   /**
@@ -29,6 +29,13 @@ const props = defineProps({
    * If not provided, falls back to username-based avatar
    */
   seed: {
+    type: String,
+    default: null
+  },
+  /**
+   * Custom avatar image URL (optional)
+   */
+  src: {
     type: String,
     default: null
   },
@@ -78,7 +85,8 @@ const props = defineProps({
   }
 });
 
-const imageError = ref(false);
+const customFailed = ref(false);
+const generatedFailed = ref(false);
 
 // Size map in pixels
 const sizeMap = {
@@ -114,15 +122,19 @@ const colorFromSeed = computed(() => {
 });
 
 // Build the DiceBear avatar URL
-const avatarUrl = computed(() => {
-  if (imageError.value) return null;
-
+const generatedAvatarUrl = computed(() => {
   const seedValue = props.seed || props.username || 'anonymous';
   const size = sizeMap[props.size] * 2; // 2x for retina
   const bgColor = props.backgroundColor || colorFromSeed.value;
 
   // DiceBear API v7
   return `https://api.dicebear.com/7.x/${props.variant}/svg?seed=${encodeURIComponent(seedValue)}&size=${size}&backgroundColor=${bgColor}`;
+});
+
+const avatarUrl = computed(() => {
+  if (props.src && !customFailed.value) return props.src;
+  if (!generatedFailed.value) return generatedAvatarUrl.value;
+  return null;
 });
 
 // Fallback initial from username
@@ -139,13 +151,32 @@ const avatarStyle = computed(() => {
   return {
     width: `${size}px`,
     height: `${size}px`,
-    backgroundColor: imageError.value ? bgColor : 'transparent'
+    backgroundColor: avatarUrl.value ? 'transparent' : bgColor
   };
 });
 
 const handleImageError = () => {
-  imageError.value = true;
+  if (props.src && !customFailed.value) {
+    customFailed.value = true;
+    return;
+  }
+  generatedFailed.value = true;
 };
+
+watch(
+  () => props.src,
+  () => {
+    customFailed.value = false;
+    generatedFailed.value = false;
+  }
+);
+
+watch(
+  () => [props.seed, props.username, props.variant, props.size, props.backgroundColor],
+  () => {
+    generatedFailed.value = false;
+  }
+);
 </script>
 
 <style scoped>

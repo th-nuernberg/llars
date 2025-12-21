@@ -122,10 +122,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { getSocket } from '@/services/socketService'
 
 const props = defineProps({
   documentId: { type: Number, required: true },
@@ -160,6 +161,45 @@ function formatDate(iso) {
   } catch {
     return iso
   }
+}
+
+let socket = null
+let subscribedDocId = null
+let onSocketConnect = null
+
+function handleCommitCreated(payload) {
+  if (!payload || payload.document_id !== props.documentId) return
+  loadCommits(true)
+  emit('committed')
+}
+
+function setupCommitSocket(documentId) {
+  if (!documentId) return
+  socket = getSocket()
+  if (!socket) return
+
+  socket.on('markdown_collab:commit_created', handleCommitCreated)
+
+  onSocketConnect = () => {
+    socket.emit('markdown_collab:subscribe_document', { document_id: documentId })
+  }
+
+  if (socket.connected) {
+    onSocketConnect()
+  }
+  socket.on('connect', onSocketConnect)
+  subscribedDocId = documentId
+}
+
+function cleanupCommitSocket() {
+  if (!socket) return
+  socket.off('markdown_collab:commit_created', handleCommitCreated)
+  if (onSocketConnect) socket.off('connect', onSocketConnect)
+  if (subscribedDocId) {
+    socket.emit('markdown_collab:unsubscribe_document', { document_id: subscribedDocId })
+  }
+  subscribedDocId = null
+  onSocketConnect = null
 }
 
 async function loadCommits(force = false) {
@@ -214,15 +254,28 @@ async function submitCommit() {
 
 watch(
   () => props.documentId,
-  async () => {
+  async (nextId, prevId) => {
+    if (prevId && prevId !== nextId) {
+      cleanupCommitSocket()
+    }
     commitMessage.value = ''
     commits.value = []
     await loadCommits(true)
+    if (nextId) {
+      setupCommitSocket(nextId)
+    }
   }
 )
 
 onMounted(async () => {
   await loadCommits()
+  if (props.documentId) {
+    setupCommitSocket(props.documentId)
+  }
+})
+
+onUnmounted(() => {
+  cleanupCommitSocket()
 })
 </script>
 

@@ -27,6 +27,7 @@
             <div class="profile-section">
               <LAvatar
                 :seed="avatarSeed"
+                :src="avatarUrl"
                 :username="username"
                 size="xl"
                 class="mr-4"
@@ -54,6 +55,57 @@
                   Benutzer
                 </LTag>
               </div>
+            </div>
+            <div class="avatar-actions">
+              <input
+                ref="avatarInput"
+                type="file"
+                class="d-none"
+                accept="image/png,image/jpeg,image/webp"
+                @change="onAvatarFileSelected"
+              />
+              <div class="text-caption text-medium-emphasis mb-2">
+                {{ avatarChangeHint }}
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <LBtn
+                  variant="secondary"
+                  size="small"
+                  :loading="avatarUploading"
+                  :disabled="!canChangeAvatar"
+                  @click="triggerAvatarUpload"
+                >
+                  Bild hochladen
+                </LBtn>
+                <LBtn
+                  variant="text"
+                  size="small"
+                  :loading="avatarUploading"
+                  :disabled="!canChangeAvatar"
+                  @click="regenerateAvatar"
+                >
+                  Neues Standardbild
+                </LBtn>
+                <LBtn
+                  v-if="avatarUrl"
+                  variant="text"
+                  size="small"
+                  :loading="avatarUploading"
+                  :disabled="!canChangeAvatar"
+                  @click="resetAvatar"
+                >
+                  Standardbild wiederherstellen
+                </LBtn>
+              </div>
+              <v-alert
+                v-if="avatarError"
+                type="error"
+                variant="tonal"
+                density="compact"
+                class="mt-3"
+              >
+                {{ avatarError }}
+              </v-alert>
             </div>
           </v-card>
         </div>
@@ -232,6 +284,9 @@ const {
 } = useAppTheme()
 
 const auth = useAuth()
+const avatarInput = ref(null)
+const avatarUploading = ref(false)
+const avatarError = ref('')
 
 // Collab color presets (LLARS design colors)
 const collabColorPresets = [
@@ -266,10 +321,66 @@ async function saveCollabColor() {
   }
 }
 
+function triggerAvatarUpload() {
+  avatarError.value = ''
+  avatarInput.value?.click()
+}
+
+async function onAvatarFileSelected(event) {
+  const file = event?.target?.files?.[0]
+  if (!file) return
+
+  avatarError.value = ''
+  if (file.size > 5 * 1024 * 1024) {
+    avatarError.value = 'Datei ist zu groß (max. 5MB)'
+    event.target.value = ''
+    return
+  }
+
+  avatarUploading.value = true
+  try {
+    const result = await auth.uploadAvatar(file)
+    if (!result?.success) {
+      avatarError.value = result?.error || 'Profilbild konnte nicht hochgeladen werden'
+    }
+  } finally {
+    avatarUploading.value = false
+    event.target.value = ''
+  }
+}
+
+async function regenerateAvatar() {
+  avatarError.value = ''
+  avatarUploading.value = true
+  try {
+    const result = await auth.regenerateAvatar()
+    if (!result?.success) {
+      avatarError.value = result?.error || 'Standardbild konnte nicht aktualisiert werden'
+    }
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
+async function resetAvatar() {
+  avatarError.value = ''
+  avatarUploading.value = true
+  try {
+    const result = await auth.resetAvatar()
+    if (!result?.success) {
+      avatarError.value = result?.error || 'Profilbild konnte nicht zurückgesetzt werden'
+    }
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
 // Sync collab color when dialog opens
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     selectedCollabColor.value = auth.collabColor.value || null
+    avatarError.value = ''
+    auth.fetchUserSettings()
   }
 })
 
@@ -283,8 +394,25 @@ const username = computed(() => {
 })
 
 const avatarSeed = computed(() => auth.avatarSeed.value)
+const avatarUrl = computed(() => auth.avatarUrl.value)
+const avatarChangesLeft = computed(() => auth.avatarChangesLeft.value)
 const userEmail = computed(() => auth.tokenParsed.value?.email || '')
 const isAdmin = computed(() => auth.isAdmin.value)
+
+const canChangeAvatar = computed(() => {
+  if (avatarChangesLeft.value === null || avatarChangesLeft.value === undefined) return true
+  return avatarChangesLeft.value > 0
+})
+
+const avatarChangeHint = computed(() => {
+  if (avatarChangesLeft.value === null || avatarChangesLeft.value === undefined) {
+    return 'Maximal 3 Änderungen pro Tag'
+  }
+  if (avatarChangesLeft.value <= 0) {
+    return 'Limit erreicht (3 Änderungen/Tag)'
+  }
+  return `Heute noch ${avatarChangesLeft.value} Änderungen`
+})
 
 // Dialog state
 const dialog = computed({
@@ -328,6 +456,10 @@ function closeDialog() {
 
 .profile-info {
   flex: 1;
+}
+
+.avatar-actions {
+  margin-top: 16px;
 }
 
 .theme-chip {

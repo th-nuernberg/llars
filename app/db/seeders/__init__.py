@@ -9,7 +9,7 @@ from .feature_types import initialize_feature_function_types
 from .categories import initialize_consulting_category_types
 from .kaimo import initialize_kaimo_defaults
 from .schema_patches import apply_schema_patches
-from .users import seed_user_groups, seed_bootstrap_admin, seed_avatar_seeds
+from .users import seed_user_groups, seed_bootstrap_admin, seed_avatar_seeds, seed_collab_colors
 from .permissions import initialize_permissions
 from .rag import initialize_rag_system
 from .chatbots import initialize_default_chatbots
@@ -57,6 +57,8 @@ def run_all_seeders(db):
 
     # Ensure stable avatar seeds for all users
     seed_avatar_seeds(db)
+    # Ensure every user has a collab color
+    seed_collab_colors(db)
 
     # Initialize RAG system (default collection + scan /app/rag_docs)
     initialize_rag_system(db)
@@ -90,6 +92,7 @@ __all__ = [
     'seed_user_groups',
     'seed_bootstrap_admin',
     'seed_avatar_seeds',
+    'seed_collab_colors',
     'initialize_permissions',
     'initialize_rag_system',
     'initialize_default_chatbots',

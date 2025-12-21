@@ -17,6 +17,8 @@ const idToken = ref(null);
 const tokenParsed = ref(null);
 const llarsRoles = ref([]);
 const avatarSeed = ref(null);
+const avatarUrl = ref(null);
+const avatarChangesLeft = ref(null);
 const collabColor = ref(null);
 
 const parseJwt = (jwtToken) => {
@@ -63,6 +65,12 @@ const loadTokensFromStorage = () => {
     avatarSeed.value = storedAvatarSeed;
   }
 
+  // Load avatar URL from storage
+  const storedAvatarUrl = getAuthStorageItem(AUTH_STORAGE_KEYS.avatarUrl);
+  if (storedAvatarUrl) {
+    avatarUrl.value = storedAvatarUrl;
+  }
+
   // Load collab color from storage
   const storedCollabColor = getAuthStorageItem(AUTH_STORAGE_KEYS.collabColor);
   if (storedCollabColor) {
@@ -82,6 +90,8 @@ const loadTokensFromStorage = () => {
       tokenParsed.value = null;
       llarsRoles.value = [];
       avatarSeed.value = null;
+      avatarUrl.value = null;
+      avatarChangesLeft.value = null;
       collabColor.value = null;
       clearStoredTokens();
     }
@@ -100,10 +110,21 @@ const fetchUserProfile = async () => {
       }
     });
 
-    const { avatar_seed } = response.data;
+    const { avatar_seed, avatar_url, avatar_changes_left } = response.data;
     if (avatar_seed) {
       avatarSeed.value = avatar_seed;
       setAuthStorageItem(AUTH_STORAGE_KEYS.avatarSeed, avatar_seed);
+    }
+    if (avatar_url !== undefined) {
+      avatarUrl.value = avatar_url || null;
+      if (avatar_url) {
+        setAuthStorageItem(AUTH_STORAGE_KEYS.avatarUrl, avatar_url);
+      } else {
+        setAuthStorageItem(AUTH_STORAGE_KEYS.avatarUrl, '');
+      }
+    }
+    if (avatar_changes_left !== undefined && avatar_changes_left !== null) {
+      avatarChangesLeft.value = avatar_changes_left;
     }
 
     return response.data;
@@ -125,7 +146,7 @@ const fetchUserSettings = async () => {
       }
     });
 
-    const { collab_color, avatar_seed } = response.data;
+    const { collab_color, avatar_seed, avatar_url, avatar_changes_left } = response.data;
 
     if (collab_color) {
       collabColor.value = collab_color;
@@ -135,6 +156,17 @@ const fetchUserSettings = async () => {
     if (avatar_seed) {
       avatarSeed.value = avatar_seed;
       setAuthStorageItem(AUTH_STORAGE_KEYS.avatarSeed, avatar_seed);
+    }
+    if (avatar_url !== undefined) {
+      avatarUrl.value = avatar_url || null;
+      if (avatar_url) {
+        setAuthStorageItem(AUTH_STORAGE_KEYS.avatarUrl, avatar_url);
+      } else {
+        setAuthStorageItem(AUTH_STORAGE_KEYS.avatarUrl, '');
+      }
+    }
+    if (avatar_changes_left !== undefined && avatar_changes_left !== null) {
+      avatarChangesLeft.value = avatar_changes_left;
     }
 
     return response.data;
@@ -159,9 +191,10 @@ const updateCollabColor = async (color) => {
     });
 
     if (response.data.success) {
-      collabColor.value = color;
-      if (color) {
-        setAuthStorageItem(AUTH_STORAGE_KEYS.collabColor, color);
+      const nextColor = response.data.collab_color ?? color;
+      collabColor.value = nextColor;
+      if (nextColor) {
+        setAuthStorageItem(AUTH_STORAGE_KEYS.collabColor, nextColor);
       } else {
         // Remove from storage if null
         setAuthStorageItem(AUTH_STORAGE_KEYS.collabColor, '');
@@ -172,6 +205,96 @@ const updateCollabColor = async (color) => {
   } catch (e) {
     console.error('Failed to update collab color:', e);
     return false;
+  }
+};
+
+const applyAvatarResponse = (data) => {
+  if (!data) return;
+  if (data.avatar_seed) {
+    avatarSeed.value = data.avatar_seed;
+    setAuthStorageItem(AUTH_STORAGE_KEYS.avatarSeed, data.avatar_seed);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'avatar_url')) {
+    avatarUrl.value = data.avatar_url || null;
+    if (data.avatar_url) {
+      setAuthStorageItem(AUTH_STORAGE_KEYS.avatarUrl, data.avatar_url);
+    } else {
+      setAuthStorageItem(AUTH_STORAGE_KEYS.avatarUrl, '');
+    }
+  }
+  if (data.avatar_changes_left !== undefined && data.avatar_changes_left !== null) {
+    avatarChangesLeft.value = data.avatar_changes_left;
+  }
+};
+
+const uploadAvatar = async (file) => {
+  if (!token.value) return { success: false };
+  if (!file) return { success: false };
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await axios.post(`${baseUrl}/api/users/me/avatar`, formData, {
+      headers: {
+        Authorization: `Bearer ${token.value}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    if (response.data.success) {
+      applyAvatarResponse(response.data);
+      return { success: true };
+    }
+    return { success: false, error: response.data.error };
+  } catch (e) {
+    console.error('Failed to upload avatar:', e);
+    return { success: false, error: e?.response?.data?.error || e?.message };
+  }
+};
+
+const regenerateAvatar = async () => {
+  if (!token.value) return { success: false };
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const response = await axios.patch(`${baseUrl}/api/users/me/avatar`, {}, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    if (response.data.success) {
+      applyAvatarResponse(response.data);
+      return { success: true };
+    }
+    return { success: false, error: response.data.error };
+  } catch (e) {
+    console.error('Failed to regenerate avatar:', e);
+    return { success: false, error: e?.response?.data?.error || e?.message };
+  }
+};
+
+const resetAvatar = async () => {
+  if (!token.value) return { success: false };
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const response = await axios.delete(`${baseUrl}/api/users/me/avatar`, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    if (response.data.success) {
+      applyAvatarResponse(response.data);
+      return { success: true };
+    }
+    return { success: false, error: response.data.error };
+  } catch (e) {
+    console.error('Failed to reset avatar:', e);
+    return { success: false, error: e?.response?.data?.error || e?.message };
   }
 };
 
@@ -310,6 +433,8 @@ export const useAuth = () => {
     tokenParsed.value = null;
     llarsRoles.value = [];
     avatarSeed.value = null;
+    avatarUrl.value = null;
+    avatarChangesLeft.value = null;
     collabColor.value = null;
 
     clearStoredTokens();
@@ -334,6 +459,8 @@ export const useAuth = () => {
     isAdmin,
     tokenParsed,
     avatarSeed,
+    avatarUrl,
+    avatarChangesLeft,
     collabColor,
     login,
     logout,
@@ -341,6 +468,9 @@ export const useAuth = () => {
     isTokenExpired,
     fetchUserProfile,
     fetchUserSettings,
-    updateCollabColor
+    updateCollabColor,
+    uploadAvatar,
+    regenerateAvatar,
+    resetAvatar
   };
 };

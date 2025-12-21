@@ -8,10 +8,23 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
   const socket = ref(null)
   const users = ref({})
   const { autoSync = false } = options || {}
+  const socketTransports = ['websocket']
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
     return getAuthStorageItem(AUTH_STORAGE_KEYS.token)
+  }
+
+  const getSocketBaseUrl = () => {
+    if (typeof window === 'undefined') {
+      return import.meta.env.VITE_API_BASE_URL || ''
+    }
+    const rawBase = import.meta.env.VITE_API_BASE_URL || window.location.origin
+    const trimmed = String(rawBase || '').replace(/\/+$/, '')
+    if (trimmed.endsWith('/api')) {
+      return trimmed.slice(0, -4)
+    }
+    return trimmed || window.location.origin
   }
 
   const getCollabColor = () => {
@@ -32,12 +45,14 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
   }
 
   const initializeSocket = () => {
-    socket.value = io(import.meta.env.VITE_API_BASE_URL, {
+    socket.value = io(getSocketBaseUrl(), {
       path: '/collab/socket.io/',
       auth: {
         token: getAuthToken(),
         color: getCollabColor()  // Send persisted collab color
       },
+      transports: socketTransports,
+      upgrade: false,
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000

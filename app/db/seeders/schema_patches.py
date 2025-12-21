@@ -70,6 +70,48 @@ def apply_schema_patches(db) -> None:
             column_name="avatar_seed",
             column_definition_sql="`avatar_seed` VARCHAR(32) NULL",
         )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="collab_color",
+            column_definition_sql="`collab_color` VARCHAR(7) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="avatar_file",
+            column_definition_sql="`avatar_file` VARCHAR(255) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="avatar_public_id",
+            column_definition_sql="`avatar_public_id` VARCHAR(64) NULL UNIQUE",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="avatar_mime_type",
+            column_definition_sql="`avatar_mime_type` VARCHAR(100) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="avatar_updated_at",
+            column_definition_sql="`avatar_updated_at` DATETIME NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="avatar_change_count",
+            column_definition_sql="`avatar_change_count` INT NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="avatar_change_date",
+            column_definition_sql="`avatar_change_date` DATE NULL",
+        )
 
         # Scenarios: per-scenario config + comparison model config
         changed |= _ensure_column(

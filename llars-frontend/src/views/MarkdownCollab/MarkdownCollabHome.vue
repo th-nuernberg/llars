@@ -44,7 +44,12 @@
             </div>
           </template>
 
-          <v-row v-if="workspaces.length > 0">
+          <transition-group
+            v-if="workspaces.length > 0"
+            name="workspace-list"
+            tag="div"
+            class="v-row workspace-grid"
+          >
             <v-col
               v-for="ws in workspaces"
               :key="ws.id"
@@ -58,6 +63,7 @@
                 color="#b0ca97"
                 outlined
                 clickable
+                :class="['workspace-card', { 'workspace-card--new': newWorkspaceIds.has(ws.id) }]"
                 @click="openWorkspace(ws.id)"
               >
                 <template #status>
@@ -82,7 +88,7 @@
                 </template>
               </LCard>
             </v-col>
-          </v-row>
+          </transition-group>
 
           <div v-else class="empty-state">
             <v-icon size="56" class="mb-3" color="grey">mdi-folder-open-outline</v-icon>
@@ -152,12 +158,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { getSocket } from '@/services/socketService'
 
 const router = useRouter()
 const { hasPermission, fetchPermissions } = usePermissions()
@@ -166,6 +173,7 @@ const { isLoading, withLoading } = useSkeletonLoading(['workspaces'])
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 
 const workspaces = ref([])
+const newWorkspaceIds = ref(new Set())
 
 const createDialog = ref(false)
 const creating = ref(false)
@@ -197,13 +205,44 @@ function formatDate(iso) {
   }
 }
 
+function sortWorkspaces(list) {
+  return [...(list || [])].sort((a, b) => {
+    const aTime = a?.updated_at ? new Date(a.updated_at).getTime() : 0
+    const bTime = b?.updated_at ? new Date(b.updated_at).getTime() : 0
+    return bTime - aTime
+  })
+}
+
+function markWorkspaceNew(id) {
+  if (!id) return
+  const next = new Set(newWorkspaceIds.value)
+  next.add(id)
+  newWorkspaceIds.value = next
+  setTimeout(() => {
+    const updated = new Set(newWorkspaceIds.value)
+    updated.delete(id)
+    newWorkspaceIds.value = updated
+  }, 3600)
+}
+
+async function fetchUserId() {
+  try {
+    const res = await axios.get(`${API_BASE}/auth/authentik/me`, {
+      headers: authHeaders()
+    })
+    return res.data.user_id || res.data.id || null
+  } catch (e) {
+    return null
+  }
+}
+
 async function loadWorkspaces(force = false) {
   await withLoading('workspaces', async () => {
     const res = await axios.get(`${API_BASE}/api/markdown-collab/workspaces`, {
       headers: authHeaders(),
       params: force ? { _ts: Date.now() } : undefined
     })
-    workspaces.value = res.data.workspaces || []
+    workspaces.value = sortWorkspaces(res.data.workspaces || [])
   })
 }
 
@@ -236,11 +275,65 @@ async function createWorkspace() {
   }
 }
 
+let socket = null
+let socketUserId = null
+let onSocketConnect = null
+
+function handleWorkspaceShared(payload) {
+  const workspace = payload?.workspace
+  if (!workspace?.id) return
+
+  const existingIndex = workspaces.value.findIndex(w => w.id === workspace.id)
+  if (existingIndex >= 0) {
+    const next = [...workspaces.value]
+    next[existingIndex] = { ...next[existingIndex], ...workspace }
+    workspaces.value = sortWorkspaces(next)
+  } else {
+    workspaces.value = sortWorkspaces([workspace, ...workspaces.value])
+  }
+  markWorkspaceNew(workspace.id)
+}
+
+function setupWorkspaceSocket(userId) {
+  if (!userId) return
+  socket = getSocket()
+  if (!socket) return
+
+  socket.on('markdown_collab:workspace_shared', handleWorkspaceShared)
+
+  onSocketConnect = () => {
+    socket.emit('markdown_collab:subscribe', { user_id: userId })
+  }
+
+  if (socket.connected) {
+    onSocketConnect()
+  }
+  socket.on('connect', onSocketConnect)
+  socketUserId = userId
+}
+
+function cleanupWorkspaceSocket() {
+  if (!socket) return
+  socket.off('markdown_collab:workspace_shared', handleWorkspaceShared)
+  if (onSocketConnect) socket.off('connect', onSocketConnect)
+  if (socketUserId) {
+    socket.emit('markdown_collab:unsubscribe', { user_id: socketUserId })
+  }
+  socketUserId = null
+  onSocketConnect = null
+}
+
 onMounted(async () => {
   await fetchPermissions()
   if (hasPermission('feature:markdown_collab:view')) {
     await loadWorkspaces()
+    const userId = await fetchUserId()
+    if (userId) setupWorkspaceSocket(userId)
   }
+})
+
+onUnmounted(() => {
+  cleanupWorkspaceSocket()
 })
 </script>
 
@@ -256,5 +349,39 @@ onMounted(async () => {
 
 .w-100 {
   width: 100%;
+}
+
+.workspace-list-enter-active,
+.workspace-list-leave-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.workspace-list-enter-from,
+.workspace-list-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.workspace-list-move {
+  transition: transform 0.35s ease;
+}
+
+.workspace-card--new {
+  border: 1px solid rgba(var(--v-theme-primary), 0.45);
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.18), 0 14px 26px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(120deg, rgba(var(--v-theme-primary), 0.12), rgba(var(--v-theme-surface), 0.96));
+  color: rgb(var(--v-theme-on-surface));
+  animation: workspace-highlight 2.6s ease-out;
+}
+
+@keyframes workspace-highlight {
+  0% {
+    transform: translateY(8px) scale(1.02);
+    box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.28), 0 18px 32px rgba(0, 0, 0, 0.12);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.18), 0 14px 26px rgba(0, 0, 0, 0.08);
+  }
 }
 </style>

@@ -769,7 +769,6 @@ watch(
   flex-direction: column;
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  transition: width 0.2s ease;
   min-width: 0;
   overflow: hidden;
 }

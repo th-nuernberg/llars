@@ -1,8 +1,25 @@
 <template>
-  <v-container fluid class="pa-0 workspace-root">
-    <v-row no-gutters class="h-100">
-      <!-- Left: Tree -->
-      <v-col cols="3" class="tree-col">
+  <div class="workspace-root">
+    <!-- Collapsible File Tree -->
+    <div
+      class="tree-panel"
+      :class="{ collapsed: treeCollapsed }"
+      :style="!treeCollapsed ? { width: treePanelWidth + 'px' } : {}"
+    >
+      <!-- Collapsed State -->
+      <div v-if="treeCollapsed" class="tree-collapsed" @click="treeCollapsed = false">
+        <div class="collapsed-bar">
+          <div class="collapsed-icon-box">
+            <v-icon size="18">mdi-file-tree</v-icon>
+          </div>
+          <span class="collapsed-label">Dateien</span>
+          <v-spacer />
+          <v-icon size="18" class="expand-icon">mdi-chevron-right</v-icon>
+        </div>
+      </div>
+
+      <!-- Expanded State -->
+      <div v-else class="tree-expanded">
         <MarkdownTreePanel
           :workspace-id="workspaceId"
           :nodes="treeNodes"
@@ -14,115 +31,155 @@
           @rename="handleRenameNode"
           @remove="handleDeleteNode"
           @move="handleMoveNode"
-        />
-      </v-col>
+        >
+          <template #header-append>
+            <v-btn
+              icon
+              variant="text"
+              size="small"
+              title="Einklappen"
+              @click.stop="treeCollapsed = true"
+            >
+              <v-icon size="18">mdi-chevron-left</v-icon>
+            </v-btn>
+          </template>
+        </MarkdownTreePanel>
+      </div>
+    </div>
 
-      <!-- Right: Editor/Preview -->
-      <v-col cols="9" class="content-col">
-        <div class="content-header">
-          <div class="d-flex align-center">
-            <v-icon class="mr-2" color="primary">mdi-language-markdown</v-icon>
-            <div>
-              <div class="text-subtitle-1 font-weight-medium">
-                {{ selectedNode?.title || 'Kein Dokument ausgewählt' }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                Workspace: {{ workspace?.name || `#${workspaceId}` }}
-              </div>
+    <!-- Resize Divider: Tree | Content -->
+    <div
+      v-if="!treeCollapsed"
+      class="resize-divider vertical"
+      :class="{ resizing: resizingTree }"
+      @mousedown="startTreeResize"
+    >
+      <div class="resize-handle" />
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="content-area">
+      <!-- Content Header -->
+      <div class="content-header">
+        <div class="d-flex align-center">
+          <v-icon class="mr-2" color="primary">mdi-language-markdown</v-icon>
+          <div>
+            <div class="text-subtitle-1 font-weight-medium">
+              {{ selectedNode?.title || 'Kein Dokument ausgewählt' }}
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              Workspace: {{ workspace?.name || `#${workspaceId}` }}
             </div>
           </div>
-
-          <v-spacer />
-
-          <v-btn
-            v-if="canShareWorkspace"
-            icon="mdi-account-multiple-plus"
-            variant="text"
-            title="Workspace teilen"
-            @click="openShareDialog"
-          />
-
-          <v-btn-toggle
-            v-model="viewMode"
-            mandatory
-            density="comfortable"
-            variant="outlined"
-            class="mode-toggle"
-          >
-            <v-btn value="editor" title="Editor">
-              <v-icon>mdi-pencil</v-icon>
-            </v-btn>
-            <v-btn value="split" title="Split">
-              <v-icon>mdi-view-split-vertical</v-icon>
-            </v-btn>
-            <v-btn value="preview" title="Preview">
-              <v-icon>mdi-eye-outline</v-icon>
-            </v-btn>
-          </v-btn-toggle>
         </div>
 
-        <v-divider />
+        <v-spacer />
 
-        <div class="content-body">
-          <div v-if="isLoading('document')" class="document-loading-overlay">
-            <v-skeleton-loader
-              type="card"
-              class="document-loading-skeleton"
-              height="320"
-            />
-          </div>
+        <v-btn
+          v-if="canShareWorkspace"
+          icon="mdi-account-multiple-plus"
+          variant="text"
+          title="Workspace teilen"
+          @click="openShareDialog"
+        />
 
-          <div class="h-100">
-            <v-alert
-              v-if="!hasPermission('feature:markdown_collab:view')"
-              type="warning"
-              variant="tonal"
-              class="ma-4"
-            >
-              Dir fehlt die Berechtigung <code>feature:markdown_collab:view</code>.
-            </v-alert>
+        <v-btn-toggle
+          v-model="viewMode"
+          mandatory
+          density="comfortable"
+          variant="outlined"
+          class="mode-toggle"
+        >
+          <v-btn value="editor" title="Editor">
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+          <v-btn value="split" title="Split">
+            <v-icon>mdi-view-split-vertical</v-icon>
+          </v-btn>
+          <v-btn value="preview" title="Preview">
+            <v-icon>mdi-eye-outline</v-icon>
+          </v-btn>
+        </v-btn-toggle>
+      </div>
 
-            <v-alert
-              v-else-if="!selectedNode || selectedNode.type !== 'file'"
-              type="info"
-              variant="tonal"
-              class="ma-4"
-            >
-              Wähle links eine Markdown-Datei aus, um sie zu bearbeiten.
-            </v-alert>
+      <v-divider />
 
-            <template v-else>
-              <div class="editor-stack">
-                <div class="pane-grid" :class="`mode-${viewMode}`">
-                  <div class="pane editor-pane">
-                    <MarkdownEditorPane
-                      ref="editorRef"
-                      :key="selectedNode.id"
-                      :document="selectedNode"
-                      :readonly="!hasPermission('feature:markdown_collab:edit')"
-                      @content-change="onEditorContentChange"
-                      @git-summary="(s) => (gitSummary = s)"
-                    />
-                  </div>
-                  <div class="pane preview-pane">
-                    <MarkdownPreviewPane :markdown="currentText" />
-                  </div>
-                </div>
+      <!-- Content Body -->
+      <div class="content-body">
+        <div v-if="isLoading('document')" class="document-loading-overlay">
+          <v-skeleton-loader
+            type="card"
+            class="document-loading-skeleton"
+            height="320"
+          />
+        </div>
 
-                <MarkdownGitPanel
-                  v-if="selectedNode && selectedNode.type === 'file'"
-                  :document-id="selectedNode.id"
-                  :summary="gitSummary"
-                  :can-commit="hasPermission('feature:markdown_collab:edit')"
-                  :get-content="() => editorRef?.getCurrentContent?.()"
-                  @committed="refreshCommits"
+        <v-alert
+          v-if="!hasPermission('feature:markdown_collab:view')"
+          type="warning"
+          variant="tonal"
+          class="ma-4"
+        >
+          Dir fehlt die Berechtigung <code>feature:markdown_collab:view</code>.
+        </v-alert>
+
+        <v-alert
+          v-else-if="!selectedNode || selectedNode.type !== 'file'"
+          type="info"
+          variant="tonal"
+          class="ma-4"
+        >
+          Wähle links eine Markdown-Datei aus, um sie zu bearbeiten.
+        </v-alert>
+
+        <template v-else>
+          <div class="editor-layout">
+            <!-- Editor/Preview Panes -->
+            <div ref="panesContainerRef" class="panes-container" :class="`mode-${viewMode}`">
+              <!-- Editor Pane -->
+              <div
+                class="pane editor-pane"
+                :style="viewMode === 'split' ? { width: editorPaneWidth + 'px' } : {}"
+              >
+                <MarkdownEditorPane
+                  ref="editorRef"
+                  :key="selectedNode.id"
+                  :document="selectedNode"
+                  :readonly="!hasPermission('feature:markdown_collab:edit')"
+                  @content-change="onEditorContentChange"
+                  @git-summary="(s) => (gitSummary = s)"
                 />
               </div>
-            </template>
+
+              <!-- Resize Divider: Editor | Preview -->
+              <div
+                v-if="viewMode === 'split'"
+                class="resize-divider vertical"
+                :class="{ resizing: resizingPanes }"
+                @mousedown="startPanesResize"
+              >
+                <div class="resize-handle" />
+              </div>
+
+              <!-- Preview Pane -->
+              <div class="pane preview-pane">
+                <MarkdownPreviewPane :markdown="currentText" />
+              </div>
+            </div>
+
+            <!-- Git Panel -->
+            <MarkdownGitPanel
+              v-if="selectedNode && selectedNode.type === 'file'"
+              :document-id="selectedNode.id"
+              :summary="gitSummary"
+              :can-commit="hasPermission('feature:markdown_collab:edit')"
+              :get-content="() => editorRef?.getCurrentContent?.()"
+              @committed="refreshCommits"
+            />
           </div>
-        </div>
-      </v-col>
-    </v-row>
+        </template>
+      </div>
+    </div>
 
     <!-- Share / Members Dialog -->
     <v-dialog v-model="shareDialog" max-width="640">
@@ -199,11 +256,11 @@
         </v-card-text>
       </v-card>
     </v-dialog>
-  </v-container>
+  </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
@@ -222,6 +279,9 @@ const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'docu
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 const VIEWMODE_KEY = 'markdown-collab-view-mode'
+const TREE_COLLAPSED_KEY = 'markdown-collab-tree-collapsed'
+const TREE_WIDTH_KEY = 'markdown-collab-tree-width'
+const PANES_WIDTH_KEY = 'markdown-collab-panes-width'
 
 const workspace = ref(null)
 const nodesFlat = ref([])
@@ -230,6 +290,16 @@ const currentText = ref('')
 const gitSummary = ref({ users: [], totalChangedLines: 0 })
 const editorRef = ref(null)
 const pendingDocId = ref(null)
+
+// Panel states
+const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
+const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280)
+const editorPaneWidth = ref(parseInt(localStorage.getItem(PANES_WIDTH_KEY)) || 0)
+const panesContainerRef = ref(null)
+
+// Resize states
+const resizingTree = ref(false)
+const resizingPanes = ref(false)
 
 // Sharing / members
 const shareDialog = ref(false)
@@ -244,10 +314,22 @@ const userSuggestions = ref([])
 const userSearchLoading = ref(false)
 
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
-watch(viewMode, (val) => localStorage.setItem(VIEWMODE_KEY, val))
+
+watch(viewMode, (val) => {
+  localStorage.setItem(VIEWMODE_KEY, val)
+  // Reset pane width when switching modes
+  if (val === 'split' && panesContainerRef.value) {
+    editorPaneWidth.value = panesContainerRef.value.offsetWidth / 2
+  }
+})
+
 watch(viewMode, async () => {
   await nextTick()
   editorRef.value?.refresh?.()
+})
+
+watch(treeCollapsed, (val) => {
+  localStorage.setItem(TREE_COLLAPSED_KEY, val.toString())
 })
 
 const workspaceId = computed(() => Number(route.params.workspaceId))
@@ -263,6 +345,86 @@ const canShareWorkspace = computed(() => {
   if (!workspace.value) return false
   if (!hasPermission('feature:markdown_collab:share')) return false
   return isAdmin.value || (currentUsername.value && currentUsername.value === workspace.value.owner_username)
+})
+
+// Tree panel resize
+function startTreeResize(event) {
+  event.preventDefault()
+  resizingTree.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onTreeMouseMove)
+  document.addEventListener('mouseup', stopTreeResize)
+}
+
+function onTreeMouseMove(event) {
+  if (!resizingTree.value) return
+  const newWidth = Math.max(200, Math.min(500, event.clientX))
+  treePanelWidth.value = newWidth
+}
+
+function stopTreeResize() {
+  resizingTree.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  document.removeEventListener('mousemove', onTreeMouseMove)
+  document.removeEventListener('mouseup', stopTreeResize)
+  localStorage.setItem(TREE_WIDTH_KEY, treePanelWidth.value.toString())
+}
+
+// Panes resize (Editor | Preview)
+function startPanesResize(event) {
+  event.preventDefault()
+  resizingPanes.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onPanesMouseMove)
+  document.addEventListener('mouseup', stopPanesResize)
+}
+
+function onPanesMouseMove(event) {
+  if (!resizingPanes.value || !panesContainerRef.value) return
+  const containerRect = panesContainerRef.value.getBoundingClientRect()
+  const mouseX = event.clientX - containerRect.left
+  const containerWidth = containerRect.width
+  // Clamp between 25% and 75%
+  const minWidth = containerWidth * 0.25
+  const maxWidth = containerWidth * 0.75
+  editorPaneWidth.value = Math.max(minWidth, Math.min(maxWidth, mouseX))
+}
+
+function stopPanesResize() {
+  resizingPanes.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  document.removeEventListener('mousemove', onPanesMouseMove)
+  document.removeEventListener('mouseup', stopPanesResize)
+  localStorage.setItem(PANES_WIDTH_KEY, editorPaneWidth.value.toString())
+}
+
+// Initialize pane width on mount
+onMounted(async () => {
+  await fetchPermissions()
+  await loadTree()
+
+  // Auto-select first file if none selected
+  if (!routeDocId.value) {
+    const firstFile = nodesFlat.value.find(n => n.type === 'file')
+    if (firstFile) router.replace(`/MarkdownCollab/workspace/${workspaceId.value}/document/${firstFile.id}`)
+  }
+
+  // Initialize editor pane width
+  await nextTick()
+  if (panesContainerRef.value && editorPaneWidth.value === 0) {
+    editorPaneWidth.value = panesContainerRef.value.offsetWidth / 2
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', onTreeMouseMove)
+  document.removeEventListener('mouseup', stopTreeResize)
+  document.removeEventListener('mousemove', onPanesMouseMove)
+  document.removeEventListener('mouseup', stopPanesResize)
 })
 
 function onEditorContentChange(text) {
@@ -487,36 +649,133 @@ watch(
   },
   { immediate: true }
 )
-
-onMounted(async () => {
-  await fetchPermissions()
-  await loadTree()
-
-  // Auto-select first file if none selected
-  if (!routeDocId.value) {
-    const firstFile = nodesFlat.value.find(n => n.type === 'file')
-    if (firstFile) router.replace(`/MarkdownCollab/workspace/${workspaceId.value}/document/${firstFile.id}`)
-  }
-})
 </script>
 
 <style scoped>
+/* LLARS Design Variables */
 .workspace-root {
+  --llars-primary: #b0ca97;
+  --llars-accent: #88c4c8;
+  --llars-radius: 16px 4px 16px 4px;
+  --llars-radius-sm: 8px 2px 8px 2px;
+
   height: calc(100vh - 94px);
+  display: flex;
   background-color: rgb(var(--v-theme-background));
+  overflow: hidden;
 }
 
-.tree-col {
-  height: 100%;
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgb(var(--v-theme-surface));
-}
-
-.content-col {
+/* ============================================
+   TREE PANEL
+   ============================================ */
+.tree-panel {
+  flex-shrink: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgb(var(--v-theme-background));
+  background: rgb(var(--v-theme-surface));
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  transition: width 0.2s ease;
+}
+
+.tree-panel.collapsed {
+  width: 48px !important;
+}
+
+.tree-expanded {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Collapsed Tree */
+.tree-collapsed {
+  height: 100%;
+  cursor: pointer;
+}
+
+.collapsed-bar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  gap: 12px;
+  background: linear-gradient(180deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
+}
+
+.collapsed-icon-box {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 6px 2px 6px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.collapsed-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-weight: 600;
+  font-size: 13px;
+  color: white;
+  letter-spacing: 1px;
+}
+
+.expand-icon {
+  color: white;
+  opacity: 0.8;
+  margin-top: auto;
+}
+
+/* ============================================
+   RESIZE DIVIDER
+   ============================================ */
+.resize-divider {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.resize-divider.vertical {
+  width: 6px;
+  cursor: col-resize;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.resize-divider.vertical:hover,
+.resize-divider.vertical.resizing {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+.resize-handle {
+  width: 3px;
+  height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+  transition: background 0.15s, height 0.15s;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background: rgb(var(--v-theme-primary));
+  height: 60px;
+}
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
+.content-area {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .content-header {
@@ -536,6 +795,8 @@ onMounted(async () => {
   flex: 1;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .document-loading-overlay {
@@ -553,19 +814,22 @@ onMounted(async () => {
   max-width: 980px;
 }
 
-.pane-grid {
+/* ============================================
+   EDITOR LAYOUT
+   ============================================ */
+.editor-layout {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
   overflow: hidden;
 }
 
-.editor-stack {
-  height: 100%;
+.panes-container {
+  flex: 1;
   display: flex;
-  flex-direction: column;
+  overflow: hidden;
   min-height: 0;
 }
 
@@ -574,19 +838,40 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.mode-editor {
-  grid-template-columns: 1fr;
+/* Split mode */
+.panes-container.mode-split .editor-pane {
+  flex-shrink: 0;
 }
 
-.mode-editor .preview-pane {
+.panes-container.mode-split .preview-pane {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Editor only mode */
+.panes-container.mode-editor {
+  flex-direction: column;
+}
+
+.panes-container.mode-editor .editor-pane {
+  flex: 1;
+  width: 100% !important;
+}
+
+.panes-container.mode-editor .preview-pane {
   display: none;
 }
 
-.mode-preview {
-  grid-template-columns: 1fr;
+/* Preview only mode */
+.panes-container.mode-preview {
+  flex-direction: column;
 }
 
-.mode-preview .editor-pane {
+.panes-container.mode-preview .editor-pane {
   display: none;
+}
+
+.panes-container.mode-preview .preview-pane {
+  flex: 1;
 }
 </style>

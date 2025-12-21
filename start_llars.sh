@@ -32,6 +32,8 @@ echo "Base directory: $BASE_DIR"
 ENV_FILE="$BASE_DIR/.env"
 
 # Allow one-shot overrides via environment variables, even when .env defines defaults.
+REMOVE_LLARS_VOLUMES_OVERRIDE="${REMOVE_LLARS_VOLUMES:-}"
+PRUNE_LLARS_SYSTEM_OVERRIDE="${PRUNE_LLARS_SYSTEM:-}"
 REMOVE_VOLUMES_OVERRIDE="${REMOVE_VOLUMES:-}"
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -55,10 +57,24 @@ set -a  # Export all variables
 source "$ENV_FILE"
 set +a
 
-# Re-apply environment override after sourcing .env (prevents accidental permanent REMOVE_VOLUMES=True in .env)
-if [ -n "$REMOVE_VOLUMES_OVERRIDE" ]; then
-    REMOVE_VOLUMES="$REMOVE_VOLUMES_OVERRIDE"
-    export REMOVE_VOLUMES
+# Re-apply environment override after sourcing .env (prevents accidental permanent REMOVE_* in .env)
+if [ -z "$REMOVE_LLARS_VOLUMES_OVERRIDE" ] && [ -n "$REMOVE_VOLUMES_OVERRIDE" ]; then
+    REMOVE_LLARS_VOLUMES_OVERRIDE="$REMOVE_VOLUMES_OVERRIDE"
+fi
+
+if [ -n "$REMOVE_LLARS_VOLUMES_OVERRIDE" ]; then
+    REMOVE_LLARS_VOLUMES="$REMOVE_LLARS_VOLUMES_OVERRIDE"
+    export REMOVE_LLARS_VOLUMES
+fi
+
+if [ -n "$PRUNE_LLARS_SYSTEM_OVERRIDE" ]; then
+    PRUNE_LLARS_SYSTEM="$PRUNE_LLARS_SYSTEM_OVERRIDE"
+    export PRUNE_LLARS_SYSTEM
+fi
+
+if [ -z "${REMOVE_LLARS_VOLUMES:-}" ] && [ -n "${REMOVE_VOLUMES:-}" ]; then
+    REMOVE_LLARS_VOLUMES="$REMOVE_VOLUMES"
+    export REMOVE_LLARS_VOLUMES
 fi
 
 # ============================================
@@ -285,13 +301,107 @@ configure_docker_socket_access
 
 cd "$BASE_DIR"
 # ============================================
-# Step 5: Handle REMOVE_VOLUMES
+# Step 5: Handle PRUNE_LLARS_SYSTEM / REMOVE_LLARS_VOLUMES
 # ============================================
 
-if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
+if [ "$PRUNE_LLARS_SYSTEM" = "True" ] || [ "$PRUNE_LLARS_SYSTEM" = "true" ]; then
     echo ""
     echo "============================================"
-    echo "WARNING: REMOVE_VOLUMES=True detected!"
+    echo "WARNING: PRUNE_LLARS_SYSTEM=True detected!"
+    echo "============================================"
+    echo "This will DELETE ALL LLARS CONTAINERS, IMAGES, VOLUMES and BUILD CACHE:"
+    echo "  - Containers (all llars_* containers)"
+    echo "  - Local images built by LLARS"
+    echo "  - Volumes used by LLARS"
+    echo "  - LLARS build cache"
+    echo ""
+
+    # Safety check in development when PRUNE_LLARS_SYSTEM comes from .env
+    if [ "$PROJECT_STATE" != "production" ] && [ -z "$PRUNE_LLARS_SYSTEM_OVERRIDE" ]; then
+        echo "PRUNE_LLARS_SYSTEM is set in .env. This is dangerous and will wipe everything on every start."
+        echo "Type 'yes' to continue (or set PRUNE_LLARS_SYSTEM=False in .env):"
+        read -r confirm
+        if [ "$confirm" != "yes" ]; then
+            echo "Aborted. Set PRUNE_LLARS_SYSTEM=False in .env"
+            exit 1
+        fi
+    fi
+
+    # Safety check in production
+    if [ "$PROJECT_STATE" = "production" ]; then
+        echo "PRODUCTION MODE DETECTED!"
+        echo "Are you ABSOLUTELY SURE you want to delete all LLARS system resources? (yes/no)"
+        read -r confirm
+        if [ "$confirm" != "yes" ]; then
+            echo "Aborted. Set PRUNE_LLARS_SYSTEM=False in .env"
+            exit 1
+        fi
+    fi
+
+    echo "Stopping and removing LLARS services with volumes and local images..."
+    docker compose -p llars down --volumes --remove-orphans --rmi local 2>/dev/null || true
+
+    echo "Removing any remaining LLARS containers..."
+    LLARS_CONTAINERS=$( { docker ps -aq --filter label=com.docker.compose.project=llars 2>/dev/null; docker ps -aq --filter name=llars_ 2>/dev/null; } | sort -u )
+    if [ -n "$LLARS_CONTAINERS" ]; then
+        for cid in $LLARS_CONTAINERS; do
+            echo "  Deleting container: $cid"
+            docker rm -f "$cid" 2>/dev/null || echo "  Warning: Could not delete $cid"
+        done
+    else
+        echo "No additional LLARS containers found."
+    fi
+
+    echo "Removing ALL LLARS volumes..."
+    LLARS_VOLUMES=$(docker volume ls -q --filter name=llars 2>/dev/null || true)
+
+    if [ -n "$LLARS_VOLUMES" ]; then
+        for volume in $LLARS_VOLUMES; do
+            echo "  Deleting volume: $volume"
+            docker volume rm "$volume" 2>/dev/null || echo "  Warning: Could not delete $volume"
+        done
+        echo ""
+        echo "All LLARS volumes removed."
+    else
+        echo "No additional LLARS volumes found."
+    fi
+
+    echo "Removing ALL LLARS images..."
+    LLARS_IMAGES=$( { \
+        docker image ls -q --filter label=com.docker.compose.project=llars 2>/dev/null; \
+        docker image ls -q --filter reference='llars-*' 2>/dev/null; \
+        docker image ls -q --filter reference='llars_*' 2>/dev/null; \
+    } | sort -u )
+    if [ -n "$LLARS_IMAGES" ]; then
+        for image in $LLARS_IMAGES; do
+            echo "  Deleting image: $image"
+            docker image rm -f "$image" 2>/dev/null || echo "  Warning: Could not delete $image"
+        done
+        echo ""
+        echo "All LLARS images removed."
+    else
+        echo "No additional LLARS images found."
+    fi
+
+    echo "Pruning LLARS build cache..."
+    docker builder prune -f --filter "label=com.docker.compose.project=llars" 2>/dev/null || true
+
+    # Safety: reset PRUNE_LLARS_SYSTEM in .env so the next run doesn't prune again.
+    if [ -z "$PRUNE_LLARS_SYSTEM_OVERRIDE" ] && [ -w "$ENV_FILE" ]; then
+        if grep -qE '^PRUNE_LLARS_SYSTEM=' "$ENV_FILE"; then
+            perl -pi -e 's/^PRUNE_LLARS_SYSTEM=.*/PRUNE_LLARS_SYSTEM=False/' "$ENV_FILE" 2>/dev/null || true
+        else
+            echo "PRUNE_LLARS_SYSTEM=False" >> "$ENV_FILE" 2>/dev/null || true
+        fi
+        echo "Safety: RESET PRUNE_LLARS_SYSTEM=False in .env"
+    fi
+
+    echo "============================================"
+    echo ""
+elif [ "$REMOVE_LLARS_VOLUMES" = "True" ] || [ "$REMOVE_LLARS_VOLUMES" = "true" ]; then
+    echo ""
+    echo "============================================"
+    echo "WARNING: REMOVE_LLARS_VOLUMES=True detected!"
     echo "============================================"
     echo "This will DELETE ALL LLARS DATA including:"
     echo "  - Database (users, ratings, scenarios)"
@@ -300,13 +410,13 @@ if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
     echo "  - Model cache and embeddings"
     echo ""
 
-    # Safety check in development when REMOVE_VOLUMES comes from .env (prevents accidental repeated wipes)
-    if [ "$PROJECT_STATE" != "production" ] && [ -z "$REMOVE_VOLUMES_OVERRIDE" ]; then
-        echo "REMOVE_VOLUMES is set in .env. This is dangerous and will wipe data on every start."
-        echo "Type 'yes' to continue (or set REMOVE_VOLUMES=False in .env):"
+    # Safety check in development when REMOVE_LLARS_VOLUMES comes from .env (prevents accidental repeated wipes)
+    if [ "$PROJECT_STATE" != "production" ] && [ -z "$REMOVE_LLARS_VOLUMES_OVERRIDE" ]; then
+        echo "REMOVE_LLARS_VOLUMES is set in .env. This is dangerous and will wipe data on every start."
+        echo "Type 'yes' to continue (or set REMOVE_LLARS_VOLUMES=False in .env):"
         read -r confirm
         if [ "$confirm" != "yes" ]; then
-            echo "Aborted. Set REMOVE_VOLUMES=False in .env"
+            echo "Aborted. Set REMOVE_LLARS_VOLUMES=False in .env"
             exit 1
         fi
     fi
@@ -317,7 +427,7 @@ if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
         echo "Are you ABSOLUTELY SURE you want to delete all data? (yes/no)"
         read -r confirm
         if [ "$confirm" != "yes" ]; then
-            echo "Aborted. Set REMOVE_VOLUMES=False in .env"
+            echo "Aborted. Set REMOVE_LLARS_VOLUMES=False in .env"
             exit 1
         fi
     fi
@@ -341,15 +451,15 @@ if [ "$REMOVE_VOLUMES" = "True" ] || [ "$REMOVE_VOLUMES" = "true" ]; then
         echo "No additional LLARS volumes found."
     fi
 
-    # Safety: reset REMOVE_VOLUMES in .env so the next run doesn't wipe data again.
-    # Recommended usage is one-shot: `REMOVE_VOLUMES=True ./start_llars.sh`
-    if [ -z "$REMOVE_VOLUMES_OVERRIDE" ] && [ -w "$ENV_FILE" ]; then
-        if grep -qE '^REMOVE_VOLUMES=' "$ENV_FILE"; then
-            perl -pi -e 's/^REMOVE_VOLUMES=.*/REMOVE_VOLUMES=False/' "$ENV_FILE" 2>/dev/null || true
+    # Safety: reset REMOVE_LLARS_VOLUMES in .env so the next run doesn't wipe data again.
+    # Recommended usage is one-shot: `REMOVE_LLARS_VOLUMES=True ./start_llars.sh`
+    if [ -z "$REMOVE_LLARS_VOLUMES_OVERRIDE" ] && [ -w "$ENV_FILE" ]; then
+        if grep -qE '^REMOVE_LLARS_VOLUMES=' "$ENV_FILE"; then
+            perl -pi -e 's/^REMOVE_LLARS_VOLUMES=.*/REMOVE_LLARS_VOLUMES=False/' "$ENV_FILE" 2>/dev/null || true
         else
-            echo "REMOVE_VOLUMES=False" >> "$ENV_FILE" 2>/dev/null || true
+            echo "REMOVE_LLARS_VOLUMES=False" >> "$ENV_FILE" 2>/dev/null || true
         fi
-        echo "Safety: RESET REMOVE_VOLUMES=False in .env"
+        echo "Safety: RESET REMOVE_LLARS_VOLUMES=False in .env"
     fi
 
     echo "============================================"

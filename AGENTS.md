@@ -45,7 +45,7 @@ cp .env.template.development .env  # oder .env.template.production
 ./start_llars.sh dev|prod     # Mode überschreiben
 
 # Komplett-Neustart (LÖSCHT ALLE DATEN!)
-REMOVE_VOLUMES=True ./start_llars.sh
+REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 ```
 
 ### URLs (Development)
@@ -63,7 +63,7 @@ REMOVE_VOLUMES=True ./start_llars.sh
 PROJECT_STATE=development|production
 PROJECT_HOST=localhost
 NGINX_INTERNAL_PORT=80    # MUSS 80 sein!
-REMOVE_VOLUMES=False
+REMOVE_LLARS_VOLUMES=False
 ```
 
 ---

@@ -89,7 +89,7 @@ Einstellungen: `app/rag_pipeline.py`
 ## Volumes
 
 ```bash
-REMOVE_VOLUMES=False   # True löscht Daten beim nächsten Start
+REMOVE_LLARS_VOLUMES=False   # True löscht Daten beim nächsten Start
 ```
 
 - `llars_llarsdb` – MariaDB-Daten

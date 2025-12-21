@@ -594,5 +594,5 @@ Falls etwas schief geht:
 docker compose exec backend-flask-service flask db downgrade
 
 # Oder komplett neu starten
-REMOVE_VOLUMES=True ./start_llars.sh
+REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 ```

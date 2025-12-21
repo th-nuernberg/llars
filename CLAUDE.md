@@ -18,7 +18,7 @@ cp .env.template.development .env
 ./start_llars.sh
 
 # Komplett-Neustart (LÖSCHT ALLE DATEN!)
-REMOVE_VOLUMES=True ./start_llars.sh
+REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 ```
 
 ### URLs (Development)

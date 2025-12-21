@@ -15,8 +15,9 @@ services:
         condition: service_started
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE:-development}
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
       start_period: 10s
       interval: 10s
       timeout: 5s

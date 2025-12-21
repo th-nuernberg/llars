@@ -101,7 +101,13 @@
                 Noch keine Commits.
               </v-alert>
               <v-list v-else density="compact" class="history-list">
-                <v-list-item v-for="c in commits" :key="c.id">
+                <v-list-item
+                  v-for="c in commits"
+                  :key="c.id"
+                  :active="c.id === compareCommitId"
+                  active-class="history-item--active"
+                  @click="selectCommit(c.id)"
+                >
                   <v-list-item-title class="text-body-2">
                     {{ c.message }}
                   </v-list-item-title>
@@ -114,6 +120,64 @@
                 </v-list-item>
               </v-list>
             </v-col>
+
+            <v-col cols="12">
+              <v-divider class="my-3" />
+              <div class="d-flex flex-wrap align-center ga-3 mb-2">
+                <div class="text-subtitle-2">Diff</div>
+                <v-select
+                  v-model="compareMode"
+                  :items="compareModeOptions"
+                  label="Modus"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="diff-select"
+                />
+                <v-select
+                  v-if="compareMode === 'commit-range'"
+                  v-model="baseCommitId"
+                  :items="baseCommitOptions"
+                  :disabled="baseCommitOptions.length === 0"
+                  label="Basis"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="diff-select"
+                />
+                <v-select
+                  v-if="compareMode === 'commit-range'"
+                  v-model="compareCommitId"
+                  :items="commitOptions"
+                  :disabled="commitOptions.length === 0"
+                  label="Vergleich"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="diff-select"
+                />
+                <v-btn
+                  icon="mdi-refresh"
+                  variant="text"
+                  class="ml-auto"
+                  title="Diff neu laden"
+                  @click="refreshDiff(true)"
+                />
+              </div>
+
+              <v-alert v-if="diffError" type="error" variant="tonal" class="mb-3">
+                {{ diffError }}
+              </v-alert>
+
+              <v-skeleton-loader v-if="isLoading('diff')" type="table" height="240" />
+              <MarkdownDiffViewer
+                v-else
+                :base-text="diffBaseText"
+                :compare-text="diffCompareText"
+                :base-label="diffBaseLabel"
+                :compare-label="diffCompareLabel"
+              />
+            </v-col>
           </v-row>
         </v-card-text>
       </div>
@@ -125,6 +189,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import MarkdownDiffViewer from '@/components/MarkdownCollab/MarkdownDiffViewer.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getSocket } from '@/services/socketService'
 
@@ -139,15 +204,48 @@ const props = defineProps({
 const emit = defineEmits(['committed'])
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
-const { isLoading, withLoading } = useSkeletonLoading(['commits'])
+const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff'])
 
 const expanded = ref(true)
 const commits = ref([])
+const compareMode = ref('working')
+const baseCommitId = ref(null)
+const compareCommitId = ref(null)
 
 const commitMessage = ref('')
 const committing = ref(false)
 const commitError = ref('')
 const loadError = ref('')
+const diffError = ref('')
+
+const diffBaseText = ref('')
+const diffCompareText = ref('')
+const diffBaseLabel = ref('')
+const diffCompareLabel = ref('')
+
+const baselineSnapshot = ref('')
+const baselineCommitId = ref(null)
+const baselineCommitMessage = ref('')
+
+const commitSnapshotCache = new Map()
+let workingSyncTimer = null
+
+const compareModeOptions = [
+  { title: 'Working tree vs letzter Commit', value: 'working' },
+  { title: 'Commit vs Commit', value: 'commit-range' }
+]
+
+const commitOptions = computed(() => commits.value.map((c) => ({
+  title: `#${c.id} · ${c.message}`,
+  value: c.id
+})))
+
+const INITIAL_BASE = '__initial__'
+
+const baseCommitOptions = computed(() => [
+  { title: 'Initial (kein Commit)', value: INITIAL_BASE },
+  ...commitOptions.value
+])
 
 function authHeaders() {
   const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
@@ -163,12 +261,116 @@ function formatDate(iso) {
   }
 }
 
+function getCommitById(commitId) {
+  return commits.value.find((c) => c.id === commitId) || null
+}
+
+function formatCommitLabel(commit) {
+  if (!commit) return '—'
+  const message = commit.message ? String(commit.message).trim() : ''
+  return `#${commit.id}${message ? ` · ${message}` : ''}`
+}
+
+async function loadBaselineSnapshot(force = false) {
+  if (!props.documentId) return
+  if (!force && baselineCommitId.value !== null) return
+
+  const res = await axios.get(
+    `${API_BASE}/api/markdown-collab/documents/${props.documentId}/baseline`,
+    { headers: authHeaders() }
+  )
+  baselineSnapshot.value = res.data?.baseline || ''
+  baselineCommitId.value = res.data?.commit_id ?? null
+  baselineCommitMessage.value = res.data?.commit_message || ''
+}
+
+async function fetchCommitSnapshot(commitId) {
+  if (!commitId || commitId === INITIAL_BASE) return ''
+  if (commitSnapshotCache.has(commitId)) {
+    return commitSnapshotCache.get(commitId) || ''
+  }
+  const res = await axios.get(
+    `${API_BASE}/api/markdown-collab/documents/${props.documentId}/commits/${commitId}`,
+    { headers: authHeaders() }
+  )
+  const snapshot = res.data?.commit?.content_snapshot || ''
+  commitSnapshotCache.set(commitId, snapshot)
+  return snapshot
+}
+
+function syncWorkingDiffText() {
+  if (compareMode.value !== 'working') return
+  if (workingSyncTimer) clearTimeout(workingSyncTimer)
+  workingSyncTimer = setTimeout(() => {
+    diffCompareText.value = props.getContent ? String(props.getContent() || '') : ''
+  }, 120)
+}
+
+async function refreshDiff(force = false) {
+  await withLoading('diff', async () => {
+    diffError.value = ''
+    try {
+      if (compareMode.value === 'working') {
+        await loadBaselineSnapshot(force)
+        diffBaseText.value = baselineSnapshot.value || ''
+        diffCompareText.value = props.getContent ? String(props.getContent() || '') : ''
+        diffBaseLabel.value = baselineCommitId.value
+          ? `#${baselineCommitId.value}${baselineCommitMessage.value ? ` · ${baselineCommitMessage.value}` : ''}`
+          : 'Initial (kein Commit)'
+        diffCompareLabel.value = 'Working tree'
+        return
+      }
+
+      const compareCommit = getCommitById(compareCommitId.value)
+      if (!compareCommit) {
+        diffBaseText.value = ''
+        diffCompareText.value = ''
+        diffBaseLabel.value = '—'
+        diffCompareLabel.value = '—'
+        return
+      }
+
+      const baseCommit = getCommitById(baseCommitId.value)
+      const [compareSnapshot, baseSnapshot] = await Promise.all([
+        fetchCommitSnapshot(compareCommit.id),
+        fetchCommitSnapshot(baseCommit?.id || baseCommitId.value)
+      ])
+
+      diffBaseText.value = baseSnapshot || ''
+      diffCompareText.value = compareSnapshot || ''
+      diffBaseLabel.value = baseCommit
+        ? formatCommitLabel(baseCommit)
+        : 'Initial (kein Commit)'
+      diffCompareLabel.value = formatCommitLabel(compareCommit)
+    } catch (e) {
+      diffBaseText.value = ''
+      diffCompareText.value = ''
+      diffBaseLabel.value = '—'
+      diffCompareLabel.value = '—'
+      diffError.value = e?.response?.data?.error || e?.message || 'Diff konnte nicht geladen werden'
+    }
+  })
+}
+
+function selectCommit(commitId) {
+  if (!commitId) return
+  compareCommitId.value = commitId
+  compareMode.value = 'commit-range'
+  if (!baseCommitId.value || baseCommitId.value === commitId) {
+    const selectedIndex = commits.value.findIndex((c) => c.id === commitId)
+    const previous = selectedIndex >= 0 ? commits.value[selectedIndex + 1] : null
+    baseCommitId.value = previous ? previous.id : INITIAL_BASE
+  }
+}
+
 let socket = null
 let subscribedDocId = null
 let onSocketConnect = null
 
 function handleCommitCreated(payload) {
   if (!payload || payload.document_id !== props.documentId) return
+  commitSnapshotCache.clear()
+  baselineCommitId.value = null
   loadCommits(true)
   emit('committed')
 }
@@ -202,6 +404,25 @@ function cleanupCommitSocket() {
   onSocketConnect = null
 }
 
+function resetDiffState() {
+  diffBaseText.value = ''
+  diffCompareText.value = ''
+  diffBaseLabel.value = ''
+  diffCompareLabel.value = ''
+  diffError.value = ''
+  compareMode.value = 'working'
+  baseCommitId.value = INITIAL_BASE
+  compareCommitId.value = null
+  baselineSnapshot.value = ''
+  baselineCommitId.value = null
+  baselineCommitMessage.value = ''
+  commitSnapshotCache.clear()
+  if (workingSyncTimer) {
+    clearTimeout(workingSyncTimer)
+    workingSyncTimer = null
+  }
+}
+
 async function loadCommits(force = false) {
   await withLoading('commits', async () => {
     loadError.value = ''
@@ -211,11 +432,27 @@ async function loadCommits(force = false) {
         params: force ? { _ts: Date.now() } : undefined
       })
       commits.value = res.data.commits || []
+      if (commits.value.length > 0) {
+        const compareExists = commits.value.some((c) => c.id === compareCommitId.value)
+        if (!compareExists) {
+          compareCommitId.value = commits.value[0].id
+        }
+        const baseExists = commits.value.some((c) => c.id === baseCommitId.value)
+        if (!baseExists) {
+          baseCommitId.value = commits.value[1]?.id || INITIAL_BASE
+        }
+      } else {
+        compareCommitId.value = null
+        baseCommitId.value = INITIAL_BASE
+      }
     } catch (e) {
       commits.value = []
+      compareCommitId.value = null
+      baseCommitId.value = INITIAL_BASE
       loadError.value = e?.response?.data?.error || e?.message || 'History konnte nicht geladen werden'
     }
   })
+  await refreshDiff(force)
 }
 
 const canSubmitCommit = computed(() => {
@@ -253,11 +490,36 @@ async function submitCommit() {
 }
 
 watch(
+  () => props.summary,
+  () => {
+    syncWorkingDiffText()
+  },
+  { deep: true }
+)
+
+watch(
+  compareMode,
+  async () => {
+    await refreshDiff(false)
+  }
+)
+
+watch(
+  [baseCommitId, compareCommitId],
+  async () => {
+    if (compareMode.value === 'commit-range') {
+      await refreshDiff(false)
+    }
+  }
+)
+
+watch(
   () => props.documentId,
   async (nextId, prevId) => {
     if (prevId && prevId !== nextId) {
       cleanupCommitSocket()
     }
+    resetDiffState()
     commitMessage.value = ''
     commits.value = []
     await loadCommits(true)
@@ -276,6 +538,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cleanupCommitSocket()
+  resetDiffState()
 })
 </script>
 
@@ -298,5 +561,14 @@ onUnmounted(() => {
 .history-list {
   max-height: 220px;
   overflow: auto;
+}
+
+.history-item--active {
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+
+.diff-select {
+  min-width: 220px;
+  max-width: 360px;
 }
 </style>

@@ -570,6 +570,37 @@ def list_commits(document_id: int):
     }), 200
 
 
+@markdown_collab_bp.route("/documents/<int:document_id>/commits/<int:commit_id>", methods=["GET"])
+@require_permission("feature:markdown_collab:view")
+@handle_api_errors(logger_name="markdown_collab")
+def get_commit(document_id: int, commit_id: int):
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    doc = MarkdownDocument.query.get(document_id)
+    if not doc:
+        raise NotFoundError("Document not found")
+    _require_document_access(doc, username)
+
+    commit = MarkdownCommit.query.filter_by(document_id=document_id, id=commit_id).first()
+    if not commit:
+        raise NotFoundError("Commit not found")
+
+    return jsonify({
+        "success": True,
+        "commit": {
+            "id": commit.id,
+            "document_id": commit.document_id,
+            "author_username": commit.author_username,
+            "message": commit.message,
+            "diff_summary": commit.diff_summary,
+            "content_snapshot": commit.content_snapshot,
+            "created_at": commit.created_at.isoformat() if commit.created_at else None,
+        },
+    }), 200
+
+
 @markdown_collab_bp.route("/documents/<int:document_id>/commit", methods=["POST"])
 @require_permission("feature:markdown_collab:edit")
 @handle_api_errors(logger_name="markdown_collab")

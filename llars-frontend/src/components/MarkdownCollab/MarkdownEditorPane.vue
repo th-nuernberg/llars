@@ -173,12 +173,51 @@ function rgbaFromHex(hex, alpha = 0.18) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+function isValidHexColor(value) {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
+function buildInsertDecorations() {
+  if (!ytext || !view.value) return []
+  const decorations = []
+  let pos = 0
+  const delta = ytext.toDelta()
+
+  for (const op of delta) {
+    const insert = op?.insert
+    const text = typeof insert === 'string' ? insert : ''
+    const length = text.length
+    const attrs = op?.attributes || {}
+    const color = attrs.collabColor || attrs.color
+
+    if (length > 0 && isValidHexColor(color)) {
+      const safeFrom = clampPos(pos, view.value.state.doc.length)
+      const safeTo = clampPos(pos + length, view.value.state.doc.length)
+      if (safeFrom < safeTo) {
+        const background = rgbaFromHex(color, 0.35)
+        const outline = rgbaFromHex(color, 0.5)
+        decorations.push(
+          Decoration.mark({
+            attributes: {
+              style: `background: ${background}; border-radius: 2px; box-shadow: 0 0 0 1px ${outline}; text-decoration: underline; text-decoration-color: ${color}; text-underline-offset: 2px;`
+            }
+          }).range(safeFrom, safeTo)
+        )
+      }
+    }
+
+    pos += length
+  }
+
+  return decorations
+}
+
 function updateDecorations() {
   if (!view.value) return
   if (applyingDecorations) return
   const decorations = []
 
-  // Convert Yjs Map to plain object for color lookup
+  // Convert Yjs Map to plain object for line-level activity indicators
   const highlightsData = {}
   if (yhighlights) {
     try {
@@ -190,17 +229,29 @@ function updateDecorations() {
     }
   }
 
-  // Character-level git diff highlighting with user colors
+  // Character-level git diff (for summary + deleted-line gutter)
   const currentContent = view.value.state.doc.toString()
   const diffs = computeCharacterDiffs(currentContent)
 
+  const insertDecorations = buildInsertDecorations()
+  const includeInsertDecorations = insertDecorations.length === 0
   if (diffs.length > 0) {
-    // Pass highlights data to get user colors for each insertion
-    const { decorations: diffDecos, deletedLines } = diffsToDecorations(diffs, view.value, highlightsData)
-    decorations.push(...diffDecos)
+    const { decorations: diffDecos, deletedLines } = diffsToDecorations(
+      diffs,
+      view.value,
+      null,
+      { includeInsertDecorations }
+    )
+    if (includeInsertDecorations) {
+      decorations.push(...diffDecos)
+    }
     deletedLinesRef.value = deletedLines
   } else {
     deletedLinesRef.value = new Set()
+  }
+
+  if (insertDecorations.length > 0) {
+    decorations.push(...insertDecorations)
   }
 
   // Real-time activity indicator: subtle left border to show who is editing
@@ -502,13 +553,21 @@ function initEditorIfNeeded() {
           })
 
           skipNextTextSync = true
+          let userColor = collabColor.value
+          if (!userColor && socket.value?.id && users.value?.[socket.value.id]) {
+            userColor = users.value[socket.value.id].color
+          }
+          if (!userColor) {
+            userColor = '#4ECDC4'
+          }
+          const userAttrs = { collabColor: userColor, collabUser: username.value }
           ydoc.value.transact(() => {
             // Apply in reverse order to keep positions stable
             changes.sort((a, b) => b.from - a.from)
             for (const ch of changes) {
               const delLen = ch.to - ch.from
               if (delLen > 0) ytext.delete(ch.from, delLen)
-              if (ch.insert) ytext.insert(ch.from, ch.insert)
+              if (ch.insert) ytext.insert(ch.from, ch.insert, userAttrs)
             }
             updateLocalHighlights(update)
           }, 'cm')
@@ -550,6 +609,9 @@ function clearHighlights() {
   if (!yhighlights || !ydoc.value) return
   ydoc.value.transact(() => {
     yhighlights.clear()
+    if (ytext && ytext.length > 0) {
+      ytext.format(0, ytext.length, { collabColor: null, collabUser: null })
+    }
   }, 'git')
   updateDecorations()
 }

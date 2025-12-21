@@ -62,6 +62,12 @@ app.component('LMessageList', LMessageList)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'
+// Ensure relative API calls work across dev/prod origins.
+const rawApiBase = import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+const trimmedApiBase = String(rawApiBase || '').replace(/\/+$/, '')
+axios.defaults.baseURL = trimmedApiBase.endsWith('/api')
+  ? trimmedApiBase.slice(0, -4)
+  : (trimmedApiBase || (typeof window !== 'undefined' ? window.location.origin : ''))
 
 const auth = useAuth()
 

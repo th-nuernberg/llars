@@ -69,12 +69,8 @@ export function useGitDiff() {
    * Returns array of [operation, text] tuples
    */
   function computeCharacterDiffs(currentContent) {
-    // No baseline = no diffs (new document without commits)
-    if (gitBaseline.value === null || gitBaseline.value === undefined) {
-      return []
-    }
-
-    const baseline = gitBaseline.value || ''
+    // No baseline yet = compare against empty content (first commit scenario)
+    const baseline = gitBaseline.value ?? ''
     const current = currentContent || ''
 
     // If content is identical to baseline, no diffs
@@ -115,7 +111,8 @@ export function useGitDiff() {
    * @param {Object|null} highlightsData - Plain object with user highlights per line { "lineNo": { color, username, ts } }
    * Returns { decorations: Decoration[], deletedLines: Set<number> }
    */
-  function diffsToDecorations(diffs, view, highlightsData = null) {
+  function diffsToDecorations(diffs, view, highlightsData = null, options = {}) {
+    const { includeInsertDecorations = true } = options || {}
     if (!diffs || diffs.length === 0 || !view) {
       return { decorations: [], deletedLines: new Set() }
     }
@@ -138,7 +135,7 @@ export function useGitDiff() {
         const safeFrom = Math.min(from, docLen)
         const safeTo = Math.min(to, docLen)
 
-        if (safeFrom < safeTo) {
+        if (includeInsertDecorations && safeFrom < safeTo) {
           // Get user color from highlights data for this line
           let userColor = null
           try {
@@ -188,9 +185,9 @@ export function useGitDiff() {
    */
   function hasChanges(currentContent) {
     if (gitBaseline.value === null || gitBaseline.value === undefined) {
-      return false
+      return (currentContent || '').length > 0
     }
-    return gitBaseline.value !== currentContent
+    return gitBaseline.value !== (currentContent || '')
   }
 
   /**

@@ -205,7 +205,7 @@ def _get_rag_images_for_sources(sources):
     return images
 
 
-def _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time, conversation_id=None):
+def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session_id, username, client_id, start_time, conversation_id=None):
     """
     Handle streaming chat with agent modes (ACT, ReAct, ReflAct).
 
@@ -347,6 +347,7 @@ def _handle_agent_stream(agent_service, chatbot, user_message, session_id, usern
                     "content": event["delta"],
                     "complete": False
                 }, room=client_id)
+                socketio.sleep(0)
                 final_response += event["delta"]
 
             elif "error" in event:
@@ -369,6 +370,7 @@ def _handle_agent_stream(agent_service, chatbot, user_message, session_id, usern
                 "content": final_response,
                 "complete": False
             }, room=client_id)
+            socketio.sleep(0)
 
         # Send sources
         if all_sources:
@@ -400,6 +402,7 @@ def _handle_agent_stream(agent_service, chatbot, user_message, session_id, usern
             "content": "",
             "complete": True
         }, room=client_id)
+        socketio.sleep(0)
 
         logger.info(f"Agent {agent_mode} responded to chatbot {chatbot.name} in {response_time_ms}ms")
 
@@ -544,7 +547,7 @@ def register_chatbot_events(socketio):
 
             # Route to agent handler for non-standard modes
             if agent_mode != 'standard':
-                _handle_agent_stream(agent_service, chatbot, user_message, session_id, username, client_id, start_time, conversation_id=conversation_id)
+                _handle_agent_stream(socketio, agent_service, chatbot, user_message, session_id, username, client_id, start_time, conversation_id=conversation_id)
                 return
 
             # Standard mode - use regular ChatService
@@ -665,6 +668,7 @@ def register_chatbot_events(socketio):
                         "content": content,
                         "complete": False
                     }, room=client_id)
+                    socketio.sleep(0)
 
                 # Check for completion
                 if getattr(choice, "finish_reason", None) is not None:

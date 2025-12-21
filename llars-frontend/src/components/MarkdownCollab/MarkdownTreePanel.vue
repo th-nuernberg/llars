@@ -9,6 +9,7 @@
       <v-btn
         icon="mdi-file-document-plus-outline"
         variant="text"
+        size="small"
         :disabled="!canEdit"
         title="Neue Datei"
         @click="openCreateDialog('file')"
@@ -16,10 +17,12 @@
       <v-btn
         icon="mdi-folder-plus-outline"
         variant="text"
+        size="small"
         :disabled="!canEdit"
         title="Neuer Ordner"
         @click="openCreateDialog('folder')"
       />
+      <slot name="header-append" />
     </div>
 
     <div class="px-3 pt-3">

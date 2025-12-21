@@ -569,6 +569,7 @@ def create_commit(document_id: int):
     data = request.get_json() or {}
     message = (data.get("message") or "").strip()
     diff_summary = data.get("diff_summary")
+    content_snapshot = data.get("content_snapshot")
 
     if not message:
         raise ValidationError("message is required")
@@ -578,6 +579,7 @@ def create_commit(document_id: int):
         author_username=username,
         message=message,
         diff_summary=diff_summary,
+        content_snapshot=content_snapshot,
         created_at=datetime.utcnow(),
     )
     db.session.add(commit)
@@ -591,6 +593,48 @@ def create_commit(document_id: int):
             "author_username": commit.author_username,
             "message": commit.message,
             "diff_summary": commit.diff_summary,
+            "content_snapshot": commit.content_snapshot,
             "created_at": commit.created_at.isoformat() if commit.created_at else None,
         },
     }), 201
+
+
+@markdown_collab_bp.route("/documents/<int:document_id>/baseline", methods=["GET"])
+@require_permission("feature:markdown_collab:view")
+@handle_api_errors(logger_name="markdown_collab")
+def get_baseline(document_id: int):
+    """Get the content snapshot from the latest commit for diff comparison."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    doc = MarkdownDocument.query.get(document_id)
+    if not doc:
+        raise NotFoundError("Document not found")
+    _require_document_access(doc, username)
+
+    # Get the latest commit with a content_snapshot
+    latest_commit = (
+        MarkdownCommit.query
+        .filter_by(document_id=document_id)
+        .filter(MarkdownCommit.content_snapshot.isnot(None))
+        .order_by(MarkdownCommit.created_at.desc(), MarkdownCommit.id.desc())
+        .first()
+    )
+
+    if not latest_commit:
+        return jsonify({
+            "success": True,
+            "baseline": None,
+            "commit_id": None,
+            "message": "No commits with content snapshot found",
+        }), 200
+
+    return jsonify({
+        "success": True,
+        "baseline": latest_commit.content_snapshot,
+        "commit_id": latest_commit.id,
+        "commit_message": latest_commit.message,
+        "commit_author": latest_commit.author_username,
+        "commit_date": latest_commit.created_at.isoformat() if latest_commit.created_at else None,
+    }), 200

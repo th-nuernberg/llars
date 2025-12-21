@@ -114,6 +114,7 @@
                   :document-id="selectedNode.id"
                   :summary="gitSummary"
                   :can-commit="hasPermission('feature:markdown_collab:edit')"
+                  :get-content="() => editorRef?.getCurrentContent?.()"
                   @committed="refreshCommits"
                 />
               </div>
@@ -466,6 +467,8 @@ async function handleMoveNode({ id, parentId, orderIndex }) {
 }
 
 async function refreshCommits() {
+  // Refresh the git baseline after commit to update diff decorations
+  await editorRef.value?.refreshBaseline?.()
   editorRef.value?.clearHighlights?.()
 }
 
@@ -473,7 +476,7 @@ watch(
   selectedNodeId,
   (docId) => {
     currentText.value = ''
-    gitSummary.value = { users: [], totalChangedLines: 0 }
+    gitSummary.value = { users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }
     if (docId) {
       pendingDocId.value = docId
       setLoading('document', true)

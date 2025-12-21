@@ -4,8 +4,13 @@
       <v-icon class="mr-2" color="primary">mdi-source-branch</v-icon>
       Git Panel
       <v-spacer />
-      <v-chip size="small" variant="tonal" color="info">
-        {{ summary?.totalChangedLines || 0 }} Änderungen
+      <v-chip size="small" variant="tonal" :color="summary?.hasChanges ? 'warning' : 'info'">
+        <template v-if="summary?.insertions !== undefined">
+          +{{ summary?.insertions || 0 }} / -{{ summary?.deletions || 0 }}
+        </template>
+        <template v-else>
+          {{ summary?.totalChangedLines || 0 }} Änderungen
+        </template>
       </v-chip>
       <v-btn icon="mdi-refresh" variant="text" class="ml-1" title="History neu laden" @click="loadCommits(true)" />
       <v-btn
@@ -30,26 +35,33 @@
           <v-row>
             <v-col cols="12" md="5">
               <div class="text-subtitle-2 mb-2">Uncommitted Changes</div>
-              <div v-if="(summary?.users || []).length === 0" class="text-body-2 text-medium-emphasis">
+              <div v-if="!summary?.hasChanges && (summary?.users || []).length === 0" class="text-body-2 text-medium-emphasis">
                 Keine uncommitted Änderungen.
               </div>
-              <v-list v-else density="compact" class="pa-0">
-                <v-list-item
-                  v-for="u in summary.users"
-                  :key="u.username"
-                  class="px-0"
-                >
-                  <template #prepend>
-                    <span class="user-dot" :style="{ backgroundColor: u.color }" />
-                  </template>
-                  <v-list-item-title class="text-body-2">
-                    {{ u.username }}
-                  </v-list-item-title>
-                  <v-list-item-subtitle class="text-caption">
-                    {{ u.changedLines }} Zeilen
-                  </v-list-item-subtitle>
-                </v-list-item>
-              </v-list>
+              <div v-else class="mb-3">
+                <div v-if="summary?.insertions !== undefined" class="text-body-2 mb-2">
+                  <span class="text-success">+{{ summary?.insertions || 0 }} Zeichen eingefügt</span>
+                  <span class="mx-2">|</span>
+                  <span class="text-error">-{{ summary?.deletions || 0 }} Zeichen gelöscht</span>
+                </div>
+                <v-list v-if="(summary?.users || []).length > 0" density="compact" class="pa-0">
+                  <v-list-item
+                    v-for="u in summary.users"
+                    :key="u.username"
+                    class="px-0"
+                  >
+                    <template #prepend>
+                      <span class="user-dot" :style="{ backgroundColor: u.color }" />
+                    </template>
+                    <v-list-item-title class="text-body-2">
+                      {{ u.username }}
+                    </v-list-item-title>
+                    <v-list-item-subtitle class="text-caption">
+                      {{ u.changedLines }} Zeilen
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                </v-list>
+              </div>
 
               <v-divider class="my-4" />
 
@@ -117,8 +129,10 @@ import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const props = defineProps({
   documentId: { type: Number, required: true },
-  summary: { type: Object, default: () => ({ users: [], totalChangedLines: 0 }) },
-  canCommit: { type: Boolean, default: false }
+  summary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false }) },
+  canCommit: { type: Boolean, default: false },
+  // Function to get current content from editor for commit snapshot
+  getContent: { type: Function, default: null }
 })
 
 const emit = defineEmits(['committed'])
@@ -166,7 +180,8 @@ async function loadCommits(force = false) {
 
 const canSubmitCommit = computed(() => {
   const msgOk = commitMessage.value.trim().length > 0
-  const hasChanges = (props.summary?.totalChangedLines || 0) > 0
+  // Use hasChanges from summary (based on actual diff comparison with baseline)
+  const hasChanges = props.summary?.hasChanges === true || (props.summary?.totalChangedLines || 0) > 0
   return props.canCommit && msgOk && hasChanges
 })
 
@@ -175,11 +190,15 @@ async function submitCommit() {
   committing.value = true
   commitError.value = ''
   try {
+    // Get current content for snapshot (required for character-level diff)
+    const contentSnapshot = props.getContent ? props.getContent() : null
+
     await axios.post(
       `${API_BASE}/api/markdown-collab/documents/${props.documentId}/commit`,
       {
         message: commitMessage.value.trim(),
-        diff_summary: props.summary || null
+        diff_summary: props.summary || null,
+        content_snapshot: contentSnapshot
       },
       { headers: authHeaders() }
     )

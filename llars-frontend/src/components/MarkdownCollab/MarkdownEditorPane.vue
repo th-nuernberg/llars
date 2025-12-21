@@ -55,14 +55,15 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as Y from 'yjs'
-import { EditorState, StateEffect, StateField } from '@codemirror/state'
-import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap } from '@codemirror/view'
+import { EditorState, StateEffect, StateField, RangeSet } from '@codemirror/state'
+import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap, gutter, GutterMarker } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
 
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
+import { useGitDiff } from './composables/useGitDiff'
 
 const props = defineProps({
   document: { type: Object, required: true },
@@ -88,6 +89,20 @@ const { tokenParsed } = useAuth()
 const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
 
 const roomId = computed(() => props.document?.yjs_doc_id || `markdown_${props.document?.id}`)
+
+// Git diff for character-level change highlighting
+const {
+  gitBaseline,
+  loadBaseline,
+  computeCharacterDiffs,
+  diffsToDecorations,
+  hasChanges,
+  getChangeSummary,
+  updateBaseline
+} = useGitDiff()
+
+// Track deleted lines for gutter markers
+const deletedLinesRef = ref(new Set())
 
 const activeUsers = computed(() => {
   const list = []
@@ -128,6 +143,17 @@ class CaretWidget extends WidgetType {
   }
 }
 
+// Gutter marker for deleted lines (red indicator)
+class DeletionMarker extends GutterMarker {
+  toDOM() {
+    const el = document.createElement('div')
+    el.className = 'cm-diff-delete-gutter'
+    el.title = 'Gelöschter Text'
+    return el
+  }
+}
+const deletionMarkerInstance = new DeletionMarker()
+
 let applyingYjsToEditor = false
 let skipNextTextSync = false
 let applyingDecorations = false
@@ -152,19 +178,16 @@ function updateDecorations() {
   if (applyingDecorations) return
   const decorations = []
 
-  // Git highlights: line-level background
-  if (yhighlights) {
-    const maxLine = view.value.state.doc.lines
-    for (const [lineKey, meta] of yhighlights.entries()) {
-      const lineNo = Number(lineKey)
-      if (!lineNo || lineNo < 1 || lineNo > maxLine) continue
-      const line = view.value.state.doc.line(lineNo)
-      const color = meta?.color || '#4ECDC4'
-      const bg = rgbaFromHex(color, 0.18)
-      decorations.push(
-        Decoration.line({ attributes: { style: `background:${bg};` } }).range(line.from)
-      )
-    }
+  // Character-level git diff highlighting (PyCharm-style)
+  const currentContent = view.value.state.doc.toString()
+  const diffs = computeCharacterDiffs(currentContent)
+
+  if (diffs.length > 0) {
+    const { decorations: diffDecos, deletedLines } = diffsToDecorations(diffs, view.value)
+    decorations.push(...diffDecos)
+    deletedLinesRef.value = deletedLines
+  } else {
+    deletedLinesRef.value = new Set()
   }
 
   // Remote cursors / selections
@@ -197,7 +220,15 @@ function updateDecorations() {
     applyingDecorations = false
   }
 
-  emit('git-summary', computeGitSummary())
+  // Emit git summary based on actual diffs
+  const summary = getChangeSummary(diffs)
+  emit('git-summary', {
+    users: [], // Could track per-user changes if needed
+    totalChangedLines: summary.changes > 0 ? Math.ceil(summary.changes / 40) : 0, // Approximate line count
+    insertions: summary.insertions,
+    deletions: summary.deletions,
+    hasChanges: hasChanges(currentContent)
+  })
 }
 
 function computeGitSummary() {
@@ -314,7 +345,23 @@ function initEditorIfNeeded() {
       }
     }, { dark: false })
 
+    // Gutter for showing deleted lines (red markers)
+    const diffGutter = gutter({
+      class: 'cm-diff-gutter',
+      markers: (view) => {
+        const markers = []
+        for (const lineNo of deletedLinesRef.value) {
+          if (lineNo >= 1 && lineNo <= view.state.doc.lines) {
+            const line = view.state.doc.line(lineNo)
+            markers.push(deletionMarkerInstance.range(line.from))
+          }
+        }
+        return RangeSet.of(markers, true)
+      }
+    })
+
     const extensions = [
+      diffGutter,
       lineNumbers(),
       highlightSpecialChars(),
       drawSelection(),
@@ -409,11 +456,33 @@ function clearHighlights() {
   updateDecorations()
 }
 
+/**
+ * Refresh the git baseline after a commit
+ * This will update the baseline and recalculate all decorations
+ */
+async function refreshBaseline() {
+  await loadBaseline(props.document.id)
+  updateDecorations()
+}
+
+/**
+ * Get current content for commit
+ */
+function getCurrentContent() {
+  if (view.value) {
+    return view.value.state.doc.toString()
+  }
+  if (ytext) {
+    return ytext.toString()
+  }
+  return fallbackText.value || ''
+}
+
 function refresh() {
   view.value?.requestMeasure?.()
 }
 
-defineExpose({ clearHighlights, refresh })
+defineExpose({ clearHighlights, refresh, refreshBaseline, getCurrentContent })
 
 const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, { autoSync: true })
 const { ydoc, socket, users } = collaboration
@@ -425,9 +494,16 @@ let onSocketConnectError = null
 onMounted(async () => {
   error.value = ''
   try {
+    // Load git baseline for diff comparison
+    await loadBaseline(props.document.id)
+
     collaboration.initialize()
     await nextTick()
     processYDoc()
+
+    // Update decorations after baseline is loaded
+    await nextTick()
+    updateDecorations()
 
     const sock = socket.value
     isConnected.value = sock?.connected === true
@@ -540,5 +616,26 @@ onUnmounted(() => {
   margin-left: -1px;
   height: 1.2em;
   display: inline-block;
+}
+
+/* Git diff highlighting - character level */
+:global(.cm-diff-insert) {
+  background: rgba(72, 187, 120, 0.4) !important;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(72, 187, 120, 0.5);
+}
+
+/* Diff gutter styling */
+:global(.cm-diff-gutter) {
+  width: 4px;
+  min-width: 4px;
+  margin-right: 2px;
+}
+
+:global(.cm-diff-delete-gutter) {
+  width: 4px;
+  height: 100%;
+  background: rgba(245, 101, 101, 0.8);
+  border-radius: 1px;
 }
 </style>

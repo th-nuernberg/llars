@@ -77,7 +77,7 @@ export function useChatMessages() {
    * Send message via REST API
    * Handles both text-only and file upload scenarios
    */
-  async function sendViaREST(chatbotId, message, sessionId, files = []) {
+  async function sendViaREST(chatbotId, message, sessionId, files = [], conversationId = null) {
     try {
       let response
 
@@ -87,6 +87,9 @@ export function useChatMessages() {
         formData.append('message', message)
         formData.append('session_id', sessionId)
         formData.append('include_sources', 'true')
+        if (conversationId) {
+          formData.append('conversation_id', conversationId)
+        }
 
         for (const file of files) {
           formData.append('files', file)
@@ -104,7 +107,8 @@ export function useChatMessages() {
           {
             message,
             session_id: sessionId,
-            include_sources: true
+            include_sources: true,
+            conversation_id: conversationId
           }
         )
       }
@@ -113,7 +117,10 @@ export function useChatMessages() {
         return {
           success: true,
           content: response.data.response,
-          sources: response.data.sources
+          sources: response.data.sources,
+          conversationId: response.data.conversation_id,
+          sessionId: response.data.session_id,
+          messageId: response.data.message_id
         }
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler')

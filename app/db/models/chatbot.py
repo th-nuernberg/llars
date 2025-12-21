@@ -367,6 +367,11 @@ class ChatbotConversation(db.Model):
     # Relationships
     messages = db.relationship('ChatbotMessage', backref='conversation', cascade='all, delete-orphan')
 
+    __table_args__ = (
+        # Ensure session IDs are scoped per chatbot to avoid cross-bot collisions
+        db.UniqueConstraint('chatbot_id', 'session_id', name='uq_chatbot_session_per_bot'),
+    )
+
 
 class ChatbotMessage(db.Model):
     """Individual messages in a chatbot conversation"""
@@ -392,6 +397,9 @@ class ChatbotMessage(db.Model):
     tokens_input: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
     tokens_output: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
     response_time_ms: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
+    # Agent trace / streaming metadata for ACT/ReAct/ReflAct or debugging
+    agent_trace: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
+    stream_metadata: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
 
     # Feedback
     user_rating: Mapped[Optional[str]] = mapped_column(db.String(20), nullable=True)  # helpful, not_helpful, incorrect

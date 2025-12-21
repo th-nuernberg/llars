@@ -24,6 +24,7 @@ from openai import OpenAI
 from db.db import db
 from db.models.chatbot import Chatbot, ChatbotPromptSettings
 from services.chatbot.chat_service import ChatService
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,8 @@ class AgentChatService(ChatService):
         session_id: str,
         username: str = None,
         include_sources: bool = True,
-        files: List[Dict[str, Any]] = None
+        files: List[Dict[str, Any]] = None,
+        conversation_id: Optional[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """
         Main agent chat method - routes to appropriate mode.
@@ -100,16 +102,16 @@ class AgentChatService(ChatService):
 
         if mode == 'standard':
             # Standard mode - use parent class streaming
-            yield from self._chat_standard_stream(message, session_id, username, include_sources, files)
+            yield from self._chat_standard_stream(message, session_id, username, include_sources, files, conversation_id)
         elif mode == 'act':
-            yield from self._chat_act(message, session_id, username, include_sources, files)
+            yield from self._chat_act(message, session_id, username, include_sources, files, conversation_id)
         elif mode == 'react':
-            yield from self._chat_react(message, session_id, username, include_sources, files)
+            yield from self._chat_react(message, session_id, username, include_sources, files, conversation_id)
         elif mode == 'reflact':
-            yield from self._chat_reflact(message, session_id, username, include_sources, files)
+            yield from self._chat_reflact(message, session_id, username, include_sources, files, conversation_id)
         else:
             # Fallback to standard
-            yield from self._chat_standard_stream(message, session_id, username, include_sources, files)
+            yield from self._chat_standard_stream(message, session_id, username, include_sources, files, conversation_id)
 
     def _chat_standard_stream(
         self,
@@ -117,21 +119,25 @@ class AgentChatService(ChatService):
         session_id: str,
         username: str = None,
         include_sources: bool = True,
-        files: List[Dict[str, Any]] = None
+        files: List[Dict[str, Any]] = None,
+        conversation_id: Optional[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """Standard single-shot streaming response."""
         yield {"status": "starting", "mode": "standard"}
 
         # Get conversation
-        conversation = self._get_or_create_conversation(session_id, username)
+        conversation = self._get_or_create_conversation(session_id, username, conversation_id)
         from db.models.chatbot import ChatbotMessageRole
         self._save_message(conversation.id, ChatbotMessageRole.USER, message)
 
         # Get RAG context
         rag_context = ""
         sources = []
+        retrieval_time_ms = None
         if self.chatbot.rag_enabled and self.chatbot.collections:
+            retrieval_start = time.time()
             rag_context, sources = self._get_multi_collection_context(message)
+            retrieval_time_ms = int((time.time() - retrieval_start) * 1000)
 
         yield {"status": "context_retrieved", "sources_count": len(sources)}
 
@@ -165,18 +171,31 @@ class AgentChatService(ChatService):
             return
 
         # Save response
-        self._save_message(
+        msg = self._save_message(
             conversation.id,
             ChatbotMessageRole.ASSISTANT,
             accumulated,
-            rag_sources=sources if include_sources else []
+            rag_sources=sources if include_sources else [],
+            stream_metadata={
+                "retrieval_time_ms": retrieval_time_ms,
+                "sources_count": len(sources),
+                "mode": "standard"
+            }
         )
+
+        conversation.message_count += 2
+        conversation.last_message_at = datetime.now()
+        if not conversation.title and len(message) > 0:
+            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        db.session.commit()
 
         yield {
             "done": True,
             "full_response": accumulated,
             "sources": sources if include_sources else [],
-            "mode": "standard"
+            "mode": "standard",
+            "conversation_id": conversation.id,
+            "message_id": msg.id
         }
 
     def _chat_act(
@@ -185,7 +204,8 @@ class AgentChatService(ChatService):
         session_id: str,
         username: str = None,
         include_sources: bool = True,
-        files: List[Dict[str, Any]] = None
+        files: List[Dict[str, Any]] = None,
+        conversation_id: Optional[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """
         ACT mode - Action-only without explicit reasoning.
@@ -193,7 +213,7 @@ class AgentChatService(ChatService):
         """
         yield {"status": "starting", "mode": "act"}
 
-        conversation = self._get_or_create_conversation(session_id, username)
+        conversation = self._get_or_create_conversation(session_id, username, conversation_id)
         from db.models.chatbot import ChatbotMessageRole
         self._save_message(conversation.id, ChatbotMessageRole.USER, message)
 
@@ -228,19 +248,33 @@ class AgentChatService(ChatService):
                 yield {"status": "final_answer"}
                 final_response = param
 
-                self._save_message(
+                msg = self._save_message(
                     conversation.id,
                     ChatbotMessageRole.ASSISTANT,
                     final_response,
-                    rag_sources=all_sources if include_sources else []
+                    rag_sources=all_sources if include_sources else [],
+                    agent_trace=reasoning_steps,
+                    stream_metadata={
+                        "mode": "act",
+                        "iterations": iteration + 1,
+                        "sources_count": len(all_sources)
+                    }
                 )
+
+                conversation.message_count += 2
+                conversation.last_message_at = datetime.now()
+                if not conversation.title and len(message) > 0:
+                    conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+                db.session.commit()
 
                 yield {
                     "done": True,
                     "full_response": final_response,
                     "sources": all_sources if include_sources else [],
                     "mode": "act",
-                    "iterations": iteration + 1
+                    "iterations": iteration + 1,
+                    "conversation_id": conversation.id,
+                    "message_id": msg.id
                 }
                 return
 
@@ -259,19 +293,33 @@ class AgentChatService(ChatService):
         yield {"status": "max_iterations_reached"}
         final_response = self._generate_final_response(message, observations, all_sources)
 
-        self._save_message(
+        msg = self._save_message(
             conversation.id,
             ChatbotMessageRole.ASSISTANT,
             final_response,
-            rag_sources=all_sources if include_sources else []
+            rag_sources=all_sources if include_sources else [],
+            agent_trace=reasoning_steps,
+            stream_metadata={
+                "mode": "act",
+                "iterations": max_iterations,
+                "sources_count": len(all_sources)
+            }
         )
+
+        conversation.message_count += 2
+        conversation.last_message_at = datetime.now()
+        if not conversation.title and len(message) > 0:
+            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        db.session.commit()
 
         yield {
             "done": True,
             "full_response": final_response,
             "sources": all_sources if include_sources else [],
             "mode": "act",
-            "iterations": max_iterations
+            "iterations": max_iterations,
+            "conversation_id": conversation.id,
+            "message_id": msg.id
         }
 
     def _chat_react(
@@ -280,7 +328,8 @@ class AgentChatService(ChatService):
         session_id: str,
         username: str = None,
         include_sources: bool = True,
-        files: List[Dict[str, Any]] = None
+        files: List[Dict[str, Any]] = None,
+        conversation_id: Optional[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """
         ReAct mode - Reasoning and Acting interleaved.
@@ -288,7 +337,7 @@ class AgentChatService(ChatService):
         """
         yield {"status": "starting", "mode": "react"}
 
-        conversation = self._get_or_create_conversation(session_id, username)
+        conversation = self._get_or_create_conversation(session_id, username, conversation_id)
         from db.models.chatbot import ChatbotMessageRole
         self._save_message(conversation.id, ChatbotMessageRole.USER, message)
 
@@ -333,12 +382,24 @@ class AgentChatService(ChatService):
                 # Done!
                 yield {"status": "final_answer"}
 
-                self._save_message(
+                msg = self._save_message(
                     conversation.id,
                     ChatbotMessageRole.ASSISTANT,
                     final_answer,
-                    rag_sources=all_sources if include_sources else []
+                    rag_sources=all_sources if include_sources else [],
+                    agent_trace=reasoning_steps,
+                    stream_metadata={
+                        "mode": "react",
+                        "iterations": iteration + 1,
+                        "sources_count": len(all_sources)
+                    }
                 )
+
+                conversation.message_count += 2
+                conversation.last_message_at = datetime.now()
+                if not conversation.title and len(message) > 0:
+                    conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+                db.session.commit()
 
                 yield {
                     "done": True,
@@ -346,7 +407,9 @@ class AgentChatService(ChatService):
                     "sources": all_sources if include_sources else [],
                     "mode": "react",
                     "iterations": iteration + 1,
-                    "reasoning_steps": steps
+                    "reasoning_steps": steps,
+                    "conversation_id": conversation.id,
+                    "message_id": msg.id
                 }
                 return
 
@@ -366,12 +429,24 @@ class AgentChatService(ChatService):
         yield {"status": "max_iterations_reached"}
         final_response = self._generate_final_response(message, steps, all_sources)
 
-        self._save_message(
+        msg = self._save_message(
             conversation.id,
             ChatbotMessageRole.ASSISTANT,
             final_response,
-            rag_sources=all_sources if include_sources else []
+            rag_sources=all_sources if include_sources else [],
+            agent_trace=reasoning_steps,
+            stream_metadata={
+                "mode": "react",
+                "iterations": max_iterations,
+                "sources_count": len(all_sources)
+            }
         )
+
+        conversation.message_count += 2
+        conversation.last_message_at = datetime.now()
+        if not conversation.title and len(message) > 0:
+            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        db.session.commit()
 
         yield {
             "done": True,
@@ -379,7 +454,9 @@ class AgentChatService(ChatService):
             "sources": all_sources if include_sources else [],
             "mode": "react",
             "iterations": max_iterations,
-            "reasoning_steps": steps
+            "reasoning_steps": steps,
+            "conversation_id": conversation.id,
+            "message_id": msg.id
         }
 
     def _chat_reflact(
@@ -388,7 +465,8 @@ class AgentChatService(ChatService):
         session_id: str,
         username: str = None,
         include_sources: bool = True,
-        files: List[Dict[str, Any]] = None
+        files: List[Dict[str, Any]] = None,
+        conversation_id: Optional[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """
         ReflAct mode - Goal-state reflection before each action.
@@ -396,7 +474,7 @@ class AgentChatService(ChatService):
         """
         yield {"status": "starting", "mode": "reflact"}
 
-        conversation = self._get_or_create_conversation(session_id, username)
+        conversation = self._get_or_create_conversation(session_id, username, conversation_id)
         from db.models.chatbot import ChatbotMessageRole
         self._save_message(conversation.id, ChatbotMessageRole.USER, message)
 
@@ -461,12 +539,24 @@ class AgentChatService(ChatService):
             if final_answer:
                 yield {"status": "final_answer"}
 
-                self._save_message(
+                msg = self._save_message(
                     conversation.id,
                     ChatbotMessageRole.ASSISTANT,
                     final_answer,
-                    rag_sources=all_sources if include_sources else []
+                    rag_sources=all_sources if include_sources else [],
+                    agent_trace=steps,
+                    stream_metadata={
+                        "mode": "reflact",
+                        "iterations": iteration + 1,
+                        "sources_count": len(all_sources)
+                    }
                 )
+
+                conversation.message_count += 2
+                conversation.last_message_at = datetime.now()
+                if not conversation.title and len(message) > 0:
+                    conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+                db.session.commit()
 
                 yield {
                     "done": True,
@@ -475,7 +565,9 @@ class AgentChatService(ChatService):
                     "mode": "reflact",
                     "iterations": iteration + 1,
                     "goal": goal,
-                    "reasoning_steps": steps
+                    "reasoning_steps": steps,
+                    "conversation_id": conversation.id,
+                    "message_id": msg.id
                 }
                 return
 
@@ -495,12 +587,24 @@ class AgentChatService(ChatService):
         yield {"status": "max_iterations_reached"}
         final_response = self._generate_final_response(message, steps, all_sources)
 
-        self._save_message(
+        msg = self._save_message(
             conversation.id,
             ChatbotMessageRole.ASSISTANT,
             final_response,
-            rag_sources=all_sources if include_sources else []
+            rag_sources=all_sources if include_sources else [],
+            agent_trace=steps,
+            stream_metadata={
+                "mode": "reflact",
+                "iterations": max_iterations,
+                "sources_count": len(all_sources)
+            }
         )
+
+        conversation.message_count += 2
+        conversation.last_message_at = datetime.now()
+        if not conversation.title and len(message) > 0:
+            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        db.session.commit()
 
         yield {
             "done": True,
@@ -509,7 +613,9 @@ class AgentChatService(ChatService):
             "mode": "reflact",
             "iterations": max_iterations,
             "goal": goal,
-            "reasoning_steps": steps
+            "reasoning_steps": steps,
+            "conversation_id": conversation.id,
+            "message_id": msg.id
         }
 
     # ==================== Tool Execution ====================

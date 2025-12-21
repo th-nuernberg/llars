@@ -104,6 +104,10 @@ export function useGitDiff() {
     return `rgba(${r},${g},${b},${alpha})`
   }
 
+  function isValidHexColor(value) {
+    return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+  }
+
   /**
    * Convert diffs to CodeMirror decorations for inline highlighting
    * @param {Array} diffs - The diff array from computeCharacterDiffs
@@ -145,15 +149,15 @@ export function useGitDiff() {
             // ignore
           }
 
-          // Always use inline style for consistent coloring
-          // Use user color if available, otherwise use a nice green
-          const color = userColor || '#48BB78' // Green fallback
+          const color = isValidHexColor(userColor) ? userColor : null
+          const decorationSpec = { class: 'cm-diff-insert' }
+          if (color) {
+            decorationSpec.attributes = {
+              style: `background: ${rgbaFromHex(color, 0.35)}; border-radius: 2px; box-shadow: 0 0 0 1px ${rgbaFromHex(color, 0.5)}; text-decoration: underline; text-decoration-color: ${color}; text-underline-offset: 2px;`
+            }
+          }
           decorations.push(
-            Decoration.mark({
-              attributes: {
-                style: `background: ${rgbaFromHex(color, 0.35)}; border-radius: 2px; box-shadow: 0 0 0 1px ${rgbaFromHex(color, 0.5)}; text-decoration: underline; text-decoration-color: ${color}; text-underline-offset: 2px;`
-              }
-            }).range(safeFrom, safeTo)
+            Decoration.mark(decorationSpec).range(safeFrom, safeTo)
           )
         }
 

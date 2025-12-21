@@ -31,6 +31,7 @@ export const AUTH_STORAGE_KEYS = Object.freeze({
   idToken: 'auth_idToken',
   roles: 'auth_llars_roles',
   avatarSeed: 'auth_avatar_seed',
+  avatarUrl: 'auth_avatar_url',
   collabColor: 'auth_collab_color'
 })
 

@@ -56,16 +56,9 @@ def get_or_create_user(username: str):
     Returns:
         User object from database
     """
-    import random
     from db.db import db
     from db.tables import User, UserGroup
-
-    # Color palette for collaboration highlighting
-    COLLAB_COLORS = [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-        '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB',
-        '#E74C3C', '#2ECC71', '#F39C12', '#1ABC9C'
-    ]
+    from services.user_profile_service import pick_collab_color
 
     user = User.query.filter_by(username=username).first()
     if not user:
@@ -74,12 +67,7 @@ def get_or_create_user(username: str):
         group_id = default_group.id if default_group else 1
 
         # Assign unique collab color - prefer one that's not already in use
-        used_colors = set(
-            u.collab_color for u in User.query.with_entities(User.collab_color).all()
-            if u.collab_color
-        )
-        available_colors = [c for c in COLLAB_COLORS if c not in used_colors]
-        collab_color = random.choice(available_colors) if available_colors else random.choice(COLLAB_COLORS)
+        collab_color = pick_collab_color()
 
         # Create new user
         user = User(
@@ -108,6 +96,15 @@ def get_or_create_user(username: str):
             # Never block auth flow on telemetry
             pass
 
+    changed = False
+    if not user.collab_color:
+        user.collab_color = pick_collab_color()
+        changed = True
+    if hasattr(user, "get_avatar_seed") and not user.avatar_seed:
+        user.get_avatar_seed()
+        changed = True
+    if changed:
+        db.session.commit()
     return user
 
 # System Admin API Key (loaded from environment)

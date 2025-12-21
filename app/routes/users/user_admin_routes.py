@@ -26,6 +26,7 @@ from db.db import db
 from db.models import Role, User, UserGroup, UserPermission, UserRole
 from routes.auth import data_bp
 from services.permission_service import PermissionService
+from services.user_profile_service import build_avatar_url, is_valid_collab_color, pick_collab_color
 
 
 def _serialize_user(user: User, roles: List[dict]) -> Dict[str, Any]:
@@ -36,6 +37,8 @@ def _serialize_user(user: User, roles: List[dict]) -> Dict[str, Any]:
         "is_active": bool(getattr(user, "is_active", True)),
         "deleted_at": user.deleted_at.isoformat() if getattr(user, "deleted_at", None) else None,
         "avatar_seed": user.get_avatar_seed() if hasattr(user, "get_avatar_seed") else None,
+        "avatar_url": build_avatar_url(user),
+        "collab_color": user.collab_color,
         "roles": roles or [],
     }
 
@@ -98,6 +101,8 @@ def create_admin_user():
     username = (data.get("username") or "").strip()
     is_active = bool(data.get("is_active", True))
     role_names = data.get("role_names") or data.get("roles") or []
+    collab_color = (data.get("collab_color") or "").strip() or None
+    avatar_seed = (data.get("avatar_seed") or "").strip() or None
 
     # Optional Authentik fields
     email = (data.get("email") or "").strip()
@@ -107,6 +112,10 @@ def create_admin_user():
 
     if not username:
         raise ValidationError("username is required")
+    if collab_color and not is_valid_collab_color(collab_color):
+        raise ValidationError("collab_color must be a valid hex color (#RRGGBB format)")
+    if avatar_seed and len(avatar_seed) > 32:
+        raise ValidationError("avatar_seed must be <= 32 characters")
 
     # If creating in Authentik, email and password are required
     authentik_user_created = False
@@ -163,6 +172,16 @@ def create_admin_user():
             deleted_at=None,
         )
         db.session.add(user)
+
+    if collab_color:
+        user.collab_color = collab_color
+    elif not user.collab_color:
+        user.collab_color = pick_collab_color()
+
+    if avatar_seed:
+        user.avatar_seed = avatar_seed
+    elif hasattr(user, "get_avatar_seed") and not user.avatar_seed:
+        user.get_avatar_seed()
 
     db.session.commit()
 

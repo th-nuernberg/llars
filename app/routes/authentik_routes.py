@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request, g, current_app
 from auth.decorators import authentik_required, admin_required
 from auth.oidc_validator import get_token_from_request, validate_token, get_username, get_user_id
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
+from services.user_profile_service import build_avatar_url
 from functools import wraps
 
 # Create blueprint for Authentik-specific routes
@@ -71,6 +72,7 @@ def get_current_user():
         "username": username,
         "user_id": user_id,
         "avatar_seed": avatar_seed,
+        "avatar_url": build_avatar_url(user),
         "roles": g.authentik_token.get('realm_access', {}).get('roles', []),
         "email": g.authentik_token.get('email'),
         "name": g.authentik_token.get('name'),

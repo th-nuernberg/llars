@@ -16,6 +16,7 @@
           <div v-bind="props" class="user-menu-trigger">
             <LAvatar
               :seed="userAvatarSeed"
+              :src="userAvatarUrl"
               :username="username"
               size="sm"
               class="mr-2"
@@ -123,6 +124,7 @@ const settingsDialogOpen = ref(false);
 
 // Avatar seed from auth composable
 const userAvatarSeed = computed(() => auth.avatarSeed.value);
+const userAvatarUrl = computed(() => auth.avatarUrl.value);
 
 // Funktion zum Prüfen und Löschen alter Chat-Nachrichten
 const cleanupOldChatMessages = () => {

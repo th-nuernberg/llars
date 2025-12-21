@@ -18,8 +18,21 @@ const connectionError = ref(null);
 let socket = null;
 let reconnectOnVisible = false;
 
-const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
-const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+const socketioEnvFlag = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase();
+const autoEnableWebsocket = socketioEnvFlag === '' && typeof window !== 'undefined' && window.location.protocol === 'https:';
+const socketioEnableWebsocket = socketioEnvFlag === 'true' || autoEnableWebsocket;
+const socketioTransports = socketioEnableWebsocket ? ['websocket'] : ['polling'];
+const socketioUpgrade = socketioEnableWebsocket && socketioTransports.includes('polling');
+
+const getSocketBaseUrl = () => {
+  if (typeof window === 'undefined') return import.meta.env.VITE_API_BASE_URL || '';
+  const rawBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+  const trimmed = String(rawBase || '').replace(/\/+$/, '');
+  if (trimmed.endsWith('/api')) {
+    return trimmed.slice(0, -4);
+  }
+  return trimmed || window.location.origin;
+};
 
 /**
  * Create or get the Socket.IO connection
@@ -36,12 +49,12 @@ export function getSocket() {
     return socket;
   }
 
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+  const baseUrl = getSocketBaseUrl();
   console.log('[SocketService] Creating new socket connection to:', baseUrl);
 
   socket = io(baseUrl, {
     transports: socketioTransports,
-    upgrade: socketioEnableWebsocket,
+    upgrade: socketioUpgrade,
     reconnection: true,
     reconnectionAttempts: Infinity,  // Keep trying to reconnect
     reconnectionDelay: 1000,

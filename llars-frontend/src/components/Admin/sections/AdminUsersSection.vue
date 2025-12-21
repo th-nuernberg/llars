@@ -43,6 +43,7 @@
         <v-card-title class="d-flex align-center">
           <LAvatar
             :seed="selectedUser.avatar_seed"
+            :src="selectedUser.avatar_url"
             :username="selectedUser.username"
             size="lg"
             class="mr-3"
@@ -205,6 +206,7 @@
             <div class="d-flex align-center">
               <LAvatar
                 :seed="item.avatar_seed"
+                :src="item.avatar_url"
                 :username="item.username"
                 size="sm"
                 class="mr-2"
@@ -343,6 +345,48 @@
             class="mb-2"
           />
 
+          <div class="mb-2">
+            <div class="text-body-2 text-medium-emphasis mb-2">Kollaborationsfarbe (optional)</div>
+            <div class="d-flex align-center gap-2 mb-2">
+              <div
+                class="collab-color-preview"
+                :style="{ backgroundColor: newUserCollabColor || '#9e9e9e' }"
+              ></div>
+              <span class="text-caption">{{ newUserCollabColor || 'Automatisch' }}</span>
+              <LBtn
+                variant="text"
+                size="x-small"
+                class="ml-auto"
+                :disabled="creatingUser"
+                @click="newUserCollabColor = null"
+              >
+                Auto
+              </LBtn>
+            </div>
+            <div class="collab-color-presets">
+              <div
+                v-for="color in collabColorPresets"
+                :key="color"
+                class="collab-color-preset"
+                :class="{ selected: newUserCollabColor === color }"
+                :style="{ backgroundColor: color }"
+                @click="newUserCollabColor = color"
+              ></div>
+            </div>
+          </div>
+
+          <v-text-field
+            v-model="newUserAvatarSeed"
+            label="Profilbild-Seed (optional)"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-image-filter-vintage"
+            :disabled="creatingUser"
+            hint="Leer lassen = automatisch"
+            persistent-hint
+            class="mb-2"
+          />
+
           <v-select
             v-model="newUserRoles"
             :items="allRoles"
@@ -435,6 +479,8 @@ const newUserEmail = ref('');
 const newUserPassword = ref('');
 const newUserDisplayName = ref('');
 const newUserRoles = ref([]);
+const newUserCollabColor = ref(null);
+const newUserAvatarSeed = ref('');
 const newUserActive = ref(true);
 const showPassword = ref(false);
 
@@ -455,6 +501,12 @@ const headers = [
   { title: 'Status', key: 'status', sortable: false },
   { title: 'Rollen', key: 'roles', sortable: false },
   { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' },
+];
+
+const collabColorPresets = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+  '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB',
+  '#E74C3C', '#2ECC71', '#F39C12', '#1ABC9C'
 ];
 
 // Role filter options
@@ -644,6 +696,8 @@ const openCreateDialog = (prefillUsername = '') => {
   newUserDisplayName.value = '';
   newUserActive.value = true;
   newUserRoles.value = [];
+  newUserCollabColor.value = null;
+  newUserAvatarSeed.value = '';
   showPassword.value = false;
   createWarning.value = '';
 
@@ -666,6 +720,8 @@ const createUser = async () => {
       display_name: newUserDisplayName.value || newUserUsername.value,
       is_active: newUserActive.value,
       role_names: newUserRoles.value,
+      collab_color: newUserCollabColor.value,
+      avatar_seed: newUserAvatarSeed.value || null,
       create_in_authentik: true,
     });
 
@@ -793,5 +849,30 @@ onMounted(() => {
 
 .gap-2 {
   gap: 8px;
+}
+
+.collab-color-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+}
+
+.collab-color-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.collab-color-preset {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.collab-color-preset.selected {
+  border-color: rgb(var(--v-theme-on-surface));
 }
 </style>

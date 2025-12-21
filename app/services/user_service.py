@@ -13,6 +13,7 @@ from uuid import uuid4
 from datetime import datetime
 
 from db.db import db
+from services.user_profile_service import is_valid_collab_color, pick_collab_color
 
 
 class UserService:
@@ -120,7 +121,9 @@ class UserService:
         username: str,
         password: str,
         api_key: Optional[str] = None,
-        group_name: Optional[str] = None
+        group_name: Optional[str] = None,
+        collab_color: Optional[str] = None,
+        avatar_seed: Optional[str] = None
     ) -> Tuple[bool, Optional['User'], Optional[str]]:
         """
         Create a new user.
@@ -147,6 +150,18 @@ class UserService:
         if UserService.user_exists(username):
             return False, None, "Username already exists"
 
+        # Validate optional collab color
+        if collab_color is not None:
+            collab_color = collab_color.strip() or None
+            if collab_color and not is_valid_collab_color(collab_color):
+                return False, None, "Invalid collab color (expected #RRGGBB)"
+
+        # Normalize optional avatar seed
+        if avatar_seed is not None:
+            avatar_seed = avatar_seed.strip() or None
+            if avatar_seed and len(avatar_seed) > 32:
+                return False, None, "Avatar seed must be <= 32 characters"
+
         # Generate API key if not provided
         if not api_key:
             api_key = str(uuid4())
@@ -164,6 +179,12 @@ class UserService:
                 group = UserService.get_or_create_default_group()
 
             new_user.group = group
+            new_user.collab_color = collab_color or pick_collab_color()
+            if avatar_seed:
+                new_user.avatar_seed = avatar_seed
+            else:
+                if hasattr(new_user, "get_avatar_seed"):
+                    new_user.get_avatar_seed()
 
             db.session.add(new_user)
             db.session.commit()

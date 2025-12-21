@@ -31,6 +31,7 @@ from .events_rag import register_rag_events
 from .events_ranker import register_ranker_events
 from .events_docker_monitor import register_docker_monitor_events
 from .events_comparison import register_comparison_events
+from .events_markdown_collab import register_markdown_collab_events
 
 # Enhanced logging format
 logging.basicConfig(
@@ -105,6 +106,7 @@ def configure_socket_routes(socketio, verbose=True):
     register_ranker_events(socketio)
     register_docker_monitor_events(socketio)
     register_comparison_events(socketio)
+    register_markdown_collab_events(socketio)
 
     logging.info("SocketIO routes configured successfully")
 

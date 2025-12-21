@@ -59,12 +59,10 @@
 
     <!-- Main Content Area -->
     <div class="content-area">
-      <!-- Content Header - LLARS Design -->
+      <!-- Content Header - Subtle LLARS Design -->
       <div class="content-header">
         <div class="header-left">
-          <div class="header-icon-box">
-            <v-icon size="20" color="white">mdi-language-markdown</v-icon>
-          </div>
+          <v-icon size="20" color="primary" class="mr-2">mdi-language-markdown</v-icon>
           <div class="header-info">
             <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
             <div class="header-subtitle">{{ workspace?.name || `Workspace #${workspaceId}` }}</div>
@@ -78,7 +76,6 @@
             variant="text"
             size="small"
             title="Workspace teilen"
-            class="header-action-btn"
             @click="openShareDialog"
           >
             <v-icon size="20">mdi-account-multiple-plus</v-icon>
@@ -190,142 +187,117 @@
       </div>
     </div>
 
-    <!-- Share / Members Dialog - LLARS Design -->
-    <v-dialog v-model="shareDialog" max-width="560">
-      <div class="share-dialog">
-        <div class="share-header">
-          <div class="share-header-icon">
-            <v-icon size="20" color="white">mdi-account-multiple-plus</v-icon>
+    <!-- Share / Members Dialog - Subtle Design -->
+    <v-dialog v-model="shareDialog" max-width="480">
+      <v-card class="share-dialog">
+        <v-card-title class="share-header">
+          <v-icon class="mr-2" color="primary">mdi-account-multiple-plus</v-icon>
+          <div>
+            <div>Workspace teilen</div>
+            <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
           </div>
-          <div class="share-header-text">
-            <div class="share-header-title">Workspace teilen</div>
-            <div class="share-header-subtitle">{{ workspace?.name }}</div>
-          </div>
-          <v-btn
-            icon
-            variant="text"
-            size="small"
-            class="share-close-btn"
-            @click="shareDialog = false"
-          >
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </div>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="shareDialog = false" />
+        </v-card-title>
 
-        <div class="share-body">
-          <v-alert v-if="shareError" type="error" variant="tonal" class="mb-4">
+        <v-divider />
+
+        <v-card-text class="share-body">
+          <v-alert v-if="shareError" type="error" variant="tonal" class="mb-4" density="compact">
             {{ shareError }}
           </v-alert>
 
           <!-- Owner Section -->
-          <div class="owner-section">
-            <div class="section-label">Owner</div>
-            <div class="owner-card">
-              <div class="user-avatar" :style="getAvatarStyle(ownerInfo)">
-                <img v-if="ownerInfo.avatar_url" :src="API_BASE + ownerInfo.avatar_url" alt="" />
-                <span v-else>{{ getInitials(ownerInfo.username) }}</span>
-              </div>
-              <div class="user-info">
-                <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
-                <div class="user-role">Ersteller</div>
-              </div>
+          <div class="section-label">Owner</div>
+          <div class="user-card owner-card">
+            <img class="user-avatar" :src="getAvatarUrl(ownerInfo)" alt="" />
+            <div class="user-info">
+              <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
+              <div class="user-meta">@{{ ownerInfo.username }}</div>
             </div>
+            <LTag variant="primary" size="small">Owner</LTag>
           </div>
 
           <!-- Search Section -->
-          <div class="search-section">
-            <div class="section-label">Nutzer einladen</div>
-            <v-autocomplete
-              v-model="selectedUser"
-              v-model:search="inviteSearch"
-              :items="userSuggestions"
-              :loading="userSearchLoading"
-              item-title="username"
-              item-value="username"
-              return-object
-              placeholder="Nutzernamen eingeben..."
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              clearable
-              no-filter
-              class="user-search"
-            >
-              <template #item="{ props, item }">
-                <v-list-item v-bind="props" class="user-suggestion-item">
-                  <template #prepend>
-                    <div class="user-avatar small" :style="getAvatarStyle(item.raw)">
-                      <img v-if="item.raw.avatar_url" :src="API_BASE + item.raw.avatar_url" alt="" />
-                      <span v-else>{{ getInitials(item.raw.username) }}</span>
-                    </div>
-                  </template>
-                  <v-list-item-title>{{ formatDisplayName(item.raw.username) }}</v-list-item-title>
-                  <v-list-item-subtitle>@{{ item.raw.username }}</v-list-item-subtitle>
-                </v-list-item>
-              </template>
-              <template #selection="{ item }">
-                <div class="d-flex align-center ga-2">
-                  <div class="user-avatar x-small" :style="getAvatarStyle(item.raw)">
-                    <img v-if="item.raw.avatar_url" :src="API_BASE + item.raw.avatar_url" alt="" />
-                    <span v-else>{{ getInitials(item.raw.username) }}</span>
-                  </div>
-                  <span>{{ formatDisplayName(item.raw.username) }}</span>
-                </div>
-              </template>
-            </v-autocomplete>
-            <LBtn
-              variant="primary"
-              size="small"
-              :loading="inviting"
-              :disabled="!selectedUser || inviting"
-              class="mt-2"
-              @click="inviteMember"
-            >
-              <v-icon size="16" class="mr-1">mdi-plus</v-icon>
-              Hinzufügen
-            </LBtn>
-          </div>
+          <div class="section-label mt-4">Nutzer einladen</div>
+          <v-autocomplete
+            v-model="selectedUser"
+            v-model:search="inviteSearch"
+            :items="userSuggestions"
+            :loading="userSearchLoading"
+            item-title="username"
+            item-value="username"
+            return-object
+            placeholder="Nutzernamen eingeben..."
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            no-filter
+          >
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props">
+                <template #prepend>
+                  <img class="user-avatar small" :src="getAvatarUrl(item.raw)" alt="" />
+                </template>
+                <v-list-item-title>{{ formatDisplayName(item.raw.username) }}</v-list-item-title>
+                <v-list-item-subtitle>@{{ item.raw.username }}</v-list-item-subtitle>
+              </v-list-item>
+            </template>
+            <template #selection="{ item }">
+              <div class="d-flex align-center ga-2">
+                <img class="user-avatar x-small" :src="getAvatarUrl(item.raw)" alt="" />
+                <span>{{ formatDisplayName(item.raw.username) }}</span>
+              </div>
+            </template>
+          </v-autocomplete>
+          <LBtn
+            variant="primary"
+            size="small"
+            :loading="inviting"
+            :disabled="!selectedUser || inviting"
+            class="mt-2"
+            @click="inviteMember"
+          >
+            <v-icon size="16" class="mr-1">mdi-plus</v-icon>
+            Hinzufügen
+          </LBtn>
 
           <!-- Members Section -->
-          <div class="members-section">
-            <div class="section-label">
-              Mitglieder
-              <span v-if="members.length" class="member-count">{{ members.length }}</span>
-            </div>
+          <div class="section-label mt-4">
+            Mitglieder
+            <span v-if="members.length" class="member-count">{{ members.length }}</span>
+          </div>
 
-            <v-skeleton-loader v-if="membersLoading" type="list-item-avatar@3" />
+          <v-skeleton-loader v-if="membersLoading" type="list-item-avatar@3" />
 
-            <div v-else-if="members.length === 0" class="empty-members">
-              <v-icon size="32" color="grey-lighten-1">mdi-account-group-outline</v-icon>
-              <span>Noch keine Mitglieder eingeladen</span>
-            </div>
+          <div v-else-if="members.length === 0" class="empty-members">
+            <v-icon size="28" color="grey-lighten-1">mdi-account-group-outline</v-icon>
+            <span>Noch keine Mitglieder</span>
+          </div>
 
-            <div v-else class="members-list">
-              <div v-for="m in members" :key="m.username" class="member-card">
-                <div class="user-avatar" :style="getAvatarStyle(m)">
-                  <img v-if="m.avatar_url" :src="API_BASE + m.avatar_url" alt="" />
-                  <span v-else>{{ getInitials(m.username) }}</span>
-                </div>
-                <div class="user-info">
-                  <div class="user-name">{{ formatDisplayName(m.username) }}</div>
-                  <div class="user-meta">{{ formatRelativeDate(m.added_at) }}</div>
-                </div>
-                <v-btn
-                  v-if="canShareWorkspace"
-                  icon
-                  variant="text"
-                  size="x-small"
-                  color="error"
-                  :loading="removingUsername === m.username"
-                  @click="removeMember(m.username)"
-                >
-                  <v-icon size="18">mdi-close</v-icon>
-                </v-btn>
+          <div v-else class="members-list">
+            <div v-for="m in members" :key="m.username" class="user-card">
+              <img class="user-avatar" :src="getAvatarUrl(m)" alt="" />
+              <div class="user-info">
+                <div class="user-name">{{ formatDisplayName(m.username) }}</div>
+                <div class="user-meta">{{ formatRelativeDate(m.added_at) }}</div>
               </div>
+              <v-btn
+                v-if="canShareWorkspace"
+                icon
+                variant="text"
+                size="x-small"
+                color="error"
+                :loading="removingUsername === m.username"
+                @click="removeMember(m.username)"
+              >
+                <v-icon size="18">mdi-close</v-icon>
+              </v-btn>
             </div>
           </div>
-        </div>
-      </div>
+        </v-card-text>
+      </v-card>
     </v-dialog>
   </div>
 </template>
@@ -547,16 +519,6 @@ async function loadMembers() {
 }
 
 // Helper functions for user display
-function getInitials(username) {
-  if (!username) return '?'
-  // Split by common separators and get first letters
-  const parts = username.replace(/[._-]/g, ' ').split(' ').filter(Boolean)
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase()
-  }
-  return username.substring(0, 2).toUpperCase()
-}
-
 function formatDisplayName(username) {
   if (!username) return ''
   // Convert username to display name with proper capitalization
@@ -568,33 +530,19 @@ function formatDisplayName(username) {
     .join(' ')
 }
 
-function getAvatarStyle(user) {
-  if (!user) return {}
-  const color = user.collab_color || generateColorFromSeed(user.avatar_seed || user.username)
-  return {
-    backgroundColor: color,
-    color: getContrastColor(color)
+function getAvatarUrl(user) {
+  if (!user) return getDiceBearUrl('?')
+  // If user has custom avatar, use it
+  if (user.avatar_url) {
+    return API_BASE + user.avatar_url
   }
+  // Otherwise use DiceBear with avatar_seed or username
+  return getDiceBearUrl(user.avatar_seed || user.username || '?')
 }
 
-function generateColorFromSeed(seed) {
-  if (!seed) return '#9e9e9e'
-  // Simple hash to color
-  let hash = 0
-  for (let i = 0; i < seed.length; i++) {
-    hash = seed.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB']
-  return colors[Math.abs(hash) % colors.length]
-}
-
-function getContrastColor(hexColor) {
-  if (!hexColor) return '#ffffff'
-  const r = parseInt(hexColor.slice(1, 3), 16)
-  const g = parseInt(hexColor.slice(3, 5), 16)
-  const b = parseInt(hexColor.slice(5, 7), 16)
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luminance > 0.5 ? '#333333' : '#ffffff'
+function getDiceBearUrl(seed) {
+  // Use DiceBear's "initials" style for clean look
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b0ca97,88c4c8,d1bc8a,98d4bb,a8c5e2&backgroundType=solid&fontSize=42`
 }
 
 function formatRelativeDate(isoDate) {
@@ -604,11 +552,11 @@ function formatRelativeDate(isoDate) {
   const diffMs = now - date
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) return 'Heute hinzugefügt'
-  if (diffDays === 1) return 'Gestern hinzugefügt'
+  if (diffDays === 0) return 'Heute'
+  if (diffDays === 1) return 'Gestern'
   if (diffDays < 7) return `Vor ${diffDays} Tagen`
-  if (diffDays < 30) return `Vor ${Math.floor(diffDays / 7)} Wochen`
-  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (diffDays < 30) return `Vor ${Math.floor(diffDays / 7)} Wo.`
+  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
 }
 
 function openShareDialog() {
@@ -929,7 +877,7 @@ watch(
 }
 
 /* ============================================
-   CONTENT HEADER - LLARS Design
+   CONTENT HEADER - Subtle Design
    ============================================ */
 .content-header {
   flex-shrink: 0;
@@ -937,28 +885,16 @@ watch(
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
-  color: white;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   gap: 12px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 10px;
   min-width: 0;
   flex: 1;
-}
-
-.header-icon-box {
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px 2px 8px 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .header-info {
@@ -967,17 +903,18 @@ watch(
 }
 
 .header-title {
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 500;
+  font-size: 14px;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .header-subtitle {
-  font-size: 12px;
-  opacity: 0.85;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -986,30 +923,20 @@ watch(
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   flex-shrink: 0;
-}
-
-.header-action-btn {
-  color: white !important;
-  opacity: 0.9;
-}
-
-.header-action-btn:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.15) !important;
 }
 
 .mode-toggle-group {
   display: flex;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 6px;
   padding: 2px;
 }
 
 .mode-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: none;
   background: transparent;
   border-radius: 4px;
@@ -1017,17 +944,17 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--v-theme-on-surface), 0.5);
   transition: all 0.15s ease;
 }
 
 .mode-btn:hover {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .mode-btn.active {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--llars-primary);
   color: white;
 }
 
@@ -1116,131 +1043,78 @@ watch(
 }
 
 /* ============================================
-   SHARE DIALOG - LLARS Design
+   SHARE DIALOG - Subtle Design
    ============================================ */
 .share-dialog {
-  background: rgb(var(--v-theme-surface));
-  border-radius: 16px 4px 16px 4px;
-  overflow: hidden;
+  border-radius: 12px !important;
 }
 
 .share-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
-  color: white;
-}
-
-.share-header-icon {
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px 3px 10px 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.share-header-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.share-header-title {
-  font-weight: 600;
-  font-size: 18px;
-}
-
-.share-header-subtitle {
-  font-size: 13px;
-  opacity: 0.85;
-}
-
-.share-close-btn {
-  color: white !important;
-  opacity: 0.8;
-}
-
-.share-close-btn:hover {
-  opacity: 1;
 }
 
 .share-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-height: 60vh;
+  max-height: 50vh;
   overflow-y: auto;
 }
 
 .section-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.5);
   margin-bottom: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .member-count {
-  background: var(--llars-primary);
-  color: white;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
   font-weight: 500;
 }
 
 /* User Avatar */
 .user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px 3px 10px 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   flex-shrink: 0;
-  overflow: hidden;
-}
-
-.user-avatar.small {
-  width: 32px;
-  height: 32px;
-  font-size: 12px;
-  border-radius: 8px 2px 8px 2px;
-}
-
-.user-avatar.x-small {
-  width: 24px;
-  height: 24px;
-  font-size: 10px;
-  border-radius: 6px 2px 6px 2px;
-}
-
-.user-avatar img {
-  width: 100%;
-  height: 100%;
   object-fit: cover;
 }
 
-/* Owner Card */
-.owner-card {
+.user-avatar.small {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.user-avatar.x-small {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+}
+
+/* User Card */
+.user-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border-radius: 12px 4px 12px 4px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.user-card.owner-card {
+  background: rgba(var(--v-theme-primary), 0.04);
+  border-color: rgba(var(--v-theme-primary), 0.12);
 }
 
 .user-info {
@@ -1250,13 +1124,9 @@ watch(
 
 .user-name {
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   color: rgb(var(--v-theme-on-surface));
-}
-
-.user-role {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  line-height: 1.2;
 }
 
 .user-meta {
@@ -1264,56 +1134,20 @@ watch(
   color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
-/* Search Section */
-.search-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-search :deep(.v-field) {
-  border-radius: 10px 3px 10px 3px;
-}
-
-.user-suggestion-item {
-  border-radius: 8px;
-  margin: 2px 4px;
-}
-
 /* Members Section */
-.members-section {
-  display: flex;
-  flex-direction: column;
-}
-
 .empty-members {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 24px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  font-size: 13px;
+  gap: 6px;
+  padding: 20px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-size: 12px;
 }
 
 .members-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.member-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border-radius: 10px 3px 10px 3px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-  transition: all 0.15s ease;
-}
-
-.member-card:hover {
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border-color: rgba(var(--v-theme-on-surface), 0.1);
+  gap: 6px;
 }
 </style>

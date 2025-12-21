@@ -14,5 +14,8 @@ RUN chmod +x /usr/local/bin/healthcheck.sh
 # Reduce noisy warnings on Docker Desktop (macOS/Windows)
 COPY ./docker/db/llars.cnf /etc/mysql/conf.d/llars.cnf
 
+# Seed initial schema tweaks (runs only on fresh volumes)
+COPY ./migrations/20250214_chat_conversations_and_traces.sql /docker-entrypoint-initdb.d/002_chat_schema.sql
+
 # Standardport freigeben
 EXPOSE 3310

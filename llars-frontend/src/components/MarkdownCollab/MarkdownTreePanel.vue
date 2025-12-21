@@ -1,31 +1,34 @@
 <template>
   <div class="tree-panel">
     <div class="tree-header">
-      <div class="d-flex align-center">
-        <v-icon class="mr-2">mdi-file-tree</v-icon>
-        <span class="font-weight-medium">Workspace</span>
+      <v-icon size="20" class="header-icon">mdi-file-tree</v-icon>
+      <span class="header-title">Workspace</span>
+      <div class="header-actions">
+        <v-btn
+          icon
+          variant="text"
+          size="x-small"
+          :disabled="!canEdit"
+          title="Neue Datei"
+          @click="openCreateDialog('file')"
+        >
+          <v-icon size="18">mdi-file-document-plus-outline</v-icon>
+        </v-btn>
+        <v-btn
+          icon
+          variant="text"
+          size="x-small"
+          :disabled="!canEdit"
+          title="Neuer Ordner"
+          @click="openCreateDialog('folder')"
+        >
+          <v-icon size="18">mdi-folder-plus-outline</v-icon>
+        </v-btn>
+        <slot name="header-append" />
       </div>
-      <v-spacer />
-      <v-btn
-        icon="mdi-file-document-plus-outline"
-        variant="text"
-        size="small"
-        :disabled="!canEdit"
-        title="Neue Datei"
-        @click="openCreateDialog('file')"
-      />
-      <v-btn
-        icon="mdi-folder-plus-outline"
-        variant="text"
-        size="small"
-        :disabled="!canEdit"
-        title="Neuer Ordner"
-        @click="openCreateDialog('folder')"
-      />
-      <slot name="header-append" />
     </div>
 
-    <div class="px-3 pt-3">
+    <div class="search-container">
       <v-text-field
         v-model="filterText"
         density="compact"
@@ -359,26 +362,64 @@ function submitDelete() {
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .tree-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 12px 12px;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
+  min-height: 44px;
+}
+
+.header-icon {
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.header-actions .v-btn {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+}
+
+.search-container {
+  padding: 8px;
+  flex-shrink: 0;
 }
 
 .tree-body {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 .tree-scroll {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .drag-wrapper {
@@ -394,6 +435,7 @@ function submitDelete() {
   cursor: grab;
   user-select: none;
   opacity: 0.5;
+  flex-shrink: 0;
 }
 
 .drag-wrapper:hover .drag-handle {
@@ -402,5 +444,12 @@ function submitDelete() {
 
 .tree-search :deep(.v-field__outline) {
   opacity: 0.9;
+}
+
+/* Responsive: Hide title when very narrow */
+@container (max-width: 120px) {
+  .header-title {
+    display: none;
+  }
 }
 </style>

@@ -359,7 +359,8 @@ function startTreeResize(event) {
 
 function onTreeMouseMove(event) {
   if (!resizingTree.value) return
-  const newWidth = Math.max(200, Math.min(500, event.clientX))
+  // Allow very small widths (min 48px for icon-only mode), max 600px
+  const newWidth = Math.max(48, Math.min(600, event.clientX))
   treePanelWidth.value = newWidth
 }
 
@@ -676,6 +677,8 @@ watch(
   background: rgb(var(--v-theme-surface));
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   transition: width 0.2s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .tree-panel.collapsed {
@@ -686,6 +689,8 @@ watch(
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Collapsed Tree */

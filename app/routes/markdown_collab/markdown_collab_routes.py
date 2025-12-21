@@ -202,19 +202,49 @@ def list_workspace_members(workspace_id: int):
         .all()
     )
 
-    payload = [
-        {
+    # Fetch user records for avatar info
+    member_usernames = [m.username for m in members]
+    users_by_name = {u.username: u for u in User.query.filter(User.username.in_(member_usernames)).all()}
+
+    def build_member_dict(m):
+        user = users_by_name.get(m.username)
+        avatar_url = None
+        avatar_seed = None
+        collab_color = None
+        if user:
+            if user.avatar_public_id and user.avatar_file:
+                avatar_url = f"/api/users/avatar/{user.avatar_public_id}"
+            avatar_seed = user.avatar_seed
+            collab_color = user.collab_color
+        return {
             "username": m.username,
             "added_by": m.added_by,
             "added_at": m.added_at.isoformat() if m.added_at else None,
+            "avatar_url": avatar_url,
+            "avatar_seed": avatar_seed,
+            "collab_color": collab_color,
         }
-        for m in members
-    ]
+
+    payload = [build_member_dict(m) for m in members]
+
+    # Also get owner info
+    owner_user = User.query.filter_by(username=ws.owner_username).first()
+    owner_avatar_url = None
+    owner_avatar_seed = None
+    owner_collab_color = None
+    if owner_user:
+        if owner_user.avatar_public_id and owner_user.avatar_file:
+            owner_avatar_url = f"/api/users/avatar/{owner_user.avatar_public_id}"
+        owner_avatar_seed = owner_user.avatar_seed
+        owner_collab_color = owner_user.collab_color
 
     return jsonify({
         "success": True,
         "workspace_id": workspace_id,
         "owner_username": ws.owner_username,
+        "owner_avatar_url": owner_avatar_url,
+        "owner_avatar_seed": owner_avatar_seed,
+        "owner_collab_color": owner_collab_color,
         "members": payload,
         "count": len(payload),
     }), 200

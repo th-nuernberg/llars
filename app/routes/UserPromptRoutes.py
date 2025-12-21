@@ -440,6 +440,7 @@ def search_users():
     """
     Route zum Suchen von Benutzern für Autocomplete.
     Query-Parameter: q (Suchbegriff), limit (max. Ergebnisse, default 10)
+    Returns user info including avatar for rich display.
     """
     current_user = g.authentik_user
     query = request.args.get('q', '').strip()
@@ -453,6 +454,19 @@ def search_users():
         User.id != current_user.id
     ).limit(limit).all()
 
+    def build_user_dict(u):
+        # Build avatar URL if user has custom avatar
+        avatar_url = None
+        if u.avatar_public_id and u.avatar_file:
+            avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
+        return {
+            'id': u.id,
+            'username': u.username,
+            'avatar_url': avatar_url,
+            'avatar_seed': u.avatar_seed,
+            'collab_color': u.collab_color
+        }
+
     return jsonify({
-        'users': [{'id': u.id, 'username': u.username} for u in users]
+        'users': [build_user_dict(u) for u in users]
     }), 200

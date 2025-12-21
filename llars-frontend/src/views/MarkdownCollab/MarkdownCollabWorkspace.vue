@@ -59,50 +59,59 @@
 
     <!-- Main Content Area -->
     <div class="content-area">
-      <!-- Content Header -->
+      <!-- Content Header - LLARS Design -->
       <div class="content-header">
-        <div class="d-flex align-center">
-          <v-icon class="mr-2" color="primary">mdi-language-markdown</v-icon>
-          <div>
-            <div class="text-subtitle-1 font-weight-medium">
-              {{ selectedNode?.title || 'Kein Dokument ausgewählt' }}
-            </div>
-            <div class="text-caption text-medium-emphasis">
-              Workspace: {{ workspace?.name || `#${workspaceId}` }}
-            </div>
+        <div class="header-left">
+          <div class="header-icon-box">
+            <v-icon size="20" color="white">mdi-language-markdown</v-icon>
+          </div>
+          <div class="header-info">
+            <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
+            <div class="header-subtitle">{{ workspace?.name || `Workspace #${workspaceId}` }}</div>
           </div>
         </div>
 
-        <v-spacer />
+        <div class="header-actions">
+          <v-btn
+            v-if="canShareWorkspace"
+            icon
+            variant="text"
+            size="small"
+            title="Workspace teilen"
+            class="header-action-btn"
+            @click="openShareDialog"
+          >
+            <v-icon size="20">mdi-account-multiple-plus</v-icon>
+          </v-btn>
 
-        <v-btn
-          v-if="canShareWorkspace"
-          icon="mdi-account-multiple-plus"
-          variant="text"
-          title="Workspace teilen"
-          @click="openShareDialog"
-        />
-
-        <v-btn-toggle
-          v-model="viewMode"
-          mandatory
-          density="comfortable"
-          variant="outlined"
-          class="mode-toggle"
-        >
-          <v-btn value="editor" title="Editor">
-            <v-icon>mdi-pencil</v-icon>
-          </v-btn>
-          <v-btn value="split" title="Split">
-            <v-icon>mdi-view-split-vertical</v-icon>
-          </v-btn>
-          <v-btn value="preview" title="Preview">
-            <v-icon>mdi-eye-outline</v-icon>
-          </v-btn>
-        </v-btn-toggle>
+          <div class="mode-toggle-group">
+            <button
+              class="mode-btn"
+              :class="{ active: viewMode === 'editor' }"
+              title="Editor"
+              @click="viewMode = 'editor'"
+            >
+              <v-icon size="18">mdi-pencil</v-icon>
+            </button>
+            <button
+              class="mode-btn"
+              :class="{ active: viewMode === 'split' }"
+              title="Split"
+              @click="viewMode = 'split'"
+            >
+              <v-icon size="18">mdi-view-split-vertical</v-icon>
+            </button>
+            <button
+              class="mode-btn"
+              :class="{ active: viewMode === 'preview' }"
+              title="Preview"
+              @click="viewMode = 'preview'"
+            >
+              <v-icon size="18">mdi-eye-outline</v-icon>
+            </button>
+          </div>
+        </div>
       </div>
-
-      <v-divider />
 
       <!-- Content Body -->
       <div class="content-body">
@@ -181,80 +190,142 @@
       </div>
     </div>
 
-    <!-- Share / Members Dialog -->
-    <v-dialog v-model="shareDialog" max-width="640">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-account-multiple-plus</v-icon>
-          Workspace teilen
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="shareDialog = false" />
-        </v-card-title>
-        <v-divider />
+    <!-- Share / Members Dialog - LLARS Design -->
+    <v-dialog v-model="shareDialog" max-width="560">
+      <div class="share-dialog">
+        <div class="share-header">
+          <div class="share-header-icon">
+            <v-icon size="20" color="white">mdi-account-multiple-plus</v-icon>
+          </div>
+          <div class="share-header-text">
+            <div class="share-header-title">Workspace teilen</div>
+            <div class="share-header-subtitle">{{ workspace?.name }}</div>
+          </div>
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            class="share-close-btn"
+            @click="shareDialog = false"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
 
-        <v-card-text>
+        <div class="share-body">
           <v-alert v-if="shareError" type="error" variant="tonal" class="mb-4">
             {{ shareError }}
           </v-alert>
 
-          <div class="text-caption text-medium-emphasis mb-2">
-            Owner: <strong>{{ workspace?.owner_username || '—' }}</strong>
+          <!-- Owner Section -->
+          <div class="owner-section">
+            <div class="section-label">Owner</div>
+            <div class="owner-card">
+              <div class="user-avatar" :style="getAvatarStyle(ownerInfo)">
+                <img v-if="ownerInfo.avatar_url" :src="API_BASE + ownerInfo.avatar_url" alt="" />
+                <span v-else>{{ getInitials(ownerInfo.username) }}</span>
+              </div>
+              <div class="user-info">
+                <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
+                <div class="user-role">Ersteller</div>
+              </div>
+            </div>
           </div>
 
-          <v-combobox
-            v-model="inviteUsername"
-            v-model:search="inviteSearch"
-            :items="userSuggestions"
-            :loading="userSearchLoading"
-            label="Nutzer hinzufügen"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            hide-details
-          />
-
-          <div class="d-flex justify-end mt-3">
-            <v-btn
-              color="primary"
+          <!-- Search Section -->
+          <div class="search-section">
+            <div class="section-label">Nutzer einladen</div>
+            <v-autocomplete
+              v-model="selectedUser"
+              v-model:search="inviteSearch"
+              :items="userSuggestions"
+              :loading="userSearchLoading"
+              item-title="username"
+              item-value="username"
+              return-object
+              placeholder="Nutzernamen eingeben..."
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              clearable
+              no-filter
+              class="user-search"
+            >
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props" class="user-suggestion-item">
+                  <template #prepend>
+                    <div class="user-avatar small" :style="getAvatarStyle(item.raw)">
+                      <img v-if="item.raw.avatar_url" :src="API_BASE + item.raw.avatar_url" alt="" />
+                      <span v-else>{{ getInitials(item.raw.username) }}</span>
+                    </div>
+                  </template>
+                  <v-list-item-title>{{ formatDisplayName(item.raw.username) }}</v-list-item-title>
+                  <v-list-item-subtitle>@{{ item.raw.username }}</v-list-item-subtitle>
+                </v-list-item>
+              </template>
+              <template #selection="{ item }">
+                <div class="d-flex align-center ga-2">
+                  <div class="user-avatar x-small" :style="getAvatarStyle(item.raw)">
+                    <img v-if="item.raw.avatar_url" :src="API_BASE + item.raw.avatar_url" alt="" />
+                    <span v-else>{{ getInitials(item.raw.username) }}</span>
+                  </div>
+                  <span>{{ formatDisplayName(item.raw.username) }}</span>
+                </div>
+              </template>
+            </v-autocomplete>
+            <LBtn
+              variant="primary"
+              size="small"
               :loading="inviting"
-              :disabled="!inviteUsername || inviting"
+              :disabled="!selectedUser || inviting"
+              class="mt-2"
               @click="inviteMember"
             >
+              <v-icon size="16" class="mr-1">mdi-plus</v-icon>
               Hinzufügen
-            </v-btn>
+            </LBtn>
           </div>
 
-          <v-divider class="my-4" />
+          <!-- Members Section -->
+          <div class="members-section">
+            <div class="section-label">
+              Mitglieder
+              <span v-if="members.length" class="member-count">{{ members.length }}</span>
+            </div>
 
-          <div class="text-subtitle-2 mb-2">Mitglieder</div>
-          <v-skeleton-loader v-if="membersLoading" type="list-item@4" />
-          <v-alert
-            v-else-if="members.length === 0"
-            type="info"
-            variant="tonal"
-          >
-            Noch keine eingeladenen Mitglieder.
-          </v-alert>
-          <v-list v-else density="compact">
-            <v-list-item v-for="m in members" :key="m.username">
-              <v-list-item-title>{{ m.username }}</v-list-item-title>
-              <v-list-item-subtitle v-if="m.added_at">
-                hinzugefügt: {{ formatDate(m.added_at) }}
-              </v-list-item-subtitle>
-              <template #append>
+            <v-skeleton-loader v-if="membersLoading" type="list-item-avatar@3" />
+
+            <div v-else-if="members.length === 0" class="empty-members">
+              <v-icon size="32" color="grey-lighten-1">mdi-account-group-outline</v-icon>
+              <span>Noch keine Mitglieder eingeladen</span>
+            </div>
+
+            <div v-else class="members-list">
+              <div v-for="m in members" :key="m.username" class="member-card">
+                <div class="user-avatar" :style="getAvatarStyle(m)">
+                  <img v-if="m.avatar_url" :src="API_BASE + m.avatar_url" alt="" />
+                  <span v-else>{{ getInitials(m.username) }}</span>
+                </div>
+                <div class="user-info">
+                  <div class="user-name">{{ formatDisplayName(m.username) }}</div>
+                  <div class="user-meta">{{ formatRelativeDate(m.added_at) }}</div>
+                </div>
                 <v-btn
                   v-if="canShareWorkspace"
-                  icon="mdi-delete"
+                  icon
                   variant="text"
+                  size="x-small"
                   color="error"
                   :loading="removingUsername === m.username"
                   @click="removeMember(m.username)"
-                />
-              </template>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-      </v-card>
+                >
+                  <v-icon size="18">mdi-close</v-icon>
+                </v-btn>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </v-dialog>
   </div>
 </template>
@@ -308,10 +379,11 @@ const membersLoading = ref(false)
 const shareError = ref('')
 const inviting = ref(false)
 const removingUsername = ref('')
-const inviteUsername = ref('')
+const selectedUser = ref(null)
 const inviteSearch = ref('')
 const userSuggestions = ref([])
 const userSearchLoading = ref(false)
+const ownerInfo = ref({ username: '', avatar_url: null, avatar_seed: null, collab_color: null })
 
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 
@@ -459,6 +531,13 @@ async function loadMembers() {
       headers: authHeaders()
     })
     members.value = res.data.members || []
+    // Store owner info
+    ownerInfo.value = {
+      username: res.data.owner_username || '',
+      avatar_url: res.data.owner_avatar_url || null,
+      avatar_seed: res.data.owner_avatar_seed || null,
+      collab_color: res.data.owner_collab_color || null
+    }
   } catch (e) {
     members.value = []
     shareError.value = e?.response?.data?.error || e?.message || 'Mitglieder konnten nicht geladen werden'
@@ -467,25 +546,91 @@ async function loadMembers() {
   }
 }
 
+// Helper functions for user display
+function getInitials(username) {
+  if (!username) return '?'
+  // Split by common separators and get first letters
+  const parts = username.replace(/[._-]/g, ' ').split(' ').filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return username.substring(0, 2).toUpperCase()
+}
+
+function formatDisplayName(username) {
+  if (!username) return ''
+  // Convert username to display name with proper capitalization
+  // e.g., "john_doe" -> "John Doe", "john.doe" -> "John Doe"
+  return username
+    .replace(/[._-]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
+function getAvatarStyle(user) {
+  if (!user) return {}
+  const color = user.collab_color || generateColorFromSeed(user.avatar_seed || user.username)
+  return {
+    backgroundColor: color,
+    color: getContrastColor(color)
+  }
+}
+
+function generateColorFromSeed(seed) {
+  if (!seed) return '#9e9e9e'
+  // Simple hash to color
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB']
+  return colors[Math.abs(hash) % colors.length]
+}
+
+function getContrastColor(hexColor) {
+  if (!hexColor) return '#ffffff'
+  const r = parseInt(hexColor.slice(1, 3), 16)
+  const g = parseInt(hexColor.slice(3, 5), 16)
+  const b = parseInt(hexColor.slice(5, 7), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.5 ? '#333333' : '#ffffff'
+}
+
+function formatRelativeDate(isoDate) {
+  if (!isoDate) return ''
+  const date = new Date(isoDate)
+  const now = new Date()
+  const diffMs = now - date
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return 'Heute hinzugefügt'
+  if (diffDays === 1) return 'Gestern hinzugefügt'
+  if (diffDays < 7) return `Vor ${diffDays} Tagen`
+  if (diffDays < 30) return `Vor ${Math.floor(diffDays / 7)} Wochen`
+  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 function openShareDialog() {
   shareDialog.value = true
-  inviteUsername.value = ''
+  selectedUser.value = null
   inviteSearch.value = ''
   userSuggestions.value = []
   loadMembers()
 }
 
 async function inviteMember() {
-  if (!inviteUsername.value) return
+  const username = selectedUser.value?.username
+  if (!username) return
   inviting.value = true
   shareError.value = ''
   try {
     await axios.post(
       `${API_BASE}/api/markdown-collab/workspaces/${workspaceId.value}/members`,
-      { username: String(inviteUsername.value).trim() },
+      { username: username.trim() },
       { headers: authHeaders() }
     )
-    inviteUsername.value = ''
+    selectedUser.value = null
     inviteSearch.value = ''
     await loadMembers()
   } catch (e) {
@@ -527,8 +672,8 @@ watch(inviteSearch, (q) => {
         headers: authHeaders(),
         params: { q: query, limit: 10 }
       })
-      const users = res.data.users || []
-      userSuggestions.value = users.map(u => u.username).filter(Boolean)
+      // Return full user objects with avatar info
+      userSuggestions.value = (res.data.users || []).filter(u => u && u.username)
     } catch (e) {
       userSuggestions.value = []
     } finally {
@@ -783,17 +928,107 @@ watch(
   overflow: hidden;
 }
 
+/* ============================================
+   CONTENT HEADER - LLARS Design
+   ============================================ */
 .content-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
+  color: white;
+  gap: 12px;
 }
 
-.mode-toggle :deep(.v-btn) {
-  min-width: 44px;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-icon-box {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px 2px 8px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.header-title {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-action-btn {
+  color: white !important;
+  opacity: 0.9;
+}
+
+.header-action-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.mode-toggle-group {
+  display: flex;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.mode-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mode-btn.active {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
 }
 
 .content-body {
@@ -878,5 +1113,207 @@ watch(
 
 .panes-container.mode-preview .preview-pane {
   flex: 1;
+}
+
+/* ============================================
+   SHARE DIALOG - LLARS Design
+   ============================================ */
+.share-dialog {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px 4px 16px 4px;
+  overflow: hidden;
+}
+
+.share-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
+  color: white;
+}
+
+.share-header-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px 3px 10px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.share-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-header-title {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.share-header-subtitle {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.share-close-btn {
+  color: white !important;
+  opacity: 0.8;
+}
+
+.share-close-btn:hover {
+  opacity: 1;
+}
+
+.share-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-count {
+  background: var(--llars-primary);
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+/* User Avatar */
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px 3px 10px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.user-avatar.small {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+  border-radius: 8px 2px 8px 2px;
+}
+
+.user-avatar.x-small {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  border-radius: 6px 2px 6px 2px;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Owner Card */
+.owner-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 12px 4px 12px 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.user-role {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.user-meta {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Search Section */
+.search-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-search :deep(.v-field) {
+  border-radius: 10px 3px 10px 3px;
+}
+
+.user-suggestion-item {
+  border-radius: 8px;
+  margin: 2px 4px;
+}
+
+/* Members Section */
+.members-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.empty-members {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-size: 13px;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.member-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 10px 3px 10px 3px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  transition: all 0.15s ease;
+}
+
+.member-card:hover {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
 }
 </style>

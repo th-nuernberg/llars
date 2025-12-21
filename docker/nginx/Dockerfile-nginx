@@ -1,8 +1,9 @@
 FROM public.ecr.aws/docker/library/nginx:alpine
 
-# Copy both nginx configs (entrypoint selects based on PROJECT_STATE)
+# Copy all nginx configs (entrypoint selects based on PROJECT_STATE and SSL certs)
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.dev.conf
 COPY docker/nginx/nginx.prod.conf /etc/nginx/nginx.prod.conf
+COPY docker/nginx/nginx.prod-no-ssl.conf /etc/nginx/nginx.prod-no-ssl.conf
 
 # Copy entrypoint script
 COPY docker/nginx/docker-entrypoint.sh /docker-entrypoint.sh

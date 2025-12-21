@@ -930,6 +930,8 @@ watch(() => props.modelValue, (newVal) => {
   gap: 24px;
   margin-top: 16px;
   flex-wrap: wrap;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .legend-item {
@@ -962,11 +964,29 @@ watch(() => props.modelValue, (newVal) => {
 /* Users Table */
 .users-table-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 400px;
+  position: relative;
+  /* Subtle shadow to indicate more content below */
+  background:
+    linear-gradient(white 30%, transparent),
+    linear-gradient(transparent, white 70%) 0 100%,
+    radial-gradient(farthest-side at 50% 0, rgba(0,0,0,.12), transparent),
+    radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.12), transparent) 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 40px, 100% 40px, 100% 12px, 100% 12px;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .users-table {
   width: 100%;
   border-collapse: collapse;
+}
+
+.users-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .users-table th {
@@ -977,7 +997,7 @@ watch(() => props.modelValue, (newVal) => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: rgba(0, 0, 0, 0.5);
-  background: rgba(0, 0, 0, 0.02);
+  background: #f9f9f9;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -1179,7 +1199,7 @@ watch(() => props.modelValue, (newVal) => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 280px;
+  max-height: 350px;
   overflow-y: auto;
 }
 
@@ -1288,7 +1308,7 @@ watch(() => props.modelValue, (newVal) => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 320px;
+  max-height: 400px;
   overflow-y: auto;
 }
 

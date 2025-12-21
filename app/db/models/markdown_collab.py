@@ -126,6 +126,8 @@ class MarkdownCommit(db.Model):
     author_username: Mapped[str] = mapped_column(db.String(255), nullable=False)
     message: Mapped[str] = mapped_column(db.Text, nullable=False)
     diff_summary: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
+    # Full document content at commit time for character-level diff comparison
+    content_snapshot: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     document = db.relationship("MarkdownDocument", backref=db.backref("commits", cascade="all, delete-orphan", lazy="selectin"))

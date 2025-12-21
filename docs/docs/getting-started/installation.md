@@ -27,7 +27,7 @@ Wichtigste Schalter:
 
 ```bash
 PROJECT_STATE=development   # oder production
-REMOVE_VOLUMES=False        # True löscht Daten beim nächsten Start
+REMOVE_LLARS_VOLUMES=False        # True löscht Daten beim nächsten Start
 PROJECT_URL=http://localhost:55080   # Einstiegspunkt für Frontend + API
 
 # Optional: Host-Port Overrides (Defaults sind vorkonfiguriert)
@@ -47,7 +47,7 @@ chmod +x start_llars.sh
 **Was das Skript macht**
 1. Prüft, ob Docker läuft
 2. Stoppt nur LLARS-Container
-3. Entfernt optional nur LLARS-Volumes (`REMOVE_VOLUMES=True`)
+3. Entfernt optional nur LLARS-Volumes (`REMOVE_LLARS_VOLUMES=True`)
 4. Baut und startet alle Services
 
 **Volumes, die betroffen sind**
@@ -125,7 +125,7 @@ AUTHENTIK_EXTERNAL_PORT=56095
 ### Datenbank-Probleme
 
 **⚠️ Löscht Daten:**  
-`REMOVE_VOLUMES=True` in `.env` setzen und neu starten:
+`REMOVE_LLARS_VOLUMES=True` in `.env` setzen und neu starten:
 
 ```bash
 ./start_llars.sh

@@ -27,7 +27,7 @@ Beim Start legt `authentik-init` u. a. an (idempotent):
 ## Reset / Neuaufbau
 
 ```bash
-REMOVE_VOLUMES=True ./start_llars.sh
+REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 ```
 
 ⚠️ Löscht alle Daten inkl. Authentik-DB.

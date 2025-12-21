@@ -99,7 +99,7 @@ Databases:
 ./start_llars.sh prod         # Production Mode
 
 # Komplett-Neustart (LÖSCHT ALLE DATEN!)
-REMOVE_VOLUMES=True ./start_llars.sh
+REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 
 # Logs anzeigen
 docker compose logs -f backend-flask-service
@@ -129,7 +129,7 @@ LITELLM_API_KEY=...           # Optional für Mistral
 | LLARS nicht erreichbar | `NGINX_INTERNAL_PORT=80` in .env prüfen |
 | Auth-Fehler | `./scripts/setup_authentik.sh` ausführen |
 | Container starten nicht | `docker compose down && ./start_llars.sh` |
-| Datenbank-Fehler | `REMOVE_VOLUMES=True ./start_llars.sh` |
+| Datenbank-Fehler | `REMOVE_LLARS_VOLUMES=True ./start_llars.sh` |
 
 ## Dokumentation
 

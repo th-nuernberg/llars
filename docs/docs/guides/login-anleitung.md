@@ -32,4 +32,4 @@ docker compose -p llars logs backend-flask-service --tail=200
 ```
 
 - **Login-Loop / bleibt auf Login-Seite:** Browser-Storage/Content-Blocker prüfen (insb. bei Safari/Extensions), danach Logout + Reload.
-- **Authentik nicht erreichbar:** Health/Logs prüfen, ggf. `REMOVE_VOLUMES=True ./start_llars.sh` (löscht Daten!).
+- **Authentik nicht erreichbar:** Health/Logs prüfen, ggf. `REMOVE_LLARS_VOLUMES=True ./start_llars.sh` (löscht Daten!).

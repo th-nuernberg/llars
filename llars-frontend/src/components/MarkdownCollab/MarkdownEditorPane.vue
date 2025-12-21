@@ -208,8 +208,33 @@ function updateDecorations() {
   for (const [userId, cursor] of Object.entries(remoteCursors.value || {})) {
     if (!cursor || cursor.blockId != String(props.document.id) || !cursor.range) continue
     const color = cursor.color || '#FF6B6B'
-    const from = clampPos(cursor.range.from, docLen)
-    const to = clampPos(cursor.range.to, docLen)
+
+    // Decode relative positions if available (prevents cursor drift on remote edits)
+    let from, to
+    if (cursor.range.fromRel && cursor.range.toRel && ytext && ydoc.value) {
+      try {
+        const fromRelPos = Y.decodeRelativePosition(new Uint8Array(cursor.range.fromRel))
+        const toRelPos = Y.decodeRelativePosition(new Uint8Array(cursor.range.toRel))
+
+        const fromAbsPos = Y.createAbsolutePositionFromRelativePosition(fromRelPos, ydoc.value)
+        const toAbsPos = Y.createAbsolutePositionFromRelativePosition(toRelPos, ydoc.value)
+
+        from = fromAbsPos?.index ?? cursor.range.from
+        to = toAbsPos?.index ?? cursor.range.to
+      } catch {
+        // Fallback to absolute positions
+        from = cursor.range.from
+        to = cursor.range.to
+      }
+    } else {
+      // Use absolute positions (backwards compatibility)
+      from = cursor.range.from
+      to = cursor.range.to
+    }
+
+    from = clampPos(from, docLen)
+    to = clampPos(to, docLen)
+
     if (from !== to) {
       decorations.push(
         Decoration.mark({
@@ -323,12 +348,33 @@ function sendCursorUpdate(rangeOrNull) {
 }
 
 function scheduleCursorUpdate() {
-  if (!view.value || props.readonly) return
+  if (!view.value || props.readonly || !ytext) return
   if (cursorSendTimer) clearTimeout(cursorSendTimer)
   cursorSendTimer = setTimeout(() => {
     const sel = view.value?.state?.selection?.main
     if (!sel) return
-    sendCursorUpdate({ from: sel.from, to: sel.to })
+
+    // Use Y.RelativePosition to handle cursor positions correctly across remote edits
+    // This ensures cursors don't shift when text is inserted before them
+    try {
+      const fromRelPos = Y.createRelativePositionFromTypeIndex(ytext, sel.from)
+      const toRelPos = Y.createRelativePositionFromTypeIndex(ytext, sel.to)
+
+      // Encode relative positions for transmission
+      const fromEncoded = Array.from(Y.encodeRelativePosition(fromRelPos))
+      const toEncoded = Array.from(Y.encodeRelativePosition(toRelPos))
+
+      sendCursorUpdate({
+        fromRel: fromEncoded,
+        toRel: toEncoded,
+        // Keep absolute positions as fallback for backwards compatibility
+        from: sel.from,
+        to: sel.to
+      })
+    } catch {
+      // Fallback to absolute positions if relative position creation fails
+      sendCursorUpdate({ from: sel.from, to: sel.to })
+    }
   }, 50)
 }
 

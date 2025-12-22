@@ -8,6 +8,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const editors = ref(new Map())
   const bindings = ref(new Map())
   const cursorsModules = ref(new Map())
+  const initializingEditors = new Set()
 
   // User highlighting options
   const { getUserColor = () => null, getUsername = () => null, showUserHighlighting = () => false } = options
@@ -137,21 +138,32 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const initializeEditor = async (block) => {
     await nextTick()
 
-    const editorElement = editorsMap.value.get(block.id)
-    if (!editorElement || editors.value.has(block.id)) {
+    if (initializingEditors.has(block.id)) {
       return
     }
+
+    const editorElement = editorsMap.value.get(block.id)
+    if (!editorElement || editors.value.has(block.id) || bindings.value.has(block.id)) {
+      return
+    }
+
+    initializingEditors.add(block.id)
 
     const blocksMap = ydoc.value.getMap('blocks')
     const blockMap = blocksMap.get(block.id)
     if (!blockMap) {
       console.error('Block map not found:', block.id)
+      initializingEditors.delete(block.id)
       return
     }
 
     let ytext = blockMap.get('content')
-    if (!ytext) {
+    if (!(ytext instanceof Y.Text)) {
+      const seed = typeof ytext === 'string' ? ytext : ''
       ytext = new Y.Text()
+      if (seed) {
+        ytext.insert(0, seed)
+      }
       blockMap.set('content', ytext)
       // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
     }
@@ -211,6 +223,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
     editors.value.set(block.id, editor)
     bindings.value.set(block.id, binding)
+    initializingEditors.delete(block.id)
   }
 
   // Speichert die Editor-Referenz
@@ -258,6 +271,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
   // Cleanup für gelöschte Blöcke
   const cleanupEditor = (blockId) => {
+    initializingEditors.delete(blockId)
     const binding = bindings.value.get(blockId)
     if (binding) {
       binding.destroy()

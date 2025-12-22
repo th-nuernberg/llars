@@ -266,6 +266,10 @@ async function load() {
   initialLoadDone.value = false
   hasExistingConfidence.value = false
 
+  // Clear old thread data immediately to prevent mixing
+  thread.value = null
+  voteState.value = { vote: null, confidence: 50, notes: '' }
+
   try {
     await withLoading('data', async () => {
       // Load thread list for navigation

@@ -184,14 +184,24 @@ def import_authenticity_dataset():
 
             thread.subject = f"Fake/Echt – Fall #{thread.thread_id}"
 
-            # Create messages
+            # Create messages (with deduplication)
             is_fake = False
+            seen_messages = set()  # Track (sender, content) to detect duplicates
+            actual_msg_index = 0
+
             for i, m in enumerate(messages):
                 role = str(m.get("role") or m.get("sender") or m.get("from") or "Unbekannt")
                 content = m.get("content")
                 if content is None:
                     raise ValidationError("Each message requires 'content'")
                 content = str(content)
+
+                # Skip duplicate messages (same sender + content)
+                msg_key = (role, content)
+                if msg_key in seen_messages:
+                    logger.warning(f"Skipping duplicate message in thread {thread.thread_id}: {role[:20]}...")
+                    continue
+                seen_messages.add(msg_key)
 
                 msg_is_synth = bool(m.get("is_synthetic", False))
                 is_fake = is_fake or msg_is_synth
@@ -202,7 +212,8 @@ def import_authenticity_dataset():
                 else:
                     generated_by = "Human"
 
-                ts = _parse_datetime(m.get("timestamp")) or (base_time + timedelta(seconds=i))
+                ts = _parse_datetime(m.get("timestamp")) or (base_time + timedelta(seconds=actual_msg_index))
+                actual_msg_index += 1
 
                 db.session.add(
                     Message(

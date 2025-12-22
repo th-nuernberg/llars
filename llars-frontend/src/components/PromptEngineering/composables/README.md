@@ -135,12 +135,13 @@ createBlock('New Block')
 - `roomId` (computed) - Room identifier
 
 **Exports:**
-- `editorsMap` (ref) - DOM element references
-- `editors` (ref) - Quill editor instances
-- `bindings` (ref) - YJS bindings
-- `cursorsModules` (ref) - Cursor modules
+- `editorsMap` (Map) - DOM element references
+- `editors` (Map) - Quill editor instances
+- `bindings` (Map) - YJS bindings
+- `cursorsModules` (Map) - Cursor modules
+- `editorCount` (ref) - Count of active editors
 - `initializeEditor(block)` - Setup editor for block
-- `setEditorRef(el, blockId)` - Register DOM ref
+- `setEditorRef(el, block)` - Register DOM ref and initialize
 - `updateCursor(userId, cursor)` - Update remote cursor
 - `cleanupEditor(blockId)` - Remove editor
 - `cleanupAll()` - Cleanup all editors
@@ -149,12 +150,12 @@ createBlock('New Block')
 
 **Usage:**
 ```javascript
-const { initializeEditor, setEditorRef } = useQuillEditor(
+const { setEditorRef } = useQuillEditor(
   ydoc,
   socket,
   roomId
 )
-await initializeEditor(block)
+setEditorRef(el, block)
 ```
 
 ## Architecture

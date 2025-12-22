@@ -89,11 +89,11 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
           highlights.set(position + i, { username, color, ts: Date.now() })
         }
 
-        // Apply background color formatting
+        // Apply user highlight formatting
         setTimeout(() => {
           try {
             editor.formatText(position, insertLength, {
-              'background': hexToRgba(color, 0.3)
+              'llars-user-highlight': hexToRgba(color, 0.3)
             }, Quill.sources.API)
           } catch (e) {
             // Ignore formatting errors
@@ -463,12 +463,15 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const clearUserHighlights = () => {
     userHighlights.clear()
 
-    // Remove background formatting from all editors
+    // Remove user highlighting formatting from all editors
     editors.forEach((editor) => {
       try {
         const length = editor.getLength()
         if (length > 0) {
-          editor.formatText(0, length, { 'background': false }, Quill.sources.API)
+          editor.formatText(0, length, {
+            'llars-user-highlight': false,
+            'background': false
+          }, Quill.sources.API)
         }
       } catch (e) {
         // Ignore errors

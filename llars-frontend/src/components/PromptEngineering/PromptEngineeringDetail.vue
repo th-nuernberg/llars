@@ -1,6 +1,10 @@
 <!-- PromptEngineering/PromptEngineeringDetail.vue -->
 <template>
-  <div ref="containerRef" class="prompt-workspace">
+  <div
+    ref="containerRef"
+    class="prompt-workspace"
+    :class="{ 'prompt-workspace--git-hidden': !showGitPanel }"
+  >
     <!-- Left Panel: Sidebar -->
     <div class="left-panel" :style="leftPanelStyle()">
       <sidebar
@@ -254,6 +258,24 @@ HighlightBlot.blotName = 'highlight';
 HighlightBlot.tagName = 'span';
 HighlightBlot.className = 'placeholder-highlight';
 Quill.register(HighlightBlot);
+
+class UserHighlightBlot extends Inline {
+  static create(value) {
+    const node = super.create();
+    if (value) {
+      node.style.setProperty('--llars-collab-bg', value);
+    }
+    return node;
+  }
+
+  static formats(node) {
+    return node.style.getPropertyValue('--llars-collab-bg') || null;
+  }
+}
+UserHighlightBlot.blotName = 'llars-user-highlight';
+UserHighlightBlot.tagName = 'span';
+UserHighlightBlot.className = 'llars-user-highlight';
+Quill.register(UserHighlightBlot);
 </script>
 
 <script setup>
@@ -746,6 +768,15 @@ watch(users, (newUsers, oldUsers) => {
   border-radius: 3px;
   border: 1px solid #ffd600;
   font-weight: 500;
+}
+
+:deep(.llars-user-highlight) {
+  background-color: var(--llars-collab-bg);
+  border-radius: 2px;
+}
+
+.prompt-workspace--git-hidden :deep(.llars-user-highlight) {
+  background-color: transparent !important;
 }
 
 :deep(.ql-cursor-flag) {

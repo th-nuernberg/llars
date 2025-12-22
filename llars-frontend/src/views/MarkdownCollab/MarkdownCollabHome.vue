@@ -116,7 +116,7 @@
             <v-icon class="mr-2">mdi-plus-circle</v-icon>
             <span class="text-h6">Workspace erstellen</span>
             <v-spacer />
-            <v-btn icon="mdi-close" variant="text" @click="createDialog = false" />
+            <v-btn icon="mdi-close" variant="text" @click="createDialog = false; resetCreateDialog()" />
           </div>
         </template>
 
@@ -140,9 +140,32 @@
           density="comfortable"
         />
 
+        <!-- User invite section -->
+        <div class="section-label mt-4">
+          <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+          Mitglieder einladen (optional)
+        </div>
+        <div v-if="invitedUsers.length > 0" class="invited-users mb-2">
+          <LTag
+            v-for="user in invitedUsers"
+            :key="user"
+            variant="primary"
+            closable
+            @close="removeInvitedUser(user)"
+          >
+            {{ user }}
+          </LTag>
+        </div>
+        <LUserSearch
+          ref="userSearchRef"
+          :exclude-usernames="invitedUsers"
+          placeholder="Nutzernamen eingeben..."
+          @select="handleInviteUserSelect"
+        />
+
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="createDialog = false">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="createDialog = false; resetCreateDialog()">Abbrechen</LBtn>
           <LBtn
             variant="primary"
             :loading="creating"
@@ -180,6 +203,8 @@ const creating = ref(false)
 const createError = ref('')
 const newWorkspaceName = ref('')
 const newWorkspaceVisibility = ref('private')
+const invitedUsers = ref([])
+const userSearchRef = ref(null)
 
 const visibilityItems = [
   { title: 'Privat', value: 'private' },
@@ -250,6 +275,25 @@ function openWorkspace(id) {
   router.push(`/MarkdownCollab/workspace/${id}`)
 }
 
+function handleInviteUserSelect(user) {
+  if (user?.username && !invitedUsers.value.includes(user.username)) {
+    invitedUsers.value.push(user.username)
+  }
+  userSearchRef.value?.reset?.()
+}
+
+function removeInvitedUser(username) {
+  invitedUsers.value = invitedUsers.value.filter(u => u !== username)
+}
+
+function resetCreateDialog() {
+  newWorkspaceName.value = ''
+  newWorkspaceVisibility.value = 'private'
+  invitedUsers.value = []
+  userSearchRef.value?.reset?.()
+  createError.value = ''
+}
+
 async function createWorkspace() {
   createError.value = ''
   creating.value = true
@@ -263,9 +307,25 @@ async function createWorkspace() {
       { headers: authHeaders() }
     )
     const ws = res.data.workspace
+
+    // Invite users if any were selected
+    if (ws?.id && invitedUsers.value.length > 0) {
+      for (const username of invitedUsers.value) {
+        try {
+          await axios.post(
+            `${API_BASE}/api/markdown-collab/workspaces/${ws.id}/members`,
+            { username },
+            { headers: authHeaders() }
+          )
+        } catch (inviteErr) {
+          console.error(`Failed to invite ${username}:`, inviteErr)
+          // Continue with other invites even if one fails
+        }
+      }
+    }
+
     createDialog.value = false
-    newWorkspaceName.value = ''
-    newWorkspaceVisibility.value = 'private'
+    resetCreateDialog()
     await loadWorkspaces(true)
     if (ws?.id) openWorkspace(ws.id)
   } catch (e) {
@@ -383,5 +443,23 @@ onUnmounted(() => {
     transform: translateY(0) scale(1);
     box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.18), 0 14px 26px rgba(0, 0, 0, 0.08);
   }
+}
+
+/* Create Dialog - Invite Section */
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.invited-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

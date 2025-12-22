@@ -335,6 +335,87 @@ function setupSocketHandlers(io) {
       }
     });
 
+    // ============================================
+    // Workspace Tree Updates (for MarkdownCollab)
+    // ============================================
+
+    // Join a workspace room to receive tree updates
+    socket.on('join_workspace', async (data) => {
+      const { workspaceId } = data;
+      if (!workspaceId) return;
+
+      const workspaceRoom = `workspace_${workspaceId}`;
+      socket.join(workspaceRoom);
+      console.log(`[Workspace] User "${authenticatedUser.username}" joined workspace room "${workspaceRoom}"`);
+    });
+
+    // Leave workspace room
+    socket.on('leave_workspace', (data) => {
+      const { workspaceId } = data;
+      if (!workspaceId) return;
+
+      const workspaceRoom = `workspace_${workspaceId}`;
+      socket.leave(workspaceRoom);
+      console.log(`[Workspace] User "${authenticatedUser.username}" left workspace room "${workspaceRoom}"`);
+    });
+
+    // Broadcast tree changes to all clients in the workspace
+    socket.on('tree_node_created', (data) => {
+      const { workspaceId, node, username } = data;
+      if (!workspaceId || !node) return;
+
+      const workspaceRoom = `workspace_${workspaceId}`;
+      // Broadcast to all OTHER clients in the workspace
+      socket.to(workspaceRoom).emit('tree_node_created', {
+        node,
+        username: username || authenticatedUser.username,
+        timestamp: Date.now()
+      });
+      console.log(`[Workspace] Tree node created in workspace ${workspaceId}: ${node.title} (${node.type})`);
+    });
+
+    socket.on('tree_node_renamed', (data) => {
+      const { workspaceId, nodeId, newTitle, username } = data;
+      if (!workspaceId || !nodeId) return;
+
+      const workspaceRoom = `workspace_${workspaceId}`;
+      socket.to(workspaceRoom).emit('tree_node_renamed', {
+        nodeId,
+        newTitle,
+        username: username || authenticatedUser.username,
+        timestamp: Date.now()
+      });
+      console.log(`[Workspace] Tree node renamed in workspace ${workspaceId}: ${nodeId} -> ${newTitle}`);
+    });
+
+    socket.on('tree_node_deleted', (data) => {
+      const { workspaceId, nodeId, username } = data;
+      if (!workspaceId || !nodeId) return;
+
+      const workspaceRoom = `workspace_${workspaceId}`;
+      socket.to(workspaceRoom).emit('tree_node_deleted', {
+        nodeId,
+        username: username || authenticatedUser.username,
+        timestamp: Date.now()
+      });
+      console.log(`[Workspace] Tree node deleted in workspace ${workspaceId}: ${nodeId}`);
+    });
+
+    socket.on('tree_node_moved', (data) => {
+      const { workspaceId, nodeId, newParentId, newOrderIndex, username } = data;
+      if (!workspaceId || !nodeId) return;
+
+      const workspaceRoom = `workspace_${workspaceId}`;
+      socket.to(workspaceRoom).emit('tree_node_moved', {
+        nodeId,
+        newParentId,
+        newOrderIndex,
+        username: username || authenticatedUser.username,
+        timestamp: Date.now()
+      });
+      console.log(`[Workspace] Tree node moved in workspace ${workspaceId}: ${nodeId} -> parent ${newParentId}`);
+    });
+
     // Handle user color updates (when user changes their color in settings)
     socket.on('update_color', (data) => {
       const { room, color } = data;

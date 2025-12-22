@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="{ 'node-new': isRecentlyAdded }">
     <div
       class="tree-row"
       :class="{ selected: selectedId === node.id }"
@@ -83,6 +83,7 @@
               :level="level + 1"
               :can-edit="canEdit"
               :drag-enabled="dragEnabled"
+              :recently-added-ids="recentlyAddedIds"
               @select="$emit('select', $event)"
               @toggle="$emit('toggle', $event)"
               @create="$emit('create', $event)"
@@ -104,6 +105,7 @@
           :level="level + 1"
           :can-edit="canEdit"
           :drag-enabled="dragEnabled"
+          :recently-added-ids="recentlyAddedIds"
           @select="$emit('select', $event)"
           @toggle="$emit('toggle', $event)"
           @create="$emit('create', $event)"
@@ -128,12 +130,14 @@ const props = defineProps({
   expandedIds: { type: Object, required: true }, // Set<number>
   level: { type: Number, default: 0 },
   canEdit: { type: Boolean, default: false },
-  dragEnabled: { type: Boolean, default: false }
+  dragEnabled: { type: Boolean, default: false },
+  recentlyAddedIds: { type: Set, default: () => new Set() }
 })
 
 const emit = defineEmits(['select', 'toggle', 'create', 'rename', 'remove', 'move'])
 
 const isExpanded = computed(() => props.expandedIds.has(props.node.id))
+const isRecentlyAdded = computed(() => props.recentlyAddedIds.has(props.node.id))
 
 function emitMove(evt, parentId) {
   const moved = evt?.moved
@@ -223,5 +227,41 @@ function emitMove(evt, parentId) {
 
 .drag-wrapper:hover .drag-handle {
   opacity: 0.9;
+}
+
+/* Animation for new nodes */
+.node-new {
+  animation: nodeAppear 0.5s ease-out;
+}
+
+.node-new .tree-row {
+  background: rgba(var(--v-theme-success), 0.15);
+  animation: nodeHighlight 2s ease-out forwards;
+}
+
+@keyframes nodeAppear {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes nodeHighlight {
+  0% {
+    background: rgba(var(--v-theme-success), 0.25);
+    box-shadow: 0 0 8px rgba(var(--v-theme-success), 0.4);
+  }
+  70% {
+    background: rgba(var(--v-theme-success), 0.12);
+    box-shadow: 0 0 4px rgba(var(--v-theme-success), 0.2);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
 }
 </style>

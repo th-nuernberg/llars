@@ -19,10 +19,8 @@ services:
       # HTTP (redirect to HTTPS)
       - "80:80"
     volumes:
-      # SSL certificates
+      # SSL certificates (nginx.conf selection handled by entrypoint based on PROJECT_STATE)
       - ./docker/nginx/certs:/etc/nginx/certs:ro
-      # Production nginx config with SSL
-      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
 
   # ============================================

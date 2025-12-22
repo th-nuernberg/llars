@@ -18,6 +18,7 @@ import App from './App.vue'
 // Global LLARS Components
 import LBtn from '@/components/common/LBtn.vue'
 import LIconBtn from '@/components/common/LIconBtn.vue'
+import LInfoTooltip from '@/components/common/LInfoTooltip.vue'
 import LActionGroup from '@/components/common/LActionGroup.vue'
 import LSlider from '@/components/common/LSlider.vue'
 import LTag from '@/components/common/LTag.vue'
@@ -49,6 +50,7 @@ initAppTheme(vuetify)
 // Register global LLARS components
 app.component('LBtn', LBtn)
 app.component('LIconBtn', LIconBtn)
+app.component('LInfoTooltip', LInfoTooltip)
 app.component('LActionGroup', LActionGroup)
 app.component('LSlider', LSlider)
 app.component('LTag', LTag)

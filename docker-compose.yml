@@ -13,6 +13,8 @@ services:
         condition: service_healthy
       matomo-service:
         condition: service_started
+      yjs-service:
+        condition: service_healthy
     environment:
       - TZ=Europe/Berlin
       - PROJECT_STATE=${PROJECT_STATE:-development}

@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # File upload configuration
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'md', 'docx', 'doc'}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
-RAG_DOCS_PATH = '/app/rag_docs'
+RAG_DOCS_PATH = '/app/data/rag/uploads'
 
 
 class DocumentService:

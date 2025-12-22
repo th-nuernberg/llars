@@ -18,7 +18,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Target directory for legal documents
-LEGAL_DOCS_DIR = Path(__file__).parent.parent / "app" / "data" / "legal_docs"
+LEGAL_DOCS_DIR = Path(__file__).parent.parent / "app" / "data" / "rag" / "legal"
 BUNDESGESETZE_DIR = LEGAL_DOCS_DIR / "bundesgesetze"
 EU_GESETZE_DIR = LEGAL_DOCS_DIR / "eu_recht"
 

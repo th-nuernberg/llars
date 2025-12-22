@@ -575,7 +575,7 @@ def register_chatbot_events(socketio):
                 emit("chatbot:sources", {
                     "sources": sources_with_ids
                 }, room=client_id)
-            elif chatbot.rag_enabled and chatbot.collections:
+            elif chat_service._requires_sources():
                 # RAG is enabled but produced no sources. Avoid hallucinations by returning fallback directly.
                 fallback = chat_service.get_unknown_answer()
 

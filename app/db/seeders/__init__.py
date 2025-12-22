@@ -60,7 +60,7 @@ def run_all_seeders(db):
     # Ensure every user has a collab color
     seed_collab_colors(db)
 
-    # Initialize RAG system (default collection + scan /app/rag_docs)
+    # Initialize RAG system (default collection + scan /app/data/rag/standard)
     initialize_rag_system(db)
 
     # Create default chatbots (admin-only standard bot)

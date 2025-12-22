@@ -36,7 +36,7 @@ class CrawlerService:
     Supports background crawling with WebSocket live updates.
     """
 
-    RAG_DOCS_PATH = '/app/rag_docs'
+    RAG_DOCS_PATH = '/app/data/rag/crawls'
     DEFAULT_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
     DEFAULT_CHUNK_SIZE = 1000
     DEFAULT_CHUNK_OVERLAP = 200

@@ -14,7 +14,7 @@ class ChatManager:
 
     def __init__(self,
                  system_prompt_path: str = "/app/prompts/system_prompt.txt",
-                 docs_dir: str = "/app/rag_docs",
+                 docs_dir: str = "/app/data/rag/standard",
                  verbose: bool = False):
         self.prompt_manager = PromptManager(system_prompt_path=system_prompt_path)
         self.rag_pipeline = self._initialize_rag(docs_dir)

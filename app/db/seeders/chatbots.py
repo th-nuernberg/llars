@@ -1,8 +1,8 @@
 """
 Chatbot Seeder
 
-Creates a default chatbot on startup that is only visible to admins.
-The chatbot is connected to the default RAG collection seeded from `/app/rag_docs`.
+Creates a default chatbot on startup that is visible to all users.
+The chatbot is connected to the default RAG collection seeded from `/app/data/rag/standard`.
 """
 
 from datetime import datetime
@@ -28,7 +28,16 @@ def initialize_default_chatbots(db):
         return
 
     chatbot_name = 'standard_admin'
-    chatbot_display_name = 'Standard (Admin)'
+    chatbot_display_name = 'LLARS'
+    chatbot_description = 'LLARS Systemassistent. Hilft beim Zurechtfinden und beantwortet Fragen zum System.'
+    chatbot_prompt = (
+        "Du bist LLARS, der Systemassistent fuer LLARS. "
+        "Du hilfst Nutzern beim Zurechtfinden in LLARS und beantwortest Fragen zu Funktionen, "
+        "Menues und Arbeitsablaeufen. Antworte praezise und nachvollziehbar. "
+        "Wenn du Informationen aus den bereitgestellten Dokumenten verwendest, "
+        "verweise auf die entsprechenden Quellen im Text."
+    )
+    chatbot_welcome = "Hallo! Ich bin LLARS. Wie kann ich dir im System helfen?"
 
     bot = Chatbot.query.filter_by(name=chatbot_name).first()
     created = False
@@ -37,14 +46,10 @@ def initialize_default_chatbots(db):
         bot = Chatbot(
             name=chatbot_name,
             display_name=chatbot_display_name,
-            description='Standard-Chatbot basierend auf den vorinstallierten RAG-Dokumenten.',
+            description=chatbot_description,
             icon='mdi-robot',
             color='#5d7a4a',
-            system_prompt=(
-                "Du bist ein hilfreicher Assistent. Antworte präzise und nachvollziehbar. "
-                "Wenn du Informationen aus den bereitgestellten Dokumenten verwendest, "
-                "verweise auf die entsprechenden Quellen im Text."
-            ),
+            system_prompt=chatbot_prompt,
             model_name='mistralai/Mistral-Small-3.2-24B-Instruct-2506',
             temperature=0.7,
             max_tokens=2048,
@@ -53,11 +58,11 @@ def initialize_default_chatbots(db):
             rag_retrieval_k=4,
             rag_min_relevance=0.3,
             rag_include_sources=True,
-            welcome_message='Hallo! Wie kann ich helfen?',
+            welcome_message=chatbot_welcome,
             fallback_message='Ich konnte leider keine passende Antwort finden.',
             max_context_messages=10,
             is_active=True,
-            is_public=False,
+            is_public=True,
             allowed_roles=None,
             build_status='ready',
             build_error=None,
@@ -71,13 +76,25 @@ def initialize_default_chatbots(db):
         db.session.flush()
         created = True
 
-    # Ensure it stays private and uses the default collection
+    # Ensure it stays public and uses the default collection
     changed = False
-    if bot.is_public:
-        bot.is_public = False
+    if not bot.is_public:
+        bot.is_public = True
         changed = True
     if bot.primary_collection_id != default_collection.id:
         bot.primary_collection_id = default_collection.id
+        changed = True
+    if bot.display_name != chatbot_display_name:
+        bot.display_name = chatbot_display_name
+        changed = True
+    if bot.description != chatbot_description:
+        bot.description = chatbot_description
+        changed = True
+    if bot.system_prompt != chatbot_prompt:
+        bot.system_prompt = chatbot_prompt
+        changed = True
+    if bot.welcome_message != chatbot_welcome:
+        bot.welcome_message = chatbot_welcome
         changed = True
 
     # Ensure collection assignment exists (primary)
@@ -114,4 +131,3 @@ def initialize_default_chatbots(db):
         print(f"✅ Default chatbot '{chatbot_name}' already up to date")
 
     print("=" * 60 + "\n")
-

@@ -65,6 +65,18 @@ class ChatService:
             return DEFAULT_RAG_UNKNOWN_ANSWER
         return str(unknown)
 
+    def _requires_sources(self) -> bool:
+        if not (self.chatbot.rag_enabled and self.chatbot.collections):
+            return False
+        settings = self._get_prompt_settings()
+        require_citations = bool(getattr(settings, 'rag_require_citations', True))
+        if not require_citations:
+            return False
+        # Allow the default LLARS assistant to answer system questions without RAG sources.
+        if self.chatbot.name == 'standard_admin':
+            return False
+        return True
+
     def _build_citation_instructions(self) -> str:
         settings = self._get_prompt_settings()
         template = getattr(settings, 'rag_citation_instructions', None) if settings else None
@@ -170,7 +182,7 @@ class ChatService:
 
         # If RAG is enabled but no context could be retrieved, avoid hallucinations.
         # File uploads count as additional context, so only short-circuit when there are no files.
-        if self.chatbot.rag_enabled and self.chatbot.collections and not sources and not files:
+        if self._requires_sources() and not sources and not files:
             response_text = self.get_unknown_answer()
             response_time_ms = int((time.time() - start_time) * 1000)
             tokens_input = 0
@@ -285,7 +297,7 @@ class ChatService:
         if self.chatbot.rag_enabled and self.chatbot.collections:
             rag_context, sources = self._get_multi_collection_context(message)
 
-        if self.chatbot.rag_enabled and self.chatbot.collections and not sources:
+        if self._requires_sources() and not sources:
             response_time_ms = int((time.time() - start_time) * 1000)
             return {
                 'response': self.get_unknown_answer(),
@@ -342,7 +354,7 @@ class ChatService:
         if self.chatbot.rag_enabled and self.chatbot.collections:
             rag_context, sources = self._get_multi_collection_context(message)
 
-        if self.chatbot.rag_enabled and self.chatbot.collections and not sources:
+        if self._requires_sources() and not sources:
             response_time_ms = int((time.time() - start_time) * 1000)
             unknown = self.get_unknown_answer()
             yield {"delta": unknown}

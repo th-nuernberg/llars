@@ -4,6 +4,13 @@
       <v-col cols="12" md="6">
         <div class="d-flex align-center flex-wrap gap-2">
           <h1 class="page-title">Anonymisierung</h1>
+          <LInfoTooltip title="Anonymisierung" :max-width="420">
+            <div class="anonymize-info">
+              <div>Beim ersten Laden kann es etwas dauern, bis lokale Modelle und die Datenbank bereit sind.</div>
+              <div>Offline: Regeln + NER erkennen personenbezogene Daten, danach werden Treffer konsistent pseudonymisiert.</div>
+              <div>LLM/Hybrid: zusätzliche LLM-Extraktion, Ergebnisse werden anschließend ebenfalls pseudonymisiert.</div>
+            </div>
+          </LInfoTooltip>
           <v-chip
             size="small"
             variant="tonal"
@@ -19,7 +26,7 @@
         <LBtn
           variant="secondary"
           prepend-icon="mdi-content-paste"
-          :disabled="!hasPermission('feature:anonymize:view') || isLoading('init') || isLoading('process')"
+          :disabled="!hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="pasteFromClipboard"
         >
           Zwischenablage einfügen
@@ -27,7 +34,7 @@
         <LBtn
           variant="secondary"
           prepend-icon="mdi-lightbulb-on-outline"
-          :disabled="!hasPermission('feature:anonymize:view') || isLoading('init') || isLoading('process')"
+          :disabled="!hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="loadExample"
         >
           Beispiel laden
@@ -35,7 +42,7 @@
         <LBtn
           variant="secondary"
           prepend-icon="mdi-content-copy"
-          :disabled="!outputText || !hasPermission('feature:anonymize:view') || isLoading('init') || isLoading('process')"
+          :disabled="!outputText || !hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="copyToClipboard"
         >
           Output kopieren
@@ -43,7 +50,7 @@
         <LBtn
           variant="primary"
           prepend-icon="mdi-shield-lock-outline"
-          :disabled="!inputText || !engineReady || !hasPermission('feature:anonymize:view') || isLoading('init') || isLoading('process')"
+          :disabled="!inputText || !engineReady || !hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="runPseudonymize"
         >
           Pseudonymisieren
@@ -51,7 +58,7 @@
         <LBtn
           variant="secondary"
           prepend-icon="mdi-refresh"
-          :disabled="!inputText || !engineReady || !hasPermission('feature:anonymize:view') || isLoading('init') || isLoading('process')"
+          :disabled="!inputText || !engineReady || !hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="resetAndRun"
         >
           Neu berechnen
@@ -65,7 +72,7 @@
           variant="outlined"
           hide-details
           class="file-input"
-          :disabled="!engineReady || !hasPermission('feature:anonymize:view') || isLoading('init') || isLoading('process')"
+          :disabled="!engineReady || !hasPermission('feature:anonymize:view') || isLoading('process')"
           @update:model-value="handleFileSelected"
         />
 
@@ -91,7 +98,7 @@
           </v-card-title>
           <v-divider />
           <v-card-text>
-            <v-progress-linear v-if="isLoading('init') || isLoading('process')" indeterminate height="2" class="mb-3" />
+            <v-progress-linear v-if="isLoading('process')" indeterminate height="2" class="mb-3" />
 
             <v-textarea
               v-model="inputText"
@@ -127,7 +134,7 @@
           </v-card-title>
           <v-divider />
           <v-card-text>
-            <v-progress-linear v-if="isLoading('init') || isLoading('process')" indeterminate height="2" class="mb-3" />
+            <v-progress-linear v-if="isLoading('process')" indeterminate height="2" class="mb-3" />
 
             <v-textarea
               v-model="outputText"
@@ -361,6 +368,10 @@ function clearLiveTimer() {
 function scheduleLivePseudonymize({ immediate = false } = {}) {
   if (!liveMode.value) return
   if (!hasPermission('feature:anonymize:view')) return
+  if (!anonymizeStatus.value) {
+    liveQueued.value = true
+    return
+  }
 
   const text = inputText.value || ''
   if (text.trim() === '') {
@@ -371,7 +382,7 @@ function scheduleLivePseudonymize({ immediate = false } = {}) {
     return
   }
 
-  if (isLoading('init') || isLoading('process')) {
+  if (isLoading('process')) {
     liveQueued.value = true
     return
   }
@@ -394,6 +405,7 @@ function triggerLivePseudonymizeNow() {
 const offlineReady = computed(() => anonymizeStatus.value?.ready === true)
 const llmReady = computed(() => anonymizeStatus.value?.llm?.ready === true)
 const engineReady = computed(() => {
+  if (!anonymizeStatus.value) return true
   if (engine.value === 'llm') return llmReady.value
   if (engine.value === 'hybrid') return offlineReady.value && llmReady.value
   return offlineReady.value
@@ -426,7 +438,7 @@ function extractApiError(e, fallback) {
 }
 
 const healthChip = computed(() => {
-  if (isLoading('init')) {
+  if (isLoading('health')) {
     return { text: 'Prüfe…', color: 'info', title: 'Prüft lokale Modelle/Datenbank…' }
   }
   if (permissionsLoading.value) {
@@ -529,13 +541,14 @@ async function loadHealth() {
   infoMessage.value = ''
 
   try {
-    await withLoading('init', async () => {
+    await withLoading('health', async () => {
       const url = `${BASE_URL}/api/anonymize/health?mode=quick`
-      const maxAttempts = 3
+      const maxAttempts = 2
+      const timeoutMs = 4000
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          const res = await axios.get(url, { timeout: 15000 })
+          const res = await axios.get(url, { timeout: timeoutMs })
           if (!res.data?.success) {
             throw new Error('Health-Check fehlgeschlagen')
           }
@@ -555,7 +568,7 @@ async function loadHealth() {
   } catch (e) {
     errorMessage.value = extractApiError(e, 'Health-Check fehlgeschlagen')
   } finally {
-    if (liveQueued.value) {
+    if (liveQueued.value && anonymizeStatus.value) {
       liveQueued.value = false
       triggerLivePseudonymizeNow()
     }
@@ -761,7 +774,7 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   await fetchPermissions()
-  await loadHealth()
+  loadHealth()
 })
 </script>
 
@@ -884,6 +897,11 @@ onMounted(async () => {
   letter-spacing: 0.02em;
   color: rgba(var(--v-theme-on-surface), 0.75);
   text-transform: uppercase;
+}
+
+.anonymize-info {
+  display: grid;
+  gap: 6px;
 }
 
 .settings-hint {

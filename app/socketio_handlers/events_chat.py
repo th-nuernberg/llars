@@ -210,10 +210,21 @@ def register_chat_events(socketio, chat_manager):
 
     @socketio.on('test_prompt_stream')
     def handle_test_prompt_stream(data):
-        """Handle test prompt streaming with optional JSON mode"""
+        """Handle test prompt streaming with optional JSON mode and configurable parameters"""
         client_id = request.sid
-        logging.info(f"handle_test_prompt_stream called. SID={client_id}, data={data}")
+        logging.info(f"handle_test_prompt_stream called. SID={client_id}")
         user_prompt = data.get('prompt', '')
+
+        # Get configurable parameters from frontend
+        model = data.get('model', 'mistralai/Mistral-Small-3.2-24B-Instruct-2506')
+        temperature = data.get('temperature', 0.15)
+        max_tokens = data.get('maxTokens', 4096)
+
+        # Validate parameters
+        temperature = max(0.0, min(1.0, float(temperature)))
+        max_tokens = max(100, min(8192, int(max_tokens)))
+
+        logging.info(f"handle_test_prompt_stream: model={model}, temp={temperature}, max_tokens={max_tokens}")
 
         # Initialize LiteLLM client
         litellm_api_key = os.getenv("LITELLM_API_KEY", "sk-RgzbaiE9HM8w0I5IWgZz6g")
@@ -238,38 +249,52 @@ def register_chat_events(socketio, chat_manager):
             if json_mode:
                 # JSON Mode: use provided schema for guided_json
                 schema = data.get('schema', {}) or {}
-                extra_body["guided_json"] = schema
-                extra_body["guided_decoding_backend"] = "outlines"
-                logging.info(f"handle_test_prompt_stream: JSON Mode with schema")
+                # Only add guided_json if schema is not empty and has keys
+                if schema and len(schema) > 0:
+                    extra_body["guided_json"] = schema
+                    logging.info(f"handle_test_prompt_stream: JSON Mode with schema: {schema}")
+                else:
+                    # Basic JSON mode - just request JSON output without guided schema
+                    # Note: response_format may not be supported by all models
+                    logging.info(f"handle_test_prompt_stream: JSON Mode (basic, no schema)")
             else:
                 logging.info("handle_test_prompt_stream: JSON Mode disabled")
 
             extra_kwargs = {"extra_body": extra_body}
 
+            logging.info(f"handle_test_prompt_stream: Starting stream with extra_body keys: {list(extra_body.keys())}")
+
             # Stream test completion from LiteLLM Proxy
             stream = client.chat.completions.create(
-                model="mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+                model=model,
                 messages=messages,
-                max_tokens=4096,
+                max_tokens=max_tokens,
                 n=1,
                 timeout=360.0,
                 frequency_penalty=0.3,
-                temperature=0.15,
+                temperature=temperature,
                 stream=True,
                 **extra_kwargs
             )
+
+            logging.info("handle_test_prompt_stream: Stream created, starting iteration")
+            chunk_count = 0
 
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
                 content = extract_delta_text(delta)
                 if content:
+                    chunk_count += 1
+                    if chunk_count <= 3:
+                        logging.info(f"handle_test_prompt_stream: Emitting chunk {chunk_count}: {content[:50]}...")
                     emit(
                         "test_prompt_response",
                         {"content": content, "complete": False},
                         room=client_id
                     )
                 if getattr(choice, "finish_reason", None) is not None:
+                    logging.info(f"handle_test_prompt_stream: Stream complete, total chunks: {chunk_count}")
                     emit(
                         "test_prompt_response",
                         {"content": "", "complete": True},
@@ -279,8 +304,9 @@ def register_chat_events(socketio, chat_manager):
 
         except Exception as e:
             logging.error(f"Test prompt stream error: {e}")
+            # Send error message to client
             emit(
                 "test_prompt_response",
-                {"content": f"Error: {e}", "complete": True},
+                {"content": f"\n\nFehler: {str(e)[:200]}", "complete": True},
                 room=client_id
             )

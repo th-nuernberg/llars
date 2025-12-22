@@ -1,122 +1,287 @@
 <template>
-  <div v-if="modelValue" class="dialog-overlay">
-    <div class="dialog-box test-prompt-dialog">
-      <h3>Prompt testen</h3>
-      <!-- Beispiele auswählen -->
-      <div class="examples-section mb-4">
-        <h4>Beispiele:</h4>
-        <ul class="examples-list">
-          <li v-for="(ex, idx) in examples" :key="idx" :class="{ selected: idx === selectedExampleIndex }">
-            <button class="example-select-button" @click="selectedExampleIndex = idx">
-              {{ ex.name }}<span v-if="ex.error" class="example-error"> !</span>
-            </button>
-            <button class="example-toggle-button" @click="expandedExamples[idx] = !expandedExamples[idx]"
-                    :title="expandedExamples[idx] ? 'Weniger anzeigen' : 'Mehr anzeigen'">
-              <span v-if="expandedExamples[idx]">▲</span>
-              <span v-else>▼</span>
-            </button>
-            <div v-if="expandedExamples[idx]" class="example-content">
-              <pre class="sent-prompt">{{ ex.formatted }}</pre>
+  <v-dialog
+    :model-value="modelValue"
+    @update:model-value="emit('update:modelValue', $event)"
+    max-width="1200"
+    persistent
+    scrollable
+  >
+    <LCard class="test-prompt-card">
+      <template #header>
+        <div class="dialog-header">
+          <div class="header-left">
+            <v-icon size="24" color="primary" class="mr-2">mdi-rocket-launch</v-icon>
+            <span class="header-title">Prompt testen</span>
+          </div>
+          <v-btn icon variant="text" size="small" @click="closeDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
+      </template>
+
+      <div class="dialog-body">
+        <!-- Configuration Row -->
+        <div class="config-section">
+          <div class="config-grid">
+            <!-- Model Selection -->
+            <div class="config-item">
+              <label class="config-label">
+                <v-icon size="14" class="mr-1">mdi-brain</v-icon>
+                Modell
+              </label>
+              <v-select
+                v-model="selectedModel"
+                :items="availableModels"
+                item-title="name"
+                item-value="id"
+                density="compact"
+                variant="outlined"
+                hide-details
+                class="config-select"
+              />
             </div>
-          </li>
-        </ul>
-      </div>
-      <div class="mb-4" style="display: flex; align-items: center;">
-        <v-switch v-model="testJsonMode" label="JSON Mode" :color="testJsonMode ? 'success' : 'error'" />
-        <v-switch v-model="testSngMode" label="SNG" style="margin-left: 16px;" :color="testSngMode ? 'success' : 'error'" />
-      </div>
-      <div v-if="testJsonMode" class="mb-4">
-        <p><strong>JSON Schema:</strong></p>
-        <textarea v-model="jsonSchemaInput" rows="6" style="width:100%; font-family: monospace;" placeholder="{}"></textarea>
-      </div>
-      <p><strong>Gesendetes Prompt:</strong></p>
-      <pre class="sent-prompt" v-html="promptHighlighted"></pre>
-      <button class="toggle-button" @click="promptCollapsed = !promptCollapsed">
-        {{ promptCollapsed ? 'Mehr anzeigen' : 'Weniger anzeigen' }}
-      </button>
-      <p><strong>Antwort:</strong></p>
-      <!-- Ladebalken während der Generierung -->
-      <v-progress-linear
-        v-if="!testResponseComplete"
-        indeterminate
-        color="primary"
-        class="mb-2"
-      />
-      <!-- Raw response or social network graph based on SNG mode -->
-      <div v-if="!testSngMode" class="response-stream" ref="responseContainer">
-        <pre>{{ testPromptResponse }}</pre>
-        <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
-      </div>
-      <div v-else class="sng-container">
-        <div v-if="!testResponseComplete" class="stream-indicator">▪▪▪</div>
-        <div v-else>
-          <SocialNetworkGraph
-            v-if="!parseError && networkJson"
-            :data="networkJson"
+
+            <!-- Temperature -->
+            <div class="config-item">
+              <label class="config-label">
+                <v-icon size="14" class="mr-1">mdi-thermometer</v-icon>
+                Temperatur: {{ temperature.toFixed(2) }}
+              </label>
+              <v-slider
+                v-model="temperature"
+                :min="0"
+                :max="1"
+                :step="0.05"
+                density="compact"
+                hide-details
+                color="primary"
+              />
+            </div>
+
+            <!-- Max Tokens -->
+            <div class="config-item">
+              <label class="config-label">
+                <v-icon size="14" class="mr-1">mdi-counter</v-icon>
+                Max Tokens
+              </label>
+              <v-text-field
+                v-model.number="maxTokens"
+                type="number"
+                density="compact"
+                variant="outlined"
+                hide-details
+                :min="100"
+                :max="8192"
+                class="config-input"
+              />
+            </div>
+          </div>
+
+          <!-- Mode Toggles -->
+          <div class="mode-toggles">
+            <v-chip
+              :color="jsonMode ? 'success' : 'default'"
+              :variant="jsonMode ? 'flat' : 'outlined'"
+              @click="jsonMode = !jsonMode"
+              class="mode-chip"
+            >
+              <v-icon start size="16">mdi-code-json</v-icon>
+              JSON Mode
+            </v-chip>
+            <v-chip
+              :color="sngMode ? 'info' : 'default'"
+              :variant="sngMode ? 'flat' : 'outlined'"
+              @click="sngMode = !sngMode"
+              class="mode-chip"
+            >
+              <v-icon start size="16">mdi-graph</v-icon>
+              SNG Visualisierung
+            </v-chip>
+          </div>
+        </div>
+
+        <!-- Examples Section -->
+        <div class="examples-section">
+          <div class="section-header">
+            <v-icon size="16" class="mr-1">mdi-file-document-multiple</v-icon>
+            <span class="section-title">Beispieldaten</span>
+          </div>
+          <div class="examples-chips">
+            <v-chip
+              v-for="(ex, idx) in examples"
+              :key="idx"
+              :color="idx === selectedExampleIndex ? 'primary' : 'default'"
+              :variant="idx === selectedExampleIndex ? 'flat' : 'outlined'"
+              @click="selectExample(idx)"
+              class="example-chip"
+            >
+              {{ ex.name }}
+              <v-icon v-if="ex.error" end size="14" color="error">mdi-alert-circle</v-icon>
+            </v-chip>
+          </div>
+
+          <!-- Example Preview -->
+          <v-expand-transition>
+            <div v-if="showExamplePreview" class="example-preview">
+              <div class="preview-header">
+                <span class="preview-title">Vorschau: {{ examples[selectedExampleIndex]?.name }}</span>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click="showExamplePreview = false"
+                >
+                  <v-icon size="16">mdi-chevron-up</v-icon>
+                </v-btn>
+              </div>
+              <pre class="preview-content">{{ selectedExampleFormatted }}</pre>
+            </div>
+          </v-expand-transition>
+
+          <LBtn
+            v-if="!showExamplePreview"
+            variant="text"
+            size="small"
+            prepend-icon="mdi-eye"
+            @click="showExamplePreview = true"
+          >
+            Beispiel anzeigen
+          </LBtn>
+        </div>
+
+        <!-- JSON Schema (when JSON mode enabled) -->
+        <v-expand-transition>
+          <div v-if="jsonMode" class="schema-section">
+            <div class="section-header">
+              <v-icon size="16" class="mr-1">mdi-code-braces</v-icon>
+              <span class="section-title">JSON Schema</span>
+            </div>
+            <v-textarea
+              v-model="jsonSchemaInput"
+              rows="4"
+              variant="outlined"
+              density="compact"
+              placeholder="{}"
+              hide-details
+              class="schema-input"
+            />
+          </div>
+        </v-expand-transition>
+
+        <!-- Sent Prompt Section -->
+        <div class="prompt-section">
+          <div class="section-header">
+            <v-icon size="16" class="mr-1">mdi-message-text</v-icon>
+            <span class="section-title">Gesendetes Prompt</span>
+            <v-spacer />
+            <LBtn
+              variant="text"
+              size="small"
+              :prepend-icon="promptCollapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'"
+              @click="promptCollapsed = !promptCollapsed"
+            >
+              {{ promptCollapsed ? 'Mehr anzeigen' : 'Weniger' }}
+            </LBtn>
+          </div>
+          <div class="prompt-content" v-html="promptHighlighted"></div>
+        </div>
+
+        <!-- Response Section -->
+        <div class="response-section">
+          <div class="section-header">
+            <v-icon size="16" class="mr-1">mdi-robot</v-icon>
+            <span class="section-title">Antwort</span>
+            <v-spacer />
+            <LTag v-if="isStreaming" variant="info" size="small">
+              <v-progress-circular
+                indeterminate
+                size="12"
+                width="2"
+                class="mr-1"
+              />
+              Generiert...
+            </LTag>
+            <LTag v-else-if="responseComplete" variant="success" size="small">
+              <v-icon start size="12">mdi-check</v-icon>
+              Fertig
+            </LTag>
+          </div>
+
+          <!-- Progress Bar -->
+          <v-progress-linear
+            v-if="isStreaming"
+            indeterminate
+            color="primary"
+            height="3"
+            class="mb-3"
           />
-          <p v-else-if="parseError" class="error-message">Fehler: Ungültiges JSON für SocialNetworkGraph</p>
-          <p v-else class="no-data-message">Keine Daten zum Plotten verfügbar</p>
+
+          <!-- Response Content -->
+          <div v-if="!sngMode" class="response-container" ref="responseContainer">
+            <div class="response-content">
+              <pre class="response-text">{{ response }}</pre>
+              <div v-if="isStreaming" class="typing-indicator">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SNG Visualization -->
+          <div v-else class="sng-container">
+            <div v-if="isStreaming" class="sng-loading">
+              <v-progress-circular indeterminate color="primary" />
+              <span class="mt-2">Generiere Graph-Daten...</span>
+            </div>
+            <template v-else-if="responseComplete">
+              <SocialNetworkGraph
+                v-if="!parseError && networkJson"
+                :data="networkJson"
+              />
+              <div v-else-if="parseError" class="sng-error">
+                <v-icon size="48" color="error">mdi-alert-circle</v-icon>
+                <span class="error-text">Fehler: Ungültiges JSON für SocialNetworkGraph</span>
+                <pre class="error-detail">{{ response }}</pre>
+              </div>
+              <div v-else class="sng-empty">
+                <v-icon size="48" color="grey">mdi-graph-outline</v-icon>
+                <span>Keine Daten zum Plotten verfügbar</span>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
-      <div class="dialog-buttons">
-        <button class="regen-button" @click="regenerate">Erneut generieren</button>
-        <button class="cancel-button" @click="closeDialog">Schließen</button>
-      </div>
-    </div>
-  </div>
+
+      <template #actions>
+        <div class="dialog-actions">
+          <LBtn
+            variant="accent"
+            prepend-icon="mdi-refresh"
+            :loading="isStreaming"
+            :disabled="isStreaming"
+            @click="regenerate"
+          >
+            Erneut generieren
+          </LBtn>
+          <LBtn variant="cancel" @click="closeDialog">
+            Schließen
+          </LBtn>
+        </div>
+      </template>
+    </LCard>
+  </v-dialog>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue';
-import SocialNetworkGraph from './SocialNetworkGraph.vue';
-import { sanitizeHtml } from '@/utils/sanitize';
-// Hilfsfunktion: formatiert JSON-Daten zur E-Mail-Historie oder markiert Fehler
-function formatHistory(data) {
-  const requiredTop = ['type','chat_id','institut_id','subject','sender','total_messages','messages'];
-  for (const key of requiredTop) {
-    if (!(key in data)) return { text: '', error: true };
-  }
-  if (!Array.isArray(data.messages)) return { text: '', error: true };
-  const lines = [];
-  for (const msg of data.messages) {
-    const requiredMsg = ['message_id','sender','content','timestamp','generated_by'];
-    for (const mk of requiredMsg) {
-      if (!(mk in msg)) return { text: '', error: true };
-    }
-    const ts = msg.timestamp;
-    const parts = ts.split(' ');
-    if (parts.length !== 2) return { text: '', error: true };
-    const [date, time] = parts;
-    lines.push(`${msg.sender} schrieb am ${date} um ${time}: ${msg.content}`);
-  }
-  // Füge Leerzeile zwischen einzelnen Nachrichten ein, um die Lesbarkeit zu erhöhen
-  return { text: lines.join('\n\n'), error: false };
-}
-// Beispiele aus JSON-Dateien laden und validieren
-const exampleModules = import.meta.glob('./examples/*.json', { eager: true });
-const examples = Object.entries(exampleModules).map(([path, module]) => {
-  const data = module.default || module;
-  const name = data.subject || data.id || path.split('/').pop().replace('.json', '');
-  const { text: formatted, error } = formatHistory(data);
-  return { name, data, formatted, error };
-});
-// State für ausgeklappte Beispiele
-const expandedExamples = ref(examples.map(() => false));
-// Ausgewähltes Beispiel (Index)
-const selectedExampleIndex = ref(0);
-// Computed für formatierten Text und Fehlerindikator des gewählten Beispiels
-const selectedExampleFormatted = computed(() => {
-  const ex = examples[selectedExampleIndex.value];
-  return ex ? ex.formatted : '';
-});
-const selectedExampleError = computed(() => {
-  const ex = examples[selectedExampleIndex.value];
-  return ex ? ex.error : false;
-});
-import { io } from 'socket.io-client';
+import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
+import { io } from 'socket.io-client'
+import SocialNetworkGraph from './SocialNetworkGraph.vue'
+import { sanitizeHtml } from '@/utils/sanitize'
 
-const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
-const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+// Socket.IO configuration
+const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
+const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
 const props = defineProps({
   modelValue: {
@@ -127,376 +292,639 @@ const props = defineProps({
     type: String,
     required: true
   }
-});
-const emit = defineEmits(['update:modelValue']);
+})
 
-const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
-const chatSocket = io(import.meta.env.VITE_API_BASE_URL, {
-  path: '/socket.io/',
-  transports: socketioTransports,
-  upgrade: socketioEnableWebsocket,
-  query: { username },
-  headers: { 'Content-Type': 'application/json; charset=utf-8' }
-});
+const emit = defineEmits(['update:modelValue'])
 
-const testJsonMode = ref(true);
-const testSngMode = ref(false);
-// JSON for social network graph and parse error flag
-const networkJson = ref(null);
-const parseError = ref(false);
-const jsonSchemaInput = ref('{}');
-const promptCollapsed = ref(true);
-// Prompt mit formatiertem Beispiel ersetzen
-const replacedPrompt = computed(() => {
-  const placeholder = '{{complete_email_history}}';
-  const exampleText = selectedExampleFormatted.value;
-  return props.prompt.split(placeholder).join(exampleText);
-});
-// QoL: Komprimierte Anzeige des ersetzten Prompts (erste und letzte 50 Zeichen)
-const collapsedPrompt = computed(() => {
-  const text = replacedPrompt.value;
-  if (text.length <= 100) return text;
-  const firstPart = text.slice(0, 50);
-  const lastPart = text.slice(-50);
-  return `${firstPart}...${lastPart}`;
-});
+// Socket connection
+let socket = null
 
-const testPromptResponse = ref('');
-const testResponseComplete = ref(false);
-// Ref auf das Container-Element, in dem der LLM-Output scrollt
-const responseContainer = ref(null);
-/** Regex-Escaping */
-function escapeRegex(str) {
-  return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+// Configuration state
+const availableModels = ref([
+  { id: 'mistralai/Mistral-Small-3.2-24B-Instruct-2506', name: 'Mistral Small 3.2 (24B)' },
+  { id: 'mistralai/Mistral-Large-2411', name: 'Mistral Large' },
+  { id: 'gpt-4o', name: 'GPT-4o' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
+])
+const selectedModel = ref('mistralai/Mistral-Small-3.2-24B-Instruct-2506')
+const temperature = ref(0.15)
+const maxTokens = ref(4096)
+const jsonMode = ref(true)
+const sngMode = ref(false)
+const jsonSchemaInput = ref('{}')
+
+// Example state
+const selectedExampleIndex = ref(0)
+const showExamplePreview = ref(false)
+
+// Prompt display state
+const promptCollapsed = ref(true)
+
+// Response state
+const response = ref('')
+const isStreaming = ref(false)
+const responseComplete = ref(false)
+const responseContainer = ref(null)
+const follow = ref(true)
+
+// SNG state
+const networkJson = ref(null)
+const parseError = ref(false)
+
+// Load examples
+function formatHistory(data) {
+  const requiredTop = ['type', 'chat_id', 'institut_id', 'subject', 'sender', 'total_messages', 'messages']
+  for (const key of requiredTop) {
+    if (!(key in data)) return { text: '', error: true }
+  }
+  if (!Array.isArray(data.messages)) return { text: '', error: true }
+  const lines = []
+  for (const msg of data.messages) {
+    const requiredMsg = ['message_id', 'sender', 'content', 'timestamp', 'generated_by']
+    for (const mk of requiredMsg) {
+      if (!(mk in msg)) return { text: '', error: true }
+    }
+    const ts = msg.timestamp
+    const parts = ts.split(' ')
+    if (parts.length !== 2) return { text: '', error: true }
+    const [date, time] = parts
+    lines.push(`${msg.sender} schrieb am ${date} um ${time}: ${msg.content}`)
+  }
+  return { text: lines.join('\n\n'), error: false }
 }
-/**
- * Hebt im Prompt den eingesetzten Beispieltext hervor
- * Uses DOMPurify for XSS protection
- */
-const promptHighlighted = computed(() => {
-  const text = promptCollapsed.value ? collapsedPrompt.value : replacedPrompt.value;
-  const exampleText = selectedExampleFormatted.value;
 
-  // First, convert newlines to <br/> tags
-  let htmlText = text.replace(/\n/g, '<br/>');
+const exampleModules = import.meta.glob('./examples/*.json', { eager: true })
+const examples = Object.entries(exampleModules).map(([path, module]) => {
+  const data = module.default || module
+  const name = data.subject || data.id || path.split('/').pop().replace('.json', '')
+  const { text: formatted, error } = formatHistory(data)
+  return { name, data, formatted, error }
+})
+
+const selectedExampleFormatted = computed(() => {
+  const ex = examples[selectedExampleIndex.value]
+  return ex ? ex.formatted : ''
+})
+
+// Prompt with example replaced
+const replacedPrompt = computed(() => {
+  const placeholder = '{{complete_email_history}}'
+  const exampleText = selectedExampleFormatted.value
+  return props.prompt.split(placeholder).join(exampleText)
+})
+
+const collapsedPrompt = computed(() => {
+  const text = replacedPrompt.value
+  if (text.length <= 200) return text
+  const firstPart = text.slice(0, 100)
+  const lastPart = text.slice(-100)
+  return `${firstPart}\n\n... [${text.length - 200} Zeichen ausgeblendet] ...\n\n${lastPart}`
+})
+
+function escapeRegex(str) {
+  return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+}
+
+const promptHighlighted = computed(() => {
+  const text = promptCollapsed.value ? collapsedPrompt.value : replacedPrompt.value
+  const exampleText = selectedExampleFormatted.value
+
+  let htmlText = text.replace(/\n/g, '<br/>')
 
   if (exampleText) {
-    // Escape regex special characters for pattern matching
-    const escapedExample = exampleText.replace(/\n/g, '<br/>');
-    const pattern = new RegExp(escapeRegex(escapedExample), 'g');
-    // Highlight the example text
-    htmlText = htmlText.replace(pattern, `<span class="example-highlight">${escapedExample}</span>`);
+    const escapedExample = exampleText.replace(/\n/g, '<br/>')
+    const pattern = new RegExp(escapeRegex(escapedExample), 'g')
+    htmlText = htmlText.replace(pattern, `<span class="example-highlight">${escapedExample}</span>`)
   }
 
-  // Sanitize the HTML to prevent XSS while preserving <br/> and <span> tags
-  return sanitizeHtml(htmlText);
-});
-// Flag, ob automatisch nach unten gescrollt werden soll
-const follow = ref(true);
-// Scroll-Handler, pausiert Follow, wenn der User manuell scrollt
-watch(responseContainer, (el) => {
-  if (el) {
-    el.addEventListener('scroll', () => {
-      const threshold = 10;
-      // Wenn innerhalb threshold zum unteren Ende, Follow=true, sonst false
-      if (el.scrollHeight - el.scrollTop - el.clientHeight <= threshold) {
-        follow.value = true;
-      } else {
-        follow.value = false;
-      }
-    });
-  }
-});
-/**
- * Sendet das Prompt an den Server, ersetzt {{complete_email_history}} mit dem ausgewählten Beispiel
- */
-function sendTestPrompt() {
-  const placeholder = '{{complete_email_history}}';
-  const exampleText = selectedExampleFormatted.value;
-  // Basis-Prompt mit Platzhalter ersetzt
-  let promptString = props.prompt.split(placeholder).join(exampleText);
+  return sanitizeHtml(htmlText)
+})
 
-  // Debug logging: JSON mode and prompt to send
-  console.log('[TestPromptDialog] Sending test prompt. JSON Mode:', testJsonMode.value);
-  console.log('[TestPromptDialog] Prompt to send:', promptString);
-  let schemaObj = {};
-  if (testJsonMode.value) {
-    try {
-      schemaObj = JSON.parse(jsonSchemaInput.value);
-    } catch (e) {
-      console.error('[TestPromptDialog] Invalid JSON Schema:', e);
+// Socket initialization
+const socketConnected = ref(false)
+
+function initSocket() {
+  if (socket) return
+
+  const username = localStorage.getItem('username') || 'Unbekannter Benutzer'
+  const rawBase = import.meta.env.VITE_API_BASE_URL || window.location.origin
+  const trimmedBase = String(rawBase || '').replace(/\/+$/, '')
+  const socketBase = trimmedBase.endsWith('/api')
+    ? trimmedBase.slice(0, -4)
+    : (trimmedBase || window.location.origin)
+
+  console.log('[TestPrompt] Connecting to socket at:', socketBase)
+
+  socket = io(socketBase, {
+    path: '/socket.io/',
+    transports: socketioTransports,
+    upgrade: socketioEnableWebsocket,
+    query: { username },
+    headers: { 'Content-Type': 'application/json; charset=utf-8' }
+  })
+
+  socket.on('connect', () => {
+    console.log('[TestPrompt] Socket connected, id:', socket.id)
+    socketConnected.value = true
+    // Auto-send prompt when socket connects if dialog is open
+    if (props.modelValue && !responseComplete.value && response.value === '') {
+      sendTestPrompt()
     }
-  }
-  chatSocket.emit('test_prompt_stream', {
-    prompt: promptString,
-    jsonMode: testJsonMode.value,
-    schema: schemaObj,
-    sngMode: testSngMode.value
-  });
+  })
+
+  socket.on('disconnect', () => {
+    console.log('[TestPrompt] Socket disconnected')
+    socketConnected.value = false
+  })
+
+  socket.on('connect_error', (error) => {
+    console.error('[TestPrompt] Socket connection error:', error)
+    isStreaming.value = false
+    response.value = 'Verbindungsfehler: ' + error.message
+  })
+
+  socket.on('test_prompt_response', (data) => {
+    console.log('[TestPrompt] Received chunk:', data.content?.length, 'chars, complete:', data.complete)
+    response.value += data.content
+
+    nextTick(() => {
+      if (follow.value && responseContainer.value) {
+        responseContainer.value.scrollTop = responseContainer.value.scrollHeight
+      }
+    })
+
+    if (data.complete) {
+      isStreaming.value = false
+      responseComplete.value = true
+      parseSngResponse()
+    }
+  })
 }
 
-// Wenn Dialog geöffnet wird: Ausgabe zurücksetzen und Prompt mit Beispiel senden
-watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    testPromptResponse.value = '';
-    testResponseComplete.value = false;
-    testJsonMode.value = true;
-    promptCollapsed.value = true;
-    // Reset SNG JSON state
-    networkJson.value = null;
-    parseError.value = false;
-    // Prompt mit ausgewähltem Beispiel senden
-    sendTestPrompt();
-  }
-});
-// Wenn ein anderes Beispiel ausgewählt wird: Ausgabe zurücksetzen und neues Prompt senden
-watch(selectedExampleIndex, (newIdx) => {
-  if (props.modelValue) {
-    testPromptResponse.value = '';
-    testResponseComplete.value = false;
-    promptCollapsed.value = true;
-    // Reset SNG JSON state
-    networkJson.value = null;
-    parseError.value = false;
-    sendTestPrompt();
-  }
-});
-// Wenn JSON Mode umgeschaltet wird: Prompt neu senden
-watch(testJsonMode, (newVal) => {
-  console.log('[TestPromptDialog] JSON Mode toggled:', newVal);
-  if (props.modelValue) {
-    testPromptResponse.value = '';
-    testResponseComplete.value = false;
-    promptCollapsed.value = true;
-    sendTestPrompt();
-  }
-});
-// Wenn SNG Mode umgeschaltet wird: JSON zurücksetzen und neues Prompt senden
-watch(testSngMode, (newVal) => {
-  console.log('[TestPromptDialog] SNG Mode toggled:', newVal);
-  if (props.modelValue) {
-    testPromptResponse.value = '';
-    testResponseComplete.value = false;
-    networkJson.value = null;
-    parseError.value = false;
-    promptCollapsed.value = true;
-    sendTestPrompt();
-  }
-});
+function parseSngResponse() {
+  if (!sngMode.value) return
 
-chatSocket.on('test_prompt_response', (data) => {
-  testPromptResponse.value += data.content;
-  nextTick(() => {
-    // Automatisch scrollen, wenn Follow nicht pausiert
-    if (follow.value && responseContainer.value) {
-      responseContainer.value.scrollTop = responseContainer.value.scrollHeight;
-    }
-  });
-  if (data.complete) {
-    testResponseComplete.value = true;
-    // Parse JSON for social network graph when SNG mode is active
-    if (testSngMode.value) {
-      // Raw streamed content
-      const raw = testPromptResponse.value.trim();
-      let jsonText = raw;
-      // Remove markdown code fences if present
-      const fenceMatch = raw.match(/```(?:json)?\n([\s\S]*?)\n```/);
-      if (fenceMatch && fenceMatch[1]) {
-        jsonText = fenceMatch[1].trim();
-      } else if (!raw.startsWith('{') && raw.includes('{')) {
-        // Fallback: extract between first { and last }
-        const first = raw.indexOf('{');
-        const last = raw.lastIndexOf('}');
-        if (first !== -1 && last !== -1 && last > first) {
-          jsonText = raw.slice(first, last + 1);
-        }
-      }
-      try {
-        networkJson.value = JSON.parse(jsonText);
-        parseError.value = false;
-      } catch (e) {
-        console.error('[TestPromptDialog] Invalid JSON for SNG:', e, jsonText);
-        parseError.value = true;
-      }
+  const raw = response.value.trim()
+  let jsonText = raw
+
+  // Remove markdown code fences if present
+  const fenceMatch = raw.match(/```(?:json)?\n([\s\S]*?)\n```/)
+  if (fenceMatch && fenceMatch[1]) {
+    jsonText = fenceMatch[1].trim()
+  } else if (!raw.startsWith('{') && raw.includes('{')) {
+    const first = raw.indexOf('{')
+    const last = raw.lastIndexOf('}')
+    if (first !== -1 && last !== -1 && last > first) {
+      jsonText = raw.slice(first, last + 1)
     }
   }
-});
+
+  try {
+    networkJson.value = JSON.parse(jsonText)
+    parseError.value = false
+  } catch (e) {
+    console.error('[TestPrompt] Invalid JSON for SNG:', e)
+    parseError.value = true
+  }
+}
+
+function sendTestPrompt() {
+  console.log('[TestPrompt] sendTestPrompt called, socket:', socket ? 'exists' : 'null', 'connected:', socket?.connected)
+
+  if (!socket?.connected) {
+    console.log('[TestPrompt] Socket not connected yet, waiting for connection...')
+    isStreaming.value = true
+    return
+  }
+
+  const promptText = props.prompt
+  console.log('[TestPrompt] Sending test prompt, length:', promptText?.length, 'first 100 chars:', promptText?.slice(0, 100))
+
+  // Reset state
+  response.value = ''
+  isStreaming.value = true
+  responseComplete.value = false
+  networkJson.value = null
+  parseError.value = false
+  follow.value = true
+
+  const placeholder = '{{complete_email_history}}'
+  const exampleText = selectedExampleFormatted.value
+  const promptString = props.prompt.split(placeholder).join(exampleText)
+
+  let schemaObj = {}
+  if (jsonMode.value) {
+    try {
+      schemaObj = JSON.parse(jsonSchemaInput.value)
+    } catch (e) {
+      console.error('[TestPrompt] Invalid JSON Schema:', e)
+    }
+  }
+
+  const payload = {
+    prompt: promptString,
+    jsonMode: jsonMode.value,
+    schema: schemaObj,
+    sngMode: sngMode.value,
+    model: selectedModel.value,
+    temperature: temperature.value,
+    maxTokens: maxTokens.value
+  }
+
+  console.log('[TestPrompt] Emitting test_prompt_stream with payload:', {
+    ...payload,
+    prompt: payload.prompt.slice(0, 100) + '...'
+  })
+
+  socket.emit('test_prompt_stream', payload)
+}
+
+function selectExample(idx) {
+  selectedExampleIndex.value = idx
+  if (props.modelValue) {
+    sendTestPrompt()
+  }
+}
+
 function regenerate() {
-  testPromptResponse.value = '';
-  testResponseComplete.value = false;
-  sendTestPrompt();
+  sendTestPrompt()
 }
 
 function closeDialog() {
-  emit('update:modelValue', false);
+  emit('update:modelValue', false)
 }
+
+// Scroll handling
+function handleScroll() {
+  if (!responseContainer.value) return
+  const el = responseContainer.value
+  const threshold = 10
+  follow.value = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
+}
+
+// Watchers
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    // Reset state when dialog opens
+    response.value = ''
+    isStreaming.value = true
+    responseComplete.value = false
+    networkJson.value = null
+    parseError.value = false
+    promptCollapsed.value = true
+
+    // Initialize socket - will auto-send prompt when connected
+    initSocket()
+
+    // If socket is already connected, send immediately
+    if (socket?.connected) {
+      nextTick(() => {
+        sendTestPrompt()
+      })
+    }
+  }
+})
+
+watch(jsonMode, () => {
+  if (props.modelValue) {
+    sendTestPrompt()
+  }
+})
+
+watch(sngMode, () => {
+  if (props.modelValue) {
+    networkJson.value = null
+    parseError.value = false
+    sendTestPrompt()
+  }
+})
+
+onMounted(() => {
+  if (props.modelValue) {
+    initSocket()
+  }
+})
+
+onUnmounted(() => {
+  if (socket) {
+    socket.disconnect()
+    socket = null
+  }
+})
 </script>
 
 <style scoped>
-.example-error {
-  color: #e74c3c;
-  font-weight: bold;
-  margin-left: 4px;
-}
-.sent-prompt {
-  white-space: pre-wrap;       /* Umbrüche bei Zeilenende und Whitespaces erlauben */
-  word-break: normal;         /* Keine Zwangsumbrüche innerhalb von Wörtern */
-  overflow-wrap: break-word;  /* Lange Wörter bei Bedarf umbrechen */
-  hyphens: auto;              /* Silbentrennung, falls verfügbar */
-  max-width: 100%;
-}
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+.test-prompt-card {
+  max-height: 90vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.dialog-box.test-prompt-dialog {
-  background: white;
-  padding: 24px;
-  border-radius: 8px;
-  max-width: 80%;
-  max-height: 80%;
-  overflow: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-.dialog-box h3 {
-  margin: 0 0 16px 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-.dialog-box p {
-  margin: 0 0 20px 0;
-  color: #4b5563;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-.response-stream {
-  background: #f5f5f5;
-  padding: 12px;
-  border-radius: 4px;
-  max-height: 300px;
-  overflow: auto;
-  white-space: pre-wrap;
-  margin-bottom: 12px;
-}
-.stream-indicator {
-  margin-top: 8px;
-  font-weight: bold;
-}
-.toggle-button {
-  background: none;
-  border: none;
-  color: #3498db;
-  cursor: pointer;
-  margin-bottom: 12px;
-  padding: 0;
-}
-.toggle-button:hover {
-  text-decoration: underline;
-}
-.dialog-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.dialog-buttons button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 16px 4px 16px 4px;
-  cursor: pointer;
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.dialog-buttons .cancel-button {
-  background-color: #9e9e9e;
-  color: #fff;
-  transition: background-color 0.2s;
-}
-.dialog-buttons .cancel-button:hover {
-  background-color: #7e7e7e;
+  flex-direction: column;
 }
 
-.dialog-buttons .regen-button {
-  background-color: #3498db;
-  color: #fff;
-  transition: background-color 0.2s;
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
-.dialog-buttons .regen-button:hover {
-  background-color: #217dbb;
+
+.header-left {
+  display: flex;
+  align-items: center;
 }
-/* Styles für Beispiele-Auswahl */
+
+.header-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+  padding: 4px;
+}
+
+/* Configuration Section */
+.config-section {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  display: flex;
+  align-items: center;
+}
+
+.config-select,
+.config-input {
+  font-size: 0.9rem;
+}
+
+.mode-toggles {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mode-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Examples Section */
 .examples-section {
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
 }
-.examples-list {
-  list-style: none;
-  padding: 0;
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.examples-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 12px;
 }
-.examples-list li {
-  display: inline-flex;
+
+.example-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.example-preview {
+  background: rgba(var(--v-theme-primary), 0.06);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+}
+
+.preview-header {
+  display: flex;
   align-items: center;
-  background: #f1f3f5;
-  border-radius: 24px;
-  padding: 4px;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
-.examples-list li.selected .example-select-button {
-  background-color: #3498db;
-  color: #fff;
+
+.preview-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
 }
-.example-select-button {
-  background: none;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 16px;
-  cursor: pointer;
-  color: #333;
-  transition: background-color 0.2s;
+
+.preview-content {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-height: 150px;
+  overflow-y: auto;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
 }
-.example-select-button:hover {
-  background-color: #e2e6ea;
+
+/* Schema Section */
+.schema-section {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
 }
-.example-toggle-button {
-  background: none;
-  border: none;
-  padding: 8px;
-  border-radius: 50%;
-  cursor: pointer;
-  color: #333;
-  transition: background-color 0.2s;
+
+.schema-input {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+/* Prompt Section */
+.prompt-section {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.prompt-content {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  padding: 12px;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+:deep(.example-highlight) {
+  background-color: rgba(var(--v-theme-success), 0.2);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Response Section */
+.response-section {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  flex: 1;
+  min-height: 200px;
+}
+
+.response-container {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.response-content {
+  position: relative;
+}
+
+.response-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  color: rgb(var(--v-theme-on-surface));
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+/* Typing Indicator */
+.typing-indicator {
   display: inline-flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.typing-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-primary));
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator .dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator .dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* SNG Container */
+.sng-container {
+  min-height: 300px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 4px;
 }
-.example-toggle-button:hover {
-  background-color: #e2e6ea;
+
+.sng-loading,
+.sng-error,
+.sng-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  text-align: center;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
-.example-content {
-  background: #eaf6ea;
+
+.error-text {
+  color: rgb(var(--v-theme-error));
+  font-weight: 500;
+}
+
+.error-detail {
+  font-size: 0.75rem;
+  max-width: 100%;
+  overflow-x: auto;
+  background: rgba(var(--v-theme-error), 0.1);
   padding: 8px;
-  border: 1px solid #81b68b;
   border-radius: 4px;
-  margin-top: 4px;
-  max-height: 200px;
-  overflow: auto;
+  margin-top: 8px;
 }
-/* Highlight für eingesetzte Beispieldaten */
-:deep(.example-highlight) {
-  background-color: #81b68b;
+
+/* Dialog Actions */
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+/* Scrollbar Styling */
+.dialog-body::-webkit-scrollbar,
+.response-container::-webkit-scrollbar,
+.preview-content::-webkit-scrollbar,
+.prompt-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dialog-body::-webkit-scrollbar-track,
+.response-container::-webkit-scrollbar-track,
+.preview-content::-webkit-scrollbar-track,
+.prompt-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dialog-body::-webkit-scrollbar-thumb,
+.response-container::-webkit-scrollbar-thumb,
+.preview-content::-webkit-scrollbar-thumb,
+.prompt-content::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: 3px;
+}
+
+.dialog-body::-webkit-scrollbar-thumb:hover,
+.response-container::-webkit-scrollbar-thumb:hover,
+.preview-content::-webkit-scrollbar-thumb:hover,
+.prompt-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-on-surface), 0.25);
 }
 </style>

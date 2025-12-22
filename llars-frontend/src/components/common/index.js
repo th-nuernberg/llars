@@ -13,6 +13,7 @@
 // Button Components
 export { default as LBtn } from './LBtn.vue'
 export { default as LIconBtn } from './LIconBtn.vue'
+export { default as LInfoTooltip } from './LInfoTooltip.vue'
 export { default as LActionGroup } from './LActionGroup.vue'
 
 // Form Components
@@ -39,6 +40,7 @@ export const LlarsComponents = {
     // Register all components globally
     app.component('LBtn', () => import('./LBtn.vue'))
     app.component('LIconBtn', () => import('./LIconBtn.vue'))
+    app.component('LInfoTooltip', () => import('./LInfoTooltip.vue'))
     app.component('LActionGroup', () => import('./LActionGroup.vue'))
     app.component('LSlider', () => import('./LSlider.vue'))
     app.component('LMessage', () => import('./LMessage.vue'))

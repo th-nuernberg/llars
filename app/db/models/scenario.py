@@ -284,3 +284,25 @@ class ComparisonEvaluation(db.Model):
     timestamp: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now)
 
     message = db.relationship("ComparisonMessage", backref="evaluations")
+
+
+class PromptCommit(db.Model):
+    """Git-like commit history for UserPrompt collaborative editing."""
+    __tablename__ = "prompt_commits"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    prompt_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey("user_prompts.prompt_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    author_username: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    message: Mapped[str] = mapped_column(db.Text, nullable=False)
+    # JSON object with per-user contribution stats: { users: [...], insertions, deletions, hasChanges }
+    diff_summary: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
+    # Full prompt content at commit time (all blocks as JSON) for diff comparison
+    content_snapshot: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    prompt = db.relationship("UserPrompt", backref=db.backref("commits", cascade="all, delete-orphan", lazy="selectin"))

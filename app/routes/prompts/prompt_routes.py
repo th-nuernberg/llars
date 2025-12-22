@@ -14,7 +14,7 @@ from db.db import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,
-                       UserGroup, UserPrompt, UserPromptShare,
+                       UserGroup, UserPrompt, UserPromptShare, PromptCommit,
                        ConsultingCategoryType, UserConsultingCategorySelection)
 from sqlalchemy import func
 from uuid import uuid4
@@ -469,3 +469,181 @@ def search_users_for_sharing():
         'success': True,
         'users': [{'id': u.id, 'username': u.username, 'avatar_seed': u.get_avatar_seed() if hasattr(u, 'get_avatar_seed') else None} for u in users]
     }), 200
+
+
+# ============================================================
+# Prompt Git Versioning Endpoints
+# ============================================================
+
+def _check_prompt_access(prompt_id, user):
+    """Helper to check if user has access to a prompt (owner or shared)."""
+    prompt = UserPrompt.query.filter(
+        (UserPrompt.prompt_id == prompt_id) &
+        ((UserPrompt.user_id == user.id) |
+         (UserPrompt.prompt_id.in_(
+             db.session.query(UserPromptShare.prompt_id)
+             .filter_by(shared_with_user_id=user.id)
+         )))
+    ).first()
+    return prompt
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/baseline', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_prompt_baseline(prompt_id):
+    """
+    Get the latest commit snapshot for diff comparison.
+    Returns the content_snapshot of the most recent commit.
+    """
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    # Get the most recent commit
+    latest_commit = PromptCommit.query.filter_by(prompt_id=prompt_id) \
+        .order_by(PromptCommit.created_at.desc()) \
+        .first()
+
+    if not latest_commit:
+        return jsonify({
+            'success': True,
+            'baseline': None,
+            'message': 'No commits yet'
+        }), 200
+
+    return jsonify({
+        'success': True,
+        'baseline': {
+            'commit_id': latest_commit.id,
+            'content_snapshot': latest_commit.content_snapshot,
+            'created_at': latest_commit.created_at.isoformat(),
+            'author': latest_commit.author_username,
+            'message': latest_commit.message
+        }
+    }), 200
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/commits', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_prompt_commits(prompt_id):
+    """
+    Get all commits for a prompt (max 200, reverse chronological order).
+    """
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    commits = PromptCommit.query.filter_by(prompt_id=prompt_id) \
+        .order_by(PromptCommit.created_at.desc()) \
+        .limit(200) \
+        .all()
+
+    return jsonify({
+        'success': True,
+        'commits': [{
+            'id': c.id,
+            'author': c.author_username,
+            'message': c.message,
+            'diff_summary': c.diff_summary,
+            'created_at': c.created_at.isoformat()
+        } for c in commits]
+    }), 200
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/commits/<int:commit_id>', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_prompt_commit(prompt_id, commit_id):
+    """
+    Get a single commit with full content snapshot.
+    """
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    commit = PromptCommit.query.filter_by(id=commit_id, prompt_id=prompt_id).first()
+
+    if not commit:
+        raise NotFoundError('Commit not found')
+
+    return jsonify({
+        'success': True,
+        'commit': {
+            'id': commit.id,
+            'author': commit.author_username,
+            'message': commit.message,
+            'diff_summary': commit.diff_summary,
+            'content_snapshot': commit.content_snapshot,
+            'created_at': commit.created_at.isoformat()
+        }
+    }), 200
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/commit', methods=['POST'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def create_prompt_commit(prompt_id):
+    """
+    Create a new commit for the prompt.
+    Requires: message, content_snapshot
+    Optional: diff_summary (JSON with user contributions)
+    """
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    data = request.get_json()
+    message = data.get('message', '').strip()
+    content_snapshot = data.get('content_snapshot')
+    diff_summary = data.get('diff_summary')
+
+    if not message:
+        raise ValidationError('Commit message is required')
+
+    if content_snapshot is None:
+        raise ValidationError('Content snapshot is required')
+
+    # Create the commit
+    new_commit = PromptCommit(
+        prompt_id=prompt_id,
+        author_username=user.username,
+        message=message,
+        content_snapshot=content_snapshot,
+        diff_summary=diff_summary
+    )
+    db.session.add(new_commit)
+    db.session.commit()
+
+    commit_data = {
+        'id': new_commit.id,
+        'author': new_commit.author_username,
+        'message': new_commit.message,
+        'diff_summary': new_commit.diff_summary,
+        'created_at': new_commit.created_at.isoformat()
+    }
+
+    # Broadcast to Socket.IO subscribers (if socketio is available)
+    try:
+        from main import socketio
+        socketio.emit('prompt:commit_created', {
+            'prompt_id': prompt_id,
+            'commit': commit_data
+        }, room=f'prompt_{prompt_id}')
+    except Exception as e:
+        logging.warning(f"Could not broadcast commit event: {e}")
+
+    return jsonify({
+        'success': True,
+        'message': 'Commit created successfully',
+        'commit': commit_data
+    }), 201

@@ -1,215 +1,276 @@
 <!-- PromptEngineering/PromptEngineering.vue -->
 <template>
-  <v-container fluid>
-    <!-- Header mit Titel und Button -->
-    <v-row class="mb-6 align-center">
-      <v-col cols="12" sm="8">
-        <h1>Prompt Engineering</h1>
-        <p>Wählen Sie ein Prompt aus, um es zu bearbeiten oder zu teilen.</p>
-      </v-col>
-      <v-col cols="12" sm="4" class="d-flex justify-end">
+  <div class="prompt-home">
+    <!-- Header -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-left">
+          <v-icon size="28" color="primary" class="mr-3">mdi-file-document-edit-outline</v-icon>
+          <div>
+            <h1 class="page-title">Prompt Engineering</h1>
+            <p class="page-subtitle">Erstellen und verwalten Sie Ihre Prompts</p>
+          </div>
+        </div>
         <LBtn
           variant="primary"
           prepend-icon="mdi-plus"
-          @click="showCreateDialog = true"
+          @click="openCreateDialog"
         >
-          Neues Prompt erstellen
+          Neues Prompt
         </LBtn>
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <!-- Hauptinhalt -->
-      <v-col cols="12">
-        <!-- Meine Prompts -->
-        <h2 class="text-h5 mb-4">Meine Prompts</h2>
-        <v-row>
-          <!-- Skeleton Loading -->
-          <template v-if="isLoading('prompts')">
-            <v-col cols="12" sm="6" md="4" v-for="n in 3" :key="'skeleton-prompt-' + n">
-              <v-skeleton-loader type="card" height="150"></v-skeleton-loader>
-            </v-col>
-          </template>
-
-          <template v-else-if="prompts.length > 0">
-            <v-col cols="12" sm="6" md="4" v-for="prompt in prompts" :key="prompt.id">
-              <v-card class="mb-4 case-card">
-                <div class="card-actions">
-                  <button @click.stop="openRenameDialog(prompt)" class="edit-button">
-                    <v-icon size="small">mdi-pencil</v-icon>
-                  </button>
-                  <button @click.stop="deletePrompt(prompt)" class="delete-button">
-                    <v-icon size="small">mdi-close</v-icon>
-                  </button>
-                </div>
-                <div class="d-flex flex-column card-content" @click="navigateToPromptDetail(prompt.id)">
-                  <v-card-title class="text-truncate">{{ prompt.name }}</v-card-title>
-                  <v-card-subtitle>
-                    <div class="mb-2">Erstellt: {{ formatDate(prompt.created_at) }}</div>
-                    <template v-if="prompt.shared_with && prompt.shared_with.length > 0">
-                      <v-divider></v-divider>
-                      <div class="d-flex align-center mt-2">
-                        <v-icon size="small" color="#dac081" class="mr-1">mdi-share-variant</v-icon>
-                        <span class="text-truncate">
-                          Geteilt mit: {{ prompt.shared_with.join(', ') }}
-                        </span>
-                      </div>
-                    </template>
-                  </v-card-subtitle>
-                </div>
-              </v-card>
-            </v-col>
-          </template>
-          <v-col v-else cols="12">
-            <div class="text-center text-grey my-4">
-              Sie haben noch keine Prompts erstellt. Nutzen Sie den Button oben rechts, um Ihr erstes Prompt anzulegen.
-            </div>
-          </v-col>
-        </v-row>
-
-        <!-- Mit mir geteilte Prompts -->
-        <h2 class="text-h5 mb-4 mt-6">Mit mir geteilte Prompts</h2>
-        <v-row>
-          <!-- Skeleton Loading -->
-          <template v-if="isLoading('sharedPrompts')">
-            <v-col cols="12" sm="6" md="4" v-for="n in 3" :key="'skeleton-shared-' + n">
-              <v-skeleton-loader type="card" height="150"></v-skeleton-loader>
-            </v-col>
-          </template>
-
-          <template v-else-if="sharedPrompts.length > 0">
-            <v-col cols="12" sm="6" md="4" v-for="prompt in sharedPrompts" :key="prompt.id">
-              <v-card class="mb-4 case-card" @click="navigateToPromptDetail(prompt.id)">
-                <div class="d-flex flex-column card-content">
-                  <v-card-title class="text-truncate">{{ prompt.name }}</v-card-title>
-                  <v-card-subtitle>
-                    <div class="mb-2">Geteilt am: {{ formatDate(prompt.shared_at) }}</div>
-                    <v-divider></v-divider>
-                    <div class="d-flex align-center mt-2">
-                      <v-icon size="small" color="#dac081" class="mr-1">mdi-account</v-icon>
-                      <span class="text-truncate">
-                        Geteilt von: {{ prompt.owner }}
-                      </span>
-                    </div>
-                  </v-card-subtitle>
-                </div>
-              </v-card>
-            </v-col>
-          </template>
-          <v-col v-else cols="12">
-            <div class="text-center text-grey my-4">
-              Bisher wurden keine Prompts mit Ihnen geteilt.
-            </div>
-          </v-col>
-        </v-row>
-      </v-col>
-    </v-row>
-
-    <!-- Dialog zum Erstellen eines neuen Prompts -->
-    <div v-if="showCreateDialog" class="dialog-overlay">
-      <div class="dialog-box">
-        <h3>Neues Prompt erstellen</h3>
-        <form @submit.prevent="savePrompt">
-          <input
-            v-model="newPrompt.name"
-            type="text"
-            placeholder="Prompt Name"
-            class="block-input"
-            required
-          />
-
-          <!-- User Input Bereich -->
-          <div class="share-section">
-            <label class="share-label">Mit Benutzern teilen:</label>
-            <div class="selected-users">
-              <div v-for="user in selectedUsers" :key="user" class="user-chip">
-                {{ user }}
-                <button
-                  type="button"
-                  class="remove-user-btn"
-                  @click="removeUser(user)"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-            <div class="autocomplete-container">
-              <input
-                v-model="currentUser"
-                @input="searchUsers"
-                @keydown.enter.prevent="addUser"
-                @keydown.down.prevent="navigateSuggestions(1)"
-                @keydown.up.prevent="navigateSuggestions(-1)"
-                @blur="hideSuggestionsDelayed"
-                type="text"
-                placeholder="Benutzername eingeben..."
-                class="block-input"
-                autocomplete="off"
-              />
-              <div v-if="userSuggestions.length > 0" class="suggestions-dropdown">
-                <div
-                  v-for="(user, index) in userSuggestions"
-                  :key="user.id"
-                  class="suggestion-item"
-                  :class="{ 'suggestion-active': index === selectedSuggestionIndex }"
-                  @mousedown.prevent="selectSuggestion(user)"
-                >
-                  {{ user.username }}
-                </div>
-              </div>
-            </div>
-            <span v-if="userSearchError" class="error-text">{{ userSearchError }}</span>
-          </div>
-
-          <div class="dialog-buttons">
-            <LBtn variant="cancel" @click="closeCreateDialog">Abbrechen</LBtn>
-            <LBtn
-              variant="primary"
-              :disabled="!newPrompt.name"
-              @click="savePrompt"
-            >
-              Erstellen
-            </LBtn>
-          </div>
-        </form>
       </div>
     </div>
 
-    <!-- Dialog zum Umbenennen eines Prompts -->
-    <v-dialog v-model="showRenameDialog" max-width="500px">
-      <v-card>
-        <v-card-title>Prompt umbenennen</v-card-title>
-        <v-card-text>
-          <v-text-field
-            v-model="renamePromptName"
-            label="Neuer Name"
-            :rules="[rules.required]"
-            required
-          ></v-text-field>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="closeRenameDialog">Abbrechen</v-btn>
-          <v-btn color="primary" @click="renamePrompt">Speichern</v-btn>
-        </v-card-actions>
-      </v-card>
+    <!-- Main Content -->
+    <div class="content-area">
+      <!-- Meine Prompts Section -->
+      <div class="section">
+        <div class="section-header">
+          <v-icon size="20" class="mr-2" color="primary">mdi-folder-account</v-icon>
+          <span class="section-title">Meine Prompts</span>
+          <span v-if="prompts.length" class="section-count">{{ prompts.length }}</span>
+          <v-spacer />
+          <v-btn variant="text" icon="mdi-refresh" size="small" @click="fetchPrompts" />
+        </div>
+
+        <v-skeleton-loader v-if="isLoading('prompts')" type="card@3" class="mt-4" />
+
+        <transition-group
+          v-else-if="prompts.length > 0"
+          name="prompt-list"
+          tag="div"
+          class="prompts-grid"
+        >
+          <LCard
+            v-for="prompt in prompts"
+            :key="prompt.id"
+            :title="prompt.name"
+            icon="mdi-file-document-edit-outline"
+            color="#b0ca97"
+            outlined
+            clickable
+            :class="['prompt-card', { 'prompt-card--new': newPromptIds.has(prompt.id) }]"
+            @click="navigateToPromptDetail(prompt.id)"
+          >
+            <template #status>
+              <v-chip size="x-small" variant="tonal" color="info">
+                #{{ prompt.id }}
+              </v-chip>
+            </template>
+
+            <div class="prompt-meta">
+              <div class="d-flex align-center text-caption text-medium-emphasis">
+                <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
+                {{ formatRelativeDate(prompt.created_at) }}
+              </div>
+              <div v-if="prompt.shared_with?.length" class="shared-info mt-2">
+                <v-icon size="14" color="warning" class="mr-1">mdi-share-variant</v-icon>
+                <span class="text-caption">{{ prompt.shared_with.length }} Nutzer</span>
+                <div class="shared-avatars ml-2">
+                  <img
+                    v-for="username in prompt.shared_with.slice(0, 3)"
+                    :key="username"
+                    :src="getDiceBearUrl(username, 24)"
+                    class="shared-avatar"
+                    :title="username"
+                  />
+                  <span v-if="prompt.shared_with.length > 3" class="more-badge">
+                    +{{ prompt.shared_with.length - 3 }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <template #actions>
+              <LActionGroup
+                :actions="['edit', 'delete']"
+                size="small"
+                @action="handlePromptAction($event, prompt)"
+              />
+            </template>
+          </LCard>
+        </transition-group>
+
+        <div v-else class="empty-state">
+          <v-icon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</v-icon>
+          <div class="text-subtitle-1 mt-3">Noch keine Prompts</div>
+          <div class="text-body-2 text-medium-emphasis mb-4">
+            Erstellen Sie Ihr erstes Prompt, um loszulegen.
+          </div>
+          <LBtn variant="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
+            Prompt erstellen
+          </LBtn>
+        </div>
+      </div>
+
+      <!-- Geteilte Prompts Section -->
+      <div class="section mt-8">
+        <div class="section-header">
+          <v-icon size="20" class="mr-2" color="warning">mdi-account-group</v-icon>
+          <span class="section-title">Mit mir geteilt</span>
+          <span v-if="sharedPrompts.length" class="section-count">{{ sharedPrompts.length }}</span>
+        </div>
+
+        <v-skeleton-loader v-if="isLoading('sharedPrompts')" type="card@3" class="mt-4" />
+
+        <div v-else-if="sharedPrompts.length > 0" class="prompts-grid">
+          <LCard
+            v-for="prompt in sharedPrompts"
+            :key="prompt.id"
+            :title="prompt.name"
+            icon="mdi-file-document-outline"
+            color="#e8c87a"
+            outlined
+            clickable
+            @click="navigateToPromptDetail(prompt.id)"
+          >
+            <template #status>
+              <LTag variant="warning" size="small">Geteilt</LTag>
+            </template>
+
+            <div class="prompt-meta">
+              <div class="d-flex align-center text-caption text-medium-emphasis">
+                <v-icon size="14" class="mr-1">mdi-account</v-icon>
+                {{ prompt.owner }}
+              </div>
+              <div class="d-flex align-center text-caption text-medium-emphasis mt-1">
+                <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
+                {{ formatRelativeDate(prompt.shared_at) }}
+              </div>
+            </div>
+          </LCard>
+        </div>
+
+        <div v-else class="empty-state-small">
+          <v-icon size="32" color="grey-lighten-1">mdi-account-group-outline</v-icon>
+          <span class="text-body-2 text-medium-emphasis ml-3">
+            Keine geteilten Prompts vorhanden
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Dialog -->
+    <v-dialog v-model="showCreateDialog" max-width="520">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2" color="primary">mdi-file-document-plus</v-icon>
+            <span class="text-h6">Neues Prompt erstellen</span>
+            <v-spacer />
+            <v-btn icon="mdi-close" variant="text" size="small" @click="closeCreateDialog" />
+          </div>
+        </template>
+
+        <v-alert v-if="createError" type="error" variant="tonal" class="mb-4" density="compact">
+          {{ createError }}
+        </v-alert>
+
+        <v-text-field
+          v-model="newPrompt.name"
+          label="Name"
+          placeholder="z. B. Interview-Leitfaden"
+          prepend-inner-icon="mdi-file-document-outline"
+          variant="outlined"
+          density="comfortable"
+          autofocus
+          @keyup.enter="savePrompt"
+        />
+
+        <!-- User invite section -->
+        <div class="section-label mt-4">
+          <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+          Mit Nutzern teilen (optional)
+        </div>
+        <div v-if="selectedUsers.length > 0" class="invited-users mb-2">
+          <LTag
+            v-for="user in selectedUsers"
+            :key="user"
+            variant="primary"
+            closable
+            @close="removeUser(user)"
+          >
+            {{ user }}
+          </LTag>
+        </div>
+        <LUserSearch
+          ref="userSearchRef"
+          :exclude-usernames="selectedUsers"
+          placeholder="Nutzernamen eingeben..."
+          @select="handleUserSelect"
+        />
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="closeCreateDialog">Abbrechen</LBtn>
+          <LBtn
+            variant="primary"
+            :loading="creating"
+            :disabled="!newPrompt.name?.trim()"
+            @click="savePrompt"
+          >
+            Erstellen
+          </LBtn>
+        </template>
+      </LCard>
     </v-dialog>
 
-    <!-- Dialog zum Löschen bestätigen -->
-    <v-dialog v-model="showDeleteDialog" max-width="500px">
-      <v-card>
-        <v-card-title>Prompt löschen</v-card-title>
-        <v-card-text>
-          Möchten Sie dieses Prompt wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="closeDeleteDialog">Abbrechen</v-btn>
-          <v-btn color="error" @click="confirmDeletePrompt">Löschen</v-btn>
-        </v-card-actions>
-      </v-card>
+    <!-- Rename Dialog -->
+    <v-dialog v-model="showRenameDialog" max-width="440">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2">mdi-rename-box</v-icon>
+            <span class="text-h6">Prompt umbenennen</span>
+            <v-spacer />
+            <v-btn icon="mdi-close" variant="text" size="small" @click="closeRenameDialog" />
+          </div>
+        </template>
+
+        <v-text-field
+          v-model="renamePromptName"
+          label="Neuer Name"
+          variant="outlined"
+          density="comfortable"
+          autofocus
+          @keyup.enter="renamePrompt"
+        />
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="closeRenameDialog">Abbrechen</LBtn>
+          <LBtn variant="primary" :disabled="!renamePromptName?.trim()" @click="renamePrompt">
+            Speichern
+          </LBtn>
+        </template>
+      </LCard>
     </v-dialog>
-  </v-container>
+
+    <!-- Delete Dialog -->
+    <v-dialog v-model="showDeleteDialog" max-width="400">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+            <span class="text-h6">Prompt löschen</span>
+          </div>
+        </template>
+
+        <p class="text-body-1">
+          Möchten Sie <strong>{{ selectedPrompt?.name }}</strong> wirklich löschen?
+        </p>
+        <p class="text-body-2 text-medium-emphasis">
+          Diese Aktion kann nicht rückgängig gemacht werden.
+        </p>
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="closeDeleteDialog">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="confirmDeletePrompt">Löschen</LBtn>
+        </template>
+      </LCard>
+    </v-dialog>
+  </div>
 </template>
 
 <script setup>
@@ -218,41 +279,38 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { getSocket } from '@/services/socketService';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { formatRelativeDate, getDiceBearUrl } from '@/utils/userUtils';
 
-// Router
 const router = useRouter();
-
-// Skeleton Loading
 const { isLoading, withLoading } = useSkeletonLoading(['prompts', 'sharedPrompts']);
 
-// Prompts State
+// State
 const prompts = ref([]);
 const sharedPrompts = ref([]);
-const selectedUsers = ref([]);
-const currentUser = ref('');
-const userSuggestions = ref([]);
-const selectedSuggestionIndex = ref(-1);
-const userSearchError = ref('');
-let searchTimeout = null;
+const newPromptIds = ref(new Set());
 
-// Form State
+// Create dialog
+const showCreateDialog = ref(false);
+const creating = ref(false);
+const createError = ref('');
 const newPrompt = ref({ name: '' });
-const isFormValid = ref(false);
-const rules = {
-  required: (value) => !!value || 'Pflichtfeld',
-};
+const selectedUsers = ref([]);
+const userSearchRef = ref(null);
 
-// Dialog States
+// Rename dialog
 const showRenameDialog = ref(false);
-const showDeleteDialog = ref(false);
 const renamePromptName = ref('');
 const selectedPrompt = ref(null);
 
-// API Call zum Speichern eines neuen Prompts
-const newPromptForm = ref(null);
+// Delete dialog
+const showDeleteDialog = ref(false);
 
-// Formatiert das Datum für die Anzeige
+// WebSocket
+let socket = null;
+let currentUserId = null;
+
 function formatDate(dateString) {
+  if (!dateString) return '—';
   return new Date(dateString).toLocaleString('de-DE', {
     year: 'numeric',
     month: '2-digit',
@@ -262,625 +320,443 @@ function formatDate(dateString) {
   });
 }
 
-// API Call zum Abrufen aller eigenen Prompts
 async function fetchPrompts() {
   await withLoading('prompts', async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts`);
-      prompts.value = response.data.prompts || [];
+      prompts.value = response.data.data || response.data.prompts || [];
     } catch (error) {
       console.error('Fehler beim Abrufen der Prompts:', error);
     }
   });
 }
 
-// API Call zum Abrufen aller geteilten Prompts
 async function fetchSharedPrompts() {
   await withLoading('sharedPrompts', async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/prompts/shared`);
-      sharedPrompts.value = response.data.shared_prompts || [];
+      sharedPrompts.value = response.data.data || response.data.shared_prompts || [];
     } catch (error) {
       console.error('Fehler beim Abrufen der geteilten Prompts:', error);
     }
   });
 }
 
-// Öffnet den Dialog zum Umbenennen
+function openCreateDialog() {
+  showCreateDialog.value = true;
+  newPrompt.value = { name: '' };
+  selectedUsers.value = [];
+  createError.value = '';
+}
+
+function closeCreateDialog() {
+  showCreateDialog.value = false;
+  newPrompt.value = { name: '' };
+  selectedUsers.value = [];
+  createError.value = '';
+  userSearchRef.value?.reset?.();
+}
+
+async function savePrompt() {
+  if (!newPrompt.value.name?.trim()) return;
+  creating.value = true;
+  createError.value = '';
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/api/prompts`,
+      {
+        name: newPrompt.value.name.trim(),
+        content: { blocks: {} },
+      }
+    );
+
+    const promptData = response.data?.data;
+    if (!promptData?.id) {
+      throw new Error('Ungültige Server-Antwort: Prompt-ID fehlt');
+    }
+
+    const promptId = promptData.id;
+    const newPromptData = {
+      ...promptData,
+      shared_with: []
+    };
+
+    // Share with selected users
+    if (selectedUsers.value.length > 0) {
+      for (const user of selectedUsers.value) {
+        try {
+          await axios.post(
+            `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}/share`,
+            { shared_with: user }
+          );
+          newPromptData.shared_with.push(user);
+        } catch (shareError) {
+          console.error(`Fehler beim Teilen mit ${user}:`, shareError);
+        }
+      }
+    }
+
+    // Mark as new and add to list
+    newPromptIds.value.add(promptId);
+    setTimeout(() => {
+      newPromptIds.value.delete(promptId);
+    }, 3000);
+
+    prompts.value = [newPromptData, ...prompts.value];
+    closeCreateDialog();
+    navigateToPromptDetail(promptId);
+
+  } catch (error) {
+    console.error('Fehler beim Speichern des Prompts:', error);
+    if (error.response?.status === 409) {
+      createError.value = `Ein Prompt mit dem Namen "${newPrompt.value.name}" existiert bereits.`;
+    } else {
+      createError.value = error.response?.data?.error || error.message || 'Fehler beim Speichern';
+    }
+  } finally {
+    creating.value = false;
+  }
+}
+
+function handleUserSelect(user) {
+  if (user?.username && !selectedUsers.value.includes(user.username)) {
+    selectedUsers.value.push(user.username);
+  }
+  userSearchRef.value?.reset?.();
+}
+
+function removeUser(user) {
+  selectedUsers.value = selectedUsers.value.filter(u => u !== user);
+}
+
+function handlePromptAction(action, prompt) {
+  if (action === 'edit') {
+    openRenameDialog(prompt);
+  } else if (action === 'delete') {
+    openDeleteDialog(prompt);
+  }
+}
+
 function openRenameDialog(prompt) {
   selectedPrompt.value = prompt;
   renamePromptName.value = prompt.name;
   showRenameDialog.value = true;
 }
 
-// Schließt den Dialog zum Umbenennen
 function closeRenameDialog() {
   showRenameDialog.value = false;
   renamePromptName.value = '';
   selectedPrompt.value = null;
 }
 
-// API Call zum Umbenennen eines Prompts
 async function renamePrompt() {
-  if (!selectedPrompt.value || !renamePromptName.value) return;
+  if (!selectedPrompt.value || !renamePromptName.value?.trim()) return;
 
   try {
     await axios.put(
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${selectedPrompt.value.id}/rename`,
-      { name: renamePromptName.value },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+      { name: renamePromptName.value.trim() }
     );
 
-    // Aktualisiere den Prompt in der Liste
     const prompt = prompts.value.find(p => p.id === selectedPrompt.value.id);
     if (prompt) {
-      prompt.name = renamePromptName.value;
+      prompt.name = renamePromptName.value.trim();
     }
 
     closeRenameDialog();
   } catch (error) {
     console.error('Fehler beim Umbenennen des Prompts:', error);
-    alert(error.response?.data?.error || 'Fehler beim Umbenennen des Prompts');
   }
 }
 
-// Öffnet den Dialog zum Löschen
-function deletePrompt(prompt) {
+function openDeleteDialog(prompt) {
   selectedPrompt.value = prompt;
   showDeleteDialog.value = true;
 }
 
-// Schließt den Dialog zum Löschen
 function closeDeleteDialog() {
   showDeleteDialog.value = false;
   selectedPrompt.value = null;
 }
 
-// API Call zum Löschen eines Prompts
 async function confirmDeletePrompt() {
   if (!selectedPrompt.value) return;
 
   try {
-    const response = await axios.delete(
+    await axios.delete(
       `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${selectedPrompt.value.id}`
     );
 
-    if (response.status === 200 || response.status === 204) {
-      // Entferne den Prompt aus der Liste
-      prompts.value = prompts.value.filter(p => p.id !== selectedPrompt.value.id);
-      closeDeleteDialog();
-      // Optional: Erfolgsbenachrichtigung anzeigen
-      alert('Prompt wurde erfolgreich gelöscht');
-    }
+    prompts.value = prompts.value.filter(p => p.id !== selectedPrompt.value.id);
+    closeDeleteDialog();
   } catch (error) {
     console.error('Fehler beim Löschen des Prompts:', error);
-    // Zeige spezifische Fehlermeldung vom Server oder generische Meldung
-    const errorMessage = error.response?.data?.error || 'Fehler beim Löschen des Prompts';
-    alert(errorMessage);
-  } finally {
-    selectedPrompt.value = null;
   }
 }
 
-// Aktualisierte savePrompt Funktion
-async function savePrompt() {
-  if (!newPrompt.value.name) return;
-
-  try {
-    // Neues Prompt speichern
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/api/prompts`,
-      {
-        name: newPrompt.value.name,
-        content: { blocks: {} },
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    // Prüfen ob die Response das erwartete Format hat
-    if (!response.data?.prompt?.id) {
-      throw new Error('Ungültige Server-Antwort: Prompt-ID fehlt');
-    }
-
-    const promptId = response.data.prompt.id;
-    const newPromptData = {
-      ...response.data.prompt,
-      shared_with: []
-    };
-
-    // Mit allen ausgewählten Usern teilen
-    if (selectedUsers.value.length > 0) {
-      for (const user of selectedUsers.value) {
-        try {
-          await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL}/api/prompts/${promptId}/share`,
-            { shared_with: user },
-            {
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-          newPromptData.shared_with.push(user);
-        } catch (shareError) {
-          console.error(`Fehler beim Teilen mit ${user}:`, shareError);
-          alert(`Fehler beim Teilen mit ${user}: ${shareError.response?.data?.error || 'Unbekannter Fehler'}`);
-        }
-      }
-    }
-
-    // Aktualisiertes Prompt zur Liste hinzufügen
-    prompts.value.push(newPromptData);
-
-    // Dialog schließen und Erfolgsmeldung anzeigen
-    closeCreateDialog();
-    alert('Prompt wurde erfolgreich erstellt' +
-      (newPromptData.shared_with.length > 0
-        ? ` und mit ${newPromptData.shared_with.join(', ')} geteilt`
-        : ''));
-
-  } catch (error) {
-    console.error('Fehler beim Speichern des Prompts:', error);
-    // Spezifische Fehlermeldung für 409 CONFLICT (Name existiert bereits)
-    if (error.response?.status === 409) {
-      alert(`Ein Prompt mit dem Namen "${newPrompt.value.name}" existiert bereits. Bitte wählen Sie einen anderen Namen.`);
-    } else {
-      alert(error.response?.data?.error || error.message || 'Fehler beim Speichern des Prompts');
-    }
-  }
-}
-function removeUser(user) {
-  selectedUsers.value = selectedUsers.value.filter(u => u !== user);
-}
-
-// Debounced User-Suche für Autocomplete
-async function searchUsers() {
-  userSearchError.value = '';
-  selectedSuggestionIndex.value = -1;
-
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
-
-  const query = currentUser.value.trim();
-  if (query.length < 2) {
-    userSuggestions.value = [];
-    return;
-  }
-
-  searchTimeout = setTimeout(async () => {
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/users/search`,
-        { params: { q: query, limit: 5 } }
-      );
-      // Filter out already selected users
-      userSuggestions.value = response.data.users.filter(
-        u => !selectedUsers.value.includes(u.username)
-      );
-    } catch (error) {
-      console.error('Fehler bei der Benutzersuche:', error);
-      userSearchError.value = 'Fehler bei der Benutzersuche';
-      userSuggestions.value = [];
-    }
-  }, 300);
-}
-
-// Navigation durch Suggestions mit Pfeiltasten
-function navigateSuggestions(direction) {
-  if (userSuggestions.value.length === 0) return;
-
-  const newIndex = selectedSuggestionIndex.value + direction;
-  if (newIndex >= -1 && newIndex < userSuggestions.value.length) {
-    selectedSuggestionIndex.value = newIndex;
-  }
-}
-
-// Suggestion auswählen
-function selectSuggestion(user) {
-  if (!selectedUsers.value.includes(user.username)) {
-    selectedUsers.value.push(user.username);
-  }
-  currentUser.value = '';
-  userSuggestions.value = [];
-  selectedSuggestionIndex.value = -1;
-}
-
-// Suggestions ausblenden (mit Verzögerung für Click-Events)
-function hideSuggestionsDelayed() {
-  setTimeout(() => {
-    userSuggestions.value = [];
-    selectedSuggestionIndex.value = -1;
-  }, 200);
-}
-
-// User mit Enter hinzufügen (aus Autocomplete oder Direkteingabe)
-async function addUser() {
-  // Wenn eine Suggestion ausgewählt ist
-  if (selectedSuggestionIndex.value >= 0 && userSuggestions.value.length > 0) {
-    selectSuggestion(userSuggestions.value[selectedSuggestionIndex.value]);
-    return;
-  }
-
-  const username = currentUser.value.trim();
-  if (!username || selectedUsers.value.includes(username)) return;
-
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/users/check/${username}`
-    );
-    if (response.data.exists) {
-      selectedUsers.value.push(username);
-      currentUser.value = '';
-      userSuggestions.value = [];
-      userSearchError.value = '';
-    }
-  } catch (error) {
-    if (error.response?.status === 404) {
-      userSearchError.value = `Benutzer "${username}" existiert nicht.`;
-    } else {
-      userSearchError.value = 'Fehler bei der Überprüfung des Benutzers.';
-    }
-  }
-}
-
-// Navigation zu Prompt-Detail
 function navigateToPromptDetail(promptId) {
   router.push(`/promptengineering/${promptId}`);
 }
 
-// WebSocket für Echtzeit-Updates
-let socket = null;
-let currentUserId = null;
-
-// Funktion zum Abrufen der User-ID
+// WebSocket
 async function fetchUserId() {
   try {
     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/auth/authentik/me`);
     return response.data.user_id || response.data.id;
   } catch (error) {
-    console.error('Fehler beim Abrufen der User-ID:', error);
     return null;
   }
 }
 
-// WebSocket Event-Handler für Prompt-Updates
 function handlePromptsUpdate(data) {
   if (data.prompts) {
     prompts.value = data.prompts;
-    console.log('[Prompts] Echtzeit-Update erhalten:', data.prompts.length, 'Prompts');
   }
 }
 
-// WebSocket Setup
+function handleSharedPromptsUpdate(data) {
+  if (data.shared_prompts) {
+    sharedPrompts.value = data.shared_prompts;
+  }
+}
+
 function setupWebSocket(userId) {
   if (!userId) return;
 
   socket = getSocket();
-
   if (socket) {
-    // Event-Listener registrieren
     socket.on('prompts:list', handlePromptsUpdate);
     socket.on('prompts:updated', handlePromptsUpdate);
+    socket.on('prompts:shared_updated', handleSharedPromptsUpdate);
 
-    // Subscription starten wenn verbunden
     if (socket.connected) {
       socket.emit('prompts:subscribe', { user_id: userId });
-      console.log('[Prompts] WebSocket subscribed für User:', userId);
     }
 
-    // Bei Reconnect erneut subscriben
     socket.on('connect', () => {
       socket.emit('prompts:subscribe', { user_id: userId });
-      console.log('[Prompts] WebSocket reconnected und subscribed');
     });
   }
 }
 
-// WebSocket Cleanup
 function cleanupWebSocket() {
   if (socket) {
     socket.off('prompts:list', handlePromptsUpdate);
     socket.off('prompts:updated', handlePromptsUpdate);
+    socket.off('prompts:shared_updated', handleSharedPromptsUpdate);
 
     if (currentUserId) {
       socket.emit('prompts:unsubscribe', { user_id: currentUserId });
-      console.log('[Prompts] WebSocket unsubscribed');
     }
   }
 }
 
-// Prompts beim Mount initial laden und WebSocket starten
 onMounted(async () => {
-  // User-ID abrufen
   currentUserId = await fetchUserId();
-
-  // Initiales Laden (Fallback falls WebSocket nicht sofort verbunden)
   await Promise.all([fetchPrompts(), fetchSharedPrompts()]);
 
-  // WebSocket für Echtzeit-Updates
   if (currentUserId) {
     setupWebSocket(currentUserId);
   }
 });
 
-// WebSocket bei Unmount aufräumen
 onUnmounted(() => {
   cleanupWebSocket();
 });
-
-// Am Anfang zu den anderen refs hinzufügen:
-const showCreateDialog = ref(false);
-
-// Neue Methode zum Schließen des Create-Dialogs
-function closeCreateDialog() {
-  showCreateDialog.value = false;
-  newPrompt.value.name = '';
-  selectedUsers.value = [];
-  currentUser.value = '';
-}
-
-// Modifizieren wir die savePrompt Funktion
-
 </script>
 
 <style scoped>
-.case-card {
-  cursor: pointer;
-  transition: box-shadow 0.3s ease-in-out, transform 0.1s ease-in-out;
-  position: relative;
-  height: 105px; /* Fixe Höhe für alle Karten */
-}
-
-.case-card:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.card-content {
-  height: 100%;
-  overflow: hidden;
-}
-/* NEU */
-.delete-button,
-.edit-button {
-  padding: 4px;
-  color: grey;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  cursor: pointer;
+.prompt-home {
+  height: calc(100vh - 94px);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  width: 24px;
-  height: 24px;
-}
-
-.delete-button:hover {
-  background: rgba(255, 255, 255, 1);
-  color: #e74c3c;
-}
-
-.edit-button:hover {
-  background: rgba(255, 255, 255, 1);
-  color: #6ca077;
-}
-
-/* Zusätzlich für bessere Positionierung */
-.card-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 4px;
-  z-index: 1;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 2px;
-  border-radius: 4px;
-}
-
-/* Sicherstellen, dass der Titel nur eine Zeile einnimmt */
-.v-card-title {
-  line-height: 1.2;
+  flex-direction: column;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  background: rgb(var(--v-theme-background));
 }
 
-/* Sicherstellen, dass die Sharing-Information bei Überlauf abgeschnitten wird */
-.v-card-subtitle {
-  overflow: hidden;
-}
-
-/* Text-Overflow für geteilte Benutzer */
-.text-truncate {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Zum bestehenden <style> hinzufügen */
-.prompt-create-button {
-  width: 100%;
-  margin-bottom: 20px;
-}
-
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-}
-
-.dialog-box {
+.page-header {
+  flex-shrink: 0;
+  padding: 20px 24px;
   background: rgb(var(--v-theme-surface));
-  padding: 24px;
-  border-radius: 8px;
-  min-width: 320px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.dialog-box h3 {
-  margin: 0 0 16px 0;
-  font-size: 1.25rem;
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+}
+
+.page-subtitle {
+  font-size: 0.875rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin: 4px 0 0 0;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.section {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 1rem;
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
 }
 
-.block-input {
-  width: 100%;
-  margin: 10px 0;
-  padding: 8px;
-  border: 1px solid rgb(var(--v-theme-surface-variant));
-  border-radius: 4px;
-  font-size: 0.95rem;
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
+.section-count {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+  border-radius: 10px;
 }
 
-.dialog-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+.prompts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
 }
 
-.dialog-buttons button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 16px 4px 16px 4px;
-  cursor: pointer;
-  min-height: 40px;
+.prompt-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.prompt-card:hover {
+  transform: translateY(-2px);
+}
+
+.prompt-card--new {
+  animation: promptHighlight 2.5s ease-out;
+}
+
+@keyframes promptHighlight {
+  0% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.3);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+.prompt-meta {
+  margin-top: 8px;
+}
+
+.shared-info {
   display: flex;
   align-items: center;
-  justify-content: center;
 }
 
-.dialog-buttons .cancel-button {
-  background-color: #9e9e9e;
-  color: #fff;
-  transition: background-color 0.2s;
+.shared-avatars {
+  display: flex;
+  align-items: center;
 }
 
-.dialog-buttons .cancel-button:hover {
-  background-color: #7e7e7e;
+.shared-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px 2px 6px 2px;
+  border: 2px solid rgb(var(--v-theme-surface));
+  margin-left: -6px;
 }
 
-.dialog-buttons .success-button {
-  background-color: #81b68b;
-  color: #fff;
-  transition: background-color 0.2s;
+.shared-avatar:first-child {
+  margin-left: 0;
 }
 
-.dialog-buttons .success-button:hover {
-  background-color: #6ca077;
+.more-badge {
+  margin-left: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
-.dialog-buttons .success-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 12px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
 }
 
-.share-section {
-  margin: 15px 0;
+.empty-state-small {
+  display: flex;
+  align-items: center;
+  padding: 24px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 12px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
 }
 
-.share-label {
-  display: block;
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
   margin-bottom: 8px;
-  font-size: 0.9rem;
-  color: rgb(var(--v-theme-on-surface));
+  display: flex;
+  align-items: center;
 }
 
-.selected-users {
+.invited-users {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
-  min-height: 35px;
 }
 
-.user-chip {
-  display: flex;
-  align-items: center;
-  background-color: #81b68b;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 16px 4px 16px 4px;
-  font-size: 0.9rem;
-}
-
-.remove-user-btn {
-  background: none;
-  border: none;
-  color: white;
-  margin-left: 8px;
-  cursor: pointer;
-  padding: 0 4px;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.remove-user-btn:hover {
-  color: #e74c3c;
-}
-
-/* Autocomplete Styles */
-.autocomplete-container {
-  position: relative;
+.w-100 {
   width: 100%;
 }
 
-.suggestions-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  border-radius: 4px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
+/* List transitions */
+.prompt-list-enter-active,
+.prompt-list-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.suggestion-item {
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+.prompt-list-enter-from,
+.prompt-list-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
 }
 
-.suggestion-item:hover,
-.suggestion-active {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-}
-
-.suggestion-active {
-  background-color: rgba(var(--v-theme-primary), 0.2);
-}
-
-.error-text {
-  color: #e74c3c;
-  font-size: 0.85rem;
-  margin-top: 4px;
-  display: block;
+.prompt-list-move {
+  transition: transform 0.3s ease;
 }
 </style>

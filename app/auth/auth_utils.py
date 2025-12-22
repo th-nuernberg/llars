@@ -113,12 +113,13 @@ class AuthUtils:
             token = auth_header.split(' ')[1]
             decoded = jwt.decode(token, options={"verify_signature": False})
 
+            sub = decoded.get('sub')
             return (
                 decoded.get('preferred_username') or
                 decoded.get('username') or
                 decoded.get('name') or
                 decoded.get('uid') or
-                decoded.get('sub')
+                (sub[:16] if sub else None)
             )
         except Exception:
             return None

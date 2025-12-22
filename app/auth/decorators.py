@@ -6,6 +6,7 @@ Provides decorators for protecting routes with bearer tokens
 import os
 import uuid
 import logging
+from datetime import datetime
 from functools import wraps
 from flask import request, jsonify, g
 from .oidc_validator import (
@@ -44,6 +45,37 @@ def _check_user_account_state(user):
         }), 403
 
     return None
+
+
+def _ensure_default_viewer_role(username: str) -> None:
+    """
+    Ensure a newly created user has at least the viewer role so basic features work.
+    """
+    if not username:
+        return
+    from db.db import db
+    from db.tables import Role, UserRole
+
+    existing_role = UserRole.query.filter_by(username=username).first()
+    if existing_role:
+        return
+
+    viewer_role = Role.query.filter_by(role_name='viewer').first()
+    if not viewer_role:
+        logger.warning(f"Viewer role missing; cannot auto-assign for {username}")
+        return
+
+    try:
+        db.session.add(UserRole(
+            username=username,
+            role_id=viewer_role.id,
+            assigned_by='system',
+            assigned_at=datetime.utcnow()
+        ))
+        db.session.commit()
+        logger.info(f"Assigned viewer role to new user {username}")
+    except Exception:
+        db.session.rollback()
 
 
 def get_or_create_user(username: str):
@@ -105,6 +137,7 @@ def get_or_create_user(username: str):
         changed = True
     if changed:
         db.session.commit()
+    _ensure_default_viewer_role(username)
     return user
 
 # System Admin API Key (loaded from environment)

@@ -50,4 +50,14 @@ export default defineConfig({
       'localhost'
     ],
   },
+  preview: {
+    port: 5173,
+    allowedHosts: [
+      'llars.e-beratungsinstitut.de',
+      'llars.informatik.fh-nuernberg.de',
+      'frontend-vue-service',
+      'host.docker.internal',
+      'localhost'
+    ],
+  },
 })

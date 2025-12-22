@@ -116,7 +116,7 @@
                 </div>
 
                 <!-- Quill Editor -->
-                <div :ref="el => setEditorRef(el, block.id)" class="editor-content"></div>
+                <div :ref="el => setEditorRef(el, block)" class="editor-content"></div>
               </div>
             </template>
           </draggable>
@@ -257,7 +257,7 @@ Quill.register(HighlightBlot);
 </script>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
 import PromptGitPanel from './PromptGitPanel.vue';
 import { useRoute } from 'vue-router';
@@ -353,9 +353,9 @@ const editorManager = useQuillEditor(ydoc, socket, roomId, {
   showUserHighlighting: () => showGitPanel.value
 });
 const {
+  editorCount,
   setEditorRef,
   updateCursor,
-  initializeEditor,
   cleanupEditor,
   cleanupAll,
   applyHighlightingToAll,
@@ -394,7 +394,7 @@ const toggleGitPanel = () => {
 const getContentSnapshot = () => {
   const result = {};
   for (const block of sortedBlocks.value) {
-    const editor = editors.value.get(block.id);
+    const editor = editors.get(block.id);
     if (editor) {
       result[block.title] = editor.getText().trim();
     } else if (block.content) {
@@ -475,7 +475,7 @@ const onDragEnd = () => {
 // Watch for new/deleted blocks
 watch(
   () => blocks.value,
-  async (newBlocks, oldBlocks) => {
+  (newBlocks, oldBlocks) => {
     if (oldBlocks) {
       const deletedBlocks = oldBlocks.filter(
         oldBlock => !newBlocks.find(newBlock => newBlock.id === oldBlock.id)
@@ -483,13 +483,6 @@ watch(
       deletedBlocks.forEach(block => {
         cleanupEditor(block.id);
       });
-    }
-
-    for (const block of newBlocks) {
-      if (!editors.value.has(block.id)) {
-        await nextTick();
-        await initializeEditor(block);
-      }
     }
 
     // Update git summary when blocks change
@@ -509,10 +502,10 @@ const debouncedGitUpdate = () => {
 
 // Watch editors map for content changes
 watch(
-  () => editors.value.size,
+  () => editorCount.value,
   () => {
     // Re-attach text-change listeners when editors change
-    for (const [blockId, editor] of editors.value) {
+    for (const [blockId, editor] of editors) {
       if (!editor._gitListenerAttached) {
         editor.on('text-change', debouncedGitUpdate);
         editor._gitListenerAttached = true;

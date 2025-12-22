@@ -1,20 +1,21 @@
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, markRaw } from 'vue'
 import Quill from 'quill'
 import { QuillBinding } from 'y-quill'
 import * as Y from 'yjs'
 
 export function useQuillEditor(ydoc, socket, roomId, options = {}) {
-  const editorsMap = ref(new Map())
-  const editors = ref(new Map())
-  const bindings = ref(new Map())
-  const cursorsModules = ref(new Map())
+  const editorsMap = new Map()
+  const editors = new Map()
+  const bindings = new Map()
+  const cursorsModules = new Map()
   const initializingEditors = new Set()
+  const editorCount = ref(0)
 
   // User highlighting options
   const { getUserColor = () => null, getUsername = () => null, showUserHighlighting = () => false } = options
 
   // Track user highlights per block
-  const userHighlights = ref(new Map()) // blockId -> Map<position, {username, color, ts}>
+  const userHighlights = new Map() // blockId -> Map<position, {username, color, ts}>
 
   // Debounce-Funktion für Cursor-Updates
   const debounce = (fn, delay) => {
@@ -46,7 +47,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
       if (source === 'user') {
         if (!range) {
           // Entferne Cursor, wenn der Benutzer keinen Bereich mehr ausgewählt hat
-          const cursorsModule = cursorsModules.value.get(blockId)
+          const cursorsModule = cursorsModules.get(blockId)
           if (cursorsModule) {
             cursorsModule.removeCursor(socket.value.id)
           }
@@ -76,7 +77,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     if (!color || !username) return
 
     let position = 0
-    const highlights = userHighlights.value.get(blockId) || new Map()
+    const highlights = userHighlights.get(blockId) || new Map()
 
     delta.ops.forEach(op => {
       if (op.retain) {
@@ -108,7 +109,62 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
       }
     })
 
-    userHighlights.value.set(blockId, highlights)
+    userHighlights.set(blockId, highlights)
+  }
+
+  const highlightFormat = 'highlight'
+
+  const resetEditor = (blockId, options = {}) => {
+    const { keepElementRef = true, elementOverride = null } = options
+    const editor = editors.get(blockId) || null
+    const editorElement = elementOverride || editorsMap.get(blockId) || editor?.container || null
+
+    const bindingCandidates = [
+      bindings.get(blockId) || null,
+      editorElement?.__llarsYjsBinding || null,
+      editor?.__llarsYjsBinding || null
+    ].filter(Boolean)
+    const uniqueBindings = Array.from(new Set(bindingCandidates))
+
+    uniqueBindings.forEach(binding => {
+      try {
+        binding.destroy()
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    })
+
+    if (editor) {
+      try {
+        editor.off('selection-change')
+        editor.off('text-change')
+      } catch (e) {
+        // Ignore errors while detaching handlers
+      }
+      try {
+        editor.enable(false)
+      } catch (e) {
+        // Ignore disable errors
+      }
+      delete editor.__llarsHandlersAttached
+      delete editor.__llarsHighlightAttached
+      delete editor.__llarsYjsBinding
+    }
+
+    bindings.delete(blockId)
+    cursorsModules.delete(blockId)
+    editors.delete(blockId)
+    editorCount.value = editors.size
+
+    if (editorElement) {
+      editorElement.innerHTML = ''
+      delete editorElement.__llarsYjsBinding
+      delete editorElement.__quill
+    }
+
+    if (!keepElementRef) {
+      editorsMap.delete(blockId)
+    }
   }
 
   // Hebt alle Vorkommen von {{complete_email_history}} hervor
@@ -121,11 +177,11 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
       try {
         const placeholder = '{{complete_email_history}}'
         // Entferne alte Hervorhebungen
-        editor.formatText(0, editor.getLength(), 'placeholder', false, Quill.sources.API)
+        editor.formatText(0, editor.getLength(), highlightFormat, false, Quill.sources.API)
         const text = editor.getText()
         let idx = text.indexOf(placeholder)
         while (idx !== -1) {
-          editor.formatText(idx, placeholder.length, 'placeholder', true, Quill.sources.API)
+          editor.formatText(idx, placeholder.length, highlightFormat, true, Quill.sources.API)
           idx = text.indexOf(placeholder, idx + placeholder.length)
         }
       } finally {
@@ -136,108 +192,192 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
   // Editor für einen Block initialisieren
   const initializeEditor = async (block) => {
-    await nextTick()
+    let editorElement = editorsMap.get(block.id)
+    if (!editorElement) {
+      await nextTick()
+      editorElement = editorsMap.get(block.id)
+    }
+
+    if (!editorElement) {
+      return
+    }
 
     if (initializingEditors.has(block.id)) {
       return
     }
 
-    const editorElement = editorsMap.value.get(block.id)
-    if (!editorElement || editors.value.has(block.id) || bindings.value.has(block.id)) {
-      return
-    }
-
     initializingEditors.add(block.id)
+    try {
+      const mapEditor = editors.get(block.id) || null
+      const elementEditor = editorElement.__quill || null
+      let existingEditor = null
 
-    const blocksMap = ydoc.value.getMap('blocks')
-    const blockMap = blocksMap.get(block.id)
-    if (!blockMap) {
-      console.error('Block map not found:', block.id)
-      initializingEditors.delete(block.id)
-      return
-    }
-
-    let ytext = blockMap.get('content')
-    if (!(ytext instanceof Y.Text)) {
-      const seed = typeof ytext === 'string' ? ytext : ''
-      ytext = new Y.Text()
-      if (seed) {
-        ytext.insert(0, seed)
+      if (elementEditor) {
+        existingEditor = elementEditor
+      } else if (mapEditor && mapEditor.container === editorElement) {
+        existingEditor = mapEditor
       }
-      blockMap.set('content', ytext)
-      // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
-    }
 
-    // Quill Editor mit angepassten Cursor-Einstellungen
-    const editor = new Quill(editorElement, {
-      modules: {
-        cursors: {
-          transformOnTextChange: true,
-          hideDelayMs: 5000,
-          hideSpeedMs: 500,
-          selectionChangeSource: 'api'
-        },
-        toolbar: [
-          ['bold', 'italic', 'underline'],
-          ['clean']
-        ],
-        history: {
-          userOnly: true
+      const bindingFromMap = bindings.get(block.id) || null
+      const bindingFromElement = editorElement.__llarsYjsBinding || null
+      const bindingFromEditor = existingEditor?.__llarsYjsBinding || null
+      const bindingCandidates = [bindingFromMap, bindingFromElement, bindingFromEditor].filter(Boolean)
+      const uniqueBindings = Array.from(new Set(bindingCandidates))
+      let existingBinding = null
+
+      if (existingEditor) {
+        existingBinding = uniqueBindings.find(binding => binding.quill === existingEditor) || null
+      }
+
+      const duplicateEditors = editorElement.querySelectorAll('.ql-editor').length > 1
+      const duplicateContainers = editorElement.querySelectorAll('.ql-container').length > 1
+      const duplicateToolbars = editorElement.querySelectorAll('.ql-toolbar').length > 1
+      const hasDuplicateDom = duplicateEditors || duplicateContainers || duplicateToolbars
+      const containerMismatch = existingEditor && existingEditor.container !== editorElement
+      const needsReset = hasDuplicateDom || containerMismatch || uniqueBindings.length > 1 || (existingEditor && !existingBinding) || (!existingEditor && uniqueBindings.length > 0)
+
+      if (needsReset) {
+        resetEditor(block.id, { keepElementRef: true, elementOverride: editorElement })
+        existingEditor = null
+        existingBinding = null
+      }
+
+      const canReuseBinding = existingEditor && existingBinding && existingBinding.quill === existingEditor
+
+      if (canReuseBinding) {
+        const rawEditor = markRaw(existingEditor)
+        const rawBinding = markRaw(existingBinding)
+        editors.set(block.id, rawEditor)
+        bindings.set(block.id, rawBinding)
+        const cursorsModule = rawEditor.getModule('cursors')
+        if (cursorsModule) {
+          cursorsModules.set(block.id, markRaw(cursorsModule))
         }
-      },
-      theme: 'snow',
-      placeholder: `Start editing ${block.title}...`
-    })
+        editorElement.__llarsYjsBinding = rawBinding
+        rawEditor.__llarsYjsBinding = rawBinding
+        rawEditor.enable(true)
+        editorCount.value = editors.size
+        return
+      }
 
-    const highlightPlaceholders = createHighlightFunction(editor)
+      if (!ydoc.value) {
+        console.error('Y.Doc not initialized for block:', block.id)
+        return
+      }
 
-    // Hervorhebung nach Yjs-Updates (inkl. lokaler Nutzereingabe)
-    ytext.observe(() => {
-      setTimeout(() => highlightPlaceholders(), 0)
-    })
+      const blocksMap = ydoc.value.getMap('blocks')
+      const blockMap = blocksMap.get(block.id)
+      if (!blockMap) {
+        console.error('Block map not found:', block.id)
+        return
+      }
 
-    // Speichere Referenz zum Cursors Module
-    const cursorsModule = editor.getModule('cursors')
-    cursorsModules.value.set(block.id, cursorsModule)
+      let ytext = blockMap.get('content')
+      if (!(ytext instanceof Y.Text)) {
+        const seed = typeof ytext === 'string' ? ytext : ''
+        ytext = new Y.Text()
+        if (seed) {
+          ytext.insert(0, seed)
+        }
+        blockMap.set('content', ytext)
+        // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
+      }
 
-    // Binding zwischen Yjs und Quill
-    const binding = new QuillBinding(ytext, editor, null, {
-      preserveCursor: true
-    })
+      // Quill Editor mit angepassten Cursor-Einstellungen
+      const editor = markRaw(existingEditor || new Quill(editorElement, {
+        modules: {
+          cursors: {
+            transformOnTextChange: true,
+            hideDelayMs: 5000,
+            hideSpeedMs: 500,
+            selectionChangeSource: 'api'
+          },
+          toolbar: [
+            ['bold', 'italic', 'underline'],
+            ['clean']
+          ],
+          history: {
+            userOnly: true
+          }
+        },
+        theme: 'snow',
+        placeholder: `Start editing ${block.title}...`
+      }))
 
-    // Initiale Hervorhebung nach Laden des Inhalts
-    highlightPlaceholders()
+      const highlightPlaceholders = createHighlightFunction(editor)
 
-    // Selection-Change-Handler
-    editor.on('selection-change', handleSelectionChange(block.id))
+      if (!editor.__llarsHighlightAttached) {
+        editor.__llarsHighlightAttached = true
+        // Hervorhebung nach Yjs-Updates (inkl. lokaler Nutzereingabe)
+        ytext.observe(() => {
+          setTimeout(() => highlightPlaceholders(), 0)
+        })
+      }
 
-    // Text-Change-Handler for user highlighting
-    editor.on('text-change', (delta, oldDelta, source) => {
-      applyUserHighlight(editor, block.id, delta, source)
-    })
+      // Speichere Referenz zum Cursors Module
+      const cursorsModule = editor.getModule('cursors')
+      if (cursorsModule) {
+        cursorsModules.set(block.id, markRaw(cursorsModule))
+      }
 
-    // NOTE: We no longer broadcast here - autoSync in useYjsCollaboration handles it!
-    // QuillBinding syncs Quill <-> Yjs automatically, and ydoc.on('update') in
-    // useYjsCollaboration broadcasts incremental updates to other clients.
-    // Sending the full state via Y.encodeStateAsUpdate() caused text duplication bugs.
+      // Binding zwischen Yjs und Quill
+      const binding = markRaw(existingBinding || new QuillBinding(ytext, editor, null, {
+        preserveCursor: true
+      }))
+      editorElement.__llarsYjsBinding = binding
+      editor.__llarsYjsBinding = binding
 
-    editors.value.set(block.id, editor)
-    bindings.value.set(block.id, binding)
-    initializingEditors.delete(block.id)
+      // Initiale Hervorhebung nach Laden des Inhalts
+      highlightPlaceholders()
+
+      if (!editor.__llarsHandlersAttached) {
+        editor.__llarsHandlersAttached = true
+        // Selection-Change-Handler
+        editor.on('selection-change', handleSelectionChange(block.id))
+
+        // Text-Change-Handler for user highlighting
+        editor.on('text-change', (delta, oldDelta, source) => {
+          applyUserHighlight(editor, block.id, delta, source)
+        })
+      }
+
+      // NOTE: We no longer broadcast here - autoSync in useYjsCollaboration handles it!
+      // QuillBinding syncs Quill <-> Yjs automatically, and ydoc.on('update') in
+      // useYjsCollaboration broadcasts incremental updates to other clients.
+      // Sending the full state via Y.encodeStateAsUpdate() caused text duplication bugs.
+
+      editor.enable(true)
+
+      editors.set(block.id, editor)
+      bindings.set(block.id, binding)
+      editorCount.value = editors.size
+    } catch (error) {
+      console.error('Failed to initialize Quill editor:', error)
+    } finally {
+      initializingEditors.delete(block.id)
+    }
   }
 
   // Speichert die Editor-Referenz
-  const setEditorRef = (el, blockId) => {
-    if (el) {
-      editorsMap.value.set(blockId, el)
+  const setEditorRef = (el, block) => {
+    if (!el || !block?.id) {
+      return
     }
+
+    const existingElement = editorsMap.get(block.id)
+    if (existingElement && existingElement !== el) {
+      resetEditor(block.id, { keepElementRef: false, elementOverride: existingElement })
+    }
+
+    editorsMap.set(block.id, el)
+    initializeEditor(block)
   }
 
   // Cursor aktualisieren (von anderen Usern)
   const updateCursor = (userId, cursor) => {
     // 1) Wenn cursor === null, entfernen wir den Cursor in allen Blöcken
     if (!cursor) {
-      cursorsModules.value.forEach((cursorsModule) => {
+      cursorsModules.forEach((cursorsModule) => {
         cursorsModule.removeCursor(userId)
       })
       return
@@ -245,8 +385,8 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
     // 2) Wenn range === null, nur den Cursor in dem spezifischen Block entfernen
     const { blockId, range, username, color } = cursor
-    const cursorsModule = cursorsModules.value.get(blockId)
-    const editor = editors.value.get(blockId)
+    const cursorsModule = cursorsModules.get(blockId)
+    const editor = editors.get(blockId)
 
     if (!range) {
       if (cursorsModule) {
@@ -272,36 +412,39 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   // Cleanup für gelöschte Blöcke
   const cleanupEditor = (blockId) => {
     initializingEditors.delete(blockId)
-    const binding = bindings.value.get(blockId)
-    if (binding) {
-      binding.destroy()
-      bindings.value.delete(blockId)
-    }
-
-    editors.value.delete(blockId)
-    editorsMap.value.delete(blockId)
-    cursorsModules.value.delete(blockId)
+    resetEditor(blockId, { keepElementRef: false })
   }
 
   // Cleanup aller Editoren
   const cleanupAll = () => {
-    bindings.value.forEach(binding => binding.destroy())
-    editorsMap.value.clear()
-    editors.value.clear()
-    bindings.value.clear()
-    cursorsModules.value.clear()
+    const blockIds = new Set([
+      ...editorsMap.keys(),
+      ...editors.keys(),
+      ...bindings.keys()
+    ])
+
+    blockIds.forEach(blockId => {
+      resetEditor(blockId, { keepElementRef: false })
+    })
+
+    editorsMap.clear()
+    editors.clear()
+    bindings.clear()
+    cursorsModules.clear()
+    editorCount.value = 0
+    initializingEditors.clear()
   }
 
   // Placeholder-Highlighting für alle Editoren anwenden
   const applyHighlightingToAll = () => {
     setTimeout(() => {
-      editors.value.forEach(editor => {
+      editors.forEach(editor => {
         if (editor) {
           const text = editor.getText()
           const placeholder = '{{complete_email_history}}'
           let idx = text.indexOf(placeholder)
           while (idx !== -1) {
-            editor.formatText(idx, placeholder.length, 'placeholder', true, Quill.sources.API)
+            editor.formatText(idx, placeholder.length, highlightFormat, true, Quill.sources.API)
             idx = text.indexOf(placeholder, idx + placeholder.length)
           }
         }
@@ -311,17 +454,17 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
   // Cursor für User entfernen (z.B. wenn User den Raum verlässt)
   const removeCursorForUser = (userId) => {
-    cursorsModules.value.forEach(cursorsModule => {
+    cursorsModules.forEach(cursorsModule => {
       cursorsModule.removeCursor(userId)
     })
   }
 
   // Clear all user highlights (e.g., after commit)
   const clearUserHighlights = () => {
-    userHighlights.value.clear()
+    userHighlights.clear()
 
     // Remove background formatting from all editors
-    editors.value.forEach((editor, blockId) => {
+    editors.forEach((editor) => {
       try {
         const length = editor.getLength()
         if (length > 0) {
@@ -339,6 +482,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     bindings,
     cursorsModules,
     userHighlights,
+    editorCount,
     initializeEditor,
     setEditorRef,
     updateCursor,

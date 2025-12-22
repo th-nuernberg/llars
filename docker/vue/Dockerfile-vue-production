@@ -1,0 +1,72 @@
+# ============================================
+# LLARS Frontend - Production Multi-Stage Build
+# ============================================
+# Stage 1: Build the Vue app
+# Stage 2: Serve static files with nginx
+# ============================================
+
+# Stage 1: Build
+FROM public.ecr.aws/docker/library/node:23-alpine AS builder
+
+WORKDIR /app
+
+# Build arguments for Vite (env vars at build time)
+ARG VITE_API_BASE_URL
+ARG VITE_PROJECT_STATE=production
+ARG VITE_MKDOCS_URL
+ARG VITE_KEYCLOAK_URL
+ARG VITE_KEYCLOAK_CLIENT_ID=llars-frontend
+ARG VITE_KEYCLOAK_REALM=llars
+ARG VITE_SOCKETIO_ENABLE_WEBSOCKET=false
+
+# Set as environment for build
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_PROJECT_STATE=$VITE_PROJECT_STATE
+ENV VITE_MKDOCS_URL=$VITE_MKDOCS_URL
+ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
+ENV VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
+ENV VITE_KEYCLOAK_REALM=$VITE_KEYCLOAK_REALM
+ENV VITE_SOCKETIO_ENABLE_WEBSOCKET=$VITE_SOCKETIO_ENABLE_WEBSOCKET
+
+# Copy package files first for better caching
+COPY llars-frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY llars-frontend/ ./
+
+# Build the production bundle
+RUN npm run build
+
+# ============================================
+# Stage 2: Production - nginx serves static files
+# ============================================
+FROM public.ecr.aws/docker/library/nginx:alpine AS production
+
+# Copy custom nginx config for SPA
+COPY docker/vue/nginx-frontend.conf /etc/nginx/nginx.conf
+
+# Copy built static files from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Create non-root user for security
+RUN addgroup -g 1003 -S vueuser && \
+    adduser -u 1003 -S vueuser -G vueuser && \
+    chown -R vueuser:vueuser /usr/share/nginx/html && \
+    chown -R vueuser:vueuser /var/cache/nginx && \
+    chown -R vueuser:vueuser /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown -R vueuser:vueuser /var/run/nginx.pid
+
+# Switch to non-root user
+USER vueuser
+
+EXPOSE 5173
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:5173/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

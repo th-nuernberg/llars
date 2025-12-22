@@ -60,27 +60,31 @@ services:
       retries: 3
 
   # ============================================
-  # Frontend - Production Build
+  # Frontend - Production Build (nginx serves static files)
   # ============================================
   frontend-vue-service:
+    build:
+      context: .
+      dockerfile: docker/vue/Dockerfile-vue-production
+      args:
+        - VITE_API_BASE_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}
+        - VITE_PROJECT_STATE=production
+        - VITE_MKDOCS_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/docs
+        - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/authentik
+        - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
+        - VITE_KEYCLOAK_REALM=llars
+        - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
     environment:
       - TZ=Europe/Berlin
-      - VITE_API_BASE_URL=${PROJECT_URL:-https://${PROJECT_HOST}}
-      - VITE_PROJECT_STATE=production
-      - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://${PROJECT_HOST}}/authentik
-      - VITE_KEYCLOAK_REALM=llars
-      - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID}
-      # When false (default), Socket.IO sticks to polling to avoid WebSocket errors with Werkzeug/threading
-      - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
-    # Remove volume mounts and develop mode
+    # No volume mounts in production - static files baked into image
     volumes: []
     develop: {}
     # No expose of port to host
     ports: []
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
-      start_period: 10s
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5173/health || exit 1"]
+      start_period: 15s
       interval: 30s
       timeout: 5s
       retries: 3

@@ -146,28 +146,10 @@ export function useQuillEditor(ydoc, socket, roomId) {
     // Selection-Change-Handler
     editor.on('selection-change', handleSelectionChange(block.id))
 
-    // Text-Change-Handler: Bei Nutzereingabe Yjs-Text aktualisieren
-    editor.on('text-change', (delta, oldDelta, source) => {
-      if (source === 'user') {
-        ydoc.value.transact(() => {
-          const blocksMap2 = ydoc.value.getMap('blocks')
-          const blockMap2 = blocksMap2.get(block.id)
-          blockMap2.get('content').applyDelta(delta)
-          const update2 = Y.encodeStateAsUpdate(ydoc.value)
-          if (socket.value?.connected) {
-            socket.value.emit('sync_update', {
-              room: roomId.value,
-              update: Array.from(update2)
-            })
-          }
-        })
-      }
-    })
-
-    // Observe Yjs text updates to ensure highlighting is maintained
-    ytext.observe(() => {
-      setTimeout(() => highlightPlaceholders(), 0)
-    })
+    // NOTE: We no longer broadcast here - autoSync in useYjsCollaboration handles it!
+    // QuillBinding syncs Quill <-> Yjs automatically, and ydoc.on('update') in
+    // useYjsCollaboration broadcasts incremental updates to other clients.
+    // Sending the full state via Y.encodeStateAsUpdate() caused text duplication bugs.
 
     editors.value.set(block.id, editor)
     bindings.value.set(block.id, binding)

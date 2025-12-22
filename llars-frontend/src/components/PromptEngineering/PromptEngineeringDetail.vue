@@ -11,10 +11,12 @@
         :shared-with="sharedWithUsers"
         :owner="promptOwner"
         :promptName="promptName"
+        :show-git-panel="showGitPanel"
         @showAddBlockDialog="showAddBlockDialog = true"
         @refreshPromptDetails="fetchPromptDetails()"
         @uploadJsonFileSelected="onJsonFileSelected"
         @triggerTestPrompt="openTestPromptDialog"
+        @toggleGitPanel="toggleGitPanel"
       />
     </div>
 
@@ -132,6 +134,17 @@
           </div>
         </div>
 
+        <!-- Git Panel -->
+        <PromptGitPanel
+          v-if="showGitPanel"
+          :prompt-id="Number(promptId)"
+          :summary="gitSummary"
+          :can-commit="true"
+          :get-content="getContentSnapshot"
+          @committed="onGitCommitted"
+          class="mt-4"
+        />
+
         <!-- Debug Info (Development only) -->
         <div v-if="isDevelopment" class="debug-info">
           <h4>Debug Information:</h4>
@@ -246,6 +259,7 @@ Quill.register(HighlightBlot);
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
+import PromptGitPanel from './PromptGitPanel.vue';
 import { useRoute } from 'vue-router';
 import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
@@ -260,6 +274,7 @@ import { usePromptDetails } from './composables/usePromptDetails';
 import { useYjsCollaboration } from './composables/useYjsCollaboration';
 import { usePromptBlocks } from './composables/usePromptBlocks';
 import { useQuillEditor } from './composables/useQuillEditor';
+import { usePromptGitDiff } from './composables/usePromptGitDiff';
 import { useAuth } from '@/composables/useAuth';
 
 const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
@@ -327,8 +342,16 @@ const { ydoc, socket, users, updateColor } = collaboration;
 const blocksManager = usePromptBlocks(ydoc, roomId, socket, showMessage);
 const { blocks, sortedBlocks, processYDoc, createBlock, deleteBlock, saveBlockTitle, handleJsonUpload, assemblePrompt } = blocksManager;
 
-// Quill editor management
-const editorManager = useQuillEditor(ydoc, socket, roomId);
+// Git versioning - declare early so editors can reference showGitPanel
+const showGitPanel = ref(true); // Stored in localStorage
+const gitDiff = usePromptGitDiff(promptId, users);
+
+// Quill editor management with user highlighting support
+const editorManager = useQuillEditor(ydoc, socket, roomId, {
+  getUserColor: () => auth.collabColor?.value || null,
+  getUsername: () => auth.username?.value || username,
+  showUserHighlighting: () => showGitPanel.value
+});
 const {
   setEditorRef,
   updateCursor,
@@ -337,8 +360,76 @@ const {
   cleanupAll,
   applyHighlightingToAll,
   removeCursorForUser,
+  clearUserHighlights,
   editors
 } = editorManager;
+const gitSummary = ref({ users: [], insertions: 0, deletions: 0, hasChanges: false, totalChangedLines: 0 });
+
+// Load git panel visibility from localStorage
+const loadGitPanelVisibility = () => {
+  try {
+    const stored = localStorage.getItem('prompt-git-panel-visible');
+    showGitPanel.value = stored !== 'false';
+  } catch {
+    showGitPanel.value = true;
+  }
+};
+
+// Save git panel visibility to localStorage
+const saveGitPanelVisibility = (visible) => {
+  try {
+    localStorage.setItem('prompt-git-panel-visible', String(visible));
+  } catch {
+    // Ignore
+  }
+};
+
+// Toggle git panel visibility
+const toggleGitPanel = () => {
+  showGitPanel.value = !showGitPanel.value;
+  saveGitPanelVisibility(showGitPanel.value);
+};
+
+// Get current content as snapshot string (for commits)
+const getContentSnapshot = () => {
+  const result = {};
+  for (const block of sortedBlocks.value) {
+    const editor = editors.value.get(block.id);
+    if (editor) {
+      result[block.title] = editor.getText().trim();
+    } else if (block.content) {
+      result[block.title] = typeof block.content === 'string' ? block.content : block.content.toString?.() || '';
+    }
+  }
+  return JSON.stringify(result, null, 2);
+};
+
+// Update git summary when content changes
+const updateGitSummary = () => {
+  const currentContent = getContentSnapshot();
+  const summary = gitDiff.getChangeSummary(currentContent);
+
+  // Add current user if they made changes
+  if (summary.hasChanges && auth.username?.value) {
+    const existingUser = summary.users.find(u => u.username === auth.username.value);
+    if (!existingUser) {
+      summary.users.push({
+        username: auth.username.value,
+        color: auth.collabColor?.value || '#9e9e9e',
+        changedLines: summary.totalChangedLines
+      });
+    }
+  }
+
+  gitSummary.value = summary;
+};
+
+// Handle commit completed
+const onGitCommitted = () => {
+  gitDiff.updateBaseline(getContentSnapshot());
+  clearUserHighlights(); // Clear text highlighting after commit
+  updateGitSummary();
+};
 
 // Event handlers
 const handleCreateBlock = () => {
@@ -400,15 +491,48 @@ watch(
         await initializeEditor(block);
       }
     }
+
+    // Update git summary when blocks change
+    updateGitSummary();
   },
   { deep: true }
 );
 
+// Debounced git summary update for text changes
+let gitUpdateTimeout = null;
+const debouncedGitUpdate = () => {
+  if (gitUpdateTimeout) clearTimeout(gitUpdateTimeout);
+  gitUpdateTimeout = setTimeout(() => {
+    updateGitSummary();
+  }, 500);
+};
+
+// Watch editors map for content changes
+watch(
+  () => editors.value.size,
+  () => {
+    // Re-attach text-change listeners when editors change
+    for (const [blockId, editor] of editors.value) {
+      if (!editor._gitListenerAttached) {
+        editor.on('text-change', debouncedGitUpdate);
+        editor._gitListenerAttached = true;
+      }
+    }
+  }
+);
+
 // Lifecycle hooks
 onMounted(async () => {
+  // Load git panel visibility preference
+  loadGitPanelVisibility();
+
   await withLoading('prompt', async () => {
     await fetchPromptDetails();
     collaboration.initialize();
+
+    // Load git baseline for diff tracking
+    await gitDiff.loadBaseline();
+    updateGitSummary();
 
     watch(
       () => blocks.value.length,

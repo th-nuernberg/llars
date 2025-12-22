@@ -798,7 +798,7 @@ ALLOWED_EXTENSIONS = {'pdf', 'txt', 'md', 'docx', 'doc'}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 # Speicherort
-UPLOAD_DIR = "/app/rag_docs"
+UPLOAD_DIR = "/app/data/rag/uploads"
 ```
 
 ---

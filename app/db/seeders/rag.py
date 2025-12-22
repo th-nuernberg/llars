@@ -17,7 +17,7 @@ def initialize_rag_system(db):
         db: SQLAlchemy database instance
     """
     # Lazy import to avoid circular dependencies
-    from ..tables import RAGCollection, RAGDocument
+    from ..tables import RAGCollection, RAGDocument, RAGDocumentChunk
 
     print("\n" + "="*60)
     print("Initializing RAG Document Management System...")
@@ -48,19 +48,22 @@ def initialize_rag_system(db):
     else:
         print("✅ Default collection 'general' already exists")
 
-    # Scan existing documents in /app/rag_docs/ and register them in database
-    rag_docs_path = '/app/rag_docs'
+    # Scan existing documents in /app/data/rag/standard and register them in database
+    rag_docs_path = '/app/data/rag/standard'
 
     if not os.path.exists(rag_docs_path):
         print(f"⚠️  RAG docs directory not found: {rag_docs_path}")
         print("="*60)
         return
 
-    # Get all PDF files
+    # Get all supported files (recursive)
     existing_files = []
-    for filename in os.listdir(rag_docs_path):
-        if filename.endswith(('.pdf', '.txt', '.md')) and not filename.startswith('.'):
-            existing_files.append(filename)
+    for root, _, files in os.walk(rag_docs_path):
+        for filename in files:
+            if filename.startswith('.'):
+                continue
+            if filename.endswith(('.pdf', '.txt', '.md')):
+                existing_files.append(os.path.join(root, filename))
 
     if not existing_files:
         print(f"ℹ️  No documents found in {rag_docs_path}")
@@ -73,8 +76,9 @@ def initialize_rag_system(db):
     registered_count = 0
     updated_count = 0
 
-    for filename in sorted(existing_files):
-        file_path = os.path.join(rag_docs_path, filename)
+    for file_path in sorted(existing_files):
+        relative_path = os.path.relpath(file_path, rag_docs_path)
+        relative_path = relative_path.replace(os.sep, '/')
 
         try:
             # Calculate file hash
@@ -94,37 +98,48 @@ def initialize_rag_system(db):
                 if existing_doc.collection_id is None:
                     existing_doc.collection_id = default_collection.id
                     updated_count += 1
+                if existing_doc.file_path != file_path:
+                    existing_doc.file_path = file_path
+                    existing_doc.filename = relative_path
+                    existing_doc.original_filename = relative_path
+                    updated_count += 1
+                has_chunks = (
+                    RAGDocumentChunk.query.filter_by(document_id=existing_doc.id).first()
+                    is not None
+                )
+                if not has_chunks:
+                    existing_doc.status = 'pending'
+                    updated_count += 1
                 # DON'T auto-set pending to indexed - let the embedding worker handle it
                 # Documents need actual embeddings before being marked as indexed
                 continue
 
             # Determine MIME type
-            if filename.endswith('.pdf'):
+            if file_path.endswith('.pdf'):
                 mime_type = 'application/pdf'
-            elif filename.endswith('.txt'):
+            elif file_path.endswith('.txt'):
                 mime_type = 'text/plain'
-            elif filename.endswith('.md'):
+            elif file_path.endswith('.md'):
                 mime_type = 'text/markdown'
             else:
                 mime_type = 'application/octet-stream'
 
             # Create new document entry
             new_doc = RAGDocument(
-                filename=filename,
-                original_filename=filename,
+                filename=relative_path,
+                original_filename=relative_path,
                 file_path=file_path,
                 file_size_bytes=file_size,
                 mime_type=mime_type,
                 file_hash=file_hash,
-                title=filename.replace('_', ' ').replace('.pdf', '').replace('.txt', '').replace('.md', ''),
+                title=os.path.splitext(os.path.basename(file_path))[0].replace('_', ' '),
                 language='de',
-                status='indexed',  # Mark as indexed since they exist in the system
+                status='pending',
                 collection_id=default_collection.id,
                 embedding_model='sentence-transformers/all-MiniLM-L6-v2',
                 is_public=True,
                 uploaded_by='system',
-                uploaded_at=datetime.now(),
-                indexed_at=datetime.now()
+                uploaded_at=datetime.now()
             )
 
             db.session.add(new_doc)

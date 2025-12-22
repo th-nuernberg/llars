@@ -65,10 +65,7 @@ yarn-error.log*
 /yjs-server/node_modules/
 
 # Application Data
-/app/rag_docs/
-/app/rag_docs_old/
 /app/storage/models/
-/app/data/legal_docs/
 /data/*.csv
 /data/*.json
 !data/.gitkeep
@@ -123,4 +120,11 @@ scripts/provision_users.sh
 app/models/anonymize/
 
 # Runtime data
-app/data/
+app/data/*
+!app/data/rag/
+!app/data/rag/**
+app/data/rag/uploads/**
+app/data/rag/crawls/**
+!app/data/rag/uploads/.gitkeep
+!app/data/rag/crawls/.gitkeep
+app/data/rag/**/.DS_Store

@@ -2,7 +2,7 @@
 Legal Assistant Chatbot Seeder
 
 Creates a pre-configured "Rechtsassistent" chatbot with all German federal laws
-from the bundled legal documents in /app/data/legal_docs/.
+from the bundled legal documents in /app/data/rag/legal/.
 """
 
 import os
@@ -28,7 +28,7 @@ def initialize_legal_assistant(db):
     print("=" * 60)
 
     # Base path for legal documents
-    legal_docs_base = Path('/app/data/legal_docs')
+    legal_docs_base = Path('/app/data/rag/legal')
     bundesgesetze_dir = legal_docs_base / 'bundesgesetze'
     eu_recht_dir = legal_docs_base / 'eu_recht'
 
@@ -159,6 +159,8 @@ def initialize_legal_assistant(db):
     chatbot_name = 'rechtsassistent'
     bot = Chatbot.query.filter_by(name=chatbot_name).first()
 
+    admin_roles = ['admin']
+
     if not bot:
         bot = Chatbot(
             name=chatbot_name,
@@ -194,8 +196,8 @@ HINWEIS: Dies ist ein Informationsdienst. Für konkrete Rechtsfragen sollte imme
             fallback_message='Zu dieser Frage konnte ich leider keine passenden Gesetzestexte finden. Bitte wenden Sie sich an einen Rechtsanwalt für eine professionelle Beratung.',
             max_context_messages=10,
             is_active=True,
-            is_public=True,  # Available to all users
-            allowed_roles=None,
+            is_public=False,  # Admin-only
+            allowed_roles=admin_roles,
             build_status='draft',  # Needs embedding via Build button
             primary_collection_id=collection.id,
             created_by='system',
@@ -207,8 +209,17 @@ HINWEIS: Dies ist ein Informationsdienst. Für konkrete Rechtsfragen sollte imme
         print(f"  Created chatbot: '{chatbot_name}'")
     else:
         # Update collection reference if needed
+        changed = False
         if bot.primary_collection_id != collection.id:
             bot.primary_collection_id = collection.id
+            changed = True
+        if bot.is_public:
+            bot.is_public = False
+            changed = True
+        if bot.allowed_roles != admin_roles:
+            bot.allowed_roles = admin_roles
+            changed = True
+        if changed:
             db.session.commit()
         print(f"  Chatbot '{chatbot_name}' already exists")
 
@@ -231,6 +242,17 @@ HINWEIS: Dies ist ein Informationsdienst. Für konkrete Rechtsfragen sollte imme
         db.session.add(assignment)
         db.session.commit()
         print(f"  Linked chatbot to collection")
+
+    # Ensure admin user has explicit access
+    from ..tables import ChatbotUserAccess
+    admin_access = ChatbotUserAccess.query.filter_by(chatbot_id=bot.id, username='admin').first()
+    if not admin_access:
+        db.session.add(ChatbotUserAccess(
+            chatbot_id=bot.id,
+            username='admin',
+            granted_by='system'
+        ))
+        db.session.commit()
 
     print()
     print("  Legal Assistant initialized successfully!")

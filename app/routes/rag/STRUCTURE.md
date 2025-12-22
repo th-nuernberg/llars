@@ -68,7 +68,7 @@ routes/rag/
 **Configuration:**
 - `ALLOWED_EXTENSIONS`: `{'pdf', 'txt', 'md', 'docx', 'doc'}`
 - `MAX_FILE_SIZE`: `50 MB`
-- `RAG_DOCS_PATH`: `/app/rag_docs`
+- `RAG_DOCS_PATH`: `/app/data/rag/uploads`
 
 #### 3. Search Routes (`rag_search_bp`)
 **File:** `search_routes.py`

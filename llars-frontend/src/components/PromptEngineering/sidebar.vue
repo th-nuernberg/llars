@@ -69,6 +69,28 @@
         <input ref="jsonFileInput" type="file" accept=".json" style="display: none" @change="handleJsonFileUpload" />
       </div>
 
+      <!-- Options Section -->
+      <div class="sidebar-section">
+        <div class="section-label">
+          <v-icon size="14" class="mr-1">mdi-cog</v-icon>
+          Optionen
+        </div>
+        <div class="option-item" @click="$emit('toggleGitPanel')">
+          <v-icon size="16" :color="showGitPanel ? 'primary' : 'grey'" class="mr-2">
+            mdi-source-branch
+          </v-icon>
+          <span class="option-label">Git-Panel</span>
+          <v-spacer />
+          <v-switch
+            :model-value="showGitPanel"
+            color="primary"
+            hide-details
+            density="compact"
+            @click.stop="$emit('toggleGitPanel')"
+          />
+        </div>
+      </div>
+
       <!-- Sharing Section -->
       <div class="sidebar-section">
         <div class="section-label">
@@ -173,10 +195,11 @@ const props = defineProps({
   isOwner: { type: Boolean, default: false },
   sharedWith: { type: Array, default: () => [] },
   owner: { type: String, required: true },
-  promptName: { type: String, required: true }
+  promptName: { type: String, required: true },
+  showGitPanel: { type: Boolean, default: true }
 });
 
-const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt']);
+const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel']);
 
 const router = useRouter();
 const jsonFileInput = ref(null);
@@ -380,6 +403,26 @@ const unsharePromptWithUser = async (username) => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* Option Item */
+.option-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.option-item:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.option-label {
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 /* Owner Card */

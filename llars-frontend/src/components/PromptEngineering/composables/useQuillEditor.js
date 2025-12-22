@@ -3,11 +3,17 @@ import Quill from 'quill'
 import { QuillBinding } from 'y-quill'
 import * as Y from 'yjs'
 
-export function useQuillEditor(ydoc, socket, roomId) {
+export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const editorsMap = ref(new Map())
   const editors = ref(new Map())
   const bindings = ref(new Map())
   const cursorsModules = ref(new Map())
+
+  // User highlighting options
+  const { getUserColor = () => null, getUsername = () => null, showUserHighlighting = () => false } = options
+
+  // Track user highlights per block
+  const userHighlights = ref(new Map()) // blockId -> Map<position, {username, color, ts}>
 
   // Debounce-Funktion für Cursor-Updates
   const debounce = (fn, delay) => {
@@ -47,6 +53,61 @@ export function useQuillEditor(ydoc, socket, roomId) {
         debouncedEmit(range)
       }
     }
+  }
+
+  // Helper: Convert hex to rgba
+  const hexToRgba = (hex, alpha = 0.25) => {
+    if (!hex || typeof hex !== 'string') return `rgba(0,0,0,${alpha})`
+    const raw = hex.replace('#', '')
+    if (raw.length !== 6) return `rgba(0,0,0,${alpha})`
+    const r = parseInt(raw.slice(0, 2), 16)
+    const g = parseInt(raw.slice(2, 4), 16)
+    const b = parseInt(raw.slice(4, 6), 16)
+    return `rgba(${r},${g},${b},${alpha})`
+  }
+
+  // Apply user highlighting to inserted text
+  const applyUserHighlight = (editor, blockId, delta, source) => {
+    if (!showUserHighlighting() || source !== 'user') return
+
+    const color = getUserColor()
+    const username = getUsername()
+    if (!color || !username) return
+
+    let position = 0
+    const highlights = userHighlights.value.get(blockId) || new Map()
+
+    delta.ops.forEach(op => {
+      if (op.retain) {
+        position += op.retain
+      } else if (op.insert && typeof op.insert === 'string') {
+        // Track this insertion
+        const insertLength = op.insert.length
+        for (let i = 0; i < insertLength; i++) {
+          highlights.set(position + i, { username, color, ts: Date.now() })
+        }
+
+        // Apply background color formatting
+        setTimeout(() => {
+          try {
+            editor.formatText(position, insertLength, {
+              'background': hexToRgba(color, 0.3)
+            }, Quill.sources.API)
+          } catch (e) {
+            // Ignore formatting errors
+          }
+        }, 0)
+
+        position += insertLength
+      } else if (op.delete) {
+        // Remove highlights for deleted positions
+        for (let i = 0; i < op.delete; i++) {
+          highlights.delete(position + i)
+        }
+      }
+    })
+
+    userHighlights.value.set(blockId, highlights)
   }
 
   // Hebt alle Vorkommen von {{complete_email_history}} hervor
@@ -92,15 +153,7 @@ export function useQuillEditor(ydoc, socket, roomId) {
     if (!ytext) {
       ytext = new Y.Text()
       blockMap.set('content', ytext)
-
-      // Wenn ein neuer ytext erstellt wurde, sofort synchronisieren
-      const update = Y.encodeStateAsUpdate(ydoc.value)
-      if (socket.value?.connected) {
-        socket.value.emit('sync_update', {
-          room: roomId.value,
-          update: Array.from(update)
-        })
-      }
+      // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
     }
 
     // Quill Editor mit angepassten Cursor-Einstellungen
@@ -145,6 +198,11 @@ export function useQuillEditor(ydoc, socket, roomId) {
 
     // Selection-Change-Handler
     editor.on('selection-change', handleSelectionChange(block.id))
+
+    // Text-Change-Handler for user highlighting
+    editor.on('text-change', (delta, oldDelta, source) => {
+      applyUserHighlight(editor, block.id, delta, source)
+    })
 
     // NOTE: We no longer broadcast here - autoSync in useYjsCollaboration handles it!
     // QuillBinding syncs Quill <-> Yjs automatically, and ydoc.on('update') in
@@ -244,17 +302,36 @@ export function useQuillEditor(ydoc, socket, roomId) {
     })
   }
 
+  // Clear all user highlights (e.g., after commit)
+  const clearUserHighlights = () => {
+    userHighlights.value.clear()
+
+    // Remove background formatting from all editors
+    editors.value.forEach((editor, blockId) => {
+      try {
+        const length = editor.getLength()
+        if (length > 0) {
+          editor.formatText(0, length, { 'background': false }, Quill.sources.API)
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    })
+  }
+
   return {
     editorsMap,
     editors,
     bindings,
     cursorsModules,
+    userHighlights,
     initializeEditor,
     setEditorRef,
     updateCursor,
     cleanupEditor,
     cleanupAll,
     applyHighlightingToAll,
-    removeCursorForUser
+    removeCursorForUser,
+    clearUserHighlights
   }
 }

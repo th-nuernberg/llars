@@ -10,6 +10,9 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
   const { autoSync = false } = options || {}
   const socketTransports = ['websocket']
 
+  // Flag to prevent echo when applying remote updates
+  let applyingRemoteUpdate = false
+
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
     return getAuthStorageItem(AUTH_STORAGE_KEYS.token)
@@ -80,12 +83,22 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     })
 
     socket.value.on('snapshot_document', (fullUpdate) => {
-      Y.applyUpdate(ydoc.value, new Uint8Array(fullUpdate))
+      applyingRemoteUpdate = true
+      try {
+        Y.applyUpdate(ydoc.value, new Uint8Array(fullUpdate))
+      } finally {
+        applyingRemoteUpdate = false
+      }
       onProcessYDoc()
     })
 
     socket.value.on('sync_update', ({ update }) => {
-      Y.applyUpdate(ydoc.value, new Uint8Array(update))
+      applyingRemoteUpdate = true
+      try {
+        Y.applyUpdate(ydoc.value, new Uint8Array(update))
+      } finally {
+        applyingRemoteUpdate = false
+      }
       onProcessYDoc()
     })
 
@@ -134,7 +147,10 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     ydoc.value.on('update', (update, origin, doc, transaction) => {
       onProcessYDoc()
 
-      if (autoSync && transaction?.local && socket.value?.connected) {
+      // Only send updates that are truly local (not from remote sync)
+      // The applyingRemoteUpdate flag prevents echo from QuillBinding
+      // reacting to remote Yjs changes and creating new local updates
+      if (autoSync && transaction?.local && !applyingRemoteUpdate && socket.value?.connected) {
         socket.value.emit('sync_update', {
           room: roomId.value,
           update: Array.from(update)

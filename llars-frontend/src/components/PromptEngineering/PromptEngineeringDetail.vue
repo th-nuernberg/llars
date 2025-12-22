@@ -1,153 +1,241 @@
 <!-- PromptEngineering/PromptEngineeringDetail.vue -->
 <template>
-  <div class="layout-container">
-    <sidebar
-      :users="users"
-      :blocks="blocks"
-      :prompt-id="Number(promptId)"
-      :is-owner="promptOwner === username"
-      :shared-with="sharedWithUsers"
-      :owner="promptOwner"
-      :promptName="promptName"
-      @showAddBlockDialog="showAddBlockDialog = true"
-      @refreshPromptDetails="fetchPromptDetails()"
-      @uploadJsonFileSelected="onJsonFileSelected"
-      @triggerTestPrompt="openTestPromptDialog"
-    />
+  <div ref="containerRef" class="prompt-workspace">
+    <!-- Left Panel: Sidebar -->
+    <div class="left-panel" :style="leftPanelStyle()">
+      <sidebar
+        :users="users"
+        :blocks="blocks"
+        :prompt-id="Number(promptId)"
+        :is-owner="promptOwner === username"
+        :shared-with="sharedWithUsers"
+        :owner="promptOwner"
+        :promptName="promptName"
+        @showAddBlockDialog="showAddBlockDialog = true"
+        @refreshPromptDetails="fetchPromptDetails()"
+        @uploadJsonFileSelected="onJsonFileSelected"
+        @triggerTestPrompt="openTestPromptDialog"
+      />
+    </div>
 
-    <div class="main-content">
-      <!-- Skeleton Loading -->
-      <v-skeleton-loader v-if="isLoading('prompt')" type="heading, card@3"></v-skeleton-loader>
+    <!-- Resize Divider -->
+    <div
+      class="resize-divider"
+      :class="{ resizing: isResizing }"
+      @mousedown="startResize"
+    >
+      <div class="resize-handle"></div>
+    </div>
+
+    <!-- Right Panel: Editor -->
+    <div class="right-panel" :style="rightPanelStyle()">
+      <!-- Loading State -->
+      <div v-if="isLoading('prompt')" class="loading-state">
+        <v-skeleton-loader type="heading" class="mb-4" />
+        <v-skeleton-loader type="card" class="mb-4" />
+        <v-skeleton-loader type="card" class="mb-4" />
+        <v-skeleton-loader type="card" />
+      </div>
 
       <template v-else>
-      <h1 class="prompt-title">{{ promptName }}</h1>
-
-      <!-- Dialog-Fenster zum Eingeben des neuen Blocknamens -->
-      <div v-if="showAddBlockDialog" class="dialog-overlay">
-        <div class="dialog-box">
-          <h3>Neuen Block erstellen</h3>
-          <input
-            v-model="newBlockName"
-            @keyup.enter="handleCreateBlock"
-            type="text"
-            placeholder="Blockname"
-            class="block-input"
-          />
-          <div class="dialog-buttons">
-            <LBtn variant="primary" @click="handleCreateBlock">Erstellen</LBtn>
-            <LBtn variant="cancel" @click="closeAddBlockDialog">Abbrechen</LBtn>
+        <!-- Prompt Header -->
+        <div class="prompt-header">
+          <h1 class="prompt-title">{{ promptName }}</h1>
+          <div class="prompt-meta">
+            <LTag variant="primary" size="small">
+              {{ blocks.length }} {{ blocks.length === 1 ? 'Block' : 'Blöcke' }}
+            </LTag>
+            <span v-if="sharedWithUsers.length" class="text-caption text-medium-emphasis ml-2">
+              <v-icon size="14" class="mr-1">mdi-share-variant</v-icon>
+              {{ sharedWithUsers.length }} Nutzer
+            </span>
           </div>
         </div>
-      </div>
 
-      <!-- Dialog-Fenster zum Löschen eines Blocks -->
-      <div v-if="showDeleteBlockDialog" class="dialog-overlay">
-        <div class="dialog-box">
-          <h3>Block "{{ blockToDelete?.title }}" löschen?</h3>
-          <p>Soll der Block wirklich entfernt werden?</p>
-          <div class="dialog-buttons">
-            <LBtn variant="danger" @click="handleConfirmDeleteBlock">Löschen</LBtn>
-            <LBtn variant="cancel" @click="closeDeleteBlockDialog">Abbrechen</LBtn>
-          </div>
-        </div>
-      </div>
+        <!-- Blocks Container -->
+        <div class="blocks-container">
+          <draggable
+            v-if="blocks.length > 0"
+            v-model="sortedBlocks"
+            item-key="id"
+            handle=".drag-handle"
+            @end="onDragEnd"
+            class="draggable-container"
+          >
+            <template #item="{ element: block }">
+              <div class="editor-block">
+                <div class="editor-header">
+                  <div class="drag-handle" title="Ziehen um zu sortieren">
+                    <v-icon size="18">mdi-drag</v-icon>
+                  </div>
 
-      <!-- Dialog-Fenster für die Wahl, ob Blocks überschrieben oder angehängt werden -->
-      <div v-if="showUploadChoiceDialog" class="dialog-overlay">
-        <div class="dialog-box">
-          <h3>JSON-Blocks hochladen</h3>
-          <p>Sollen die vorhandenen Blöcke überschrieben oder neue Blocks nur angehängt werden?</p>
-          <div class="dialog-buttons">
-            <LBtn variant="danger" @click="handleOverrideJsonBlocks">Überschreiben</LBtn>
-            <LBtn variant="primary" @click="handleAppendJsonBlocks">Anhängen</LBtn>
-            <LBtn variant="cancel" @click="closeUploadChoiceDialog">Abbrechen</LBtn>
-          </div>
-        </div>
-      </div>
+                  <!-- Block Title -->
+                  <template v-if="editingBlockId === block.id">
+                    <input
+                      class="block-title-input"
+                      type="text"
+                      v-model="editingBlockTitle"
+                      @keyup.enter="handleSaveBlockTitle(block)"
+                      @blur="handleSaveBlockTitle(block)"
+                      @keyup.escape="resetBlockTitleEdit"
+                      placeholder="Blocktitel..."
+                      autofocus
+                    />
+                  </template>
+                  <template v-else>
+                    <h3 class="block-title" @dblclick="startEditBlockTitle(block)">
+                      {{ block.title }}
+                    </h3>
+                  </template>
 
-      <!-- Snackbar -->
-      <div v-if="showSnackbar" class="snackbar">
-        {{ snackbarMessage }}
-      </div>
+                  <v-spacer />
 
-      <draggable
-        v-model="sortedBlocks"
-        item-key="id"
-        handle=".drag-handle"
-        @end="onDragEnd"
-        class="draggable-container"
-      >
-        <template #item="{ element: block }">
-          <div class="editor-block">
-            <div class="editor-header">
-              <div class="drag-handle">⋮⋮</div>
-
-              <!-- If this block is being edited, show an <input>, else show the <h3> -->
-              <template v-if="editingBlockId === block.id">
-                <input
-                  class="block-title-input"
-                  type="text"
-                  v-model="editingBlockTitle"
-                  @keyup.enter="handleSaveBlockTitle(block)"
-                  @blur="handleSaveBlockTitle(block)"
-                  :placeholder="`Blocktitel ändern...`"
-                />
-              </template>
-              <template v-else>
-                <!-- Double-click or click an edit icon to start editing -->
-                <h3 @dblclick="startEditBlockTitle(block)">{{ block.title }}</h3>
-
-                <!-- Container für die Buttons -->
-                <div class="header-actions">
-                  <!-- Edit Button -->
-                  <button
-                    class="edit-title-button"
-                    @click="startEditBlockTitle(block)"
-                    title="Titel bearbeiten"
-                  >
-                    <v-icon size="small">mdi-pencil</v-icon>
-                  </button>
-
-                  <!-- Delete Button -->
-                  <button
-                    class="delete-button"
-                    @click="openDeleteBlockDialog(block)"
-                    title="Block löschen"
-                  >
-                    ✕
-                  </button>
+                  <div class="header-actions">
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      @click="startEditBlockTitle(block)"
+                      title="Umbenennen"
+                    >
+                      <v-icon size="16">mdi-pencil</v-icon>
+                    </v-btn>
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      color="error"
+                      @click="openDeleteBlockDialog(block)"
+                      title="Löschen"
+                    >
+                      <v-icon size="16">mdi-delete</v-icon>
+                    </v-btn>
+                  </div>
                 </div>
-              </template>
+
+                <!-- Quill Editor -->
+                <div :ref="el => setEditorRef(el, block.id)" class="editor-content"></div>
+              </div>
+            </template>
+          </draggable>
+
+          <!-- Empty State -->
+          <div v-else class="empty-blocks">
+            <v-icon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</v-icon>
+            <div class="text-subtitle-1 mt-3">Noch keine Blöcke</div>
+            <div class="text-body-2 text-medium-emphasis mb-4">
+              Erstellen Sie Ihren ersten Prompt-Block.
             </div>
-
-            <!-- Editor-Inhalt -->
-            <div :ref="el => setEditorRef(el, block.id)" class="editor"></div>
+            <LBtn variant="accent" prepend-icon="mdi-plus" @click="showAddBlockDialog = true">
+              Neuer Block
+            </LBtn>
           </div>
-        </template>
-      </draggable>
+        </div>
 
-      <!-- Debug-Ausgabe -->
-      <div v-if="isDevelopment" class="debug-info">
-        <h4>Debug Information:</h4>
-        <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
-      </div>
+        <!-- Debug Info (Development only) -->
+        <div v-if="isDevelopment" class="debug-info">
+          <h4>Debug Information:</h4>
+          <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
+        </div>
       </template>
     </div>
-  </div>
 
-  <!-- Dialog zum Testen des gesamten Prompts -->
-  <TestPromptDialog v-model="showTestPromptDialog" :prompt="assemblePrompt()" />
+    <!-- Add Block Dialog -->
+    <v-dialog v-model="showAddBlockDialog" max-width="440">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2" color="accent">mdi-plus-circle</v-icon>
+            <span class="text-h6">Neuen Block erstellen</span>
+          </div>
+        </template>
+
+        <v-text-field
+          v-model="newBlockName"
+          label="Blockname"
+          placeholder="z. B. Systemanweisung, Kontext, ..."
+          variant="outlined"
+          density="comfortable"
+          autofocus
+          @keyup.enter="handleCreateBlock"
+        />
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="closeAddBlockDialog">Abbrechen</LBtn>
+          <LBtn variant="accent" :disabled="!newBlockName?.trim()" @click="handleCreateBlock">
+            Erstellen
+          </LBtn>
+        </template>
+      </LCard>
+    </v-dialog>
+
+    <!-- Delete Block Dialog -->
+    <v-dialog v-model="showDeleteBlockDialog" max-width="400">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+            <span class="text-h6">Block löschen</span>
+          </div>
+        </template>
+
+        <p class="text-body-1">
+          Möchten Sie den Block <strong>"{{ blockToDelete?.title }}"</strong> wirklich löschen?
+        </p>
+        <p class="text-body-2 text-medium-emphasis">
+          Diese Aktion kann nicht rückgängig gemacht werden.
+        </p>
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="closeDeleteBlockDialog">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="handleConfirmDeleteBlock">Löschen</LBtn>
+        </template>
+      </LCard>
+    </v-dialog>
+
+    <!-- Upload Choice Dialog -->
+    <v-dialog v-model="showUploadChoiceDialog" max-width="440">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2" color="secondary">mdi-upload</v-icon>
+            <span class="text-h6">JSON importieren</span>
+          </div>
+        </template>
+
+        <p class="text-body-1">
+          Wie sollen die importierten Blöcke eingefügt werden?
+        </p>
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="closeUploadChoiceDialog">Abbrechen</LBtn>
+          <LBtn variant="danger" @click="handleOverrideJsonBlocks">Überschreiben</LBtn>
+          <LBtn variant="primary" @click="handleAppendJsonBlocks">Anhängen</LBtn>
+        </template>
+      </LCard>
+    </v-dialog>
+
+    <!-- Test Prompt Dialog -->
+    <TestPromptDialog v-model="showTestPromptDialog" :prompt="assemblePrompt()" />
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="showSnackbar" :timeout="3000" color="success">
+      {{ snackbarMessage }}
+    </v-snackbar>
+  </div>
 </template>
 
 <script>
-// Modul-Script: Registrierung von Quill-Erweiterungen nur einmal
+// Module script: Register Quill extensions once
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import Inline from 'quill/blots/inline';
 
-// Register the cursors module
 Quill.register('modules/cursors', QuillCursors);
-// Register custom highlight blot for placeholders
+
 class HighlightBlot extends Inline {}
 HighlightBlot.blotName = 'highlight';
 HighlightBlot.tagName = 'span';
@@ -163,6 +251,7 @@ import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
 import sidebar from "@/components/PromptEngineering/sidebar.vue";
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { usePanelResize } from '@/composables/usePanelResize';
 
 // Composables
 import { useSnackbar } from './composables/useSnackbar';
@@ -182,6 +271,20 @@ const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
 
 // Skeleton Loading
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['prompt']);
+
+// Resizable Panel
+const {
+  isResizing,
+  containerRef,
+  startResize,
+  leftPanelStyle,
+  rightPanelStyle
+} = usePanelResize({
+  initialLeftPercent: 22,
+  minLeftPercent: 15,
+  maxLeftPercent: 40,
+  storageKey: 'prompt-engineering-sidebar-width'
+});
 
 // Composables initialization
 const { showSnackbar, snackbarMessage, showMessage } = useSnackbar();
@@ -214,7 +317,8 @@ const collaboration = useYjsCollaboration(
   roomId,
   username,
   () => processYDoc(),
-  (userId, cursor) => updateCursor(userId, cursor)
+  (userId, cursor) => updateCursor(userId, cursor),
+  { autoSync: true }  // Enable automatic Yjs sync (sends incremental updates only)
 );
 
 const { ydoc, socket, users, updateColor } = collaboration;
@@ -277,22 +381,19 @@ const onDragEnd = () => {
   showMessage('Block-Reihenfolge aktualisiert!');
 };
 
-// Watch für neue/gelöschte Blocks
+// Watch for new/deleted blocks
 watch(
   () => blocks.value,
   async (newBlocks, oldBlocks) => {
-    // Cleanup alte Editoren für gelöschte Blöcke
     if (oldBlocks) {
       const deletedBlocks = oldBlocks.filter(
         oldBlock => !newBlocks.find(newBlock => newBlock.id === oldBlock.id)
       );
-
       deletedBlocks.forEach(block => {
         cleanupEditor(block.id);
       });
     }
 
-    // Initialisiere neue Editoren
     for (const block of newBlocks) {
       if (!editors.value.has(block.id)) {
         await nextTick();
@@ -309,7 +410,6 @@ onMounted(async () => {
     await fetchPromptDetails();
     collaboration.initialize();
 
-    // Apply highlighting after editors are initialized
     watch(
       () => blocks.value.length,
       () => {
@@ -346,90 +446,203 @@ watch(users, (newUsers, oldUsers) => {
 </script>
 
 <style scoped>
-.editor-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+.prompt-workspace {
+  height: calc(100vh - 94px);
+  display: flex;
+  overflow: hidden;
+  background: rgb(var(--v-theme-background));
 }
 
-.users-list {
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
+.left-panel {
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
-.user-item {
+.resize-divider {
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
   display: flex;
   align-items: center;
-  margin: 5px 0;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  z-index: 10;
 }
 
-.user-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 8px;
+.resize-divider:hover,
+.resize-divider.resizing {
+  background: rgba(var(--v-theme-primary), 0.2);
+}
+
+.resize-handle {
+  width: 2px;
+  height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background: rgb(var(--v-theme-primary));
+  height: 60px;
+}
+
+.right-panel {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.loading-state {
+  padding: 24px;
+}
+
+.prompt-header {
+  flex-shrink: 0;
+  padding: 20px 24px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prompt-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+}
+
+.prompt-meta {
+  display: flex;
+  align-items: center;
+}
+
+.blocks-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.draggable-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .editor-block {
-  margin-bottom: 30px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
 }
 
-.editor-block h3 {
-  margin-bottom: 10px;
-  font-size: 1.2rem;
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.drag-handle {
+  cursor: grab;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.drag-handle:hover {
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.block-title {
+  font-size: 1rem;
   font-weight: 600;
-  color: #333;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+  cursor: pointer;
 }
 
-.debug-info {
-  margin-top: 20px;
-  padding: 10px;
-  background: #f5f5f5;
-  border-radius: 4px;
+.block-title:hover {
+  color: rgb(var(--v-theme-primary));
 }
 
-.debug-info pre {
-  white-space: pre-wrap;
-  word-wrap: break-word;
+.block-title-input {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border: 1px solid rgb(var(--v-theme-primary));
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  outline: none;
 }
 
-.editor {
-  min-height: 150px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
+.header-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.editor-block:hover .header-actions {
+  opacity: 1;
+}
+
+.editor-content {
+  min-height: 180px;
+  background: rgb(var(--v-theme-surface));
 }
 
 :deep(.ql-container) {
-  font-size: 16px;
+  font-size: 15px;
+  border: none !important;
 }
 
 :deep(.ql-editor) {
-  min-height: 100px;
-  padding: 15px;
+  min-height: 150px;
+  padding: 16px;
+  line-height: 1.6;
 }
 
-:deep(.ql-cursor) {
-  display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
+:deep(.ql-toolbar) {
+  border: none !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+:deep(.placeholder-highlight) {
+  background-color: #fff176;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #ffd600;
+  font-weight: 500;
 }
 
 :deep(.ql-cursor-flag) {
   display: inline-flex;
   align-items: center;
   position: absolute;
-  padding: 3px 5px;
-  border-radius: 3px;
-  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
   color: white;
   white-space: nowrap;
   transform: translate(-50%, -100%);
-  z-index: 1;
+  z-index: 100;
 }
 
 :deep(.ql-cursor-caret) {
@@ -438,316 +651,38 @@ watch(users, (newUsers, oldUsers) => {
   width: 2px;
 }
 
-:deep(.ql-cursor-selection) {
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.3;
-}
-.add-block-button {
-  margin-bottom: 20px;
-  padding: 8px 12px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+.empty-blocks {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  z-index: 999;
-}
-
-.dialog-box {
-  background: white;
-  padding: 24px;
-  border-radius: 8px;
-  min-width: 320px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* Platzhalter-Hervorhebung in Quill-Editor */
-:deep(.placeholder-highlight) {
-  background-color: #fff176; /* sanftes Gelb */
-  padding: 0 2px;
-  border-radius: 2px;
-  border: 1px solid #ffd600;
-  display: inline-block;
-  font-weight: 500;
-}
-
-.dialog-box h3 {
-  margin: 0 0 16px 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.dialog-box p {
-  margin: 0 0 20px 0;
-  color: #4b5563;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.block-input {
-  width: 100%;
-  margin: 10px 0;
-  padding: 8px;
-}
-
-.dialog-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-/* Button-Grundstil - kann bei Bedarf angepasst werden */
-.dialog-buttons button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 16px 4px 16px 4px;  /* Wie in der Sidebar */
-  cursor: pointer;
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Für "Abbrechen"-Button (neutral/grau) */
-.dialog-buttons .cancel-button {
-  background-color: #9e9e9e;  /* Gleiche Farbe wie back-button */
-  color: #fff;
-  transition: background-color 0.2s;
-}
-.dialog-buttons .cancel-button:hover {
-  background-color: #7e7e7e;
-}
-
-/* Für "Erstellen"/"Hinzufügen" (grün) */
-.dialog-buttons .success-button {
-  background-color: #4caf50;  /* Gleiche Farbe wie add-block-button */
-  color: #fff;
-  transition: background-color 0.2s;
-}
-.dialog-buttons .success-button:hover {
-  background-color: #45a049;
-}
-
-/* Für "Löschen" (rot) */
-.dialog-buttons .danger-button {
-  background-color: #e74c3c;
-  color: #fff;
-  transition: background-color 0.2s;
-}
-.dialog-buttons .danger-button:hover {
-  background-color: #c0392b;
-}
-
-
-.snackbar {
-  position: fixed;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #323232;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  z-index: 9999;
-  opacity: 0;
-  pointer-events: none;
   text-align: center;
-  animation: snackbar 3s ease-in-out forwards;
+  padding: 48px 24px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 12px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
 }
 
-@keyframes snackbar {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 20px);
-  }
-  15% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  85% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -20px);
-  }
-}
-
-@keyframes fadein {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.layout-container {
-  display: flex;
-  min-height: 100vh;
-}
-
-.main-content {
-  flex: 1;
-  margin-left: 250px; /* Entspricht der Sidebar-Breite */
-  padding: 20px;
-  max-width: calc(100% - 250px);
-}
-
-.prompt-title {
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #eee;
-}
-
-.draggable-container {
-  width: 100%;
-}
-
-.editor-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-/* Drag-Handle */
-.drag-handle {
-  cursor: move;
-  padding: 5px;
-  color: #666;
-  user-select: none;
-}
-
-.drag-handle:hover {
-  color: #333;
-}
-
-/* Card-Styling */
-.editor-block {
-  margin-bottom: 30px;
-  padding: 15px;
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.block-title-input {
-  font-size: 1.1rem;
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  flex: 1; /* So it takes up available horizontal space if you prefer */
-}
-
-.header-actions {
-  margin-left: auto; /* Buttons ganz rechts platzieren */
-  display: flex;
-  gap: 8px; /* Abstand zwischen den Buttons */
-}
-
-.edit-title-button {
-  padding: 4px;
-  color: grey;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  width: 24px;
-  height: 24px;
-}
-
-.edit-title-button:hover {
-  background: rgba(255, 255, 255, 1);
-  color: #6ca077;
-}
-
-.delete-button {
-  padding: 4px;
-  color: grey;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  width: 24px;
-  height: 24px;
-}
-
-.delete-button:hover {
-  background: rgba(255, 255, 255, 1);
-  color: #e74c3c;
-}
-/* Styles für Test Prompt Dialog */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.dialog-box.test-prompt-dialog {
-  background: white;
-  padding: 24px;
+.debug-info {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
   border-radius: 8px;
-  max-width: 80%;
-  max-height: 80%;
-  overflow: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-.response-stream {
-  background: #f5f5f5;
-  padding: 12px;
-  border-radius: 4px;
-  max-height: 300px;
-  overflow: auto;
+
+.debug-info h4 {
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.debug-info pre {
+  font-size: 0.8rem;
   white-space: pre-wrap;
-  margin-bottom: 12px;
-}
-.stream-indicator {
-  margin-top: 8px;
-  font-weight: bold;
+  word-wrap: break-word;
+  margin: 0;
 }
 
-/* QoL: Toggle-Button für komprimiertes Prompt */
-.toggle-button {
-  background: none;
-  border: none;
-  color: #3498db;
-  cursor: pointer;
-  margin-bottom: 12px;
-  padding: 0;
+.w-100 {
+  width: 100%;
 }
-.toggle-button:hover {
-  text-decoration: underline;
-}
-
 </style>

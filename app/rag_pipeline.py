@@ -2,6 +2,7 @@
 import os
 import logging
 import hashlib
+import threading
 import json
 from pathlib import Path
 from langchain_core.prompts import ChatPromptTemplate
@@ -30,6 +31,12 @@ class RAGPipeline:
     LITELLM_DIMENSIONS = 1024
     FALLBACK_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
     FALLBACK_DIMENSIONS = 384
+
+    _shared_embeddings = None
+    _shared_model_name = None
+    _shared_model_type = None
+    _shared_dimensions = None
+    _embeddings_lock = threading.Lock()
 
     def __init__(self, docs_dir="docs", collection_name="llars_docs", storage_dir="/app/storage"):
         self.docs_dir = docs_dir
@@ -60,6 +67,25 @@ class RAGPipeline:
         Initialize embeddings with LiteLLM proxy as primary and HuggingFace as fallback.
         Returns: (embeddings, model_name, model_type, dimensions)
         """
+        cached = self.__class__._shared_embeddings
+        if cached is not None:
+            return (
+                cached,
+                self.__class__._shared_model_name,
+                self.__class__._shared_model_type,
+                self.__class__._shared_dimensions
+            )
+
+        with self.__class__._embeddings_lock:
+            cached = self.__class__._shared_embeddings
+            if cached is not None:
+                return (
+                    cached,
+                    self.__class__._shared_model_name,
+                    self.__class__._shared_model_type,
+                    self.__class__._shared_dimensions
+                )
+
         litellm_api_key = os.environ.get("LITELLM_API_KEY")
         litellm_base_url = os.environ.get("LITELLM_BASE_URL")
 
@@ -76,6 +102,10 @@ class RAGPipeline:
                 test_result = embeddings.embed_query("test")
                 if test_result and len(test_result) > 0:
                     logging.info(f"LiteLLM embedding model initialized successfully: {self.LITELLM_MODEL} ({len(test_result)} dimensions)")
+                    self.__class__._shared_embeddings = embeddings
+                    self.__class__._shared_model_name = self.LITELLM_MODEL
+                    self.__class__._shared_model_type = "litellm"
+                    self.__class__._shared_dimensions = len(test_result)
                     return embeddings, self.LITELLM_MODEL, "litellm", len(test_result)
             except Exception as e:
                 logging.warning(f"Failed to initialize LiteLLM embedding model: {e}")
@@ -92,6 +122,10 @@ class RAGPipeline:
             cache_folder=self.model_dir
         )
         logging.info(f"HuggingFace embedding model initialized: {self.FALLBACK_MODEL} ({self.FALLBACK_DIMENSIONS} dimensions)")
+        self.__class__._shared_embeddings = embeddings
+        self.__class__._shared_model_name = self.FALLBACK_MODEL
+        self.__class__._shared_model_type = "huggingface"
+        self.__class__._shared_dimensions = self.FALLBACK_DIMENSIONS
         return embeddings, self.FALLBACK_MODEL, "huggingface", self.FALLBACK_DIMENSIONS
 
     def get_embedding_info(self):

@@ -52,12 +52,8 @@ export default defineConfig({
   },
   preview: {
     port: 5173,
-    allowedHosts: [
-      'llars.e-beratungsinstitut.de',
-      'llars.informatik.fh-nuernberg.de',
-      'frontend-vue-service',
-      'host.docker.internal',
-      'localhost'
-    ],
+    // Allow all hosts - the frontend runs in an internal Docker network
+    // behind nginx reverse proxy which handles host validation
+    allowedHosts: true,
   },
 })

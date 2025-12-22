@@ -29,6 +29,7 @@ import LEvaluationLayout from '@/components/common/LEvaluationLayout.vue'
 import LEvaluationStatus from '@/components/common/LEvaluationStatus.vue'
 import LMessage from '@/components/common/LMessage.vue'
 import LMessageList from '@/components/common/LMessageList.vue'
+import LUserSearch from '@/components/common/LUserSearch.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
@@ -59,6 +60,7 @@ app.component('LEvaluationLayout', LEvaluationLayout)
 app.component('LEvaluationStatus', LEvaluationStatus)
 app.component('LMessage', LMessage)
 app.component('LMessageList', LMessageList)
+app.component('LUserSearch', LUserSearch)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

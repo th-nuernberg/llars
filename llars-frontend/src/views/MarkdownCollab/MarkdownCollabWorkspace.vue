@@ -26,6 +26,7 @@
           :selected-id="selectedNodeId"
           :loading="isLoading('tree')"
           :can-edit="hasPermission('feature:markdown_collab:edit')"
+          :recently-added-ids="recentlyAddedNodeIds"
           @select="handleSelectNode"
           @create="handleCreateNode"
           @rename="handleRenameNode"
@@ -220,48 +221,14 @@
 
           <!-- Search Section -->
           <div class="section-label mt-4">Nutzer einladen</div>
-          <v-autocomplete
+          <LUserSearch
+            ref="userSearchRef"
             v-model="selectedUser"
-            v-model:search="inviteSearch"
-            :items="userSuggestions"
-            :loading="userSearchLoading"
-            item-title="username"
-            item-value="username"
-            return-object
-            placeholder="Nutzernamen eingeben..."
-            variant="outlined"
-            density="compact"
-            hide-details
-            clearable
-            no-filter
-          >
-            <template #item="{ props, item }">
-              <v-list-item v-bind="props">
-                <template #prepend>
-                  <img class="user-avatar small" :src="getAvatarUrl(item.raw)" alt="" />
-                </template>
-                <v-list-item-title>{{ formatDisplayName(item.raw.username) }}</v-list-item-title>
-                <v-list-item-subtitle>@{{ item.raw.username }}</v-list-item-subtitle>
-              </v-list-item>
-            </template>
-            <template #selection="{ item }">
-              <div class="d-flex align-center ga-2">
-                <img class="user-avatar x-small" :src="getAvatarUrl(item.raw)" alt="" />
-                <span>{{ formatDisplayName(item.raw.username) }}</span>
-              </div>
-            </template>
-          </v-autocomplete>
-          <LBtn
-            variant="primary"
-            size="small"
-            :loading="inviting"
-            :disabled="!selectedUser || inviting"
-            class="mt-2"
-            @click="inviteMember"
-          >
-            <v-icon size="16" class="mr-1">mdi-plus</v-icon>
-            Hinzufügen
-          </LBtn>
+            :exclude-usernames="excludedUsernames"
+            :show-add-button="true"
+            add-button-text="Hinzufügen"
+            @add="inviteMember"
+          />
 
           <!-- Members Section -->
           <div class="section-label mt-4">
@@ -308,11 +275,13 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
+import { useWorkspaceSocket } from '@/components/MarkdownCollab/composables/useWorkspaceSocket'
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import MarkdownEditorPane from '@/components/MarkdownCollab/MarkdownEditorPane.vue'
 import MarkdownPreviewPane from '@/components/MarkdownCollab/MarkdownPreviewPane.vue'
 import MarkdownGitPanel from '@/components/MarkdownCollab/MarkdownGitPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
 
 const route = useRoute()
 const router = useRouter()
@@ -349,12 +318,9 @@ const shareDialog = ref(false)
 const members = ref([])
 const membersLoading = ref(false)
 const shareError = ref('')
-const inviting = ref(false)
 const removingUsername = ref('')
 const selectedUser = ref(null)
-const inviteSearch = ref('')
-const userSuggestions = ref([])
-const userSearchLoading = ref(false)
+const userSearchRef = ref(null)
 const ownerInfo = ref({ username: '', avatar_url: null, avatar_seed: null, collab_color: null })
 
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
@@ -379,6 +345,54 @@ watch(treeCollapsed, (val) => {
 const workspaceId = computed(() => Number(route.params.workspaceId))
 const routeDocId = computed(() => (route.params.documentId ? Number(route.params.documentId) : null))
 
+// Workspace socket for real-time tree updates
+const {
+  isConnected: wsConnected,
+  recentlyAddedNodeIds,
+  connect: wsConnect,
+  emitNodeCreated,
+  emitNodeRenamed,
+  emitNodeDeleted,
+  emitNodeMoved
+} = useWorkspaceSocket(workspaceId, {
+  onNodeCreated: (data) => {
+    // Add the new node to the tree
+    const newNode = { ...data.node, type: data.node.type }
+    nodesFlat.value = [...nodesFlat.value, newNode]
+  },
+  onNodeRenamed: (data) => {
+    // Update the node title in the tree
+    const node = nodesFlat.value.find(n => n.id === data.nodeId)
+    if (node) {
+      node.title = data.newTitle
+      nodesFlat.value = [...nodesFlat.value]
+    }
+  },
+  onNodeDeleted: (data) => {
+    // Remove the node from the tree (and children recursively)
+    const removeRecursive = (nodeId) => {
+      const children = nodesFlat.value.filter(n => n.parent_id === nodeId)
+      children.forEach(c => removeRecursive(c.id))
+      nodesFlat.value = nodesFlat.value.filter(n => n.id !== nodeId)
+    }
+    removeRecursive(data.nodeId)
+
+    // If we're viewing the deleted document, navigate away
+    if (routeDocId.value === data.nodeId) {
+      router.push(`/MarkdownCollab/workspace/${workspaceId.value}`)
+    }
+  },
+  onNodeMoved: (data) => {
+    // Update node position in tree
+    const node = nodesFlat.value.find(n => n.id === data.nodeId)
+    if (node) {
+      node.parent_id = data.newParentId
+      node.order_index = data.newOrderIndex
+      nodesFlat.value = [...nodesFlat.value]
+    }
+  }
+})
+
 const selectedNodeId = computed(() => routeDocId.value)
 const selectedNode = computed(() => {
   if (!selectedNodeId.value) return null
@@ -389,6 +403,14 @@ const canShareWorkspace = computed(() => {
   if (!workspace.value) return false
   if (!hasPermission('feature:markdown_collab:share')) return false
   return isAdmin.value || (currentUsername.value && currentUsername.value === workspace.value.owner_username)
+})
+
+// Usernames to exclude from search (owner + existing members)
+const excludedUsernames = computed(() => {
+  const excluded = []
+  if (workspace.value?.owner_username) excluded.push(workspace.value.owner_username)
+  members.value.forEach(m => excluded.push(m.username))
+  return excluded
 })
 
 // Tree panel resize
@@ -451,6 +473,9 @@ function stopPanesResize() {
 onMounted(async () => {
   await fetchPermissions()
   await loadTree()
+
+  // Connect to workspace socket for real-time tree updates
+  wsConnect()
 
   // Auto-select first file if none selected
   if (!routeDocId.value) {
@@ -518,59 +543,17 @@ async function loadMembers() {
   }
 }
 
-// Helper functions for user display
-function formatDisplayName(username) {
-  if (!username) return ''
-  // Convert username to display name with proper capitalization
-  // e.g., "john_doe" -> "John Doe", "john.doe" -> "John Doe"
-  return username
-    .replace(/[._-]/g, ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
-}
-
-function getAvatarUrl(user) {
-  if (!user) return getDiceBearUrl('?')
-  // If user has custom avatar, use it
-  if (user.avatar_url) {
-    return API_BASE + user.avatar_url
-  }
-  // Otherwise use DiceBear with avatar_seed or username
-  return getDiceBearUrl(user.avatar_seed || user.username || '?')
-}
-
-function getDiceBearUrl(seed) {
-  // Use DiceBear's "initials" style for clean look
-  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b0ca97,88c4c8,d1bc8a,98d4bb,a8c5e2&backgroundType=solid&fontSize=42`
-}
-
-function formatRelativeDate(isoDate) {
-  if (!isoDate) return ''
-  const date = new Date(isoDate)
-  const now = new Date()
-  const diffMs = now - date
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  if (diffDays === 0) return 'Heute'
-  if (diffDays === 1) return 'Gestern'
-  if (diffDays < 7) return `Vor ${diffDays} Tagen`
-  if (diffDays < 30) return `Vor ${Math.floor(diffDays / 7)} Wo.`
-  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
-}
+// Helper functions for user display imported from @/utils/userUtils
 
 function openShareDialog() {
   shareDialog.value = true
   selectedUser.value = null
-  inviteSearch.value = ''
-  userSuggestions.value = []
   loadMembers()
 }
 
-async function inviteMember() {
-  const username = selectedUser.value?.username
+async function inviteMember(user) {
+  const username = user?.username || selectedUser.value?.username
   if (!username) return
-  inviting.value = true
   shareError.value = ''
   try {
     await axios.post(
@@ -579,12 +562,11 @@ async function inviteMember() {
       { headers: authHeaders() }
     )
     selectedUser.value = null
-    inviteSearch.value = ''
+    userSearchRef.value?.reset?.()
     await loadMembers()
   } catch (e) {
     shareError.value = e?.response?.data?.error || e?.message || 'Einladung fehlgeschlagen'
-  } finally {
-    inviting.value = false
+    userSearchRef.value?.setAdding?.(false)
   }
 }
 
@@ -603,32 +585,6 @@ async function removeMember(username) {
     removingUsername.value = ''
   }
 }
-
-let suggestionTimer = null
-watch(inviteSearch, (q) => {
-  if (suggestionTimer) clearTimeout(suggestionTimer)
-  const query = String(q || '').trim()
-  if (query.length < 2) {
-    userSuggestions.value = []
-    userSearchLoading.value = false
-    return
-  }
-  suggestionTimer = setTimeout(async () => {
-    userSearchLoading.value = true
-    try {
-      const res = await axios.get(`${API_BASE}/api/users/search`, {
-        headers: authHeaders(),
-        params: { q: query, limit: 10 }
-      })
-      // Return full user objects with avatar info
-      userSuggestions.value = (res.data.users || []).filter(u => u && u.username)
-    } catch (e) {
-      userSuggestions.value = []
-    } finally {
-      userSearchLoading.value = false
-    }
-  }, 250)
-})
 
 function buildTree(flat) {
   const byId = new Map(flat.map(n => [n.id, { ...n, children: [] }]))
@@ -677,49 +633,104 @@ function handleSelectNode(nodeId) {
 
 async function handleCreateNode({ parentId, type, title }) {
   if (!hasPermission('feature:markdown_collab:edit')) return
-  await axios.post(
-    `${API_BASE}/api/markdown-collab/documents`,
-    {
-      workspace_id: workspaceId.value,
-      parent_id: parentId ?? null,
-      type,
-      title
-    },
-    { headers: authHeaders() }
-  )
-  await loadTree()
+  try {
+    const res = await axios.post(
+      `${API_BASE}/api/markdown-collab/documents`,
+      {
+        workspace_id: workspaceId.value,
+        parent_id: parentId ?? null,
+        type,
+        title
+      },
+      { headers: authHeaders() }
+    )
+
+    // Add node to local tree immediately
+    const newNode = res.data.node
+    if (newNode) {
+      nodesFlat.value = [...nodesFlat.value, { ...newNode, type: newNode.type }]
+      // Broadcast to other users
+      emitNodeCreated(newNode)
+    }
+  } catch (e) {
+    console.error('Failed to create node:', e)
+    await loadTree() // Fallback: reload tree
+  }
 }
 
 async function handleRenameNode({ id, parentId, title }) {
   if (!hasPermission('feature:markdown_collab:edit')) return
-  await axios.patch(
-    `${API_BASE}/api/markdown-collab/documents/${id}`,
-    { parent_id: parentId ?? null, title },
-    { headers: authHeaders() }
-  )
-  await loadTree()
+  try {
+    await axios.patch(
+      `${API_BASE}/api/markdown-collab/documents/${id}`,
+      { parent_id: parentId ?? null, title },
+      { headers: authHeaders() }
+    )
+
+    // Update local tree immediately
+    const node = nodesFlat.value.find(n => n.id === id)
+    if (node) {
+      node.title = title
+      nodesFlat.value = [...nodesFlat.value]
+      // Broadcast to other users
+      emitNodeRenamed(id, title)
+    }
+  } catch (e) {
+    console.error('Failed to rename node:', e)
+    await loadTree() // Fallback: reload tree
+  }
 }
 
 async function handleDeleteNode({ id }) {
   if (!hasPermission('feature:markdown_collab:edit')) return
-  await axios.delete(`${API_BASE}/api/markdown-collab/documents/${id}`, {
-    headers: authHeaders()
-  })
-  const onDocRoute = !!routeDocId.value && routeDocId.value === id
-  if (onDocRoute) {
-    router.push(`/MarkdownCollab/workspace/${workspaceId.value}`)
+  try {
+    await axios.delete(`${API_BASE}/api/markdown-collab/documents/${id}`, {
+      headers: authHeaders()
+    })
+
+    // Remove from local tree immediately (including children)
+    const removeRecursive = (nodeId) => {
+      const children = nodesFlat.value.filter(n => n.parent_id === nodeId)
+      children.forEach(c => removeRecursive(c.id))
+      nodesFlat.value = nodesFlat.value.filter(n => n.id !== nodeId)
+    }
+    removeRecursive(id)
+
+    // Broadcast to other users
+    emitNodeDeleted(id)
+
+    // Navigate away if viewing deleted document
+    if (routeDocId.value === id) {
+      router.push(`/MarkdownCollab/workspace/${workspaceId.value}`)
+    }
+  } catch (e) {
+    console.error('Failed to delete node:', e)
+    await loadTree() // Fallback: reload tree
   }
-  await loadTree()
 }
 
 async function handleMoveNode({ id, parentId, orderIndex }) {
   if (!hasPermission('feature:markdown_collab:edit')) return
-  await axios.patch(
-    `${API_BASE}/api/markdown-collab/documents/${id}`,
-    { parent_id: parentId ?? null, order_index: orderIndex },
-    { headers: authHeaders() }
-  )
-  await loadTree()
+  try {
+    await axios.patch(
+      `${API_BASE}/api/markdown-collab/documents/${id}`,
+      { parent_id: parentId ?? null, order_index: orderIndex },
+      { headers: authHeaders() }
+    )
+
+    // Update local tree immediately
+    const node = nodesFlat.value.find(n => n.id === id)
+    if (node) {
+      node.parent_id = parentId ?? null
+      node.order_index = orderIndex
+      nodesFlat.value = [...nodesFlat.value]
+      // Broadcast to other users
+      emitNodeMoved(id, parentId ?? null, orderIndex)
+    }
+  } catch (e) {
+    console.error('Failed to move node:', e)
+    await loadTree() // Fallback: reload tree
+  }
 }
 
 async function refreshCommits() {

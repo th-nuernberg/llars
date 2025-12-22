@@ -64,6 +64,7 @@
                 :expanded-ids="expandedIds"
                 :can-edit="canEdit"
                 :drag-enabled="dragEnabled"
+                :recently-added-ids="recentlyAddedIds"
                 @select="$emit('select', $event)"
                 @toggle="toggleExpand"
                 @create="(p) => openCreateDialog(p.type, p.parentId)"
@@ -84,6 +85,7 @@
             :expanded-ids="expandedIds"
             :can-edit="canEdit"
             :drag-enabled="false"
+            :recently-added-ids="recentlyAddedIds"
             @select="$emit('select', $event)"
             @toggle="toggleExpand"
             @create="(p) => openCreateDialog(p.type, p.parentId)"
@@ -196,7 +198,8 @@ const props = defineProps({
   nodes: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
   loading: { type: Boolean, default: false },
-  canEdit: { type: Boolean, default: false }
+  canEdit: { type: Boolean, default: false },
+  recentlyAddedIds: { type: Set, default: () => new Set() }
 })
 
 const emit = defineEmits(['select', 'create', 'rename', 'remove', 'move'])

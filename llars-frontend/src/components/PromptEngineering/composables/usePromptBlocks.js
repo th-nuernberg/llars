@@ -19,6 +19,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
       })
 
       // Update positions in ydoc
+      // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
       if (ydoc.value) {
         ydoc.value.transact(() => {
           const blocksMap = ydoc.value.getMap('blocks')
@@ -29,15 +30,6 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
             }
           })
         })
-
-        // Sync changes with other clients
-        const update = Y.encodeStateAsUpdate(ydoc.value)
-        if (socket.value?.connected) {
-          socket.value.emit('sync_update', {
-            room: roomId.value,
-            update: Array.from(update)
-          })
-        }
       }
     }
   })
@@ -69,6 +61,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
 
     let success = false
 
+    // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
     ydoc.value.transact(() => {
       const blocksMap = ydoc.value.getMap('blocks')
 
@@ -98,15 +91,6 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
       // In blocksMap einfügen
       blocksMap.set(trimmedName, newBlockMap)
 
-      // Explizit ein Update an den Server senden
-      const update = Y.encodeStateAsUpdate(ydoc.value)
-      if (socket.value?.connected) {
-        socket.value.emit('sync_update', {
-          room: roomId.value,
-          update: Array.from(update)
-        })
-      }
-
       success = true
     })
 
@@ -123,19 +107,11 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
 
     const blockId = block.id
 
+    // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
     ydoc.value.transact(() => {
       const blocksMap = ydoc.value.getMap('blocks')
       if (blocksMap.has(blockId)) {
         blocksMap.delete(blockId)
-
-        // Synchronisiere Update
-        const update = Y.encodeStateAsUpdate(ydoc.value)
-        if (socket.value?.connected) {
-          socket.value.emit('sync_update', {
-            room: roomId.value,
-            update: Array.from(update)
-          })
-        }
       }
     })
 
@@ -159,20 +135,12 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
     }
 
     // Update the Y.Doc
+    // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
     ydoc.value.transact(() => {
       const blocksMap = ydoc.value.getMap('blocks')
       const blockMap = blocksMap.get(block.id)
       if (blockMap) {
         blockMap.set('title', trimmedTitle)
-
-        // Broadcast the update to other clients
-        const update = Y.encodeStateAsUpdate(ydoc.value)
-        if (socket.value?.connected) {
-          socket.value.emit('sync_update', {
-            room: roomId.value,
-            update: Array.from(update)
-          })
-        }
       }
     })
 
@@ -181,6 +149,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
   }
 
   // JSON-Datei verarbeiten (Blocks hinzufügen)
+  // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
   const handleJsonUpload = (jsonData, override = false) => {
     if (!ydoc.value) return false
 
@@ -221,14 +190,6 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
 
         blocksMap.set(blockName, newBlockMap)
       })
-
-      const update = Y.encodeStateAsUpdate(ydoc.value)
-      if (socket.value?.connected) {
-        socket.value.emit('sync_update', {
-          room: roomId.value,
-          update: Array.from(update)
-        })
-      }
     })
 
     showMessage('JSON-Datei erfolgreich verarbeitet!')

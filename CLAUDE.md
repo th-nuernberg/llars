@@ -82,7 +82,7 @@ Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 
 
 - Frontend: `/Anonymize` (Kachel auf Home), Permission: `feature:anonymize:view`
 - Backend: `GET /api/anonymize/health`, `POST /api/anonymize/pseudonymize`, `POST /api/anonymize/pseudonymize-file`
-- Ressourcen: SQLite/Reco liegen in `app/`, das große Flair-NER Modell wird via Docker Compose aus `docs/docs/projekte/anonymize/models/ner-german-large` gemountet
+- Ressourcen: SQLite-DB liegt in `docs/docs/projekte/anonymize/database` (via Docker Compose nach `/app/data/anonymize` gemountet), Reco in `app/models/anonymize/recommender_system`, großes Flair-NER Modell wird aus `docs/docs/projekte/anonymize/models/ner-german-large` gemountet
 
 ---
 

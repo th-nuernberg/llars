@@ -127,6 +127,20 @@ def _read_text_file(file_path: str) -> str:
 
 
 def _extract_pdf_pages(file_path: str) -> List[Tuple[int, str]]:
+    pymupdf_pages = _extract_pdf_pages_pymupdf(file_path)
+
+    if not pymupdf_pages:
+        return _extract_pdf_pages_pypdf(file_path)
+
+    if _is_sparse_pdf_text(pymupdf_pages):
+        pypdf_pages = _extract_pdf_pages_pypdf(file_path)
+        if _pages_text_length(pypdf_pages) > _pages_text_length(pymupdf_pages):
+            return pypdf_pages
+
+    return pymupdf_pages
+
+
+def _extract_pdf_pages_pymupdf(file_path: str) -> List[Tuple[int, str]]:
     try:
         import fitz  # PyMuPDF
     except Exception as e:
@@ -138,13 +152,76 @@ def _extract_pdf_pages(file_path: str) -> List[Tuple[int, str]]:
         doc = fitz.open(file_path)
         for idx in range(doc.page_count):
             page = doc.load_page(idx)
-            pages.append((idx + 1, page.get_text("text") or ""))
+            text = ""
+            try:
+                text = page.get_text("text", sort=True) or ""
+            except Exception:
+                text = page.get_text("text") or ""
+
+            if not text.strip():
+                try:
+                    blocks = page.get_text("blocks") or []
+                    blocks_sorted = sorted(blocks, key=lambda b: (b[1], b[0]))
+                    text = "\n".join(
+                        block[4].strip()
+                        for block in blocks_sorted
+                        if len(block) > 4 and block[4] and block[4].strip()
+                    )
+                except Exception:
+                    text = text or ""
+
+            pages.append((idx + 1, _normalize_pdf_text(text)))
         doc.close()
     except Exception as e:
         logger.error(f"[LumberChunker] Failed to extract PDF text {file_path}: {e}")
         return []
 
     return pages
+
+
+def _extract_pdf_pages_pypdf(file_path: str) -> List[Tuple[int, str]]:
+    try:
+        from pypdf import PdfReader
+    except Exception as e:
+        logger.error(f"[LumberChunker] pypdf not available for PDF extraction: {e}")
+        return []
+
+    pages: List[Tuple[int, str]] = []
+    try:
+        reader = PdfReader(file_path)
+        for idx, page in enumerate(reader.pages):
+            text = ""
+            try:
+                text = page.extract_text(extraction_mode="layout") or ""
+            except TypeError:
+                text = page.extract_text() or ""
+            except Exception:
+                text = page.extract_text() or ""
+            pages.append((idx + 1, _normalize_pdf_text(text)))
+    except Exception as e:
+        logger.error(f"[LumberChunker] Failed to extract PDF text via pypdf {file_path}: {e}")
+        return []
+
+    return pages
+
+
+def _normalize_pdf_text(text: str) -> str:
+    if not text:
+        return ""
+    return text.replace("\x00", " ").strip()
+
+
+def _pages_text_length(pages: Sequence[Tuple[int, str]]) -> int:
+    return sum(len(text.strip()) for _, text in pages if text)
+
+
+def _is_sparse_pdf_text(pages: Sequence[Tuple[int, str]]) -> bool:
+    if not pages:
+        return True
+    total_pages = len(pages)
+    empty_pages = sum(1 for _, text in pages if not text or not text.strip())
+    avg_length = _pages_text_length(pages) / max(total_pages, 1)
+    return empty_pages / max(total_pages, 1) > 0.4 or avg_length < 80
 
 
 def _split_text_recursive(
@@ -211,4 +288,3 @@ def _attach_positions(
         cursor = idx + advance
 
     return chunks
-

@@ -25,6 +25,7 @@ export function useRAGCollections() {
   const selectedCollection = ref(null);
   const collectionDocuments = ref([]);
   const loadingCollectionDocs = ref(false);
+  const reindexingCollection = ref(false);
 
   // Table headers
   const collectionHeaders = [
@@ -132,6 +133,24 @@ export function useRAGCollections() {
     loadingCollectionDocs.value = false;
   };
 
+  const reindexCollection = async (options = {}) => {
+    if (!selectedCollection.value) return;
+
+    reindexingCollection.value = true;
+    try {
+      await axios.post(
+        `/api/rag/collections/${selectedCollection.value.id}/reindex`,
+        options
+      );
+      await fetchCollectionDocuments();
+    } catch (error) {
+      console.error('Error reindexing collection:', error);
+      const errorMsg = error.response?.data?.error || 'Reindexierung fehlgeschlagen';
+      alert(errorMsg);
+    }
+    reindexingCollection.value = false;
+  };
+
   return {
     // State
     collections,
@@ -145,6 +164,7 @@ export function useRAGCollections() {
     selectedCollection,
     collectionDocuments,
     loadingCollectionDocs,
+    reindexingCollection,
     collectionHeaders,
     collectionDocHeaders,
 
@@ -154,6 +174,7 @@ export function useRAGCollections() {
     confirmDeleteCollection,
     deleteCollection,
     openCollectionDetail,
-    fetchCollectionDocuments
+    fetchCollectionDocuments,
+    reindexCollection
   };
 }

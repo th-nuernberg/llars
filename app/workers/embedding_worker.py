@@ -129,10 +129,70 @@ class EmbeddingWorker:
 
             # Initialize with default collection - we'll use custom collection per document
             self._pipeline = RAGPipeline()
+            self._embeddings_cache = {}  # Cache for per-model embeddings
             logger.info(f"[EmbeddingWorker] Pipeline initialized with model: {self._pipeline.model_name}")
         except Exception as e:
             logger.error(f"[EmbeddingWorker] Failed to initialize pipeline: {e}")
             raise
+
+    def _get_embeddings_for_model(self, model_id: str):
+        """
+        Get embeddings for a specific model with caching.
+        Tries LiteLLM (remote) first, falls back to local HuggingFace.
+        """
+        # Check cache first
+        if model_id in self._embeddings_cache:
+            return self._embeddings_cache[model_id]
+
+        # If it's the same model as pipeline, use pipeline's embeddings
+        if model_id == self._pipeline.model_name:
+            self._embeddings_cache[model_id] = self._pipeline.embeddings
+            return self._pipeline.embeddings
+
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_openai import OpenAIEmbeddings
+
+        # Check if it's a known local-only model (sentence-transformers)
+        is_local_model = model_id.startswith("sentence-transformers/")
+
+        # Try LiteLLM (remote) first for non-local models
+        if not is_local_model:
+            litellm_api_key = os.environ.get("LITELLM_API_KEY")
+            litellm_base_url = os.environ.get("LITELLM_BASE_URL")
+            if litellm_api_key and litellm_base_url:
+                try:
+                    logger.info(f"[EmbeddingWorker] Trying LiteLLM for: {model_id}")
+                    embeddings = OpenAIEmbeddings(
+                        model=model_id,
+                        openai_api_key=litellm_api_key,
+                        openai_api_base=litellm_base_url
+                    )
+                    # Test the connection
+                    embeddings.embed_query("test")
+                    self._embeddings_cache[model_id] = embeddings
+                    logger.info(f"[EmbeddingWorker] Using LiteLLM embeddings for: {model_id}")
+                    return embeddings
+                except Exception as e:
+                    logger.warning(f"[EmbeddingWorker] LiteLLM not available for {model_id}: {e}, falling back to local")
+
+        # Fallback to local HuggingFace
+        try:
+            logger.info(f"[EmbeddingWorker] Loading local HuggingFace embeddings for: {model_id}")
+            embeddings = HuggingFaceEmbeddings(
+                model_name=model_id,
+                model_kwargs={"device": "cpu"},
+                encode_kwargs={"normalize_embeddings": True},
+                cache_folder=self._pipeline.model_dir
+            )
+            self._embeddings_cache[model_id] = embeddings
+            logger.info(f"[EmbeddingWorker] Loaded local HuggingFace embeddings for: {model_id}")
+            return embeddings
+        except Exception as e:
+            logger.error(f"[EmbeddingWorker] Failed to load local embeddings for {model_id}: {e}")
+
+        # Ultimate fallback to pipeline's embeddings
+        logger.warning(f"[EmbeddingWorker] Using pipeline's embeddings as fallback for {model_id}")
+        return self._pipeline.embeddings
 
     def _process_batch(self) -> int:
         """
@@ -320,15 +380,23 @@ class EmbeddingWorker:
         # Use first collection for ChromaDB naming (embeddings are shared)
         from services.rag.collection_embedding_service import sanitize_chroma_collection_name, sanitize_chroma_metadata
         primary_collection = linked_collections[0]
-        collection_name = sanitize_chroma_collection_name(primary_collection.name, self._pipeline.model_name)
 
-        # Ensure stored chroma_collection_name matches actual Chroma collection
+        # Use the collection's embedding_model if set, otherwise fallback to pipeline's model
+        target_model = primary_collection.embedding_model or self._pipeline.model_name
+        embeddings = self._get_embeddings_for_model(target_model)
+
+        collection_name = sanitize_chroma_collection_name(primary_collection.name, target_model)
+
+        # Ensure stored chroma_collection_name and embedding_model match
         for coll in linked_collections:
-            if coll and coll.chroma_collection_name != collection_name:
-                coll.chroma_collection_name = collection_name
+            if coll:
+                if coll.chroma_collection_name != collection_name:
+                    coll.chroma_collection_name = collection_name
+                if coll.embedding_model != target_model:
+                    coll.embedding_model = target_model
 
-        # Get or create Chroma collection
-        vectorstore_dir = os.path.join(self._pipeline.storage_dir, "vectorstore", self._pipeline.model_name.replace('/', '_'))
+        # Get or create Chroma collection using target model's directory
+        vectorstore_dir = os.path.join(self._pipeline.storage_dir, "vectorstore", target_model.replace('/', '_'))
         os.makedirs(vectorstore_dir, exist_ok=True)
 
         # Clean up existing chunks/vectors for retries (prevents unique constraint errors and stale vectors).
@@ -341,7 +409,7 @@ class EmbeddingWorker:
                     vectorstore = Chroma(
                         collection_name=collection_name,
                         persist_directory=vectorstore_dir,
-                        embedding_function=self._pipeline.embeddings,
+                        embedding_function=embeddings,
                     )
                     if existing_vector_ids:
                         try:
@@ -383,7 +451,7 @@ class EmbeddingWorker:
                     page_number=chunk.page_number,
                     start_char=chunk.start_char,
                     end_char=chunk.end_char,
-                    embedding_model=self._pipeline.model_name,
+                    embedding_model=target_model,
                     embedding_status='completed',
                     vector_id=chunk_id
                 )
@@ -410,7 +478,7 @@ class EmbeddingWorker:
             vectorstore = Chroma(
                 collection_name=collection_name,
                 persist_directory=vectorstore_dir,
-                embedding_function=self._pipeline.embeddings
+                embedding_function=embeddings
             )
 
             # Add texts with IDs - store all linked collection IDs in metadata

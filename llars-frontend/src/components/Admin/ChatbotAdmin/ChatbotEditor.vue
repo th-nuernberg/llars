@@ -2,6 +2,7 @@
   <v-dialog
     :model-value="modelValue"
     max-width="1000"
+    content-class="chatbot-editor-dialog"
     persistent
     @update:model-value="$emit('update:modelValue', $event)"
   >
@@ -509,7 +510,17 @@
 
                 <!-- Agent Mode Selection Cards -->
                 <v-col cols="12">
-                  <div class="text-subtitle-2 mb-2">Agent-Modus</div>
+                  <div class="d-flex align-center mb-2">
+                    <div class="text-subtitle-2">Agent-Modus</div>
+                    <LInfoTooltip title="Agent-Modi" :max-width="420" class="ml-2">
+                      <ul>
+                        <li>Standard: direkte Antwort ohne Agent-Zyklen (schnell, klassisches RAG).</li>
+                        <li>ACT: ACTION/OBSERVATION ohne explizite Gedanken (schnell, tool-basiert).</li>
+                        <li>ReAct: THOUGHT - ACTION - OBSERVATION (nachvollziehbarer Reasoning-Flow).</li>
+                        <li>ReflAct: GOAL - REFLECTION - THOUGHT - ACTION (tiefer, mehr Iterationen).</li>
+                      </ul>
+                    </LInfoTooltip>
+                  </div>
                   <div class="agent-mode-grid">
                     <v-card
                       v-for="mode in agentModes"
@@ -543,7 +554,15 @@
 
                 <!-- Task Type Selection (for non-standard modes) -->
                 <v-col v-if="formData.prompt_settings.agent_mode !== 'standard'" cols="12">
-                  <div class="text-subtitle-2 mb-2">Task-Typ</div>
+                  <div class="d-flex align-center mb-2">
+                    <div class="text-subtitle-2">Task-Typ</div>
+                    <LInfoTooltip title="Task-Typen" :max-width="420" class="ml-2">
+                      <ul>
+                        <li>Look Up: einfache Fakten-Suche mit wenigen Tool-Aufrufen.</li>
+                        <li>Multi-hop: mehrschrittige Fragen, mehr Iterationen und Tokens.</li>
+                      </ul>
+                    </LInfoTooltip>
+                  </div>
                   <div class="task-type-grid">
                     <v-card
                       v-for="task in taskTypes"
@@ -1227,8 +1246,8 @@ watch(() => props.modelValue, (isOpen) => {
 .chatbot-editor-card {
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
-  height: 90vh;
+  max-height: 100%;
+  height: 100%;
 }
 
 /* Body scrolls - uses flex to fill available space */
@@ -1358,9 +1377,13 @@ watch(() => props.modelValue, (isOpen) => {
 /* Responsive - smaller screens get fullscreen dialog */
 @media (max-width: 960px) {
   .chatbot-editor-card {
-    max-height: 100vh;
-    height: 100vh;
     border-radius: 0;
   }
+}
+
+.chatbot-editor-dialog {
+  height: 100vh;
+  max-height: 100vh;
+  margin: 0;
 }
 </style>

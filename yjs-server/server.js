@@ -16,12 +16,14 @@ app.use(cors());
 const server = http.createServer(app);
 
 // Socket.IO mit Authentik (OIDC) JWT Authentication
+// Note: nginx proxies /collab/ to this server, stripping the prefix
+// So we use the default /socket.io/ path here
 const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
   },
-  path: '/collab/socket.io/'
+  path: '/socket.io/'
 });
 
 // Authentication middleware - ALLE WebSocket-Verbindungen müssen authentifiziert sein

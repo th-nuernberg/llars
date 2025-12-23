@@ -14,8 +14,15 @@ from typing import List, Optional, Dict, Any, Tuple
 from openai import OpenAI
 from db.db import db
 from db.tables import (
-    Chatbot, ChatbotCollection, ChatbotConversation, ChatbotMessage,
-    ChatbotMessageRole, RAGCollection, RAGDocument, RAGDocumentChunk
+    Chatbot,
+    ChatbotCollection,
+    ChatbotConversation,
+    ChatbotMessage,
+    ChatbotMessageRole,
+    RAGCollection,
+    RAGDocument,
+    RAGDocumentChunk,
+    CollectionDocumentLink
 )
 from rag_pipeline import RAGPipeline
 from services.chatbot.file_processor import FileProcessor, file_processor
@@ -632,8 +639,6 @@ class ChatService:
         # Query each assigned collection
         for cc in sorted(self.chatbot.collections, key=lambda x: -x.priority):
             collection = cc.collection
-            if not collection.chroma_collection_name:
-                continue
 
             try:
                 # Use RAG pipeline to search
@@ -761,6 +766,42 @@ class ChatService:
 
         return context, sources
 
+    def _resolve_collection_embedding_model(self, collection: RAGCollection) -> Optional[str]:
+        model = (collection.embedding_model or "").strip() if collection else ""
+        chunk_model = None
+
+        try:
+            chunk_model = (
+                db.session.query(RAGDocumentChunk.embedding_model)
+                .join(RAGDocument, RAGDocumentChunk.document_id == RAGDocument.id)
+                .join(CollectionDocumentLink, CollectionDocumentLink.document_id == RAGDocument.id)
+                .filter(
+                    CollectionDocumentLink.collection_id == collection.id,
+                    RAGDocumentChunk.embedding_model.isnot(None)
+                )
+                .order_by(RAGDocumentChunk.id.desc())
+                .limit(1)
+                .scalar()
+            )
+        except Exception as e:
+            logger.debug(f"[ChatService] Could not infer embedding model for collection {collection.id}: {e}")
+
+        if chunk_model:
+            chunk_model = str(chunk_model).strip()
+
+        if chunk_model and chunk_model != model:
+            collection.embedding_model = chunk_model
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            model = chunk_model
+
+        if not model and self.rag_pipeline:
+            model = self.rag_pipeline.model_name
+
+        return model or None
+
     # Class-level cache for embeddings per model
     _embeddings_cache: Dict[str, Any] = {}
 
@@ -821,10 +862,16 @@ class ChatService:
         Uses the collection's embedding_model to ensure dimension compatibility.
         """
         from langchain_chroma import Chroma
+        from services.rag.collection_embedding_service import sanitize_chroma_collection_name
 
         # Use the collection's embedding model (stored in DB when collection was created)
-        collection_model = collection.embedding_model or "sentence-transformers/all-MiniLM-L6-v2"
+        collection_model = self._resolve_collection_embedding_model(collection) or "sentence-transformers/all-MiniLM-L6-v2"
         embeddings = self._get_embeddings_for_model(collection_model)
+        if embeddings is None and self.rag_pipeline and self.rag_pipeline.model_name != collection_model:
+            fallback_model = self.rag_pipeline.model_name
+            embeddings = self._get_embeddings_for_model(fallback_model)
+            if embeddings:
+                collection_model = fallback_model
 
         if embeddings is None:
             logger.error(f"Could not load embeddings for model {collection_model}")
@@ -836,14 +883,39 @@ class ChatService:
         )
 
         try:
+            collection_name = collection.chroma_collection_name
+            if not collection_name:
+                collection_name = sanitize_chroma_collection_name(collection.name, collection_model)
+                collection.chroma_collection_name = collection_name
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
             vectorstore = Chroma(
-                collection_name=collection.chroma_collection_name,
+                collection_name=collection_name,
                 persist_directory=vectorstore_dir,
                 embedding_function=embeddings
             )
 
             # Perform similarity search with scores
             docs_with_scores = vectorstore.similarity_search_with_score(query, k=k)
+
+            if not docs_with_scores and collection.chroma_collection_name:
+                fallback_name = sanitize_chroma_collection_name(collection.name, collection_model)
+                if fallback_name != collection_name:
+                    vectorstore = Chroma(
+                        collection_name=fallback_name,
+                        persist_directory=vectorstore_dir,
+                        embedding_function=embeddings
+                    )
+                    docs_with_scores = vectorstore.similarity_search_with_score(query, k=k)
+                    if docs_with_scores:
+                        collection.chroma_collection_name = fallback_name
+                        try:
+                            db.session.commit()
+                        except Exception:
+                            db.session.rollback()
 
             results = []
             for doc, score in docs_with_scores:

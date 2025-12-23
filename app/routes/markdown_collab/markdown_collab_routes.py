@@ -404,11 +404,18 @@ def delete_workspace(workspace_id: int):
     if not _is_admin(username) and ws.owner_username != username:
         raise ForbiddenError("Nur der Besitzer kann diesen Workspace löschen")
 
-    # Delete all documents (cascade will handle commits)
-    MarkdownDocument.query.filter_by(workspace_id=workspace_id).delete()
+    # Get all document IDs first for commit deletion
+    doc_ids = [d.id for d in MarkdownDocument.query.filter_by(workspace_id=workspace_id).all()]
+
+    # Delete commits first (foreign key to documents)
+    if doc_ids:
+        MarkdownCommit.query.filter(MarkdownCommit.document_id.in_(doc_ids)).delete(synchronize_session=False)
+
+    # Delete all documents
+    MarkdownDocument.query.filter_by(workspace_id=workspace_id).delete(synchronize_session=False)
 
     # Delete all members
-    MarkdownWorkspaceMember.query.filter_by(workspace_id=workspace_id).delete()
+    MarkdownWorkspaceMember.query.filter_by(workspace_id=workspace_id).delete(synchronize_session=False)
 
     # Delete the workspace
     db.session.delete(ws)

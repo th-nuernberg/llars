@@ -9,6 +9,7 @@
 
 import { io } from 'socket.io-client';
 import { ref, readonly } from 'vue';
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage';
 
 // Connection state
 const isConnected = ref(false);
@@ -34,6 +35,21 @@ const getSocketBaseUrl = () => {
   return trimmed || window.location.origin;
 };
 
+const getSocketQuery = () => {
+  const query = {};
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token);
+  if (token) {
+    query.token = token;
+  }
+  if (typeof window !== 'undefined') {
+    const username = window.localStorage.getItem('username');
+    if (username) {
+      query.username = username;
+    }
+  }
+  return query;
+};
+
 /**
  * Create or get the Socket.IO connection
  * @returns {Socket} Socket.IO instance
@@ -41,6 +57,18 @@ const getSocketBaseUrl = () => {
 export function getSocket() {
   // Return existing socket if it exists (even if not connected - it will reconnect)
   if (socket) {
+    const nextQuery = getSocketQuery();
+    const currentQuery = socket.io?.opts?.query || {};
+    const shouldUpdateQuery = Object.keys(nextQuery).some((key) => nextQuery[key] !== currentQuery[key]);
+
+    if (shouldUpdateQuery && socket.io?.opts) {
+      socket.io.opts.query = { ...currentQuery, ...nextQuery };
+      if (socket.connected) {
+        socket.disconnect();
+        socket.connect();
+      }
+    }
+
     // If socket exists but disconnected, trigger reconnect
     if (!socket.connected) {
       console.log('[SocketService] Socket exists but disconnected, reconnecting...');
@@ -62,6 +90,7 @@ export function getSocket() {
     timeout: 30000,  // Increased connection timeout
     // Prevent connection attempts when page is hidden
     autoConnect: document.visibilityState !== 'hidden',
+    query: getSocketQuery(),
     // Increased ping timeout to match server (120s)
     // This prevents premature disconnections during long LLM streams
     pingTimeout: 120000,  // 2 minutes - matches server config

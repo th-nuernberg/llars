@@ -441,6 +441,13 @@
       </v-card>
     </v-dialog>
 
+    <CollectionShareDialog
+      v-model="collectionShareDialog"
+      :collection="shareCollection"
+      @saved="handleCollectionShareSaved"
+      @error="handleCollectionShareError"
+    />
+
     <!-- Collection Detail Dialog -->
     <v-dialog v-model="collectionDetailDialog" max-width="1200" scrollable>
       <v-card v-if="selectedCollection">
@@ -654,11 +661,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { usePermissions } from '@/composables/usePermissions';
 import { getSocket } from '@/services/socketService';
 import DocumentViewer from '@/components/RAG/DocumentViewer.vue';
+import CollectionShareDialog from '@/components/RAG/CollectionShareDialog.vue';
 import {
   useRAGStats,
   useRAGDocuments,
@@ -668,9 +677,12 @@ import {
 
 // Skeleton Loading
 const { isLoading, withLoading } = useSkeletonLoading(['stats', 'embedding', 'collections', 'documents']);
+const { hasPermission } = usePermissions();
 
 // Local UI State
 const activeTab = ref('collections');
+const collectionShareDialog = ref(false);
+const shareCollection = ref(null);
 
 // Initialize composables
 const {
@@ -807,6 +819,8 @@ const collectionEmbeddingProgressPercent = computed(() => {
   return Math.round((progress.indexed / progress.total) * 100);
 });
 
+const canShareCollections = computed(() => hasPermission('feature:rag:share'));
+
 // Wrapper functions for composables (with callbacks for data refresh)
 const createCollection = async () => {
   await createCollectionFn(async () => {
@@ -844,18 +858,44 @@ const openDocumentPreview = (doc) => {
   documentPreviewDialog.value = true;
 };
 
+const openCollectionShareDialog = (collection) => {
+  shareCollection.value = collection;
+  collectionShareDialog.value = true;
+};
+
+const handleCollectionShareSaved = () => {
+  collectionShareDialog.value = false;
+  shareCollection.value = null;
+};
+
+const handleCollectionShareError = (message) => {
+  alert(message || 'Fehler beim Speichern der Zugriffsrechte');
+};
+
 // Get actions for collection row
 const getCollectionActions = (item) => {
-  return [
-    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' },
-    {
-      key: 'delete',
-      icon: 'mdi-delete',
-      tooltip: 'Löschen',
-      variant: 'danger',
-      disabled: item.name === 'default' || item.name === 'general'
-    }
+  const actions = [
+    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' }
   ];
+
+  if (canShareCollections.value && (item.can_share ?? true)) {
+    actions.push({
+      key: 'share',
+      icon: 'mdi-account-multiple-plus',
+      tooltip: 'Zugriff teilen',
+      variant: 'primary'
+    });
+  }
+
+  actions.push({
+    key: 'delete',
+    icon: 'mdi-delete',
+    tooltip: 'Löschen',
+    variant: 'danger',
+    disabled: item.can_delete === false || item.name === 'default' || item.name === 'general'
+  });
+
+  return actions;
 };
 
 // Handle collection action group clicks
@@ -863,6 +903,9 @@ const handleCollectionAction = (actionKey, item) => {
   switch (actionKey) {
     case 'view':
       openCollectionDetail(item);
+      break;
+    case 'share':
+      openCollectionShareDialog(item);
       break;
     case 'delete':
       confirmDeleteCollection(item);
@@ -929,6 +972,12 @@ function cleanupWebSocket() {
     console.log('[RAG] WebSocket unsubscribed');
   }
 }
+
+watch(collectionShareDialog, (value) => {
+  if (!value) {
+    shareCollection.value = null;
+  }
+});
 
 // Lifecycle
 onMounted(async () => {

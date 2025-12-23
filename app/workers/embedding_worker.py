@@ -495,18 +495,16 @@ class EmbeddingWorker:
         """Emit progress update via Socket.IO."""
         try:
             from app import socketio
+            from socketio_handlers.events_rag import emit_document_progress
 
-            data = {
-                'document_id': doc.id,
-                'filename': doc.filename,
-                'status': status,
-                'progress': progress,
-                'step': step
-            }
-            if error:
-                data['error'] = error
-
-            socketio.emit('rag:document_progress', data, namespace='/')
+            emit_document_progress(
+                socketio,
+                document_id=doc.id,
+                status=status,
+                progress=progress,
+                step=step,
+                error=error
+            )
 
         except Exception as e:
             logger.debug(f"[EmbeddingWorker] Could not emit progress: {e}")

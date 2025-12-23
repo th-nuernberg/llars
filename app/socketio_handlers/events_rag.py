@@ -22,12 +22,91 @@ Events:
 import logging
 from flask_socketio import emit, join_room, leave_room
 from flask import request
-from sqlalchemy import desc
+from sqlalchemy import desc, select
+
+from auth.oidc_validator import validate_token, get_username
+from services.permission_service import PermissionService
+from services.rag.access_service import RAGAccessService
 
 logger = logging.getLogger(__name__)
 
-# Room name for RAG queue subscriptions
-RAG_QUEUE_ROOM = "rag_queue_global"
+# Room prefix for RAG queue subscriptions (per user)
+RAG_QUEUE_ROOM_PREFIX = "rag_queue_user_"
+RAG_QUEUE_SUBSCRIBERS = {}
+
+
+def _queue_room(username: str) -> str:
+    return f"{RAG_QUEUE_ROOM_PREFIX}{username}"
+
+
+def _register_queue_subscriber(sid: str, username: str) -> None:
+    RAG_QUEUE_SUBSCRIBERS[sid] = username
+
+
+def unregister_queue_subscriber(sid: str) -> None:
+    RAG_QUEUE_SUBSCRIBERS.pop(sid, None)
+
+
+def _get_queue_subscriber_usernames() -> list:
+    return sorted(set(RAG_QUEUE_SUBSCRIBERS.values()))
+
+
+def _require_user(permission_key: str = None):
+    token = str(request.args.get("token") or "").strip()
+    payload = validate_token(token) if token else None
+    if not payload:
+        emit('rag:error', {'error': 'Unauthorized'})
+        return None
+
+    username = get_username(payload)
+    if not username:
+        emit('rag:error', {'error': 'Unauthorized'})
+        return None
+
+    if permission_key and not PermissionService.check_permission(username, permission_key):
+        emit('rag:error', {'error': 'Forbidden'})
+        return None
+
+    return username
+
+
+def _serialize_queue_items(queue_items) -> list:
+    return [{
+        'id': q.id,
+        'document_id': q.document_id,
+        'document_filename': q.document.filename if q.document else None,
+        'priority': q.priority,
+        'status': q.status,
+        'progress_percent': q.progress_percent,
+        'current_step': q.current_step,
+        'error_message': q.error_message,
+        'retry_count': q.retry_count,
+        'max_retries': q.max_retries,
+        'created_at': q.created_at.isoformat() if q.created_at else None,
+        'started_at': q.started_at.isoformat() if q.started_at else None,
+        'completed_at': q.completed_at.isoformat() if q.completed_at else None
+    } for q in queue_items]
+
+
+def _get_queue_for_user(username: str):
+    from db.tables import RAGProcessingQueue, RAGDocument
+
+    doc_ids = (
+        RAGAccessService.apply_document_access_filter(
+            RAGDocument.query, username, access='view'
+        )
+        .with_entities(RAGDocument.id)
+        .subquery()
+    )
+
+    queue_items = (
+        RAGProcessingQueue.query
+        .filter(RAGProcessingQueue.document_id.in_(select(doc_ids.c.id)))
+        .order_by(desc(RAGProcessingQueue.priority), RAGProcessingQueue.created_at)
+        .all()
+    )
+
+    return _serialize_queue_items(queue_items)
 
 
 def register_rag_events(socketio):
@@ -37,37 +116,21 @@ def register_rag_events(socketio):
     def handle_subscribe_queue():
         """Subscribe to RAG processing queue updates."""
         try:
-            join_room(RAG_QUEUE_ROOM)
+            username = _require_user('feature:rag:view')
+            if not username:
+                return
 
-            logger.info(f"[RAG Socket] Client {request.sid} subscribed to processing queue")
+            room = _queue_room(username)
+            join_room(room)
+            _register_queue_subscriber(request.sid, username)
+
+            logger.info(f"[RAG Socket] Client {request.sid} subscribed to processing queue ({username})")
 
             # Fetch and send current queue
-            from db.db import db
-            from db.tables import RAGProcessingQueue
+            queue_data = _get_queue_for_user(username)
 
-            queue_items = RAGProcessingQueue.query.order_by(
-                desc(RAGProcessingQueue.priority),
-                RAGProcessingQueue.created_at
-            ).all()
-
-            queue_data = [{
-                'id': q.id,
-                'document_id': q.document_id,
-                'document_filename': q.document.filename if q.document else None,
-                'priority': q.priority,
-                'status': q.status,
-                'progress_percent': q.progress_percent,
-                'current_step': q.current_step,
-                'error_message': q.error_message,
-                'retry_count': q.retry_count,
-                'max_retries': q.max_retries,
-                'created_at': q.created_at.isoformat() if q.created_at else None,
-                'started_at': q.started_at.isoformat() if q.started_at else None,
-                'completed_at': q.completed_at.isoformat() if q.completed_at else None
-            } for q in queue_items]
-
-            emit('rag:queue_list', {'queue': queue_data})
-            emit('rag:subscribed', {'room': RAG_QUEUE_ROOM})
+            emit('rag:queue_list', {'queue': queue_data}, room=room)
+            emit('rag:subscribed', {'room': room})
 
         except Exception as e:
             logger.error(f"[RAG Socket] Error subscribing to queue: {e}")
@@ -77,8 +140,11 @@ def register_rag_events(socketio):
     def handle_unsubscribe_queue():
         """Unsubscribe from RAG processing queue updates."""
         try:
-            leave_room(RAG_QUEUE_ROOM)
-            logger.info(f"[RAG Socket] Client {request.sid} unsubscribed from processing queue")
+            username = RAG_QUEUE_SUBSCRIBERS.get(request.sid)
+            if username:
+                leave_room(_queue_room(username))
+                unregister_queue_subscriber(request.sid)
+                logger.info(f"[RAG Socket] Client {request.sid} unsubscribed from processing queue ({username})")
 
         except Exception as e:
             logger.error(f"[RAG Socket] Error unsubscribing from queue: {e}")
@@ -87,29 +153,39 @@ def register_rag_events(socketio):
     def handle_subscribe_collection(data):
         """Subscribe to a specific collection's embedding progress."""
         try:
+            username = _require_user('feature:rag:view')
+            if not username:
+                return
+
             collection_id = data.get('collection_id')
             if not collection_id:
                 emit('rag:error', {'error': 'collection_id required'})
                 return
 
-            room = f"rag_collection_{collection_id}"
-            join_room(room)
-            logger.info(f"[RAG Socket] Client {request.sid} subscribed to collection {collection_id}")
-
             # Send current collection status
             from db.tables import RAGCollection
             collection = RAGCollection.query.get(collection_id)
 
-            if collection:
-                emit('rag:collection_status', {
-                    'collection_id': collection.id,
-                    'name': collection.name,
-                    'embedding_status': collection.embedding_status,
-                    'embedding_progress': collection.embedding_progress or 0,
-                    'embedding_error': collection.embedding_error,
-                    'document_count': collection.document_count,
-                    'total_chunks': collection.total_chunks
-                })
+            if not collection:
+                emit('rag:error', {'error': 'collection not found'})
+                return
+            if not RAGAccessService.can_view_collection(username, collection):
+                emit('rag:error', {'error': 'Forbidden'})
+                return
+
+            room = f"rag_collection_{collection_id}"
+            join_room(room)
+            logger.info(f"[RAG Socket] Client {request.sid} subscribed to collection {collection_id} ({username})")
+
+            emit('rag:collection_status', {
+                'collection_id': collection.id,
+                'name': collection.name,
+                'embedding_status': collection.embedding_status,
+                'embedding_progress': collection.embedding_progress or 0,
+                'embedding_error': collection.embedding_error,
+                'document_count': collection.document_count,
+                'total_chunks': collection.total_chunks
+            })
 
             emit('rag:subscribed_collection', {'collection_id': collection_id, 'room': room})
 
@@ -134,6 +210,10 @@ def register_rag_events(socketio):
     def handle_get_collection_documents(data):
         """Fetch recent documents for a collection (includes linked documents via CollectionDocumentLink)."""
         try:
+            username = _require_user('feature:rag:view')
+            if not username:
+                return
+
             data = data or {}
             collection_id = data.get('collection_id')
             if not collection_id:
@@ -148,8 +228,16 @@ def register_rag_events(socketio):
             limit = max(1, min(limit, 200))
 
             from sqlalchemy import desc
-            from db.tables import CollectionDocumentLink
+            from db.tables import CollectionDocumentLink, RAGCollection
             from services.rag.document_service import DocumentService
+
+            collection = RAGCollection.query.get(collection_id)
+            if not collection:
+                emit('rag:error', {'error': 'collection not found'})
+                return
+            if not RAGAccessService.can_view_collection(username, collection):
+                emit('rag:error', {'error': 'Forbidden'})
+                return
 
             links = (
                 CollectionDocumentLink.query
@@ -158,7 +246,10 @@ def register_rag_events(socketio):
                 .limit(limit)
                 .all()
             )
-            docs = [l.document for l in links if l.document]
+            docs = [
+                l.document for l in links
+                if l.document and RAGAccessService.can_view_document(username, l.document)
+            ]
 
             emit('rag:collection_documents', {
                 'collection_id': collection_id,
@@ -182,33 +273,14 @@ def emit_rag_queue_updated(socketio, queue: list = None):
         queue: Optional list of queue items (will fetch if None)
     """
     try:
-        if queue is None:
-            from db.tables import RAGProcessingQueue
-            from sqlalchemy import desc
+        usernames = _get_queue_subscriber_usernames()
+        if not usernames:
+            return
 
-            queue_items = RAGProcessingQueue.query.order_by(
-                desc(RAGProcessingQueue.priority),
-                RAGProcessingQueue.created_at
-            ).all()
-
-            queue = [{
-                'id': q.id,
-                'document_id': q.document_id,
-                'document_filename': q.document.filename if q.document else None,
-                'priority': q.priority,
-                'status': q.status,
-                'progress_percent': q.progress_percent,
-                'current_step': q.current_step,
-                'error_message': q.error_message,
-                'retry_count': q.retry_count,
-                'max_retries': q.max_retries,
-                'created_at': q.created_at.isoformat() if q.created_at else None,
-                'started_at': q.started_at.isoformat() if q.started_at else None,
-                'completed_at': q.completed_at.isoformat() if q.completed_at else None
-            } for q in queue_items]
-
-        socketio.emit('rag:queue_updated', {'queue': queue}, room=RAG_QUEUE_ROOM)
-        logger.info(f"[RAG Socket] Emitted queue update to {RAG_QUEUE_ROOM}")
+        for username in usernames:
+            queue_data = _get_queue_for_user(username)
+            socketio.emit('rag:queue_updated', {'queue': queue_data}, room=_queue_room(username))
+        logger.info("[RAG Socket] Emitted queue update to subscribed users")
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting queue update: {e}")
@@ -247,8 +319,11 @@ def emit_document_processed(
             'document': DocumentService.serialize_document(document) if document else None
         }
 
-        # Emit to global room
-        socketio.emit('rag:document_processed', payload, room=RAG_QUEUE_ROOM)
+        # Emit to subscribed users who can view the document
+        if document:
+            for username in _get_queue_subscriber_usernames():
+                if RAGAccessService.can_view_document(username, document):
+                    socketio.emit('rag:document_processed', payload, room=_queue_room(username))
 
         # Also emit to the collection room (so UIs can subscribe without global queue)
         if effective_collection_id:
@@ -271,14 +346,64 @@ def emit_rag_progress(socketio, queue_id: int, progress_percent: int, current_st
         current_step: Description of the current processing step
     """
     try:
-        socketio.emit('rag:progress', {
+        from db.tables import RAGProcessingQueue
+
+        queue_item = RAGProcessingQueue.query.get(queue_id)
+        document = queue_item.document if queue_item else None
+
+        if not document:
+            return
+
+        payload = {
             'queue_id': queue_id,
             'progress_percent': progress_percent,
             'current_step': current_step
-        }, room=RAG_QUEUE_ROOM)
+        }
+
+        for username in _get_queue_subscriber_usernames():
+            if RAGAccessService.can_view_document(username, document):
+                socketio.emit('rag:progress', payload, room=_queue_room(username))
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting progress: {e}")
+
+
+def emit_document_progress(socketio, document_id: int, status: str, progress: int = 0, step: str = '',
+                           error: str = None):
+    """
+    Emit document-level progress updates to authorized subscribers.
+
+    Args:
+        socketio: Flask-SocketIO instance
+        document_id: The document ID
+        status: Current status string
+        progress: Progress percentage
+        step: Current processing step
+        error: Optional error message
+    """
+    try:
+        from db.tables import RAGDocument
+
+        document = RAGDocument.query.get(document_id)
+        if not document:
+            return
+
+        payload = {
+            'document_id': document_id,
+            'filename': document.filename,
+            'status': status,
+            'progress': progress,
+            'step': step
+        }
+        if error:
+            payload['error'] = error
+
+        for username in _get_queue_subscriber_usernames():
+            if RAGAccessService.can_view_document(username, document):
+                socketio.emit('rag:document_progress', payload, room=_queue_room(username))
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting document progress: {e}")
 
 
 def emit_collection_progress(socketio, collection_id: int, progress: int, current_doc: str = None,
@@ -296,22 +421,21 @@ def emit_collection_progress(socketio, collection_id: int, progress: int, curren
     """
     try:
         room = f"rag_collection_{collection_id}"
-        socketio.emit('rag:collection_progress', {
+        payload = {
             'collection_id': collection_id,
             'progress': progress,
             'current_document': current_doc,
             'documents_processed': docs_processed,
             'documents_total': docs_total
-        }, room=room)
+        }
+        socketio.emit('rag:collection_progress', payload, room=room)
 
-        # Also emit to global room
-        socketio.emit('rag:collection_progress', {
-            'collection_id': collection_id,
-            'progress': progress,
-            'current_document': current_doc,
-            'documents_processed': docs_processed,
-            'documents_total': docs_total
-        }, room=RAG_QUEUE_ROOM)
+        from db.tables import RAGCollection
+        collection = RAGCollection.query.get(collection_id)
+        if collection:
+            for username in _get_queue_subscriber_usernames():
+                if RAGAccessService.can_view_collection(username, collection):
+                    socketio.emit('rag:collection_progress', payload, room=_queue_room(username))
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting collection progress: {e}")
@@ -336,7 +460,13 @@ def emit_collection_completed(socketio, collection_id: int, total_chunks: int, t
             'total_documents': total_docs
         }
         socketio.emit('rag:collection_completed', data, room=room)
-        socketio.emit('rag:collection_completed', data, room=RAG_QUEUE_ROOM)
+
+        from db.tables import RAGCollection
+        collection = RAGCollection.query.get(collection_id)
+        if collection:
+            for username in _get_queue_subscriber_usernames():
+                if RAGAccessService.can_view_collection(username, collection):
+                    socketio.emit('rag:collection_completed', data, room=_queue_room(username))
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting collection completed: {e}")
@@ -359,7 +489,13 @@ def emit_collection_error(socketio, collection_id: int, error: str):
             'error': error
         }
         socketio.emit('rag:collection_error', data, room=room)
-        socketio.emit('rag:collection_error', data, room=RAG_QUEUE_ROOM)
+
+        from db.tables import RAGCollection
+        collection = RAGCollection.query.get(collection_id)
+        if collection:
+            for username in _get_queue_subscriber_usernames():
+                if RAGAccessService.can_view_collection(username, collection):
+                    socketio.emit('rag:collection_error', data, room=_queue_room(username))
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting collection error: {e}")

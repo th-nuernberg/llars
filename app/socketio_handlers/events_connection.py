@@ -10,6 +10,8 @@ import logging
 from flask import request
 from flask_socketio import emit
 
+from socketio_handlers.events_rag import unregister_queue_subscriber
+
 
 def register_connection_events(socketio, chat_manager):
     """
@@ -44,4 +46,5 @@ def register_connection_events(socketio, chat_manager):
     def handle_disconnect():
         """Handle client disconnection"""
         chat_manager.clear_history(request.sid)
+        unregister_queue_subscriber(request.sid)
         logging.info(f'Client {request.sid} disconnected')

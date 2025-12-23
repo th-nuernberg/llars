@@ -206,7 +206,8 @@ Bei Login wird der User automatisch in der DB erstellt (`get_or_create_user`).
 ### Chatbot/RAG Access-Logik
 
 - Chatbots: Owner darf immer, Sharing via Allowlist (User/Rollen), Admin override.
-- RAG: Sichtbar = public **oder** Owner **oder** explizit geteilt; Bearbeiten/Löschen nur Owner/Admin bzw. mit expliziter Permission.
+- RAG: Sichtbar = public **oder** Owner **oder** explizit geteilt (Dokumente **oder** Collections); Bearbeiten/Löschen nur Owner/Admin bzw. mit expliziter Permission.
+- RAG Collections: Teilen via `/api/rag/collections/<id>/access` erweitert Zugriff auf alle enthaltenen Dokumente (inkl. Socket.IO Queue Updates).
 
 ### Backend
 

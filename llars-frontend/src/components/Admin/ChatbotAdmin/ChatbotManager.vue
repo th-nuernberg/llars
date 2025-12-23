@@ -121,9 +121,11 @@
               <CollectionManager
                 :collections="collections"
                 :loading="loading.collections"
+                :can-share="canShareCollections"
                 @create="openCreateCollectionDialog"
                 @edit="openEditCollectionDialog"
                 @delete="confirmDeleteCollection"
+                @share="openCollectionShareDialog"
                 @view-documents="viewCollectionDocuments"
               />
             </v-window-item>
@@ -257,6 +259,13 @@
         </div>
       </LCard>
     </v-dialog>
+
+    <CollectionShareDialog
+      v-model="collectionShareDialog"
+      :collection="shareCollection"
+      @saved="handleCollectionShareSaved"
+      @error="handleCollectionShareError"
+    />
   </div>
 </template>
 
@@ -274,6 +283,7 @@ import CollectionEditor from '@/components/RAG/CollectionEditor.vue'
 import DocumentManager from '@/components/RAG/DocumentManager.vue'
 import DocumentViewer from '@/components/RAG/DocumentViewer.vue'
 import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue'
+import CollectionShareDialog from '@/components/RAG/CollectionShareDialog.vue'
 import CollectionAssignmentDialog from './CollectionAssignmentDialog.vue'
 
 // State
@@ -311,6 +321,8 @@ const shareUsernames = ref([])
 const shareRoleNames = ref([])
 const shareChatbot = ref(null)
 const userSearchRef = ref(null)
+const collectionShareDialog = ref(false)
+const shareCollection = ref(null)
 
 const wizardOpen = ref(false)
 const wizardResumeChatbotId = ref(null)
@@ -335,6 +347,7 @@ const auth = useAuth()
 const { hasPermission, isAdmin } = usePermissions()
 const currentUsername = computed(() => auth.tokenParsed.value?.preferred_username || localStorage.getItem('username') || '')
 const canShare = computed(() => hasPermission('feature:chatbots:share'))
+const canShareCollections = computed(() => hasPermission('feature:rag:share'))
 
 // Layout refs
 const layoutRoot = ref(null)
@@ -454,6 +467,11 @@ function openCollectionManager(chatbot) {
   dialogs.value.collectionAssignment = true
 }
 
+function openCollectionShareDialog(collection) {
+  shareCollection.value = collection
+  collectionShareDialog.value = true
+}
+
 async function openShareDialog(chatbot) {
   if (!chatbot?.id) return
   shareChatbot.value = chatbot
@@ -506,6 +524,22 @@ async function saveChatbotAccess() {
     shareSaving.value = false
   }
 }
+
+function handleCollectionShareSaved() {
+  showSnackbar('Zugriffsrechte gespeichert', 'success')
+  collectionShareDialog.value = false
+  shareCollection.value = null
+}
+
+function handleCollectionShareError(message) {
+  showSnackbar(message || 'Fehler beim Speichern der Zugriffsrechte', 'error')
+}
+
+watch(collectionShareDialog, (value) => {
+  if (!value) {
+    shareCollection.value = null
+  }
+})
 
 async function saveChatbot(chatbotData) {
   try {

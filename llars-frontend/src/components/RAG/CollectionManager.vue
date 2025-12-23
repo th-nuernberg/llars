@@ -74,6 +74,13 @@
               </LBtn>
               <v-spacer />
               <v-btn
+                v-if="canShare && (collection.can_share ?? true)"
+                icon="mdi-account-multiple-plus"
+                size="small"
+                variant="text"
+                @click="$emit('share', collection)"
+              />
+              <v-btn
                 icon="mdi-pencil"
                 size="small"
                 variant="text"
@@ -118,13 +125,17 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  canShare: {
+    type: Boolean,
+    default: false
+  },
   loading: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['create', 'edit', 'delete', 'view-documents'])
+const emit = defineEmits(['create', 'edit', 'delete', 'share', 'view-documents'])
 
 const getIcon = (iconName) => {
   const iconMap = {

@@ -52,7 +52,29 @@ class RAGAccessService:
     def is_admin_user(username: Optional[str]) -> bool:
         if not username:
             return False
-        return PermissionService.check_permission(username, 'admin:permissions:manage')
+        from flask import g, has_request_context
+
+        if getattr(g, 'is_system_api_key', False):
+            return True
+
+        if PermissionService.check_permission(username, 'admin:permissions:manage'):
+            return True
+
+        if not has_request_context():
+            return False
+
+        try:
+            from auth.oidc_validator import get_token_from_request, validate_token, has_role
+
+            token = get_token_from_request()
+            if not token:
+                return False
+            payload = validate_token(token)
+            if not payload:
+                return False
+            return has_role(payload, 'admin')
+        except Exception:
+            return False
 
     @staticmethod
     def _permission_flag_clause(access: str):

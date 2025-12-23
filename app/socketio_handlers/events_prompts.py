@@ -10,6 +10,7 @@ Events:
         - prompts:list: Initial list of prompts after subscribing
         - prompts:updated: Prompt list has been updated
         - prompts:prompt_updated: Single prompt content changed
+        - prompts:shared_updated: Shared prompt list has been updated
 """
 
 import logging
@@ -162,3 +163,44 @@ def emit_prompt_content_updated(socketio, user_id: int, prompt_id: int, content:
 
     except Exception as e:
         logger.error(f"[Prompts Socket] Error emitting prompt content update: {e}")
+
+
+def emit_shared_prompts_updated(socketio, user_id: int, shared_prompts: list = None):
+    """
+    Emit shared prompt list update to all subscribed clients for a user.
+
+    Args:
+        socketio: Flask-SocketIO instance
+        user_id: The user whose shared prompts have been updated
+        shared_prompts: Optional list of shared prompts to send (will fetch if None)
+    """
+    try:
+        if shared_prompts is None:
+            from db.db import db
+            from db.tables import UserPrompt, UserPromptShare
+
+            shared_rows = db.session.query(
+                UserPrompt, UserPromptShare.created_at.label('shared_at')
+            ).join(
+                UserPromptShare, UserPrompt.prompt_id == UserPromptShare.prompt_id
+            ).filter(
+                UserPromptShare.shared_with_user_id == user_id
+            ).all()
+
+            shared_prompts = [
+                {
+                    'id': prompt.prompt_id,
+                    'name': prompt.name,
+                    'content': prompt.content,
+                    'owner': prompt.user.username,
+                    'shared_at': shared_at.isoformat() if shared_at else None
+                }
+                for prompt, shared_at in shared_rows
+            ]
+
+        room = get_prompts_room(user_id)
+        socketio.emit('prompts:shared_updated', {'shared_prompts': shared_prompts}, room=room)
+        logger.info(f"[Prompts Socket] Emitted shared prompts update to room {room}")
+
+    except Exception as e:
+        logger.error(f"[Prompts Socket] Error emitting shared prompts update: {e}")

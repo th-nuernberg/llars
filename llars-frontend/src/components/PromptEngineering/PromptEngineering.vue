@@ -113,7 +113,12 @@
 
         <v-skeleton-loader v-if="isLoading('sharedPrompts')" type="card@3" class="mt-4" />
 
-        <div v-else-if="sharedPrompts.length > 0" class="prompts-grid">
+        <transition-group
+          v-else-if="sharedPrompts.length > 0"
+          name="prompt-list"
+          tag="div"
+          class="prompts-grid"
+        >
           <LCard
             v-for="prompt in sharedPrompts"
             :key="prompt.id"
@@ -122,6 +127,7 @@
             color="#e8c87a"
             outlined
             clickable
+            :class="['prompt-card', { 'prompt-card--new': newSharedPromptIds.has(prompt.id) }]"
             @click="navigateToPromptDetail(prompt.id)"
           >
             <template #status>
@@ -139,7 +145,7 @@
               </div>
             </div>
           </LCard>
-        </div>
+        </transition-group>
 
         <div v-else class="empty-state-small">
           <v-icon size="32" color="grey-lighten-1">mdi-account-group-outline</v-icon>
@@ -288,6 +294,7 @@ const { isLoading, withLoading } = useSkeletonLoading(['prompts', 'sharedPrompts
 const prompts = ref([]);
 const sharedPrompts = ref([]);
 const newPromptIds = ref(new Set());
+const newSharedPromptIds = ref(new Set());
 
 // Create dialog
 const showCreateDialog = ref(false);
@@ -340,6 +347,18 @@ async function fetchSharedPrompts() {
       console.error('Fehler beim Abrufen der geteilten Prompts:', error);
     }
   });
+}
+
+function markSharedPromptNew(id) {
+  if (!id) return;
+  const next = new Set(newSharedPromptIds.value);
+  next.add(id);
+  newSharedPromptIds.value = next;
+  setTimeout(() => {
+    const updated = new Set(newSharedPromptIds.value);
+    updated.delete(id);
+    newSharedPromptIds.value = updated;
+  }, 3600);
 }
 
 function openCreateDialog() {
@@ -517,7 +536,14 @@ function handlePromptsUpdate(data) {
 
 function handleSharedPromptsUpdate(data) {
   if (data.shared_prompts) {
-    sharedPrompts.value = data.shared_prompts;
+    const nextList = data.shared_prompts;
+    const existingIds = new Set(sharedPrompts.value.map(prompt => prompt.id));
+    nextList.forEach(prompt => {
+      if (!existingIds.has(prompt.id)) {
+        markSharedPromptNew(prompt.id);
+      }
+    });
+    sharedPrompts.value = nextList;
   }
 }
 

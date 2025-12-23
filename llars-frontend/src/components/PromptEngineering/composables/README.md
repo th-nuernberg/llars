@@ -147,6 +147,7 @@ createBlock('New Block')
 - `cleanupAll()` - Cleanup all editors
 - `applyHighlightingToAll()` - Highlight placeholders
 - `removeCursorForUser(userId)` - Remove user cursor
+- `flushPendingHighlights()` - Apply queued user highlights once color is available
 
 **Usage:**
 ```javascript

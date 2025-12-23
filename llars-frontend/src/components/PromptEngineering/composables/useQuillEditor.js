@@ -16,6 +16,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
   // Track user highlights per block
   const userHighlights = new Map() // blockId -> Map<position, {username, color, ts}>
+  const pendingHighlights = new Map() // blockId -> Array<{ index, length }>
 
   // Debounce-Funktion für Cursor-Updates
   const debounce = (fn, delay) => {
@@ -69,12 +70,45 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   }
 
   // Apply user highlighting to inserted text
+  const queuePendingHighlight = (blockId, index, length) => {
+    if (!pendingHighlights.has(blockId)) {
+      pendingHighlights.set(blockId, [])
+    }
+    pendingHighlights.get(blockId).push({ index, length })
+  }
+
+  const flushPendingHighlights = () => {
+    const color = getUserColor()
+    if (!color || !showUserHighlighting()) return
+    const highlightColor = hexToRgba(color, 0.3)
+
+    pendingHighlights.forEach((ranges, blockId) => {
+      const editor = editors.get(blockId)
+      if (!editor) return
+      ranges.forEach(({ index, length }) => {
+        try {
+          editor.formatText(index, length, {
+            'llars-user-highlight': highlightColor
+          }, Quill.sources.API)
+        } catch (e) {
+          // Ignore formatting errors
+        }
+      })
+    })
+
+    pendingHighlights.clear()
+  }
+
   const applyUserHighlight = (editor, blockId, delta, source) => {
     if (!showUserHighlighting() || source !== 'user') return
 
-    const color = getUserColor()
     const username = getUsername()
-    if (!color || !username) return
+    if (!username) return
+
+    const color = getUserColor()
+    if (color) {
+      flushPendingHighlights()
+    }
 
     let position = 0
     const highlights = userHighlights.get(blockId) || new Map()
@@ -90,10 +124,17 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
         }
 
         // Apply user highlight formatting
+        const startIndex = position
+        const length = insertLength
         setTimeout(() => {
           try {
-            editor.formatText(position, insertLength, {
-              'llars-user-highlight': hexToRgba(color, 0.3)
+            const resolvedColor = getUserColor()
+            if (!resolvedColor) {
+              queuePendingHighlight(blockId, startIndex, length)
+              return
+            }
+            editor.formatText(startIndex, length, {
+              'llars-user-highlight': hexToRgba(resolvedColor, 0.3)
             }, Quill.sources.API)
           } catch (e) {
             // Ignore formatting errors
@@ -154,6 +195,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     bindings.delete(blockId)
     cursorsModules.delete(blockId)
     editors.delete(blockId)
+    pendingHighlights.delete(blockId)
     editorCount.value = editors.size
 
     if (editorElement) {
@@ -431,6 +473,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     editors.clear()
     bindings.clear()
     cursorsModules.clear()
+    pendingHighlights.clear()
     editorCount.value = 0
     initializingEditors.clear()
   }
@@ -462,6 +505,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   // Clear all user highlights (e.g., after commit)
   const clearUserHighlights = () => {
     userHighlights.clear()
+    pendingHighlights.clear()
 
     // Remove user highlighting formatting from all editors
     editors.forEach((editor) => {
@@ -493,6 +537,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     cleanupAll,
     applyHighlightingToAll,
     removeCursorForUser,
-    clearUserHighlights
+    clearUserHighlights,
+    flushPendingHighlights
   }
 }

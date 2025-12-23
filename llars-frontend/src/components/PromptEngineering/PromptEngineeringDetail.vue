@@ -368,9 +368,23 @@ const { blocks, sortedBlocks, processYDoc, createBlock, deleteBlock, saveBlockTi
 const showGitPanel = ref(true); // Stored in localStorage
 const gitDiff = usePromptGitDiff(promptId, users);
 
+const getCurrentUserColor = () => {
+  const authColor = auth.collabColor?.value || null;
+  if (authColor) return authColor;
+
+  const socketId = socket.value?.id || null;
+  if (socketId && users.value?.[socketId]?.color) {
+    return users.value[socketId].color;
+  }
+
+  const targetName = auth.username?.value || username;
+  const userEntry = Object.values(users.value || {}).find((user) => user?.username === targetName);
+  return userEntry?.color || null;
+};
+
 // Quill editor management with user highlighting support
 const editorManager = useQuillEditor(ydoc, socket, roomId, {
-  getUserColor: () => auth.collabColor?.value || null,
+  getUserColor: () => getCurrentUserColor(),
   getUsername: () => auth.username?.value || username,
   showUserHighlighting: () => showGitPanel.value
 });
@@ -383,6 +397,7 @@ const {
   applyHighlightingToAll,
   removeCursorForUser,
   clearUserHighlights,
+  flushPendingHighlights,
   editors
 } = editorManager;
 const gitSummary = ref({ users: [], insertions: 0, deletions: 0, hasChanges: false, totalChangedLines: 0 });
@@ -565,6 +580,21 @@ watch(
       updateColor(newColor);
     }
   }
+);
+
+watch(
+  [
+    () => auth.collabColor.value,
+    () => users.value,
+    () => socket.value?.id,
+    () => showGitPanel.value
+  ],
+  () => {
+    if (showGitPanel.value) {
+      flushPendingHighlights();
+    }
+  },
+  { deep: true }
 );
 
 onUnmounted(() => {

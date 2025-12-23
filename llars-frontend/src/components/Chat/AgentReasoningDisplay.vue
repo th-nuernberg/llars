@@ -130,6 +130,38 @@ const modeIcon = computed(() => {
   return icons[mode.value] || 'mdi-robot';
 });
 
+function normalizeSteps(rawSteps = []) {
+  if (!Array.isArray(rawSteps)) return [];
+  return rawSteps.map((step) => {
+    const normalized = {
+      ...step,
+      expanded: false
+    };
+
+    if (!normalized.content) {
+      normalized.content = step.content || step.result || step.text || step.goal || step.reflection || '';
+    }
+
+    if (step.type === 'action') {
+      const action = step.action || step.action_name || step.name;
+      const param = step.param || step.action_param;
+      if (action && !normalized.action) {
+        normalized.action = action;
+      }
+      if (!normalized.content && (action || param)) {
+        normalized.content = parseActionContent(action, param);
+      }
+    }
+
+    if (normalized.content === undefined || normalized.content === null) {
+      normalized.content = '';
+    }
+    normalized.content = String(normalized.content);
+
+    return normalized;
+  });
+}
+
 function getStepIcon(type) {
   const icons = {
     'goal': 'mdi-flag',
@@ -258,6 +290,19 @@ watch(() => props.agentStatus, (status) => {
 
     case 'max_iterations':
       currentStatus.value = 'Max. Iterationen';
+      break;
+
+    case 'complete':
+      if (status.mode) {
+        mode.value = status.mode;
+      }
+      if (status.task_type) {
+        taskType.value = status.task_type;
+      }
+      steps.value = normalizeSteps(status.reasoning_steps);
+      currentStatus.value = 'Fertig';
+      expanded.value = true;
+      scrollToBottom();
       break;
   }
 }, { immediate: true, flush: 'sync' });

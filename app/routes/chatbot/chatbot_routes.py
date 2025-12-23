@@ -14,6 +14,7 @@ from decorators.permission_decorator import require_permission, require_any_perm
 from decorators.error_handler import handle_errors
 from services.chatbot.chatbot_service import ChatbotService
 from services.chatbot.chat_service import ChatService
+from services.chatbot.agent_chat_service import AgentChatService
 from services.chatbot.file_processor import file_processor, FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
 from auth.auth_utils import AuthUtils
@@ -366,6 +367,20 @@ def chat(chatbot_id):
 
     if not message.strip() and not processed_files:
         raise ValueError('message or files required')
+
+    # Prefer agent mode for text-only REST fallback; files stay on standard chat
+    if not processed_files:
+        agent_service = AgentChatService(chatbot_id)
+        if agent_service.get_agent_mode() != 'standard':
+            result = agent_service.chat_agent_sync(
+                message=message,
+                session_id=session_id,
+                username=username,
+                include_sources=include_sources,
+                files=processed_files,
+                conversation_id=conversation_id
+            )
+            return jsonify({'success': True, **result})
 
     chat_service = ChatService(chatbot_id)
     result = chat_service.chat(

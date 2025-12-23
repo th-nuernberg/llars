@@ -113,6 +113,67 @@ class AgentChatService(ChatService):
             # Fallback to standard
             yield from self._chat_standard_stream(message, session_id, username, include_sources, files, conversation_id)
 
+    def chat_agent_sync(
+        self,
+        message: str,
+        session_id: str,
+        username: str = None,
+        include_sources: bool = True,
+        files: List[Dict[str, Any]] = None,
+        conversation_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Run agent chat synchronously and return the final result.
+        Useful for REST fallback when streaming is not available.
+        """
+        start_time = time.time()
+        final_event: Optional[Dict[str, Any]] = None
+
+        for event in self.chat_agent(
+            message=message,
+            session_id=session_id,
+            username=username,
+            include_sources=include_sources,
+            files=files,
+            conversation_id=conversation_id
+        ):
+            if event.get("done"):
+                final_event = event
+                break
+
+        response_time_ms = int((time.time() - start_time) * 1000)
+
+        if not final_event:
+            return {
+                'response': self.get_unknown_answer(),
+                'sources': [],
+                'conversation_id': conversation_id,
+                'session_id': session_id,
+                'message_id': None,
+                'tokens': {'input': 0, 'output': 0},
+                'response_time_ms': response_time_ms,
+                'mode': self.get_agent_mode(),
+                'task_type': self.get_task_type(),
+                'iterations': 0,
+                'reasoning_steps': [],
+                'files_processed': len(files) if files else 0
+            }
+
+        return {
+            'response': final_event.get('full_response', ''),
+            'sources': final_event.get('sources', []),
+            'conversation_id': final_event.get('conversation_id'),
+            'session_id': session_id,
+            'message_id': final_event.get('message_id'),
+            'tokens': {'input': 0, 'output': 0},
+            'response_time_ms': response_time_ms,
+            'mode': final_event.get('mode'),
+            'task_type': self.get_task_type(),
+            'iterations': final_event.get('iterations'),
+            'reasoning_steps': final_event.get('reasoning_steps', []),
+            'files_processed': len(files) if files else 0
+        }
+
     def _chat_standard_stream(
         self,
         message: str,
@@ -220,6 +281,7 @@ class AgentChatService(ChatService):
         max_iterations = self.get_max_iterations()
         all_sources = []
         observations = []
+        reasoning_steps = []
 
         system_prompt = self._get_act_system_prompt()
 
@@ -241,6 +303,13 @@ class AgentChatService(ChatService):
             # Parse action
             action, param = self._parse_action(action_text)
             yield {"status": "action", "action": action, "param": param, "iteration": iteration + 1}
+            action_content = f'{action}("{param}")' if param else action
+            reasoning_steps.append({
+                "type": "action",
+                "action": action,
+                "param": param,
+                "content": action_content
+            })
 
             # Execute action
             if action == "respond":
@@ -273,6 +342,7 @@ class AgentChatService(ChatService):
                     "sources": all_sources if include_sources else [],
                     "mode": "act",
                     "iterations": iteration + 1,
+                    "reasoning_steps": reasoning_steps,
                     "conversation_id": conversation.id,
                     "message_id": msg.id
                 }
@@ -285,6 +355,10 @@ class AgentChatService(ChatService):
             observations.append({
                 "action": action_text,
                 "result": result
+            })
+            reasoning_steps.append({
+                "type": "observation",
+                "content": result or ""
             })
 
             yield {"status": "observation", "result_preview": result[:200] if result else "", "iteration": iteration + 1}
@@ -318,6 +392,7 @@ class AgentChatService(ChatService):
             "sources": all_sources if include_sources else [],
             "mode": "act",
             "iterations": max_iterations,
+            "reasoning_steps": reasoning_steps,
             "conversation_id": conversation.id,
             "message_id": msg.id
         }
@@ -387,7 +462,7 @@ class AgentChatService(ChatService):
                     ChatbotMessageRole.ASSISTANT,
                     final_answer,
                     rag_sources=all_sources if include_sources else [],
-                    agent_trace=reasoning_steps,
+                    agent_trace=steps,
                     stream_metadata={
                         "mode": "react",
                         "iterations": iteration + 1,
@@ -434,7 +509,7 @@ class AgentChatService(ChatService):
             ChatbotMessageRole.ASSISTANT,
             final_response,
             rag_sources=all_sources if include_sources else [],
-            agent_trace=reasoning_steps,
+            agent_trace=steps,
             stream_metadata={
                 "mode": "react",
                 "iterations": max_iterations,

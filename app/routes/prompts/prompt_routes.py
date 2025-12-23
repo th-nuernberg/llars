@@ -3,7 +3,7 @@ from numbers import Number
 from pyexpat.errors import messages
 from unicodedata import category
 
-from flask import Blueprint, jsonify, request, g, Response
+from flask import Blueprint, jsonify, request, g, Response, current_app
 from werkzeug.security import check_password_hash
 from routes.auth import data_bp as data_blueprint, auth_bp as auth_blueprint
 from auth.decorators import authentik_required, admin_required, roles_required
@@ -21,6 +21,24 @@ from uuid import uuid4
 import uuid
 from datetime import datetime
 import json
+
+
+def _emit_prompt_list_updates(owner_user_id, shared_user_ids=None):
+    socketio = current_app.extensions.get('socketio')
+    if not socketio:
+        return
+    try:
+        from socketio_handlers.events_prompts import (
+            emit_prompts_updated,
+            emit_shared_prompts_updated
+        )
+        emit_prompts_updated(socketio, owner_user_id)
+        if shared_user_ids:
+            for user_id in set(shared_user_ids):
+                emit_shared_prompts_updated(socketio, user_id)
+    except Exception:
+        # Do not fail the request if socket emission fails
+        pass
 
 
 @data_blueprint.route('/prompts', methods=['POST'])
@@ -53,6 +71,8 @@ def save_user_prompt():
     )
     db.session.add(new_prompt)
     db.session.commit()
+
+    _emit_prompt_list_updates(user.id)
 
     return jsonify({
         'success': True,
@@ -243,6 +263,8 @@ def share_prompt(prompt_id):
     db.session.add(new_share)
     db.session.commit()
 
+    _emit_prompt_list_updates(user.id, [shared_with_user.id])
+
     return jsonify({'success': True, 'message': f'Prompt shared with "{shared_with_username}" successfully'}), 201
 
 
@@ -283,6 +305,8 @@ def unshare_prompt(prompt_id):
 
     db.session.delete(share)
     db.session.commit()
+
+    _emit_prompt_list_updates(user.id, [unshare_with_user.id])
 
     return jsonify({'success': True, 'message': f'Prompt sharing removed for "{unshare_with_username}" successfully'}), 200
 
@@ -430,11 +454,17 @@ def delete_prompt(prompt_id):
         raise NotFoundError('Prompt not found or you do not have permission to delete it')
 
     # Freigaben für das Prompt entfernen
+    shared_user_ids = [
+        row.shared_with_user_id
+        for row in UserPromptShare.query.filter_by(prompt_id=prompt_id).all()
+    ]
     UserPromptShare.query.filter_by(prompt_id=prompt_id).delete()
 
     # Prompt löschen
     db.session.delete(prompt)
     db.session.commit()
+
+    _emit_prompt_list_updates(user.id, shared_user_ids)
 
     return jsonify({'success': True, 'message': 'Prompt deleted successfully'}), 200
 

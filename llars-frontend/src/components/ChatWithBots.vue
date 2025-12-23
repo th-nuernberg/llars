@@ -996,6 +996,24 @@ async function sendMessage() {
   selectedFiles.value = []
   isProcessing.value = true
 
+  if (agentReasoningRef.value?.reset) {
+    agentReasoningRef.value.reset()
+  }
+
+  const agentMode = selectedChatbot.value?.prompt_settings?.agent_mode
+  if (agentMode && agentMode !== 'standard') {
+    agentEventCounter.value++
+    agentStatus.value = {
+      type: 'init',
+      mode: agentMode,
+      task_type: selectedChatbot.value?.prompt_settings?.task_type || 'lookup',
+      max_iterations: selectedChatbot.value?.prompt_settings?.agent_max_iterations || 5,
+      _eventId: agentEventCounter.value
+    }
+  } else {
+    agentStatus.value = null
+  }
+
   // Add placeholder for bot response
   addBotPlaceholder(messages)
   scrollToBottom()
@@ -1058,6 +1076,16 @@ async function sendMessageViaREST(userMessage, files = []) {
         false,
         result.sources
       )
+      if (result.mode && result.mode !== 'standard') {
+        agentEventCounter.value++
+        agentStatus.value = {
+          type: 'complete',
+          mode: result.mode,
+          task_type: result.task_type,
+          reasoning_steps: result.reasoning_steps || [],
+          _eventId: agentEventCounter.value
+        }
+      }
       if (selectedConversation.value) {
         selectedConversation.value.message_count = (selectedConversation.value.message_count || 0) + 2
       }

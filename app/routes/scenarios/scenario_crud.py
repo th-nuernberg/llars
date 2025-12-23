@@ -16,6 +16,12 @@ from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        ScenarioThreadDistribution)
 from .. import data_blueprint
 from .scenario_management import distribute_threads_to_users
+from ..HelperFunctions import (
+    ALLOWED_DISTRIBUTION_MODES,
+    ALLOWED_ORDER_MODES,
+    DISTRIBUTION_MODE_ALL,
+    get_scenario_distribution_mode,
+)
 
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
@@ -168,6 +174,13 @@ def create_scenario():
         config_json = data.get("config")
     if config_json is not None and not isinstance(config_json, dict):
         raise ValidationError("config_json must be an object")
+    if config_json is not None:
+        distribution_mode = config_json.get("distribution_mode")
+        order_mode = config_json.get("order_mode")
+        if distribution_mode is not None and distribution_mode not in ALLOWED_DISTRIBUTION_MODES:
+            raise ValidationError("Invalid distribution_mode")
+        if order_mode is not None and order_mode not in ALLOWED_ORDER_MODES:
+            raise ValidationError("Invalid order_mode")
 
     client_data = {
         "scenario_name": data.get('scenario_name'),
@@ -300,23 +313,25 @@ def create_scenario():
             db.session.flush()
             scenario_threads.append(new_scenario_thread.id)
 
-        # Distribute threads to raters
-        user_threads = distribute_threads_to_users(scenario_threads, scenario_rater)
-        for key, value in user_threads.items():
-            if key is not None:
-                if isinstance(value, list):
-                    for thread_id in value:
+        distribution_mode = get_scenario_distribution_mode(new_scenario, function_type_id)
+        if distribution_mode != DISTRIBUTION_MODE_ALL:
+            # Distribute threads to raters
+            user_threads = distribute_threads_to_users(scenario_threads, scenario_rater)
+            for key, value in user_threads.items():
+                if key is not None:
+                    if isinstance(value, list):
+                        for thread_id in value:
+                            db.session.add(ScenarioThreadDistribution(
+                                scenario_id=new_scenario.id,
+                                scenario_thread_id=thread_id,
+                                scenario_user_id=key,
+                            ))
+                    else:
                         db.session.add(ScenarioThreadDistribution(
                             scenario_id=new_scenario.id,
-                            scenario_thread_id=thread_id,
+                            scenario_thread_id=value,
                             scenario_user_id=key,
                         ))
-                else:
-                    db.session.add(ScenarioThreadDistribution(
-                        scenario_id=new_scenario.id,
-                        scenario_thread_id=value,
-                        scenario_user_id=key,
-                    ))
 
         db.session.commit()
 

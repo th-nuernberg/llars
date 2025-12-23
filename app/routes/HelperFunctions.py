@@ -15,8 +15,74 @@ import random
 from sqlalchemy import func, desc, or_
 from sqlalchemy.orm import joinedload
 import logging
+import hashlib
 
 from db.tables import ProgressionStatus
+
+MAIL_RATING_FUNCTION_TYPE_ID = 3
+
+DISTRIBUTION_MODE_ALL = "all"
+DISTRIBUTION_MODE_ROUND_ROBIN = "round_robin"
+
+ORDER_MODE_NONE = "none"
+ORDER_MODE_SHUFFLE_SAME = "shuffle_same"
+ORDER_MODE_SHUFFLE_PER_USER = "shuffle_per_user"
+
+ALLOWED_DISTRIBUTION_MODES = {DISTRIBUTION_MODE_ALL, DISTRIBUTION_MODE_ROUND_ROBIN}
+ALLOWED_ORDER_MODES = {ORDER_MODE_NONE, ORDER_MODE_SHUFFLE_SAME, ORDER_MODE_SHUFFLE_PER_USER}
+
+
+def _get_scenario_config(scenario):
+    if scenario is None:
+        return {}
+    config = getattr(scenario, "config_json", None)
+    return config if isinstance(config, dict) else {}
+
+
+def get_scenario_distribution_mode(scenario, function_type_id=None):
+    config = _get_scenario_config(scenario)
+    mode = config.get("distribution_mode")
+    if mode in ALLOWED_DISTRIBUTION_MODES:
+        return mode
+
+    if function_type_id is None and scenario is not None:
+        function_type_id = scenario.function_type_id
+
+    if function_type_id == MAIL_RATING_FUNCTION_TYPE_ID:
+        return DISTRIBUTION_MODE_ALL
+
+    return DISTRIBUTION_MODE_ROUND_ROBIN
+
+
+def get_scenario_order_mode(scenario):
+    config = _get_scenario_config(scenario)
+    mode = config.get("order_mode")
+    if mode in ALLOWED_ORDER_MODES:
+        return mode
+    return ORDER_MODE_SHUFFLE_SAME
+
+
+def raters_receive_all_threads(scenario, function_type_id=None):
+    return get_scenario_distribution_mode(scenario, function_type_id) == DISTRIBUTION_MODE_ALL
+
+
+def _scenario_user_seed(scenario_id, user_id):
+    digest = hashlib.sha256(f"{scenario_id}:{user_id}".encode("utf-8")).hexdigest()
+    return int(digest[:8], 16)
+
+
+def order_threads_for_user(threads, scenario_id, order_mode, user_id):
+    threads_sorted = sorted(threads, key=lambda t: t.thread_id)
+
+    if order_mode == ORDER_MODE_NONE:
+        return threads_sorted
+
+    if order_mode == ORDER_MODE_SHUFFLE_PER_USER:
+        seed = _scenario_user_seed(scenario_id, user_id)
+    else:
+        seed = scenario_id
+
+    return deterministic_shuffle(threads_sorted, seed)
 
 
 def deterministic_shuffle(items, seed):
@@ -111,27 +177,36 @@ def can_access_thread(user_id, thread_id, function_type_id):
     for scenario_user in scenario_users:
         scenario_id = scenario_user.scenario_id
         role = scenario_user.role
+        scenario = getattr(scenario_user, "rating_scenario", None)
+        if scenario is None:
+            scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
-        if role == ScenarioRoles.VIEWER:
-            # Wenn der User Viewer ist, darf er alle Threads des Szenarios sehen
-            if db.session.query(ScenarioThreads).join(RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id).filter(
-                    ScenarioThreads.scenario_id == scenario_id,
-                    ScenarioThreads.thread_id == thread_id,
-                    RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
-                    RatingScenarios.end >= current_time
+        if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
+            # Viewer oder All-Distribution-Rater sehen alle Threads des Szenarios
+            if db.session.query(ScenarioThreads).join(
+                RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id
+            ).filter(
+                ScenarioThreads.scenario_id == scenario_id,
+                ScenarioThreads.thread_id == thread_id,
+                RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
+                RatingScenarios.end >= current_time
             ).first():
                 return True
 
         elif role == ScenarioRoles.RATER:
             # Wenn der User Rater ist, muss der Thread zugeordnet sein
-            if (db.session.query(ScenarioThreadDistribution).join(ScenarioThreads, ScenarioThreads.id==ScenarioThreadDistribution.scenario_thread_id)
-                    .join(RatingScenarios, RatingScenarios.id == ScenarioThreadDistribution.scenario_id)
-                    .filter(
+            if (
+                db.session.query(ScenarioThreadDistribution)
+                .join(ScenarioThreads, ScenarioThreads.id==ScenarioThreadDistribution.scenario_thread_id)
+                .join(RatingScenarios, RatingScenarios.id == ScenarioThreadDistribution.scenario_id)
+                .filter(
                     ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
                     ScenarioThreads.thread_id == thread_id,
                     RatingScenarios.begin <= current_time, # TODO: Gedanken zu Zeitzonen machen
                     RatingScenarios.end >= current_time
-            ).first()):
+                )
+                .first()
+            ):
                 return True
     logging.error("Abgelehnt")
     return False
@@ -154,10 +229,10 @@ def get_user_threads(user_id, function_type_id):
     """
     Get all threads accessible by a user for a specific function type.
 
-    Threads are returned in a deterministically shuffled order based on the
-    scenario_id. This ensures:
-    1. Threads are NOT in upload order (shuffled)
-    2. ALL users in the same scenario see the SAME order (deterministic)
+    Thread order is controlled by scenario config (order_mode):
+    - none: sorted by thread_id
+    - shuffle_same: deterministic shuffle for all users (seed = scenario_id)
+    - shuffle_per_user: deterministic shuffle per user (seed = scenario_id:user_id)
 
     Args:
         user_id: The user ID
@@ -173,17 +248,24 @@ def get_user_threads(user_id, function_type_id):
 
     # Group threads by scenario for deterministic ordering
     scenario_threads_map = {}
+    scenario_order_modes = {}
 
     # Durchlaufe alle Szenarien und deren zugeordnete Threads
     for scenario_user in scenario_users:
         scenario_id = scenario_user.scenario_id
         role = scenario_user.role
+        scenario = getattr(scenario_user, "rating_scenario", None)
+        if scenario is None:
+            scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
         if scenario_id not in scenario_threads_map:
             scenario_threads_map[scenario_id] = []
 
-        if role == ScenarioRoles.VIEWER:
-            # Wenn der User Viewer ist, darf er alle Threads des Szenarios sehen
+        if scenario_id not in scenario_order_modes:
+            scenario_order_modes[scenario_id] = get_scenario_order_mode(scenario)
+
+        if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
+            # Viewer oder All-Distribution-Rater sehen alle Threads im Szenario
             threads = (
                 db.session.query(EmailThread)
                 .join(ScenarioThreads, ScenarioThreads.thread_id == EmailThread.thread_id)
@@ -196,16 +278,18 @@ def get_user_threads(user_id, function_type_id):
             scenario_threads_map[scenario_id].extend(threads)
 
         elif role == ScenarioRoles.RATER:
-            # Wenn der User Rater ist, darf er nur zugeordnete Threads sehen
-            thread_distributions = (db.session.query(ScenarioThreadDistribution)
-                                    .join(ScenarioThreads, ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
-                                    .join(EmailThread, ScenarioThreads.thread_id == EmailThread.thread_id).filter(
-                ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
-                ScenarioThreadDistribution.scenario_id == scenario_id,
-                EmailThread.function_type_id == function_type_id,
-
-
-            ).all())
+            # Rater mit Thread-Zuweisung sehen nur ihre zugeordneten Threads
+            thread_distributions = (
+                db.session.query(ScenarioThreadDistribution)
+                .join(ScenarioThreads, ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
+                .join(EmailThread, ScenarioThreads.thread_id == EmailThread.thread_id)
+                .filter(
+                    ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                    ScenarioThreadDistribution.scenario_id == scenario_id,
+                    EmailThread.function_type_id == function_type_id,
+                )
+                .all()
+            )
 
             for distribution in thread_distributions:
                 scenario_threads_map[scenario_id].append(distribution.scenario_thread.thread)
@@ -217,12 +301,8 @@ def get_user_threads(user_id, function_type_id):
 
     for scenario_id in sorted(scenario_threads_map.keys()):
         threads = scenario_threads_map[scenario_id]
-
-        # First, sort by thread_id to ensure consistent input to shuffle
-        threads_sorted = sorted(threads, key=lambda t: t.thread_id)
-
-        # Shuffle deterministically using scenario_id as seed
-        threads_shuffled = deterministic_shuffle(threads_sorted, seed=scenario_id)
+        order_mode = scenario_order_modes.get(scenario_id, ORDER_MODE_SHUFFLE_SAME)
+        threads_shuffled = order_threads_for_user(threads, scenario_id, order_mode, user_id)
 
         # Add threads, avoiding duplicates
         for thread in threads_shuffled:

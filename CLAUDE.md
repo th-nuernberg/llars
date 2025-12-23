@@ -104,6 +104,7 @@ Scenario (Rating oder Ranking)
 ├── ScenarioUsers[] (User + Rolle: VIEWER oder RATER)
 ├── ScenarioThreads[] (zugewiesene Threads)
 └── ScenarioThreadDistribution[] (welcher RATER bewertet welchen Thread)
+└── config_json (distribution_mode: all|round_robin, order_mode: none|shuffle_same|shuffle_per_user)
 ```
 
 ### Function Types
@@ -133,9 +134,15 @@ features                -- LLM-generierte Inhalte (thread_id, type_id, llm_id)
 def get_user_threads(user_id, function_type_id):
     """
     VIEWER: Sieht alle Threads im Szenario
-    RATER: Sieht nur zugewiesene Threads (via ScenarioThreadDistribution)
+    RATER: Abhängig von distribution_mode
+      - all: alle Threads wie Viewer
+      - round_robin: nur zugeordnete Threads (ScenarioThreadDistribution)
 
     Zeitprüfung: RatingScenarios.begin <= NOW <= RatingScenarios.end
+    order_mode steuert die Thread-Reihenfolge:
+      - none: sortiert nach thread_id
+      - shuffle_same: gleiche Mischung für alle (Seed = scenario_id)
+      - shuffle_per_user: unterschiedliche Mischung pro Nutzer (Seed = scenario_id:user_id)
     """
 ```
 

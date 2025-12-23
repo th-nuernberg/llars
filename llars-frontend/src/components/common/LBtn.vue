@@ -2,6 +2,7 @@
   <button
     :class="buttonClasses"
     :disabled="disabled || loading"
+    :aria-label="tooltip || undefined"
     @click="$emit('click', $event)"
   >
     <v-progress-circular
@@ -14,6 +15,9 @@
     <v-icon v-else-if="prependIcon" :icon="prependIcon" class="l-btn__icon l-btn__icon--prepend" />
     <span class="l-btn__content"><slot /></span>
     <v-icon v-if="appendIcon" :icon="appendIcon" class="l-btn__icon l-btn__icon--append" />
+    <v-tooltip v-if="tooltip" activator="parent" :location="tooltipLocation">
+      {{ tooltip }}
+    </v-tooltip>
   </button>
 </template>
 
@@ -75,6 +79,14 @@ const props = defineProps({
   block: {
     type: Boolean,
     default: false
+  },
+  tooltip: {
+    type: String,
+    default: null
+  },
+  tooltipLocation: {
+    type: String,
+    default: 'bottom'
   }
 })
 

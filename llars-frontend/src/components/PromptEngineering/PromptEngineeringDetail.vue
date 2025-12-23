@@ -586,13 +586,10 @@ watch(
   [
     () => auth.collabColor.value,
     () => users.value,
-    () => socket.value?.id,
-    () => showGitPanel.value
+    () => socket.value?.id
   ],
   () => {
-    if (showGitPanel.value) {
-      flushPendingHighlights();
-    }
+    flushPendingHighlights();
   },
   { deep: true }
 );

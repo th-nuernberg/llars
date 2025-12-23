@@ -12,7 +12,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const editorCount = ref(0)
 
   // User highlighting options
-  const { getUserColor = () => null, getUsername = () => null, showUserHighlighting = () => false } = options
+  const { getUserColor = () => null, getUsername = () => null } = options
 
   // Track user highlights per block
   const userHighlights = new Map() // blockId -> Map<position, {username, color, ts}>
@@ -79,7 +79,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
   const flushPendingHighlights = () => {
     const color = getUserColor()
-    if (!color || !showUserHighlighting()) return
+    if (!color) return
     const highlightColor = hexToRgba(color, 0.3)
 
     pendingHighlights.forEach((ranges, blockId) => {
@@ -100,7 +100,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   }
 
   const applyUserHighlight = (editor, blockId, delta, source) => {
-    if (!showUserHighlighting() || source !== 'user') return
+    if (source !== 'user') return
 
     const username = getUsername()
     if (!username) return

@@ -8,7 +8,7 @@
 
 ## 1. Zusammenfassung
 
-Dieses Konzept beschreibt die Integration des **OnCoCo-Klassifikators** (Online Counseling Conversations) in LLARS zur automatisierten Analyse von E-Mail-Beratungsverläufen aus dem KIA-Datenrepository. Das Ziel ist eine tiefgreifende, satzbasierte Analyse der Beratungsgespräche mit Visualisierungen wie Transition-Matrizen, Sankey-Diagrammen und Säulen-Vergleichen.
+Dieses Konzept beschreibt die Integration des **OnCoCo-Klassifikators** (Online Counseling Conversations) in LLARS zur automatisierten Analyse von E-Mail-Beratungsverläufen aus dem KIA-Datenrepository. Das Ziel ist eine tiefgreifende, satzbasierte Analyse der Beratungsgespräche mit Visualisierungen wie Transition-Matrizen, Säulen-Vergleichen und optional (geplant) Sankey-Diagrammen.
 
 ---
 
@@ -267,7 +267,9 @@ def compute_transition_matrix(label_sequences):
 
 **Implementierung:** D3.js Heatmap oder Plotly
 
-### 5.2 Sankey-Diagramm
+### 5.2 Sankey-Diagramm (geplant)
+
+Hinweis: Aktuell nicht implementiert; das Diagramm bleibt als Konzept vorgesehen.
 
 Zeigt den "Fluss" durch ein typisches Beratungsgespräch:
 
@@ -352,9 +354,9 @@ Zeit →
 │  │ Aktuelle Verarbeitung: Säule 3, Thread #47                     ││
 │  └─────────────────────────────────────────────────────────────────┘│
 │                                                                      │
-│  ┌─────────┬─────────┬─────────┬─────────┬─────────┐                │
-│  │Overview │Transitions│ Sankey │ Vergleich│ Export │                │
-│  └─────────┴─────────┴─────────┴─────────┴─────────┘                │
+│  ┌───────────┬───────────┬──────────────────────┬───────┐           │
+│  │ Übersicht │ Verteilung│ Transitionen & Vergl.│ Sätze │           │
+│  └───────────┴───────────┴──────────────────────┴───────┘           │
 │  ┌─────────────────────────────────────────────────────────────────┐│
 │  │                                                                  ││
 │  │              [Visualisierung / Ergebnisse]                      ││
@@ -371,86 +373,42 @@ Zeit →
 - Top 10 häufigste Labels
 - Gesamtstatistiken (Gespräche, Sätze, Labels)
 
-#### Tab 2: Transitions
-- Interaktive Transition-Matrix-Heatmap
-- Filter nach Säule, Level (aggregiert/detailliert)
-- Hover: Zeigt Wahrscheinlichkeit und Beispielsätze
+#### Tab 2: Verteilung
+- Label-Verteilungen je Säule/Rolle
+- Filter nach Level (voll/Level-2)
 
-#### Tab 3: Sankey
-- Sankey-Diagramm des typischen Gesprächsverlaufs
-- Slider: Gesprächsphase (Anfang/Mitte/Ende)
-- Vergleichsmodus: 2 Säulen nebeneinander
+#### Tab 3: Transitionen & Vergleich
+- Transition-Matrix (voll/Level-2)
+- Säulen-Vergleich (Matrix-Comparison)
 
-#### Tab 4: Vergleich
-- Radar-Chart mit 6 Dimensionen pro Säule
-- Tabelle: KL-Divergenz zwischen Säulen
-- Signifikanz-Indikatoren
-
-#### Tab 5: Export
-- CSV-Export der Rohdaten
-- PDF-Report mit allen Visualisierungen
-- JSON-Export für weitere Analyse
+#### Tab 4: Sätze
+- Satzliste mit Labeln, Rollen und Filtermöglichkeiten
+- Drilldown pro Thread/Message
 
 ---
 
 ## 7. Backend-Architektur
 
-### 7.1 Neue API-Routen
+### 7.1 API-Routen (aktuell)
 
-```python
-# app/routes/oncoco/oncoco_routes.py
+Die Implementierung ist modularisiert (`app/routes/oncoco/*`).
 
-@oncoco_bp.route('/api/oncoco/analyze', methods=['POST'])
-@authentik_required
-@require_permission('feature:comparison:edit')
-def start_analysis():
-    """
-    Startet OnCoCo-Analyse für ausgewählte Säulen.
+**Wichtige Endpoints (Auszug):**
+- `GET /api/oncoco/info`
+- `GET /api/oncoco/labels`
+- `GET /api/oncoco/pillars`
+- `POST /api/oncoco/pillars/sync`
+- `GET/POST /api/oncoco/analyses`
+- `GET /api/oncoco/analyses/<id>`
+- `POST /api/oncoco/analyses/<id>/start`
+- `DELETE /api/oncoco/analyses/<id>`
+- `GET /api/oncoco/analyses/<id>/sentences`
+- `GET /api/oncoco/analyses/<id>/distribution`
+- `GET /api/oncoco/analyses/<id>/transition-matrix`
+- `GET /api/oncoco/analyses/<id>/comparison`
+- `GET /api/oncoco/analyses/<id>/matrix-comparison`
 
-    Body:
-        pillars: List[int] - Säulen-IDs [1, 3, 5]
-        granularity: str - "sentence" oder "message"
-
-    Returns:
-        analysis_id: int - ID der gestarteten Analyse
-    """
-
-@oncoco_bp.route('/api/oncoco/analyses/<int:analysis_id>', methods=['GET'])
-@authentik_required
-@require_permission('feature:comparison:view')
-def get_analysis_status(analysis_id: int):
-    """Analyse-Status und Fortschritt abrufen."""
-
-@oncoco_bp.route('/api/oncoco/analyses/<int:analysis_id>/results', methods=['GET'])
-@authentik_required
-@require_permission('feature:comparison:view')
-def get_analysis_results(analysis_id: int):
-    """Vollständige Ergebnisse einer Analyse."""
-
-@oncoco_bp.route('/api/oncoco/analyses/<int:analysis_id>/transitions', methods=['GET'])
-@authentik_required
-@require_permission('feature:comparison:view')
-def get_transition_matrix(analysis_id: int):
-    """Transition Matrix für eine Analyse."""
-
-@oncoco_bp.route('/api/oncoco/analyses/<int:analysis_id>/sankey', methods=['GET'])
-@authentik_required
-@require_permission('feature:comparison:view')
-def get_sankey_data(analysis_id: int):
-    """Sankey-Diagramm-Daten."""
-
-@oncoco_bp.route('/api/oncoco/compare', methods=['POST'])
-@authentik_required
-@require_permission('feature:comparison:view')
-def compare_pillars():
-    """
-    Vergleicht zwei oder mehr Säulen.
-
-    Body:
-        pillars: List[int] - Säulen-IDs zum Vergleich
-        metrics: List[str] - Gewünschte Metriken
-    """
-```
+**Permissions:** Aktuell sind die API-Routen mit `feature:comparison:view|edit` geschützt; `feature:oncoco:*` wird im UI genutzt.
 
 ### 7.2 Datenbank-Schema
 
@@ -514,7 +472,7 @@ CREATE TABLE oncoco_pillar_statistics (
 class OnCoCoService:
     """Service für OnCoCo-Klassifikation und Analyse."""
 
-    MODEL_PATH = "Ideen und Daten dazu/OnCoCo Analyse/xlm-roberta-large-OnCoCo-DE-EN"
+    MODEL_PATH = os.getenv("ONCOCO_MODEL_PATH", "app/models/oncoco")
 
     def __init__(self):
         self.model = None
@@ -710,30 +668,29 @@ Mit den Labels kann trainiert werden:
 
 ---
 
-## 9. Implementierungs-Roadmap
+## 9. Implementierungs-Status (Stand: 28.11.2025)
 
-### Phase 1: Grundlagen (2 Wochen)
-- [ ] OnCoCo-Service implementieren
-- [ ] Datenbank-Schema erweitern
-- [ ] Basic API-Routes
+### Phase 1: Grundlagen (✅ umgesetzt)
+- [x] OnCoCo-Service implementiert
+- [x] Datenbank-Schema erweitert
+- [x] Basic API-Routes
 
-### Phase 2: Analyse-Engine (2 Wochen)
-- [ ] Satz-Segmentierung
-- [ ] Batch-Klassifikation
-- [ ] Transition Matrix Berechnung
-- [ ] Background Worker
+### Phase 2: Analyse-Engine (✅ umgesetzt)
+- [x] Satz-Segmentierung
+- [x] Batch-Klassifikation
+- [x] Transition Matrix Berechnung
+- [x] Background Worker
 
-### Phase 3: Frontend (2 Wochen)
-- [ ] OnCoCo-Kachel in Admin-Dashboard
-- [ ] Tab: Overview mit Balkendiagrammen
-- [ ] Tab: Transition Matrix Heatmap
-- [ ] Tab: Sankey-Diagramm
+### Phase 3: Frontend (✅ umgesetzt)
+- [x] OnCoCo-Kachel in Admin-Dashboard
+- [x] Tabs: Overview, Verteilung, Transitionen & Vergleich, Sätze
+- [ ] Sankey-Diagramm (geplant)
 
-### Phase 4: Erweiterungen (2 Wochen)
-- [ ] Säulen-Vergleich
-- [ ] Export-Funktionen
-- [ ] Anomalie-Erkennung
-- [ ] Performance-Optimierung
+### Phase 4: Erweiterungen (🟡 teilweise)
+- [x] Säulen-Vergleich (Matrix-Comparison)
+- [ ] Export-Funktionen (geplant)
+- [ ] Anomalie-Erkennung (geplant)
+- [ ] Performance-Optimierung (laufend)
 
 ---
 
@@ -785,8 +742,8 @@ Dieses Konzept ermöglicht eine **tiefgreifende, automatisierte Analyse** von KI
 
 1. **Satz-Level Klassifikation** mit 68 feingranularen Kategorien
 2. **Transition Matrices** zur Visualisierung von Gesprächsdynamiken
-3. **Sankey-Diagramme** für Gesprächsfluss-Analyse
+3. **Sankey-Diagramme** für Gesprächsfluss-Analyse (geplant)
 4. **Säulen-Vergleiche** mit statistischen Metriken
-5. **Export & Reporting** für weitere Forschung
+5. **Export & Reporting** für weitere Forschung (geplant)
 
 Die Integration in LLARS erfolgt über eine neue **OnCoCo-Kachel** im Admin-Dashboard mit Live-Analyse-Updates via Socket.IO.

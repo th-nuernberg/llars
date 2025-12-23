@@ -11,6 +11,7 @@ cp .env.template.development .env
 
 - LLARS: `http://localhost:55080`
 - Authentik UI (optional direkt): `http://localhost:55095`
+- Docs (via nginx, dev): `http://localhost:55080/mkdocs/`
 
 ## 3) Login (LLARS)
 

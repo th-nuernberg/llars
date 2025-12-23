@@ -21,12 +21,15 @@ LLARS verwendet Authentik als Identity Provider mit OAuth2/OIDC für die Benutze
 - RS256 JWT-Tokens (asymmetrische Kryptographie)
 - Flow Executor API für headless Authentication
 - JWKS-basierte Token-Validierung
-- Automatisches Setup via Script
+- Automatisches Setup via `authentik-init` Container (idempotent)
 
 ## Quick Commands
 
 ```bash
-# Automatisches Setup
+# Automatisches Setup (Standard)
+./start_llars.sh
+
+# Manueller Fallback (falls Auto-Setup fehlschlägt)
 ./scripts/setup_authentik.sh
 
 # Verifizierung

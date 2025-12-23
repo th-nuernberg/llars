@@ -370,10 +370,18 @@ class CollectionEmbeddingService:
                                 .all()
                             )
 
+                            # Filter out chunks without vector_id (e.g., image chunks that weren't embedded)
+                            chunks_with_ids = [c for c in chunks_to_backfill if c.vector_id]
+                            skipped = len(chunks_to_backfill) - len(chunks_with_ids)
+                            if skipped > 0:
+                                logger.warning(
+                                    f"[CollectionEmbedding] Skipping {skipped} chunks without vector_id during backfill"
+                                )
+
                             # Batch upserts to keep memory bounded
                             batch_size = 256
-                            for start in range(0, len(chunks_to_backfill), batch_size):
-                                batch = chunks_to_backfill[start : start + batch_size]
+                            for start in range(0, len(chunks_with_ids), batch_size):
+                                batch = chunks_with_ids[start : start + batch_size]
                                 texts = [c.content for c in batch]
                                 ids = [c.vector_id for c in batch]
                                 metadatas = []
@@ -394,7 +402,7 @@ class CollectionEmbeddingService:
                                 # Chroma.add_texts uses upsert, so repeated IDs are safe
                                 vectorstore.add_texts(texts=texts, ids=ids, metadatas=metadatas)
 
-                            logger.info(f"[CollectionEmbedding] Backfilled {len(chunks_to_backfill)} chunks into ChromaDB collection {collection_name}")
+                            logger.info(f"[CollectionEmbedding] Backfilled {len(chunks_with_ids)} chunks into ChromaDB collection {collection_name}")
 
                     except Exception as e:
                         logger.error(f"[CollectionEmbedding] Failed to backfill Chroma collection {collection_name}: {e}")

@@ -13,7 +13,11 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const editorCount = ref(0)
 
   // User highlighting options
-  const { getUserColor = () => null, getUsername = () => null } = options
+  const {
+    getUserColor = () => null,
+    getUsername = () => null,
+    onUserTextChange = null
+  } = options
 
   // Track user highlights per block
   const userHighlights = new Map() // blockId -> Map<position, {username, color, ts}>
@@ -519,6 +523,9 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
           if (source === 'user') {
             suppressSelectionUpdates(block.id)
             emitCursorUpdate(block.id, editor.getSelection())
+            if (typeof onUserTextChange === 'function') {
+              onUserTextChange({ blockId: block.id, delta, editor })
+            }
           }
         })
       }

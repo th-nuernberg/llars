@@ -47,6 +47,21 @@ AUTHENTIK_EXTERNAL_PORT=55095
 - Tracking (first-party): `${PROJECT_URL}/metrics.js` und `${PROJECT_URL}/metrics.php`
 - Runtime-Settings: **Admin → Analytics** (DB-basiert, kein `.env`)
 
+## Docs (MkDocs)
+
+- Dev via nginx: `${PROJECT_URL}/mkdocs/`
+- Prod via nginx: `${PROJECT_URL}/docs/`
+- Direkt (Host-Port): `http://localhost:${MKDOCS_EXTERNAL_PORT:-55800}`
+
+### Datenschutz-Check (Code-Stand, keine Rechtsberatung)
+
+- Erfasst: Pageviews (Route-URL + Titel), Link-Tracking, Klick-Events, optional Hover-Events, Heartbeat/Time-on-Page, optional User-ID (Authentik `preferred_username`/`sub`)
+- Defaults: Cookies **an**, User-ID **an**, Consent **aus** → in EU-Kontext i. d. R. nur mit Einwilligung/anderer Rechtsgrundlage zulässig
+- Consent-Flags vorhanden (`require_consent`/`require_cookie_consent`), aber es gibt aktuell **keine** Consent-UI/`setConsentGiven`-Integration
+- Route-URLs enthalten dynamische IDs (z. B. `/Rater/123`) → potenziell personenbezogen; ggf. anonymisieren oder nur Routen-Namen tracken
+- Event-Labels kommen aus UI-Text/ARIA/`data-*` (E-Mails/URLs/4+ Zahlen werden sanitisiert, aber User-Content kann dennoch enthalten sein) → sensible Bereiche mit `data-matomo-ignore` ausnehmen
+- Serverseitige Privacy-Settings (IP-Anonymisierung, DNT, Retention) müssen in Matomo selbst konfiguriert werden
+
 ## Port-Belegung
 
 ```bash
@@ -54,7 +69,7 @@ AUTHENTIK_EXTERNAL_PORT=55095
 NGINX_EXTERNAL_PORT=55080      # Haupt-Einstieg (Frontend + API + Matomo + Docs Proxy)
 AUTHENTIK_EXTERNAL_PORT=55095  # Optional direkt; zusätzlich via nginx `/authentik/`
 DB_EXTERNAL_PORT=55306         # Optional direkt (nur Debugging)
-MKDOCS_EXTERNAL_PORT=55800     # Optional direkt; zusätzlich via nginx `/docs/`
+MKDOCS_EXTERNAL_PORT=55800     # Optional direkt; via nginx `/mkdocs/` (Dev) / `/docs/` (Prod)
 ```
 
 ## CORS
@@ -75,11 +90,11 @@ LITELLM_API_KEY=...
 LITELLM_BASE_URL=https://kiz1.in.ohmportal.de/llmproxy/v1
 ```
 
-Standardmodell: `mistralai/Mistral-Small-3.2-24B-Instruct-2506` (siehe `app/llm/litellm_client.py`).
+Standardmodelle werden aus der DB (`llm_models`) geladen und beim Start gesät (siehe `app/db/models/llm_model.py`).
 
 ## RAG-Pipeline
 
-- Embeddings: `sentence-transformers/all-MiniLM-L6-v2`
+- Embeddings: Default aus `llm_models` (aktuell `llamaindex/vdr-2b-multi-v1`), Fallback `sentence-transformers/all-MiniLM-L6-v2`
 - Vector Store: ChromaDB
 - Chunk Size: 1000 Zeichen, Overlap: 200 Zeichen
 - Speicherpfad: `/app/storage/vectorstore`

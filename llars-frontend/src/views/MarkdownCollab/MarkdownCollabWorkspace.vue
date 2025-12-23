@@ -276,6 +276,7 @@ import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useWorkspaceSocket } from '@/components/MarkdownCollab/composables/useWorkspaceSocket'
+import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/composables/useAnalyticsMetrics'
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import MarkdownEditorPane from '@/components/MarkdownCollab/MarkdownEditorPane.vue'
 import MarkdownPreviewPane from '@/components/MarkdownCollab/MarkdownPreviewPane.vue'
@@ -324,6 +325,41 @@ const userSearchRef = ref(null)
 const ownerInfo = ref({ username: '', avatar_url: null, avatar_seed: null, collab_color: null })
 
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
+
+// Analytics: entity dimension for this workspace/document
+const workspaceEntity = computed(() => `ws:${workspaceId.value}`)
+const documentEntity = computed(() => selectedNodeId.value ? `doc:${selectedNodeId.value}` : '')
+
+// Session active time tracking
+useActiveDuration({
+  category: 'markdown',
+  action: 'session_active_ms',
+  name: () => workspaceEntity.value,
+  dimensions: () => ({ entity: workspaceEntity.value, view: viewMode.value })
+})
+
+// Pane visibility tracking (editor, preview)
+const paneVisibility = useVisibilityTracker({
+  category: 'markdown',
+  action: 'pane_visible_ms',
+  nameBuilder: (id) => `pane:${id}`,
+  dimensions: () => ({ entity: documentEntity.value })
+})
+
+// Scroll depth for panes container
+useScrollDepth(panesContainerRef, {
+  category: 'markdown',
+  action: 'scroll_depth',
+  name: () => `${documentEntity.value}|${viewMode.value}`,
+  dimensions: () => ({ entity: documentEntity.value, view: viewMode.value })
+})
+
+// Register panes for visibility tracking
+watch(panesContainerRef, (el) => {
+  if (el) {
+    paneVisibility.register('panes', el, { view: viewMode.value })
+  }
+})
 
 watch(viewMode, (val) => {
   localStorage.setItem(VIEWMODE_KEY, val)

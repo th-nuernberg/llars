@@ -168,6 +168,61 @@
               class="mt-1"
               :disabled="settings.require_consent"
             />
+
+            <v-divider class="my-4" />
+
+            <div class="text-subtitle-2 font-weight-medium mb-2">
+              Custom Dimensions (Matomo IDs)
+            </div>
+            <v-text-field
+              v-model.number="settings.dimension_route_id"
+              type="number"
+              label="Route"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              min="0"
+            />
+            <v-text-field
+              v-model.number="settings.dimension_module_id"
+              type="number"
+              label="Modul"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mt-2"
+              min="0"
+            />
+            <v-text-field
+              v-model.number="settings.dimension_entity_id"
+              type="number"
+              label="Entity (z. B. Prompt/Doc/Session)"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mt-2"
+              min="0"
+            />
+            <v-text-field
+              v-model.number="settings.dimension_view_id"
+              type="number"
+              label="View/Pane"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mt-2"
+              min="0"
+            />
+            <v-text-field
+              v-model.number="settings.dimension_role_id"
+              type="number"
+              label="Rolle"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mt-2"
+              min="0"
+            />
           </v-col>
         </v-row>
 
@@ -219,10 +274,15 @@ const settings = ref({
   matomo_base_url: '/analytics/',
   matomo_site_id: 1,
   include_query: false,
-  disable_cookies: false,
-  require_consent: false,
+  disable_cookies: true,  // Privacy: No cookies by default
+  require_consent: true,  // Privacy: Require user consent before tracking
   require_cookie_consent: false,
-  set_user_id: true,
+  set_user_id: false,  // Privacy: Don't track user ID by default
+  dimension_route_id: 0,
+  dimension_module_id: 0,
+  dimension_entity_id: 0,
+  dimension_view_id: 0,
+  dimension_role_id: 0,
   track_clicks: true,
   track_hovers: false,
   hover_min_ms: 400,

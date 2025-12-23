@@ -37,6 +37,12 @@ Optional:
 ./scripts/verify_authentik.sh
 ```
 
+Manueller Fallback (falls Auto-Setup fehlschlägt):
+
+```bash
+./scripts/setup_authentik.sh
+```
+
 ## Production Hinweise
 
 - `PROJECT_URL`/`AUTHENTIK_PUBLIC_URL` korrekt setzen (HTTPS empfohlen)

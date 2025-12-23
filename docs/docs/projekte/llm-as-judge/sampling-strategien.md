@@ -1,7 +1,7 @@
 # Konzept: Sampling-Strategien bei unterschiedlich großen Säulen
 
 **Datum:** 25. November 2025
-**Status:** Konzeptphase
+**Status:** Teilweise implementiert
 **Autor:** Claude / Philipp Steigerwald
 
 ---
@@ -13,9 +13,9 @@ Die KIA-Datensäulen haben unterschiedlich viele E-Mail-Threads:
 | Säule | Beschreibung | Erwartete Größe |
 |-------|--------------|-----------------|
 | 1 | Rollenspiele | Mittel (~50-100) |
-| 2 | Feature (deaktiviert) | - |
+| 2 | Feature aus Säule 1 | Variabel |
 | 3 | Anonymisierte Daten | Groß (~200+) |
-| 4 | Synthetisch (deaktiviert) | - |
+| 4 | Synthetisch generiert | Variabel |
 | 5 | Live-Testungen | Klein (~20-50) |
 
 **Problem:** Wie vergleichen wir fair, wenn z.B. Säule 3 über 200 Threads hat, aber Säule 5 nur 30?
@@ -24,14 +24,14 @@ Die KIA-Datensäulen haben unterschiedlich viele E-Mail-Threads:
 
 ## 2. Sampling-Strategien
 
-### 2.1 Strategie A: Proportionales Sampling (Aktuell implementiert)
+### 2.1 Strategie A: Fixed Samples per Pillar (aktuell implementiert)
 
-**Prinzip:** Nimm von jeder Säule nur so viele Threads, wie die kleinste Säule hat.
+**Prinzip:** Pro Säule wird eine feste Anzahl Threads gezogen (`samples_per_pillar`).
 
 ```
-Säule 1: 80 Threads  → Sample: 30
-Säule 3: 200 Threads → Sample: 30
-Säule 5: 30 Threads  → Sample: 30
+Säule 1: 80 Threads  → Sample: 10
+Säule 3: 200 Threads → Sample: 10
+Säule 5: 30 Threads  → Sample: 10
 ```
 
 **Vorteile:**
@@ -43,7 +43,7 @@ Säule 5: 30 Threads  → Sample: 30
 - Viele Daten aus größeren Säulen werden ignoriert
 - Möglicherweise nicht repräsentativ für die Gesamtpopulation
 
-**Verwendung:** Wenn alle Säulen mindestens `samples_per_pillar` Threads haben.
+**Verwendung:** Standardmodus in `pillar_sample` (N wird explizit gesetzt).
 
 ---
 

@@ -98,6 +98,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { useActiveDuration, useScrollDepth } from '@/composables/useAnalyticsMetrics'
 
 const route = useRoute()
 const router = useRouter()
@@ -124,6 +125,27 @@ const {
   minLeftPercent: 25,
   maxLeftPercent: 75,
   storageKey: 'rater-panel-width'
+})
+
+// ==================== ANALYTICS ====================
+
+// Entity dimension for this thread
+const evalEntity = computed(() => `thread:${route.params.id}`)
+
+// Session active time tracking
+useActiveDuration({
+  category: 'eval',
+  action: 'session_active_ms',
+  name: () => evalEntity.value,
+  dimensions: () => ({ entity: evalEntity.value, view: 'overview' })
+})
+
+// Scroll depth for panels container
+useScrollDepth(containerRef, {
+  category: 'eval',
+  action: 'scroll_depth',
+  name: () => evalEntity.value,
+  dimensions: () => ({ entity: evalEntity.value, view: 'overview' })
 })
 
 // Computed for progress tracking

@@ -59,7 +59,7 @@
         </div>
 
         <!-- Blocks Container -->
-        <div class="blocks-container">
+        <div ref="blocksContainerRef" class="blocks-container">
           <draggable
             v-if="blocks.length > 0"
             v-model="sortedBlocks"
@@ -139,15 +139,15 @@
         </div>
 
         <!-- Git Panel -->
-        <PromptGitPanel
-          v-if="showGitPanel"
-          :prompt-id="Number(promptId)"
-          :summary="gitSummary"
-          :can-commit="true"
-          :get-content="getContentSnapshot"
-          @committed="onGitCommitted"
-          class="mt-4"
-        />
+        <div v-if="showGitPanel" ref="gitPanelRef" class="mt-4">
+          <PromptGitPanel
+            :prompt-id="Number(promptId)"
+            :summary="gitSummary"
+            :can-commit="true"
+            :get-content="getContentSnapshot"
+            @committed="onGitCommitted"
+          />
+        </div>
 
         <!-- Debug Info (Development only) -->
         <div v-if="isDevelopment" class="debug-info">
@@ -298,6 +298,7 @@ import { usePromptBlocks } from './composables/usePromptBlocks';
 import { useQuillEditor } from './composables/useQuillEditor';
 import { usePromptGitDiff } from './composables/usePromptGitDiff';
 import { useAuth } from '@/composables/useAuth';
+import { useActiveDuration, useScrollDepth, useTypingMetrics, useVisibilityTracker } from '@/composables/useAnalyticsMetrics';
 
 const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
@@ -305,6 +306,9 @@ const route = useRoute();
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
+const blocksContainerRef = ref(null);
+const gitPanelRef = ref(null);
+const promptEntity = computed(() => `prompt:${promptId.value}`);
 
 // Skeleton Loading
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['prompt']);
@@ -348,6 +352,41 @@ const {
 
 const { promptName, promptOwner, sharedWithUsers, fetchPromptDetails } = usePromptDetails(promptId);
 const auth = useAuth();
+const typingMetrics = useTypingMetrics({
+  category: 'prompt',
+  name: 'editor',
+  dimensions: () => ({ entity: promptEntity.value, view: 'editor' })
+});
+
+useActiveDuration({
+  category: 'prompt',
+  action: 'session_active_ms',
+  name: () => `prompt:${promptId.value}`,
+  dimensions: () => ({ entity: promptEntity.value })
+});
+
+const paneVisibility = useVisibilityTracker({
+  category: 'prompt',
+  action: 'pane_visible_ms',
+  nameBuilder: (id) => `pane:${id}`,
+  dimensions: () => ({ entity: promptEntity.value })
+});
+
+useScrollDepth(blocksContainerRef, {
+  category: 'prompt',
+  action: 'scroll_depth',
+  name: () => `prompt:${promptId.value}|editor`,
+  dimensions: () => ({ entity: promptEntity.value, view: 'editor' })
+});
+
+const countDeltaChars = (delta) => {
+  if (!delta?.ops) return 0;
+  return delta.ops.reduce((total, op) => {
+    if (typeof op.insert === 'string') return total + op.insert.length;
+    if (op.insert) return total + 1;
+    return total;
+  }, 0);
+};
 
 // YJS and Socket.IO setup
 const collaboration = useYjsCollaboration(
@@ -386,7 +425,13 @@ const getCurrentUserColor = () => {
 const editorManager = useQuillEditor(ydoc, socket, roomId, {
   getUserColor: () => getCurrentUserColor(),
   getUsername: () => auth.username?.value || username,
-  showUserHighlighting: () => showGitPanel.value
+  showUserHighlighting: () => showGitPanel.value,
+  onUserTextChange: ({ delta }) => {
+    const chars = countDeltaChars(delta);
+    if (chars > 0) {
+      typingMetrics.recordInput(chars);
+    }
+  }
 });
 const {
   editorCount,
@@ -508,6 +553,14 @@ const handleAppendJsonBlocks = () => {
 const onDragEnd = () => {
   showMessage('Block-Reihenfolge aktualisiert!');
 };
+
+watch(blocksContainerRef, (el) => {
+  paneVisibility.register('editor', el, { view: 'editor' });
+});
+
+watch(gitPanelRef, (el) => {
+  paneVisibility.register('git', el, { view: 'git' });
+});
 
 // Watch for new/deleted blocks
 watch(

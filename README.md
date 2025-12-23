@@ -4,15 +4,20 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 ## Features
 
-- **Multi-User Collaboration** - Echtzeit-Zusammenarbeit mit YJS CRDT
+- **Multi-User Collaboration** - Echtzeit-Zusammenarbeit mit YJS CRDT (Prompt Engineering + Markdown Collab)
 - **LLM-Integration** - OpenAI, LiteLLM/Mistral
-- **LLM-as-Judge** - Automatisierte paarweise Vergleiche
+- **LLM-as-Judge** - Automatisierte paarweise Vergleiche mit Live-Streaming
 - **RAG-Pipeline** - Dokumenten-basierte Antworten mit ChromaDB
+- **OnCoCo Analyse** - Satzbasierte Klassifikation (68 Kategorien)
+- **Evaluierungstools** - Ranking, Rating, Mail Rating, Fake/Echt
+- **Chatbot Builder** - Chatbots mit RAG-Integration und Web-Crawler
+- **Offline Anonymisierung** - PDF/DOCX/Text pseudonymisieren
+- **Markdown Collab** - Gemeinsames Schreiben mit Live-Preview
 - **RBAC Permission System** - Rollenbasierte Zugriffskontrolle
 - **Authentik Auth** - OAuth2/OIDC Authentifizierung
 - **Matomo Analytics** - Self-hosted Tracking (Pageviews + UI Events, optional SSO via Authentik/OIDC)
 - **Admin System Tools** - System Monitor, Docker Monitor & DB Explorer (live)
-- **Chatbot Builder** - Chatbots mit RAG-Integration erstellen
+- **KAIMO** - Fallvignetten bearbeiten und auswerten
 
 ## Voraussetzungen
 
@@ -43,8 +48,10 @@ Das Skript startet alle Docker-Container und konfiguriert Authentik automatisch.
 | **Backend API** | http://localhost:55080/api |
 | **Authentik Admin** | http://localhost:55095 |
 | **Matomo** | http://localhost:55080/analytics/ |
+| **Docs (MkDocs, direkt)** | http://localhost:55800 |
+| **Docs (via nginx, dev)** | http://localhost:55080/mkdocs/ |
 
-Hinweis: Matomo ist zusätzlich unter `/matomo/` erreichbar (Alias). Das Frontend nutzt für Tracking die first-party Endpoints `/metrics.js` und `/metrics.php`.
+Hinweis: Matomo ist zusätzlich unter `/matomo/` erreichbar (Alias). Das Frontend nutzt für Tracking die first-party Endpoints `/metrics.js` und `/metrics.php`. In Production wird die Doku unter `/docs/` proxied.
 
 ## Test-Benutzer
 
@@ -80,15 +87,16 @@ llars/
 nginx (:80) → Reverse Proxy
 ├── /          → Vue Frontend (:5173)
 ├── /api/      → Flask Backend (:8081)
-├── /auth/     → Flask Auth (:8081)
+├── /auth/     → Flask Auth (delegiert an Authentik)
+├── /authentik/→ Authentik UI/API (:9000)
 ├── /analytics/→ Matomo Analytics (:80)
 └── /collab/   → YJS WebSocket (:8082)
 
 Databases:
 ├── MariaDB (:3306)        → Anwendungsdaten
-├── MariaDB (:3306)        → Matomo
+├── MariaDB (:3306)        → Matomo DB
 ├── PostgreSQL (:5432)     → Authentik
-└── ChromaDB               → RAG Vektoren
+└── ChromaDB               → RAG Vektoren (lokal, /app/storage)
 ```
 
 ## Wichtige Befehle
@@ -116,17 +124,19 @@ Wichtige Umgebungsvariablen in `.env`:
 
 ```bash
 PROJECT_STATE=development     # oder production
-PROJECT_HOST=localhost
-NGINX_INTERNAL_PORT=80        # MUSS 80 sein!
+PROJECT_URL=http://localhost:55080
+PROJECT_HOST=localhost        # optional (wird aus PROJECT_URL abgeleitet)
+NGINX_EXTERNAL_PORT=55080      # Host-Port für nginx
 OPENAI_API_KEY=sk-...         # Für LLM-Features
 LITELLM_API_KEY=...           # Optional für Mistral
+LITELLM_BASE_URL=https://kiz1.in.ohmportal.de/llmproxy/v1
 ```
 
 ## Troubleshooting
 
 | Problem | Lösung |
 |---------|--------|
-| LLARS nicht erreichbar | `NGINX_INTERNAL_PORT=80` in .env prüfen |
+| LLARS nicht erreichbar | `PROJECT_URL`/`NGINX_EXTERNAL_PORT` in .env prüfen |
 | Auth-Fehler | `./scripts/setup_authentik.sh` ausführen |
 | Container starten nicht | `docker compose down && ./start_llars.sh` |
 | Datenbank-Fehler | `REMOVE_LLARS_VOLUMES=True ./start_llars.sh` |

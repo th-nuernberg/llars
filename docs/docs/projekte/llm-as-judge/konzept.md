@@ -555,259 +555,73 @@ Führe eine detaillierte Bewertung durch und bestimme, welcher Verlauf besser is
 
 ### Phase 3: API Endpoints & Queue (Woche 3-4)
 
-#### 3.1 Judge API Routes
+#### 3.1 Judge API Routes (aktuelle Struktur)
+
+Die Umsetzung ist modular (statt monolithischem `judge_routes.py`) und wird über `routes/judge/__init__.py` als `/api/judge` registriert.
+
+**Module (Auszug):**
+- `session_routes.py` (CRUD, Estimate, Comparison-Modes)
+- `session_control_routes.py` (start/pause/resume/delete)
+- `comparison_routes.py` (current, queue, comparisons, worker streams)
+- `statistics_routes.py` + `statistics_*` (Ergebnisse & Analysen)
+- `pillar_routes.py` (Säulen + Zuordnung)
+- `kia_sync_routes.py` (GitLab Sync)
+- `export_routes.py` (CSV/JSON)
+
+Alle Endpoints sind via `@authentik_required` geschützt und nutzen `@require_permission('feature:comparison:*')`.
 
 ```python
-# app/routes/judge/judge_routes.py
+from auth.decorators import authentik_required
+from decorators.permission_decorator import require_permission
+from routes.judge.session_routes import session_bp
 
-from flask import Blueprint, request, jsonify
-from flask_socketio import emit, join_room
-from app.decorators.permission_decorator import require_permission
-from app.auth.decorators import keycloak_required
-from app.services.judge_service import JudgeService
-from app.db.tables import JudgeSession, JudgeComparison, JudgeEvaluation
-from app.db import db
-
-judge_bp = Blueprint('judge', __name__, url_prefix='/api/judge')
-
-# ========== SESSION MANAGEMENT ==========
-
-@judge_bp.route('/sessions', methods=['GET'])
-@keycloak_required
+@session_bp.route('/sessions', methods=['GET'])
+@authentik_required
 @require_permission('feature:comparison:view')
 def list_sessions():
-    """Liste aller Judge-Sessions des Users"""
-    user_id = request.user_id
-    sessions = JudgeSession.query.filter_by(user_id=user_id).all()
-    return jsonify([{
-        'id': s.id,
-        'name': s.name,
-        'status': s.status,
-        'total': s.total_comparisons,
-        'completed': s.completed_comparisons,
-        'progress': s.completed_comparisons / s.total_comparisons if s.total_comparisons > 0 else 0,
-        'created_at': s.created_at.isoformat()
-    } for s in sessions])
-
-
-@judge_bp.route('/sessions', methods=['POST'])
-@keycloak_required
-@require_permission('feature:comparison:edit')
-def create_session():
-    """Neue Judge-Session erstellen"""
-    data = request.json
-
-    session = JudgeSession(
-        user_id=request.user_id,
-        name=data.get('name', 'Neue Evaluation'),
-        config_json=data.get('config', {}),
-        status='created'
-    )
-    db.session.add(session)
-    db.session.commit()
-
-    return jsonify({'id': session.id, 'status': 'created'})
-
-
-@judge_bp.route('/sessions/<int:session_id>/configure', methods=['POST'])
-@keycloak_required
-@require_permission('feature:comparison:edit')
-def configure_session(session_id):
-    """
-    Konfiguriert welche Säulen verglichen werden sollen.
-
-    Body:
-    {
-        "pillars": [1, 2, 3, 4, 5],  // Welche Säulen
-        "comparison_mode": "all_pairs" | "specific",
-        "specific_pairs": [[1, 3], [2, 4]],  // Optional
-        "samples_per_pillar": 10,  // Wie viele Threads pro Säule
-        "position_swap": true  // Doppelte Evaluation mit Swap
-    }
-    """
-    session = JudgeSession.query.get_or_404(session_id)
-    data = request.json
-
-    # Säulen-Threads laden
-    pillars = data.get('pillars', [1, 2, 3, 4, 5])
-    samples = data.get('samples_per_pillar', 10)
-
-    # Comparisons generieren
-    comparisons = generate_comparisons(
-        session_id=session.id,
-        pillars=pillars,
-        mode=data.get('comparison_mode', 'all_pairs'),
-        specific_pairs=data.get('specific_pairs'),
-        samples=samples,
-        position_swap=data.get('position_swap', True)
-    )
-
-    session.total_comparisons = len(comparisons)
-    session.config_json = data
-    session.status = 'queued'
-    db.session.commit()
-
-    return jsonify({
-        'session_id': session.id,
-        'total_comparisons': len(comparisons),
-        'status': 'queued'
-    })
-
-
-@judge_bp.route('/sessions/<int:session_id>/start', methods=['POST'])
-@keycloak_required
-@require_permission('feature:comparison:edit')
-def start_session(session_id):
-    """Startet die Session (beginnt Queue-Processing)"""
-    session = JudgeSession.query.get_or_404(session_id)
-
-    if session.status not in ['queued', 'paused']:
-        return jsonify({'error': 'Session kann nicht gestartet werden'}), 400
-
-    session.status = 'running'
-    session.started_at = datetime.utcnow()
-    db.session.commit()
-
-    # Background Worker triggern
-    from app.workers.judge_worker import trigger_judge_worker
-    trigger_judge_worker(session_id)
-
-    return jsonify({'status': 'running'})
-
-
-@judge_bp.route('/sessions/<int:session_id>/pause', methods=['POST'])
-@keycloak_required
-@require_permission('feature:comparison:edit')
-def pause_session(session_id):
-    """Pausiert laufende Session"""
-    session = JudgeSession.query.get_or_404(session_id)
-    session.status = 'paused'
-    db.session.commit()
-    return jsonify({'status': 'paused'})
-
-
-# ========== LIVE VIEWING ==========
-
-@judge_bp.route('/sessions/<int:session_id>/current', methods=['GET'])
-@keycloak_required
-@require_permission('feature:comparison:view')
-def get_current_comparison(session_id):
-    """Holt den aktuell laufenden Vergleich"""
-    session = JudgeSession.query.get_or_404(session_id)
-
-    if not session.current_comparison_id:
-        return jsonify({'current': None})
-
-    comparison = JudgeComparison.query.get(session.current_comparison_id)
-
-    return jsonify({
-        'comparison_id': comparison.id,
-        'thread_a': load_thread_preview(comparison.thread_a_id),
-        'thread_b': load_thread_preview(comparison.thread_b_id),
-        'pillar_a': comparison.pillar_a,
-        'pillar_b': comparison.pillar_b,
-        'position_order': comparison.position_order,
-        'status': comparison.status
-    })
-
-
-# ========== RESULTS ==========
-
-@judge_bp.route('/sessions/<int:session_id>/results', methods=['GET'])
-@keycloak_required
-@require_permission('feature:comparison:view')
-def get_session_results(session_id):
-    """Holt alle Ergebnisse einer Session"""
-    evaluations = JudgeEvaluation.query.join(JudgeComparison).filter(
-        JudgeComparison.session_id == session_id
-    ).all()
-
-    return jsonify([{
-        'comparison_id': e.comparison_id,
-        'winner': e.winner,
-        'confidence': e.confidence,
-        'reasoning': e.reasoning,
-        'scores': e.evaluation_json
-    } for e in evaluations])
-
-
-@judge_bp.route('/sessions/<int:session_id>/statistics', methods=['GET'])
-@keycloak_required
-@require_permission('feature:comparison:view')
-def get_pillar_statistics(session_id):
-    """Aggregierte Statistiken pro Säulen-Paar"""
-    stats = PillarStatistics.query.filter_by(session_id=session_id).all()
-
-    # Matrix-Format für UI
-    matrix = {}
-    for s in stats:
-        key = f"{s.pillar_a}_vs_{s.pillar_b}"
-        matrix[key] = {
-            'wins_a': s.wins_a,
-            'wins_b': s.wins_b,
-            'ties': s.ties,
-            'total': s.wins_a + s.wins_b + s.ties,
-            'win_rate_a': s.wins_a / (s.wins_a + s.wins_b + s.ties) if (s.wins_a + s.wins_b + s.ties) > 0 else 0
-        }
-
-    return jsonify(matrix)
+    ...
 ```
+
+**Wichtige Endpoints (Auszug):**
+- `GET /api/judge/comparison-modes`
+- `POST /api/judge/estimate`
+- `GET/POST /api/judge/sessions`
+- `POST /api/judge/sessions/<id>/start|pause|resume`
+- `GET /api/judge/sessions/<id>/current|queue|comparisons`
+- `GET /api/judge/sessions/<id>/results|verbosity-analysis|thread-performance|position-swap-analysis`
+- `GET /api/judge/sessions/<id>/export/csv|export/json`
+- `GET /api/judge/pillars` (+ `/pillars/<n>/threads`, `/pillars/<n>/assign`)
+- `GET/POST /api/judge/kia/...`
 
 #### 3.2 Socket.IO Events für Live-Updates
 
 ```python
-# app/socketio_handlers/judge_events.py
-
-from flask_socketio import emit, join_room, leave_room
-from app import socketio
+# app/socketio_handlers/events_judge.py (Auszug)
 
 @socketio.on('judge:join_session')
 def handle_join_session(data):
-    """User joint einer Judge-Session für Live-Updates"""
-    session_id = data.get('session_id')
-    room = f"judge_session_{session_id}"
-    join_room(room)
-    emit('judge:joined', {'session_id': session_id})
-
+    ...
 
 @socketio.on('judge:leave_session')
 def handle_leave_session(data):
-    """User verlässt Session-Room"""
-    session_id = data.get('session_id')
-    room = f"judge_session_{session_id}"
-    leave_room(room)
+    ...
 
+@socketio.on('judge:join_overview')
+def handle_join_overview():
+    ...
 
-def broadcast_comparison_start(session_id: int, comparison_data: dict):
-    """Broadcast wenn neuer Vergleich startet"""
-    room = f"judge_session_{session_id}"
-    socketio.emit('judge:comparison_start', comparison_data, room=room)
-
-
-def broadcast_llm_stream(session_id: int, chunk: str, field: str):
-    """Broadcast für LLM-Streaming (Token für Token)"""
-    room = f"judge_session_{session_id}"
-    socketio.emit('judge:llm_stream', {
-        'chunk': chunk,
-        'field': field  # z.B. 'chain_of_thought.step_1', 'winner', etc.
-    }, room=room)
-
-
-def broadcast_comparison_complete(session_id: int, result: dict):
-    """Broadcast wenn Vergleich abgeschlossen"""
-    room = f"judge_session_{session_id}"
-    socketio.emit('judge:comparison_complete', result, room=room)
-
-
-def broadcast_session_progress(session_id: int, completed: int, total: int):
-    """Broadcast für Fortschritts-Updates"""
-    room = f"judge_session_{session_id}"
-    socketio.emit('judge:progress', {
-        'completed': completed,
-        'total': total,
-        'percent': (completed / total * 100) if total > 0 else 0
-    }, room=room)
+@socketio.on('judge:get_status')
+def handle_get_status(data):
+    ...
 ```
+
+**Server → Client (Beispiele):**
+- `judge:comparison_start`
+- `judge:llm_stream`
+- `judge:comparison_complete`
+- `judge:progress`
+- `judge:session_complete`
+- `judge:status`
 
 #### 3.3 Test-Kriterien Phase 3
 - [ ] Alle API-Endpoints erreichbar mit korrekten Permissions
@@ -821,221 +635,25 @@ def broadcast_session_progress(session_id: int, completed: int, total: int):
 
 #### 4.1 Judge Worker
 
-```python
-# app/workers/judge_worker.py
+Aktuell läuft die Verarbeitung über einen **Worker-Pool** (`app/workers/judge_worker_pool.py`)
+mit optional mehreren parallelen Workern. Der Pool wird aus den Session-Control-Routen
+gestartet (`trigger_judge_worker_pool`) und sendet Live-Events (`judge:*`) für Fortschritt,
+Streaming und Abschluss.
 
-import threading
-import time
-from datetime import datetime
-from app.db import db
-from app.db.tables import JudgeSession, JudgeComparison, JudgeEvaluation, PillarStatistics
-from app.services.judge_service import JudgeService
-from app.socketio_handlers.judge_events import (
-    broadcast_comparison_start,
-    broadcast_llm_stream,
-    broadcast_comparison_complete,
-    broadcast_session_progress
-)
-import os
+**Relevante Dateien:**
+- `app/workers/judge_worker_pool.py` (aktuell, multi-worker)
+- `app/workers/judge_worker.py` (Legacy Single-Worker)
+- `app/routes/judge/session_control_routes.py`
+- `app/routes/judge/session_health_routes.py`
 
-class JudgeWorker:
-    """Background Worker für Judge-Evaluationen"""
-
-    def __init__(self, session_id: int):
-        self.session_id = session_id
-        self.running = False
-        self.judge_service = JudgeService(
-            api_key=os.getenv('LITELLM_API_KEY')
-        )
-
-    def start(self):
-        """Startet Worker in Background-Thread"""
-        self.running = True
-        thread = threading.Thread(target=self._process_queue)
-        thread.daemon = True
-        thread.start()
-
-    def stop(self):
-        """Stoppt Worker"""
-        self.running = False
-
-    def _process_queue(self):
-        """Hauptschleife: Verarbeitet Queue"""
-        while self.running:
-            session = JudgeSession.query.get(self.session_id)
-
-            if session.status != 'running':
-                self.running = False
-                break
-
-            # Nächsten pending Comparison holen
-            comparison = JudgeComparison.query.filter_by(
-                session_id=self.session_id,
-                status='pending'
-            ).order_by(JudgeComparison.queue_position).first()
-
-            if not comparison:
-                # Queue leer → Session abgeschlossen
-                session.status = 'completed'
-                session.completed_at = datetime.utcnow()
-                db.session.commit()
-                break
-
-            # Comparison verarbeiten
-            self._process_comparison(comparison, session)
-
-            # Kurze Pause zwischen Comparisons
-            time.sleep(1)
-
-    def _process_comparison(self, comparison: JudgeComparison, session: JudgeSession):
-        """Verarbeitet einen einzelnen Vergleich"""
-
-        # Status aktualisieren
-        comparison.status = 'running'
-        comparison.started_at = datetime.utcnow()
-        session.current_comparison_id = comparison.id
-        db.session.commit()
-
-        # Broadcast: Vergleich startet
-        thread_a_data = self._load_thread_data(comparison.thread_a_id)
-        thread_b_data = self._load_thread_data(comparison.thread_b_id)
-
-        broadcast_comparison_start(self.session_id, {
-            'comparison_id': comparison.id,
-            'thread_a': thread_a_data,
-            'thread_b': thread_b_data,
-            'pillar_a': comparison.pillar_a,
-            'pillar_b': comparison.pillar_b
-        })
-
-        try:
-            # LLM Evaluation mit Streaming
-            start_time = time.time()
-
-            result = self.judge_service.evaluate_pair(
-                thread_a_messages=thread_a_data['messages'],
-                thread_b_messages=thread_b_data['messages'],
-                pillar_a=comparison.pillar_a,
-                pillar_b=comparison.pillar_b,
-                stream_callback=lambda chunk, field: broadcast_llm_stream(
-                    self.session_id, chunk, field
-                )
-            )
-
-            latency_ms = int((time.time() - start_time) * 1000)
-
-            # Evaluation speichern
-            evaluation = JudgeEvaluation(
-                comparison_id=comparison.id,
-                raw_response=result.model_dump_json(),
-                evaluation_json=result.model_dump(),
-                winner=result.winner,
-                counsellor_coherence_a=result.criteria_scores.counsellor_coherence.score_a,
-                counsellor_coherence_b=result.criteria_scores.counsellor_coherence.score_b,
-                client_coherence_a=result.criteria_scores.client_coherence.score_a,
-                client_coherence_b=result.criteria_scores.client_coherence.score_b,
-                quality_a=result.criteria_scores.quality.score_a,
-                quality_b=result.criteria_scores.quality.score_b,
-                empathy_a=result.criteria_scores.empathy.score_a,
-                empathy_b=result.criteria_scores.empathy.score_b,
-                reasoning=result.final_justification,
-                confidence=result.confidence,
-                position_variant=comparison.position_order,
-                llm_latency_ms=latency_ms
-            )
-            db.session.add(evaluation)
-
-            # Statistiken aktualisieren
-            self._update_statistics(comparison.pillar_a, comparison.pillar_b, result.winner)
-
-            comparison.status = 'completed'
-            comparison.completed_at = datetime.utcnow()
-            session.completed_comparisons += 1
-
-            db.session.commit()
-
-            # Broadcast: Vergleich abgeschlossen
-            broadcast_comparison_complete(self.session_id, {
-                'comparison_id': comparison.id,
-                'winner': result.winner,
-                'confidence': result.confidence,
-                'evaluation': result.model_dump()
-            })
-
-            broadcast_session_progress(
-                self.session_id,
-                session.completed_comparisons,
-                session.total_comparisons
-            )
-
-        except Exception as e:
-            comparison.status = 'failed'
-            db.session.commit()
-            print(f"Evaluation failed: {e}")
-
-    def _load_thread_data(self, thread_id: int) -> dict:
-        """Lädt Thread-Daten für Evaluation"""
-        from app.db.tables import EmailThread, EmailMessage
-
-        thread = EmailThread.query.get(thread_id)
-        messages = EmailMessage.query.filter_by(thread_id=thread_id).order_by(
-            EmailMessage.timestamp
-        ).all()
-
-        return {
-            'id': thread_id,
-            'subject': thread.subject if thread else '',
-            'messages': [{
-                'content': msg.content,
-                'is_counsellor': msg.is_counsellor,
-                'timestamp': msg.timestamp.isoformat() if msg.timestamp else None
-            } for msg in messages]
-        }
-
-    def _update_statistics(self, pillar_a: int, pillar_b: int, winner: str):
-        """Aktualisiert Säulen-Statistiken"""
-        stat = PillarStatistics.query.filter_by(
-            session_id=self.session_id,
-            pillar_a=pillar_a,
-            pillar_b=pillar_b
-        ).first()
-
-        if not stat:
-            stat = PillarStatistics(
-                session_id=self.session_id,
-                pillar_a=pillar_a,
-                pillar_b=pillar_b
-            )
-            db.session.add(stat)
-
-        if winner == 'A':
-            stat.wins_a += 1
-        elif winner == 'B':
-            stat.wins_b += 1
-        else:
-            stat.ties += 1
-
-        stat.updated_at = datetime.utcnow()
-
-
-# Globaler Worker-Registry
-_workers = {}
-
-def trigger_judge_worker(session_id: int):
-    """Startet Worker für Session"""
-    if session_id in _workers:
-        _workers[session_id].stop()
-
-    worker = JudgeWorker(session_id)
-    _workers[session_id] = worker
-    worker.start()
-
-
-def stop_judge_worker(session_id: int):
-    """Stoppt Worker für Session"""
-    if session_id in _workers:
-        _workers[session_id].stop()
-        del _workers[session_id]
+**Pseudocode (vereinfacht):**
+```
+pool.start(session_id, worker_count)
+while pending comparisons:
+  worker.claim_next()
+  worker.evaluate()
+  emit judge:comparison_start / judge:llm_stream / judge:progress
+emit judge:session_complete
 ```
 
 #### 4.2 Test-Kriterien Phase 4
@@ -1100,47 +718,18 @@ def stop_judge_worker(session_id: int):
         <!-- Vergleichs-Modus -->
         <v-radio-group v-model="comparisonMode" label="Vergleichs-Modus">
           <v-radio
-            label="Alle Paare vergleichen"
-            value="all_pairs"
+            label="Pillar Sample (schneller Überblick)"
+            value="pillar_sample"
           />
           <v-radio
-            label="Spezifische Paare definieren"
-            value="specific"
+            label="Round Robin (alle Threads Säule A vs. Säule B)"
+            value="round_robin"
+          />
+          <v-radio
+            label="Free For All (alle Threads gegeneinander)"
+            value="free_for_all"
           />
         </v-radio-group>
-
-        <!-- Spezifische Paare (wenn ausgewählt) -->
-        <v-card v-if="comparisonMode === 'specific'" outlined class="mb-4">
-          <v-card-text>
-            <v-row v-for="(pair, idx) in specificPairs" :key="idx">
-              <v-col cols="5">
-                <v-select
-                  v-model="pair[0]"
-                  :items="selectedPillars"
-                  label="Säule A"
-                  outlined
-                  dense
-                />
-              </v-col>
-              <v-col cols="2" class="text-center">
-                <v-icon>mdi-compare-horizontal</v-icon>
-              </v-col>
-              <v-col cols="5">
-                <v-select
-                  v-model="pair[1]"
-                  :items="selectedPillars"
-                  label="Säule B"
-                  outlined
-                  dense
-                />
-              </v-col>
-            </v-row>
-            <v-btn text @click="addPair">
-              <v-icon left>mdi-plus</v-icon>
-              Paar hinzufügen
-            </v-btn>
-          </v-card-text>
-        </v-card>
 
         <!-- Samples pro Säule -->
         <v-slider
@@ -1195,10 +784,13 @@ const router = useRouter()
 // Daten
 const sessionName = ref('Neue Evaluation ' + new Date().toLocaleDateString('de-DE'))
 const selectedPillars = ref([1, 3])
-const comparisonMode = ref('all_pairs')
-const specificPairs = ref([[1, 3]])
+const comparisonMode = ref('pillar_sample')
 const samplesPerPillar = ref(10)
+const maxThreadsPerPillar = ref(null)
 const positionSwap = ref(true)
+const repetitionsPerPair = ref(1)
+const workerCount = ref(1)
+const estimate = ref(null)
 
 const pillars = ref([
   { number: 1, name: 'Rollenspiele', threadCount: 50, color: 'red' },
@@ -1209,48 +801,49 @@ const pillars = ref([
 ])
 
 // Computed
-const estimatedComparisons = computed(() => {
-  const n = selectedPillars.value.length
-  let pairs = 0
-
-  if (comparisonMode.value === 'all_pairs') {
-    pairs = (n * (n - 1)) / 2  // Kombinationen
-  } else {
-    pairs = specificPairs.value.length
-  }
-
-  const comparisonsPerPair = samplesPerPillar.value
-  const total = pairs * comparisonsPerPair
-
-  return positionSwap.value ? total * 2 : total
-})
+const estimatedComparisons = computed(() => estimate.value?.total_comparisons || 0)
 
 const isValid = computed(() => {
   return selectedPillars.value.length >= 2 && sessionName.value.length > 0
 })
 
 // Methods
-function addPair() {
-  specificPairs.value.push([selectedPillars.value[0], selectedPillars.value[1]])
+async function fetchEstimate() {
+  if (selectedPillars.value.length < 2) return
+  const payload = {
+    pillar_ids: selectedPillars.value,
+    comparison_mode: comparisonMode.value,
+    samples_per_pillar: samplesPerPillar.value,
+    position_swap: positionSwap.value
+  }
+  if (maxThreadsPerPillar.value) {
+    payload.max_threads_per_pillar = maxThreadsPerPillar.value
+  }
+  const response = await axios.post('/api/judge/estimate', payload)
+  estimate.value = response.data
 }
 
 async function createSession() {
   try {
-    // Session erstellen
-    const createRes = await axios.post('/api/judge/sessions', {
-      name: sessionName.value
-    })
-
-    const sessionId = createRes.data.id
-
-    // Konfigurieren
-    await axios.post(`/api/judge/sessions/${sessionId}/configure`, {
-      pillars: selectedPillars.value,
+    const payload = {
+      session_name: sessionName.value,
+      pillar_ids: selectedPillars.value,
       comparison_mode: comparisonMode.value,
-      specific_pairs: comparisonMode.value === 'specific' ? specificPairs.value : null,
       samples_per_pillar: samplesPerPillar.value,
-      position_swap: positionSwap.value
-    })
+      position_swap: positionSwap.value,
+      repetitions_per_pair: repetitionsPerPair.value,
+      worker_count: workerCount.value
+    }
+    if (maxThreadsPerPillar.value) {
+      payload.max_threads_per_pillar = maxThreadsPerPillar.value
+    }
+
+    // Session erstellen
+    const createRes = await axios.post('/api/judge/sessions', payload)
+    const sessionId = createRes.data.session_id || createRes.data.id
+
+    // Starten
+    await axios.post(`/api/judge/sessions/${sessionId}/start`)
 
     // Zur Session navigieren
     router.push(`/judge/session/${sessionId}`)

@@ -627,6 +627,8 @@ import { marked } from 'marked'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { useChatMessages } from './ChatWithBots/composables/useChatMessages.js'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { useActiveDuration, useTypingMetrics, useScrollDepth, useVisibilityTracker } from '@/composables/useAnalyticsMetrics'
+import { matomoTrackEvent } from '@/plugins/llars-metrics'
 import { AUTH_STORAGE_KEYS, clearAuthStorage, getAuthStorageItem } from '@/utils/authStorage'
 import AgentReasoningDisplay from './Chat/AgentReasoningDisplay.vue'
 
@@ -735,6 +737,56 @@ const fullscreenDialog = ref({
 const agentStatus = ref(null)
 const agentEventCounter = ref(0)
 const agentReasoningRef = ref(null)
+
+// ==================== ANALYTICS ====================
+
+// Entity dimension for the selected chatbot
+const chatbotEntity = computed(() => selectedChatbot.value ? `bot:${selectedChatbot.value.id}` : '')
+
+// Session active time tracking for chatbot interactions
+useActiveDuration({
+  category: 'chat',
+  action: 'session_active_ms',
+  name: () => chatbotEntity.value,
+  dimensions: () => ({ entity: chatbotEntity.value })
+})
+
+// Typing metrics for chat input
+const typingMetrics = useTypingMetrics({
+  category: 'chat',
+  name: () => chatbotEntity.value,
+  dimensions: () => ({ entity: chatbotEntity.value })
+})
+
+// Track typing in the input field
+watch(newMessage, (newVal, oldVal) => {
+  if (newVal.length > oldVal.length) {
+    typingMetrics.recordInput(newVal.length - oldVal.length)
+  }
+})
+
+// Scroll depth tracking for chat messages
+useScrollDepth(chatContainer, {
+  category: 'chat',
+  action: 'scroll_depth',
+  name: () => chatbotEntity.value,
+  dimensions: () => ({ entity: chatbotEntity.value })
+})
+
+// Track chatbot selection as an action
+function trackChatbotSelect(bot) {
+  matomoTrackEvent('chat', 'chatbot_select', `bot:${bot.id}`, 1, {
+    entity: `bot:${bot.id}`
+  })
+}
+
+// Track message send as an action (with message length bucket, no content)
+function trackMessageSend(charCount) {
+  const bucket = charCount < 50 ? 'short' : charCount < 200 ? 'medium' : 'long'
+  matomoTrackEvent('chat', 'message_send', `${chatbotEntity.value}|len:${bucket}`, charCount, {
+    entity: chatbotEntity.value
+  })
+}
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -929,6 +981,7 @@ function updateConversationTitle(conversationId, title) {
  * Select a chatbot and load its chat history
  */
 async function selectChatbot(bot) {
+  trackChatbotSelect(bot)
   selectedChatbot.value = bot
   messages.value = []
   selectedFiles.value = []
@@ -1023,6 +1076,11 @@ async function sendMessage() {
   const userMessage = newMessage.value.trim()
   const files = [...selectedFiles.value]
   const hasFiles = files.length > 0
+
+  // Analytics: Track message send
+  if (userMessage) {
+    trackMessageSend(userMessage.length)
+  }
 
   // Add user message to chat
   addUserMessage(messages, userMessage, files)

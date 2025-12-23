@@ -761,6 +761,55 @@ class ChatService:
 
         return context, sources
 
+    # Class-level cache for embeddings per model
+    _embeddings_cache: Dict[str, Any] = {}
+
+    @classmethod
+    def _get_embeddings_for_model(cls, model_id: str):
+        """
+        Get embeddings for a specific model with caching.
+        Uses HuggingFace for sentence-transformers models, LiteLLM for others.
+        """
+        if model_id in cls._embeddings_cache:
+            return cls._embeddings_cache[model_id]
+
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_openai import OpenAIEmbeddings
+
+        is_hf = model_id.startswith("sentence-transformers/") or "sentence-transformers" in model_id
+
+        if is_hf:
+            try:
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=model_id,
+                    model_kwargs={"device": "cpu"},
+                    encode_kwargs={"normalize_embeddings": True},
+                    cache_folder="/app/storage/models"
+                )
+                cls._embeddings_cache[model_id] = embeddings
+                return embeddings
+            except Exception as e:
+                logger.error(f"Failed to load HuggingFace embeddings for {model_id}: {e}")
+                return None
+        else:
+            # Try LiteLLM/OpenAI-compatible API
+            litellm_api_key = os.environ.get("LITELLM_API_KEY")
+            litellm_base_url = os.environ.get("LITELLM_BASE_URL")
+            if not (litellm_api_key and litellm_base_url):
+                logger.error(f"LiteLLM not configured for model {model_id}")
+                return None
+            try:
+                embeddings = OpenAIEmbeddings(
+                    model=model_id,
+                    openai_api_key=litellm_api_key,
+                    openai_api_base=litellm_base_url
+                )
+                cls._embeddings_cache[model_id] = embeddings
+                return embeddings
+            except Exception as e:
+                logger.error(f"Failed to load LiteLLM embeddings for {model_id}: {e}")
+                return None
+
     def _search_collection(
         self,
         collection: RAGCollection,
@@ -769,19 +818,28 @@ class ChatService:
     ) -> List[Dict]:
         """
         Search a specific collection using ChromaDB.
+        Uses the collection's embedding_model to ensure dimension compatibility.
         """
         from langchain_chroma import Chroma
 
+        # Use the collection's embedding model (stored in DB when collection was created)
+        collection_model = collection.embedding_model or "sentence-transformers/all-MiniLM-L6-v2"
+        embeddings = self._get_embeddings_for_model(collection_model)
+
+        if embeddings is None:
+            logger.error(f"Could not load embeddings for model {collection_model}")
+            return []
+
         vectorstore_dir = os.path.join(
             "/app/storage/vectorstore",
-            self.rag_pipeline.model_name.replace('/', '_')
+            collection_model.replace('/', '_')
         )
 
         try:
             vectorstore = Chroma(
                 collection_name=collection.chroma_collection_name,
                 persist_directory=vectorstore_dir,
-                embedding_function=self.rag_pipeline.embeddings
+                embedding_function=embeddings
             )
 
             # Perform similarity search with scores

@@ -82,6 +82,27 @@
 
                 <template #actions>
                   <v-spacer />
+                  <!-- Leave button for members (non-owners) -->
+                  <LBtn
+                    v-if="!isOwner(ws)"
+                    variant="text"
+                    size="small"
+                    prepend-icon="mdi-exit-run"
+                    @click.stop="confirmLeave(ws)"
+                  >
+                    Verlassen
+                  </LBtn>
+                  <!-- Delete button for owners -->
+                  <LBtn
+                    v-if="isOwner(ws)"
+                    variant="text"
+                    size="small"
+                    color="error"
+                    prepend-icon="mdi-delete"
+                    @click.stop="confirmDelete(ws)"
+                  >
+                    Löschen
+                  </LBtn>
                   <LBtn variant="text" size="small" @click.stop="openWorkspace(ws.id)">
                     Öffnen
                   </LBtn>
@@ -177,6 +198,74 @@
         </template>
       </LCard>
     </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="deleteDialog" max-width="420">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+            <span class="text-h6">Workspace löschen</span>
+            <v-spacer />
+            <v-btn icon="mdi-close" variant="text" @click="deleteDialog = false" />
+          </div>
+        </template>
+
+        <p class="mb-4">
+          Möchten Sie den Workspace <strong>{{ workspaceToDelete?.name }}</strong> wirklich löschen?
+        </p>
+        <v-alert type="warning" variant="tonal" density="compact" class="mb-0">
+          Alle Dokumente und Ordner in diesem Workspace werden unwiderruflich gelöscht.
+        </v-alert>
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="deleteDialog = false">Abbrechen</LBtn>
+          <LBtn
+            variant="danger"
+            :loading="deleting"
+            prepend-icon="mdi-delete"
+            @click="deleteWorkspace"
+          >
+            Löschen
+          </LBtn>
+        </template>
+      </LCard>
+    </v-dialog>
+
+    <!-- Leave Confirmation Dialog -->
+    <v-dialog v-model="leaveDialog" max-width="420">
+      <LCard>
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <v-icon class="mr-2" color="warning">mdi-exit-run</v-icon>
+            <span class="text-h6">Workspace verlassen</span>
+            <v-spacer />
+            <v-btn icon="mdi-close" variant="text" @click="leaveDialog = false" />
+          </div>
+        </template>
+
+        <p class="mb-4">
+          Möchten Sie den Workspace <strong>{{ workspaceToLeave?.name }}</strong> wirklich verlassen?
+        </p>
+        <v-alert type="info" variant="tonal" density="compact" class="mb-0">
+          Sie können jederzeit vom Besitzer erneut eingeladen werden.
+        </v-alert>
+
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="leaveDialog = false">Abbrechen</LBtn>
+          <LBtn
+            variant="secondary"
+            :loading="leaving"
+            prepend-icon="mdi-exit-run"
+            @click="leaveWorkspace"
+          >
+            Verlassen
+          </LBtn>
+        </template>
+      </LCard>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -197,8 +286,15 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 
 const workspaces = ref([])
 const newWorkspaceIds = ref(new Set())
+const currentUsername = ref('')
 
 const createDialog = ref(false)
+const deleteDialog = ref(false)
+const leaveDialog = ref(false)
+const workspaceToDelete = ref(null)
+const workspaceToLeave = ref(null)
+const deleting = ref(false)
+const leaving = ref(false)
 const creating = ref(false)
 const createError = ref('')
 const newWorkspaceName = ref('')
@@ -250,14 +346,68 @@ function markWorkspaceNew(id) {
   }, 3600)
 }
 
-async function fetchUserId() {
+async function fetchUserInfo() {
   try {
     const res = await axios.get(`${API_BASE}/auth/authentik/me`, {
       headers: authHeaders()
     })
+    currentUsername.value = res.data.username || ''
     return res.data.user_id || res.data.id || null
   } catch (e) {
     return null
+  }
+}
+
+function isOwner(ws) {
+  return ws?.owner_username === currentUsername.value
+}
+
+function confirmDelete(ws) {
+  workspaceToDelete.value = ws
+  deleteDialog.value = true
+}
+
+function confirmLeave(ws) {
+  workspaceToLeave.value = ws
+  leaveDialog.value = true
+}
+
+async function deleteWorkspace() {
+  if (!workspaceToDelete.value) return
+  deleting.value = true
+  try {
+    await axios.delete(
+      `${API_BASE}/api/markdown-collab/workspaces/${workspaceToDelete.value.id}`,
+      { headers: authHeaders() }
+    )
+    workspaces.value = workspaces.value.filter(w => w.id !== workspaceToDelete.value.id)
+    deleteDialog.value = false
+    workspaceToDelete.value = null
+  } catch (e) {
+    console.error('Failed to delete workspace:', e)
+    alert(e?.response?.data?.error || 'Workspace konnte nicht gelöscht werden')
+  } finally {
+    deleting.value = false
+  }
+}
+
+async function leaveWorkspace() {
+  if (!workspaceToLeave.value) return
+  leaving.value = true
+  try {
+    await axios.post(
+      `${API_BASE}/api/markdown-collab/workspaces/${workspaceToLeave.value.id}/leave`,
+      {},
+      { headers: authHeaders() }
+    )
+    workspaces.value = workspaces.value.filter(w => w.id !== workspaceToLeave.value.id)
+    leaveDialog.value = false
+    workspaceToLeave.value = null
+  } catch (e) {
+    console.error('Failed to leave workspace:', e)
+    alert(e?.response?.data?.error || 'Workspace konnte nicht verlassen werden')
+  } finally {
+    leaving.value = false
   }
 }
 
@@ -387,7 +537,7 @@ onMounted(async () => {
   await fetchPermissions()
   if (hasPermission('feature:markdown_collab:view')) {
     await loadWorkspaces()
-    const userId = await fetchUserId()
+    const userId = await fetchUserInfo()
     if (userId) setupWorkspaceSocket(userId)
   }
 })

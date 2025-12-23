@@ -9,6 +9,18 @@
  * - Consistent spacing and typography
  */
 
+@import './fonts/roboto/roboto.css';
+
+/* Local Roboto font stack (no Google Fonts) */
+:root {
+  --v-font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
+
+body,
+.v-application {
+  font-family: var(--v-font-family);
+}
+
 /* ========================================
    LLARS Color Palette (Pastel Theme)
    ======================================== */

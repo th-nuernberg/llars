@@ -1062,20 +1062,20 @@ class CrawlerService:
             max_workers = min(4, max(1, len(urls)))
             sem = asyncio.Semaphore(max_workers)
 
-        async def fetch_url(target_url: str):
-            async with sem:
-                try:
-                    crawler = PlaywrightCrawler(
-                        base_url=target_url,
-                        max_pages=1,
-                        max_depth=0,
-                        delay_seconds=0.5,
-                        extract_images=True,
-                        use_vision_llm=use_vision_llm,
-                        vision_llm_model=vision_model_id,
-                        litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
-                        litellm_api_key=os.environ.get('LITELLM_API_KEY')
-                    )
+            async def fetch_url(target_url: str):
+                async with sem:
+                    try:
+                        crawler = PlaywrightCrawler(
+                            base_url=target_url,
+                            max_pages=1,
+                            max_depth=0,
+                            delay_seconds=0.5,
+                            extract_images=True,
+                            use_vision_llm=use_vision_llm,
+                            vision_llm_model=vision_model_id,
+                            litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
+                            litellm_api_key=os.environ.get('LITELLM_API_KEY')
+                        )
                         pages = await crawler.crawl_async()
                         page = pages[0] if pages else None
                         return target_url, page, crawler.stats

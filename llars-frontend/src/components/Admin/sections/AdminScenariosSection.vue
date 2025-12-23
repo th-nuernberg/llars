@@ -108,9 +108,11 @@
         >
           <template v-slot:item.name="{ item }">
             <div class="d-flex align-center">
-              <v-icon :color="getTypeColor(item.function_type_name)" class="mr-2">
-                {{ getTypeIcon(item.function_type_name) }}
-              </v-icon>
+              <LTooltip :text="getFunctionTypeName(item.function_type_name)">
+                <v-icon :color="getTypeColor(item.function_type_name)" class="mr-2">
+                  {{ getTypeIcon(item.function_type_name) }}
+                </v-icon>
+              </LTooltip>
               <span class="font-weight-medium">{{ item.name }}</span>
             </div>
           </template>

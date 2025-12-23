@@ -32,9 +32,11 @@
             <v-icon size="20" class="mr-2">mdi-format-list-bulleted</v-icon>
             <span class="panel-title">Features</span>
             <v-spacer />
-            <LTag v-if="ratedCount > 0" variant="info" size="small">
-              {{ ratedCount }} / {{ totalFeatures }}
-            </LTag>
+            <LTooltip v-if="ratedCount > 0" text="Bewertete Features / Gesamtfeatures">
+              <LTag variant="info" size="small">
+                {{ ratedCount }} / {{ totalFeatures }}
+              </LTag>
+            </LTooltip>
           </div>
           <div class="panel-content">
             <v-expansion-panels>

@@ -48,13 +48,13 @@
             <v-chip value="completed" size="x-small" variant="tonal" color="success">Fertig</v-chip>
             <v-chip value="failed" size="x-small" variant="tonal" color="error">Fehler</v-chip>
           </v-chip-group>
-          <v-btn
+          <LIconBtn
             icon="mdi-refresh"
-            variant="text"
             size="small"
-            @click="loadSessions"
+            tooltip="Sessions aktualisieren"
             :loading="loading"
-          ></v-btn>
+            @click="loadSessions"
+          />
         </div>
         <div class="panel-content">
           <v-skeleton-loader
@@ -106,27 +106,27 @@
                   ></v-progress-linear>
                 </div>
                 <div class="session-actions">
-                  <v-btn
+                  <LIconBtn
                     icon="mdi-eye"
                     size="x-small"
-                    variant="text"
+                    tooltip="Session anzeigen"
                     @click.stop="navigateToSession(session)"
-                  ></v-btn>
-                  <v-btn
+                  />
+                  <LIconBtn
                     v-if="session.status === 'completed'"
                     icon="mdi-chart-box"
                     size="x-small"
-                    variant="text"
-                    color="success"
+                    variant="success"
+                    tooltip="Ergebnisse anzeigen"
                     @click.stop="navigateToResults(session.session_id)"
-                  ></v-btn>
-                  <v-btn
+                  />
+                  <LIconBtn
                     icon="mdi-delete"
                     size="x-small"
-                    variant="text"
-                    color="error"
+                    variant="danger"
+                    tooltip="Session löschen"
                     @click.stop="confirmDelete(session)"
-                  ></v-btn>
+                  />
                 </div>
               </div>
             </div>

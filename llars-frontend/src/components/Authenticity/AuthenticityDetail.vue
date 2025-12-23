@@ -114,6 +114,7 @@
                 :step="5"
                 :start-active="hasExistingConfidence"
                 density="compact"
+                @touched="onConfidenceTouched"
               />
             </div>
 
@@ -194,6 +195,12 @@ const voteState = ref({
 })
 
 const hasExistingConfidence = ref(false)
+const confidenceTouched = ref(false)
+
+// Handler for slider touched event
+function onConfidenceTouched() {
+  confidenceTouched.value = true
+}
 
 // Computed
 const evaluationStatus = computed(() => {
@@ -228,9 +235,9 @@ const saveMetadata = debounce(async (data) => {
   }
 }, 500)
 
-// Watch confidence changes
+// Watch confidence changes - only save if slider was touched
 watch(() => voteState.value.confidence, (newVal, oldVal) => {
-  if (initialLoadDone.value && newVal !== oldVal) {
+  if (initialLoadDone.value && newVal !== oldVal && (confidenceTouched.value || hasExistingConfidence.value)) {
     saveMetadata({ confidence: newVal })
   }
 })
@@ -265,6 +272,7 @@ async function load() {
   error.value = ''
   initialLoadDone.value = false
   hasExistingConfidence.value = false
+  confidenceTouched.value = false
 
   // Clear old thread data immediately to prevent mixing
   thread.value = null
@@ -307,11 +315,15 @@ async function submitVote(vote) {
   saving.value = true
 
   try {
-    await saveAuthenticityVote(threadId.value, {
+    // Only include confidence if the slider was touched or had existing value
+    const payload = {
       vote,
-      confidence: voteState.value.confidence,
       notes: voteState.value.notes
-    })
+    }
+    if (confidenceTouched.value || hasExistingConfidence.value) {
+      payload.confidence = voteState.value.confidence
+    }
+    await saveAuthenticityVote(threadId.value, payload)
     voteState.value.vote = vote
   } catch (e) {
     error.value = e?.response?.data?.message || e?.message || 'Speichern fehlgeschlagen.'

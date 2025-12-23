@@ -64,6 +64,38 @@ class RAGCollection(db.Model):
 
     # Relationships (n:m via CollectionDocumentLink)
     document_links = db.relationship('CollectionDocumentLink', back_populates='collection', cascade='all, delete-orphan')
+    permissions = db.relationship('RAGCollectionPermission', backref='collection', cascade='all, delete-orphan')
+
+
+class RAGCollectionPermission(db.Model):
+    """Granular permissions for individual collections"""
+    __tablename__ = 'rag_collection_permissions'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    collection_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('rag_collections.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    # Permission Type
+    permission_type: Mapped[str] = mapped_column(db.String(20), nullable=False)  # user, role
+    target_identifier: Mapped[str] = mapped_column(db.String(255), nullable=False, index=True)  # username or role_name
+
+    # Access Level
+    can_view: Mapped[bool] = mapped_column(db.Boolean, default=True)
+    can_edit: Mapped[bool] = mapped_column(db.Boolean, default=False)
+    can_delete: Mapped[bool] = mapped_column(db.Boolean, default=False)
+    can_share: Mapped[bool] = mapped_column(db.Boolean, default=False)
+
+    # Granted By
+    granted_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    granted_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('collection_id', 'permission_type', 'target_identifier', name='unique_collection_permission'),
+    )
 
 
 class CollectionDocumentLink(db.Model):

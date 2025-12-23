@@ -39,6 +39,7 @@ from db.models.judge import (
 # RAG models
 from db.models.rag import (
     RAGCollection,
+    RAGCollectionPermission,
     CollectionDocumentLink,
     RAGDocument,
     RAGDocumentChunk,
@@ -161,6 +162,7 @@ __all__ = [
     'PillarStatistics',
     # RAG
     'RAGCollection',
+    'RAGCollectionPermission',
     'CollectionDocumentLink',
     'RAGDocument',
     'RAGDocumentChunk',

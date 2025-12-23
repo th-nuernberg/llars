@@ -47,6 +47,10 @@ def get_collections():
         new_docs = CollectionDocumentLink.query.filter_by(collection_id=c.id, link_type='new').count()
         linked_docs = CollectionDocumentLink.query.filter_by(collection_id=c.id, link_type='linked').count()
 
+        can_edit = RAGAccessService.can_edit_collection(username, c)
+        can_delete = RAGAccessService.can_delete_collection(username, c)
+        can_share = RAGAccessService.can_share_collection(username, c)
+
         result.append({
             'id': c.id,
             'name': c.name,
@@ -65,6 +69,10 @@ def get_collections():
             'chunk_overlap': c.chunk_overlap,
             'retrieval_k': c.retrieval_k,
             'is_public': c.is_public,
+            'created_by': c.created_by,
+            'can_edit': can_edit,
+            'can_delete': can_delete,
+            'can_share': can_share,
             'created_at': c.created_at.isoformat() if c.created_at else None,
             'last_indexed_at': c.last_indexed_at.isoformat() if c.last_indexed_at else None,
             # Embedding status fields (for Chatbot Builder)
@@ -144,6 +152,9 @@ def get_collection(collection_id):
             'retrieval_k': collection.retrieval_k,
             'is_public': collection.is_public,
             'created_by': collection.created_by,
+            'can_edit': RAGAccessService.can_edit_collection(username, collection),
+            'can_delete': RAGAccessService.can_delete_collection(username, collection),
+            'can_share': RAGAccessService.can_share_collection(username, collection),
             'created_at': collection.created_at.isoformat() if collection.created_at else None,
             'last_indexed_at': collection.last_indexed_at.isoformat() if collection.last_indexed_at else None,
             'documents': documents_list
@@ -297,6 +308,49 @@ def delete_collection(collection_id):
         'success': True,
         'message': f"Collection '{collection.display_name}' erfolgreich gelöscht" + (f" (inkl. {doc_count} Dokumente)" if doc_count > 0 else "")
     }), 200
+
+
+@rag_collection_bp.route('/collections/<int:collection_id>/access', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def get_collection_access(collection_id):
+    """Get collection access assignments (owner/admin)."""
+    username = AuthUtils.extract_username_without_validation()
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    if not RAGAccessService.can_share_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
+
+    access = RAGAccessService.get_collection_permissions(collection_id)
+    return jsonify({'success': True, 'collection_id': collection_id, **access}), 200
+
+
+@rag_collection_bp.route('/collections/<int:collection_id>/access', methods=['PUT'])
+@require_permission('feature:rag:share')
+@handle_api_errors(logger_name='rag')
+def set_collection_access(collection_id):
+    """Replace collection access assignments (owner/admin)."""
+    username = AuthUtils.extract_username_without_validation()
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    if not RAGAccessService.can_share_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
+
+    data = request.get_json() or {}
+    usernames = data.get('usernames') or data.get('users') or []
+    role_names = data.get('role_names') or data.get('roles') or []
+    access = data.get('access') or {}
+
+    result = RAGAccessService.set_collection_permissions(
+        collection_id=collection_id,
+        usernames=usernames,
+        role_names=role_names,
+        granted_by=username,
+        access=access
+    )
+    return jsonify({'success': True, 'collection_id': collection_id, **result}), 200
 
 
 # ============================================================================

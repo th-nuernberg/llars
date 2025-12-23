@@ -1,273 +1,190 @@
-# YJS Server - Real-time Collaboration with Authentik Authentication
+# YJS Server - LLARS Real-time Collaboration
 
-This is a WebSocket server for real-time collaborative editing using YJS (Yjs CRDT library) and Socket.IO, secured with Authentik JWT authentication.
+WebSocket-Server für Echtzeit-Kollaboration in LLARS (Prompt Engineering, Markdown Collab) mit YJS CRDT und Authentik JWT-Authentifizierung.
 
 ## Features
 
-- **Real-time Collaboration**: Multiple users can edit documents simultaneously
-- **JWT Authentication**: All WebSocket connections are secured with Authentik tokens
-- **User Tracking**: Track active users and their cursors in real-time
-- **Database Persistence**: Documents are automatically saved to MySQL database
-- **Awareness**: See other users' cursors and presence
+- **Echtzeit-Kollaboration**: Mehrere Nutzer bearbeiten Dokumente gleichzeitig
+- **JWT-Authentifizierung**: Alle Verbindungen via Authentik gesichert
+- **User-Awareness**: Cursor-Tracking und Präsenz-Anzeige
+- **DB-Persistenz**: Automatisches Speichern in MariaDB
+- **Markdown-Tabellen**: Access-Kontrolle für Markdown-Workspaces
 
-## Authentication Flow
+## Architektur
 
-### 1. Client Connection
-The client must provide a valid Authentik JWT token when connecting to the WebSocket:
+```
+┌─────────────────┐     nginx (/collab/)     ┌──────────────┐
+│  LLARS Frontend │ ────────────────────────> │  YJS Server  │
+│  (Vue + YJS)    │ <──────────────────────── │  (Node.js)   │
+└─────────────────┘    WebSocket + JWT       └──────────────┘
+                                                     │
+                                                     │ Persist
+                                                     ▼
+                                              ┌──────────────┐
+                                              │   MariaDB    │
+                                              └──────────────┘
+```
+
+## Verbindung
+
+### Via nginx (Standard)
+
+Client verbindet über nginx-Proxy auf `/collab/`:
+
+```javascript
+import { io } from 'socket.io-client'
+
+const socket = io(window.location.origin, {
+  path: '/collab/socket.io/',  // nginx leitet /collab/ → YJS-Server
+  auth: {
+    token: authToken  // Authentik JWT
+  }
+})
+```
+
+### Direkt (nur Debugging)
+
+Bei Direktverbindung auf Port 8082:
 
 ```javascript
 const socket = io('http://localhost:8082', {
-  path: '/collab/socket.io/',
-  auth: {
-    token: authToken  // Token von Authentik nach dem Login
-  }
-});
+  path: '/socket.io/',  // Server nutzt Standard-Pfad
+  auth: { token: authToken }
+})
 ```
 
-### 2. Token Validation
-The server automatically validates the token using the `authenticateSocket` middleware:
-- Fetches Authentik public keys from JWKS endpoint
-- Verifies JWT signature with RS256 algorithm
-- Checks token expiration and issuer
-- Extracts user information (username, userId, roles)
+**Wichtig:** nginx entfernt das `/collab/`-Prefix, daher nutzt der Server intern `/socket.io/`.
 
-### 3. Authenticated Connection
-If valid, the socket receives authenticated user information:
+## Authentication Flow
+
+1. **Client sendet Token** im `auth`-Objekt bei Verbindungsaufbau
+2. **Server validiert** via Authentik JWKS-Endpoint (RS256)
+3. **Bei Erfolg** erhält Socket User-Informationen:
+
 ```javascript
 socket.user = {
-  username: 'john.doe',
-  userId: 'uuid-here',
-  email: 'john@example.com',
-  roles: ['rater', 'viewer'],
-  isAdmin: false
+  username: 'admin',
+  odssUserId: 'authentik-uuid',
+  email: 'admin@localhost',
+  roles: ['authentik Admins'],
+  isAdmin: true
 }
 ```
 
-## Event API
+## Event-API
 
-### Client → Server Events
+### Client → Server
 
-#### `join_room`
-Join a collaborative editing room.
+| Event | Payload | Beschreibung |
+|-------|---------|--------------|
+| `join_room` | `{ room: 'room_123' }` | Raum beitreten |
+| `sync_update` | `{ room, update: Uint8Array }` | YJS-Update senden |
+| `cursor_update` | `{ room, blockId, range }` | Cursor-Position |
+| `leave_room` | `'room_123'` | Raum verlassen |
 
-**Payload:**
-```javascript
-{
-  room: 'room_123'  // Only room ID needed, user info comes from token!
-}
-```
+### Server → Client
 
-**Response:**
-- `snapshot_document`: Full document state
-- `room_state`: Current users and cursors
-- Broadcasts `user_joined` to other clients
+| Event | Payload | Beschreibung |
+|-------|---------|--------------|
+| `snapshot_document` | `Uint8Array` | Initiales Dokument |
+| `room_state` | `{ users, cursors }` | Aktuelle Raum-Nutzer |
+| `user_joined` | `{ userId, username, color }` | Nutzer beigetreten |
+| `user_left` | `{ userId }` | Nutzer verlassen |
+| `sync_update` | `{ update: Uint8Array }` | YJS-Updates |
+| `cursor_updated` | `{ userId, cursor }` | Cursor-Änderung |
 
-#### `sync_update`
-Send document changes to other clients.
+## Datenbank-Tabellen
 
-**Payload:**
-```javascript
-{
-  room: 'room_123',
-  update: Uint8Array  // Y.js update
-}
-```
-
-#### `cursor_update`
-Update cursor position.
-
-**Payload:**
-```javascript
-{
-  room: 'room_123',
-  blockId: 'block-uuid',
-  range: { index: 0, length: 0 } // or null to hide cursor
-}
-```
-
-#### `leave_room`
-Leave a room.
-
-**Payload:**
-```javascript
-'room_123'
-```
-
-### Server → Client Events
-
-#### `snapshot_document`
-Sent when joining a room, contains the full document state.
-
-**Payload:** `Uint8Array` (Y.js state)
-
-#### `room_state`
-Current state of the room (users and cursors).
-
-**Payload:**
-```javascript
-{
-  users: {
-    'socket-id-1': { username: 'john', userId: 'uuid', color: '#FF6B6B', isAdmin: false }
-  },
-  cursors: {
-    'socket-id-1': { blockId: 'block-1', range: {...}, username: 'john', color: '#FF6B6B' }
-  }
-}
-```
-
-#### `user_joined`
-Broadcast when a new user joins.
-
-**Payload:**
-```javascript
-{
-  userId: 'socket-id',
-  username: 'john',
-  color: '#FF6B6B'
-}
-```
-
-#### `user_left`
-Broadcast when a user leaves.
-
-**Payload:**
-```javascript
-{
-  userId: 'socket-id'
-}
-```
-
-#### `sync_update`
-Broadcast Y.js document updates.
-
-**Payload:**
-```javascript
-{
-  update: Uint8Array
-}
-```
-
-#### `cursor_updated`
-Broadcast cursor position changes.
-
-**Payload:**
-```javascript
-{
-  userId: 'socket-id',
-  cursor: { blockId: 'block-1', range: {...}, username: 'john', color: '#FF6B6B' }
-}
-```
-
-## Security Features
-
-### Authentication
-- **Mandatory JWT**: All connections require valid Authentik token
-- **Token Expiration**: Expired tokens are rejected
-- **Signature Verification**: Tokens are verified with Authentik public keys
-- **User Spoofing Prevention**: Username/userId cannot be spoofed by client
-
-### Authorization (Future Enhancement)
-- Room-level permissions based on Authentik roles
-- Admin-only document deletion
-- Read-only mode for viewers
-
-## Environment Variables
-
-Bevorzugt Authentik nutzen:
-
-```bash
-AUTHENTIK_ISSUER_URL=http://authentik-server:9000/application/o/llars-backend/
-PORT=8082
-MYSQL_HOST=db-maria-service
-MYSQL_PORT=3306
-MYSQL_USER=user_feature
-MYSQL_PASSWORD=password_feature
-MYSQL_DATABASE=database_llars
-```
-
-Legacy (nur falls alte KEYCLOAK_* Variablen noch genutzt werden):
-```bash
-KEYCLOAK_URL=http://keycloak-service:8080
-KEYCLOAK_REALM=llars
-```
-
-## Installation
-
-```bash
-npm install
-```
-
-## Running
-
-**Development:**
-```bash
-npm run dev  # Uses nodemon for auto-reload
-```
-
-**Production:**
-```bash
-npm start
-```
-
-## Database Schema
-
-The server expects a `user_prompts` table:
+### user_prompts (Prompt Engineering)
 
 ```sql
 CREATE TABLE user_prompts (
-  prompt_id INT PRIMARY KEY,
+  prompt_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id VARCHAR(255),
   name VARCHAR(255),
-  content TEXT,  -- Y.js document state as JSON
+  content TEXT,  -- YJS state als JSON
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
 ```
 
-## Error Handling
+### markdown_collab_* (Markdown Workspaces)
 
-### Connection Errors
-- **No token**: `Authentication required: No token provided`
-- **Invalid token**: `Authentication failed: jwt malformed`
-- **Expired token**: `Authentication failed: jwt expired`
-- **Invalid signature**: `Authentication failed: invalid signature`
+```sql
+-- Workspaces
+CREATE TABLE markdown_collab_workspaces (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  uuid VARCHAR(36) UNIQUE,
+  name VARCHAR(255),
+  owner_id VARCHAR(255),
+  is_public BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
 
-## Architecture
+-- Access Control
+CREATE TABLE markdown_collab_workspace_access (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  workspace_id INT,
+  user_id VARCHAR(255),
+  role ENUM('viewer', 'editor', 'owner'),
+  FOREIGN KEY (workspace_id) REFERENCES markdown_collab_workspaces(id)
+);
 
+-- YJS Documents
+CREATE TABLE markdown_collab_documents (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  workspace_id INT,
+  yjs_state LONGBLOB,  -- YJS binary state
+  updated_at TIMESTAMP,
+  FOREIGN KEY (workspace_id) REFERENCES markdown_collab_workspaces(id)
+);
 ```
-┌─────────────┐         WebSocket + JWT        ┌──────────────┐
-│   Client    │ ──────────────────────────────> │  YJS Server  │
-│  (Browser)  │ <────────────────────────────── │  (Node.js)   │
-└─────────────┘    Real-time collaboration     └──────────────┘
-                                                       │
-                                                       │ Persist
-                                                       ▼
-                                                ┌──────────────┐
-                                                │    MySQL     │
-                                                │   Database   │
-                                                └──────────────┘
-```
 
-## Testing with curl (WebSocket)
-
-You can test authentication with wscat:
+## Environment Variables
 
 ```bash
-# Install wscat
-npm install -g wscat
+# Authentik (JWT-Validierung)
+AUTHENTIK_ISSUER_URL=http://authentik-server:9000/application/o/llars-backend/
 
-# Connect with token
-wscat -c "ws://localhost:8082/collab/socket.io/?token=YOUR_JWT_TOKEN"
+# Server
+PORT=8082
+
+# MariaDB
+MYSQL_HOST=db-maria-service
+MYSQL_PORT=3306
+MYSQL_USER=dev_user
+MYSQL_PASSWORD=dev_password_change_me
+MYSQL_DATABASE=database_llars
 ```
 
-## Production Deployment
+## Entwicklung
 
-### HTTPS/WSS
-In production, use nginx to proxy WebSocket connections with SSL:
+```bash
+# Installation
+npm install
+
+# Development (mit nodemon)
+npm run dev
+
+# Production
+npm start
+```
+
+## Fehlerbehandlung
+
+| Fehler | Ursache |
+|--------|---------|
+| `Authentication required: No token provided` | Token fehlt in `auth` |
+| `Authentication failed: jwt expired` | Token abgelaufen → Frontend muss refreshen |
+| `Authentication failed: invalid signature` | Falscher Signing Key |
+| `Error fetching signing key` | Authentik nicht erreichbar |
+
+## nginx-Konfiguration (Referenz)
 
 ```nginx
 location /collab/ {
-    proxy_pass http://yjs-service:8082;
+    proxy_pass http://yjs-service:8082/;  # Prefix wird entfernt!
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
@@ -276,32 +193,8 @@ location /collab/ {
 }
 ```
 
-### Token Refresh
-Frontend should refresh tokens before they expire to maintain connection.
+## Referenzen
 
-## Troubleshooting
-
-### "Authentication required: No token provided"
-- Check that the client is sending the token in `auth: { token: '...' }`
-- Verify token is not empty or undefined
-
-### "Authentication failed: jwt expired"
-- Token has expired
-- Frontend needs to refresh the token using Authentik
-
-### "Error fetching signing key"
-- Authentik URL is incorrect
-- Authentik is not reachable from the YJS server
-- Realm name is incorrect
-
-### Connection refused
-- Check that YJS server is running on correct port
-- Verify firewall/network configuration
-- Check nginx proxy configuration
-
-## References
-
-- [Y.js Documentation](https://docs.yjs.dev/)
-- [Socket.IO Documentation](https://socket.io/docs/v4/)
-- [Authentik Documentation](https://docs.goauthentik.io/)
-- [jsonwebtoken npm](https://www.npmjs.com/package/jsonwebtoken)
+- [Y.js Dokumentation](https://docs.yjs.dev/)
+- [Socket.IO v4](https://socket.io/docs/v4/)
+- [Authentik OIDC](https://docs.goauthentik.io/)

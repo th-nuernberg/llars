@@ -750,6 +750,42 @@ Moderne Tab-Navigation mit LLARS-Design (Primary-Hintergrund, asymmetrischer Bor
 **Events:**
 - `update:modelValue`: Bei Tab-Wechsel
 
+#### LTooltip - Tooltip Wrapper
+
+Universeller Tooltip-Wrapper für beliebige Elemente. Kann mit `text`-Prop oder `#content`-Slot verwendet werden.
+
+```vue
+<!-- Einfacher Text-Tooltip -->
+<LTooltip text="Dies ist ein hilfreicher Hinweis">
+  <v-icon>mdi-help-circle</v-icon>
+</LTooltip>
+
+<!-- Mit Position -->
+<LTooltip text="Speichert das Dokument" location="top">
+  <LBtn variant="primary">Speichern</LBtn>
+</LTooltip>
+
+<!-- Mit Custom Content (HTML/Komponenten) -->
+<LTooltip>
+  <v-chip>Status</v-chip>
+  <template #content>
+    <div><strong>Details:</strong></div>
+    <ul><li>Item 1</li><li>Item 2</li></ul>
+  </template>
+</LTooltip>
+```
+
+**Props:**
+- `text`: Tooltip-Text (String)
+- `location`: 'top' | 'bottom' | 'start' | 'end' | 'left' | 'right' (default: 'bottom')
+- `openDelay`: Verzögerung vor Anzeige in ms (default: 300)
+- `closeDelay`: Verzögerung vor Ausblenden in ms (default: 0)
+- `inline`: Boolean - `display: inline` statt `inline-block`
+
+**Slots:**
+- `default`: Element das den Tooltip triggert
+- `content`: Custom Tooltip-Inhalt (ersetzt `text` Prop)
+
 ### CSS Custom Properties
 
 Alle Design-Variablen sind in `llars-frontend/src/styles/global.css` definiert:
@@ -800,7 +836,8 @@ llars-frontend/src/
 │   ├── LSlider.vue                # Farbverlauf-Slider (rot→grün)
 │   ├── LTag.vue                   # Tag/Chip Komponente
 │   ├── LCard.vue                  # Card Komponente
-│   └── LTabs.vue                  # Tab Navigation Komponente
+│   ├── LTabs.vue                  # Tab Navigation Komponente
+│   └── LTooltip.vue               # Tooltip Wrapper
 └── main.js                        # Globale Registrierung
 ```
 

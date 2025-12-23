@@ -15,10 +15,13 @@
 
         <!-- Login Form -->
         <div class="login-form">
-          <v-form @submit.prevent="handleLogin">
+          <v-form @submit.prevent="handleLogin" action="/login" method="post">
             <v-text-field
               v-model="username"
               label="Username"
+              name="username"
+              id="username"
+              autocomplete="username"
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-account"
@@ -30,6 +33,9 @@
             <v-text-field
               v-model="password"
               label="Passwort"
+              name="password"
+              id="password"
+              autocomplete="current-password"
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-lock"

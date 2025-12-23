@@ -241,6 +241,7 @@
                     :items="llmModelItems"
                     item-title="title"
                     item-value="value"
+                    :return-object="false"
                     label="Modell"
                     hint="Wähle ein Modell aus der Registry oder gib eine Model-ID ein"
                     persistent-hint
@@ -1230,6 +1231,17 @@ function saveChanges() {
 watch(() => props.chatbot, (newChatbot) => {
   loadChatbot(newChatbot);
 }, { immediate: true });
+
+watch(
+  () => formData.value?.model_name,
+  (value) => {
+    if (!value || typeof value !== 'object') return;
+    const normalized = value.value || value.model_id || value.id || value.name;
+    if (typeof normalized === 'string' && normalized.trim()) {
+      formData.value.model_name = normalized.trim();
+    }
+  }
+);
 
 // Load models when dialog opens
 watch(() => props.modelValue, (isOpen) => {

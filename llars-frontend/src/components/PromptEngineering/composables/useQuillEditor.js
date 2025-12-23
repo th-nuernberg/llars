@@ -8,6 +8,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const editors = new Map()
   const bindings = new Map()
   const cursorsModules = new Map()
+  const ytexts = new Map()
   const initializingEditors = new Set()
   const editorCount = ref(0)
 
@@ -27,23 +28,50 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     }
   }
 
+  const cursorEmitters = new Map()
+
+  const buildCursorPayload = (blockId, range) => {
+    if (!range) return null
+
+    const payload = {
+      index: range.index,
+      length: range.length
+    }
+
+    const ytext = ytexts.get(blockId)
+    if (!ytext) return payload
+
+    try {
+      const fromRel = Y.createRelativePositionFromTypeIndex(ytext, range.index)
+      const toRel = Y.createRelativePositionFromTypeIndex(ytext, range.index + range.length)
+      payload.fromRel = Array.from(Y.encodeRelativePosition(fromRel))
+      payload.toRel = Array.from(Y.encodeRelativePosition(toRel))
+    } catch (e) {
+      // Ignore encoding errors and fallback to absolute positions
+    }
+
+    return payload
+  }
+
+  const emitCursorUpdate = (blockId, range) => {
+    if (!cursorEmitters.has(blockId)) {
+      cursorEmitters.set(blockId, debounce((payload) => {
+        if (socket.value?.connected) {
+          socket.value.emit('cursor_update', {
+            room: roomId.value,
+            blockId,
+            range: payload
+          })
+        }
+      }, 50))
+    }
+
+    const payload = buildCursorPayload(blockId, range)
+    cursorEmitters.get(blockId)(payload)
+  }
+
   // Cursor-Positionen aktualisieren
   const handleSelectionChange = (blockId) => {
-    const debouncedEmit = debounce((range) => {
-      if (socket.value?.connected) {
-        socket.value.emit('cursor_update', {
-          room: roomId.value,
-          blockId,
-          range: range
-            ? {
-                index: range.index,
-                length: range.length
-              }
-            : null
-        })
-      }
-    }, 50)
-
     return (range, oldRange, source) => {
       if (source === 'user') {
         if (!range) {
@@ -53,7 +81,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
             cursorsModule.removeCursor(socket.value.id)
           }
         }
-        debouncedEmit(range)
+        emitCursorUpdate(blockId, range)
       }
     }
   }
@@ -194,6 +222,8 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
     bindings.delete(blockId)
     cursorsModules.delete(blockId)
+    ytexts.delete(blockId)
+    cursorEmitters.delete(blockId)
     editors.delete(blockId)
     pendingHighlights.delete(blockId)
     editorCount.value = editors.size
@@ -324,6 +354,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
         blockMap.set('content', ytext)
         // NOTE: autoSync in useYjsCollaboration handles broadcasting automatically
       }
+      ytexts.set(block.id, ytext)
 
       // Quill Editor mit angepassten Cursor-Einstellungen
       const editor = markRaw(existingEditor || new Quill(editorElement, {
@@ -377,9 +408,12 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
         // Selection-Change-Handler
         editor.on('selection-change', handleSelectionChange(block.id))
 
-        // Text-Change-Handler for user highlighting
+        // Text-Change-Handler for user highlighting + cursor updates
         editor.on('text-change', (delta, oldDelta, source) => {
           applyUserHighlight(editor, block.id, delta, source)
+          if (source === 'user') {
+            emitCursorUpdate(block.id, editor.getSelection())
+          }
         })
       }
 
@@ -443,11 +477,49 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
         cursorsModule.createCursor(userId, username, color)
       }
 
-      const transformedRange = editor.getLength() < range.index
-        ? { index: editor.getLength(), length: 0 }
-        : range
+      const resolveCursorRange = (targetBlockId, rawRange, quillEditor) => {
+        if (!rawRange || !quillEditor) return null
+        let from = null
+        let to = null
 
-      cursorsModule.moveCursor(userId, transformedRange)
+        const ytext = ytexts.get(targetBlockId)
+        if (ytext && ydoc.value && rawRange.fromRel && rawRange.toRel) {
+          try {
+            const fromRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.fromRel))
+            const toRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.toRel))
+            const fromAbsPos = Y.createAbsolutePositionFromRelativePosition(fromRelPos, ydoc.value)
+            const toAbsPos = Y.createAbsolutePositionFromRelativePosition(toRelPos, ydoc.value)
+            from = fromAbsPos?.index ?? null
+            to = toAbsPos?.index ?? null
+          } catch (e) {
+            // Ignore decoding errors and fallback to absolute positions
+          }
+        }
+
+        if (from === null || to === null) {
+          if (typeof rawRange.index === 'number') {
+            from = rawRange.index
+            const len = typeof rawRange.length === 'number' ? rawRange.length : 0
+            to = from + len
+          } else if (typeof rawRange.from === 'number' && typeof rawRange.to === 'number') {
+            from = rawRange.from
+            to = rawRange.to
+          } else {
+            from = 0
+            to = 0
+          }
+        }
+
+        const maxLen = quillEditor.getLength()
+        const clamp = (value) => Math.max(0, Math.min(value ?? 0, maxLen))
+        const start = Math.min(clamp(from), clamp(to))
+        const end = Math.max(clamp(from), clamp(to))
+        return { index: start, length: end - start }
+      }
+
+      const resolvedRange = resolveCursorRange(blockId, range, editor)
+      if (!resolvedRange) return
+      cursorsModule.moveCursor(userId, resolvedRange)
     }
   }
 
@@ -473,6 +545,8 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     editors.clear()
     bindings.clear()
     cursorsModules.clear()
+    ytexts.clear()
+    cursorEmitters.clear()
     pendingHighlights.clear()
     editorCount.value = 0
     initializingEditors.clear()

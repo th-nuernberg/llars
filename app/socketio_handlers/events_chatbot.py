@@ -220,17 +220,22 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
         agent_mode = agent_service.get_agent_mode()
         task_type = agent_service.get_task_type()
 
-        emit("chatbot:agent_status", {
+        def emit_agent_status(payload: dict) -> None:
+            emit("chatbot:agent_status", payload, room=client_id)
+            socketio.sleep(0)
+
+        emit_agent_status({
             "type": "init",
             "mode": agent_mode,
             "task_type": task_type,
             "max_iterations": agent_service.get_max_iterations()
-        }, room=client_id)
+        })
 
         final_response = ""
         all_sources = []
         reasoning_steps = []
         conversation_id_result = None
+        conversation_title = None
         message_id = None
 
         # Stream agent responses
@@ -238,69 +243,87 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
             event_status = event.get("status")
 
             if event_status == "starting":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "starting",
                     "mode": event.get("mode")
-                }, room=client_id)
+                })
 
             elif event_status == "iteration":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "iteration",
                     "iteration": event.get("iteration"),
                     "max": event.get("max")
-                }, room=client_id)
+                })
 
             elif event_status == "context_retrieved":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "context",
                     "sources_count": event.get("sources_count", 0)
-                }, room=client_id)
+                })
 
             elif event_status == "defining_goal":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "defining_goal"
-                }, room=client_id)
+                })
 
             elif event_status == "goal_defined":
                 reasoning_steps.append({"type": "goal", "content": event.get("goal")})
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "goal",
                     "goal": event.get("goal")
-                }, room=client_id)
+                })
+            elif event_status == "goal_delta":
+                emit_agent_status({
+                    "type": "goal_delta",
+                    "delta": event.get("delta"),
+                    "iteration": event.get("iteration")
+                })
 
             elif event_status == "reflecting":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "reflecting",
                     "iteration": event.get("iteration")
-                }, room=client_id)
+                })
 
             elif event_status == "reflection":
                 reasoning_steps.append({"type": "reflection", "content": event.get("reflection")})
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "reflection",
                     "content": event.get("reflection"),
                     "iteration": event.get("iteration")
-                }, room=client_id)
+                })
+            elif event_status == "reflection_delta":
+                emit_agent_status({
+                    "type": "reflection_delta",
+                    "delta": event.get("delta"),
+                    "iteration": event.get("iteration")
+                })
 
             elif event_status == "thinking":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "thinking",
                     "iteration": event.get("iteration")
-                }, room=client_id)
+                })
 
             elif event_status == "thought":
                 reasoning_steps.append({"type": "thought", "content": event.get("thought")})
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "thought",
                     "content": event.get("thought"),
                     "iteration": event.get("iteration")
-                }, room=client_id)
+                })
+            elif event_status == "thought_delta":
+                emit_agent_status({
+                    "type": "thought_delta",
+                    "delta": event.get("delta"),
+                    "iteration": event.get("iteration")
+                })
 
             elif event_status == "getting_action":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "getting_action",
                     "iteration": event.get("iteration")
-                }, room=client_id)
+                })
 
             elif event_status == "action":
                 reasoning_steps.append({
@@ -308,38 +331,44 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                     "action": event.get("action"),
                     "param": event.get("param")
                 })
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "action",
                     "action": event.get("action"),
                     "param": event.get("param"),
                     "iteration": event.get("iteration")
-                }, room=client_id)
+                })
 
             elif event_status == "observation":
                 reasoning_steps.append({
                     "type": "observation",
                     "content": event.get("result_preview")
                 })
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "observation",
                     "content": event.get("result_preview"),
                     "iteration": event.get("iteration")
-                }, room=client_id)
+                })
+            elif event_status == "observation_delta":
+                emit_agent_status({
+                    "type": "observation_delta",
+                    "delta": event.get("delta"),
+                    "iteration": event.get("iteration")
+                })
 
             elif event_status == "generating":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "generating"
-                }, room=client_id)
+                })
 
             elif event_status == "final_answer":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "final_answer"
-                }, room=client_id)
+                })
 
             elif event_status == "max_iterations_reached":
-                emit("chatbot:agent_status", {
+                emit_agent_status({
                     "type": "max_iterations"
-                }, room=client_id)
+                })
 
             elif "delta" in event:
                 # Streaming response chunk
@@ -361,6 +390,8 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                 all_sources = event.get("sources", [])
                 reasoning_steps = event.get("reasoning_steps", reasoning_steps)
                 conversation_id_result = event.get("conversation_id") or conversation_id
+                if event.get("title"):
+                    conversation_title = event.get("title")
                 message_id = event.get("message_id") or message_id
 
         # IMPORTANT: Send the final response content to frontend
@@ -394,6 +425,7 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
             "reasoning_steps": reasoning_steps,
             "conversation_id": conversation_id_result,
             "session_id": session_id,
+            "title": conversation_title,
             "message_id": message_id
         }, room=client_id)
 
@@ -596,8 +628,7 @@ def register_chatbot_events(socketio):
 
                 conversation.message_count += 2
                 conversation.last_message_at = datetime.now()
-                if not conversation.title and len(user_message) > 0:
-                    conversation.title = user_message[:50] + ('...' if len(user_message) > 50 else '')
+                chat_service._maybe_set_conversation_title(conversation, user_message)
                 db.session.commit()
 
                 emit("chatbot:response", {"content": fallback, "complete": False}, room=client_id)
@@ -605,7 +636,8 @@ def register_chatbot_events(socketio):
                     "conversation_id": conversation.id,
                     "message_id": assistant_msg.id,
                     "tokens": {"input": tokens_input, "output": tokens_output},
-                    "response_time_ms": response_time_ms
+                    "response_time_ms": response_time_ms,
+                    "title": conversation.title
                 }, room=client_id)
                 emit("chatbot:response", {"content": "", "complete": True}, room=client_id)
                 logger.info(f"Chatbot {chatbot.name} returned fallback (no sources) in {response_time_ms}ms")
@@ -697,8 +729,7 @@ def register_chatbot_events(socketio):
             # Update conversation
             conversation.message_count += 2
             conversation.last_message_at = datetime.now()
-            if not conversation.title and len(user_message) > 0:
-                conversation.title = user_message[:50] + ('...' if len(user_message) > 50 else '')
+            chat_service._maybe_set_conversation_title(conversation, user_message)
             db.session.commit()
 
             # Emit completion with metadata
@@ -709,7 +740,8 @@ def register_chatbot_events(socketio):
                     "input": tokens_input,
                     "output": tokens_output
                 },
-                "response_time_ms": response_time_ms
+                "response_time_ms": response_time_ms,
+                "title": conversation.title
             }, room=client_id)
 
             # Also emit final response chunk to signal completion

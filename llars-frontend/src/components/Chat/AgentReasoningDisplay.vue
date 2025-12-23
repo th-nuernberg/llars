@@ -130,6 +130,29 @@ const modeIcon = computed(() => {
   return icons[mode.value] || 'mdi-robot';
 });
 
+function appendStepDelta(type, delta) {
+  if (!delta) return;
+  const last = steps.value[steps.value.length - 1];
+  if (!last || last.type !== type || !last.streaming) {
+    steps.value.push({ type, content: String(delta), expanded: false, streaming: true });
+  } else {
+    last.content += String(delta);
+  }
+  scrollToBottom();
+}
+
+function finalizeStep(type, content) {
+  const last = steps.value[steps.value.length - 1];
+  if (last && last.type === type && last.streaming) {
+    last.content = String(content || '');
+    last.streaming = false;
+    scrollToBottom();
+    return;
+  }
+  steps.value.push({ type, content: String(content || ''), expanded: false });
+  scrollToBottom();
+}
+
 function normalizeSteps(rawSteps = []) {
   if (!Array.isArray(rawSteps)) return [];
   return rawSteps.map((step) => {
@@ -233,9 +256,8 @@ watch(() => props.agentStatus, (status) => {
       break;
 
     case 'goal':
-      steps.value.push({ type: 'goal', content: status.goal, expanded: false });
+      finalizeStep('goal', status.goal);
       currentStatus.value = 'Ziel definiert';
-      scrollToBottom();
       break;
 
     case 'reflecting':
@@ -243,9 +265,8 @@ watch(() => props.agentStatus, (status) => {
       break;
 
     case 'reflection':
-      steps.value.push({ type: 'reflection', content: status.content, expanded: false });
+      finalizeStep('reflection', status.content);
       currentStatus.value = 'Reflexion';
-      scrollToBottom();
       break;
 
     case 'thinking':
@@ -253,9 +274,8 @@ watch(() => props.agentStatus, (status) => {
       break;
 
     case 'thought':
-      steps.value.push({ type: 'thought', content: status.content, expanded: false });
+      finalizeStep('thought', status.content);
       currentStatus.value = 'Gedanke';
-      scrollToBottom();
       break;
 
     case 'getting_action':
@@ -267,16 +287,16 @@ watch(() => props.agentStatus, (status) => {
         type: 'action',
         action: status.action,
         content: parseActionContent(status.action, status.param),
-        expanded: false
+        expanded: false,
+        streaming: false
       });
       currentStatus.value = status.action;
       scrollToBottom();
       break;
 
     case 'observation':
-      steps.value.push({ type: 'observation', content: status.content, expanded: false });
+      finalizeStep('observation', status.content);
       currentStatus.value = 'Beobachtung';
-      scrollToBottom();
       break;
 
     case 'generating':
@@ -303,6 +323,26 @@ watch(() => props.agentStatus, (status) => {
       currentStatus.value = 'Fertig';
       expanded.value = true;
       scrollToBottom();
+      break;
+
+    case 'goal_delta':
+      appendStepDelta('goal', status.delta);
+      currentStatus.value = 'Ziel definieren...';
+      break;
+
+    case 'reflection_delta':
+      appendStepDelta('reflection', status.delta);
+      currentStatus.value = 'Reflektiere...';
+      break;
+
+    case 'thought_delta':
+      appendStepDelta('thought', status.delta);
+      currentStatus.value = 'Denke nach...';
+      break;
+
+    case 'observation_delta':
+      appendStepDelta('observation', status.delta);
+      currentStatus.value = 'Beobachtung';
       break;
   }
 }, { immediate: true, flush: 'sync' });

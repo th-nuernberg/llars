@@ -120,7 +120,11 @@ export function useChatMessages() {
           sources: response.data.sources,
           conversationId: response.data.conversation_id,
           sessionId: response.data.session_id,
-          messageId: response.data.message_id
+          conversationTitle: response.data.title || response.data.conversation_title,
+          messageId: response.data.message_id,
+          mode: response.data.mode,
+          task_type: response.data.task_type,
+          reasoning_steps: response.data.reasoning_steps
         }
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler')

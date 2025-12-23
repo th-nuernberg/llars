@@ -878,14 +878,50 @@ async function loadConversationMessages(conversationId) {
         sender: m.role === 'user' ? 'user' : 'bot',
         content: m.content,
         sources: m.rag_sources,
+        agentTrace: Array.isArray(m.agent_trace) ? m.agent_trace : [],
+        streamMetadata: m.stream_metadata || null,
         timestamp: m.created_at ? new Date(m.created_at).toLocaleTimeString() : '',
         streaming: false
       }))
+
+      const lastAgentMessage = [...(convo.messages || [])]
+        .reverse()
+        .find(m => m.role === 'assistant' && Array.isArray(m.agent_trace) && m.agent_trace.length > 0)
+
+      if (lastAgentMessage) {
+        agentEventCounter.value++
+        agentStatus.value = {
+          type: 'complete',
+          mode: lastAgentMessage.stream_metadata?.mode || selectedChatbot.value?.prompt_settings?.agent_mode || 'standard',
+          task_type: selectedChatbot.value?.prompt_settings?.task_type || 'lookup',
+          reasoning_steps: lastAgentMessage.agent_trace,
+          _eventId: agentEventCounter.value
+        }
+      } else {
+        agentStatus.value = null
+      }
     }
   } catch (error) {
     console.error('Error loading conversation messages:', error)
     showSnackbar('Fehler beim Laden des Chats', 'error')
     messages.value = []
+  }
+}
+
+function updateConversationTitle(conversationId, title) {
+  if (!conversationId || !title) return
+  if (selectedConversation.value?.id === conversationId) {
+    selectedConversation.value = {
+      ...selectedConversation.value,
+      title
+    }
+  }
+  const idx = conversations.value.findIndex(c => c.id === conversationId)
+  if (idx !== -1) {
+    conversations.value[idx] = {
+      ...conversations.value[idx],
+      title
+    }
   }
 }
 
@@ -1057,17 +1093,21 @@ async function sendMessageViaREST(userMessage, files = []) {
         selectedConversation.value = {
           ...(selectedConversation.value || {}),
           id: result.conversationId,
-          session_id: result.sessionId || sessionId.value
+          session_id: result.sessionId || sessionId.value,
+          title: result.conversationTitle || selectedConversation.value?.title
         }
         conversations.value = [
           {
             id: result.conversationId,
             session_id: result.sessionId || sessionId.value,
-            title: selectedConversation.value?.title || 'Chat',
+            title: result.conversationTitle || selectedConversation.value?.title || 'Neuer Chat',
             message_count: 0
           },
           ...conversations.value.filter(c => c.id !== result.conversationId)
         ]
+      }
+      if (result.conversationTitle) {
+        updateConversationTitle(result.conversationId || selectedConversation.value?.id, result.conversationTitle)
       }
       updateBotMessage(
         messages,
@@ -1397,12 +1437,20 @@ function initSocket() {
       selectedConversation.value = {
         ...(selectedConversation.value || {}),
         id: data.conversation_id,
-        session_id: data.session_id || sessionId.value
+        session_id: data.session_id || sessionId.value,
+        title: data.title || selectedConversation.value?.title
       }
       conversations.value = [
-        { id: data.conversation_id, session_id: data.session_id || sessionId.value, title: selectedConversation.value?.title || 'Chat' },
+        {
+          id: data.conversation_id,
+          session_id: data.session_id || sessionId.value,
+          title: data.title || selectedConversation.value?.title || 'Neuer Chat'
+        },
         ...conversations.value.filter(c => c.id !== data.conversation_id)
       ]
+    }
+    if (data.title) {
+      updateConversationTitle(data.conversation_id || selectedConversation.value?.id, data.title)
     }
     if (data.session_id && !sessionId.value) {
       sessionId.value = data.session_id

@@ -20,9 +20,11 @@ from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
+from auth.auth_utils import AuthUtils
+from services.rag.access_service import RAGAccessService
 from db.tables import RAGCollection, RAGDocument, RAGRetrievalLog
 from db.db import db
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, select
 
 rag_search_bp = Blueprint('rag_search', __name__)
 
@@ -37,33 +39,49 @@ rag_search_bp = Blueprint('rag_search', __name__)
 @handle_api_errors(logger_name='rag')
 def get_stats_overview():
     """Get system-wide RAG statistics"""
-    # Collection stats
-    total_collections = RAGCollection.query.filter_by(is_active=True).count()
+    username = AuthUtils.extract_username_without_validation()
+    collections_query = RAGCollection.query.filter_by(is_active=True)
+    collections_query = RAGAccessService.apply_collection_view_filter(collections_query, username)
+    total_collections = collections_query.count()
 
     # Document stats
-    total_documents = RAGDocument.query.count()
-    documents_by_status = db.session.query(
-        RAGDocument.status,
-        func.count(RAGDocument.id)
-    ).group_by(RAGDocument.status).all()
+    documents_query = RAGAccessService.apply_document_access_filter(RAGDocument.query, username, access='view')
+    total_documents = documents_query.count()
+    documents_by_status = (
+        documents_query
+        .with_entities(RAGDocument.status, func.count(RAGDocument.id))
+        .group_by(RAGDocument.status)
+        .all()
+    )
 
-    total_size_bytes = db.session.query(
-        func.sum(RAGDocument.file_size_bytes)
-    ).scalar() or 0
+    total_size_bytes = (
+        documents_query
+        .with_entities(func.sum(RAGDocument.file_size_bytes))
+        .scalar() or 0
+    )
 
-    total_chunks = db.session.query(
-        func.sum(RAGDocument.chunk_count)
-    ).scalar() or 0
+    total_chunks = (
+        documents_query
+        .with_entities(func.sum(RAGDocument.chunk_count))
+        .scalar() or 0
+    )
 
     # Retrieval stats
-    total_retrievals = db.session.query(
-        func.sum(RAGDocument.retrieval_count)
-    ).scalar() or 0
+    total_retrievals = (
+        documents_query
+        .with_entities(func.sum(RAGDocument.retrieval_count))
+        .scalar() or 0
+    )
 
-    total_queries = RAGRetrievalLog.query.count()
+    accessible_collection_ids = collections_query.with_entities(RAGCollection.id).subquery()
+    total_queries = (
+        db.session.query(func.count(RAGRetrievalLog.id))
+        .filter(RAGRetrievalLog.collection_id.in_(select(accessible_collection_ids.c.id)))
+        .scalar() or 0
+    )
 
     # Recent activity
-    recent_uploads = RAGDocument.query.order_by(
+    recent_uploads = documents_query.order_by(
         desc(RAGDocument.uploaded_at)
     ).limit(5).all()
 
@@ -102,8 +120,11 @@ def get_stats_overview():
 def get_popular_documents():
     """Get most frequently retrieved documents"""
     limit = request.args.get('limit', 10, type=int)
-
-    documents = RAGDocument.query.filter(
+    username = AuthUtils.extract_username_without_validation()
+    documents_query = RAGAccessService.apply_document_access_filter(
+        RAGDocument.query, username, access='view'
+    )
+    documents = documents_query.filter(
         RAGDocument.retrieval_count > 0
     ).order_by(
         desc(RAGDocument.retrieval_count)
@@ -129,12 +150,18 @@ def get_popular_documents():
 def get_popular_queries():
     """Get most common search queries"""
     limit = request.args.get('limit', 10, type=int)
+    username = AuthUtils.extract_username_without_validation()
+    collections_query = RAGCollection.query.filter_by(is_active=True)
+    collections_query = RAGAccessService.apply_collection_view_filter(collections_query, username)
+    accessible_collection_ids = collections_query.with_entities(RAGCollection.id).subquery()
 
     queries = db.session.query(
         RAGRetrievalLog.query_hash,
         func.max(RAGRetrievalLog.query_text).label('query_text'),
         func.count(RAGRetrievalLog.id).label('count'),
         func.avg(RAGRetrievalLog.retrieval_time_ms).label('avg_time_ms')
+    ).filter(
+        RAGRetrievalLog.collection_id.in_(select(accessible_collection_ids.c.id))
     ).group_by(
         RAGRetrievalLog.query_hash
     ).order_by(

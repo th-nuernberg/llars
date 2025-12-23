@@ -66,7 +66,8 @@ class DocumentService:
         status: Optional[str] = None,
         search: Optional[str] = None,
         page: int = 1,
-        per_page: int = 50
+        per_page: int = 50,
+        username: Optional[str] = None
     ) -> Tuple[List[RAGDocument], Dict[str, Any]]:
         """
         Get all documents with optional filters.
@@ -75,6 +76,9 @@ class DocumentService:
             Tuple of (documents list, pagination dict)
         """
         query = RAGDocument.query
+        if username:
+            from services.rag.access_service import RAGAccessService
+            query = RAGAccessService.apply_document_access_filter(query, username, access='view')
 
         # Apply filters
         if collection_id:
@@ -108,19 +112,31 @@ class DocumentService:
         return pagination.items, pagination_info
 
     @staticmethod
-    def get_document_by_id(document_id: int) -> Optional[RAGDocument]:
-        """Get a single document by ID"""
-        return RAGDocument.query.get(document_id)
+    def get_document_by_id(document_id: int, username: Optional[str] = None, access: str = 'view') -> Optional[RAGDocument]:
+        """Get a single document by ID, optionally enforcing access."""
+        document = RAGDocument.query.get(document_id)
+        if not document or not username:
+            return document
+        from services.rag.access_service import RAGAccessService
+        if access == 'edit' and not RAGAccessService.can_edit_document(username, document):
+            return None
+        if access == 'delete' and not RAGAccessService.can_delete_document(username, document):
+            return None
+        if access == 'share' and not RAGAccessService.can_share_document(username, document):
+            return None
+        if access == 'view' and not RAGAccessService.can_view_document(username, document):
+            return None
+        return document
 
     @staticmethod
-    def get_document_content(document_id: int) -> Tuple[Optional[RAGDocument], str]:
+    def get_document_content(document_id: int, username: Optional[str] = None) -> Tuple[Optional[RAGDocument], str]:
         """
         Get document with its full text content from chunks.
 
         Returns:
             Tuple of (document, content_text)
         """
-        document = RAGDocument.query.get(document_id)
+        document = DocumentService.get_document_by_id(document_id, username=username, access='view')
         if not document:
             return None, ""
 
@@ -139,14 +155,14 @@ class DocumentService:
         return document, full_content
 
     @staticmethod
-    def get_document_chunks(document_id: int) -> Tuple[Optional[RAGDocument], List[RAGDocumentChunk]]:
+    def get_document_chunks(document_id: int, username: Optional[str] = None) -> Tuple[Optional[RAGDocument], List[RAGDocumentChunk]]:
         """
         Get document with all its chunks.
 
         Returns:
             Tuple of (document, chunks_list)
         """
-        document = RAGDocument.query.get(document_id)
+        document = DocumentService.get_document_by_id(document_id, username=username, access='view')
         if not document:
             return None, []
 
@@ -420,7 +436,11 @@ class DocumentService:
         }
 
     @staticmethod
-    def update_document(document_id: int, data: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[RAGDocument]]:
+    def update_document(
+        document_id: int,
+        data: Dict[str, Any],
+        username: Optional[str] = None
+    ) -> Tuple[bool, Optional[str], Optional[RAGDocument]]:
         """
         Update document metadata.
 
@@ -431,6 +451,16 @@ class DocumentService:
             document = RAGDocument.query.get(document_id)
             if not document:
                 return False, 'Document not found', None
+            if username:
+                from services.rag.access_service import RAGAccessService
+                if not RAGAccessService.can_edit_document(username, document):
+                    return False, 'Forbidden', None
+
+            if username and 'collection_id' in data and data.get('collection_id'):
+                from services.rag.access_service import RAGAccessService
+                collection = RAGCollection.query.get(data.get('collection_id'))
+                if collection and not RAGAccessService.can_edit_collection(username, collection):
+                    return False, 'Forbidden', None
 
             # Update allowed fields
             allowed_fields = ['title', 'description', 'author', 'language', 'keywords', 'collection_id', 'is_public']
@@ -449,7 +479,7 @@ class DocumentService:
             return False, str(e), None
 
     @staticmethod
-    def delete_document(document_id: int) -> Tuple[bool, Optional[str]]:
+    def delete_document(document_id: int, username: Optional[str] = None) -> Tuple[bool, Optional[str]]:
         """
         Delete document and its file.
 
@@ -460,6 +490,10 @@ class DocumentService:
             document = RAGDocument.query.get(document_id)
             if not document:
                 return False, 'Document not found'
+            if username:
+                from services.rag.access_service import RAGAccessService
+                if not RAGAccessService.can_delete_document(username, document):
+                    return False, 'Forbidden'
 
             # Delete file from filesystem
             if os.path.exists(document.file_path):

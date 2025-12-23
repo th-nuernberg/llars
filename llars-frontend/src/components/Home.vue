@@ -289,6 +289,14 @@ const allItems = ref([
     category: 'admin'
   },
   {
+    title: 'Chatbot Verwaltung',
+    description: 'Chatbots erstellen, konfigurieren und teilen',
+    route: '/admin?tab=chatbots',
+    icon: 'mdi-robot',
+    permission: 'feature:chatbots:view',
+    category: 'admin'
+  },
+  {
     title: 'RAG Verwaltung',
     description: 'Dokumente für die RAG-Pipeline verwalten und hochladen',
     route: '/admin?tab=rag',

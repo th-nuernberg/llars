@@ -7,8 +7,9 @@ import uuid
 import logging
 import json
 from flask import Blueprint, request, jsonify, Response, stream_with_context
-from db.tables import Chatbot, ChatbotConversation
+from db.tables import Chatbot, ChatbotConversation, ChatbotMessage, RAGCollection
 from db.db import db
+from sqlalchemy import func
 from services.rag.document_service import DocumentService
 from decorators.permission_decorator import require_permission, require_any_permission
 from decorators.error_handler import handle_errors
@@ -17,6 +18,7 @@ from services.chatbot.chat_service import ChatService
 from services.chatbot.agent_chat_service import AgentChatService
 from services.chatbot.file_processor import file_processor, FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
+from services.rag.access_service import RAGAccessService
 from auth.auth_utils import AuthUtils
 
 logger = logging.getLogger(__name__)
@@ -61,10 +63,16 @@ def get_chatbot_access_overview():
 
 
 @chatbot_blueprint.route('/<int:chatbot_id>/access', methods=['GET'])
-@require_permission('admin:permissions:manage')
+@require_any_permission('admin:permissions:manage', 'feature:chatbots:share')
 @handle_errors(logger_name='chatbot')
 def get_chatbot_access(chatbot_id: int):
     """Get allowed usernames for a chatbot (admin only)."""
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     return jsonify({
         'success': True,
         'chatbot_id': chatbot_id,
@@ -74,7 +82,7 @@ def get_chatbot_access(chatbot_id: int):
 
 
 @chatbot_blueprint.route('/<int:chatbot_id>/access', methods=['PUT'])
-@require_permission('admin:permissions:manage')
+@require_any_permission('admin:permissions:manage', 'feature:chatbots:share')
 @handle_errors(logger_name='chatbot')
 def set_chatbot_access(chatbot_id: int):
     """Replace allowed usernames for a chatbot (admin only)."""
@@ -87,6 +95,11 @@ def set_chatbot_access(chatbot_id: int):
         or []
     )
     admin_username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(admin_username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     access = ChatbotAccessService.set_chatbot_access(
         chatbot_id=chatbot_id,
@@ -159,6 +172,13 @@ def update_chatbot(chatbot_id):
     if not data:
         raise ValueError('No data provided')
 
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     chatbot = ChatbotService.update_chatbot(chatbot_id, data)
     if not chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
@@ -174,6 +194,12 @@ def update_chatbot(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def delete_chatbot(chatbot_id):
     """Delete a chatbot"""
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     delete_collections = request.args.get('delete_collections', 'false').lower() == 'true'
     success = ChatbotService.delete_chatbot(chatbot_id, delete_collections=delete_collections)
     if not success:
@@ -191,6 +217,11 @@ def delete_chatbot(chatbot_id):
 def duplicate_chatbot(chatbot_id):
     """Duplicate a chatbot"""
     username = AuthUtils.extract_username_without_validation() or 'unknown'
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     chatbot = ChatbotService.duplicate_chatbot(chatbot_id, username)
     if not chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
@@ -210,6 +241,9 @@ def duplicate_chatbot(chatbot_id):
 @handle_errors(logger_name='chatbot')
 def get_chatbot_collections(chatbot_id):
     """Get all collections assigned to a chatbot"""
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     collections = ChatbotService.get_collections(chatbot_id)
     return jsonify({
         'success': True,
@@ -226,6 +260,9 @@ def get_wizard_collection_documents(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    username = AuthUtils.extract_username_without_validation()
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     if not chatbot.primary_collection_id:
         return jsonify({'success': True, 'documents': [], 'collection_id': None})
@@ -234,7 +271,8 @@ def get_wizard_collection_documents(chatbot_id):
     documents, _ = DocumentService.get_documents(
         collection_id=chatbot.primary_collection_id,
         page=1,
-        per_page=per_page
+        per_page=per_page,
+        username=username
     )
 
     return jsonify({
@@ -254,6 +292,16 @@ def assign_collection(chatbot_id):
         raise ValueError('collection_id is required')
 
     username = AuthUtils.extract_username_without_validation() or 'unknown'
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+    collection = RAGCollection.query.get(data['collection_id'])
+    if not collection:
+        return jsonify({'success': False, 'error': 'Collection not found'}), 404
+    if not RAGAccessService.can_edit_collection(username, collection):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     assignment = ChatbotService.assign_collection(
         chatbot_id=chatbot_id,
         collection_id=data['collection_id'],
@@ -282,6 +330,13 @@ def update_collection_assignment(chatbot_id, collection_id):
     if not data:
         raise ValueError('No data provided')
 
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     assignment = ChatbotService.update_collection_assignment(
         chatbot_id=chatbot_id,
         collection_id=collection_id,
@@ -305,6 +360,12 @@ def update_collection_assignment(chatbot_id, collection_id):
 @handle_errors(logger_name='chatbot')
 def remove_collection(chatbot_id, collection_id):
     """Remove a collection from a chatbot"""
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     success = ChatbotService.remove_collection(chatbot_id, collection_id)
     if not success:
         return jsonify({'success': False, 'error': 'Assignment not found'}), 404
@@ -426,6 +487,13 @@ def test_chat(chatbot_id):
     data = request.get_json()
     if not data or 'message' not in data:
         raise ValueError('message is required')
+
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     stream = bool(data.get('stream'))
     chat_service = ChatService(chatbot_id)
@@ -601,7 +669,50 @@ def rate_message(message_id):
 @handle_errors(logger_name='chatbot')
 def get_overview_stats():
     """Get global chatbot statistics"""
-    stats = ChatbotService.get_overview_stats()
+    username = AuthUtils.extract_username_without_validation()
+    if ChatbotAccessService.is_admin_user(username):
+        stats = ChatbotService.get_overview_stats()
+    else:
+        owned = ChatbotAccessService.get_owned_chatbots(username)
+        owned_ids = [bot.id for bot in owned]
+        if not owned_ids:
+            stats = {
+                'total_chatbots': 0,
+                'active_chatbots': 0,
+                'total_conversations': 0,
+                'total_messages': 0,
+                'top_chatbots': []
+            }
+        else:
+            active_chatbots = Chatbot.query.filter(
+                Chatbot.id.in_(owned_ids),
+                Chatbot.is_active == True
+            ).count()
+            total_conversations = ChatbotConversation.query.filter(
+                ChatbotConversation.chatbot_id.in_(owned_ids)
+            ).count()
+            total_messages = db.session.query(func.count(ChatbotMessage.id)).join(
+                ChatbotConversation
+            ).filter(ChatbotConversation.chatbot_id.in_(owned_ids)).scalar() or 0
+            top_chatbots = db.session.query(
+                Chatbot.id,
+                Chatbot.display_name,
+                func.count(ChatbotConversation.id).label('conv_count')
+            ).outerjoin(ChatbotConversation).filter(
+                Chatbot.id.in_(owned_ids)
+            ).group_by(Chatbot.id).order_by(
+                func.count(ChatbotConversation.id).desc()
+            ).limit(5).all()
+            stats = {
+                'total_chatbots': len(owned_ids),
+                'active_chatbots': active_chatbots,
+                'total_conversations': total_conversations,
+                'total_messages': total_messages,
+                'top_chatbots': [
+                    {'id': t[0], 'name': t[1], 'conversations': t[2]}
+                    for t in top_chatbots
+                ]
+            }
     return jsonify({'success': True, 'stats': stats})
 
 
@@ -611,7 +722,10 @@ def get_overview_stats():
 def get_chatbot_stats(chatbot_id):
     """Get statistics for a specific chatbot"""
     username = AuthUtils.extract_username_without_validation()
-    if not ChatbotAccessService.user_can_access_chatbot_id(username, chatbot_id):
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     stats = ChatbotService.get_stats(chatbot_id)
@@ -646,6 +760,12 @@ def create_wizard_chatbot():
 def start_wizard_crawl(chatbot_id):
     """Start the crawl process for a wizard chatbot."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     data = request.get_json() or {}
     max_pages = data.get('max_pages', 50)
@@ -669,6 +789,12 @@ def start_wizard_crawl(chatbot_id):
 def generate_chatbot_field(chatbot_id):
     """Generate a field value using LLM."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     data = request.get_json()
     if not data or 'field' not in data:
@@ -710,6 +836,12 @@ def generate_chatbot_field(chatbot_id):
 def get_wizard_status(chatbot_id):
     """Get the current build status of a wizard chatbot."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     result = ChatbotBuilderService.get_build_status(chatbot_id)
     return jsonify(result), 200 if result['success'] else 404
 
@@ -720,6 +852,12 @@ def get_wizard_status(chatbot_id):
 def finalize_wizard_chatbot(chatbot_id):
     """Finalize the chatbot configuration and mark as ready."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     data = request.get_json() or {}
     result = ChatbotBuilderService.finalize_chatbot(chatbot_id, data)
     return jsonify(result), 200 if result['success'] else 400
@@ -731,6 +869,12 @@ def finalize_wizard_chatbot(chatbot_id):
 def pause_wizard_build(chatbot_id):
     """Pause the chatbot build process."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     result = ChatbotBuilderService.update_build_status(chatbot_id, 'paused')
     return jsonify(result), 200 if result['success'] else 400
 
@@ -741,6 +885,12 @@ def pause_wizard_build(chatbot_id):
 def cancel_chatbot_build(chatbot_id):
     """Cancel the chatbot build process."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     result = ChatbotBuilderService.cancel_build(chatbot_id)
     return jsonify(result), 200 if result['success'] else 400
 
@@ -751,6 +901,12 @@ def cancel_chatbot_build(chatbot_id):
 def resume_chatbot_build(chatbot_id):
     """Resume a paused chatbot build process."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     result = ChatbotBuilderService.resume_build(chatbot_id)
     return jsonify(result), 200 if result['success'] else 400
 
@@ -761,6 +917,12 @@ def resume_chatbot_build(chatbot_id):
 def get_admin_test_data(chatbot_id):
     """Get data for the admin test page."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     result = ChatbotBuilderService.get_admin_test_data(chatbot_id)
     return jsonify(result), 200 if result['success'] else 404
 
@@ -771,6 +933,12 @@ def get_admin_test_data(chatbot_id):
 def tweak_chatbot(chatbot_id):
     """Quick-tweak chatbot parameters (partial update)."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    username = AuthUtils.extract_username_without_validation()
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+    if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     data = request.get_json()
     if not data:
         raise ValueError('No data provided')

@@ -196,6 +196,18 @@ Bei Login wird der User automatisch in der DB erstellt (`get_or_create_user`).
 
 **Sicherheitsmodell:** Deny-by-Default | User überschreibt Rolle | Deny schlägt Grant
 
+### Rollen (Auszug)
+
+- **admin**: alle Permissions
+- **researcher**: Evaluation + Prompt Engineering + Markdown Collab + Anonymize + KAIMO (kein RAG/Chatbot Admin)
+- **viewer**: Lesezugriff (u. a. Prompt Engineering, RAG, Chatbots, Markdown Collab)
+- **chatbot_manager**: Chatbot-Verwaltung (inkl. Wizard/Publish/Share) + RAG-Dokumente (eigene/geteilte) + Prompt Engineering + Markdown Collab
+
+### Chatbot/RAG Access-Logik
+
+- Chatbots: Owner darf immer, Sharing via Allowlist (User/Rollen), Admin override.
+- RAG: Sichtbar = public **oder** Owner **oder** explizit geteilt; Bearbeiten/Löschen nur Owner/Admin bzw. mit expliziter Permission.
+
 ### Backend
 
 ```python

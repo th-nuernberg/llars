@@ -1,7 +1,7 @@
 # LLARS Authentik Testing & Setup Plan
 
 **Datum:** 25. November 2025
-**Status:** IN ARBEIT
+**Status:** ABGESCHLOSSEN
 
 ---
 
@@ -23,7 +23,7 @@ Der ursprüngliche Authentifizierungscode hatte mehrere **kritische Sicherheitsp
 ```
 Frontend (Vue.js)
       │
-      │ POST /auth/login {username, password}
+      │ POST /auth/authentik/login {username, password}
       ▼
 Backend (Flask)
       │
@@ -51,25 +51,14 @@ Backend → Frontend
 
 ---
 
-## 2. Identifizierte Probleme nach Neustart
+## 2. Historische Probleme nach Neustart (gelöst)
 
-### Problem 1: init-authentik.py wird nicht ausgeführt
+Diese Punkte traten in frühen Iterationen auf und sind heute durch den
+`authentik-init` Container (`docker/authentik/init-authentik.sh`) gelöst:
 
-Das Script erstellt Provider mit falschen Namen:
-- Script erstellt: `llars-frontend-provider`, `llars-backend-provider`
-- Backend erwartet: `llars-backend` (als client_id)
-
-### Problem 2: Fehlende Authentik-Konfiguration
-
-Nach Container-Neustart fehlen:
-- Flow: `llars-api-authentication`
-- OAuth2 Provider: `llars-backend`
-- Application: `llars-backend`
-- Scopes auf dem Provider
-
-### Problem 3: Frontend Login funktioniert nicht
-
-Route `/login` liefert vermutlich CORS-Probleme oder Token wird nicht korrekt gespeichert.
+- Fehlende Provider/Flows nach Neustart
+- Falsche Provider-Namen in Legacy-Scripts
+- Frontend-Login-Fehler bei fehlender Authentik-Konfiguration
 
 ---
 
@@ -80,9 +69,9 @@ Route `/login` liefert vermutlich CORS-Probleme oder Token wird nicht korrekt ge
 | Test | Endpoint | Erwartetes Ergebnis |
 |------|----------|---------------------|
 | Health Check | `GET /auth/health_check` | `{"message": "Server is running"}` |
-| Login Valid | `POST /auth/login` | RS256 Token zurück |
-| Login Invalid | `POST /auth/login` (wrong pw) | `401 Invalid credentials` |
-| Login Missing | `POST /auth/login` (no data) | `400 Username and password required` |
+| Login Valid | `POST /auth/authentik/login` | RS256 Token zurück |
+| Login Invalid | `POST /auth/authentik/login` (wrong pw) | `401 Invalid credentials` |
+| Login Missing | `POST /auth/authentik/login` (no data) | `400 Username and password required` |
 | Token Validate | `GET /auth/authentik/validate` | `{"valid": true, ...}` |
 | User Info | `GET /auth/authentik/me` | User-Daten |
 
@@ -107,9 +96,9 @@ Route `/login` liefert vermutlich CORS-Probleme oder Token wird nicht korrekt ge
 
 | Test | Endpoint | Erwartetes Ergebnis |
 |------|----------|---------------------|
-| Sessions List | `GET /api/oncoco/sessions` | 200 mit Auth, 401 ohne |
-| Create Session | `POST /api/oncoco/sessions` | Erfordert Auth |
-| Analysis Results | `GET /api/oncoco/sessions/{id}` | Erfordert Auth |
+| Analyses List | `GET /api/oncoco/analyses` | 200 mit Auth, 401 ohne |
+| Create Analysis | `POST /api/oncoco/analyses` | Erfordert Auth |
+| Analysis Results | `GET /api/oncoco/analyses/{id}` | Erfordert Auth |
 
 ---
 
@@ -222,12 +211,11 @@ print('Password set for akadmin')
 "
 ```
 
-### 4.3 Automatisches Setup
+### 4.3 Automatisches Setup (aktuell)
 
-Das `init-authentik.py` Script sollte korrigiert werden um:
-1. Korrekte Provider-Namen zu verwenden (`llars-backend` statt `llars-backend-provider`)
-2. Als Container-Entrypoint ausgeführt zu werden
-3. Idempotent zu sein (mehrfache Ausführung sicher)
+Das Auto-Setup ist im Container `authentik-init` implementiert und nutzt
+`docker/authentik/init-authentik.sh` (idempotent). Das ältere
+`init-authentik.py` ist legacy und wird nicht mehr verwendet.
 
 ---
 
@@ -271,12 +259,8 @@ Das `init-authentik.py` Script sollte korrigiert werden um:
 
 ## 6. Bekannte Issues
 
-| Issue | Status | Lösung |
-|-------|--------|--------|
-| init-authentik.py falsche Provider-Namen | OFFEN | Script korrigieren |
-| init-authentik.py wird nicht ausgeführt | OFFEN | In docker-compose einbinden |
-| Frontend nutzte `realm_access.roles` (Keycloak) | **BEHOBEN** | Geändert auf `llars_roles` aus Backend |
-| Authentik-Konfiguration nicht persistent | WORKAROUND | Manuelle Befehle nach Neustart |
+Stand jetzt keine bekannten offenen Issues. Auto-Setup läuft über `authentik-init`,
+Frontend nutzt `llars_roles`, Konfiguration ist persistent via Volumes.
 
 ---
 
@@ -308,9 +292,4 @@ Nach Container-Neustart wurden folgende Komponenten manuell via `ak shell` erste
 
 ## 8. Nächste Schritte
 
-1. ~~Frontend Login debuggen~~ **ERLEDIGT**
-2. ~~LLM-as-Judge Endpoints testen~~ **ERLEDIGT**
-3. ~~OnCoCo Endpoints testen~~ **ERLEDIGT**
-4. init-authentik.py korrigieren (Provider-Namen)
-5. Automatisches Setup bei Container-Start implementieren
-6. WebSocket-Authentifizierung testen
+1. WebSocket-Authentifizierung testen (optional)

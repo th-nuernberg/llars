@@ -21,8 +21,11 @@ flowchart LR
     client((Browser)) -->|HTTP 80/443| nginx[nginx<br/>(:80)]
     nginx -->|/ ->| frontend[Vue<br/>Vite Dev :5173<br/>Static Build]
     nginx -->|/api ->| backend[Flask API<br/>:8081]
+    nginx -->|/auth ->| backend
     nginx -->|/authentik/ ->| authentik[Authentik<br/>:9000]
     nginx -->|/collab/ ->| yjs[Yjs WebSocket<br/>:8082]
+    nginx -->|/analytics/ ->| matomo[Matomo<br/>:80]
+    nginx -->|/mkdocs (dev) /docs (prod)| mkdocs[MkDocs<br/>:8000]
 
     backend <--> mariadb[(MariaDB<br/>:3306)]
     authentik <--> pg[(PostgreSQL<br/>Authentik DB)]
@@ -35,7 +38,7 @@ flowchart LR
 - 55080 → nginx (Frontend + API + Matomo + Docs Proxy)
 - 55095 → Authentik (optional direkt; zusätzlich via nginx `/authentik/`)
 - 55306 → MariaDB (optional direkt; nur Debugging)
-- 55800 → Docs (MkDocs, optional direkt; zusätzlich via nginx `/docs/`)
+- 55800 → Docs (MkDocs, optional direkt; zusätzlich via nginx `/mkdocs/` in Dev, `/docs/` in Prod)
 
 In Production werden nur 80/443 nach außen exponiert.
 

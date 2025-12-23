@@ -58,6 +58,8 @@
       <router-view :key="$route.fullPath"></router-view>
     </v-main>
 
+    <AnalyticsConsentBanner />
+
     <!-- Chatbot wird nur angezeigt, wenn Benutzer eingeloggt ist und ENABLE_CHAT true ist -->
     <FloatingChat v-if="isAuthenticated && ENABLE_CHAT" />
 
@@ -95,6 +97,7 @@ import { useAppTheme } from '@/composables/useAppTheme';
 import { usePermissions } from '@/composables/usePermissions';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
+import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
 
 // Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren

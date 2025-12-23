@@ -87,6 +87,23 @@
             {{ crawlProgress.crawlerType }} Crawler
           </LTag>
 
+          <!-- Parallel Embedding Indicator -->
+          <div v-if="embeddingProgressPercent > 0 || buildStatus === 'embedding'" class="parallel-embedding-info mb-3">
+            <div class="d-flex align-center mb-1">
+              <v-icon size="14" color="info" class="mr-1">mdi-vector-polygon</v-icon>
+              <span class="text-caption text-medium-emphasis">Embedding läuft parallel</span>
+              <v-spacer />
+              <span class="text-caption font-weight-medium">{{ embeddingProgressPercent }}%</span>
+            </div>
+            <v-progress-linear
+              :model-value="embeddingProgressPercent"
+              :indeterminate="embeddingProgressPercent === 0"
+              height="4"
+              rounded
+              color="info"
+            />
+          </div>
+
           <!-- Recent Pages -->
           <div v-if="displayRecentPages.length > 0" class="recent-pages">
             <div class="text-caption text-medium-emphasis mb-1">Zuletzt gecrawlt:</div>
@@ -555,6 +572,14 @@ function getStatusLabel(status) {
 .error-alert {
   flex-shrink: 0;
   margin-top: 12px;
+}
+
+/* Parallel embedding indicator (in crawling mode) */
+.parallel-embedding-info {
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-info), 0.08);
+  border: 1px solid rgba(var(--v-theme-info), 0.2);
+  border-radius: 8px;
 }
 
 /* Embedding info section */

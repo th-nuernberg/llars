@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Datum:** 26. November 2025
-**Status:** In Entwicklung
+**Status:** Implementiert
 
 ---
 
@@ -20,14 +20,13 @@
 
 ## Übersicht
 
-### Aktuelle Situation
+### Aktueller Stand
 
-Das bestehende LLM-as-Judge System unterstützt nur einen Vergleichs-Modus (`all_pairs`), bei dem:
-- Säulen-Paare gebildet werden (z.B. 1v3, 1v5, 3v5)
-- Pro Säulen-Paar N zufällige Threads 1:1 verglichen werden
-- Ein einzelner Worker sequenziell die Queue abarbeitet
+Das LLM-as-Judge System unterstützt mehrere Vergleichs-Modi (`pillar_sample`, `round_robin`, `free_for_all`)
+inkl. optionalem Position-Swap. Die Verarbeitung läuft über einen **JudgeWorkerPool** mit konfigurierbarer
+Parallelisierung (`worker_count`).
 
-### Ziele der Erweiterung
+### Umgesetzte Erweiterungen
 
 1. **Flexible Vergleichs-Modi**: Unterschiedliche Strategien für verschiedene Anwendungsfälle
 2. **Multi-Worker Parallelisierung**: Mehrere Worker für schnellere Verarbeitung
@@ -38,10 +37,10 @@ Das bestehende LLM-as-Judge System unterstützt nur einen Vergleichs-Modus (`all
 
 ## Vergleichs-Modi
 
-### 1. Pillar Sample (bestehend, umbenannt)
+### 1. Pillar Sample (Standard)
 
 ```
-Modus: pillar_sample (vorher: all_pairs)
+Modus: pillar_sample
 ```
 
 **Beschreibung:**
@@ -65,7 +64,7 @@ Vergleiche: 3 × 10 × 2 = 60
 
 ---
 
-### 2. Round Robin (NEU)
+### 2. Round Robin (implementiert)
 
 ```
 Modus: round_robin
@@ -98,7 +97,7 @@ Mit Position-Swap:     600 Vergleiche
 
 ---
 
-### 3. Free For All (NEU)
+### 3. Free For All (implementiert)
 
 ```
 Modus: free_for_all

@@ -11,8 +11,8 @@ Dieser Bereich dokumentiert alle größeren Entwicklungsprojekte in LLARS.
 | [LLM-as-Judge](llm-as-judge/index.md) | Fertig | Automatisierte paarweise E-Mail-Bewertung |
 | [OnCoCo Analyse](oncoco/index.md) | Fertig | 68-Klassen Konversations-Klassifizierung |
 | [Authentik](authentik/index.md) | Fertig | OAuth2/OIDC Identity Provider |
-| [Chatbot Builder](chatbot-builder/index.md) | Konzept | Integrierter Chatbot-Wizard mit Web Crawler RAG |
-| [KAIMo](kaimo/index.md) | Konzept | KI-gestützte Analyse-Integration |
+| [Chatbot Builder](chatbot-builder/index.md) | Fertig | Integrierter Chatbot-Wizard mit Web Crawler RAG |
+| [KAIMo](kaimo/index.md) | Fertig | KI-gestützte Fallbearbeitung und Auswertung |
 | [Splitting & Refactoring](splitting-refactoring/konzept.md) | Konzept | Große Dateien unter 500 Zeilen bringen |
 | [Chatbot & RAG (alt)](chatbot-rag/index.md) | Deprecated | Ersetzt durch Chatbot Builder |
 

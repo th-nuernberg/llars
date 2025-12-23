@@ -64,6 +64,7 @@ import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
 import { useGitDiff } from './composables/useGitDiff'
+import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
 
 const props = defineProps({
   document: { type: Object, required: true },
@@ -89,6 +90,14 @@ const { tokenParsed, collabColor } = useAuth()
 const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
 
 const roomId = computed(() => props.document?.yjs_doc_id || `markdown_${props.document?.id}`)
+
+// Analytics: Typing metrics for this document
+const documentEntity = computed(() => `doc:${props.document?.id}`)
+const typingMetrics = useTypingMetrics({
+  category: 'markdown',
+  name: () => documentEntity.value,
+  dimensions: () => ({ entity: documentEntity.value, view: 'editor' })
+})
 
 // Git diff for character-level change highlighting
 const {
@@ -574,6 +583,12 @@ function initEditorIfNeeded() {
 
           emit('content-change', update.state.doc.toString())
           updateDecorations()
+
+          // Analytics: Track typing burst
+          const insertedChars = changes.reduce((sum, ch) => sum + (ch.insert?.length || 0), 0)
+          if (insertedChars > 0) {
+            typingMetrics.recordInput(insertedChars)
+          }
         })
       ]
     })

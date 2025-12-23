@@ -13,8 +13,8 @@ Das LLM-as-Judge System ermöglicht automatisierte paarweise Vergleiche von E-Ma
 | Dokument | Beschreibung | Status |
 |----------|--------------|--------|
 | [Konzept](konzept.md) | Ursprüngliches Konzept mit 8 Phasen | ✅ Implementiert |
-| [Comparison Modes](comparison-modes-konzept.md) | Erweiterte Vergleichsmodi (Round-Robin, Free-for-All) | 📋 Geplant |
-| [Sampling Strategien](sampling-strategien.md) | Faire Sampling-Methoden für unterschiedliche Säulengrößen | 📋 Geplant |
+| [Comparison Modes](comparison-modes-konzept.md) | Vergleichsmodi (Pillar Sample, Round-Robin, Free-for-All) | ✅ Implementiert |
+| [Sampling Strategien](sampling-strategien.md) | Sampling-Methoden für unterschiedliche Säulengrößen | 🟡 Teilweise |
 
 ## Features
 
@@ -28,7 +28,7 @@ Das LLM-as-Judge System ermöglicht automatisierte paarweise Vergleiche von E-Ma
 
 ```
 app/
-├── routes/judge/judge_routes.py
+├── routes/judge/              # Session-, Comparison-, Stats-, Pillar- & Sync-Routen
 ├── services/judge/
 │   ├── judge_service.py
 │   ├── kia_sync_service.py

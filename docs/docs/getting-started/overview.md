@@ -72,11 +72,13 @@ Echtzeit-kollaborative Entwicklung von LLM-Prompts für Bewertungs- und Analysea
 - **Versionierung**: Automatische Speicherung aller Änderungen
 - **Template-Management**: Wiederverwendbare Prompt-Vorlagen
 
+Zusätzlich gibt es **Markdown Collab** für gemeinsames Schreiben von Markdown-Dokumenten mit Live-Preview und Git-Diff-Ansicht.
+
 ### 2.5 RAG-Pipeline (Retrieval-Augmented Generation)
 
 Kontextbasierte Antwortgenerierung durch ChromaDB-Integration:
 
-- **Dokumenten-Upload**: PDF, TXT, DOCX-Support
+- **Dokumenten-Upload**: PDF, TXT, DOCX, PPTX, XLSX (und weitere)
 - **Chunking & Embedding**: Automatische Verarbeitung
 - **Kontextsuche**: Relevante Passagen für LLM-Anfragen
 - **Admin-Interface**: Verwaltung der Wissensbasis
@@ -90,7 +92,7 @@ LLARS arbeitet mit dem strukturierten **KIA-Datenrepository** (git.informatik.fh
 | Säule | Name | Inhalt | Forschungsnutzen |
 |-------|------|--------|------------------|
 | **1** | Rollenspiele | Simulierte Beratungsgespräche | Trainings-Baseline, kontrollierte Szenarien |
-| **2** | Feature-Daten | Extrahierte Merkmale | Quantitative Analyse |
+| **2** | Feature aus Säule 1 | Extrahierte Merkmale | Quantitative Analyse |
 | **3** | Anonymisierte Daten | Echte Beratungsgespräche | Ground Truth, Validierung |
 | **4** | Synthetisch | KI-generierte Gespräche | Augmentation, Vergleichsstudien |
 | **5** | Live-Testungen | Aktuelle Testdaten | Pilotierung, A/B-Tests |
@@ -231,19 +233,20 @@ LLARS-Ansatz:
 | Auth | Authentik | Benutzerverwaltung |
 | Collaboration | Y.js + Socket.IO | Echtzeit-Sync |
 | Database | MariaDB | Persistenz |
-| LLM | LiteLLM (Mistral) | KI-Bewertungen |
+| LLM | LiteLLM (Mistral) + OpenAI | KI-Bewertungen |
 | RAG | ChromaDB | Vektordatenbank |
 | NLP | XLM-RoBERTa | OnCoCo-Klassifikation |
 
 ### 5.3 Berechtigungssystem
 
-Granulares RBAC mit 17 Permissions:
+Granulares RBAC mit 40 Permissions:
 
 | Rolle | Rechte | Typischer Nutzer |
 |-------|--------|------------------|
-| **Admin** | Vollzugriff | Projektleiter |
-| **Researcher** | View + Edit | Wissenschaftler |
-| **Viewer** | Nur Lesen | Externe Reviewer |
+| **Admin** | Vollzugriff (40 Permissions) | Projektleiter |
+| **Researcher** | Evaluierung + Prompt Engineering + Markdown Collab + Anonymisierung + KAIMO (19) | Wissenschaftler |
+| **Chatbot Manager** | Chatbots + RAG + Prompt Engineering + Markdown Collab (14) | Content Owner |
+| **Viewer** | Lesezugriff + ausgewählte Edit-Rechte (13) | Externe Reviewer |
 
 ---
 
@@ -347,6 +350,6 @@ Für Dissertationen im Bereich E-Beratung, KI-gestützte Kommunikationsanalyse o
 ---
 
 **Entwickler:** Philipp Steigerwald
-**Version:** 2.2
+**Version:** 2.6
 **Stand:** November 2025
 **Repository:** LLARS (LLM Assisted Research System)

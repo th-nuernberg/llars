@@ -45,6 +45,11 @@ def _serialize_settings(settings: AnalyticsSettings) -> Dict[str, Any]:
         "require_consent": bool(settings.require_consent),
         "require_cookie_consent": bool(settings.require_cookie_consent),
         "set_user_id": bool(settings.set_user_id),
+        "dimension_route_id": int(getattr(settings, "dimension_route_id", 0) or 0),
+        "dimension_module_id": int(getattr(settings, "dimension_module_id", 0) or 0),
+        "dimension_entity_id": int(getattr(settings, "dimension_entity_id", 0) or 0),
+        "dimension_view_id": int(getattr(settings, "dimension_view_id", 0) or 0),
+        "dimension_role_id": int(getattr(settings, "dimension_role_id", 0) or 0),
         "track_clicks": bool(settings.track_clicks),
         "track_hovers": bool(settings.track_hovers),
         "hover_min_ms": int(settings.hover_min_ms or 0),
@@ -85,6 +90,11 @@ def patch_admin_analytics_settings():
         "require_consent": bool,
         "require_cookie_consent": bool,
         "set_user_id": bool,
+        "dimension_route_id": int,
+        "dimension_module_id": int,
+        "dimension_entity_id": int,
+        "dimension_view_id": int,
+        "dimension_role_id": int,
         "track_clicks": bool,
         "track_hovers": bool,
         "hover_min_ms": int,
@@ -116,6 +126,8 @@ def patch_admin_analytics_settings():
             coerced = _normalize_base_url(coerced)
         elif key == "matomo_site_id":
             coerced = max(1, coerced)
+        elif key.startswith("dimension_"):
+            coerced = max(0, coerced)
         elif key == "hover_min_ms":
             coerced = max(0, coerced)
         elif key == "hover_sample_rate":

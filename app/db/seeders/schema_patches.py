@@ -262,6 +262,38 @@ def apply_schema_patches(db) -> None:
         except Exception:
             db.session.rollback()
 
+        # Analytics settings: custom dimensions
+        changed |= _ensure_column(
+            db,
+            table_name="analytics_settings",
+            column_name="dimension_route_id",
+            column_definition_sql="`dimension_route_id` INT NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="analytics_settings",
+            column_name="dimension_module_id",
+            column_definition_sql="`dimension_module_id` INT NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="analytics_settings",
+            column_name="dimension_entity_id",
+            column_definition_sql="`dimension_entity_id` INT NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="analytics_settings",
+            column_name="dimension_view_id",
+            column_definition_sql="`dimension_view_id` INT NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="analytics_settings",
+            column_name="dimension_role_id",
+            column_definition_sql="`dimension_role_id` INT NOT NULL DEFAULT 0",
+        )
+
         # RAG: embedding provenance
         changed |= _ensure_column(
             db,

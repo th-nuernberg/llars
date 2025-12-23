@@ -10,12 +10,18 @@ DEFAULT_ANALYTICS_SETTINGS: Dict[str, Any] = {
     "matomo_enabled": True,
     "matomo_base_url": "/analytics/",
     "matomo_site_id": 1,
-    # Privacy/consent
+    # Privacy/consent - privacy-friendly defaults
     "include_query": False,
-    "disable_cookies": False,
-    "require_consent": False,
+    "disable_cookies": True,  # Privacy: No cookies by default
+    "require_consent": True,  # Privacy: Require user consent before tracking
     "require_cookie_consent": False,
-    "set_user_id": True,
+    "set_user_id": False,  # Privacy: Don't track user ID by default
+    # Custom dimensions (Matomo IDs, 0 = disabled)
+    "dimension_route_id": 0,
+    "dimension_module_id": 0,
+    "dimension_entity_id": 0,
+    "dimension_view_id": 0,
+    "dimension_role_id": 0,
     # Interaction tracking
     "track_clicks": True,
     "track_hovers": False,
@@ -51,4 +57,3 @@ def initialize_analytics_settings(db) -> None:
     if changed:
         db.session.commit()
         print("✅ Analytics settings initialized")
-

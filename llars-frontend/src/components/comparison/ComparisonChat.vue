@@ -204,6 +204,8 @@ import {
   useComparisonHelpers,
   type Message
 } from './ComparisonChat/index';
+import { useActiveDuration, useScrollDepth } from '@/composables/useAnalyticsMetrics';
+import { matomoTrackEvent } from '@/plugins/llars-metrics';
 
 const props = defineProps<{
   sessionId: number;
@@ -226,7 +228,7 @@ const {
   currentJustification,
   initializeSocket,
   sendMessage: socketSendMessage,
-  selectResponse,
+  selectResponse: socketSelectResponse,
   generateSuggestion: socketGenerateSuggestion,
   submitJustification,
   closeJustificationDialog: socketCloseDialog,
@@ -251,6 +253,45 @@ const {
   setSuggestion,
   clearJustification
 } = useComparisonHelpers(messages);
+
+// ==================== ANALYTICS ====================
+
+// Entity dimension for this comparison session
+const evalEntity = computed(() => `session:${props.sessionId}`);
+
+// Session active time tracking
+useActiveDuration({
+  category: 'eval',
+  action: 'session_active_ms',
+  name: () => evalEntity.value,
+  dimensions: () => ({ entity: evalEntity.value, view: 'comparison' })
+});
+
+// Scroll depth for messages container
+useScrollDepth(messagesContainer, {
+  category: 'eval',
+  action: 'scroll_depth',
+  name: () => evalEntity.value,
+  dimensions: () => ({ entity: evalEntity.value, view: 'comparison' })
+});
+
+// Track decision time
+const lastResponseTime = ref(Date.now());
+
+// Track comparison decision
+function trackComparisonDecision(selection: string) {
+  const timeToDecision = Date.now() - lastResponseTime.value;
+  matomoTrackEvent('eval', 'decision', `${evalEntity.value}|${selection}`, timeToDecision, {
+    entity: evalEntity.value,
+    view: 'comparison'
+  });
+}
+
+// Wrapper for selectResponse with analytics
+function selectResponse(messageId: string, selection: string) {
+  trackComparisonDecision(selection);
+  socketSelectResponse(messageId, selection);
+}
 
 // Handle send message
 const sendMessage = async () => {

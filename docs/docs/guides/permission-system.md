@@ -1,7 +1,7 @@
 # Berechtigungssystem – Status ✅
 
 **Status:** Voll funktionsfähig  
-**Datum:** 21.11.2025  
+**Datum:** 28.11.2025  
 **LLARS Version:** Production
 
 ---
@@ -24,8 +24,8 @@ RBAC mit „deny by default“ über Frontend und Backend:
 - `permission_audit_log` (Änderungsverlauf)
 
 **Seed-Daten:**
-- 17 Permissions (feature, admin, data)
-- 3 Rollen: `admin` (17), `researcher` (11), `viewer` (5)
+- 40 Permissions (feature, admin, data)
+- 4 Rollen: `admin` (40), `researcher` (19), `chatbot_manager` (14), `viewer` (13)
 
 ---
 
@@ -35,61 +35,91 @@ RBAC mit „deny by default“ über Frontend und Backend:
   `check_permission()`, `grant_permission()`, `assign_role()` u. a., inkl. Audit-Logging.
 - **Decorator:** `app/decorators/permission_decorator.py`  
   `@require_permission`, `@require_any_permission`, `@require_all_permissions`; liest OIDC-Token (Authentik) aus dem `Authorization`-Header und liefert 401/403 bei Verstößen.
-- **Routen:** `app/routes/PermissionRoutes.py`  
-  8 Endpoints (`/api/permissions/*`) geschützt mit `admin:permissions:manage`.
+- **Routen:** `app/routes/permissions/permission_routes.py` (plus Legacy: `app/routes/PermissionRoutes.py`)  
+  `/api/permissions/*` Endpoints (u. a. `my-permissions`, `users-with-roles`, `audit-log`, Rollenverwaltung) geschützt via `admin:*`.
 
 ---
 
 ## Frontend-Implementierung ✅
 
 - **Composable:** `llars-frontend/src/composables/usePermissions.js`  
-  Lädt Permissions, `hasPermission/hasRole/isAdmin`, 5-Minuten-Caching.
+  Lädt Permissions + Rollen und stellt `hasPermission/hasAnyPermission/hasAllPermissions` bereit (shared state, kein TTL-Cache).
 - **Home-Integration:** `llars-frontend/src/components/Home.vue`  
   Kacheln werden per Permission gefiltert.
-- **Admin-Dashboard:** `llars-frontend/src/components/AdminPermissions.vue`  
-  Tabs für Nutzer, Rollen, Permissions; Echtzeit-Zuweisung. Route `/AdminPermissions` ist geschützt (Router-Guard + Permission-Check).
+- **Admin-Dashboard:** `llars-frontend/src/components/Admin/AdminDashboard.vue`  
+  Berechtigungen via Tab `permissions` (`/admin?tab=permissions`).
 
 ---
 
-## Verfügbare Permissions (17)
+## Verfügbare Permissions (40)
 
-**Feature (12):**
+**Feature (30):**
 ```
-feature:mail_rating:{view,edit,delete}
-feature:ranking:{view,edit}
-feature:rating:{view,edit}
-feature:prompt_engineering:{view,edit}
-feature:comparison:{view,edit}
-feature:history_generation:view
+feature:mail_rating:view
+feature:mail_rating:edit
+feature:ranking:view
+feature:ranking:edit
+feature:rating:view
+feature:rating:edit
+feature:comparison:view
+feature:comparison:edit
+feature:authenticity:view
+feature:authenticity:edit
+feature:prompt_engineering:view
+feature:prompt_engineering:edit
+feature:markdown_collab:view
+feature:markdown_collab:edit
+feature:markdown_collab:share
+feature:rag:view
+feature:rag:edit
+feature:rag:delete
+feature:rag:share
+feature:chatbots:view
+feature:chatbots:edit
+feature:chatbots:delete
+feature:chatbots:advanced
+feature:chatbots:share
+feature:anonymize:view
+feature:judge:view
+feature:judge:edit
+feature:oncoco:view
+feature:oncoco:edit
+feature:kaimo:view
+feature:kaimo:edit
 ```
 
-**Admin (3):**
+**Admin (6):**
 ```
 admin:permissions:manage
+admin:users:manage
 admin:roles:manage
-admin:users:view
+admin:system:configure
+admin:kaimo:manage
+admin:kaimo:results
 ```
 
-**Data (2):**
+**Data (3):**
 ```
 data:export
 data:import
+data:delete
 ```
 
 ---
 
 ## Rollen
 
-- **admin:** alle 17 Permissions – Plattform- und Benutzerverwaltung  
-- **researcher:** 11 Permissions (alle View/Edit ohne Admin/Data) – aktive Forschung  
-- **viewer:** 5 View-Permissions – Lesezugriff für Reviewer
+- **admin:** alle 40 Permissions – Plattform- und Benutzerverwaltung  
+- **researcher:** 19 Permissions – Evaluierung + Prompt Engineering + Markdown Collab + Anonymisierung + KAIMO  
+- **chatbot_manager:** 14 Permissions – Chatbots + RAG + Prompt Engineering + Markdown Collab  
+- **viewer:** 13 Permissions – Lesezugriff + ausgewählte Edit-Rechte
 
 ---
 
 ## Tests ✅
 
-- 17 Permissions und 3 Rollen in der DB vorhanden
-- 8 API-Routen registriert; 401 ohne Token, 403 ohne Berechtigung
+- 40 Permissions und 4 Rollen in der DB vorhanden
+- API-Routen registriert; 401 ohne Token, 403 ohne Berechtigung
 - Frontend-Guards aktiv; Admin-Dashboard nur für Admins sichtbar
 
 ---
@@ -97,7 +127,7 @@ data:import
 ## Nutzung
 
 ### Für Administratoren
-1. `/AdminPermissions` öffnen (Adminrolle nötig)  
+1. `/admin?tab=permissions` öffnen (Adminrolle nötig)  
 2. Nutzer suchen → Rolle zuweisen/entziehen  
 3. Direkte Permissions vergeben/revozieren bei Bedarf
 

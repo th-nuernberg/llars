@@ -6,7 +6,7 @@
 
 LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-**Features:** Multi-User Collaboration (YJS CRDT) | LLM-Integration (OpenAI, LiteLLM/Mistral) | RBAC Permission System | Authentik Auth | Light/Dark Mode | RAG-Pipeline (ChromaDB) | LLM-as-Judge
+**Features:** Multi-User Collaboration (YJS CRDT) | LLM-Integration (OpenAI, LiteLLM/Mistral) | LLM-as-Judge | OnCoCo Analyse | RAG-Pipeline (ChromaDB) | Chatbot Builder + RAG | Markdown Collab | Offline Anonymisierung | RBAC Permission System | Authentik Auth | Matomo Analytics | Admin System Tools | KAIMO
 
 ---
 
@@ -55,14 +55,18 @@ REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 | Frontend | http://localhost:55080 |
 | Backend API | http://localhost:55080/api |
 | Authentik | http://localhost:55095 |
+| Matomo | http://localhost:55080/analytics/ |
+| Docs (direkt) | http://localhost:55800 |
+| Docs (via nginx, dev) | http://localhost:55080/mkdocs/ |
 | Database | localhost:55306 |
 
 ### Wichtige .env Variablen
 
 ```bash
 PROJECT_STATE=development|production
-PROJECT_HOST=localhost
-NGINX_INTERNAL_PORT=80    # MUSS 80 sein!
+PROJECT_URL=http://localhost:55080
+PROJECT_HOST=localhost            # optional (wird aus PROJECT_URL abgeleitet)
+NGINX_EXTERNAL_PORT=55080          # Host-Port für nginx
 REMOVE_LLARS_VOLUMES=False
 ```
 
@@ -77,10 +81,14 @@ REMOVE_LLARS_VOLUMES=False
 ```
 nginx (:80) → Reverse Proxy
 ├── / → Vue Frontend (:5173)
-├── /api/, /auth/ → Flask Backend (:8081)
+├── /api/ → Flask Backend (:8081)
+├── /auth/ → Flask Auth (delegiert an Authentik)
+├── /authentik/ → Authentik UI/API (:9000)
+├── /analytics/ → Matomo (:80)
+├── /mkdocs/ (dev) | /docs/ (prod) → MkDocs (:8000)
 └── /collab/ → YJS WebSocket (:8082)
 
-Databases: MariaDB (:3306), PostgreSQL (:5432 - Authentik)
+Databases: MariaDB (:3306), MariaDB (Matomo, :3306), PostgreSQL (:5432 - Authentik)
 ```
 
 ---
@@ -89,23 +97,38 @@ Databases: MariaDB (:3306), PostgreSQL (:5432 - Authentik)
 
 **Sicherheitsmodell:** Deny-by-Default | User-Permissions überschreiben Rollen | Explizites Deny schlägt Grant
 
-### Permissions (17 total)
+### Permissions (40 total)
 
 ```
-feature:mail_rating:{view,edit,delete}  feature:ranking:{view,edit}
-feature:rating:{view,edit}              feature:prompt_engineering:{view,edit}
-feature:comparison:{view,edit}          feature:history_generation:view
-admin:{permissions,roles}:manage        admin:users:view
-data:{export,import}
+feature:mail_rating:{view,edit}
+feature:ranking:{view,edit}
+feature:rating:{view,edit}
+feature:comparison:{view,edit}
+feature:authenticity:{view,edit}
+feature:prompt_engineering:{view,edit}
+feature:markdown_collab:{view,edit,share}
+feature:rag:{view,edit,delete,share}
+feature:chatbots:{view,edit,delete,advanced,share}
+feature:anonymize:view
+feature:judge:{view,edit}
+feature:oncoco:{view,edit}
+feature:kaimo:{view,edit}
+admin:permissions:manage
+admin:users:manage
+admin:roles:manage
+admin:system:configure
+admin:kaimo:{manage,results}
+data:{export,import,delete}
 ```
 
 ### Rollen
 
 | Rolle | Beschreibung |
 |-------|--------------|
-| admin | Alle 17 Permissions |
-| researcher | Alle View + Edit (11) |
-| viewer | Nur View (5) |
+| admin | Alle 40 Permissions |
+| researcher | Evaluierung + Prompt Engineering + Markdown Collab + Anonymisierung + KAIMO (19) |
+| chatbot_manager | Chatbot + RAG + Prompt Engineering + Markdown Collab (14) |
+| viewer | Lesezugriff + ausgewählte Edit-Rechte (13) |
 
 ### Backend-Nutzung
 
@@ -177,11 +200,24 @@ Automatisierte paarweise Vergleiche von E-Mail-Konversationen aus 5 Säulen (Git
 ### API Endpoints
 
 ```
-GET/POST /api/judge/sessions          # Session CRUD
-POST     /api/judge/sessions/<id>/start|pause
+GET      /api/judge/comparison-modes          # Vergleichsmodi
+POST     /api/judge/estimate                  # Vergleichs-Estimate
+GET/POST /api/judge/sessions                  # Session CRUD
+GET      /api/judge/sessions/<id>             # Session Details
+POST     /api/judge/sessions/<id>/start|pause|resume
 GET      /api/judge/sessions/<id>/current|queue|comparisons
-GET      /api/judge/pillars           # Verfügbare Säulen
-POST     /api/judge/sync              # GitLab Sync
+GET      /api/judge/sessions/<id>/results
+GET      /api/judge/sessions/<id>/verbosity-analysis
+GET      /api/judge/sessions/<id>/thread-performance
+GET      /api/judge/sessions/<id>/position-swap-analysis
+GET      /api/judge/sessions/<id>/export/csv|export/json
+GET      /api/judge/pillars
+GET      /api/judge/pillars/<n>/threads
+POST     /api/judge/pillars/<n>/assign
+GET      /api/judge/kia/status|check|config
+POST     /api/judge/kia/sync
+POST     /api/judge/kia/sync/<n>
+POST     /api/judge/kia/config
 ```
 
 ### Socket.IO Events
@@ -189,11 +225,22 @@ POST     /api/judge/sync              # GitLab Sync
 ```javascript
 // Client → Server
 socket.emit('judge:join_session', { session_id })
+socket.emit('judge:leave_session', { session_id })
+socket.emit('judge:join_overview')
+socket.emit('judge:leave_overview')
+socket.emit('judge:get_status', { session_id })
 
 // Server → Client
+socket.on('judge:joined', { session_id, room })
+socket.on('judge:left', { session_id, room })
+socket.on('judge:overview_joined', { room })
+socket.on('judge:error', { message })
+socket.on('judge:status', { session_id, status, completed, total, progress })
+socket.on('judge:comparison_start', { session_id, comparison_id, worker_id })
 socket.on('judge:progress', { session_id, status, completed, total })
 socket.on('judge:llm_stream', { session_id, token })
 socket.on('judge:comparison_complete', { comparison_id, winner, confidence })
+socket.on('judge:session_complete', { session_id, total, completed })
 ```
 
 ---

@@ -25,7 +25,7 @@ OnCoCo (Online Counseling Conversations) ermöglicht die automatische Klassifizi
 
 ```
 app/
-├── routes/oncoco/oncoco_routes.py
+├── routes/oncoco/            # Info, Pillars, Analyses, Results, Matrix, Debug
 ├── services/oncoco/
 │   ├── oncoco_service.py
 │   └── oncoco_labels.py

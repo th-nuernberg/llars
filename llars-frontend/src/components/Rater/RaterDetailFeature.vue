@@ -149,11 +149,13 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { usePanelResize } from '@/composables/usePanelResize';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { useActiveDuration, useScrollDepth } from '@/composables/useAnalyticsMetrics';
+import { matomoTrackEvent } from '@/plugins/llars-metrics';
 
 const route = useRoute();
 const router = useRouter();
@@ -194,6 +196,37 @@ const {
   maxLeftPercent: 70,
   storageKey: 'rater-feature-panel-width'
 });
+
+// ==================== ANALYTICS ====================
+
+// Entity dimension for this thread/feature combination
+const evalEntity = computed(() => `thread:${route.params.id}|feature:${route.params.feature}`);
+
+// Track session active time for rating
+useActiveDuration({
+  category: 'eval',
+  action: 'session_active_ms',
+  name: () => evalEntity.value,
+  dimensions: () => ({ entity: evalEntity.value, view: 'rating' })
+});
+
+// Track decision time (time from page load to rating)
+const pageLoadTime = ref(0);
+onMounted(() => {
+  pageLoadTime.value = Date.now();
+});
+
+// Track rating decision with time-to-decision
+function trackRatingDecision(rating, isChange = false) {
+  const timeToDecision = Date.now() - pageLoadTime.value;
+  matomoTrackEvent('eval', isChange ? 'decision_change' : 'decision', evalEntity.value, timeToDecision, {
+    entity: evalEntity.value,
+    view: 'rating'
+  });
+}
+
+// Track rating changes (when user changes their rating)
+const previousRating = ref(null);
 
 watch(
   () => [route.params.id, route.params.feature],
@@ -307,6 +340,11 @@ function formatTimestamp(timestamp) {
 }
 
 async function rateFeature(rating) {
+  // Analytics: Track the rating decision
+  const isChange = previousRating.value !== null && previousRating.value !== rating;
+  trackRatingDecision(rating, isChange);
+  previousRating.value = rating;
+
   selectedRating.value = rating;
   saveRatingToLocalStorage();
   requestAutoSave();

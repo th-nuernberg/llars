@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { decodeJwtPayload } from '@/utils/jwt'
 
@@ -6,10 +7,15 @@ const DEFAULT_ANALYTICS_CONFIG = Object.freeze({
   matomo_base_url: '/analytics/',
   matomo_site_id: 1,
   include_query: false,
-  disable_cookies: false,
-  require_consent: false,
+  disable_cookies: true,  // Privacy: No cookies by default
+  require_consent: true,  // Privacy: Require user consent before tracking
   require_cookie_consent: false,
-  set_user_id: true,
+  set_user_id: false,  // Privacy: Don't track user ID by default
+  dimension_route_id: 0,
+  dimension_module_id: 0,
+  dimension_entity_id: 0,
+  dimension_view_id: 0,
+  dimension_role_id: 0,
   track_clicks: true,
   track_hovers: false,
   hover_min_ms: 400,
@@ -18,12 +24,69 @@ const DEFAULT_ANALYTICS_CONFIG = Object.freeze({
   heartbeat_seconds: 15
 })
 
+const CONSENT_STORAGE_KEY = 'llars_analytics_consent'
+const CONSENT_VALUES = Object.freeze({
+  granted: 'granted',
+  denied: 'denied'
+})
+
+const safeStorageGet = (key) => {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage?.getItem(key) ?? null
+  } catch (e) {
+    return null
+  }
+}
+
+const safeStorageSet = (key, value) => {
+  if (typeof window === 'undefined') return false
+  try {
+    window.localStorage?.setItem(key, value)
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+const safeStorageRemove = (key) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage?.removeItem(key)
+  } catch (e) {
+    // ignore
+  }
+}
+
+const loadConsentState = () => {
+  const stored = safeStorageGet(CONSENT_STORAGE_KEY)
+  if (stored === CONSENT_VALUES.granted || stored === CONSENT_VALUES.denied) {
+    return stored
+  }
+  return null
+}
+
 let runtimeConfig = { ...DEFAULT_ANALYTICS_CONFIG }
+const analyticsConfigRef = ref({ ...runtimeConfig })
+const analyticsConsentRef = ref(loadConsentState())
 let listenersInstalled = false
 let hasTrackedInitialPageView = false
+let routerRef = null
 
 const parseJwt = (jwtToken) => {
   return decodeJwtPayload(jwtToken)
+}
+
+const resolveUserId = () => {
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
+  const payload = parseJwt(token)
+  let storedUsername = null
+  try {
+    storedUsername = localStorage.getItem('username')
+  } catch (e) {
+    storedUsername = null
+  }
+  return payload?.preferred_username || payload?.sub || storedUsername
 }
 
 const computeMatomoBaseUrl = (baseUrlSetting) => {
@@ -141,6 +204,143 @@ const getClickName = (el) => {
   return firstClass ? `.${firstClass}` : el.tagName.toLowerCase()
 }
 
+const sanitizeDimensionValue = (value) => {
+  if (value === null || value === undefined) return ''
+  const trimmed = String(value).replace(/\s+/g, ' ').trim()
+  if (!trimmed) return ''
+  const withoutEmails = trimmed.replace(
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,
+    '<email>'
+  )
+  const withoutUrls = withoutEmails.replace(/https?:\/\/\S+/gi, '<url>')
+  return withoutUrls.slice(0, 120)
+}
+
+const normalizeRouteValue = (route) => {
+  if (route?.name) return sanitizeDimensionValue(route.name)
+  const fallbackPath = typeof window !== 'undefined' ? window.location.pathname : ''
+  const rawPath = String(route?.path || fallbackPath || '')
+  if (!rawPath) return 'unknown'
+  const normalized = rawPath
+    .split('/')
+    .map((part) => {
+      if (!part) return ''
+      if (/^\d+$/.test(part)) return ':id'
+      if (/^[0-9a-f]{8,}$/i.test(part)) return ':id'
+      if (/^[0-9a-f-]{12,}$/i.test(part)) return ':id'
+      return part
+    })
+    .join('/')
+  return sanitizeDimensionValue(normalized || 'unknown')
+}
+
+const inferModuleValue = (route) => {
+  const raw = String(route?.name || route?.path || '').toLowerCase()
+  if (!raw) return 'general'
+  if (raw.includes('prompt')) return 'prompt'
+  if (raw.includes('markdown')) return 'markdown'
+  if (raw.includes('chat')) return 'chat'
+  if (raw.includes('comparison') || raw.includes('rater') || raw.includes('ranker') || raw.includes('evaluation')) {
+    return 'evaluation'
+  }
+  if (raw.includes('judge')) return 'judge'
+  if (raw.includes('kaimo')) return 'kaimo'
+  if (raw.includes('oncoco')) return 'oncoco'
+  if (raw.includes('authenticity')) return 'authenticity'
+  if (raw.includes('admin')) return 'admin'
+  return 'general'
+}
+
+const getRoleValue = () => {
+  const raw = getAuthStorageItem(AUTH_STORAGE_KEYS.roles)
+  if (!raw) return 'anonymous'
+  try {
+    const parsed = JSON.parse(raw)
+    const list = Array.isArray(parsed) ? parsed : [parsed].filter(Boolean)
+    if (!list.length) return 'authenticated'
+    if (list.includes('admin')) return 'admin'
+    if (list.includes('researcher')) return 'researcher'
+    if (list.includes('viewer')) return 'viewer'
+    return String(list[0])
+  } catch (e) {
+    return 'authenticated'
+  }
+}
+
+const getDimensionIds = (config) => ({
+  route: Number(config?.dimension_route_id || 0),
+  module: Number(config?.dimension_module_id || 0),
+  entity: Number(config?.dimension_entity_id || 0),
+  view: Number(config?.dimension_view_id || 0),
+  role: Number(config?.dimension_role_id || 0)
+})
+
+const buildDefaultDimensions = (config, route) => {
+  const targetRoute = route || routerRef?.currentRoute?.value
+  return {
+    route: normalizeRouteValue(targetRoute),
+    module: inferModuleValue(targetRoute),
+    role: getRoleValue()
+  }
+}
+
+const buildDimensionValues = (config, options = {}) => {
+  const base = buildDefaultDimensions(config, options.route)
+  const merged = { ...base, ...(options.dimensions || {}) }
+  const sanitized = {}
+  Object.entries(merged).forEach(([key, value]) => {
+    const clean = sanitizeDimensionValue(value)
+    if (clean) {
+      sanitized[key] = clean
+    }
+  })
+  return sanitized
+}
+
+const applyCustomDimensions = (config, dimensionValues) => {
+  if (!window?._paq || !config) return []
+  const ids = getDimensionIds(config)
+  const applied = []
+  Object.entries(dimensionValues || {}).forEach(([key, value]) => {
+    const id = ids[key]
+    if (!id || value === undefined || value === null || value === '') return
+    window._paq.push(['setCustomDimension', id, String(value)])
+    applied.push(id)
+  })
+  return applied
+}
+
+const clearCustomDimensions = (ids) => {
+  if (!window?._paq) return
+  ids.forEach((id) => {
+    window._paq.push(['deleteCustomDimension', id])
+  })
+}
+
+const requiresConsent = (config) => Boolean(config?.require_consent || config?.require_cookie_consent)
+
+const hasConsent = (config) => {
+  if (!requiresConsent(config)) return true
+  return analyticsConsentRef.value === CONSENT_VALUES.granted
+}
+
+const applyConsentStateToPaq = (config, state) => {
+  if (!window?._paq || !requiresConsent(config)) return
+  if (config.require_consent) {
+    if (state === CONSENT_VALUES.granted) {
+      window._paq.push(['setConsentGiven'])
+    } else {
+      window._paq.push(['forgetConsentGiven'])
+    }
+  } else if (config.require_cookie_consent) {
+    if (state === CONSENT_VALUES.granted) {
+      window._paq.push(['rememberCookieConsentGiven'])
+    } else {
+      window._paq.push(['forgetCookieConsentGiven'])
+    }
+  }
+}
+
 const normalizeConfig = (config) => {
   if (!config || typeof config !== 'object') return { ...DEFAULT_ANALYTICS_CONFIG }
 
@@ -153,6 +353,11 @@ const normalizeConfig = (config) => {
   merged.require_consent = Boolean(merged.require_consent)
   merged.require_cookie_consent = Boolean(merged.require_cookie_consent)
   merged.set_user_id = Boolean(merged.set_user_id)
+  merged.dimension_route_id = Math.max(0, Math.round(Number(merged.dimension_route_id || 0)))
+  merged.dimension_module_id = Math.max(0, Math.round(Number(merged.dimension_module_id || 0)))
+  merged.dimension_entity_id = Math.max(0, Math.round(Number(merged.dimension_entity_id || 0)))
+  merged.dimension_view_id = Math.max(0, Math.round(Number(merged.dimension_view_id || 0)))
+  merged.dimension_role_id = Math.max(0, Math.round(Number(merged.dimension_role_id || 0)))
   merged.track_clicks = Boolean(merged.track_clicks)
   merged.track_hovers = Boolean(merged.track_hovers)
   merged.hover_min_ms = Math.max(0, Math.round(Number(merged.hover_min_ms ?? 400)))
@@ -161,6 +366,21 @@ const normalizeConfig = (config) => {
   merged.heartbeat_seconds = Math.max(5, Math.round(Number(merged.heartbeat_seconds ?? 15)))
 
   return merged
+}
+
+const trackPageView = (route, config) => {
+  if (!config?.matomo_enabled) return
+  if (!window?._paq) return
+  if (!hasConsent(config)) return
+
+  window._paq.push(['setCustomUrl', buildCustomUrl(route, config.include_query)])
+  window._paq.push(['setDocumentTitle', buildDocumentTitle(route)])
+
+  const dimensions = buildDimensionValues(config, { route })
+  const applied = applyCustomDimensions(config, dimensions)
+
+  window._paq.push(['trackPageView'])
+  clearCustomDimensions(applied)
 }
 
 const applyMatomoConfigToPaq = (config, router) => {
@@ -197,6 +417,7 @@ const applyMatomoConfigToPaq = (config, router) => {
   } else if (config.require_cookie_consent) {
     window._paq.push(['requireCookieConsent'])
   }
+  applyConsentStateToPaq(config, analyticsConsentRef.value)
 
   // More accurate "time on page" tracking (sends periodic pings while user is active)
   if (config.heartbeat_enabled) {
@@ -209,16 +430,8 @@ const applyMatomoConfigToPaq = (config, router) => {
   window._paq.push(['setSiteId', siteId])
   window._paq.push(['enableLinkTracking'])
 
-  if (config.set_user_id) {
-    const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
-    const payload = parseJwt(token)
-    let storedUsername = null
-    try {
-      storedUsername = localStorage.getItem('username')
-    } catch (e) {
-      storedUsername = null
-    }
-    const userId = payload?.preferred_username || payload?.sub || storedUsername
+  if (config.set_user_id && hasConsent(config)) {
+    const userId = resolveUserId()
     if (userId) {
       matomoSetUserId(userId)
     }
@@ -227,9 +440,7 @@ const applyMatomoConfigToPaq = (config, router) => {
   if (!hasTrackedInitialPageView && router) {
     const current = router.currentRoute?.value
     if (current) {
-      window._paq.push(['setCustomUrl', buildCustomUrl(current, config.include_query)])
-      window._paq.push(['setDocumentTitle', buildDocumentTitle(current)])
-      window._paq.push(['trackPageView'])
+      trackPageView(current, config)
       hasTrackedInitialPageView = true
     }
   }
@@ -238,9 +449,41 @@ const applyMatomoConfigToPaq = (config, router) => {
 }
 
 export const getAnalyticsConfig = () => ({ ...runtimeConfig })
+export const useAnalyticsConfig = () => analyticsConfigRef
+export const getAnalyticsConsentState = () => analyticsConsentRef.value
+export const useAnalyticsConsent = () => analyticsConsentRef
+
+export const setAnalyticsConsentState = (state) => {
+  const normalized =
+    state === CONSENT_VALUES.granted || state === CONSENT_VALUES.denied ? state : null
+  analyticsConsentRef.value = normalized
+
+  if (normalized) {
+    safeStorageSet(CONSENT_STORAGE_KEY, normalized)
+  } else {
+    safeStorageRemove(CONSENT_STORAGE_KEY)
+  }
+
+  applyConsentStateToPaq(runtimeConfig, normalized)
+
+  if (normalized === CONSENT_VALUES.granted && runtimeConfig?.set_user_id) {
+    const userId = resolveUserId()
+    if (userId) {
+      matomoSetUserId(userId)
+    }
+  }
+
+  if (normalized === CONSENT_VALUES.denied) {
+    matomoResetUserId()
+  }
+}
 
 export const setAnalyticsConfig = (config, { router } = {}) => {
   runtimeConfig = normalizeConfig(config)
+  analyticsConfigRef.value = { ...runtimeConfig }
+  if (router) {
+    routerRef = router
+  }
   if (!runtimeConfig.matomo_enabled) {
     hasTrackedInitialPageView = false
   }
@@ -259,19 +502,37 @@ export const loadAnalyticsConfig = async () => {
   }
 }
 
-export const matomoTrackEvent = (category, action, name, value) => {
+export const matomoTrackEvent = (category, action, name, value, options = undefined) => {
   if (!runtimeConfig?.matomo_enabled) return
   if (!window?._paq) return
+  if (!hasConsent(runtimeConfig)) return
+
+  let eventValue = value
+  let opts = options
+  if (value && typeof value === 'object' && options === undefined) {
+    opts = value
+    eventValue = undefined
+  }
+
+  const dimensions = buildDimensionValues(runtimeConfig, {
+    route: opts?.route,
+    dimensions: opts?.dimensions
+  })
+  const applied = applyCustomDimensions(runtimeConfig, dimensions)
+
   const payload = ['trackEvent', String(category), String(action)]
   if (name !== undefined) payload.push(String(name))
-  if (value !== undefined) payload.push(Number(value))
+  if (eventValue !== undefined) payload.push(Number(eventValue))
   window._paq.push(payload)
+
+  clearCustomDimensions(applied)
 }
 
 export const matomoSetUserId = (userId) => {
   if (!runtimeConfig?.matomo_enabled) return
   if (!runtimeConfig?.set_user_id) return
   if (!window?._paq) return
+  if (!hasConsent(runtimeConfig)) return
   if (!userId) return
   window._paq.push(['setUserId', String(userId)])
 }
@@ -282,15 +543,14 @@ export const matomoResetUserId = () => {
 }
 
 export const initMatomo = ({ router, config } = {}) => {
+  if (router) {
+    routerRef = router
+  }
   if (router && !listenersInstalled) {
     listenersInstalled = true
 
     router.afterEach((to) => {
-      if (!runtimeConfig?.matomo_enabled) return
-      window._paq = window._paq || []
-      window._paq.push(['setCustomUrl', buildCustomUrl(to, runtimeConfig.include_query)])
-      window._paq.push(['setDocumentTitle', buildDocumentTitle(to)])
-      window._paq.push(['trackPageView'])
+      trackPageView(to, runtimeConfig)
     })
 
     document.addEventListener(

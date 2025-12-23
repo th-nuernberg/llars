@@ -30,6 +30,13 @@ class AnalyticsSettings(db.Model):
     require_cookie_consent: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False)
     set_user_id: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
 
+    # Custom dimensions (Matomo IDs, 0 = disabled)
+    dimension_route_id: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
+    dimension_module_id: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
+    dimension_entity_id: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
+    dimension_view_id: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
+    dimension_role_id: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
+
     # Interaction tracking
     track_clicks: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
     track_hovers: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False)
@@ -42,4 +49,3 @@ class AnalyticsSettings(db.Model):
 
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
-

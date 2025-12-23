@@ -18,6 +18,7 @@ def initialize_rag_system(db):
     """
     # Lazy import to avoid circular dependencies
     from ..tables import RAGCollection, RAGDocument, RAGDocumentChunk
+    from ..models.rag import CollectionDocumentLink
     from ..models.llm_model import LLMModel
 
     print("\n" + "="*60)
@@ -163,6 +164,34 @@ def initialize_rag_system(db):
             print(f"✅ Updated {updated_count} existing documents")
     else:
         print("ℹ️  All documents already registered in database")
+
+    # Ensure all documents with collection_id have CollectionDocumentLink entries
+    # This migrates legacy documents to the n:m relationship
+    docs_with_collection = RAGDocument.query.filter(
+        RAGDocument.collection_id.isnot(None)
+    ).all()
+
+    links_created = 0
+    for doc in docs_with_collection:
+        # Check if link already exists
+        existing_link = CollectionDocumentLink.query.filter_by(
+            collection_id=doc.collection_id,
+            document_id=doc.id
+        ).first()
+
+        if not existing_link:
+            link = CollectionDocumentLink(
+                collection_id=doc.collection_id,
+                document_id=doc.id,
+                link_type='new',
+                linked_by='system'
+            )
+            db.session.add(link)
+            links_created += 1
+
+    if links_created > 0:
+        db.session.commit()
+        print(f"✅ Created {links_created} collection-document links")
 
     # Update collection statistics for ALL collections (not just default)
     all_collections = RAGCollection.query.all()

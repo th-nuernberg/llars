@@ -22,6 +22,7 @@ def initialize_legal_assistant(db):
     from ..tables import (
         RAGCollection, RAGDocument, Chatbot, ChatbotCollection
     )
+    from ..models.rag import CollectionDocumentLink
     from ..models.llm_model import LLMModel
 
     print("\n" + "=" * 60)
@@ -147,6 +148,27 @@ def initialize_legal_assistant(db):
 
     db.session.commit()
     print(f"  Registered {registered} new documents, {skipped} already existed")
+
+    # Ensure all documents in this collection have CollectionDocumentLink entries
+    docs_in_collection = RAGDocument.query.filter_by(collection_id=collection.id).all()
+    links_created = 0
+    for doc in docs_in_collection:
+        existing_link = CollectionDocumentLink.query.filter_by(
+            collection_id=collection.id,
+            document_id=doc.id
+        ).first()
+        if not existing_link:
+            link = CollectionDocumentLink(
+                collection_id=collection.id,
+                document_id=doc.id,
+                link_type='new',
+                linked_by='system'
+            )
+            db.session.add(link)
+            links_created += 1
+    if links_created > 0:
+        db.session.commit()
+        print(f"  Created {links_created} collection-document links")
 
     # Update collection stats
     doc_count = RAGDocument.query.filter_by(collection_id=collection.id).count()

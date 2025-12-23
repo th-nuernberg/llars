@@ -37,7 +37,6 @@ class CrawlerService:
     """
 
     RAG_DOCS_PATH = '/app/data/rag/crawls'
-    DEFAULT_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
     DEFAULT_CHUNK_SIZE = 1000
     DEFAULT_CHUNK_OVERLAP = 200
     DEFAULT_ICON = 'mdi-web'
@@ -83,13 +82,14 @@ class CrawlerService:
 
         internal_name = self._build_crawl_collection_name(urls, display_name, job_id)
 
+        embedding_model = self._get_default_embedding_model_id()
         collection = RAGCollection(
             name=internal_name,
             display_name=display_name,
             description=description or (f"Webcrawl von: {', '.join(urls)}" if urls else ''),
             icon=self.DEFAULT_ICON,
             color=self.DEFAULT_COLOR,
-            embedding_model=self.DEFAULT_EMBEDDING_MODEL,
+            embedding_model=embedding_model,
             chunk_size=self.DEFAULT_CHUNK_SIZE,
             chunk_overlap=self.DEFAULT_CHUNK_OVERLAP,
             is_active=True,
@@ -103,6 +103,14 @@ class CrawlerService:
         db.session.add(collection)
         db.session.flush()
         return collection
+
+    @staticmethod
+    def _get_default_embedding_model_id() -> str:
+        from db.models.llm_model import LLMModel
+        model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_EMBEDDING)
+        if not model_id:
+            raise ValueError("No default embedding model configured in llm_models")
+        return model_id
 
     def set_socketio(self, socketio):
         """Set the SocketIO instance for live updates."""
@@ -1038,25 +1046,36 @@ class CrawlerService:
         result_queue = Queue()
         processing_complete = threading.Event()
 
+        vision_model_id = None
+        if use_vision_llm:
+            from db.models.llm_model import LLMModel
+            vision_model_id = LLMModel.get_default_model_id(
+                model_type=LLMModel.MODEL_TYPE_LLM,
+                supports_vision=True
+            )
+            if not vision_model_id:
+                raise ValueError("No vision-capable LLM model configured in llm_models")
+
         async def run():
             from .playwright_crawler import PlaywrightCrawler
 
             max_workers = min(4, max(1, len(urls)))
             sem = asyncio.Semaphore(max_workers)
 
-            async def fetch_url(target_url: str):
-                async with sem:
-                    try:
-                        crawler = PlaywrightCrawler(
-                            base_url=target_url,
-                            max_pages=1,
-                            max_depth=0,
-                            delay_seconds=0.5,
-                            extract_images=True,
-                            use_vision_llm=use_vision_llm,
-                            litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
-                            litellm_api_key=os.environ.get('LITELLM_API_KEY')
-                        )
+        async def fetch_url(target_url: str):
+            async with sem:
+                try:
+                    crawler = PlaywrightCrawler(
+                        base_url=target_url,
+                        max_pages=1,
+                        max_depth=0,
+                        delay_seconds=0.5,
+                        extract_images=True,
+                        use_vision_llm=use_vision_llm,
+                        vision_llm_model=vision_model_id,
+                        litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
+                        litellm_api_key=os.environ.get('LITELLM_API_KEY')
+                    )
                         pages = await crawler.crawl_async()
                         page = pages[0] if pages else None
                         return target_url, page, crawler.stats

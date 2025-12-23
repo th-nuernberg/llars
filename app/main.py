@@ -134,11 +134,13 @@ def fix_missing_chroma_collection_names():
     """Set chroma_collection_name for collections where it's missing."""
     from db.tables import RAGCollection
     from db.db import db
+    from db.models.llm_model import seed_default_models
     from rag_pipeline import RAGPipeline
     from services.rag.collection_embedding_service import sanitize_chroma_collection_name
 
     with app.app_context():
         try:
+            seed_default_models()
             pipeline = RAGPipeline()
             collections = RAGCollection.query.filter(
                 RAGCollection.chroma_collection_name.is_(None),

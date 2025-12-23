@@ -12,12 +12,22 @@ from db.tables import (
     Chatbot, ChatbotCollection, ChatbotConversation, ChatbotMessage,
     RAGCollection, ChatbotPromptSettings
 )
+from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
 
 
 class ChatbotService:
     """Service for chatbot management operations"""
+
+    @staticmethod
+    def _resolve_llm_model_id(model_name: Optional[str]) -> Optional[str]:
+        if not model_name:
+            return None
+        model = LLMModel.get_by_model_id(model_name)
+        if not model or not model.is_active or model.model_type != LLMModel.MODEL_TYPE_LLM:
+            raise ValueError(f"Model '{model_name}' is not an active LLM model")
+        return model.model_id
 
     @staticmethod
     def _serialize_prompt_settings(bot: Chatbot) -> Dict[str, Any]:
@@ -225,9 +235,14 @@ class ChatbotService:
         if existing:
             raise ValueError(f"Chatbot with name '{data['name']}' already exists")
 
-        model_name = ChatbotService._coerce_model_name(
-            data.get('model_name', 'mistralai/Mistral-Small-3.2-24B-Instruct-2506')
-        ) or 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+        model_name = ChatbotService._coerce_model_name(data.get('model_name'))
+        if model_name:
+            model_name = ChatbotService._resolve_llm_model_id(model_name)
+        else:
+            default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+            if not default_model_id:
+                raise ValueError("No default LLM model configured in llm_models")
+            model_name = default_model_id
 
         # Create chatbot
         chatbot = Chatbot(
@@ -291,7 +306,7 @@ class ChatbotService:
         if 'model_name' in data:
             model_name = ChatbotService._coerce_model_name(data.get('model_name'))
             if model_name:
-                data['model_name'] = model_name
+                data['model_name'] = ChatbotService._resolve_llm_model_id(model_name)
             else:
                 data.pop('model_name', None)
 

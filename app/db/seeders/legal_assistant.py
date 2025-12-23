@@ -22,6 +22,7 @@ def initialize_legal_assistant(db):
     from ..tables import (
         RAGCollection, RAGDocument, Chatbot, ChatbotCollection
     )
+    from ..models.llm_model import LLMModel
 
     print("\n" + "=" * 60)
     print("Initializing Legal Assistant (Rechtsassistent)...")
@@ -59,20 +60,24 @@ def initialize_legal_assistant(db):
     collection = RAGCollection.query.filter_by(name=collection_name).first()
 
     if not collection:
+        embedding_model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_EMBEDDING)
+        if not embedding_model:
+            raise RuntimeError("No default embedding model configured in llm_models")
+        chroma_name = f"llars_deutsche_gesetze_{embedding_model.replace('/', '_')}"
         collection = RAGCollection(
             name=collection_name,
             display_name='Deutsche Gesetze',
             description='Sammlung aller deutschen Bundesgesetze und wichtiger EU-Verordnungen',
             icon='mdi-scale-balance',
             color='#1565C0',
-            embedding_model='llamaindex/vdr-2b-multi-v1',
+            embedding_model=embedding_model,
             chunk_size=1500,
             chunk_overlap=200,
             retrieval_k=8,
             is_active=True,
             is_public=True,
             created_by='system',
-            chroma_collection_name='llars_deutsche_gesetze_vdr-2b-multi-v1'
+            chroma_collection_name=chroma_name
         )
         db.session.add(collection)
         db.session.commit()
@@ -124,7 +129,7 @@ def initialize_legal_assistant(db):
                 language='de',
                 status='pending',  # Will be embedded on build
                 collection_id=collection.id,
-                embedding_model='llamaindex/vdr-2b-multi-v1',
+                embedding_model=embedding_model,
                 is_public=True,
                 uploaded_by='system',
                 uploaded_at=datetime.now(),
@@ -162,6 +167,9 @@ def initialize_legal_assistant(db):
     admin_roles = ['admin']
 
     if not bot:
+        llm_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not llm_model_id:
+            raise RuntimeError("No default LLM model configured in llm_models")
         bot = Chatbot(
             name=chatbot_name,
             display_name='Rechtsassistent',
@@ -184,7 +192,7 @@ FORMAT:
 - Weise am Ende auf die Notwendigkeit professioneller Rechtsberatung hin
 
 HINWEIS: Dies ist ein Informationsdienst. Für konkrete Rechtsfragen sollte immer ein Rechtsanwalt konsultiert werden.""",
-            model_name='mistralai/Mistral-Small-3.2-24B-Instruct-2506',
+            model_name=llm_model_id,
             temperature=0.3,  # Lower for factual answers
             max_tokens=4096,  # Longer for legal texts
             top_p=0.9,

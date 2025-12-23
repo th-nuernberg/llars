@@ -19,6 +19,7 @@ from openai import OpenAI
 from llm.openai_utils import extract_delta_text, extract_message_text
 
 from db.tables import Chatbot, RAGCollection, CollectionDocumentLink
+from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class ChatbotFieldGenerator:
     """Handles LLM-based field generation for chatbots."""
 
     # LLM settings for field generation
-    DEFAULT_MODEL = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+    DEFAULT_MODEL = None
 
     # Field generation prompts
     PROMPTS = {
@@ -62,6 +63,13 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
             'user_template': "Erstelle eine kurze Beschreibung (1-2 Sätze) für einen Chatbot basierend auf:\n- URL: {url}\n- {collection_info}"
         }
     }
+
+    @staticmethod
+    def _get_default_llm_model_id() -> str:
+        model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not model_id:
+            raise ValueError("No default LLM model configured in llm_models")
+        return model_id
 
     @staticmethod
     def generate_field(chatbot_id: int, field: str, context: Optional[str] = None) -> Dict[str, Any]:
@@ -174,7 +182,7 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
         )
 
         response = client.chat.completions.create(
-            model=ChatbotFieldGenerator.DEFAULT_MODEL,
+            model=ChatbotFieldGenerator._get_default_llm_model_id(),
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -215,7 +223,7 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
         )
 
         stream = client.chat.completions.create(
-            model=ChatbotFieldGenerator.DEFAULT_MODEL,
+            model=ChatbotFieldGenerator._get_default_llm_model_id(),
             messages=[
                 {"role": "system", "content": prompt_config['system']},
                 {"role": "user", "content": user_prompt}

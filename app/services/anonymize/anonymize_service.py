@@ -325,7 +325,7 @@ def _get_resource_base_dir() -> Path:
 
 class AnonymizeService:
     DATE_OUTPUT_FORMAT = "%d.%m.%Y"
-    DEFAULT_LLM_MODEL = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+    DEFAULT_LLM_MODEL = None
 
     LLM_ALLOWED_LABELS = {"PER", "LOC", "ORG", "DATE", "AGE", "PHONE", "MAIL", "AHV", "PLZ"}
     LLM_LABEL_ALIASES = {
@@ -410,14 +410,42 @@ Regeln:
         litellm_base_url = os.environ.get("LITELLM_BASE_URL") or ""
         openai_key = os.environ.get("OPENAI_API_KEY") or ""
 
+        default_model_id = None
+        try:
+            from db.models.llm_model import LLMModel
+            default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        except Exception:
+            default_model_id = None
+
         if litellm_key.strip():
             return {
                 "ready": bool(litellm_base_url.strip()),
                 "provider": "litellm",
                 "base_url": litellm_base_url.strip() or None,
+                "default_model": default_model_id,
             }
 
-        return {"ready": bool(openai_key.strip()), "provider": "openai" if openai_key.strip() else None}
+        return {
+            "ready": bool(openai_key.strip()),
+            "provider": "openai" if openai_key.strip() else None,
+            "default_model": default_model_id,
+        }
+
+    @staticmethod
+    def _resolve_llm_model_id(model: Optional[str] = None) -> str:
+        from db.models.llm_model import LLMModel
+
+        if model:
+            model_id = str(model).strip()
+            db_model = LLMModel.get_by_model_id(model_id)
+            if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
+                raise RuntimeError(f"LLM model '{model_id}' is not available in llm_models")
+            return db_model.model_id
+
+        default_model = LLMModel.get_default_model(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not default_model:
+            raise RuntimeError("No default LLM model configured in llm_models")
+        return default_model.model_id
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -477,7 +505,7 @@ Regeln:
             raise RuntimeError("LLM is not configured (missing API key/base URL)")
 
         client = AnonymizeService._llm_client()
-        model_id = (model or os.environ.get("ANONYMIZE_LLM_MODEL") or AnonymizeService.DEFAULT_LLM_MODEL).strip()
+        model_id = AnonymizeService._resolve_llm_model_id(model)
 
         response = client.chat.completions.create(
             model=model_id,

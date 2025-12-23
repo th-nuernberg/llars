@@ -17,6 +17,7 @@ import re
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
+from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,10 @@ def rerank_results(query: str, results: List[Dict[str, Any]]) -> List[Dict[str, 
         return results
 
     if mode in ("cross-encoder", "cross_encoder", "ce"):
-        model_name = os.environ.get("RAG_RERANK_MODEL") or "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        model_name = _get_default_reranker_model()
+        if not model_name:
+            logger.warning("[Reranker] No reranker model configured in llm_models; falling back to lexical")
+            return _lexical_rerank(query, results)
         try:
             return _cross_encoder_rerank(query, results, model_name=model_name)
         except Exception as e:
@@ -82,6 +86,11 @@ def _tokenize(text: str) -> List[str]:
     return [t for t in _TOKEN_RE.findall((text or "").lower()) if len(t) >= 2]
 
 
+def _get_default_reranker_model() -> Optional[str]:
+    model = LLMModel.get_default_model(model_type=LLMModel.MODEL_TYPE_RERANKER)
+    return model.model_id if model else None
+
+
 @lru_cache(maxsize=1)
 def _get_cross_encoder(model_name: str):
     from sentence_transformers import CrossEncoder
@@ -110,4 +119,3 @@ def _cross_encoder_rerank(query: str, results: List[Dict[str, Any]], *, model_na
 
     reranked.sort(key=lambda x: (x.get("rerank", {}).get("score") or 0.0), reverse=True)
     return reranked
-

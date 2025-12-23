@@ -16,6 +16,7 @@ def initialize_default_chatbots(db):
         db: SQLAlchemy database instance
     """
     from ..tables import Chatbot, ChatbotCollection, ChatbotUserAccess, RAGCollection
+    from ..models.llm_model import LLMModel
 
     print("\n" + "=" * 60)
     print("Initializing Default Chatbots...")
@@ -39,6 +40,10 @@ def initialize_default_chatbots(db):
     )
     chatbot_welcome = "Hallo! Ich bin LLARS. Wie kann ich dir im System helfen?"
 
+    model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+    if not model_id:
+        raise RuntimeError("No default LLM model configured in llm_models")
+
     bot = Chatbot.query.filter_by(name=chatbot_name).first()
     created = False
 
@@ -50,7 +55,7 @@ def initialize_default_chatbots(db):
             icon='mdi-robot',
             color='#5d7a4a',
             system_prompt=chatbot_prompt,
-            model_name='mistralai/Mistral-Small-3.2-24B-Instruct-2506',
+            model_name=model_id,
             temperature=0.7,
             max_tokens=2048,
             top_p=0.9,

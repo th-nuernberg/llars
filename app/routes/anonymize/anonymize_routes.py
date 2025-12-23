@@ -82,6 +82,11 @@ def anonymize_pseudonymize() -> Any:
     llm_model = payload.get("llm_model")
     if llm_model is not None and not isinstance(llm_model, str):
         raise ValidationError("Field 'llm_model' must be a string")
+    if isinstance(llm_model, str) and llm_model.strip():
+        from db.models.llm_model import LLMModel
+        db_model = LLMModel.get_by_model_id(llm_model.strip())
+        if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
+            raise ValidationError("Selected llm_model is not an active LLM model")
 
     status_offline = AnonymizeService.quick_status()
     status_llm = AnonymizeService.llm_quick_status()
@@ -154,6 +159,11 @@ def anonymize_pseudonymize_file() -> Any:
     if engine not in {"offline", "llm", "hybrid"}:
         raise ValidationError("Invalid engine. Allowed: offline, llm, hybrid")
     llm_model = payload.get("llm_model") or None
+    if isinstance(llm_model, str) and llm_model.strip():
+        from db.models.llm_model import LLMModel
+        db_model = LLMModel.get_by_model_id(llm_model.strip())
+        if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
+            raise ValidationError("Selected llm_model is not an active LLM model")
 
     status_offline = AnonymizeService.quick_status()
     status_llm = AnonymizeService.llm_quick_status()

@@ -217,6 +217,51 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`stream_metadata` JSON NULL",
         )
 
+        # LLM models: model type (llm/embedding/reranker)
+        added_model_type = _ensure_column(
+            db,
+            table_name="llm_models",
+            column_name="model_type",
+            column_definition_sql="`model_type` VARCHAR(50) NOT NULL DEFAULT 'llm'",
+        )
+        changed |= added_model_type
+
+        # Best-effort backfill for model_type if column exists
+        try:
+            db.session.execute(
+                text(
+                    """
+                    UPDATE llm_models
+                    SET model_type = 'embedding'
+                    WHERE model_type = 'llm'
+                      AND (
+                        model_id LIKE '%embedding%'
+                        OR model_id LIKE '%embed%'
+                        OR model_id LIKE '%vdr%'
+                        OR model_id LIKE '%bge%'
+                        OR model_id LIKE '%e5%'
+                        OR model_id LIKE '%minilm%'
+                      )
+                    """
+                )
+            )
+            db.session.execute(
+                text(
+                    """
+                    UPDATE llm_models
+                    SET model_type = 'reranker'
+                    WHERE model_type = 'llm'
+                      AND (
+                        model_id LIKE '%rerank%'
+                        OR model_id LIKE '%cross-encoder%'
+                      )
+                    """
+                )
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
         # RAG: embedding provenance
         changed |= _ensure_column(
             db,

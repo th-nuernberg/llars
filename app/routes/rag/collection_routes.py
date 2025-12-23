@@ -19,6 +19,7 @@ from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
 from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink, ChatbotCollection
+from db.models.llm_model import LLMModel
 from db.db import db
 from sqlalchemy import desc
 from auth.auth_utils import AuthUtils
@@ -163,7 +164,17 @@ def create_collection():
         raise ConflictError(f"Collection with name '{data['name']}' already exists")
 
     # Embedding model (actual Chroma collection name is set by embedding services/worker)
-    embedding_model = data.get('embedding_model', 'sentence-transformers/all-MiniLM-L6-v2')
+    embedding_model = data.get('embedding_model')
+    if embedding_model:
+        db_model = LLMModel.get_by_model_id(embedding_model)
+        if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_EMBEDDING:
+            raise ValidationError("embedding_model must reference an active embedding model")
+        embedding_model = db_model.model_id
+    else:
+        default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_EMBEDDING)
+        if not default_model_id:
+            raise ValidationError("No default embedding model configured in llm_models")
+        embedding_model = default_model_id
 
     # Create new collection
     collection = RAGCollection(

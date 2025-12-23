@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from openai import OpenAI
 from llm.openai_utils import extract_delta_text, extract_message_text
+from db.models.llm_model import LLMModel
 
 from .judge_schema import (
     JudgeEvaluationResult,
@@ -101,7 +102,7 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
         self,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
-        model: str = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+        model: Optional[str] = None
     ):
         """
         Initialize the Judge Service.
@@ -119,7 +120,13 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
             "LITELLM_BASE_URL",
             "https://kiz1.in.ohmportal.de/llmproxy/v1"
         )
-        self.model = model
+        if model:
+            self.model = model
+        else:
+            model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+            if not model_id:
+                raise ValueError("No default LLM model configured in llm_models")
+            self.model = model_id
 
         # Initialize OpenAI client for LiteLLM proxy
         self.client = OpenAI(
@@ -581,5 +588,5 @@ def create_judge_service(
     return JudgeService(
         api_key=api_key,
         base_url=base_url,
-        model=model or "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+        model=model
     )

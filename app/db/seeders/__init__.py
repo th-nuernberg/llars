@@ -18,6 +18,7 @@ from .markdown_collab import initialize_markdown_collab_defaults
 from .scenarios import seed_demo_scenarios
 from .legal_assistant import initialize_legal_assistant
 from .analytics_settings import initialize_analytics_settings
+from db.models.llm_model import seed_default_models
 
 
 def run_all_seeders(db):
@@ -60,6 +61,10 @@ def run_all_seeders(db):
     # Ensure every user has a collab color
     seed_collab_colors(db)
 
+    # Seed default LLM models (embedding, reranker, etc.)
+    # Must be called BEFORE initialize_rag_system as RAG requires embedding model
+    seed_default_models()
+
     # Initialize RAG system (default collection + scan /app/data/rag/standard)
     initialize_rag_system(db)
 
@@ -94,6 +99,7 @@ __all__ = [
     'seed_avatar_seeds',
     'seed_collab_colors',
     'initialize_permissions',
+    'seed_default_models',
     'initialize_rag_system',
     'initialize_default_chatbots',
     'initialize_chatbot_prompt_settings',

@@ -40,7 +40,7 @@
               <v-icon class="mr-2">mdi-folder-multiple-outline</v-icon>
               <span class="text-h6">Workspaces</span>
               <v-spacer />
-              <v-btn variant="text" icon="mdi-refresh" @click="loadWorkspaces(true)" />
+              <LIconBtn icon="mdi-refresh" tooltip="Aktualisieren" @click="loadWorkspaces(true)" />
             </div>
           </template>
 
@@ -67,13 +67,27 @@
                 @click="openWorkspace(ws.id)"
               >
                 <template #status>
-                  <v-chip size="small" variant="tonal" color="info">
-                    #{{ ws.id }}
-                  </v-chip>
+                  <LTag
+                    v-if="isOwner(ws)"
+                    variant="primary"
+                    size="small"
+                    prepend-icon="mdi-crown"
+                  >
+                    Eigentümer
+                  </LTag>
+                  <LTag
+                    v-else
+                    variant="info"
+                    size="small"
+                    prepend-icon="mdi-account-multiple"
+                  >
+                    Gast
+                  </LTag>
                 </template>
 
                 <div class="text-medium-emphasis mb-2">
-                  Besitzer: {{ ws.owner_username }}
+                  <v-icon size="14" class="mr-1">mdi-account</v-icon>
+                  {{ ws.owner_username }}
                 </div>
                 <div class="d-flex align-center text-caption">
                   <v-icon size="16" class="mr-1">mdi-clock-outline</v-icon>
@@ -137,7 +151,7 @@
             <v-icon class="mr-2">mdi-plus-circle</v-icon>
             <span class="text-h6">Workspace erstellen</span>
             <v-spacer />
-            <v-btn icon="mdi-close" variant="text" @click="createDialog = false; resetCreateDialog()" />
+            <LIconBtn icon="mdi-close" tooltip="Schließen" @click="createDialog = false; resetCreateDialog()" />
           </div>
         </template>
 
@@ -207,7 +221,7 @@
             <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
             <span class="text-h6">Workspace löschen</span>
             <v-spacer />
-            <v-btn icon="mdi-close" variant="text" @click="deleteDialog = false" />
+            <LIconBtn icon="mdi-close" tooltip="Schließen" @click="deleteDialog = false" />
           </div>
         </template>
 
@@ -241,7 +255,7 @@
             <v-icon class="mr-2" color="warning">mdi-exit-run</v-icon>
             <span class="text-h6">Workspace verlassen</span>
             <v-spacer />
-            <v-btn icon="mdi-close" variant="text" @click="leaveDialog = false" />
+            <LIconBtn icon="mdi-close" tooltip="Schließen" @click="leaveDialog = false" />
           </div>
         </template>
 

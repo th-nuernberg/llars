@@ -18,17 +18,19 @@
       :disabled="disabled"
     >
       <template #item="{ props, item }">
-        <v-list-item v-bind="props">
+        <v-list-item v-bind="props" class="user-suggestion">
           <template #prepend>
-            <img class="user-avatar" :src="getAvatarUrl(item.raw)" alt="" />
+            <img class="user-avatar user-avatar--list" :src="getAvatarUrl(item.raw)" alt="" />
           </template>
-          <v-list-item-title>{{ formatDisplayName(item.raw.username) }}</v-list-item-title>
-          <v-list-item-subtitle>@{{ item.raw.username }}</v-list-item-subtitle>
+          <v-list-item-title class="user-title">
+            {{ formatDisplayName(item.raw.username) }}
+          </v-list-item-title>
+          <v-list-item-subtitle class="user-subtitle">@{{ item.raw.username }}</v-list-item-subtitle>
         </v-list-item>
       </template>
       <template #selection="{ item }">
         <div class="d-flex align-center ga-2">
-          <img class="user-avatar small" :src="getAvatarUrl(item.raw)" alt="" />
+          <img class="user-avatar user-avatar--selection small" :src="getAvatarUrl(item.raw)" alt="" />
           <span>{{ formatDisplayName(item.raw.username) }}</span>
         </div>
       </template>
@@ -176,11 +178,37 @@ defineExpose({ reset, setAdding })
   border-radius: 8px 3px 8px 3px;
   object-fit: cover;
   flex-shrink: 0;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .user-avatar.small {
   width: 24px;
   height: 24px;
   border-radius: 6px 2px 6px 2px;
+}
+
+.user-avatar--list {
+  margin-left: -4px;
+  margin-right: 12px;
+}
+
+.user-avatar--selection {
+  margin-right: 0;
+}
+
+.user-suggestion {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.user-title {
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.user-subtitle {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 </style>

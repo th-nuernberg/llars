@@ -885,10 +885,36 @@ const handleCollectionShareError = (message) => {
   alert(message || 'Fehler beim Speichern der Zugriffsrechte');
 };
 
+// Track which collection is being reindexed
+const reindexingCollectionId = ref(null);
+
+// Reindex a collection by ID directly
+const reindexCollectionById = async (collectionId) => {
+  reindexingCollectionId.value = collectionId;
+  try {
+    await axios.post(`/api/rag/collections/${collectionId}/reindex`);
+    await fetchCollections();
+    await fetchStats();
+  } catch (error) {
+    console.error('Error reindexing collection:', error);
+    const errorMsg = error.response?.data?.error || 'Reindexierung fehlgeschlagen';
+    alert(errorMsg);
+  }
+  reindexingCollectionId.value = null;
+};
+
 // Get actions for collection row
 const getCollectionActions = (item) => {
   const actions = [
-    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' }
+    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' },
+    {
+      key: 'reindex',
+      icon: 'mdi-refresh-circle',
+      tooltip: 'Neu indexieren',
+      variant: 'warning',
+      disabled: item.document_count === 0,
+      loading: reindexingCollectionId.value === item.id
+    }
   ];
 
   if (canShareCollections.value && (item.can_share ?? true)) {
@@ -916,6 +942,9 @@ const handleCollectionAction = (actionKey, item) => {
   switch (actionKey) {
     case 'view':
       openCollectionDetail(item);
+      break;
+    case 'reindex':
+      reindexCollectionById(item.id);
       break;
     case 'share':
       openCollectionShareDialog(item);

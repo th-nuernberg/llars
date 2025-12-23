@@ -137,7 +137,11 @@ class RAGPipeline:
         for model in candidates:
             model_id = model.model_id
             provider = (model.provider or "").lower()
-            is_hf = provider in {"huggingface", "sentence-transformers", "local"} or model_id.startswith("sentence-transformers/")
+            is_hf = (
+                provider in {"huggingface", "sentence-transformers", "local"}
+                or model_id.startswith("sentence-transformers/")
+                or model_id.startswith("llamaindex/")
+            )
 
             if is_hf:
                 result = init_hf_embeddings(model_id, model.provider or "huggingface")
@@ -168,6 +172,11 @@ class RAGPipeline:
                     return embeddings, model_id, "litellm", dims
             except Exception as e:
                 logging.warning(f"[RAGPipeline] Failed to initialize LiteLLM embedding model {model_id}: {e}")
+                # Try loading the model locally via HuggingFace as fallback
+                logging.info(f"[RAGPipeline] Attempting local HuggingFace fallback for {model_id}")
+                local_result = init_hf_embeddings(model_id, "huggingface-fallback")
+                if local_result:
+                    return local_result
 
         fallback = init_hf_embeddings(DEFAULT_FALLBACK_EMBEDDING_MODEL, "local-fallback")
         if fallback:

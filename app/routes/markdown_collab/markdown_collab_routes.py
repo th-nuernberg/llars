@@ -387,6 +387,68 @@ def remove_workspace_member(workspace_id: int, member_username: str):
     }), 200
 
 
+@markdown_collab_bp.route("/workspaces/<int:workspace_id>", methods=["DELETE"])
+@require_permission("feature:markdown_collab:edit")
+@handle_api_errors(logger_name="markdown_collab")
+def delete_workspace(workspace_id: int):
+    """Delete a workspace (owner/admin only). Cascades to all documents and members."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = MarkdownWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+
+    # Only owner or admin can delete
+    if not _is_admin(username) and ws.owner_username != username:
+        raise ForbiddenError("Nur der Besitzer kann diesen Workspace löschen")
+
+    # Delete all documents (cascade will handle commits)
+    MarkdownDocument.query.filter_by(workspace_id=workspace_id).delete()
+
+    # Delete all members
+    MarkdownWorkspaceMember.query.filter_by(workspace_id=workspace_id).delete()
+
+    # Delete the workspace
+    db.session.delete(ws)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "Workspace gelöscht"}), 200
+
+
+@markdown_collab_bp.route("/workspaces/<int:workspace_id>/leave", methods=["POST"])
+@require_permission("feature:markdown_collab:view")
+@handle_api_errors(logger_name="markdown_collab")
+def leave_workspace(workspace_id: int):
+    """Leave a workspace (for invited members only, not the owner)."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = MarkdownWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+
+    # Owner cannot leave their own workspace
+    if ws.owner_username == username:
+        raise ValidationError("Der Besitzer kann den Workspace nicht verlassen. Löschen Sie den Workspace stattdessen.")
+
+    # Check if user is a member
+    member = MarkdownWorkspaceMember.query.filter_by(
+        workspace_id=workspace_id,
+        username=username,
+    ).first()
+
+    if not member:
+        raise NotFoundError("Sie sind kein Mitglied dieses Workspaces")
+
+    db.session.delete(member)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "Workspace verlassen"}), 200
+
+
 @markdown_collab_bp.route("/workspaces/<int:workspace_id>/tree", methods=["GET"])
 @require_permission("feature:markdown_collab:view")
 @handle_api_errors(logger_name="markdown_collab")

@@ -30,6 +30,20 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   }
 
   const cursorEmitters = new Map()
+  const selectionSuppression = new Map()
+
+  const suppressSelectionUpdates = (blockId, duration = 80) => {
+    const existingTimeout = selectionSuppression.get(blockId)
+    if (existingTimeout) {
+      clearTimeout(existingTimeout)
+    }
+    const timeoutId = setTimeout(() => {
+      selectionSuppression.delete(blockId)
+    }, duration)
+    selectionSuppression.set(blockId, timeoutId)
+  }
+
+  const isSelectionSuppressed = (blockId) => selectionSuppression.has(blockId)
 
   const buildCursorPayload = (blockId, range) => {
     if (!range) return null
@@ -153,6 +167,11 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
           if (cursorsModule) {
             cursorsModule.removeCursor(socket.value.id)
           }
+          emitCursorUpdate(blockId, range)
+          return
+        }
+        if (isSelectionSuppressed(blockId)) {
+          return
         }
         emitCursorUpdate(blockId, range)
       }
@@ -297,6 +316,11 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     cursorsModules.delete(blockId)
     ytexts.delete(blockId)
     cursorEmitters.delete(blockId)
+    const suppressionTimeout = selectionSuppression.get(blockId)
+    if (suppressionTimeout) {
+      clearTimeout(suppressionTimeout)
+      selectionSuppression.delete(blockId)
+    }
     editors.delete(blockId)
     pendingHighlights.delete(blockId)
     editorCount.value = editors.size
@@ -488,6 +512,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
         editor.on('text-change', (delta, oldDelta, source) => {
           applyUserHighlight(editor, block.id, delta, source)
           if (source === 'user') {
+            suppressSelectionUpdates(block.id)
             emitCursorUpdate(block.id, editor.getSelection())
           }
         })
@@ -564,6 +589,8 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     cursorsModules.clear()
     ytexts.clear()
     cursorEmitters.clear()
+    selectionSuppression.forEach(timeoutId => clearTimeout(timeoutId))
+    selectionSuppression.clear()
     remoteCursors.clear()
     pendingHighlights.clear()
     editorCount.value = 0

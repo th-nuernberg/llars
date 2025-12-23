@@ -56,50 +56,69 @@
           <v-progress-linear indeterminate height="2" rounded class="mt-1" />
         </div>
 
-        <!-- Stats -->
-        <div class="stats-grid mb-3">
-          <LTag variant="success" size="sm" prepend-icon="mdi-file-document">
-            {{ totalDocuments }} Dokumente
-          </LTag>
-          <LTag v-if="crawlProgress.urlsTotal" variant="primary" size="sm" prepend-icon="mdi-link">
-            {{ crawlProgress.urlsCompleted || 0 }}/{{ crawlProgress.urlsTotal }} URLs
-          </LTag>
-          <LTag v-if="crawlProgress.imagesExtracted" variant="secondary" size="sm" prepend-icon="mdi-image">
-            {{ crawlProgress.imagesExtracted }} Bilder
-          </LTag>
-          <LTag v-if="crawlProgress.screenshotsTaken" variant="warning" size="sm" prepend-icon="mdi-camera">
-            {{ crawlProgress.screenshotsTaken }} Screenshots
-          </LTag>
-          <LTag variant="info" size="sm" prepend-icon="mdi-clock">
-            {{ formatDuration(crawlProgress.elapsedTime) }}
-          </LTag>
-        </div>
+        <!-- Crawling Stats (only in crawling mode) -->
+        <template v-if="isCrawling">
+          <div class="stats-grid mb-3">
+            <LTag variant="success" size="sm" prepend-icon="mdi-file-document">
+              {{ totalDocuments }} Dokumente
+            </LTag>
+            <LTag v-if="crawlProgress.urlsTotal" variant="primary" size="sm" prepend-icon="mdi-link">
+              {{ crawlProgress.urlsCompleted || 0 }}/{{ crawlProgress.urlsTotal }} URLs
+            </LTag>
+            <LTag v-if="crawlProgress.imagesExtracted" variant="secondary" size="sm" prepend-icon="mdi-image">
+              {{ crawlProgress.imagesExtracted }} Bilder
+            </LTag>
+            <LTag v-if="crawlProgress.screenshotsTaken" variant="warning" size="sm" prepend-icon="mdi-camera">
+              {{ crawlProgress.screenshotsTaken }} Screenshots
+            </LTag>
+            <LTag variant="info" size="sm" prepend-icon="mdi-clock">
+              {{ formatDuration(crawlProgress.elapsedTime) }}
+            </LTag>
+          </div>
 
-        <!-- Crawler Type -->
-        <LTag
-          v-if="crawlProgress.crawlerType"
-          :variant="crawlProgress.crawlerType === 'Playwright' ? 'accent' : 'gray'"
-          size="sm"
-          :prepend-icon="crawlProgress.crawlerType === 'Playwright' ? 'mdi-web' : 'mdi-code-tags'"
-          class="mb-3"
-        >
-          {{ crawlProgress.crawlerType }} Crawler
-        </LTag>
+          <!-- Crawler Type -->
+          <LTag
+            v-if="crawlProgress.crawlerType"
+            :variant="crawlProgress.crawlerType === 'Playwright' ? 'accent' : 'gray'"
+            size="sm"
+            :prepend-icon="crawlProgress.crawlerType === 'Playwright' ? 'mdi-web' : 'mdi-code-tags'"
+            class="mb-3"
+          >
+            {{ crawlProgress.crawlerType }} Crawler
+          </LTag>
 
-        <!-- Recent Pages -->
-        <div v-if="displayRecentPages.length > 0" class="recent-pages">
-          <div class="text-caption text-medium-emphasis mb-1">Zuletzt gecrawlt:</div>
-          <div class="pages-list">
-            <div v-for="(page, index) in displayRecentPages" :key="index" class="page-item">
-              <v-icon size="14" color="success" class="mr-1">mdi-check</v-icon>
-              <span class="text-body-2 text-truncate">{{ extractPageTitle(page) }}</span>
+          <!-- Recent Pages -->
+          <div v-if="displayRecentPages.length > 0" class="recent-pages">
+            <div class="text-caption text-medium-emphasis mb-1">Zuletzt gecrawlt:</div>
+            <div class="pages-list">
+              <div v-for="(page, index) in displayRecentPages" :key="index" class="page-item">
+                <v-icon size="14" color="success" class="mr-1">mdi-check</v-icon>
+                <span class="text-body-2 text-truncate">{{ extractPageTitle(page) }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
 
-        <!-- Embedding Details -->
+        <!-- Embedding Details (only in embedding mode) -->
         <template v-if="isEmbedding">
-          <div class="stats-grid">
+          <!-- Embedding Progress Info -->
+          <div class="embedding-info mb-3">
+            <div class="text-caption text-medium-emphasis mb-2">
+              <v-icon size="14" class="mr-1">mdi-vector-polygon</v-icon>
+              Dokumente werden in Vektoren umgewandelt...
+            </div>
+            <v-progress-linear
+              :model-value="embeddingProgressPercent"
+              :indeterminate="embeddingProgressPercent === 0 && buildStatus === 'embedding'"
+              height="8"
+              rounded
+              color="primary"
+              class="mb-2"
+            />
+          </div>
+
+          <!-- Embedding Stats -->
+          <div class="stats-grid mb-3">
             <LTag variant="info" size="sm" prepend-icon="mdi-file-document">
               {{ embeddingDocCount }} Dokumente
             </LTag>
@@ -109,6 +128,21 @@
             <LTag variant="primary" size="sm" prepend-icon="mdi-percent">
               {{ embeddingProgressPercent }}%
             </LTag>
+          </div>
+
+          <!-- Collection Info -->
+          <div v-if="collectionInfo" class="collection-info">
+            <div class="text-caption text-medium-emphasis mb-1">Collection Details:</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Name:</span>
+                <span class="info-value">{{ collectionInfo.name || collectionInfo.display_name }}</span>
+              </div>
+              <div v-if="collectionInfo.embedding_model" class="info-item">
+                <span class="info-label">Embedding Modell:</span>
+                <span class="info-value text-truncate">{{ collectionInfo.embedding_model }}</span>
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -195,6 +229,9 @@ import { computed } from 'vue'
 
 const props = defineProps({
   buildStatus: { type: String, default: 'crawling' },
+  // Mode determines which UI to show, independent of buildStatus
+  // 'crawling' = crawling-focused UI, 'embedding' = embedding-focused UI
+  mode: { type: String, default: null },
   crawlProgress: {
     type: Object,
     default: () => ({
@@ -212,9 +249,13 @@ const props = defineProps({
 
 defineEmits(['skip-to-config', 'pause', 'refresh-documents'])
 
-// Status computeds
-const isCrawling = computed(() => props.buildStatus === 'crawling')
-const isEmbedding = computed(() => props.buildStatus === 'embedding')
+// Display mode: if explicit mode is set, use it; otherwise derive from buildStatus
+const displayMode = computed(() => props.mode || props.buildStatus)
+
+// Status computeds - use displayMode to determine UI focus
+const isCrawling = computed(() => displayMode.value === 'crawling')
+const isEmbedding = computed(() => displayMode.value === 'embedding')
+// These still use buildStatus for actual process state
 const isActiveProcess = computed(() => ['crawling', 'embedding'].includes(props.buildStatus))
 const isCompleted = computed(() => ['configuring', 'ready'].includes(props.buildStatus))
 const hasError = computed(() => props.buildStatus === 'error')
@@ -237,18 +278,28 @@ const embeddingDocCount = computed(() => props.collectionInfo?.document_count ||
 const embeddingChunkCount = computed(() => props.collectionInfo?.total_chunks || 0)
 
 const currentProgressPercent = computed(() => {
+  // Embedding mode - show embedding progress
+  if (isEmbedding.value) {
+    // If crawling is still running, show 0
+    if (props.buildStatus === 'crawling') return 0
+    return embeddingProgressPercent.value
+  }
+  // Crawling mode
   if (isCrawling.value) {
     const total = props.crawlProgress.urlsTotal || props.crawlProgress.pagesTotal
     if (total === 0) return 0
     const completed = props.crawlProgress.urlsCompleted || props.crawlProgress.pagesProcessed
     return Math.min(100, Math.round((completed / total) * 100))
-  } else if (isEmbedding.value) {
-    return embeddingProgressPercent.value
   }
   return 100
 })
 
 const isIndeterminate = computed(() => {
+  // Embedding mode - indeterminate if crawling or just starting
+  if (isEmbedding.value) {
+    return props.buildStatus === 'crawling' || embeddingProgressPercent.value === 0
+  }
+  // Crawling mode
   if (isCrawling.value) {
     return crawlStage.value === 'planning' || (props.crawlProgress.urlsTotal === 0 && props.crawlProgress.pagesTotal === 0)
   }
@@ -263,6 +314,16 @@ const progressColor = computed(() => {
 
 const statusTitle = computed(() => {
   if (hasError.value) return 'Fehler aufgetreten'
+
+  // Embedding mode - show embedding-specific titles
+  if (isEmbedding.value) {
+    if (props.buildStatus === 'crawling') return 'Warte auf Crawling...'
+    if (embeddingProgressPercent.value >= 100) return 'Embedding abgeschlossen'
+    if (embeddingProgressPercent.value > 0) return 'Embedding läuft...'
+    return 'Embedding wird vorbereitet...'
+  }
+
+  // Crawling mode
   if (isCrawling.value) {
     const stage = props.crawlProgress.stage
     if (stage === 'planning') return 'Phase 1: URL-Erkundung...'
@@ -270,13 +331,32 @@ const statusTitle = computed(() => {
     if (stage === 'completed') return 'Crawling abgeschlossen'
     return 'Crawling läuft...'
   }
-  if (isEmbedding.value) return 'Embedding läuft...'
+
   if (isCompleted.value) return 'Verarbeitung abgeschlossen'
   return 'Warte auf Start...'
 })
 
 const statusDescription = computed(() => {
   if (hasError.value) return props.errorMessage || 'Ein Fehler ist aufgetreten'
+
+  // Embedding mode - show embedding-specific descriptions
+  if (isEmbedding.value) {
+    if (props.buildStatus === 'crawling') {
+      return 'Crawling muss zuerst abgeschlossen werden'
+    }
+    const processed = props.collectionInfo?.documents_processed || 0
+    const total = embeddingDocCount.value
+    const chunks = embeddingChunkCount.value
+    if (embeddingProgressPercent.value >= 100) {
+      return `${total} Dokumente → ${chunks} Chunks erstellt`
+    }
+    if (processed > 0 && total > 0) {
+      return `${processed}/${total} Dokumente verarbeitet`
+    }
+    return `${embeddingProgressPercent.value}% - ${chunks} Chunks erstellt`
+  }
+
+  // Crawling mode
   if (props.crawlProgress.message) return props.crawlProgress.message
   if (isCrawling.value) {
     const total = props.crawlProgress.urlsTotal || props.crawlProgress.pagesTotal
@@ -284,7 +364,7 @@ const statusDescription = computed(() => {
     if (total > 0) return `${completed}/${total} URLs, Crawling startet...`
     return `${totalDocuments.value} URLs gefunden`
   }
-  if (isEmbedding.value) return `Fortschritt: ${embeddingProgressPercent.value}%`
+
   if (isCompleted.value) return `${totalDocuments.value} Dokumente verarbeitet`
   return 'Bereit'
 })
@@ -475,6 +555,43 @@ function getStatusLabel(status) {
 .error-alert {
   flex-shrink: 0;
   margin-top: 12px;
+}
+
+/* Embedding info section */
+.embedding-info {
+  padding: 12px;
+  background: rgba(var(--v-theme-primary), 0.05);
+  border-radius: 8px;
+}
+
+.collection-info {
+  padding: 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+}
+
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.info-label {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  min-width: 100px;
+}
+
+.info-value {
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Responsive */

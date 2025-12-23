@@ -118,6 +118,7 @@
         <!-- Step 2: Crawling Progress -->
         <template #item.2>
           <StepCollectionSetup
+            mode="crawling"
             :build-status="buildStatus"
             :crawl-progress="crawlProgress"
             :embedding-progress="embeddingProgress"
@@ -134,6 +135,7 @@
         <!-- Step 3: Embedding Progress -->
         <template #item.3>
           <StepCollectionSetup
+            mode="embedding"
             :build-status="buildStatus"
             :crawl-progress="crawlProgress"
             :embedding-progress="embeddingProgress"

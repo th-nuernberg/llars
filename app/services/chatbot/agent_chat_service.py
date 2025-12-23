@@ -84,6 +84,19 @@ class AgentChatService(ChatService):
             return key if key else os.environ.get('TAVILY_API_KEY')
         return os.environ.get('TAVILY_API_KEY')
 
+    def _build_completion_kwargs(self, messages: List[Dict], stream: bool = True) -> Dict[str, Any]:
+        """Build kwargs for LLM completion, only including max_tokens if explicitly set."""
+        kwargs = {
+            "model": self.chatbot.model_name,
+            "messages": messages,
+            "temperature": self.chatbot.temperature,
+            "top_p": self.chatbot.top_p,
+            "stream": stream
+        }
+        if self.chatbot.max_tokens:
+            kwargs["max_tokens"] = self.chatbot.max_tokens
+        return kwargs
+
     # ==================== Agent Mode Implementations ====================
 
     def chat_agent(
@@ -214,12 +227,7 @@ class AgentChatService(ChatService):
         accumulated = ""
         try:
             stream = self.llm_client.chat.completions.create(
-                model=self.chatbot.model_name,
-                messages=messages,
-                temperature=self.chatbot.temperature,
-                max_tokens=self.chatbot.max_tokens,
-                top_p=self.chatbot.top_p,
-                stream=True
+                **self._build_completion_kwargs(messages, stream=True)
             )
 
             for chunk in stream:
@@ -456,12 +464,7 @@ class AgentChatService(ChatService):
 
             try:
                 stream = self.llm_client.chat.completions.create(
-                    model=self.chatbot.model_name,
-                    messages=messages,
-                    temperature=self.chatbot.temperature,
-                    max_tokens=self.chatbot.max_tokens,
-                    top_p=self.chatbot.top_p,
-                    stream=True
+                    **self._build_completion_kwargs(messages, stream=True)
                 )
 
                 for chunk in stream:
@@ -643,12 +646,7 @@ class AgentChatService(ChatService):
         last_goal = ""
         try:
             stream = self.llm_client.chat.completions.create(
-                model=self.chatbot.model_name,
-                messages=goal_messages,
-                temperature=self.chatbot.temperature,
-                max_tokens=self.chatbot.max_tokens,
-                top_p=self.chatbot.top_p,
-                stream=True
+                **self._build_completion_kwargs(goal_messages, stream=True)
             )
             for chunk in stream:
                 choice = chunk.choices[0] if chunk.choices else None
@@ -702,12 +700,7 @@ class AgentChatService(ChatService):
             last_thought = ""
             try:
                 stream = self.llm_client.chat.completions.create(
-                    model=self.chatbot.model_name,
-                    messages=messages,
-                    temperature=self.chatbot.temperature,
-                    max_tokens=self.chatbot.max_tokens,
-                    top_p=self.chatbot.top_p,
-                    stream=True
+                    **self._build_completion_kwargs(messages, stream=True)
                 )
                 for chunk in stream:
                     choice = chunk.choices[0] if chunk.choices else None
@@ -1063,11 +1056,7 @@ class AgentChatService(ChatService):
         """Synchronous LLM call."""
         try:
             response = self.llm_client.chat.completions.create(
-                model=self.chatbot.model_name,
-                messages=messages,
-                temperature=self.chatbot.temperature,
-                max_tokens=self.chatbot.max_tokens,
-                top_p=self.chatbot.top_p
+                **self._build_completion_kwargs(messages, stream=False)
             )
 
             if response.choices:

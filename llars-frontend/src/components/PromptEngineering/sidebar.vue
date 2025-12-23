@@ -157,7 +157,7 @@
               <v-icon class="mr-2" color="primary">mdi-eye</v-icon>
               <span class="text-h6">Vorschau: {{ promptName }}</span>
               <v-spacer />
-              <v-btn icon="mdi-close" variant="text" size="small" @click="showPreview = false" />
+              <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="showPreview = false" />
             </div>
           </template>
 

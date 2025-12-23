@@ -198,7 +198,7 @@
             <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
           </div>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" size="small" @click="shareDialog = false" />
+          <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="shareDialog = false" />
         </v-card-title>
 
         <v-divider />

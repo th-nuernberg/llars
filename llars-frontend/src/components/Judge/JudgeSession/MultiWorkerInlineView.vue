@@ -134,7 +134,7 @@
             <v-icon size="16" class="mr-1">mdi-eye</v-icon>
             Worker {{ selectedWorkerId + 1 }} Detail
           </span>
-          <v-btn icon="mdi-close" size="x-small" variant="text" @click="selectedWorkerId = null"></v-btn>
+          <LIconBtn icon="mdi-close" size="x-small" tooltip="Schließen" @click="selectedWorkerId = null" />
         </div>
         <div class="detail-content">
           <!-- Full stream output -->

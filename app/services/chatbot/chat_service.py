@@ -810,6 +810,7 @@ class ChatService:
         """
         Get embeddings for a specific model with caching.
         Uses HuggingFace for sentence-transformers models, LiteLLM for others.
+        Falls back to local HuggingFace if LiteLLM fails.
         """
         if model_id in cls._embeddings_cache:
             return cls._embeddings_cache[model_id]
@@ -817,28 +818,32 @@ class ChatService:
         from langchain_huggingface import HuggingFaceEmbeddings
         from langchain_openai import OpenAIEmbeddings
 
-        is_hf = model_id.startswith("sentence-transformers/") or "sentence-transformers" in model_id
-
-        if is_hf:
+        def try_huggingface_local(mid: str):
+            """Try loading model locally via HuggingFace."""
             try:
                 embeddings = HuggingFaceEmbeddings(
-                    model_name=model_id,
+                    model_name=mid,
                     model_kwargs={"device": "cpu"},
                     encode_kwargs={"normalize_embeddings": True},
                     cache_folder="/app/storage/models"
                 )
-                cls._embeddings_cache[model_id] = embeddings
+                cls._embeddings_cache[mid] = embeddings
+                logger.info(f"Loaded HuggingFace embeddings locally for {mid}")
                 return embeddings
             except Exception as e:
-                logger.error(f"Failed to load HuggingFace embeddings for {model_id}: {e}")
+                logger.warning(f"Failed to load HuggingFace embeddings locally for {mid}: {e}")
                 return None
-        else:
-            # Try LiteLLM/OpenAI-compatible API
-            litellm_api_key = os.environ.get("LITELLM_API_KEY")
-            litellm_base_url = os.environ.get("LITELLM_BASE_URL")
-            if not (litellm_api_key and litellm_base_url):
-                logger.error(f"LiteLLM not configured for model {model_id}")
-                return None
+
+        is_hf = model_id.startswith("sentence-transformers/") or "sentence-transformers" in model_id
+
+        if is_hf:
+            return try_huggingface_local(model_id)
+
+        # Try LiteLLM/OpenAI-compatible API first
+        litellm_api_key = os.environ.get("LITELLM_API_KEY")
+        litellm_base_url = os.environ.get("LITELLM_BASE_URL")
+
+        if litellm_api_key and litellm_base_url:
             try:
                 embeddings = OpenAIEmbeddings(
                     model=model_id,
@@ -848,8 +853,10 @@ class ChatService:
                 cls._embeddings_cache[model_id] = embeddings
                 return embeddings
             except Exception as e:
-                logger.error(f"Failed to load LiteLLM embeddings for {model_id}: {e}")
-                return None
+                logger.warning(f"LiteLLM embeddings failed for {model_id}: {e}, trying local fallback")
+
+        # Fallback: try loading locally via HuggingFace (works for llamaindex models etc.)
+        return try_huggingface_local(model_id)
 
     def _search_collection(
         self,

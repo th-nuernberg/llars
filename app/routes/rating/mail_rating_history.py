@@ -13,7 +13,7 @@ from db.db import db
 from db.tables import (UserMailHistoryRating, ConsultingCategoryType,
                        UserConsultingCategorySelection, ProgressionStatus)
 from .. import data_blueprint
-from ..HelperFunctions import can_access_thread, get_thread_progression_state
+from ..HelperFunctions import can_access_thread, get_thread_progression_state, raters_receive_all_threads
 
 
 @data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
@@ -214,12 +214,9 @@ def save_mail_rating(thread_id):
             scenario_users = (
                 db.session.query(ScenarioUsers)
                 .join(RatingScenarios, RatingScenarios.id == ScenarioUsers.scenario_id)
-                .join(ScenarioThreadDistribution, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
-                .join(ScenarioThreads, ScenarioThreads.id == ScenarioThreadDistribution.scenario_thread_id)
                 .filter(
                     ScenarioUsers.user_id == user.id,
                     ScenarioUsers.role == ScenarioRoles.RATER,
-                    ScenarioThreads.thread_id == thread_id,
                     RatingScenarios.begin <= current_time,
                     RatingScenarios.end >= current_time,
                 )
@@ -231,19 +228,52 @@ def save_mail_rating(thread_id):
                 if not scenario:
                     continue
 
-                distributions = (
-                    db.session.query(ScenarioThreadDistribution)
+                scenario_thread = (
+                    db.session.query(ScenarioThreads)
                     .filter(
-                        ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
-                        ScenarioThreadDistribution.scenario_id == scenario_user.scenario_id,
+                        ScenarioThreads.scenario_id == scenario_user.scenario_id,
+                        ScenarioThreads.thread_id == thread_id
                     )
-                    .all()
+                    .first()
                 )
+                if not scenario_thread:
+                    continue
+
+                if not raters_receive_all_threads(scenario):
+                    distribution = (
+                        db.session.query(ScenarioThreadDistribution)
+                        .filter(
+                            ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                            ScenarioThreadDistribution.scenario_id == scenario_user.scenario_id,
+                            ScenarioThreadDistribution.scenario_thread_id == scenario_thread.id,
+                        )
+                        .first()
+                    )
+                    if not distribution:
+                        continue
+
+                if raters_receive_all_threads(scenario):
+                    scenario_threads = (
+                        db.session.query(ScenarioThreads)
+                        .filter(ScenarioThreads.scenario_id == scenario_user.scenario_id)
+                        .all()
+                    )
+                else:
+                    scenario_threads = [
+                        dist.scenario_thread
+                        for dist in db.session.query(ScenarioThreadDistribution)
+                        .filter(
+                            ScenarioThreadDistribution.scenario_user_id == scenario_user.id,
+                            ScenarioThreadDistribution.scenario_id == scenario_user.scenario_id,
+                        )
+                        .all()
+                        if dist.scenario_thread
+                    ]
 
                 total_threads = 0
                 done_threads = 0
-                for distribution in distributions:
-                    thread = getattr(getattr(distribution, "scenario_thread", None), "thread", None)
+                for scenario_thread in scenario_threads:
+                    thread = getattr(scenario_thread, "thread", None)
                     if not thread:
                         continue
                     total_threads += 1

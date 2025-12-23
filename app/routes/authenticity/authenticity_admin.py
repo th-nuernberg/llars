@@ -31,6 +31,7 @@ from db.db import db
 from db.models import EmailThread, Message, AuthenticityConversation, UserAuthenticityVote
 from db.tables import (RatingScenarios, ScenarioUsers, ScenarioThreads,
                        ScenarioThreadDistribution, ScenarioRoles, User)
+from ..HelperFunctions import get_scenario_distribution_mode, DISTRIBUTION_MODE_ALL
 
 
 logger = logging.getLogger(__name__)
@@ -403,6 +404,8 @@ def get_authenticity_scenario_stats(scenario_id: int):
         UserAuthenticityVote.thread_id.in_(thread_ids)
     ).all()
 
+    distribution_mode = get_scenario_distribution_mode(scenario, scenario.function_type_id)
+
     # Build user stats
     user_stats = []
     user_vote_map = {}  # user_id -> {thread_id -> vote}
@@ -412,7 +415,7 @@ def get_authenticity_scenario_stats(scenario_id: int):
         user_id = user.id
 
         # Get threads assigned to this user (for RATER role) or all threads (for VIEWER)
-        if su.role == ScenarioRoles.RATER:
+        if su.role == ScenarioRoles.RATER and distribution_mode != DISTRIBUTION_MODE_ALL:
             user_thread_ids = [
                 dist.scenario_thread.thread.thread_id
                 for dist in ScenarioThreadDistribution.query
@@ -507,7 +510,8 @@ def get_authenticity_scenario_stats(scenario_id: int):
     # Overall vote distribution
     total_real_votes = sum(1 for v in all_votes if v.vote and v.vote.lower() == "real")
     total_fake_votes = sum(1 for v in all_votes if v.vote and v.vote.lower() == "fake")
-    total_pending = len(thread_ids) * len([u for u in user_stats if u["role"] == "rater"]) - (total_real_votes + total_fake_votes)
+    total_possible_votes = sum(u["total_threads"] for u in user_stats if u["role"] == "rater")
+    total_pending = total_possible_votes - (total_real_votes + total_fake_votes)
 
     # Overall accuracy
     all_correct = sum(u["correct_count"] for u in user_stats)

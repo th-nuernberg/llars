@@ -492,6 +492,37 @@ oder als Array:
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
+
+            <v-expansion-panel v-if="formData.selectedCategory && formData.selectedCategory !== 4">
+              <v-expansion-panel-title>
+                Verteilung & Reihenfolge
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="formData.distributionMode"
+                      :items="distributionOptions"
+                      label="Thread-Verteilung"
+                      outlined
+                      density="comfortable"
+                    ></v-select>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="formData.orderMode"
+                      :items="orderOptions"
+                      label="Thread-Reihenfolge"
+                      outlined
+                      density="comfortable"
+                    ></v-select>
+                  </v-col>
+                </v-row>
+                <v-alert type="info" variant="tonal" density="compact">
+                  Die Reihenfolge betrifft nur die Thread-Liste. Nachrichten innerhalb eines Verlaufs bleiben unverändert.
+                </v-alert>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
           </v-expansion-panels>
         </v-card-text>
         <v-card-actions>
@@ -546,7 +577,9 @@ export default {
       userRoles: {},
       selectedThreads: [],
       llm1Model: '',
-      llm2Model: ''
+      llm2Model: '',
+      distributionMode: 'round_robin',
+      orderMode: 'shuffle_same'
     });
 
     const errors = reactive({
@@ -712,6 +745,17 @@ export default {
       }));
     });
 
+    const distributionOptions = [
+      { title: 'Alle erhalten alle Threads', value: 'all' },
+      { title: 'Round Robin (gleichmäßig verteilen)', value: 'round_robin' }
+    ];
+
+    const orderOptions = [
+      { title: 'Originale Reihenfolge (keine Mischung)', value: 'none' },
+      { title: 'Gemischt – für alle gleich', value: 'shuffle_same' },
+      { title: 'Gemischt – pro Nutzer unterschiedlich', value: 'shuffle_per_user' }
+    ];
+
     const modelItems = computed(() => {
       return state.availableModels.map(model => ({
         value: model.id,
@@ -792,6 +836,14 @@ export default {
     const handleCategoryChange = async (newCategoryId) => {
       formData.selectedThreads = [];
       await fetchThreads(newCategoryId);
+
+      const selected = state.categories.find(category => category.function_type_id === newCategoryId);
+      if (selected?.name === 'mail_rating') {
+        formData.distributionMode = 'all';
+      } else {
+        formData.distributionMode = 'round_robin';
+      }
+      formData.orderMode = 'shuffle_same';
       
       if (newCategoryId === 4) {
         await fetchAvailableModels();
@@ -966,6 +1018,8 @@ export default {
       formData.selectedThreads = [];
       formData.llm1Model = '';
       formData.llm2Model = '';
+      formData.distributionMode = 'round_robin';
+      formData.orderMode = 'shuffle_same';
       authImport.mode = 'files';
       authImport.files = [];
       authImport.folderFiles = [];
@@ -1012,7 +1066,11 @@ export default {
         end: endDateISO,
         rater: raters,
         threads: threadIds,
-        viewer: viewers
+        viewer: viewers,
+        config_json: {
+          distribution_mode: formData.distributionMode,
+          order_mode: formData.orderMode
+        }
       };
 
       if (formData.selectedCategory === 4) {
@@ -1056,6 +1114,8 @@ export default {
       authImport,
       threadFilter,
       categoryItems,
+      distributionOptions,
+      orderOptions,
       modelItems,
       filteredThreads,
       canImport,

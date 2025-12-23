@@ -15,6 +15,7 @@ from db.db import db
 from db.tables import (RatingScenarios, EmailThread, ScenarioThreads,
                        ScenarioUsers, ScenarioRoles, ScenarioThreadDistribution)
 from .. import data_blueprint
+from ..HelperFunctions import get_scenario_distribution_mode, DISTRIBUTION_MODE_ALL
 
 
 @data_blueprint.route('/admin/add_threads_to_scenario', methods=['POST'])
@@ -71,17 +72,23 @@ def add_threads_to_scenario():
                 scenario_id=scenario.id, role=ScenarioRoles.RATER).all()
         ]
 
-        if not thread_scenarios or not scenario_users_ids:
-            raise ValidationError('No threads or users available for distribution')
+        distribution_mode = get_scenario_distribution_mode(scenario, scenario.function_type_id)
 
-        user_threads = distribute_threads_to_users(thread_scenarios, scenario_users_ids)
-        for user_id, thread_ids in user_threads.items():
-            for thread_id in thread_ids:
-                db.session.add(ScenarioThreadDistribution(
-                    scenario_id=scenario.id,
-                    scenario_thread_id=thread_id,
-                    scenario_user_id=user_id,
-                ))
+        if not thread_scenarios:
+            raise ValidationError('No threads available for distribution')
+
+        if distribution_mode != DISTRIBUTION_MODE_ALL and not scenario_users_ids:
+            raise ValidationError('No users available for distribution')
+
+        if distribution_mode != DISTRIBUTION_MODE_ALL:
+            user_threads = distribute_threads_to_users(thread_scenarios, scenario_users_ids)
+            for user_id, thread_ids in user_threads.items():
+                for thread_id in thread_ids:
+                    db.session.add(ScenarioThreadDistribution(
+                        scenario_id=scenario.id,
+                        scenario_thread_id=thread_id,
+                        scenario_user_id=user_id,
+                    ))
 
         db.session.commit()
     except Exception as e:

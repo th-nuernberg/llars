@@ -13,7 +13,7 @@ from db.db import db
 from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        ScenarioThreads, ScenarioRoles, User, ScenarioThreadDistribution,
                        ProgressionStatus)
-from ..HelperFunctions import get_thread_progression_state, get_user_threads
+from ..HelperFunctions import get_thread_progression_state, raters_receive_all_threads, get_user_threads
 from .. import data_blueprint
 
 
@@ -51,20 +51,29 @@ def get_scenario_user_progress_stats(scenario_id):
         total_progressing_threads = 0
         total_not_started_threads = 0
 
-        if scenario_user.role == ScenarioRoles.RATER:
+        use_full_threads = (
+            scenario_user.role == ScenarioRoles.VIEWER
+            or (scenario_user.role == ScenarioRoles.RATER and raters_receive_all_threads(scenario))
+        )
+
+        if use_full_threads:
             user_threads = (
                 db.session.query(ScenarioThreads)
-                .join(ScenarioThreadDistribution,
-                      ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
-                .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
-                .filter(ScenarioThreads.scenario_id == scenario_id,
-                        ScenarioUsers.user_id == scenario_user.user_id)
+                .filter(ScenarioThreads.scenario_id == scenario_id)
                 .all()
             )
         else:
             user_threads = (
                 db.session.query(ScenarioThreads)
-                .filter(ScenarioThreads.scenario_id == scenario_id)
+                .join(
+                    ScenarioThreadDistribution,
+                    ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id
+                )
+                .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
+                .filter(
+                    ScenarioThreads.scenario_id == scenario_id,
+                    ScenarioUsers.user_id == scenario_user.user_id
+                )
                 .all()
             )
         if not user_threads:

@@ -312,6 +312,44 @@
             </div>
           </div>
 
+          <!-- Fake/Real Breakdown -->
+          <div v-if="selectedUser.correct_count > 0 || selectedUser.incorrect_count > 0" class="vote-breakdown-row">
+            <div class="breakdown-card fake">
+              <div class="breakdown-header">
+                <v-icon size="18" color="#c87a6a">mdi-close-circle</v-icon>
+                <span class="breakdown-title">Fake erkannt</span>
+              </div>
+              <div class="breakdown-stats">
+                <span class="breakdown-correct">{{ selectedUser.fake_correct || 0 }} richtig</span>
+                <span class="breakdown-separator">/</span>
+                <span class="breakdown-incorrect">{{ selectedUser.fake_incorrect || 0 }} falsch</span>
+              </div>
+              <div class="breakdown-bar">
+                <div
+                  class="breakdown-bar-fill"
+                  :style="{ width: getFakeAccuracy(selectedUser) + '%' }"
+                ></div>
+              </div>
+            </div>
+            <div class="breakdown-card real">
+              <div class="breakdown-header">
+                <v-icon size="18" color="#4a9f7e">mdi-check-circle</v-icon>
+                <span class="breakdown-title">Echt erkannt</span>
+              </div>
+              <div class="breakdown-stats">
+                <span class="breakdown-correct">{{ selectedUser.real_correct || 0 }} richtig</span>
+                <span class="breakdown-separator">/</span>
+                <span class="breakdown-incorrect">{{ selectedUser.real_incorrect || 0 }} falsch</span>
+              </div>
+              <div class="breakdown-bar real">
+                <div
+                  class="breakdown-bar-fill"
+                  :style="{ width: getRealAccuracy(selectedUser) + '%' }"
+                ></div>
+              </div>
+            </div>
+          </div>
+
           <div class="detail-threads-grid">
             <div class="thread-column">
               <div class="thread-column-header voted">
@@ -408,6 +446,44 @@
           <div class="detail-stat">
             <span class="detail-stat-value">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</span>
             <span class="detail-stat-label">Bewertet</span>
+          </div>
+        </div>
+
+        <!-- Fake/Real Breakdown (Non-fullscreen) -->
+        <div v-if="selectedUser.correct_count > 0 || selectedUser.incorrect_count > 0" class="vote-breakdown-row compact">
+          <div class="breakdown-card fake">
+            <div class="breakdown-header">
+              <v-icon size="16" color="#c87a6a">mdi-close-circle</v-icon>
+              <span class="breakdown-title">Fake erkannt</span>
+            </div>
+            <div class="breakdown-stats">
+              <span class="breakdown-correct">{{ selectedUser.fake_correct || 0 }} richtig</span>
+              <span class="breakdown-separator">/</span>
+              <span class="breakdown-incorrect">{{ selectedUser.fake_incorrect || 0 }} falsch</span>
+            </div>
+            <div class="breakdown-bar">
+              <div
+                class="breakdown-bar-fill"
+                :style="{ width: getFakeAccuracy(selectedUser) + '%' }"
+              ></div>
+            </div>
+          </div>
+          <div class="breakdown-card real">
+            <div class="breakdown-header">
+              <v-icon size="16" color="#4a9f7e">mdi-check-circle</v-icon>
+              <span class="breakdown-title">Echt erkannt</span>
+            </div>
+            <div class="breakdown-stats">
+              <span class="breakdown-correct">{{ selectedUser.real_correct || 0 }} richtig</span>
+              <span class="breakdown-separator">/</span>
+              <span class="breakdown-incorrect">{{ selectedUser.real_incorrect || 0 }} falsch</span>
+            </div>
+            <div class="breakdown-bar real">
+              <div
+                class="breakdown-bar-fill"
+                :style="{ width: getRealAccuracy(selectedUser) + '%' }"
+              ></div>
+            </div>
           </div>
         </div>
 
@@ -600,6 +676,18 @@ function getAvatarColor(username) {
   const colors = ['#b0ca97', '#D1BC8A', '#88c4c8', '#98d4bb', '#a8c5e2', '#e8c87a']
   const index = username.charCodeAt(0) % colors.length
   return colors[index]
+}
+
+function getFakeAccuracy(user) {
+  const total = (user.fake_correct || 0) + (user.fake_incorrect || 0)
+  if (total === 0) return 0
+  return Math.round((user.fake_correct || 0) / total * 100)
+}
+
+function getRealAccuracy(user) {
+  const total = (user.real_correct || 0) + (user.real_incorrect || 0)
+  if (total === 0) return 0
+  return Math.round((user.real_correct || 0) / total * 100)
 }
 
 function toggleFullscreen() {
@@ -1252,6 +1340,94 @@ watch(() => props.modelValue, (newVal) => {
 
 .empty-threads.success {
   color: #4a9f7e;
+}
+
+/* Vote Breakdown Row */
+.vote-breakdown-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 20px 20px;
+}
+
+.vote-breakdown-row.compact {
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.breakdown-card {
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: var(--llars-radius-sm);
+  padding: 14px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.breakdown-card.fake {
+  border-left: 3px solid var(--llars-danger);
+}
+
+.breakdown-card.real {
+  border-left: 3px solid var(--llars-success);
+}
+
+.breakdown-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.breakdown-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.breakdown-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.breakdown-correct {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a9f7e;
+}
+
+.breakdown-incorrect {
+  font-size: 0.875rem;
+  color: #c87a6a;
+}
+
+.breakdown-separator {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.breakdown-bar {
+  height: 6px;
+  background: rgba(232, 160, 135, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.breakdown-bar.real {
+  background: rgba(152, 212, 187, 0.3);
+}
+
+.breakdown-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.breakdown-card.fake .breakdown-bar-fill {
+  background: var(--llars-danger);
+}
+
+.breakdown-card.real .breakdown-bar-fill {
+  background: var(--llars-success);
 }
 
 /* Footer */

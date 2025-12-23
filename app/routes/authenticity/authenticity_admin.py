@@ -440,17 +440,30 @@ def get_authenticity_scenario_stats(scenario_id: int):
         voted_count = len([v for v in user_votes if v.vote is not None])
         total_assigned = len(user_thread_ids)
 
-        # Calculate accuracy against ground truth
+        # Calculate accuracy against ground truth with fake/real breakdown
         correct = 0
         incorrect = 0
+        fake_correct = 0  # User said "fake" and it was fake
+        fake_incorrect = 0  # User said "fake" but it was real
+        real_correct = 0  # User said "real" and it was real
+        real_incorrect = 0  # User said "real" but it was fake
         for tid in user_thread_ids:
             vote = votes_by_thread.get(tid)
             if vote and vote.vote and tid in ground_truth:
                 vote_is_fake = vote.vote.lower() == "fake"
-                if vote_is_fake == ground_truth[tid]:
+                thread_is_fake = ground_truth[tid]
+                if vote_is_fake == thread_is_fake:
                     correct += 1
+                    if vote_is_fake:
+                        fake_correct += 1
+                    else:
+                        real_correct += 1
                 else:
                     incorrect += 1
+                    if vote_is_fake:
+                        fake_incorrect += 1
+                    else:
+                        real_incorrect += 1
 
         accuracy = round(correct / (correct + incorrect) * 100, 1) if (correct + incorrect) > 0 else None
 
@@ -484,6 +497,10 @@ def get_authenticity_scenario_stats(scenario_id: int):
             "accuracy_percent": accuracy,
             "correct_count": correct,
             "incorrect_count": incorrect,
+            "fake_correct": fake_correct,
+            "fake_incorrect": fake_incorrect,
+            "real_correct": real_correct,
+            "real_incorrect": real_incorrect,
             "voted_threads": voted_threads,
             "pending_threads": pending_threads,
         })

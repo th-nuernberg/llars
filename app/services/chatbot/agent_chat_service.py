@@ -20,6 +20,7 @@ import logging
 import time
 from typing import List, Dict, Any, Optional, Generator, Tuple
 from openai import OpenAI
+from llm.openai_utils import extract_delta_text
 
 from db.db import db
 from db.models.chatbot import Chatbot, ChatbotPromptSettings
@@ -149,6 +150,7 @@ class AgentChatService(ChatService):
                 'sources': [],
                 'conversation_id': conversation_id,
                 'session_id': session_id,
+                'title': None,
                 'message_id': None,
                 'tokens': {'input': 0, 'output': 0},
                 'response_time_ms': response_time_ms,
@@ -164,6 +166,7 @@ class AgentChatService(ChatService):
             'sources': final_event.get('sources', []),
             'conversation_id': final_event.get('conversation_id'),
             'session_id': session_id,
+            'title': final_event.get('title'),
             'message_id': final_event.get('message_id'),
             'tokens': {'input': 0, 'output': 0},
             'response_time_ms': response_time_ms,
@@ -246,8 +249,7 @@ class AgentChatService(ChatService):
 
         conversation.message_count += 2
         conversation.last_message_at = datetime.now()
-        if not conversation.title and len(message) > 0:
-            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        self._maybe_set_conversation_title(conversation, message)
         db.session.commit()
 
         yield {
@@ -256,6 +258,7 @@ class AgentChatService(ChatService):
             "sources": sources if include_sources else [],
             "mode": "standard",
             "conversation_id": conversation.id,
+            "title": conversation.title,
             "message_id": msg.id
         }
 
@@ -332,8 +335,7 @@ class AgentChatService(ChatService):
 
                 conversation.message_count += 2
                 conversation.last_message_at = datetime.now()
-                if not conversation.title and len(message) > 0:
-                    conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+                self._maybe_set_conversation_title(conversation, message)
                 db.session.commit()
 
                 yield {
@@ -344,6 +346,7 @@ class AgentChatService(ChatService):
                     "iterations": iteration + 1,
                     "reasoning_steps": reasoning_steps,
                     "conversation_id": conversation.id,
+                    "title": conversation.title,
                     "message_id": msg.id
                 }
                 return
@@ -361,7 +364,10 @@ class AgentChatService(ChatService):
                 "content": result or ""
             })
 
-            yield {"status": "observation", "result_preview": result[:200] if result else "", "iteration": iteration + 1}
+            preview = result[:200] if result else ""
+            for chunk in self._stream_preview_chunks(preview):
+                yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
+            yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
 
         # Max iterations reached - force response
         yield {"status": "max_iterations_reached"}
@@ -382,8 +388,7 @@ class AgentChatService(ChatService):
 
         conversation.message_count += 2
         conversation.last_message_at = datetime.now()
-        if not conversation.title and len(message) > 0:
-            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        self._maybe_set_conversation_title(conversation, message)
         db.session.commit()
 
         yield {
@@ -394,6 +399,7 @@ class AgentChatService(ChatService):
             "iterations": max_iterations,
             "reasoning_steps": reasoning_steps,
             "conversation_id": conversation.id,
+            "title": conversation.title,
             "message_id": msg.id
         }
 
@@ -419,6 +425,7 @@ class AgentChatService(ChatService):
         max_iterations = self.get_max_iterations()
         all_sources = []
         steps = []  # Track all reasoning steps
+        enabled_tools = self.get_enabled_tools()
 
         system_prompt = self._get_react_system_prompt()
 
@@ -444,10 +451,41 @@ class AgentChatService(ChatService):
 
             # Get next step from LLM
             yield {"status": "thinking", "iteration": iteration + 1}
-            response_text = self._call_llm_sync(messages)
+            response_text = ""
+            last_thought = ""
+
+            try:
+                stream = self.llm_client.chat.completions.create(
+                    model=self.chatbot.model_name,
+                    messages=messages,
+                    temperature=self.chatbot.temperature,
+                    max_tokens=self.chatbot.max_tokens,
+                    top_p=self.chatbot.top_p,
+                    stream=True
+                )
+
+                for chunk in stream:
+                    choice = chunk.choices[0] if chunk.choices else None
+                    delta = getattr(choice, "delta", None) if choice else None
+                    delta_text = extract_delta_text(delta)
+                    if not delta_text:
+                        continue
+                    response_text += delta_text
+                    thought_partial, _, _ = self._parse_react_response(response_text)
+                    if thought_partial and len(thought_partial) > len(last_thought):
+                        delta_chunk = thought_partial[len(last_thought):]
+                        last_thought = thought_partial
+                        yield {"status": "thought_delta", "delta": delta_chunk, "iteration": iteration + 1}
+            except Exception as e:
+                logger.error(f"[AgentChatService] ReAct streaming failed: {e}")
+                response_text = self._call_llm_sync(messages)
 
             # Parse response for THOUGHT, ACTION, or FINAL ANSWER
             thought, action, final_answer = self._parse_react_response(response_text)
+            if final_answer and self._requires_sources():
+                has_observation = any(step.get("type") == "observation" for step in steps)
+                if not has_observation:
+                    final_answer = None
 
             if thought:
                 steps.append({"type": "thought", "content": thought})
@@ -472,8 +510,7 @@ class AgentChatService(ChatService):
 
                 conversation.message_count += 2
                 conversation.last_message_at = datetime.now()
-                if not conversation.title and len(message) > 0:
-                    conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+                self._maybe_set_conversation_title(conversation, message)
                 db.session.commit()
 
                 yield {
@@ -484,6 +521,7 @@ class AgentChatService(ChatService):
                     "iterations": iteration + 1,
                     "reasoning_steps": steps,
                     "conversation_id": conversation.id,
+                    "title": conversation.title,
                     "message_id": msg.id
                 }
                 return
@@ -498,7 +536,43 @@ class AgentChatService(ChatService):
                 all_sources.extend(sources)
 
                 steps.append({"type": "observation", "content": result, "sources_found": len(sources)})
-                yield {"status": "observation", "result_preview": result[:300] if result else "", "iteration": iteration + 1}
+                preview = result[:300] if result else ""
+                for chunk in self._stream_preview_chunks(preview):
+                    yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
+                yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
+            elif not final_answer:
+                # If the model skips ACTION, force a lookup when citations are required.
+                if self._requires_sources() and not any(step.get("type") == "action" for step in steps):
+                    fallback_action = None
+                    if "rag_search" in enabled_tools:
+                        fallback_action = "rag_search"
+                    elif "lexical_search" in enabled_tools:
+                        fallback_action = "lexical_search"
+
+                    if fallback_action:
+                        action_param = message
+                        steps.append({
+                            "type": "action",
+                            "content": fallback_action,
+                            "action_name": fallback_action,
+                            "action_param": action_param,
+                            "auto": True
+                        })
+                        yield {"status": "action", "action": fallback_action, "param": action_param, "iteration": iteration + 1}
+
+                        result, sources = self._execute_tool(fallback_action, action_param, message)
+                        all_sources.extend(sources)
+
+                        steps.append({
+                            "type": "observation",
+                            "content": result,
+                            "sources_found": len(sources),
+                            "auto": True
+                        })
+                        preview = result[:300] if result else ""
+                        for chunk in self._stream_preview_chunks(preview):
+                            yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
+                        yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
 
         # Max iterations - generate final response
         yield {"status": "max_iterations_reached"}
@@ -519,8 +593,7 @@ class AgentChatService(ChatService):
 
         conversation.message_count += 2
         conversation.last_message_at = datetime.now()
-        if not conversation.title and len(message) > 0:
-            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        self._maybe_set_conversation_title(conversation, message)
         db.session.commit()
 
         yield {
@@ -531,6 +604,7 @@ class AgentChatService(ChatService):
             "iterations": max_iterations,
             "reasoning_steps": steps,
             "conversation_id": conversation.id,
+            "title": conversation.title,
             "message_id": msg.id
         }
 
@@ -565,7 +639,32 @@ class AgentChatService(ChatService):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Definiere das GOAL für folgende Anfrage: {message}"}
         ]
-        goal_response = self._call_llm_sync(goal_messages)
+        goal_response = ""
+        last_goal = ""
+        try:
+            stream = self.llm_client.chat.completions.create(
+                model=self.chatbot.model_name,
+                messages=goal_messages,
+                temperature=self.chatbot.temperature,
+                max_tokens=self.chatbot.max_tokens,
+                top_p=self.chatbot.top_p,
+                stream=True
+            )
+            for chunk in stream:
+                choice = chunk.choices[0] if chunk.choices else None
+                delta = getattr(choice, "delta", None) if choice else None
+                delta_text = extract_delta_text(delta)
+                if not delta_text:
+                    continue
+                goal_response += delta_text
+                goal_partial = self._extract_goal(goal_response)
+                if goal_partial and len(goal_partial) > len(last_goal):
+                    delta_chunk = goal_partial[len(last_goal):]
+                    last_goal = goal_partial
+                    yield {"status": "goal_delta", "delta": delta_chunk}
+        except Exception as e:
+            logger.error(f"[AgentChatService] ReflAct goal streaming failed: {e}")
+            goal_response = self._call_llm_sync(goal_messages)
         goal = self._extract_goal(goal_response)
 
         steps.append({"type": "goal", "content": goal})
@@ -598,7 +697,37 @@ class AgentChatService(ChatService):
 
             # Get reflection and next step
             yield {"status": "reflecting", "iteration": iteration + 1}
-            response_text = self._call_llm_sync(messages)
+            response_text = ""
+            last_reflection = ""
+            last_thought = ""
+            try:
+                stream = self.llm_client.chat.completions.create(
+                    model=self.chatbot.model_name,
+                    messages=messages,
+                    temperature=self.chatbot.temperature,
+                    max_tokens=self.chatbot.max_tokens,
+                    top_p=self.chatbot.top_p,
+                    stream=True
+                )
+                for chunk in stream:
+                    choice = chunk.choices[0] if chunk.choices else None
+                    delta = getattr(choice, "delta", None) if choice else None
+                    delta_text = extract_delta_text(delta)
+                    if not delta_text:
+                        continue
+                    response_text += delta_text
+                    reflection_partial, thought_partial, _, _ = self._parse_reflact_response(response_text)
+                    if reflection_partial and len(reflection_partial) > len(last_reflection):
+                        delta_chunk = reflection_partial[len(last_reflection):]
+                        last_reflection = reflection_partial
+                        yield {"status": "reflection_delta", "delta": delta_chunk, "iteration": iteration + 1}
+                    if thought_partial and len(thought_partial) > len(last_thought):
+                        delta_chunk = thought_partial[len(last_thought):]
+                        last_thought = thought_partial
+                        yield {"status": "thought_delta", "delta": delta_chunk, "iteration": iteration + 1}
+            except Exception as e:
+                logger.error(f"[AgentChatService] ReflAct streaming failed: {e}")
+                response_text = self._call_llm_sync(messages)
 
             # Parse for REFLECTION, THOUGHT, ACTION, FINAL ANSWER
             reflection, thought, action, final_answer = self._parse_reflact_response(response_text)
@@ -629,8 +758,7 @@ class AgentChatService(ChatService):
 
                 conversation.message_count += 2
                 conversation.last_message_at = datetime.now()
-                if not conversation.title and len(message) > 0:
-                    conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+                self._maybe_set_conversation_title(conversation, message)
                 db.session.commit()
 
                 yield {
@@ -642,6 +770,7 @@ class AgentChatService(ChatService):
                     "goal": goal,
                     "reasoning_steps": steps,
                     "conversation_id": conversation.id,
+                    "title": conversation.title,
                     "message_id": msg.id
                 }
                 return
@@ -656,7 +785,10 @@ class AgentChatService(ChatService):
                 all_sources.extend(sources)
 
                 steps.append({"type": "observation", "content": result, "sources_found": len(sources)})
-                yield {"status": "observation", "result_preview": result[:300] if result else "", "iteration": iteration + 1}
+                preview = result[:300] if result else ""
+                for chunk in self._stream_preview_chunks(preview):
+                    yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
+                yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
 
         # Max iterations
         yield {"status": "max_iterations_reached"}
@@ -677,8 +809,7 @@ class AgentChatService(ChatService):
 
         conversation.message_count += 2
         conversation.last_message_at = datetime.now()
-        if not conversation.title and len(message) > 0:
-            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        self._maybe_set_conversation_title(conversation, message)
         db.session.commit()
 
         yield {
@@ -690,6 +821,7 @@ class AgentChatService(ChatService):
             "goal": goal,
             "reasoning_steps": steps,
             "conversation_id": conversation.id,
+            "title": conversation.title,
             "message_id": msg.id
         }
 
@@ -918,6 +1050,12 @@ class AgentChatService(ChatService):
         if goal_match:
             return goal_match.group(1).strip()
         return text.strip()[:200]
+
+    @staticmethod
+    def _stream_preview_chunks(text: str, chunk_size: int = 80) -> List[str]:
+        if not text:
+            return []
+        return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
     # ==================== LLM Helpers ====================
 

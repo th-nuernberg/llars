@@ -34,6 +34,9 @@ class ChatService:
     """Service for chatbot chat interactions with Multi-Collection RAG"""
 
     _TOKEN_RE = re.compile(r"[\wäöüÄÖÜß]+", re.UNICODE)
+    _PLACEHOLDER_TITLES = {"neuer chat", "new chat"}
+    _TITLE_MAX_CHARS = 50
+    _TITLE_MAX_WORDS = 8
     _STOPWORDS_DE = {
         'a', 'aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch', 'daher',
         'darum', 'das', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dich', 'die', 'dies', 'diese', 'dieser',
@@ -46,6 +49,49 @@ class ChatService:
         'warum', 'was', 'weiter', 'weitere', 'wenn', 'wer', 'werde', 'werden', 'werdet', 'weshalb', 'wie', 'wieder',
         'wieso', 'wir', 'wird', 'wirst', 'wo', 'woher', 'wohin', 'zu', 'zum', 'zur', 'über'
     }
+
+    @classmethod
+    def _normalize_title(cls, title: Optional[str]) -> str:
+        return re.sub(r"\s+", " ", str(title or "")).strip().lower()
+
+    @classmethod
+    def _is_placeholder_title(cls, title: Optional[str]) -> bool:
+        normalized = cls._normalize_title(title)
+        if not normalized:
+            return True
+        return normalized in cls._PLACEHOLDER_TITLES
+
+    @classmethod
+    def _build_title_from_message(cls, message: Optional[str]) -> Optional[str]:
+        text = str(message or "").strip()
+        if not text:
+            return None
+        first_line = text.splitlines()[0].strip()
+        if not first_line:
+            return None
+        collapsed = re.sub(r"\s+", " ", first_line)
+        words = collapsed.split(" ")
+        title = " ".join(words[:cls._TITLE_MAX_WORDS])
+        truncated_by_words = len(words) > cls._TITLE_MAX_WORDS
+        truncated_by_chars = len(title) > cls._TITLE_MAX_CHARS
+        if truncated_by_chars:
+            title = title[:cls._TITLE_MAX_CHARS]
+        if truncated_by_words or truncated_by_chars:
+            title = title.rstrip(" .,:;!?-")
+            max_len = cls._TITLE_MAX_CHARS - 3
+            if max_len > 0 and len(title) > max_len:
+                title = title[:max_len].rstrip(" .,:;!?-")
+            title = f"{title}..."
+        return title
+
+    def _maybe_set_conversation_title(self, conversation: ChatbotConversation, message: Optional[str]) -> bool:
+        if not self._is_placeholder_title(conversation.title):
+            return False
+        title = self._build_title_from_message(message)
+        if not title:
+            return False
+        conversation.title = title
+        return True
 
     @staticmethod
     def _render_placeholders(template: str, mapping: Dict[str, Any]) -> str:
@@ -206,8 +252,7 @@ class ChatService:
 
             conversation.message_count += 2
             conversation.last_message_at = datetime.now()
-            if not conversation.title and len(message) > 0:
-                conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+            self._maybe_set_conversation_title(conversation, message)
             db.session.commit()
 
             return {
@@ -215,6 +260,7 @@ class ChatService:
                 'sources': [],
                 'conversation_id': conversation.id,
                 'session_id': session_id,
+                'title': conversation.title,
                 'message_id': assistant_msg.id,
                 'tokens': {
                     'input': tokens_input,
@@ -266,8 +312,7 @@ class ChatService:
         # 8. Update conversation
         conversation.message_count += 2
         conversation.last_message_at = datetime.now()
-        if not conversation.title and len(message) > 0:
-            conversation.title = message[:50] + ('...' if len(message) > 50 else '')
+        self._maybe_set_conversation_title(conversation, message)
         db.session.commit()
 
         return {
@@ -275,6 +320,7 @@ class ChatService:
             'sources': sources_to_save if include_sources else [],
             'conversation_id': conversation.id,
             'session_id': session_id,
+            'title': conversation.title,
             'message_id': assistant_msg.id,
             'tokens': {
                 'input': tokens_input,

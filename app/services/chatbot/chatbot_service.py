@@ -192,6 +192,24 @@ class ChatbotService:
         }
 
     @staticmethod
+    def _coerce_model_name(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value.strip() or None
+        if isinstance(value, dict):
+            for key in ("value", "model_id", "id", "name"):
+                raw = value.get(key)
+                if isinstance(raw, str) and raw.strip():
+                    return raw.strip()
+            return None
+        try:
+            text = str(value)
+        except Exception:
+            return None
+        return text.strip() or None
+
+    @staticmethod
     def create_chatbot(data: Dict[str, Any], username: str) -> Dict[str, Any]:
         """
         Create a new chatbot.
@@ -207,6 +225,10 @@ class ChatbotService:
         if existing:
             raise ValueError(f"Chatbot with name '{data['name']}' already exists")
 
+        model_name = ChatbotService._coerce_model_name(
+            data.get('model_name', 'mistralai/Mistral-Small-3.2-24B-Instruct-2506')
+        ) or 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+
         # Create chatbot
         chatbot = Chatbot(
             name=data['name'],
@@ -216,7 +238,7 @@ class ChatbotService:
             avatar_url=data.get('avatar_url'),
             color=data.get('color', '#5d7a4a'),
             system_prompt=data['system_prompt'],
-            model_name=data.get('model_name', 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'),
+            model_name=model_name,
             temperature=data.get('temperature', 0.7),
             max_tokens=data.get('max_tokens', 2048),
             top_p=data.get('top_p', 0.9),
@@ -266,6 +288,12 @@ class ChatbotService:
         chatbot = Chatbot.query.get(chatbot_id)
         if not chatbot:
             return None
+        if 'model_name' in data:
+            model_name = ChatbotService._coerce_model_name(data.get('model_name'))
+            if model_name:
+                data['model_name'] = model_name
+            else:
+                data.pop('model_name', None)
 
         # Update fields
         updatable_fields = [

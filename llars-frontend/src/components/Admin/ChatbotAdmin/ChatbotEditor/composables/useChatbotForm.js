@@ -213,9 +213,11 @@ export function useChatbotForm() {
       const promptSettings = chatbot.prompt_settings
         ? { ...defaultPromptSettings, ...chatbot.prompt_settings }
         : { ...defaultPromptSettings };
+      const normalizedModelName = normalizeModelName(chatbot.model_name);
       formData.value = {
         ...formData.value,
         ...chatbot,
+        model_name: normalizedModelName || chatbot.model_name,
         prompt_settings: promptSettings,
         collection_ids: chatbot.collections?.map(c => c.id) || []
       };
@@ -225,10 +227,27 @@ export function useChatbotForm() {
     }
   }
 
+  function normalizeModelName(value) {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      return value.trim() || null;
+    }
+    if (typeof value === 'object') {
+      const raw = value.value || value.model_id || value.id || value.name;
+      if (typeof raw === 'string' && raw.trim()) {
+        return raw.trim();
+      }
+    }
+    return null;
+  }
+
   // Prepare data for saving
   function prepareForSave(isEdit, chatbotId) {
     const dataToSave = { ...formData.value };
-    if (!dataToSave.model_name) {
+    const normalizedModelName = normalizeModelName(dataToSave.model_name);
+    if (normalizedModelName) {
+      dataToSave.model_name = normalizedModelName;
+    } else {
       delete dataToSave.model_name;
     }
     if (isEdit && chatbotId) {

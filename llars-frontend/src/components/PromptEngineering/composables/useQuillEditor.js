@@ -18,6 +18,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   // Track user highlights per block
   const userHighlights = new Map() // blockId -> Map<position, {username, color, ts}>
   const pendingHighlights = new Map() // blockId -> Array<{ index, length }>
+  const remoteCursors = new Map() // userId -> { blockId, range, username, color }
 
   // Debounce-Funktion für Cursor-Updates
   const debounce = (fn, delay) => {
@@ -68,6 +69,78 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
     const payload = buildCursorPayload(blockId, range)
     cursorEmitters.get(blockId)(payload)
+  }
+
+  const resolveCursorRange = (blockId, rawRange, quillEditor) => {
+    if (!rawRange || !quillEditor) return null
+    let from = null
+    let to = null
+
+    const ytext = ytexts.get(blockId)
+    if (ytext && ydoc.value && rawRange.fromRel && rawRange.toRel) {
+      try {
+        const fromRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.fromRel))
+        const toRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.toRel))
+        const fromAbsPos = Y.createAbsolutePositionFromRelativePosition(fromRelPos, ydoc.value)
+        const toAbsPos = Y.createAbsolutePositionFromRelativePosition(toRelPos, ydoc.value)
+        from = fromAbsPos?.index ?? null
+        to = toAbsPos?.index ?? null
+      } catch (e) {
+        // Ignore decoding errors and fallback to absolute positions
+      }
+    }
+
+    if (from === null || to === null) {
+      if (typeof rawRange.index === 'number') {
+        from = rawRange.index
+        const len = typeof rawRange.length === 'number' ? rawRange.length : 0
+        to = from + len
+      } else if (typeof rawRange.from === 'number' && typeof rawRange.to === 'number') {
+        from = rawRange.from
+        to = rawRange.to
+      } else {
+        from = 0
+        to = 0
+      }
+    }
+
+    const maxLen = quillEditor.getLength()
+    const clamp = (value) => Math.max(0, Math.min(value ?? 0, maxLen))
+    const start = Math.min(clamp(from), clamp(to))
+    const end = Math.max(clamp(from), clamp(to))
+    return { index: start, length: end - start }
+  }
+
+  const applyRemoteCursor = (userId, cursor) => {
+    if (!cursor) return
+    const { blockId, range, username, color } = cursor
+    const cursorsModule = cursorsModules.get(blockId)
+    const editor = editors.get(blockId)
+
+    if (!range) {
+      if (cursorsModule) {
+        cursorsModule.removeCursor(userId)
+      }
+      return
+    }
+
+    if (cursorsModule && editor) {
+      if (!cursorsModule.cursors().find(c => c.id === userId)) {
+        cursorsModule.createCursor(userId, username, color)
+      }
+
+      const resolvedRange = resolveCursorRange(blockId, range, editor)
+      if (!resolvedRange) return
+      cursorsModule.moveCursor(userId, resolvedRange)
+    }
+  }
+
+  const refreshBlockCursors = (blockId) => {
+    remoteCursors.forEach((cursor, userId) => {
+      if (cursor?.blockId === blockId) {
+        applyRemoteCursor(userId, cursor)
+      }
+    })
   }
 
   // Cursor-Positionen aktualisieren
@@ -383,7 +456,10 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
         editor.__llarsHighlightAttached = true
         // Hervorhebung nach Yjs-Updates (inkl. lokaler Nutzereingabe)
         ytext.observe(() => {
-          setTimeout(() => highlightPlaceholders(), 0)
+          setTimeout(() => {
+            highlightPlaceholders()
+            refreshBlockCursors(block.id)
+          }, 0)
         })
       }
 
@@ -453,74 +529,15 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
   const updateCursor = (userId, cursor) => {
     // 1) Wenn cursor === null, entfernen wir den Cursor in allen Blöcken
     if (!cursor) {
+      remoteCursors.delete(userId)
       cursorsModules.forEach((cursorsModule) => {
         cursorsModule.removeCursor(userId)
       })
       return
     }
 
-    // 2) Wenn range === null, nur den Cursor in dem spezifischen Block entfernen
-    const { blockId, range, username, color } = cursor
-    const cursorsModule = cursorsModules.get(blockId)
-    const editor = editors.get(blockId)
-
-    if (!range) {
-      if (cursorsModule) {
-        cursorsModule.removeCursor(userId)
-      }
-      return
-    }
-
-    // 3) Falls es eine gültige Range gibt => Cursor aktualisieren
-    if (cursorsModule && editor) {
-      if (!cursorsModule.cursors().find(c => c.id === userId)) {
-        cursorsModule.createCursor(userId, username, color)
-      }
-
-      const resolveCursorRange = (targetBlockId, rawRange, quillEditor) => {
-        if (!rawRange || !quillEditor) return null
-        let from = null
-        let to = null
-
-        const ytext = ytexts.get(targetBlockId)
-        if (ytext && ydoc.value && rawRange.fromRel && rawRange.toRel) {
-          try {
-            const fromRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.fromRel))
-            const toRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.toRel))
-            const fromAbsPos = Y.createAbsolutePositionFromRelativePosition(fromRelPos, ydoc.value)
-            const toAbsPos = Y.createAbsolutePositionFromRelativePosition(toRelPos, ydoc.value)
-            from = fromAbsPos?.index ?? null
-            to = toAbsPos?.index ?? null
-          } catch (e) {
-            // Ignore decoding errors and fallback to absolute positions
-          }
-        }
-
-        if (from === null || to === null) {
-          if (typeof rawRange.index === 'number') {
-            from = rawRange.index
-            const len = typeof rawRange.length === 'number' ? rawRange.length : 0
-            to = from + len
-          } else if (typeof rawRange.from === 'number' && typeof rawRange.to === 'number') {
-            from = rawRange.from
-            to = rawRange.to
-          } else {
-            from = 0
-            to = 0
-          }
-        }
-
-        const maxLen = quillEditor.getLength()
-        const clamp = (value) => Math.max(0, Math.min(value ?? 0, maxLen))
-        const start = Math.min(clamp(from), clamp(to))
-        const end = Math.max(clamp(from), clamp(to))
-        return { index: start, length: end - start }
-      }
-
-      const resolvedRange = resolveCursorRange(blockId, range, editor)
-      if (!resolvedRange) return
-      cursorsModule.moveCursor(userId, resolvedRange)
-    }
+    remoteCursors.set(userId, cursor)
+    applyRemoteCursor(userId, cursor)
   }
 
   // Cleanup für gelöschte Blöcke
@@ -547,6 +564,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     cursorsModules.clear()
     ytexts.clear()
     cursorEmitters.clear()
+    remoteCursors.clear()
     pendingHighlights.clear()
     editorCount.value = 0
     initializingEditors.clear()
@@ -571,6 +589,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
   // Cursor für User entfernen (z.B. wenn User den Raum verlässt)
   const removeCursorForUser = (userId) => {
+    remoteCursors.delete(userId)
     cursorsModules.forEach(cursorsModule => {
       cursorsModule.removeCursor(userId)
     })

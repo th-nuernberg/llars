@@ -161,9 +161,9 @@
               Konzept: docs/docs/projekte/kaimo
             </v-chip>
           </v-chip-group>
-          <v-btn color="secondary" block prepend-icon="mdi-refresh" @click="refresh">
+          <LBtn variant="secondary" block prepend-icon="mdi-refresh" @click="refresh">
             Berechtigungen neu laden
-          </v-btn>
+          </LBtn>
           <v-alert
             v-if="successMessage"
             type="success"

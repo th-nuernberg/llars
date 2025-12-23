@@ -10,7 +10,7 @@
         <v-icon class="mr-2" color="primary">mdi-folder-open</v-icon>
         <span class="text-h6">{{ category?.display_name || 'Kategorie' }}</span>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" @click="closeDialog" />
+        <LIconBtn icon="mdi-close" tooltip="Schließen" @click="closeDialog" />
       </v-card-title>
 
       <v-divider />

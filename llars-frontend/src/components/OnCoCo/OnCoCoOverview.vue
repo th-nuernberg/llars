@@ -178,9 +178,9 @@
                 <div class="text-body-2 text-medium-emphasis mb-4">
                   Erstellen Sie Ihre erste OnCoCo Analyse, um zu beginnen
                 </div>
-                <v-btn color="primary" prepend-icon="mdi-plus" @click="navigateToConfig">
+                <LBtn variant="primary" prepend-icon="mdi-plus" @click="navigateToConfig">
                   Neue Analyse erstellen
-                </v-btn>
+                </LBtn>
               </div>
             </template>
           </v-data-table>

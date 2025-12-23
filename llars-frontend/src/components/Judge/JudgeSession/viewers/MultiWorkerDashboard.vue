@@ -161,7 +161,7 @@
               Live
             </v-chip>
           </div>
-          <v-btn icon="mdi-close" size="x-small" variant="text" @click="selectedWorkerId = null"></v-btn>
+          <LIconBtn icon="mdi-close" size="x-small" tooltip="Schließen" @click="selectedWorkerId = null" />
         </div>
 
         <div class="detail-content">

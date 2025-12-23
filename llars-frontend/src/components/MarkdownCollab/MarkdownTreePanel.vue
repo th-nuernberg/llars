@@ -104,7 +104,7 @@
           <v-icon class="mr-2">{{ createType === 'folder' ? 'mdi-folder-plus-outline' : 'mdi-file-document-plus-outline' }}</v-icon>
           {{ createType === 'folder' ? 'Neuer Ordner' : 'Neue Datei' }}
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="createDialog = false" />
+          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="createDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text>
@@ -139,7 +139,7 @@
           <v-icon class="mr-2">mdi-rename-box</v-icon>
           Umbenennen
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="renameDialog = false" />
+          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="renameDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text>
@@ -168,7 +168,7 @@
           <v-icon class="mr-2" color="error">mdi-delete-outline</v-icon>
           Löschen
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="deleteDialog = false" />
+          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="deleteDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text>

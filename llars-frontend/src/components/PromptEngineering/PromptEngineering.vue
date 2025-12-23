@@ -30,7 +30,7 @@
           <span class="section-title">Meine Prompts</span>
           <span v-if="prompts.length" class="section-count">{{ prompts.length }}</span>
           <v-spacer />
-          <v-btn variant="text" icon="mdi-refresh" size="small" @click="fetchPrompts" />
+          <LIconBtn icon="mdi-refresh" tooltip="Aktualisieren" size="small" @click="fetchPrompts" />
         </div>
 
         <v-skeleton-loader v-if="isLoading('prompts')" type="card@3" class="mt-4" />
@@ -164,7 +164,7 @@
             <v-icon class="mr-2" color="primary">mdi-file-document-plus</v-icon>
             <span class="text-h6">Neues Prompt erstellen</span>
             <v-spacer />
-            <v-btn icon="mdi-close" variant="text" size="small" @click="closeCreateDialog" />
+            <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="closeCreateDialog" />
           </div>
         </template>
 
@@ -229,7 +229,7 @@
             <v-icon class="mr-2">mdi-rename-box</v-icon>
             <span class="text-h6">Prompt umbenennen</span>
             <v-spacer />
-            <v-btn icon="mdi-close" variant="text" size="small" @click="closeRenameDialog" />
+            <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="closeRenameDialog" />
           </div>
         </template>
 

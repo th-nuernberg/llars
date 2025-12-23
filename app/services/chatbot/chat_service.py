@@ -437,14 +437,18 @@ class ChatService:
         messages.append({"role": "user", "content": message})
 
         try:
-            stream = self.llm_client.chat.completions.create(
-                model=self.chatbot.model_name,
-                messages=messages,
-                temperature=self.chatbot.temperature,
-                max_tokens=self.chatbot.max_tokens,
-                top_p=self.chatbot.top_p,
-                stream=True
-            )
+            # Build completion kwargs, only include max_tokens if explicitly set
+            completion_kwargs = {
+                "model": self.chatbot.model_name,
+                "messages": messages,
+                "temperature": self.chatbot.temperature,
+                "top_p": self.chatbot.top_p,
+                "stream": True
+            }
+            if self.chatbot.max_tokens:
+                completion_kwargs["max_tokens"] = self.chatbot.max_tokens
+
+            stream = self.llm_client.chat.completions.create(**completion_kwargs)
 
             accumulated = ""
             for chunk in stream:
@@ -1068,18 +1072,22 @@ class ChatService:
         Supports vision models for image analysis.
         """
         try:
-            # For vision models with images, we might need to adjust max_tokens
-            max_tokens = self.chatbot.max_tokens
-            if use_vision and max_tokens < 1000:
-                max_tokens = 1000  # Ensure enough tokens for image analysis
+            # Build completion kwargs, only include max_tokens if explicitly set
+            completion_kwargs = {
+                "model": self.chatbot.model_name,
+                "messages": messages,
+                "temperature": self.chatbot.temperature,
+                "top_p": self.chatbot.top_p
+            }
 
-            response = self.llm_client.chat.completions.create(
-                model=self.chatbot.model_name,
-                messages=messages,
-                temperature=self.chatbot.temperature,
-                max_tokens=max_tokens,
-                top_p=self.chatbot.top_p
-            )
+            # For vision models, ensure minimum tokens for image analysis
+            max_tokens = self.chatbot.max_tokens
+            if use_vision and (not max_tokens or max_tokens < 1000):
+                max_tokens = 1000
+            if max_tokens:
+                completion_kwargs["max_tokens"] = max_tokens
+
+            response = self.llm_client.chat.completions.create(**completion_kwargs)
 
             response_text = ""
             if getattr(response, 'choices', None):

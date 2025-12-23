@@ -48,8 +48,9 @@ class Chatbot(db.Model):
     system_prompt: Mapped[str] = mapped_column(db.Text, nullable=False)
     model_name: Mapped[str] = mapped_column(db.String(100), default='mistralai/Mistral-Small-3.2-24B-Instruct-2506')
     temperature: Mapped[float] = mapped_column(db.Float, default=0.7)
-    max_tokens: Mapped[int] = mapped_column(db.Integer, default=2048)
-    top_p: Mapped[float] = mapped_column(db.Float, default=0.9)
+    # max_tokens: None = use model's default/maximum
+    max_tokens: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True, default=None)
+    top_p: Mapped[float] = mapped_column(db.Float, default=0.95)
 
     # RAG Configuration
     rag_enabled: Mapped[bool] = mapped_column(db.Boolean, default=True)

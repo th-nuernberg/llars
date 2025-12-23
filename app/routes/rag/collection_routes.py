@@ -18,7 +18,14 @@ from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 )
-from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink, ChatbotCollection
+from db.tables import (
+    RAGCollection,
+    RAGDocument,
+    RAGDocumentChunk,
+    RAGProcessingQueue,
+    CollectionDocumentLink,
+    ChatbotCollection,
+)
 from db.models.llm_model import LLMModel
 from db.db import db
 from sqlalchemy import desc
@@ -427,3 +434,80 @@ def get_collection_embedding_status(collection_id):
         return jsonify(result), 200
     else:
         raise NotFoundError(result.get('error', 'Embedding status not found'))
+
+
+@rag_collection_bp.route('/collections/<int:collection_id>/reindex', methods=['POST'])
+@require_permission('feature:rag:edit')
+@handle_api_errors(logger_name='rag')
+def reindex_collection(collection_id):
+    """
+    Requeue all documents in a collection for reindexing.
+
+    Optional JSON body:
+      - pdf_only: bool (default False)
+    """
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_edit_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
+
+    payload = request.get_json(silent=True) or {}
+    pdf_only = bool(payload.get('pdf_only'))
+
+    docs_query = (
+        db.session.query(RAGDocument)
+        .join(CollectionDocumentLink, CollectionDocumentLink.document_id == RAGDocument.id)
+        .filter(CollectionDocumentLink.collection_id == collection_id)
+    )
+    if pdf_only:
+        docs_query = docs_query.filter(RAGDocument.mime_type == 'application/pdf')
+
+    documents = docs_query.all()
+    queued = 0
+    skipped_processing = 0
+
+    for doc in documents:
+        if doc.status == 'processing':
+            skipped_processing += 1
+            continue
+
+        doc.status = 'pending'
+        doc.processing_error = None
+        doc.indexed_at = None
+        doc.processed_at = None
+        doc.chunk_count = 0
+        doc.embedding_model = None
+        doc.updated_at = datetime.now()
+
+        queue_entry = RAGProcessingQueue.query.filter_by(document_id=doc.id).first()
+        if queue_entry:
+            queue_entry.status = 'queued'
+            queue_entry.progress_percent = 0
+            queue_entry.current_step = 'Reindex queued'
+            queue_entry.error_message = None
+            queue_entry.retry_count = 0
+            queue_entry.started_at = None
+            queue_entry.completed_at = None
+            queue_entry.priority = max(queue_entry.priority or 0, 10)
+            queue_entry.updated_at = datetime.now()
+        else:
+            queue_entry = RAGProcessingQueue(
+                document_id=doc.id,
+                priority=10,
+                status='queued',
+                created_at=datetime.now(),
+            )
+            db.session.add(queue_entry)
+
+        queued += 1
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'queued': queued,
+        'skipped_processing': skipped_processing,
+        'pdf_only': pdf_only
+    }), 202

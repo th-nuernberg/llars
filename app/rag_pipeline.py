@@ -18,6 +18,12 @@ os.environ["ANONYMIZED_TELEMETRY"] = "False"
 chromadb.config.Settings(anonymized_telemetry=False)
 
 
+DEFAULT_FALLBACK_EMBEDDING_MODEL = os.environ.get(
+    "LLARS_FALLBACK_EMBEDDING_MODEL",
+    "llamaindex/vdr-2b-multi-v1"
+)
+
+
 class RAGPipeline:
     """
     RAG Pipeline with DB-driven embedding model selection.
@@ -96,8 +102,37 @@ class RAGPipeline:
         except Exception as e:
             logging.error(f"[RAGPipeline] Failed to load embedding models from llm_models: {e}")
 
+        def init_hf_embeddings(model_id: str, provider_label: str):
+            try:
+                logging.info(f"Initializing HuggingFace embedding model: {model_id}")
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=model_id,
+                    model_kwargs={"device": "cpu"},
+                    encode_kwargs={"normalize_embeddings": True},
+                    cache_folder=self.model_dir
+                )
+                test_result = embeddings.embed_query("test")
+                if test_result and len(test_result) > 0:
+                    dims = len(test_result)
+                    logging.info(f"HuggingFace embedding model ready: {model_id} ({dims} dimensions)")
+                    self.__class__._shared_embeddings = embeddings
+                    self.__class__._shared_model_name = model_id
+                    self.__class__._shared_model_type = "huggingface"
+                    self.__class__._shared_dimensions = dims
+                    self.__class__._shared_model_provider = provider_label
+                    return embeddings, model_id, "huggingface", dims
+            except Exception as e:
+                logging.warning(f"[RAGPipeline] Failed to initialize HF embedding model {model_id}: {e}")
+            return None
+
         if not candidates:
-            raise RuntimeError("No active embedding models configured in llm_models")
+            logging.warning(
+                "[RAGPipeline] No active embedding models configured in llm_models; using local fallback"
+            )
+            fallback = init_hf_embeddings(DEFAULT_FALLBACK_EMBEDDING_MODEL, "local-fallback")
+            if fallback:
+                return fallback
+            raise RuntimeError("No active embedding models configured and fallback failed")
 
         for model in candidates:
             model_id = model.model_id
@@ -105,27 +140,10 @@ class RAGPipeline:
             is_hf = provider in {"huggingface", "sentence-transformers", "local"} or model_id.startswith("sentence-transformers/")
 
             if is_hf:
-                try:
-                    logging.info(f"Initializing HuggingFace embedding model: {model_id}")
-                    embeddings = HuggingFaceEmbeddings(
-                        model_name=model_id,
-                        model_kwargs={"device": "cpu"},
-                        encode_kwargs={"normalize_embeddings": True},
-                        cache_folder=self.model_dir
-                    )
-                    test_result = embeddings.embed_query("test")
-                    if test_result and len(test_result) > 0:
-                        dims = len(test_result)
-                        logging.info(f"HuggingFace embedding model ready: {model_id} ({dims} dimensions)")
-                        self.__class__._shared_embeddings = embeddings
-                        self.__class__._shared_model_name = model_id
-                        self.__class__._shared_model_type = "huggingface"
-                        self.__class__._shared_dimensions = dims
-                        self.__class__._shared_model_provider = model.provider
-                        return embeddings, model_id, "huggingface", dims
-                except Exception as e:
-                    logging.warning(f"[RAGPipeline] Failed to initialize HF embedding model {model_id}: {e}")
-                    continue
+                result = init_hf_embeddings(model_id, model.provider or "huggingface")
+                if result:
+                    return result
+                continue
 
             if not (litellm_api_key and litellm_base_url):
                 logging.info("[RAGPipeline] LiteLLM credentials not configured; skipping LiteLLM embedding model")
@@ -150,6 +168,10 @@ class RAGPipeline:
                     return embeddings, model_id, "litellm", dims
             except Exception as e:
                 logging.warning(f"[RAGPipeline] Failed to initialize LiteLLM embedding model {model_id}: {e}")
+
+        fallback = init_hf_embeddings(DEFAULT_FALLBACK_EMBEDDING_MODEL, "local-fallback")
+        if fallback:
+            return fallback
 
         raise RuntimeError("Unable to initialize any embedding model from llm_models")
 
@@ -177,6 +199,9 @@ class RAGPipeline:
         except Exception:
             primary_model = None
             fallback_model = None
+
+        if not fallback_model:
+            fallback_model = DEFAULT_FALLBACK_EMBEDDING_MODEL
 
         return {
             "model_name": self.model_name,

@@ -560,6 +560,17 @@
               >
                 Aktualisieren
               </LBtn>
+              <LBtn
+                size="small"
+                variant="warning"
+                class="ml-2"
+                @click="reindexCollection"
+                :loading="reindexingCollection"
+                :disabled="collectionDocuments.length === 0"
+                prepend-icon="mdi-refresh-circle"
+              >
+                Neu indexieren
+              </LBtn>
             </div>
 
             <v-data-table
@@ -711,6 +722,7 @@ const {
   selectedCollection,
   collectionDocuments,
   loadingCollectionDocs,
+  reindexingCollection,
   collectionHeaders,
   collectionDocHeaders,
   fetchCollections,
@@ -718,7 +730,8 @@ const {
   confirmDeleteCollection,
   deleteCollection: deleteCollectionFn,
   openCollectionDetail,
-  fetchCollectionDocuments
+  fetchCollectionDocuments,
+  reindexCollection
 } = useRAGCollections();
 
 const {

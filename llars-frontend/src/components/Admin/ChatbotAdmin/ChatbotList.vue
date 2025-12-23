@@ -102,6 +102,15 @@
                   </template>
                   <v-list-item-title>Duplizieren</v-list-item-title>
                 </v-list-item>
+                <v-list-item
+                  v-if="canShare && (isAdmin || chatbot.created_by === currentUsername)"
+                  @click="$emit('share', chatbot)"
+                >
+                  <template #prepend>
+                    <v-icon>mdi-account-multiple-plus</v-icon>
+                  </template>
+                  <v-list-item-title>Zugriff teilen</v-list-item-title>
+                </v-list-item>
                 <v-divider />
                 <v-list-item @click="$emit('delete', chatbot)">
                   <template #prepend>
@@ -129,10 +138,22 @@ defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  canShare: {
+    type: Boolean,
+    default: false
+  },
+  currentUsername: {
+    type: String,
+    default: ''
+  },
+  isAdmin: {
+    type: Boolean,
+    default: false
   }
 })
 
-defineEmits(['edit', 'delete', 'duplicate', 'test', 'manage-collections', 'resume'])
+defineEmits(['edit', 'delete', 'duplicate', 'test', 'manage-collections', 'resume', 'share'])
 
 function getBuildStatusLabel(status) {
   switch (status) {

@@ -14,11 +14,13 @@ from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError
+    handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 )
 from db.tables import RAGProcessingQueue
 from db.db import db
 from sqlalchemy import desc
+from auth.auth_utils import AuthUtils
+from services.rag.access_service import RAGAccessService
 
 rag_admin_bp = Blueprint('rag_admin', __name__)
 
@@ -33,8 +35,11 @@ rag_admin_bp = Blueprint('rag_admin', __name__)
 def get_processing_queue():
     """Get current processing queue status"""
     status_filter = request.args.get('status')
-
+    username = AuthUtils.extract_username_without_validation()
     query = RAGProcessingQueue.query
+    if not RAGAccessService.is_admin_user(username):
+        query = query.join(RAGProcessingQueue.document)
+        query = RAGAccessService.apply_document_access_filter(query, username, access='view')
     if status_filter:
         query = query.filter_by(status=status_filter)
 
@@ -71,6 +76,9 @@ def retry_processing(queue_id):
     queue_item = RAGProcessingQueue.query.get(queue_id)
     if not queue_item:
         raise NotFoundError(f'Processing queue item with ID {queue_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_edit_document(username, queue_item.document):
+        raise ForbiddenError('Keine Berechtigung für dieses Dokument')
 
     if queue_item.status != 'failed':
         raise ValidationError('Can only retry failed processing jobs')

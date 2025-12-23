@@ -58,12 +58,30 @@ class ChatbotAccessService:
         return PermissionService.check_permission(username, 'admin:permissions:manage')
 
     @staticmethod
+    def user_is_owner(username: Optional[str], chatbot: Optional[Chatbot]) -> bool:
+        if not username or not chatbot:
+            return False
+        return chatbot.created_by == username
+
+    @staticmethod
+    def user_can_manage_chatbot(username: Optional[str], chatbot: Optional[Chatbot]) -> bool:
+        if not username or not chatbot:
+            return False
+        if ChatbotAccessService.is_admin_user(username):
+            return True
+        return ChatbotAccessService.user_is_owner(username, chatbot)
+
+    @staticmethod
     def user_can_access_chatbot(username: Optional[str], chatbot: Optional[Chatbot]) -> bool:
         if not username or not chatbot:
             return False
 
         # Admin override
         if ChatbotAccessService.is_admin_user(username):
+            return True
+
+        # Owners can always access their own chatbots (even inactive)
+        if ChatbotAccessService.user_is_owner(username, chatbot):
             return True
 
         # Only allow active chatbots for regular users
@@ -109,8 +127,10 @@ class ChatbotAccessService:
                 query = query.filter(Chatbot.is_active == True)
             return query.order_by(Chatbot.created_at.desc()).all()
 
-        # Regular users should never see inactive chatbots
-        bots = query.filter(Chatbot.is_active == True).order_by(Chatbot.created_at.desc()).all()
+        if include_inactive:
+            bots = query.order_by(Chatbot.created_at.desc()).all()
+        else:
+            bots = query.filter(Chatbot.is_active == True).order_by(Chatbot.created_at.desc()).all()
 
         allowed_user_rows = (
             ChatbotUserAccess.query
@@ -122,6 +142,12 @@ class ChatbotAccessService:
 
         result = []
         for bot in bots:
+            is_owner = ChatbotAccessService.user_is_owner(username, bot)
+            if is_owner:
+                result.append(bot)
+                continue
+            if not bot.is_active:
+                continue
             if bot.is_public:
                 result.append(bot)
                 continue
@@ -132,6 +158,12 @@ class ChatbotAccessService:
             if allowed_roles and user_roles.intersection(allowed_roles):
                 result.append(bot)
         return result
+
+    @staticmethod
+    def get_owned_chatbots(username: str) -> List[Chatbot]:
+        if not username:
+            return []
+        return Chatbot.query.filter_by(created_by=username).order_by(Chatbot.created_at.desc()).all()
 
     @staticmethod
     def get_allowed_usernames_for_chatbot(chatbot_id: int) -> List[str]:

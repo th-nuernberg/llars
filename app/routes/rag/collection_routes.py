@@ -16,13 +16,14 @@ from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError
+    handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 )
 from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink, ChatbotCollection
 from db.models.llm_model import LLMModel
 from db.db import db
 from sqlalchemy import desc
 from auth.auth_utils import AuthUtils
+from services.rag.access_service import RAGAccessService
 
 rag_collection_bp = Blueprint('rag_collection', __name__)
 
@@ -32,7 +33,10 @@ rag_collection_bp = Blueprint('rag_collection', __name__)
 @handle_api_errors(logger_name='rag')
 def get_collections():
     """Get all RAG collections with statistics"""
-    collections = RAGCollection.query.filter_by(is_active=True).all()
+    username = AuthUtils.extract_username_without_validation()
+    collections_query = RAGCollection.query.filter_by(is_active=True)
+    collections_query = RAGAccessService.apply_collection_view_filter(collections_query, username)
+    collections = collections_query.all()
 
     result = []
     for c in collections:
@@ -85,6 +89,9 @@ def get_collection(collection_id):
     collection = RAGCollection.query.get(collection_id)
     if not collection:
         raise NotFoundError(f'Collection with ID {collection_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_view_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
 
     # Get documents via CollectionDocumentLink (n:m relationship)
     links = CollectionDocumentLink.query.filter_by(
@@ -95,7 +102,7 @@ def get_collection(collection_id):
     documents_list = []
     for link in links:
         doc = link.document
-        if doc:
+        if doc and RAGAccessService.can_view_document(username, doc):
             documents_list.append({
                 'id': doc.id,
                 'filename': doc.filename,
@@ -213,6 +220,9 @@ def update_collection(collection_id):
     collection = RAGCollection.query.get(collection_id)
     if not collection:
         raise NotFoundError(f'Collection with ID {collection_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_edit_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
 
     data = request.get_json()
 
@@ -247,6 +257,9 @@ def delete_collection(collection_id):
     collection = RAGCollection.query.get(collection_id)
     if not collection:
         raise NotFoundError(f'Collection with ID {collection_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_delete_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
 
     # Check for force parameter (cascade delete)
     force = request.args.get('force', 'false').lower() == 'true'
@@ -302,6 +315,13 @@ def start_collection_embedding(collection_id):
     """
     from services.rag.collection_embedding_service import get_collection_embedding_service
 
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_edit_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
+
     service = get_collection_embedding_service()
     result = service.start_embedding(collection_id)
 
@@ -317,6 +337,12 @@ def start_collection_embedding(collection_id):
 def pause_collection_embedding(collection_id):
     """Pause/Stop embedding process for a collection."""
     from services.rag.collection_embedding_service import get_collection_embedding_service
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_edit_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
 
     service = get_collection_embedding_service()
     result = service.pause_embedding(collection_id)
@@ -333,6 +359,12 @@ def pause_collection_embedding(collection_id):
 def get_collection_embedding_status(collection_id):
     """Get embedding status for a collection."""
     from services.rag.collection_embedding_service import get_collection_embedding_service
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_view_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
 
     service = get_collection_embedding_service()
     result = service.get_status(collection_id)

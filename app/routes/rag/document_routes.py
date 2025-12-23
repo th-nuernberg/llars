@@ -20,10 +20,11 @@ from flask import Blueprint, request, jsonify, current_app, send_file
 import os
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError
+    handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 )
 from auth.auth_utils import AuthUtils
 from services.rag.document_service import DocumentService
+from services.rag.access_service import RAGAccessService
 
 rag_document_bp = Blueprint('rag_document', __name__)
 
@@ -33,6 +34,7 @@ rag_document_bp = Blueprint('rag_document', __name__)
 @handle_api_errors(logger_name='rag')
 def get_documents():
     """Get all documents with optional filters"""
+    username = AuthUtils.extract_username_without_validation()
     # Query parameters for filtering
     collection_id = request.args.get('collection_id', type=int)
     status = request.args.get('status')
@@ -46,7 +48,8 @@ def get_documents():
         status=status,
         search=search,
         page=page,
-        per_page=per_page
+        per_page=per_page,
+        username=username
     )
 
     return jsonify({
@@ -61,7 +64,8 @@ def get_documents():
 @handle_api_errors(logger_name='rag')
 def get_document(document_id):
     """Get detailed document information"""
-    document = DocumentService.get_document_by_id(document_id)
+    username = AuthUtils.extract_username_without_validation()
+    document = DocumentService.get_document_by_id(document_id, username=username, access='view')
     if not document:
         raise NotFoundError(f'Document with ID {document_id} not found')
 
@@ -79,7 +83,8 @@ def get_document_content(document_id):
     Get the extracted text content of a document.
     Returns the combined text from all chunks.
     """
-    document, full_content = DocumentService.get_document_content(document_id)
+    username = AuthUtils.extract_username_without_validation()
+    document, full_content = DocumentService.get_document_content(document_id, username=username)
     if not document:
         raise NotFoundError(f'Document with ID {document_id} not found')
 
@@ -102,7 +107,8 @@ def get_document_content(document_id):
 @handle_api_errors(logger_name='rag')
 def get_document_chunks(document_id):
     """Get all chunks for a document"""
-    document, chunks = DocumentService.get_document_chunks(document_id)
+    username = AuthUtils.extract_username_without_validation()
+    document, chunks = DocumentService.get_document_chunks(document_id, username=username)
     if not document:
         raise NotFoundError(f'Document with ID {document_id} not found')
 
@@ -122,7 +128,8 @@ def get_document_chunks(document_id):
 @handle_api_errors(logger_name='rag')
 def download_document(document_id):
     """Download document file"""
-    document = DocumentService.get_document_by_id(document_id)
+    username = AuthUtils.extract_username_without_validation()
+    document = DocumentService.get_document_by_id(document_id, username=username, access='view')
     if not document:
         raise NotFoundError(f'Document with ID {document_id} not found')
 
@@ -221,11 +228,14 @@ def upload_multiple_documents():
 def update_document(document_id):
     """Update document metadata"""
     data = request.get_json()
-    success, error, document = DocumentService.update_document(document_id, data)
+    username = AuthUtils.extract_username_without_validation()
+    success, error, document = DocumentService.update_document(document_id, data, username=username)
 
     if not success:
         if error == 'Document not found':
             raise NotFoundError(error)
+        if error == 'Forbidden':
+            raise ForbiddenError('Keine Berechtigung für dieses Dokument')
         else:
             raise ValidationError(error)
 
@@ -241,16 +251,21 @@ def update_document(document_id):
 def delete_document(document_id):
     """Delete document and its file"""
     # Get document first for the filename
+    username = AuthUtils.extract_username_without_validation()
     document = DocumentService.get_document_by_id(document_id)
     if not document:
         raise NotFoundError(f'Document with ID {document_id} not found')
+    if not RAGAccessService.can_delete_document(username, document):
+        raise ForbiddenError('Keine Berechtigung für dieses Dokument')
 
     filename = document.filename
 
     # Delete document using service
-    success, error = DocumentService.delete_document(document_id)
+    success, error = DocumentService.delete_document(document_id, username=username)
 
     if not success:
+        if error == 'Forbidden':
+            raise ForbiddenError('Keine Berechtigung für dieses Dokument')
         raise ValidationError(error)
 
     return jsonify({
@@ -264,7 +279,8 @@ def delete_document(document_id):
 @handle_api_errors(logger_name='rag')
 def get_document_screenshot(document_id):
     """Get screenshot image for a document"""
-    document = DocumentService.get_document_by_id(document_id)
+    username = AuthUtils.extract_username_without_validation()
+    document = DocumentService.get_document_by_id(document_id, username=username, access='view')
     if not document:
         raise NotFoundError(f'Document with ID {document_id} not found')
 
@@ -290,6 +306,9 @@ def get_chunk_image(chunk_id):
     chunk = RAGDocumentChunk.query.get(chunk_id)
     if not chunk:
         raise NotFoundError(f'Chunk with ID {chunk_id} not found')
+    username = AuthUtils.extract_username_without_validation()
+    if not RAGAccessService.can_view_document(username, chunk.document):
+        raise ForbiddenError('Keine Berechtigung für dieses Dokument')
 
     if not chunk.image_path:
         raise NotFoundError('No image available for this chunk')
@@ -301,3 +320,46 @@ def get_chunk_image(chunk_id):
         chunk.image_path,
         mimetype=chunk.image_mime_type or 'image/png'
     )
+
+
+@rag_document_bp.route('/documents/<int:document_id>/access', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def get_document_access(document_id):
+    """Get document access assignments (owner/admin)."""
+    username = AuthUtils.extract_username_without_validation()
+    document = DocumentService.get_document_by_id(document_id)
+    if not document:
+        raise NotFoundError(f'Document with ID {document_id} not found')
+    if not RAGAccessService.can_share_document(username, document):
+        raise ForbiddenError('Keine Berechtigung für dieses Dokument')
+
+    access = RAGAccessService.get_document_permissions(document_id)
+    return jsonify({'success': True, 'document_id': document_id, **access}), 200
+
+
+@rag_document_bp.route('/documents/<int:document_id>/access', methods=['PUT'])
+@require_permission('feature:rag:share')
+@handle_api_errors(logger_name='rag')
+def set_document_access(document_id):
+    """Replace document access assignments (owner/admin)."""
+    username = AuthUtils.extract_username_without_validation()
+    document = DocumentService.get_document_by_id(document_id)
+    if not document:
+        raise NotFoundError(f'Document with ID {document_id} not found')
+    if not RAGAccessService.can_share_document(username, document):
+        raise ForbiddenError('Keine Berechtigung für dieses Dokument')
+
+    data = request.get_json() or {}
+    usernames = data.get('usernames') or data.get('users') or []
+    role_names = data.get('role_names') or data.get('roles') or []
+    access = data.get('access') or {}
+
+    result = RAGAccessService.set_document_permissions(
+        document_id=document_id,
+        usernames=usernames,
+        role_names=role_names,
+        granted_by=username,
+        access=access
+    )
+    return jsonify({'success': True, 'document_id': document_id, **result}), 200

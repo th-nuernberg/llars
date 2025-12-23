@@ -3,7 +3,7 @@
     <!-- Sidebar -->
     <AppSidebar
       v-model="activeSection"
-      :items="navItems"
+      :items="filteredNavItems"
       title="Admin"
       subtitle="Dashboard"
       icon="mdi-shield-crown"
@@ -95,6 +95,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
+import { usePermissions } from '@/composables/usePermissions';
 
 // Import section components
 import AdminOverview from './sections/AdminOverview.vue';
@@ -111,6 +112,7 @@ import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
 
 const auth = useAuth();
+const { hasPermission, hasAnyPermission, fetchPermissions, isAdmin } = usePermissions();
 const route = useRoute();
 const router = useRouter();
 const username = computed(() => auth.tokenParsed.value?.preferred_username || 'Admin');
@@ -126,18 +128,27 @@ const isChatbotWizardOpen = computed(() => {
 
 // Navigation items
 const navItems = [
-  { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard' },
-  { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar' },
-  { title: 'System Monitor', value: 'system', icon: 'mdi-monitor-dashboard' },
-  { title: 'Docker', value: 'docker', icon: 'mdi-docker' },
-  { title: 'DB', value: 'db', icon: 'mdi-database' },
-  { title: 'Benutzer', value: 'users', icon: 'mdi-account-group' },
-  { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list' },
-  { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot' },
-  { title: 'Web Crawler', value: 'crawler', icon: 'mdi-spider-web' },
-  { title: 'RAG Dokumente', value: 'rag', icon: 'mdi-database-search' },
-  { title: 'Berechtigungen', value: 'permissions', icon: 'mdi-shield-lock' },
+  { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard', adminOnly: true },
+  { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar', adminOnly: true },
+  { title: 'System Monitor', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
+  { title: 'Docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
+  { title: 'DB', value: 'db', icon: 'mdi-database', adminOnly: true },
+  { title: 'Benutzer', value: 'users', icon: 'mdi-account-group', adminOnly: true },
+  { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
+  { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot', permission: 'feature:chatbots:view' },
+  { title: 'Web Crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },
+  { title: 'RAG Dokumente', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
+  { title: 'Berechtigungen', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
 ];
+
+const filteredNavItems = computed(() => {
+  return navItems.filter(item => {
+    if (item.adminOnly) return isAdmin.value;
+    if (item.permissionsAny) return hasAnyPermission(...item.permissionsAny);
+    if (item.permission) return hasPermission(item.permission);
+    return true;
+  });
+});
 
 // Section titles and subtitles
 const sectionInfo = {
@@ -160,8 +171,12 @@ const currentSectionSubtitle = computed(() => sectionInfo[activeSection.value]?.
 // Route query sync for tab navigation (e.g., /admin?tab=rag)
 function initFromRoute() {
   const tab = route.query.tab;
-  if (tab && navItems.some(item => item.value === tab)) {
+  if (tab && filteredNavItems.value.some(item => item.value === tab)) {
     activeSection.value = tab;
+    return;
+  }
+  if (filteredNavItems.value.length > 0) {
+    activeSection.value = filteredNavItems.value[0].value;
   }
 }
 
@@ -174,12 +189,20 @@ watch(activeSection, (newVal) => {
 
 // Watch for route changes (e.g., from Home page tiles)
 watch(() => route.query.tab, (newTab) => {
-  if (newTab && navItems.some(item => item.value === newTab) && activeSection.value !== newTab) {
+  if (newTab && filteredNavItems.value.some(item => item.value === newTab) && activeSection.value !== newTab) {
     activeSection.value = newTab;
   }
 });
 
-onMounted(() => {
+watch(filteredNavItems, (items) => {
+  if (!items.length) return;
+  if (!items.some(item => item.value === activeSection.value)) {
+    activeSection.value = items[0].value;
+  }
+});
+
+onMounted(async () => {
+  await fetchPermissions();
   initFromRoute();
 });
 </script>

@@ -103,12 +103,16 @@
               <ChatbotList
                 :chatbots="chatbots"
                 :loading="loading.chatbots"
+                :can-share="canShare"
+                :current-username="currentUsername"
+                :is-admin="isAdmin"
                 @edit="openEditDialog"
                 @delete="confirmDelete"
                 @duplicate="duplicateChatbot"
                 @test="openTestDialog"
                 @manage-collections="openCollectionManager"
                 @resume="resumeChatbotBuild"
+                @share="openShareDialog"
               />
             </v-window-item>
 
@@ -217,12 +221,50 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.text }}
     </v-snackbar>
+
+    <!-- Share Dialog -->
+    <v-dialog v-model="shareDialog" max-width="700">
+      <LCard title="Chatbot teilen" subtitle="Zugriff für andere Nutzer verwalten">
+        <template #actions>
+          <v-spacer />
+          <LBtn variant="cancel" @click="shareDialog = false">Abbrechen</LBtn>
+          <LBtn variant="primary" :loading="shareSaving" @click="saveChatbotAccess">Speichern</LBtn>
+        </template>
+
+        <v-skeleton-loader v-if="shareLoading" type="paragraph@2, list-item" />
+        <div v-else>
+          <div class="section-label mt-2">
+            <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+            Nutzer hinzufügen
+          </div>
+          <div v-if="shareUsernames.length > 0" class="invited-users mb-2">
+            <LTag
+              v-for="user in shareUsernames"
+              :key="user"
+              variant="primary"
+              closable
+              @close="removeShareUser(user)"
+            >
+              {{ user }}
+            </LTag>
+          </div>
+          <LUserSearch
+            ref="userSearchRef"
+            :exclude-usernames="shareUsernames"
+            placeholder="Nutzernamen eingeben..."
+            @select="addShareUser"
+          />
+        </div>
+      </LCard>
+    </v-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import { useAuth } from '@/composables/useAuth'
+import { usePermissions } from '@/composables/usePermissions'
 import ChatbotList from './ChatbotList.vue'
 import ChatbotEditor from './ChatbotEditor.vue'
 import ChatbotTestDialog from './ChatbotTestDialog.vue'
@@ -262,6 +304,13 @@ const dialogs = ref({
   collectionAssignment: false,
   deleteConfirm: false
 })
+const shareDialog = ref(false)
+const shareSaving = ref(false)
+const shareLoading = ref(false)
+const shareUsernames = ref([])
+const shareRoleNames = ref([])
+const shareChatbot = ref(null)
+const userSearchRef = ref(null)
 
 const wizardOpen = ref(false)
 const wizardResumeChatbotId = ref(null)
@@ -281,6 +330,11 @@ const snackbar = ref({
   text: '',
   color: 'success'
 })
+
+const auth = useAuth()
+const { hasPermission, isAdmin } = usePermissions()
+const currentUsername = computed(() => auth.tokenParsed.value?.preferred_username || localStorage.getItem('username') || '')
+const canShare = computed(() => hasPermission('feature:chatbots:share'))
 
 // Layout refs
 const layoutRoot = ref(null)
@@ -398,6 +452,59 @@ function openTestDialog(chatbot) {
 function openCollectionManager(chatbot) {
   selectedChatbot.value = chatbot
   dialogs.value.collectionAssignment = true
+}
+
+async function openShareDialog(chatbot) {
+  if (!chatbot?.id) return
+  shareChatbot.value = chatbot
+  shareDialog.value = true
+  shareLoading.value = true
+  try {
+    const response = await axios.get(`/api/chatbots/${chatbot.id}/access`)
+    if (response.data.success) {
+      shareUsernames.value = [...(response.data.allowed_usernames || [])]
+      shareRoleNames.value = [...(response.data.allowed_roles || [])]
+    }
+  } catch (error) {
+    showSnackbar('Fehler beim Laden der Zugriffsrechte', 'error')
+    console.error('Error loading chatbot access:', error)
+  } finally {
+    shareLoading.value = false
+  }
+}
+
+function addShareUser(user) {
+  if (!user?.username) return
+  const username = user.username
+  if (!shareUsernames.value.includes(username)) {
+    shareUsernames.value.push(username)
+  }
+  userSearchRef.value?.reset?.()
+}
+
+function removeShareUser(username) {
+  shareUsernames.value = shareUsernames.value.filter(u => u !== username)
+}
+
+async function saveChatbotAccess() {
+  if (!shareChatbot.value?.id) return
+  shareSaving.value = true
+  try {
+    const response = await axios.put(`/api/chatbots/${shareChatbot.value.id}/access`, {
+      usernames: shareUsernames.value,
+      role_names: shareRoleNames.value
+    })
+    if (response.data.success) {
+      showSnackbar('Zugriffsrechte gespeichert', 'success')
+      shareDialog.value = false
+      shareChatbot.value = null
+    }
+  } catch (error) {
+    showSnackbar('Fehler beim Speichern der Zugriffsrechte', 'error')
+    console.error('Error saving chatbot access:', error)
+  } finally {
+    shareSaving.value = false
+  }
 }
 
 async function saveChatbot(chatbotData) {
@@ -619,6 +726,14 @@ async function openTestDialogById(chatbotId) {
 watch(activeTab, (newTab) => {
   if (newTab !== 'documents') {
     documentCollectionFilter.value = null
+  }
+})
+
+watch(shareDialog, (open) => {
+  if (!open) {
+    shareUsernames.value = []
+    shareRoleNames.value = []
+    shareChatbot.value = null
   }
 })
 

@@ -179,6 +179,12 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Löschen von RAG-Dokumenten und Collections'
         },
+        {
+            'permission_key': 'feature:rag:share',
+            'display_name': 'RAG-Dokumente teilen',
+            'category': 'feature',
+            'description': 'Erlaubt das Teilen von RAG-Dokumenten mit anderen Benutzern'
+        },
         # Feature: Chatbots
         {
             'permission_key': 'feature:chatbots:view',
@@ -203,6 +209,12 @@ def initialize_permissions(db):
             'display_name': 'Erweiterte Chatbot-Modi',
             'category': 'feature',
             'description': 'Erlaubt das Erstellen von Chatbots mit erweiterten Agent-Modi (ReAct, Reflection, ReflAct)'
+        },
+        {
+            'permission_key': 'feature:chatbots:share',
+            'display_name': 'Chatbots teilen',
+            'category': 'feature',
+            'description': 'Erlaubt das Teilen von Chatbots mit anderen Benutzern'
         },
         # Feature: Anonymize
         {
@@ -319,6 +331,31 @@ def initialize_permissions(db):
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+            ]
+        },
+        {
+            'role_name': 'chatbot_manager',
+            'display_name': 'Chatbot Manager',
+            'description': 'Chatbots erstellen, veröffentlichen und teilen sowie RAG-Dokumente verwalten',
+            'permissions': [
+                # Chatbots (vollständig, inkl. Sharing)
+                'feature:chatbots:view',
+                'feature:chatbots:edit',
+                'feature:chatbots:delete',
+                'feature:chatbots:advanced',
+                'feature:chatbots:share',
+                # Prompt Engineering
+                'feature:prompt_engineering:view',
+                'feature:prompt_engineering:edit',
+                # Markdown Collab
+                'feature:markdown_collab:view',
+                'feature:markdown_collab:edit',
+                'feature:markdown_collab:share',
+                # RAG Dokumente
+                'feature:rag:view',
+                'feature:rag:edit',
+                'feature:rag:delete',
+                'feature:rag:share',
             ]
         },
         {

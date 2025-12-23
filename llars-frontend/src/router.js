@@ -116,7 +116,7 @@ const routes = [
     { path: '/kaimo/:id', name: 'KaimoCase', component: KaimoCase, props: true, meta: { requiresAuth: true } },
 
     // New unified Admin Dashboard
-    { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },
+    { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdminOrChatbotManager: true } },
 
     // Legacy Admin Routes (redirect to new dashboard with appropriate tab)
     { path: '/AdminDashboard', redirect: '/admin' },
@@ -167,11 +167,13 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
+    const requiresAdminOrChatbotManager = to.matched.some(record => record.meta.requiresAdminOrChatbotManager);
 
     const auth = useAuth();
     const rawToken = auth.getToken();
     const isAuthenticated = auth.isAuthenticated.value;
     const isAdmin = auth.isAdmin.value;
+    const isChatbotManager = auth.userRoles.value?.includes('chatbot_manager');
 
     if (rawToken && !isAuthenticated) {
         auth.logout();
@@ -191,6 +193,12 @@ router.beforeEach((to, from, next) => {
     // If route requires admin role
     if (requiresAdmin && !isAdmin) {
         console.log("User is not admin, redirecting to Home");
+        next('/Home');
+        return;
+    }
+
+    if (requiresAdminOrChatbotManager && !(isAdmin || isChatbotManager)) {
+        console.log("User is not admin or chatbot manager, redirecting to Home");
         next('/Home');
         return;
     }

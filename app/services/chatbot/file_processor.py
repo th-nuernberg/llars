@@ -28,34 +28,6 @@ class FileProcessor:
     SUPPORTED_IMAGES = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'}
     SUPPORTED_DOCUMENTS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'}
 
-    # Fallback vision-capable models (used when DB is not available)
-    VISION_MODELS_FALLBACK = {
-        'gpt-4-vision-preview',
-        'gpt-4o',
-        'gpt-4o-mini',
-        'gpt-4-turbo',
-        'claude-3-opus',
-        'claude-3-sonnet',
-        'claude-3-haiku',
-        'claude-3.5-sonnet',
-        'claude-3-5-sonnet',
-        'claude-4-opus',
-        'claude-4-sonnet',
-        # Mistral Vision Models via LiteLLM
-        'mistralai/magistral-small-2509',
-        'magistral-small-2509',
-        'pixtral',  # Mistral's vision model family
-    }
-
-    # Fallback models that explicitly DO NOT support vision (text-only)
-    NON_VISION_MODELS_FALLBACK = {
-        'mistralai/mistral-small-3.2-24b-instruct-2506',
-        'mistral-small-3.2-24b-instruct-2506',
-        'mistral-small',
-        'mistral-7b',
-        'mixtral',
-    }
-
     # Max image dimensions for Vision API
     MAX_IMAGE_SIZE = (2048, 2048)
     MAX_IMAGE_BYTES = 20 * 1024 * 1024  # 20MB
@@ -68,33 +40,18 @@ class FileProcessor:
         """
         Check if model supports vision/images.
 
-        First tries to look up the model in the database (LLMModel table).
-        Falls back to hardcoded lists if DB lookup fails.
+        Uses the database (llm_models) as the source of truth.
         """
-        # Try database lookup first
         try:
             from db.models.llm_model import LLMModel
             db_model = LLMModel.get_by_model_id(model_name)
             if db_model:
                 return db_model.supports_vision
-        except Exception:
-            # DB not available or other error, fall back to hardcoded lists
-            pass
+        except Exception as exc:
+            logger.warning(f"[FileProcessor] Failed to resolve model '{model_name}' in llm_models: {exc}")
+            return False
 
-        # Fallback to hardcoded lists
-        model_lower = model_name.lower()
-
-        # First check if explicitly non-vision
-        for nvm in cls.NON_VISION_MODELS_FALLBACK:
-            if nvm.lower() in model_lower:
-                return False
-
-        # Then check if it's a known vision model
-        for vm in cls.VISION_MODELS_FALLBACK:
-            if vm.lower() in model_lower:
-                return True
-
-        # Default to False for unknown models
+        logger.warning(f"[FileProcessor] Model '{model_name}' not found in llm_models")
         return False
 
     @classmethod

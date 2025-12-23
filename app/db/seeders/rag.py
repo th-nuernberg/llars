@@ -18,29 +18,35 @@ def initialize_rag_system(db):
     """
     # Lazy import to avoid circular dependencies
     from ..tables import RAGCollection, RAGDocument, RAGDocumentChunk
+    from ..models.llm_model import LLMModel
 
     print("\n" + "="*60)
     print("Initializing RAG Document Management System...")
     print("="*60)
 
+    embedding_model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_EMBEDDING)
+    if not embedding_model:
+        raise RuntimeError("No default embedding model configured in llm_models")
+
     # Create default collection if it doesn't exist
     default_collection = RAGCollection.query.filter_by(name='general').first()
 
     if not default_collection:
+        chroma_name = f"llars_general_{embedding_model.replace('/', '_')}"
         default_collection = RAGCollection(
             name='general',
             display_name='Allgemeine Dokumente',
             description='Standard-Sammlung für allgemeine RAG-Dokumente',
             icon='📚',
             color='#4CAF50',
-            embedding_model='sentence-transformers/all-MiniLM-L6-v2',
+            embedding_model=embedding_model,
             chunk_size=1000,
             chunk_overlap=200,
             retrieval_k=4,
             is_active=True,
             is_public=True,
             created_by='system',
-            chroma_collection_name='llars_general_sentence-transformers_all-MiniLM-L6-v2'
+            chroma_collection_name=chroma_name
         )
         db.session.add(default_collection)
         db.session.commit()
@@ -136,7 +142,7 @@ def initialize_rag_system(db):
                 language='de',
                 status='pending',
                 collection_id=default_collection.id,
-                embedding_model='sentence-transformers/all-MiniLM-L6-v2',
+                embedding_model=embedding_model,
                 is_public=True,
                 uploaded_by='system',
                 uploaded_at=datetime.now()

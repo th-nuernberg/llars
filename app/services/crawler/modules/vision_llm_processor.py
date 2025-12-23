@@ -28,7 +28,7 @@ class VisionLLMProcessor:
     - Provide structured business data extraction
     """
 
-    DEFAULT_MODEL = 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+    DEFAULT_MODEL = None
     DEFAULT_MAX_TOKENS = 1000
     DEFAULT_TEMPERATURE = 0.1
 
@@ -72,7 +72,17 @@ Wichtig:
             max_tokens: Maximum tokens in response
             temperature: LLM temperature (0.0-1.0)
         """
-        self.model = model or self.DEFAULT_MODEL
+        if model:
+            self.model = model
+        else:
+            from db.models.llm_model import LLMModel
+            default_model = LLMModel.get_default_model(
+                model_type=LLMModel.MODEL_TYPE_LLM,
+                supports_vision=True
+            )
+            if not default_model:
+                raise RuntimeError("No vision-capable LLM model configured in llm_models")
+            self.model = default_model.model_id
         self.litellm_base_url = litellm_base_url or os.getenv(
             'LITELLM_BASE_URL',
             'https://kiz1.in.ohmportal.de/llmproxy/v1'

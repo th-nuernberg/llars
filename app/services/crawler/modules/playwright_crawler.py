@@ -53,7 +53,7 @@ class PlaywrightCrawler:
         image_storage_path: str = '/app/storage/rag_images',
         screenshot_storage_path: str = '/app/storage/screenshots',
         use_vision_llm: bool = True,
-        vision_llm_model: str = 'mistralai/Mistral-Small-3.2-24B-Instruct-2506',
+        vision_llm_model: Optional[str] = None,
         litellm_base_url: Optional[str] = None,
         litellm_api_key: Optional[str] = None
     ):
@@ -90,11 +90,23 @@ class PlaywrightCrawler:
         # Initialize specialized modules
         self.screenshot_capture = ScreenshotCapture(screenshot_storage_path)
         self.image_extractor = ImageExtractor(image_storage_path, max_images_per_page) if extract_images else None
-        self.vision_llm = VisionLLMProcessor(
-            model=vision_llm_model,
-            litellm_base_url=litellm_base_url,
-            litellm_api_key=litellm_api_key
-        ) if use_vision_llm else None
+        resolved_vision_model = vision_llm_model
+        if use_vision_llm:
+            if not resolved_vision_model:
+                from db.models.llm_model import LLMModel
+                resolved_vision_model = LLMModel.get_default_model_id(
+                    model_type=LLMModel.MODEL_TYPE_LLM,
+                    supports_vision=True
+                )
+                if not resolved_vision_model:
+                    raise ValueError("No vision-capable LLM model configured in llm_models")
+            self.vision_llm = VisionLLMProcessor(
+                model=resolved_vision_model,
+                litellm_base_url=litellm_base_url,
+                litellm_api_key=litellm_api_key
+            )
+        else:
+            self.vision_llm = None
         self.content_extractor = ContentExtractor()
 
         # Settings

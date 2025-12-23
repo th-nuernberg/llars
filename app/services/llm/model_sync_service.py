@@ -79,6 +79,7 @@ class LLMModelSyncService:
                 display_name=inferred["display_name"],
                 provider=inferred["provider"],
                 description=None,
+                model_type=inferred["model_type"],
                 supports_vision=inferred["supports_vision"],
                 supports_reasoning=inferred["supports_reasoning"],
                 supports_function_calling=True,
@@ -89,7 +90,6 @@ class LLMModelSyncService:
                 output_cost_per_million=0.0,
                 is_default=False,
                 is_active=True,
-                recommended_for=inferred.get("recommended_for"),
             )
             db.session.add(model)
             inserted += 1
@@ -123,6 +123,22 @@ _REASONING_HINTS = (
     "magistral",
 )
 
+_EMBEDDING_HINTS = (
+    "embedding",
+    "embed",
+    "e5",
+    "bge",
+    "vdr",
+    "text-embedding",
+    "sentence-transformers",
+)
+
+_RERANKER_HINTS = (
+    "rerank",
+    "reranker",
+    "cross-encoder",
+)
+
 
 def _infer_model_defaults(model_id: str) -> Dict[str, Any]:
     mid = (model_id or "").strip()
@@ -132,16 +148,19 @@ def _infer_model_defaults(model_id: str) -> Dict[str, Any]:
 
     supports_vision = any(h in lower for h in _VISION_HINTS)
     supports_reasoning = any(h in lower for h in _REASONING_HINTS)
+    is_embedding = any(h in lower for h in _EMBEDDING_HINTS)
+    is_reranker = any(h in lower for h in _RERANKER_HINTS)
+
+    if is_reranker:
+        model_type = LLMModel.MODEL_TYPE_RERANKER
+    elif is_embedding:
+        model_type = LLMModel.MODEL_TYPE_EMBEDDING
+    else:
+        model_type = LLMModel.MODEL_TYPE_LLM
 
     # Conservative defaults; can be adjusted in the admin later.
     context_window = 32768
     max_output_tokens = 8192
-
-    recommended_for = ["chat", "rag"]
-    if supports_vision:
-        recommended_for.append("vision")
-    if supports_reasoning:
-        recommended_for.append("reasoning")
 
     display_name = _pretty_model_name(mid)
 
@@ -152,7 +171,7 @@ def _infer_model_defaults(model_id: str) -> Dict[str, Any]:
         "supports_reasoning": supports_reasoning,
         "context_window": context_window,
         "max_output_tokens": max_output_tokens,
-        "recommended_for": recommended_for,
+        "model_type": model_type,
     }
 
 
@@ -176,4 +195,3 @@ def _pretty_model_name(model_id: str) -> str:
     name = model_id.replace("/", " · ")
     name = _PRETTY_RE.sub(" ", name).strip()
     return name
-

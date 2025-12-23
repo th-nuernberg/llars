@@ -269,9 +269,17 @@ capture_long_page()  # Splittet Seiten >4000px in mehrere Screenshots
 ### Embedding Model
 
 ```
-Model: llamaindex/vdr-2b-multi-v1 (1024 Dimensionen)
+Model: DB-gesteuert (llm_models, model_type=embedding, is_default)
+Default Seed: llamaindex/vdr-2b-multi-v1 (1024 Dimensionen)
 Storage: ChromaDB in /app/chroma_db
 ```
+
+### LLM Models (DB Single Source of Truth)
+
+- Tabelle: `llm_models`
+- Typen: `model_type` = llm | embedding | reranker
+- Capabilities: `supports_vision`, `supports_reasoning`, `supports_streaming`, `supports_function_calling`
+- Defaults pro Typ via `is_default`
 
 ---
 

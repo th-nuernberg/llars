@@ -15,6 +15,7 @@ from llm.openai_utils import extract_delta_text, extract_message_text
 from .session_service import ComparisonSessionService
 from .prompt_generator import ComparisonPromptGenerator
 from .evaluation_service import ComparisonEvaluationService
+from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,14 @@ class LLMResponseGenerator:
     # Suggestion endpoint configuration
     SUGGESTION_SSH_CONTAINER = "llars_docker_ssh_proxy_service"
     SUGGESTION_SSH_CONTAINER_PORT = "8093"
-    SUGGESTION_MODEL = 'mistralai/Mistral-Small-3.1-24B-Instruct-2503'
+    SUGGESTION_MODEL = None
+
+    @staticmethod
+    def _get_default_llm_model_id() -> str:
+        model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not model_id:
+            raise RuntimeError("No default LLM model configured in llm_models")
+        return model_id
 
     def __init__(
         self,
@@ -254,7 +262,7 @@ class LLMResponseGenerator:
                 )
 
                 response = client.chat.completions.create(
-                    model=cls.SUGGESTION_MODEL,
+                    model=cls._get_default_llm_model_id(),
                     messages=[{
                         'role': 'system',
                         'content': suggestion_prompt

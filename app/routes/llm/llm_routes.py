@@ -20,6 +20,7 @@ def get_models():
 
     Query params:
         - active_only: bool (default: true) - Only return active models
+        - model_type: str (optional) - Filter by model type (llm/embedding/reranker)
         - vision_only: bool (default: false) - Only return vision-capable models
         - reasoning_only: bool (default: false) - Only return reasoning-capable models
 
@@ -29,11 +30,15 @@ def get_models():
     active_only = request.args.get('active_only', 'true').lower() == 'true'
     vision_only = request.args.get('vision_only', 'false').lower() == 'true'
     reasoning_only = request.args.get('reasoning_only', 'false').lower() == 'true'
+    model_type = (request.args.get('model_type') or '').strip() or None
 
     query = LLMModel.query
 
     if active_only:
         query = query.filter_by(is_active=True)
+
+    if model_type:
+        query = query.filter_by(model_type=model_type)
 
     if vision_only:
         query = query.filter_by(supports_vision=True)
@@ -54,7 +59,12 @@ def get_models():
 @handle_api_errors(logger_name='llm')
 def get_default_model():
     """Get the default LLM model."""
-    model = LLMModel.get_default_model()
+    model_type = (request.args.get('model_type') or '').strip() or None
+    vision_only = request.args.get('vision_only', 'false').lower() == 'true'
+    model = LLMModel.get_default_model(
+        model_type=model_type,
+        supports_vision=True if vision_only else None
+    )
 
     if not model:
         raise NotFoundError('No default model configured')
@@ -108,7 +118,10 @@ def set_default_model(model_id):
         raise ValidationError('Cannot set inactive model as default')
 
     # Unset current default
-    LLMModel.query.filter_by(is_default=True).update({'is_default': False})
+    LLMModel.query.filter_by(
+        is_default=True,
+        model_type=model.model_type
+    ).update({'is_default': False})
 
     # Set new default
     model.is_default = True
@@ -140,11 +153,16 @@ def create_model():
     if existing:
         raise ConflictError(f'Model with ID "{data["model_id"]}" already exists')
 
+    model_type = data.get('model_type') or LLMModel.MODEL_TYPE_LLM
+    if not isinstance(model_type, str) or not model_type.strip():
+        raise ValidationError('model_type must be a non-empty string')
+
     model = LLMModel(
         model_id=data['model_id'],
         display_name=data['display_name'],
         provider=data['provider'],
         description=data.get('description'),
+        model_type=model_type.strip(),
         supports_vision=data.get('supports_vision', False),
         supports_reasoning=data.get('supports_reasoning', False),
         supports_function_calling=data.get('supports_function_calling', True),
@@ -155,12 +173,14 @@ def create_model():
         output_cost_per_million=data.get('output_cost_per_million', 0.0),
         is_default=data.get('is_default', False),
         is_active=data.get('is_active', True),
-        recommended_for=data.get('recommended_for'),
     )
 
     # If setting as default, unset current default
     if model.is_default:
-        LLMModel.query.filter_by(is_default=True).update({'is_default': False})
+        LLMModel.query.filter_by(
+            is_default=True,
+            model_type=model.model_type
+        ).update({'is_default': False})
 
     db.session.add(model)
     db.session.commit()
@@ -185,22 +205,37 @@ def update_model(model_id):
     if not data:
         raise ValidationError('No data provided')
 
+    old_model_type = model.model_type
+
     # Update allowed fields
     updatable_fields = [
-        'display_name', 'description', 'supports_vision', 'supports_reasoning',
+        'display_name', 'description', 'model_type', 'supports_vision', 'supports_reasoning',
         'supports_function_calling', 'supports_streaming', 'context_window',
         'max_output_tokens', 'input_cost_per_million', 'output_cost_per_million',
-        'is_active', 'recommended_for'
+        'is_active'
     ]
 
     for field in updatable_fields:
         if field in data:
-            setattr(model, field, data[field])
+            if field == "model_type":
+                if not isinstance(data[field], str) or not data[field].strip():
+                    raise ValidationError('model_type must be a non-empty string')
+                setattr(model, field, data[field].strip())
+            else:
+                setattr(model, field, data[field])
 
     # Handle is_default separately
     if data.get('is_default') and not model.is_default:
-        LLMModel.query.filter_by(is_default=True).update({'is_default': False})
+        LLMModel.query.filter_by(
+            is_default=True,
+            model_type=model.model_type
+        ).update({'is_default': False})
         model.is_default = True
+    elif model.is_default and old_model_type != model.model_type:
+        LLMModel.query.filter_by(
+            is_default=True,
+            model_type=model.model_type
+        ).filter(LLMModel.id != model.id).update({'is_default': False})
 
     db.session.commit()
 

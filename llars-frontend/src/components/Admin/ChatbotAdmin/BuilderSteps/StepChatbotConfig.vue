@@ -116,6 +116,7 @@
       :items="modelItems"
       item-title="title"
       item-value="value"
+      :return-object="false"
       label="LLM Modell"
       prepend-inner-icon="mdi-brain"
       variant="outlined"

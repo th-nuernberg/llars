@@ -20,22 +20,16 @@ chromadb.config.Settings(anonymized_telemetry=False)
 
 class RAGPipeline:
     """
-    RAG Pipeline with LiteLLM proxy embedding support and HuggingFace fallback.
+    RAG Pipeline with DB-driven embedding model selection.
 
-    Primary: llamaindex/vdr-2b-multi-v1 via LiteLLM proxy (1024 dimensions)
-    Fallback: sentence-transformers/all-MiniLM-L6-v2 local (384 dimensions)
+    Embedding models are sourced from llm_models (model_type='embedding').
     """
-
-    # Embedding model configurations
-    LITELLM_MODEL = "llamaindex/vdr-2b-multi-v1"
-    LITELLM_DIMENSIONS = 1024
-    FALLBACK_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-    FALLBACK_DIMENSIONS = 384
 
     _shared_embeddings = None
     _shared_model_name = None
     _shared_model_type = None
     _shared_dimensions = None
+    _shared_model_provider = None
     _embeddings_lock = threading.Lock()
 
     def __init__(self, docs_dir="docs", collection_name="llars_docs", storage_dir="/app/storage"):
@@ -89,57 +83,109 @@ class RAGPipeline:
         litellm_api_key = os.environ.get("LITELLM_API_KEY")
         litellm_base_url = os.environ.get("LITELLM_BASE_URL")
 
-        # Try LiteLLM proxy first
-        if litellm_api_key and litellm_base_url:
+        candidates = []
+        try:
+            from db.models.llm_model import LLMModel
+
+            candidates = (
+                LLMModel.query
+                .filter_by(model_type=LLMModel.MODEL_TYPE_EMBEDDING, is_active=True)
+                .order_by(LLMModel.is_default.desc(), LLMModel.display_name.asc())
+                .all()
+            )
+        except Exception as e:
+            logging.error(f"[RAGPipeline] Failed to load embedding models from llm_models: {e}")
+
+        if not candidates:
+            raise RuntimeError("No active embedding models configured in llm_models")
+
+        for model in candidates:
+            model_id = model.model_id
+            provider = (model.provider or "").lower()
+            is_hf = provider in {"huggingface", "sentence-transformers", "local"} or model_id.startswith("sentence-transformers/")
+
+            if is_hf:
+                try:
+                    logging.info(f"Initializing HuggingFace embedding model: {model_id}")
+                    embeddings = HuggingFaceEmbeddings(
+                        model_name=model_id,
+                        model_kwargs={"device": "cpu"},
+                        encode_kwargs={"normalize_embeddings": True},
+                        cache_folder=self.model_dir
+                    )
+                    test_result = embeddings.embed_query("test")
+                    if test_result and len(test_result) > 0:
+                        dims = len(test_result)
+                        logging.info(f"HuggingFace embedding model ready: {model_id} ({dims} dimensions)")
+                        self.__class__._shared_embeddings = embeddings
+                        self.__class__._shared_model_name = model_id
+                        self.__class__._shared_model_type = "huggingface"
+                        self.__class__._shared_dimensions = dims
+                        self.__class__._shared_model_provider = model.provider
+                        return embeddings, model_id, "huggingface", dims
+                except Exception as e:
+                    logging.warning(f"[RAGPipeline] Failed to initialize HF embedding model {model_id}: {e}")
+                    continue
+
+            if not (litellm_api_key and litellm_base_url):
+                logging.info("[RAGPipeline] LiteLLM credentials not configured; skipping LiteLLM embedding model")
+                continue
+
             try:
-                logging.info(f"Attempting to initialize LiteLLM embedding model: {self.LITELLM_MODEL}")
+                logging.info(f"Attempting to initialize LiteLLM embedding model: {model_id}")
                 embeddings = OpenAIEmbeddings(
-                    model=self.LITELLM_MODEL,
+                    model=model_id,
                     openai_api_key=litellm_api_key,
                     openai_api_base=litellm_base_url
                 )
-                # Test the connection with a simple embedding
                 test_result = embeddings.embed_query("test")
                 if test_result and len(test_result) > 0:
-                    logging.info(f"LiteLLM embedding model initialized successfully: {self.LITELLM_MODEL} ({len(test_result)} dimensions)")
+                    dims = len(test_result)
+                    logging.info(f"LiteLLM embedding model ready: {model_id} ({dims} dimensions)")
                     self.__class__._shared_embeddings = embeddings
-                    self.__class__._shared_model_name = self.LITELLM_MODEL
+                    self.__class__._shared_model_name = model_id
                     self.__class__._shared_model_type = "litellm"
-                    self.__class__._shared_dimensions = len(test_result)
-                    return embeddings, self.LITELLM_MODEL, "litellm", len(test_result)
+                    self.__class__._shared_dimensions = dims
+                    self.__class__._shared_model_provider = model.provider
+                    return embeddings, model_id, "litellm", dims
             except Exception as e:
-                logging.warning(f"Failed to initialize LiteLLM embedding model: {e}")
-                logging.info("Falling back to HuggingFace embedding model...")
-        else:
-            logging.info("LiteLLM credentials not configured, using HuggingFace fallback")
+                logging.warning(f"[RAGPipeline] Failed to initialize LiteLLM embedding model {model_id}: {e}")
 
-        # Fallback to HuggingFace
-        logging.info(f"Initializing HuggingFace fallback embedding model: {self.FALLBACK_MODEL}")
-        embeddings = HuggingFaceEmbeddings(
-            model_name=self.FALLBACK_MODEL,
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True},
-            cache_folder=self.model_dir
-        )
-        logging.info(f"HuggingFace embedding model initialized: {self.FALLBACK_MODEL} ({self.FALLBACK_DIMENSIONS} dimensions)")
-        self.__class__._shared_embeddings = embeddings
-        self.__class__._shared_model_name = self.FALLBACK_MODEL
-        self.__class__._shared_model_type = "huggingface"
-        self.__class__._shared_dimensions = self.FALLBACK_DIMENSIONS
-        return embeddings, self.FALLBACK_MODEL, "huggingface", self.FALLBACK_DIMENSIONS
+        raise RuntimeError("Unable to initialize any embedding model from llm_models")
 
     def get_embedding_info(self):
         """
         Returns information about the current embedding model configuration.
         Useful for admin panel and debugging.
         """
+        primary_model = None
+        fallback_model = None
+        try:
+            from db.models.llm_model import LLMModel
+            models = (
+                LLMModel.query
+                .filter_by(model_type=LLMModel.MODEL_TYPE_EMBEDDING, is_active=True)
+                .order_by(LLMModel.is_default.desc(), LLMModel.display_name.asc())
+                .all()
+            )
+            if models:
+                primary_model = models[0].model_id
+            for m in models[1:]:
+                if m.model_id != self.model_name:
+                    fallback_model = m.model_id
+                    break
+        except Exception:
+            primary_model = None
+            fallback_model = None
+
         return {
             "model_name": self.model_name,
             "model_type": self.model_type,
+            "provider": self.__class__._shared_model_provider,
             "dimensions": self.embedding_dimensions,
             "is_primary": self.model_type == "litellm",
-            "primary_model": self.LITELLM_MODEL,
-            "fallback_model": self.FALLBACK_MODEL,
+            "primary_model": primary_model,
+            "fallback_model": fallback_model,
             "litellm_configured": bool(os.environ.get("LITELLM_API_KEY") and os.environ.get("LITELLM_BASE_URL")),
             "litellm_base_url": os.environ.get("LITELLM_BASE_URL", "Not configured"),
             "vectorstore_dir": self.vectorstore_dir,

@@ -1156,7 +1156,7 @@ function formatNumber(value) {
 async function loadModels() {
   llmModelsLoading.value = true;
   try {
-    const response = await axios.get('/api/llm/models?active_only=true');
+    const response = await axios.get('/api/llm/models?active_only=true&model_type=llm');
     if (response.data?.success) {
       llmModels.value = response.data.models || [];
 

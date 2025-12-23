@@ -62,13 +62,15 @@ class ChatbotCreator:
             counter += 1
 
         # Create draft chatbot
-        default_model = LLMModel.get_default_model()
+        default_model = LLMModel.get_default_model(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not default_model:
+            raise ValueError("No default LLM model configured in llm_models")
         chatbot = Chatbot(
             name=name,
             display_name=f"Chatbot for {parsed.netloc}",
             description=f"Auto-generated chatbot from {url}",
             system_prompt="Du bist ein hilfreicher Assistent.",
-            model_name=default_model.model_id if default_model else 'mistralai/Mistral-Small-3.2-24B-Instruct-2506',
+            model_name=default_model.model_id,
             build_status='draft',
             source_url=url,
             is_active=False,  # Not active until ready
@@ -127,13 +129,16 @@ class ChatbotCreator:
         collection = RAGCollection.query.filter_by(name=collection_name).first()
 
         if not collection:
+            embedding_model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_EMBEDDING)
+            if not embedding_model:
+                raise ValueError("No default embedding model configured in llm_models")
             collection = RAGCollection(
                 name=collection_name,
                 display_name=f"Collection für {chatbot.display_name}",
                 description=f"Automatisch erstellt für Chatbot aus {chatbot.source_url}",
                 source_type='crawler',
                 source_url=chatbot.source_url,
-                embedding_model='llamaindex/vdr-2b-multi-v1',
+                embedding_model=embedding_model,
                 created_by=chatbot.created_by
             )
             db.session.add(collection)

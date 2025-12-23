@@ -12,7 +12,7 @@ Events:
         - test_prompt_response: Streaming test prompt response chunks
 
 Integration:
-    - Uses LiteLLM Proxy (mistralai/Mistral-Small-3.2-24B-Instruct-2506)
+    - Uses LiteLLM Proxy with DB-configured LLM models
     - Supports RAG context injection via chat_manager.rag_pipeline
     - Maintains chat history per client (request.sid)
 """
@@ -25,6 +25,7 @@ from flask import request
 from flask_socketio import emit
 from openai import OpenAI
 from llm.openai_utils import extract_delta_text
+from db.models.llm_model import LLMModel
 
 
 def register_chat_events(socketio, chat_manager):
@@ -164,11 +165,15 @@ def register_chat_events(socketio, chat_manager):
                 base_url="https://kiz1.in.ohmportal.de/llmproxy/v1"
             )
 
+            model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+            if not model_id:
+                raise RuntimeError("No default LLM model configured in llm_models")
+
             assistant_message = ""
             # Stream chat completion from LiteLLM Proxy
             metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
             stream = client.chat.completions.create(
-                model="mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+                model=model_id,
                 messages=[{"role": "user", "content": formatted_input}],
                 temperature=temperature,
                 max_tokens=chat_manager.prompt_manager.max_new_tokens,
@@ -216,9 +221,19 @@ def register_chat_events(socketio, chat_manager):
         user_prompt = data.get('prompt', '')
 
         # Get configurable parameters from frontend
-        model = data.get('model', 'mistralai/Mistral-Small-3.2-24B-Instruct-2506')
+        model = data.get('model')
         temperature = data.get('temperature', 0.15)
         max_tokens = data.get('maxTokens', 4096)
+
+        if model:
+            db_model = LLMModel.get_by_model_id(str(model).strip())
+            if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
+                model = None
+
+        if not model:
+            model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+            if not model:
+                raise RuntimeError("No default LLM model configured in llm_models")
 
         # Validate parameters
         temperature = max(0.0, min(1.0, float(temperature)))

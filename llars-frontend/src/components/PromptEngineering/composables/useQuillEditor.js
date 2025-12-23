@@ -87,18 +87,24 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
 
   const resolveCursorRange = (blockId, rawRange, quillEditor) => {
     if (!rawRange || !quillEditor) return null
+    const hasRelativePayload = Boolean(rawRange.fromRel && rawRange.toRel)
     let from = null
     let to = null
 
     const ytext = ytexts.get(blockId)
-    if (ytext && ydoc.value && rawRange.fromRel && rawRange.toRel) {
+    if (ytext && ydoc.value && hasRelativePayload) {
       try {
         const fromRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.fromRel))
         const toRelPos = Y.decodeRelativePosition(new Uint8Array(rawRange.toRel))
         const fromAbsPos = Y.createAbsolutePositionFromRelativePosition(fromRelPos, ydoc.value)
         const toAbsPos = Y.createAbsolutePositionFromRelativePosition(toRelPos, ydoc.value)
-        from = fromAbsPos?.index ?? null
-        to = toAbsPos?.index ?? null
+        const hasFrom = typeof fromAbsPos?.index === 'number'
+        const hasTo = typeof toAbsPos?.index === 'number'
+        if (!hasFrom || !hasTo) {
+          return null
+        }
+        from = fromAbsPos.index
+        to = toAbsPos.index
       } catch (e) {
         // Ignore decoding errors and fallback to absolute positions
       }
@@ -139,12 +145,11 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     }
 
     if (cursorsModule && editor) {
+      const resolvedRange = resolveCursorRange(blockId, range, editor)
+      if (!resolvedRange) return
       if (!cursorsModule.cursors().find(c => c.id === userId)) {
         cursorsModule.createCursor(userId, username, color)
       }
-
-      const resolvedRange = resolveCursorRange(blockId, range, editor)
-      if (!resolvedRange) return
       cursorsModule.moveCursor(userId, resolvedRange)
     }
   }
@@ -457,7 +462,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
       const editor = markRaw(existingEditor || new Quill(editorElement, {
         modules: {
           cursors: {
-            transformOnTextChange: true,
+            transformOnTextChange: false,
             hideDelayMs: 5000,
             hideSpeedMs: 500,
             selectionChangeSource: 'api'

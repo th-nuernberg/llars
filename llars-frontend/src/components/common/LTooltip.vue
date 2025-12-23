@@ -2,17 +2,16 @@
   <span class="l-tooltip-wrapper" :class="{ 'l-tooltip-wrapper--inline': inline }">
     <slot />
     <v-tooltip
-      v-if="text"
+      v-if="text || $slots.content"
       activator="parent"
       :location="location"
       :open-delay="openDelay"
       :close-delay="closeDelay"
     >
-      <template v-if="$slots.content" #default>
-        <slot name="content" />
-      </template>
-      <template v-else>
-        {{ text }}
+      <template #default>
+        <slot name="content">
+          {{ text }}
+        </slot>
       </template>
     </v-tooltip>
   </span>

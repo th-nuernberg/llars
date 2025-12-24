@@ -269,8 +269,10 @@ class CollectionEmbeddingService:
         """
         from db.db import db
         from db.tables import RAGCollection, RAGDocument, RAGDocumentChunk, CollectionDocumentLink
+        from db.models.rag import CollectionEmbedding
         from rag_pipeline import RAGPipeline
         from langchain_chroma import Chroma
+        from services.rag.embedding_model_service import get_embedding_model_service, ModelSource
         import os
 
         stop_event = self._stop_events.get(collection_id)
@@ -284,6 +286,40 @@ class CollectionEmbeddingService:
         # Initialize RAG pipeline early to set chroma_collection_name
         pipeline = RAGPipeline()
         collection_name = sanitize_chroma_collection_name(collection.name, pipeline.model_name)
+
+        # Determine model source (litellm or local)
+        model_service = get_embedding_model_service()
+        model_info = model_service.check_model_availability(pipeline.model_name)
+        model_source = model_info.source.value if model_info.source else 'local'
+        embedding_dimensions = model_info.dimensions or pipeline.embedding_dimensions
+
+        # Create or update CollectionEmbedding record
+        coll_embedding = CollectionEmbedding.query.filter_by(
+            collection_id=collection_id,
+            model_id=pipeline.model_name
+        ).first()
+
+        if not coll_embedding:
+            coll_embedding = CollectionEmbedding(
+                collection_id=collection_id,
+                model_id=pipeline.model_name,
+                model_source=model_source,
+                embedding_dimensions=embedding_dimensions,
+                chroma_collection_name=collection_name,
+                status='processing',
+                progress=0,
+                priority=100 if 'vdr-2b' in pipeline.model_name.lower() else 50
+            )
+            db.session.add(coll_embedding)
+        else:
+            coll_embedding.status = 'processing'
+            coll_embedding.progress = 0
+            coll_embedding.error_message = None
+            coll_embedding.model_source = model_source
+            coll_embedding.embedding_dimensions = embedding_dimensions
+
+        db.session.commit()
+        logger.info(f"[CollectionEmbedding] Using model {pipeline.model_name} ({model_source}, {embedding_dimensions} dims)")
 
         # Store chroma_collection_name in database so chat service can find it
         if not collection.chroma_collection_name:
@@ -661,6 +697,7 @@ class CollectionEmbeddingService:
         try:
             from db.db import db
             from db.tables import RAGCollection
+            from db.models.rag import CollectionEmbedding
 
             collection = RAGCollection.query.get(collection_id)
             if collection:
@@ -668,6 +705,18 @@ class CollectionEmbeddingService:
                 collection.embedding_progress = 100
                 collection.total_chunks = total_chunks
                 collection.last_indexed_at = datetime.now()
+
+                # Also update CollectionEmbedding record
+                coll_embeddings = CollectionEmbedding.query.filter_by(
+                    collection_id=collection_id,
+                    status='processing'
+                ).all()
+                for ce in coll_embeddings:
+                    ce.status = 'completed'
+                    ce.progress = 100
+                    ce.chunk_count = total_chunks
+                    ce.completed_at = datetime.now()
+
                 db.session.commit()
 
             # Emit completion event
@@ -689,11 +738,22 @@ class CollectionEmbeddingService:
         try:
             from db.db import db
             from db.tables import RAGCollection
+            from db.models.rag import CollectionEmbedding
 
             collection = RAGCollection.query.get(collection_id)
             if collection:
                 collection.embedding_status = 'failed'
                 collection.embedding_error = error[:1000]
+
+                # Also update CollectionEmbedding record
+                coll_embeddings = CollectionEmbedding.query.filter_by(
+                    collection_id=collection_id,
+                    status='processing'
+                ).all()
+                for ce in coll_embeddings:
+                    ce.status = 'failed'
+                    ce.error_message = error[:1000]
+
                 db.session.commit()
 
             # Emit error event

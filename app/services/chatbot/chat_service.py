@@ -914,38 +914,55 @@ class ChatService:
     ) -> List[Dict]:
         """
         Search a specific collection using ChromaDB.
-        Uses the collection's embedding_model to ensure dimension compatibility.
+
+        Uses the new CollectionEmbedding table to find the best available
+        embedding for this collection. This ensures:
+        1. Query embeddings ALWAYS match document embeddings (dimension compatibility)
+        2. Robust fallback: if preferred model unavailable, use alternate stored embeddings
+        3. Clear error messages if no compatible embedding is available
         """
         from langchain_chroma import Chroma
         from services.rag.collection_embedding_service import sanitize_chroma_collection_name
+        from services.rag.embedding_model_service import get_best_embedding_for_collection
 
-        # Use the collection's embedding model (stored in DB when collection was created)
-        # CRITICAL: We must use the SAME model for query embedding as was used for document embedding
-        # Otherwise dimensions won't match and retrieval will fail silently or return garbage
-        collection_model = self._resolve_collection_embedding_model(collection) or "sentence-transformers/all-MiniLM-L6-v2"
-        embeddings = self._get_embeddings_for_model(collection_model)
+        # CRITICAL: Use get_best_embedding_for_collection which checks:
+        # 1. CollectionEmbedding table for stored embeddings with available models
+        # 2. Collection's configured embedding_model
+        # 3. Ensures model availability before returning
+        embeddings, model_id, chroma_collection_name, dimensions = get_best_embedding_for_collection(
+            collection.id
+        )
 
         if embeddings is None:
-            logger.error(
-                f"[ChatService] Could not load embedding model '{collection_model}' for collection {collection.id}. "
-                f"RAG retrieval will fail. Please ensure the model is available or re-embed the collection with a different model."
-            )
-            return []
+            # Fallback to legacy method for collections without CollectionEmbedding records
+            collection_model = self._resolve_collection_embedding_model(collection) or "sentence-transformers/all-MiniLM-L6-v2"
+            embeddings = self._get_embeddings_for_model(collection_model)
+            model_id = collection_model
+            chroma_collection_name = collection.chroma_collection_name
+
+            if embeddings is None:
+                logger.error(
+                    f"[ChatService] Could not load any embedding model for collection {collection.id}. "
+                    f"RAG retrieval will fail. Please ensure a model is available or re-embed the collection."
+                )
+                return []
 
         vectorstore_dir = os.path.join(
             "/app/storage/vectorstore",
-            collection_model.replace('/', '_')
+            model_id.replace('/', '_')
         )
 
         try:
-            collection_name = collection.chroma_collection_name
+            collection_name = chroma_collection_name
             if not collection_name:
-                collection_name = sanitize_chroma_collection_name(collection.name, collection_model)
+                collection_name = sanitize_chroma_collection_name(collection.name, model_id)
                 collection.chroma_collection_name = collection_name
                 try:
                     db.session.commit()
                 except Exception:
                     db.session.rollback()
+
+            logger.debug(f"[ChatService] Searching collection {collection.id} with model {model_id}, chroma={collection_name}")
 
             vectorstore = Chroma(
                 collection_name=collection_name,
@@ -957,7 +974,7 @@ class ChatService:
             docs_with_scores = vectorstore.similarity_search_with_score(query, k=k)
 
             if not docs_with_scores and collection.chroma_collection_name:
-                fallback_name = sanitize_chroma_collection_name(collection.name, collection_model)
+                fallback_name = sanitize_chroma_collection_name(collection.name, model_id)
                 if fallback_name != collection_name:
                     vectorstore = Chroma(
                         collection_name=fallback_name,

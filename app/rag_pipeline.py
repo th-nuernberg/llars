@@ -150,27 +150,15 @@ class RAGPipeline:
                 return fallback
             raise RuntimeError("No active embedding models configured and fallback failed")
 
-        for model in candidates:
-            model_id = model.model_id
-            provider = (model.provider or "").lower()
-            is_hf = (
-                provider in {"huggingface", "sentence-transformers", "local"}
-                or model_id.startswith("sentence-transformers/")
-                or model_id.startswith("llamaindex/")
-            )
+        # Models available via LiteLLM/KIZ - try API first
+        litellm_embedding_models = ["llamaindex/vdr-2b-multi-v1"]
 
-            if is_hf:
-                result = init_hf_embeddings(model_id, model.provider or "huggingface")
-                if result:
-                    return result
-                continue
-
+        def try_litellm_model(model_id: str, provider: str):
+            """Try loading model via LiteLLM API."""
             if not (litellm_api_key and litellm_base_url):
-                logging.info("[RAGPipeline] LiteLLM credentials not configured; skipping LiteLLM embedding model")
-                continue
-
+                return None
             try:
-                logging.info(f"Attempting to initialize LiteLLM embedding model: {model_id}")
+                logging.info(f"[RAGPipeline] Attempting LiteLLM embedding model: {model_id}")
                 embeddings = OpenAIEmbeddings(
                     model=model_id,
                     openai_api_key=litellm_api_key,
@@ -179,20 +167,55 @@ class RAGPipeline:
                 test_result = embeddings.embed_query("test")
                 if test_result and len(test_result) > 0:
                     dims = len(test_result)
-                    logging.info(f"LiteLLM embedding model ready: {model_id} ({dims} dimensions)")
+                    logging.info(f"[RAGPipeline] LiteLLM embedding model ready: {model_id} ({dims} dimensions)")
                     self.__class__._shared_embeddings = embeddings
                     self.__class__._shared_model_name = model_id
                     self.__class__._shared_model_type = "litellm"
                     self.__class__._shared_dimensions = dims
-                    self.__class__._shared_model_provider = model.provider
+                    self.__class__._shared_model_provider = provider
                     return embeddings, model_id, "litellm", dims
             except Exception as e:
-                logging.warning(f"[RAGPipeline] Failed to initialize LiteLLM embedding model {model_id}: {e}")
-                # Try loading the model locally via HuggingFace as fallback
-                logging.info(f"[RAGPipeline] Attempting local HuggingFace fallback for {model_id}")
-                local_result = init_hf_embeddings(model_id, "huggingface-fallback")
-                if local_result:
-                    return local_result
+                logging.warning(f"[RAGPipeline] LiteLLM failed for {model_id}: {e}")
+            return None
+
+        for model in candidates:
+            model_id = model.model_id
+            provider = (model.provider or "").lower()
+
+            # Check if model is local-only (sentence-transformers)
+            is_local_only = (
+                provider in {"huggingface", "sentence-transformers", "local"}
+                or model_id.startswith("sentence-transformers/")
+            )
+
+            # Check if model is available via LiteLLM/KIZ
+            is_litellm_model = model_id in litellm_embedding_models
+
+            # Strategy 1: Local-only models -> HuggingFace directly
+            if is_local_only:
+                result = init_hf_embeddings(model_id, model.provider or "huggingface")
+                if result:
+                    return result
+                continue
+
+            # Strategy 2: Models available via LiteLLM -> try API first, then local
+            if is_litellm_model:
+                result = try_litellm_model(model_id, model.provider or "litellm")
+                if result:
+                    return result
+                logging.info(f"[RAGPipeline] LiteLLM unavailable for {model_id}, trying local HuggingFace")
+                result = init_hf_embeddings(model_id, "huggingface-fallback")
+                if result:
+                    return result
+                continue
+
+            # Strategy 3: Other models -> try LiteLLM, then local
+            result = try_litellm_model(model_id, model.provider or "litellm")
+            if result:
+                return result
+            result = init_hf_embeddings(model_id, "huggingface-fallback")
+            if result:
+                return result
 
         fallback = init_hf_embeddings(DEFAULT_FALLBACK_EMBEDDING_MODEL, "local-fallback")
         if fallback:

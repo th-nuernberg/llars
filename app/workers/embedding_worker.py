@@ -138,7 +138,11 @@ class EmbeddingWorker:
     def _get_embeddings_for_model(self, model_id: str):
         """
         Get embeddings for a specific model with caching.
-        Tries LiteLLM (remote) first, falls back to local HuggingFace.
+
+        Strategy:
+        1. Models available via LiteLLM/KIZ (e.g., VDR-2B) -> try API first, fallback to local
+        2. Local-only models (sentence-transformers) -> use HuggingFace directly
+        3. Other models -> try LiteLLM, fallback to local
         """
         # Check cache first
         if model_id in self._embeddings_cache:
@@ -153,58 +157,92 @@ class EmbeddingWorker:
         from langchain_openai import OpenAIEmbeddings
         import sys
 
-        # Check if it's a known local-only model (sentence-transformers or llamaindex)
-        is_local_model = model_id.startswith("sentence-transformers/") or model_id.startswith("llamaindex/")
-
-        # Try LiteLLM (remote) first for non-local models
-        if not is_local_model:
+        def try_litellm(mid: str):
+            """Try loading model via LiteLLM/KIZ API."""
             litellm_api_key = os.environ.get("LITELLM_API_KEY")
             litellm_base_url = os.environ.get("LITELLM_BASE_URL")
-            if litellm_api_key and litellm_base_url:
-                try:
-                    logger.info(f"[EmbeddingWorker] Trying LiteLLM for: {model_id}")
-                    embeddings = OpenAIEmbeddings(
-                        model=model_id,
-                        openai_api_key=litellm_api_key,
-                        openai_api_base=litellm_base_url
-                    )
-                    # Test the connection
-                    embeddings.embed_query("test")
-                    self._embeddings_cache[model_id] = embeddings
-                    logger.info(f"[EmbeddingWorker] Using LiteLLM embeddings for: {model_id}")
+            if not litellm_api_key or not litellm_base_url:
+                return None
+            try:
+                logger.info(f"[EmbeddingWorker] Trying LiteLLM for: {mid}")
+                embeddings = OpenAIEmbeddings(
+                    model=mid,
+                    openai_api_key=litellm_api_key,
+                    openai_api_base=litellm_base_url
+                )
+                # Test the connection
+                test_result = embeddings.embed_query("test")
+                if test_result and len(test_result) > 0:
+                    self._embeddings_cache[mid] = embeddings
+                    logger.info(f"[EmbeddingWorker] Using LiteLLM embeddings for: {mid} (dims={len(test_result)})")
                     return embeddings
-                except Exception as e:
-                    logger.warning(f"[EmbeddingWorker] LiteLLM not available for {model_id}: {e}, falling back to local")
+                return None
+            except Exception as e:
+                logger.warning(f"[EmbeddingWorker] LiteLLM not available for {mid}: {e}")
+                return None
 
-        # Fallback to local HuggingFace
-        try:
-            logger.info(f"[EmbeddingWorker] Loading local HuggingFace embeddings for: {model_id}")
+        def try_huggingface_local(mid: str):
+            """Try loading model locally via HuggingFace."""
+            try:
+                logger.info(f"[EmbeddingWorker] Loading local HuggingFace embeddings for: {mid}")
 
-            # For models with custom code (like llamaindex/vdr-2b-multi-v1),
-            # add model cache dir to sys.path so custom modules can be imported
-            cache_dirs = [
-                os.path.expanduser("~/.cache/huggingface/hub"),
-                self._pipeline.model_dir,
-                "/app/storage/models"
-            ]
-            for cache_dir in cache_dirs:
-                if os.path.exists(cache_dir):
-                    for root, dirs, files in os.walk(cache_dir):
-                        if 'custom_st.py' in files and root not in sys.path:
-                            logger.info(f"[EmbeddingWorker] Adding custom module path: {root}")
-                            sys.path.insert(0, root)
+                # For models with custom code (like llamaindex/vdr-2b-multi-v1),
+                # add model cache dir to sys.path so custom modules can be imported
+                cache_dirs = [
+                    os.path.expanduser("~/.cache/huggingface/hub"),
+                    self._pipeline.model_dir,
+                    "/app/storage/models"
+                ]
+                for cache_dir in cache_dirs:
+                    if os.path.exists(cache_dir):
+                        for root, dirs, files in os.walk(cache_dir):
+                            if 'custom_st.py' in files and root not in sys.path:
+                                logger.info(f"[EmbeddingWorker] Adding custom module path: {root}")
+                                sys.path.insert(0, root)
 
-            embeddings = HuggingFaceEmbeddings(
-                model_name=model_id,
-                model_kwargs={"device": "cpu", "trust_remote_code": True},
-                encode_kwargs={"normalize_embeddings": True},
-                cache_folder=self._pipeline.model_dir
-            )
-            self._embeddings_cache[model_id] = embeddings
-            logger.info(f"[EmbeddingWorker] Loaded local HuggingFace embeddings for: {model_id}")
-            return embeddings
-        except Exception as e:
-            logger.error(f"[EmbeddingWorker] Failed to load local embeddings for {model_id}: {e}")
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=mid,
+                    model_kwargs={"device": "cpu", "trust_remote_code": True},
+                    encode_kwargs={"normalize_embeddings": True},
+                    cache_folder=self._pipeline.model_dir
+                )
+                self._embeddings_cache[mid] = embeddings
+                logger.info(f"[EmbeddingWorker] Loaded local HuggingFace embeddings for: {mid}")
+                return embeddings
+            except Exception as e:
+                logger.error(f"[EmbeddingWorker] Failed to load local embeddings for {mid}: {e}")
+                return None
+
+        # Models available via LiteLLM/KIZ - try API first
+        litellm_embedding_models = ["llamaindex/vdr-2b-multi-v1"]
+
+        # Models that should only be loaded locally (no API available)
+        local_only_models = model_id.startswith("sentence-transformers/") or "sentence-transformers" in model_id
+
+        # Strategy 1: Local-only models -> HuggingFace directly
+        if local_only_models:
+            embeddings = try_huggingface_local(model_id)
+            if embeddings:
+                return embeddings
+
+        # Strategy 2: Models available via LiteLLM -> try API first, then local
+        elif model_id in litellm_embedding_models:
+            embeddings = try_litellm(model_id)
+            if embeddings:
+                return embeddings
+            logger.info(f"[EmbeddingWorker] LiteLLM unavailable for {model_id}, trying local HuggingFace")
+            embeddings = try_huggingface_local(model_id)
+            if embeddings:
+                return embeddings
+
+        # Strategy 3: Other models -> try LiteLLM, then local
+        else:
+            embeddings = try_litellm(model_id)
+            if embeddings:
+                return embeddings
+            embeddings = try_huggingface_local(model_id)
+            if embeddings:
+                return embeddings
 
         # Ultimate fallback to pipeline's embeddings
         logger.warning(f"[EmbeddingWorker] Using pipeline's embeddings as fallback for {model_id}")

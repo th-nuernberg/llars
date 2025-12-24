@@ -1,65 +1,147 @@
-<!-- ChatWithBots.vue - Chat interface with chatbot selection and file upload -->
+<!-- ChatWithBots.vue - Chat interface with ChatGPT-style grouped sidebar -->
 <template>
   <div class="chat-page">
     <div class="chat-container" ref="containerRef">
-      <!-- Chatbot Selection Sidebar -->
-      <aside class="chatbot-sidebar" :class="{ collapsed: sidebarCollapsed }">
-        <!-- Header -->
+      <!-- Modern Grouped Sidebar -->
+      <aside class="chat-sidebar" :class="{ collapsed: sidebarCollapsed }">
+        <!-- Header with New Chat Button -->
         <div class="sidebar-header">
-          <div class="header-content" :class="{ 'justify-center': sidebarCollapsed }">
-            <template v-if="!sidebarCollapsed">
-              <v-icon class="header-icon" size="24">mdi-robot</v-icon>
-              <div class="header-text">
-                <span class="header-title">Chatbots</span>
-              </div>
-            </template>
-            <v-icon v-else class="header-icon-collapsed" size="24">mdi-robot</v-icon>
-          </div>
+          <template v-if="!sidebarCollapsed">
+            <LBtn
+              variant="primary"
+              prepend-icon="mdi-plus"
+              class="new-chat-btn"
+              :disabled="!selectedChatbot"
+              @click="createConversation()"
+            >
+              Neuer Chat
+            </LBtn>
+          </template>
+          <LTooltip v-else text="Neuer Chat" location="right">
+            <button
+              class="new-chat-btn-mini"
+              :disabled="!selectedChatbot"
+              @click="createConversation()"
+            >
+              <v-icon size="20">mdi-plus</v-icon>
+            </button>
+          </LTooltip>
           <button
             class="collapse-btn"
             @click="toggleSidebar"
             :title="sidebarCollapsed ? 'Erweitern' : 'Zuklappen'"
           >
-            <v-icon size="20">{{ sidebarCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
+            <v-icon size="18">{{ sidebarCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
           </button>
         </div>
 
-        <div class="sidebar-divider"></div>
+        <!-- Search -->
+        <div v-if="!sidebarCollapsed" class="sidebar-search">
+          <v-text-field
+            v-model="searchQuery"
+            placeholder="Chats durchsuchen..."
+            density="compact"
+            variant="outlined"
+            hide-details
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            class="search-input"
+          />
+        </div>
 
-        <!-- Chatbot List -->
+        <!-- Chatbot Groups -->
         <nav class="sidebar-nav">
           <v-skeleton-loader v-if="isLoading('chatbots')" type="list-item@3" />
           <template v-else>
-            <button
+            <div
               v-for="bot in chatbots"
               :key="bot.id"
-              class="nav-item chatbot-item"
-              :class="{ active: selectedChatbot?.id === bot.id }"
-              @click="selectChatbot(bot)"
-              :title="sidebarCollapsed ? bot.display_name : undefined"
+              class="chatbot-group"
+              :class="{ expanded: expandedBots[bot.id], active: selectedChatbot?.id === bot.id }"
             >
-              <div class="nav-icon">
-                <v-avatar :color="bot.color || 'primary'" size="32">
-                  <v-icon color="white" size="18">{{ bot.icon || 'mdi-robot' }}</v-icon>
-                </v-avatar>
-              </div>
-              <template v-if="!sidebarCollapsed">
-                <div class="chatbot-info">
-                  <span class="nav-label">{{ bot.display_name }}</span>
-                  <span class="chatbot-description">{{ bot.description || 'Keine Beschreibung' }}</span>
+              <!-- Chatbot Header (Expandable) -->
+              <button
+                class="chatbot-header"
+                @click="toggleBot(bot)"
+                :title="sidebarCollapsed ? bot.display_name : undefined"
+              >
+                <div class="chatbot-avatar">
+                  <v-avatar :color="bot.color || '#b0ca97'" size="28">
+                    <v-icon color="white" size="16">{{ bot.icon || 'mdi-robot' }}</v-icon>
+                  </v-avatar>
                 </div>
-                <LTag
-                  v-if="getChatbotTypeTag(bot)"
-                  :variant="getChatbotTypeTag(bot).variant"
-                  size="sm"
-                  class="nav-badge"
-                >
-                  {{ getChatbotTypeTag(bot).label }}
-                </LTag>
-              </template>
-            </button>
+                <template v-if="!sidebarCollapsed">
+                  <div class="chatbot-info">
+                    <span class="chatbot-name">{{ bot.display_name }}</span>
+                    <div class="chatbot-meta">
+                      <LTag
+                        v-if="getChatbotTypeTag(bot)"
+                        :variant="getChatbotTypeTag(bot).variant"
+                        size="sm"
+                      >
+                        {{ getChatbotTypeTag(bot).label }}
+                      </LTag>
+                      <span v-if="getChatCount(bot.id)" class="chat-count">
+                        {{ getChatCount(bot.id) }} Chats
+                      </span>
+                    </div>
+                  </div>
+                  <v-icon
+                    class="expand-icon"
+                    size="18"
+                  >
+                    {{ expandedBots[bot.id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+                  </v-icon>
+                </template>
+              </button>
 
-            <div v-if="chatbots.length === 0 && !sidebarCollapsed" class="text-center pa-4 text-medium-emphasis">
+              <!-- Conversations List (Nested) -->
+              <div
+                v-if="!sidebarCollapsed && expandedBots[bot.id]"
+                class="conversations-list"
+              >
+                <v-skeleton-loader
+                  v-if="isLoading('conversations') && selectedChatbot?.id === bot.id"
+                  type="list-item@2"
+                  class="px-2"
+                />
+                <template v-else-if="botConversations[bot.id]?.length">
+                  <div
+                    v-for="conv in getFilteredConversations(bot.id)"
+                    :key="conv.id"
+                    class="conversation-item"
+                    :class="{
+                      active: selectedConversation?.id === conv.id && selectedChatbot?.id === bot.id,
+                      'title-streaming': getDisplayTitle(conv).isStreaming
+                    }"
+                    @click.stop="selectConversationFromBot(bot, conv)"
+                  >
+                    <v-icon size="16" class="conv-icon">mdi-chat-outline</v-icon>
+                    <span class="conv-title" :class="{ 'streaming-text': getDisplayTitle(conv).isStreaming }">
+                      {{ getDisplayTitle(conv).text }}
+                      <span v-if="getDisplayTitle(conv).isStreaming" class="typing-cursor"></span>
+                    </span>
+                    <div class="conv-actions">
+                      <LTooltip text="Umbenennen" location="top">
+                        <button class="conv-action" @click.stop="renameConversation(conv)">
+                          <v-icon size="14">mdi-pencil</v-icon>
+                        </button>
+                      </LTooltip>
+                      <LTooltip text="Löschen" location="top">
+                        <button class="conv-action delete" @click.stop="deleteConversation(conv)">
+                          <v-icon size="14">mdi-delete</v-icon>
+                        </button>
+                      </LTooltip>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="no-chats">
+                  <span>Noch keine Chats</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="chatbots.length === 0 && !sidebarCollapsed" class="empty-sidebar">
               <v-icon size="32" class="mb-2">mdi-robot-off</v-icon>
               <div>Keine Chatbots verfügbar</div>
             </div>
@@ -70,14 +152,12 @@
         <div class="sidebar-footer">
           <div class="sidebar-divider"></div>
           <button
-            class="nav-item"
+            class="footer-item"
             @click="router.push('/Home')"
             :title="sidebarCollapsed ? 'Zur Startseite' : undefined"
           >
-            <div class="nav-icon">
-              <v-icon size="20">mdi-home</v-icon>
-            </div>
-            <span v-if="!sidebarCollapsed" class="nav-label">Zur Startseite</span>
+            <v-icon size="20">mdi-home</v-icon>
+            <span v-if="!sidebarCollapsed">Startseite</span>
           </button>
         </div>
       </aside>
@@ -86,62 +166,35 @@
       <div class="chat-main" :style="sourcePanel.open ? leftPanelStyle() : {}">
         <!-- Chat Header -->
         <div v-if="selectedChatbot" class="chat-header">
-          <div class="d-flex align-center">
-            <v-avatar :color="selectedChatbot.color || 'primary'" size="40" class="mr-3">
-              <v-icon color="white">{{ selectedChatbot.icon || 'mdi-robot' }}</v-icon>
+          <div class="header-left">
+            <v-avatar :color="selectedChatbot.color || '#b0ca97'" size="36" class="bot-avatar">
+              <v-icon color="white" size="20">{{ selectedChatbot.icon || 'mdi-robot' }}</v-icon>
             </v-avatar>
-            <div>
-              <div class="font-weight-bold">{{ selectedChatbot.display_name }}</div>
-              <div class="text-caption text-medium-emphasis">
-                {{ selectedChatbot.model_name }}
+            <div class="header-info">
+              <div class="header-title" :class="{ 'streaming-text': getHeaderTitle().isStreaming }">
+                {{ getHeaderTitle().text }}
+                <span v-if="getHeaderTitle().isStreaming" class="typing-cursor"></span>
+              </div>
+              <div class="header-subtitle">
+                {{ selectedChatbot.display_name }}
+                <span class="model-name">• {{ selectedChatbot.model_name }}</span>
                 <LTag v-if="capabilities?.vision" variant="success" size="sm" class="ml-1">
                   Vision
                 </LTag>
               </div>
             </div>
           </div>
-          <div class="d-flex align-center ga-1">
-            <v-btn
-              icon
-              variant="text"
-              @click="toggleSourcePanel"
-              title="Quellen"
-            >
-              <v-icon>{{ sourcePanel.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</v-icon>
-            </v-btn>
-            <v-btn
-              icon
-              variant="text"
-              @click="clearChat"
-              title="Chat leeren"
-            >
-              <v-icon>mdi-delete-outline</v-icon>
-            </v-btn>
-          </div>
-        </div>
-
-        <!-- Conversation Selector -->
-        <div v-if="selectedChatbot" class="conversation-bar">
-          <div class="conversation-actions">
-            <v-btn size="small" color="primary" variant="tonal" @click="createConversation()">
-              <v-icon start size="16">mdi-plus</v-icon>
-              Neuer Chat
-            </v-btn>
-          </div>
-          <div class="conversation-list">
-            <v-skeleton-loader v-if="isLoading('conversations')" type="chip" width="140" />
-            <div v-else-if="conversations.length === 0" class="text-medium-emphasis text-caption">Keine Chats</div>
-            <v-chip
-              v-for="conv in conversations"
-              :key="conv.id"
-              class="conversation-chip"
-              :color="selectedConversation?.id === conv.id ? 'primary' : undefined"
-              :variant="selectedConversation?.id === conv.id ? 'elevated' : 'tonal'"
-              @click="selectConversation(conv)"
-            >
-              <v-icon start size="14">mdi-chat</v-icon>
-              {{ conv.title || `Chat ${conv.id}` }}
-            </v-chip>
+          <div class="header-actions">
+            <LTooltip :text="sourcePanel.open ? 'Quellen ausblenden' : 'Quellen anzeigen'">
+              <button class="header-action" @click="toggleSourcePanel">
+                <v-icon size="20">{{ sourcePanel.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</v-icon>
+              </button>
+            </LTooltip>
+            <LTooltip text="Neuer Chat">
+              <button class="header-action" @click="createConversation()">
+                <v-icon size="20">mdi-plus</v-icon>
+              </button>
+            </LTooltip>
           </div>
         </div>
 
@@ -331,232 +384,238 @@
         <div class="resize-handle"></div>
       </div>
 
-      <!-- Sources Side Panel -->
+      <!-- Sources Side Panel - LLARS Design -->
       <div v-if="sourcePanel.open" class="sources-panel" :style="rightPanelStyle()">
-        <v-card class="sources-panel-card" variant="outlined">
+        <div class="sources-panel-card">
+          <!-- Panel Header -->
           <div class="sources-panel-header">
-            <div class="d-flex align-center text-truncate">
-              <v-icon class="mr-2">mdi-bookmark-multiple</v-icon>
-              <span class="font-weight-bold text-truncate">
-                {{ sourcePanel.source?.title || sourcePanel.source?.filename || 'Quelle' }}
-              </span>
+            <div class="header-title-area">
+              <div class="source-icon">
+                <v-icon size="20">mdi-bookmark-multiple</v-icon>
+              </div>
+              <div class="source-title-info">
+                <span class="source-title">
+                  {{ sourcePanel.source?.title || sourcePanel.source?.filename || 'Quelle' }}
+                </span>
+                <span v-if="sourcePanel.source?.collection_name" class="source-collection">
+                  {{ sourcePanel.source.collection_name }}
+                </span>
+              </div>
             </div>
-            <div class="d-flex align-center">
-              <v-btn
-                icon
-                variant="text"
-                size="small"
-                @click="sourcePanel.pinned = !sourcePanel.pinned"
-                :title="sourcePanel.pinned ? 'Lösen' : 'Anheften'"
-              >
-                <v-icon>{{ sourcePanel.pinned ? 'mdi-pin' : 'mdi-pin-outline' }}</v-icon>
-              </v-btn>
-              <v-btn
-                icon
-                variant="text"
-                size="small"
-                @click="closeSourcePanel"
-                title="Schließen"
-              >
-                <v-icon>mdi-close</v-icon>
-              </v-btn>
+            <div class="header-actions">
+              <LTooltip :text="sourcePanel.pinned ? 'Lösen' : 'Anheften'">
+                <button
+                  class="panel-action"
+                  :class="{ active: sourcePanel.pinned }"
+                  @click="sourcePanel.pinned = !sourcePanel.pinned"
+                >
+                  <v-icon size="18">{{ sourcePanel.pinned ? 'mdi-pin' : 'mdi-pin-outline' }}</v-icon>
+                </button>
+              </LTooltip>
+              <LTooltip text="Schließen">
+                <button class="panel-action close" @click="closeSourcePanel">
+                  <v-icon size="18">mdi-close</v-icon>
+                </button>
+              </LTooltip>
             </div>
           </div>
 
-          <v-divider />
+          <!-- Custom Tabs -->
+          <div class="source-tabs">
+            <button
+              class="source-tab"
+              :class="{ active: sourcePanel.tab === 'excerpt' }"
+              @click="sourcePanel.tab = 'excerpt'"
+            >
+              <v-icon size="16">mdi-text-box</v-icon>
+              <span>Ausschnitt</span>
+            </button>
+            <button
+              class="source-tab"
+              :class="{ active: sourcePanel.tab === 'screenshot', disabled: !sourcePanel.source?.screenshot_url && !sourcePanel.source?.document_id }"
+              :disabled="!sourcePanel.source?.screenshot_url && !sourcePanel.source?.document_id"
+              @click="sourcePanel.tab = 'screenshot'"
+            >
+              <v-icon size="16">mdi-image</v-icon>
+              <span>Screenshot</span>
+            </button>
+            <button
+              class="source-tab"
+              :class="{ active: sourcePanel.tab === 'document', disabled: !sourcePanel.source?.content_url }"
+              :disabled="!sourcePanel.source?.content_url"
+              @click="sourcePanel.tab = 'document'"
+            >
+              <v-icon size="16">mdi-file-document</v-icon>
+              <span>Dokument</span>
+            </button>
+          </div>
 
-          <v-tabs v-model="sourcePanel.tab" bg-color="primary" density="compact">
-            <v-tab value="excerpt">
-              <v-icon start>mdi-text-box</v-icon>
-              Ausschnitt
-            </v-tab>
-            <v-tab value="screenshot" :disabled="!sourcePanel.source?.screenshot_url">
-              <v-icon start>mdi-image</v-icon>
-              Screenshot
-            </v-tab>
-            <v-tab value="document" :disabled="!sourcePanel.source?.content_url">
-              <v-icon start>mdi-file-document</v-icon>
-              Dokument
-            </v-tab>
-          </v-tabs>
-
-          <v-window v-model="sourcePanel.tab" class="sources-panel-window">
-            <v-window-item value="excerpt">
-              <div class="sources-panel-content">
-                <div v-if="!sourcePanel.source" class="text-center pa-6 text-medium-emphasis">
-                  <v-icon size="48" class="mb-2">mdi-bookmark-outline</v-icon>
-                  <div>Quelle auswählen</div>
+          <!-- Tab Content -->
+          <div class="sources-panel-body">
+            <!-- Excerpt Tab -->
+            <div v-if="sourcePanel.tab === 'excerpt'" class="tab-content">
+              <div v-if="!sourcePanel.source" class="empty-source">
+                <v-icon size="48" class="mb-2">mdi-bookmark-outline</v-icon>
+                <div>Quelle auswählen</div>
+              </div>
+              <template v-else>
+                <!-- Metadata Tags -->
+                <div class="source-metadata">
+                  <LTag v-if="sourcePanel.source.collection_name" variant="primary" size="sm" prepend-icon="mdi-folder">
+                    {{ sourcePanel.source.collection_name }}
+                  </LTag>
+                  <LTag v-if="sourcePanel.source.page_number" variant="gray" size="sm" prepend-icon="mdi-book-open-page-variant">
+                    Seite {{ sourcePanel.source.page_number }}
+                  </LTag>
+                  <LTag v-if="sourcePanel.source.chunk_index !== null && sourcePanel.source.chunk_index !== undefined" variant="gray" size="sm" prepend-icon="mdi-text">
+                    Chunk {{ sourcePanel.source.chunk_index }}
+                  </LTag>
+                  <LTag v-if="sourcePanel.source.relevance !== null && sourcePanel.source.relevance !== undefined" variant="success" size="sm" prepend-icon="mdi-check-circle">
+                    {{ ((sourcePanel.source.relevance || 0) * 100).toFixed(0) }}% relevant
+                  </LTag>
                 </div>
-                <template v-else>
-                  <div class="d-flex flex-wrap ga-2 mb-3">
-                    <v-chip v-if="sourcePanel.source.collection_name" size="small" variant="tonal" color="primary">
-                      <v-icon start size="14">mdi-folder</v-icon>
-                      {{ sourcePanel.source.collection_name }}
-                    </v-chip>
-                    <v-chip v-if="sourcePanel.source.page_number" size="small" variant="outlined">
-                      <v-icon start size="14">mdi-book-open-page-variant</v-icon>
-                      Seite {{ sourcePanel.source.page_number }}
-                    </v-chip>
-                    <v-chip v-if="sourcePanel.source.chunk_index !== null && sourcePanel.source.chunk_index !== undefined" size="small" variant="outlined">
-                      <v-icon start size="14">mdi-text</v-icon>
-                      Chunk {{ sourcePanel.source.chunk_index }}
-                    </v-chip>
-                    <v-chip v-if="sourcePanel.source.relevance !== null && sourcePanel.source.relevance !== undefined" size="small" variant="tonal" color="success">
-                      {{ ((sourcePanel.source.relevance || 0) * 100).toFixed(0) }}% relevant
-                    </v-chip>
-                  </div>
 
-                  <div class="sources-panel-excerpt">
+                <!-- Excerpt Text -->
+                <div class="excerpt-box">
+                  <div class="excerpt-label">
+                    <v-icon size="14">mdi-format-quote-open</v-icon>
+                    Textausschnitt
+                  </div>
+                  <div class="excerpt-text">
                     {{ sourcePanel.source.excerpt }}
                   </div>
+                </div>
 
-                  <div class="d-flex align-center mt-4">
-                    <v-btn
-                      v-if="sourcePanel.source.download_url"
-                      :href="sourcePanel.source.download_url"
-                      target="_blank"
-                      rel="noopener"
-                      color="primary"
-                      variant="tonal"
+                <!-- Actions -->
+                <div class="source-actions">
+                  <LBtn
+                    v-if="sourcePanel.source.download_url"
+                    :href="sourcePanel.source.download_url"
+                    target="_blank"
+                    rel="noopener"
+                    variant="primary"
+                    size="small"
+                    prepend-icon="mdi-download"
+                  >
+                    Download
+                  </LBtn>
+                  <LBtn
+                    variant="text"
+                    size="small"
+                    prepend-icon="mdi-file-search"
+                    :disabled="!sourcePanel.source.content_url"
+                    @click="sourcePanel.tab = 'document'"
+                  >
+                    Volltext anzeigen
+                  </LBtn>
+                </div>
+              </template>
+            </div>
+
+            <!-- Screenshot Tab -->
+            <div v-else-if="sourcePanel.tab === 'screenshot'" class="tab-content">
+              <v-skeleton-loader v-if="sourcePanel.loadingScreenshot" type="image" height="320" class="skeleton-llars" />
+              <div v-else-if="sourcePanel.screenshotError" class="error-box">
+                <v-icon size="24" color="error">mdi-alert-circle</v-icon>
+                <span>{{ sourcePanel.screenshotError }}</span>
+              </div>
+              <div v-else class="screenshot-container">
+                <div v-if="!sourcePanel.screenshotBlobUrl" class="empty-source">
+                  <v-icon size="48" class="mb-2">mdi-image-off</v-icon>
+                  <div>Kein Screenshot verfügbar</div>
+                </div>
+                <template v-else>
+                  <div class="screenshot-actions">
+                    <LBtn
+                      size="small"
+                      variant="secondary"
+                      prepend-icon="mdi-fullscreen"
+                      @click="openFullscreen('screenshot')"
                     >
-                      <v-icon start>mdi-download</v-icon>
-                      Dokument
-                    </v-btn>
-                    <v-spacer />
-                    <v-btn
-                      variant="text"
-                      @click="sourcePanel.tab = 'document'"
-                      :disabled="!sourcePanel.source.content_url"
-                    >
-                      <v-icon start>mdi-file-search</v-icon>
-                      Text anzeigen
-                    </v-btn>
+                      Vergrößern
+                    </LBtn>
+                  </div>
+                  <div class="screenshot-frame" @click="openFullscreen('screenshot')">
+                    <v-img :src="sourcePanel.screenshotBlobUrl" contain max-height="420">
+                      <template #placeholder>
+                        <div class="d-flex align-center justify-center fill-height">
+                          <v-progress-circular indeterminate color="primary" size="24" />
+                        </div>
+                      </template>
+                    </v-img>
                   </div>
                 </template>
               </div>
-            </v-window-item>
+            </div>
 
-            <v-window-item value="screenshot">
-              <div class="sources-panel-content">
-                <v-skeleton-loader v-if="sourcePanel.loadingScreenshot" type="image" height="320" />
-                <v-alert
-                  v-else-if="sourcePanel.screenshotError"
-                  type="error"
-                  variant="tonal"
-                  density="compact"
-                >
-                  {{ sourcePanel.screenshotError }}
-                </v-alert>
-                <div v-else class="sources-panel-screenshot">
-                  <div v-if="!sourcePanel.screenshotBlobUrl" class="text-center pa-6 text-medium-emphasis">
-                    <v-icon size="48" class="mb-2">mdi-image-off</v-icon>
-                    <div>Kein Screenshot verfügbar</div>
-                  </div>
-                  <template v-else>
-                    <div class="d-flex justify-end mb-2">
-                      <v-btn
-                        size="small"
-                        variant="tonal"
-                        color="primary"
-                        @click="openFullscreen('screenshot')"
-                      >
-                        <v-icon start>mdi-fullscreen</v-icon>
-                        Vergrößern
-                      </v-btn>
-                    </div>
-                    <v-card
-                      variant="outlined"
-                      class="overflow-hidden screenshot-card"
-                      @click="openFullscreen('screenshot')"
+            <!-- Document Tab -->
+            <div v-else-if="sourcePanel.tab === 'document'" class="tab-content">
+              <v-skeleton-loader v-if="sourcePanel.loadingContent" type="article" class="skeleton-llars" />
+              <div v-else-if="sourcePanel.contentError" class="error-box">
+                <v-icon size="24" color="error">mdi-alert-circle</v-icon>
+                <span>{{ sourcePanel.contentError }}</span>
+              </div>
+              <div v-else class="document-container">
+                <div v-if="!sourcePanel.documentContent" class="empty-source">
+                  <v-icon size="48" class="mb-2">mdi-file-document-outline</v-icon>
+                  <div>Kein Inhalt verfügbar</div>
+                </div>
+                <template v-else>
+                  <div class="document-actions">
+                    <LBtn
+                      size="small"
+                      variant="secondary"
+                      prepend-icon="mdi-fullscreen"
+                      @click="openFullscreen('document')"
                     >
-                      <v-img :src="sourcePanel.screenshotBlobUrl" contain max-height="420">
-                        <template #placeholder>
-                          <div class="d-flex align-center justify-center fill-height">
-                            <v-progress-circular indeterminate color="primary" size="24" />
-                          </div>
-                        </template>
-                      </v-img>
-                    </v-card>
-                  </template>
-                </div>
-              </div>
-            </v-window-item>
-
-            <v-window-item value="document">
-              <div class="sources-panel-content">
-                <v-skeleton-loader v-if="sourcePanel.loadingContent" type="article" />
-                <v-alert
-                  v-else-if="sourcePanel.contentError"
-                  type="error"
-                  variant="tonal"
-                  density="compact"
-                >
-                  {{ sourcePanel.contentError }}
-                </v-alert>
-                <div v-else class="sources-panel-document">
-                  <div v-if="!sourcePanel.documentContent" class="text-center pa-6 text-medium-emphasis">
-                    <v-icon size="48" class="mb-2">mdi-file-document-outline</v-icon>
-                    <div>Kein Inhalt verfügbar</div>
+                      Vergrößern
+                    </LBtn>
                   </div>
-                  <template v-else>
-                    <div class="d-flex justify-end mb-2">
-                      <v-btn
-                        size="small"
-                        variant="tonal"
-                        color="primary"
-                        @click="openFullscreen('document')"
-                      >
-                        <v-icon start>mdi-fullscreen</v-icon>
-                        Vergrößern
-                      </v-btn>
-                    </div>
-                    <div class="sources-panel-text">
-                      {{ sourcePanel.documentContent }}
-                    </div>
-                  </template>
-                </div>
+                  <div class="document-text">
+                    {{ sourcePanel.documentContent }}
+                  </div>
+                </template>
               </div>
-            </v-window-item>
-          </v-window>
-        </v-card>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Fullscreen Dialog for Screenshot/Document -->
+    <!-- Fullscreen Dialog - LLARS Design -->
     <v-dialog v-model="fullscreenDialog.show" fullscreen transition="dialog-bottom-transition">
-      <v-card class="fullscreen-dialog-card">
-        <v-toolbar color="primary" density="compact">
-          <v-toolbar-title class="d-flex align-center">
-            <v-icon class="mr-2">{{ fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</v-icon>
-            {{ sourcePanel.source?.title || sourcePanel.source?.filename || 'Quelle' }}
-          </v-toolbar-title>
-          <v-spacer />
-          <v-btn icon @click="fullscreenDialog.show = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-toolbar>
-        <div class="fullscreen-content">
+      <div class="fullscreen-dialog">
+        <div class="fullscreen-header">
+          <div class="fullscreen-title">
+            <v-icon size="20" class="mr-2">{{ fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</v-icon>
+            <span>{{ sourcePanel.source?.title || sourcePanel.source?.filename || 'Quelle' }}</span>
+          </div>
+          <button class="fullscreen-close" @click="fullscreenDialog.show = false">
+            <v-icon size="20">mdi-close</v-icon>
+          </button>
+        </div>
+        <div class="fullscreen-body">
           <!-- Screenshot Fullscreen -->
           <template v-if="fullscreenDialog.type === 'screenshot'">
-            <div class="fullscreen-image-container">
+            <div class="fullscreen-image-wrapper">
               <img
                 v-if="sourcePanel.screenshotBlobUrl"
                 :src="sourcePanel.screenshotBlobUrl"
                 alt="Screenshot"
-                class="fullscreen-image"
+                class="fullscreen-img"
               />
             </div>
           </template>
           <!-- Document Fullscreen -->
           <template v-else-if="fullscreenDialog.type === 'document'">
-            <div class="fullscreen-document-container">
-              <div class="fullscreen-document-text">
+            <div class="fullscreen-document-wrapper">
+              <div class="fullscreen-doc-text">
                 {{ sourcePanel.documentContent }}
               </div>
             </div>
           </template>
         </div>
-      </v-card>
+      </div>
     </v-dialog>
 
     <!-- Snackbar -->
@@ -681,6 +740,16 @@ const sessionId = ref(null)
 
 // UI state - sidebar with localStorage persistence
 const sidebarCollapsed = ref(false)
+const searchQuery = ref('')
+const expandedBots = ref({})
+const botConversations = ref({})
+
+// Streaming title state
+const streamingTitle = ref({
+  conversationId: null,
+  text: '',
+  isStreaming: false
+})
 
 // Load sidebar state from localStorage
 const storedSidebar = localStorage.getItem('sidebar_chat')
@@ -688,9 +757,161 @@ if (storedSidebar !== null) {
   sidebarCollapsed.value = storedSidebar === 'true'
 }
 
+// Load expanded state from localStorage
+const storedExpanded = localStorage.getItem('chat_expanded_bots')
+if (storedExpanded) {
+  try {
+    expandedBots.value = JSON.parse(storedExpanded)
+  } catch {}
+}
+
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
   localStorage.setItem('sidebar_chat', String(sidebarCollapsed.value))
+}
+
+function toggleBot(bot) {
+  if (sidebarCollapsed.value) {
+    // In collapsed mode, just select the bot
+    selectChatbot(bot)
+    return
+  }
+
+  expandedBots.value[bot.id] = !expandedBots.value[bot.id]
+  localStorage.setItem('chat_expanded_bots', JSON.stringify(expandedBots.value))
+
+  // If expanding and not already selected, select the bot and load its conversations
+  if (expandedBots.value[bot.id] && selectedChatbot.value?.id !== bot.id) {
+    selectChatbot(bot)
+  }
+
+  // If expanding, ensure we have conversations loaded for this bot
+  if (expandedBots.value[bot.id] && !botConversations.value[bot.id]) {
+    loadBotConversations(bot.id)
+  }
+}
+
+function getChatCount(botId) {
+  return botConversations.value[botId]?.length || 0
+}
+
+function getFilteredConversations(botId) {
+  const convs = botConversations.value[botId] || []
+  if (!searchQuery.value) return convs
+
+  const query = searchQuery.value.toLowerCase()
+  return convs.filter(c =>
+    (c.title || 'Neuer Chat').toLowerCase().includes(query)
+  )
+}
+
+/**
+ * Get display title for a conversation (handles streaming state)
+ */
+function getDisplayTitle(conv) {
+  // Check if this conversation is currently streaming its title
+  if (streamingTitle.value.isStreaming && streamingTitle.value.conversationId === conv.id) {
+    return {
+      text: streamingTitle.value.text || '',
+      isStreaming: true
+    }
+  }
+  return {
+    text: conv.title || 'Neuer Chat',
+    isStreaming: false
+  }
+}
+
+/**
+ * Check if header title should show streaming state
+ */
+function getHeaderTitle() {
+  if (streamingTitle.value.isStreaming && streamingTitle.value.conversationId === selectedConversation.value?.id) {
+    return {
+      text: streamingTitle.value.text || '',
+      isStreaming: true
+    }
+  }
+  return {
+    text: selectedConversation.value?.title || selectedChatbot.value?.display_name || '',
+    isStreaming: false
+  }
+}
+
+async function loadBotConversations(botId) {
+  try {
+    const response = await axios.get(`/api/chatbots/${botId}/conversations`)
+    botConversations.value[botId] = response.data.conversations || []
+  } catch (error) {
+    console.error('Error loading bot conversations:', error)
+    botConversations.value[botId] = []
+  }
+}
+
+async function selectConversationFromBot(bot, conv) {
+  if (selectedChatbot.value?.id !== bot.id) {
+    await selectChatbot(bot)
+  }
+  await selectConversation(conv)
+}
+
+async function renameConversation(conv) {
+  const newTitle = prompt('Neuer Chat-Titel:', conv.title || 'Neuer Chat')
+  if (!newTitle || newTitle === conv.title) return
+
+  try {
+    await axios.patch(`/api/chatbots/${selectedChatbot.value?.id}/conversations/${conv.id}`, {
+      title: newTitle
+    })
+    // Update local state
+    conv.title = newTitle
+    if (selectedConversation.value?.id === conv.id) {
+      selectedConversation.value.title = newTitle
+    }
+    // Update in botConversations
+    const botId = selectedChatbot.value?.id
+    if (botId && botConversations.value[botId]) {
+      const idx = botConversations.value[botId].findIndex(c => c.id === conv.id)
+      if (idx !== -1) {
+        botConversations.value[botId][idx].title = newTitle
+      }
+    }
+    showSnackbar('Chat umbenannt', 'success')
+  } catch (error) {
+    console.error('Error renaming conversation:', error)
+    showSnackbar('Fehler beim Umbenennen', 'error')
+  }
+}
+
+async function deleteConversation(conv) {
+  if (!confirm('Diesen Chat wirklich löschen?')) return
+
+  const botId = selectedChatbot.value?.id
+  try {
+    await axios.delete(`/api/chatbots/${botId}/conversations/${conv.id}`)
+
+    // Remove from conversations list
+    conversations.value = conversations.value.filter(c => c.id !== conv.id)
+
+    // Remove from botConversations
+    if (botId && botConversations.value[botId]) {
+      botConversations.value[botId] = botConversations.value[botId].filter(c => c.id !== conv.id)
+    }
+
+    // If this was the selected conversation, select another or create new
+    if (selectedConversation.value?.id === conv.id) {
+      if (conversations.value.length > 0) {
+        await selectConversation(conversations.value[0])
+      } else {
+        await createConversation()
+      }
+    }
+
+    showSnackbar('Chat gelöscht', 'success')
+  } catch (error) {
+    console.error('Error deleting conversation:', error)
+    showSnackbar('Fehler beim Löschen', 'error')
+  }
 }
 
 const selectedFiles = ref([])
@@ -870,13 +1091,18 @@ async function maybeAutoSelectFromRoute() {
 
 async function loadConversations(autoSelect = true) {
   if (!selectedChatbot.value) return
+  const botId = selectedChatbot.value.id
+
   await withLoading('conversations', async () => {
     try {
-      const response = await axios.get(`/api/chatbots/${selectedChatbot.value.id}/conversations`)
+      const response = await axios.get(`/api/chatbots/${botId}/conversations`)
       conversations.value = response.data.conversations || []
+      // Also update botConversations for sidebar
+      botConversations.value[botId] = conversations.value
     } catch (error) {
       console.error('Error loading conversations:', error)
       conversations.value = []
+      botConversations.value[botId] = []
       showSnackbar('Fehler beim Laden der Chats', 'error')
     }
   })
@@ -893,13 +1119,17 @@ async function loadConversations(autoSelect = true) {
 
 async function createConversation(title = null) {
   if (!selectedChatbot.value) return
+  const botId = selectedChatbot.value.id
+
   try {
-    const response = await axios.post(`/api/chatbots/${selectedChatbot.value.id}/conversations`, {
+    const response = await axios.post(`/api/chatbots/${botId}/conversations`, {
       title: title || 'Neuer Chat'
     })
     if (response.data.success) {
       const convo = response.data.conversation
       conversations.value = [convo, ...conversations.value]
+      // Also update botConversations for sidebar
+      botConversations.value[botId] = [convo, ...(botConversations.value[botId] || []).filter(c => c.id !== convo.id)]
       await selectConversation(convo)
     }
   } catch (error) {
@@ -912,11 +1142,29 @@ async function selectConversation(conversation) {
   if (!conversation || !selectedChatbot.value) return
   selectedConversation.value = conversation
   sessionId.value = conversation.session_id
+
+  // Reset source panel when switching conversations (sources are chat-specific)
+  if (!sourcePanel.value.pinned) {
+    sourcePanel.value.open = false
+  }
+  sourcePanel.value.source = null
+  sourcePanel.value.tab = 'excerpt'
+
+  // Close fullscreen dialog if open
+  fullscreenDialog.value.show = false
+
   await loadConversationMessages(conversation.id)
 }
 
 async function loadConversationMessages(conversationId) {
   if (!selectedChatbot.value || !conversationId) return
+
+  // Reset agent display before loading new conversation
+  agentStatus.value = null
+  if (agentReasoningRef.value?.reset) {
+    agentReasoningRef.value.reset()
+  }
+
   try {
     const response = await axios.get(`/api/chatbots/${selectedChatbot.value.id}/conversations/${conversationId}`)
     if (response.data.success) {
@@ -936,6 +1184,7 @@ async function loadConversationMessages(conversationId) {
         streaming: false
       }))
 
+      // Load agent trace from last assistant message if available
       const lastAgentMessage = [...(convo.messages || [])]
         .reverse()
         .find(m => m.role === 'assistant' && Array.isArray(m.agent_trace) && m.agent_trace.length > 0)
@@ -949,9 +1198,8 @@ async function loadConversationMessages(conversationId) {
           reasoning_steps: lastAgentMessage.agent_trace,
           _eventId: agentEventCounter.value
         }
-      } else {
-        agentStatus.value = null
       }
+      // If no agent message found, agentStatus stays null (already reset above)
     }
   } catch (error) {
     console.error('Error loading conversation messages:', error)
@@ -975,6 +1223,17 @@ function updateConversationTitle(conversationId, title) {
       title
     }
   }
+
+  // Also update in botConversations for sidebar display
+  if (selectedChatbot.value?.id) {
+    const convs = botConversations.value[selectedChatbot.value.id]
+    if (convs) {
+      const botIdx = convs.findIndex(c => c.id === conversationId)
+      if (botIdx !== -1) {
+        convs[botIdx] = { ...convs[botIdx], title }
+      }
+    }
+  }
 }
 
 /**
@@ -993,6 +1252,10 @@ async function selectChatbot(bot) {
   if (agentReasoningRef.value?.reset) {
     agentReasoningRef.value.reset()
   }
+
+  // Expand this bot in sidebar
+  expandedBots.value[bot.id] = true
+  localStorage.setItem('chat_expanded_bots', JSON.stringify(expandedBots.value))
 
   // Load capabilities
   try {
@@ -1491,24 +1754,50 @@ function initSocket() {
   // Completion metadata
   socket.value.on('chatbot:complete', (data) => {
     console.log('Chatbot response complete:', data)
-    if (data.conversation_id && (!selectedConversation.value || selectedConversation.value.id !== data.conversation_id)) {
+    const convId = data.conversation_id
+    const convTitle = data.title || selectedConversation.value?.title || 'Neuer Chat'
+
+    if (convId && (!selectedConversation.value || selectedConversation.value.id !== convId)) {
       selectedConversation.value = {
         ...(selectedConversation.value || {}),
-        id: data.conversation_id,
+        id: convId,
         session_id: data.session_id || sessionId.value,
-        title: data.title || selectedConversation.value?.title
+        title: convTitle
       }
       conversations.value = [
         {
-          id: data.conversation_id,
+          id: convId,
           session_id: data.session_id || sessionId.value,
-          title: data.title || selectedConversation.value?.title || 'Neuer Chat'
+          title: convTitle
         },
-        ...conversations.value.filter(c => c.id !== data.conversation_id)
+        ...conversations.value.filter(c => c.id !== convId)
       ]
+
+      // Also add/update in botConversations for sidebar
+      if (selectedChatbot.value?.id) {
+        const botId = selectedChatbot.value.id
+        if (!botConversations.value[botId]) {
+          botConversations.value[botId] = []
+        }
+        const existingIdx = botConversations.value[botId].findIndex(c => c.id === convId)
+        if (existingIdx === -1) {
+          // Add new conversation at the beginning
+          botConversations.value[botId].unshift({
+            id: convId,
+            session_id: data.session_id || sessionId.value,
+            title: convTitle
+          })
+        } else {
+          // Update existing
+          botConversations.value[botId][existingIdx] = {
+            ...botConversations.value[botId][existingIdx],
+            title: convTitle
+          }
+        }
+      }
     }
     if (data.title) {
-      updateConversationTitle(data.conversation_id || selectedConversation.value?.id, data.title)
+      updateConversationTitle(convId || selectedConversation.value?.id, data.title)
     }
     if (data.session_id && !sessionId.value) {
       sessionId.value = data.session_id
@@ -1525,6 +1814,43 @@ function initSocket() {
     agentEventCounter.value++
     agentStatus.value = { ...data, _eventId: agentEventCounter.value }
     console.log('Agent status:', data.type, agentEventCounter.value)
+  })
+
+  // Title streaming events
+  socket.value.on('chatbot:title_generating', (data) => {
+    const convId = data.conversation_id || selectedConversation.value?.id
+    streamingTitle.value = {
+      conversationId: convId,
+      text: '',
+      isStreaming: true
+    }
+  })
+
+  socket.value.on('chatbot:title_delta', (data) => {
+    if (streamingTitle.value.isStreaming && data.delta) {
+      // Update conversation_id if provided (for first message when selectedConversation isn't set yet)
+      if (data.conversation_id && !streamingTitle.value.conversationId) {
+        streamingTitle.value.conversationId = data.conversation_id
+      }
+      streamingTitle.value.text += data.delta
+    }
+  })
+
+  socket.value.on('chatbot:title_complete', (data) => {
+    const convId = data.conversation_id || streamingTitle.value.conversationId
+    if (data.title && convId) {
+      // Update conversation title in all relevant places
+      updateConversationTitle(convId, data.title)
+    }
+
+    // Reset streaming state after a brief delay for animation
+    setTimeout(() => {
+      streamingTitle.value = {
+        conversationId: null,
+        text: '',
+        isStreaming: false
+      }
+    }, 300)
   })
 
   // Error handling
@@ -1585,6 +1911,12 @@ onMounted(async () => {
   await withLoading('chatbots', async () => {
     await loadChatbots()
   })
+
+  // Preload conversations for all chatbots (for sidebar counts)
+  for (const bot of chatbots.value) {
+    loadBotConversations(bot.id)
+  }
+
   await maybeAutoSelectFromRoute()
   initSocket()
 })
@@ -1607,12 +1939,12 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* Sidebar - matching AppSidebar styling */
-.chatbot-sidebar {
-  width: 260px;
-  min-width: 260px;
+/* ==================== MODERN GROUPED SIDEBAR ==================== */
+.chat-sidebar {
+  width: 280px;
+  min-width: 280px;
   height: 100%;
-  background: linear-gradient(180deg, rgb(var(--v-theme-surface)) 0%, rgba(var(--v-theme-surface-variant), 0.5) 100%);
+  background: linear-gradient(180deg, rgb(var(--v-theme-surface)) 0%, rgba(var(--v-theme-surface-variant), 0.3) 100%);
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   display: flex;
   flex-direction: column;
@@ -1621,64 +1953,56 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.chatbot-sidebar.collapsed {
-  width: 64px;
-  min-width: 64px;
-  position: relative;
+.chat-sidebar.collapsed {
+  width: 60px;
+  min-width: 60px;
 }
 
-/* Header */
+/* Sidebar Header */
 .sidebar-header {
   display: flex;
   align-items: center;
   padding: 12px;
-  min-height: 64px;
   gap: 8px;
-  position: relative;
+  min-height: 56px;
 }
 
-.header-content {
+.new-chat-btn {
   flex: 1;
+  border-radius: 16px 4px 16px 4px !important; /* LLARS asymmetric */
+}
+
+.new-chat-btn-mini {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px 4px 12px 4px;
+  border: none;
+  background: var(--llars-primary, #b0ca97);
+  color: white;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
-  overflow: hidden;
-  transition: justify-content 0.25s ease;
-}
-
-.header-content.justify-center {
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.header-icon {
-  color: rgb(var(--v-theme-primary));
-  flex-shrink: 0;
+.new-chat-btn-mini:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(176, 202, 151, 0.4);
 }
 
-.header-icon-collapsed {
-  color: rgb(var(--v-theme-primary));
-}
-
-.header-text {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.header-title {
-  font-weight: 600;
-  font-size: 15px;
-  color: rgb(var(--v-theme-on-surface));
+.new-chat-btn-mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .collapse-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   border: none;
   background: rgba(var(--v-theme-on-surface), 0.05);
-  color: rgba(var(--v-theme-on-surface), 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.6);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1694,15 +2018,199 @@ onUnmounted(() => {
 
 .collapsed .sidebar-header {
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
   padding: 12px 8px;
   gap: 8px;
 }
 
-.collapsed .collapse-btn {
-  position: static;
-  margin-top: 4px;
+/* Search */
+.sidebar-search {
+  padding: 0 12px 12px;
+}
+
+.search-input :deep(.v-field) {
+  border-radius: 12px 4px 12px 4px !important;
+  font-size: 13px;
+}
+
+.search-input :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.1;
+}
+
+/* Sidebar Nav */
+.sidebar-nav {
+  flex: 1;
+  padding: 0 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Chatbot Group */
+.chatbot-group {
+  margin-bottom: 4px;
+  border-radius: 12px 4px 12px 4px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.chatbot-group.active {
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+
+.chatbot-group.expanded {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.chatbot-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.collapsed .chatbot-header {
+  justify-content: center;
+  padding: 10px;
+}
+
+.chatbot-header:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.chatbot-group.active .chatbot-header {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.chatbot-avatar {
+  flex-shrink: 0;
+}
+
+.chatbot-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chatbot-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatbot-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.chat-count {
+  font-size: 11px;
+}
+
+.expand-icon {
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  transition: transform 0.2s ease;
+}
+
+/* Conversations List (Nested) */
+.conversations-list {
+  padding: 4px 0 8px 0;
+}
+
+.conversation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 44px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 8px 2px 8px 2px;
+  margin: 2px 8px;
+  position: relative;
+}
+
+.conversation-item:hover {
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+
+.conversation-item.active {
+  background: rgba(var(--v-theme-primary), 0.18);
+  color: rgb(var(--v-theme-primary));
+}
+
+.conversation-item.active .conv-icon {
+  color: rgb(var(--v-theme-primary));
+}
+
+.conv-icon {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  flex-shrink: 0;
+}
+
+.conv-title {
+  flex: 1;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conv-actions {
+  display: none;
+  gap: 2px;
+}
+
+.conversation-item:hover .conv-actions {
+  display: flex;
+}
+
+.conv-action {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 6px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.conv-action:hover {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
+}
+
+.conv-action.delete:hover {
+  background: rgba(232, 160, 135, 0.2);
+  color: #e8a087;
+}
+
+.no-chats {
+  padding: 8px 12px 8px 44px;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-style: italic;
+}
+
+.empty-sidebar {
+  text-align: center;
+  padding: 32px 16px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 /* Divider */
@@ -1712,15 +2220,17 @@ onUnmounted(() => {
   margin: 0 12px;
 }
 
-/* Navigation */
-.sidebar-nav {
-  flex: 1;
+/* Footer */
+.sidebar-footer {
+  margin-top: auto;
   padding: 8px;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
-.nav-item {
+.sidebar-footer .sidebar-divider {
+  margin-bottom: 8px;
+}
+
+.footer-item {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1729,103 +2239,27 @@ onUnmounted(() => {
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.8);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   cursor: pointer;
   transition: all 0.2s ease;
-  text-align: left;
-  font-size: 14px;
-  margin-bottom: 4px;
+  font-size: 13px;
 }
 
-.collapsed .nav-item {
-  justify-content: center;
-  padding: 12px;
-}
-
-.nav-item:hover {
+.footer-item:hover {
   background: rgba(var(--v-theme-primary), 0.08);
   color: rgb(var(--v-theme-on-surface));
 }
 
-.nav-item.active {
-  background: rgba(var(--v-theme-primary), 0.15);
-  color: rgb(var(--v-theme-primary));
-}
-
-.nav-item.active .nav-icon {
-  color: rgb(var(--v-theme-primary));
-}
-
-.nav-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
+.collapsed .footer-item {
   justify-content: center;
-  flex-shrink: 0;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  transition: color 0.2s ease;
+  padding: 12px;
 }
 
-.nav-item:hover .nav-icon {
-  color: rgb(var(--v-theme-primary));
-}
-
-.nav-label {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.collapsed .nav-label {
+.collapsed .footer-item span {
   display: none;
 }
 
-.nav-badge {
-  flex-shrink: 0;
-}
-
-.collapsed .nav-badge {
-  display: none;
-}
-
-/* Chatbot-specific styles */
-.chatbot-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.chatbot-description {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Footer */
-.sidebar-footer {
-  margin-top: auto;
-  padding-bottom: 8px;
-}
-
-.sidebar-footer .sidebar-divider {
-  margin-bottom: 8px;
-}
-
-.sidebar-footer .nav-item {
-  margin: 0 8px 0;
-  width: calc(100% - 16px);
-}
-
-.collapsed .sidebar-footer .nav-item {
-  width: calc(100% - 16px);
-}
-
+/* ==================== MAIN CHAT AREA ==================== */
 .chat-main {
   flex: 1;
   display: flex;
@@ -1833,35 +2267,81 @@ onUnmounted(() => {
   height: 100%;
   background: rgb(var(--v-theme-surface));
   overflow: hidden;
-  min-width: 0; /* wichtig für flex */
+  min-width: 0;
 }
 
+/* Chat Header - Modern LLARS Style */
 .chat-header {
-  padding: 12px 24px;
-  background: rgba(var(--v-theme-primary), 0.05);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  padding: 12px 20px;
+  background: linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08) 0%, rgba(var(--v-theme-primary), 0.02) 100%);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 64px;
 }
 
-.conversation-bar {
-  padding: 8px 24px;
+.header-left {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   gap: 12px;
+  min-width: 0;
 }
 
-.conversation-list {
+.bot-avatar {
+  flex-shrink: 0;
+  border-radius: 12px 4px 12px 4px !important;
+}
+
+.header-info {
+  min-width: 0;
+}
+
+.header-title {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.header-subtitle {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-name {
+  opacity: 0.7;
+}
+
+.header-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-.conversation-chip {
+.header-action {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-radius: 10px 4px 10px 4px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.header-action:hover {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
 }
 
 .empty-state {
@@ -2026,19 +2506,20 @@ onUnmounted(() => {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
+/* ==================== SOURCES PANEL - LLARS DESIGN ==================== */
 .sources-panel {
   background: rgb(var(--v-theme-surface));
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  min-width: 0; /* wichtig für flex */
+  min-width: 0;
 }
 
 /* Resize Divider */
 .resize-divider {
   width: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.06);
   cursor: col-resize;
   display: flex;
   align-items: center;
@@ -2049,68 +2530,294 @@ onUnmounted(() => {
 
 .resize-divider:hover,
 .resize-divider.resizing {
-  background: rgba(var(--v-theme-primary), 0.3);
+  background: rgba(var(--v-theme-primary), 0.2);
 }
 
 .resize-handle {
   width: 4px;
   height: 40px;
-  background: rgba(var(--v-theme-on-surface), 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 2px;
 }
 
 .resize-divider:hover .resize-handle,
 .resize-divider.resizing .resize-handle {
-  background: rgb(var(--v-theme-primary));
+  background: var(--llars-primary, #b0ca97);
 }
 
+/* Panel Card */
 .sources-panel-card {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
+/* Panel Header */
 .sources-panel-header {
   padding: 12px 16px;
-  background: rgba(var(--v-theme-primary), 0.05);
+  background: linear-gradient(180deg, rgba(var(--v-theme-primary), 0.1) 0%, rgba(var(--v-theme-primary), 0.03) 100%);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
 }
 
-.sources-panel-window {
+.header-title-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.source-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--llars-primary, #b0ca97);
+  border-radius: 10px 4px 10px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.source-title-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.source-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source-collection {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sources-panel-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.panel-action {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 8px 3px 8px 3px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.panel-action:hover {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
+}
+
+.panel-action.active {
+  background: rgba(var(--v-theme-primary), 0.2);
+  color: var(--llars-primary, #b0ca97);
+}
+
+.panel-action.close:hover {
+  background: rgba(232, 160, 135, 0.2);
+  color: #e8a087;
+}
+
+/* Custom Tabs */
+.source-tabs {
+  display: flex;
+  padding: 8px 12px;
+  gap: 6px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.source-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  border-radius: 10px 4px 10px 4px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-tab:hover:not(.disabled) {
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.source-tab.active {
+  background: var(--llars-primary, #b0ca97);
+  color: white;
+  box-shadow: 0 2px 8px rgba(176, 202, 151, 0.3);
+}
+
+.source-tab.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Panel Body */
+.sources-panel-body {
   flex: 1;
   overflow: hidden;
 }
 
-.sources-panel-window :deep(.v-window__container),
-.sources-panel-window :deep(.v-window-item) {
-  height: 100%;
-}
-
-.sources-panel-content {
+.tab-content {
   height: 100%;
   overflow-y: auto;
   padding: 16px;
 }
 
-.sources-panel-excerpt {
-  white-space: pre-wrap;
-  line-height: 1.6;
-  background: rgba(var(--v-theme-surface-variant), 0.3);
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 0.9rem;
+/* Empty State */
+.empty-source {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-align: center;
 }
 
-.sources-panel-text {
-  white-space: pre-wrap;
-  line-height: 1.6;
-  font-size: 0.85rem;
+/* Error Box */
+.error-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(232, 160, 135, 0.1);
+  border: 1px solid rgba(232, 160, 135, 0.3);
+  border-radius: 12px 4px 12px 4px;
+  color: #e8a087;
 }
 
-.sources-panel-screenshot :deep(img) {
+/* Metadata Tags */
+.source-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* Excerpt Box */
+.excerpt-box {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  border-radius: 12px 4px 12px 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.excerpt-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.excerpt-text {
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Source Actions */
+.source-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Screenshot Container */
+.screenshot-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.screenshot-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.screenshot-frame {
+  border-radius: 12px 4px 12px 4px;
+  overflow: hidden;
   cursor: zoom-in;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.screenshot-frame:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Document Container */
+.document-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.document-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.document-text {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  border-radius: 12px 4px 12px 4px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: rgb(var(--v-theme-on-surface));
+  max-height: calc(100vh - 350px);
+  overflow-y: auto;
+}
+
+/* Skeleton Loader LLARS style */
+.skeleton-llars :deep(.v-skeleton-loader__bone) {
+  border-radius: 12px 4px 12px 4px;
 }
 
 .file-preview {
@@ -2122,45 +2829,80 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-/* Source detail dialog */
+/* Source detail dialog (legacy) */
 .source-excerpt {
   white-space: pre-wrap;
   line-height: 1.6;
   background: rgba(var(--v-theme-surface-variant), 0.3);
-  border-radius: 8px;
+  border-radius: 12px 4px 12px 4px;
   padding: 16px;
   font-size: 0.9rem;
   max-height: 400px;
   overflow-y: auto;
 }
 
-/* Screenshot Card clickable */
-.screenshot-card {
-  cursor: pointer;
-  transition: box-shadow 0.2s ease;
-}
-
-.screenshot-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Fullscreen Dialog */
-.fullscreen-dialog-card {
+/* ==================== FULLSCREEN DIALOG - LLARS DESIGN ==================== */
+.fullscreen-dialog {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: rgb(var(--v-theme-surface));
 }
 
-.fullscreen-content {
+.fullscreen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, var(--llars-primary, #b0ca97) 0%, #9ab886 100%);
+  color: white;
+  min-height: 56px;
+}
+
+.fullscreen-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 15px;
+  min-width: 0;
+}
+
+.fullscreen-title span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fullscreen-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px 4px 10px 4px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.fullscreen-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.fullscreen-body {
   flex: 1;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(var(--v-theme-surface));
+  background: rgb(var(--v-theme-background));
 }
 
-.fullscreen-image-container {
+.fullscreen-image-wrapper {
   width: 100%;
   height: 100%;
   display: flex;
@@ -2170,34 +2912,35 @@ onUnmounted(() => {
   padding: 24px;
 }
 
-.fullscreen-image {
+.fullscreen-img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border-radius: 16px 4px 16px 4px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
 }
 
-.fullscreen-document-container {
+.fullscreen-document-wrapper {
   width: 100%;
   height: 100%;
   overflow: auto;
   padding: 32px;
 }
 
-.fullscreen-document-text {
+.fullscreen-doc-text {
   max-width: 900px;
   margin: 0 auto;
   white-space: pre-wrap;
-  line-height: 1.8;
-  font-size: 1rem;
-  background: rgb(var(--v-theme-surface-variant));
-  border-radius: 12px;
+  line-height: 1.9;
+  font-size: 15px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px 4px 16px 4px;
   padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
 @media (max-width: 960px) {
-  .chatbot-sidebar {
+  .chat-sidebar {
     display: none;
   }
 
@@ -2217,6 +2960,55 @@ onUnmounted(() => {
     bottom: 30px;
     width: 100% !important;
     z-index: 100;
+  }
+}
+
+/* ==================== TITLE STREAMING ANIMATION ==================== */
+.streaming-text {
+  display: inline-flex;
+  align-items: center;
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--llars-primary, #b0ca97);
+  margin-left: 2px;
+  animation: blink 0.8s steps(1) infinite;
+  vertical-align: middle;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.title-streaming .conv-title {
+  color: var(--llars-primary, #b0ca97);
+  font-weight: 500;
+}
+
+.header-title.streaming-text {
+  color: var(--llars-primary, #b0ca97);
+}
+
+/* Smooth text appearance animation */
+.conv-title.streaming-text,
+.header-title.streaming-text {
+  animation: textAppear 0.15s ease-out;
+}
+
+@keyframes textAppear {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
   }
 }
 </style>

@@ -91,10 +91,93 @@ class ChatService:
             title = f"{title}..."
         return title
 
+    def _generate_smart_title(self, message: Optional[str], stream_callback=None) -> Optional[str]:
+        """
+        Generate an intelligent short title using LLM.
+        Falls back to simple truncation on error.
+
+        Args:
+            message: User message to generate title from
+            stream_callback: Optional callback function(delta: str) for streaming title chars
+        """
+        text = str(message or "").strip()
+        if not text:
+            return None
+
+        try:
+            llm_client = OpenAI(
+                api_key=os.environ.get('LITELLM_API_KEY'),
+                base_url=os.environ.get('LITELLM_BASE_URL')
+            )
+
+            # Use chatbot's model or environment variable or fallback to default
+            model = os.environ.get('LITELLM_TITLE_MODEL')
+            if not model and hasattr(self, 'chatbot') and self.chatbot:
+                model = self.chatbot.model_name
+            if not model:
+                model = 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": "Generiere einen sehr kurzen Titel (2-4 Wörter) für diese Chat-Anfrage. "
+                               "Antworte NUR mit dem Titel, keine Anführungszeichen, keine Erklärung. "
+                               "Beispiele: Öffnungszeiten, Kontaktdaten, Preisanfrage, Technischer Support, Firmeninhaber"
+                },
+                {
+                    "role": "user",
+                    "content": text[:500]  # Limit input length
+                }
+            ]
+
+            # Stream if callback provided
+            if stream_callback:
+                title = ""
+                stream = llm_client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    max_tokens=20,
+                    temperature=0.3,
+                    timeout=10.0,
+                    stream=True
+                )
+                for chunk in stream:
+                    choice = chunk.choices[0] if chunk.choices else None
+                    delta = getattr(choice, "delta", None) if choice else None
+                    if delta and hasattr(delta, 'content') and delta.content:
+                        title += delta.content
+                        stream_callback(delta.content)
+            else:
+                response = llm_client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    max_tokens=20,
+                    temperature=0.3,
+                    timeout=10.0
+                )
+                title = response.choices[0].message.content.strip()
+
+            # Clean up: remove quotes, limit length
+            title = title.strip('"\'„"»«')
+            # Remove any trailing punctuation except ...
+            title = re.sub(r'[.!?:;,]+$', '', title)
+            if len(title) > self._TITLE_MAX_CHARS:
+                title = title[:self._TITLE_MAX_CHARS - 3].rstrip(" .,:;!?-") + "..."
+
+            if title:
+                logger.info(f"Generated smart title: '{title}' for message: '{text[:50]}...'")
+                return title
+
+        except Exception as e:
+            logger.warning(f"Smart title generation failed, using fallback: {e}")
+
+        # Fallback to simple title extraction
+        return self._build_title_from_message(message)
+
     def _maybe_set_conversation_title(self, conversation: ChatbotConversation, message: Optional[str]) -> bool:
         if not self._is_placeholder_title(conversation.title):
             return False
-        title = self._build_title_from_message(message)
+        title = self._generate_smart_title(message)
         if not title:
             return False
         conversation.title = title

@@ -104,14 +104,13 @@ class Chatbot(db.Model):
     )
 
 
-DEFAULT_RAG_UNKNOWN_ANSWER = "Ich weiß es nicht"
+DEFAULT_RAG_UNKNOWN_ANSWER = "Das kann ich dir leider nicht beantworten."
 
 DEFAULT_RAG_CITATION_INSTRUCTIONS = """
-WICHTIG - Antworten mit Quellen:
-- Beantworte die Frage NUR mit Hilfe des Kontexts.
-- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).
-- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.
-- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: "{{UNKNOWN_ANSWER}}"
+Antworte natürlich und gesprächig. Nutze die bereitgestellten Informationen als Grundlage, aber formuliere frei und menschlich. Halte das Gespräch am Laufen - stelle Rückfragen, biete Hilfe an, sei freundlich.
+
+Bei Fakten aus dem Kontext: Verweise mit [1], [2] etc. auf die Quelle.
+Bei Gespräch, Smalltalk oder Rückfragen: Antworte einfach natürlich.
 """.strip()
 
 DEFAULT_RAG_CONTEXT_PREFIX = "Kontext:"
@@ -390,8 +389,8 @@ class ChatbotMessage(db.Model):
     role: Mapped[str] = mapped_column(db.Enum(ChatbotMessageRole), nullable=False)
     content: Mapped[str] = mapped_column(db.Text, nullable=False)
 
-    # RAG Context (only for assistant messages)
-    rag_context: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+    # RAG Context (only for assistant messages) - LONGTEXT for large contexts
+    rag_context: Mapped[Optional[str]] = mapped_column(db.Text(length=4294967295), nullable=True)
     rag_sources: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
 
     # Metrics

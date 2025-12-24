@@ -92,7 +92,9 @@ register_all_blueprints(app)
 
 
 # Configure all SocketIO event handlers
-configure_socket_routes(socketio)
+# IMPORTANT: Must be inside app_context so ChatManager -> RAGPipeline can query llm_models
+with app.app_context():
+    configure_socket_routes(socketio)
 
 # Initialize Crawler service with SocketIO for live updates
 # (Crawler events are registered in configure_socket_routes,

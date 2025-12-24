@@ -205,6 +205,39 @@ def _get_rag_images_for_sources(sources):
     return images
 
 
+def _stream_title_generation(socketio, chat_service, conversation, user_message, client_id):
+    """
+    Stream title generation to the client.
+
+    Emits:
+        chatbot:title_generating - Title generation starting (with conversation_id)
+        chatbot:title_delta - Streaming title characters
+        chatbot:title_complete - Final title (with conversation_id)
+    """
+    if not chat_service._is_placeholder_title(conversation.title):
+        return conversation.title
+
+    conv_id = conversation.id
+
+    def title_stream_callback(delta: str):
+        emit("chatbot:title_delta", {"delta": delta, "conversation_id": conv_id}, room=client_id)
+        socketio.sleep(0)
+
+    # Emit that title generation is starting
+    emit("chatbot:title_generating", {"generating": True, "conversation_id": conv_id}, room=client_id)
+    socketio.sleep(0)
+
+    # Generate title with streaming
+    title = chat_service._generate_smart_title(user_message, stream_callback=title_stream_callback)
+
+    if title:
+        conversation.title = title
+        emit("chatbot:title_complete", {"title": title, "conversation_id": conv_id}, room=client_id)
+        socketio.sleep(0)
+
+    return title
+
+
 def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session_id, username, client_id, start_time, conversation_id=None):
     """
     Handle streaming chat with agent modes (ACT, ReAct, ReflAct).
@@ -214,6 +247,8 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
         chatbot:response - Streaming content
         chatbot:sources - RAG sources
         chatbot:complete - Final metadata
+        chatbot:title_delta - Streaming title characters
+        chatbot:title_complete - Final title
     """
     try:
         # Emit initial agent mode info
@@ -325,6 +360,14 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                     "iteration": event.get("iteration")
                 })
 
+            elif event_status == "action_delta":
+                # Stream action text as it's being generated
+                emit_agent_status({
+                    "type": "action_delta",
+                    "delta": event.get("delta"),
+                    "iteration": event.get("iteration")
+                })
+
             elif event_status == "action":
                 reasoning_steps.append({
                     "type": "action",
@@ -390,9 +433,17 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                 all_sources = event.get("sources", [])
                 reasoning_steps = event.get("reasoning_steps", reasoning_steps)
                 conversation_id_result = event.get("conversation_id") or conversation_id
-                if event.get("title"):
-                    conversation_title = event.get("title")
                 message_id = event.get("message_id") or message_id
+
+                # Stream title generation if needed
+                conv = agent_service._get_or_create_conversation(session_id, username, conversation_id_result)
+                if agent_service._is_placeholder_title(conv.title):
+                    conversation_title = _stream_title_generation(
+                        socketio, agent_service, conv, user_message, client_id
+                    )
+                    db.session.commit()
+                else:
+                    conversation_title = conv.title
 
         # IMPORTANT: Send the final response content to frontend
         # Agent modes don't stream char-by-char, so we need to send the full response at once
@@ -729,7 +780,11 @@ def register_chatbot_events(socketio):
             # Update conversation
             conversation.message_count += 2
             conversation.last_message_at = datetime.now()
-            chat_service._maybe_set_conversation_title(conversation, user_message)
+
+            # Stream title generation if needed
+            if chat_service._is_placeholder_title(conversation.title):
+                _stream_title_generation(socketio, chat_service, conversation, user_message, client_id)
+
             db.session.commit()
 
             # Emit completion with metadata

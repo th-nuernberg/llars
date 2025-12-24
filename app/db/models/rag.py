@@ -378,6 +378,83 @@ class RAGDocumentPermission(db.Model):
     )
 
 
+class CollectionEmbedding(db.Model):
+    """
+    Tracks multiple embeddings per collection for multi-model support.
+
+    This enables robust fallback chains where different embedding models can be used:
+    - VDR-2B via KIZ (1024 dims) → VDR-2B local → MiniLM local (384 dims)
+
+    Each collection can have embeddings from multiple models, and at query time
+    the system selects the best available model that matches the stored embeddings.
+    """
+    __tablename__ = 'collection_embeddings'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+
+    collection_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('rag_collections.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True
+    )
+
+    # Model identification
+    model_id: Mapped[str] = mapped_column(db.String(255), nullable=False, index=True)  # e.g., "llamaindex/vdr-2b-multi-v1"
+    model_source: Mapped[str] = mapped_column(
+        db.Enum('local', 'litellm', name='embedding_model_source_enum'),
+        nullable=False
+    )  # Where the model was loaded from
+    embedding_dimensions: Mapped[int] = mapped_column(db.Integer, nullable=False)  # e.g., 1024 or 384
+
+    # ChromaDB collection name (unique per collection+model combination)
+    chroma_collection_name: Mapped[str] = mapped_column(db.String(255), nullable=False, unique=True)
+
+    # Processing status
+    status: Mapped[str] = mapped_column(
+        db.Enum('idle', 'processing', 'completed', 'failed', name='collection_embedding_model_status_enum'),
+        default='idle',
+        nullable=False,
+        index=True
+    )
+    progress: Mapped[int] = mapped_column(db.Integer, default=0)
+    chunk_count: Mapped[int] = mapped_column(db.Integer, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+
+    # Priority (higher = preferred for queries)
+    priority: Mapped[int] = mapped_column(db.Integer, default=0, index=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+
+    # Relationship
+    collection = db.relationship('RAGCollection', backref='embeddings')
+
+    __table_args__ = (
+        db.UniqueConstraint('collection_id', 'model_id', name='unique_collection_model'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'collection_id': self.collection_id,
+            'model_id': self.model_id,
+            'model_source': self.model_source,
+            'embedding_dimensions': self.embedding_dimensions,
+            'chroma_collection_name': self.chroma_collection_name,
+            'status': self.status,
+            'progress': self.progress,
+            'chunk_count': self.chunk_count,
+            'error_message': self.error_message,
+            'priority': self.priority,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
 class RAGProcessingQueue(db.Model):
     """Queue for background document processing"""
     __tablename__ = 'rag_processing_queue'

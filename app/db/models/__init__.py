@@ -46,6 +46,7 @@ from db.models.rag import (
     RAGDocumentVersion,
     RAGRetrievalLog,
     RAGDocumentPermission,
+    CollectionEmbedding,
     RAGProcessingQueue,
 )
 
@@ -169,6 +170,7 @@ __all__ = [
     'RAGDocumentVersion',
     'RAGRetrievalLog',
     'RAGDocumentPermission',
+    'CollectionEmbedding',
     'RAGProcessingQueue',
     # OnCoCo
     'OnCoCoAnalysisStatus',

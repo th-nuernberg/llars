@@ -307,9 +307,25 @@ class AgentChatService(ChatService):
                 messages.append({"role": "assistant", "content": obs["action"]})
                 messages.append({"role": "user", "content": f"OBSERVATION: {obs['result']}"})
 
-            # Get action from LLM
+            # Get action from LLM - NOW WITH STREAMING
             yield {"status": "getting_action", "iteration": iteration + 1}
-            action_text = self._call_llm_sync(messages)
+
+            # Stream the action text
+            action_text = ""
+            try:
+                stream = self.llm_client.chat.completions.create(
+                    **self._build_completion_kwargs(messages, stream=True)
+                )
+                for chunk in stream:
+                    choice = chunk.choices[0] if chunk.choices else None
+                    delta = getattr(choice, "delta", None) if choice else None
+                    delta_text = extract_delta_text(delta)
+                    if delta_text:
+                        action_text += delta_text
+                        yield {"status": "action_delta", "delta": delta_text, "iteration": iteration + 1}
+            except Exception as e:
+                logger.error(f"[AgentChatService] ACT action streaming failed: {e}")
+                action_text = self._call_llm_sync(messages)
 
             # Parse action
             action, param = self._parse_action(action_text)

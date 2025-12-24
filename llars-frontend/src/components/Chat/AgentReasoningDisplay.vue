@@ -193,7 +193,8 @@ function getStepIcon(type) {
     'action': 'mdi-cog',
     'observation': 'mdi-eye',
     'search': 'mdi-magnify',
-    'respond': 'mdi-message-reply'
+    'respond': 'mdi-message-reply',
+    'error': 'mdi-alert-circle'
   };
   return icons[type] || 'mdi-circle-small';
 }
@@ -206,7 +207,8 @@ function getStepLabel(type) {
     'action': 'ACTION',
     'observation': 'OBSERVATION',
     'search': 'SEARCH',
-    'respond': 'RESPOND'
+    'respond': 'RESPOND',
+    'error': 'FEHLER'
   };
   return labels[type] || type?.toUpperCase();
 }
@@ -349,6 +351,17 @@ watch(() => props.agentStatus, (status) => {
       appendStepDelta('action', status.delta);
       currentStatus.value = 'Aktion...';
       iteration.value = status.iteration || iteration.value;
+      break;
+
+    case 'error':
+      // Display error as a step
+      steps.value.push({
+        type: 'error',
+        content: status.message || 'Ein Fehler ist aufgetreten',
+        expanded: true
+      });
+      currentStatus.value = 'Fehler';
+      scrollToBottom();
       break;
   }
 }, { immediate: true, flush: 'sync' });
@@ -625,6 +638,8 @@ defineExpose({ reset });
 .type-observation .rail-dot { border-color: #98d4bb; color: #98d4bb; } /* LLARS success */
 .type-search .rail-dot { border-color: #b0ca97; color: #b0ca97; } /* LLARS primary */
 .type-respond .rail-dot { border-color: #98d4bb; color: #98d4bb; } /* LLARS success */
+.type-error .rail-dot { border-color: #e8a087; color: #e8a087; } /* LLARS danger */
+.type-error .timeline-card { border-color: #e8a087; background: rgba(232, 160, 135, 0.1); }
 
 /* Timeline Card */
 .timeline-card {

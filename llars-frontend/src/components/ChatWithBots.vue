@@ -1,9 +1,108 @@
 <!-- ChatWithBots.vue - Chat interface with ChatGPT-style grouped sidebar -->
 <template>
-  <div class="chat-page">
+  <div class="chat-page" :class="{ 'is-mobile': isMobile, 'is-tablet': isTablet }">
+    <!-- Mobile Navigation Drawer -->
+    <v-navigation-drawer
+      v-if="isMobile"
+      v-model="mobileSidebarOpen"
+      temporary
+      width="300"
+      class="mobile-chat-drawer"
+    >
+      <div class="mobile-drawer-header">
+        <LBtn
+          variant="primary"
+          prepend-icon="mdi-plus"
+          block
+          :disabled="!selectedChatbot"
+          @click="createConversation(); mobileSidebarOpen = false"
+        >
+          Neuer Chat
+        </LBtn>
+      </div>
+
+      <div class="mobile-drawer-search pa-3">
+        <v-text-field
+          v-model="searchQuery"
+          placeholder="Chats durchsuchen..."
+          density="compact"
+          variant="outlined"
+          hide-details
+          prepend-inner-icon="mdi-magnify"
+          clearable
+        />
+      </div>
+
+      <v-divider />
+
+      <!-- Chatbot Groups in Drawer -->
+      <div class="mobile-drawer-content">
+        <v-skeleton-loader v-if="isLoading('chatbots')" type="list-item@3" />
+        <template v-else>
+          <div
+            v-for="bot in chatbots"
+            :key="'mobile-' + bot.id"
+            class="mobile-chatbot-group"
+          >
+            <v-list-item
+              :active="selectedChatbot?.id === bot.id"
+              @click="toggleBot(bot)"
+              class="mobile-chatbot-header"
+            >
+              <template #prepend>
+                <v-avatar :color="bot.color || '#b0ca97'" size="32">
+                  <v-icon color="white" size="18">{{ bot.icon || 'mdi-robot' }}</v-icon>
+                </v-avatar>
+              </template>
+              <v-list-item-title>{{ bot.display_name }}</v-list-item-title>
+              <v-list-item-subtitle v-if="getChatCount(bot.id)">
+                {{ getChatCount(bot.id) }} Chats
+              </v-list-item-subtitle>
+              <template #append>
+                <v-icon>{{ expandedBots[bot.id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+              </template>
+            </v-list-item>
+
+            <v-expand-transition>
+              <div v-if="expandedBots[bot.id]" class="mobile-conversations-list">
+                <v-list density="compact" class="py-0">
+                  <v-list-item
+                    v-for="conv in getFilteredConversations(bot.id)"
+                    :key="'mobile-conv-' + conv.id"
+                    :active="selectedConversation?.id === conv.id && selectedChatbot?.id === bot.id"
+                    @click="selectConversationFromBot(bot, conv); mobileSidebarOpen = false"
+                    class="mobile-conversation-item"
+                  >
+                    <template #prepend>
+                      <v-icon size="16">mdi-chat-outline</v-icon>
+                    </template>
+                    <v-list-item-title class="text-body-2">
+                      {{ getDisplayTitle(conv).text }}
+                    </v-list-item-title>
+                  </v-list-item>
+                  <v-list-item v-if="!getFilteredConversations(bot.id)?.length" disabled>
+                    <v-list-item-title class="text-caption text-medium-emphasis">
+                      Noch keine Chats
+                    </v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </div>
+            </v-expand-transition>
+          </div>
+        </template>
+      </div>
+
+      <template #append>
+        <v-divider />
+        <v-list density="compact">
+          <v-list-item prepend-icon="mdi-home" title="Startseite" @click="router.push('/Home')" />
+        </v-list>
+      </template>
+    </v-navigation-drawer>
+
     <div class="chat-container" ref="containerRef">
-      <!-- Modern Grouped Sidebar -->
-      <aside class="chat-sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <!-- Desktop Sidebar -->
+      <aside v-if="!isMobile" class="chat-sidebar" :class="{ collapsed: sidebarCollapsed }">
         <!-- Header with New Chat Button -->
         <div class="sidebar-header">
           <template v-if="!sidebarCollapsed">
@@ -167,8 +266,19 @@
         <!-- Chat Header -->
         <div v-if="selectedChatbot" class="chat-header">
           <div class="header-left">
-            <v-avatar :color="selectedChatbot.color || '#b0ca97'" size="36" class="bot-avatar">
-              <v-icon color="white" size="20">{{ selectedChatbot.icon || 'mdi-robot' }}</v-icon>
+            <!-- Mobile menu button -->
+            <v-btn
+              v-if="isMobile"
+              icon
+              variant="text"
+              size="small"
+              class="mr-2"
+              @click="mobileSidebarOpen = true"
+            >
+              <v-icon>mdi-menu</v-icon>
+            </v-btn>
+            <v-avatar :color="selectedChatbot.color || '#b0ca97'" :size="isMobile ? 32 : 36" class="bot-avatar">
+              <v-icon color="white" :size="isMobile ? 18 : 20">{{ selectedChatbot.icon || 'mdi-robot' }}</v-icon>
             </v-avatar>
             <div class="header-info">
               <div class="header-title" :class="{ 'streaming-text': getHeaderTitle().isStreaming }">
@@ -200,10 +310,22 @@
 
         <!-- Empty State -->
         <div v-if="!selectedChatbot" class="empty-state">
-          <v-icon size="80" color="grey-lighten-1">mdi-robot-confused</v-icon>
-          <h3 class="text-h5 mt-4">Chatbot auswählen</h3>
-          <p class="text-medium-emphasis">
-            Wählen Sie einen Chatbot aus der Liste, um eine Unterhaltung zu beginnen.
+          <!-- Mobile menu button in empty state -->
+          <v-btn
+            v-if="isMobile"
+            icon
+            variant="tonal"
+            color="primary"
+            size="large"
+            class="mb-4"
+            @click="mobileSidebarOpen = true"
+          >
+            <v-icon>mdi-menu</v-icon>
+          </v-btn>
+          <v-icon :size="isMobile ? 60 : 80" color="grey-lighten-1">mdi-robot-confused</v-icon>
+          <h3 :class="isMobile ? 'text-h6 mt-3' : 'text-h5 mt-4'">Chatbot auswählen</h3>
+          <p class="text-medium-emphasis" :class="isMobile ? 'text-body-2 px-4' : ''">
+            {{ isMobile ? 'Tippen Sie auf das Menü oben' : 'Wählen Sie einen Chatbot aus der Liste' }}, um eine Unterhaltung zu beginnen.
           </p>
         </div>
 
@@ -686,6 +808,7 @@ import { marked } from 'marked'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { useChatMessages } from './ChatWithBots/composables/useChatMessages.js'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { useMobile } from '@/composables/useMobile'
 import { useActiveDuration, useTypingMetrics, useScrollDepth, useVisibilityTracker } from '@/composables/useAnalyticsMetrics'
 import { matomoTrackEvent } from '@/plugins/llars-metrics'
 import { AUTH_STORAGE_KEYS, clearAuthStorage, getAuthStorageItem } from '@/utils/authStorage'
@@ -725,6 +848,10 @@ const socket = ref(null)
 
 const route = useRoute()
 const router = useRouter()
+
+// Mobile detection
+const { isMobile, isTablet } = useMobile()
+const mobileSidebarOpen = ref(false)
 
 // Chatbot data
 const chatbots = ref([])
@@ -3010,5 +3137,130 @@ onUnmounted(() => {
   to {
     opacity: 1;
   }
+}
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile chat page */
+.chat-page.is-mobile {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.chat-page.is-mobile .chat-container {
+  width: 100%;
+}
+
+.chat-page.is-mobile .chat-main {
+  width: 100%;
+  flex: 1;
+}
+
+/* Mobile drawer styles */
+.mobile-chat-drawer {
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.mobile-drawer-header {
+  padding: 16px;
+}
+
+.mobile-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-chatbot-group {
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.mobile-chatbot-header {
+  min-height: 56px;
+}
+
+.mobile-conversations-list {
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  padding-left: 16px;
+}
+
+.mobile-conversation-item {
+  min-height: 44px;
+}
+
+/* Mobile chat header */
+.chat-page.is-mobile .chat-header {
+  padding: 8px 12px;
+}
+
+.chat-page.is-mobile .header-info {
+  min-width: 0;
+}
+
+.chat-page.is-mobile .header-title {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-page.is-mobile .header-subtitle {
+  font-size: 0.7rem;
+}
+
+.chat-page.is-mobile .model-name {
+  display: none;
+}
+
+/* Mobile empty state */
+.chat-page.is-mobile .empty-state {
+  padding: 24px 16px;
+}
+
+/* Mobile messages */
+.chat-page.is-mobile .chat-messages {
+  padding: 12px;
+}
+
+.chat-page.is-mobile .message-container {
+  gap: 8px;
+}
+
+.chat-page.is-mobile .message-avatar {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.chat-page.is-mobile .message {
+  max-width: 90%;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+/* Mobile input area */
+.chat-page.is-mobile .chat-input-area {
+  padding: 8px 12px;
+}
+
+.chat-page.is-mobile .input-actions {
+  gap: 4px;
+}
+
+/* Hide sources panel on mobile by default */
+.chat-page.is-mobile .sources-panel {
+  display: none;
+}
+
+/* Tablet styles */
+.chat-page.is-tablet .chat-sidebar {
+  width: 240px;
+  min-width: 240px;
+}
+
+.chat-page.is-tablet .chat-sidebar.collapsed {
+  width: 56px;
+  min-width: 56px;
 }
 </style>

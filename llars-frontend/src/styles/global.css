@@ -684,3 +684,52 @@ html, body {
 .no-pull-refresh {
   overscroll-behavior-y: contain;
 }
+
+/* ========================================
+   GLOBAL MOBILE OVERFLOW PREVENTION
+   Prevents horizontal scrolling on all pages
+   ======================================== */
+@media (max-width: 600px) {
+  /* Prevent horizontal scroll on html and body */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  /* Prevent horizontal scroll on main app container */
+  .v-application {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  /* Ensure main content doesn't overflow */
+  .v-main {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  /* Prevent table horizontal overflow */
+  .v-data-table__wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent cards from causing overflow */
+  .v-card {
+    max-width: 100% !important;
+    overflow-x: hidden;
+  }
+
+  /* Prevent form elements from causing overflow */
+  .v-text-field,
+  .v-select,
+  .v-textarea {
+    max-width: 100% !important;
+  }
+
+  /* Prevent expansion panels from causing overflow */
+  .v-expansion-panel-text {
+    max-width: 100% !important;
+    overflow-x: hidden;
+  }
+}

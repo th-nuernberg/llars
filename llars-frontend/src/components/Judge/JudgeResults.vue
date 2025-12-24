@@ -1,5 +1,5 @@
 <template>
-  <div class="judge-results">
+  <div class="judge-results" :class="{ 'is-mobile': isMobile }">
     <!-- Page Header -->
     <div class="results-header">
       <div class="header-left">
@@ -104,11 +104,14 @@
 import { onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { useMobile } from '@/composables/useMobile';
 import {
   useJudgeResults,
   useJudgeMatrix,
   useJudgeHelpers
 } from './JudgeResults/composables';
+
+const { isMobile } = useMobile();
 
 // Import subcomponents
 import ResultsOverview from './JudgeResults/ResultsOverview.vue';
@@ -259,5 +262,31 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: var(--llars-spacing-sm);
+}
+
+/* Mobile Styles */
+.judge-results.is-mobile {
+  max-width: 100vw;
+  overflow-x: hidden;
+  padding: var(--llars-spacing-md);
+}
+
+.judge-results.is-mobile .results-header {
+  flex-direction: column;
+  gap: var(--llars-spacing-md);
+}
+
+.judge-results.is-mobile .header-left {
+  flex-direction: column;
+  width: 100%;
+}
+
+.judge-results.is-mobile .page-title {
+  font-size: 1.35rem;
+}
+
+.judge-results.is-mobile .header-right {
+  width: 100%;
+  justify-content: flex-end;
 }
 </style>

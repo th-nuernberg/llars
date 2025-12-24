@@ -13,7 +13,7 @@
     @next="navigateToNextCase"
   >
     <!-- Main Content -->
-    <div ref="containerRef" class="content-panels">
+    <div ref="containerRef" class="content-panels" :class="{ 'is-mobile': isMobile }">
       <!-- Loading State -->
       <template v-if="isLoading('data')">
         <div class="panel left-panel">
@@ -68,8 +68,9 @@
           </div>
         </div>
 
-        <!-- Resize Divider -->
+        <!-- Resize Divider (hidden on mobile) -->
         <div
+          v-if="!isMobile"
           class="resize-divider"
           :class="{ 'resizing': isResizing }"
           @mousedown="startResize"
@@ -77,8 +78,8 @@
           <div class="resize-handle"></div>
         </div>
 
-        <!-- E-Mail Verlauf (rechts) -->
-        <div class="panel email-panel" :style="rightPanelStyle()">
+        <!-- E-Mail Verlauf (rechts, hidden on mobile) -->
+        <div v-if="!isMobile" class="panel email-panel" :style="rightPanelStyle()">
           <div class="panel-header">
             <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
             <span class="panel-title">E-Mail Verlauf</span>
@@ -98,6 +99,9 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { useMobile } from '@/composables/useMobile'
+
+const { isMobile } = useMobile()
 import { useActiveDuration, useScrollDepth } from '@/composables/useAnalyticsMetrics'
 
 const route = useRoute()
@@ -368,5 +372,35 @@ function navigateToFeatureDetail(featureId) {
 .feature-card-text {
   font-size: 0.875rem;
   opacity: 0.85;
+}
+
+/* Mobile Styles */
+.content-panels.is-mobile {
+  flex-direction: column;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.content-panels.is-mobile .features-panel {
+  flex: 1 !important;
+  width: 100% !important;
+  border-right: none;
+  min-height: 0;
+}
+
+.content-panels.is-mobile .panel-header {
+  padding: 10px 12px;
+}
+
+.content-panels.is-mobile .panel-content {
+  padding: 12px;
+}
+
+.content-panels.is-mobile .feature-item {
+  margin-bottom: 8px;
+}
+
+.content-panels.is-mobile .feature-card {
+  padding: 10px;
 }
 </style>

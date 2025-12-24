@@ -14,7 +14,7 @@
     @next="navigateToNextCase"
   >
     <!-- Main Content -->
-    <div ref="containerRef" class="content-panels">
+    <div ref="containerRef" class="content-panels" :class="{ 'is-mobile': isMobile }">
       <!-- Feature-Bereich (links) -->
       <div class="panel features-panel" :style="leftPanelStyle()">
         <div class="panel-header">
@@ -144,8 +144,9 @@
         </div>
       </div>
 
-      <!-- Resize Divider -->
+      <!-- Resize Divider (hidden on mobile) -->
       <div
+        v-if="!isMobile"
         class="resize-divider"
         :class="{ 'resizing': isResizing }"
         @mousedown="startResize"
@@ -153,8 +154,8 @@
         <div class="resize-handle"></div>
       </div>
 
-      <!-- E-Mail Verlauf (rechts) -->
-      <div class="panel email-panel" :style="rightPanelStyle()">
+      <!-- E-Mail Verlauf (rechts, hidden on mobile) -->
+      <div v-if="!isMobile" class="panel email-panel" :style="rightPanelStyle()">
         <div class="panel-header">
           <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
           <span class="panel-title">E-Mail Verlauf</span>
@@ -177,6 +178,9 @@ import {
   useRankerHelpers
 } from './RankerDetail/composables'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { useMobile } from '@/composables/useMobile'
+
+const { isMobile } = useMobile()
 
 const route = useRoute()
 const router = useRouter()
@@ -561,5 +565,37 @@ function navigateBackToRanker() {
 
 .sortable-chosen {
   background-color: rgba(var(--v-theme-primary), 0.15);
+}
+
+/* Mobile Styles */
+.content-panels.is-mobile {
+  flex-direction: column;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.content-panels.is-mobile .features-panel {
+  flex: 1 !important;
+  width: 100% !important;
+  border-right: none;
+  min-height: 0;
+}
+
+.content-panels.is-mobile .panel-header {
+  padding: 10px 12px;
+}
+
+.content-panels.is-mobile .panel-content {
+  padding: 12px;
+}
+
+.content-panels.is-mobile .buckets-row {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content-panels.is-mobile .bucket {
+  flex: none;
+  width: 100%;
 }
 </style>

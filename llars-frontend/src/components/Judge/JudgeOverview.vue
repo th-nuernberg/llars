@@ -1,5 +1,5 @@
 <template>
-  <div class="judge-overview-page">
+  <div class="judge-overview-page" :class="{ 'is-mobile': isMobile }">
     <!-- Page Header -->
     <div class="page-header">
       <div class="header-content">
@@ -134,8 +134,9 @@
         </div>
       </div>
 
-      <!-- Resize Divider -->
+      <!-- Resize Divider (hidden on mobile) -->
       <div
+        v-if="!isMobile"
         class="resize-divider"
         :class="{ resizing: isResizing }"
         @mousedown="startResize"
@@ -143,8 +144,8 @@
         <div class="resize-handle"></div>
       </div>
 
-      <!-- Right Panel: KIA Data Sync -->
-      <div class="right-panel" :style="rightPanelStyle()">
+      <!-- Right Panel: KIA Data Sync (hidden on mobile) -->
+      <div v-if="!isMobile" class="right-panel" :style="rightPanelStyle()">
         <div class="panel-header">
           <v-icon class="mr-2" size="small">mdi-database-sync</v-icon>
           <span class="font-weight-medium">KIA Daten-Sync</span>
@@ -188,7 +189,10 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { usePanelResize } from '@/composables/usePanelResize';
+import { useMobile } from '@/composables/useMobile';
 import KIADataSync from './KIADataSync.vue';
+
+const { isMobile } = useMobile();
 
 const router = useRouter();
 const socket = ref(null);
@@ -670,5 +674,76 @@ onUnmounted(() => {
   display: flex;
   gap: 2px;
   flex-shrink: 0;
+}
+
+/* Mobile Styles */
+.judge-overview-page.is-mobile {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.judge-overview-page.is-mobile .page-header {
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+}
+
+.judge-overview-page.is-mobile .page-header h1 {
+  font-size: 1.25rem !important;
+}
+
+.judge-overview-page.is-mobile .stats-row {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.judge-overview-page.is-mobile .stat-card {
+  min-width: 100px;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+}
+
+.judge-overview-page.is-mobile .stat-value {
+  font-size: 1.25rem;
+}
+
+.judge-overview-page.is-mobile .stat-avatar {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.judge-overview-page.is-mobile .left-panel {
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.judge-overview-page.is-mobile .panel-header {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.judge-overview-page.is-mobile .filter-chips {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.judge-overview-page.is-mobile .session-item {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+}
+
+.judge-overview-page.is-mobile .session-progress {
+  width: 80px;
+}
+
+.judge-overview-page.is-mobile .session-actions {
+  width: 100%;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid rgba(var(--v-border-color), 0.3);
 }
 </style>

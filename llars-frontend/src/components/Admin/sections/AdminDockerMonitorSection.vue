@@ -1,16 +1,16 @@
 <template>
-  <div class="docker-monitor">
+  <div class="docker-monitor" :class="{ 'is-mobile': isMobile }">
     <!-- Header -->
     <div class="monitor-header">
       <div class="header-left">
-        <v-icon size="24">mdi-docker</v-icon>
-        <h2>Docker Monitor</h2>
-        <LTag :variant="connectionVariant" :prepend-icon="connectionIcon" size="small">
-          {{ connectionLabel }}
+        <v-icon :size="isMobile ? 20 : 24">mdi-docker</v-icon>
+        <h2>{{ isMobile ? 'Docker' : 'Docker Monitor' }}</h2>
+        <LTag :variant="connectionVariant" :prepend-icon="isMobile ? '' : connectionIcon" size="small">
+          {{ isMobile ? '' : connectionLabel }}
         </LTag>
         <div v-if="connectionState === 'connected'" class="live-pulse"></div>
       </div>
-      <div class="header-right">
+      <div v-if="!isMobile" class="header-right">
         <v-select
           v-model="scope"
           :items="scopeOptions"
@@ -23,6 +23,9 @@
           Refresh
         </LBtn>
       </div>
+      <LBtn v-else icon variant="text" size="small" @click="resubscribeStats">
+        <v-icon>mdi-refresh</v-icon>
+      </LBtn>
     </div>
 
     <!-- Error Banner -->
@@ -65,8 +68,8 @@
 
         <!-- Charts + Container Table Row -->
         <div class="charts-table-row">
-          <!-- Live Charts -->
-          <div class="charts-grid">
+          <!-- Live Charts (Desktop only) -->
+          <div v-if="!isMobile" class="charts-grid">
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">
@@ -150,9 +153,9 @@
                   <tr>
                     <th>Name</th>
                     <th>State</th>
-                    <th>Health</th>
-                    <th>CPU</th>
-                    <th>RAM</th>
+                    <th v-if="!isMobile">Health</th>
+                    <th v-if="!isMobile">CPU</th>
+                    <th v-if="!isMobile">RAM</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -160,14 +163,15 @@
                     v-for="container in containers"
                     :key="container.id"
                     :class="{ 'selected': container.id === logContainerId && logMode === 'container' }"
+                    @click="isMobile ? switchToContainerLogs(container) : null"
                   >
-                    <td class="name-cell" @click="switchToContainerLogs(container)">
+                    <td class="name-cell" @click="!isMobile && switchToContainerLogs(container)">
                       <span class="name-link">{{ container.name }}</span>
                     </td>
                     <td><LTag :variant="stateVariant(container.state)" size="small">{{ container.state }}</LTag></td>
-                    <td><LTag :variant="healthVariant(container.health)" size="small">{{ container.health || '—' }}</LTag></td>
-                    <td class="value-cell">{{ formatPercent(container.cpu_percent) }}</td>
-                    <td class="value-cell">{{ formatPercent(container.mem_percent) }}</td>
+                    <td v-if="!isMobile"><LTag :variant="healthVariant(container.health)" size="small">{{ container.health || '—' }}</LTag></td>
+                    <td v-if="!isMobile" class="value-cell">{{ formatPercent(container.cpu_percent) }}</td>
+                    <td v-if="!isMobile" class="value-cell">{{ formatPercent(container.mem_percent) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -185,18 +189,23 @@
             {{ activeLogContainerName }}
           </LTag>
           <div class="header-controls">
-            <v-select v-model="logMode" :items="logModeOptions" variant="outlined" density="compact" hide-details class="log-field" />
-            <v-select v-model="logContainerId" :items="containerOptions" variant="outlined" density="compact" hide-details :disabled="logMode !== 'container'" class="log-field log-field--wide" />
-            <v-text-field v-model.number="logTail" type="number" label="Tail" variant="outlined" density="compact" hide-details min="0" max="5000" class="log-field log-field--small" />
-            <LTag v-if="logsPaused" variant="warning" size="small">pausiert</LTag>
-            <LBtn :prepend-icon="logsPaused ? 'mdi-play' : 'mdi-pause'" variant="tonal" size="small" @click="toggleLogsPause">
-              {{ logsPaused ? 'Live' : 'Pause' }}
+            <!-- Desktop controls -->
+            <template v-if="!isMobile">
+              <v-select v-model="logMode" :items="logModeOptions" variant="outlined" density="compact" hide-details class="log-field" />
+              <v-select v-model="logContainerId" :items="containerOptions" variant="outlined" density="compact" hide-details :disabled="logMode !== 'container'" class="log-field log-field--wide" />
+              <v-text-field v-model.number="logTail" type="number" label="Tail" variant="outlined" density="compact" hide-details min="0" max="5000" class="log-field log-field--small" />
+            </template>
+            <LTag v-if="logsPaused" variant="warning" size="small">{{ isMobile ? '' : 'pausiert' }}</LTag>
+            <LBtn :icon="isMobile" :prepend-icon="!isMobile ? (logsPaused ? 'mdi-play' : 'mdi-pause') : ''" variant="tonal" size="small" @click="toggleLogsPause">
+              <v-icon v-if="isMobile">{{ logsPaused ? 'mdi-play' : 'mdi-pause' }}</v-icon>
+              <template v-else>{{ logsPaused ? 'Live' : 'Pause' }}</template>
             </LBtn>
-            <LBtn prepend-icon="mdi-trash-can-outline" variant="tonal" size="small" @click="clearLogs">
+            <LBtn v-if="!isMobile" prepend-icon="mdi-trash-can-outline" variant="tonal" size="small" @click="clearLogs">
               Leeren
             </LBtn>
-            <LBtn prepend-icon="mdi-connection" variant="primary" size="small" @click="resubscribeLogs">
-              Verbinden
+            <LBtn :icon="isMobile" :prepend-icon="!isMobile ? 'mdi-connection' : ''" variant="primary" size="small" @click="resubscribeLogs">
+              <v-icon v-if="isMobile">mdi-connection</v-icon>
+              <template v-else>Verbinden</template>
             </LBtn>
           </div>
         </div>
@@ -220,12 +229,14 @@ import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watch } 
 import { io } from 'socket.io-client'
 import { useAuth } from '@/composables/useAuth'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { useMobile } from '@/composables/useMobile'
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
 const auth = useAuth()
 const { isLoading, setLoading } = useSkeletonLoading(['summary', 'charts', 'table', 'logs'])
+const { isMobile } = useMobile()
 
 // Staggered loading delays (ms) - sections appear one after another
 const STAGGER_DELAYS = {
@@ -1327,5 +1338,82 @@ const LiveChart = defineComponent({
   .charts-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+.docker-monitor.is-mobile {
+  padding: 8px;
+  gap: 8px;
+  overflow: hidden;
+  max-width: 100vw;
+}
+
+.docker-monitor.is-mobile .monitor-header {
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.docker-monitor.is-mobile .monitor-header h2 {
+  font-size: 0.9rem;
+}
+
+.docker-monitor.is-mobile .stats-row {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.docker-monitor.is-mobile .stat-item {
+  padding: 6px 4px;
+}
+
+.docker-monitor.is-mobile .stat-value {
+  font-size: 0.9rem;
+}
+
+.docker-monitor.is-mobile .stat-label {
+  font-size: 0.5rem;
+}
+
+.docker-monitor.is-mobile .table-wrapper {
+  max-height: 120px;
+}
+
+.docker-monitor.is-mobile .container-table {
+  font-size: 0.7rem;
+}
+
+.docker-monitor.is-mobile .container-table th,
+.docker-monitor.is-mobile .container-table td {
+  padding: 4px 6px;
+}
+
+.docker-monitor.is-mobile .name-link {
+  max-width: 120px;
+  font-size: 0.65rem;
+}
+
+.docker-monitor.is-mobile .section-header {
+  padding: 6px 8px;
+  font-size: 0.7rem;
+}
+
+.docker-monitor.is-mobile .header-controls {
+  gap: 4px;
+}
+
+.docker-monitor.is-mobile .logs-container {
+  margin: 4px;
+}
+
+.docker-monitor.is-mobile .logs-content {
+  font-size: 0.6rem;
+  padding: 6px;
+}
+
+.docker-monitor.is-mobile .error-banner {
+  padding: 4px 8px;
+  font-size: 0.7rem;
 }
 </style>

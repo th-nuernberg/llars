@@ -1,11 +1,11 @@
 <template>
   <v-app>
     <!-- Unified AppBar -->
-    <v-app-bar app class="llars-appbar">
-      <v-toolbar-title @click="goHome" class="toolbar-title">
+    <v-app-bar app class="llars-appbar" :class="{ 'is-mobile': isMobile }">
+      <v-toolbar-title @click="goHome" class="toolbar-title" :class="{ 'flex-shrink-1': isMobile }">
         <div class="logo-wrapper">
-          <img src="./assets/logo/llars-logo.png" alt="Logo" height="28" class="logo-image">
-          <span class="toolbar-text">LLars Plattform</span>
+          <img src="./assets/logo/llars-logo.png" alt="Logo" :height="isMobile ? 24 : 28" class="logo-image">
+          <span class="toolbar-text" :class="{ 'mobile-text': isMobile }">{{ isMobile ? 'LLars' : 'LLars Plattform' }}</span>
         </div>
       </v-toolbar-title>
       <v-spacer></v-spacer>
@@ -13,15 +13,15 @@
       <!-- User Menu (only when logged in) -->
       <v-menu v-if="isAuthenticated" offset-y :close-on-content-click="true">
         <template v-slot:activator="{ props }">
-          <div v-bind="props" class="user-menu-trigger">
+          <div v-bind="props" class="user-menu-trigger" :class="{ 'mobile-trigger': isMobile }">
             <LAvatar
               :seed="userAvatarSeed"
               :src="userAvatarUrl"
               :username="username"
-              size="sm"
-              class="mr-2"
+              :size="isMobile ? 'xs' : 'sm'"
+              :class="isMobile ? 'mr-1' : 'mr-2'"
             />
-            <div class="user-info">
+            <div v-if="!isMobile" class="user-info">
               <LTag
                 :variant="isAdminUser ? 'danger' : 'secondary'"
                 size="sm"
@@ -30,7 +30,7 @@
                 {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
               </LTag>
             </div>
-            <v-icon size="small" class="ml-1" color="white">mdi-chevron-down</v-icon>
+            <v-icon :size="isMobile ? 'x-small' : 'small'" :class="isMobile ? '' : 'ml-1'" color="white">mdi-chevron-down</v-icon>
           </div>
         </template>
 
@@ -66,15 +66,15 @@
     <!-- User Settings Dialog -->
     <UserSettingsDialog v-model="settingsDialogOpen" />
 
-    <v-footer app height="30" class="llars-footer px-4">
+    <v-footer app :height="isMobile ? 24 : 30" class="llars-footer" :class="{ 'is-mobile': isMobile, 'px-2': isMobile, 'px-4': !isMobile }">
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
           <span class="copyright">
-            © {{ new Date().getFullYear() }} LLars Plattform
+            © {{ new Date().getFullYear() }} {{ isMobile ? 'LLars' : 'LLars Plattform' }}
           </span>
         </v-col>
 
-        <v-col cols="auto">
+        <v-col v-if="!isMobile" cols="auto">
           <span
             v-for="(link, index) in links"
             :key="link"
@@ -95,6 +95,7 @@ import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useAppTheme } from '@/composables/useAppTheme';
 import { usePermissions } from '@/composables/usePermissions';
+import { useMobile } from '@/composables/useMobile';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
@@ -106,6 +107,7 @@ const router = useRouter();
 const auth = useAuth();
 const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
+const { isMobile } = useMobile();
 
 const isAuthenticated = computed(() => auth.isAuthenticated.value);
 const username = computed(() => {
@@ -452,4 +454,51 @@ function openSettings() {
    --llars-appbar-gradient and --llars-appbar-border
    defined in global.css for both light and dark modes
    ============================================ */
+
+/* ============================================
+   Mobile Responsive Styles
+   ============================================ */
+.llars-appbar.is-mobile :deep(.v-toolbar__content) {
+  padding: 0 8px;
+}
+
+.llars-appbar.is-mobile .toolbar-title {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.llars-appbar.is-mobile .logo-wrapper {
+  gap: 8px;
+  padding: 4px 8px 4px 4px;
+}
+
+.mobile-text {
+  font-size: 1rem;
+}
+
+.mobile-trigger {
+  padding: 4px 8px;
+}
+
+.flex-shrink-1 {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* Mobile Footer */
+.llars-footer.is-mobile {
+  font-size: 0.65rem;
+  min-height: 24px !important;
+  max-height: 24px !important;
+}
+
+.llars-footer.is-mobile .copyright {
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+.llars-footer.is-mobile :deep(.v-row) {
+  flex-wrap: nowrap;
+  min-height: auto;
+}
 </style>

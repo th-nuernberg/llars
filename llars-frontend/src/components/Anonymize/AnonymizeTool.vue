@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="anonymize-page">
+  <v-container fluid class="anonymize-page" :class="{ 'is-mobile': isMobile }">
     <v-row class="mb-4 align-center">
       <v-col cols="12" md="6">
         <div class="d-flex align-center flex-wrap gap-2">
@@ -317,6 +317,9 @@ import axios from 'axios'
 import { BASE_URL } from '@/config.js'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
+import { useMobile } from '@/composables/useMobile'
+
+const { isMobile } = useMobile()
 
 const { isLoading, withLoading } = useSkeletonLoading([])
 const { hasPermission, fetchPermissions, isLoading: permissionsLoading } = usePermissions()
@@ -907,5 +910,51 @@ onMounted(async () => {
 .settings-hint {
   font-size: 0.8rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+/* Mobile Styles */
+.anonymize-page.is-mobile {
+  max-width: 100vw;
+  overflow-x: hidden;
+  padding: 12px !important;
+}
+
+.anonymize-page.is-mobile .page-title {
+  font-size: 1.25rem;
+}
+
+.anonymize-page.is-mobile .page-subtitle {
+  font-size: 0.8rem;
+}
+
+.anonymize-page.is-mobile .file-input {
+  max-width: 100%;
+  width: 100%;
+}
+
+.anonymize-page.is-mobile :deep(.v-row.mb-4) {
+  margin-bottom: 8px !important;
+}
+
+.anonymize-page.is-mobile :deep(.v-col) {
+  padding: 6px !important;
+}
+
+.anonymize-page.is-mobile .panel-card {
+  margin-bottom: 12px;
+}
+
+.anonymize-page.is-mobile .text-renderer {
+  font-size: 0.85rem;
+}
+
+/* Stack action buttons vertically on mobile */
+.anonymize-page.is-mobile :deep(.v-row.mb-4 .v-col:last-child) {
+  flex-direction: column;
+}
+
+.anonymize-page.is-mobile :deep(.v-row.mb-4 .v-col:last-child .v-btn),
+.anonymize-page.is-mobile :deep(.v-row.mb-4 .v-col:last-child .l-btn) {
+  width: 100%;
 }
 </style>

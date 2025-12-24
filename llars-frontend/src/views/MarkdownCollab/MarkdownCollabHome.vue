@@ -1,23 +1,26 @@
 <template>
-  <v-container class="pa-6" fluid>
-    <div class="d-flex align-center mb-6">
+  <v-container :class="['markdown-home', { 'pa-4': isMobile, 'pa-6': !isMobile, 'is-mobile': isMobile, 'is-tablet': isTablet }]" fluid>
+    <div class="page-header" :class="{ 'flex-column align-start': isMobile }">
       <div>
         <div class="d-flex align-center">
-          <v-icon class="mr-2" color="primary">mdi-language-markdown</v-icon>
-          <h2 class="text-h5 mb-0">Markdown Collab</h2>
+          <v-icon :class="isMobile ? 'mr-1' : 'mr-2'" :size="isMobile ? 20 : 24" color="primary">mdi-language-markdown</v-icon>
+          <h2 :class="isMobile ? 'text-h6' : 'text-h5'" class="mb-0">{{ isMobile ? 'Markdown' : 'Markdown Collab' }}</h2>
         </div>
-        <div class="text-body-2 text-medium-emphasis mt-1">
+        <div v-if="!isMobile" class="text-body-2 text-medium-emphasis mt-1">
           Kollaborative Workspaces für Markdown-Dateien mit Live-Preview.
         </div>
       </div>
-      <v-spacer />
+      <v-spacer v-if="!isMobile" />
       <LBtn
         variant="primary"
-        prepend-icon="mdi-plus"
+        :prepend-icon="isMobile ? '' : 'mdi-plus'"
+        :size="isMobile ? 'small' : 'default'"
+        :class="{ 'mt-3': isMobile, 'align-self-end': isMobile }"
         :disabled="!hasPermission('feature:markdown_collab:edit')"
         @click="createDialog = true"
       >
-        Workspace erstellen
+        <v-icon v-if="isMobile" class="mr-1">mdi-plus</v-icon>
+        {{ isMobile ? 'Neu' : 'Workspace erstellen' }}
       </LBtn>
     </div>
 
@@ -289,12 +292,14 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { useMobile } from '@/composables/useMobile'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getSocket } from '@/services/socketService'
 
 const router = useRouter()
 const { hasPermission, fetchPermissions } = usePermissions()
 const { isLoading, withLoading } = useSkeletonLoading(['workspaces'])
+const { isMobile, isTablet } = useMobile()
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 
@@ -625,5 +630,46 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Page header */
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+.markdown-home.is-mobile {
+  /* 64px AppBar + 24px Footer = 88px */
+  height: calc(100vh - 88px);
+  height: calc(100dvh - 88px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 100vw;
+  -webkit-overflow-scrolling: touch;
+}
+
+.markdown-home.is-mobile .page-header {
+  margin-bottom: 16px;
+}
+
+.markdown-home.is-mobile .workspace-grid {
+  margin: 0 -8px;
+}
+
+.markdown-home.is-mobile .workspace-grid > .v-col {
+  padding: 8px;
+}
+
+.markdown-home.is-mobile .empty-state {
+  padding: 24px 12px;
+}
+
+/* Tablet adjustments */
+.markdown-home.is-tablet .page-header {
+  margin-bottom: 20px;
 }
 </style>

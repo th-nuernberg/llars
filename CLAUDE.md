@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 2.9 | **Stand:** 19. Dezember 2025
+**Version:** 3.0 | **Stand:** 24. Dezember 2025
 
 ## Projekt-Übersicht
 
@@ -37,6 +37,120 @@ REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 | admin | admin123 | admin |
 | researcher | admin123 | researcher (RATER) |
 | viewer | admin123 | viewer (VIEWER) |
+
+---
+
+## Server-Operationen
+
+### Neustart mit System-Prune
+
+```bash
+# Container stoppen
+docker compose down
+
+# System bereinigen (alle ungenutzten Images, Container, Volumes entfernen)
+docker system prune -af --volumes
+
+# Neu starten
+./start_llars.sh
+```
+
+### User-Seeder (Projekt-Benutzer anlegen)
+
+Der User-Seeder liegt in einem separaten Repository: `llars-seeder/`
+
+```bash
+cd /path/to/llars-seeder
+
+# 1. .env konfigurieren
+cat > .env << 'EOF'
+PROJECT_URL=http://localhost:55080      # Lokale Entwicklung
+# PROJECT_URL=https://llars.example.com # Produktion
+SYSTEM_ADMIN_API_KEY=llars-admin-key-change-in-production-12345
+EOF
+
+# 2. users.yaml anpassen (Benutzer definieren)
+
+# 3. Seeder ausführen
+./provision_users.sh
+```
+
+### Backup erstellen
+
+```bash
+# Vollständiges Datenbank-Backup
+docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > backup_$(date +%Y%m%d)/full_backup.sql
+
+# Nur bestimmte Tabellen (z.B. Evaluierungsdaten)
+docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars \
+  authenticity_conversations user_authenticity_votes comparison_sessions comparison_evaluations \
+  > backup_$(date +%Y%m%d)/evaluation_data.sql
+```
+
+### Backup wiederherstellen
+
+```bash
+# SQL-Backup in Container kopieren und ausführen
+docker cp backup_20251223/evaluation_data.sql llars_db_service:/tmp/evaluation_data.sql
+docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars \
+  -e "source /tmp/evaluation_data.sql"
+
+# Alternativ: Piped
+cat backup_20251223/evaluation_data.sql | docker exec -i llars_db_service \
+  mariadb -u dev_user -pdev_password_change_me database_llars
+```
+
+### Datenbank-Migrationen
+
+Bei Schema-Änderungen manuell SQL ausführen:
+
+```bash
+# Migration erstellen (Beispiel: neue Tabelle)
+cat > migrations/001_add_collection_embeddings.sql << 'EOF'
+CREATE TABLE IF NOT EXISTS collection_embeddings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    collection_id INT NOT NULL,
+    model_id VARCHAR(255) NOT NULL,
+    model_source ENUM('local', 'litellm') NOT NULL,
+    embedding_dimensions INT NOT NULL,
+    chroma_collection_name VARCHAR(255) NOT NULL UNIQUE,
+    status ENUM('idle', 'processing', 'completed', 'failed') DEFAULT 'idle',
+    progress INT DEFAULT 0,
+    chunk_count INT DEFAULT 0,
+    error_message TEXT,
+    priority INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    FOREIGN KEY (collection_id) REFERENCES rag_collections(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_collection_model (collection_id, model_id),
+    INDEX idx_collection_id (collection_id),
+    INDEX idx_model_id (model_id),
+    INDEX idx_status (status),
+    INDEX idx_priority (priority)
+);
+EOF
+
+# Migration ausführen
+docker cp migrations/001_add_collection_embeddings.sql llars_db_service:/tmp/
+docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars \
+  -e "source /tmp/001_add_collection_embeddings.sql"
+```
+
+**Hinweis:** SQLAlchemy erstellt fehlende Tabellen automatisch beim Start. Migrationen sind nur für Schema-Änderungen an bestehenden Tabellen nötig.
+
+### Logs prüfen
+
+```bash
+# Flask-Backend Logs
+docker logs -f llars_flask_service
+
+# Alle Container-Logs
+docker compose logs -f
+
+# Nur Fehler
+docker compose logs -f 2>&1 | grep -i error
+```
 
 ---
 
@@ -279,12 +393,34 @@ exclude_patterns = [
 capture_long_page()  # Splittet Seiten >4000px in mehrere Screenshots
 ```
 
-### Embedding Model
+### Embedding Model (Multi-Model-Architektur)
+
+LLARS unterstützt mehrere Embedding-Modelle pro Collection mit robuster Fallback-Kette:
 
 ```
-Model: DB-gesteuert (llm_models, model_type=embedding, is_default)
-Default Seed: llamaindex/vdr-2b-multi-v1 (1024 Dimensionen)
-Storage: ChromaDB in /app/chroma_db
+Priorität  | Model                                | Source   | Dimensionen
+-----------|--------------------------------------|----------|------------
+1 (höchste)| llamaindex/vdr-2b-multi-v1           | LiteLLM  | 1024
+2          | llamaindex/vdr-2b-multi-v1           | Local    | 1024
+3 (fallback)| sentence-transformers/all-MiniLM-L6-v2| Local    | 384
+```
+
+**Wichtige Tabellen:**
+- `llm_models`: Model-Konfiguration (model_type='embedding', is_default)
+- `collection_embeddings`: Tracking welche Models pro Collection verfügbar sind
+- `rag_document_chunks.embedding_model`: Model das für jeden Chunk verwendet wurde
+
+**KRITISCH:** Query-Embedding muss IMMER zum Document-Embedding passen (gleiche Dimensionen)!
+
+**Services:**
+- `services/rag/embedding_model_service.py`: Zentraler Service für Model-Verfügbarkeit
+- `get_best_embedding_for_collection()`: Findet bestes verfügbares Model für eine Collection
+
+```python
+from services.rag.embedding_model_service import get_best_embedding_for_collection
+
+# Gibt (embeddings, model_id, chroma_collection_name, dimensions) zurück
+embeddings, model_id, chroma_name, dims = get_best_embedding_for_collection(collection_id)
 ```
 
 ### LLM Models (DB Single Source of Truth)
@@ -924,4 +1060,4 @@ docker exec -it llars_authentik_db psql -U authentik_dev -d authentik_dev
 
 ---
 
-**Stand:** 11. Dezember 2025
+**Stand:** 24. Dezember 2025

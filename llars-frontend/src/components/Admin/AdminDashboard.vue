@@ -1,7 +1,49 @@
 <template>
-  <div class="admin-page">
-    <!-- Sidebar -->
+  <div class="admin-page" :class="{ 'is-mobile': isMobile, 'is-tablet': isTablet }">
+    <!-- Mobile Navigation Drawer -->
+    <v-navigation-drawer
+      v-if="isMobile"
+      v-model="mobileSidebarOpen"
+      temporary
+      width="280"
+      class="mobile-sidebar-drawer"
+    >
+      <div class="mobile-sidebar-header">
+        <v-icon color="primary" size="24" class="mr-3">mdi-shield-crown</v-icon>
+        <div>
+          <div class="text-subtitle-1 font-weight-bold">Admin</div>
+          <div class="text-caption text-medium-emphasis">Dashboard</div>
+        </div>
+      </div>
+      <v-divider />
+      <v-list nav density="compact" class="pa-2">
+        <v-list-item
+          v-for="item in filteredNavItems"
+          :key="item.value"
+          :value="item.value"
+          :active="activeSection === item.value"
+          :prepend-icon="item.icon"
+          :title="item.title"
+          rounded="lg"
+          @click="activeSection = item.value"
+        />
+      </v-list>
+      <template #append>
+        <v-divider />
+        <v-list nav density="compact" class="pa-2">
+          <v-list-item
+            prepend-icon="mdi-home"
+            title="Zur Startseite"
+            rounded="lg"
+            @click="$router.push('/Home')"
+          />
+        </v-list>
+      </template>
+    </v-navigation-drawer>
+
+    <!-- Desktop Sidebar -->
     <AppSidebar
+      v-if="!isMobile"
       v-model="activeSection"
       :items="filteredNavItems"
       title="Admin"
@@ -14,16 +56,34 @@
     <!-- Main Content -->
     <main class="admin-main">
       <!-- Header (hidden when chatbot wizard is open) -->
-      <div v-if="!isChatbotWizardOpen" class="admin-header pa-4 pb-2">
+      <div v-if="!isChatbotWizardOpen" class="admin-header" :class="isMobile ? 'pa-3 pb-2' : 'pa-4 pb-2'">
         <div class="d-flex align-center">
-          <div>
-            <h1 class="text-h4 font-weight-bold">{{ currentSectionTitle }}</h1>
-            <p class="text-subtitle-1 text-medium-emphasis">{{ currentSectionSubtitle }}</p>
+          <!-- Mobile menu button -->
+          <v-btn
+            v-if="isMobile"
+            icon
+            variant="text"
+            size="small"
+            class="mr-2"
+            @click="mobileSidebarOpen = true"
+          >
+            <v-icon>mdi-menu</v-icon>
+          </v-btn>
+          <div class="flex-grow-1 min-width-0">
+            <h1 :class="isMobile ? 'text-h6 font-weight-bold text-truncate' : 'text-h4 font-weight-bold'">
+              {{ currentSectionTitle }}
+            </h1>
+            <p v-if="!isMobile" class="text-subtitle-1 text-medium-emphasis">{{ currentSectionSubtitle }}</p>
           </div>
-          <v-spacer></v-spacer>
-          <v-chip color="primary" variant="flat" class="mr-2">
-            <v-icon start>mdi-account</v-icon>
-            {{ username }}
+          <v-spacer />
+          <v-chip
+            color="primary"
+            variant="flat"
+            :size="isMobile ? 'small' : 'default'"
+            class="ml-2"
+          >
+            <v-icon start :size="isMobile ? 14 : 18">mdi-account</v-icon>
+            <span v-if="!isMobile">{{ username }}</span>
           </v-chip>
         </div>
       </div>
@@ -96,6 +156,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { usePermissions } from '@/composables/usePermissions';
+import { useMobile } from '@/composables/useMobile';
 
 // Import section components
 import AdminOverview from './sections/AdminOverview.vue';
@@ -115,10 +176,21 @@ const auth = useAuth();
 const { hasPermission, hasAnyPermission, fetchPermissions, isAdmin } = usePermissions();
 const route = useRoute();
 const router = useRouter();
+const { isMobile, isTablet, isSmallScreen } = useMobile();
 const username = computed(() => auth.tokenParsed.value?.preferred_username || 'Admin');
+
+// Mobile sidebar state
+const mobileSidebarOpen = ref(false);
 
 // Active section (synced with route query)
 const activeSection = ref('overview');
+
+// Close sidebar when section changes on mobile
+watch(activeSection, () => {
+  if (isMobile.value) {
+    mobileSidebarOpen.value = false;
+  }
+});
 
 // ChatbotManager ref for wizard state
 const chatbotManagerRef = ref(null);
@@ -249,5 +321,56 @@ onMounted(async () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile sidebar drawer */
+.mobile-sidebar-drawer {
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.mobile-sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+}
+
+/* Mobile page layout */
+.admin-page.is-mobile {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.admin-page.is-mobile .admin-main {
+  width: 100%;
+}
+
+.admin-page.is-mobile .admin-content {
+  padding: 12px !important;
+  padding-top: 0 !important;
+}
+
+.admin-page.is-mobile .section-container {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tablet styles */
+.admin-page.is-tablet .admin-main {
+  flex: 1;
+}
+
+/* Min-width helper for text truncation */
+.min-width-0 {
+  min-width: 0;
+}
+
+/* Touch-friendly list items */
+@media (max-width: 600px) {
+  .admin-page .v-list-item {
+    min-height: 48px;
+  }
 }
 </style>

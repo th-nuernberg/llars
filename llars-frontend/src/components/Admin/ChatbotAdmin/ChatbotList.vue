@@ -1,29 +1,30 @@
 <template>
-  <div>
+  <div :class="{ 'is-mobile': isMobile, 'is-tablet': isTablet }">
     <!-- Loading State -->
     <v-row v-if="loading">
-      <v-col v-for="i in 6" :key="i" cols="12" md="6" lg="4">
-        <v-skeleton-loader type="card" height="280" />
+      <v-col v-for="i in 6" :key="i" cols="12" :sm="isMobile ? 12 : 6" :md="6" :lg="4">
+        <v-skeleton-loader type="card" :height="isMobile ? 200 : 280" />
       </v-col>
     </v-row>
 
     <!-- Empty State -->
-    <LCard v-else-if="chatbots.length === 0" flat class="text-center pa-8">
-      <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-robot-outline</v-icon>
-      <div class="text-h6 mb-2">Keine Chatbots vorhanden</div>
-      <div class="text-medium-emphasis">
+    <LCard v-else-if="chatbots.length === 0" flat :class="isMobile ? 'text-center pa-4' : 'text-center pa-8'">
+      <v-icon :size="isMobile ? 48 : 64" color="grey-lighten-1" class="mb-4">mdi-robot-outline</v-icon>
+      <div :class="isMobile ? 'text-subtitle-1 mb-2' : 'text-h6 mb-2'">Keine Chatbots vorhanden</div>
+      <div class="text-medium-emphasis" :class="isMobile ? 'text-body-2' : ''">
         Erstellen Sie Ihren ersten Chatbot, um zu beginnen
       </div>
     </LCard>
 
     <!-- Chatbot Cards -->
-    <v-row v-else>
+    <v-row v-else :dense="isMobile">
       <v-col
         v-for="chatbot in chatbots"
         :key="chatbot.id"
         cols="12"
-        md="6"
-        lg="4"
+        :sm="isMobile ? 12 : 6"
+        :md="6"
+        :lg="4"
       >
         <LCard
           :title="chatbot.display_name"
@@ -130,6 +131,10 @@
 </template>
 
 <script setup>
+import { useMobile } from '@/composables/useMobile'
+
+const { isMobile, isTablet } = useMobile()
+
 defineProps({
   chatbots: {
     type: Array,
@@ -224,5 +229,32 @@ function getStatusVariant(chatbot) {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Mobile styles */
+.is-mobile .description-text {
+  min-height: 36px;
+  font-size: 0.8rem;
+}
+
+.is-mobile :deep(.l-card) {
+  padding: 12px;
+}
+
+.is-mobile :deep(.l-card-title) {
+  font-size: 1rem;
+}
+
+.is-mobile :deep(.l-card-subtitle) {
+  font-size: 0.75rem;
+}
+
+/* Touch-friendly tap targets */
+.is-mobile :deep(.v-btn) {
+  min-height: 40px;
+}
+
+.is-mobile :deep(.v-list-item) {
+  min-height: 44px;
 }
 </style>

@@ -10,13 +10,12 @@ import { ref, computed, watch } from 'vue';
 export function useChatbotForm() {
   const defaultPromptSettings = {
     rag_require_citations: true,
-    rag_unknown_answer: 'Ich weiß es nicht',
+    rag_unknown_answer: 'Das kann ich dir leider nicht beantworten.',
     rag_citation_instructions: [
-      'WICHTIG - Antworten mit Quellen:',
-      '- Beantworte die Frage NUR mit Hilfe des Kontexts.',
-      '- Zitiere jede Aussage aus dem Kontext direkt im Text als [1], [2], ... (direkt nach dem Satz).',
-      '- Verwende NUR Quellennummern, die im Kontext vorkommen, und erfinde keine Quellen.',
-      '- Wenn die Antwort nicht eindeutig aus dem Kontext ableitbar ist, antworte exakt mit: \"{{UNKNOWN_ANSWER}}\"'
+      'Antworte natürlich und gesprächig. Nutze die bereitgestellten Informationen als Grundlage, aber formuliere frei und menschlich. Halte das Gespräch am Laufen - stelle Rückfragen, biete Hilfe an, sei freundlich.',
+      '',
+      'Bei Fakten aus dem Kontext: Verweise mit [1], [2] etc. auf die Quelle.',
+      'Bei Gespräch, Smalltalk oder Rückfragen: Antworte einfach natürlich.'
     ].join('\n'),
     rag_context_prefix: 'Kontext:',
     rag_context_item_template: '[{{id}}] {{title}}:\n{{excerpt}}',

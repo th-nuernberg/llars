@@ -291,22 +291,12 @@
                         {{ selectedLlmModel.provider }} · {{ formatNumber(selectedLlmModel.context_window) }} Kontext · Max Output {{ formatNumber(selectedLlmModel.max_output_tokens) }}
                       </div>
                       <div class="d-flex ga-2">
-                        <v-chip
-                          v-if="selectedLlmModel.supports_vision"
-                          size="x-small"
-                          color="success"
-                          variant="flat"
-                        >
+                        <LTag v-if="selectedLlmModel.supports_vision" variant="success" size="sm">
                           Vision
-                        </v-chip>
-                        <v-chip
-                          v-if="selectedLlmModel.supports_reasoning"
-                          size="x-small"
-                          color="primary"
-                          variant="flat"
-                        >
+                        </LTag>
+                        <LTag v-if="selectedLlmModel.supports_reasoning" variant="primary" size="sm">
                           Reasoning
-                        </v-chip>
+                        </LTag>
                       </div>
                     </div>
                   </v-alert>
@@ -443,8 +433,8 @@
 
                         <v-text-field
                           v-model="formData.prompt_settings.rag_unknown_answer"
-                          label="Antwort bei Unklarheit (exakt)"
-                          hint="Wird verwendet, wenn die Antwort nicht aus dem Kontext ableitbar ist."
+                          label="Antwort wenn nicht in Quellen"
+                          hint="Wird bei faktischen Fragen verwendet, wenn die Antwort nicht im Kontext steht."
                           persistent-hint
                           variant="outlined"
                           density="comfortable"
@@ -453,10 +443,10 @@
 
                         <v-textarea
                           v-model="formData.prompt_settings.rag_citation_instructions"
-                          label="Zitations-Instruktionen (Template)"
-                          hint='Platzhalter: {{UNKNOWN_ANSWER}}'
+                          label="Antwort-Instruktionen"
+                          hint='Steuert wie der Chatbot antwortet. Platzhalter: {{UNKNOWN_ANSWER}}. Tipp: Smalltalk separat regeln!'
                           persistent-hint
-                          rows="6"
+                          rows="12"
                           variant="outlined"
                           density="comfortable"
                           class="mb-4"
@@ -534,19 +524,18 @@
                         <div class="d-flex align-center mb-2">
                           <v-icon :color="mode.color" size="24" class="mr-2">{{ mode.icon }}</v-icon>
                           <span class="font-weight-bold">{{ mode.label }}</span>
-                          <v-chip v-if="mode.badge" size="x-small" :color="mode.badgeColor" variant="flat" class="ml-auto">
+                          <LTag v-if="mode.badge" :variant="mode.badgeColor" size="sm" class="ml-auto">
                             {{ mode.badge }}
-                          </v-chip>
+                          </LTag>
                         </div>
                         <div class="text-body-2 text-medium-emphasis mb-2">{{ mode.description }}</div>
                         <div class="d-flex align-center ga-2">
-                          <v-chip size="x-small" variant="tonal" color="primary">
+                          <LTag variant="primary" size="sm">
                             {{ mode.calls }}
-                          </v-chip>
-                          <v-chip v-if="mode.tools" size="x-small" variant="tonal" color="success">
-                            <v-icon start size="small">mdi-tools</v-icon>
+                          </LTag>
+                          <LTag v-if="mode.tools" variant="success" size="sm" prepend-icon="mdi-tools">
                             Tools
-                          </v-chip>
+                          </LTag>
                         </div>
                       </v-card-text>
                     </v-card>
@@ -576,9 +565,9 @@
                         <div class="d-flex align-center mb-1">
                           <v-icon color="primary" size="20" class="mr-2">{{ task.icon }}</v-icon>
                           <span class="font-weight-medium">{{ task.label }}</span>
-                          <v-chip v-if="task.badge" size="x-small" :color="task.badgeColor" variant="flat" class="ml-auto">
+                          <LTag v-if="task.badge" :variant="task.badgeColor" size="sm" class="ml-auto">
                             {{ task.badge }}
-                          </v-chip>
+                          </LTag>
                         </div>
                         <div class="text-caption text-medium-emphasis">{{ task.description }}</div>
                       </v-card-text>
@@ -638,9 +627,9 @@
                     <v-card-title class="text-subtitle-1 d-flex align-center">
                       <v-icon start color="info">mdi-web</v-icon>
                       Web-Suche (Tavily)
-                      <v-chip v-if="formData.prompt_settings.web_search_enabled" size="x-small" color="success" variant="flat" class="ml-2">
+                      <LTag v-if="formData.prompt_settings.web_search_enabled" variant="success" size="sm" class="ml-2">
                         Aktiv
-                      </v-chip>
+                      </LTag>
                     </v-card-title>
                     <v-card-text>
                       <v-switch
@@ -934,16 +923,15 @@
               </v-col>
 
               <v-col cols="12">
-                <v-btn
-                  color="primary"
+                <LBtn
                   variant="outlined"
                   :loading="crawling"
                   :disabled="!hasValidCrawlerUrls"
-                  @click="startCrawlForChatbot"
                   prepend-icon="mdi-spider-web"
+                  @click="startCrawlForChatbot"
                 >
                   Website crawlen und Collection erstellen
-                </v-btn>
+                </LBtn>
               </v-col>
             </v-row>
           </v-window-item>
@@ -954,16 +942,12 @@
       <v-divider />
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="closeDialog">
+        <LBtn variant="cancel" @click="closeDialog">
           Abbrechen
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          @click="saveChanges"
-        >
+        </LBtn>
+        <LBtn variant="primary" @click="saveChanges">
           {{ isEdit ? 'Speichern' : 'Erstellen' }}
-        </v-btn>
+        </LBtn>
       </v-card-actions>
     </v-card>
   </v-dialog>

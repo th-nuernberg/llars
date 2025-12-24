@@ -1,5 +1,5 @@
 <template>
-  <div ref="layoutRoot" class="admin-chatbots-container">
+  <div ref="layoutRoot" class="admin-chatbots-container" :class="{ 'is-mobile': isMobile, 'is-tablet': isTablet }">
     <template v-if="wizardOpen">
       <ChatbotBuilderWizard
         :resume-chatbot-id="wizardResumeChatbotId"
@@ -13,27 +13,31 @@
       <!-- Header Section (fixed) -->
       <div class="chatbots-header">
         <!-- Actions -->
-        <div class="d-flex justify-end mb-3">
-          <div class="d-flex flex-wrap ga-2">
+        <div class="d-flex" :class="isMobile ? 'flex-column ga-2' : 'justify-end mb-3'">
+          <div class="d-flex" :class="isMobile ? 'justify-space-between w-100' : 'flex-wrap ga-2'">
             <LBtn
               variant="secondary"
-              prepend-icon="mdi-wizard-hat"
+              :prepend-icon="isMobile ? undefined : 'mdi-wizard-hat'"
+              :size="isMobile ? 'small' : 'default'"
               @click="openWizard()"
             >
-              Builder Wizard
+              <v-icon v-if="isMobile" size="18" class="mr-1">mdi-wizard-hat</v-icon>
+              {{ isMobile ? 'Wizard' : 'Builder Wizard' }}
             </LBtn>
             <LBtn
               variant="primary"
-              prepend-icon="mdi-plus"
+              :prepend-icon="isMobile ? undefined : 'mdi-plus'"
+              :size="isMobile ? 'small' : 'default'"
               @click="openCreateDialog"
             >
-              Neuer Chatbot
+              <v-icon v-if="isMobile" size="18" class="mr-1">mdi-plus</v-icon>
+              {{ isMobile ? 'Neu' : 'Neuer Chatbot' }}
             </LBtn>
           </div>
         </div>
 
         <!-- Stats Cards -->
-        <div class="stats-row mb-3">
+        <div class="stats-row" :class="isMobile ? 'mb-2 mt-2' : 'mb-3'">
           <div class="stats-card">
             <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
             <v-card v-else variant="tonal" color="primary">
@@ -274,6 +278,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useAuth } from '@/composables/useAuth'
 import { usePermissions } from '@/composables/usePermissions'
+import { useMobile } from '@/composables/useMobile'
 import ChatbotList from './ChatbotList.vue'
 import ChatbotEditor from './ChatbotEditor.vue'
 import ChatbotTestDialog from './ChatbotTestDialog.vue'
@@ -345,6 +350,7 @@ const snackbar = ref({
 
 const auth = useAuth()
 const { hasPermission, isAdmin } = usePermissions()
+const { isMobile, isTablet, isSmallScreen } = useMobile()
 const currentUsername = computed(() => auth.tokenParsed.value?.preferred_username || localStorage.getItem('username') || '')
 const canShare = computed(() => hasPermission('feature:chatbots:share'))
 const canShareCollections = computed(() => hasPermission('feature:rag:share'))
@@ -838,5 +844,67 @@ defineExpose({
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+.admin-chatbots-container.is-mobile {
+  padding: 0;
+}
+
+.admin-chatbots-container.is-mobile .chatbots-header {
+  padding: 0 0 8px 0;
+}
+
+.admin-chatbots-container.is-mobile .stats-row {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-chatbots-container.is-mobile .stats-row::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-chatbots-container.is-mobile .stats-card {
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+
+.admin-chatbots-container.is-mobile .stats-card .v-card-text {
+  padding: 8px 12px !important;
+}
+
+.admin-chatbots-container.is-mobile .stats-card .text-h6 {
+  font-size: 1rem !important;
+}
+
+.admin-chatbots-container.is-mobile .stats-card .text-caption {
+  font-size: 0.65rem !important;
+}
+
+.admin-chatbots-container.is-mobile .stats-card .v-icon {
+  font-size: 20px !important;
+}
+
+/* Mobile tabs */
+.admin-chatbots-container.is-mobile .chatbots-tabs-card {
+  margin-top: 8px;
+}
+
+/* Tablet styles */
+.admin-chatbots-container.is-tablet .stats-row {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Full width helper */
+.w-100 {
+  width: 100%;
 }
 </style>

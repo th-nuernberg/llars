@@ -572,13 +572,13 @@
                               <div class="flow-item">
                                 <div class="flow-label">ReflAct</div>
                                 <div class="flow-steps">
-                                  <span class="flow-step step-goal">GOAL</span>
+                                  <span class="flow-step step-query">Aufgabe</span>
                                   <span class="flow-arrow">→</span>
                                   <span class="flow-step step-reflection">REFLECTION</span>
                                   <span class="flow-arrow">→</span>
-                                  <span class="flow-step step-thought">THOUGHT</span>
-                                  <span class="flow-arrow">→</span>
                                   <span class="flow-step step-action">ACTION</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-observation">OBSERVATION</span>
                                   <span class="flow-arrow">↺</span>
                                   <span class="flow-step step-answer">Antwort</span>
                                 </div>
@@ -1172,13 +1172,13 @@ const agentModes = [
     label: 'ReflAct',
     icon: 'mdi-target',
     color: 'warning',
-    description: 'Zielorientiert mit Selbstreflexion: Prüft vor jeder Aktion ob das Ziel erreicht ist.',
-    details: 'Erweitert ReAct um GOAL-Definition und REFLECTION-Phase. Der Agent reflektiert nach jeder Observation, wie weit er vom Ziel entfernt ist und korrigiert seine Strategie.',
-    calls: '3-7 LLM-Calls',
+    description: 'Zustandsbasierte Reflexion: Bewertet bei jedem Schritt den aktuellen Zustand relativ zum Ziel.',
+    details: 'Basierend auf dem ReflAct Paper (arxiv.org/abs/2505.15182). Statt "Was soll ich tun?" fragt der Agent "Wo stehe ich relativ zum Ziel?". Die Reflection ist zustandsbasiert statt vorausschauend.',
+    calls: '2-6 LLM-Calls',
     tools: true,
-    badge: 'Experimentell',
-    badgeColor: 'warning',
-    example: 'GOAL: Finde X → REFLECTION: Noch keine Info → THOUGHT → ACTION → OBSERVATION → REFLECTION: 50% erreicht → ...'
+    badge: 'Paper-basiert',
+    badgeColor: 'info',
+    example: 'REFLECTION: Aktuell weiß ich X, das bringt mich näher zum Ziel → ACTION → OBSERVATION → FINAL ANSWER'
   }
 ];
 

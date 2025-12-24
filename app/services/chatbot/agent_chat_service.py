@@ -637,8 +637,21 @@ class AgentChatService(ChatService):
         conversation_id: Optional[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """
-        ReflAct mode - Goal-state reflection before each action.
-        GOAL → REFLECTION → THOUGHT → ACTION → OBSERVATION cycle.
+        ReflAct mode - World-Grounded Decision Making via Goal-State Reflection.
+
+        Based on the ReflAct paper (arxiv.org/abs/2505.15182):
+        - At each step, reflect on the agent's state RELATIVE to the task goal
+        - Then decide on the next action based on that reflection
+        - Cycle: REFLECTION → ACTION → OBSERVATION (repeat until done)
+
+        Key difference from ReAct:
+        - ReAct: "Think about what to do next" (forward-looking planning)
+        - ReflAct: "Reflect on current state relative to goal" (state-grounded evaluation)
+
+        The reflection explicitly encodes:
+        1. Current state (what we know so far)
+        2. What was just discovered
+        3. How this relates to completing the task goal
         """
         yield {"status": "starting", "mode": "reflact"}
 
@@ -650,39 +663,10 @@ class AgentChatService(ChatService):
         all_sources = []
         steps = []
 
+        # The user's question IS the goal - no separate goal extraction needed
+        goal = message
+
         system_prompt = self._get_reflact_system_prompt()
-
-        # First: Define goal
-        yield {"status": "defining_goal"}
-        goal_messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Definiere das GOAL für folgende Anfrage: {message}"}
-        ]
-        goal_response = ""
-        last_goal = ""
-        try:
-            stream = self.llm_client.chat.completions.create(
-                **self._build_completion_kwargs(goal_messages, stream=True)
-            )
-            for chunk in stream:
-                choice = chunk.choices[0] if chunk.choices else None
-                delta = getattr(choice, "delta", None) if choice else None
-                delta_text = extract_delta_text(delta)
-                if not delta_text:
-                    continue
-                goal_response += delta_text
-                goal_partial = self._extract_goal(goal_response)
-                if goal_partial and len(goal_partial) > len(last_goal):
-                    delta_chunk = goal_partial[len(last_goal):]
-                    last_goal = goal_partial
-                    yield {"status": "goal_delta", "delta": delta_chunk}
-        except Exception as e:
-            logger.error(f"[AgentChatService] ReflAct goal streaming failed: {e}")
-            goal_response = self._call_llm_sync(goal_messages)
-        goal = self._extract_goal(goal_response)
-
-        steps.append({"type": "goal", "content": goal})
-        yield {"status": "goal_defined", "goal": goal}
 
         for iteration in range(max_iterations):
             yield {
@@ -693,28 +677,25 @@ class AgentChatService(ChatService):
                 "steps": steps
             }
 
-            # Build messages with goal and all steps
+            # Build conversation history
             messages = [{"role": "system", "content": system_prompt}]
-            messages.append({"role": "user", "content": f"Frage: {message}\n\nGOAL: {goal}"})
+            messages.append({"role": "user", "content": f"Aufgabe: {message}"})
 
+            # Add previous steps to context
             for step in steps:
-                if step["type"] == "goal":
-                    continue  # Already in user message
-                elif step["type"] == "reflection":
+                if step["type"] == "reflection":
                     messages.append({"role": "assistant", "content": f"REFLECTION: {step['content']}"})
-                elif step["type"] == "thought":
-                    messages.append({"role": "assistant", "content": f"THOUGHT: {step['content']}"})
                 elif step["type"] == "action":
                     messages.append({"role": "assistant", "content": f"ACTION: {step['content']}"})
                 elif step["type"] == "observation":
                     messages.append({"role": "user", "content": f"OBSERVATION: {step['content']}"})
 
-            # Get reflection and next step
+            # Get reflection and next action
             yield {"status": "reflecting", "iteration": iteration + 1}
             response_text = ""
             last_reflection = ""
-            last_thought = ""
             try:
+                logger.debug(f"[ReflAct] Starting iteration {iteration + 1}, messages count: {len(messages)}")
                 stream = self.llm_client.chat.completions.create(
                     **self._build_completion_kwargs(messages, stream=True)
                 )
@@ -725,30 +706,32 @@ class AgentChatService(ChatService):
                     if not delta_text:
                         continue
                     response_text += delta_text
-                    reflection_partial, thought_partial, _, _ = self._parse_reflact_response(response_text)
+
+                    # Stream reflection as it comes
+                    reflection_partial, _, _ = self._parse_reflact_response_v2(response_text)
                     if reflection_partial and len(reflection_partial) > len(last_reflection):
                         delta_chunk = reflection_partial[len(last_reflection):]
                         last_reflection = reflection_partial
                         yield {"status": "reflection_delta", "delta": delta_chunk, "iteration": iteration + 1}
-                    if thought_partial and len(thought_partial) > len(last_thought):
-                        delta_chunk = thought_partial[len(last_thought):]
-                        last_thought = thought_partial
-                        yield {"status": "thought_delta", "delta": delta_chunk, "iteration": iteration + 1}
+
             except Exception as e:
-                logger.error(f"[AgentChatService] ReflAct streaming failed: {e}")
+                logger.error(f"[AgentChatService] ReflAct streaming failed: {e}", exc_info=True)
                 response_text = self._call_llm_sync(messages)
 
-            # Parse for REFLECTION, THOUGHT, ACTION, FINAL ANSWER
-            reflection, thought, action, final_answer = self._parse_reflact_response(response_text)
+            # Handle empty response
+            if not response_text.strip():
+                logger.warning(f"[ReflAct] Empty response in iteration {iteration + 1}")
+                yield {"status": "error", "message": "Leere Antwort vom LLM", "iteration": iteration + 1}
+                continue
+
+            # Parse response: REFLECTION, ACTION or FINAL ANSWER
+            reflection, action, final_answer = self._parse_reflact_response_v2(response_text)
 
             if reflection:
                 steps.append({"type": "reflection", "content": reflection})
                 yield {"status": "reflection", "reflection": reflection, "iteration": iteration + 1}
 
-            if thought:
-                steps.append({"type": "thought", "content": thought})
-                yield {"status": "thought", "thought": thought, "iteration": iteration + 1}
-
+            # Check for final answer
             if final_answer:
                 yield {"status": "final_answer"}
 
@@ -784,6 +767,7 @@ class AgentChatService(ChatService):
                 }
                 return
 
+            # Execute action if present
             if action:
                 action_name, action_param = self._parse_action(f"ACTION: {action}")
                 steps.append({"type": "action", "content": action, "action_name": action_name, "action_param": action_param})
@@ -1053,12 +1037,77 @@ class AgentChatService(ChatService):
 
         return reflection, thought, action, final_answer
 
-    def _extract_goal(self, text: str) -> str:
-        """Extract GOAL from response."""
+    def _parse_reflact_response_v2(self, text: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        """
+        Parse ReflAct response for REFLECTION, ACTION, FINAL ANSWER.
+
+        Based on the ReflAct paper - NO separate THOUGHT step.
+        The reflection IS the thinking, grounded in state relative to goal.
+
+        Returns:
+            (reflection, action, final_answer)
+        """
+        reflection = None
+        action = None
+        final_answer = None
+
+        # Extract REFLECTION - everything until ACTION or FINAL ANSWER
+        reflection_match = re.search(
+            r'REFLECTION:\s*(.+?)(?=ACTION:|FINAL ANSWER:|$)',
+            text, re.IGNORECASE | re.DOTALL
+        )
+        if reflection_match:
+            reflection = reflection_match.group(1).strip()
+
+        # Extract ACTION
+        action_match = re.search(
+            r'ACTION:\s*(.+?)(?=OBSERVATION:|REFLECTION:|FINAL ANSWER:|$)',
+            text, re.IGNORECASE | re.DOTALL
+        )
+        if action_match:
+            action = action_match.group(1).strip()
+
+        # Extract FINAL ANSWER
+        final_match = re.search(
+            r'FINAL ANSWER:\s*(.+?)$',
+            text, re.IGNORECASE | re.DOTALL
+        )
+        if final_match:
+            final_answer = final_match.group(1).strip()
+
+        return reflection, action, final_answer
+
+    def _extract_goal(self, text: str, allow_partial: bool = False) -> str:
+        """
+        Extract GOAL from response.
+
+        Args:
+            text: The LLM response text
+            allow_partial: If True, return partial text even without GOAL: prefix (for streaming).
+                          If False, only return text if GOAL: pattern is found.
+        """
+        if not text:
+            return ""
+
+        # Try to match GOAL: pattern
         goal_match = re.search(r'GOAL:\s*(.+?)(?=REFLECTION:|THOUGHT:|ACTION:|$)', text, re.IGNORECASE | re.DOTALL)
         if goal_match:
             return goal_match.group(1).strip()
-        return text.strip()[:200]
+
+        # For streaming: only return partial if it looks like a valid goal start
+        if allow_partial:
+            # Check if we have "GOAL:" prefix and some content after it
+            simple_match = re.search(r'GOAL:\s*(.+)', text, re.IGNORECASE | re.DOTALL)
+            if simple_match:
+                return simple_match.group(1).strip()
+
+        # For final extraction: fallback to cleaned text
+        if not allow_partial:
+            # Remove any partial "GOAL" prefix that might be there
+            cleaned = re.sub(r'^G?O?A?L?:?\s*', '', text.strip(), flags=re.IGNORECASE)
+            return cleaned[:200] if cleaned else ""
+
+        return ""
 
     @staticmethod
     def _stream_preview_chunks(text: str, chunk_size: int = 80) -> List[str]:

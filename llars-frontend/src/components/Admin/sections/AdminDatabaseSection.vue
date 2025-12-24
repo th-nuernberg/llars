@@ -1,18 +1,59 @@
 <template>
-  <div class="db-explorer">
+  <div class="db-explorer" :class="{ 'is-mobile': isMobile }">
+    <!-- Mobile Table Drawer -->
+    <v-navigation-drawer
+      v-if="isMobile"
+      v-model="mobileTableDrawerOpen"
+      temporary
+      width="280"
+      class="mobile-table-drawer"
+    >
+      <div class="drawer-header">
+        <v-icon size="18">mdi-table-multiple</v-icon>
+        <span>Tabellen</span>
+        <LTag variant="gray" size="small" class="ml-auto">{{ tables.length }}</LTag>
+      </div>
+      <div class="table-search">
+        <v-text-field
+          v-model="tableSearch"
+          placeholder="Suchen..."
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+        />
+      </div>
+      <div class="table-list">
+        <div
+          v-for="table in filteredTables"
+          :key="table"
+          :class="['table-item', { 'table-item--active': selectedTable === table }]"
+          @click="selectTable(table); mobileTableDrawerOpen = false"
+        >
+          <v-icon size="16" class="table-icon">mdi-table</v-icon>
+          <span class="table-name">{{ table }}</span>
+        </div>
+      </div>
+    </v-navigation-drawer>
+
     <!-- Header -->
     <div class="explorer-header">
       <div class="header-left">
-        <v-icon size="24">mdi-database</v-icon>
-        <h2>DB Explorer</h2>
-        <LTag :variant="connectionVariant" :prepend-icon="connectionIcon" size="small">
-          {{ connectionLabel }}
+        <v-btn v-if="isMobile" icon variant="text" size="small" class="mr-1" @click="mobileTableDrawerOpen = true">
+          <v-icon>mdi-menu</v-icon>
+        </v-btn>
+        <v-icon :size="isMobile ? 20 : 24">mdi-database</v-icon>
+        <h2>{{ isMobile ? 'DB' : 'DB Explorer' }}</h2>
+        <LTag :variant="connectionVariant" :prepend-icon="isMobile ? '' : connectionIcon" size="small">
+          {{ isMobile ? '' : connectionLabel }}
         </LTag>
         <div v-if="connectionState === 'connected'" class="live-pulse"></div>
       </div>
       <div class="header-right">
-        <LBtn prepend-icon="mdi-refresh" variant="tonal" size="small" @click="refreshTables">
-          Refresh
+        <LBtn :icon="isMobile" :prepend-icon="isMobile ? '' : 'mdi-refresh'" variant="tonal" size="small" @click="refreshTables">
+          <v-icon v-if="isMobile">mdi-refresh</v-icon>
+          <template v-else>Refresh</template>
         </LBtn>
       </div>
     </div>
@@ -25,8 +66,8 @@
 
     <!-- Main Content -->
     <div class="explorer-content">
-      <!-- Sidebar: Table List -->
-      <div class="sidebar">
+      <!-- Sidebar: Table List (Desktop only) -->
+      <div v-if="!isMobile" class="sidebar">
         <div class="sidebar-header">
           <v-icon size="18">mdi-table-multiple</v-icon>
           <span>Tabellen</span>
@@ -70,58 +111,71 @@
       <div class="data-view">
         <!-- Controls Bar -->
         <div class="controls-bar">
-          <div class="control-group">
-            <label class="control-label">Tabelle</label>
-            <div class="selected-table">
+          <!-- Mobile: show selected table name -->
+          <div v-if="isMobile" class="control-group control-group--grow">
+            <div class="selected-table" @click="mobileTableDrawerOpen = true">
               <v-icon size="16">mdi-table</v-icon>
-              <span>{{ selectedTable || 'Keine ausgewählt' }}</span>
+              <span>{{ selectedTable || 'Tabelle wählen' }}</span>
+              <v-icon size="14" class="ml-auto">mdi-chevron-down</v-icon>
             </div>
           </div>
 
-          <div class="control-group">
-            <label class="control-label">Limit</label>
-            <v-text-field
-              v-model.number="limit"
-              type="number"
-              variant="outlined"
-              density="compact"
-              hide-details
-              min="1"
-              max="200"
-              class="limit-field"
-            />
-          </div>
+          <!-- Desktop controls -->
+          <template v-if="!isMobile">
+            <div class="control-group">
+              <label class="control-label">Tabelle</label>
+              <div class="selected-table">
+                <v-icon size="16">mdi-table</v-icon>
+                <span>{{ selectedTable || 'Keine ausgewählt' }}</span>
+              </div>
+            </div>
 
-          <div class="control-group control-group--grow">
-            <label class="control-label">Suche</label>
-            <v-text-field
-              v-model="search"
-              placeholder="In Daten suchen..."
-              prepend-inner-icon="mdi-magnify"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </div>
+            <div class="control-group">
+              <label class="control-label">Limit</label>
+              <v-text-field
+                v-model.number="limit"
+                type="number"
+                variant="outlined"
+                density="compact"
+                hide-details
+                min="1"
+                max="200"
+                class="limit-field"
+              />
+            </div>
 
-          <LBtn prepend-icon="mdi-sync" variant="primary" size="small" @click="resubscribe">
-            Laden
+            <div class="control-group control-group--grow">
+              <label class="control-label">Suche</label>
+              <v-text-field
+                v-model="search"
+                placeholder="In Daten suchen..."
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+              />
+            </div>
+          </template>
+
+          <LBtn :icon="isMobile" :prepend-icon="isMobile ? '' : 'mdi-sync'" variant="primary" size="small" @click="resubscribe">
+            <v-icon v-if="isMobile">mdi-sync</v-icon>
+            <template v-else>Laden</template>
           </LBtn>
         </div>
 
         <!-- Stats Bar -->
         <div class="stats-bar">
-          <LTag variant="info" size="small" prepend-icon="mdi-table-row">
-            {{ filteredRows.length }} Zeilen
+          <LTag variant="info" size="small" :prepend-icon="isMobile ? '' : 'mdi-table-row'">
+            {{ filteredRows.length }} {{ isMobile ? '' : 'Zeilen' }}
           </LTag>
-          <LTag v-if="orderBy" variant="secondary" size="small" prepend-icon="mdi-sort-descending">
+          <LTag v-if="!isMobile && orderBy" variant="secondary" size="small" prepend-icon="mdi-sort-descending">
             {{ orderBy }} DESC
           </LTag>
-          <LTag v-if="polledAtLabel" variant="gray" size="small" prepend-icon="mdi-clock-outline">
+          <LTag v-if="!isMobile && polledAtLabel" variant="gray" size="small" prepend-icon="mdi-clock-outline">
             {{ polledAtLabel }}
           </LTag>
-          <LTag v-if="columns.length > 0" variant="gray" size="small" prepend-icon="mdi-view-column">
+          <LTag v-if="!isMobile && columns.length > 0" variant="gray" size="small" prepend-icon="mdi-view-column">
             {{ columns.length }} Spalten
           </LTag>
         </div>
@@ -173,12 +227,16 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { io } from 'socket.io-client'
 import { useAuth } from '@/composables/useAuth'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { useMobile } from '@/composables/useMobile'
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
 const auth = useAuth()
 const { isLoading, setLoading } = useSkeletonLoading(['tables', 'table'])
+const { isMobile } = useMobile()
+
+const mobileTableDrawerOpen = ref(false)
 
 const connectionState = ref('disconnected')
 const errorMessage = ref('')
@@ -765,5 +823,104 @@ onBeforeUnmount(() => {
   .control-group--grow {
     flex: 1 1 100%;
   }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+.db-explorer.is-mobile {
+  padding: 8px;
+  gap: 8px;
+  overflow: hidden;
+  max-width: 100vw;
+}
+
+.mobile-table-drawer {
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.mobile-table-drawer .drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.mobile-table-drawer .table-search {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.mobile-table-drawer .table-list {
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.db-explorer.is-mobile .explorer-header {
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.db-explorer.is-mobile .explorer-header h2 {
+  font-size: 0.9rem;
+}
+
+.db-explorer.is-mobile .controls-bar {
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.db-explorer.is-mobile .selected-table {
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+}
+
+.db-explorer.is-mobile .stats-bar {
+  gap: 6px;
+}
+
+.db-explorer.is-mobile .data-table-container {
+  overflow: hidden;
+}
+
+.db-explorer.is-mobile .table-wrapper {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.db-explorer.is-mobile .data-table {
+  font-size: 0.7rem;
+  min-width: 400px;
+}
+
+.db-explorer.is-mobile .data-th,
+.db-explorer.is-mobile .data-td {
+  padding: 6px 8px;
+}
+
+.db-explorer.is-mobile .cell-content {
+  font-size: 0.65rem;
+  max-width: 120px;
+}
+
+.db-explorer.is-mobile .empty-state {
+  padding: 24px;
+}
+
+.db-explorer.is-mobile .empty-state h3 {
+  font-size: 1rem;
+}
+
+.db-explorer.is-mobile .empty-state p {
+  font-size: 0.8rem;
+}
+
+.db-explorer.is-mobile .error-banner {
+  padding: 4px 8px;
+  font-size: 0.7rem;
 }
 </style>

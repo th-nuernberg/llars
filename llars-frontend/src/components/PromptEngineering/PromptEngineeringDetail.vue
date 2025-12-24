@@ -3,10 +3,49 @@
   <div
     ref="containerRef"
     class="prompt-workspace"
-    :class="{ 'prompt-workspace--git-hidden': !showGitPanel }"
+    :class="{
+      'prompt-workspace--git-hidden': !showGitPanel,
+      'is-mobile': isMobile,
+      'is-tablet': isTablet
+    }"
   >
-    <!-- Left Panel: Sidebar -->
-    <div class="left-panel" :style="leftPanelStyle()">
+    <!-- Mobile Navigation Drawer -->
+    <v-navigation-drawer
+      v-if="isMobile"
+      v-model="mobileSidebarOpen"
+      temporary
+      width="300"
+      class="mobile-sidebar-drawer"
+    >
+      <sidebar
+        :users="users"
+        :blocks="blocks"
+        :prompt-id="Number(promptId)"
+        :is-owner="promptOwner === username"
+        :shared-with="sharedWithUsers"
+        :owner="promptOwner"
+        :promptName="promptName"
+        :show-git-panel="showGitPanel"
+        @showAddBlockDialog="showAddBlockDialog = true; mobileSidebarOpen = false"
+        @refreshPromptDetails="fetchPromptDetails()"
+        @uploadJsonFileSelected="onJsonFileSelected"
+        @triggerTestPrompt="openTestPromptDialog(); mobileSidebarOpen = false"
+        @toggleGitPanel="toggleGitPanel"
+      />
+      <template #append>
+        <v-divider />
+        <v-list density="compact" class="pa-2">
+          <v-list-item
+            prepend-icon="mdi-arrow-left"
+            title="Zurück zur Übersicht"
+            @click="router.push('/promptengineering'); mobileSidebarOpen = false"
+          />
+        </v-list>
+      </template>
+    </v-navigation-drawer>
+
+    <!-- Left Panel: Sidebar (Desktop only) -->
+    <div v-if="!isMobile" class="left-panel" :style="leftPanelStyle()">
       <sidebar
         :users="users"
         :blocks="blocks"
@@ -24,8 +63,9 @@
       />
     </div>
 
-    <!-- Resize Divider -->
+    <!-- Resize Divider (Desktop only) -->
     <div
+      v-if="!isMobile"
       class="resize-divider"
       :class="{ resizing: isResizing }"
       @mousedown="startResize"
@@ -34,7 +74,7 @@
     </div>
 
     <!-- Right Panel: Editor -->
-    <div class="right-panel" :style="rightPanelStyle()">
+    <div class="right-panel" :style="isMobile ? {} : rightPanelStyle()">
       <!-- Loading State -->
       <div v-if="isLoading('prompt')" class="loading-state">
         <v-skeleton-loader type="heading" class="mb-4" />
@@ -46,12 +86,25 @@
       <template v-else>
         <!-- Prompt Header -->
         <div class="prompt-header">
-          <h1 class="prompt-title">{{ promptName }}</h1>
+          <div class="prompt-header-left">
+            <!-- Mobile menu button -->
+            <v-btn
+              v-if="isMobile"
+              icon
+              variant="text"
+              size="small"
+              class="mr-2"
+              @click="mobileSidebarOpen = true"
+            >
+              <v-icon>mdi-menu</v-icon>
+            </v-btn>
+            <h1 class="prompt-title">{{ promptName }}</h1>
+          </div>
           <div class="prompt-meta">
             <LTag variant="primary" size="small">
               {{ blocks.length }} {{ blocks.length === 1 ? 'Block' : 'Blöcke' }}
             </LTag>
-            <span v-if="sharedWithUsers.length" class="text-caption text-medium-emphasis ml-2">
+            <span v-if="sharedWithUsers.length && !isMobile" class="text-caption text-medium-emphasis ml-2">
               <v-icon size="14" class="mr-1">mdi-share-variant</v-icon>
               {{ sharedWithUsers.length }} Nutzer
             </span>
@@ -282,12 +335,13 @@ Quill.register(UserHighlightBlot);
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
 import PromptGitPanel from './PromptGitPanel.vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
 import sidebar from "@/components/PromptEngineering/sidebar.vue";
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { usePanelResize } from '@/composables/usePanelResize';
+import { useMobile } from '@/composables/useMobile';
 
 // Composables
 import { useSnackbar } from './composables/useSnackbar';
@@ -303,6 +357,10 @@ import { useActiveDuration, useScrollDepth, useTypingMetrics, useVisibilityTrack
 const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 
 const route = useRoute();
+const router = useRouter();
+const { isMobile, isTablet } = useMobile();
+const mobileSidebarOpen = ref(false);
+
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
 const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
@@ -912,5 +970,116 @@ watch(users, (newUsers, oldUsers) => {
 
 .w-100 {
   width: 100%;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+.prompt-workspace.is-mobile {
+  /* 64px AppBar + 24px Footer = 88px */
+  height: calc(100vh - 88px);
+  height: calc(100dvh - 88px);
+  overflow: hidden;
+  max-width: 100vw;
+}
+
+.mobile-sidebar-drawer {
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.mobile-sidebar-drawer :deep(.sidebar) {
+  height: 100%;
+}
+
+/* Mobile: right panel takes full width */
+.prompt-workspace.is-mobile .right-panel {
+  width: 100% !important;
+  flex: 1;
+}
+
+.prompt-workspace.is-mobile .prompt-header {
+  padding: 12px 16px;
+}
+
+.prompt-workspace.is-mobile .prompt-header-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.prompt-workspace.is-mobile .prompt-title {
+  font-size: 1.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prompt-workspace.is-mobile .blocks-container {
+  padding: 12px;
+}
+
+.prompt-workspace.is-mobile .draggable-container {
+  gap: 12px;
+}
+
+.prompt-workspace.is-mobile .editor-block {
+  border-radius: 8px;
+}
+
+.prompt-workspace.is-mobile .editor-header {
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+.prompt-workspace.is-mobile .block-title {
+  font-size: 0.9rem;
+}
+
+.prompt-workspace.is-mobile .editor-content {
+  min-height: 120px;
+}
+
+.prompt-workspace.is-mobile :deep(.ql-editor) {
+  min-height: 100px;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.prompt-workspace.is-mobile :deep(.ql-toolbar) {
+  padding: 6px 8px;
+}
+
+.prompt-workspace.is-mobile :deep(.ql-toolbar button) {
+  width: 24px;
+  height: 24px;
+}
+
+.prompt-workspace.is-mobile .empty-blocks {
+  padding: 32px 16px;
+}
+
+/* Mobile: Always show header actions (no hover on touch) */
+.prompt-workspace.is-mobile .header-actions {
+  opacity: 1;
+}
+
+/* Tablet adjustments */
+.prompt-workspace.is-tablet .left-panel {
+  max-width: 260px;
+}
+
+.prompt-workspace.is-tablet .prompt-header {
+  padding: 16px 20px;
+}
+
+.prompt-workspace.is-tablet .blocks-container {
+  padding: 16px;
+}
+
+/* Desktop header-left for consistency */
+.prompt-header-left {
+  display: flex;
+  align-items: center;
 }
 </style>

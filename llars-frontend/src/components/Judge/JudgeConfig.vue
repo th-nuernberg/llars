@@ -1,5 +1,5 @@
 <template>
-  <div class="judge-config-page">
+  <div class="judge-config-page" :class="{ 'is-mobile': isMobile }">
     <!-- Page Header -->
     <div class="page-header">
       <v-btn
@@ -274,8 +274,9 @@
         </div>
       </div>
 
-      <!-- Resize Divider -->
+      <!-- Resize Divider (hidden on mobile) -->
       <div
+        v-if="!isMobile"
         class="resize-divider"
         :class="{ resizing: isResizing }"
         @mousedown="startResize"
@@ -283,8 +284,8 @@
         <div class="resize-handle"></div>
       </div>
 
-      <!-- Right Panel: Summary -->
-      <div class="right-panel" :style="rightPanelStyle()">
+      <!-- Right Panel: Summary (hidden on mobile) -->
+      <div v-if="!isMobile" class="right-panel" :style="rightPanelStyle()">
         <div class="panel-header">
           <v-icon class="mr-2" size="small">mdi-information</v-icon>
           <span class="font-weight-medium">Zusammenfassung</span>
@@ -472,11 +473,14 @@ import { watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { usePanelResize } from '@/composables/usePanelResize';
+import { useMobile } from '@/composables/useMobile';
 import {
   useJudgeConfigState,
   useJudgeConfigComputed,
   useJudgeConfigActions
 } from './JudgeConfig/index';
+
+const { isMobile } = useMobile();
 
 const router = useRouter();
 
@@ -779,5 +783,46 @@ onMounted(async () => {
   padding: 12px 16px;
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgb(var(--v-theme-surface));
+}
+
+/* Mobile Styles */
+.judge-config-page.is-mobile {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.judge-config-page.is-mobile .page-header {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+
+.judge-config-page.is-mobile .page-header h1 {
+  font-size: 1.25rem !important;
+}
+
+.judge-config-page.is-mobile .left-panel {
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+.judge-config-page.is-mobile .panel-content {
+  padding: 12px;
+}
+
+.judge-config-page.is-mobile .config-section {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+}
+
+.judge-config-page.is-mobile .action-bar {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+
+.judge-config-page.is-mobile .action-bar .v-btn,
+.judge-config-page.is-mobile .action-bar .l-btn {
+  flex: 1 1 auto;
 }
 </style>

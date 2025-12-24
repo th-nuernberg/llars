@@ -1,22 +1,24 @@
 <!-- PromptEngineering/PromptEngineering.vue -->
 <template>
-  <div class="prompt-home">
+  <div class="prompt-home" :class="{ 'is-mobile': isMobile, 'is-tablet': isTablet }">
     <!-- Header -->
     <div class="page-header">
       <div class="header-content">
         <div class="header-left">
-          <v-icon size="28" color="primary" class="mr-3">mdi-file-document-edit-outline</v-icon>
+          <v-icon :size="isMobile ? 22 : 28" color="primary" :class="isMobile ? 'mr-2' : 'mr-3'">mdi-file-document-edit-outline</v-icon>
           <div>
-            <h1 class="page-title">Prompt Engineering</h1>
-            <p class="page-subtitle">Erstellen und verwalten Sie Ihre Prompts</p>
+            <h1 class="page-title">{{ isMobile ? 'Prompts' : 'Prompt Engineering' }}</h1>
+            <p v-if="!isMobile" class="page-subtitle">Erstellen und verwalten Sie Ihre Prompts</p>
           </div>
         </div>
         <LBtn
           variant="primary"
-          prepend-icon="mdi-plus"
+          :prepend-icon="isMobile ? '' : 'mdi-plus'"
+          :size="isMobile ? 'small' : 'default'"
           @click="openCreateDialog"
         >
-          Neues Prompt
+          <v-icon v-if="isMobile">mdi-plus</v-icon>
+          <span v-else>Neues Prompt</span>
         </LBtn>
       </div>
     </div>
@@ -285,10 +287,12 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { getSocket } from '@/services/socketService';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { useMobile } from '@/composables/useMobile';
 import { formatRelativeDate, getDiceBearUrl } from '@/utils/userUtils';
 
 const router = useRouter();
 const { isLoading, withLoading } = useSkeletonLoading(['prompts', 'sharedPrompts']);
+const { isMobile, isTablet } = useMobile();
 
 // State
 const prompts = ref([]);
@@ -784,5 +788,81 @@ onUnmounted(() => {
 
 .prompt-list-move {
   transition: transform 0.3s ease;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+.prompt-home.is-mobile {
+  /* 64px AppBar + 24px Footer = 88px */
+  height: calc(100vh - 88px);
+  height: calc(100dvh - 88px);
+  overflow: hidden;
+  max-width: 100vw;
+}
+
+.prompt-home.is-mobile .page-header {
+  padding: 12px 16px;
+}
+
+.prompt-home.is-mobile .page-title {
+  font-size: 1.1rem;
+}
+
+.prompt-home.is-mobile .content-area {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prompt-home.is-mobile .section-header {
+  margin-bottom: 12px;
+}
+
+.prompt-home.is-mobile .section-title {
+  font-size: 0.9rem;
+}
+
+.prompt-home.is-mobile .prompts-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.prompt-home.is-mobile .section {
+  margin-bottom: 24px;
+}
+
+.prompt-home.is-mobile .section.mt-8 {
+  margin-top: 24px !important;
+}
+
+.prompt-home.is-mobile .empty-state {
+  padding: 32px 16px;
+}
+
+.prompt-home.is-mobile .empty-state-small {
+  padding: 16px;
+  flex-direction: column;
+  text-align: center;
+  gap: 8px;
+}
+
+.prompt-home.is-mobile .empty-state-small span {
+  margin-left: 0 !important;
+}
+
+/* Tablet adjustments */
+.prompt-home.is-tablet .prompts-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.prompt-home.is-tablet .page-header {
+  padding: 16px 20px;
+}
+
+.prompt-home.is-tablet .content-area {
+  padding: 20px;
 }
 </style>

@@ -487,30 +487,162 @@
           <v-window-item v-if="canUseAdvancedModes" value="agent" eager>
             <v-form ref="formAgent">
               <v-row>
+                <!-- Comprehensive Explanation Card -->
                 <v-col cols="12">
-                  <v-alert type="info" variant="tonal" class="mb-4">
-                    <template #prepend>
-                      <v-icon>mdi-robot-outline</v-icon>
-                    </template>
-                    <div class="text-subtitle-2">Agent-Modi & Task-Typen</div>
-                    <div class="text-body-2">
-                      Konfiguriere Reasoning-Modus und Aufgaben-Komplexität. Die Kombination bestimmt wie der Agent Fragen beantwortet.
-                    </div>
-                  </v-alert>
+                  <v-card variant="outlined" class="agent-explanation-card mb-4">
+                    <v-card-title class="d-flex align-center">
+                      <v-icon start color="primary">mdi-robot-outline</v-icon>
+                      <span>Agent-Modi verstehen</span>
+                      <v-spacer />
+                      <v-btn
+                        :icon="showAgentExplanation ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                        variant="text"
+                        size="small"
+                        @click="showAgentExplanation = !showAgentExplanation"
+                      />
+                    </v-card-title>
+
+                    <v-expand-transition>
+                      <div v-show="showAgentExplanation">
+                        <v-divider />
+                        <v-card-text>
+                          <!-- What are Agent Modes -->
+                          <div class="mb-4">
+                            <div class="text-subtitle-2 mb-2">
+                              <v-icon start size="small" color="info">mdi-help-circle</v-icon>
+                              Was sind Agent-Modi?
+                            </div>
+                            <p class="text-body-2 text-medium-emphasis">
+                              Agent-Modi steuern, <strong>wie</strong> der Chatbot Fragen beantwortet. Statt einer einfachen Anfrage-Antwort
+                              kann der Agent mehrere Schritte durchlaufen: nachdenken, Werkzeuge nutzen (z.B. Dokumentensuche),
+                              Ergebnisse auswerten und erst dann antworten.
+                            </p>
+                          </div>
+
+                          <!-- Mode Comparison -->
+                          <div class="mb-4">
+                            <div class="text-subtitle-2 mb-2">
+                              <v-icon start size="small" color="success">mdi-compare</v-icon>
+                              Ablauf-Vergleich
+                            </div>
+                            <div class="agent-flow-comparison">
+                              <!-- Standard -->
+                              <div class="flow-item">
+                                <div class="flow-label">Standard</div>
+                                <div class="flow-steps">
+                                  <span class="flow-step step-query">Frage</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-llm">LLM</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-answer">Antwort</span>
+                                </div>
+                              </div>
+
+                              <!-- ACT -->
+                              <div class="flow-item">
+                                <div class="flow-label">ACT</div>
+                                <div class="flow-steps">
+                                  <span class="flow-step step-query">Frage</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-action">ACTION</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-observation">OBSERVATION</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-answer">Antwort</span>
+                                </div>
+                              </div>
+
+                              <!-- ReAct -->
+                              <div class="flow-item">
+                                <div class="flow-label">ReAct</div>
+                                <div class="flow-steps">
+                                  <span class="flow-step step-query">Frage</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-thought">THOUGHT</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-action">ACTION</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-observation">OBSERVATION</span>
+                                  <span class="flow-arrow">↺</span>
+                                  <span class="flow-step step-answer">Antwort</span>
+                                </div>
+                              </div>
+
+                              <!-- ReflAct -->
+                              <div class="flow-item">
+                                <div class="flow-label">ReflAct</div>
+                                <div class="flow-steps">
+                                  <span class="flow-step step-goal">GOAL</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-reflection">REFLECTION</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-thought">THOUGHT</span>
+                                  <span class="flow-arrow">→</span>
+                                  <span class="flow-step step-action">ACTION</span>
+                                  <span class="flow-arrow">↺</span>
+                                  <span class="flow-step step-answer">Antwort</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- When to use which -->
+                          <div>
+                            <div class="text-subtitle-2 mb-2">
+                              <v-icon start size="small" color="warning">mdi-lightbulb</v-icon>
+                              Empfehlungen
+                            </div>
+                            <v-table density="compact" class="agent-recommendations-table">
+                              <thead>
+                                <tr>
+                                  <th>Anwendungsfall</th>
+                                  <th>Empfohlener Modus</th>
+                                  <th>Grund</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td>Einfache FAQ, Smalltalk</td>
+                                  <td><LTag variant="gray" size="sm">Standard</LTag></td>
+                                  <td class="text-caption">Schnell, keine Tool-Nutzung nötig</td>
+                                </tr>
+                                <tr>
+                                  <td>Fakten aus Dokumenten</td>
+                                  <td><LTag variant="success" size="sm">ReAct</LTag></td>
+                                  <td class="text-caption">Nachvollziehbarer Suchprozess</td>
+                                </tr>
+                                <tr>
+                                  <td>Schnelle Tool-Nutzung</td>
+                                  <td><LTag variant="primary" size="sm">ACT</LTag></td>
+                                  <td class="text-caption">Weniger Tokens, schneller</td>
+                                </tr>
+                                <tr>
+                                  <td>Komplexe Multi-Hop Fragen</td>
+                                  <td><LTag variant="warning" size="sm">ReflAct</LTag></td>
+                                  <td class="text-caption">Selbstkorrektur durch Ziel-Reflexion</td>
+                                </tr>
+                              </tbody>
+                            </v-table>
+                          </div>
+                        </v-card-text>
+                      </div>
+                    </v-expand-transition>
+
+                    <!-- Collapsed summary -->
+                    <v-card-text v-if="!showAgentExplanation" class="pt-0">
+                      <div class="text-body-2 text-medium-emphasis">
+                        Agent-Modi steuern wie der Chatbot Fragen beantwortet: von einfacher Antwort (Standard)
+                        bis zu mehrstufigem Reasoning mit Tool-Nutzung (ReflAct).
+                        <a href="#" class="text-primary" @click.prevent="showAgentExplanation = true">Mehr erfahren...</a>
+                      </div>
+                    </v-card-text>
+                  </v-card>
                 </v-col>
 
                 <!-- Agent Mode Selection Cards -->
                 <v-col cols="12">
                   <div class="d-flex align-center mb-2">
-                    <div class="text-subtitle-2">Agent-Modus</div>
-                    <LInfoTooltip title="Agent-Modi" :max-width="420" class="ml-2">
-                      <ul>
-                        <li>Standard: direkte Antwort ohne Agent-Zyklen (schnell, klassisches RAG).</li>
-                        <li>ACT: ACTION/OBSERVATION ohne explizite Gedanken (schnell, tool-basiert).</li>
-                        <li>ReAct: THOUGHT - ACTION - OBSERVATION (nachvollziehbarer Reasoning-Flow).</li>
-                        <li>ReflAct: GOAL - REFLECTION - THOUGHT - ACTION (tiefer, mehr Iterationen).</li>
-                      </ul>
-                    </LInfoTooltip>
+                    <div class="text-subtitle-2">Agent-Modus wählen</div>
                   </div>
                   <div class="agent-mode-grid">
                     <v-card
@@ -521,20 +653,42 @@
                       @click="formData.prompt_settings.agent_mode = mode.value"
                     >
                       <v-card-text>
+                        <!-- Header -->
                         <div class="d-flex align-center mb-2">
-                          <v-icon :color="mode.color" size="24" class="mr-2">{{ mode.icon }}</v-icon>
-                          <span class="font-weight-bold">{{ mode.label }}</span>
+                          <v-icon :color="mode.color" size="28" class="mr-2">{{ mode.icon }}</v-icon>
+                          <span class="text-h6 font-weight-bold">{{ mode.label }}</span>
                           <LTag v-if="mode.badge" :variant="mode.badgeColor" size="sm" class="ml-auto">
                             {{ mode.badge }}
                           </LTag>
                         </div>
-                        <div class="text-body-2 text-medium-emphasis mb-2">{{ mode.description }}</div>
-                        <div class="d-flex align-center ga-2">
-                          <LTag variant="primary" size="sm">
+
+                        <!-- Description -->
+                        <div class="text-body-2 mb-3">{{ mode.description }}</div>
+
+                        <!-- Details (shown on hover/selection) -->
+                        <v-expand-transition>
+                          <div v-if="formData.prompt_settings.agent_mode === mode.value" class="mode-details mb-3">
+                            <div class="text-caption text-medium-emphasis mb-2">{{ mode.details }}</div>
+                            <div class="mode-example">
+                              <v-icon size="small" class="mr-1">mdi-code-tags</v-icon>
+                              <code class="text-caption">{{ mode.example }}</code>
+                            </div>
+                          </div>
+                        </v-expand-transition>
+
+                        <!-- Tags -->
+                        <div class="d-flex align-center flex-wrap ga-2">
+                          <LTag variant="info" size="sm" prepend-icon="mdi-api">
                             {{ mode.calls }}
                           </LTag>
                           <LTag v-if="mode.tools" variant="success" size="sm" prepend-icon="mdi-tools">
                             Tools
+                          </LTag>
+                          <LTag v-if="mode.value === 'standard'" variant="gray" size="sm" prepend-icon="mdi-speedometer">
+                            Schnell
+                          </LTag>
+                          <LTag v-if="mode.value === 'reflact'" variant="warning" size="sm" prepend-icon="mdi-brain">
+                            Komplex
                           </LTag>
                         </div>
                       </v-card-text>
@@ -974,46 +1128,57 @@ import {
 const { hasPermission } = usePermissions();
 const canUseAdvancedModes = computed(() => hasPermission('feature:chatbots:advanced'));
 
-// Agent mode configuration
+// Show/hide agent explanation section
+const showAgentExplanation = ref(false);
+
+// Agent mode configuration with detailed descriptions
 const agentModes = [
   {
     value: 'standard',
     label: 'Standard',
     icon: 'mdi-lightning-bolt',
     color: 'grey',
-    description: 'Schnelle Single-Shot Antwort ohne Reasoning',
-    calls: '1 LLM-Call'
+    description: 'Klassisches RAG: Eine Anfrage, eine Antwort. Schnellste Option ohne mehrstufiges Reasoning.',
+    details: 'Der Chatbot erhält die Frage, optional RAG-Kontext, und antwortet direkt. Kein iterativer Prozess.',
+    calls: '1 LLM-Call',
+    example: 'Frage → [RAG-Kontext] → Antwort'
   },
   {
     value: 'act',
     label: 'ACT',
     icon: 'mdi-play',
     color: 'primary',
-    description: 'Nur Aktionen, ohne explizite Denkschritte - schneller',
+    description: 'Action-Only: Der Agent führt Tools aus ohne explizite Denkschritte anzuzeigen.',
+    details: 'Schneller als ReAct, da keine THOUGHT-Phase. Der Agent entscheidet direkt welches Tool er nutzt.',
     calls: '1-3 LLM-Calls',
-    tools: true
+    tools: true,
+    example: 'ACTION: rag_search("Begriff") → OBSERVATION → Antwort'
   },
   {
     value: 'react',
     label: 'ReAct',
     icon: 'mdi-thought-bubble',
     color: 'success',
-    description: 'Denken → Handeln → Beobachten Zyklen',
+    description: 'Reasoning + Acting: Transparenter Denkprozess mit nachvollziehbaren Schritten.',
+    details: 'Der Agent denkt laut nach (THOUGHT), führt dann eine Aktion aus (ACTION) und wertet das Ergebnis aus (OBSERVATION). Dieser Zyklus wiederholt sich bis zur Antwort.',
     calls: '2-5 LLM-Calls',
     tools: true,
     badge: 'Empfohlen',
-    badgeColor: 'success'
+    badgeColor: 'success',
+    example: 'THOUGHT: Ich muss... → ACTION: rag_search() → OBSERVATION → THOUGHT: Jetzt weiß ich... → FINAL ANSWER'
   },
   {
     value: 'reflact',
     label: 'ReflAct',
     icon: 'mdi-target',
     color: 'warning',
-    description: 'Ziel-Reflexion vor jeder Aktion für komplexe Fragen',
+    description: 'Zielorientiert mit Selbstreflexion: Prüft vor jeder Aktion ob das Ziel erreicht ist.',
+    details: 'Erweitert ReAct um GOAL-Definition und REFLECTION-Phase. Der Agent reflektiert nach jeder Observation, wie weit er vom Ziel entfernt ist und korrigiert seine Strategie.',
     calls: '3-7 LLM-Calls',
     tools: true,
     badge: 'Experimentell',
-    badgeColor: 'warning'
+    badgeColor: 'warning',
+    example: 'GOAL: Finde X → REFLECTION: Noch keine Info → THOUGHT → ACTION → OBSERVATION → REFLECTION: 50% erreicht → ...'
   }
 ];
 
@@ -1023,17 +1188,19 @@ const taskTypes = [
     value: 'lookup',
     label: 'Look Up',
     icon: 'mdi-magnify',
-    description: 'Einfache Fakten-Suche (1-2 Tool-Aufrufe)',
-    iterations: '1-2'
+    description: 'Einfache Fakten-Suche: "Wer ist der CEO?" - eine Suche, eine Antwort.',
+    iterations: '1-2',
+    example: 'Frage → 1x Suche → Antwort'
   },
   {
     value: 'multihop',
     label: 'Multi-hop',
     icon: 'mdi-transit-connection-variant',
-    description: 'Komplexe Fragen mit mehreren Schritten',
+    description: 'Komplexe Verknüpfungen: "Welche Projekte leitet der CEO?" - mehrere Suchschritte nötig.',
     iterations: '3-5',
     badge: 'Mehr Tokens',
-    badgeColor: 'warning'
+    badgeColor: 'warning',
+    example: 'Frage → Suche CEO → Suche Projekte → Verknüpfen → Antwort'
   }
 ];
 
@@ -1339,6 +1506,132 @@ watch(() => props.modelValue, (isOpen) => {
 .agent-mode-card--selected {
   border-color: rgb(var(--v-theme-primary)) !important;
   background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+/* Mode Details */
+.mode-details {
+  padding: 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px 2px 8px 2px;
+  border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+.mode-example {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.mode-example code {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* Agent Explanation Card */
+.agent-explanation-card {
+  border-radius: 12px 4px 12px 4px;
+}
+
+/* Flow Comparison Visualization */
+.agent-flow-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.flow-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px 2px 8px 2px;
+}
+
+.flow-label {
+  min-width: 70px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.flow-steps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.flow-step {
+  padding: 4px 8px;
+  border-radius: 6px 2px 6px 2px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.flow-arrow {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-size: 14px;
+}
+
+/* Flow Step Colors */
+.step-query {
+  background: rgba(var(--v-theme-info), 0.2);
+  color: rgb(var(--v-theme-info));
+}
+
+.step-llm {
+  background: rgba(var(--v-theme-primary), 0.2);
+  color: rgb(var(--v-theme-primary));
+}
+
+.step-answer {
+  background: rgba(var(--v-theme-success), 0.2);
+  color: rgb(var(--v-theme-success));
+}
+
+.step-thought {
+  background: rgba(103, 58, 183, 0.2);
+  color: #673ab7;
+}
+
+.step-action {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+}
+
+.step-observation {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+}
+
+.step-goal {
+  background: rgba(233, 30, 99, 0.2);
+  color: #e91e63;
+}
+
+.step-reflection {
+  background: rgba(0, 188, 212, 0.2);
+  color: #00bcd4;
+}
+
+/* Recommendations Table */
+.agent-recommendations-table {
+  font-size: 13px;
+}
+
+.agent-recommendations-table th {
+  font-weight: 600 !important;
+  background: rgba(var(--v-theme-surface-variant), 0.5) !important;
+}
+
+.agent-recommendations-table td {
+  padding: 8px 12px !important;
 }
 
 /* Task Type Grid */

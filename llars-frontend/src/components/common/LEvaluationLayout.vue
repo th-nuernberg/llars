@@ -1,5 +1,5 @@
 <template>
-  <div class="evaluation-layout">
+  <div class="evaluation-layout" :class="{ 'is-mobile': isMobile }">
     <!-- Header -->
     <div class="evaluation-header">
       <div class="header-left">
@@ -78,6 +78,9 @@
 
 <script setup>
 import LEvaluationStatus from './LEvaluationStatus.vue'
+import { useMobile } from '@/composables/useMobile'
+
+const { isMobile } = useMobile()
 
 defineProps({
   title: { type: String, default: '' },
@@ -195,5 +198,58 @@ defineEmits(['back', 'prev', 'next', 'clear-error'])
   gap: 8px;
   flex: 1;
   justify-content: flex-end;
+}
+
+/* Mobile Styles */
+.evaluation-layout.is-mobile {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.evaluation-layout.is-mobile .evaluation-header {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.evaluation-layout.is-mobile .header-left {
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.evaluation-layout.is-mobile .header-title h2 {
+  font-size: 1rem;
+}
+
+.evaluation-layout.is-mobile .header-center,
+.evaluation-layout.is-mobile .header-right {
+  display: none;
+}
+
+.evaluation-layout.is-mobile .evaluation-content {
+  flex-direction: column;
+}
+
+.evaluation-layout.is-mobile .evaluation-action-bar {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.evaluation-layout.is-mobile .action-bar-left {
+  order: 2;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.evaluation-layout.is-mobile .action-bar-center {
+  order: 1;
+  width: 100%;
+  justify-content: center;
+}
+
+.evaluation-layout.is-mobile .action-bar-right {
+  display: none;
 }
 </style>

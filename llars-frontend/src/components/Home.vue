@@ -768,77 +768,69 @@ onMounted(async () => {
 
 /* Mobile Home Page */
 .home-page.is-mobile {
-  height: 100vh;
-  height: 100dvh;
+  /* 64px AppBar + 24px Footer = 88px */
+  height: calc(100vh - 88px);
+  height: calc(100dvh - 88px);
   position: relative;
+  overflow: hidden;
+  max-width: 100vw;
 }
 
 .home-page.is-mobile .page-header {
+  flex-shrink: 0;
   padding: 12px 16px;
 }
 
 .home-page.is-mobile .header-left {
   gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.home-page.is-mobile .header-text {
+  min-width: 0;
 }
 
 .home-page.is-mobile .logo {
   height: 36px;
+  flex-shrink: 0;
 }
 
 .home-page.is-mobile .title {
   font-size: 1.1rem;
-}
-
-.home-page.is-mobile .stats-row {
-  padding: 8px 16px;
-  gap: 8px;
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.home-page.is-mobile .stats-row::-webkit-scrollbar {
-  display: none;
-}
-
-.home-page.is-mobile .stat-card {
-  flex: 0 0 auto;
-  min-width: 100px;
-  padding: 8px 12px;
-}
-
-.home-page.is-mobile .stat-icon {
-  width: 32px;
-  height: 32px;
-}
-
-.home-page.is-mobile .stat-value {
-  font-size: 1rem;
-}
-
-.home-page.is-mobile .stat-label {
-  font-size: 0.65rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .home-page.is-mobile .main-content {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 .home-page.is-mobile .right-panel {
   width: 100%;
+  height: 100%;
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .home-page.is-mobile .panel-header {
+  flex-shrink: 0;
   padding: 10px 16px;
   font-size: 14px;
 }
 
 .home-page.is-mobile .panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .home-page.is-mobile .features-grid {

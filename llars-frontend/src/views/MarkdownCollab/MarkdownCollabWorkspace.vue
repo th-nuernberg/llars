@@ -1,7 +1,46 @@
 <template>
-  <div class="workspace-root">
-    <!-- Collapsible File Tree -->
+  <div class="workspace-root" :class="{ 'is-mobile': isMobile, 'is-tablet': isTablet }">
+    <!-- Mobile Navigation Drawer -->
+    <v-navigation-drawer
+      v-if="isMobile"
+      v-model="mobileSidebarOpen"
+      temporary
+      width="300"
+      class="mobile-tree-drawer"
+    >
+      <MarkdownTreePanel
+        :workspace-id="workspaceId"
+        :nodes="treeNodes"
+        :selected-id="selectedNodeId"
+        :loading="isLoading('tree')"
+        :can-edit="hasPermission('feature:markdown_collab:edit')"
+        :recently-added-ids="recentlyAddedNodeIds"
+        @select="(id) => { handleSelectNode(id); mobileSidebarOpen = false; }"
+        @create="handleCreateNode"
+        @rename="handleRenameNode"
+        @remove="handleDeleteNode"
+        @move="handleMoveNode"
+      />
+      <template #append>
+        <v-divider />
+        <v-list density="compact" class="pa-2">
+          <v-list-item
+            prepend-icon="mdi-home"
+            title="Startseite"
+            @click="router.push('/Home')"
+          />
+          <v-list-item
+            prepend-icon="mdi-folder-multiple"
+            title="Alle Workspaces"
+            @click="router.push('/MarkdownCollab')"
+          />
+        </v-list>
+      </template>
+    </v-navigation-drawer>
+
+    <!-- Desktop: Collapsible File Tree -->
     <div
+      v-if="!isMobile"
       class="tree-panel"
       :class="{ collapsed: treeCollapsed }"
       :style="!treeCollapsed ? { width: treePanelWidth + 'px' } : {}"
@@ -48,9 +87,9 @@
       </div>
     </div>
 
-    <!-- Resize Divider: Tree | Content -->
+    <!-- Resize Divider: Tree | Content (Desktop only) -->
     <div
-      v-if="!treeCollapsed"
+      v-if="!isMobile && !treeCollapsed"
       class="resize-divider vertical"
       :class="{ resizing: resizingTree }"
       @mousedown="startTreeResize"
@@ -63,7 +102,18 @@
       <!-- Content Header - Subtle LLARS Design -->
       <div class="content-header">
         <div class="header-left">
-          <v-icon size="20" color="primary" class="mr-2">mdi-language-markdown</v-icon>
+          <!-- Mobile menu button -->
+          <v-btn
+            v-if="isMobile"
+            icon
+            variant="text"
+            size="small"
+            class="mr-2"
+            @click="mobileSidebarOpen = true"
+          >
+            <v-icon>mdi-menu</v-icon>
+          </v-btn>
+          <v-icon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-language-markdown</v-icon>
           <div class="header-info">
             <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
             <div class="header-subtitle">{{ workspace?.name || `Workspace #${workspaceId}` }}</div>
@@ -146,7 +196,7 @@
               <!-- Editor Pane -->
               <div
                 class="pane editor-pane"
-                :style="viewMode === 'split' ? { width: editorPaneWidth + 'px' } : {}"
+                :style="viewMode === 'split' && editorPaneWidth > 0 ? { width: editorPaneWidth + 'px' } : {}"
               >
                 <MarkdownEditorPane
                   ref="editorRef"
@@ -275,6 +325,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
+import { useMobile } from '@/composables/useMobile'
 import { useWorkspaceSocket } from '@/components/MarkdownCollab/composables/useWorkspaceSocket'
 import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/composables/useAnalyticsMetrics'
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
@@ -289,6 +340,10 @@ const router = useRouter()
 
 const { hasPermission, fetchPermissions, username: currentUsername, isAdmin } = usePermissions()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'document'])
+const { isMobile, isTablet } = useMobile()
+
+// Mobile sidebar state
+const mobileSidebarOpen = ref(false)
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 const VIEWMODE_KEY = 'markdown-collab-view-mode'
@@ -363,10 +418,8 @@ watch(panesContainerRef, (el) => {
 
 watch(viewMode, (val) => {
   localStorage.setItem(VIEWMODE_KEY, val)
-  // Reset pane width when switching modes
-  if (val === 'split' && panesContainerRef.value) {
-    editorPaneWidth.value = panesContainerRef.value.offsetWidth / 2
-  }
+  // Pane width is handled by CSS (flex: 1 1 50%) by default
+  // or by saved localStorage value when user has manually resized
 })
 
 watch(viewMode, async () => {
@@ -519,11 +572,8 @@ onMounted(async () => {
     if (firstFile) router.replace(`/MarkdownCollab/workspace/${workspaceId.value}/document/${firstFile.id}`)
   }
 
-  // Initialize editor pane width
-  await nextTick()
-  if (panesContainerRef.value && editorPaneWidth.value === 0) {
-    editorPaneWidth.value = panesContainerRef.value.offsetWidth / 2
-  }
+  // Editor pane width is now handled by CSS (flex: 1 1 50%) by default
+  // Only apply saved width from localStorage when user has manually resized
 })
 
 onUnmounted(() => {
@@ -1195,5 +1245,92 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+.workspace-root.is-mobile {
+  /* 64px AppBar + 24px Footer = 88px */
+  height: calc(100vh - 88px);
+  height: calc(100dvh - 88px);
+  overflow: hidden;
+  max-width: 100vw;
+}
+
+.mobile-tree-drawer {
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.mobile-tree-drawer :deep(.markdown-tree-panel) {
+  height: 100%;
+}
+
+/* Mobile content area takes full width */
+.workspace-root.is-mobile .content-area {
+  width: 100%;
+}
+
+/* Mobile header adjustments */
+.workspace-root.is-mobile .content-header {
+  padding: 6px 8px;
+}
+
+.workspace-root.is-mobile .header-title {
+  font-size: 13px;
+}
+
+.workspace-root.is-mobile .header-subtitle {
+  font-size: 10px;
+}
+
+.workspace-root.is-mobile .mode-toggle-group {
+  padding: 1px;
+}
+
+.workspace-root.is-mobile .mode-btn {
+  width: 28px;
+  height: 28px;
+}
+
+/* Mobile editor layout */
+.workspace-root.is-mobile .editor-layout {
+  padding: 4px;
+  gap: 4px;
+}
+
+/* Mobile: On split mode, stack vertically instead of horizontal */
+.workspace-root.is-mobile .panes-container.mode-split {
+  flex-direction: column;
+}
+
+.workspace-root.is-mobile .panes-container.mode-split .editor-pane {
+  width: 100% !important;
+  flex: 1;
+}
+
+.workspace-root.is-mobile .panes-container.mode-split .preview-pane {
+  flex: 1;
+}
+
+.workspace-root.is-mobile .panes-container.mode-split .resize-divider {
+  display: none;
+}
+
+/* Hide Git panel on mobile in compact mode */
+.workspace-root.is-mobile .git-panel {
+  max-height: 120px;
+}
+
+/* Tablet adjustments */
+.workspace-root.is-tablet .tree-panel {
+  max-width: 240px;
+}
+
+/* Default 50/50 split - ensure panes container uses flexbox properly */
+.panes-container.mode-split .editor-pane,
+.panes-container.mode-split .preview-pane {
+  flex: 1 1 50%;
+  min-width: 0;
 }
 </style>

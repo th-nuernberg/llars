@@ -1,6 +1,6 @@
 <!-- Rater/Rater.vue -->
 <template>
-  <div class="overview-page">
+  <div class="overview-page" :class="{ 'is-mobile': isMobile }">
     <!-- Header -->
     <div class="overview-header">
       <LBtn variant="tonal" prepend-icon="mdi-arrow-left" size="small" @click="goToHub">
@@ -66,6 +66,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { useMobile } from '@/composables/useMobile'
+
+const { isMobile } = useMobile()
 
 const router = useRouter()
 const emailThreads = ref([])
@@ -226,5 +229,47 @@ function navigateToCase(threadId) {
 
 .empty-state p {
   max-width: 400px;
+}
+
+/* Mobile Styles */
+.overview-page.is-mobile {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.overview-page.is-mobile .overview-header {
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.overview-page.is-mobile .header-info h1 {
+  font-size: 1.25rem;
+}
+
+.overview-page.is-mobile .header-info p {
+  font-size: 0.8rem;
+}
+
+.overview-page.is-mobile .overview-content {
+  padding: 16px;
+}
+
+.overview-page.is-mobile .threads-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.overview-page.is-mobile .thread-card {
+  min-height: 140px;
+  padding: 12px;
+}
+
+.overview-page.is-mobile .card-body {
+  padding-right: 80px;
+}
+
+.overview-page.is-mobile .card-title {
+  font-size: 0.9rem;
 }
 </style>

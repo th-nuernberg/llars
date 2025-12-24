@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-users">
+  <div class="admin-users" :class="{ 'is-mobile': isMobile }">
     <!-- Search and Filter Row -->
     <v-row class="mb-4">
       <v-col cols="12" md="4">
@@ -211,7 +211,26 @@
                 size="sm"
                 class="mr-2"
               />
-              <span class="font-weight-medium">{{ item.username }}</span>
+              <div>
+                <span class="font-weight-medium">{{ item.username }}</span>
+                <!-- Show status on mobile since column is hidden -->
+                <div v-if="isMobile" class="d-flex align-center gap-1 mt-1">
+                  <LTag :variant="getStatusVariant(item)" size="sm">
+                    {{ getStatusLabel(item) }}
+                  </LTag>
+                  <LTag
+                    v-for="role in item.roles.slice(0, 1)"
+                    :key="role.id"
+                    size="sm"
+                    :variant="getRoleVariant(role.role_name)"
+                  >
+                    {{ role.display_name }}
+                  </LTag>
+                  <span v-if="item.roles.length > 1" class="text-caption text-medium-emphasis">
+                    +{{ item.roles.length - 1 }}
+                  </span>
+                </div>
+              </div>
             </div>
           </template>
 
@@ -462,6 +481,9 @@
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { useMobile } from '@/composables/useMobile';
+
+const { isMobile } = useMobile();
 
 // State
 const searchQuery = ref('');
@@ -495,13 +517,21 @@ const deletingUser = ref(false);
 const togglingUser = ref(null);
 const { isLoading, withLoading } = useSkeletonLoading(['table']);
 
-// Table headers
-const headers = [
-  { title: 'Benutzer', key: 'username', sortable: true },
-  { title: 'Status', key: 'status', sortable: false },
-  { title: 'Rollen', key: 'roles', sortable: false },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' },
-];
+// Table headers - responsive for mobile
+const headers = computed(() => {
+  if (isMobile.value) {
+    return [
+      { title: 'Benutzer', key: 'username', sortable: true },
+      { title: '', key: 'actions', sortable: false, align: 'end', width: '80px' },
+    ];
+  }
+  return [
+    { title: 'Benutzer', key: 'username', sortable: true },
+    { title: 'Status', key: 'status', sortable: false },
+    { title: 'Rollen', key: 'roles', sortable: false },
+    { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' },
+  ];
+});
 
 const collabColorPresets = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
@@ -572,8 +602,19 @@ const selectedUserStatus = computed(() => {
   };
 });
 
-// Get actions for user row
+// Get actions for user row - simplified on mobile
 const getUserActions = (user) => {
+  // On mobile, only show edit button to open details panel
+  if (isMobile.value) {
+    return [
+      {
+        key: 'edit',
+        icon: 'mdi-chevron-right',
+        tooltip: 'Details',
+        loading: loadingUser.value === user.username
+      }
+    ];
+  }
   return [
     {
       key: 'edit',
@@ -847,6 +888,10 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.gap-1 {
+  gap: 4px;
+}
+
 .gap-2 {
   gap: 8px;
 }
@@ -874,5 +919,49 @@ onMounted(() => {
 
 .collab-color-preset.selected {
   border-color: rgb(var(--v-theme-on-surface));
+}
+
+/* Mobile Styles */
+.admin-users.is-mobile {
+  overflow: hidden;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.admin-users.is-mobile :deep(.v-data-table) {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.admin-users.is-mobile :deep(.v-data-table__wrapper) {
+  overflow-x: hidden;
+}
+
+.admin-users.is-mobile :deep(.v-data-table-header th) {
+  white-space: nowrap;
+}
+
+.admin-users.is-mobile :deep(.v-card) {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.admin-users.is-mobile :deep(.v-card-title) {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-users.is-mobile :deep(.v-card-title .text-h6) {
+  font-size: 1rem !important;
+}
+
+/* Compact search row on mobile */
+.admin-users.is-mobile :deep(.v-row.mb-4) {
+  margin-bottom: 8px !important;
+}
+
+.admin-users.is-mobile :deep(.v-row.mb-4 .v-col) {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 </style>

@@ -825,9 +825,23 @@ class ChatService:
         def try_huggingface_local(mid: str):
             """Try loading model locally via HuggingFace."""
             try:
+                # For models with custom code (like llamaindex/vdr-2b-multi-v1),
+                # add model cache dir to sys.path so custom modules can be imported
+                import sys
+                cache_dirs = [
+                    os.path.expanduser("~/.cache/huggingface/hub"),
+                    "/app/storage/models"
+                ]
+                for cache_dir in cache_dirs:
+                    if os.path.exists(cache_dir):
+                        for root, dirs, files in os.walk(cache_dir):
+                            if 'custom_st.py' in files and root not in sys.path:
+                                logger.info(f"Adding custom module path: {root}")
+                                sys.path.insert(0, root)
+
                 embeddings = HuggingFaceEmbeddings(
                     model_name=mid,
-                    model_kwargs={"device": "cpu"},
+                    model_kwargs={"device": "cpu", "trust_remote_code": True},
                     encode_kwargs={"normalize_embeddings": True},
                     cache_folder="/app/storage/models"
                 )
@@ -838,7 +852,7 @@ class ChatService:
                 logger.warning(f"Failed to load HuggingFace embeddings locally for {mid}: {e}")
                 return None
 
-        is_hf = model_id.startswith("sentence-transformers/") or "sentence-transformers" in model_id
+        is_hf = model_id.startswith("sentence-transformers/") or "sentence-transformers" in model_id or model_id.startswith("llamaindex/")
 
         if is_hf:
             return try_huggingface_local(model_id)
@@ -876,16 +890,16 @@ class ChatService:
         from services.rag.collection_embedding_service import sanitize_chroma_collection_name
 
         # Use the collection's embedding model (stored in DB when collection was created)
+        # CRITICAL: We must use the SAME model for query embedding as was used for document embedding
+        # Otherwise dimensions won't match and retrieval will fail silently or return garbage
         collection_model = self._resolve_collection_embedding_model(collection) or "sentence-transformers/all-MiniLM-L6-v2"
         embeddings = self._get_embeddings_for_model(collection_model)
-        if embeddings is None and self.rag_pipeline and self.rag_pipeline.model_name != collection_model:
-            fallback_model = self.rag_pipeline.model_name
-            embeddings = self._get_embeddings_for_model(fallback_model)
-            if embeddings:
-                collection_model = fallback_model
 
         if embeddings is None:
-            logger.error(f"Could not load embeddings for model {collection_model}")
+            logger.error(
+                f"[ChatService] Could not load embedding model '{collection_model}' for collection {collection.id}. "
+                f"RAG retrieval will fail. Please ensure the model is available or re-embed the collection with a different model."
+            )
             return []
 
         vectorstore_dir = os.path.join(

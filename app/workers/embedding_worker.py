@@ -151,9 +151,10 @@ class EmbeddingWorker:
 
         from langchain_huggingface import HuggingFaceEmbeddings
         from langchain_openai import OpenAIEmbeddings
+        import sys
 
-        # Check if it's a known local-only model (sentence-transformers)
-        is_local_model = model_id.startswith("sentence-transformers/")
+        # Check if it's a known local-only model (sentence-transformers or llamaindex)
+        is_local_model = model_id.startswith("sentence-transformers/") or model_id.startswith("llamaindex/")
 
         # Try LiteLLM (remote) first for non-local models
         if not is_local_model:
@@ -178,9 +179,24 @@ class EmbeddingWorker:
         # Fallback to local HuggingFace
         try:
             logger.info(f"[EmbeddingWorker] Loading local HuggingFace embeddings for: {model_id}")
+
+            # For models with custom code (like llamaindex/vdr-2b-multi-v1),
+            # add model cache dir to sys.path so custom modules can be imported
+            cache_dirs = [
+                os.path.expanduser("~/.cache/huggingface/hub"),
+                self._pipeline.model_dir,
+                "/app/storage/models"
+            ]
+            for cache_dir in cache_dirs:
+                if os.path.exists(cache_dir):
+                    for root, dirs, files in os.walk(cache_dir):
+                        if 'custom_st.py' in files and root not in sys.path:
+                            logger.info(f"[EmbeddingWorker] Adding custom module path: {root}")
+                            sys.path.insert(0, root)
+
             embeddings = HuggingFaceEmbeddings(
                 model_name=model_id,
-                model_kwargs={"device": "cpu"},
+                model_kwargs={"device": "cpu", "trust_remote_code": True},
                 encode_kwargs={"normalize_embeddings": True},
                 cache_folder=self._pipeline.model_dir
             )
@@ -387,13 +403,12 @@ class EmbeddingWorker:
 
         collection_name = sanitize_chroma_collection_name(primary_collection.name, target_model)
 
-        # Ensure stored chroma_collection_name and embedding_model match
-        for coll in linked_collections:
-            if coll:
-                if coll.chroma_collection_name != collection_name:
-                    coll.chroma_collection_name = collection_name
-                if coll.embedding_model != target_model:
-                    coll.embedding_model = target_model
+        # Only update primary collection's chroma_collection_name and embedding_model
+        # Other linked collections keep their own names (UNIQUE constraint)
+        if primary_collection.chroma_collection_name != collection_name:
+            primary_collection.chroma_collection_name = collection_name
+        if primary_collection.embedding_model != target_model:
+            primary_collection.embedding_model = target_model
 
         # Get or create Chroma collection using target model's directory
         vectorstore_dir = os.path.join(self._pipeline.storage_dir, "vectorstore", target_model.replace('/', '_'))

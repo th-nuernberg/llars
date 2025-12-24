@@ -20,7 +20,7 @@ chromadb.config.Settings(anonymized_telemetry=False)
 
 DEFAULT_FALLBACK_EMBEDDING_MODEL = os.environ.get(
     "LLARS_FALLBACK_EMBEDDING_MODEL",
-    "llamaindex/vdr-2b-multi-v1"
+    "sentence-transformers/all-MiniLM-L6-v2"
 )
 
 
@@ -105,9 +105,25 @@ class RAGPipeline:
         def init_hf_embeddings(model_id: str, provider_label: str):
             try:
                 logging.info(f"Initializing HuggingFace embedding model: {model_id}")
+
+                # For models with custom code (like llamaindex/vdr-2b-multi-v1),
+                # we need to add the model cache dir to sys.path so custom modules can be imported
+                import sys
+                cache_dirs = [
+                    os.path.expanduser("~/.cache/huggingface/hub"),
+                    self.model_dir,
+                    "/app/storage/models"
+                ]
+                for cache_dir in cache_dirs:
+                    if os.path.exists(cache_dir):
+                        for root, dirs, files in os.walk(cache_dir):
+                            if 'custom_st.py' in files and root not in sys.path:
+                                logging.info(f"Adding custom module path: {root}")
+                                sys.path.insert(0, root)
+
                 embeddings = HuggingFaceEmbeddings(
                     model_name=model_id,
-                    model_kwargs={"device": "cpu"},
+                    model_kwargs={"device": "cpu", "trust_remote_code": True},
                     encode_kwargs={"normalize_embeddings": True},
                     cache_folder=self.model_dir
                 )

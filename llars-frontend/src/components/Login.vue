@@ -1,5 +1,5 @@
 <template>
-  <div class="login-page" :class="{ 'dark-mode': isDarkMode }">
+  <div class="login-page" :class="{ 'dark-mode': isDarkMode, 'is-mobile': isMobile, 'is-ios': isIOS }">
     <div class="paint-strokes">
       <div v-for="n in 8" :key="n"></div>
     </div>
@@ -105,9 +105,11 @@ import {ref, computed, onMounted} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {useTheme} from 'vuetify';
 import {useAuth} from '@/composables/useAuth';
+import {useMobile} from '@/composables/useMobile';
 
 const theme = useTheme();
 const isDarkMode = computed(() => theme.global.current.value.dark);
+const { isMobile, isIOS, safeAreaInsets } = useMobile();
 
 const username = ref('');
 const password = ref('');
@@ -521,19 +523,133 @@ async function quickLogin(user) {
   66% { transform: translate(4%, 5%) scale(1.04); }
 }
 
-/* Responsive */
-@media (max-width: 480px) {
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   Optimized for phones and touch devices
+   ======================================== */
+
+/* Mobile Layout - full screen on small devices */
+.login-page.is-mobile {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for iOS */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.login-page.is-mobile .login-container {
+  max-width: 100%;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-page.is-mobile .login-card {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+/* iOS-specific fixes */
+.login-page.is-ios {
+  /* Prevent iOS bounce scroll */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.login-page.is-ios .login-field :deep(input) {
+  /* Fix iOS input zoom on focus */
+  font-size: 16px !important;
+}
+
+/* Tablet and small mobile breakpoint */
+@media (max-width: 600px) {
+  .login-page {
+    padding: 0;
+  }
+
+  .login-container {
+    padding: 16px;
+    width: 100%;
+  }
+
+  .login-card {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .login-header {
+    padding: 24px 20px;
+  }
+
+  .login-logo {
+    width: 52px;
+    height: 52px;
+  }
+
+  .login-title {
+    font-size: 1.25rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .login-form {
+    padding: 20px;
+  }
+
+  .login-field {
+    margin-bottom: 16px;
+  }
+
+  /* Larger touch targets for mobile */
+  .login-field :deep(.v-field) {
+    min-height: 52px;
+  }
+
+  .login-field :deep(.v-field__input) {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .login-button {
+    min-height: 48px;
+    margin-top: 8px;
+  }
+
+  .dev-login {
+    padding: 0 20px 20px;
+  }
+
+  .dev-login-buttons {
+    gap: 6px;
+  }
+
+  .dev-login-buttons > * {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+  }
+
+  /* Reduce paint strokes on mobile for performance */
+  .paint-strokes div {
+    filter: blur(40px);
+    opacity: 0.3;
+  }
+}
+
+/* Extra small devices (iPhone SE, etc.) */
+@media (max-width: 380px) {
   .login-header {
     padding: 20px 16px;
   }
 
   .login-logo {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
   }
 
   .login-title {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
   }
 
   .login-form {
@@ -543,5 +659,63 @@ async function quickLogin(user) {
   .dev-login {
     padding: 0 16px 16px;
   }
+
+  .dev-login-buttons {
+    flex-direction: column;
+  }
+
+  .dev-login-buttons > * {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .login-page {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 16px 0;
+  }
+
+  .login-container {
+    padding: 8px 16px;
+  }
+
+  .login-header {
+    padding: 16px;
+  }
+
+  .login-logo {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 4px;
+  }
+
+  .login-title {
+    font-size: 1.1rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .login-form {
+    padding: 12px 16px;
+  }
+
+  .login-field {
+    margin-bottom: 8px;
+  }
+
+  .paint-strokes {
+    display: none; /* Hide animations in landscape for performance */
+  }
+}
+
+/* Prevent horizontal scroll on any device */
+.login-page {
+  overflow-x: hidden;
 }
 </style>

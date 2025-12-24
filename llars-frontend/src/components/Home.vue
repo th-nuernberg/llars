@@ -1,66 +1,66 @@
 <template>
-  <div class="home-page">
+  <div class="home-page" :class="{ 'is-mobile': isMobile, 'is-tablet': isTablet }">
     <!-- Page Header -->
     <div class="page-header">
       <div class="header-left">
         <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="logo" />
         <div class="header-text">
           <h1 class="title">Willkommen bei LLARS</h1>
-          <p class="subtitle">Ihre Plattform für Ranking, Labeling, Rating und KI-Analyse</p>
+          <p class="subtitle" v-if="!isMobile">Ihre Plattform für Ranking, Labeling, Rating und KI-Analyse</p>
         </div>
       </div>
       <div class="header-right">
-        <v-chip color="primary" variant="flat" class="user-chip">
-          <v-icon start>mdi-account</v-icon>
-          {{ username }}
+        <!-- Mobile: Category toggle button -->
+        <v-btn
+          v-if="isMobile"
+          icon
+          variant="text"
+          class="mr-2"
+          @click="showMobileCategories = !showMobileCategories"
+        >
+          <v-icon>{{ showMobileCategories ? 'mdi-close' : 'mdi-filter-variant' }}</v-icon>
+        </v-btn>
+        <v-chip color="primary" variant="flat" class="user-chip" :size="isMobile ? 'small' : 'default'">
+          <v-icon start :size="isMobile ? 16 : 20">mdi-account</v-icon>
+          <span v-if="!isMobile">{{ username }}</span>
         </v-chip>
       </div>
     </div>
 
-    <!-- Stats Row -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <v-icon color="primary">mdi-view-grid</v-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ filteredItems.length }}</span>
-          <span class="stat-label">Features</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <v-icon color="success">mdi-folder-multiple</v-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ categories.length }}</span>
-          <span class="stat-label">Kategorien</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <v-icon color="info">mdi-flask</v-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ researchCount }}</span>
-          <span class="stat-label">Forschung</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <v-icon color="warning">mdi-cog</v-icon>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ adminCount }}</span>
-          <span class="stat-label">Admin</span>
+    <!-- Mobile Categories Overlay -->
+    <v-slide-y-transition>
+      <div v-if="isMobile && showMobileCategories" class="mobile-categories-overlay">
+        <div class="mobile-categories-content">
+          <div class="mobile-category-header">
+            <v-icon class="mr-2">mdi-filter-variant</v-icon>
+            <span>Kategorien</span>
+          </div>
+          <div class="mobile-categories-list">
+            <div
+              v-for="cat in categories"
+              :key="cat.id"
+              class="mobile-category-item"
+              :class="{ active: selectedCategory === cat.id }"
+              @click="selectCategory(cat.id)"
+            >
+              <v-icon :color="selectedCategory === cat.id ? 'primary' : undefined">
+                {{ cat.icon }}
+              </v-icon>
+              <span class="mobile-category-name">{{ cat.name }}</span>
+              <span class="mobile-category-count">{{ getCategoryCount(cat.id) }}</span>
+              <v-icon v-if="selectedCategory === cat.id" color="primary" size="18">
+                mdi-check
+              </v-icon>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </v-slide-y-transition>
 
     <!-- Main Content -->
     <div ref="containerRef" class="main-content">
-      <!-- Left Panel: Categories -->
-      <div class="left-panel" :style="leftPanelStyle()">
+      <!-- Left Panel: Categories (Desktop only) -->
+      <div v-if="!isMobile" class="left-panel" :style="leftPanelStyle()">
         <div class="panel-header">
           <v-icon class="mr-2">mdi-filter-variant</v-icon>
           <span>Kategorien</span>
@@ -89,8 +89,9 @@
         </div>
       </div>
 
-      <!-- Resize Divider -->
+      <!-- Resize Divider (Desktop only) -->
       <div
+        v-if="!isMobile"
         class="resize-divider"
         :class="{ resizing: isResizing }"
         @mousedown="startResize"
@@ -99,7 +100,7 @@
       </div>
 
       <!-- Right Panel: Features Grid -->
-      <div class="right-panel" :style="rightPanelStyle()">
+      <div class="right-panel" :style="isMobile ? {} : rightPanelStyle()">
         <div class="panel-header">
           <v-icon class="mr-2">mdi-apps</v-icon>
           <span>{{ selectedCategoryName }}</span>
@@ -155,17 +156,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePanelResize } from '@/composables/usePanelResize'
 import { useAuth } from '@/composables/useAuth'
+import { useMobile } from '@/composables/useMobile'
 
 const router = useRouter()
 const { hasPermission, hasAnyPermission, fetchPermissions } = usePermissions()
 const { isLoading: isSkelLoading, withLoading } = useSkeletonLoading(['permissions'])
 const { tokenParsed } = useAuth()
+const { isMobile, isTablet, isSmallScreen, isTouchDevice } = useMobile()
+
+// Mobile UI state
+const mobileMenuOpen = ref(false)
+const showMobileCategories = ref(false)
 
 const {
   isResizing,
@@ -198,6 +205,13 @@ const categories = computed(() => {
 })
 
 const selectedCategory = ref('all')
+
+// Close mobile categories panel when category is selected
+watch(selectedCategory, () => {
+  if (isMobile.value) {
+    showMobileCategories.value = false
+  }
+})
 
 // All available features with their required permissions
 const allItems = ref([
@@ -682,16 +696,192 @@ onMounted(async () => {
   font-size: 0.9rem;
 }
 
-/* Responsive */
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile Categories Overlay */
+.mobile-categories-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background-color: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-categories-content {
+  padding: 12px 16px;
+}
+
+.mobile-category-header {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.mobile-categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-category-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-category-item:active {
+  background-color: rgba(var(--v-theme-primary), 0.15);
+}
+
+.mobile-category-item.active {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+}
+
+.mobile-category-name {
+  flex: 1;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.mobile-category-count {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* Mobile Home Page */
+.home-page.is-mobile {
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+}
+
+.home-page.is-mobile .page-header {
+  padding: 12px 16px;
+}
+
+.home-page.is-mobile .header-left {
+  gap: 12px;
+}
+
+.home-page.is-mobile .logo {
+  height: 36px;
+}
+
+.home-page.is-mobile .title {
+  font-size: 1.1rem;
+}
+
+.home-page.is-mobile .stats-row {
+  padding: 8px 16px;
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.home-page.is-mobile .stats-row::-webkit-scrollbar {
+  display: none;
+}
+
+.home-page.is-mobile .stat-card {
+  flex: 0 0 auto;
+  min-width: 100px;
+  padding: 8px 12px;
+}
+
+.home-page.is-mobile .stat-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.home-page.is-mobile .stat-value {
+  font-size: 1rem;
+}
+
+.home-page.is-mobile .stat-label {
+  font-size: 0.65rem;
+}
+
+.home-page.is-mobile .main-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.home-page.is-mobile .right-panel {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-page.is-mobile .panel-header {
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+.home-page.is-mobile .panel-content {
+  padding: 12px;
+}
+
+.home-page.is-mobile .features-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.home-page.is-mobile .feature-card {
+  padding: 16px;
+}
+
+.home-page.is-mobile .feature-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+}
+
+.home-page.is-mobile .feature-title {
+  font-size: 1rem;
+}
+
+.home-page.is-mobile .feature-description {
+  font-size: 0.8rem;
+}
+
+/* Tablet styles */
+.home-page.is-tablet .stats-row {
+  flex-wrap: wrap;
+}
+
+.home-page.is-tablet .stat-card {
+  flex: 1 1 calc(50% - 8px);
+}
+
+.home-page.is-tablet .features-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Legacy responsive (for transition) */
 @media (max-width: 768px) {
   .page-header {
-    flex-direction: column;
+    flex-direction: row;
     gap: 12px;
-    text-align: center;
-  }
-
-  .header-left {
-    flex-direction: column;
   }
 
   .stats-row {
@@ -725,5 +915,50 @@ onMounted(async () => {
   .features-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Extra small devices */
+@media (max-width: 380px) {
+  .home-page.is-mobile .stat-card {
+    min-width: 85px;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .home-page.is-mobile .stat-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .home-page.is-mobile .stat-value {
+    font-size: 0.9rem;
+  }
+}
+
+/* Landscape on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .home-page.is-mobile {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .home-page.is-mobile .stats-row {
+    padding: 4px 12px;
+  }
+
+  .home-page.is-mobile .stat-card {
+    padding: 4px 8px;
+  }
+}
+
+/* Touch device optimizations */
+.home-page.is-mobile .feature-card {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-page.is-mobile .feature-card:active {
+  transform: scale(0.98);
+  transition: transform 0.1s;
 }
 </style>

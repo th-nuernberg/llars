@@ -26,6 +26,7 @@ from db.tables import (
     CollectionDocumentLink,
     ChatbotCollection,
 )
+from db.models.rag import CollectionEmbedding
 from db.models.llm_model import LLMModel
 from db.db import db
 from sqlalchemy import desc
@@ -87,13 +88,34 @@ def get_collections():
             'source_url': c.source_url,
             'embedding_status': c.embedding_status,
             'embedding_progress': c.embedding_progress or 0,
-            'embedding_error': c.embedding_error
+            'embedding_error': c.embedding_error,
+            # Multi-embedding info
+            'embeddings': _get_collection_embeddings_summary(c.id)
         })
 
     return jsonify({
         'success': True,
         'collections': result
     }), 200
+
+
+def _get_collection_embeddings_summary(collection_id: int) -> list:
+    """Get summary of all embeddings for a collection."""
+    embeddings = CollectionEmbedding.query.filter_by(
+        collection_id=collection_id
+    ).order_by(desc(CollectionEmbedding.priority)).all()
+
+    return [{
+        'model_id': e.model_id,
+        'model_source': e.model_source,
+        'dimensions': e.embedding_dimensions,
+        'status': e.status,
+        'progress': e.progress,
+        'chunk_count': e.chunk_count,
+        'priority': e.priority,
+        'chroma_collection': e.chroma_collection_name,
+        'completed_at': e.completed_at.isoformat() if e.completed_at else None
+    } for e in embeddings]
 
 
 @rag_collection_bp.route('/collections/<int:collection_id>', methods=['GET'])
@@ -164,7 +186,9 @@ def get_collection(collection_id):
             'can_share': RAGAccessService.can_share_collection(username, collection),
             'created_at': collection.created_at.isoformat() if collection.created_at else None,
             'last_indexed_at': collection.last_indexed_at.isoformat() if collection.last_indexed_at else None,
-            'documents': documents_list
+            'documents': documents_list,
+            # Multi-embedding info
+            'embeddings': _get_collection_embeddings_summary(collection.id)
         }
     }), 200
 

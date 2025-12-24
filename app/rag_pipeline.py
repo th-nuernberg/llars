@@ -90,17 +90,33 @@ class RAGPipeline:
         litellm_base_url = os.environ.get("LITELLM_BASE_URL")
 
         candidates = []
+        app_context_available = False
         try:
-            from db.models.llm_model import LLMModel
+            from flask import has_app_context
+            app_context_available = has_app_context()
+        except ImportError:
+            pass
 
-            candidates = (
-                LLMModel.query
-                .filter_by(model_type=LLMModel.MODEL_TYPE_EMBEDDING, is_active=True)
-                .order_by(LLMModel.is_default.desc(), LLMModel.display_name.asc())
-                .all()
-            )
-        except Exception as e:
-            logging.error(f"[RAGPipeline] Failed to load embedding models from llm_models: {e}")
+        if app_context_available:
+            try:
+                from db.models.llm_model import LLMModel
+
+                candidates = (
+                    LLMModel.query
+                    .filter_by(model_type=LLMModel.MODEL_TYPE_EMBEDDING, is_active=True)
+                    .order_by(LLMModel.is_default.desc(), LLMModel.display_name.asc())
+                    .all()
+                )
+            except Exception as e:
+                logging.error(f"[RAGPipeline] Failed to load embedding models from llm_models: {e}")
+        else:
+            logging.warning("[RAGPipeline] No Flask app context - using environment-based model selection")
+            # When no app context, try LiteLLM with VDR-2B if configured
+            env_model = os.environ.get("LLARS_EMBEDDING_MODEL", "llamaindex/vdr-2b-multi-v1")
+            if litellm_api_key and litellm_base_url:
+                # Create a synthetic candidate to try LiteLLM
+                from types import SimpleNamespace
+                candidates = [SimpleNamespace(model_id=env_model, provider="litellm")]
 
         def init_hf_embeddings(model_id: str, provider_label: str):
             try:
@@ -222,6 +238,25 @@ class RAGPipeline:
             return fallback
 
         raise RuntimeError("Unable to initialize any embedding model from llm_models")
+
+    @classmethod
+    def clear_embedding_cache(cls):
+        """
+        Clear the cached embedding model.
+        Use this to force re-initialization (e.g., after config changes).
+        """
+        with cls._embeddings_lock:
+            cls._shared_embeddings = None
+            cls._shared_model_name = None
+            cls._shared_model_type = None
+            cls._shared_dimensions = None
+            cls._shared_model_provider = None
+            logging.info("[RAGPipeline] Embedding cache cleared")
+
+    @classmethod
+    def is_using_fallback(cls) -> bool:
+        """Check if currently using local fallback model."""
+        return cls._shared_model_type == "huggingface" and cls._shared_model_provider == "local-fallback"
 
     def get_embedding_info(self):
         """

@@ -131,9 +131,19 @@
             <AdminPermissionsSection />
           </div>
 
-          <!-- System Monitor Section -->
+          <!-- System Health Section -->
+          <div v-else-if="activeSection === 'health'" key="health" class="section-container--full">
+            <AdminSystemHealthSection />
+          </div>
+
+          <!-- System Events Section -->
           <div v-else-if="activeSection === 'system'" key="system" class="section-container--full">
             <AdminSystemMonitorSection />
+          </div>
+
+          <!-- Chatbot Activity Section -->
+          <div v-else-if="activeSection === 'chatbot-activity'" key="chatbot-activity" class="section-container--full">
+            <AdminChatbotActivitySection />
           </div>
 
           <!-- Docker Monitor Section -->
@@ -166,6 +176,8 @@ import AdminScenariosSection from './sections/AdminScenariosSection.vue';
 import AdminRAGSection from './sections/AdminRAGSection.vue';
 import AdminPermissionsSection from './sections/AdminPermissionsSection.vue';
 import AdminSystemMonitorSection from './sections/AdminSystemMonitorSection.vue';
+import AdminSystemHealthSection from './sections/AdminSystemHealthSection.vue';
+import AdminChatbotActivitySection from './sections/AdminChatbotActivitySection.vue';
 import AdminDockerMonitorSection from './sections/AdminDockerMonitorSection.vue';
 import AdminDatabaseSection from './sections/AdminDatabaseSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
@@ -202,7 +214,9 @@ const isChatbotWizardOpen = computed(() => {
 const navItems = [
   { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard', adminOnly: true },
   { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar', adminOnly: true },
-  { title: 'System Monitor', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
+  { title: 'System Health', value: 'health', icon: 'mdi-heart-pulse', adminOnly: true },
+  { title: 'System Events', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
+  { title: 'Chatbot Activity', value: 'chatbot-activity', icon: 'mdi-robot-outline', adminOnly: true },
   { title: 'Docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
   { title: 'DB', value: 'db', icon: 'mdi-database', adminOnly: true },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group', adminOnly: true },
@@ -226,7 +240,9 @@ const filteredNavItems = computed(() => {
 const sectionInfo = {
   overview: { title: 'Dashboard Übersicht', subtitle: 'Schnellübersicht aller wichtigen Kennzahlen' },
   analytics: { title: 'Analytics', subtitle: 'Matomo Dashboard und Tracking-Status' },
-  system: { title: 'System Monitor', subtitle: 'Live System-Events, Admin-Aktionen und Health-Status' },
+  health: { title: 'System Health', subtitle: 'Host-Metriken, API Performance und WebSocket-Verbindungen (live)' },
+  system: { title: 'System Events', subtitle: 'Live System-Events und Admin-Aktionen' },
+  'chatbot-activity': { title: 'Chatbot Activity', subtitle: 'User-Aktivitäten: Chatbots, Chats, Collections, Dokumente (live)' },
   docker: { title: 'Docker Monitor', subtitle: 'Container Status, Logs und Ressourcen-Auslastung (live)' },
   db: { title: 'DB Explorer', subtitle: 'Read-only Einblick in die LLARS Datenbank (live)' },
   users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },

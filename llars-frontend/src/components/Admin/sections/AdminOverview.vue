@@ -24,6 +24,9 @@
       </template>
     </div>
 
+    <!-- System Health Bar -->
+    <SystemHealthBar @navigate="navigateToSection" class="mb-4" />
+
     <!-- Main Content Row -->
     <div class="content-grid">
       <!-- Recent Activity -->
@@ -180,9 +183,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { getAnalyticsConfig } from '@/plugins/llars-metrics';
+import SystemHealthBar from './SystemHealth/SystemHealthBar.vue';
+
+const router = useRouter();
 
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['stats', 'activities', 'scenarios']);
 
@@ -235,6 +242,11 @@ const quickActions = [
   { title: 'Benutzer verwalten', icon: 'mdi-account-cog', action: () => {} },
   { title: 'Dokument hochladen', icon: 'mdi-upload', action: () => {} },
 ];
+
+// Navigate to a specific admin section via router query param
+function navigateToSection(section) {
+  router.push({ path: '/admin', query: { tab: section } });
+}
 
 // Helper functions
 const getFunctionTypeName = (type) => {

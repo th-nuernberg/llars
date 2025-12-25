@@ -191,10 +191,16 @@
           variant="outlined"
           placeholder="mdi-robot"
           density="compact"
+          :loading="generatingFields.icon"
           @update:model-value="updateConfig"
         >
           <template #prepend-inner>
-            <v-icon :color="localConfig.color || '#5d7a4a'">{{ localConfig.icon || 'mdi-robot' }}</v-icon>
+            <v-icon
+              :color="localConfig.color || '#5d7a4a'"
+              :class="{ 'icon-generating': generatingFields.icon }"
+            >
+              {{ localConfig.icon || 'mdi-robot' }}
+            </v-icon>
           </template>
           <template #append>
             <v-btn
@@ -207,7 +213,7 @@
             >
               <v-icon>mdi-auto-fix</v-icon>
               <v-tooltip activator="parent" location="top">
-                Mit KI generieren
+                Icon mit KI vorschlagen
               </v-tooltip>
             </v-btn>
           </template>
@@ -220,10 +226,12 @@
           variant="outlined"
           type="color"
           density="compact"
+          :loading="generatingFields.color"
           @update:model-value="updateConfig"
         >
           <template #prepend-inner>
             <div
+              :class="{ 'color-generating': generatingFields.color }"
               :style="{
                 width: '24px',
                 height: '24px',
@@ -244,7 +252,7 @@
             >
               <v-icon>mdi-auto-fix</v-icon>
               <v-tooltip activator="parent" location="top">
-                Mit KI generieren
+                Farbe mit KI vorschlagen
               </v-tooltip>
             </v-btn>
           </template>
@@ -371,5 +379,36 @@ watch(() => props.config, (newVal) => {
 </script>
 
 <style scoped>
-/* Styles inherited from parent */
+/* Icon generation animation */
+.icon-generating {
+  animation: icon-pulse 1s ease-in-out infinite;
+}
+
+@keyframes icon-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+}
+
+/* Color generation animation */
+.color-generating {
+  animation: color-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 0 2px rgba(176, 202, 151, 0.5);
+}
+
+@keyframes color-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 2px rgba(176, 202, 151, 0.5);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 0 4px rgba(176, 202, 151, 0.3);
+  }
+}
 </style>

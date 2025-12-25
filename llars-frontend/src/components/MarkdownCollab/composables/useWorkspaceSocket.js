@@ -10,6 +10,8 @@ export function useWorkspaceSocket(workspaceId, options = {}) {
   const socket = ref(null)
   const isConnected = ref(false)
   const recentlyAddedNodeIds = ref(new Set())
+  const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
+  const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
@@ -42,8 +44,8 @@ export function useWorkspaceSocket(workspaceId, options = {}) {
         token: getAuthToken(),
         color: getCollabColor()
       },
-      transports: ['websocket'],
-      upgrade: false,
+      transports: socketioTransports,
+      upgrade: socketioEnableWebsocket,
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000

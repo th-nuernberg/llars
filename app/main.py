@@ -41,12 +41,20 @@ else:
 #
 # For development with flask run, use 'threading' mode
 # For production, use 'eventlet' or 'gevent' with appropriate server
+socketio_async_mode = os.environ.get('SOCKETIO_ASYNC_MODE', 'threading')
+socketio_allow_upgrades = socketio_async_mode != 'threading'
+socketio_transports = None
+if socketio_async_mode == 'threading':
+    socketio_transports = ['polling']
+
 socketio = SocketIO(
     app,
     cors_allowed_origins=socket_cors,
-    async_mode='threading',  # Use threading for compatibility with flask run
+    async_mode=socketio_async_mode,
     ping_timeout=120,  # 2 minutes - allow for long LLM responses
     ping_interval=30,  # Send ping every 30 seconds
+    allow_upgrades=socketio_allow_upgrades,
+    transports=socketio_transports,
     # Keep Socket.IO/Engine.IO debug logs opt-in: enabling them can flood container logs and
     # can create feedback loops in the Docker Monitor when streaming backend logs.
     logger=str(os.environ.get('SOCKETIO_LOGGER', 'false')).lower() == 'true',

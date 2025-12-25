@@ -19,8 +19,8 @@
       </button>
       <span v-else class="expand-spacer" />
 
-      <v-icon size="20" class="mr-2" :color="node.type === 'folder' ? 'primary' : 'info'">
-        {{ node.type === 'folder' ? (isExpanded ? 'mdi-folder-open' : 'mdi-folder') : 'mdi-language-markdown' }}
+      <v-icon size="20" class="mr-2" :color="node.type === 'folder' ? 'primary' : fileIconColor">
+        {{ node.type === 'folder' ? (isExpanded ? folderOpenIcon : folderIcon) : fileIcon }}
       </v-icon>
 
       <span class="tree-title text-truncate">{{ node.title }}</span>
@@ -84,6 +84,10 @@
               :can-edit="canEdit"
               :drag-enabled="dragEnabled"
               :recently-added-ids="recentlyAddedIds"
+              :file-icon="fileIcon"
+              :file-icon-color="fileIconColor"
+              :folder-icon="folderIcon"
+              :folder-open-icon="folderOpenIcon"
               @select="$emit('select', $event)"
               @toggle="$emit('toggle', $event)"
               @create="$emit('create', $event)"
@@ -106,6 +110,10 @@
           :can-edit="canEdit"
           :drag-enabled="dragEnabled"
           :recently-added-ids="recentlyAddedIds"
+          :file-icon="fileIcon"
+          :file-icon-color="fileIconColor"
+          :folder-icon="folderIcon"
+          :folder-open-icon="folderOpenIcon"
           @select="$emit('select', $event)"
           @toggle="$emit('toggle', $event)"
           @create="$emit('create', $event)"
@@ -131,7 +139,11 @@ const props = defineProps({
   level: { type: Number, default: 0 },
   canEdit: { type: Boolean, default: false },
   dragEnabled: { type: Boolean, default: false },
-  recentlyAddedIds: { type: Set, default: () => new Set() }
+  recentlyAddedIds: { type: Set, default: () => new Set() },
+  fileIcon: { type: String, default: 'mdi-language-markdown' },
+  fileIconColor: { type: String, default: 'info' },
+  folderIcon: { type: String, default: 'mdi-folder' },
+  folderOpenIcon: { type: String, default: 'mdi-folder-open' }
 })
 
 const emit = defineEmits(['select', 'toggle', 'create', 'rename', 'remove', 'move'])

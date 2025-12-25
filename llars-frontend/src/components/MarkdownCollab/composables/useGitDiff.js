@@ -20,7 +20,8 @@ const DIFF_DELETE = -1
 const DIFF_INSERT = 1
 const DIFF_EQUAL = 0
 
-export function useGitDiff() {
+export function useGitDiff(options = {}) {
+  const apiPrefix = options.apiPrefix || '/api/markdown-collab'
   const dmp = new DiffMatchPatch()
   const gitBaseline = ref(null)
   const baselineCommitId = ref(null)
@@ -43,7 +44,7 @@ export function useGitDiff() {
 
     try {
       const res = await axios.get(
-        `${API_BASE}/api/markdown-collab/documents/${documentId}/baseline`,
+        `${API_BASE}${apiPrefix}/documents/${documentId}/baseline`,
         { headers: authHeaders() }
       )
 

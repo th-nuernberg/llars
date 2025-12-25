@@ -82,6 +82,19 @@ from db.models.markdown_collab import (
     MarkdownCommit,
 )
 
+# LaTeX Collab models
+from db.models.latex_collab import (
+    LatexWorkspaceVisibility,
+    LatexNodeType,
+    LatexWorkspace,
+    LatexWorkspaceMember,
+    LatexDocument,
+    LatexAsset,
+    LatexCommit,
+    LatexCompileJob,
+    LatexComment,
+)
+
 # LLM Model configuration
 from db.models.llm_model import (
     LLMModel,
@@ -195,6 +208,16 @@ __all__ = [
     'MarkdownWorkspaceMember',
     'MarkdownDocument',
     'MarkdownCommit',
+    # LaTeX Collab
+    'LatexWorkspaceVisibility',
+    'LatexNodeType',
+    'LatexWorkspace',
+    'LatexWorkspaceMember',
+    'LatexDocument',
+    'LatexAsset',
+    'LatexCommit',
+    'LatexCompileJob',
+    'LatexComment',
     # LLM Model
     'LLMModel',
     'DEFAULT_LLM_MODELS',

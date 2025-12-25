@@ -32,6 +32,7 @@ from .events_ranker import register_ranker_events
 from .events_docker_monitor import register_docker_monitor_events
 from .events_comparison import register_comparison_events
 from .events_markdown_collab import register_markdown_collab_events
+from .events_latex_collab import register_latex_collab_events
 from .events_prompt_collab import register_prompt_collab_events
 
 # Enhanced logging format
@@ -108,6 +109,7 @@ def configure_socket_routes(socketio, verbose=True):
     register_docker_monitor_events(socketio)
     register_comparison_events(socketio)
     register_markdown_collab_events(socketio)
+    register_latex_collab_events(socketio)
     register_prompt_collab_events(socketio)
 
     logging.info("SocketIO routes configured successfully")

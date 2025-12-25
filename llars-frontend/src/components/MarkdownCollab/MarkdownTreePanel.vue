@@ -65,6 +65,10 @@
                 :can-edit="canEdit"
                 :drag-enabled="dragEnabled"
                 :recently-added-ids="recentlyAddedIds"
+                :file-icon="fileIcon"
+                :file-icon-color="fileIconColor"
+                :folder-icon="folderIcon"
+                :folder-open-icon="folderOpenIcon"
                 @select="$emit('select', $event)"
                 @toggle="toggleExpand"
                 @create="(p) => openCreateDialog(p.type, p.parentId)"
@@ -86,6 +90,10 @@
             :can-edit="canEdit"
             :drag-enabled="false"
             :recently-added-ids="recentlyAddedIds"
+            :file-icon="fileIcon"
+            :file-icon-color="fileIconColor"
+            :folder-icon="folderIcon"
+            :folder-open-icon="folderOpenIcon"
             @select="$emit('select', $event)"
             @toggle="toggleExpand"
             @create="(p) => openCreateDialog(p.type, p.parentId)"
@@ -114,7 +122,7 @@
           <v-text-field
             v-model="createTitle"
             label="Name"
-            :placeholder="createType === 'folder' ? 'z. B. Research' : 'z. B. intro.md'"
+            :placeholder="createType === 'folder' ? 'z. B. Research' : filePlaceholder"
             variant="outlined"
             density="comfortable"
             autofocus
@@ -199,7 +207,12 @@ const props = defineProps({
   selectedId: { type: Number, default: null },
   loading: { type: Boolean, default: false },
   canEdit: { type: Boolean, default: false },
-  recentlyAddedIds: { type: Set, default: () => new Set() }
+  recentlyAddedIds: { type: Set, default: () => new Set() },
+  filePlaceholder: { type: String, default: 'z. B. intro.md' },
+  fileIcon: { type: String, default: 'mdi-language-markdown' },
+  fileIconColor: { type: String, default: 'info' },
+  folderIcon: { type: String, default: 'mdi-folder' },
+  folderOpenIcon: { type: String, default: 'mdi-folder-open' }
 })
 
 const emit = defineEmits(['select', 'create', 'rename', 'remove', 'move'])

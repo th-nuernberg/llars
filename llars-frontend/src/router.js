@@ -57,6 +57,9 @@ import KaimoCaseEditor from "@/components/Kaimo/KaimoCaseEditor.vue";
 // Markdown Collab
 import MarkdownCollabHome from "@/views/MarkdownCollab/MarkdownCollabHome.vue";
 import MarkdownCollabWorkspace from "@/views/MarkdownCollab/MarkdownCollabWorkspace.vue";
+// LaTeX Collab
+import LatexCollabHome from "@/views/LatexCollab/LatexCollabHome.vue";
+import LatexCollabWorkspace from "@/views/LatexCollab/LatexCollabWorkspace.vue";
 
 // Evaluation Hub
 import EvaluationHub from "@/components/Evaluation/EvaluationHub.vue";
@@ -137,6 +140,11 @@ const routes = [
     { path: '/MarkdownCollab', name: 'MarkdownCollabHome', component: MarkdownCollabHome, meta: { requiresAuth: true } },
     { path: '/MarkdownCollab/workspace/:workspaceId', name: 'MarkdownCollabWorkspace', component: MarkdownCollabWorkspace, meta: { requiresAuth: true } },
     { path: '/MarkdownCollab/workspace/:workspaceId/document/:documentId', name: 'MarkdownCollabWorkspaceDocument', component: MarkdownCollabWorkspace, meta: { requiresAuth: true } },
+
+    // LaTeX Collab
+    { path: '/LatexCollab', name: 'LatexCollabHome', component: LatexCollabHome, meta: { requiresAuth: true } },
+    { path: '/LatexCollab/workspace/:workspaceId', name: 'LatexCollabWorkspace', component: LatexCollabWorkspace, meta: { requiresAuth: true } },
+    { path: '/LatexCollab/workspace/:workspaceId/document/:documentId', name: 'LatexCollabWorkspaceDocument', component: LatexCollabWorkspace, meta: { requiresAuth: true } },
 
     { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
 

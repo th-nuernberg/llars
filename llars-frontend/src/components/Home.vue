@@ -261,6 +261,16 @@ const allItems = ref([
     badgeColor: 'info'
   },
   {
+    title: 'LaTeX Collab',
+    description: 'Overleaf-ähnlicher LaTeX-Editor mit PDF-Preview',
+    route: '/LatexCollab',
+    icon: 'mdi-file-code-outline',
+    permission: 'feature:latex_collab:view',
+    category: 'research',
+    badge: 'Beta',
+    badgeColor: 'info'
+  },
+  {
     title: 'LLM-as-Judge',
     description: 'Automatisierte Bewertung und Vergleich von Prompt-Säulen',
     route: '/judge',

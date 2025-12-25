@@ -448,6 +448,9 @@ function getStatusLabel(status) {
   gap: 16px;
   min-height: 0;
   overflow: hidden;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .panel {

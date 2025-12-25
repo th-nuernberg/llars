@@ -7,9 +7,13 @@ from flask_limiter.util import get_remote_address
 from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
+from services.api_metrics_service import create_metrics_middleware
 import os
 
 app = Flask(__name__)
+
+# Initialize API metrics collection middleware
+create_metrics_middleware(app)
 
 # CORS configuration - restrict in production!
 allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost,http://localhost:80,http://localhost:5173').split(',')

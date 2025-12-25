@@ -26,6 +26,8 @@ import LTag from '@/components/common/LTag.vue'
 import LCard from '@/components/common/LCard.vue'
 import LTabs from '@/components/common/LTabs.vue'
 import LAvatar from '@/components/common/LAvatar.vue'
+import LChart from '@/components/common/LChart.vue'
+import LGauge from '@/components/common/LGauge.vue'
 import LThemeToggle from '@/components/common/LThemeToggle.vue'
 import LEvaluationLayout from '@/components/common/LEvaluationLayout.vue'
 import LEvaluationStatus from '@/components/common/LEvaluationStatus.vue'
@@ -59,6 +61,8 @@ app.component('LTag', LTag)
 app.component('LCard', LCard)
 app.component('LTabs', LTabs)
 app.component('LAvatar', LAvatar)
+app.component('LChart', LChart)
+app.component('LGauge', LGauge)
 app.component('LThemeToggle', LThemeToggle)
 app.component('LEvaluationLayout', LEvaluationLayout)
 app.component('LEvaluationStatus', LEvaluationStatus)

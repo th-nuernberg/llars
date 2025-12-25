@@ -32,6 +32,7 @@ from db.db import db
 from sqlalchemy import desc
 from auth.auth_utils import AuthUtils
 from services.rag.access_service import RAGAccessService
+from services.chatbot_activity_service import ChatbotActivityService
 
 rag_collection_bp = Blueprint('rag_collection', __name__)
 
@@ -243,6 +244,15 @@ def create_collection():
     db.session.add(collection)
     db.session.commit()
 
+    # Log activity
+    ChatbotActivityService.log_collection_created(
+        collection_id=collection.id,
+        collection_name=collection.name,
+        display_name=collection.display_name,
+        username=username,
+        is_public=collection.is_public
+    )
+
     return jsonify({
         'success': True,
         'message': f"Collection '{data['display_name']}' created successfully",
@@ -268,6 +278,16 @@ def update_collection(collection_id):
 
     data = request.get_json()
 
+    # Track changes for activity log
+    trackable_fields = ['display_name', 'description', 'icon', 'color', 'is_public', 'retrieval_k']
+    changed_fields = {}
+    for field in trackable_fields:
+        if field in data:
+            old_val = getattr(collection, field, None)
+            new_val = data[field]
+            if old_val != new_val:
+                changed_fields[field] = {'old': old_val, 'new': new_val}
+
     # Update allowed fields
     if 'display_name' in data:
         collection.display_name = data['display_name']
@@ -284,6 +304,15 @@ def update_collection(collection_id):
 
     collection.updated_at = datetime.now()
     db.session.commit()
+
+    # Log activity if fields changed
+    if changed_fields:
+        ChatbotActivityService.log_collection_updated(
+            collection_id=collection_id,
+            collection_name=collection.display_name,
+            username=username,
+            changed_fields=changed_fields
+        )
 
     return jsonify({
         'success': True,
@@ -302,6 +331,9 @@ def delete_collection(collection_id):
     username = AuthUtils.extract_username_without_validation()
     if not RAGAccessService.can_delete_collection(username, collection):
         raise ForbiddenError('Keine Berechtigung für diese Collection')
+
+    # Store info before deletion
+    collection_name = collection.display_name
 
     # Check for force parameter (cascade delete)
     force = request.args.get('force', 'false').lower() == 'true'
@@ -338,9 +370,18 @@ def delete_collection(collection_id):
     db.session.delete(collection)
     db.session.commit()
 
+    # Log activity
+    ChatbotActivityService.log_collection_deleted(
+        collection_id=collection_id,
+        collection_name=collection_name,
+        username=username,
+        document_count=doc_count,
+        force=force
+    )
+
     return jsonify({
         'success': True,
-        'message': f"Collection '{collection.display_name}' erfolgreich gelöscht" + (f" (inkl. {doc_count} Dokumente)" if doc_count > 0 else "")
+        'message': f"Collection '{collection_name}' erfolgreich gelöscht" + (f" (inkl. {doc_count} Dokumente)" if doc_count > 0 else "")
     }), 200
 
 

@@ -29,6 +29,7 @@ from auth.oidc_validator import get_username, validate_token
 from services.permission_service import PermissionService
 from services.docker_monitor_service import DockerMonitorService
 from services.db_explorer_service import DbExplorerService
+from services.websocket_metrics_service import WebSocketMetricsService
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +198,13 @@ def register_docker_monitor_events(socketio):
         emit("docker:connected", {"username": username}, namespace=ADMIN_NAMESPACE)
         logger.info(f"[Docker Monitor] Admin socket connected: {username} ({request.sid})")
 
+        # Track connection in WebSocket metrics
+        WebSocketMetricsService.record_connect(
+            namespace=ADMIN_NAMESPACE,
+            sid=request.sid,
+            username=username,
+        )
+
     @socketio.on("disconnect", namespace=ADMIN_NAMESPACE)
     def handle_admin_disconnect():
         sid = request.sid
@@ -218,6 +226,17 @@ def register_docker_monitor_events(socketio):
                 _db_table_limits.pop(table, None)
             if not _db_tables:
                 _db_stop.set()
+
+        # Cleanup system health subscriptions
+        from socketio_handlers.events_system_health import cleanup_system_health_subscriber
+        cleanup_system_health_subscriber(sid)
+
+        # Track disconnection in WebSocket metrics
+        WebSocketMetricsService.record_disconnect(
+            namespace=ADMIN_NAMESPACE,
+            sid=sid,
+        )
+
         logger.info(f"[Docker Monitor] Admin socket disconnected: {username or sid}")
 
     @socketio.on("docker:subscribe_stats", namespace=ADMIN_NAMESPACE)
@@ -510,5 +529,9 @@ def register_docker_monitor_events(socketio):
                     _db_table_limits.pop(table, None)
             if not _db_tables:
                 _db_stop.set()
+
+    # Register system health events (host, api, websocket metrics)
+    from socketio_handlers.events_system_health import register_system_health_events
+    register_system_health_events(socketio, _auth_sids)
 
     logger.info("[Docker Monitor] Event handlers registered")

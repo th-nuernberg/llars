@@ -88,12 +88,16 @@ export function useChatbotCrawler() {
         message: `Crawl abgeschlossen!`,
         pages_crawled: data.pages_crawled,
         documents_created: data.documents_created,
-        collection_id: data.collection_id
+        collection_id: data.collection_id,
+        brand_color: data.brand_color
       };
 
-      // Callback to parent
+      // Callback to parent with brand_color
       if (callbacks.onComplete) {
-        callbacks.onComplete(data);
+        callbacks.onComplete({
+          ...data,
+          brand_color: data.brand_color
+        });
       }
 
       // Leave the room

@@ -115,11 +115,13 @@
                         icon
                         variant="text"
                         size="small"
-                        @click.stop="randomizeIcon"
+                        :loading="generatingIcon"
+                        :disabled="generatingIcon"
+                        @click.stop="generateIcon"
                       >
                         <v-icon>mdi-auto-fix</v-icon>
                         <v-tooltip activator="parent" location="top">
-                          Zufälliges Icon
+                          {{ isEdit ? 'Icon vorschlagen (LLM)' : 'Zufälliges Icon' }}
                         </v-tooltip>
                       </v-btn>
                     </template>
@@ -146,11 +148,13 @@
                         icon
                         variant="text"
                         size="small"
-                        @click.stop="randomizeColor"
+                        :loading="generatingColor"
+                        :disabled="generatingColor"
+                        @click.stop="generateColor"
                       >
                         <v-icon>mdi-auto-fix</v-icon>
                         <v-tooltip activator="parent" location="top">
-                          Zufällige Farbe
+                          {{ isEdit ? 'Farbe vorschlagen (LLM/Brand)' : 'Zufällige Farbe' }}
                         </v-tooltip>
                       </v-btn>
                     </template>
@@ -1393,6 +1397,13 @@ async function startCrawlForChatbot() {
       if (data.collection_id && !formData.value.collection_ids.includes(data.collection_id)) {
         formData.value.collection_ids.push(data.collection_id);
       }
+
+      // Auto-set brand color from crawled website
+      if (data.brand_color && !formData.value.color) {
+        formData.value.color = data.brand_color;
+        console.log('[ChatbotEditor] Auto-set brand color from crawl:', data.brand_color);
+      }
+
       // Emit event to refresh collections list in parent
       emit('collection-created', data.collection_id);
     }
@@ -1404,18 +1415,66 @@ function saveChanges() {
   emit('save', dataToSave);
 }
 
-// Randomize functions for icon and color
-function randomizeIcon() {
-  const randomIndex = Math.floor(Math.random() * iconOptions.value.length);
-  formData.value.icon = iconOptions.value[randomIndex].value;
+// LLM-based generation for icon and color
+const generatingIcon = ref(false);
+const generatingColor = ref(false);
+
+async function generateIcon() {
+  if (!props.chatbot?.id) {
+    // Fallback to random for new chatbots
+    const randomIndex = Math.floor(Math.random() * iconOptions.value.length);
+    formData.value.icon = iconOptions.value[randomIndex].value;
+    return;
+  }
+
+  generatingIcon.value = true;
+  try {
+    const response = await axios.post(`/api/chatbots/${props.chatbot.id}/wizard/generate-field`, {
+      field: 'icon'
+    });
+    if (response.data.success && response.data.value) {
+      formData.value.icon = response.data.value;
+    }
+  } catch (error) {
+    console.error('Icon generation failed:', error);
+    // Fallback to random
+    const randomIndex = Math.floor(Math.random() * iconOptions.value.length);
+    formData.value.icon = iconOptions.value[randomIndex].value;
+  } finally {
+    generatingIcon.value = false;
+  }
 }
 
-function randomizeColor() {
+async function generateColor() {
+  if (!props.chatbot?.id) {
+    // Fallback to random for new chatbots
+    formData.value.color = generateRandomColor();
+    return;
+  }
+
+  generatingColor.value = true;
+  try {
+    const response = await axios.post(`/api/chatbots/${props.chatbot.id}/wizard/generate-field`, {
+      field: 'color'
+    });
+    if (response.data.success && response.data.value) {
+      formData.value.color = response.data.value;
+    }
+  } catch (error) {
+    console.error('Color generation failed:', error);
+    // Fallback to random
+    formData.value.color = generateRandomColor();
+  } finally {
+    generatingColor.value = false;
+  }
+}
+
+function generateRandomColor() {
   // Generate a pleasant random color (pastel-ish)
   const hue = Math.floor(Math.random() * 360);
   const saturation = 60 + Math.floor(Math.random() * 20); // 60-80%
   const lightness = 45 + Math.floor(Math.random() * 15); // 45-60%
-  formData.value.color = hslToHex(hue, saturation, lightness);
+  return hslToHex(hue, saturation, lightness);
 }
 
 function hslToHex(h, s, l) {

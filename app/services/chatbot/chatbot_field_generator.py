@@ -169,7 +169,33 @@ Verfügbare Icons (wähle EXAKT eines davon):
 {icon_list}
 
 Antworte NUR mit dem Icon-Namen (z.B. mdi-robot)."""
+        },
+        'color': {
+            'system': """Du bist ein Experte für Branding und Farbauswahl.
+Wähle eine passende Primärfarbe für einen Chatbot basierend auf der Branche/dem Thema.
+Antworte NUR mit einem HEX-Farbcode (z.B. #3498db), ohne Erklärung.""",
+            'user_template': """Wähle eine passende Primärfarbe für einen Chatbot basierend auf:
+- URL: {url}
+- {collection_info}
+
+Berücksichtige die Branche und das Thema. Wähle eine professionelle, ansprechende Farbe.
+Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         }
+    }
+
+    # Common brand colors by industry for fallback
+    INDUSTRY_COLORS = {
+        'health': '#4CAF50',      # Green - health, wellness
+        'finance': '#1976D2',     # Blue - trust, stability
+        'technology': '#2196F3',  # Light blue - innovation
+        'education': '#FF9800',   # Orange - energy, learning
+        'legal': '#455A64',       # Dark blue-gray - professional
+        'food': '#E91E63',        # Pink/Red - appetite
+        'travel': '#00BCD4',      # Cyan - adventure
+        'entertainment': '#9C27B0', # Purple - creativity
+        'business': '#607D8B',    # Blue-gray - corporate
+        'support': '#00ACC1',     # Teal - helpful
+        'default': '#5C6BC0',     # Indigo - neutral
     }
 
     @staticmethod
@@ -268,6 +294,105 @@ Antworte NUR mit dem Icon-Namen (z.B. mdi-robot)."""
         return 'mdi-robot'
 
     @staticmethod
+    def generate_color(chatbot_id: int, context: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Generate an appropriate color for a chatbot.
+
+        First checks if the collection has a brand_color from crawling.
+        Falls back to LLM generation if no brand color exists.
+
+        Args:
+            chatbot_id: The chatbot ID
+            context: Optional additional context
+
+        Returns:
+            Dict with generated color hex code
+        """
+        chatbot = Chatbot.query.get(chatbot_id)
+        if not chatbot:
+            raise ValueError('Chatbot not found')
+
+        # First, check if collection has a brand color from crawling
+        if chatbot.primary_collection_id:
+            collection = RAGCollection.query.get(chatbot.primary_collection_id)
+            if collection and collection.color:
+                logger.info(f"[ChatbotFieldGenerator] Using brand color from collection: {collection.color}")
+                return {
+                    'success': True,
+                    'field': 'color',
+                    'value': collection.color,
+                    'source': 'crawled'
+                }
+
+        # Fall back to LLM generation
+        collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)
+
+        prompt_config = ChatbotFieldGenerator.PROMPTS['color']
+        user_prompt = prompt_config['user_template'].format(
+            url=chatbot.source_url or 'N/A',
+            collection_info=collection_info
+        )
+
+        try:
+            generated_color = ChatbotFieldGenerator._generate_with_llm(
+                system_prompt=prompt_config['system'],
+                user_prompt=user_prompt
+            )
+
+            # Clean and validate the generated color
+            generated_color = ChatbotFieldGenerator._clean_color(generated_color)
+
+            logger.info(f"[ChatbotFieldGenerator] Generated color for chatbot {chatbot_id}: {generated_color}")
+
+            return {
+                'success': True,
+                'field': 'color',
+                'value': generated_color,
+                'source': 'llm'
+            }
+
+        except Exception as e:
+            logger.error(f"[ChatbotFieldGenerator] Color generation error: {e}")
+            # Return default color on error
+            return {
+                'success': True,
+                'field': 'color',
+                'value': ChatbotFieldGenerator.INDUSTRY_COLORS['default'],
+                'source': 'fallback'
+            }
+
+    @staticmethod
+    def _clean_color(color: str) -> str:
+        """
+        Clean and validate a generated color hex code.
+
+        Args:
+            color: Raw generated color
+
+        Returns:
+            Valid hex color code (defaults to indigo if invalid)
+        """
+        if not color:
+            return ChatbotFieldGenerator.INDUSTRY_COLORS['default']
+
+        # Clean up: remove quotes, whitespace, etc.
+        color = color.strip().strip('"\'').strip()
+
+        # Extract hex code using regex
+        hex_match = re.search(r'#?([0-9a-fA-F]{6})', color)
+        if hex_match:
+            return f'#{hex_match.group(1)}'
+
+        # Try 3-digit hex
+        hex_match = re.search(r'#?([0-9a-fA-F]{3})(?![0-9a-fA-F])', color)
+        if hex_match:
+            # Expand 3-digit to 6-digit
+            short = hex_match.group(1)
+            return f'#{short[0]*2}{short[1]*2}{short[2]*2}'
+
+        return ChatbotFieldGenerator.INDUSTRY_COLORS['default']
+
+    @staticmethod
     def _get_default_llm_model_id() -> str:
         model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
         if not model_id:
@@ -296,6 +421,12 @@ Antworte NUR mit dem Icon-Namen (z.B. mdi-robot)."""
 
         if field not in ChatbotFieldGenerator.PROMPTS:
             raise ValueError(f'Unknown field: {field}')
+
+        # Use specialized methods for icon and color
+        if field == 'icon':
+            return ChatbotFieldGenerator.generate_icon(chatbot_id, context)
+        if field == 'color':
+            return ChatbotFieldGenerator.generate_color(chatbot_id, context)
 
         # Get collection info for context
         collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)

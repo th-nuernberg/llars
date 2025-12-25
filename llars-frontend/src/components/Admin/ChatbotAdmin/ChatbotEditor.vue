@@ -110,6 +110,19 @@
                         </template>
                       </v-list-item>
                     </template>
+                    <template #append>
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        @click.stop="randomizeIcon"
+                      >
+                        <v-icon>mdi-auto-fix</v-icon>
+                        <v-tooltip activator="parent" location="top">
+                          Zufälliges Icon
+                        </v-tooltip>
+                      </v-btn>
+                    </template>
                   </v-select>
                 </v-col>
 
@@ -127,6 +140,19 @@
                         type="color"
                         style="width: 32px; height: 32px; border: none; cursor: pointer"
                       >
+                    </template>
+                    <template #append>
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        @click.stop="randomizeColor"
+                      >
+                        <v-icon>mdi-auto-fix</v-icon>
+                        <v-tooltip activator="parent" location="top">
+                          Zufällige Farbe
+                        </v-tooltip>
+                      </v-btn>
                     </template>
                   </v-text-field>
                 </v-col>
@@ -1376,6 +1402,32 @@ async function startCrawlForChatbot() {
 function saveChanges() {
   const dataToSave = prepareForSave(props.isEdit, props.chatbot?.id);
   emit('save', dataToSave);
+}
+
+// Randomize functions for icon and color
+function randomizeIcon() {
+  const randomIndex = Math.floor(Math.random() * iconOptions.value.length);
+  formData.value.icon = iconOptions.value[randomIndex].value;
+}
+
+function randomizeColor() {
+  // Generate a pleasant random color (pastel-ish)
+  const hue = Math.floor(Math.random() * 360);
+  const saturation = 60 + Math.floor(Math.random() * 20); // 60-80%
+  const lightness = 45 + Math.floor(Math.random() * 15); // 45-60%
+  formData.value.color = hslToHex(hue, saturation, lightness);
+}
+
+function hslToHex(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 // Watch for chatbot changes

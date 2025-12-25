@@ -19,6 +19,7 @@ from services.chatbot.agent_chat_service import AgentChatService
 from services.chatbot.file_processor import file_processor, FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
 from services.rag.access_service import RAGAccessService
+from services.chatbot_activity_service import ChatbotActivityService
 from auth.auth_utils import AuthUtils
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,16 @@ def create_chatbot():
 
     username = AuthUtils.extract_username_without_validation() or 'unknown'
     chatbot = ChatbotService.create_chatbot(data, username)
+
+    # Log activity
+    ChatbotActivityService.log_chatbot_created(
+        chatbot_id=chatbot['id'],
+        chatbot_name=chatbot.get('name', ''),
+        display_name=chatbot['display_name'],
+        username=username,
+        via_wizard=False
+    )
+
     return jsonify({
         'success': True,
         'chatbot': chatbot,
@@ -179,12 +190,35 @@ def update_chatbot(chatbot_id):
     if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
-    chatbot = ChatbotService.update_chatbot(chatbot_id, data)
-    if not chatbot:
+    # Track which fields are changing
+    original_name = chatbot.display_name
+    trackable_fields = ['name', 'display_name', 'description', 'icon', 'color',
+                        'system_prompt', 'model_name', 'temperature', 'max_tokens',
+                        'welcome_message', 'fallback_message', 'is_active', 'is_public']
+    changed_fields = {}
+    for field in trackable_fields:
+        if field in data:
+            old_val = getattr(chatbot, field, None)
+            new_val = data[field]
+            if old_val != new_val:
+                changed_fields[field] = {'old': old_val, 'new': new_val}
+
+    updated_chatbot = ChatbotService.update_chatbot(chatbot_id, data)
+    if not updated_chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+
+    # Log activity if fields changed
+    if changed_fields:
+        ChatbotActivityService.log_chatbot_updated(
+            chatbot_id=chatbot_id,
+            chatbot_name=updated_chatbot.get('display_name', original_name),
+            username=username,
+            changed_fields=changed_fields
+        )
+
     return jsonify({
         'success': True,
-        'chatbot': chatbot,
+        'chatbot': updated_chatbot,
         'message': 'Chatbot updated successfully'
     })
 
@@ -200,10 +234,23 @@ def delete_chatbot(chatbot_id):
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
     if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    # Store info before deletion
+    chatbot_name = chatbot.display_name
     delete_collections = request.args.get('delete_collections', 'false').lower() == 'true'
+
     success = ChatbotService.delete_chatbot(chatbot_id, delete_collections=delete_collections)
     if not success:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+
+    # Log activity
+    ChatbotActivityService.log_chatbot_deleted(
+        chatbot_id=chatbot_id,
+        chatbot_name=chatbot_name,
+        username=username,
+        with_collections=delete_collections
+    )
+
     return jsonify({
         'success': True,
         'message': 'Chatbot deleted successfully',
@@ -222,13 +269,23 @@ def duplicate_chatbot(chatbot_id):
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
     if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
-    chatbot = ChatbotService.duplicate_chatbot(chatbot_id, username)
-    if not chatbot:
+
+    new_chatbot = ChatbotService.duplicate_chatbot(chatbot_id, username)
+    if not new_chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+
+    # Log activity
+    ChatbotActivityService.log_chatbot_duplicated(
+        source_chatbot_id=chatbot_id,
+        new_chatbot_id=new_chatbot['id'],
+        new_name=new_chatbot['display_name'],
+        username=username
+    )
+
     return jsonify({
         'success': True,
-        'chatbot': chatbot,
-        'message': f"Chatbot duplicated as '{chatbot['display_name']}'"
+        'chatbot': new_chatbot,
+        'message': f"Chatbot duplicated as '{new_chatbot['display_name']}'"
     }), 201
 
 
@@ -558,6 +615,16 @@ def create_conversation(chatbot_id):
         session_id=session_id
     )
 
+    # Log activity - get chatbot name for better logging
+    chatbot = Chatbot.query.get(chatbot_id)
+    chatbot_name = chatbot.display_name if chatbot else f"Chatbot #{chatbot_id}"
+    ChatbotActivityService.log_chat_created(
+        conversation_id=convo['id'],
+        chatbot_id=chatbot_id,
+        chatbot_name=chatbot_name,
+        username=username
+    )
+
     return jsonify({'success': True, 'conversation': convo}), 201
 
 
@@ -629,10 +696,25 @@ def delete_conversation(chatbot_id, conversation_id):
     if not conversation or conversation['chatbot_id'] != chatbot_id:
         return jsonify({'success': False, 'error': 'Conversation not found'}), 404
 
+    # Store info before deletion
+    message_count = conversation.get('message_count', 0)
+    chatbot = Chatbot.query.get(chatbot_id)
+    chatbot_name = chatbot.display_name if chatbot else f"Chatbot #{chatbot_id}"
+
     # SECURITY: Pass username to ensure ownership is verified
     success = ChatService.delete_conversation(conversation_id, username=username)
     if not success:
         return jsonify({'success': False, 'error': 'Failed to delete conversation'}), 500
+
+    # Log activity
+    ChatbotActivityService.log_chat_deleted(
+        conversation_id=conversation_id,
+        chatbot_id=chatbot_id,
+        chatbot_name=chatbot_name,
+        username=username,
+        message_count=message_count
+    )
+
     return jsonify({'success': True, 'message': 'Conversation deleted successfully'})
 
 
@@ -751,6 +833,24 @@ def create_wizard_chatbot():
 
     username = AuthUtils.extract_username_without_validation() or 'unknown'
     result = ChatbotBuilderService.create_wizard_chatbot(data['url'], username)
+
+    # Log wizard started
+    if result['success'] and 'chatbot' in result:
+        ChatbotActivityService.log_wizard_started(
+            chatbot_id=result['chatbot']['id'],
+            source_url=data['url'],
+            username=username
+        )
+        # Also log chatbot creation (via wizard)
+        ChatbotActivityService.log_chatbot_created(
+            chatbot_id=result['chatbot']['id'],
+            chatbot_name=result['chatbot'].get('name', ''),
+            display_name=result['chatbot'].get('display_name', ''),
+            username=username,
+            source_url=data['url'],
+            via_wizard=True
+        )
+
     return jsonify(result), 201 if result['success'] else 400
 
 
@@ -801,13 +901,15 @@ def generate_chatbot_field(chatbot_id):
         raise ValueError('field is required')
 
     stream = bool(data.get('stream'))
+    force_llm = bool(data.get('force_llm', False))
 
     # Fast path: classic non-streaming behaviour
     if not stream:
         result = ChatbotBuilderService.generate_field(
             chatbot_id=chatbot_id,
             field=data['field'],
-            context=data.get('context')
+            context=data.get('context'),
+            force_llm=force_llm
         )
         return jsonify(result), 200 if result['success'] else 400
 
@@ -852,14 +954,34 @@ def get_wizard_status(chatbot_id):
 def finalize_wizard_chatbot(chatbot_id):
     """Finalize the chatbot configuration and mark as ready."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    from db.tables import RAGDocument, CollectionDocumentLink
+
     username = AuthUtils.extract_username_without_validation()
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
     if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     data = request.get_json() or {}
     result = ChatbotBuilderService.finalize_chatbot(chatbot_id, data)
+
+    # Log wizard completed
+    if result['success']:
+        # Count documents in primary collection
+        doc_count = 0
+        if chatbot.primary_collection_id:
+            doc_count = CollectionDocumentLink.query.filter_by(
+                collection_id=chatbot.primary_collection_id
+            ).count()
+
+        ChatbotActivityService.log_wizard_completed(
+            chatbot_id=chatbot_id,
+            chatbot_name=chatbot.display_name,
+            username=username,
+            document_count=doc_count
+        )
+
     return jsonify(result), 200 if result['success'] else 400
 
 
@@ -891,7 +1013,16 @@ def cancel_chatbot_build(chatbot_id):
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
     if not ChatbotAccessService.user_can_manage_chatbot(username, chatbot):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
     result = ChatbotBuilderService.cancel_build(chatbot_id)
+
+    # Log wizard cancelled
+    if result['success']:
+        ChatbotActivityService.log_wizard_cancelled(
+            chatbot_id=chatbot_id,
+            username=username
+        )
+
     return jsonify(result), 200 if result['success'] else 400
 
 

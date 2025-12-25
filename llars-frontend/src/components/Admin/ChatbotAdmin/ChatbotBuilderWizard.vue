@@ -1068,6 +1068,12 @@ function applyFieldValue(field, value) {
     case 'welcome_message':
       wizardData.value.welcomeMessage = value
       break
+    case 'icon':
+      wizardData.value.icon = value
+      break
+    case 'color':
+      wizardData.value.color = value
+      break
   }
 }
 

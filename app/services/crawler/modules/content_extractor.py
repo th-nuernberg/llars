@@ -38,8 +38,27 @@ def _rgb_to_hex(r: int, g: int, b: int) -> str:
 def _is_valid_brand_color(r: int, g: int, b: int) -> bool:
     """
     Check if a color is suitable as a brand color.
-    Excludes pure black, white, grays, and very dark/light colors.
+    Excludes pure black, white, grays, browser defaults, and very dark/light colors.
     """
+    # Exclude pure primary colors (often browser defaults)
+    if (r == 0 and g == 0 and b > 200) or \
+       (r > 200 and g == 0 and b == 0) or \
+       (r == 0 and g > 200 and b == 0):
+        return False
+
+    # Exclude common browser default link colors
+    hex_color = f"#{r:02x}{g:02x}{b:02x}".lower()
+    browser_defaults = {
+        '#0000ee', '#0000ff', '#0066cc',  # Browser default link colors
+        '#551a8b', '#800080',              # Browser default visited link colors
+        '#ff0000', '#ee0000',              # Pure red (often error states)
+        '#00ff00', '#008000',              # Pure green (often success states)
+        '#ffffff', '#000000',              # Pure white/black
+        '#333333', '#666666', '#999999',   # Common text grays
+    }
+    if hex_color in browser_defaults:
+        return False
+
     # Convert to HLS for saturation check
     h, l, s = rgb_to_hls(r / 255, g / 255, b / 255)
 
@@ -588,12 +607,31 @@ class ContentExtractor:
                     return null;
                 }
 
-                // Helper to check if color is a valid brand color (not gray/black/white)
+                // Helper to check if color is a valid brand color (not gray/black/white/browser defaults)
                 function isValidBrandColor(hex) {
                     if (!hex) return false;
+
+                    // Blacklist of browser default colors and common non-brand colors
+                    const browserDefaults = [
+                        '#0000ee', '#0000ff', '#0066cc',  // Browser default link colors
+                        '#551a8b', '#800080',              // Browser default visited link colors
+                        '#ff0000', '#ee0000',              // Pure red (often error states)
+                        '#00ff00', '#008000',              // Pure green (often success states)
+                        '#ffffff', '#000000',              // Pure white/black
+                        '#333333', '#666666', '#999999',   // Common text grays
+                    ];
+                    if (browserDefaults.includes(hex.toLowerCase())) return false;
+
                     const r = parseInt(hex.slice(1, 3), 16);
                     const g = parseInt(hex.slice(3, 5), 16);
                     const b = parseInt(hex.slice(5, 7), 16);
+
+                    // Exclude pure primary colors (often browser defaults)
+                    if ((r === 0 && g === 0 && b > 200) || // Pure blue
+                        (r > 200 && g === 0 && b === 0) || // Pure red
+                        (r === 0 && g > 200 && b === 0)) { // Pure green
+                        return false;
+                    }
 
                     // Convert to HSL for saturation check
                     const max = Math.max(r, g, b) / 255;

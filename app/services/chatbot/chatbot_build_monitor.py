@@ -174,21 +174,25 @@ class ChatbotBuildMonitor:
                     if collection.embedding_status == 'completed':
                         logger.info(f"[ChatbotBuildMonitor] Embedding completed for chatbot {chatbot_id}, transitioning to configuring")
 
-                        # Copy brand color from collection to chatbot if available
-                        if collection.color and not chatbot.color:
-                            chatbot.color = collection.color
-                            logger.info(f"[ChatbotBuildMonitor] Set chatbot color from collection: {collection.color}")
-
-                        # Generate icon using LLM
+                        # Generate color and icon using the field generator
                         try:
                             from .chatbot_field_generator import ChatbotFieldGenerator
+
+                            # Generate color (uses crawled brand color if available, else LLM)
+                            color_result = ChatbotFieldGenerator.generate_color(chatbot_id)
+                            if color_result.get('success') and color_result.get('value'):
+                                chatbot.color = color_result['value']
+                                logger.info(f"[ChatbotBuildMonitor] Set chatbot color: {chatbot.color} (source: {color_result.get('source', 'unknown')})")
+
+                            # Generate icon using LLM
                             icon_result = ChatbotFieldGenerator.generate_icon(chatbot_id)
                             if icon_result.get('success') and icon_result.get('value'):
                                 chatbot.icon = icon_result['value']
                                 logger.info(f"[ChatbotBuildMonitor] Generated icon for chatbot: {chatbot.icon}")
+
                         except Exception as e:
-                            logger.warning(f"[ChatbotBuildMonitor] Icon generation failed, using default: {e}")
-                            chatbot.icon = 'mdi-robot'
+                            logger.warning(f"[ChatbotBuildMonitor] Color/Icon generation failed, using defaults: {e}")
+                            # Keep defaults if generation fails
 
                         # Transition to configuring
                         chatbot.build_status = 'configuring'

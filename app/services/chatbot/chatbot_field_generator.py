@@ -157,19 +157,31 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
             'user_template': "Erstelle eine kurze Beschreibung (1-2 Sätze) für einen Chatbot basierend auf:\n- URL: {url}\n- {collection_info}"
         },
         'icon': {
-            'system': """Du bist ein Icon-Auswahl-System. Du antwortest IMMER mit GENAU EINEM Icon-Namen aus der Liste.
-WICHTIG: Deine Antwort besteht NUR aus dem Icon-Namen, z.B.: mdi-robot
-Keine Erklärung, keine Anführungszeichen, keine Interpunktion.""",
-            'user_template': """Wähle das passendste Icon für einen Chatbot.
+            'system': """Du bist ein präzises Icon-Auswahl-System. Deine Aufgabe ist es, basierend auf der Beschreibung das EINE passendste Icon auszuwählen.
 
-Kontext:
-- URL: {url}
-- {collection_info}
+REGELN:
+1. Analysiere die URL und Dokumentbeschreibungen sorgfältig
+2. Wähle ein Icon, das zur Branche/zum Thema passt
+3. Antworte NUR mit dem Icon-Namen (z.B. mdi-school)
+4. Keine Erklärung, keine Anführungszeichen, keine Satzzeichen""",
+            'user_template': """Analysiere den folgenden Kontext und wähle das passendste Icon:
 
-Verfügbare Icons:
+KONTEXT:
+- Website: {url}
+- Inhalt: {collection_info}
+
+ICON-KATEGORIEN:
 {icon_list}
 
-Antworte mit EINEM Icon-Namen (z.B. mdi-school für Bildung, mdi-briefcase für Business):"""
+BEISPIELE:
+- Baufirma/Architektur → mdi-office-building oder mdi-domain
+- Universität/Schule → mdi-school oder mdi-graduation-cap
+- Arztpraxis/Gesundheit → mdi-hospital oder mdi-medical-bag
+- Anwaltskanzlei → mdi-gavel oder mdi-scale-balance
+- IT/Software → mdi-laptop oder mdi-code-tags
+- Restaurant → mdi-food oder mdi-silverware-fork-knife
+
+Welches Icon passt am besten? Antworte NUR mit dem Icon-Namen:"""
         },
         'color': {
             'system': """Du bist ein Experte für Branding und Farbauswahl.
@@ -219,6 +231,13 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
 
         collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)
 
+        # Add chatbot name to context if available for better understanding
+        chatbot_name_context = ""
+        if chatbot.display_name and chatbot.display_name != chatbot.name:
+            chatbot_name_context = f"\n- Chatbot-Name: {chatbot.display_name}"
+        elif chatbot.name:
+            chatbot_name_context = f"\n- Chatbot-Name: {chatbot.name}"
+
         # Format icon list for the prompt - group by category for better context
         icon_list_parts = []
         for category, icons in CHATBOT_ICONS.items():
@@ -228,15 +247,20 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         prompt_config = ChatbotFieldGenerator.PROMPTS['icon']
         user_prompt = prompt_config['user_template'].format(
             url=chatbot.source_url or 'N/A',
-            collection_info=collection_info,
+            collection_info=collection_info + chatbot_name_context,
             icon_list=icon_list
         )
 
         try:
+            # Use lower temperature for more deterministic icon selection
             generated_icon = ChatbotFieldGenerator._generate_with_llm(
                 system_prompt=prompt_config['system'],
-                user_prompt=user_prompt
+                user_prompt=user_prompt,
+                temperature=0.3
             )
+
+            # Log raw response for debugging
+            logger.info(f"[ChatbotFieldGenerator] Raw LLM icon response for chatbot {chatbot_id}: {repr(generated_icon)}")
 
             # Clean and validate the generated icon
             generated_icon = ChatbotFieldGenerator._clean_icon(generated_icon)
@@ -270,8 +294,10 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
             Valid MDI icon name (defaults to mdi-robot if invalid)
         """
         if not icon:
+            logger.warning("[ChatbotFieldGenerator] _clean_icon: empty input, returning mdi-robot")
             return 'mdi-robot'
 
+        original = icon
         # Clean up: remove quotes, whitespace, punctuation, newlines
         icon = icon.strip().strip('"\'').strip()
         icon = icon.split('\n')[0].strip()  # Take first line only
@@ -279,12 +305,17 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         icon = icon.rstrip('.,;:!?')  # Remove trailing punctuation
         icon = icon.lower()
 
+        logger.debug(f"[ChatbotFieldGenerator] _clean_icon: after basic cleanup: {repr(icon)}")
+
         # Ensure it starts with mdi-
         if not icon.startswith('mdi-'):
             icon = 'mdi-' + icon
 
+        logger.debug(f"[ChatbotFieldGenerator] _clean_icon: after mdi- prefix: {repr(icon)}")
+
         # Exact match
         if icon in ALL_CHATBOT_ICONS:
+            logger.info(f"[ChatbotFieldGenerator] _clean_icon: exact match found: {icon}")
             return icon
 
         # Try without 'mdi-' prefix variations
@@ -293,9 +324,11 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
             valid_base = valid_icon.replace('mdi-', '')
             # Exact base match
             if icon_base == valid_base:
+                logger.info(f"[ChatbotFieldGenerator] _clean_icon: base match found: {valid_icon}")
                 return valid_icon
             # Contains match
             if icon_base in valid_base or valid_base in icon_base:
+                logger.info(f"[ChatbotFieldGenerator] _clean_icon: partial match found: {valid_icon} (base: {icon_base})")
                 return valid_icon
 
         # Fuzzy matching: find closest icon by common words
@@ -310,21 +343,24 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
                 best_match = valid_icon
 
         if best_match and best_score > 0:
+            logger.info(f"[ChatbotFieldGenerator] _clean_icon: fuzzy match found: {best_match} (score: {best_score})")
             return best_match
 
+        logger.warning(f"[ChatbotFieldGenerator] _clean_icon: no match found for {repr(original)}, returning mdi-robot")
         return 'mdi-robot'
 
     @staticmethod
-    def generate_color(chatbot_id: int, context: Optional[str] = None) -> Dict[str, Any]:
+    def generate_color(chatbot_id: int, context: Optional[str] = None, force_llm: bool = False) -> Dict[str, Any]:
         """
         Generate an appropriate color for a chatbot.
 
-        First checks if the collection has a brand_color from crawling.
-        Falls back to LLM generation if no brand color exists.
+        First checks if the collection has a brand_color from crawling (unless force_llm=True).
+        Falls back to LLM generation if no brand color exists or force_llm is set.
 
         Args:
             chatbot_id: The chatbot ID
             context: Optional additional context
+            force_llm: If True, skip crawled color and always use LLM generation
 
         Returns:
             Dict with generated color hex code
@@ -333,8 +369,8 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         if not chatbot:
             raise ValueError('Chatbot not found')
 
-        # First, check if collection has a brand color from crawling
-        if chatbot.primary_collection_id:
+        # Check for crawled brand color (unless force_llm is set)
+        if not force_llm and chatbot.primary_collection_id:
             collection = RAGCollection.query.get(chatbot.primary_collection_id)
             if collection and collection.color:
                 logger.info(f"[ChatbotFieldGenerator] Using brand color from collection: {collection.color}")
@@ -345,7 +381,7 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
                     'source': 'crawled'
                 }
 
-        # Fall back to LLM generation
+        # LLM generation (either as fallback or forced)
         collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)
 
         prompt_config = ChatbotFieldGenerator.PROMPTS['color']
@@ -421,7 +457,7 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         return model_id
 
     @staticmethod
-    def generate_field(chatbot_id: int, field: str, context: Optional[str] = None) -> Dict[str, Any]:
+    def generate_field(chatbot_id: int, field: str, context: Optional[str] = None, force_llm: bool = False) -> Dict[str, Any]:
         """
         Generate a field value using LLM based on the chatbot's context.
 
@@ -429,6 +465,7 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
             chatbot_id: The chatbot ID
             field: The field to generate (name, display_name, system_prompt, welcome_message, description)
             context: Optional additional context
+            force_llm: If True, skip cached/crawled values and force LLM generation (applies to color)
 
         Returns:
             Dict with generated value
@@ -447,7 +484,7 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         if field == 'icon':
             return ChatbotFieldGenerator.generate_icon(chatbot_id, context)
         if field == 'color':
-            return ChatbotFieldGenerator.generate_color(chatbot_id, context)
+            return ChatbotFieldGenerator.generate_color(chatbot_id, context, force_llm=force_llm)
 
         # Get collection info for context
         collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)
@@ -516,13 +553,14 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         return f"Die Wissensbasis enthält Dokumente wie: {', '.join(doc_titles)}"
 
     @staticmethod
-    def _generate_with_llm(system_prompt: str, user_prompt: str) -> str:
+    def _generate_with_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7) -> str:
         """
         Generate text using LLM.
 
         Args:
             system_prompt: System prompt
             user_prompt: User prompt
+            temperature: LLM temperature (0.0-1.0)
 
         Returns:
             Generated text
@@ -542,7 +580,7 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.7,
+            temperature=temperature,
             max_tokens=500
         )
 

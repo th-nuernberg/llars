@@ -180,7 +180,7 @@ class ChatbotBuilderService:
     # ========== Field Generation ==========
 
     @staticmethod
-    def generate_field(chatbot_id: int, field: str, context: Optional[str] = None) -> Dict[str, Any]:
+    def generate_field(chatbot_id: int, field: str, context: Optional[str] = None, force_llm: bool = False) -> Dict[str, Any]:
         """
         Generate a field value using LLM based on the chatbot's context.
 
@@ -190,12 +190,13 @@ class ChatbotBuilderService:
             chatbot_id: The chatbot ID
             field: The field to generate (name, system_prompt, welcome_message)
             context: Optional additional context
+            force_llm: If True, skip cached/crawled values and force LLM generation
 
         Returns:
             Dict with generated value
         """
         try:
-            return ChatbotFieldGenerator.generate_field(chatbot_id, field, context)
+            return ChatbotFieldGenerator.generate_field(chatbot_id, field, context, force_llm=force_llm)
         except ValueError as e:
             return {'success': False, 'error': str(e)}
         except Exception as e:

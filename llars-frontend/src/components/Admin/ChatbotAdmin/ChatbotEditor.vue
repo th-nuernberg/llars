@@ -161,18 +161,7 @@
                   </v-text-field>
                 </v-col>
 
-                <!-- Welcome & Fallback Messages -->
-                <v-col cols="12">
-                  <v-textarea
-                    v-model="formData.welcome_message"
-                    label="Willkommensnachricht"
-                    hint="Erste Nachricht beim Start eines Gesprächs"
-                    persistent-hint
-                    rows="2"
-                    variant="outlined"
-                    density="comfortable"
-                  />
-                </v-col>
+                <!-- Fallback Message (Welcome Message is in LLM tab) -->
                 <v-col cols="12">
                   <v-textarea
                     v-model="formData.fallback_message"
@@ -208,179 +197,124 @@
 
           <!-- LLM Settings Tab -->
           <v-window-item value="llm" eager>
-            <v-form ref="formLLM">
-              <v-row>
-                <!-- Prompt Templates -->
-                <v-col cols="12">
-                  <v-card variant="outlined" class="mb-4">
-                    <v-card-title class="text-subtitle-1">
-                      <v-icon start>mdi-text-box-multiple</v-icon>
-                      Prompt-Vorlagen
-                    </v-card-title>
-                    <v-card-text>
-                      <v-chip-group>
-                        <v-chip
-                          v-for="template in promptTemplates"
-                          :key="template.name"
-                          variant="outlined"
-                          @click="applyPromptTemplate(template)"
+            <v-form ref="formLLM" class="llm-tab-form">
+              <!-- Top section: Model & Prompt Templates -->
+              <div class="llm-top-section">
+                <v-row dense>
+                  <!-- Model Selection -->
+                  <v-col cols="12" md="6">
+                    <v-combobox
+                      v-model="formData.model_name"
+                      :items="llmModelItems"
+                      item-title="title"
+                      item-value="value"
+                      :return-object="false"
+                      label="Modell"
+                      variant="outlined"
+                      density="compact"
+                      :loading="llmModelsLoading"
+                      clearable
+                      hide-details
+                    >
+                      <template #append>
+                        <v-btn
+                          icon
+                          variant="text"
+                          size="x-small"
+                          :loading="llmModelsLoading"
+                          @click="syncAndLoadModels"
                         >
-                          <v-icon start>{{ template.icon }}</v-icon>
-                          {{ template.name }}
-                        </v-chip>
-                      </v-chip-group>
-                    </v-card-text>
-                  </v-card>
-                </v-col>
+                          <v-icon size="18">mdi-refresh</v-icon>
+                        </v-btn>
+                      </template>
+                    </v-combobox>
+                  </v-col>
 
-                <!-- System Prompt -->
-                <v-col cols="12">
-                  <div class="text-subtitle-2 mb-2">System Prompt</div>
-                  <v-card variant="outlined" class="prompt-editor">
-                    <v-card-text class="pa-0">
-                      <div class="d-flex">
-                        <!-- Line numbers -->
-                        <div class="line-numbers">
-                          <div
-                            v-for="n in promptLineCount"
-                            :key="n"
-                            class="line-number"
-                          >
-                            {{ n }}
-                          </div>
-                        </div>
-                        <!-- Textarea -->
-                        <textarea
-                          v-model="formData.system_prompt"
-                          class="prompt-textarea"
-                          placeholder="Definieren Sie die Rolle und das Verhalten des Chatbots..."
-                          @input="updateLineCount"
-                        />
-                      </div>
-                    </v-card-text>
-                  </v-card>
-                  <div class="text-caption text-medium-emphasis mt-1">
-                    {{ formData.system_prompt?.length || 0 }} Zeichen
-                  </div>
-                </v-col>
+                  <!-- Temperature -->
+                  <v-col cols="12" md="3">
+                    <v-text-field
+                      v-model.number="formData.temperature"
+                      label="Temperatur"
+                      type="number"
+                      :min="0"
+                      :max="2"
+                      :step="0.1"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
 
-                <!-- Model Settings -->
-                <v-col cols="12">
-                  <v-combobox
-                    v-model="formData.model_name"
-                    :items="llmModelItems"
-                    item-title="title"
-                    item-value="value"
-                    :return-object="false"
-                    label="Modell"
-                    hint="Wähle ein Modell aus der Registry oder gib eine Model-ID ein"
-                    persistent-hint
-                    variant="outlined"
-                    density="comfortable"
-                    :loading="llmModelsLoading"
-                    clearable
-                  >
-                    <template #append>
-                      <v-btn
-                        icon
-                        variant="text"
+                  <!-- Max Tokens -->
+                  <v-col cols="12" md="3">
+                    <v-text-field
+                      v-model.number="formData.max_tokens"
+                      label="Max. Tokens"
+                      type="number"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
+
+                  <!-- Prompt Templates -->
+                  <v-col cols="12">
+                    <div class="d-flex align-center flex-wrap ga-1">
+                      <span class="text-caption text-medium-emphasis mr-2">Vorlagen:</span>
+                      <v-chip
+                        v-for="template in promptTemplates"
+                        :key="template.name"
+                        variant="outlined"
                         size="small"
-                        :loading="llmModelsLoading"
-                        @click="syncAndLoadModels"
+                        @click="applyPromptTemplate(template)"
                       >
-                        <v-icon>mdi-refresh</v-icon>
-                        <v-tooltip activator="parent" location="top">
-                          Modelle synchronisieren
-                        </v-tooltip>
-                      </v-btn>
-                    </template>
-
-                    <template #item="{ props: itemProps, item }">
-                      <v-list-item v-bind="itemProps">
-                        <template #prepend>
-                          <v-icon :color="item.raw.supports_vision ? 'success' : 'grey'">
-                            {{ item.raw.supports_vision ? 'mdi-image' : 'mdi-text' }}
-                          </v-icon>
-                        </template>
-                        <v-list-item-title>{{ item.raw.display_name }}</v-list-item-title>
-                        <v-list-item-subtitle class="text-caption">
-                          {{ item.raw.provider }} · {{ item.raw.model_id }}
-                        </v-list-item-subtitle>
-                      </v-list-item>
-                    </template>
-                  </v-combobox>
-
-                  <v-alert
-                    v-if="selectedLlmModel"
-                    type="info"
-                    variant="tonal"
-                    class="mt-2"
-                  >
-                    <div class="d-flex align-center justify-space-between">
-                      <div class="text-caption">
-                        {{ selectedLlmModel.provider }} · {{ formatNumber(selectedLlmModel.context_window) }} Kontext · Max Output {{ formatNumber(selectedLlmModel.max_output_tokens) }}
-                      </div>
-                      <div class="d-flex ga-2">
-                        <LTag v-if="selectedLlmModel.supports_vision" variant="success" size="sm">
-                          Vision
-                        </LTag>
-                        <LTag v-if="selectedLlmModel.supports_reasoning" variant="primary" size="sm">
-                          Reasoning
-                        </LTag>
-                      </div>
+                        <v-icon start size="14">{{ template.icon }}</v-icon>
+                        {{ template.name }}
+                      </v-chip>
                     </div>
-                  </v-alert>
-                </v-col>
+                  </v-col>
+                </v-row>
+              </div>
 
-                <!-- Temperature Slider -->
-                <v-col cols="12">
-                  <div class="text-subtitle-2 mb-2">
-                    Temperatur: {{ formData.temperature }}
+              <!-- Bottom section: System Prompt + Welcome Message split -->
+              <div class="llm-prompts-split">
+                <!-- System Prompt -->
+                <div class="prompt-panel">
+                  <div class="prompt-panel-header">
+                    <v-icon size="18" class="mr-1">mdi-code-braces</v-icon>
+                    System Prompt
+                    <span class="text-caption text-medium-emphasis ml-auto">
+                      {{ formData.system_prompt?.length || 0 }} Zeichen
+                    </span>
                   </div>
-                  <v-slider
-                    v-model="formData.temperature"
-                    :min="0"
-                    :max="2"
-                    :step="0.1"
-                    thumb-label
-                    color="primary"
-                  >
-                    <template #prepend>
-                      <div class="text-caption">Präzise</div>
-                    </template>
-                    <template #append>
-                      <div class="text-caption">Kreativ</div>
-                    </template>
-                  </v-slider>
-                </v-col>
+                  <div class="prompt-panel-content">
+                    <textarea
+                      v-model="formData.system_prompt"
+                      class="prompt-textarea-full"
+                      placeholder="Definieren Sie die Rolle und das Verhalten des Chatbots..."
+                      @input="updateLineCount"
+                    />
+                  </div>
+                </div>
 
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model.number="formData.max_tokens"
-                    label="Max. Tokens"
-                    type="number"
-                    hint="Maximale Antwortlänge"
-                    persistent-hint
-                    variant="outlined"
-                    density="comfortable"
-                  />
-                </v-col>
-
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model.number="formData.top_p"
-                    label="Top P"
-                    type="number"
-                    :min="0"
-                    :max="1"
-                    :step="0.1"
-                    hint="Nucleus Sampling (0-1)"
-                    persistent-hint
-                    variant="outlined"
-                    density="comfortable"
-                  />
-                </v-col>
-              </v-row>
+                <!-- Welcome Message -->
+                <div class="prompt-panel">
+                  <div class="prompt-panel-header">
+                    <v-icon size="18" class="mr-1">mdi-message-text</v-icon>
+                    Willkommensnachricht
+                    <span class="text-caption text-medium-emphasis ml-auto">
+                      {{ formData.welcome_message?.length || 0 }} Zeichen
+                    </span>
+                  </div>
+                  <div class="prompt-panel-content">
+                    <textarea
+                      v-model="formData.welcome_message"
+                      class="prompt-textarea-full"
+                      placeholder="Erste Nachricht beim Start eines Gesprächs..."
+                    />
+                  </div>
+                </div>
+              </div>
             </v-form>
           </v-window-item>
 
@@ -1785,5 +1719,97 @@ watch(() => props.modelValue, (isOpen) => {
   height: 100vh;
   max-height: 100vh;
   margin: 0;
+}
+
+/* ===== LLM Tab Split Layout ===== */
+/* Override default overflow for LLM tab - we handle scrolling in textareas */
+.chatbot-editor-body :deep(.v-window-item:has(.llm-tab-form)) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.llm-tab-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.llm-top-section {
+  flex-shrink: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  margin-bottom: 16px;
+}
+
+.llm-prompts-split {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  min-height: 0; /* Critical for flex children to scroll */
+  overflow: hidden;
+}
+
+.prompt-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px 2px 8px 2px;
+  overflow: hidden;
+}
+
+.prompt-panel-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  font-weight: 500;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.prompt-panel-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.prompt-textarea-full {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 12px 14px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: transparent;
+  color: rgb(var(--v-theme-on-surface));
+  overflow-y: auto;
+}
+
+.prompt-textarea-full::placeholder {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Responsive: Stack on smaller screens */
+@media (max-width: 768px) {
+  .llm-prompts-split {
+    flex-direction: column;
+  }
+
+  .prompt-panel {
+    flex: none;
+    min-height: 200px;
+  }
 }
 </style>

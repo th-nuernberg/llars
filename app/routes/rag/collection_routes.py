@@ -332,6 +332,9 @@ def delete_collection(collection_id):
     # Delete document-collection links
     CollectionDocumentLink.query.filter_by(collection_id=collection_id).delete()
 
+    # Delete collection embeddings (multi-model records)
+    CollectionEmbedding.query.filter_by(collection_id=collection_id).delete()
+
     db.session.delete(collection)
     db.session.commit()
 

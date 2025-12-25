@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 3.0 | **Stand:** 24. Dezember 2025
+**Version:** 3.0 | **Stand:** 25. Dezember 2025
 
 ## Projekt-Übersicht
 
@@ -1045,6 +1045,46 @@ docker exec -it llars_authentik_db psql -U authentik_dev -d authentik_dev
 | Auth-Fehler | `./scripts/setup_authentik.sh` |
 | Crawler findet nichts | gzip-Decompression, exclude_patterns prüfen |
 | DB-Migration nötig | SQL via `docker exec` ausführen (siehe Datenbank-Zugriff) |
+| **502 Bad Gateway (Produktion)** | `NGINX_EXTERNAL_PORT=80` in `.env` setzen (siehe unten) |
+
+### 502 Bad Gateway auf Produktion
+
+**Symptom:** HTTPS via externen Reverse Proxy gibt 502 Bad Gateway, aber `curl http://localhost:55080` funktioniert.
+
+**Ursache:** Externer Reverse Proxy (z.B. auf separatem Server) erwartet Port 80, aber LLARS nginx läuft auf Port 55080.
+
+**Diagnose:**
+```bash
+# DNS prüfen - zeigt auf externen Proxy?
+dig +short llars.example.com
+
+# Server-IP prüfen
+hostname -I
+
+# Wenn unterschiedlich → externer Reverse Proxy im Einsatz
+
+# Lokaler Test
+curl -s -o /dev/null -w '%{http_code}' http://localhost:55080/  # 200 = LLARS läuft
+
+# HTTPS Test
+curl -s -I https://llars.example.com/  # 502 = Proxy kann Backend nicht erreichen
+```
+
+**Lösung:**
+```bash
+# Port auf 80 setzen für externen Proxy
+echo 'NGINX_EXTERNAL_PORT=80' >> /var/llars/.env
+
+# Nginx neu starten
+cd /var/llars && docker compose up -d nginx-service
+
+# Verifizieren
+docker port llars_nginx_service  # Sollte "80/tcp -> 0.0.0.0:80" zeigen
+```
+
+**Hintergrund:**
+- Development: `NGINX_EXTERNAL_PORT=55080` (Default) - kein Konflikt mit Host-Webserver
+- Produktion mit externem Proxy: `NGINX_EXTERNAL_PORT=80` - Proxy verbindet zu Port 80
 
 ---
 
@@ -1060,4 +1100,4 @@ docker exec -it llars_authentik_db psql -U authentik_dev -d authentik_dev
 
 ---
 
-**Stand:** 24. Dezember 2025
+**Stand:** 25. Dezember 2025

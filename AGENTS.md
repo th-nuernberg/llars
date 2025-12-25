@@ -319,10 +319,48 @@ EOF
 
 | Problem | Lösung |
 |---------|--------|
-| LLARS nicht erreichbar | `NGINX_INTERNAL_PORT=80` in .env prüfen |
+| LLARS nicht erreichbar | `NGINX_EXTERNAL_PORT` in .env prüfen |
 | Auth-Fehler | `./scripts/setup_authentik.sh` ausführen |
 | Permission-System fehlt | `docker compose restart backend-flask-service` |
 | Session startet nicht | Session-Status muss created/queued/paused sein |
+| **502 Bad Gateway (Produktion)** | `NGINX_EXTERNAL_PORT=80` in `.env` setzen |
+
+### 502 Bad Gateway auf Produktion
+
+**Symptom:** HTTPS via externen Reverse Proxy gibt 502 Bad Gateway, aber lokal funktioniert alles.
+
+**Ursache:** Externer Reverse Proxy erwartet Port 80, aber LLARS nginx läuft auf Default-Port 55080.
+
+**Diagnose:**
+```bash
+# DNS zeigt auf anderen Server als LLARS?
+dig +short llars.example.com    # Externer Proxy IP
+hostname -I                      # LLARS Server IP
+# Wenn unterschiedlich → externer Reverse Proxy
+
+# Lokal OK?
+curl -s -o /dev/null -w '%{http_code}' http://localhost:55080/  # 200 = LLARS läuft
+
+# HTTPS fehlerhaft?
+curl -s -I https://llars.example.com/  # 502 = Proxy erreicht Backend nicht
+```
+
+**Lösung:**
+```bash
+# Port 80 für externen Proxy setzen
+echo 'NGINX_EXTERNAL_PORT=80' >> /var/llars/.env
+cd /var/llars && docker compose up -d nginx-service
+
+# Verifizieren
+docker port llars_nginx_service  # → "80/tcp -> 0.0.0.0:80"
+```
+
+**Port-Konfiguration:**
+| Umgebung | NGINX_EXTERNAL_PORT | Grund |
+|----------|---------------------|-------|
+| Development | 55080 (Default) | Kein Konflikt mit Host-Webserver |
+| Produktion (direkt) | 80 oder 443 | Direkter Zugriff |
+| Produktion (ext. Proxy) | 80 | Proxy verbindet zu Port 80 |
 
 ---
 

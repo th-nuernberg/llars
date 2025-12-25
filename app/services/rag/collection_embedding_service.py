@@ -12,11 +12,79 @@ import uuid
 import re
 import time
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable, TypeVar
+from functools import wraps
 
 from flask import current_app
+from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
+
+
+def retry_on_deadlock(max_retries: int = 3, delay: float = 0.5):
+    """
+    Decorator to retry database operations on deadlock.
+
+    Args:
+        max_retries: Maximum number of retry attempts
+        delay: Initial delay between retries (doubles each retry)
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> T:
+            from db.db import db
+
+            last_exception = None
+            current_delay = delay
+
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except OperationalError as e:
+                    error_msg = str(e).lower()
+                    if 'deadlock' in error_msg or '1213' in str(e):
+                        last_exception = e
+                        logger.warning(
+                            f"[DB] Deadlock detected in {func.__name__}, "
+                            f"attempt {attempt + 1}/{max_retries + 1}, retrying in {current_delay}s"
+                        )
+                        try:
+                            db.session.rollback()
+                        except Exception:
+                            pass
+
+                        if attempt < max_retries:
+                            time.sleep(current_delay)
+                            current_delay *= 2  # Exponential backoff
+                            continue
+                    raise
+                except Exception as e:
+                    # Check if it's a nested deadlock error
+                    error_msg = str(e).lower()
+                    if 'deadlock' in error_msg or '1213' in error_msg:
+                        last_exception = e
+                        logger.warning(
+                            f"[DB] Deadlock detected (nested) in {func.__name__}, "
+                            f"attempt {attempt + 1}/{max_retries + 1}"
+                        )
+                        try:
+                            db.session.rollback()
+                        except Exception:
+                            pass
+
+                        if attempt < max_retries:
+                            time.sleep(current_delay)
+                            current_delay *= 2
+                            continue
+                    raise
+
+            if last_exception:
+                raise last_exception
+
+        return wrapper
+    return decorator
 
 
 def sanitize_chroma_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -454,9 +522,8 @@ class CollectionEmbeddingService:
                     return
 
                 try:
-                    # Update document status
-                    doc.status = 'processing'
-                    db.session.commit()
+                    # Update document status with deadlock retry
+                    self._update_document_status(doc.id, 'processing')
 
                     # Emit progress
                     progress = int((processed_count / max(total_docs, 1)) * 100)
@@ -472,9 +539,7 @@ class CollectionEmbeddingService:
                         chunk_overlap=collection.chunk_overlap or 200,
                     )
                     if not chunks:
-                        doc.status = 'failed'
-                        doc.processing_error = 'Could not extract any document content'
-                        db.session.commit()
+                        self._update_document_status(doc.id, 'failed', 'Could not extract any document content')
                         processed_count += 1
                         continue
 
@@ -592,14 +657,13 @@ class CollectionEmbeddingService:
                         logger.error(f"[CollectionEmbedding] ChromaDB error: {e}")
                         raise
 
-                    # Update document status
-                    doc.status = 'indexed'
-                    doc.processed_at = datetime.now()
-                    doc.indexed_at = datetime.now()
-                    doc.chunk_count = len(chunks)
-                    doc.vector_ids = all_vector_ids
-                    doc.embedding_model = pipeline.model_name
-                    db.session.commit()
+                    # Update document status with deadlock retry
+                    self._update_document_status(
+                        doc.id, 'indexed',
+                        chunk_count=len(chunks),
+                        vector_ids=all_vector_ids,
+                        embedding_model=pipeline.model_name
+                    )
 
                     # Emit per-document status update (no polling needed in UIs)
                     try:
@@ -623,12 +687,11 @@ class CollectionEmbeddingService:
                         db.session.rollback()
                     except Exception:
                         pass
-                    doc.status = 'failed'
-                    doc.processing_error = str(e)[:500]
+                    # Update document status with deadlock retry
                     try:
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
+                        self._update_document_status(doc.id, 'failed', str(e)[:500])
+                    except Exception as update_err:
+                        logger.warning(f"[CollectionEmbedding] Failed to update document {doc.id} status: {update_err}")
                     try:
                         from main import socketio
                         from socketio_handlers.events_rag import emit_document_processed
@@ -637,18 +700,79 @@ class CollectionEmbeddingService:
                         pass
                     processed_count += 1
 
-            # Update collection stats after each batch
-            # Recompute total chunks for the collection to avoid drift (e.g., when reusing existing chunks)
-            linked_doc_ids = db.session.query(CollectionDocumentLink.document_id).filter(
-                CollectionDocumentLink.collection_id == collection_id
-            ).subquery()
-            collection.total_chunks = RAGDocumentChunk.query.filter(
-                RAGDocumentChunk.document_id.in_(linked_doc_ids)
-            ).count()
-            collection.document_count = len([link for link in doc_links if link.document])
-            collection.embedding_progress = int((processed_count / max(total_docs, 1)) * 100)
-            collection.last_indexed_at = datetime.now()
-            db.session.commit()
+            # Update collection stats after each batch with deadlock retry
+            try:
+                self._update_collection_stats(
+                    collection_id,
+                    int((processed_count / max(total_docs, 1)) * 100),
+                    len([link for link in doc_links if link.document])
+                )
+            except Exception as stats_err:
+                logger.warning(f"[CollectionEmbedding] Failed to update collection stats: {stats_err}")
+
+    @retry_on_deadlock(max_retries=3, delay=0.5)
+    def _update_document_status(self, doc_id: int, status: str, error: str = None, **kwargs):
+        """
+        Update document status with deadlock retry.
+
+        Args:
+            doc_id: Document ID
+            status: New status ('processing', 'indexed', 'failed')
+            error: Error message for failed status
+            **kwargs: Additional fields to update (chunk_count, vector_ids, embedding_model)
+        """
+        from db.db import db
+        from db.tables import RAGDocument
+
+        doc = RAGDocument.query.get(doc_id)
+        if not doc:
+            logger.warning(f"[CollectionEmbedding] Document {doc_id} not found for status update")
+            return
+
+        doc.status = status
+        doc.updated_at = datetime.now()
+
+        if status == 'indexed':
+            doc.processed_at = datetime.now()
+            doc.indexed_at = datetime.now()
+        elif status == 'failed' and error:
+            doc.processing_error = error
+
+        # Apply additional fields
+        for key, value in kwargs.items():
+            if hasattr(doc, key):
+                setattr(doc, key, value)
+
+        db.session.commit()
+
+    @retry_on_deadlock(max_retries=3, delay=0.5)
+    def _update_collection_stats(self, collection_id: int, progress: int, doc_count: int):
+        """
+        Update collection stats with deadlock retry.
+
+        Args:
+            collection_id: Collection ID
+            progress: Current embedding progress (0-100)
+            doc_count: Number of documents in collection
+        """
+        from db.db import db
+        from db.tables import RAGCollection, RAGDocumentChunk, CollectionDocumentLink
+
+        collection = RAGCollection.query.get(collection_id)
+        if not collection:
+            return
+
+        # Recompute total chunks for the collection to avoid drift
+        linked_doc_ids = db.session.query(CollectionDocumentLink.document_id).filter(
+            CollectionDocumentLink.collection_id == collection_id
+        ).subquery()
+        collection.total_chunks = RAGDocumentChunk.query.filter(
+            RAGDocumentChunk.document_id.in_(linked_doc_ids)
+        ).count()
+        collection.document_count = doc_count
+        collection.embedding_progress = progress
+        collection.last_indexed_at = datetime.now()
+        db.session.commit()
 
     def _load_document_content(self, doc) -> str:
         """Load content from document file."""

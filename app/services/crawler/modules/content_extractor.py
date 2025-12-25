@@ -28,7 +28,19 @@ class ContentExtractor:
     """
 
     # Content selectors (ordered by priority)
-    MAIN_SELECTORS = ['main', 'article', '[role="main"]', '.content', '.article']
+    # Includes common CMS/theme-specific selectors (WordPress, Divi, Elementor, etc.)
+    MAIN_SELECTORS = [
+        'main', 'article', '[role="main"]',
+        '.content', '.article', '.post-content', '.entry-content',
+        # Divi Theme (Elegant Themes) - very common WordPress builder
+        '.et_pb_section', '#et-main-area', '.et_pb_text',
+        # Elementor
+        '.elementor-widget-container', '.elementor-section',
+        # WPBakery
+        '.vc_row', '.wpb_wrapper',
+        # Generic fallbacks
+        '#content', '#main-content', '.main-content', '.page-content'
+    ]
 
     # Elements to remove (not content)
     SAFE_REMOVAL_SELECTORS = [
@@ -187,12 +199,75 @@ class ContentExtractor:
                 logger.debug(f"Error extracting from {selector}: {e}")
                 continue
 
+        # For page builders (Divi, Elementor), content is spread across multiple elements
+        # Try combining all text elements if single selector didn't yield enough content
+        if not text_content or len(text_content) < 200:
+            combined_content = await self._extract_combined_page_builder_content(page, url)
+            if combined_content and len(combined_content) > len(text_content or ''):
+                text_content = combined_content
+                logger.debug(f"Used combined page builder extraction: {len(text_content)} chars")
+
         # Fallback to body if no content found
         if not text_content or len(text_content) < 100:
             logger.debug("Using body fallback for content extraction")
             text_content = await self._fallback_body_extraction(page, url)
 
         return text_content
+
+    async def _extract_combined_page_builder_content(self, page, url: str) -> str:
+        """
+        Extract content from page builders that spread text across many elements.
+        Combines text from multiple Divi, Elementor, WPBakery modules.
+
+        Args:
+            page: Playwright page object
+            url: URL (for logging)
+
+        Returns:
+            Combined text content
+        """
+        page_builder_selectors = [
+            # Divi text modules
+            '.et_pb_text_inner',
+            '.et_pb_blurb_description',
+            '.et_pb_slide_description',
+            # Elementor widgets
+            '.elementor-widget-text-editor',
+            '.elementor-widget-heading',
+            # WPBakery
+            '.wpb_text_column',
+            # Generic text containers
+            '.text-content', '.text-block', 'p',
+        ]
+
+        all_texts = []
+
+        try:
+            for selector in page_builder_selectors:
+                try:
+                    elements = await page.query_selector_all(selector)
+                    for element in elements[:50]:  # Limit to prevent huge extractions
+                        try:
+                            text = await asyncio.wait_for(
+                                element.inner_text(),
+                                timeout=2.0
+                            )
+                            if text and len(text.strip()) > 20:  # Skip tiny snippets
+                                all_texts.append(text.strip())
+                        except Exception:
+                            continue
+                except Exception:
+                    continue
+
+            if all_texts:
+                combined = '\n\n'.join(all_texts)
+                logger.debug(f"Combined {len(all_texts)} page builder elements: {len(combined)} chars total")
+                return combined
+
+        except Exception as e:
+            logger.debug(f"Error in combined page builder extraction: {e}")
+
+        return ''
 
     async def _fallback_body_extraction(self, page, url: str) -> str:
         """

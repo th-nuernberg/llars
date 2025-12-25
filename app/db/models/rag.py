@@ -65,6 +65,13 @@ class RAGCollection(db.Model):
     # Relationships (n:m via CollectionDocumentLink)
     document_links = db.relationship('CollectionDocumentLink', back_populates='collection', cascade='all, delete-orphan')
     permissions = db.relationship('RAGCollectionPermission', backref='collection', cascade='all, delete-orphan')
+    # CollectionEmbedding records (multi-model support)
+    collection_embeddings = db.relationship(
+        'CollectionEmbedding',
+        backref='parent_collection',
+        cascade='all, delete-orphan',
+        passive_deletes=True
+    )
 
 
 class RAGCollectionPermission(db.Model):
@@ -429,8 +436,8 @@ class CollectionEmbedding(db.Model):
     updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     completed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
 
-    # Relationship
-    collection = db.relationship('RAGCollection', backref='embeddings')
+    # Relationship (backref defined in RAGCollection as 'collection_embeddings')
+    collection = db.relationship('RAGCollection', back_populates='collection_embeddings', overlaps='parent_collection')
 
     __table_args__ = (
         db.UniqueConstraint('collection_id', 'model_id', name='unique_collection_model'),

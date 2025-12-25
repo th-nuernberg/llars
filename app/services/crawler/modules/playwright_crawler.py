@@ -255,8 +255,14 @@ class PlaywrightCrawler:
                     # Navigate to page
                     await self._navigate_to_page(page, url)
 
-                    # Wait for dynamic content
-                    await asyncio.sleep(2)
+                    # Wait for dynamic content (longer for JS-heavy pages like Divi, Elementor)
+                    await asyncio.sleep(3)
+
+                    # Extra wait for lazy-loaded content to appear
+                    try:
+                        await page.wait_for_selector('body', timeout=2000)
+                    except Exception:
+                        pass
 
                     # Get HTML for fallback extraction
                     html = await page.content()

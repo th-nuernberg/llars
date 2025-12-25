@@ -1069,12 +1069,14 @@ class CrawlerService:
                             base_url=target_url,
                             max_pages=1,
                             max_depth=0,
-                            delay_seconds=0.5,
-                            extract_images=True,
+                            delay_seconds=0.3,  # Fast: reduced delay
+                            extract_images=not use_vision_llm,  # Only extract images if no vision LLM
                             use_vision_llm=use_vision_llm,
                             vision_llm_model=vision_model_id,
                             litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
-                            litellm_api_key=os.environ.get('LITELLM_API_KEY')
+                            litellm_api_key=os.environ.get('LITELLM_API_KEY'),
+                            take_screenshots=use_vision_llm,  # Only screenshots if using vision
+                            fast_mode=not use_vision_llm,  # Fast mode when no vision LLM
                         )
                         pages = await crawler.crawl_async()
                         page = pages[0] if pages else None

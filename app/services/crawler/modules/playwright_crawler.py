@@ -43,7 +43,7 @@ class PlaywrightCrawler:
         base_url: str,
         max_pages: int = 50,
         max_depth: int = 3,
-        delay_seconds: float = 1.5,
+        delay_seconds: float = 0.5,  # Reduced from 1.5s for faster crawling
         timeout: int = 30000,  # milliseconds for Playwright
         follow_external: bool = False,
         include_patterns: Optional[List[str]] = None,
@@ -55,7 +55,11 @@ class PlaywrightCrawler:
         use_vision_llm: bool = True,
         vision_llm_model: Optional[str] = None,
         litellm_base_url: Optional[str] = None,
-        litellm_api_key: Optional[str] = None
+        litellm_api_key: Optional[str] = None,
+        # Performance options
+        take_screenshots: bool = True,  # Can disable for faster crawling
+        concurrent_pages: int = 3,  # Number of pages to crawl in parallel
+        fast_mode: bool = False,  # Skip screenshots, images, vision LLM
     ):
         """
         Initialize the Playwright crawler.
@@ -64,7 +68,7 @@ class PlaywrightCrawler:
             base_url: Starting URL to crawl
             max_pages: Maximum number of pages to crawl
             max_depth: Maximum link depth from base URL
-            delay_seconds: Delay between requests
+            delay_seconds: Delay between requests (default: 0.5s)
             timeout: Page load timeout in milliseconds
             follow_external: Whether to follow external links
             include_patterns: URL patterns to include
@@ -77,6 +81,9 @@ class PlaywrightCrawler:
             vision_llm_model: Vision-capable LLM model name
             litellm_base_url: LiteLLM API base URL
             litellm_api_key: LiteLLM API key
+            take_screenshots: Whether to capture screenshots (default: True)
+            concurrent_pages: Number of pages to crawl in parallel (default: 3)
+            fast_mode: Skip screenshots, images, vision LLM for maximum speed
         """
         # Core settings
         self.base_url = self._normalize_url(base_url)
@@ -110,8 +117,11 @@ class PlaywrightCrawler:
         self.content_extractor = ContentExtractor()
 
         # Settings
-        self.extract_images = extract_images
-        self.use_vision_llm = use_vision_llm
+        self.extract_images = extract_images and not fast_mode
+        self.use_vision_llm = use_vision_llm and not fast_mode
+        self.take_screenshots = take_screenshots and not fast_mode
+        self.concurrent_pages = concurrent_pages
+        self.fast_mode = fast_mode
 
         # URL filtering
         self.include_patterns = [re.compile(p) for p in (include_patterns or [])]
@@ -203,7 +213,7 @@ class PlaywrightCrawler:
         page_callback: Optional[Callable] = None
     ) -> List[Dict]:
         """
-        Execute the crawl asynchronously.
+        Execute the crawl asynchronously with parallel page processing.
 
         Args:
             progress_callback: Optional callback(current, total, url)
@@ -215,12 +225,13 @@ class PlaywrightCrawler:
         from playwright.async_api import async_playwright
 
         self.stats['start_time'] = datetime.now()
-        logger.info(f"[Playwright] Starting crawl of {self.base_url} (max {self.max_pages} pages)")
+        mode_info = "fast" if self.fast_mode else f"{self.concurrent_pages} parallel"
+        logger.info(f"[Playwright] Starting crawl of {self.base_url} (max {self.max_pages} pages, {mode_info})")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(
                 headless=True,
-                args=['--no-sandbox', '--disable-setuid-sandbox']
+                args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
             )
 
             context = await browser.new_context(
@@ -229,40 +240,22 @@ class PlaywrightCrawler:
                 locale='de-DE'
             )
 
-            page = await context.new_page()
-
             # Queue: (url, depth)
             queue = [(self.base_url, 0)]
+            processing_lock = asyncio.Lock()
 
-            while queue and len(self.crawled_pages) < self.max_pages:
-                url, depth = queue.pop(0)
-
-                if url in self.visited_urls:
-                    continue
-
-                if depth > self.max_depth:
-                    continue
-
-                if not self._should_crawl(url):
-                    self.stats['pages_skipped'] += 1
-                    continue
-
-                self.visited_urls.add(url)
-
-                logger.info(f"[Playwright] Crawling [{len(self.crawled_pages)+1}/{self.max_pages}]: {url}")
-
+            async def process_page(url: str, depth: int, page) -> Optional[Dict]:
+                """Process a single page and return page data."""
                 try:
-                    # Navigate to page
+                    # Navigate with adaptive waiting
                     await self._navigate_to_page(page, url)
 
-                    # Wait for dynamic content (longer for JS-heavy pages like Divi, Elementor)
-                    await asyncio.sleep(3)
-
-                    # Extra wait for lazy-loaded content to appear
+                    # Smart wait: try networkidle first, fall back to shorter fixed wait
                     try:
-                        await page.wait_for_selector('body', timeout=2000)
+                        await page.wait_for_load_state('networkidle', timeout=5000)
                     except Exception:
-                        pass
+                        # Fallback: short wait for JS-heavy pages
+                        await asyncio.sleep(1.0 if not self.fast_mode else 0.5)
 
                     # Get HTML for fallback extraction
                     html = await page.content()
@@ -270,85 +263,151 @@ class PlaywrightCrawler:
                     # Extract text content and metadata
                     text, metadata = await self.content_extractor.extract_text_content(page, url)
 
-                    if text and len(text) > 100:
-                        content_hash = hashlib.sha256(text.encode()).hexdigest()
+                    if not text or len(text) <= 100:
+                        self.stats['pages_skipped'] += 1
+                        return None
 
-                        # Skip duplicates
+                    content_hash = hashlib.sha256(text.encode()).hexdigest()
+
+                    # Skip duplicates (thread-safe check)
+                    async with processing_lock:
                         if content_hash in self.content_hashes:
                             logger.debug(f"Skipping duplicate content: {url}")
-                            continue
+                            return None
                         self.content_hashes.add(content_hash)
 
-                        # Take screenshot (handles long pages automatically)
+                    # Take screenshot (optional, handles long pages automatically)
+                    screenshot_data = None
+                    if self.take_screenshots:
                         screenshot_data = await self.screenshot_capture.capture_long_page(
                             page, url, content_hash, self.SCREENSHOT_HEIGHT
                         )
                         if screenshot_data:
                             self.stats['screenshots_taken'] += screenshot_data.get('screenshot_count', 1)
 
-                        # Extract structured data
+                    # Extract structured data (optional)
+                    structured_data = {}
+                    if not self.fast_mode:
                         structured_data = await self._extract_structured_data(screenshot_data, html, url)
 
-                        # Enhance content with structured data
-                        enhanced_content = self._enhance_content_with_structured_data(text, structured_data)
+                    # Enhance content with structured data
+                    enhanced_content = self._enhance_content_with_structured_data(text, structured_data)
 
-                        # Extract images
-                        images = []
-                        if self.extract_images and self.image_extractor:
-                            images = await self.image_extractor.extract_images_from_page(page, url, content_hash)
-                            self.stats['images_extracted'] += len(images)
+                    # Extract images (optional)
+                    images = []
+                    if self.extract_images and self.image_extractor:
+                        images = await self.image_extractor.extract_images_from_page(page, url, content_hash)
+                        self.stats['images_extracted'] += len(images)
 
-                        # Build page data
-                        page_data = {
-                            'url': url,
-                            'depth': depth,
-                            'content': enhanced_content,
-                            'content_length': len(enhanced_content),
-                            'content_hash': content_hash,
-                            'metadata': metadata,
-                            'structured_data': structured_data,
-                            'images': images,
-                            'screenshot': screenshot_data,
-                            'crawled_at': datetime.now().isoformat(),
-                            'crawler_type': 'playwright'
-                        }
+                    # Build page data
+                    page_data = {
+                        'url': url,
+                        'depth': depth,
+                        'content': enhanced_content,
+                        'content_length': len(enhanced_content),
+                        'content_hash': content_hash,
+                        'metadata': metadata,
+                        'structured_data': structured_data,
+                        'images': images,
+                        'screenshot': screenshot_data,
+                        'crawled_at': datetime.now().isoformat(),
+                        'crawler_type': 'playwright'
+                    }
 
-                        self.crawled_pages.append(page_data)
-                        self.stats['pages_crawled'] += 1
+                    # Extract links for queue
+                    new_links = []
+                    if depth < self.max_depth:
+                        links = await self.content_extractor.extract_links(page, url)
+                        for link in links:
+                            normalized_link = self._normalize_url(link)
+                            if normalized_link not in self.visited_urls:
+                                new_links.append((normalized_link, depth + 1))
 
-                        # Callback
-                        if page_callback:
-                            try:
-                                page_callback(page_data)
-                            except Exception as e:
-                                logger.error(f"Error in page_callback for {url}: {e}")
-
-                        # Extract links for queue
-                        if depth < self.max_depth:
-                            links = await self.content_extractor.extract_links(page, url)
-                            for link in links:
-                                normalized_link = self._normalize_url(link)
-                                if normalized_link not in self.visited_urls:
-                                    queue.append((normalized_link, depth + 1))
-
-                        if progress_callback:
-                            progress_callback(len(self.crawled_pages), self.max_pages, url)
-                    else:
-                        self.stats['pages_skipped'] += 1
+                    return {'page_data': page_data, 'new_links': new_links}
 
                 except Exception as e:
                     logger.warning(f"Error crawling {url}: {e}")
                     self.stats['errors'] += 1
+                    return None
 
-                # Polite delay
-                await asyncio.sleep(self.delay_seconds)
+            # Create page pool for parallel processing
+            pages = [await context.new_page() for _ in range(self.concurrent_pages)]
+            page_index = 0
 
+            while queue and len(self.crawled_pages) < self.max_pages:
+                # Get batch of URLs to process in parallel
+                batch = []
+                while queue and len(batch) < self.concurrent_pages and len(self.crawled_pages) + len(batch) < self.max_pages:
+                    url, depth = queue.pop(0)
+
+                    if url in self.visited_urls:
+                        continue
+                    if depth > self.max_depth:
+                        continue
+                    if not self._should_crawl(url):
+                        self.stats['pages_skipped'] += 1
+                        continue
+
+                    self.visited_urls.add(url)
+                    batch.append((url, depth))
+
+                if not batch:
+                    break
+
+                # Log batch
+                logger.info(f"[Playwright] Crawling batch of {len(batch)} pages [{len(self.crawled_pages)+1}-{len(self.crawled_pages)+len(batch)}/{self.max_pages}]")
+
+                # Process batch in parallel
+                tasks = []
+                for i, (url, depth) in enumerate(batch):
+                    page = pages[i % len(pages)]
+                    tasks.append(process_page(url, depth, page))
+
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Process results
+                for result in results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Batch processing error: {result}")
+                        self.stats['errors'] += 1
+                        continue
+
+                    if result is None:
+                        continue
+
+                    page_data = result['page_data']
+                    new_links = result['new_links']
+
+                    self.crawled_pages.append(page_data)
+                    self.stats['pages_crawled'] += 1
+
+                    # Add new links to queue
+                    queue.extend(new_links)
+
+                    # Callbacks
+                    if page_callback:
+                        try:
+                            page_callback(page_data)
+                        except Exception as e:
+                            logger.error(f"Error in page_callback: {e}")
+
+                    if progress_callback:
+                        progress_callback(len(self.crawled_pages), self.max_pages, page_data['url'])
+
+                # Polite delay between batches
+                if queue:
+                    await asyncio.sleep(self.delay_seconds)
+
+            # Cleanup
+            for page in pages:
+                await page.close()
             await browser.close()
 
         self.stats['end_time'] = datetime.now()
         duration = (self.stats['end_time'] - self.stats['start_time']).total_seconds()
+        pages_per_sec = self.stats['pages_crawled'] / duration if duration > 0 else 0
 
-        logger.info(f"[Playwright] Crawl complete: {self.stats['pages_crawled']} pages in {duration:.1f}s")
+        logger.info(f"[Playwright] Crawl complete: {self.stats['pages_crawled']} pages in {duration:.1f}s ({pages_per_sec:.1f} pages/sec)")
         logger.info(f"[Playwright] Stats: {self.stats}")
 
         return self.crawled_pages

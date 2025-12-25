@@ -3,6 +3,7 @@ Content Extraction Module
 
 Handles text content and metadata extraction from web pages.
 Includes regex-based structured data extraction as fallback.
+Also extracts brand colors from websites.
 """
 
 import re
@@ -11,8 +12,48 @@ import logging
 from typing import Tuple, Dict, List, Optional
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
+from colorsys import rgb_to_hls
 
 logger = logging.getLogger(__name__)
+
+
+def _hex_to_rgb(hex_color: str) -> Optional[Tuple[int, int, int]]:
+    """Convert hex color to RGB tuple."""
+    hex_color = hex_color.lstrip('#')
+    if len(hex_color) == 3:
+        hex_color = ''.join(c * 2 for c in hex_color)
+    if len(hex_color) != 6:
+        return None
+    try:
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return None
+
+
+def _rgb_to_hex(r: int, g: int, b: int) -> str:
+    """Convert RGB to hex color."""
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+
+def _is_valid_brand_color(r: int, g: int, b: int) -> bool:
+    """
+    Check if a color is suitable as a brand color.
+    Excludes pure black, white, grays, and very dark/light colors.
+    """
+    # Convert to HLS for saturation check
+    h, l, s = rgb_to_hls(r / 255, g / 255, b / 255)
+
+    # Exclude grays (low saturation) and extremes
+    if s < 0.15:  # Too gray
+        return False
+    if l < 0.15 or l > 0.85:  # Too dark or too light
+        return False
+
+    # Exclude pure black/white/gray
+    if abs(r - g) < 15 and abs(g - b) < 15 and abs(r - b) < 15:
+        return False
+
+    return True
 
 
 class ContentExtractor:
@@ -500,4 +541,156 @@ class ContentExtractor:
             address_parts.extend(matches[:2])
         if address_parts:
             return ', '.join(address_parts[:2])
+        return None
+
+    async def extract_brand_color(self, page, url: str) -> Optional[str]:
+        """
+        Extract the primary/brand color from a website.
+
+        Checks in order of priority:
+        1. Meta theme-color tag
+        2. CSS custom properties (--primary-color, --brand-color, etc.)
+        3. Common brand element colors (header, primary buttons, links)
+
+        Args:
+            page: Playwright page object
+            url: URL of the page
+
+        Returns:
+            Hex color string (e.g., '#ff5500') or None if not found
+        """
+        try:
+            color = await page.evaluate('''() => {
+                // Helper to parse color to hex
+                function parseColor(color) {
+                    if (!color || color === 'transparent' || color === 'inherit' || color === 'initial') {
+                        return null;
+                    }
+                    // Already hex
+                    if (color.startsWith('#')) {
+                        let hex = color.slice(1);
+                        if (hex.length === 3) {
+                            hex = hex.split('').map(c => c + c).join('');
+                        }
+                        if (hex.length === 6 && /^[0-9a-fA-F]{6}$/.test(hex)) {
+                            return '#' + hex.toLowerCase();
+                        }
+                        return null;
+                    }
+                    // RGB(A) format
+                    const rgbMatch = color.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+                    if (rgbMatch) {
+                        const r = parseInt(rgbMatch[1]);
+                        const g = parseInt(rgbMatch[2]);
+                        const b = parseInt(rgbMatch[3]);
+                        return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toLowerCase();
+                    }
+                    return null;
+                }
+
+                // Helper to check if color is a valid brand color (not gray/black/white)
+                function isValidBrandColor(hex) {
+                    if (!hex) return false;
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+
+                    // Convert to HSL for saturation check
+                    const max = Math.max(r, g, b) / 255;
+                    const min = Math.min(r, g, b) / 255;
+                    const l = (max + min) / 2;
+                    const s = max === min ? 0 : (l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min));
+
+                    // Exclude grays (low saturation) and extremes
+                    if (s < 0.15) return false;
+                    if (l < 0.15 || l > 0.85) return false;
+
+                    // Exclude near-grays
+                    if (Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15) return false;
+
+                    return true;
+                }
+
+                // 1. Check meta theme-color (highest priority)
+                const themeColor = document.querySelector('meta[name="theme-color"]');
+                if (themeColor) {
+                    const color = parseColor(themeColor.getAttribute('content'));
+                    if (isValidBrandColor(color)) return color;
+                }
+
+                // 2. Check CSS custom properties
+                const root = document.documentElement;
+                const computedStyle = getComputedStyle(root);
+                const cssVarNames = [
+                    '--primary-color', '--primary', '--brand-color', '--brand',
+                    '--main-color', '--accent-color', '--theme-color',
+                    '--color-primary', '--color-brand', '--wp-admin-theme-color',
+                    '--global-palette1'  // Kadence theme
+                ];
+                for (const varName of cssVarNames) {
+                    const value = computedStyle.getPropertyValue(varName).trim();
+                    if (value) {
+                        const color = parseColor(value);
+                        if (isValidBrandColor(color)) return color;
+                    }
+                }
+
+                // 3. Check common brand elements
+                const brandSelectors = [
+                    'header', 'nav', '.navbar', '.header',
+                    '.site-header', '#masthead', '.menu-primary',
+                    'a', '.btn-primary', '.button-primary', '[class*="primary"]',
+                    '.logo', '.brand', '.site-title'
+                ];
+
+                const colorCounts = {};
+
+                for (const selector of brandSelectors) {
+                    try {
+                        const elements = document.querySelectorAll(selector);
+                        for (const el of [...elements].slice(0, 10)) {
+                            const style = getComputedStyle(el);
+
+                            // Check background-color
+                            let color = parseColor(style.backgroundColor);
+                            if (isValidBrandColor(color)) {
+                                colorCounts[color] = (colorCounts[color] || 0) + 2;
+                            }
+
+                            // Check color (text color, especially for links)
+                            color = parseColor(style.color);
+                            if (isValidBrandColor(color)) {
+                                colorCounts[color] = (colorCounts[color] || 0) + 1;
+                            }
+
+                            // Check border-color
+                            color = parseColor(style.borderColor);
+                            if (isValidBrandColor(color)) {
+                                colorCounts[color] = (colorCounts[color] || 0) + 1;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                // Return most common valid brand color
+                const sortedColors = Object.entries(colorCounts)
+                    .sort((a, b) => b[1] - a[1]);
+
+                if (sortedColors.length > 0) {
+                    return sortedColors[0][0];
+                }
+
+                return null;
+            }''')
+
+            if color:
+                # Validate the color on backend too
+                rgb = _hex_to_rgb(color)
+                if rgb and _is_valid_brand_color(*rgb):
+                    logger.debug(f"Extracted brand color from {url}: {color}")
+                    return color
+
+        except Exception as e:
+            logger.debug(f"Error extracting brand color from {url}: {e}")
+
         return None

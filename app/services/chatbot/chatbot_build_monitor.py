@@ -174,12 +174,28 @@ class ChatbotBuildMonitor:
                     if collection.embedding_status == 'completed':
                         logger.info(f"[ChatbotBuildMonitor] Embedding completed for chatbot {chatbot_id}, transitioning to configuring")
 
+                        # Copy brand color from collection to chatbot if available
+                        if collection.color and not chatbot.color:
+                            chatbot.color = collection.color
+                            logger.info(f"[ChatbotBuildMonitor] Set chatbot color from collection: {collection.color}")
+
+                        # Generate icon using LLM
+                        try:
+                            from .chatbot_field_generator import ChatbotFieldGenerator
+                            icon_result = ChatbotFieldGenerator.generate_icon(chatbot_id)
+                            if icon_result.get('success') and icon_result.get('value'):
+                                chatbot.icon = icon_result['value']
+                                logger.info(f"[ChatbotBuildMonitor] Generated icon for chatbot: {chatbot.icon}")
+                        except Exception as e:
+                            logger.warning(f"[ChatbotBuildMonitor] Icon generation failed, using default: {e}")
+                            chatbot.icon = 'mdi-robot'
+
                         # Transition to configuring
                         chatbot.build_status = 'configuring'
                         chatbot.build_error = None
                         db.session.commit()
 
-                        logger.info(f"[ChatbotBuildMonitor] Chatbot {chatbot_id} transitioned to 'configuring'")
+                        logger.info(f"[ChatbotBuildMonitor] Chatbot {chatbot_id} transitioned to 'configuring' (color={chatbot.color}, icon={chatbot.icon})")
                         return
 
                     elif collection.embedding_status == 'failed':

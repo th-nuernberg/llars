@@ -25,6 +25,8 @@ from decorators.error_handler import (
 from auth.auth_utils import AuthUtils
 from services.rag.document_service import DocumentService
 from services.rag.access_service import RAGAccessService
+from services.chatbot_activity_service import ChatbotActivityService
+from db.tables import RAGCollection
 
 rag_document_bp = Blueprint('rag_document', __name__)
 
@@ -184,6 +186,23 @@ def upload_document():
 
     # Serialize document for response
     doc = result['document']
+
+    # Log activity
+    collection_name = None
+    if collection_id:
+        collection = RAGCollection.query.get(collection_id)
+        collection_name = collection.display_name if collection else None
+
+    ChatbotActivityService.log_document_uploaded(
+        document_id=doc.id,
+        filename=doc.original_filename or doc.filename,
+        username=username,
+        collection_id=collection_id,
+        collection_name=collection_name,
+        file_size_bytes=doc.file_size_bytes,
+        mime_type=doc.mime_type
+    )
+
     return jsonify({
         'success': True,
         'message': result['message'],
@@ -218,6 +237,39 @@ def upload_multiple_documents():
         uploaded_by=username,
         collection_id=collection_id
     )
+
+    # Log activity for successful uploads
+    if result.get('success') and result.get('uploaded'):
+        collection_name = None
+        if collection_id:
+            collection = RAGCollection.query.get(collection_id)
+            collection_name = collection.display_name if collection else None
+
+        uploaded_docs = result['uploaded']
+        document_ids = [d.get('id') for d in uploaded_docs if d.get('id')]
+        filenames = [d.get('filename') or d.get('original_filename') for d in uploaded_docs]
+        total_size = sum(d.get('file_size_bytes', 0) for d in uploaded_docs)
+
+        if len(document_ids) == 1:
+            # Single document - use single log
+            ChatbotActivityService.log_document_uploaded(
+                document_id=document_ids[0],
+                filename=filenames[0] if filenames else 'unknown',
+                username=username,
+                collection_id=collection_id,
+                collection_name=collection_name,
+                file_size_bytes=total_size
+            )
+        elif len(document_ids) > 1:
+            # Multiple documents - use batch log
+            ChatbotActivityService.log_documents_uploaded(
+                document_ids=document_ids,
+                filenames=filenames,
+                username=username,
+                collection_id=collection_id,
+                collection_name=collection_name,
+                total_size_bytes=total_size
+            )
 
     return jsonify(result), 201
 
@@ -258,7 +310,9 @@ def delete_document(document_id):
     if not RAGAccessService.can_delete_document(username, document):
         raise ForbiddenError('Keine Berechtigung für dieses Dokument')
 
-    filename = document.filename
+    # Store info before deletion
+    filename = document.original_filename or document.filename
+    collection_id = document.collection_id
 
     # Delete document using service
     success, error = DocumentService.delete_document(document_id, username=username)
@@ -267,6 +321,14 @@ def delete_document(document_id):
         if error == 'Forbidden':
             raise ForbiddenError('Keine Berechtigung für dieses Dokument')
         raise ValidationError(error)
+
+    # Log activity
+    ChatbotActivityService.log_document_deleted(
+        document_id=document_id,
+        filename=filename,
+        username=username,
+        collection_id=collection_id
+    )
 
     return jsonify({
         'success': True,

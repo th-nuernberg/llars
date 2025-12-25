@@ -117,7 +117,9 @@ export function useBuilderState() {
     name: false,
     display_name: false,
     system_prompt: false,
-    welcome_message: false
+    welcome_message: false,
+    icon: false,
+    color: false
   })
 
   // ===== Computed Properties =====
@@ -410,9 +412,15 @@ export function useBuilderState() {
     collectionInfo.value = null
     clearError()
 
-    Object.keys(generating.value).forEach(key => {
-      generating.value[key] = false
-    })
+    // Reset all generating states
+    generating.value = {
+      name: false,
+      display_name: false,
+      system_prompt: false,
+      welcome_message: false,
+      icon: false,
+      color: false
+    }
   }
 
   // ===== Initialize from existing chatbot =====

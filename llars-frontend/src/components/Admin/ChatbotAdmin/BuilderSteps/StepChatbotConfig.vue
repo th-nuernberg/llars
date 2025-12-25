@@ -1,5 +1,5 @@
 <template>
-  <v-card flat class="pa-4">
+  <v-card flat class="pa-3">
     <!-- Background process banner -->
     <v-alert
       v-if="isProcessing"
@@ -21,13 +21,7 @@
       </div>
     </v-alert>
 
-    <div class="text-center mb-6">
-      <v-icon size="64" color="primary">mdi-cog</v-icon>
-      <h2 class="text-h5 mt-4">Chatbot konfigurieren</h2>
-      <p class="text-medium-emphasis">
-        Passen Sie die Einstellungen Ihres Chatbots an.
-      </p>
-    </div>
+    <h3 class="text-h6 mb-3">Chatbot konfigurieren</h3>
 
     <v-row>
       <v-col cols="12" md="6">
@@ -90,7 +84,7 @@
       label="System Prompt"
       prepend-inner-icon="mdi-text-box"
       variant="outlined"
-      rows="4"
+      rows="3"
       :rules="[rules.required]"
       @update:model-value="updateConfig"
     >
@@ -193,11 +187,10 @@
       <v-col cols="12" md="6">
         <v-text-field
           v-model="localConfig.icon"
-          label="Icon"
+          label="Icon (automatisch)"
           variant="outlined"
           placeholder="mdi-robot"
-          hint="Automatisch basierend auf Website-Inhalt ausgewählt"
-          persistent-hint
+          density="compact"
           @update:model-value="updateConfig"
         >
           <template #prepend-inner>
@@ -208,11 +201,10 @@
       <v-col cols="12" md="6">
         <v-text-field
           v-model="localConfig.color"
-          label="Farbe"
+          label="Farbe (automatisch)"
           variant="outlined"
           type="color"
-          hint="Automatisch von Website-Branding extrahiert"
-          persistent-hint
+          density="compact"
           @update:model-value="updateConfig"
         >
           <template #prepend-inner>

@@ -110,12 +110,8 @@ class ChatService:
                 base_url=os.environ.get('LITELLM_BASE_URL')
             )
 
-            # Use chatbot's model or environment variable or fallback to default
-            model = os.environ.get('LITELLM_TITLE_MODEL')
-            if not model and hasattr(self, 'chatbot') and self.chatbot:
-                model = self.chatbot.model_name
-            if not model:
-                model = 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+            # Always use default model for title generation (fast, reliable)
+            model = 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
 
             messages = [
                 {
@@ -129,6 +125,8 @@ class ChatService:
                     "content": text[:500]  # Limit input length
                 }
             ]
+
+            logger.debug(f"Generating title with model: {model}")
 
             # Stream if callback provided
             if stream_callback:
@@ -167,6 +165,8 @@ class ChatService:
             if title:
                 logger.info(f"Generated smart title: '{title}' for message: '{text[:50]}...'")
                 return title
+            else:
+                logger.warning(f"Smart title generation returned empty result, using fallback for: '{text[:50]}...'")
 
         except Exception as e:
             logger.warning(f"Smart title generation failed, using fallback: {e}")

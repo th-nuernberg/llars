@@ -123,6 +123,9 @@ class PlaywrightCrawler:
         self.concurrent_pages = concurrent_pages
         self.fast_mode = fast_mode
 
+        # Brand color (extracted from first page)
+        self.brand_color = None
+
         # URL filtering
         self.include_patterns = [re.compile(p) for p in (include_patterns or [])]
         self.exclude_patterns = [re.compile(p) for p in (exclude_patterns or [
@@ -293,6 +296,15 @@ class PlaywrightCrawler:
                     # Enhance content with structured data
                     enhanced_content = self._enhance_content_with_structured_data(text, structured_data)
 
+                    # Extract brand color from homepage (first page only)
+                    if self.brand_color is None and url == self.base_url:
+                        try:
+                            self.brand_color = await self.content_extractor.extract_brand_color(page, url)
+                            if self.brand_color:
+                                logger.info(f"[Playwright] Extracted brand color from homepage: {self.brand_color}")
+                        except Exception as e:
+                            logger.debug(f"[Playwright] Brand color extraction failed: {e}")
+
                     # Extract images (optional)
                     images = []
                     if self.extract_images and self.image_extractor:
@@ -404,10 +416,13 @@ class PlaywrightCrawler:
             await browser.close()
 
         self.stats['end_time'] = datetime.now()
+        self.stats['brand_color'] = self.brand_color
         duration = (self.stats['end_time'] - self.stats['start_time']).total_seconds()
         pages_per_sec = self.stats['pages_crawled'] / duration if duration > 0 else 0
 
         logger.info(f"[Playwright] Crawl complete: {self.stats['pages_crawled']} pages in {duration:.1f}s ({pages_per_sec:.1f} pages/sec)")
+        if self.brand_color:
+            logger.info(f"[Playwright] Brand color: {self.brand_color}")
         logger.info(f"[Playwright] Stats: {self.stats}")
 
         return self.crawled_pages

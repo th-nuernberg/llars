@@ -668,12 +668,17 @@ class CrawlerService:
                     crawler_type
                 )
 
-            # Update collection stats
+            # Update collection stats and brand color
+            brand_color = self.active_crawls[job_id].get('brand_color')
             try:
                 collection = RAGCollection.query.get(collection_id)
                 if collection:
                     link_count = CollectionDocumentLink.query.filter_by(collection_id=collection_id).count()
                     collection.document_count = link_count
+                    # Save brand color if extracted and not already set
+                    if brand_color and not collection.color:
+                        collection.color = brand_color
+                        logger.info(f"[Job {job_id}] Saved brand color to collection: {brand_color}")
                     db.session.commit()
             except Exception as e:
                 logger.warning(f"Could not update collection stats: {e}")
@@ -700,7 +705,8 @@ class CrawlerService:
                 'screenshots_taken': screenshots,
                 'vision_extractions': vision_extractions,
                 'errors_count': len(self.active_crawls[job_id]['errors']),
-                'crawler_type': crawler_type
+                'crawler_type': crawler_type,
+                'brand_color': brand_color
             })
 
             self._emit_jobs_updated()
@@ -1125,6 +1131,11 @@ class CrawlerService:
                 # Aggregate Playwright-specific stats
                 self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + stats.get('screenshots_taken', 0)
                 self.active_crawls[job_id]['vision_extractions'] = self.active_crawls[job_id].get('vision_extractions', 0) + stats.get('vision_extractions', 0)
+
+                # Capture brand color from first page (homepage)
+                if stats.get('brand_color') and not self.active_crawls[job_id].get('brand_color'):
+                    self.active_crawls[job_id]['brand_color'] = stats.get('brand_color')
+                    logger.info(f"[Job {job_id}] Captured brand color: {stats.get('brand_color')}")
 
                 # Emit progress update immediately
                 self._emit_progress(job_id, {

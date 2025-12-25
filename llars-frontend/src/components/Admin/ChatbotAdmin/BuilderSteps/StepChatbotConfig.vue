@@ -194,11 +194,16 @@
         <v-text-field
           v-model="localConfig.icon"
           label="Icon"
-          prepend-inner-icon="mdi-emoticon"
           variant="outlined"
           placeholder="mdi-robot"
+          hint="Automatisch basierend auf Website-Inhalt ausgewählt"
+          persistent-hint
           @update:model-value="updateConfig"
-        />
+        >
+          <template #prepend-inner>
+            <v-icon :color="localConfig.color || '#5d7a4a'">{{ localConfig.icon || 'mdi-robot' }}</v-icon>
+          </template>
+        </v-text-field>
       </v-col>
       <v-col cols="12" md="6">
         <v-text-field
@@ -206,8 +211,22 @@
           label="Farbe"
           variant="outlined"
           type="color"
+          hint="Automatisch von Website-Branding extrahiert"
+          persistent-hint
           @update:model-value="updateConfig"
-        />
+        >
+          <template #prepend-inner>
+            <div
+              :style="{
+                width: '24px',
+                height: '24px',
+                borderRadius: '4px',
+                backgroundColor: localConfig.color || '#5d7a4a',
+                border: '1px solid rgba(0,0,0,0.2)'
+              }"
+            />
+          </template>
+        </v-text-field>
       </v-col>
     </v-row>
   </v-card>

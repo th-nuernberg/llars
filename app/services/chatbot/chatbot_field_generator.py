@@ -8,12 +8,14 @@ Responsible for:
 - Creating system prompts
 - Creating welcome messages
 - Generating descriptions
+- Selecting appropriate icons (constrained decoding)
 """
 
 import logging
 import os
 import re
-from typing import Dict, Any, Optional, Iterable
+import json
+from typing import Dict, Any, Optional, Iterable, List
 
 from openai import OpenAI
 from llm.openai_utils import extract_delta_text, extract_message_text
@@ -22,6 +24,98 @@ from db.tables import Chatbot, RAGCollection, CollectionDocumentLink
 from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
+
+
+# Curated list of MDI icons suitable for chatbots, organized by category
+CHATBOT_ICONS = {
+    # General/Default
+    'general': [
+        'mdi-robot', 'mdi-robot-outline', 'mdi-chat', 'mdi-chat-outline',
+        'mdi-message', 'mdi-message-outline', 'mdi-forum', 'mdi-forum-outline',
+        'mdi-comment', 'mdi-comment-outline', 'mdi-assistant',
+    ],
+    # Business/Corporate
+    'business': [
+        'mdi-briefcase', 'mdi-briefcase-outline', 'mdi-domain', 'mdi-office-building',
+        'mdi-store', 'mdi-storefront', 'mdi-handshake', 'mdi-account-tie',
+        'mdi-cash', 'mdi-currency-eur', 'mdi-chart-line', 'mdi-chart-bar',
+    ],
+    # Education/Learning
+    'education': [
+        'mdi-school', 'mdi-book-open', 'mdi-book', 'mdi-bookshelf',
+        'mdi-graduation-cap', 'mdi-pencil', 'mdi-lead-pencil', 'mdi-notebook',
+        'mdi-library', 'mdi-brain', 'mdi-lightbulb', 'mdi-lightbulb-outline',
+    ],
+    # Health/Medical
+    'health': [
+        'mdi-hospital', 'mdi-medical-bag', 'mdi-pill', 'mdi-heart-pulse',
+        'mdi-stethoscope', 'mdi-doctor', 'mdi-tooth', 'mdi-eye',
+        'mdi-run', 'mdi-yoga', 'mdi-meditation', 'mdi-spa',
+    ],
+    # Technology
+    'technology': [
+        'mdi-laptop', 'mdi-desktop-classic', 'mdi-cellphone', 'mdi-tablet',
+        'mdi-code-tags', 'mdi-cog', 'mdi-cogs', 'mdi-wrench',
+        'mdi-database', 'mdi-server', 'mdi-cloud', 'mdi-chip',
+    ],
+    # Food/Restaurant
+    'food': [
+        'mdi-food', 'mdi-food-fork-drink', 'mdi-silverware-fork-knife',
+        'mdi-pizza', 'mdi-hamburger', 'mdi-coffee', 'mdi-beer',
+        'mdi-glass-wine', 'mdi-cupcake', 'mdi-ice-cream', 'mdi-noodles',
+    ],
+    # Travel/Transport
+    'travel': [
+        'mdi-airplane', 'mdi-car', 'mdi-bus', 'mdi-train',
+        'mdi-taxi', 'mdi-bike', 'mdi-ship-wheel', 'mdi-map-marker',
+        'mdi-earth', 'mdi-compass', 'mdi-hiking', 'mdi-beach',
+    ],
+    # Sports/Fitness
+    'sports': [
+        'mdi-dumbbell', 'mdi-weight-lifter', 'mdi-basketball', 'mdi-soccer',
+        'mdi-tennis', 'mdi-golf', 'mdi-swim', 'mdi-bike',
+        'mdi-run-fast', 'mdi-dance-ballroom', 'mdi-karate', 'mdi-yoga',
+    ],
+    # Entertainment/Media
+    'entertainment': [
+        'mdi-music', 'mdi-movie', 'mdi-gamepad', 'mdi-television',
+        'mdi-camera', 'mdi-palette', 'mdi-brush', 'mdi-theater',
+        'mdi-party-popper', 'mdi-guitar-acoustic', 'mdi-piano', 'mdi-microphone',
+    ],
+    # Legal/Government
+    'legal': [
+        'mdi-gavel', 'mdi-scale-balance', 'mdi-shield', 'mdi-account-group',
+        'mdi-file-document', 'mdi-file-certificate', 'mdi-stamp',
+        'mdi-bank', 'mdi-town-hall', 'mdi-badge-account',
+    ],
+    # Real Estate/Home
+    'realestate': [
+        'mdi-home', 'mdi-home-outline', 'mdi-home-city', 'mdi-office-building',
+        'mdi-floor-plan', 'mdi-key', 'mdi-door', 'mdi-window-open',
+        'mdi-sofa', 'mdi-bed', 'mdi-lamp', 'mdi-garage',
+    ],
+    # Nature/Environment
+    'nature': [
+        'mdi-tree', 'mdi-flower', 'mdi-leaf', 'mdi-pine-tree',
+        'mdi-paw', 'mdi-dog', 'mdi-cat', 'mdi-bird',
+        'mdi-fish', 'mdi-horse', 'mdi-duck', 'mdi-bee',
+    ],
+    # Finance/Banking
+    'finance': [
+        'mdi-bank', 'mdi-credit-card', 'mdi-wallet', 'mdi-cash-multiple',
+        'mdi-piggy-bank', 'mdi-safe', 'mdi-calculator', 'mdi-receipt',
+        'mdi-bitcoin', 'mdi-chart-areaspline', 'mdi-trending-up',
+    ],
+    # Support/Help
+    'support': [
+        'mdi-help-circle', 'mdi-help-circle-outline', 'mdi-information',
+        'mdi-headset', 'mdi-phone', 'mdi-email', 'mdi-lifebuoy',
+        'mdi-wrench', 'mdi-tools', 'mdi-comment-question',
+    ],
+}
+
+# Flattened list of all icons for validation
+ALL_CHATBOT_ICONS = [icon for icons in CHATBOT_ICONS.values() for icon in icons]
 
 
 class ChatbotFieldGenerator:
@@ -61,8 +155,117 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
         'description': {
             'system': "Du bist ein Experte für Produktbeschreibungen. Erstelle eine kurze Beschreibung für einen Chatbot.",
             'user_template': "Erstelle eine kurze Beschreibung (1-2 Sätze) für einen Chatbot basierend auf:\n- URL: {url}\n- {collection_info}"
+        },
+        'icon': {
+            'system': """Du bist ein Experte für UI/UX und Icon-Auswahl.
+Deine Aufgabe ist es, das passendste Icon für einen Chatbot auszuwählen.
+Du MUSST exakt eines der vorgegebenen Icons zurückgeben - keine anderen!
+Antworte NUR mit dem Icon-Namen, ohne Erklärung oder Anführungszeichen.""",
+            'user_template': """Wähle das passendste Icon für einen Chatbot basierend auf:
+- URL: {url}
+- {collection_info}
+
+Verfügbare Icons (wähle EXAKT eines davon):
+{icon_list}
+
+Antworte NUR mit dem Icon-Namen (z.B. mdi-robot)."""
         }
     }
+
+    @staticmethod
+    def generate_icon(chatbot_id: int, context: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Generate an appropriate icon for a chatbot using LLM with constrained output.
+
+        Uses a curated list of MDI icons and asks the LLM to select the most appropriate one.
+
+        Args:
+            chatbot_id: The chatbot ID
+            context: Optional additional context
+
+        Returns:
+            Dict with generated icon name
+        """
+        chatbot = Chatbot.query.get(chatbot_id)
+        if not chatbot:
+            raise ValueError('Chatbot not found')
+
+        collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)
+
+        # Format icon list for the prompt - group by category for better context
+        icon_list_parts = []
+        for category, icons in CHATBOT_ICONS.items():
+            icon_list_parts.append(f"[{category}]: {', '.join(icons)}")
+        icon_list = '\n'.join(icon_list_parts)
+
+        prompt_config = ChatbotFieldGenerator.PROMPTS['icon']
+        user_prompt = prompt_config['user_template'].format(
+            url=chatbot.source_url or 'N/A',
+            collection_info=collection_info,
+            icon_list=icon_list
+        )
+
+        try:
+            generated_icon = ChatbotFieldGenerator._generate_with_llm(
+                system_prompt=prompt_config['system'],
+                user_prompt=user_prompt
+            )
+
+            # Clean and validate the generated icon
+            generated_icon = ChatbotFieldGenerator._clean_icon(generated_icon)
+
+            logger.info(f"[ChatbotFieldGenerator] Generated icon for chatbot {chatbot_id}: {generated_icon}")
+
+            return {
+                'success': True,
+                'field': 'icon',
+                'value': generated_icon
+            }
+
+        except Exception as e:
+            logger.error(f"[ChatbotFieldGenerator] Icon generation error: {e}")
+            # Return default icon on error
+            return {
+                'success': True,
+                'field': 'icon',
+                'value': 'mdi-robot'
+            }
+
+    @staticmethod
+    def _clean_icon(icon: str) -> str:
+        """
+        Clean and validate a generated icon name.
+
+        Args:
+            icon: Raw generated icon name
+
+        Returns:
+            Valid MDI icon name (defaults to mdi-robot if invalid)
+        """
+        if not icon:
+            return 'mdi-robot'
+
+        # Clean up: remove quotes, whitespace, etc.
+        icon = icon.strip().strip('"\'').strip()
+
+        # Ensure it starts with mdi-
+        if not icon.startswith('mdi-'):
+            # Try to find a matching icon
+            for valid_icon in ALL_CHATBOT_ICONS:
+                if icon in valid_icon or valid_icon.endswith(icon):
+                    return valid_icon
+            return 'mdi-robot'
+
+        # Validate against our icon list
+        if icon in ALL_CHATBOT_ICONS:
+            return icon
+
+        # Try partial match
+        for valid_icon in ALL_CHATBOT_ICONS:
+            if icon in valid_icon or icon.replace('mdi-', '') in valid_icon:
+                return valid_icon
+
+        return 'mdi-robot'
 
     @staticmethod
     def _get_default_llm_model_id() -> str:

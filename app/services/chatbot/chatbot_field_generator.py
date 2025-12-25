@@ -157,18 +157,19 @@ Die Nachricht sollte freundlich sein und den Nutzer einladen, Fragen zu stellen.
             'user_template': "Erstelle eine kurze Beschreibung (1-2 Sätze) für einen Chatbot basierend auf:\n- URL: {url}\n- {collection_info}"
         },
         'icon': {
-            'system': """Du bist ein Experte für UI/UX und Icon-Auswahl.
-Deine Aufgabe ist es, das passendste Icon für einen Chatbot auszuwählen.
-Du MUSST exakt eines der vorgegebenen Icons zurückgeben - keine anderen!
-Antworte NUR mit dem Icon-Namen, ohne Erklärung oder Anführungszeichen.""",
-            'user_template': """Wähle das passendste Icon für einen Chatbot basierend auf:
+            'system': """Du bist ein Icon-Auswahl-System. Du antwortest IMMER mit GENAU EINEM Icon-Namen aus der Liste.
+WICHTIG: Deine Antwort besteht NUR aus dem Icon-Namen, z.B.: mdi-robot
+Keine Erklärung, keine Anführungszeichen, keine Interpunktion.""",
+            'user_template': """Wähle das passendste Icon für einen Chatbot.
+
+Kontext:
 - URL: {url}
 - {collection_info}
 
-Verfügbare Icons (wähle EXAKT eines davon):
+Verfügbare Icons:
 {icon_list}
 
-Antworte NUR mit dem Icon-Namen (z.B. mdi-robot)."""
+Antworte mit EINEM Icon-Namen (z.B. mdi-school für Bildung, mdi-briefcase für Business):"""
         },
         'color': {
             'system': """Du bist ein Experte für Branding und Farbauswahl.
@@ -271,25 +272,45 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         if not icon:
             return 'mdi-robot'
 
-        # Clean up: remove quotes, whitespace, etc.
+        # Clean up: remove quotes, whitespace, punctuation, newlines
         icon = icon.strip().strip('"\'').strip()
+        icon = icon.split('\n')[0].strip()  # Take first line only
+        icon = icon.split()[0] if icon.split() else icon  # Take first word only
+        icon = icon.rstrip('.,;:!?')  # Remove trailing punctuation
+        icon = icon.lower()
 
         # Ensure it starts with mdi-
         if not icon.startswith('mdi-'):
-            # Try to find a matching icon
-            for valid_icon in ALL_CHATBOT_ICONS:
-                if icon in valid_icon or valid_icon.endswith(icon):
-                    return valid_icon
-            return 'mdi-robot'
+            icon = 'mdi-' + icon
 
-        # Validate against our icon list
+        # Exact match
         if icon in ALL_CHATBOT_ICONS:
             return icon
 
-        # Try partial match
+        # Try without 'mdi-' prefix variations
+        icon_base = icon.replace('mdi-', '')
         for valid_icon in ALL_CHATBOT_ICONS:
-            if icon in valid_icon or icon.replace('mdi-', '') in valid_icon:
+            valid_base = valid_icon.replace('mdi-', '')
+            # Exact base match
+            if icon_base == valid_base:
                 return valid_icon
+            # Contains match
+            if icon_base in valid_base or valid_base in icon_base:
+                return valid_icon
+
+        # Fuzzy matching: find closest icon by common words
+        icon_words = set(icon_base.replace('-', ' ').split())
+        best_match = None
+        best_score = 0
+        for valid_icon in ALL_CHATBOT_ICONS:
+            valid_words = set(valid_icon.replace('mdi-', '').replace('-', ' ').split())
+            score = len(icon_words & valid_words)
+            if score > best_score:
+                best_score = score
+                best_match = valid_icon
+
+        if best_match and best_score > 0:
+            return best_match
 
         return 'mdi-robot'
 
@@ -539,6 +560,16 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         chatbot = Chatbot.query.get(chatbot_id)
         if not chatbot:
             raise ValueError('Chatbot not found')
+
+        # For icon and color, use specialized non-streaming methods
+        if field == 'icon':
+            result = ChatbotFieldGenerator.generate_icon(chatbot_id, context)
+            yield {"done": True, "value": result.get('value', 'mdi-robot')}
+            return
+        if field == 'color':
+            result = ChatbotFieldGenerator.generate_color(chatbot_id, context)
+            yield {"done": True, "value": result.get('value', '#5d7a4a')}
+            return
 
         if field not in ChatbotFieldGenerator.PROMPTS:
             raise ValueError(f'Unknown field: {field}')

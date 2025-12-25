@@ -187,7 +187,7 @@
       <v-col cols="12" md="6">
         <v-text-field
           v-model="localConfig.icon"
-          label="Icon (automatisch)"
+          label="Icon"
           variant="outlined"
           placeholder="mdi-robot"
           density="compact"
@@ -196,12 +196,27 @@
           <template #prepend-inner>
             <v-icon :color="localConfig.color || '#5d7a4a'">{{ localConfig.icon || 'mdi-robot' }}</v-icon>
           </template>
+          <template #append>
+            <v-btn
+              icon
+              variant="text"
+              size="small"
+              :loading="generatingFields.icon"
+              :disabled="!canGenerate"
+              @click="$emit('generate-field', 'icon')"
+            >
+              <v-icon>mdi-auto-fix</v-icon>
+              <v-tooltip activator="parent" location="top">
+                Mit KI generieren
+              </v-tooltip>
+            </v-btn>
+          </template>
         </v-text-field>
       </v-col>
       <v-col cols="12" md="6">
         <v-text-field
           v-model="localConfig.color"
-          label="Farbe (automatisch)"
+          label="Farbe"
           variant="outlined"
           type="color"
           density="compact"
@@ -217,6 +232,21 @@
                 border: '1px solid rgba(0,0,0,0.2)'
               }"
             />
+          </template>
+          <template #append>
+            <v-btn
+              icon
+              variant="text"
+              size="small"
+              :loading="generatingFields.color"
+              :disabled="!canGenerate"
+              @click="$emit('generate-field', 'color')"
+            >
+              <v-icon>mdi-auto-fix</v-icon>
+              <v-tooltip activator="parent" location="top">
+                Mit KI generieren
+              </v-tooltip>
+            </v-btn>
           </template>
         </v-text-field>
       </v-col>
@@ -258,7 +288,9 @@ const props = defineProps({
       name: false,
       display_name: false,
       system_prompt: false,
-      welcome_message: false
+      welcome_message: false,
+      icon: false,
+      color: false
     })
   },
   canGenerate: {

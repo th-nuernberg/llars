@@ -116,6 +116,25 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Teilen von Markdown Collab Dateien und Ordnern'
         },
+        # Feature: LaTeX Collab
+        {
+            'permission_key': 'feature:latex_collab:view',
+            'display_name': 'LaTeX Collab ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von LaTeX Collab Workspaces und Dokumenten'
+        },
+        {
+            'permission_key': 'feature:latex_collab:edit',
+            'display_name': 'LaTeX Collab bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von LaTeX Collab Dokumenten'
+        },
+        {
+            'permission_key': 'feature:latex_collab:share',
+            'display_name': 'LaTeX Collab teilen',
+            'category': 'feature',
+            'description': 'Erlaubt das Teilen von LaTeX Collab Dateien und Ordnern'
+        },
         # Admin: Permissions Management
         {
             'permission_key': 'admin:permissions:manage',
@@ -326,6 +345,10 @@ def initialize_permissions(db):
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
                 'feature:markdown_collab:share',
+                # LaTeX Collab
+                'feature:latex_collab:view',
+                'feature:latex_collab:edit',
+                'feature:latex_collab:share',
                 # Anonymisierung
                 'feature:anonymize:view',
                 # KAIMO
@@ -351,6 +374,10 @@ def initialize_permissions(db):
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
                 'feature:markdown_collab:share',
+                # LaTeX Collab
+                'feature:latex_collab:view',
+                'feature:latex_collab:edit',
+                'feature:latex_collab:share',
                 # RAG Dokumente
                 'feature:rag:view',
                 'feature:rag:edit',
@@ -373,6 +400,7 @@ def initialize_permissions(db):
                 'feature:rag:view',
                 'feature:chatbots:view',
                 'feature:markdown_collab:view',
+                'feature:latex_collab:view',
                 'feature:anonymize:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',

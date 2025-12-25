@@ -54,6 +54,10 @@ function parseRoom(roomName) {
   if (markdownMatch) {
     return { kind: 'markdown', id: parseInt(markdownMatch[1], 10) };
   }
+  const latexMatch = roomName.match(/^latex_(\d+)$/);
+  if (latexMatch) {
+    return { kind: 'latex', id: parseInt(latexMatch[1], 10) };
+  }
   return null;
 }
 
@@ -91,6 +95,40 @@ async function canAccessMarkdownDocument(documentId, username, isAdmin) {
   }
 }
 
+async function canAccessLatexDocument(documentId, username, isAdmin) {
+  try {
+    if (isAdmin) return true;
+    if (!username) return false;
+
+    const [rows] = await pool.query(
+      `SELECT ld.workspace_id AS workspace_id, lw.owner_username AS owner_username
+       FROM latex_documents ld
+       JOIN latex_workspaces lw ON lw.id = ld.workspace_id
+       WHERE ld.id = ?
+       LIMIT 1`,
+      [documentId]
+    );
+
+    if (!rows || rows.length === 0) return false;
+    const workspaceId = rows[0].workspace_id;
+    const ownerUsername = rows[0].owner_username;
+    if (ownerUsername === username) return true;
+
+    const [memberRows] = await pool.query(
+      `SELECT 1
+       FROM latex_workspace_members
+       WHERE workspace_id = ? AND username = ?
+       LIMIT 1`,
+      [workspaceId, username]
+    );
+
+    return !!(memberRows && memberRows.length > 0);
+  } catch (e) {
+    console.error(`[AuthZ] Failed to check latex access for doc ${documentId}:`, e);
+    return false;
+  }
+}
+
 /**
  * Speichert das Y.Doc in der Datenbank für das gegebene prompt_id (= roomName).
  * - Falls bereits ein Eintrag existiert → UPDATE
@@ -108,6 +146,13 @@ async function saveYdocToDB(roomName, doc, name, userId, username = null) {
 
   const roomId = parsed.id;
   const jsonString = ydocToJson(doc);
+  const textContent = (() => {
+    try {
+      return doc.getText('content').toString();
+    } catch (e) {
+      return '';
+    }
+  })();
 
   try {
     if (parsed.kind === 'prompt') {
@@ -156,6 +201,26 @@ async function saveYdocToDB(roomName, doc, name, userId, username = null) {
       );
       console.log(`Y.Doc für Raum ${roomName} (markdown_documents.id=${roomId}) gespeichert.`);
     }
+
+    if (parsed.kind === 'latex') {
+      const [rows] = await pool.query(
+        'SELECT id FROM latex_documents WHERE id = ?',
+        [roomId]
+      );
+
+      if (rows.length === 0) {
+        console.warn(`Latex document ${roomId} not found; cannot persist Y.Doc for room ${roomName}`);
+        return;
+      }
+
+      await pool.query(
+        `UPDATE latex_documents
+         SET content = ?, content_text = ?, updated_at = NOW(), last_editor_username = COALESCE(?, last_editor_username)
+         WHERE id = ?`,
+        [jsonString, textContent, username, roomId]
+      );
+      console.log(`Y.Doc für Raum ${roomName} (latex_documents.id=${roomId}) gespeichert.`);
+    }
   } catch (err) {
     console.error(`Fehler beim Speichern des Y.Doc für Raum ${roomName}:`, err);
   }
@@ -197,6 +262,24 @@ async function loadYdocFromDB(roomName) {
       }
       return new Y.Doc();
     }
+
+    if (parsed.kind === 'latex') {
+      const [rows] = await pool.query(
+        'SELECT content, content_text FROM latex_documents WHERE id = ?',
+        [roomId]
+      );
+      if (rows.length > 0) {
+        if (rows[0].content) {
+          return jsonToYdoc(rows[0].content);
+        }
+        if (rows[0].content_text) {
+          const doc = new Y.Doc();
+          doc.getText('content').insert(0, rows[0].content_text);
+          return doc;
+        }
+      }
+      return new Y.Doc();
+    }
   } catch (err) {
     console.error(`Fehler beim Laden des Y.Doc für Raum ${roomName}:`, err);
   }
@@ -231,6 +314,15 @@ function setupSocketHandlers(io) {
       const parsed = parseRoom(room);
       if (parsed?.kind === 'markdown') {
         const allowed = await canAccessMarkdownDocument(parsed.id, username, authenticatedUser.isAdmin);
+        if (!allowed) {
+          console.warn(`[AuthZ] Denied access for user "${username}" to room "${room}"`);
+          socket.emit('collab:error', { error: 'Forbidden' });
+          socket.disconnect(true);
+          return;
+        }
+      }
+      if (parsed?.kind === 'latex') {
+        const allowed = await canAccessLatexDocument(parsed.id, username, authenticatedUser.isAdmin);
         if (!allowed) {
           console.warn(`[AuthZ] Denied access for user "${username}" to room "${room}"`);
           socket.emit('collab:error', { error: 'Forbidden' });

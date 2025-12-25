@@ -302,6 +302,26 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`embedding_dimensions` INT NULL",
         )
 
+        # LaTeX Collab: ensure newer columns exist
+        changed |= _ensure_column(
+            db,
+            table_name="latex_documents",
+            column_name="content_text",
+            column_definition_sql="`content_text` LONGTEXT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="latex_commits",
+            column_name="document_id",
+            column_definition_sql="`document_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="latex_compile_jobs",
+            column_name="created_at",
+            column_definition_sql="`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        )
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:

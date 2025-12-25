@@ -8,7 +8,8 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
   const socket = ref(null)
   const users = ref({})
   const { autoSync = false } = options || {}
-  const socketTransports = ['websocket']
+  const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
+  const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
   // Flag to prevent echo when applying remote updates
   let applyingRemoteUpdate = false
@@ -54,8 +55,8 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
         token: getAuthToken(),
         color: getCollabColor()  // Send persisted collab color
       },
-      transports: socketTransports,
-      upgrade: false,
+      transports: socketioTransports,
+      upgrade: socketioEnableWebsocket,
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000

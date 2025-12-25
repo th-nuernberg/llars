@@ -68,7 +68,28 @@ class AgentChatService(ChatService):
         if self._prompt_settings:
             tools = getattr(self._prompt_settings, 'tools_enabled', None)
             if tools:
-                return tools if isinstance(tools, list) else list(tools)
+                normalized: List[str] = []
+                if isinstance(tools, list):
+                    normalized = [str(t).strip() for t in tools if str(t).strip()]
+                elif isinstance(tools, dict):
+                    normalized = [str(k).strip() for k, v in tools.items() if v and str(k).strip()]
+                elif isinstance(tools, str):
+                    decoded = None
+                    try:
+                        decoded = json.loads(tools)
+                    except Exception:
+                        decoded = None
+                    if isinstance(decoded, list):
+                        normalized = [str(t).strip() for t in decoded if str(t).strip()]
+                    elif isinstance(decoded, dict):
+                        normalized = [str(k).strip() for k, v in decoded.items() if v and str(k).strip()]
+                    else:
+                        normalized = [t.strip() for t in tools.split(",") if t.strip()]
+                else:
+                    normalized = [str(tools).strip()] if str(tools).strip() else []
+
+                if normalized:
+                    return [t.lower() for t in normalized]
         return ['rag_search', 'lexical_search', 'respond']
 
     def is_web_search_enabled(self) -> bool:

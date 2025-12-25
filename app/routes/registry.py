@@ -90,6 +90,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.markdown_collab import markdown_collab_bp
     app.register_blueprint(markdown_collab_bp)
 
+    # LaTeX Collab
+    from routes.latex_collab import latex_collab_bp
+    app.register_blueprint(latex_collab_bp)
+
     # Anonymize (offline pseudonymization)
     from routes.anonymize import anonymize_bp
     app.register_blueprint(anonymize_bp)
@@ -146,6 +150,7 @@ def get_blueprint_info() -> dict:
             {'name': 'chatbot', 'prefix': '/api/chatbot', 'description': 'Chatbot interface'},
             {'name': 'crawler', 'prefix': '/api/crawler', 'description': 'Web crawler'},
             {'name': 'markdown_collab', 'prefix': '/api/markdown-collab', 'description': 'Markdown Collab workspaces and documents'},
+            {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
         ],
         'projects': [

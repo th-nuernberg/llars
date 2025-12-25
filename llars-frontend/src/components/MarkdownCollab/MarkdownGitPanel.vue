@@ -395,7 +395,9 @@ const props = defineProps({
   documentId: { type: Number, required: true },
   summary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false }) },
   canCommit: { type: Boolean, default: false },
-  getContent: { type: Function, default: null }
+  getContent: { type: Function, default: null },
+  apiPrefix: { type: String, default: '/api/markdown-collab' },
+  socketNamespace: { type: String, default: 'markdown_collab' }
 })
 
 const emit = defineEmits(['committed'])
@@ -480,7 +482,7 @@ async function loadBaselineSnapshot(force = false) {
   if (!force && baselineCommitId.value !== null) return
 
   const res = await axios.get(
-    `${API_BASE}/api/markdown-collab/documents/${props.documentId}/baseline`,
+    `${API_BASE}${props.apiPrefix}/documents/${props.documentId}/baseline`,
     { headers: authHeaders() }
   )
   baselineSnapshot.value = res.data?.baseline || ''
@@ -494,7 +496,7 @@ async function fetchCommitSnapshot(commitId) {
     return commitSnapshotCache.get(commitId) || ''
   }
   const res = await axios.get(
-    `${API_BASE}/api/markdown-collab/documents/${props.documentId}/commits/${commitId}`,
+    `${API_BASE}${props.apiPrefix}/documents/${props.documentId}/commits/${commitId}`,
     { headers: authHeaders() }
   )
   const snapshot = res.data?.commit?.content_snapshot || ''
@@ -584,10 +586,10 @@ function setupCommitSocket(documentId) {
   socket = getSocket()
   if (!socket) return
 
-  socket.on('markdown_collab:commit_created', handleCommitCreated)
+  socket.on(`${props.socketNamespace}:commit_created`, handleCommitCreated)
 
   onSocketConnect = () => {
-    socket.emit('markdown_collab:subscribe_document', { document_id: documentId })
+    socket.emit(`${props.socketNamespace}:subscribe_document`, { document_id: documentId })
   }
 
   if (socket.connected) {
@@ -599,10 +601,10 @@ function setupCommitSocket(documentId) {
 
 function cleanupCommitSocket() {
   if (!socket) return
-  socket.off('markdown_collab:commit_created', handleCommitCreated)
+  socket.off(`${props.socketNamespace}:commit_created`, handleCommitCreated)
   if (onSocketConnect) socket.off('connect', onSocketConnect)
   if (subscribedDocId) {
-    socket.emit('markdown_collab:unsubscribe_document', { document_id: subscribedDocId })
+    socket.emit(`${props.socketNamespace}:unsubscribe_document`, { document_id: subscribedDocId })
   }
   subscribedDocId = null
   onSocketConnect = null
@@ -631,7 +633,7 @@ async function loadCommits(force = false) {
   await withLoading('commits', async () => {
     loadError.value = ''
     try {
-      const res = await axios.get(`${API_BASE}/api/markdown-collab/documents/${props.documentId}/commits`, {
+      const res = await axios.get(`${API_BASE}${props.apiPrefix}/documents/${props.documentId}/commits`, {
         headers: authHeaders(),
         params: force ? { _ts: Date.now() } : undefined
       })
@@ -673,7 +675,7 @@ async function submitCommit() {
     const contentSnapshot = props.getContent ? props.getContent() : null
 
     await axios.post(
-      `${API_BASE}/api/markdown-collab/documents/${props.documentId}/commit`,
+      `${API_BASE}${props.apiPrefix}/documents/${props.documentId}/commit`,
       {
         message: commitMessage.value.trim(),
         diff_summary: props.summary || null,

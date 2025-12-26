@@ -132,8 +132,8 @@
           </div>
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="createDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" :disabled="!canSubmitCreate" @click="submitCreate">
+          <v-btn variant="text" title="Erstellen abbrechen" @click="createDialog = false">Abbrechen</v-btn>
+          <v-btn color="primary" title="Datei/Ordner erstellen" :disabled="!canSubmitCreate" @click="submitCreate">
             Erstellen
           </v-btn>
         </v-card-actions>
@@ -163,8 +163,8 @@
           />
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="renameDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" :disabled="!canSubmitRename" @click="submitRename">Speichern</v-btn>
+          <v-btn variant="text" title="Umbenennen abbrechen" @click="renameDialog = false">Abbrechen</v-btn>
+          <v-btn color="primary" title="Namen speichern" :disabled="!canSubmitRename" @click="submitRename">Speichern</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -188,8 +188,8 @@
           </div>
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="deleteDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" @click="submitDelete">Löschen</v-btn>
+          <v-btn variant="text" title="Löschen abbrechen" @click="deleteDialog = false">Abbrechen</v-btn>
+          <v-btn color="error" title="Ausgewählten Eintrag löschen" @click="submitDelete">Löschen</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

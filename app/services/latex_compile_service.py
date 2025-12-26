@@ -277,6 +277,8 @@ def _parse_synctex_view(output: str) -> dict:
     page = None
     x_val = None
     y_val = None
+    h_val = None
+    v_val = None
     width = None
     height = None
 
@@ -296,11 +298,11 @@ def _parse_synctex_view(output: str) -> dict:
         if line.startswith("y:"):
             y_val = _parse_float(line.split(":", 1)[1].strip())
             continue
-        if line.startswith("h:") and x_val is None:
-            x_val = _parse_float(line.split(":", 1)[1].strip())
+        if line.startswith("h:"):
+            h_val = _parse_float(line.split(":", 1)[1].strip())
             continue
-        if line.startswith("v:") and y_val is None:
-            y_val = _parse_float(line.split(":", 1)[1].strip())
+        if line.startswith("v:"):
+            v_val = _parse_float(line.split(":", 1)[1].strip())
             continue
         if line.startswith("W:") or line.lower().startswith("width:"):
             width = _parse_float(line.split(":", 1)[1].strip())
@@ -309,6 +311,11 @@ def _parse_synctex_view(output: str) -> dict:
             height = _parse_float(line.split(":", 1)[1].strip())
             continue
 
+    if x_val is None and h_val is not None:
+        x_val = h_val
+    if y_val is None and v_val is not None:
+        y_val = v_val
+
     if page is None or x_val is None or y_val is None:
         raise LatexCompileError("SyncTeX view produced no location")
 
@@ -316,6 +323,8 @@ def _parse_synctex_view(output: str) -> dict:
         "page": page,
         "x": x_val,
         "y": y_val,
+        "h": h_val,
+        "v": v_val,
         "width": width,
         "height": height,
     }

@@ -131,9 +131,20 @@
             variant="text"
             size="small"
             class="mr-2"
+            title="Menü öffnen"
             @click="mobileSidebarOpen = true"
           >
             <v-icon>mdi-menu</v-icon>
+          </v-btn>
+          <v-btn
+            variant="text"
+            size="small"
+            class="header-back-btn"
+            title="Zurück zu den Workspaces"
+            @click="router.push('/LatexCollab')"
+          >
+            <v-icon size="18">mdi-arrow-left</v-icon>
+            <span v-if="!isMobile" class="header-back-label">Workspaces</span>
           </v-btn>
           <v-icon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-file-code-outline</v-icon>
           <div class="header-info">
@@ -251,7 +262,7 @@
               <!-- Editor Pane -->
               <div
                 class="pane editor-pane"
-                :style="viewMode === 'split' && editorPaneWidth > 0 ? { width: editorPaneWidth + 'px' } : {}"
+                :style="editorPaneStyle"
               >
                 <LatexEditorPane
                   ref="editorRef"
@@ -277,7 +288,7 @@
               </div>
 
               <!-- Preview Pane -->
-              <div class="pane preview-pane">
+              <div class="pane preview-pane" :style="previewPaneStyle">
                 <div class="preview-toolbar">
                   <div class="compile-actions">
                     <LBtn
@@ -286,6 +297,7 @@
                       :loading="isCompiling"
                       :disabled="!canCompile"
                       prepend-icon="mdi-rocket-launch-outline"
+                      title="LaTeX kompilieren"
                       @click="triggerCompile"
                     >
                       Kompilieren
@@ -356,6 +368,7 @@
                   :workspace-id="workspaceId"
                   :job-id="pdfJobId"
                   :refresh-key="pdfRefreshKey"
+                  :is-compiling="isCompiling"
                   @pdf-click="handlePdfClick"
                 />
 
@@ -371,6 +384,7 @@
                       size="small"
                       prepend-icon="mdi-comment-plus-outline"
                       :disabled="!canComment"
+                      title="Kommentar hinzufügen"
                       @click="openCommentDialog"
                     >
                       Kommentar
@@ -510,6 +524,7 @@
                 size="x-small"
                 color="error"
                 :loading="removingUsername === m.username"
+                title="Mitglied entfernen"
                 @click="removeMember(m.username)"
               >
                 <v-icon size="18">mdi-close</v-icon>
@@ -543,8 +558,8 @@
           />
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="commentDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" :disabled="!canSubmitComment" @click="submitComment">Speichern</v-btn>
+          <v-btn variant="text" title="Kommentar abbrechen" @click="commentDialog = false">Abbrechen</v-btn>
+          <v-btn color="primary" title="Kommentar speichern" :disabled="!canSubmitComment" @click="submitComment">Speichern</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -594,6 +609,7 @@ import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
+import { useSplitPaneResize } from '@/composables/useSplitPaneResize'
 import { useWorkspaceSocket } from '@/components/MarkdownCollab/composables/useWorkspaceSocket'
 import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/composables/useAnalyticsMetrics'
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
@@ -635,12 +651,18 @@ const pendingJump = ref(null)
 // Panel states
 const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
 const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280)
-const editorPaneWidth = ref(parseInt(localStorage.getItem(PANES_WIDTH_KEY)) || 0)
-const panesContainerRef = ref(null)
-
-// Resize states
+const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const resizingTree = ref(false)
-const resizingPanes = ref(false)
+const {
+  panesContainerRef,
+  editorPaneStyle,
+  previewPaneStyle,
+  resizingPanes,
+  startResize: startPanesResize
+} = useSplitPaneResize({
+  storageKey: PANES_WIDTH_KEY,
+  viewMode
+})
 
 // Sharing / members
 const shareDialog = ref(false)
@@ -652,7 +674,6 @@ const selectedUser = ref(null)
 const userSearchRef = ref(null)
 const ownerInfo = ref({ username: '', avatar_url: null, avatar_seed: null, collab_color: null })
 
-const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const reviewMode = ref(false)
 
 const autoCompileEnabled = ref(localStorage.getItem(AUTO_COMPILE_KEY) === 'true')
@@ -910,36 +931,6 @@ function stopTreeResize() {
   localStorage.setItem(TREE_WIDTH_KEY, treePanelWidth.value.toString())
 }
 
-// Panes resize (Editor | Preview)
-function startPanesResize(event) {
-  event.preventDefault()
-  resizingPanes.value = true
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
-  document.addEventListener('mousemove', onPanesMouseMove)
-  document.addEventListener('mouseup', stopPanesResize)
-}
-
-function onPanesMouseMove(event) {
-  if (!resizingPanes.value || !panesContainerRef.value) return
-  const containerRect = panesContainerRef.value.getBoundingClientRect()
-  const mouseX = event.clientX - containerRect.left
-  const containerWidth = containerRect.width
-  // Clamp between 25% and 75%
-  const minWidth = containerWidth * 0.25
-  const maxWidth = containerWidth * 0.75
-  editorPaneWidth.value = Math.max(minWidth, Math.min(maxWidth, mouseX))
-}
-
-function stopPanesResize() {
-  resizingPanes.value = false
-  document.body.style.cursor = ''
-  document.body.style.userSelect = ''
-  document.removeEventListener('mousemove', onPanesMouseMove)
-  document.removeEventListener('mouseup', stopPanesResize)
-  localStorage.setItem(PANES_WIDTH_KEY, editorPaneWidth.value.toString())
-}
-
 // Initialize pane width on mount
 onMounted(async () => {
   await fetchPermissions()
@@ -970,8 +961,6 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onTreeMouseMove)
   document.removeEventListener('mouseup', stopTreeResize)
-  document.removeEventListener('mousemove', onPanesMouseMove)
-  document.removeEventListener('mouseup', stopPanesResize)
   if (autoCompileTimer) clearTimeout(autoCompileTimer)
   if (compilePollTimer) clearTimeout(compilePollTimer)
   if (syncTimer) clearTimeout(syncTimer)
@@ -1528,14 +1517,18 @@ async function triggerCompile() {
 async function pollCompileJob(jobId) {
   if (!jobId) return
   if (compilePollTimer) clearTimeout(compilePollTimer)
+  let pdfWaitAttempts = 0
+  const maxPdfWaitAttempts = 12
 
   const poll = async () => {
+    let nextDelay = 1500
     try {
       const res = await axios.get(`${API_BASE}/api/latex-collab/compile/${jobId}`, {
         headers: authHeaders()
       })
       const job = res.data?.job
       if (job) {
+        compileJobId.value = job.id
         compileStatus.value = job.status || compileStatus.value
         compileError.value = job.error_message || ''
         compileLog.value = job.log_text || ''
@@ -1543,9 +1536,17 @@ async function pollCompileJob(jobId) {
         compileHasSynctex.value = !!job.has_synctex
         if (job.status === 'success') {
           compileError.value = ''
-          pdfRefreshKey.value += 1
-          compilePollTimer = null
-          return
+          if (job.has_pdf) {
+            pdfRefreshKey.value += 1
+            compilePollTimer = null
+            return
+          }
+          pdfWaitAttempts += 1
+          nextDelay = 800
+          if (pdfWaitAttempts > maxPdfWaitAttempts) {
+            compilePollTimer = null
+            return
+          }
         }
         if (job.status === 'failed') {
           compilePollTimer = null
@@ -1555,7 +1556,7 @@ async function pollCompileJob(jobId) {
     } catch (e) {
       console.error('Compile polling failed:', e)
     }
-    compilePollTimer = setTimeout(poll, 1500)
+    compilePollTimer = setTimeout(poll, nextDelay)
   }
 
   compilePollTimer = setTimeout(poll, 800)
@@ -1938,6 +1939,16 @@ watch(
 .header-info {
   min-width: 0;
   flex: 1;
+}
+
+.header-back-btn {
+  margin-right: 6px;
+}
+
+.header-back-label {
+  margin-left: 4px;
+  font-size: 12px;
+  text-transform: none;
 }
 
 .header-title {

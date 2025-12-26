@@ -348,11 +348,13 @@ def delete_collection(collection_id):
         )
 
     # If force delete, remove all documents first
+    deleted_doc_ids = []
     if doc_count > 0 and force:
         # Delete all chunks for documents in this collection
         documents = RAGDocument.query.filter_by(collection_id=collection_id).all()
         for doc in documents:
             RAGDocumentChunk.query.filter_by(document_id=doc.id).delete()
+            deleted_doc_ids.append(doc.id)
 
         # Delete all documents
         RAGDocument.query.filter_by(collection_id=collection_id).delete()
@@ -369,6 +371,14 @@ def delete_collection(collection_id):
 
     db.session.delete(collection)
     db.session.commit()
+
+    try:
+        from services.chatbot.lexical_index import LexicalSearchIndex
+        for doc_id in deleted_doc_ids:
+            LexicalSearchIndex.remove_document(doc_id)
+        LexicalSearchIndex.remove_collection(collection_id)
+    except Exception as exc:
+        current_app.logger.warning(f"[RAG] Lexical index cleanup failed for collection {collection_id}: {exc}")
 
     # Log activity
     ChatbotActivityService.log_collection_deleted(

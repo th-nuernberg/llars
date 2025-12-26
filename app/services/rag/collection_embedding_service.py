@@ -545,36 +545,38 @@ class CollectionEmbeddingService:
 
                     logger.info(f"[CollectionEmbedding] Document {doc.id} split into {len(chunks)} chunks")
 
-                    # Create chunks + upsert into Chroma (also for already-existing chunks, to support deduplicated documents)
+                    # Create chunks + upsert into Chroma (reuse existing chunks by index for retries/dedup)
                     chroma_texts = []
                     chroma_ids = []
                     chroma_metadatas = []
                     all_vector_ids = []
 
+                    existing_chunks = (
+                        RAGDocumentChunk.query
+                        .filter_by(document_id=doc.id)
+                        .filter(RAGDocumentChunk.has_image.is_(False))
+                        .all()
+                    )
+                    existing_by_index = {c.chunk_index: c for c in existing_chunks}
+
                     for i, chunk in enumerate(chunks):
                         chunk_text = chunk.text
-                        # Check for existing chunk with same hash
                         content_hash = self._hash_content(chunk_text)
-                        existing_chunk = RAGDocumentChunk.query.filter_by(
-                            document_id=doc.id,
-                            content_hash=content_hash
-                        ).first()
+                        existing_chunk = existing_by_index.get(i)
 
                         if existing_chunk:
                             # Reuse existing DB chunk, but still upsert into THIS collection's Chroma index.
+                            existing_chunk.content = chunk_text
+                            existing_chunk.content_hash = content_hash
                             if not existing_chunk.vector_id:
                                 existing_chunk.vector_id = f"doc_{doc.id}_chunk_{i}_{uuid.uuid4().hex[:8]}"
-                            # Fill missing metadata if needed
-                            if existing_chunk.page_number is None:
-                                existing_chunk.page_number = chunk.page_number
-                            if existing_chunk.start_char is None:
-                                existing_chunk.start_char = chunk.start_char
-                            if existing_chunk.end_char is None:
-                                existing_chunk.end_char = chunk.end_char
-                            if not existing_chunk.embedding_model:
-                                existing_chunk.embedding_model = pipeline.model_name
-                            if not existing_chunk.embedding_dimensions:
-                                existing_chunk.embedding_dimensions = getattr(pipeline, "embedding_dimensions", None)
+                            existing_chunk.page_number = chunk.page_number
+                            existing_chunk.start_char = chunk.start_char
+                            existing_chunk.end_char = chunk.end_char
+                            existing_chunk.embedding_model = pipeline.model_name
+                            existing_chunk.embedding_dimensions = getattr(pipeline, "embedding_dimensions", None)
+                            existing_chunk.embedding_status = 'completed'
+                            existing_chunk.embedding_error = None
 
                             chunk_id = existing_chunk.vector_id
                             all_vector_ids.append(chunk_id)

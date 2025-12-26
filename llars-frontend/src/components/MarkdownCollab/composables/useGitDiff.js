@@ -182,6 +182,30 @@ export function useGitDiff(options = {}) {
   }
 
   /**
+   * Extract insert ranges in current text coordinates from diffs
+   * Returns array of { from, to } ranges
+   */
+  function getInsertRanges(diffs) {
+    const ranges = []
+    if (!diffs || diffs.length === 0) return ranges
+    let currentPos = 0
+    for (const [op, text] of diffs) {
+      if (op === DIFF_EQUAL) {
+        currentPos += text.length
+      } else if (op === DIFF_INSERT) {
+        const from = currentPos
+        const to = currentPos + text.length
+        if (to > from) {
+          ranges.push({ from, to })
+        }
+        currentPos += text.length
+      }
+      // DIFF_DELETE does not advance current position
+    }
+    return ranges
+  }
+
+  /**
    * Check if there are any uncommitted changes
    */
   function hasChanges(currentContent) {
@@ -231,6 +255,7 @@ export function useGitDiff(options = {}) {
     error,
     loadBaseline,
     computeCharacterDiffs,
+    getInsertRanges,
     diffsToDecorations,
     hasChanges,
     getChangeSummary,

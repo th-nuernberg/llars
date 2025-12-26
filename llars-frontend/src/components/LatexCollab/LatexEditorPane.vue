@@ -108,6 +108,7 @@ const {
   gitBaseline,
   loadBaseline,
   computeCharacterDiffs,
+  getInsertRanges,
   diffsToDecorations,
   hasChanges,
   getChangeSummary,
@@ -320,11 +321,13 @@ function applyCollabColorChange(newColor) {
   updateDecorations()
 }
 
-function buildInsertDecorations() {
-  if (!ytext || !view.value) return []
+function buildInsertDecorations(insertRanges = []) {
+  if (!ytext || !view.value || insertRanges.length === 0) return []
   const decorations = []
   let pos = 0
+  let rangeIndex = 0
   const delta = ytext.toDelta()
+  const docLen = view.value.state.doc.length
 
   for (const op of delta) {
     const insert = op?.insert
@@ -332,22 +335,49 @@ function buildInsertDecorations() {
     const length = text.length
     const attrs = op?.attributes || {}
     const color = attrs.collabColor || attrs.color
+    if (length === 0) continue
 
-    if (length > 0 && isValidHexColor(color)) {
-      const safeFrom = clampPos(pos, view.value.state.doc.length)
-      const safeTo = clampPos(pos + length, view.value.state.doc.length)
-      if (safeFrom < safeTo) {
-        const background = rgbaFromHex(color, 0.35)
-        const outline = rgbaFromHex(color, 0.5)
-        decorations.push(
-          Decoration.mark({
-            attributes: {
-              style: `background: ${background}; border-radius: 2px; box-shadow: 0 0 0 1px ${outline}; text-decoration: underline; text-decoration-color: ${color}; text-underline-offset: 2px;`
-            }
-          }).range(safeFrom, safeTo)
-        )
+    const segmentStart = pos
+    const segmentEnd = pos + length
+
+    while (rangeIndex < insertRanges.length && insertRanges[rangeIndex].to <= segmentStart) {
+      rangeIndex += 1
+    }
+
+    let idx = rangeIndex
+    while (idx < insertRanges.length && insertRanges[idx].from < segmentEnd) {
+      const range = insertRanges[idx]
+      const overlapFrom = Math.max(segmentStart, range.from)
+      const overlapTo = Math.min(segmentEnd, range.to)
+      if (overlapFrom < overlapTo) {
+        const safeFrom = clampPos(overlapFrom, docLen)
+        const safeTo = clampPos(overlapTo, docLen)
+        if (safeFrom < safeTo) {
+          if (isValidHexColor(color)) {
+            const background = rgbaFromHex(color, 0.35)
+            const outline = rgbaFromHex(color, 0.5)
+            decorations.push(
+              Decoration.mark({
+                attributes: {
+                  style: `background: ${background}; border-radius: 2px; box-shadow: 0 0 0 1px ${outline}; text-decoration: underline; text-decoration-color: ${color}; text-underline-offset: 2px;`
+                }
+              }).range(safeFrom, safeTo)
+            )
+          } else {
+            decorations.push(
+              Decoration.mark({ class: 'cm-diff-insert' }).range(safeFrom, safeTo)
+            )
+          }
+        }
+      }
+      if (range.to <= segmentEnd) {
+        idx += 1
+      } else {
+        break
       }
     }
+
+    rangeIndex = idx
 
     pos += length
   }
@@ -399,19 +429,17 @@ function updateDecorations() {
   // Character-level git diff (for summary + deleted-line gutter)
   const currentContent = view.value.state.doc.toString()
   const diffs = computeCharacterDiffs(currentContent)
+  const insertRanges = getInsertRanges(diffs)
 
-  const insertDecorations = buildInsertDecorations()
-  const includeInsertDecorations = insertDecorations.length === 0
+  const insertDecorations = buildInsertDecorations(insertRanges)
   if (diffs.length > 0) {
     const { decorations: diffDecos, deletedLines } = diffsToDecorations(
       diffs,
       view.value,
       null,
-      { includeInsertDecorations }
+      { includeInsertDecorations: false }
     )
-    if (includeInsertDecorations) {
-      decorations.push(...diffDecos)
-    }
+    decorations.push(...diffDecos)
     deletedLinesRef.value = deletedLines
   } else {
     deletedLinesRef.value = new Set()

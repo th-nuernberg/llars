@@ -881,6 +881,31 @@ function jumpToLine(line, column = 1) {
   view.value.focus()
 }
 
+function flushDocumentState() {
+  return new Promise((resolve) => {
+    const sock = socket.value
+    const room = roomId.value
+    if (!sock || !room) {
+      resolve(false)
+      return
+    }
+
+    let finished = false
+    const timeout = setTimeout(() => {
+      if (finished) return
+      finished = true
+      resolve(false)
+    }, 1200)
+
+    sock.emit('flush_document', { room }, (response) => {
+      if (finished) return
+      clearTimeout(timeout)
+      finished = true
+      resolve(!!response?.success)
+    })
+  })
+}
+
 defineExpose({
   clearHighlights,
   refresh,
@@ -888,7 +913,8 @@ defineExpose({
   getCurrentContent,
   getSelectionRange,
   getSelectionText,
-  jumpToLine
+  jumpToLine,
+  flushDocumentState
 })
 
 // Callback for when another user updates their color
@@ -978,6 +1004,7 @@ watch(
   }
 )
 
+
 // Watch for collab color changes (when user updates their color in settings)
 watch(
   () => collabColor.value,
@@ -1039,6 +1066,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
 }
+
 
 .editor-surface {
   flex: 1;

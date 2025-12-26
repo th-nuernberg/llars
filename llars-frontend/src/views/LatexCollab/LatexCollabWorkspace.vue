@@ -15,22 +15,75 @@
       width="300"
       class="mobile-tree-drawer"
     >
-      <MarkdownTreePanel
-        :workspace-id="workspaceId"
-        :nodes="treeNodes"
-        :selected-id="selectedNodeId"
-        :loading="isLoading('tree')"
-        :can-edit="hasPermission('feature:latex_collab:edit')"
-        :recently-added-ids="recentlyAddedNodeIds"
-        file-placeholder="z. B. main.tex"
-        file-icon="mdi-file-code-outline"
-        file-icon-color="primary"
-        @select="(id) => { handleSelectNode(id); mobileSidebarOpen = false; }"
-        @create="handleCreateNode"
-        @rename="handleRenameNode"
-        @remove="handleDeleteNode"
-        @move="handleMoveNode"
-      />
+      <div class="mobile-tree-content">
+        <div class="tree-main">
+          <MarkdownTreePanel
+            :workspace-id="workspaceId"
+            :nodes="treeNodes"
+            :selected-id="selectedNodeId"
+            :loading="isLoading('tree')"
+            :can-edit="hasPermission('feature:latex_collab:edit')"
+            :recently-added-ids="recentlyAddedNodeIds"
+            file-placeholder="z. B. main.tex"
+            file-icon="mdi-file-code-outline"
+            file-icon-color="primary"
+            @select="(id) => { handleSelectNode(id); mobileSidebarOpen = false; }"
+            @create="handleCreateNode"
+            @rename="handleRenameNode"
+            @remove="handleDeleteNode"
+            @move="handleMoveNode"
+          />
+        </div>
+        <div class="tree-outline-panel" :class="{ collapsed: outlineCollapsed }">
+          <div class="tree-outline-header">
+            <div class="tree-outline-title">
+              <v-icon size="14">mdi-format-list-bulleted</v-icon>
+              Verzeichnis
+            </div>
+            <v-btn
+              icon
+              variant="text"
+              size="x-small"
+              :title="outlineCollapsed ? 'Verzeichnis anzeigen' : 'Verzeichnis ausblenden'"
+              @click="toggleOutlineCollapsed"
+            >
+              <v-icon size="16">{{ outlineCollapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+            </v-btn>
+          </div>
+          <div v-if="!outlineCollapsed" class="tree-outline-list">
+            <div v-if="outlineFlatItems.length === 0" class="tree-outline-empty">
+              {{ outlineEmptyLabel }}
+            </div>
+            <div
+              v-for="item in outlineFlatItems"
+              :key="item.id"
+              class="tree-outline-item"
+              :style="{ paddingLeft: `${8 + item.depth * 12}px` }"
+            >
+              <button
+                v-if="item.hasChildren"
+                class="tree-outline-toggle"
+                type="button"
+                :title="isOutlineItemCollapsed(item.id) ? 'Aufklappen' : 'Einklappen'"
+                @click.stop="toggleOutlineItem(item.id)"
+              >
+                <v-icon size="14">
+                  {{ isOutlineItemCollapsed(item.id) ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
+                </v-icon>
+              </button>
+              <span v-else class="tree-outline-spacer"></span>
+              <button
+                class="tree-outline-link"
+                type="button"
+                :title="item.title"
+                @click="jumpToOutlineItem(item)"
+              >
+                {{ item.title }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <template #append>
         <v-divider />
         <v-list density="compact" class="pa-2">
@@ -69,43 +122,96 @@
 
       <!-- Expanded State -->
       <div v-else class="tree-expanded">
-        <MarkdownTreePanel
-          :workspace-id="workspaceId"
-          :nodes="treeNodes"
-          :selected-id="selectedNodeId"
-          :loading="isLoading('tree')"
-          :can-edit="hasPermission('feature:latex_collab:edit')"
-          :recently-added-ids="recentlyAddedNodeIds"
-          file-placeholder="z. B. main.tex"
-          file-icon="mdi-file-code-outline"
-          file-icon-color="primary"
-          @select="handleSelectNode"
-          @create="handleCreateNode"
-          @rename="handleRenameNode"
-          @remove="handleDeleteNode"
-          @move="handleMoveNode"
-        >
-          <template #header-append>
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              title="Asset hochladen"
-              @click.stop="openAssetPicker"
+        <div class="tree-stack">
+          <div class="tree-main">
+            <MarkdownTreePanel
+              :workspace-id="workspaceId"
+              :nodes="treeNodes"
+              :selected-id="selectedNodeId"
+              :loading="isLoading('tree')"
+              :can-edit="hasPermission('feature:latex_collab:edit')"
+              :recently-added-ids="recentlyAddedNodeIds"
+              file-placeholder="z. B. main.tex"
+              file-icon="mdi-file-code-outline"
+              file-icon-color="primary"
+              @select="handleSelectNode"
+              @create="handleCreateNode"
+              @rename="handleRenameNode"
+              @remove="handleDeleteNode"
+              @move="handleMoveNode"
             >
-              <v-icon size="18">mdi-paperclip</v-icon>
-            </v-btn>
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              title="Einklappen"
-              @click.stop="treeCollapsed = true"
-            >
-              <v-icon size="18">mdi-chevron-left</v-icon>
-            </v-btn>
-          </template>
-        </MarkdownTreePanel>
+              <template #header-append>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  title="Asset hochladen"
+                  @click.stop="openAssetPicker"
+                >
+                  <v-icon size="18">mdi-paperclip</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  title="Einklappen"
+                  @click.stop="treeCollapsed = true"
+                >
+                  <v-icon size="18">mdi-chevron-left</v-icon>
+                </v-btn>
+              </template>
+            </MarkdownTreePanel>
+          </div>
+          <div class="tree-outline-panel" :class="{ collapsed: outlineCollapsed }">
+            <div class="tree-outline-header">
+              <div class="tree-outline-title">
+                <v-icon size="14">mdi-format-list-bulleted</v-icon>
+                Verzeichnis
+              </div>
+              <v-btn
+                icon
+                variant="text"
+                size="x-small"
+                :title="outlineCollapsed ? 'Verzeichnis anzeigen' : 'Verzeichnis ausblenden'"
+                @click="toggleOutlineCollapsed"
+              >
+                <v-icon size="16">{{ outlineCollapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+              </v-btn>
+            </div>
+            <div v-if="!outlineCollapsed" class="tree-outline-list">
+              <div v-if="outlineFlatItems.length === 0" class="tree-outline-empty">
+                {{ outlineEmptyLabel }}
+              </div>
+              <div
+                v-for="item in outlineFlatItems"
+                :key="item.id"
+                class="tree-outline-item"
+                :style="{ paddingLeft: `${8 + item.depth * 12}px` }"
+              >
+                <button
+                  v-if="item.hasChildren"
+                  class="tree-outline-toggle"
+                  type="button"
+                  :title="isOutlineItemCollapsed(item.id) ? 'Aufklappen' : 'Einklappen'"
+                  @click.stop="toggleOutlineItem(item.id)"
+                >
+                  <v-icon size="14">
+                    {{ isOutlineItemCollapsed(item.id) ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
+                  </v-icon>
+                </button>
+                <span v-else class="tree-outline-spacer"></span>
+                <button
+                  class="tree-outline-link"
+                  type="button"
+                  :title="item.title"
+                  @click="jumpToOutlineItem(item)"
+                >
+                  {{ item.title }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -634,6 +740,7 @@ const VIEWMODE_KEY = 'latex-collab-view-mode'
 const TREE_COLLAPSED_KEY = 'latex-collab-tree-collapsed'
 const TREE_WIDTH_KEY = 'latex-collab-tree-width'
 const PANES_WIDTH_KEY = 'latex-collab-panes-width'
+const OUTLINE_COLLAPSED_KEY = 'latex-outline-collapsed'
 const AUTO_COMPILE_KEY = 'latex-collab-auto-compile'
 const AUTO_COMPILE_DELAY_KEY = 'latex-collab-auto-compile-delay'
 const SYNC_KEY = 'latex-collab-sync-enabled'
@@ -653,6 +760,32 @@ const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
 const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280)
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const resizingTree = ref(false)
+const outlineCollapsed = ref(localStorage.getItem(OUTLINE_COLLAPSED_KEY) === 'true')
+const outlineItems = ref([])
+const outlineCollapsedIds = ref(new Set())
+const outlineFlatItems = computed(() => {
+  const items = []
+  const collapsed = outlineCollapsedIds.value
+  const walk = (nodes, depth) => {
+    for (const node of nodes) {
+      const hasChildren = Array.isArray(node.children) && node.children.length > 0
+      items.push({ ...node, depth, hasChildren })
+      if (hasChildren && !collapsed.has(node.id)) {
+        walk(node.children, depth + 1)
+      }
+    }
+  }
+  walk(outlineItems.value || [], 0)
+  return items
+})
+const outlineEmptyLabel = computed(() => {
+  if (selectedNode.value && selectedNode.value.type === 'file' && !selectedNode.value.asset_id) {
+    return 'Keine Kapitel gefunden'
+  }
+  return 'Kein Dokument'
+})
+let outlineUpdateTimer = null
+let lastOutlineText = ''
 const {
   panesContainerRef,
   editorPaneStyle,
@@ -690,6 +823,7 @@ const compileHasPdf = ref(false)
 const compileHasSynctex = ref(false)
 const compileLogDialog = ref(false)
 const pdfRefreshKey = ref(0)
+const pdfRefreshJobId = ref(null)
 const compileCommitId = ref(null)
 const compileCommitOptions = ref([{ title: 'Aktuell', value: null }])
 let compilePollTimer = null
@@ -753,6 +887,10 @@ watch(viewMode, async () => {
 
 watch(treeCollapsed, (val) => {
   localStorage.setItem(TREE_COLLAPSED_KEY, val.toString())
+})
+
+watch(outlineCollapsed, (val) => {
+  localStorage.setItem(OUTLINE_COLLAPSED_KEY, val ? 'true' : 'false')
 })
 
 watch(autoCompileEnabled, (val) => {
@@ -870,7 +1008,7 @@ const canSync = computed(() => (
   && compileHasSynctex.value
 ))
 const pdfJobId = computed(() => (
-  compileStatus.value === 'success' && compileHasPdf.value ? compileJobId.value : null
+  compileStatus.value === 'success' && compileJobId.value ? compileJobId.value : null
 ))
 
 const isCompiling = computed(() => ['queued', 'running'].includes(compileStatus.value))
@@ -931,6 +1069,125 @@ function stopTreeResize() {
   localStorage.setItem(TREE_WIDTH_KEY, treePanelWidth.value.toString())
 }
 
+const outlineCommandLevels = {
+  part: { level: 0, label: 'Teil' },
+  chapter: { level: 1, label: 'Kapitel' },
+  section: { level: 2, label: 'Abschnitt' },
+  subsection: { level: 3, label: 'Unterabschnitt' },
+  subsubsection: { level: 4, label: 'Unter-Unterabschnitt' },
+  paragraph: { level: 5, label: 'Paragraph' }
+}
+
+const outlinePattern = /\\(part|chapter|section|subsection|subsubsection|paragraph)\*?\s*(?:\[[^\]]*])?\s*\{([^}]*)\}/g
+
+function toggleOutlineCollapsed() {
+  outlineCollapsed.value = !outlineCollapsed.value
+}
+
+function isOutlineItemCollapsed(id) {
+  return outlineCollapsedIds.value.has(id)
+}
+
+function toggleOutlineItem(id) {
+  const next = new Set(outlineCollapsedIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  outlineCollapsedIds.value = next
+}
+
+function buildOutline(text) {
+  if (!text) return []
+  const items = []
+  const stack = []
+  const lines = text.split('\n')
+  const lineStarts = []
+  let offset = 0
+  for (const line of lines) {
+    lineStarts.push(offset)
+    offset += line.length + 1
+  }
+
+  outlinePattern.lastIndex = 0
+  let match = outlinePattern.exec(text)
+  let lineIndex = 0
+  while (match) {
+    const matchIndex = match.index
+    while (lineIndex + 1 < lineStarts.length && lineStarts[lineIndex + 1] <= matchIndex) {
+      lineIndex += 1
+    }
+    const line = lines[lineIndex] || ''
+    const trimmed = line.trim()
+    if (trimmed && !trimmed.startsWith('%')) {
+      const colIndex = matchIndex - lineStarts[lineIndex]
+      const leading = line.slice(0, Math.max(0, colIndex))
+      if (!leading.includes('%')) {
+        const cmd = match[1]
+        const meta = outlineCommandLevels[cmd] || { level: 9, label: cmd }
+        const title = (match[2] || '').trim() || meta.label
+        const item = {
+          id: `${cmd}:${lineIndex + 1}:${title}`,
+          title,
+          line: lineIndex + 1,
+          level: meta.level,
+          children: []
+        }
+
+        while (stack.length && stack[stack.length - 1].level >= item.level) {
+          stack.pop()
+        }
+        if (stack.length) {
+          stack[stack.length - 1].children.push(item)
+        } else {
+          items.push(item)
+        }
+        stack.push(item)
+      }
+    }
+    match = outlinePattern.exec(text)
+  }
+
+  return items
+}
+
+function updateOutline(text) {
+  if (text === lastOutlineText) return
+  lastOutlineText = text
+  const nextItems = buildOutline(text)
+  outlineItems.value = nextItems
+
+  const validIds = new Set()
+  const collect = (nodes) => {
+    for (const node of nodes) {
+      validIds.add(node.id)
+      if (node.children?.length) collect(node.children)
+    }
+  }
+  collect(nextItems)
+
+  if (outlineCollapsedIds.value.size) {
+    const next = new Set()
+    outlineCollapsedIds.value.forEach((id) => {
+      if (validIds.has(id)) next.add(id)
+    })
+    outlineCollapsedIds.value = next
+  }
+}
+
+function scheduleOutlineUpdate(text) {
+  if (outlineUpdateTimer) clearTimeout(outlineUpdateTimer)
+  outlineUpdateTimer = setTimeout(() => {
+    updateOutline(text)
+  }, 200)
+}
+
+function jumpToOutlineItem(item) {
+  if (!item?.line) return
+  editorRef.value?.jumpToLine?.(item.line, 1)
+}
+
 // Initialize pane width on mount
 onMounted(async () => {
   await fetchPermissions()
@@ -964,6 +1221,7 @@ onUnmounted(() => {
   if (autoCompileTimer) clearTimeout(autoCompileTimer)
   if (compilePollTimer) clearTimeout(compilePollTimer)
   if (syncTimer) clearTimeout(syncTimer)
+  if (outlineUpdateTimer) clearTimeout(outlineUpdateTimer)
 })
 
 function onEditorContentChange(text) {
@@ -972,6 +1230,7 @@ function onEditorContentChange(text) {
     setLoading('document', false)
     pendingDocId.value = null
   }
+  scheduleOutlineUpdate(text)
   scheduleAutoCompile()
 }
 
@@ -1489,8 +1748,12 @@ async function triggerCompile() {
   compileLog.value = ''
   compileHasPdf.value = false
   compileHasSynctex.value = false
+  pdfRefreshJobId.value = null
   if (autoCompileTimer) clearTimeout(autoCompileTimer)
   try {
+    if (!compileCommitId.value) {
+      await editorRef.value?.flushDocumentState?.()
+    }
     const payload = {}
     if (compileCommitId.value) payload.commit_id = compileCommitId.value
     const res = await axios.post(
@@ -1519,6 +1782,7 @@ async function pollCompileJob(jobId) {
   if (compilePollTimer) clearTimeout(compilePollTimer)
   let pdfWaitAttempts = 0
   const maxPdfWaitAttempts = 12
+  let rateLimitedCount = 0
 
   const poll = async () => {
     let nextDelay = 1500
@@ -1534,10 +1798,14 @@ async function pollCompileJob(jobId) {
         compileLog.value = job.log_text || ''
         compileHasPdf.value = !!job.has_pdf
         compileHasSynctex.value = !!job.has_synctex
+        rateLimitedCount = 0
         if (job.status === 'success') {
           compileError.value = ''
-          if (job.has_pdf) {
+          if (pdfRefreshJobId.value !== job.id) {
+            pdfRefreshJobId.value = job.id
             pdfRefreshKey.value += 1
+          }
+          if (job.has_pdf && job.has_synctex) {
             compilePollTimer = null
             return
           }
@@ -1554,7 +1822,13 @@ async function pollCompileJob(jobId) {
         }
       }
     } catch (e) {
-      console.error('Compile polling failed:', e)
+      const status = e?.response?.status
+      if (status === 429) {
+        rateLimitedCount += 1
+        nextDelay = Math.min(12000, 1200 * Math.pow(1.7, rateLimitedCount))
+      } else {
+        console.error('Compile polling failed:', e)
+      }
     }
     compilePollTimer = setTimeout(poll, nextDelay)
   }
@@ -1739,6 +2013,9 @@ watch(
   (docId) => {
     currentText.value = ''
     gitSummary.value = { users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }
+    outlineItems.value = []
+    outlineCollapsedIds.value = new Set()
+    lastOutlineText = ''
     if (docId) {
       pendingDocId.value = docId
       setLoading('document', true)
@@ -1823,6 +2100,108 @@ watch(
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+}
+
+.tree-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.tree-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tree-outline-panel {
+  flex-shrink: 0;
+  margin: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface-variant), 0.18);
+  overflow: hidden;
+  max-height: 240px;
+}
+
+.tree-outline-panel.collapsed {
+  height: 32px;
+  max-height: 32px;
+}
+
+.tree-outline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.tree-outline-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.tree-outline-panel.collapsed .tree-outline-list {
+  display: none;
+}
+
+.tree-outline-list {
+  overflow: auto;
+  padding: 6px 4px 8px;
+  max-height: 200px;
+}
+
+.tree-outline-empty {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.tree-outline-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+
+.tree-outline-item:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.tree-outline-toggle,
+.tree-outline-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
+.tree-outline-link {
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.tree-outline-spacer {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
 }
 
 /* Collapsed Tree */
@@ -2389,6 +2768,23 @@ watch(
 
 .mobile-tree-drawer :deep(.tree-panel) {
   height: 100%;
+}
+
+.mobile-tree-content {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-tree-content .tree-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mobile-tree-content .tree-outline-panel {
+  margin: 0 12px 12px;
 }
 
 /* Mobile content area takes full width */

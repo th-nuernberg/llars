@@ -64,6 +64,12 @@ class ChatbotBuildMonitor:
                         # Transition to embedding
                         chatbot = Chatbot.query.get(chatbot_id)
                         if chatbot:
+                            collection = RAGCollection.query.get(collection_id)
+                            if collection and collection.color and (not chatbot.color or chatbot.color == '#5d7a4a'):
+                                chatbot.color = collection.color
+                                logger.info(
+                                    f"[ChatbotBuildMonitor] Set chatbot color from crawled brand color: {collection.color}"
+                                )
                             chatbot.build_status = 'embedding'
                             db.session.commit()
 

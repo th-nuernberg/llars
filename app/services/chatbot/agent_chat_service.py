@@ -314,6 +314,7 @@ class AgentChatService(ChatService):
         all_sources = []
         observations = []
         reasoning_steps = []
+        enabled_tools = self.get_enabled_tools()
 
         system_prompt = self._get_act_system_prompt()
 
@@ -322,6 +323,10 @@ class AgentChatService(ChatService):
 
             # Build messages with observations
             messages = [{"role": "system", "content": system_prompt}]
+            tool_prompt = self._build_tool_availability_prompt()
+            if tool_prompt:
+                messages.append({"role": "system", "content": tool_prompt})
+            messages.extend(self._build_agent_history_messages(conversation, message))
             messages.append({"role": "user", "content": message})
 
             for obs in observations:
@@ -350,8 +355,15 @@ class AgentChatService(ChatService):
 
             # Parse action
             action, param = self._parse_action(action_text)
+            action, param = self._normalize_action_from_tool_call(
+                action,
+                param,
+                action_text,
+                enabled_tools
+            )
             yield {"status": "action", "action": action, "param": param, "iteration": iteration + 1}
             action_content = f'{action}("{param}")' if param else action
+            normalized_action_text = f'ACTION: {action_content}'
             reasoning_steps.append({
                 "type": "action",
                 "action": action,
@@ -401,7 +413,7 @@ class AgentChatService(ChatService):
             all_sources.extend(sources)
 
             observations.append({
-                "action": action_text,
+                "action": normalized_action_text,
                 "result": result
             })
             reasoning_steps.append({
@@ -484,6 +496,10 @@ class AgentChatService(ChatService):
 
             # Build conversation with all previous steps
             messages = [{"role": "system", "content": system_prompt}]
+            tool_prompt = self._build_tool_availability_prompt()
+            if tool_prompt:
+                messages.append({"role": "system", "content": tool_prompt})
+            messages.extend(self._build_agent_history_messages(conversation, message))
             messages.append({"role": "user", "content": f"Frage: {message}"})
 
             for step in steps:
@@ -522,10 +538,10 @@ class AgentChatService(ChatService):
 
             # Parse response for THOUGHT, ACTION, or FINAL ANSWER
             thought, action, final_answer = self._parse_react_response(response_text)
-            if final_answer and self._requires_sources():
-                has_observation = any(step.get("type") == "observation" for step in steps)
-                if not has_observation:
-                    final_answer = None
+            requires_sources = self._requires_sources()
+            has_observation = any(step.get("type") == "observation" for step in steps)
+            if final_answer and requires_sources and not has_observation:
+                final_answer = None
 
             if thought:
                 steps.append({"type": "thought", "content": thought})
@@ -568,7 +584,73 @@ class AgentChatService(ChatService):
 
             if action:
                 action_name, action_param = self._parse_action(f"ACTION: {action}")
-                steps.append({"type": "action", "content": action, "action_name": action_name, "action_param": action_param})
+                action_name, action_param = self._normalize_action_from_tool_call(
+                    action_name,
+                    action_param,
+                    action,
+                    enabled_tools
+                )
+                if action_name == "respond":
+                    if action_param and (not requires_sources or has_observation):
+                        normalized_action_content = (
+                            f'{action_name}("{action_param}")' if action_param else action_name
+                        )
+                        steps.append({
+                            "type": "action",
+                            "content": normalized_action_content,
+                            "action_name": action_name,
+                            "action_param": action_param
+                        })
+                        yield {"status": "action", "action": action_name, "param": action_param, "iteration": iteration + 1}
+                        final_answer = action_param
+                        yield {"status": "final_answer"}
+
+                        msg = self._save_message(
+                            conversation.id,
+                            ChatbotMessageRole.ASSISTANT,
+                            final_answer,
+                            rag_sources=all_sources if include_sources else [],
+                            agent_trace=steps,
+                            stream_metadata={
+                                "mode": "react",
+                                "iterations": iteration + 1,
+                                "sources_count": len(all_sources)
+                            }
+                        )
+
+                        conversation.message_count += 2
+                        conversation.last_message_at = datetime.now()
+                        self._maybe_set_conversation_title(conversation, message)
+                        db.session.commit()
+
+                        yield {
+                            "done": True,
+                            "full_response": final_answer,
+                            "sources": all_sources if include_sources else [],
+                            "mode": "react",
+                            "iterations": iteration + 1,
+                            "reasoning_steps": steps,
+                            "conversation_id": conversation.id,
+                            "title": conversation.title,
+                            "message_id": msg.id
+                        }
+                        return
+                    action = None
+                    action_name = None
+                    action_param = None
+                if not action_name:
+                    action = None
+
+            if action:
+                normalized_action_content = (
+                    f'{action_name}("{action_param}")' if action_param else action_name
+                )
+                steps.append({
+                    "type": "action",
+                    "content": normalized_action_content,
+                    "action_name": action_name,
+                    "action_param": action_param
+                })
                 yield {"status": "action", "action": action_name, "param": action_param, "iteration": iteration + 1}
 
                 # Execute tool
@@ -582,7 +664,7 @@ class AgentChatService(ChatService):
                 yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
             elif not final_answer:
                 # If the model skips ACTION, force a lookup when citations are required.
-                if self._requires_sources() and not any(step.get("type") == "action" for step in steps):
+                if requires_sources and not any(step.get("type") == "action" for step in steps):
                     fallback_action = None
                     if "rag_search" in enabled_tools:
                         fallback_action = "rag_search"
@@ -700,6 +782,10 @@ class AgentChatService(ChatService):
 
             # Build conversation history
             messages = [{"role": "system", "content": system_prompt}]
+            tool_prompt = self._build_tool_availability_prompt()
+            if tool_prompt:
+                messages.append({"role": "system", "content": tool_prompt})
+            messages.extend(self._build_agent_history_messages(conversation, message))
             messages.append({"role": "user", "content": f"Aufgabe: {message}"})
 
             # Add previous steps to context
@@ -730,10 +816,14 @@ class AgentChatService(ChatService):
 
                     # Stream reflection as it comes
                     reflection_partial, _, _ = self._parse_reflact_response_v2(response_text)
-                    if reflection_partial and len(reflection_partial) > len(last_reflection):
-                        delta_chunk = reflection_partial[len(last_reflection):]
-                        last_reflection = reflection_partial
-                        yield {"status": "reflection_delta", "delta": delta_chunk, "iteration": iteration + 1}
+                    reflection_partial = self._strip_trailing_reflact_fragment(reflection_partial)
+                    if reflection_partial and reflection_partial != last_reflection:
+                        if reflection_partial.startswith(last_reflection):
+                            delta_chunk = reflection_partial[len(last_reflection):]
+                            last_reflection = reflection_partial
+                            yield {"status": "reflection_delta", "delta": delta_chunk, "iteration": iteration + 1}
+                        else:
+                            last_reflection = reflection_partial
 
             except Exception as e:
                 logger.error(f"[AgentChatService] ReflAct streaming failed: {e}", exc_info=True)
@@ -747,6 +837,8 @@ class AgentChatService(ChatService):
 
             # Parse response: REFLECTION, ACTION or FINAL ANSWER
             reflection, action, final_answer = self._parse_reflact_response_v2(response_text)
+            reflection = self._strip_trailing_reflact_fragment(reflection)
+            final_answer = self._strip_trailing_reflact_fragment(final_answer)
 
             if reflection:
                 steps.append({"type": "reflection", "content": reflection})
@@ -791,7 +883,21 @@ class AgentChatService(ChatService):
             # Execute action if present
             if action:
                 action_name, action_param = self._parse_action(f"ACTION: {action}")
-                steps.append({"type": "action", "content": action, "action_name": action_name, "action_param": action_param})
+                action_name, action_param = self._normalize_action_from_tool_call(
+                    action_name,
+                    action_param,
+                    action,
+                    self.get_enabled_tools()
+                )
+                normalized_action_content = (
+                    f'{action_name}("{action_param}")' if action_param else action_name
+                )
+                steps.append({
+                    "type": "action",
+                    "content": normalized_action_content,
+                    "action_name": action_name,
+                    "action_param": action_param
+                })
                 yield {"status": "action", "action": action_name, "param": action_param, "iteration": iteration + 1}
 
                 # Execute tool
@@ -888,7 +994,7 @@ class AgentChatService(ChatService):
         for cc in self.chatbot.collections:
             collection = cc.collection
             if collection:
-                results = self._lexical_search_collection(collection, tokens, limit=5)
+                results = self._lexical_search_collection(collection, query, tokens, limit=5)
                 for r in results:
                     r['collection_name'] = collection.display_name
                 all_results.extend(results)
@@ -961,30 +1067,99 @@ class AgentChatService(ChatService):
 
     def _get_act_system_prompt(self) -> str:
         """Get ACT system prompt."""
+        base_prompt = (self.chatbot.system_prompt or "").strip()
         if self._prompt_settings and hasattr(self._prompt_settings, 'act_system_prompt'):
             custom = self._prompt_settings.act_system_prompt
             if custom and custom.strip():
-                return custom
+                act_prompt = custom
+            else:
+                act_prompt = None
+        else:
+            act_prompt = None
         from db.models.chatbot import DEFAULT_ACT_SYSTEM_PROMPT
-        return DEFAULT_ACT_SYSTEM_PROMPT
+        if not act_prompt:
+            act_prompt = DEFAULT_ACT_SYSTEM_PROMPT
+        if base_prompt:
+            return f"{base_prompt}\n\n{act_prompt}"
+        return act_prompt
+
+    def _build_agent_history_messages(
+        self,
+        conversation: "ChatbotConversation",
+        current_message: str
+    ) -> List[Dict[str, str]]:
+        """Return recent chat history for agent modes, excluding the current message."""
+        from db.models.chatbot import ChatbotMessage, ChatbotMessageRole
+
+        max_context = getattr(self.chatbot, "max_context_messages", None) or 6
+        limit = max_context * 2
+        history = ChatbotMessage.query.filter_by(
+            conversation_id=conversation.id
+        ).order_by(ChatbotMessage.created_at.desc()).limit(limit).all()
+
+        history.reverse()
+        if history and history[-1].role == ChatbotMessageRole.USER and history[-1].content == current_message:
+            history = history[:-1]
+
+        messages: List[Dict[str, str]] = []
+        for msg in history:
+            role = "user" if msg.role == ChatbotMessageRole.USER else "assistant"
+            messages.append({"role": role, "content": msg.content})
+        return messages
+
+    def _build_tool_availability_prompt(self) -> str:
+        """Provide tool availability and query guidance for agent modes."""
+        tools = [t for t in self.get_enabled_tools() if t]
+        if not self.is_web_search_enabled():
+            tools = [t for t in tools if t != "web_search"]
+        if not tools:
+            return ""
+        tool_list = ", ".join(tools)
+        return (
+            f"Verfuegbare Tools fuer diese Session: {tool_list}.\n"
+            "Nutze nur diese Tools.\n"
+            "Nutze Suchbegriffe aus der aktuellen Nutzerfrage oder dem Verlauf.\n"
+            "Wenn die Frage ohne Kontext unklar ist, stelle eine Rueckfrage mit respond.\n"
+            "Keine [TOOL_CALLS]-Marker oder JSON-Toolcalls, nur das ACTION-Format."
+        )
 
     def _get_react_system_prompt(self) -> str:
         """Get ReAct system prompt."""
+        base_prompt = (self.chatbot.system_prompt or "").strip()
         if self._prompt_settings and hasattr(self._prompt_settings, 'react_system_prompt'):
             custom = self._prompt_settings.react_system_prompt
             if custom and custom.strip():
-                return custom
-        from db.models.chatbot import DEFAULT_REACT_SYSTEM_PROMPT
-        return DEFAULT_REACT_SYSTEM_PROMPT
+                react_prompt = custom
+            else:
+                react_prompt = None
+        else:
+            react_prompt = None
+        if not react_prompt:
+            from db.models.chatbot import DEFAULT_REACT_SYSTEM_PROMPT
+            react_prompt = DEFAULT_REACT_SYSTEM_PROMPT
+
+        if base_prompt:
+            return f"{base_prompt}\n\n{react_prompt}"
+        return react_prompt
 
     def _get_reflact_system_prompt(self) -> str:
         """Get ReflAct system prompt."""
+        base_prompt = (self.chatbot.system_prompt or "").strip()
         if self._prompt_settings and hasattr(self._prompt_settings, 'reflact_system_prompt'):
             custom = self._prompt_settings.reflact_system_prompt
             if custom and custom.strip():
-                return custom
-        from db.models.chatbot import DEFAULT_REFLACT_SYSTEM_PROMPT
-        return DEFAULT_REFLACT_SYSTEM_PROMPT
+                reflact_prompt = custom
+            else:
+                reflact_prompt = None
+        else:
+            reflact_prompt = None
+        if not reflact_prompt:
+            from db.models.chatbot import DEFAULT_REFLACT_SYSTEM_PROMPT
+            reflact_prompt = DEFAULT_REFLACT_SYSTEM_PROMPT
+
+        if base_prompt:
+            return f"{base_prompt}\n\n{reflact_prompt}"
+        return reflact_prompt
 
     # ==================== Parsing Helpers ====================
 
@@ -1005,6 +1180,52 @@ class AgentChatService(ChatService):
                 return action, param.strip() if param else ""
 
         return "respond", text
+
+    def _normalize_action_from_tool_call(
+        self,
+        action: str,
+        param: str,
+        action_text: str,
+        enabled_tools: Optional[List[str]] = None
+    ) -> Tuple[str, str]:
+        """Convert embedded tool-call strings into proper actions."""
+        if action == "respond" or (enabled_tools and action not in enabled_tools):
+            embedded_action, embedded_param = self._parse_embedded_tool_call(param, enabled_tools)
+            if not embedded_action:
+                embedded_action, embedded_param = self._parse_embedded_tool_call(action_text, enabled_tools)
+            if embedded_action:
+                return embedded_action, embedded_param
+        return action, param
+
+    def _parse_embedded_tool_call(
+        self,
+        text: Optional[str],
+        enabled_tools: Optional[List[str]] = None
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Extract tool calls from wrapper formats like [TOOL_CALLS]rag_search("q")."""
+        if not text:
+            return None, None
+        candidate = text.strip()
+        patterns = [
+            (r'\[TOOL_CALLS\]\s*(\w+)\s*\(\s*["\']?(.+?)["\']?\s*\)', False),
+            (r'\[TOOL_CALLS\]\s*(\w+)\s*\(\s*\)', False),
+            (r'\bTOOL_CALLS\b\s*:?\s*(\w+)\s*\(\s*["\']?(.+?)["\']?\s*\)', False),
+            (r'\bTOOL_CALLS\b\s*:?\s*(\w+)\s*\(\s*\)', False),
+            (r'^\s*(\w+)\s*\(\s*["\']?(.+?)["\']?\s*\)\s*$', True),
+            (r'^\s*(\w+)\s*\(\s*\)\s*$', True),
+        ]
+
+        for pattern, enforce_enabled in patterns:
+            match = re.search(pattern, candidate, re.IGNORECASE | re.DOTALL)
+            if not match:
+                continue
+            action = match.group(1).lower()
+            param = match.group(2) if len(match.groups()) > 1 else ""
+            if enforce_enabled and enabled_tools and action not in enabled_tools:
+                continue
+            return action, (param or "").strip()
+
+        return None, None
 
     def _parse_react_response(self, text: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Parse ReAct response for THOUGHT, ACTION, FINAL ANSWER."""
@@ -1074,15 +1295,23 @@ class AgentChatService(ChatService):
 
         # Extract REFLECTION - everything until ACTION or FINAL ANSWER
         reflection_match = re.search(
-            r'REFLECTION:\s*(.+?)(?=ACTION:|FINAL ANSWER:|$)',
+            r'REFLECTION:\s*(.+?)(?=ACTION:|FINAL ANSWER:|THOUGHT:|GOAL:|$)',
             text, re.IGNORECASE | re.DOTALL
         )
         if reflection_match:
             reflection = reflection_match.group(1).strip()
+        else:
+            # Backwards-compatible: accept legacy THOUGHT label as reflection.
+            thought_match = re.search(
+                r'THOUGHT:\s*(.+?)(?=ACTION:|FINAL ANSWER:|REFLECTION:|GOAL:|$)',
+                text, re.IGNORECASE | re.DOTALL
+            )
+            if thought_match:
+                reflection = thought_match.group(1).strip()
 
         # Extract ACTION
         action_match = re.search(
-            r'ACTION:\s*(.+?)(?=OBSERVATION:|REFLECTION:|FINAL ANSWER:|$)',
+            r'ACTION:\s*(.+?)(?=OBSERVATION:|REFLECTION:|FINAL ANSWER:|THOUGHT:|GOAL:|$)',
             text, re.IGNORECASE | re.DOTALL
         )
         if action_match:
@@ -1090,13 +1319,30 @@ class AgentChatService(ChatService):
 
         # Extract FINAL ANSWER
         final_match = re.search(
-            r'FINAL ANSWER:\s*(.+?)$',
+            r'FINAL ANSWER:\s*(.+?)(?=ACTION:|REFLECTION:|THOUGHT:|GOAL:|$)',
             text, re.IGNORECASE | re.DOTALL
         )
         if final_match:
             final_answer = final_match.group(1).strip()
 
         return reflection, action, final_answer
+
+    def _strip_trailing_reflact_fragment(self, text: Optional[str]) -> Optional[str]:
+        """Remove stray ACTION fragments that leak into ReflAct output/streaming."""
+        if not text:
+            return text
+        cleaned = text.rstrip()
+        cleaned = re.sub(
+            r'(?m)\n\s*(?:A|AC|ACT|ACTI|ACTIO|ACTION)\s*:?\s*$',
+            '',
+            cleaned
+        ).rstrip()
+        cleaned = re.sub(
+            r'(?m)\s+(?:ACTION|ACTIO|ACTI|ACT|CTION)\s*:?\s*$',
+            '',
+            cleaned
+        ).rstrip()
+        return cleaned
 
     def _extract_goal(self, text: str, allow_partial: bool = False) -> str:
         """

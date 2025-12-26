@@ -44,6 +44,14 @@ class ChatService:
     _PLACEHOLDER_TITLES = {"neuer chat", "new chat"}
     _TITLE_MAX_CHARS = 50
     _TITLE_MAX_WORDS = 8
+    _COMPOUND_SUFFIXES = (
+        "mitglieder",
+        "mitarbeiter",
+        "mitarbeitende",
+        "ansprechpartner",
+        "leitung",
+        "kontakt"
+    )
     _STOPWORDS_DE = {
         'a', 'aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch', 'daher',
         'darum', 'das', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dich', 'die', 'dies', 'diese', 'dieser',
@@ -637,6 +645,23 @@ class ChatService:
     def _extract_lexical_tokens(self, query: str) -> List[str]:
         tokens = [t.lower() for t in self._TOKEN_RE.findall(query or '')]
         tokens = [t for t in tokens if len(t) >= 3 and t not in self._STOPWORDS_DE]
+        if not tokens:
+            # Fallback for short terms (e.g. AI, HR, IT) that are still meaningful.
+            tokens = [t for t in self._TOKEN_RE.findall(query or '') if len(t) >= 2]
+            tokens = [t.lower() for t in tokens if t.lower() not in self._STOPWORDS_DE]
+        if tokens:
+            expanded = []
+            for token in tokens:
+                expanded.append(token)
+                if "team" in token and token != "team":
+                    expanded.append("team")
+                for suffix in self._COMPOUND_SUFFIXES:
+                    if token.endswith(suffix) and len(token) > len(suffix) + 2:
+                        prefix = token[:-len(suffix)]
+                        if len(prefix) >= 3:
+                            expanded.append(prefix)
+                        expanded.append(suffix)
+            tokens = expanded
         # De-duplicate while keeping order
         seen = set()
         unique: List[str] = []
@@ -647,23 +672,62 @@ class ChatService:
             unique.append(t)
         return unique[:6]
 
-    def _lexical_search_collection(self, collection: RAGCollection, tokens: List[str], limit: int) -> List[Dict[str, Any]]:
+    def _lexical_search_collection(self, collection: RAGCollection, query: str, tokens: List[str], limit: int) -> List[Dict[str, Any]]:
         if not collection or not tokens:
             return []
 
-        from sqlalchemy import or_
+        try:
+            from services.chatbot.lexical_index import LexicalSearchIndex
+            results = LexicalSearchIndex.search(query, [collection.id], limit=limit)
+            if results:
+                for r in results:
+                    r['collection_id'] = collection.id
+                    if isinstance(r.get('metadata'), dict):
+                        r['metadata']['collection_id'] = collection.id
+                return results
+        except Exception as exc:
+            logger.debug(f"[ChatService] Lexical FTS fallback for collection {collection.id}: {exc}")
+
+        from sqlalchemy import or_, and_
         from db.tables import CollectionDocumentLink
 
-        clauses = [RAGDocumentChunk.content.ilike(f"%{t}%") for t in tokens]
-        if not clauses:
+        chunk_clauses = [RAGDocumentChunk.content.ilike(f"%{t}%") for t in tokens]
+        if not chunk_clauses:
             return []
+        doc_meta_clauses = [
+            RAGDocument.title.ilike(f"%{t}%") for t in tokens
+        ] + [
+            RAGDocument.description.ilike(f"%{t}%") for t in tokens
+        ] + [
+            RAGDocument.filename.ilike(f"%{t}%") for t in tokens
+        ] + [
+            RAGDocument.original_filename.ilike(f"%{t}%") for t in tokens
+        ]
+
+        chunk_match = or_(*chunk_clauses)
+        if doc_meta_clauses:
+            meta_match = or_(*doc_meta_clauses)
+            match_clause = or_(chunk_match, and_(meta_match, RAGDocumentChunk.chunk_index == 0))
+        else:
+            match_clause = chunk_match
 
         rows = (
             db.session.query(RAGDocumentChunk, RAGDocument)
             .join(RAGDocument, RAGDocument.id == RAGDocumentChunk.document_id)
-            .join(CollectionDocumentLink, CollectionDocumentLink.document_id == RAGDocument.id)
-            .filter(CollectionDocumentLink.collection_id == collection.id)
-            .filter(or_(*clauses))
+            .outerjoin(
+                CollectionDocumentLink,
+                and_(
+                    CollectionDocumentLink.document_id == RAGDocument.id,
+                    CollectionDocumentLink.collection_id == collection.id
+                )
+            )
+            .filter(
+                or_(
+                    CollectionDocumentLink.id.isnot(None),
+                    RAGDocument.collection_id == collection.id
+                )
+            )
+            .filter(match_clause)
             .order_by(RAGDocumentChunk.document_id.desc(), RAGDocumentChunk.chunk_index.asc())
             .limit(limit)
             .all()
@@ -756,7 +820,7 @@ class ChatService:
                 if not collection:
                     continue
                 try:
-                    hits = self._lexical_search_collection(collection, lexical_tokens, limit=final_k)
+                    hits = self._lexical_search_collection(collection, query, lexical_tokens, limit=final_k)
                     for hit in hits:
                         hit['score'] *= cc.weight
                         hit['collection_id'] = collection.id

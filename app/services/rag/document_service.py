@@ -471,6 +471,12 @@ class DocumentService:
             document.updated_at = datetime.now()
             db.session.commit()
 
+            try:
+                from services.chatbot.lexical_index import LexicalSearchIndex
+                LexicalSearchIndex.reindex_document(document.id)
+            except Exception as exc:
+                logger.warning(f"[DocumentService] Lexical index update failed for doc {document.id}: {exc}")
+
             return True, None, document
 
         except Exception as e:
@@ -507,6 +513,12 @@ class DocumentService:
             # Database will cascade delete chunks, versions, permissions, queue entries
             db.session.delete(document)
             db.session.commit()
+
+            try:
+                from services.chatbot.lexical_index import LexicalSearchIndex
+                LexicalSearchIndex.remove_document(document_id)
+            except Exception as exc:
+                logger.warning(f"[DocumentService] Lexical index removal failed for doc {document_id}: {exc}")
 
             return True, None
 

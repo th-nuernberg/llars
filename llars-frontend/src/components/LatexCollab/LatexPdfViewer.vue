@@ -90,6 +90,7 @@ let resizeObserver = null
 let lastContainerWidth = 0
 let retryTimer = null
 let retryCount = 0
+let retryBackoff = 0
 const maxRetries = 10
 const retryDelays = [400, 600, 800, 1000, 1200, 1500, 1800, 2200, 2600, 3000]
 const showLoading = computed(() => loading.value || pendingPdf.value || props.isCompiling)
@@ -117,13 +118,14 @@ function clearRetry() {
     retryTimer = null
   }
   retryCount = 0
+  retryBackoff = 0
   pendingPdf.value = false
 }
 
 function scheduleRetry() {
   if (retryTimer || retryCount >= maxRetries) return
   pendingPdf.value = true
-  const delay = retryDelays[Math.min(retryCount, retryDelays.length - 1)]
+  const delay = retryDelays[Math.min(retryCount, retryDelays.length - 1)] + retryBackoff
   retryTimer = setTimeout(() => {
     retryTimer = null
     retryCount += 1
@@ -374,6 +376,13 @@ async function loadPdf({ isRetry = false } = {}) {
       if (!hadPdf) {
         hasPdf.value = false
       }
+      if (props.jobId) {
+        scheduleRetry()
+      } else {
+        pendingPdf.value = false
+      }
+    } else if (status === 429) {
+      retryBackoff = Math.min(8000, Math.max(retryBackoff, 1200) * 1.6 || 1200)
       if (props.jobId) {
         scheduleRetry()
       } else {

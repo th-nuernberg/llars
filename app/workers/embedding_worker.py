@@ -588,6 +588,12 @@ class EmbeddingWorker:
 
         db.session.commit()
 
+        try:
+            from services.chatbot.lexical_index import LexicalSearchIndex
+            LexicalSearchIndex.reindex_document(doc.id)
+        except Exception as e:
+            logger.warning(f"[EmbeddingWorker] Lexical index update failed for doc {doc.id}: {e}")
+
         # Emit completion
         self._emit_progress(doc, 'indexed', progress=100, step='Completed')
         logger.info(f"[EmbeddingWorker] Document {doc.id} indexed successfully with {len(chunks)} chunks")

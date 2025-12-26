@@ -15,6 +15,12 @@ WICHTIG - Quellen nutzen:
 
 def initialize_chatbot_prompt_settings(db):
     from ..tables import Chatbot, ChatbotPromptSettings
+    from ..models.chatbot import (
+        DEFAULT_REFLECTION_PROMPT,
+        DEFAULT_ACT_SYSTEM_PROMPT,
+        DEFAULT_REACT_SYSTEM_PROMPT,
+        DEFAULT_REFLACT_SYSTEM_PROMPT,
+    )
 
     bots = Chatbot.query.all()
     if not bots:
@@ -24,11 +30,28 @@ def initialize_chatbot_prompt_settings(db):
     updated = 0
     for bot in bots:
         if bot.prompt_settings:
+            settings = bot.prompt_settings
+            settings_changed = False
             if bot.name == 'standard_admin':
-                settings = bot.prompt_settings
                 if settings.rag_citation_instructions != STANDARD_LLARS_CITATION_INSTRUCTIONS:
                     settings.rag_citation_instructions = STANDARD_LLARS_CITATION_INSTRUCTIONS
-                    updated += 1
+                    settings_changed = True
+
+            if not (settings.reflection_prompt or '').strip():
+                settings.reflection_prompt = DEFAULT_REFLECTION_PROMPT
+                settings_changed = True
+            if not (settings.act_system_prompt or '').strip():
+                settings.act_system_prompt = DEFAULT_ACT_SYSTEM_PROMPT
+                settings_changed = True
+            if not (settings.react_system_prompt or '').strip():
+                settings.react_system_prompt = DEFAULT_REACT_SYSTEM_PROMPT
+                settings_changed = True
+            if not (settings.reflact_system_prompt or '').strip():
+                settings.reflact_system_prompt = DEFAULT_REFLACT_SYSTEM_PROMPT
+                settings_changed = True
+
+            if settings_changed:
+                updated += 1
             continue
         if bot.name == 'standard_admin':
             db.session.add(ChatbotPromptSettings(

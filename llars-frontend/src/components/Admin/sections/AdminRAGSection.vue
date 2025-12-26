@@ -731,6 +731,8 @@ const {
   deleteCollection: deleteCollectionFn,
   openCollectionDetail,
   fetchCollectionDocuments,
+  applyDocumentProgress,
+  applyDocumentProcessed,
   reindexCollection
 } = useRAGCollections();
 
@@ -981,11 +983,13 @@ function setupWebSocket() {
     });
     socket.on('rag:document_processed', async (data) => {
       console.log('[RAG] Dokument verarbeitet:', data.filename, '-', data.status);
+      applyDocumentProcessed(data);
       await fetchStats();
       await fetchDocuments();
     });
     socket.on('rag:document_progress', (data) => {
       handleDocumentProgress(data);
+      applyDocumentProgress(data);
       if (data.status === 'indexed' || data.status === 'failed') {
         fetchDocuments();
       }

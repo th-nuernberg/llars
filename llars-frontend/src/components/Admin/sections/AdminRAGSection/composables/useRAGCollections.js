@@ -133,6 +133,45 @@ export function useRAGCollections() {
     loadingCollectionDocs.value = false;
   };
 
+  const applyDocumentProgress = (data) => {
+    if (!data?.document_id || !selectedCollection.value) return false;
+    const docs = collectionDocuments.value || [];
+    const index = docs.findIndex(doc => doc.id === data.document_id);
+    if (index === -1) return false;
+
+    const next = { ...docs[index] };
+    if (data.status) next.status = data.status;
+    if (data.progress !== undefined) next.embedding_progress = data.progress;
+    if (data.step) next.embedding_step = data.step;
+
+    docs.splice(index, 1, next);
+    collectionDocuments.value = [...docs];
+    return true;
+  };
+
+  const applyDocumentProcessed = (data) => {
+    const doc = data?.document;
+    if (!doc || !selectedCollection.value) return false;
+
+    const docs = collectionDocuments.value || [];
+    const index = docs.findIndex(item => item.id === doc.id);
+    const nextDoc = {
+      ...doc,
+      status: data.status || doc.status
+    };
+
+    if (index >= 0) {
+      docs.splice(index, 1, { ...docs[index], ...nextDoc });
+    } else if (doc.collection_id === selectedCollection.value.id || data.collection_id === selectedCollection.value.id) {
+      docs.unshift(nextDoc);
+    } else {
+      return false;
+    }
+
+    collectionDocuments.value = [...docs];
+    return true;
+  };
+
   const reindexCollection = async (options = {}) => {
     if (!selectedCollection.value) return;
 
@@ -175,6 +214,8 @@ export function useRAGCollections() {
     deleteCollection,
     openCollectionDetail,
     fetchCollectionDocuments,
+    applyDocumentProgress,
+    applyDocumentProcessed,
     reindexCollection
   };
 }

@@ -273,7 +273,7 @@
                   :active-comment-id="activeCommentId"
                   @content-change="onEditorContentChange"
                   @git-summary="(s) => (gitSummary = s)"
-                  @cursor-change="handleEditorCursorChange"
+                  @sync-request="handleEditorSyncRequest"
                 />
               </div>
 
@@ -1562,7 +1562,7 @@ async function pollCompileJob(jobId) {
   compilePollTimer = setTimeout(poll, 800)
 }
 
-function handleEditorCursorChange(payload) {
+function handleEditorSyncRequest(payload) {
   if (!syncEnabled.value || !canSync.value) return
   if (!payload || !payload.line) return
   if (!selectedNode.value || selectedNode.value.asset_id) return

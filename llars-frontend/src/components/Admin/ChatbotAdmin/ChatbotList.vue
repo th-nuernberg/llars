@@ -46,12 +46,12 @@
           <!-- Tags -->
           <template #tags>
             <LTag
-              v-if="chatbot.rag_enabled"
-              variant="info"
+              v-if="getChatbotTypeTag(chatbot)"
+              :variant="getChatbotTypeTag(chatbot).variant"
               size="sm"
-              prepend-icon="mdi-magnify"
+              :prepend-icon="getChatbotTypeTag(chatbot).icon"
             >
-              RAG
+              {{ getChatbotTypeTag(chatbot).label }}
             </LTag>
           </template>
 
@@ -219,6 +219,24 @@ function getStatusVariant(chatbot) {
     'grey': 'gray'
   }
   return colorMap[getStatusColor(chatbot)] || 'gray'
+}
+
+function getChatbotTypeTag(bot) {
+  const agentMode = bot?.prompt_settings?.agent_mode
+  if (agentMode && agentMode !== 'standard') {
+    const agentTags = {
+      act: { label: 'ACT', variant: 'success', icon: 'mdi-play' },
+      react: { label: 'ReAct', variant: 'accent', icon: 'mdi-thought-bubble' },
+      reflact: { label: 'ReflAct', variant: 'secondary', icon: 'mdi-target' }
+    }
+    return agentTags[agentMode] || { label: agentMode.toUpperCase(), variant: 'gray', icon: 'mdi-robot' }
+  }
+
+  if (bot?.rag_enabled) {
+    return { label: 'RAG', variant: 'info', icon: 'mdi-magnify' }
+  }
+
+  return null
 }
 </script>
 

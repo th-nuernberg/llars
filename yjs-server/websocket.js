@@ -401,6 +401,34 @@ function setupSocketHandlers(io) {
       }
     });
 
+    socket.on('flush_document', async (data, callback) => {
+      const room = data?.room;
+      if (!room) {
+        if (callback) callback({ success: false, error: 'room is required' });
+        return;
+      }
+
+      const doc = ydocs.get(room);
+      if (!doc) {
+        if (callback) callback({ success: false, error: 'room not loaded' });
+        return;
+      }
+
+      const existingTimer = saveTimers.get(room);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        saveTimers.delete(room);
+      }
+
+      try {
+        await saveYdocToDB(room, doc, `Room ${room}`, authenticatedUser.userId || null, authenticatedUser.username || null);
+        if (callback) callback({ success: true });
+      } catch (e) {
+        console.error(`Flush save failed for room ${room}:`, e);
+        if (callback) callback({ success: false, error: String(e?.message || e) });
+      }
+    });
+
     socket.on('cursor_update', (data) => {
       const { room, blockId, range } = data;
       const roomObj = getOrCreateRoom(room);

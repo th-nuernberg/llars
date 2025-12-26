@@ -90,6 +90,9 @@ def exempt_endpoints():
     # Exempt crawler job status polling endpoints
     if request.path and request.path.startswith('/api/crawler/jobs'):
         return True
+    # Exempt LaTeX compile status + SyncTeX endpoints (frequently polled)
+    if request.path and request.path.startswith('/api/latex-collab/compile/'):
+        return True
     return False
 
 # JWT Configuration (for legacy auth routes)

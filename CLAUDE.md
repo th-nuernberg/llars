@@ -139,6 +139,12 @@ docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me databa
 
 **Hinweis:** SQLAlchemy erstellt fehlende Tabellen automatisch beim Start. Migrationen sind nur für Schema-Änderungen an bestehenden Tabellen nötig.
 
+### Lexical Search Index (FTS)
+
+- Trigram-basierter FTS-Index liegt unter `app/data/rag/indexes/lexical_index.sqlite`.
+- Pfad kann per `LEXICAL_INDEX_PATH` überschrieben werden.
+- Index wird bei `lexical_search` pro Collection lazy aufgebaut und beim Embedding/Update/Delete aktualisiert.
+
 ### Logs prüfen
 
 ```bash

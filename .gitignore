@@ -125,6 +125,7 @@ app/data/*
 !app/data/rag/**
 app/data/rag/uploads/**
 app/data/rag/crawls/**
+app/data/rag/indexes/**
 !app/data/rag/uploads/.gitkeep
 !app/data/rag/crawls/.gitkeep
 app/data/rag/**/.DS_Store

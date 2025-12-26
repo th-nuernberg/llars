@@ -217,6 +217,32 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`stream_metadata` JSON NULL",
         )
 
+        # Chatbot prompt settings: agent prompts
+        changed |= _ensure_column(
+            db,
+            table_name="chatbot_prompt_settings",
+            column_name="reflection_prompt",
+            column_definition_sql="`reflection_prompt` TEXT NOT NULL DEFAULT ''",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="chatbot_prompt_settings",
+            column_name="act_system_prompt",
+            column_definition_sql="`act_system_prompt` TEXT NOT NULL DEFAULT ''",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="chatbot_prompt_settings",
+            column_name="react_system_prompt",
+            column_definition_sql="`react_system_prompt` TEXT NOT NULL DEFAULT ''",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="chatbot_prompt_settings",
+            column_name="reflact_system_prompt",
+            column_definition_sql="`reflact_system_prompt` TEXT NOT NULL DEFAULT ''",
+        )
+
         # LLM models: model type (llm/embedding/reranker)
         added_model_type = _ensure_column(
             db,

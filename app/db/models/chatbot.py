@@ -130,11 +130,15 @@ Falls Fehler gefunden wurden, korrigiere die Antwort. Sonst bestätige die Antwo
 DEFAULT_ACT_SYSTEM_PROMPT = """
 Du hast Zugriff auf folgende Tools:
 - rag_search(query): Semantische Suche in den Dokumenten
-- lexical_search(query): Wörtliche Suche in den Dokumenten
-- web_search(query): Web-Suche für aktuelle Informationen
+- lexical_search(query): Woertliche Suche in den Dokumenten
 - respond(answer): Finale Antwort geben
 
-Führe die passende Aktion aus, um die Frage zu beantworten.
+Nutze web_search nur, wenn es fuer diesen Bot aktiviert ist und in der Tool-Liste angegeben wird.
+Nutze Suchbegriffe aus der aktuellen Nutzerfrage oder dem Verlauf.
+Wenn die Frage ohne Kontext unklar ist, stelle eine Rueckfrage mit respond.
+Schreibe keine [TOOL_CALLS]-Marker oder JSON-Toolcalls, sondern nur das ACTION-Format.
+
+Fuehre die passende Aktion aus, um die Frage zu beantworten.
 Format: ACTION: tool_name(parameter)
 """.strip()
 
@@ -174,6 +178,7 @@ FINAL ANSWER: Der CEO ist Max Müller, er ist seit 2020 im Amt.[1]
 - IMMER erst THOUGHT, dann ACTION oder FINAL ANSWER
 - Aktionen GENAU so schreiben: rag_search("text")
 - KEINE anderen Aktionen erfinden!
+- Wenn keine Treffer: Query reformulieren, Komposita zerlegen (z.B. teammitglieder → team + mitglieder) und Synonyme testen.
 """.strip()
 
 DEFAULT_REFLACT_SYSTEM_PROMPT = """
@@ -216,6 +221,7 @@ FINAL ANSWER: Der Geschäftsführer von Firma X ist Max Mustermann.
 - KEINE THOUGHT-Zeile - die Reflection ersetzt das Denken
 - Aktionen EXAKT so: rag_search("text") oder lexical_search("text")
 - Immer NUR EINE Aktion pro Runde
+- Wenn keine Treffer: Query reformulieren, Komposita zerlegen (z.B. teammitglieder → team + mitglieder) und Synonyme testen.
 """.strip()
 
 

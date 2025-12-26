@@ -97,11 +97,32 @@
           <v-expand-transition>
             <div v-if="localConfig.usePlaywright" class="ml-8 mt-2">
               <v-switch
+                v-model="localConfig.takeScreenshots"
+                color="primary"
+                density="compact"
+                hide-details
+                :disabled="loading"
+                @update:model-value="updateConfig"
+              >
+                <template #label>
+                  <div class="d-flex align-center">
+                    <v-icon size="small" class="mr-2" :color="localConfig.takeScreenshots ? 'primary' : 'grey'">
+                      mdi-camera
+                    </v-icon>
+                    <span>Screenshots erstellen</span>
+                  </div>
+                </template>
+              </v-switch>
+              <p class="text-caption text-medium-emphasis mt-1 ml-8">
+                Screenshots werden als Bild-Chunks gespeichert (Standard: an)
+              </p>
+
+              <v-switch
                 v-model="localConfig.useVisionLlm"
                 color="deep-purple"
                 density="compact"
                 hide-details
-                :disabled="loading"
+                :disabled="loading || !localConfig.takeScreenshots"
                 @update:model-value="updateConfig"
               >
                 <template #label>
@@ -121,7 +142,7 @@
 
           <p class="text-caption text-medium-emphasis mt-3">
             <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
-            <strong>Playwright:</strong> Rendert JavaScript, macht Screenshots, extrahiert Bilder.
+            <strong>Playwright:</strong> Rendert JavaScript, extrahiert Bilder, optional Screenshots.
             <strong>Basic:</strong> Schneller, nur statisches HTML.
           </p>
         </v-expansion-panel-text>
@@ -169,7 +190,8 @@ const props = defineProps({
       maxPages: 50,
       maxDepth: 3,
       usePlaywright: true,
-      useVisionLlm: false
+      useVisionLlm: false,
+      takeScreenshots: true
     })
   },
   errorMessage: {
@@ -190,7 +212,8 @@ const localConfig = ref({
   maxPages: props.config.maxPages || 50,
   maxDepth: props.config.maxDepth || 3,
   usePlaywright: props.config.usePlaywright !== false,
-  useVisionLlm: props.config.useVisionLlm || false
+  useVisionLlm: props.config.useVisionLlm || false,
+  takeScreenshots: props.config.takeScreenshots !== false
 })
 
 // Validation rules
@@ -216,7 +239,13 @@ const updateUrl = () => {
 }
 
 const updateConfig = () => {
-  emit('update:config', { ...localConfig.value })
+  const normalized = {
+    ...localConfig.value
+  }
+  if (!normalized.takeScreenshots) {
+    normalized.useVisionLlm = false
+  }
+  emit('update:config', normalized)
 }
 
 const handleStart = () => {
@@ -240,7 +269,8 @@ watch(() => props.config, (newVal) => {
     maxPages: newVal.maxPages || 50,
     maxDepth: newVal.maxDepth || 3,
     usePlaywright: newVal.usePlaywright !== false,
-    useVisionLlm: newVal.useVisionLlm || false
+    useVisionLlm: newVal.useVisionLlm || false,
+    takeScreenshots: newVal.takeScreenshots !== false
   }
 }, { deep: true })
 </script>

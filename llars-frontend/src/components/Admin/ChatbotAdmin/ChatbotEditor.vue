@@ -2,6 +2,8 @@
   <v-dialog
     :model-value="modelValue"
     max-width="1000"
+    height="100vh"
+    max-height="100vh"
     content-class="chatbot-editor-dialog"
     persistent
     @update:model-value="$emit('update:modelValue', $event)"
@@ -839,6 +841,29 @@
                           hint="Instruktionen für den GOAL → REFLECTION → ACTION Prozess"
                           persistent-hint
                           rows="14"
+                          variant="outlined"
+                          density="comfortable"
+                        />
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-col>
+
+                <!-- Reflection Prompt (cross-mode) -->
+                <v-col v-if="formData.prompt_settings.agent_mode !== 'standard'" cols="12">
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title>
+                        <v-icon start>mdi-check-decagram</v-icon>
+                        Reflection Prompt anpassen
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-textarea
+                          v-model="formData.prompt_settings.reflection_prompt"
+                          label="Reflection Prompt"
+                          hint="Instruktionen fuer die kritische Selbstpruefung der Antwort"
+                          persistent-hint
+                          rows="10"
                           variant="outlined"
                           density="comfortable"
                         />
@@ -1715,16 +1740,18 @@ watch(() => props.modelValue, (isOpen) => {
   }
 }
 
-.chatbot-editor-dialog {
+:deep(.chatbot-editor-dialog) {
   height: 100vh;
   max-height: 100vh;
+  min-height: 100vh;
   margin: 0;
 }
 
 /* ===== LLM Tab Split Layout ===== */
 /* Override default overflow for LLM tab - we handle scrolling in textareas */
 .chatbot-editor-body :deep(.v-window-item:has(.llm-tab-form)) {
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -1732,8 +1759,9 @@ watch(() => props.modelValue, (isOpen) => {
 .llm-tab-form {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  flex: 1;
+  min-height: 100%;
+  overflow: visible;
 }
 
 .llm-top-section {

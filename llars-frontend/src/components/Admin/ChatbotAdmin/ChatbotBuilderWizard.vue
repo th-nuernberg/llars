@@ -612,11 +612,14 @@ async function handleStartWizard() {
 // ===== Crawl Control =====
 async function startCrawl() {
   try {
+    const takeScreenshots = crawlerConfig.value.usePlaywright && crawlerConfig.value.takeScreenshots !== false
+    const useVisionLlm = crawlerConfig.value.useVisionLlm && takeScreenshots
     const response = await axios.post(`/api/chatbots/${chatbotId.value}/wizard/crawl`, {
       max_pages: crawlerConfig.value.maxPages,
       max_depth: crawlerConfig.value.maxDepth,
       use_playwright: crawlerConfig.value.usePlaywright,
-      use_vision_llm: crawlerConfig.value.useVisionLlm
+      use_vision_llm: useVisionLlm,
+      take_screenshots: takeScreenshots
     })
 
     if (response.data.success) {
@@ -791,14 +794,34 @@ function handleCrawlerComplete(data) {
     stage: 'completed'
   })
 
+  if (data?.brand_color && (wizardData.value.color === '#5d7a4a' || !wizardData.value.color)) {
+    wizardData.value.color = data.brand_color
+    console.log('[Wizard] Auto-set brand color from crawl:', data.brand_color)
+  }
+
   // Transition to embedding
   setStatus(BUILD_STATUS.EMBEDDING)
   requestCollectionDocuments({ force: true })
 }
 
 function handleCrawlerError(data) {
+  const message = data?.error || 'Crawling fehlgeschlagen'
   console.error('[Wizard] Crawler error:', data)
-  setError('crawl', data.error || 'Crawling fehlgeschlagen')
+
+  if (typeof message === 'string' && message.toLowerCase().includes('session not found')) {
+    if (chatbotId.value) {
+      syncWizardFromBackend(chatbotId.value).then(() => {
+        if (buildStatus.value !== BUILD_STATUS.CRAWLING) {
+          clearError('crawl')
+        }
+      }).catch(() => {})
+    }
+
+    setError('crawl', 'Crawler-Session nicht mehr verfügbar (Backend neu gestartet oder Crawl beendet). Live-Updates sind nicht verfügbar.')
+    return
+  }
+
+  setError('crawl', message)
 }
 
 function handleCollectionStatus(data) {

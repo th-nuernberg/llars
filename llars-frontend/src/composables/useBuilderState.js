@@ -68,7 +68,8 @@ export function useBuilderState() {
     maxPages: 50,
     maxDepth: 3,
     usePlaywright: true,
-    useVisionLlm: false
+    useVisionLlm: false,
+    takeScreenshots: true
   })
 
   // ===== Crawl Progress =====
@@ -404,7 +405,8 @@ export function useBuilderState() {
       maxPages: 50,
       maxDepth: 3,
       usePlaywright: true,
-      useVisionLlm: false
+      useVisionLlm: false,
+      takeScreenshots: true
     }
 
     resetCrawlProgress()

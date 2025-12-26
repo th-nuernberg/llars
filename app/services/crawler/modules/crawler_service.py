@@ -347,7 +347,8 @@ class CrawlerService:
         app=None,
         existing_collection_id: Optional[int] = None,
         use_playwright: bool = True,
-        use_vision_llm: bool = True
+        use_vision_llm: bool = True,
+        take_screenshots: bool = True
     ) -> str:
         """
         Start a crawl job in the background (continues even if user leaves).
@@ -363,6 +364,7 @@ class CrawlerService:
             existing_collection_id: If set, add documents to this existing collection instead of creating new one
             use_playwright: Use Playwright headless browser for JavaScript rendering (default: True)
             use_vision_llm: Use Vision-LLM for intelligent data extraction from screenshots (default: True)
+            take_screenshots: Capture screenshots when using Playwright (default: True)
 
         Returns:
             job_id: The ID of the started crawl job
@@ -373,6 +375,9 @@ class CrawlerService:
         actual_use_playwright = use_playwright and PLAYWRIGHT_AVAILABLE
         if use_playwright and not PLAYWRIGHT_AVAILABLE:
             logger.warning(f"[Job {job_id}] Playwright requested but not available, falling back to basic crawler")
+
+        actual_take_screenshots = bool(take_screenshots) and actual_use_playwright
+        actual_use_vision_llm = bool(use_vision_llm) and actual_take_screenshots
 
         # Pre-create job entry immediately
         self.active_crawls[job_id] = {
@@ -390,7 +395,8 @@ class CrawlerService:
             'errors': [],
             'queued_at': datetime.now().isoformat(),
             'use_playwright': actual_use_playwright,
-            'use_vision_llm': use_vision_llm
+            'use_vision_llm': actual_use_vision_llm,
+            'take_screenshots': actual_take_screenshots
         }
 
         # Create collection synchronously when starting a new crawl (so frontend gets ID immediately)
@@ -446,13 +452,13 @@ class CrawlerService:
                     self._run_background_crawl(
                         job_id, urls, collection_name, collection_description,
                         max_pages_per_site, max_depth, created_by,
-                        existing_collection_id, actual_use_playwright, use_vision_llm
+                        existing_collection_id, actual_use_playwright, actual_use_vision_llm, actual_take_screenshots
                     )
             else:
                 self._run_background_crawl(
                     job_id, urls, collection_name, collection_description,
                     max_pages_per_site, max_depth, created_by,
-                    existing_collection_id, actual_use_playwright, use_vision_llm
+                    existing_collection_id, actual_use_playwright, actual_use_vision_llm, actual_take_screenshots
                 )
 
         # Start background thread
@@ -461,7 +467,7 @@ class CrawlerService:
         self._background_threads[job_id] = thread
 
         crawler_type = "Playwright" if actual_use_playwright else "Basic"
-        vision_status = "with Vision-LLM" if use_vision_llm and actual_use_playwright else "without Vision-LLM"
+        vision_status = "with Vision-LLM" if actual_use_vision_llm else "without Vision-LLM"
         logger.info(f"[Job {job_id}] Background crawl started ({crawler_type}, {vision_status}) for {len(urls)} URLs")
 
         return job_id
@@ -477,7 +483,8 @@ class CrawlerService:
         created_by: str,
         existing_collection_id: Optional[int] = None,
         use_playwright: bool = True,
-        use_vision_llm: bool = True
+        use_vision_llm: bool = True,
+        take_screenshots: bool = True
     ):
         """
         Internal method to run crawl in background.
@@ -498,6 +505,7 @@ class CrawlerService:
             existing_collection_id: Optional existing collection ID
             use_playwright: Use Playwright headless browser (default: True)
             use_vision_llm: Use Vision-LLM for extraction (default: True)
+            take_screenshots: Capture screenshots when using Playwright (default: True)
         """
         from db.db import db
         from db.tables import RAGCollection, RAGDocument, RAGProcessingQueue, CollectionDocumentLink, RAGDocumentChunk
@@ -656,6 +664,7 @@ class CrawlerService:
                     created_by,
                     seen_hashes_global,
                     use_vision_llm,
+                    take_screenshots,
                     crawler_type
                 )
             else:
@@ -724,7 +733,54 @@ class CrawlerService:
 
     def get_job_status(self, job_id: str) -> Optional[Dict]:
         """Get status of a crawl job."""
-        return self.active_crawls.get(job_id)
+        status = self.active_crawls.get(job_id)
+        if status:
+            return status
+        return self._get_persisted_job_status(job_id)
+
+    def _get_persisted_job_status(self, job_id: str) -> Optional[Dict]:
+        """Fallback: reconstruct crawl status from DB when in-memory session is missing."""
+        try:
+            from db.tables import RAGCollection, CollectionDocumentLink
+
+            collection = RAGCollection.query.filter_by(crawl_job_id=job_id).first()
+            if not collection:
+                return None
+
+            docs_created = CollectionDocumentLink.query.filter_by(
+                crawl_job_id=job_id,
+                link_type='new'
+            ).count()
+            docs_linked = CollectionDocumentLink.query.filter_by(
+                crawl_job_id=job_id,
+                link_type='linked'
+            ).count()
+            docs_total = docs_created + docs_linked
+            if docs_total == 0:
+                # No persisted progress yet; treat as missing to surface an actionable error.
+                return None
+
+            completed_at = collection.updated_at or collection.last_indexed_at
+            status = 'completed' if collection.embedding_status != 'failed' else 'failed'
+
+            return {
+                'status': status,
+                'stage': 'completed' if status == 'completed' else 'crawling',
+                'collection_id': collection.id,
+                'collection_name': collection.display_name or collection.name,
+                'documents_created': docs_created,
+                'documents_linked': docs_linked,
+                'pages_crawled': docs_total,
+                'max_pages': docs_total,
+                'urls_total': docs_total,
+                'urls_completed': docs_total,
+                'completed_at': completed_at.isoformat() if completed_at else None,
+                'recovered': True,
+                'error': collection.embedding_error if status == 'failed' else None
+            }
+        except Exception as e:
+            logger.warning(f"[CrawlerService] Could not recover status for job {job_id}: {e}")
+            return None
 
     def get_all_jobs(self) -> List[Dict]:
         """Get all crawl jobs (for WebSocket subscription)."""
@@ -781,6 +837,49 @@ class CrawlerService:
                     logger.debug(f"Document already linked to collection for {page['url']}")
                     return None
 
+                screenshot_data = page.get('screenshot') if isinstance(page, dict) else None
+                if screenshot_data and not existing_doc.screenshot_path:
+                    screenshot_path = screenshot_data.get('screenshot_path')
+                    if screenshot_path:
+                        existing_doc.screenshot_path = screenshot_path
+                        if not getattr(existing_doc, 'screenshot_url', None):
+                            existing_doc.screenshot_url = f"/api/rag/documents/{existing_doc.id}/screenshot"
+
+                    has_screenshot_chunks = (
+                        RAGDocumentChunk.query
+                        .filter_by(document_id=existing_doc.id)
+                        .filter(RAGDocumentChunk.chunk_index >= 99999)
+                        .count() > 0
+                    )
+                    if not has_screenshot_chunks:
+                        screenshot_entries = screenshot_data.get('screenshots') or []
+                        if not screenshot_entries and screenshot_path:
+                            screenshot_entries = [{'screenshot_path': screenshot_path}]
+
+                        stored = 0
+                        for idx, shot in enumerate(screenshot_entries):
+                            shot_path = (shot or {}).get('screenshot_path')
+                            if not shot_path:
+                                continue
+                            screenshot_chunk = RAGDocumentChunk(
+                                document_id=existing_doc.id,
+                                chunk_index=99999 + idx,  # Keep legacy index for first screenshot
+                                content=f"[Screenshot der Webseite: {page.get('url', '')}]",
+                                has_image=True,
+                                image_path=shot_path,
+                                image_url=page.get('url'),
+                                image_alt_text=f"Screenshot von {page.get('metadata', {}).get('title', page.get('url'))}",
+                                image_mime_type='image/png',
+                                embedding_status='completed'
+                            )
+                            db.session.add(screenshot_chunk)
+                            stored += 1
+
+                        if stored:
+                            logger.info(
+                                f"[Job {job_id}] Stored {stored} screenshot(s) for existing document {existing_doc.id}"
+                            )
+
                 link = CollectionDocumentLink(
                     collection_id=collection_id,
                     document_id=existing_doc.id,
@@ -792,6 +891,12 @@ class CrawlerService:
                 )
                 db.session.add(link)
                 db.session.commit()
+
+                try:
+                    from services.chatbot.lexical_index import LexicalSearchIndex
+                    LexicalSearchIndex.reindex_document(existing_doc.id)
+                except Exception as exc:
+                    logger.warning(f"[CrawlerService] Lexical index update failed for doc {existing_doc.id}: {exc}")
 
                 self.active_crawls[job_id]['documents_linked'] += 1
                 logger.info(f"[Job {job_id}] Linked existing document {existing_doc.id} to collection {collection_id}")
@@ -1033,6 +1138,7 @@ class CrawlerService:
         created_by: str,
         seen_hashes_global: set,
         use_vision_llm: bool,
+        take_screenshots: bool,
         crawler_type: str
     ) -> int:
         """
@@ -1052,8 +1158,9 @@ class CrawlerService:
         result_queue = Queue()
         processing_complete = threading.Event()
 
+        effective_use_vision_llm = use_vision_llm and take_screenshots
         vision_model_id = None
-        if use_vision_llm:
+        if effective_use_vision_llm:
             from db.models.llm_model import LLMModel
             vision_model_id = LLMModel.get_default_model_id(
                 model_type=LLMModel.MODEL_TYPE_LLM,
@@ -1076,13 +1183,13 @@ class CrawlerService:
                             max_pages=1,
                             max_depth=0,
                             delay_seconds=0.3,  # Fast: reduced delay
-                            extract_images=not use_vision_llm,  # Only extract images if no vision LLM
-                            use_vision_llm=use_vision_llm,
+                            extract_images=True,
+                            use_vision_llm=effective_use_vision_llm,
                             vision_llm_model=vision_model_id,
                             litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
                             litellm_api_key=os.environ.get('LITELLM_API_KEY'),
-                            take_screenshots=use_vision_llm,  # Only screenshots if using vision
-                            fast_mode=not use_vision_llm,  # Fast mode when no vision LLM
+                            take_screenshots=take_screenshots,
+                            fast_mode=False
                         )
                         pages = await crawler.crawl_async()
                         page = pages[0] if pages else None

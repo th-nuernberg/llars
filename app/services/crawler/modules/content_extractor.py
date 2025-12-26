@@ -104,7 +104,7 @@ class ContentExtractor:
 
     # Elements to remove (not content)
     SAFE_REMOVAL_SELECTORS = [
-        'script', 'style', 'noscript', 'iframe',
+        'script', 'noscript', 'iframe',
         '[class*="cookie-banner"]', '[class*="cookie-notice"]',
         '[class*="gdpr"]', '[id*="cookie"]',
         '[class*="popup"]', '[class*="modal"]',

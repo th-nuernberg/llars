@@ -43,7 +43,8 @@ def start_crawl():
         "max_depth": 3,
         "existing_collection_id": null,                 // If set, add documents to existing collection
         "use_playwright": true,                         // Use headless browser for JS rendering (default: true)
-        "use_vision_llm": true                          // Use Vision-LLM for intelligent data extraction (default: true)
+        "use_vision_llm": true,                         // Use Vision-LLM for intelligent data extraction (default: true)
+        "take_screenshots": true                        // Capture screenshots (default: true)
     }
 
     Collection modes:
@@ -56,7 +57,7 @@ def start_crawl():
 
     Crawler modes:
     - Playwright (default): Uses headless Chromium browser for full JS rendering
-      - Takes screenshots of each page
+      - Takes screenshots of each page (if enabled)
       - Supports Vision-LLM for intelligent data extraction from screenshots
       - Better for modern JavaScript-heavy websites
     - Basic: Uses simple HTTP requests (faster, no JS support)
@@ -94,6 +95,7 @@ def start_crawl():
     # Crawler options
     use_playwright = data.get('use_playwright', True)
     use_vision_llm = data.get('use_vision_llm', True)
+    take_screenshots = data.get('take_screenshots', True)
 
     # Start background crawl with WebSocket support
     job_id = crawler_service.start_crawl_background(
@@ -106,7 +108,8 @@ def start_crawl():
         app=current_app._get_current_object(),
         existing_collection_id=existing_collection_id,
         use_playwright=use_playwright,
-        use_vision_llm=use_vision_llm
+        use_vision_llm=use_vision_llm,
+        take_screenshots=take_screenshots
     )
 
     # Return immediately with job info
@@ -118,7 +121,8 @@ def start_crawl():
         'websocket_room': f'crawler_{job_id}',
         'crawler_config': {
             'use_playwright': use_playwright,
-            'use_vision_llm': use_vision_llm
+            'use_vision_llm': use_vision_llm,
+            'take_screenshots': take_screenshots
         }
     }
 

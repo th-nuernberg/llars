@@ -253,17 +253,37 @@ class PlaywrightCrawler:
                     # Navigate with adaptive waiting
                     await self._navigate_to_page(page, url)
 
-                    # Smart wait: try networkidle first, fall back to shorter fixed wait
+                    # Smart wait: try networkidle first, fall back to fixed wait
                     try:
-                        await page.wait_for_load_state('networkidle', timeout=5000)
+                        await page.wait_for_load_state('networkidle', timeout=15000)
                     except Exception:
-                        # Fallback: short wait for JS-heavy pages
-                        await asyncio.sleep(1.0 if not self.fast_mode else 0.5)
+                        # Fallback: allow JS/CSS to settle
+                        await asyncio.sleep(1.5 if not self.fast_mode else 0.8)
 
                     # Get HTML for fallback extraction
                     html = await page.content()
 
-                    # Extract text content and metadata
+                    render_hash = hashlib.sha256(html.encode()).hexdigest()
+
+                    # Capture screenshot before DOM cleanup to preserve CSS-in-JS styling
+                    screenshot_data = None
+                    if self.take_screenshots:
+                        screenshot_data = await self.screenshot_capture.capture_long_page(
+                            page, url, render_hash, self.SCREENSHOT_HEIGHT
+                        )
+                        if screenshot_data:
+                            self.stats['screenshots_taken'] += screenshot_data.get('screenshot_count', 1)
+
+                    # Extract brand color from homepage before DOM cleanup
+                    if self.brand_color is None and url == self.base_url:
+                        try:
+                            self.brand_color = await self.content_extractor.extract_brand_color(page, url)
+                            if self.brand_color:
+                                logger.info(f"[Playwright] Extracted brand color from homepage: {self.brand_color}")
+                        except Exception as e:
+                            logger.debug(f"[Playwright] Brand color extraction failed: {e}")
+
+                    # Extract text content and metadata (may remove non-content elements)
                     text, metadata = await self.content_extractor.extract_text_content(page, url)
 
                     if not text or len(text) <= 100:
@@ -279,15 +299,6 @@ class PlaywrightCrawler:
                             return None
                         self.content_hashes.add(content_hash)
 
-                    # Take screenshot (optional, handles long pages automatically)
-                    screenshot_data = None
-                    if self.take_screenshots:
-                        screenshot_data = await self.screenshot_capture.capture_long_page(
-                            page, url, content_hash, self.SCREENSHOT_HEIGHT
-                        )
-                        if screenshot_data:
-                            self.stats['screenshots_taken'] += screenshot_data.get('screenshot_count', 1)
-
                     # Extract structured data (optional)
                     structured_data = {}
                     if not self.fast_mode:
@@ -295,15 +306,6 @@ class PlaywrightCrawler:
 
                     # Enhance content with structured data
                     enhanced_content = self._enhance_content_with_structured_data(text, structured_data)
-
-                    # Extract brand color from homepage (first page only)
-                    if self.brand_color is None and url == self.base_url:
-                        try:
-                            self.brand_color = await self.content_extractor.extract_brand_color(page, url)
-                            if self.brand_color:
-                                logger.info(f"[Playwright] Extracted brand color from homepage: {self.brand_color}")
-                        except Exception as e:
-                            logger.debug(f"[Playwright] Brand color extraction failed: {e}")
 
                     # Extract images (optional)
                     images = []
@@ -436,17 +438,17 @@ class PlaywrightCrawler:
             url: URL to navigate to
         """
         try:
-            await page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+            await page.goto(url, wait_until='load', timeout=self.timeout)
             # Try to wait for networkidle but don't fail if it times out
             try:
-                await page.wait_for_load_state('networkidle', timeout=10000)
+                await page.wait_for_load_state('networkidle', timeout=15000)
             except Exception:
                 pass  # networkidle timeout is acceptable
         except Exception as nav_error:
             logger.warning(f"Navigation error for {url}: {nav_error}")
-            # Try with just load event
+            # Fallback to DOMContentLoaded if full load fails
             try:
-                await page.goto(url, wait_until='load', timeout=self.timeout)
+                await page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
             except Exception:
                 raise nav_error
 

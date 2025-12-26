@@ -64,8 +64,14 @@ class ScreenshotCapture:
             page: Playwright page object
         """
         try:
+            # Ensure full load event fired
+            await page.wait_for_load_state('load', timeout=20000)
+        except Exception:
+            pass  # Continue even if load times out
+
+        try:
             # Wait for networkidle (CSS, fonts, images loaded)
-            await page.wait_for_load_state('networkidle', timeout=15000)
+            await page.wait_for_load_state('networkidle', timeout=20000)
         except Exception:
             pass  # Continue even if networkidle times out
 
@@ -93,7 +99,7 @@ class ScreenshotCapture:
                         }
                     }
                     // Small delay to ensure styles are applied
-                    setTimeout(resolve, 500);
+                    setTimeout(resolve, 1000);
                 });
             }''')
         except Exception:
@@ -293,7 +299,7 @@ class ScreenshotCapture:
                 await page.evaluate(f'window.scrollTo(0, {scroll_y})')
 
                 # Wait for any lazy-loaded content
-                await page.wait_for_timeout(300)
+                await page.wait_for_timeout(800)
 
                 # Take viewport screenshot
                 screenshot_bytes = await page.screenshot(

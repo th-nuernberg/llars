@@ -96,7 +96,8 @@ class ChatbotCreator:
         max_pages: int = 50,
         max_depth: int = 3,
         use_playwright: bool = True,
-        use_vision_llm: bool = False
+        use_vision_llm: bool = False,
+        take_screenshots: bool = True
     ) -> Dict[str, Any]:
         """
         Start crawling the source URL for a chatbot.
@@ -107,6 +108,7 @@ class ChatbotCreator:
             max_depth: Maximum crawl depth
             use_playwright: Whether to use Playwright for JavaScript rendering
             use_vision_llm: Whether to use Vision LLM for screenshot extraction
+            take_screenshots: Whether to capture screenshots with Playwright
 
         Returns:
             Dict with status and job_id for tracking
@@ -181,6 +183,7 @@ class ChatbotCreator:
             existing_collection_id=collection.id,
             use_playwright=use_playwright,
             use_vision_llm=use_vision_llm,
+            take_screenshots=take_screenshots,
             app=app
         )
 

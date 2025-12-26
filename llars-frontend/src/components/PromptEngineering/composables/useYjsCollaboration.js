@@ -170,7 +170,23 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
    * Call this after saving a new color to the database
    */
   const updateColor = (newColor) => {
-    if (!socket.value?.connected || !roomId.value) return
+    if (!newColor || !roomId.value) return
+
+    if (users.value) {
+      const next = { ...users.value }
+      let updated = false
+      for (const [userId, user] of Object.entries(next)) {
+        if (user?.username === username) {
+          next[userId] = { ...user, color: newColor }
+          updated = true
+        }
+      }
+      if (updated) {
+        users.value = next
+      }
+    }
+
+    if (!socket.value?.connected) return
 
     socket.value.emit('update_color', {
       room: roomId.value,

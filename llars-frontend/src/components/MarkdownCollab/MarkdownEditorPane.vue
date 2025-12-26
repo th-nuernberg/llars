@@ -186,6 +186,54 @@ function isValidHexColor(value) {
   return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
 }
 
+function updateLocalUserColor(newColor) {
+  if (!newColor || !users.value) return
+  const next = { ...users.value }
+  let updated = false
+  for (const [userId, user] of Object.entries(next)) {
+    if (user?.username === username.value) {
+      next[userId] = { ...user, color: newColor }
+      updated = true
+    }
+  }
+  if (updated) {
+    users.value = next
+  }
+}
+
+function applyCollabColorChange(newColor) {
+  if (!isValidHexColor(newColor)) return
+  updateLocalUserColor(newColor)
+  if (!ydoc.value || !ytext) {
+    updateDecorations()
+    return
+  }
+
+  ydoc.value.transact(() => {
+    let pos = 0
+    const delta = ytext.toDelta()
+    for (const op of delta) {
+      const insert = op?.insert
+      const text = typeof insert === 'string' ? insert : ''
+      const length = text.length
+      if (length > 0 && op?.attributes?.collabUser === username.value) {
+        ytext.format(pos, length, { collabColor: newColor })
+      }
+      pos += length
+    }
+
+    if (yhighlights) {
+      yhighlights.forEach((value, key) => {
+        if (value?.username === username.value) {
+          yhighlights.set(String(key), { ...value, color: newColor })
+        }
+      })
+    }
+  }, 'color')
+
+  updateDecorations()
+}
+
 function buildInsertDecorations() {
   if (!ytext || !view.value) return []
   const decorations = []
@@ -735,11 +783,11 @@ watch(
 watch(
   () => collabColor.value,
   (newColor) => {
-    if (newColor && socket.value?.connected) {
+    if (!newColor) return
+    applyCollabColorChange(newColor)
+    if (socket.value?.connected) {
       // Broadcast color change to other users
       updateColor(newColor)
-      // Update local decorations
-      updateDecorations()
     }
   }
 )

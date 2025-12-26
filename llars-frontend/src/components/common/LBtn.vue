@@ -1,8 +1,9 @@
 <template>
   <button
+    v-bind="buttonAttrs"
     :class="buttonClasses"
     :disabled="disabled || loading"
-    :aria-label="tooltip || undefined"
+    :aria-label="ariaLabel"
     @click="$emit('click', $event)"
   >
     <v-progress-circular
@@ -15,8 +16,8 @@
     <v-icon v-else-if="prependIcon" :icon="prependIcon" class="l-btn__icon l-btn__icon--prepend" />
     <span class="l-btn__content"><slot /></span>
     <v-icon v-if="appendIcon" :icon="appendIcon" class="l-btn__icon l-btn__icon--append" />
-    <v-tooltip v-if="tooltip" activator="parent" :location="tooltipLocation">
-      {{ tooltip }}
+    <v-tooltip v-if="tooltipText" activator="parent" :location="tooltipLocation">
+      {{ tooltipText }}
     </v-tooltip>
   </button>
 </template>
@@ -47,7 +48,9 @@
  *   <LBtn variant="danger">Delete</LBtn>
  *   <LBtn variant="cancel">Cancel</LBtn>
  */
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
+
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps({
   variant: {
@@ -91,6 +94,15 @@ const props = defineProps({
 })
 
 defineEmits(['click'])
+
+const attrs = useAttrs()
+const tooltipText = computed(() => props.tooltip || attrs.title || attrs['aria-label'] || null)
+const ariaLabel = computed(() => tooltipText.value || undefined)
+const buttonAttrs = computed(() => {
+  if (!tooltipText.value) return attrs
+  const { title, ...rest } = attrs
+  return rest
+})
 
 const buttonClasses = computed(() => ({
   'l-btn': true,

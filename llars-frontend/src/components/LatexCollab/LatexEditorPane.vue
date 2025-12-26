@@ -58,7 +58,9 @@ import * as Y from 'yjs'
 import { EditorState, StateEffect, StateField, RangeSet } from '@codemirror/state'
 import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap, gutter, GutterMarker } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
-import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { autocompletion, completionKeymap } from '@codemirror/autocomplete'
+import { stex } from '@codemirror/legacy-modes/mode/stex'
+import { StreamLanguage, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
 
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
@@ -114,6 +116,88 @@ const {
 
 // Track deleted lines for gutter markers
 const deletedLinesRef = ref(new Set())
+
+const latexCommandCompletions = [
+  { label: '\\documentclass', type: 'keyword', info: 'Dokumentklasse', apply: '\\documentclass{}' },
+  { label: '\\usepackage', type: 'keyword', info: 'Paket laden', apply: '\\usepackage{}' },
+  { label: '\\begin', type: 'keyword', info: 'Umgebung starten', apply: '\\begin{}' },
+  { label: '\\end', type: 'keyword', info: 'Umgebung beenden', apply: '\\end{}' },
+  { label: '\\section', type: 'keyword', info: 'Abschnitt', apply: '\\section{}' },
+  { label: '\\subsection', type: 'keyword', info: 'Unterabschnitt', apply: '\\subsection{}' },
+  { label: '\\subsubsection', type: 'keyword', info: 'Unter-Unterabschnitt', apply: '\\subsubsection{}' },
+  { label: '\\paragraph', type: 'keyword', info: 'Paragraph', apply: '\\paragraph{}' },
+  { label: '\\textbf', type: 'function', info: 'Fett', apply: '\\textbf{}' },
+  { label: '\\textit', type: 'function', info: 'Kursiv', apply: '\\textit{}' },
+  { label: '\\emph', type: 'function', info: 'Hervorheben', apply: '\\emph{}' },
+  { label: '\\underline', type: 'function', info: 'Unterstreichen', apply: '\\underline{}' },
+  { label: '\\item', type: 'keyword', info: 'Listenpunkt', apply: '\\item ' },
+  { label: '\\label', type: 'keyword', info: 'Label', apply: '\\label{}' },
+  { label: '\\ref', type: 'keyword', info: 'Referenz', apply: '\\ref{}' },
+  { label: '\\pageref', type: 'keyword', info: 'Seitenreferenz', apply: '\\pageref{}' },
+  { label: '\\cite', type: 'keyword', info: 'Zitat', apply: '\\cite{}' },
+  { label: '\\citet', type: 'keyword', info: 'Textzitat', apply: '\\citet{}' },
+  { label: '\\citep', type: 'keyword', info: 'Klammerzitat', apply: '\\citep{}' },
+  { label: '\\includegraphics', type: 'keyword', info: 'Grafik', apply: '\\includegraphics[]{}' },
+  { label: '\\caption', type: 'keyword', info: 'Caption', apply: '\\caption{}' },
+  { label: '\\centering', type: 'keyword', info: 'Zentrieren', apply: '\\centering' },
+  { label: '\\footnote', type: 'keyword', info: 'Fussnote', apply: '\\footnote{}' },
+  { label: '\\url', type: 'keyword', info: 'URL', apply: '\\url{}' },
+  { label: '\\href', type: 'keyword', info: 'Link', apply: '\\href{}{}' },
+  { label: '\\title', type: 'keyword', info: 'Titel', apply: '\\title{}' },
+  { label: '\\author', type: 'keyword', info: 'Autor', apply: '\\author{}' },
+  { label: '\\date', type: 'keyword', info: 'Datum', apply: '\\date{}' },
+  { label: '\\maketitle', type: 'keyword', info: 'Titelseite', apply: '\\maketitle' },
+  { label: '\\tableofcontents', type: 'keyword', info: 'Inhaltsverzeichnis', apply: '\\tableofcontents' },
+  { label: '\\newcommand', type: 'keyword', info: 'Neues Kommando', apply: '\\newcommand{}{}' },
+  { label: '\\renewcommand', type: 'keyword', info: 'Kommando aendern', apply: '\\renewcommand{}{}' },
+  { label: '\\input', type: 'keyword', info: 'Datei einfügen', apply: '\\input{}' },
+  { label: '\\include', type: 'keyword', info: 'Datei einbinden', apply: '\\include{}' },
+  { label: '\\frac', type: 'function', info: 'Bruch', apply: '\\frac{}{}' },
+  { label: '\\sqrt', type: 'function', info: 'Wurzel', apply: '\\sqrt{}' },
+  { label: '\\sum', type: 'keyword', info: 'Summe', apply: '\\sum' },
+  { label: '\\int', type: 'keyword', info: 'Integral', apply: '\\int' }
+]
+
+const latexEnvironmentNames = [
+  'itemize',
+  'enumerate',
+  'description',
+  'figure',
+  'table',
+  'tabular',
+  'equation',
+  'align',
+  'quote',
+  'verbatim',
+  'center'
+]
+
+function latexCompletionSource(context) {
+  const envMatch = context.matchBefore(/\\(begin|end)\{[A-Za-z]*$/)
+  if (envMatch) {
+    const braceIndex = envMatch.text.lastIndexOf('{')
+    const from = braceIndex >= 0 ? envMatch.from + braceIndex + 1 : envMatch.from
+    if (from === context.pos && !context.explicit) return null
+    const options = latexEnvironmentNames.map((env) => ({
+      label: env,
+      type: 'keyword',
+      apply: env
+    }))
+    return {
+      from,
+      options,
+      validFor: /^[A-Za-z]*$/
+    }
+  }
+
+  const word = context.matchBefore(/\\[A-Za-z]*$/)
+  if (!word || (word.from === word.to && !context.explicit)) return null
+  return {
+    from: word.from,
+    options: latexCommandCompletions,
+    validFor: /^\\[A-Za-z]*$/
+  }
+}
 
 const activeUsers = computed(() => {
   const list = []
@@ -186,6 +270,54 @@ function rgbaFromHex(hex, alpha = 0.18) {
 
 function isValidHexColor(value) {
   return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
+function updateLocalUserColor(newColor) {
+  if (!newColor || !users.value) return
+  const next = { ...users.value }
+  let updated = false
+  for (const [userId, user] of Object.entries(next)) {
+    if (user?.username === username.value) {
+      next[userId] = { ...user, color: newColor }
+      updated = true
+    }
+  }
+  if (updated) {
+    users.value = next
+  }
+}
+
+function applyCollabColorChange(newColor) {
+  if (!isValidHexColor(newColor)) return
+  updateLocalUserColor(newColor)
+  if (!ydoc.value || !ytext) {
+    updateDecorations()
+    return
+  }
+
+  ydoc.value.transact(() => {
+    let pos = 0
+    const delta = ytext.toDelta()
+    for (const op of delta) {
+      const insert = op?.insert
+      const text = typeof insert === 'string' ? insert : ''
+      const length = text.length
+      if (length > 0 && op?.attributes?.collabUser === username.value) {
+        ytext.format(pos, length, { collabColor: newColor })
+      }
+      pos += length
+    }
+
+    if (yhighlights) {
+      yhighlights.forEach((value, key) => {
+        if (value?.username === username.value) {
+          yhighlights.set(String(key), { ...value, color: newColor })
+        }
+      })
+    }
+  }, 'color')
+
+  updateDecorations()
 }
 
 function buildInsertDecorations() {
@@ -572,8 +704,12 @@ function initEditorIfNeeded() {
       drawSelection(),
       highlightActiveLine(),
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+      keymap.of([...defaultKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
+      StreamLanguage.define(stex),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      autocompletion({
+        override: [latexCompletionSource]
+      }),
       EditorView.lineWrapping,
       decorationsField,
       theme
@@ -832,11 +968,11 @@ watch(
 watch(
   () => collabColor.value,
   (newColor) => {
-    if (newColor && socket.value?.connected) {
+    if (!newColor) return
+    applyCollabColorChange(newColor)
+    if (socket.value?.connected) {
       // Broadcast color change to other users
       updateColor(newColor)
-      // Update local decorations
-      updateDecorations()
     }
   }
 )

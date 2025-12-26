@@ -111,7 +111,7 @@
                   </LBtn>
                   <!-- Delete button for owners -->
                   <LBtn
-                    v-if="isOwner(ws)"
+                    v-if="canDeleteWorkspace(ws)"
                     variant="text"
                     size="small"
                     color="error"
@@ -297,7 +297,7 @@ import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getSocket } from '@/services/socketService'
 
 const router = useRouter()
-const { hasPermission, fetchPermissions } = usePermissions()
+const { hasPermission, fetchPermissions, isAdmin, username: permissionsUsername } = usePermissions()
 const { isLoading, withLoading } = useSkeletonLoading(['workspaces'])
 const { isMobile, isTablet } = useMobile()
 
@@ -305,7 +305,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 
 const workspaces = ref([])
 const newWorkspaceIds = ref(new Set())
-const currentUsername = ref('')
+const userInfoUsername = ref('')
+const currentUsername = computed(() => userInfoUsername.value || permissionsUsername.value || '')
 
 const createDialog = ref(false)
 const deleteDialog = ref(false)
@@ -370,7 +371,7 @@ async function fetchUserInfo() {
     const res = await axios.get(`${API_BASE}/auth/authentik/me`, {
       headers: authHeaders()
     })
-    currentUsername.value = res.data.username || ''
+    userInfoUsername.value = res.data.username || ''
     return res.data.user_id || res.data.id || null
   } catch (e) {
     return null
@@ -379,6 +380,10 @@ async function fetchUserInfo() {
 
 function isOwner(ws) {
   return ws?.owner_username === currentUsername.value
+}
+
+function canDeleteWorkspace(ws) {
+  return isOwner(ws) || isAdmin.value
 }
 
 function confirmDelete(ws) {

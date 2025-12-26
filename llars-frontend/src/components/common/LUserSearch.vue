@@ -54,6 +54,7 @@
       :size="buttonSize"
       :loading="adding"
       :disabled="!selectedUser || adding || disabled"
+      :title="addButtonText"
       class="mt-2"
       @click="handleAdd"
     >

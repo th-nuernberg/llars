@@ -125,6 +125,7 @@
                 :loading="committing"
                 :disabled="!canSubmitCommit"
                 prepend-icon="mdi-check"
+                title="Änderungen committen"
                 @click="submitCommit"
               >
                 Commit
@@ -187,6 +188,7 @@
             variant="text"
             size="small"
             prepend-icon="mdi-refresh"
+            title="Commits aktualisieren"
             @click="loadCommits(true)"
           >
             Aktualisieren
@@ -196,6 +198,7 @@
             size="small"
             prepend-icon="mdi-fullscreen-exit"
             class="ml-2"
+            title="Vollbild schließen"
             @click="fullscreen = false"
           >
             Schließen
@@ -272,6 +275,7 @@
                       :disabled="!canSubmitCommit"
                       prepend-icon="mdi-check"
                       block
+                      title="Änderungen committen"
                       @click="submitCommit"
                     >
                       Änderungen committen
@@ -334,8 +338,8 @@
                     mandatory
                     class="mode-toggle"
                   >
-                    <v-btn value="working" size="small">Working</v-btn>
-                    <v-btn value="commit-range" size="small">Commits</v-btn>
+                    <v-btn value="working" size="small" title="Working Tree anzeigen">Working</v-btn>
+                    <v-btn value="commit-range" size="small" title="Commit-Bereich vergleichen">Commits</v-btn>
                   </v-btn-toggle>
                 </div>
                 <div class="card-content diff-content">

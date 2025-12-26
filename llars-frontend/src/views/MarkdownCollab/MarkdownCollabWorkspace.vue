@@ -113,6 +113,16 @@
           >
             <v-icon>mdi-menu</v-icon>
           </v-btn>
+          <v-btn
+            variant="text"
+            size="small"
+            class="header-back-btn"
+            title="Zurück zu den Workspaces"
+            @click="router.push('/MarkdownCollab')"
+          >
+            <v-icon size="18">mdi-arrow-left</v-icon>
+            <span v-if="!isMobile" class="header-back-label">Workspaces</span>
+          </v-btn>
           <v-icon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-language-markdown</v-icon>
           <div class="header-info">
             <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
@@ -196,7 +206,7 @@
               <!-- Editor Pane -->
               <div
                 class="pane editor-pane"
-                :style="viewMode === 'split' && editorPaneWidth > 0 ? { width: editorPaneWidth + 'px' } : {}"
+                :style="editorPaneStyle"
               >
                 <MarkdownEditorPane
                   ref="editorRef"
@@ -219,7 +229,7 @@
               </div>
 
               <!-- Preview Pane -->
-              <div class="pane preview-pane">
+              <div class="pane preview-pane" :style="previewPaneStyle">
                 <MarkdownPreviewPane :markdown="currentText" />
               </div>
             </div>
@@ -326,6 +336,7 @@ import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
+import { useSplitPaneResize } from '@/composables/useSplitPaneResize'
 import { useWorkspaceSocket } from '@/components/MarkdownCollab/composables/useWorkspaceSocket'
 import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/composables/useAnalyticsMetrics'
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
@@ -362,12 +373,18 @@ const pendingDocId = ref(null)
 // Panel states
 const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
 const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280)
-const editorPaneWidth = ref(parseInt(localStorage.getItem(PANES_WIDTH_KEY)) || 0)
-const panesContainerRef = ref(null)
-
-// Resize states
+const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const resizingTree = ref(false)
-const resizingPanes = ref(false)
+const {
+  panesContainerRef,
+  editorPaneStyle,
+  previewPaneStyle,
+  resizingPanes,
+  startResize: startPanesResize
+} = useSplitPaneResize({
+  storageKey: PANES_WIDTH_KEY,
+  viewMode
+})
 
 // Sharing / members
 const shareDialog = ref(false)
@@ -378,8 +395,6 @@ const removingUsername = ref('')
 const selectedUser = ref(null)
 const userSearchRef = ref(null)
 const ownerInfo = ref({ username: '', avatar_url: null, avatar_seed: null, collab_color: null })
-
-const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 
 // Analytics: entity dimension for this workspace/document
 const workspaceEntity = computed(() => `ws:${workspaceId.value}`)
@@ -528,36 +543,6 @@ function stopTreeResize() {
   localStorage.setItem(TREE_WIDTH_KEY, treePanelWidth.value.toString())
 }
 
-// Panes resize (Editor | Preview)
-function startPanesResize(event) {
-  event.preventDefault()
-  resizingPanes.value = true
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
-  document.addEventListener('mousemove', onPanesMouseMove)
-  document.addEventListener('mouseup', stopPanesResize)
-}
-
-function onPanesMouseMove(event) {
-  if (!resizingPanes.value || !panesContainerRef.value) return
-  const containerRect = panesContainerRef.value.getBoundingClientRect()
-  const mouseX = event.clientX - containerRect.left
-  const containerWidth = containerRect.width
-  // Clamp between 25% and 75%
-  const minWidth = containerWidth * 0.25
-  const maxWidth = containerWidth * 0.75
-  editorPaneWidth.value = Math.max(minWidth, Math.min(maxWidth, mouseX))
-}
-
-function stopPanesResize() {
-  resizingPanes.value = false
-  document.body.style.cursor = ''
-  document.body.style.userSelect = ''
-  document.removeEventListener('mousemove', onPanesMouseMove)
-  document.removeEventListener('mouseup', stopPanesResize)
-  localStorage.setItem(PANES_WIDTH_KEY, editorPaneWidth.value.toString())
-}
-
 // Initialize pane width on mount
 onMounted(async () => {
   await fetchPermissions()
@@ -579,8 +564,6 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onTreeMouseMove)
   document.removeEventListener('mouseup', stopTreeResize)
-  document.removeEventListener('mousemove', onPanesMouseMove)
-  document.removeEventListener('mouseup', stopPanesResize)
 })
 
 function onEditorContentChange(text) {
@@ -996,6 +979,16 @@ watch(
 .header-info {
   min-width: 0;
   flex: 1;
+}
+
+.header-back-btn {
+  margin-right: 6px;
+}
+
+.header-back-label {
+  margin-left: 4px;
+  font-size: 12px;
+  text-transform: none;
 }
 
 .header-title {

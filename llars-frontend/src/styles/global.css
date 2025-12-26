@@ -22,6 +22,29 @@ body,
 }
 
 /* ========================================
+   Global Resize Divider Styling
+   ======================================== */
+.resize-divider,
+.resize-divider.vertical,
+.resize-divider.horizontal {
+  background: transparent !important;
+  border-radius: 999px;
+}
+
+.resize-divider:hover,
+.resize-divider.resizing,
+.resize-divider.vertical:hover,
+.resize-divider.vertical.resizing,
+.resize-divider.horizontal:hover,
+.resize-divider.horizontal.resizing {
+  background: transparent !important;
+}
+
+.resize-divider .resize-handle {
+  border-radius: 999px;
+}
+
+/* ========================================
    LLARS Color Palette (Pastel Theme)
    ======================================== */
 

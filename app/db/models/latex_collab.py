@@ -205,7 +205,12 @@ class LatexCompileJob(db.Model):
     workspace = db.relationship(
         "LatexWorkspace",
         foreign_keys=[workspace_id],
-        backref=db.backref("compile_jobs", lazy="selectin"),
+        backref=db.backref(
+            "compile_jobs",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+            lazy="selectin",
+        ),
     )
     commit = db.relationship("LatexCommit", backref=db.backref("compile_jobs", lazy="selectin"))
 

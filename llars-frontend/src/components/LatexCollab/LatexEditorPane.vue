@@ -74,7 +74,7 @@ const props = defineProps({
   activeCommentId: { type: Number, default: null }
 })
 
-const emit = defineEmits(['content-change', 'git-summary', 'cursor-change'])
+const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request'])
 
 const editorEl = ref(null)
 const error = ref('')
@@ -653,6 +653,17 @@ function scheduleCursorChange() {
   }, 120)
 }
 
+function emitSyncRequestFromEvent(event, cmView) {
+  const pos = cmView.posAtCoords({ x: event.clientX, y: event.clientY })
+  if (pos == null) return false
+  const lineInfo = cmView.state.doc.lineAt(pos)
+  emit('sync-request', {
+    line: lineInfo.number,
+    column: pos - lineInfo.from + 1
+  })
+  return false
+}
+
 function initEditorIfNeeded() {
   if (!editorEl.value || view.value || !ytext || fallbackMode.value) return
 
@@ -711,6 +722,9 @@ function initEditorIfNeeded() {
         override: [latexCompletionSource]
       }),
       EditorView.lineWrapping,
+      EditorView.domEventHandlers({
+        dblclick: (event, cmView) => emitSyncRequestFromEvent(event, cmView)
+      }),
       decorationsField,
       theme
     ]

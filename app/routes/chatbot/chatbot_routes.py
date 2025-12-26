@@ -872,13 +872,15 @@ def start_wizard_crawl(chatbot_id):
     max_depth = data.get('max_depth', 3)
     use_playwright = data.get('use_playwright', True)
     use_vision_llm = data.get('use_vision_llm', False)
+    take_screenshots = data.get('take_screenshots', True)
 
     result = ChatbotBuilderService.start_crawl(
         chatbot_id,
         max_pages=max_pages,
         max_depth=max_depth,
         use_playwright=use_playwright,
-        use_vision_llm=use_vision_llm
+        use_vision_llm=use_vision_llm,
+        take_screenshots=take_screenshots
     )
     return jsonify(result), 200 if result['success'] else 400
 

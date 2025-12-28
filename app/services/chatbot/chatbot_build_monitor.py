@@ -7,6 +7,7 @@ Responsible for:
 - Monitoring embedding processes
 - Transitioning between build stages
 - Status reporting and diagnostics
+- Updating Redis wizard sessions for real-time sync
 """
 
 import logging
@@ -21,6 +22,31 @@ from db.tables import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _update_wizard_session(chatbot_id: int, status: str, error_message: str = None, emit_event: bool = True):
+    """
+    Update the Redis wizard session and optionally emit Socket.IO event.
+
+    This is a helper function to avoid circular imports.
+    """
+    try:
+        from services.wizard import get_wizard_session_service
+        from socketio_handlers.events_wizard import emit_wizard_status_changed
+        from main import socketio
+
+        wizard_service = get_wizard_session_service()
+        session = wizard_service.get_session(chatbot_id)
+
+        if session:
+            wizard_service.transition_status(chatbot_id, status, error_message)
+
+            if emit_event:
+                step = wizard_service.STATUS_TO_STEP.get(status)
+                emit_wizard_status_changed(socketio, chatbot_id, status, step)
+
+    except Exception as e:
+        logger.warning(f"[ChatbotBuildMonitor] Failed to update wizard session: {e}")
 
 
 class ChatbotBuildMonitor:
@@ -73,21 +99,28 @@ class ChatbotBuildMonitor:
                             chatbot.build_status = 'embedding'
                             db.session.commit()
 
+                            # Update Redis session and emit event
+                            _update_wizard_session(chatbot_id, 'embedding')
+
                             # Start embedding
                             ChatbotBuildMonitor.start_embedding(app, chatbot_id, collection_id)
                         return
 
                     elif status.get('status') == 'failed':
                         logger.error(f"[ChatbotBuildMonitor] Crawl failed for chatbot {chatbot_id}: {status.get('error')}")
-                        ChatbotBuildMonitor._set_error_status(
-                            chatbot_id,
-                            status.get('error', 'Crawl failed')
-                        )
+                        error_msg = status.get('error', 'Crawl failed')
+                        ChatbotBuildMonitor._set_error_status(chatbot_id, error_msg)
+
+                        # Update Redis session and emit error event
+                        _update_wizard_session(chatbot_id, 'error', error_msg)
                         return
 
                     elif status.get('status') == 'cancelled':
                         logger.info(f"[ChatbotBuildMonitor] Crawl cancelled for chatbot {chatbot_id}")
                         ChatbotBuildMonitor._set_paused_status(chatbot_id, 'Crawl was cancelled')
+
+                        # Update Redis session and emit paused event
+                        _update_wizard_session(chatbot_id, 'paused', 'Crawl was cancelled')
                         return
 
                     time.sleep(ChatbotBuildMonitor.POLL_INTERVAL_SECONDS)
@@ -97,9 +130,16 @@ class ChatbotBuildMonitor:
                 logger.error(f"[ChatbotBuildMonitor] Crawl timeout for chatbot {chatbot_id}")
                 ChatbotBuildMonitor._set_error_status(chatbot_id, 'Crawl timeout')
 
+                # Update Redis session and emit error event
+                _update_wizard_session(chatbot_id, 'error', 'Crawl timeout')
+
             except Exception as e:
                 logger.error(f"[ChatbotBuildMonitor] Monitor error for chatbot {chatbot_id}: {e}")
-                ChatbotBuildMonitor._set_error_status(chatbot_id, str(e)[:500])
+                error_msg = str(e)[:500]
+                ChatbotBuildMonitor._set_error_status(chatbot_id, error_msg)
+
+                # Update Redis session and emit error event
+                _update_wizard_session(chatbot_id, 'error', error_msg)
 
     @staticmethod
     def start_embedding(app, chatbot_id: int, collection_id: int):
@@ -205,15 +245,19 @@ class ChatbotBuildMonitor:
                         chatbot.build_error = None
                         db.session.commit()
 
+                        # Update Redis session and emit status change
+                        _update_wizard_session(chatbot_id, 'configuring')
+
                         logger.info(f"[ChatbotBuildMonitor] Chatbot {chatbot_id} transitioned to 'configuring' (color={chatbot.color}, icon={chatbot.icon})")
                         return
 
                     elif collection.embedding_status == 'failed':
                         logger.error(f"[ChatbotBuildMonitor] Embedding failed for chatbot {chatbot_id}")
-                        ChatbotBuildMonitor._set_error_status(
-                            chatbot_id,
-                            collection.embedding_error or 'Embedding failed'
-                        )
+                        error_msg = collection.embedding_error or 'Embedding failed'
+                        ChatbotBuildMonitor._set_error_status(chatbot_id, error_msg)
+
+                        # Update Redis session and emit error event
+                        _update_wizard_session(chatbot_id, 'error', error_msg)
                         return
 
                     time.sleep(ChatbotBuildMonitor.POLL_INTERVAL_SECONDS)
@@ -223,9 +267,16 @@ class ChatbotBuildMonitor:
                 logger.error(f"[ChatbotBuildMonitor] Embedding timeout for chatbot {chatbot_id}")
                 ChatbotBuildMonitor._set_error_status(chatbot_id, 'Embedding timeout')
 
+                # Update Redis session and emit error event
+                _update_wizard_session(chatbot_id, 'error', 'Embedding timeout')
+
             except Exception as e:
                 logger.error(f"[ChatbotBuildMonitor] Embedding monitor error for chatbot {chatbot_id}: {e}")
-                ChatbotBuildMonitor._set_error_status(chatbot_id, str(e)[:500])
+                error_msg = str(e)[:500]
+                ChatbotBuildMonitor._set_error_status(chatbot_id, error_msg)
+
+                # Update Redis session and emit error event
+                _update_wizard_session(chatbot_id, 'error', error_msg)
 
     @staticmethod
     def get_build_status(chatbot_id: int) -> Dict[str, Any]:

@@ -172,10 +172,30 @@ class CrawlerService:
         self._socketio = socketio
 
     def _emit_progress(self, session_id: str, data: dict):
-        """Emit progress update via WebSocket."""
+        """Emit progress update via WebSocket and update wizard session if applicable."""
         if self._socketio:
             from socketio_handlers.events_crawler import emit_crawler_progress
             emit_crawler_progress(self._socketio, session_id, data)
+
+        # Update wizard session if this is a chatbot crawl
+        job = self.active_crawls.get(session_id)
+        if job and job.get('chatbot_id'):
+            try:
+                from services.wizard import get_wizard_session_service
+                from socketio_handlers.events_wizard import emit_wizard_progress
+                wizard_service = get_wizard_session_service()
+                wizard_service.update_crawl_progress(job['chatbot_id'], {
+                    'crawl_stage': data.get('stage', 'crawling'),
+                    'urls_total': data.get('max_pages', 0),
+                    'urls_completed': data.get('pages_crawled', 0),
+                    'documents_created': job.get('documents_created', 0),
+                    'current_url': data.get('current_url', ''),
+                })
+                if self._socketio:
+                    emit_wizard_progress(self._socketio, job['chatbot_id'],
+                        wizard_service.get_progress(job['chatbot_id']))
+            except Exception as e:
+                logger.warning(f"[CrawlerService] Failed to update wizard session: {e}")
 
     def _emit_page_crawled(self, session_id: str, data: dict):
         """Emit page crawled event via WebSocket."""
@@ -408,7 +428,8 @@ class CrawlerService:
         existing_collection_id: Optional[int] = None,
         use_playwright: bool = True,
         use_vision_llm: bool = True,
-        take_screenshots: bool = True
+        take_screenshots: bool = True,
+        chatbot_id: Optional[int] = None
     ) -> str:
         """
         Start a crawl job in the background (continues even if user leaves).
@@ -425,6 +446,7 @@ class CrawlerService:
             use_playwright: Use Playwright headless browser for JavaScript rendering (default: True)
             use_vision_llm: Use Vision-LLM for intelligent data extraction from screenshots (default: True)
             take_screenshots: Capture screenshots when using Playwright (default: True)
+            chatbot_id: If set, updates wizard session with crawl progress (for Chatbot Builder)
 
         Returns:
             job_id: The ID of the started crawl job
@@ -446,6 +468,7 @@ class CrawlerService:
             'collection_name': collection_name,
             'existing_collection_id': existing_collection_id,
             'collection_id': existing_collection_id,
+            'chatbot_id': chatbot_id,  # For wizard session progress updates
             'max_pages': max_pages_per_site * len(urls),
             'pages_crawled': 0,
             'documents_created': 0,

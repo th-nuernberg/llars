@@ -184,7 +184,8 @@ class ChatbotCreator:
             use_playwright=use_playwright,
             use_vision_llm=use_vision_llm,
             take_screenshots=take_screenshots,
-            app=app
+            app=app,
+            chatbot_id=chatbot_id  # For wizard session progress updates
         )
 
         # Store job_id in collection

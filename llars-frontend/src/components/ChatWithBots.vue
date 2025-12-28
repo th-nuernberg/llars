@@ -398,14 +398,14 @@
                     <v-chip
                       v-for="source in message.sources"
                       :key="source.footnote_id"
-                      size="small"
+                      size="x-small"
                       variant="tonal"
-                      color="primary"
+                      color="success"
                       class="source-chip mr-1 mb-1"
                       @click="showSourceDetail(source)"
                     >
                       <span class="font-weight-bold mr-1">[{{ source.footnote_id }}]</span>
-                      <span class="text-truncate" style="max-width: 240px;">
+                      <span class="text-truncate" style="max-width: 180px;">
                         {{ source.title || source.filename || 'Quelle' }}
                       </span>
                     </v-chip>
@@ -1637,8 +1637,8 @@ function formatMessage(content, sources = []) {
       const source = sourceMap[footnoteId]
       if (source) {
         const title = source.title || 'Quelle ' + footnoteId
-        // Create a clickable superscript footnote
-        return `<sup class="footnote-ref" data-footnote-id="${footnoteId}" title="${title}">[${num}]</sup>`
+        // Create a clickable footnote reference (inline, not superscript)
+        return `<span class="footnote-ref" data-footnote-id="${footnoteId}" title="${title}">[${num}]</span>`
       }
       return match
     })
@@ -2543,6 +2543,34 @@ onUnmounted(() => {
   margin-bottom: 0;
 }
 
+/* Listen-Einrückung für bessere Lesbarkeit */
+.message-content :deep(ul),
+.message-content :deep(ol) {
+  padding-left: 1.5em;
+  margin-left: 0.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Verschachtelte Listen weniger einrücken */
+.message-content :deep(ul ul),
+.message-content :deep(ol ol),
+.message-content :deep(ul ol),
+.message-content :deep(ol ul) {
+  margin-left: 0;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+/* List-Item Abstände */
+.message-content :deep(li) {
+  margin-bottom: 0.25em;
+}
+
+.message-content :deep(li:last-child) {
+  margin-bottom: 0;
+}
+
 .message-content :deep(code) {
   background: rgba(0, 0, 0, 0.1);
   padding: 2px 6px;
@@ -2559,19 +2587,27 @@ onUnmounted(() => {
 
 /* Footnote references styling */
 .message-content :deep(.footnote-ref) {
-  color: rgb(var(--v-theme-primary));
+  color: #5a8a4a;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.75em;
-  vertical-align: super;
+  font-size: inherit;
   padding: 0 2px;
   border-radius: 3px;
   transition: all 0.2s ease;
 }
 
 .message-content :deep(.footnote-ref:hover) {
-  background: rgba(var(--v-theme-primary), 0.15);
+  background: rgba(90, 138, 74, 0.15);
   text-decoration: underline;
+}
+
+/* Dark mode: etwas heller für Kontrast */
+.v-theme--dark .message-content :deep(.footnote-ref) {
+  color: #8ab878;
+}
+
+.v-theme--dark .message-content :deep(.footnote-ref:hover) {
+  background: rgba(138, 184, 120, 0.2);
 }
 
 .message-files {

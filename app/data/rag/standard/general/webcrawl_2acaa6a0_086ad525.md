@@ -1,6 +1,0 @@
-# Team – Beck Bauplanungs GmbH
-
-Über uns Team Projekte Referenzen Kontakt Karriere Videos Beck Bauplanungs GmbH > Team Team Walter Beck Firmengründer / Geschäftsführer Schwerpunkte: – Ideenentwicklung/Entwurf – Hochbauplanung – Baulanderschließung – Organisationszentrum Michael Frisch Geschäftsführer & Partner Schwerpunkte: – Projektentwicklung – Hochbauplanung – Bauleitplanung – Projektsteuerung – IT & Digitalisierung – Visualisierung Timo Steinbach Geschäftsführer & Partner Schwerpunkte: – Vertrieb – Einkauf – Finanzen Elfriede Beck Leitung Sekretariat Im Unternehmen seit 1995 Schwerpunkte: – kaufmännischer Ablauf – Kundenbetreuung Claudia Schiefer Sekretärin kaufmännischer Bereich Im Unternehmen seit 1991 Schwerpunkte: – Allgemeines – Vertragswesen – Rechnungswesen – Kundenberatung Jörg Beck Bauleitung Im Unternehmen seit 1994 Schwerpunkte: – Bauleitung – Bauüberwachung Wohnbau – Projektleitung – Sicherheitskoordinator Norbert Gareis Bauzeichner Schwerpunkte: – Entwurfsplanung – Eingabeplanung – Werkplanung – CAD-/ 3D-Design – Visualisierung Sonja Götz Bauzeichnerin – Entwurfsplanung – Eingabeplanung – CAD-/ 3D-Design Elisa Klein Sonderaufgaben Anschrift Beck Bauplanungs GmbH Karl-Eibl-Straße 16 91413 Neustadt/Aisch Telefon: +49 9161 3067 Telefax: +49 9161 60668 E-Mail: kontakt@bewabeck.de Rechtliche Hinweise 
-
----
-Quelle: https://bewabeck.de/team

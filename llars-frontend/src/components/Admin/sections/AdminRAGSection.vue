@@ -561,6 +561,7 @@
                 Aktualisieren
               </LBtn>
               <LBtn
+                v-if="canReindexCollection(selectedCollection)"
                 size="small"
                 variant="warning"
                 class="ml-2"
@@ -676,6 +677,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { usePermissions } from '@/composables/usePermissions';
+import { useAuth } from '@/composables/useAuth';
 import { getSocket } from '@/services/socketService';
 import DocumentViewer from '@/components/RAG/DocumentViewer.vue';
 import CollectionShareDialog from '@/components/RAG/CollectionShareDialog.vue';
@@ -689,6 +691,8 @@ import {
 // Skeleton Loading
 const { isLoading, withLoading } = useSkeletonLoading(['stats', 'embedding', 'collections', 'documents']);
 const { hasPermission } = usePermissions();
+const { tokenParsed } = useAuth();
+const currentUsername = computed(() => tokenParsed.value?.preferred_username || '');
 
 // Local UI State
 const activeTab = ref('collections');
@@ -836,6 +840,17 @@ const collectionEmbeddingProgressPercent = computed(() => {
 
 const canShareCollections = computed(() => hasPermission('feature:rag:share'));
 
+// Check if user can reindex a collection
+// Only allowed if: can_edit AND (is owner OR collection is not public)
+const canReindexCollection = (collection) => {
+  if (!collection) return false;
+  if (!collection.can_edit) return false;
+  // Owner can always reindex
+  if (collection.created_by === currentUsername.value) return true;
+  // Non-owners can only reindex if collection is NOT public (i.e., explicitly shared)
+  return collection.is_public === false;
+};
+
 // Wrapper functions for composables (with callbacks for data refresh)
 const createCollection = async () => {
   await createCollectionFn(async () => {
@@ -908,16 +923,20 @@ const reindexCollectionById = async (collectionId) => {
 // Get actions for collection row
 const getCollectionActions = (item) => {
   const actions = [
-    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' },
-    {
+    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' }
+  ];
+
+  // Only show reindex button if user can reindex this collection
+  if (canReindexCollection(item)) {
+    actions.push({
       key: 'reindex',
       icon: 'mdi-refresh-circle',
       tooltip: 'Neu indexieren',
       variant: 'warning',
       disabled: item.document_count === 0,
       loading: reindexingCollectionId.value === item.id
-    }
-  ];
+    });
+  }
 
   if (canShareCollections.value && (item.can_share ?? true)) {
     actions.push({

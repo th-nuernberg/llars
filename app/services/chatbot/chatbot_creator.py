@@ -216,12 +216,16 @@ class ChatbotCreator:
         """
         Finalize the chatbot configuration and mark as ready.
 
+        The chatbot can be finalized even if embedding is still in progress.
+        The embedding will continue in the background, and the chatbot will
+        work with the chunks that are already available.
+
         Args:
             chatbot_id: The chatbot ID
             data: Configuration data (name, display_name, system_prompt, etc.)
 
         Returns:
-            Dict with result
+            Dict with result including embedding_in_progress flag
 
         Raises:
             ValueError: If chatbot not found or name already exists
@@ -229,6 +233,15 @@ class ChatbotCreator:
         chatbot = Chatbot.query.get(chatbot_id)
         if not chatbot:
             raise ValueError('Chatbot not found')
+
+        # Check if embedding is still in progress
+        embedding_in_progress = False
+        embedding_progress = 0
+        if chatbot.primary_collection_id:
+            collection = RAGCollection.query.get(chatbot.primary_collection_id)
+            if collection and collection.embedding_status == 'processing':
+                embedding_in_progress = True
+                embedding_progress = collection.embedding_progress or 0
 
         # Update fields if provided
         if 'name' in data:
@@ -256,7 +269,7 @@ class ChatbotCreator:
         if 'color' in data:
             chatbot.color = data['color']
 
-        # Mark as ready
+        # Mark as ready - chatbot is usable even if embedding is still running
         chatbot.build_status = 'ready'
         chatbot.build_error = None
         chatbot.is_active = True
@@ -264,14 +277,19 @@ class ChatbotCreator:
 
         db.session.commit()
 
-        logger.info(f"[ChatbotCreator] Finalized chatbot {chatbot_id}")
+        if embedding_in_progress:
+            logger.info(f"[ChatbotCreator] Finalized chatbot {chatbot_id} (embedding still in progress: {embedding_progress}%)")
+        else:
+            logger.info(f"[ChatbotCreator] Finalized chatbot {chatbot_id}")
 
         return {
             'success': True,
             'chatbot_id': chatbot_id,
             'name': chatbot.name,
             'display_name': chatbot.display_name,
-            'build_status': chatbot.build_status
+            'build_status': chatbot.build_status,
+            'embedding_in_progress': embedding_in_progress,
+            'embedding_progress': embedding_progress
         }
 
     @staticmethod

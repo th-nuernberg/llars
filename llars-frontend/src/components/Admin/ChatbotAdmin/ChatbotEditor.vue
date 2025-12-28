@@ -398,7 +398,7 @@
                         />
 
                         <v-switch
-                          v-model="formData.prompt_settings.rag_use_cross_encoder"
+                          v-model="formData.rag_use_cross_encoder"
                           label="Cross-Encoder Reranking"
                           color="primary"
                           hide-details
@@ -419,11 +419,57 @@
                                 Übereinstimmung vorliegt.
                               </p>
                               <p class="mt-2 text-caption">
-                                Erhöht die Latenz leicht (~100-200ms), aber verbessert die Antwortqualität deutlich.
+                                Erhöht die Latenz leicht (~100-350ms je nach Modell), aber verbessert die Antwortqualität deutlich.
                               </p>
                             </LInfoTooltip>
                           </template>
                         </v-switch>
+
+                        <!-- Reranker Model Selection -->
+                        <v-select
+                          v-if="formData.rag_use_cross_encoder"
+                          v-model="formData.rag_reranker_model"
+                          :items="rerankerModelItems"
+                          item-title="title"
+                          item-value="value"
+                          label="Reranker-Modell"
+                          hint="Welches Cross-Encoder-Modell für das Reranking verwendet wird"
+                          persistent-hint
+                          variant="outlined"
+                          density="comfortable"
+                          clearable
+                          :loading="rerankerModelsLoading"
+                          class="mb-4"
+                        >
+                          <template #item="{ props, item }">
+                            <v-list-item v-bind="props">
+                              <template #subtitle>
+                                {{ item.raw.description }}
+                              </template>
+                              <template #append>
+                                <div class="d-flex align-center ga-1">
+                                  <LTag v-if="item.raw.params" variant="gray" size="sm">
+                                    {{ item.raw.params }}M
+                                  </LTag>
+                                  <LTag v-if="item.raw.is_default" variant="primary" size="sm">
+                                    Standard
+                                  </LTag>
+                                </div>
+                              </template>
+                            </v-list-item>
+                          </template>
+                          <template #selection="{ item }">
+                            <div class="d-flex align-center">
+                              <span>{{ item.title }}</span>
+                              <LTag v-if="item.raw.params" variant="gray" size="sm" class="ml-2">
+                                {{ item.raw.params }}M
+                              </LTag>
+                              <LTag v-if="item.raw.is_default" variant="primary" size="sm" class="ml-1">
+                                Standard
+                              </LTag>
+                            </div>
+                          </template>
+                        </v-select>
 
                         <v-text-field
                           v-model="formData.prompt_settings.rag_unknown_answer"
@@ -1282,6 +1328,53 @@ const selectedCollectionsForUpload = computed(() => {
 const llmModels = ref([]);
 const llmModelsLoading = ref(false);
 
+// ===== Reranker Models =====
+const rerankerModels = ref([]);
+const rerankerModelsLoading = ref(false);
+
+const rerankerModelItems = computed(() => {
+  const items = Array.isArray(rerankerModels.value) ? [...rerankerModels.value] : [];
+
+  // Add a "System Default" option at the beginning
+  const defaultModel = items.find(m => m.is_default);
+  const defaultLabel = defaultModel ? `System-Standard (${defaultModel.display_name})` : 'System-Standard';
+  const defaultParams = defaultModel?.max_output_tokens || null;
+
+  return [
+    {
+      title: defaultLabel,
+      value: null,
+      description: 'Verwendet das systemweite Standard-Reranker-Modell',
+      is_default: true,
+      params: defaultParams
+    },
+    ...items.map(m => ({
+      title: m.display_name || m.model_id,
+      value: m.model_id,
+      description: m.description || '',
+      is_default: false,
+      params: m.max_output_tokens || null  // max_output_tokens stores param count in millions for rerankers
+    }))
+  ];
+});
+
+async function loadRerankerModels() {
+  rerankerModelsLoading.value = true;
+  try {
+    const response = await axios.get('/api/llm/models?active_only=true&model_type=reranker');
+    if (response.data?.success) {
+      rerankerModels.value = response.data.models || [];
+    } else {
+      rerankerModels.value = [];
+    }
+  } catch (error) {
+    console.warn('[ChatbotEditor] Error loading reranker models:', error);
+    rerankerModels.value = [];
+  } finally {
+    rerankerModelsLoading.value = false;
+  }
+}
+
 const selectedLlmModel = computed(() => {
   const modelId = formData.value?.model_name;
   if (!modelId) return null;
@@ -1496,9 +1589,11 @@ watch(
 watch(() => props.modelValue, (isOpen) => {
   if (!isOpen) {
     llmModels.value = [];
+    rerankerModels.value = [];
     return;
   }
   loadModels();
+  loadRerankerModels();
 }, { immediate: true });
 </script>
 

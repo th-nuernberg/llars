@@ -153,6 +153,8 @@ export function useChatbotForm() {
     rag_retrieval_k: 5,
     rag_min_relevance: 0.6,
     rag_include_sources: true,
+    rag_use_cross_encoder: false,  // Default: off (can be enabled per chatbot)
+    rag_reranker_model: null,  // null = use system default
     welcome_message: '',
     fallback_message: '',
     is_active: true,
@@ -249,6 +251,8 @@ export function useChatbotForm() {
       rag_retrieval_k: 5,
       rag_min_relevance: 0.6,
       rag_include_sources: true,
+      rag_use_cross_encoder: false,
+      rag_reranker_model: null,
       welcome_message: '',
       fallback_message: '',
       is_active: true,

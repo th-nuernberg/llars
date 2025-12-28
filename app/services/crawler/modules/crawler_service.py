@@ -37,8 +37,8 @@ class CrawlerService:
     """
 
     RAG_DOCS_PATH = '/app/data/rag/crawls'
-    DEFAULT_CHUNK_SIZE = 1000
-    DEFAULT_CHUNK_OVERLAP = 200
+    DEFAULT_CHUNK_SIZE = 1500
+    DEFAULT_CHUNK_OVERLAP = 300
     DEFAULT_ICON = 'mdi-web'
     DEFAULT_COLOR = '#2196F3'
 
@@ -46,6 +46,9 @@ class CrawlerService:
         self.active_crawls: Dict[str, Dict] = {}
         self._socketio = None
         self._background_threads: Dict[str, threading.Thread] = {}
+
+    # Minimum content length to consider a page worth indexing (in chars)
+    MIN_CONTENT_LENGTH = 100
 
     def _slugify(self, value: str, max_length: int = 200) -> str:
         """Create a safe slug for internal collection names."""
@@ -55,6 +58,58 @@ class CrawlerService:
         if not value:
             value = 'site'
         return value[:max_length].rstrip('_')
+
+    def _generate_filename_from_url(self, url: str, title: str = None) -> str:
+        """
+        Generate a meaningful filename from URL and title.
+
+        Example: https://example.com/team/ -> example_com_team.md
+        """
+        try:
+            parsed = urlparse(url)
+            # Domain part
+            domain = parsed.netloc.replace('www.', '')
+            domain_slug = self._slugify(domain, max_length=50)
+
+            # Path part
+            path = parsed.path.strip('/')
+            if path:
+                path_slug = self._slugify(path, max_length=100)
+            else:
+                path_slug = 'home'
+
+            filename = f"{domain_slug}_{path_slug}.md"
+            return filename
+        except Exception:
+            # Fallback to UUID if URL parsing fails
+            return f"page_{uuid.uuid4().hex[:12]}.md"
+
+    def _is_content_worth_indexing(self, content: str) -> bool:
+        """
+        Check if content has enough meaningful text to be worth indexing.
+
+        Filters out:
+        - Empty pages
+        - Pages with only navigation/footer text
+        - Pages with mostly whitespace
+        """
+        if not content:
+            return False
+
+        # Strip whitespace and count actual text
+        cleaned = ' '.join(content.split())
+
+        if len(cleaned) < self.MIN_CONTENT_LENGTH:
+            logger.debug(f"Content too short ({len(cleaned)} chars), skipping")
+            return False
+
+        # Check if content is mostly non-text (e.g., just symbols, numbers)
+        alpha_chars = sum(1 for c in cleaned if c.isalpha())
+        if alpha_chars < len(cleaned) * 0.3:  # Less than 30% letters
+            logger.debug(f"Content has too few letters ({alpha_chars}/{len(cleaned)}), skipping")
+            return False
+
+        return True
 
     def _build_crawl_collection_name(self, urls: List[str], display_name: str, job_id: str) -> str:
         """Build a unique, safe internal name for crawl collections."""
@@ -236,6 +291,11 @@ class CrawlerService:
 
                 for page in pages:
                     try:
+                        # Skip pages with empty/garbage content
+                        if not self._is_content_worth_indexing(page.get('content', '')):
+                            logger.debug(f"Skipping page with insufficient content: {page['url']}")
+                            continue
+
                         content_hash = page['content_hash']
                         if content_hash in seen_hashes:
                             logger.debug(f"Skipping duplicate content for {page['url']}")
@@ -247,7 +307,7 @@ class CrawlerService:
                             logger.debug(f"Content already exists in DB for {page['url']}")
                             continue
 
-                        filename = f"webcrawl_{job_id[:8]}_{uuid.uuid4().hex[:8]}.md"
+                        filename = self._generate_filename_from_url(page['url'])
                         file_path = os.path.join(self.RAG_DOCS_PATH, filename)
 
                         os.makedirs(self.RAG_DOCS_PATH, exist_ok=True)
@@ -818,6 +878,11 @@ class CrawlerService:
         from db.tables import RAGDocument, RAGDocumentChunk, RAGProcessingQueue, CollectionDocumentLink
 
         try:
+            # Skip pages with empty/garbage content
+            if not self._is_content_worth_indexing(page.get('content', '')):
+                logger.debug(f"Skipping page with insufficient content: {page.get('url', 'unknown')}")
+                return None
+
             content_hash = page['content_hash']
 
             if content_hash in seen_hashes:
@@ -870,7 +935,7 @@ class CrawlerService:
                                 image_url=page.get('url'),
                                 image_alt_text=f"Screenshot von {page.get('metadata', {}).get('title', page.get('url'))}",
                                 image_mime_type='image/png',
-                                embedding_status='completed'
+                                embedding_status='pending'
                             )
                             db.session.add(screenshot_chunk)
                             stored += 1
@@ -911,7 +976,7 @@ class CrawlerService:
                     return None
 
             else:
-                filename = f"webcrawl_{job_id[:8]}_{uuid.uuid4().hex[:8]}.md"
+                filename = self._generate_filename_from_url(page['url'])
                 file_path = os.path.join(self.RAG_DOCS_PATH, filename)
                 os.makedirs(self.RAG_DOCS_PATH, exist_ok=True)
 
@@ -963,9 +1028,9 @@ class CrawlerService:
                             image_url=img.get('source_url'),
                             image_alt_text=img.get('alt_text'),
                             image_mime_type=img.get('mime_type', 'image/jpeg'),
-                            embedding_status='completed'  # Images don't need text embedding
+                            embedding_status='pending'
                         )
-                    db.session.add(image_chunk)
+                        db.session.add(image_chunk)
                 logger.info(f"[Job {job_id}] Stored {len(images)} images for document {doc.id}")
 
                 # Store screenshot(s) as special chunks (for Vision-LLM queries and UI inspection)
@@ -989,7 +1054,7 @@ class CrawlerService:
                             image_url=page['url'],
                             image_alt_text=f"Screenshot von {page['metadata'].get('title', page['url'])}",
                             image_mime_type='image/png',
-                            embedding_status='completed'
+                            embedding_status='pending'
                         )
                         db.session.add(screenshot_chunk)
                         stored += 1

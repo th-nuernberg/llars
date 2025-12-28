@@ -29,7 +29,7 @@ class VisionLLMProcessor:
     """
 
     DEFAULT_MODEL = None
-    DEFAULT_MAX_TOKENS = 1000
+    DEFAULT_MAX_TOKENS = None
     DEFAULT_TEMPERATURE = 0.1
 
     EXTRACTION_PROMPT = """Analysiere diesen Screenshot einer Website und extrahiere folgende Informationen.
@@ -88,7 +88,7 @@ Wichtig:
             'https://kiz1.in.ohmportal.de/llmproxy/v1'
         )
         self.litellm_api_key = litellm_api_key or os.getenv('LITELLM_API_KEY', '')
-        self.max_tokens = max_tokens or self.DEFAULT_MAX_TOKENS
+        self.max_tokens = max_tokens if max_tokens is not None else self.DEFAULT_MAX_TOKENS
         self.temperature = temperature or self.DEFAULT_TEMPERATURE
 
     async def extract_structured_data(
@@ -117,9 +117,9 @@ Wichtig:
                 api_key=self.litellm_api_key
             )
 
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=[
+            completion_kwargs = {
+                "model": self.model,
+                "messages": [
                     {
                         "role": "user",
                         "content": [
@@ -136,9 +136,12 @@ Wichtig:
                         ]
                     }
                 ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
+                "temperature": self.temperature
+            }
+            if self.max_tokens is not None:
+                completion_kwargs["max_tokens"] = self.max_tokens
+
+            response = client.chat.completions.create(**completion_kwargs)
 
             response_text = extract_message_text(response.choices[0].message).strip()
             if not response_text:

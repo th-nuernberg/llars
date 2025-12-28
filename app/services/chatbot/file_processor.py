@@ -167,12 +167,13 @@ class FileProcessor:
             'height': image.size[1]
         }
 
-        # If model doesn't support vision, try OCR fallback
+        # If model doesn't support vision, try OCR fallback and drop image payload
         if model_name and not self.is_vision_model(model_name):
             ocr_text = self._ocr_image(image)
             if ocr_text:
                 result['text_content'] = ocr_text
                 result['ocr_used'] = True
+            result.pop('image_data', None)
 
         return result
 

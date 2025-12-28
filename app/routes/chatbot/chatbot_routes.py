@@ -450,6 +450,10 @@ def chat(chatbot_id):
         include_sources = request.form.get('include_sources', 'true').lower() == 'true'
         conversation_id = request.form.get('conversation_id', type=int)
 
+        chatbot = Chatbot.query.get(chatbot_id)
+        if not chatbot:
+            return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
+
         # Process uploaded files
         processed_files = []
         files = request.files.getlist('files')
@@ -469,7 +473,7 @@ def chat(chatbot_id):
 
                 # Read and process file
                 file_data = file.read()
-                processed = file_processor.process_file(file_data, file.filename)
+                processed = file_processor.process_file(file_data, file.filename, model_name=chatbot.model_name)
                 processed_files.append(processed)
     else:
         # Regular JSON request

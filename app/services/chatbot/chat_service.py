@@ -36,6 +36,10 @@ from llm.openai_utils import extract_delta_text, extract_message_text
 
 logger = logging.getLogger(__name__)
 
+# ChromaDB collection metadata for cosine distance
+# IMPORTANT: This ensures proper similarity scoring for both normalized and unnormalized embeddings
+CHROMA_COLLECTION_METADATA = {"hnsw:space": "cosine"}
+
 
 class ChatService:
     """Service for chatbot chat interactions with Multi-Collection RAG"""
@@ -52,6 +56,28 @@ class ChatService:
         "leitung",
         "kontakt"
     )
+    # Query expansion: synonyms and related terms for better lexical recall
+    _QUERY_SYNONYMS = {
+        # Business/Legal terms
+        "inhaber": ["impressum", "betreiber", "verantwortlich", "geschäftsführer"],
+        "betreiber": ["impressum", "inhaber", "verantwortlich"],
+        "geschäftsführer": ["inhaber", "leitung", "vorstand", "ceo"],
+        "chef": ["inhaber", "geschäftsführer", "leitung"],
+        "boss": ["inhaber", "geschäftsführer", "leitung"],
+        "eigentümer": ["inhaber", "betreiber", "impressum"],
+        # Contact terms
+        "kontakt": ["email", "telefon", "adresse", "impressum"],
+        "email": ["kontakt", "mail", "e-mail"],
+        "telefon": ["kontakt", "tel", "anrufen", "nummer"],
+        "adresse": ["kontakt", "standort", "anschrift"],
+        "anschrift": ["adresse", "standort", "impressum"],
+        # Location terms
+        "standort": ["adresse", "anschrift", "wo"],
+        "öffnungszeiten": ["geöffnet", "uhrzeit", "wann"],
+        # Team terms
+        "team": ["mitarbeiter", "kollegen", "personal"],
+        "mitarbeiter": ["team", "personal", "angestellte"],
+    }
     _STOPWORDS_DE = {
         'a', 'aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch', 'daher',
         'darum', 'das', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dich', 'die', 'dies', 'diese', 'dieser',
@@ -150,9 +176,11 @@ class ChatService:
                 for chunk in stream:
                     choice = chunk.choices[0] if chunk.choices else None
                     delta = getattr(choice, "delta", None) if choice else None
-                    if delta and hasattr(delta, 'content') and delta.content:
-                        title += delta.content
-                        stream_callback(delta.content)
+                    # Use extract_delta_text to handle reasoning_content (Magistral) and content
+                    delta_text = extract_delta_text(delta)
+                    if delta_text:
+                        title += delta_text
+                        stream_callback(delta_text)
             else:
                 response = llm_client.chat.completions.create(
                     model=model,
@@ -161,7 +189,8 @@ class ChatService:
                     temperature=0.3,
                     timeout=10.0
                 )
-                title = response.choices[0].message.content.strip()
+                # Use extract_message_text to handle reasoning_content (Magistral)
+                title = extract_message_text(response.choices[0].message).strip()
 
             # Clean up: remove quotes, limit length
             title = title.strip('"\'„"»«')
@@ -643,6 +672,14 @@ class ChatService:
         return message
 
     def _extract_lexical_tokens(self, query: str) -> List[str]:
+        """
+        Extract and expand lexical tokens from query for BM25 search.
+
+        Includes:
+        - Stopword filtering
+        - Compound word splitting (German: "Teamleiter" -> "team" + "leiter")
+        - Synonym expansion (e.g., "inhaber" -> ["impressum", "betreiber", ...])
+        """
         tokens = [t.lower() for t in self._TOKEN_RE.findall(query or '')]
         tokens = [t for t in tokens if len(t) >= 3 and t not in self._STOPWORDS_DE]
         if not tokens:
@@ -653,6 +690,8 @@ class ChatService:
             expanded = []
             for token in tokens:
                 expanded.append(token)
+
+                # Compound word expansion
                 if "team" in token and token != "team":
                     expanded.append("team")
                 for suffix in self._COMPOUND_SUFFIXES:
@@ -661,6 +700,12 @@ class ChatService:
                         if len(prefix) >= 3:
                             expanded.append(prefix)
                         expanded.append(suffix)
+
+                # Synonym expansion for better recall
+                if token in self._QUERY_SYNONYMS:
+                    for synonym in self._QUERY_SYNONYMS[token]:
+                        expanded.append(synonym)
+
             tokens = expanded
         # De-duplicate while keeping order
         seen = set()
@@ -670,7 +715,8 @@ class ChatService:
                 continue
             seen.add(t)
             unique.append(t)
-        return unique[:6]
+        # Allow more tokens when synonyms are added
+        return unique[:10]
 
     def _lexical_search_collection(self, collection: RAGCollection, query: str, tokens: List[str], limit: int) -> List[Dict[str, Any]]:
         if not collection or not tokens:
@@ -771,7 +817,9 @@ class ChatService:
 
     def _get_multi_collection_context(self, query: str) -> Tuple[str, List[Dict]]:
         """
-        Retrieve context from multiple collections with weighting.
+        Retrieve context from multiple collections using semantic (vector) search.
+
+        Pure RAG retrieval - lexical search is only available in Agent/ACT mode.
 
         Returns:
             Tuple of (context_string, sources_list)
@@ -779,93 +827,89 @@ class ChatService:
         if not self.rag_pipeline:
             return "", []
 
-        # Retrieve more candidates than we finally include in the prompt, so the reranker
-        # can surface exact matches (e.g. names, emails) even if they are not in the top-K
-        # vector results.
         final_k = max(1, int(self.chatbot.rag_retrieval_k or 4))
-        candidate_k = max(final_k * 4, 12)
+        # Fetch more candidates for reranking - cross-encoder can surface relevant docs
+        # that have lower vector scores but higher semantic relevance
+        candidate_k = max(final_k * 8, 32)
 
-        all_results = []
+        # ═══════════════════════════════════════════════════════════════════
+        # Semantic (Vector) Search Only
+        # ═══════════════════════════════════════════════════════════════════
 
-        # Query each assigned collection
+        all_results: List[Dict[str, Any]] = []
+
         for cc in sorted(self.chatbot.collections, key=lambda x: -x.priority):
             collection = cc.collection
-
             try:
-                # Use RAG pipeline to search
-                results = self._search_collection(
-                    collection,
-                    query,
-                    k=candidate_k
-                )
-
-                # Apply weight and add collection info
+                results = self._search_collection(collection, query, k=candidate_k)
                 for result in results:
                     result['score'] *= cc.weight
                     result['collection_id'] = collection.id
                     result['collection_name'] = collection.display_name
-
                 all_results.extend(results)
-
             except Exception as e:
                 logger.error(f"Error searching collection {collection.name}: {e}")
-                continue
 
-        # Lexical fallback for fact lookups that vector search can miss (names, emails, roles).
-        lexical_results: List[Dict[str, Any]] = []
-        lexical_tokens = self._extract_lexical_tokens(query)
-        if lexical_tokens:
-            for cc in sorted(self.chatbot.collections, key=lambda x: -x.priority):
-                collection = cc.collection
-                if not collection:
-                    continue
-                try:
-                    hits = self._lexical_search_collection(collection, query, lexical_tokens, limit=final_k)
-                    for hit in hits:
-                        hit['score'] *= cc.weight
-                        hit['collection_id'] = collection.id
-                        hit['collection_name'] = collection.display_name
-                    lexical_results.extend(hits)
-                except Exception as e:
-                    logger.debug(f"[ChatService] Lexical fallback skipped for collection {collection.id}: {e}")
-
-        if not all_results and not lexical_results:
-            logger.warning(f"[ChatService] No RAG results for chatbot {self.chatbot.id} (query='{query[:50]}...') using model {self.rag_pipeline.model_name if self.rag_pipeline else 'none'}")
+        if not all_results:
+            logger.warning(
+                f"[ChatService] No RAG results for chatbot {self.chatbot.id} "
+                f"(query='{query[:50]}...') using model "
+                f"{self.rag_pipeline.model_name if self.rag_pipeline else 'none'}"
+            )
             return "", []
 
-        # Sort by score and take top K
+        # Sort by semantic score (higher = better)
         all_results.sort(key=lambda x: x['score'], reverse=True)
-        top_results = all_results[:candidate_k]
+
+        logger.info(
+            f"[ChatService] Semantic search: {len(all_results)} results for chatbot {self.chatbot.id}"
+        )
+
+        # Use all_results directly (renamed from fused_results for compatibility below)
+        fused_results = all_results
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Filter and Rerank
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Take top candidates
+        filtered_results = fused_results[:candidate_k]
 
         # Filter by minimum relevance
-        filtered_results = [
-            r for r in top_results
-            if r['score'] >= self.chatbot.rag_min_relevance
+        min_relevance = self.chatbot.rag_min_relevance
+        relevance_filtered = [
+            r for r in filtered_results
+            if r.get('score', 0) >= min_relevance
         ]
 
-        # If everything is below threshold, keep the best candidates anyway and rely on
-        # citation instructions + "unknown answer" to prevent hallucinations.
-        if not filtered_results:
-            filtered_results = top_results[:final_k]
+        # If nothing passes minimum, keep best results anyway
+        if not relevance_filtered:
+            relevance_filtered = filtered_results[:final_k]
 
-        # Merge lexical matches (dedupe by vector_id / document+chunk).
-        if lexical_results:
-            seen = set()
-            merged: List[Dict[str, Any]] = []
-            for r in filtered_results + lexical_results:
-                key = r.get('vector_id') or (r.get('document_id'), r.get('chunk_index'))
-                if key in seen:
-                    continue
-                seen.add(key)
-                merged.append(r)
-            filtered_results = merged
+        filtered_results = relevance_filtered
 
-        # Optional reranking (keeps filtering based on vector score)
+        # Optional reranking - use chatbot-specific setting
         try:
             from services.rag.reranker import rerank_results
-            filtered_results = rerank_results(query, filtered_results)
+            settings = self._get_prompt_settings()
+            use_cross_encoder = getattr(settings, 'rag_use_cross_encoder', True) if settings else True
+            filtered_results = rerank_results(query, filtered_results, use_cross_encoder=use_cross_encoder)
         except Exception as e:
             logger.debug(f"[ChatService] Reranking skipped: {e}")
+
+        use_vision = FileProcessor.is_vision_model(self.chatbot.model_name)
+        logger.info(f"[ChatService] Vision check: model={self.chatbot.model_name}, use_vision={use_vision}")
+
+        # Count image results before filtering
+        image_count_before = sum(1 for r in filtered_results if (r.get('metadata') or {}).get('has_image'))
+        logger.info(f"[ChatService] Results before filter: total={len(filtered_results)}, images={image_count_before}")
+
+        if not use_vision:
+            filtered_results = [
+                r for r in filtered_results
+                if not (r.get('metadata') or {}).get('has_image')
+            ]
+            logger.info(f"[ChatService] After image filter (non-vision): {len(filtered_results)} results")
 
         filtered_results = filtered_results[:final_k]
 
@@ -910,7 +954,12 @@ class ChatService:
                 'content_url': f"/api/rag/documents/{doc_id}/content" if doc_id else None,
                 'chunks_url': f"/api/rag/documents/{doc_id}/chunks" if doc_id else None,
                 'document_url': f"/api/rag/documents/{doc_id}" if doc_id else None,
-                'screenshot_url': screenshot_url
+                'screenshot_url': screenshot_url,
+                'has_image': bool(metadata.get('has_image')),
+                'image_path': metadata.get('image_path'),
+                'image_url': metadata.get('image_url'),
+                'image_alt_text': metadata.get('image_alt_text'),
+                'image_mime_type': metadata.get('image_mime_type')
             })
 
         context = "\n\n---\n\n".join(context_parts)
@@ -1003,13 +1052,35 @@ class ChatService:
                 return None
 
         def try_litellm(mid: str):
-            """Try loading model via LiteLLM/KIZ API."""
+            """Try loading model via LiteLLM/KIZ API.
+
+            IMPORTANT: For VDR-2B multimodal model, we use LiteLLMDirectEmbeddings
+            instead of langchain's OpenAIEmbeddings. This ensures consistency with
+            how images are embedded (both use direct HTTP requests).
+            """
             litellm_api_key = os.environ.get("LITELLM_API_KEY")
             litellm_base_url = os.environ.get("LITELLM_BASE_URL")
 
             if not litellm_api_key or not litellm_base_url:
                 return None
 
+            # For VDR-2B multimodal model, use direct HTTP embeddings for consistency with images
+            if mid == "llamaindex/vdr-2b-multi-v1":
+                try:
+                    from services.rag.image_embedding_service import LiteLLMDirectEmbeddings
+
+                    logger.info(f"[ChatService] Using LiteLLMDirectEmbeddings for {mid} (multimodal consistency)")
+                    embeddings = LiteLLMDirectEmbeddings(model=mid)
+                    test_result = embeddings.embed_query("test")
+                    if test_result and len(test_result) > 0:
+                        cls._embeddings_cache[mid] = embeddings
+                        logger.info(f"[ChatService] LiteLLMDirectEmbeddings ready for {mid} (dims={len(test_result)})")
+                        return embeddings
+                except Exception as e:
+                    logger.warning(f"[ChatService] LiteLLMDirectEmbeddings failed for {mid}: {e}")
+                    # Fall through to try OpenAIEmbeddings as backup
+
+            # For other models, use langchain's OpenAIEmbeddings
             try:
                 embeddings = OpenAIEmbeddings(
                     model=mid,
@@ -1114,7 +1185,8 @@ class ChatService:
             vectorstore = Chroma(
                 collection_name=collection_name,
                 persist_directory=vectorstore_dir,
-                embedding_function=embeddings
+                embedding_function=embeddings,
+                collection_metadata=CHROMA_COLLECTION_METADATA,
             )
 
             # Perform similarity search with scores
@@ -1126,7 +1198,8 @@ class ChatService:
                     vectorstore = Chroma(
                         collection_name=fallback_name,
                         persist_directory=vectorstore_dir,
-                        embedding_function=embeddings
+                        embedding_function=embeddings,
+                        collection_metadata=CHROMA_COLLECTION_METADATA,
                     )
                     docs_with_scores = vectorstore.similarity_search_with_score(query, k=k)
                     if docs_with_scores:
@@ -1137,9 +1210,14 @@ class ChatService:
                             db.session.rollback()
 
             results = []
-            for doc, score in docs_with_scores:
+            img_count = sum(1 for d, _ in docs_with_scores if (d.metadata or {}).get('has_image'))
+            logger.info(f"[ChatService] _search_collection: Got {len(docs_with_scores)} docs, {img_count} are images")
+
+            for i, (doc, score) in enumerate(docs_with_scores):
                 # Get document info from metadata
                 metadata = doc.metadata or {}
+                if i < 5:  # Log first 5 for debugging
+                    logger.info(f"[ChatService] Doc[{i}]: has_image={metadata.get('has_image')}, score={score:.4f}")
                 doc_id = metadata.get('document_id')
                 filename = metadata.get('filename') or metadata.get('source')
                 title = metadata.get('title') or filename or 'Unbekannt'
@@ -1150,11 +1228,11 @@ class ChatService:
                         filename = db_doc.filename or filename
                         title = db_doc.title or db_doc.original_filename or filename or title
 
-                # Convert L2 distance to cosine similarity for normalized vectors
-                # For normalized vectors: L2_distance^2 = 2 * (1 - cosine_similarity)
-                # Therefore: cosine_similarity = 1 - (L2_distance^2 / 2)
+                # Convert cosine distance to cosine similarity
+                # ChromaDB with hnsw:space=cosine returns cosine distance = 1 - cosine_similarity
+                # Therefore: cosine_similarity = 1 - cosine_distance
                 # Clamp to [0, 1] to handle any numerical edge cases
-                similarity = max(0.0, min(1.0, 1 - (score ** 2) / 2))
+                similarity = max(0.0, min(1.0, 1 - score))
 
                 results.append({
                     'content': doc.page_content,
@@ -1238,21 +1316,67 @@ class ChatService:
             })
 
         # Current user message (with images if vision model)
-        if files and FileProcessor.is_vision_model(self.chatbot.model_name):
-            # Build multimodal content
+        use_vision = FileProcessor.is_vision_model(self.chatbot.model_name)
+        rag_images = []
+        if use_vision and sources:
+            import os
+            seen_paths = set()
+            for source in sources:
+                if not source.get('has_image'):
+                    continue
+                image_path = source.get('image_path')
+                if not image_path or image_path in seen_paths:
+                    continue
+                seen_paths.add(image_path)
+                try:
+                    with open(image_path, 'rb') as f:
+                        processed = file_processor.process_file(
+                            f.read(),
+                            os.path.basename(image_path),
+                            model_name=self.chatbot.model_name
+                        )
+                    if processed.get('type') == 'image' and processed.get('image_data'):
+                        rag_images.append(processed)
+                except Exception as e:
+                    logger.debug(f"[ChatService] Failed to load RAG image {image_path}: {e}")
+
+        user_images = []
+        if files:
+            user_images = [
+                f for f in files
+                if f.get('type') == 'image' and f.get('image_data')
+            ]
+
+        if use_vision and (rag_images or user_images):
             user_content = []
 
-            # Add images
-            for f in files:
-                if f.get('type') == 'image' and f.get('image_data'):
+            if rag_images:
+                user_content.append({
+                    "type": "text",
+                    "text": "Kontextbilder aus der Wissensbasis:"
+                })
+                for img in rag_images:
                     user_content.append({
                         "type": "image_url",
                         "image_url": {
-                            "url": f"data:{f.get('mime_type', 'image/jpeg')};base64,{f['image_data']}"
+                            "url": f"data:{img.get('mime_type', 'image/jpeg')};base64,{img['image_data']}"
                         }
                     })
 
-            # Add text message
+            if user_images:
+                if rag_images:
+                    user_content.append({
+                        "type": "text",
+                        "text": "Vom Nutzer hochgeladene Bilder:"
+                    })
+                for img in user_images:
+                    user_content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{img.get('mime_type', 'image/jpeg')};base64,{img['image_data']}"
+                        }
+                    })
+
             user_content.append({
                 "type": "text",
                 "text": current_message
@@ -1288,10 +1412,11 @@ class ChatService:
                 "top_p": self.chatbot.top_p
             }
 
-            # For vision models, ensure minimum tokens for image analysis
             max_tokens = self.chatbot.max_tokens
-            if use_vision and (not max_tokens or max_tokens < 1000):
-                max_tokens = 1000
+            if max_tokens:
+                model_info = FileProcessor.get_model_info(self.chatbot.model_name)
+                if model_info and model_info.get("supports_reasoning"):
+                    max_tokens = None
             if max_tokens:
                 completion_kwargs["max_tokens"] = max_tokens
 

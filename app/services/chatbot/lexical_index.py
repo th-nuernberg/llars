@@ -262,10 +262,13 @@ class LexicalSearchIndex:
             where = ""
             params: List[Any] = [fts_query]
             if collection_ids:
+                # Use exact match or GLOB for unindexed FTS5 columns
+                # LIKE doesn't work reliably with FTS5 unindexed columns
                 filters = []
                 for cid in collection_ids:
-                    filters.append("collection_ids LIKE ?")
-                    params.append(f"%|{cid}|%")
+                    # Use exact match for single collection or GLOB for multiple
+                    filters.append("collection_ids = ?")
+                    params.append(f"|{cid}|")
                 where = " AND (" + " OR ".join(filters) + ")"
             params.append(limit)
 

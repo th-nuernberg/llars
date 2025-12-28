@@ -162,15 +162,16 @@ Du hast auch Bilder aus den Dokumenten erhalten. Analysiere diese Bilder sorgfä
     return messages
 
 
-def _get_rag_images_for_sources(sources):
+def _get_rag_images_for_sources(sources, max_images=4):
     """
     Load images associated with RAG sources.
 
     Args:
         sources: List of source dicts
+        max_images: Maximum number of images to return (default: 4, LiteLLM limit)
 
     Returns:
-        List of image dicts with base64_data
+        List of image dicts with base64_data (limited to max_images)
     """
     from db.tables import RAGDocumentChunk
 
@@ -199,8 +200,16 @@ def _get_rag_images_for_sources(sources):
                         'source_url': chunk.image_url,
                         'document_id': doc_id
                     })
+                    # Early exit if we have enough images
+                    if len(images) >= max_images:
+                        logger.info(f"Reached max vision images limit ({max_images})")
+                        return images
                 except Exception as e:
                     logger.warning(f"Failed to load RAG image {chunk.image_path}: {e}")
+
+        # Check after each source document
+        if len(images) >= max_images:
+            break
 
     return images
 
@@ -445,14 +454,8 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                 else:
                     conversation_title = conv.title
 
-        # IMPORTANT: Send the final response content to frontend
-        # Agent modes don't stream char-by-char, so we need to send the full response at once
-        if final_response:
-            emit("chatbot:response", {
-                "content": final_response,
-                "complete": False
-            }, room=client_id)
-            socketio.sleep(0)
+        # Note: final_response is now streamed via delta events above,
+        # so we don't need to send it all at once here
 
         # Send sources
         if all_sources:

@@ -237,7 +237,7 @@ def create_collection():
         chunk_size=data.get('chunk_size', 1500),
         chunk_overlap=data.get('chunk_overlap', 300),
         retrieval_k=data.get('retrieval_k', 4),
-        is_public=data.get('is_public', True),
+        is_public=data.get('is_public', False),
         created_by=username
     )
 
@@ -528,8 +528,15 @@ def reindex_collection(collection_id):
     if not collection:
         raise NotFoundError(f'Collection with ID {collection_id} not found')
     username = AuthUtils.extract_username_without_validation()
-    if not RAGAccessService.can_edit_collection(username, collection):
-        raise ForbiddenError('Keine Berechtigung für diese Collection')
+
+    # Reindex requires explicit access: owner OR explicit share (not just public visibility)
+    is_owner = collection.created_by == username
+    is_admin = RAGAccessService.is_admin_user(username)
+    has_explicit_edit = RAGAccessService._has_collection_permission(username, collection_id, 'edit')
+
+    # Allow if: admin, owner, or (not public AND has explicit edit permission)
+    if not (is_admin or is_owner or (not collection.is_public and has_explicit_edit)):
+        raise ForbiddenError('Reindexierung nur für eigene oder explizit geteilte Collections erlaubt')
 
     payload = request.get_json(silent=True) or {}
     pdf_only = bool(payload.get('pdf_only'))

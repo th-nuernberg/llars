@@ -1,8 +1,7 @@
 <template>
-  <div class="step-container">
-    <div class="step-content">
-      <!-- Left Panel: Progress -->
-      <div class="panel progress-panel">
+  <div class="step-content">
+    <!-- Left Panel: Progress -->
+    <div class="panel progress-panel">
         <div class="panel-header">
           <v-progress-circular
             v-if="isActiveProcess"
@@ -36,11 +35,11 @@
 
         <!-- Phase Tags -->
         <div v-if="isCrawling" class="phase-tags mb-3">
-          <LTag :variant="phase1Done ? 'success' : (phase1Active ? 'primary' : 'gray')" size="sm">
+          <LTag :variant="phase1Variant" size="sm" :class="{ 'phase-inactive': !phase1Active && !phase1Done }">
             <v-icon start size="14">{{ phase1Done ? 'mdi-check' : 'mdi-map-search' }}</v-icon>
             Phase 1: Exploration
           </LTag>
-          <LTag :variant="phase2Done ? 'success' : (phase2Active ? 'primary' : 'gray')" size="sm">
+          <LTag :variant="phase2Variant" size="sm" :class="{ 'phase-inactive': !phase2Active && !phase2Done }">
             <v-icon start size="14">{{ phase2Done ? 'mdi-check' : 'mdi-spider-web' }}</v-icon>
             Phase 2: Crawling
           </LTag>
@@ -59,20 +58,21 @@
         <!-- Crawling Stats (only in crawling mode) -->
         <template v-if="isCrawling">
           <div class="stats-grid mb-3">
-            <LTag variant="success" size="sm" prepend-icon="mdi-file-document">
-              {{ totalDocuments }} Dokumente
+            <!-- Crawl-Fortschritt: Seiten (xxx/xxx) -->
+            <LTag variant="primary" size="sm" prepend-icon="mdi-web" class="stat-tag stat-tag--pages">
+              <span class="stat-value">{{ padNumber(crawlProgress.urlsCompleted || 0, 3) }}/{{ padNumber(crawlProgress.urlsTotal || 0, 3) }}</span> Seiten
             </LTag>
-            <LTag v-if="crawlProgress.urlsTotal" variant="primary" size="sm" prepend-icon="mdi-link">
-              {{ crawlProgress.urlsCompleted || 0 }}/{{ crawlProgress.urlsTotal }} URLs
+            <!-- Dokument-Embedding-Fortschritt (xxxx/xxxx) -->
+            <LTag variant="success" size="sm" prepend-icon="mdi-file-document" class="stat-tag stat-tag--docs">
+              <span class="stat-value">{{ padNumber(docsEmbedded, 4) }}/{{ padNumber(docsTotal, 4) }}</span> Docs
             </LTag>
-            <LTag v-if="crawlProgress.imagesExtracted" variant="secondary" size="sm" prepend-icon="mdi-image">
-              {{ crawlProgress.imagesExtracted }} Bilder
+            <!-- Medien = Bilder + Screenshots (xxxx/xxxx) -->
+            <LTag variant="secondary" size="sm" prepend-icon="mdi-image-multiple" class="stat-tag stat-tag--media">
+              <span class="stat-value">{{ padNumber(imageChunksCompleted, 4) }}/{{ padNumber(totalMedia, 4) }}</span> Medien
             </LTag>
-            <LTag v-if="crawlProgress.screenshotsTaken" variant="warning" size="sm" prepend-icon="mdi-camera">
-              {{ crawlProgress.screenshotsTaken }} Screenshots
-            </LTag>
-            <LTag variant="info" size="sm" prepend-icon="mdi-clock">
-              {{ formatDuration(crawlProgress.elapsedTime) }}
+            <!-- Laufzeit (xxm xxs) -->
+            <LTag variant="info" size="sm" prepend-icon="mdi-clock" class="stat-tag stat-tag--time">
+              <span class="stat-value">{{ formatDurationFixed(crawlProgress.elapsedTime) }}</span>
             </LTag>
           </div>
 
@@ -136,11 +136,14 @@
 
           <!-- Embedding Stats -->
           <div class="stats-grid mb-3">
-            <LTag variant="info" size="sm" prepend-icon="mdi-file-document">
-              {{ embeddingDocCount }} Dokumente
+            <LTag variant="success" size="sm" prepend-icon="mdi-file-document" class="stat-tag stat-tag--docs">
+              <span class="stat-value">{{ padNumber(docsEmbedded, 4) }}/{{ padNumber(docsTotal, 4) }}</span> Docs
             </LTag>
-            <LTag variant="success" size="sm" prepend-icon="mdi-vector-polygon">
+            <LTag variant="info" size="sm" prepend-icon="mdi-vector-polygon">
               {{ embeddingChunkCount }} Chunks
+            </LTag>
+            <LTag v-if="totalMedia > 0" variant="secondary" size="sm" prepend-icon="mdi-image-multiple" class="stat-tag stat-tag--media">
+              <span class="stat-value">{{ padNumber(imageChunksCompleted, 4) }}/{{ padNumber(totalMedia, 4) }}</span> Medien
             </LTag>
             <LTag variant="primary" size="sm" prepend-icon="mdi-percent">
               {{ embeddingProgressPercent }}%
@@ -216,26 +219,10 @@
           </template>
         </div>
 
-        <!-- Continue Action -->
-        <div class="continue-action">
-          <v-icon size="24" color="primary" class="mb-1">mdi-arrow-right-circle</v-icon>
-          <div class="text-body-2 font-weight-medium">Weiter zur Konfiguration?</div>
-          <LBtn
-            variant="primary"
-            size="small"
-            prepend-icon="mdi-skip-forward"
-            block
-            class="mt-2"
-            @click="$emit('skip-to-config')"
-          >
-            Zur Konfiguration
-          </LBtn>
-        </div>
       </div>
-    </div>
 
     <!-- Error Alert -->
-    <v-alert v-if="errorMessage" type="error" variant="tonal" class="error-alert">
+    <v-alert v-if="errorMessage" type="error" variant="tonal" class="error-alert mt-2">
       {{ errorMessage }}
     </v-alert>
   </div>
@@ -278,13 +265,39 @@ const isCompleted = computed(() => ['configuring', 'ready'].includes(props.build
 const hasError = computed(() => props.buildStatus === 'error')
 const crawlStage = computed(() => props.crawlProgress.stage)
 
-// Phase helpers
-const phase1Active = computed(() => isCrawling.value && crawlStage.value === 'planning')
-const phase1Done = computed(() => isCrawling.value && ['planning_done', 'crawling', 'completed'].includes(crawlStage.value))
-const phase2Active = computed(() => isCrawling.value && ['planning_done', 'crawling'].includes(crawlStage.value))
+// Phase helpers - basierend auf tatsächlichen Daten, nicht nur stage
+const urlsCompleted = computed(() => props.crawlProgress.urlsCompleted || 0)
+const urlsTotal = computed(() => props.crawlProgress.urlsTotal || 0)
+
+// Phase 1 (Exploration): URLs werden gesammelt, noch keine gecrawlt
+const phase1Active = computed(() => isCrawling.value && urlsCompleted.value === 0 && crawlStage.value !== 'completed')
+const phase1Done = computed(() => isCrawling.value && (urlsCompleted.value > 0 || crawlStage.value === 'completed'))
+
+// Phase 2 (Crawling): Seiten werden tatsächlich gecrawlt
+const phase2Active = computed(() => isCrawling.value && urlsCompleted.value > 0 && crawlStage.value !== 'completed')
 const phase2Done = computed(() => isCrawling.value && crawlStage.value === 'completed')
 
+// Phase Tag Varianten - explizit berechnet
+const phase1Variant = computed(() => {
+  if (phase1Done.value) return 'success'
+  if (phase1Active.value) return 'primary'
+  return 'gray'
+})
+
+const phase2Variant = computed(() => {
+  if (phase2Done.value) return 'success'
+  if (phase2Active.value) return 'primary'
+  return 'gray'  // Ausgegraut wenn Phase 1 noch läuft
+})
+
 const totalDocuments = computed(() => (props.crawlProgress.documentsCreated || 0) + (props.crawlProgress.documentsLinked || 0))
+
+// Dokument-Embedding-Fortschritt
+const docsEmbedded = computed(() => props.collectionInfo?.documents_processed || 0)
+const docsTotal = computed(() => props.collectionInfo?.document_count || totalDocuments.value)
+
+// Medien = Bilder + Screenshots (zusammengefasst)
+const totalMedia = computed(() => (props.crawlProgress.imagesExtracted || 0) + (props.crawlProgress.screenshotsTaken || 0))
 
 const embeddingProgressPercent = computed(() => {
   if (typeof props.embeddingProgress === 'number') return Math.min(100, Math.round(props.embeddingProgress))
@@ -293,6 +306,19 @@ const embeddingProgressPercent = computed(() => {
 
 const embeddingDocCount = computed(() => props.collectionInfo?.document_count || totalDocuments.value)
 const embeddingChunkCount = computed(() => props.collectionInfo?.total_chunks || 0)
+const estimatedImageChunks = computed(() => {
+  const extracted = props.crawlProgress.imagesExtracted || 0
+  const screenshots = props.crawlProgress.screenshotsTaken || 0
+  return extracted + screenshots
+})
+const imageChunksTotal = computed(() => {
+  const reported = props.collectionInfo?.image_chunks_total || 0
+  return Math.max(reported, estimatedImageChunks.value)
+})
+const imageChunksCompleted = computed(() => {
+  const completed = props.collectionInfo?.image_chunks_completed || 0
+  return Math.min(completed, imageChunksTotal.value)
+})
 
 const currentProgressPercent = computed(() => {
   // Embedding mode - show embedding progress
@@ -397,6 +423,21 @@ function formatDuration(seconds) {
   return `${mins}m ${secs}s`
 }
 
+// Formatiert Dauer mit fester Breite: "XXm XXs"
+function formatDurationFixed(seconds) {
+  const totalSecs = Math.round(seconds || 0)
+  const mins = Math.floor(totalSecs / 60)
+  const secs = totalSecs % 60
+  return `${String(mins).padStart(2, '\u2007')}m ${String(secs).padStart(2, '0')}s`
+}
+
+// Formatiert Zahl mit fester Breite (figure space \u2007 für nicht-sichtbares Padding)
+function padNumber(num, width) {
+  const str = String(num)
+  if (str.length >= width) return str
+  return '\u2007'.repeat(width - str.length) + str
+}
+
 function formatFileSize(bytes) {
   if (!bytes) return '0 KB'
   const kb = bytes / 1024
@@ -434,35 +475,26 @@ function getStatusLabel(status) {
 </script>
 
 <style scoped>
-.step-container {
+.step-content {
   height: 100%;
   display: flex;
-  flex-direction: column;
-  padding: 16px;
+  gap: 24px;
+  padding: 8px 16px;
   overflow: hidden;
-}
-
-.step-content {
-  flex: 1;
-  display: flex;
-  gap: 16px;
-  min-height: 0;
-  overflow: hidden;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
 }
 
 .panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), 0.12);
-  border-radius: var(--llars-radius, 16px 4px 16px 4px);
-  padding: 16px;
   min-width: 0;
   overflow: hidden;
+}
+
+/* Linkes Panel mit subtiler Trennung */
+.progress-panel {
+  border-right: 1px solid rgba(var(--v-border-color), 0.12);
+  padding-right: 24px;
 }
 
 .panel-header {
@@ -484,6 +516,12 @@ function getStatusLabel(status) {
   gap: 8px;
 }
 
+/* Inaktive Phase-Tags deutlich ausgegraut */
+.phase-inactive {
+  opacity: 0.4;
+  filter: grayscale(100%);
+}
+
 .current-url {
   padding: 8px;
   background: rgba(var(--v-theme-primary), 0.05);
@@ -494,6 +532,11 @@ function getStatusLabel(status) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* Feste Breiten für Stats-Tags (Roboto mit tabular-nums) */
+.stat-tag .stat-value {
+  font-variant-numeric: tabular-nums;
 }
 
 .recent-pages {
@@ -525,15 +568,13 @@ function getStatusLabel(status) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  margin-bottom: 12px;
 }
 
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
+  padding: 24px 24px 0;
   text-align: center;
 }
 
@@ -562,14 +603,6 @@ function getStatusLabel(status) {
 .doc-meta {
   font-size: 11px;
   color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.continue-action {
-  flex-shrink: 0;
-  text-align: center;
-  padding: 12px;
-  background: rgba(var(--v-theme-primary), 0.05);
-  border-radius: 8px;
 }
 
 .error-alert {

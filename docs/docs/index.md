@@ -18,20 +18,20 @@ LLARS ist eine Plattform zur KI-gestützten Analyse und Bewertung von E-Mail-Kon
 
 ```mermaid
 flowchart LR
-    client((Browser)) -->|HTTP 80/443| nginx[nginx<br/>(:80)]
-    nginx -->|/ ->| frontend[Vue<br/>Vite Dev :5173<br/>Static Build]
-    nginx -->|/api ->| backend[Flask API<br/>:8081]
-    nginx -->|/auth ->| backend
-    nginx -->|/authentik/ ->| authentik[Authentik<br/>:9000]
-    nginx -->|/collab/ ->| yjs[Yjs WebSocket<br/>:8082]
-    nginx -->|/analytics/ ->| matomo[Matomo<br/>:80]
-    nginx -->|/mkdocs (dev) /docs (prod)| mkdocs[MkDocs<br/>:8000]
+    client((Browser)) -->|HTTP| nginx[nginx :80]
+    nginx --> frontend[Vue :5173]
+    nginx -->|api| backend[Flask :8081]
+    nginx -->|auth| backend
+    nginx -->|authentik| authentik[Authentik :9000]
+    nginx -->|collab| yjs[Yjs :8082]
+    nginx -->|analytics| matomo[Matomo :80]
+    nginx -->|docs| mkdocs[MkDocs :8000]
 
-    backend <--> mariadb[(MariaDB<br/>:3306)]
-    authentik <--> pg[(PostgreSQL<br/>Authentik DB)]
+    backend <--> mariadb[(MariaDB :3306)]
+    authentik <--> pg[(PostgreSQL)]
 
     backend -->|OIDC| authentik
-    yjs -->|JWT Validate| authentik
+    yjs -->|JWT| authentik
 ```
 
 **Standard-Ports (Development)**

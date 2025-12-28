@@ -53,8 +53,8 @@ class ChatbotBuildMonitor:
     """Handles monitoring of chatbot build processes."""
 
     # Timeout and polling settings
-    CRAWL_TIMEOUT_SECONDS = 600  # 10 minutes
-    EMBEDDING_TIMEOUT_SECONDS = 1800  # 30 minutes
+    CRAWL_TIMEOUT_SECONDS = 1800  # 30 minutes (large sites need more time)
+    EMBEDDING_TIMEOUT_SECONDS = 3600  # 60 minutes
     POLL_INTERVAL_SECONDS = 2  # Check every 2 seconds
 
     @staticmethod
@@ -81,10 +81,23 @@ class ChatbotBuildMonitor:
                     status = crawler_service.get_job_status(job_id)
 
                     if not status:
-                        logger.warning(f"[ChatbotBuildMonitor] Job {job_id} not found")
-                        break
+                        # Job not found yet - this can happen during startup or long exploration phase
+                        # Keep waiting, don't treat as error
+                        logger.debug(f"[ChatbotBuildMonitor] Job {job_id} not found yet, waiting...")
+                        time.sleep(ChatbotBuildMonitor.POLL_INTERVAL_SECONDS)
+                        elapsed += ChatbotBuildMonitor.POLL_INTERVAL_SECONDS
+                        continue
 
-                    if status.get('status') == 'completed':
+                    job_status = status.get('status')
+
+                    # Valid in-progress states: queued, planning, running
+                    if job_status in ('queued', 'planning', 'running'):
+                        # Still in progress, keep monitoring
+                        time.sleep(ChatbotBuildMonitor.POLL_INTERVAL_SECONDS)
+                        elapsed += ChatbotBuildMonitor.POLL_INTERVAL_SECONDS
+                        continue
+
+                    if job_status == 'completed':
                         logger.info(f"[ChatbotBuildMonitor] Crawl completed for chatbot {chatbot_id}")
 
                         # Transition to embedding
@@ -106,7 +119,7 @@ class ChatbotBuildMonitor:
                             ChatbotBuildMonitor.start_embedding(app, chatbot_id, collection_id)
                         return
 
-                    elif status.get('status') == 'failed':
+                    elif job_status == 'failed':
                         logger.error(f"[ChatbotBuildMonitor] Crawl failed for chatbot {chatbot_id}: {status.get('error')}")
                         error_msg = status.get('error', 'Crawl failed')
                         ChatbotBuildMonitor._set_error_status(chatbot_id, error_msg)
@@ -115,7 +128,7 @@ class ChatbotBuildMonitor:
                         _update_wizard_session(chatbot_id, 'error', error_msg)
                         return
 
-                    elif status.get('status') == 'cancelled':
+                    elif job_status == 'cancelled':
                         logger.info(f"[ChatbotBuildMonitor] Crawl cancelled for chatbot {chatbot_id}")
                         ChatbotBuildMonitor._set_paused_status(chatbot_id, 'Crawl was cancelled')
 
@@ -123,8 +136,11 @@ class ChatbotBuildMonitor:
                         _update_wizard_session(chatbot_id, 'paused', 'Crawl was cancelled')
                         return
 
-                    time.sleep(ChatbotBuildMonitor.POLL_INTERVAL_SECONDS)
-                    elapsed += ChatbotBuildMonitor.POLL_INTERVAL_SECONDS
+                    else:
+                        # Unknown status, log and continue monitoring
+                        logger.warning(f"[ChatbotBuildMonitor] Unknown job status '{job_status}' for chatbot {chatbot_id}")
+                        time.sleep(ChatbotBuildMonitor.POLL_INTERVAL_SECONDS)
+                        elapsed += ChatbotBuildMonitor.POLL_INTERVAL_SECONDS
 
                 # Timeout reached
                 logger.error(f"[ChatbotBuildMonitor] Crawl timeout for chatbot {chatbot_id}")

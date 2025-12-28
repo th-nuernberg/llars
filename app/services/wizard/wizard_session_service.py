@@ -557,9 +557,22 @@ class WizardSessionService:
                     result[key] = json.loads(value) if value else {}
                 except json.JSONDecodeError:
                     result[key] = {}
-            elif key in ('chatbot_id', 'user_id', 'collection_id', 'current_step'):
-                # Parse int fields
-                result[key] = int(value) if value else None
+            elif key in ('chatbot_id', 'collection_id', 'current_step'):
+                # Parse int fields (NOT user_id - it may be a username string)
+                try:
+                    result[key] = int(value) if value else None
+                except ValueError:
+                    result[key] = None
+            elif key == 'user_id':
+                # user_id can be int or username string - try int first
+                if value:
+                    try:
+                        result[key] = int(value)
+                    except ValueError:
+                        # It's a username string, keep as-is for lookup purposes
+                        result[key] = value
+                else:
+                    result[key] = None
             elif key in ('elapsed_crawl_time', 'elapsed_embed_time'):
                 # Parse float fields
                 result[key] = float(value) if value else 0.0
@@ -584,10 +597,11 @@ class WizardSessionService:
                 return None
 
             # Reconstruct session from database
+            # Note: chatbot.created_by is a username string, not a user ID
             session = {
                 'chatbot_id': str(chatbot.id),
-                'user_id': str(chatbot.created_by) if chatbot.created_by else '',
-                'username': '',
+                'user_id': '',  # Not available from DB recovery - use username for lookups
+                'username': chatbot.created_by or '',
                 'build_status': chatbot.build_status or 'draft',
                 'current_step': str(self.STATUS_TO_STEP.get(chatbot.build_status, 1)),
                 'crawler_job_id': '',
@@ -623,9 +637,8 @@ class WizardSessionService:
             # Add to active sessions
             self.redis.sadd(self.KEY_ACTIVE, str(chatbot_id))
 
-            if session.get('user_id'):
-                user_sessions_key = self.KEY_USER_SESSIONS.format(user_id=session['user_id'])
-                self.redis.sadd(user_sessions_key, str(chatbot_id))
+            # Note: We don't add to user_sessions since we don't have the user_id
+            # The user can still resume via chatbot_id directly
 
             logger.info(f"[WizardSessionService] Recovered session {chatbot_id} from database")
 

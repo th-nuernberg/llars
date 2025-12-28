@@ -186,8 +186,8 @@ class CrawlerService:
                 wizard_service = get_wizard_session_service()
                 wizard_service.update_crawl_progress(job['chatbot_id'], {
                     'crawl_stage': data.get('stage', 'crawling'),
-                    'urls_total': data.get('max_pages', 0),
-                    'urls_completed': data.get('pages_crawled', 0),
+                    'urls_total': data.get('urls_total', 0),
+                    'urls_completed': data.get('urls_completed', data.get('pages_crawled', 0)),
                     'documents_created': job.get('documents_created', 0),
                     'current_url': data.get('current_url', ''),
                 })
@@ -1257,14 +1257,19 @@ class CrawlerService:
             if not vision_model_id:
                 raise ValueError("No vision-capable LLM model configured in llm_models")
 
+        # Queue for "starting URL" events (so user sees progress immediately)
+        start_queue = Queue()
+
         async def run():
             from .playwright_crawler import PlaywrightCrawler
 
             max_workers = min(4, max(1, len(urls)))
             sem = asyncio.Semaphore(max_workers)
 
-            async def fetch_url(target_url: str):
+            async def fetch_url(target_url: str, url_index: int):
                 async with sem:
+                    # Signal that we're starting to crawl this URL
+                    start_queue.put(('start', target_url, url_index))
                     try:
                         crawler = PlaywrightCrawler(
                             base_url=target_url,
@@ -1286,7 +1291,7 @@ class CrawlerService:
                         logger.error(f"[Job {job_id}] Playwright fetch failed for {target_url}: {e}")
                         return target_url, None, {'screenshots_taken': 0, 'vision_extractions': 0}
 
-            tasks = [fetch_url(u) for u in urls]
+            tasks = [fetch_url(u, i) for i, u in enumerate(urls)]
             for coro in asyncio.as_completed(tasks):
                 result = await coro
                 result_queue.put(result)
@@ -1302,12 +1307,41 @@ class CrawlerService:
 
         # Process results as they come in (this runs in the main thread)
         processed_count = 0
+        active_urls = set()  # Track which URLs are currently being crawled
+
         while processed_count < total_urls:
+            # First, check for "starting URL" events (non-blocking)
+            while not start_queue.empty():
+                try:
+                    event_type, start_url, url_index = start_queue.get_nowait()
+                    if event_type == 'start':
+                        active_urls.add(start_url)
+                        self.active_crawls[job_id]['current_url'] = start_url
+                        # Emit "starting to crawl" progress immediately
+                        self._emit_progress(job_id, {
+                            'status': 'running',
+                            'stage': 'crawling',
+                            'pages_crawled': processed_count,
+                            'max_pages': total_urls,
+                            'current_url': start_url,
+                            'urls_total': total_urls,
+                            'urls_completed': processed_count,
+                            'documents_created': self.active_crawls[job_id]['documents_created'],
+                            'documents_linked': self.active_crawls[job_id]['documents_linked'],
+                            'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
+                            'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0),
+                            'crawler_type': crawler_type,
+                            'message': f'Crawle Seite...'
+                        })
+                except Exception:
+                    break
+
             try:
-                # Wait for next result with timeout
-                result = result_queue.get(timeout=120)
+                # Wait for next result with short timeout to allow checking start_queue
+                result = result_queue.get(timeout=0.5)
                 url, page_data, stats = result
                 processed_count += 1
+                active_urls.discard(url)
 
                 self.active_crawls[job_id]['urls_completed'] = processed_count
 
@@ -1332,7 +1366,7 @@ class CrawlerService:
                     self.active_crawls[job_id]['brand_color'] = stats.get('brand_color')
                     logger.info(f"[Job {job_id}] Captured brand color: {stats.get('brand_color')}")
 
-                # Emit progress update immediately
+                # Emit progress update immediately after page is done
                 self._emit_progress(job_id, {
                     'status': 'running',
                     'stage': 'crawling',
@@ -1366,7 +1400,9 @@ class CrawlerService:
             except Exception as e:
                 if processing_complete.is_set() and result_queue.empty():
                     break
-                logger.warning(f"[Job {job_id}] Error processing result: {e}")
+                # Timeout is expected when waiting for results - just continue loop
+                if 'Empty' not in str(type(e).__name__):
+                    logger.warning(f"[Job {job_id}] Error processing result: {e}")
                 continue
 
         # Wait for async thread to finish

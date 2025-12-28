@@ -141,14 +141,16 @@ class WebCrawler:
     def _normalize_url(self, url: str) -> str:
         """Normalize URL for consistent comparison."""
         parsed = urlparse(url)
-        # Ensure scheme
+        # Ensure scheme - always use HTTPS
         if not parsed.scheme:
             url = 'https://' + url
             parsed = urlparse(url)
+        # Upgrade HTTP to HTTPS for consistent deduplication
+        scheme = 'https' if parsed.scheme in ('http', 'https') else parsed.scheme
         # Remove trailing slash and fragments
         path = parsed.path.rstrip('/') or '/'
         return urlunparse((
-            parsed.scheme,
+            scheme,
             parsed.netloc.lower(),
             path,
             '', '', ''
@@ -245,17 +247,8 @@ class WebCrawler:
                     self.visited_urls.add(url)
                     batch.append((url, depth))
 
-                if not batch:
-                    break
-
-                # Submit batch for parallel fetching
-                future_to_url = {
-                    executor.submit(fetch_links, url): (url, depth)
-                    for url, depth in batch
-                }
-
-                for future in as_completed(future_to_url):
-                    url, depth = future_to_url[future]
+                    # Add URL to discovered list immediately when selected for crawling
+                    # (not after fetch completes - this ensures the start URL is always counted)
                     discovered.append(url)
 
                     if progress_callback:
@@ -263,6 +256,21 @@ class WebCrawler:
                             progress_callback(len(discovered), url)
                         except Exception:
                             pass
+
+                    if len(discovered) >= max_pages:
+                        break
+
+                if not batch:
+                    break
+
+                # Submit batch for parallel fetching (to discover more links)
+                future_to_url = {
+                    executor.submit(fetch_links, url): (url, depth)
+                    for url, depth in batch
+                }
+
+                for future in as_completed(future_to_url):
+                    url, depth = future_to_url[future]
 
                     # Add discovered links to queue
                     try:

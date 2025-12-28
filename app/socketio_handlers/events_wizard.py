@@ -182,6 +182,7 @@ def emit_wizard_state(socketio, chatbot_id: int, session: dict = None, progress:
 
     room = f"wizard_{chatbot_id}"
     socketio.emit('wizard:state', {
+        'chatbot_id': chatbot_id,  # Include for client-side filtering
         'session': session,
         'progress': progress,
         'elapsed_time': elapsed,
@@ -205,6 +206,7 @@ def emit_wizard_progress(socketio, chatbot_id: int, progress: dict):
 
     room = f"wizard_{chatbot_id}"
     socketio.emit('wizard:progress', {
+        'chatbot_id': chatbot_id,  # Include for client-side filtering
         'progress': progress,
         'elapsed_time': elapsed,
         'server_time': datetime.utcnow().isoformat()
@@ -229,6 +231,7 @@ def emit_wizard_status_changed(socketio, chatbot_id: int, status: str, step: int
 
     room = f"wizard_{chatbot_id}"
     payload = {
+        'chatbot_id': chatbot_id,  # Include for client-side filtering
         'status': status,
         'step': step,
         'elapsed_time': elapsed,
@@ -253,6 +256,7 @@ def emit_wizard_error(socketio, chatbot_id: int, message: str, source: str = Non
     """
     room = f"wizard_{chatbot_id}"
     socketio.emit('wizard:error', {
+        'chatbot_id': chatbot_id,  # Include for client-side filtering
         'message': message,
         'source': source,
         'server_time': datetime.utcnow().isoformat()
@@ -274,6 +278,7 @@ def emit_wizard_elapsed_time(socketio, chatbot_id: int):
 
     room = f"wizard_{chatbot_id}"
     socketio.emit('wizard:elapsed_time', {
+        'chatbot_id': chatbot_id,  # Include for client-side filtering
         'elapsed_time': elapsed,
         'server_time': datetime.utcnow().isoformat()
     }, room=room)

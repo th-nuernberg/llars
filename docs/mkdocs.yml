@@ -52,8 +52,9 @@ nav:
           - Übersicht: projekte/oncoco/index.md
           - Konzept: projekte/oncoco/konzept.md
       - Chatbot & RAG:
-          - Übersicht: projekte/chatbot-rag/index.md
-          - Konzept: projekte/chatbot-rag/konzept.md
+          - Übersicht: projekte/chatbot-builder/index.md
+          - Konzept: projekte/chatbot-builder/konzept.md
+          - Hybrid Search: projekte/chatbot-builder/hybrid-search.md
       - KAIMo:
           - Übersicht: projekte/kaimo/index.md
           - Anfrage-Einschätzung: projekte/kaimo/anfrage-einschaetzung.md
@@ -71,6 +72,12 @@ nav:
           - Konzept: projekte/templates/konzept-template.md
           - Umsetzung: projekte/templates/umsetzung-template.md
           - Fortschritt: projekte/templates/progress-template.md
+  - Agentic AI & RAG:
+      - Übersicht: agentic-ai/index.md
+      - RAG: agentic-ai/rag.md
+      - ACT: agentic-ai/act.md
+      - ReACT: agentic-ai/react.md
+      - ReflAct: agentic-ai/reflact.md
   - Archiv:
       - Übersicht: archive/index.md
       - Refactoring (Complete): archive/refactoring-complete.md
@@ -104,4 +111,6 @@ markdown_extensions:
 
 plugins:
   - search
-  - mermaid2
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js

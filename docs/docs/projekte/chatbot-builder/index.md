@@ -18,6 +18,7 @@ URL eingeben → Crawlen → Embedden → Konfigurieren → Testen → Veröffen
 | Dokument | Beschreibung | Status |
 |----------|--------------|--------|
 | [Konzept](konzept.md) | Vollständige Spezifikation mit DB, API, Frontend | Fertig |
+| [Hybrid Search](hybrid-search.md) | RRF-basierte Kombination von Semantic + Lexical Search | Implementiert |
 
 ## Geplante Features
 
@@ -27,6 +28,8 @@ URL eingeben → Crawlen → Embedden → Konfigurieren → Testen → Veröffen
 - WebSocket Live-Progress
 
 ### RAG Pipeline
+- [x] **Hybrid Search mit RRF** - Semantic + Lexical kombiniert
+- [x] **Query Expansion** - Deutsche Synonyme (inhaber→impressum)
 - Separate `rag_embeddings` Tabelle
 - Collection-basierter Embedding-Fortschritt via WebSocket
 - Real-time Progress-Anzeige pro Collection

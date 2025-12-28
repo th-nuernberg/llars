@@ -284,6 +284,15 @@ watch(() => route.query.tab, (newTab) => {
 
 watch(filteredNavItems, (items) => {
   if (!items.length) return;
+  // Prioritize route query tab if it's valid
+  const routeTab = route.query.tab;
+  if (routeTab && items.some(item => item.value === routeTab)) {
+    if (activeSection.value !== routeTab) {
+      activeSection.value = routeTab;
+    }
+    return;
+  }
+  // Fallback to first item if current section is not in filtered list
   if (!items.some(item => item.value === activeSection.value)) {
     activeSection.value = items[0].value;
   }

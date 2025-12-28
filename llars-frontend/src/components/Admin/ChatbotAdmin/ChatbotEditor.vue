@@ -397,6 +397,34 @@
                           class="mb-4"
                         />
 
+                        <v-switch
+                          v-model="formData.prompt_settings.rag_use_cross_encoder"
+                          label="Cross-Encoder Reranking"
+                          color="primary"
+                          hide-details
+                          class="mb-4"
+                        >
+                          <template #append>
+                            <LInfoTooltip
+                              title="Cross-Encoder Reranking"
+                              :max-width="380"
+                            >
+                              <p>
+                                Cross-Encoder verbessern die Relevanz der abgerufenen Dokumente signifikant,
+                                insbesondere bei Fragen die anders formuliert sind als die Dokument-Inhalte.
+                              </p>
+                              <p class="mt-2">
+                                <strong>Beispiel:</strong> "Wer ist im Team?" findet Dokumente mit
+                                "Max Mustermann - Geschäftsführer" korrekt, auch wenn keine wörtliche
+                                Übereinstimmung vorliegt.
+                              </p>
+                              <p class="mt-2 text-caption">
+                                Erhöht die Latenz leicht (~100-200ms), aber verbessert die Antwortqualität deutlich.
+                              </p>
+                            </LInfoTooltip>
+                          </template>
+                        </v-switch>
+
                         <v-text-field
                           v-model="formData.prompt_settings.rag_unknown_answer"
                           label="Antwort wenn nicht in Quellen"

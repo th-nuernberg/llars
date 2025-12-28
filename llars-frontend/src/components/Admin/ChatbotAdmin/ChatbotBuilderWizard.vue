@@ -834,7 +834,9 @@ function handleCollectionStatus(data) {
       embedding_status: data.embedding_status,
       embedding_error: data.embedding_error,
       document_count: data.document_count,
-      total_chunks: data.total_chunks
+      total_chunks: data.total_chunks,
+      image_chunks_total: data.image_chunks_total,
+      image_chunks_completed: data.image_chunks_completed
     })
   }
 
@@ -880,11 +882,20 @@ function handleEmbeddingProgress(data) {
     // Otherwise, embedding is running in the background but we stay on crawling view
   }
 
-  if (data.documents_total) {
-    const infoUpdate = { document_count: data.documents_total }
-    if (data.chunks_completed !== undefined) {
-      infoUpdate.total_chunks = data.chunks_completed
-    }
+  const infoUpdate = {}
+  if (data.documents_total !== undefined) {
+    infoUpdate.document_count = data.documents_total
+  }
+  if (data.chunks_completed !== undefined) {
+    infoUpdate.total_chunks = data.chunks_completed
+  }
+  if (data.image_chunks_total !== undefined) {
+    infoUpdate.image_chunks_total = data.image_chunks_total
+  }
+  if (data.image_chunks_completed !== undefined) {
+    infoUpdate.image_chunks_completed = data.image_chunks_completed
+  }
+  if (Object.keys(infoUpdate).length) {
     updateCollectionInfo(infoUpdate)
   }
 }
@@ -915,7 +926,9 @@ async function handleEmbeddingComplete(data) {
   updateEmbeddingProgress(100)
   updateCollectionInfo({
     document_count: data.total_documents,
-    total_chunks: data.total_chunks
+    total_chunks: data.total_chunks,
+    image_chunks_total: data.image_chunks_total,
+    image_chunks_completed: data.image_chunks_completed
   })
 
   setStatus(BUILD_STATUS.CONFIGURING)

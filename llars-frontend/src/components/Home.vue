@@ -317,7 +317,7 @@ const allItems = ref([
     description: 'Chatbots erstellen, konfigurieren und teilen',
     route: '/admin?tab=chatbots',
     icon: 'mdi-robot',
-    permission: 'feature:chatbots:view',
+    permission: 'feature:chatbots:edit',
     category: 'admin'
   },
   {
@@ -325,7 +325,7 @@ const allItems = ref([
     description: 'Dokumente für die RAG-Pipeline verwalten und hochladen',
     route: '/admin?tab=rag',
     icon: 'mdi-database-search',
-    permission: 'feature:rag:view',
+    permission: 'feature:rag:edit',
     category: 'admin'
   }
 ])

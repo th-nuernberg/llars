@@ -10,6 +10,7 @@ import { ref, computed, watch } from 'vue';
 export function useChatbotForm() {
   const defaultPromptSettings = {
     rag_require_citations: true,
+    rag_use_cross_encoder: true,
     rag_unknown_answer: 'Das kann ich dir leider nicht beantworten.',
     rag_citation_instructions: [
       'Antworte natürlich und gesprächig. Nutze die bereitgestellten Informationen als Grundlage, aber formuliere frei und menschlich. Halte das Gespräch am Laufen - stelle Rückfragen, biete Hilfe an, sei freundlich.',

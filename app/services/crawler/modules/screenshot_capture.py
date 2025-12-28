@@ -288,8 +288,6 @@ class ScreenshotCapture:
             # Calculate number of screenshots needed
             effective_height = viewport_height - self.VIEWPORT_OVERLAP
             num_screenshots = math.ceil(page_height / effective_height)
-            num_screenshots = min(num_screenshots, 20)  # Limit to 20 screenshots max
-
             logger.info(f"Capturing {num_screenshots} screenshots for long page: {url}")
 
             for i in range(num_screenshots):

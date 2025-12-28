@@ -96,7 +96,7 @@ class WebCrawler:
             r'/wp-content/uploads/.*\.(css|js)$',
             r'/wp-includes/.*\.(css|js)$',
             r'/xmlrpc\.php',
-            r'/wp-json/',
+            r'/wp-json(?:/|$)',  # Match /wp-json and /wp-json/...
             # Feeds
             r'/feed/?$', r'/feed/.*$', r'/rss/?$', r'/atom/?$',
             r'/comments/feed',

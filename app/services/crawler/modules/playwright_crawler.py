@@ -143,7 +143,7 @@ class PlaywrightCrawler:
             r'/wp-content/uploads/.*\.(css|js)$',
             r'/wp-includes/.*\.(css|js)$',
             r'/xmlrpc\.php',
-            r'/wp-json/',
+            r'/wp-json(?:/|$)',  # Match /wp-json and /wp-json/...
             # Feeds
             r'/feed/?$', r'/feed/.*$', r'/rss/?$', r'/atom/?$',
             r'/comments/feed',
@@ -429,9 +429,223 @@ class PlaywrightCrawler:
 
         return self.crawled_pages
 
+    # Common cookie consent button selectors (German + English)
+    CONSENT_ACCEPT_SELECTORS = [
+        # === Specific CMPs ===
+        # Usercentrics
+        '[data-testid="uc-accept-all-button"]',
+        '#uc-btn-accept-banner',
+        '.uc-accept-all-button',
+        # Cookiebot
+        '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+        '#CybotCookiebotDialogBodyButtonAccept',
+        '#CookiebotDialogBodyLevelButtonAccept',
+        # OneTrust
+        '#onetrust-accept-btn-handler',
+        '.onetrust-close-btn-handler',
+        # Klaro
+        '.klaro .cm-btn-success',
+        '.klaro .cm-btn-accept-all',
+        # Borlabs Cookie
+        '#BorlabsCookieBoxButtonAccept',
+        'a[data-cookie-accept-all]',
+        # Complianz
+        '.cmplz-accept',
+        '#cmplz-accept-all',
+        # CookieYes
+        '.cky-btn-accept',
+        '#cky-btn-accept',
+        # Quantcast
+        '.qc-cmp2-summary-buttons button[mode="primary"]',
+        # Didomi
+        '#didomi-notice-agree-button',
+        # Traffective / Admiral
+        '.sp_choice_type_11',
+
+        # === German text-based ===
+        'button:has-text("Alle akzeptieren")',
+        'button:has-text("Alles akzeptieren")',
+        'button:has-text("Alle Cookies akzeptieren")',
+        'button:has-text("Akzeptieren")',
+        'button:has-text("Zustimmen")',
+        'button:has-text("Einverstanden")',
+        'button:has-text("OK")',
+        'a:has-text("Alle akzeptieren")',
+        'a:has-text("Akzeptieren")',
+
+        # === English text-based ===
+        'button:has-text("Accept all")',
+        'button:has-text("Accept All")',
+        'button:has-text("Accept all cookies")',
+        'button:has-text("Accept All Cookies")',
+        'button:has-text("Allow all")',
+        'button:has-text("Allow All")',
+        'button:has-text("I agree")',
+        'button:has-text("I Accept")',
+        'button:has-text("Got it")',
+        'a:has-text("Accept all")',
+        'a:has-text("Accept")',
+
+        # === Generic selectors ===
+        '[class*="consent"] button[class*="accept"]',
+        '[class*="consent"] button[class*="allow"]',
+        '[class*="cookie"] button[class*="accept"]',
+        '[class*="cookie"] button[class*="allow"]',
+        '[id*="consent"] button[id*="accept"]',
+        '[id*="cookie"] button[id*="accept"]',
+        '.cookie-accept',
+        '.cookie-accept-all',
+        '.js-accept-cookies',
+        '#accept-cookies',
+        '.accept-cookies-button',
+        '[data-action="accept-cookies"]',
+        '[data-consent="accept"]',
+    ]
+
+    # CSS to hide consent overlays
+    CONSENT_HIDE_CSS = """
+        /* === Specific CMPs === */
+        /* Usercentrics */
+        #usercentrics-root,
+        .uc-banner,
+        .uc-embedding-container,
+
+        /* Cookiebot */
+        #CybotCookiebotDialog,
+        #CybotCookiebotDialogBodyUnderlay,
+
+        /* OneTrust */
+        #onetrust-consent-sdk,
+        #onetrust-banner-sdk,
+        .onetrust-pc-dark-filter,
+
+        /* Klaro */
+        .klaro,
+
+        /* Borlabs */
+        #BorlabsCookieBox,
+        #BorlabsCookieBoxWrap,
+
+        /* Complianz */
+        #cmplz-cookiebanner-container,
+
+        /* CookieYes */
+        .cky-consent-container,
+
+        /* Quantcast */
+        .qc-cmp2-container,
+
+        /* Didomi */
+        #didomi-host,
+
+        /* === Generic patterns === */
+        [class*="cookie-banner"],
+        [class*="cookie-consent"],
+        [class*="cookie-notice"],
+        [class*="cookie-popup"],
+        [class*="cookie-modal"],
+        [class*="consent-banner"],
+        [class*="consent-modal"],
+        [class*="consent-popup"],
+        [class*="gdpr-banner"],
+        [class*="gdpr-notice"],
+        [class*="privacy-banner"],
+        [id*="cookie-banner"],
+        [id*="cookie-consent"],
+        [id*="cookie-notice"],
+        [id*="cookie-popup"],
+        [id*="consent-banner"],
+        [id*="gdpr-banner"],
+
+        /* Overlays and backdrops */
+        .modal-backdrop[class*="cookie"],
+        [class*="overlay"][class*="consent"],
+        [class*="cookie"][class*="overlay"],
+        [class*="consent"][class*="backdrop"]
+        {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* Restore body scroll */
+        body.modal-open,
+        body.cookie-modal-open,
+        body.no-scroll,
+        body[style*="overflow: hidden"],
+        html[style*="overflow: hidden"] {
+            overflow: auto !important;
+            position: static !important;
+        }
+    """
+
+    async def _dismiss_cookie_consent(self, page) -> bool:
+        """
+        Attempt to dismiss cookie consent dialogs by clicking accept buttons.
+
+        Args:
+            page: Playwright page object
+
+        Returns:
+            True if a consent button was clicked, False otherwise
+        """
+        for selector in self.CONSENT_ACCEPT_SELECTORS:
+            try:
+                # Short timeout - don't wait long for each selector
+                button = await page.wait_for_selector(selector, timeout=500, state='visible')
+                if button:
+                    # Verify button is actually visible and clickable
+                    is_visible = await button.is_visible()
+                    if is_visible:
+                        await button.click()
+                        logger.debug(f"[Consent] Dismissed cookie banner with: {selector}")
+                        # Brief wait for dialog to close
+                        await asyncio.sleep(0.3)
+                        return True
+            except Exception:
+                # Selector not found or not clickable - try next
+                continue
+
+        return False
+
+    async def _hide_consent_overlays(self, page):
+        """
+        Hide known cookie consent overlays via CSS injection.
+
+        This is a fallback/supplement to clicking - ensures overlays don't
+        interfere with screenshots even if clicking didn't work.
+
+        Args:
+            page: Playwright page object
+        """
+        try:
+            await page.add_style_tag(content=self.CONSENT_HIDE_CSS)
+            logger.debug("[Consent] Injected CSS to hide consent overlays")
+        except Exception as e:
+            logger.debug(f"[Consent] Failed to inject hide CSS: {e}")
+
+    async def _handle_cookie_consent(self, page):
+        """
+        Handle cookie consent dialogs: try to click accept, then hide via CSS.
+
+        Args:
+            page: Playwright page object
+        """
+        # First, try to click accept button
+        clicked = await self._dismiss_cookie_consent(page)
+
+        # Always inject CSS as fallback (handles lazy-loaded banners, etc.)
+        await self._hide_consent_overlays(page)
+
+        if clicked:
+            logger.debug("[Consent] Cookie consent handled via click")
+        else:
+            logger.debug("[Consent] No clickable consent button found, CSS fallback applied")
+
     async def _navigate_to_page(self, page, url: str):
         """
-        Navigate to page with robust error handling.
+        Navigate to page with robust error handling and cookie consent dismissal.
 
         Args:
             page: Playwright page object
@@ -439,16 +653,23 @@ class PlaywrightCrawler:
         """
         try:
             await page.goto(url, wait_until='load', timeout=self.timeout)
+
+            # Handle cookie consent dialogs
+            await self._handle_cookie_consent(page)
+
             # Try to wait for networkidle but don't fail if it times out
             try:
                 await page.wait_for_load_state('networkidle', timeout=15000)
             except Exception:
                 pass  # networkidle timeout is acceptable
+
         except Exception as nav_error:
             logger.warning(f"Navigation error for {url}: {nav_error}")
             # Fallback to DOMContentLoaded if full load fails
             try:
                 await page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+                # Still try to handle consent even on fallback
+                await self._handle_cookie_consent(page)
             except Exception:
                 raise nav_error
 

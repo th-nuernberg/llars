@@ -224,7 +224,9 @@ class ContentExtractor:
 
     async def _extract_main_content(self, page, url: str) -> str:
         """
-        Extract main text content with intelligent fallback.
+        Extract ALL text content from the page body.
+
+        Simple approach: Get everything from the body, no special selectors.
 
         Args:
             page: Playwright page object
@@ -233,46 +235,21 @@ class ContentExtractor:
         Returns:
             Extracted text content
         """
-        text_content = ''
+        # Simple: Just get the entire body text
+        try:
+            text_content = await asyncio.wait_for(
+                page.evaluate('() => document.body ? document.body.innerText : ""'),
+                timeout=15.0
+            )
+            logger.debug(f"Extracted full body content: {len(text_content)} chars from {url}")
+            return text_content
+        except asyncio.TimeoutError:
+            logger.warning(f"Timeout extracting body text from {url}")
+        except Exception as e:
+            logger.warning(f"Error extracting body text: {e}")
 
-        # Try main content selectors first
-        for selector in self.MAIN_SELECTORS:
-            try:
-                element = await page.query_selector(selector)
-                if element:
-                    try:
-                        text_content = await asyncio.wait_for(
-                            element.inner_text(),
-                            timeout=10.0
-                        )
-                    except asyncio.TimeoutError:
-                        logger.debug(f"Timeout on inner_text for {selector}")
-                        continue
-
-                    if text_content and len(text_content) > 200:
-                        logger.debug(f"Found content in {selector}: {len(text_content)} chars")
-                        break
-            except asyncio.TimeoutError:
-                logger.debug(f"Timeout finding selector {selector}")
-                continue
-            except Exception as e:
-                logger.debug(f"Error extracting from {selector}: {e}")
-                continue
-
-        # For page builders (Divi, Elementor), content is spread across multiple elements
-        # Try combining all text elements if single selector didn't yield enough content
-        if not text_content or len(text_content) < 200:
-            combined_content = await self._extract_combined_page_builder_content(page, url)
-            if combined_content and len(combined_content) > len(text_content or ''):
-                text_content = combined_content
-                logger.debug(f"Used combined page builder extraction: {len(text_content)} chars")
-
-        # Fallback to body if no content found
-        if not text_content or len(text_content) < 100:
-            logger.debug("Using body fallback for content extraction")
-            text_content = await self._fallback_body_extraction(page, url)
-
-        return text_content
+        # Last resort: BeautifulSoup
+        return await self._beautifulsoup_extraction(page)
 
     async def _extract_combined_page_builder_content(self, page, url: str) -> str:
         """
@@ -291,11 +268,21 @@ class ContentExtractor:
             '.et_pb_text_inner',
             '.et_pb_blurb_description',
             '.et_pb_slide_description',
+            # Divi Team Member modules (common for team pages)
+            '.et_pb_team_member',
+            '.et_pb_team_member_description',
+            '.et_pb_member_position',
+            '.et_pb_blurb_content',
             # Elementor widgets
             '.elementor-widget-text-editor',
             '.elementor-widget-heading',
+            '.elementor-team-member',
+            '.elementor-person',
             # WPBakery
             '.wpb_text_column',
+            # Generic team/person containers
+            '.team-member', '.team-item', '.person', '.staff-member',
+            '.member-info', '.team-content', '.employee',
             # Generic text containers
             '.text-content', '.text-block', 'p',
         ]

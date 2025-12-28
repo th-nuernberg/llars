@@ -58,7 +58,7 @@
         <!-- Crawling Stats (only in crawling mode) -->
         <template v-if="isCrawling">
           <div class="stats-grid mb-3">
-            <!-- Crawl-Fortschritt: Seiten (xxx/xxx) -->
+            <!-- Crawl-Fortschritt: Seiten (xxx/xxx) - immer anzeigen -->
             <LTag variant="primary" size="sm" prepend-icon="mdi-web" class="stat-tag stat-tag--pages">
               <span class="stat-value">{{ padNumber(crawlProgress.urlsCompleted || 0, 3) }}/{{ padNumber(crawlProgress.urlsTotal || 0, 3) }}</span> Seiten
             </LTag>

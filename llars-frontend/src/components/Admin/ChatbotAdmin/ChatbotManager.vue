@@ -452,9 +452,11 @@ function resumeChatbotBuild(chatbot) {
   wizardOpen.value = true
 }
 
-function handleWizardClose() {
+async function handleWizardClose() {
   wizardOpen.value = false
   wizardResumeChatbotId.value = null
+  // Reload chatbots to show any newly created or in-progress builds
+  await loadChatbots()
 }
 
 function openEditDialog(chatbot) {

@@ -201,10 +201,10 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
-        'display_name': 'mMARCO Multilingual (Reranker)',
+        'model_id': 'svalabs/cross-electra-ms-marco-german-uncased',
+        'display_name': 'German ELECTRA (Reranker)',
         'provider': 'sentence-transformers',
-        'description': 'Multilingualer Cross-Encoder Reranker für RAG-Relevanz. Bessere Ergebnisse für deutsche Texte als englische Modelle.',
+        'description': 'Deutscher Cross-Encoder Reranker für RAG-Relevanz. Speziell für deutsche Texte trainiert, beste Ergebnisse für deutsche Queries.',
         'model_type': LLMModel.MODEL_TYPE_RERANKER,
         'supports_vision': False,
         'supports_reasoning': False,

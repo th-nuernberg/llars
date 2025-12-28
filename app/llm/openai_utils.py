@@ -19,23 +19,28 @@ def _extract_text(value: Any) -> str:
         return value
 
     if isinstance(value, list):
-        parts: list[str] = []
+        preferred: list[str] = []
+        fallback: list[str] = []
         for item in value:
             if item is None:
-                continue
-            if isinstance(item, str):
-                parts.append(item)
-                continue
-            if hasattr(item, "text"):
-                parts.append(getattr(item, "text") or "")
                 continue
             if isinstance(item, dict):
                 text = item.get("text")
                 if isinstance(text, str):
-                    parts.append(text)
+                    item_type = item.get("type")
+                    if item_type in ("output_text", "text"):
+                        preferred.append(text)
+                    else:
+                        fallback.append(text)
                     continue
-            parts.append(str(item))
-        return "".join(parts)
+            if isinstance(item, str):
+                fallback.append(item)
+                continue
+            if hasattr(item, "text"):
+                fallback.append(getattr(item, "text") or "")
+                continue
+            fallback.append(str(item))
+        return "".join(preferred or fallback)
 
     if isinstance(value, dict):
         text = value.get("text")
@@ -62,11 +67,11 @@ def extract_message_text(message: Any) -> str:
 
     if isinstance(message, dict):
         content = message.get("content")
-        reasoning = message.get("reasoning_content")
+        reasoning = message.get("reasoning_content") or message.get("reasoning")
         refusal = message.get("refusal")
     else:
         content = getattr(message, "content", None)
-        reasoning = getattr(message, "reasoning_content", None)
+        reasoning = getattr(message, "reasoning_content", None) or getattr(message, "reasoning", None)
         refusal = getattr(message, "refusal", None)
 
     text = _extract_text(content)
@@ -88,13 +93,12 @@ def extract_delta_text(delta: Any) -> str:
 
     if isinstance(delta, dict):
         content = delta.get("content")
-        reasoning = delta.get("reasoning_content")
+        reasoning = delta.get("reasoning_content") or delta.get("reasoning")
     else:
         content = getattr(delta, "content", None)
-        reasoning = getattr(delta, "reasoning_content", None)
+        reasoning = getattr(delta, "reasoning_content", None) or getattr(delta, "reasoning", None)
 
     text = _extract_text(content)
     if not text:
         text = _extract_text(reasoning)
     return text
-

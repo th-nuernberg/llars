@@ -201,10 +201,10 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'cross-encoder/ms-marco-MiniLM-L-6-v2',
-        'display_name': 'MS Marco MiniLM (Reranker)',
+        'model_id': 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
+        'display_name': 'mMARCO Multilingual (Reranker)',
         'provider': 'sentence-transformers',
-        'description': 'Cross-Encoder Reranker für RAG-Relevanz.',
+        'description': 'Multilingualer Cross-Encoder Reranker für RAG-Relevanz. Bessere Ergebnisse für deutsche Texte als englische Modelle.',
         'model_type': LLMModel.MODEL_TYPE_RERANKER,
         'supports_vision': False,
         'supports_reasoning': False,

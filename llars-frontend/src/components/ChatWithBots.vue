@@ -2585,29 +2585,21 @@ onUnmounted(() => {
   overflow-x: auto;
 }
 
-/* Footnote references styling */
+/* Footnote references styling (inline citations - smaller, subscript, light green) */
 .message-content :deep(.footnote-ref) {
-  color: #5a8a4a;
+  color: var(--llars-citation-light);
   cursor: pointer;
   font-weight: 600;
-  font-size: inherit;
-  padding: 0 2px;
-  border-radius: 3px;
+  font-size: 0.75em;
+  vertical-align: sub;
+  padding: 0 1px;
+  border-radius: 2px;
   transition: all 0.2s ease;
 }
 
 .message-content :deep(.footnote-ref:hover) {
-  background: rgba(90, 138, 74, 0.15);
+  background: rgba(123, 168, 104, 0.15);
   text-decoration: underline;
-}
-
-/* Dark mode: etwas heller für Kontrast */
-.v-theme--dark .message-content :deep(.footnote-ref) {
-  color: #8ab878;
-}
-
-.v-theme--dark .message-content :deep(.footnote-ref:hover) {
-  background: rgba(138, 184, 120, 0.2);
 }
 
 .message-files {
@@ -2638,6 +2630,11 @@ onUnmounted(() => {
 .source-chip {
   cursor: pointer;
   transition: transform 0.2s ease;
+  --v-theme-success: 90, 138, 74 !important; /* Override to use citation-dark color */
+}
+
+.source-chip :deep(.v-chip__content) {
+  color: var(--llars-citation-dark);
 }
 
 .source-chip:hover {

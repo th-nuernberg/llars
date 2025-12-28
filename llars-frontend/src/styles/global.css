@@ -95,6 +95,10 @@ body,
   --llars-gray-active: #7e7e7e;
   --llars-gray-light: #c5c5c5;
 
+  /* Citation/Source Colors */
+  --llars-citation-light: #7ba868;
+  --llars-citation-dark: #5a8a4a;
+
   /* AppBar/Footer Colors (Light Mode - Sage Green) */
   --llars-appbar-start: #b0ca97;
   --llars-appbar-end: #9ab583;
@@ -241,6 +245,10 @@ body,
   --llars-gray-hover: #7a7a7a;
   --llars-gray-active: #5a5a5a;
   --llars-gray-light: #4a4a4a;
+
+  /* Citation/Source Colors (Dark Mode) */
+  --llars-citation-light: #a8d090;
+  --llars-citation-dark: #8ab878;
 
   /* Shadows (stärker im Dark Mode) */
   --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);

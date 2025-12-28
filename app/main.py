@@ -9,11 +9,24 @@ from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
 from services.api_metrics_service import create_metrics_middleware
 import os
+import redis
 
 app = Flask(__name__)
 
 # Initialize API metrics collection middleware
 create_metrics_middleware(app)
+
+# Initialize Redis client for server-authoritative sessions (Wizard Sessions, etc.)
+# Redis provides persistent session storage that survives browser closures and server restarts
+redis_client = redis.Redis(
+    host=os.environ.get('REDIS_HOST', 'llars-redis'),
+    port=int(os.environ.get('REDIS_PORT', 6379)),
+    db=int(os.environ.get('REDIS_DB', 0)),
+    decode_responses=True,  # Return strings instead of bytes
+    socket_connect_timeout=5,
+    socket_timeout=5,
+    retry_on_timeout=True
+)
 
 # CORS configuration - restrict in production!
 allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost,http://localhost:80,http://localhost:5173').split(',')

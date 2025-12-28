@@ -171,8 +171,14 @@ services:
       - ANONYMIZED_TELEMETRY=False
       # Authentik Admin API Token (for user management)
       - AUTHENTIK_API_TOKEN=${AUTHENTIK_API_TOKEN:-}
+      # Redis for server-authoritative sessions (Wizard Sessions, etc.)
+      - REDIS_HOST=${REDIS_HOST:-llars-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
     depends_on:
       db-maria-service:
+        condition: service_healthy
+      llars-redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
@@ -422,6 +428,22 @@ services:
       timeout: 3s
       retries: 5
 
+  # LLARS Redis - Server-autoritative Session Storage (Wizard Sessions, etc.)
+  llars-redis:
+    container_name: llars_redis
+    image: public.ecr.aws/docker/library/redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - llars_redis_data:/data
+    environment:
+      - TZ=Europe/Berlin
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   authentik-init:
     container_name: llars_authentik_init
     image: ghcr.io/goauthentik/server:latest
@@ -472,3 +494,5 @@ volumes:
     name: llars_matomo_data
   matomodb:
     name: llars_matomodb
+  llars_redis_data:
+    name: llars_redis_data

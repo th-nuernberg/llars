@@ -34,8 +34,8 @@ class LumberChunk:
 class LumberChunker:
     def __init__(
         self,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
+        chunk_size: int = 1500,
+        chunk_overlap: int = 300,
         separators: Optional[Sequence[str]] = None,
     ):
         self.chunk_size = int(chunk_size)
@@ -87,8 +87,8 @@ def chunk_file(
     file_path: str,
     mime_type: Optional[str] = None,
     *,
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200,
+    chunk_size: int = 1500,
+    chunk_overlap: int = 300,
     separators: Optional[Sequence[str]] = None,
 ) -> List[LumberChunk]:
     """

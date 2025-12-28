@@ -109,6 +109,28 @@ def _get_queue_for_user(username: str):
     return _serialize_queue_items(queue_items)
 
 
+def _get_image_chunk_stats(collection_id: int) -> tuple[int, int]:
+    """Return (total_image_chunks, completed_image_chunks) for a collection."""
+    try:
+        from db.db import db
+        from db.tables import RAGDocumentChunk, CollectionDocumentLink
+
+        linked_doc_ids = db.session.query(CollectionDocumentLink.document_id).filter(
+            CollectionDocumentLink.collection_id == collection_id
+        ).subquery()
+
+        image_chunks = RAGDocumentChunk.query.filter(
+            RAGDocumentChunk.document_id.in_(linked_doc_ids),
+            RAGDocumentChunk.has_image.is_(True)
+        )
+
+        total = image_chunks.count()
+        completed = image_chunks.filter(RAGDocumentChunk.embedding_status == 'completed').count()
+        return total, completed
+    except Exception:
+        return 0, 0
+
+
 def register_rag_events(socketio):
     """Register Socket.IO events for RAG real-time updates."""
 
@@ -177,6 +199,7 @@ def register_rag_events(socketio):
             join_room(room)
             logger.info(f"[RAG Socket] Client {request.sid} subscribed to collection {collection_id} ({username})")
 
+            image_total, image_completed = _get_image_chunk_stats(collection.id)
             emit('rag:collection_status', {
                 'collection_id': collection.id,
                 'name': collection.name,
@@ -184,7 +207,9 @@ def register_rag_events(socketio):
                 'embedding_progress': collection.embedding_progress or 0,
                 'embedding_error': collection.embedding_error,
                 'document_count': collection.document_count,
-                'total_chunks': collection.total_chunks
+                'total_chunks': collection.total_chunks,
+                'image_chunks_total': image_total,
+                'image_chunks_completed': image_completed
             })
 
             emit('rag:subscribed_collection', {'collection_id': collection_id, 'room': room})
@@ -421,12 +446,15 @@ def emit_collection_progress(socketio, collection_id: int, progress: int, curren
     """
     try:
         room = f"rag_collection_{collection_id}"
+        image_total, image_completed = _get_image_chunk_stats(collection_id)
         payload = {
             'collection_id': collection_id,
             'progress': progress,
             'current_document': current_doc,
             'documents_processed': docs_processed,
-            'documents_total': docs_total
+            'documents_total': docs_total,
+            'image_chunks_total': image_total,
+            'image_chunks_completed': image_completed
         }
         socketio.emit('rag:collection_progress', payload, room=room)
 
@@ -453,11 +481,14 @@ def emit_collection_completed(socketio, collection_id: int, total_chunks: int, t
     """
     try:
         room = f"rag_collection_{collection_id}"
+        image_total, image_completed = _get_image_chunk_stats(collection_id)
         data = {
             'collection_id': collection_id,
             'status': 'completed',
             'total_chunks': total_chunks,
-            'total_documents': total_docs
+            'total_documents': total_docs,
+            'image_chunks_total': image_total,
+            'image_chunks_completed': image_completed
         }
         socketio.emit('rag:collection_completed', data, room=room)
 

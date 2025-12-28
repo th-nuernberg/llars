@@ -19,8 +19,8 @@ class RAGCollection(db.Model):
 
     # Configuration
     embedding_model: Mapped[str] = mapped_column(db.String(255), nullable=False, default='sentence-transformers/all-MiniLM-L6-v2')
-    chunk_size: Mapped[int] = mapped_column(db.Integer, default=1000)
-    chunk_overlap: Mapped[int] = mapped_column(db.Integer, default=200)
+    chunk_size: Mapped[int] = mapped_column(db.Integer, default=1500)
+    chunk_overlap: Mapped[int] = mapped_column(db.Integer, default=300)
     retrieval_k: Mapped[int] = mapped_column(db.Integer, default=4)  # Number of docs to retrieve
 
     # Statistics

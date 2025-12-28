@@ -32,6 +32,10 @@ logger.setLevel(logging.INFO)
 _worker: Optional['EmbeddingWorker'] = None
 _worker_lock = threading.Lock()
 
+# ChromaDB collection metadata for cosine distance
+# IMPORTANT: This ensures proper similarity scoring for both normalized and unnormalized embeddings
+CHROMA_COLLECTION_METADATA = {"hnsw:space": "cosine"}
+
 
 class EmbeddingWorker:
     """
@@ -158,13 +162,40 @@ class EmbeddingWorker:
         import sys
 
         def try_litellm(mid: str):
-            """Try loading model via LiteLLM/KIZ API."""
+            """Try loading model via LiteLLM/KIZ API.
+
+            IMPORTANT: For VDR-2B multimodal model, we use LiteLLMDirectEmbeddings
+            instead of langchain's OpenAIEmbeddings. This is critical because:
+            - langchain's OpenAIEmbeddings produces DIFFERENT embeddings than direct API
+            - Query embeddings use LiteLLMDirectEmbeddings (in embedding_model_service.py)
+            - Using the same method ensures document and query embeddings match
+            """
             litellm_api_key = os.environ.get("LITELLM_API_KEY")
             litellm_base_url = os.environ.get("LITELLM_BASE_URL")
             if not litellm_api_key or not litellm_base_url:
                 return None
+
+            # For VDR-2B multimodal model, use LiteLLMDirectEmbeddings for consistency
+            if mid == "llamaindex/vdr-2b-multi-v1":
+                try:
+                    from services.rag.image_embedding_service import LiteLLMDirectEmbeddings
+
+                    logger.info(f"[EmbeddingWorker] Using LiteLLMDirectEmbeddings for: {mid}")
+                    embeddings = LiteLLMDirectEmbeddings(model=mid)
+                    # Test the connection
+                    test_result = embeddings.embed_query("test")
+                    if test_result and len(test_result) > 0:
+                        self._embeddings_cache[mid] = embeddings
+                        logger.info(f"[EmbeddingWorker] LiteLLMDirectEmbeddings ready for: {mid} (dims={len(test_result)})")
+                        return embeddings
+                    return None
+                except Exception as e:
+                    logger.warning(f"[EmbeddingWorker] LiteLLMDirectEmbeddings failed for {mid}: {e}")
+                    # Fall through to try OpenAIEmbeddings as backup
+
+            # For other models, use langchain's OpenAIEmbeddings
             try:
-                logger.info(f"[EmbeddingWorker] Trying LiteLLM for: {mid}")
+                logger.info(f"[EmbeddingWorker] Trying LiteLLM (OpenAIEmbeddings) for: {mid}")
                 embeddings = OpenAIEmbeddings(
                     model=mid,
                     openai_api_key=litellm_api_key,
@@ -401,8 +432,8 @@ class EmbeddingWorker:
         chunks = chunk_file(
             doc.file_path,
             doc.mime_type,
-            chunk_size=1000,
-            chunk_overlap=200,
+            chunk_size=1500,
+            chunk_overlap=300,
         )
         if not chunks:
             raise ValueError(f"Could not extract any text from {doc.file_path}")
@@ -452,10 +483,10 @@ class EmbeddingWorker:
         vectorstore_dir = os.path.join(self._pipeline.storage_dir, "vectorstore", target_model.replace('/', '_'))
         os.makedirs(vectorstore_dir, exist_ok=True)
 
-        # Clean up existing chunks/vectors for retries (prevents unique constraint errors and stale vectors).
+        # Clean up existing text chunks/vectors for retries (keep image chunks intact).
         try:
             existing_chunks = RAGDocumentChunk.query.filter_by(document_id=doc.id).all()
-            existing_vector_ids = [c.vector_id for c in existing_chunks if c and c.vector_id]
+            text_vector_ids = [c.vector_id for c in existing_chunks if c and c.vector_id and not c.has_image]
 
             if existing_chunks:
                 try:
@@ -463,20 +494,21 @@ class EmbeddingWorker:
                         collection_name=collection_name,
                         persist_directory=vectorstore_dir,
                         embedding_function=embeddings,
+                        collection_metadata=CHROMA_COLLECTION_METADATA,
                     )
-                    if existing_vector_ids:
+                    if text_vector_ids:
                         try:
-                            vectorstore._collection.delete(ids=existing_vector_ids)
+                            vectorstore._collection.delete(ids=text_vector_ids)
                         except Exception:
                             # Fallback for different langchain-chroma versions
                             try:
-                                vectorstore.delete(ids=existing_vector_ids)
+                                vectorstore.delete(ids=text_vector_ids)
                             except Exception:
                                 pass
                 except Exception as e:
                     logger.warning(f"[EmbeddingWorker] Could not delete old vectors for doc {doc.id}: {e}")
 
-                RAGDocumentChunk.query.filter_by(document_id=doc.id).delete()
+                RAGDocumentChunk.query.filter_by(document_id=doc.id, has_image=False).delete()
                 doc.vector_ids = None
                 doc.chunk_count = 0
                 db.session.commit()
@@ -531,7 +563,8 @@ class EmbeddingWorker:
             vectorstore = Chroma(
                 collection_name=collection_name,
                 persist_directory=vectorstore_dir,
-                embedding_function=embeddings
+                embedding_function=embeddings,
+                collection_metadata=CHROMA_COLLECTION_METADATA,
             )
 
             # Add texts with IDs - store all linked collection IDs in metadata
@@ -559,6 +592,15 @@ class EmbeddingWorker:
         except Exception as e:
             logger.error(f"[EmbeddingWorker] Error adding to ChromaDB: {e}")
             raise
+
+        # Embed image chunks if supported by the embedding model
+        self._embed_image_chunks_for_document(
+            doc=doc,
+            collection_id=primary_collection.id,
+            collection_name=collection_name,
+            vectorstore_dir=vectorstore_dir,
+            model_id=target_model
+        )
 
         # Update document status
         doc.status = 'indexed'
@@ -597,6 +639,111 @@ class EmbeddingWorker:
         # Emit completion
         self._emit_progress(doc, 'indexed', progress=100, step='Completed')
         logger.info(f"[EmbeddingWorker] Document {doc.id} indexed successfully with {len(chunks)} chunks")
+
+    def _embed_image_chunks_for_document(
+        self,
+        doc,
+        collection_id: int,
+        collection_name: str,
+        vectorstore_dir: str,
+        model_id: str
+    ) -> int:
+        from db.db import db
+        from db.tables import RAGDocumentChunk
+        from langchain_chroma import Chroma
+        from services.rag.collection_embedding_service import sanitize_chroma_metadata
+        from services.rag.image_embedding_service import ImageEmbeddingService
+
+        if not ImageEmbeddingService.supports_model(model_id):
+            return 0
+
+        image_chunks = (
+            RAGDocumentChunk.query
+            .filter_by(document_id=doc.id, has_image=True)
+            .all()
+        )
+        if not image_chunks:
+            return 0
+
+        to_embed = []
+        for chunk in image_chunks:
+            if not chunk.image_path:
+                continue
+            if chunk.vector_id and chunk.embedding_status == 'completed' and chunk.embedding_model == model_id:
+                continue
+            to_embed.append(chunk)
+
+        if not to_embed:
+            return 0
+
+        embeddings = ImageEmbeddingService.embed_image_paths(
+            model_id,
+            [c.image_path for c in to_embed]
+        )
+
+        vectorstore = Chroma(
+            collection_name=collection_name,
+            persist_directory=vectorstore_dir,
+            collection_metadata=CHROMA_COLLECTION_METADATA,
+        )
+
+        ids = []
+        documents = []
+        metadatas = []
+        vectors = []
+
+        for chunk, embedding in zip(to_embed, embeddings):
+            if not embedding:
+                chunk.embedding_status = 'failed'
+                chunk.embedding_error = 'Image embedding failed or unavailable'
+                continue
+
+            if not chunk.vector_id:
+                chunk.vector_id = f"doc_{doc.id}_img_{chunk.chunk_index}_{uuid.uuid4().hex[:8]}"
+
+            chunk.embedding_model = model_id
+            chunk.embedding_dimensions = len(embedding)
+            chunk.embedding_status = 'completed'
+            chunk.embedding_error = None
+
+            content = chunk.content or chunk.image_alt_text or "[Bild]"
+            ids.append(chunk.vector_id)
+            documents.append(content)
+            metadatas.append(sanitize_chroma_metadata({
+                'document_id': doc.id,
+                'chunk_index': chunk.chunk_index,
+                'filename': doc.filename,
+                'collection_id': collection_id,
+                'page_number': chunk.page_number,
+                'start_char': chunk.start_char,
+                'end_char': chunk.end_char,
+                'vector_id': chunk.vector_id,
+                'has_image': True,
+                'image_path': chunk.image_path,
+                'image_url': chunk.image_url,
+                'image_alt_text': chunk.image_alt_text,
+                'image_mime_type': chunk.image_mime_type
+            }))
+            vectors.append(embedding)
+
+        if ids:
+            try:
+                vectorstore._collection.upsert(
+                    ids=ids,
+                    embeddings=vectors,
+                    metadatas=metadatas,
+                    documents=documents
+                )
+                logger.info(f"[EmbeddingWorker] Embedded {len(ids)} image chunks for doc {doc.id}")
+            except Exception as exc:
+                logger.warning(f"[EmbeddingWorker] Image upsert failed for doc {doc.id}: {exc}")
+
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return len(ids)
 
     def _load_document_content(self, doc) -> str:
         """Load content from document file."""

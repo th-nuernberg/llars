@@ -23,6 +23,10 @@ DEFAULT_FALLBACK_EMBEDDING_MODEL = os.environ.get(
     "sentence-transformers/all-MiniLM-L6-v2"
 )
 
+# ChromaDB collection metadata for cosine distance
+# IMPORTANT: This ensures proper similarity scoring for both normalized and unnormalized embeddings
+CHROMA_COLLECTION_METADATA = {"hnsw:space": "cosine"}
+
 
 class RAGPipeline:
     """
@@ -55,8 +59,8 @@ class RAGPipeline:
         os.makedirs(self.vectorstore_dir, exist_ok=True)
 
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
+            chunk_size=1500,
+            chunk_overlap=300,
             separators=["# ", "## ", "\n\n", "\n", ". ", "! ", "? "]
         )
 
@@ -170,9 +174,37 @@ class RAGPipeline:
         litellm_embedding_models = ["llamaindex/vdr-2b-multi-v1"]
 
         def try_litellm_model(model_id: str, provider: str):
-            """Try loading model via LiteLLM API."""
+            """Try loading model via LiteLLM API.
+
+            IMPORTANT: For VDR-2B multimodal model, we use LiteLLMDirectEmbeddings
+            instead of langchain's OpenAIEmbeddings. This ensures consistency with
+            how images are embedded (both use direct HTTP requests).
+            """
             if not (litellm_api_key and litellm_base_url):
                 return None
+
+            # For VDR-2B multimodal model, use direct HTTP embeddings for consistency with images
+            if model_id == "llamaindex/vdr-2b-multi-v1":
+                try:
+                    from services.rag.image_embedding_service import LiteLLMDirectEmbeddings
+
+                    logging.info(f"[RAGPipeline] Using LiteLLMDirectEmbeddings for {model_id} (multimodal consistency)")
+                    embeddings = LiteLLMDirectEmbeddings(model=model_id)
+                    test_result = embeddings.embed_query("test")
+                    if test_result and len(test_result) > 0:
+                        dims = len(test_result)
+                        logging.info(f"[RAGPipeline] LiteLLMDirectEmbeddings ready: {model_id} ({dims} dimensions)")
+                        self.__class__._shared_embeddings = embeddings
+                        self.__class__._shared_model_name = model_id
+                        self.__class__._shared_model_type = "litellm"
+                        self.__class__._shared_dimensions = dims
+                        self.__class__._shared_model_provider = provider
+                        return embeddings, model_id, "litellm", dims
+                except Exception as e:
+                    logging.warning(f"[RAGPipeline] LiteLLMDirectEmbeddings failed for {model_id}: {e}")
+                    # Fall through to try OpenAIEmbeddings as backup
+
+            # For other models, use langchain's OpenAIEmbeddings
             try:
                 logging.info(f"[RAGPipeline] Attempting LiteLLM embedding model: {model_id}")
                 embeddings = OpenAIEmbeddings(
@@ -330,7 +362,8 @@ class RAGPipeline:
                     self.vectorstore = Chroma(
                         collection_name=self.collection_name,
                         persist_directory=self.vectorstore_dir,
-                        embedding_function=self.embeddings
+                        embedding_function=self.embeddings,
+                        collection_metadata=CHROMA_COLLECTION_METADATA,
                     )
                     logging.info("Vectorstore loaded successfully")
                     return
@@ -349,7 +382,8 @@ class RAGPipeline:
                         self.vectorstore = Chroma(
                             collection_name=self.collection_name,
                             persist_directory=self.vectorstore_dir,
-                            embedding_function=self.embeddings
+                            embedding_function=self.embeddings,
+                            collection_metadata=CHROMA_COLLECTION_METADATA,
                         )
                         logging.info("Vectorstore loaded successfully")
                         return

@@ -450,6 +450,19 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                     "type": "max_iterations"
                 })
 
+            elif event_status == "adaptive_iteration":
+                emit_agent_status({
+                    "type": "adaptive_iteration",
+                    "iteration": event.get("iteration"),
+                    "reason": event.get("reason")
+                })
+
+            elif event_status == "adaptive_response":
+                emit_agent_status({
+                    "type": "adaptive_response",
+                    "reason": event.get("reason")
+                })
+
             elif "delta" in event:
                 # Streaming response chunk
                 emit("chatbot:response", {

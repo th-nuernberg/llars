@@ -194,6 +194,7 @@ function getStepIcon(type) {
     'observation': 'mdi-eye',
     'search': 'mdi-magnify',
     'respond': 'mdi-message-reply',
+    'adaptive': 'mdi-lightning-bolt',
     'error': 'mdi-alert-circle'
   };
   return icons[type] || 'mdi-circle-small';
@@ -208,6 +209,7 @@ function getStepLabel(type) {
     'observation': 'OBSERVATION',
     'search': 'SEARCH',
     'respond': 'RESPOND',
+    'adaptive': 'ADAPTIVE',
     'error': 'FEHLER'
   };
   return labels[type] || type?.toUpperCase();
@@ -267,7 +269,8 @@ watch(() => props.agentStatus, (status) => {
       break;
 
     case 'reflection':
-      finalizeStep('reflection', status.content);
+      // Backend sends 'reflection' field, not 'content'
+      finalizeStep('reflection', status.reflection || status.content);
       currentStatus.value = 'Reflexion';
       break;
 
@@ -276,7 +279,8 @@ watch(() => props.agentStatus, (status) => {
       break;
 
     case 'thought':
-      finalizeStep('thought', status.content);
+      // Backend sends 'thought' field, not 'content'
+      finalizeStep('thought', status.thought || status.content);
       currentStatus.value = 'Gedanke';
       break;
 
@@ -284,20 +288,34 @@ watch(() => props.agentStatus, (status) => {
       currentStatus.value = 'Wähle Aktion...';
       break;
 
-    case 'action':
-      steps.value.push({
-        type: 'action',
-        action: status.action,
-        content: parseActionContent(status.action, status.param),
-        expanded: false,
-        streaming: false
-      });
+    case 'action': {
+      // Check if there's already a streaming action step (from action_delta events)
+      const lastStep = steps.value[steps.value.length - 1];
+      const actionContent = parseActionContent(status.action, status.param);
+
+      if (lastStep && lastStep.type === 'action' && lastStep.streaming) {
+        // Finalize the existing streaming step with parsed action
+        lastStep.action = status.action;
+        lastStep.content = actionContent;
+        lastStep.streaming = false;
+      } else {
+        // No streaming step - add new one (fallback for non-streaming mode)
+        steps.value.push({
+          type: 'action',
+          action: status.action,
+          content: actionContent,
+          expanded: false,
+          streaming: false
+        });
+      }
       currentStatus.value = status.action;
       scrollToBottom();
       break;
+    }
 
     case 'observation':
-      finalizeStep('observation', status.content);
+      // Backend sends 'result_preview' field, not 'content'
+      finalizeStep('observation', status.result_preview || status.content);
       currentStatus.value = 'Beobachtung';
       break;
 
@@ -351,6 +369,21 @@ watch(() => props.agentStatus, (status) => {
       appendStepDelta('action', status.delta);
       currentStatus.value = 'Aktion...';
       iteration.value = status.iteration || iteration.value;
+      break;
+
+    case 'adaptive_iteration':
+      // High confidence results found - generating response early
+      currentStatus.value = 'Hohe Konfidenz';
+      steps.value.push({
+        type: 'adaptive',
+        content: 'Hohe Konfidenz erreicht - generiere finale Antwort',
+        expanded: false
+      });
+      scrollToBottom();
+      break;
+
+    case 'adaptive_response':
+      currentStatus.value = 'Generiere Antwort...';
       break;
 
     case 'error':

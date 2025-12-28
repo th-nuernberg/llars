@@ -554,7 +554,7 @@ class ContentExtractor:
         Extract the primary/brand color from a website.
 
         Checks in order of priority:
-        1. Meta theme-color tag
+        1. Meta color tags (theme-color, msapplication-TileColor, msapplication-navbutton-color)
         2. CSS custom properties (--primary-color, --brand-color, etc.)
         3. Common brand element colors (header, primary buttons, links)
 
@@ -636,11 +636,18 @@ class ContentExtractor:
                     return true;
                 }
 
-                // 1. Check meta theme-color (highest priority)
-                const themeColor = document.querySelector('meta[name="theme-color"]');
-                if (themeColor) {
-                    const color = parseColor(themeColor.getAttribute('content'));
-                    if (isValidBrandColor(color)) return color;
+                // 1. Check meta tags for brand colors (highest priority)
+                const metaColorTags = [
+                    'meta[name="theme-color"]',
+                    'meta[name="msapplication-TileColor"]',
+                    'meta[name="msapplication-navbutton-color"]'
+                ];
+                for (const selector of metaColorTags) {
+                    const meta = document.querySelector(selector);
+                    if (meta) {
+                        const color = parseColor(meta.getAttribute('content'));
+                        if (isValidBrandColor(color)) return color;
+                    }
                 }
 
                 // 2. Check CSS custom properties

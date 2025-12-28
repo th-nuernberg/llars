@@ -37,6 +37,7 @@ REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 | admin | admin123 | admin |
 | researcher | admin123 | researcher (RATER) |
 | viewer | admin123 | viewer (VIEWER) |
+| chatbot_manager | admin123 | chatbot_manager |
 
 ---
 

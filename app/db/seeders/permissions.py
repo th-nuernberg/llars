@@ -525,7 +525,7 @@ def assign_default_admin_role(db):
 
 def assign_default_demo_roles(db):
     """
-    Assign default demo roles to 'researcher' and 'viewer' users if they exist.
+    Assign default demo roles to demo users if they exist.
     Uses username-based mapping (no foreign key to users table required).
 
     Args:
@@ -537,6 +537,7 @@ def assign_default_demo_roles(db):
     role_map = {
         'researcher': 'researcher',
         'viewer': 'viewer',
+        'chatbot_manager': 'chatbot_manager',
     }
 
     for username, role_name in role_map.items():

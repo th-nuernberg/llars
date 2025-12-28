@@ -269,7 +269,7 @@ else:
 "
 
 if [ "$PROJECT_STATE" = "development" ]; then
-    echo "[6/7] Creating additional users (researcher, viewer) - DEVELOPMENT MODE..."
+    echo "[6/7] Creating additional users (researcher, viewer, chatbot_manager) - DEVELOPMENT MODE..."
 
     ak shell -c "
 from authentik.core.models import User
@@ -305,9 +305,25 @@ if created:
     print('  Created viewer user')
 else:
     print('  Viewer user already exists')
+
+# Chatbot Manager user
+chatbot_manager, created = User.objects.get_or_create(
+    username='chatbot_manager',
+    defaults={
+        'name': 'Chatbot Manager',
+        'email': 'chatbot_manager@localhost',
+        'is_active': True
+    }
+)
+if created:
+    chatbot_manager.set_password('$ADMIN_PASSWORD')
+    chatbot_manager.save()
+    print('  Created chatbot_manager user')
+else:
+    print('  Chatbot Manager user already exists')
 "
 else
-    echo "[6/7] Skipping dev users (researcher, viewer) - PRODUCTION MODE"
+    echo "[6/7] Skipping dev users (researcher, viewer, chatbot_manager) - PRODUCTION MODE"
 fi
 
 echo "[7/8] Creating Admin API Token for LLARS..."
@@ -404,6 +420,9 @@ echo "  Username: researcher"
 echo "  Password: $ADMIN_PASSWORD"
 echo ""
 echo "  Username: viewer"
+echo "  Password: $ADMIN_PASSWORD"
+echo ""
+echo "  Username: chatbot_manager"
 echo "  Password: $ADMIN_PASSWORD"
 fi
 echo ""

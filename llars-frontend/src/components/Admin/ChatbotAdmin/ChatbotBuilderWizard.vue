@@ -676,6 +676,12 @@ function subscribeToProgress(jobId = null) {
   if (socketSubscribed.value) return
   socketSubscribed.value = true
 
+  // Subscribe to wizard session room (server-authoritative updates)
+  if (chatbotId.value) {
+    console.log('[Wizard] Joining wizard session room:', chatbotId.value)
+    socket.value.emit('wizard:join_session', { chatbot_id: chatbotId.value })
+  }
+
   // Subscribe to crawler job - use passed jobId or stored one
   const effectiveJobId = jobId || crawlerJobId.value
   if (effectiveJobId) {
@@ -689,6 +695,13 @@ function subscribeToProgress(jobId = null) {
     socket.value.emit('rag:subscribe_collection', { collection_id: collectionId.value })
     requestCollectionDocuments({ force: true })
   }
+
+  // Wizard session events (server-authoritative)
+  socket.value.on('wizard:state', handleWizardState)
+  socket.value.on('wizard:progress', handleWizardProgress)
+  socket.value.on('wizard:status_changed', handleWizardStatusChanged)
+  socket.value.on('wizard:elapsed_time', handleWizardElapsedTime)
+  socket.value.on('wizard:error', handleWizardError)
 
   // Crawler progress
   socket.value.on('crawler:progress', handleCrawlerProgress)
@@ -712,6 +725,10 @@ function subscribeToProgress(jobId = null) {
 function unsubscribeFromProgress() {
   if (!socket.value || !socketSubscribed.value) return
 
+  // Leave wizard session room
+  if (chatbotId.value) {
+    socket.value.emit('wizard:leave_session', { chatbot_id: chatbotId.value })
+  }
   if (collectionId.value) {
     socket.value.emit('rag:unsubscribe_collection', { collection_id: collectionId.value })
   }
@@ -719,11 +736,21 @@ function unsubscribeFromProgress() {
     socket.value.emit('crawler:leave_session', { session_id: crawlerJobId.value })
   }
 
+  // Wizard session events
+  socket.value.off('wizard:state', handleWizardState)
+  socket.value.off('wizard:progress', handleWizardProgress)
+  socket.value.off('wizard:status_changed', handleWizardStatusChanged)
+  socket.value.off('wizard:elapsed_time', handleWizardElapsedTime)
+  socket.value.off('wizard:error', handleWizardError)
+
+  // Crawler events
   socket.value.off('crawler:progress', handleCrawlerProgress)
   socket.value.off('crawler:status', handleCrawlerProgress)
   socket.value.off('crawler:page_crawled', handlePageCrawled)
   socket.value.off('crawler:complete', handleCrawlerComplete)
   socket.value.off('crawler:error', handleCrawlerError)
+
+  // Embedding events
   socket.value.off('rag:collection_status', handleCollectionStatus)
   socket.value.off('rag:collection_progress', handleEmbeddingProgress)
   socket.value.off('rag:collection_completed', handleEmbeddingComplete)
@@ -737,7 +764,91 @@ function unsubscribeFromProgress() {
   console.log('[Wizard] Unsubscribed from socket events')
 }
 
-// ===== Socket Event Handlers =====
+// ===== Wizard Socket Event Handlers (Server-Authoritative) =====
+function handleWizardState(data) {
+  console.log('[Wizard] Received wizard:state from server:', data)
+
+  // Update session state from server
+  if (data.session) {
+    if (data.session.build_status) {
+      setStatus(data.session.build_status)
+    }
+    if (data.session.current_step) {
+      navigateToStep(data.session.current_step)
+    }
+    // Update wizard data from server if in configuring/ready state
+    if (data.session.wizard_data && ['configuring', 'ready'].includes(data.session.build_status)) {
+      const serverData = typeof data.session.wizard_data === 'string'
+        ? JSON.parse(data.session.wizard_data)
+        : data.session.wizard_data
+      // Only update empty fields to avoid overwriting user edits
+      if (serverData.name && !wizardData.value.name) wizardData.value.name = serverData.name
+      if (serverData.displayName && !wizardData.value.displayName) wizardData.value.displayName = serverData.displayName
+      if (serverData.systemPrompt && !wizardData.value.systemPrompt) wizardData.value.systemPrompt = serverData.systemPrompt
+      if (serverData.welcomeMessage && !wizardData.value.welcomeMessage) wizardData.value.welcomeMessage = serverData.welcomeMessage
+      if (serverData.icon && !wizardData.value.icon) wizardData.value.icon = serverData.icon
+      if (serverData.color && !wizardData.value.color) wizardData.value.color = serverData.color
+    }
+  }
+
+  // Update progress from server
+  if (data.progress) {
+    handleWizardProgress(data)
+  }
+}
+
+function handleWizardProgress(data) {
+  console.log('[Wizard] Received wizard:progress from server:', data)
+
+  if (!data.progress) return
+
+  // Update crawl progress
+  if (data.progress.crawl_stage) {
+    updateCrawlProgress({
+      stage: data.progress.crawl_stage,
+      urlsTotal: data.progress.urls_total || 0,
+      urlsCompleted: data.progress.urls_completed || 0,
+      documentsCreated: data.progress.documents_created || 0,
+      currentUrl: data.progress.current_url || ''
+    })
+  }
+
+  // Update embedding progress
+  if (data.progress.embedding_progress !== undefined) {
+    updateEmbeddingProgress({
+      progress: data.progress.embedding_progress,
+      documentsTotal: data.progress.documents_total || 0,
+      documentsProcessed: data.progress.documents_processed || 0,
+      currentDocument: data.progress.current_document || ''
+    })
+  }
+}
+
+function handleWizardStatusChanged(data) {
+  console.log('[Wizard] Received wizard:status_changed from server:', data)
+
+  if (data.status) {
+    setStatus(data.status)
+  }
+  if (data.step !== null && data.step !== undefined) {
+    navigateToStep(data.step)
+  }
+}
+
+function handleWizardElapsedTime(data) {
+  console.log('[Wizard] Received wizard:elapsed_time from server:', data)
+  // Server-side elapsed time - could be used for more accurate time display
+  // For now, we continue using local timer but this could sync it
+}
+
+function handleWizardError(data) {
+  console.error('[Wizard] Received wizard:error from server:', data)
+  if (data.message) {
+    setError(data.source || 'general', data.message)
+  }
+}
+
+// ===== Crawler Socket Event Handlers =====
 function handleCrawlerProgress(data) {
   console.log('[Wizard] Crawler progress:', data)
 

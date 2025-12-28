@@ -287,17 +287,47 @@ class EmbeddingModelService:
         return self._try_huggingface(model_id)
 
     def _try_litellm(self, model_id: str) -> Tuple[Optional[Any], ModelSource, Optional[int], Optional[str]]:
-        """Try loading model via LiteLLM/KIZ API."""
+        """Try loading model via LiteLLM/KIZ API.
+
+        IMPORTANT: For VDR-2B multimodal model, we use LiteLLMDirectEmbeddings
+        instead of langchain's OpenAIEmbeddings. This is critical because:
+        - Images are embedded using direct HTTP requests
+        - Langchain's OpenAIEmbeddings produces DIFFERENT embeddings than direct API
+        - Using the same direct API method ensures image retrieval works correctly
+        """
         litellm_api_key = os.environ.get("LITELLM_API_KEY")
         litellm_base_url = os.environ.get("LITELLM_BASE_URL")
 
         if not litellm_api_key or not litellm_base_url:
             return None, ModelSource.UNKNOWN, None, "LiteLLM not configured"
 
+        # For VDR-2B multimodal model, use direct HTTP embeddings for consistency with images
+        if model_id == "llamaindex/vdr-2b-multi-v1":
+            try:
+                from services.rag.image_embedding_service import LiteLLMDirectEmbeddings
+
+                logger.info(f"[EmbeddingModelService] Using LiteLLMDirectEmbeddings for {model_id} (multimodal consistency)")
+                embeddings = LiteLLMDirectEmbeddings(model=model_id)
+
+                # Test that it works
+                test_result = embeddings.embed_query("test")
+                if test_result and len(test_result) > 0:
+                    dims = len(test_result)
+                    logger.info(f"[EmbeddingModelService] LiteLLMDirectEmbeddings ready for {model_id} ({dims} dims)")
+                    return embeddings, ModelSource.LITELLM, dims, None
+                else:
+                    return None, ModelSource.UNKNOWN, None, "LiteLLMDirectEmbeddings returned empty embeddings"
+
+            except Exception as e:
+                error_msg = str(e)
+                logger.warning(f"[EmbeddingModelService] LiteLLMDirectEmbeddings failed for {model_id}: {error_msg}")
+                # Fall through to try langchain OpenAIEmbeddings as backup
+
+        # For other models, use langchain's OpenAIEmbeddings
         try:
             from langchain_openai import OpenAIEmbeddings
 
-            logger.info(f"[EmbeddingModelService] Attempting LiteLLM for {model_id}")
+            logger.info(f"[EmbeddingModelService] Attempting LiteLLM (OpenAIEmbeddings) for {model_id}")
             embeddings = OpenAIEmbeddings(
                 model=model_id,
                 openai_api_key=litellm_api_key,

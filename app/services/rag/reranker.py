@@ -22,8 +22,32 @@ from db.models.llm_model import LLMModel
 logger = logging.getLogger(__name__)
 
 
-def rerank_results(query: str, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    mode = (os.environ.get("RAG_RERANK_MODE") or "lexical").strip().lower()
+def rerank_results(
+    query: str,
+    results: List[Dict[str, Any]],
+    *,
+    use_cross_encoder: Optional[bool] = None
+) -> List[Dict[str, Any]]:
+    """
+    Rerank search results to improve relevance.
+
+    Args:
+        query: The search query
+        results: List of search results to rerank
+        use_cross_encoder: If True, use cross-encoder reranking. If False, use lexical.
+                          If None, falls back to RAG_RERANK_MODE env var.
+
+    Returns:
+        Reranked list of results
+    """
+    # Determine mode: explicit parameter takes precedence over env var
+    if use_cross_encoder is True:
+        mode = "cross-encoder"
+    elif use_cross_encoder is False:
+        mode = "lexical"
+    else:
+        mode = (os.environ.get("RAG_RERANK_MODE") or "lexical").strip().lower()
+
     if mode in ("off", "false", "0", "disabled", "none"):
         return results
 

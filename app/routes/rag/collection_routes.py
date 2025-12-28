@@ -234,8 +234,8 @@ def create_collection():
         icon=data.get('icon', '📚'),
         color=data.get('color', '#4CAF50'),
         embedding_model=embedding_model,
-        chunk_size=data.get('chunk_size', 1000),
-        chunk_overlap=data.get('chunk_overlap', 200),
+        chunk_size=data.get('chunk_size', 1500),
+        chunk_overlap=data.get('chunk_overlap', 300),
         retrieval_k=data.get('retrieval_k', 4),
         is_public=data.get('is_public', True),
         created_by=username

@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
+# ChromaDB collection metadata for cosine distance
+# IMPORTANT: This ensures proper similarity scoring for both normalized and unnormalized embeddings
+CHROMA_COLLECTION_METADATA = {"hnsw:space": "cosine"}
+
 
 def retry_on_deadlock(max_retries: int = 3, delay: float = 0.5):
     """
@@ -458,6 +462,7 @@ class CollectionEmbeddingService:
                             collection_name=collection_name,
                             persist_directory=vectorstore_dir,
                             embedding_function=pipeline.embeddings,
+                            collection_metadata=CHROMA_COLLECTION_METADATA,
                         )
                         if vectorstore._collection.count() == 0:
                             logger.warning(
@@ -631,7 +636,8 @@ class CollectionEmbeddingService:
                         vectorstore = Chroma(
                             collection_name=collection_name,
                             persist_directory=vectorstore_dir,
-                            embedding_function=pipeline.embeddings
+                            embedding_function=pipeline.embeddings,
+                            collection_metadata=CHROMA_COLLECTION_METADATA,
                         )
 
                         if chroma_texts:
@@ -658,6 +664,15 @@ class CollectionEmbeddingService:
                     except Exception as e:
                         logger.error(f"[CollectionEmbedding] ChromaDB error: {e}")
                         raise
+
+                    # Embed image chunks (screenshots / inline images) if supported by the embedding model
+                    self._embed_image_chunks_for_document(
+                        doc=doc,
+                        collection_id=collection_id,
+                        collection_name=collection_name,
+                        vectorstore_dir=vectorstore_dir,
+                        model_id=pipeline.model_name
+                    )
 
                     # Update document status with deadlock retry
                     self._update_document_status(
@@ -711,6 +726,111 @@ class CollectionEmbeddingService:
                 )
             except Exception as stats_err:
                 logger.warning(f"[CollectionEmbedding] Failed to update collection stats: {stats_err}")
+
+    def _embed_image_chunks_for_document(
+        self,
+        doc,
+        collection_id: int,
+        collection_name: str,
+        vectorstore_dir: str,
+        model_id: str
+    ) -> int:
+        """Embed image chunks for a document when using a multimodal embedding model."""
+        from db.db import db
+        from db.tables import RAGDocumentChunk
+        from langchain_chroma import Chroma
+        from services.rag.image_embedding_service import ImageEmbeddingService
+
+        if not ImageEmbeddingService.supports_model(model_id):
+            return 0
+
+        image_chunks = (
+            RAGDocumentChunk.query
+            .filter_by(document_id=doc.id, has_image=True)
+            .all()
+        )
+        if not image_chunks:
+            return 0
+
+        to_embed = []
+        for chunk in image_chunks:
+            if not chunk.image_path:
+                continue
+            if chunk.vector_id and chunk.embedding_status == 'completed' and chunk.embedding_model == model_id:
+                continue
+            to_embed.append(chunk)
+
+        if not to_embed:
+            return 0
+
+        embeddings = ImageEmbeddingService.embed_image_paths(
+            model_id,
+            [c.image_path for c in to_embed]
+        )
+
+        vectorstore = Chroma(
+            collection_name=collection_name,
+            persist_directory=vectorstore_dir,
+            collection_metadata=CHROMA_COLLECTION_METADATA,
+        )
+
+        ids = []
+        documents = []
+        metadatas = []
+        vectors = []
+
+        for chunk, embedding in zip(to_embed, embeddings):
+            if not embedding:
+                chunk.embedding_status = 'failed'
+                chunk.embedding_error = 'Image embedding failed or unavailable'
+                continue
+
+            if not chunk.vector_id:
+                chunk.vector_id = f"doc_{doc.id}_img_{chunk.chunk_index}_{uuid.uuid4().hex[:8]}"
+
+            chunk.embedding_model = model_id
+            chunk.embedding_dimensions = len(embedding)
+            chunk.embedding_status = 'completed'
+            chunk.embedding_error = None
+
+            content = chunk.content or chunk.image_alt_text or "[Bild]"
+            ids.append(chunk.vector_id)
+            documents.append(content)
+            metadatas.append(sanitize_chroma_metadata({
+                'document_id': doc.id,
+                'chunk_index': chunk.chunk_index,
+                'filename': doc.filename,
+                'collection_id': collection_id,
+                'page_number': chunk.page_number,
+                'start_char': chunk.start_char,
+                'end_char': chunk.end_char,
+                'vector_id': chunk.vector_id,
+                'has_image': True,
+                'image_path': chunk.image_path,
+                'image_url': chunk.image_url,
+                'image_alt_text': chunk.image_alt_text,
+                'image_mime_type': chunk.image_mime_type
+            }))
+            vectors.append(embedding)
+
+        if ids:
+            try:
+                vectorstore._collection.upsert(
+                    ids=ids,
+                    embeddings=vectors,
+                    metadatas=metadatas,
+                    documents=documents
+                )
+                logger.info(f"[CollectionEmbedding] Embedded {len(ids)} image chunks for doc {doc.id}")
+            except Exception as exc:
+                logger.warning(f"[CollectionEmbedding] Image upsert failed for doc {doc.id}: {exc}")
+
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return len(ids)
 
     @retry_on_deadlock(max_retries=3, delay=0.5)
     def _update_document_status(self, doc_id: int, status: str, error: str = None, **kwargs):

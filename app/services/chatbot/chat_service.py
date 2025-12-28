@@ -875,6 +875,14 @@ class ChatService:
         # Take top candidates
         filtered_results = fused_results[:candidate_k]
 
+        # Log top candidates before filtering
+        logger.info(f"[ChatService] Top {len(filtered_results)} candidates before relevance filter:")
+        for i, r in enumerate(filtered_results[:10]):
+            doc_id = r.get('document_id')
+            title = r.get('title', 'Unknown')[:40]
+            score = r.get('score', 0)
+            logger.info(f"[ChatService]   {i+1}. score={score:.4f} doc_id={doc_id} | {title}")
+
         # Filter by minimum relevance
         min_relevance = self.chatbot.rag_min_relevance
         relevance_filtered = [
@@ -893,9 +901,10 @@ class ChatService:
             from services.rag.reranker import rerank_results
             settings = self._get_prompt_settings()
             use_cross_encoder = getattr(settings, 'rag_use_cross_encoder', True) if settings else True
+            logger.info(f"[ChatService] Reranking {len(filtered_results)} results (cross_encoder={use_cross_encoder})")
             filtered_results = rerank_results(query, filtered_results, use_cross_encoder=use_cross_encoder)
         except Exception as e:
-            logger.debug(f"[ChatService] Reranking skipped: {e}")
+            logger.warning(f"[ChatService] Reranking failed: {e}")
 
         use_vision = FileProcessor.is_vision_model(self.chatbot.model_name)
         logger.info(f"[ChatService] Vision check: model={self.chatbot.model_name}, use_vision={use_vision}")

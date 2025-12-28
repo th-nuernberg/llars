@@ -40,8 +40,36 @@ from services.chatbot.file_processor import FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
 from services.permission_service import PermissionService
 from auth.oidc_validator import validate_token
+from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger(__name__)
+
+
+def _commit_with_retry(max_retries: int = 3, delay: float = 0.1):
+    """
+    Commit database session with retry logic for deadlocks.
+
+    MariaDB deadlocks can occur when concurrent transactions lock rows
+    in different orders. This helper retries the commit on deadlock.
+    """
+    import time as time_module
+    for attempt in range(max_retries):
+        try:
+            db.session.commit()
+            return True
+        except OperationalError as e:
+            # Check if it's a deadlock error (MySQL error 1213)
+            if "1213" in str(e) or "Deadlock" in str(e):
+                db.session.rollback()
+                if attempt < max_retries - 1:
+                    logger.warning(f"[Chatbot] Deadlock detected, retrying ({attempt + 1}/{max_retries})...")
+                    time_module.sleep(delay * (attempt + 1))  # Exponential backoff
+                else:
+                    logger.error(f"[Chatbot] Deadlock persisted after {max_retries} retries")
+                    raise
+            else:
+                raise
+    return False
 
 
 def _classify_token_error(token: str) -> str:
@@ -450,7 +478,7 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                     conversation_title = _stream_title_generation(
                         socketio, agent_service, conv, user_message, client_id
                     )
-                    db.session.commit()
+                    _commit_with_retry()  # Use retry logic to handle deadlocks
                 else:
                     conversation_title = conv.title
 
@@ -683,7 +711,7 @@ def register_chatbot_events(socketio):
                 conversation.message_count += 2
                 conversation.last_message_at = datetime.now()
                 chat_service._maybe_set_conversation_title(conversation, user_message)
-                db.session.commit()
+                _commit_with_retry()  # Use retry logic to handle deadlocks
 
                 emit("chatbot:response", {"content": fallback, "complete": False}, room=client_id)
                 emit("chatbot:complete", {
@@ -788,7 +816,7 @@ def register_chatbot_events(socketio):
             if chat_service._is_placeholder_title(conversation.title):
                 _stream_title_generation(socketio, chat_service, conversation, user_message, client_id)
 
-            db.session.commit()
+            _commit_with_retry()  # Use retry logic to handle deadlocks
 
             # Emit completion with metadata
             emit("chatbot:complete", {

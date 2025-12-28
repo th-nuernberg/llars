@@ -917,7 +917,7 @@ class CollectionEmbeddingService:
 
     def _emit_progress(self, collection_id: int, progress: int, current_doc: str,
                        docs_processed: int, docs_total: int):
-        """Emit progress via WebSocket."""
+        """Emit progress via WebSocket and update wizard session if applicable."""
         try:
             from main import socketio
             from socketio_handlers.events_rag import emit_collection_progress
@@ -929,11 +929,29 @@ class CollectionEmbeddingService:
 
             # Also update DB
             from db.db import db
-            from db.tables import RAGCollection
+            from db.tables import RAGCollection, Chatbot
             collection = RAGCollection.query.get(collection_id)
             if collection:
                 collection.embedding_progress = progress
                 db.session.commit()
+
+            # Update wizard session if this is a chatbot embedding
+            chatbot = Chatbot.query.filter_by(primary_collection_id=collection_id).first()
+            if chatbot and chatbot.build_status == 'embedding':
+                try:
+                    from services.wizard import get_wizard_session_service
+                    from socketio_handlers.events_wizard import emit_wizard_progress
+                    wizard_service = get_wizard_session_service()
+                    wizard_service.update_embedding_progress(chatbot.id, {
+                        'embedding_progress': progress,
+                        'documents_processed': docs_processed,
+                        'documents_total': docs_total,
+                        'current_document': current_doc,
+                    })
+                    emit_wizard_progress(socketio, chatbot.id,
+                        wizard_service.get_progress(chatbot.id))
+                except Exception as we:
+                    logger.debug(f"[CollectionEmbedding] Could not update wizard session: {we}")
 
         except Exception as e:
             logger.debug(f"[CollectionEmbedding] Could not emit progress: {e}")

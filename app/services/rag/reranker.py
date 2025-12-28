@@ -124,6 +124,10 @@ def _get_cross_encoder(model_name: str):
 
 
 def _cross_encoder_rerank(query: str, results: List[Dict[str, Any]], *, model_name: str) -> List[Dict[str, Any]]:
+    """
+    Rerank results using cross-encoder model.
+    Uses pure cross-encoder scoring (works best with German ELECTRA model).
+    """
     if not results:
         return results
 
@@ -131,6 +135,7 @@ def _cross_encoder_rerank(query: str, results: List[Dict[str, Any]], *, model_na
     pairs = [(query, (r.get("content") or "")) for r in results]
 
     scores = model.predict(pairs)
+
     reranked: List[Dict[str, Any]] = []
     for r, s in zip(results, scores):
         r2 = dict(r)
@@ -138,8 +143,18 @@ def _cross_encoder_rerank(query: str, results: List[Dict[str, Any]], *, model_na
             "mode": "cross-encoder",
             "model": model_name,
             "score": float(s),
+            "orig_score": float(r.get("score") or 0.0),
         }
         reranked.append(r2)
 
     reranked.sort(key=lambda x: (x.get("rerank", {}).get("score") or 0.0), reverse=True)
+
+    # Log top 5 results after reranking
+    logger.info(f"[Reranker] Cross-encoder rerank ({model_name.split('/')[-1]}) for: '{query[:50]}...'")
+    for i, r in enumerate(reranked[:5]):
+        title = r.get('title', 'Unknown')[:40]
+        doc_id = r.get('document_id', '?')
+        score = r.get('rerank', {}).get('score', 0)
+        logger.info(f"[Reranker]   {i+1}. score={score:.3f} | doc={doc_id} {title}")
+
     return reranked

@@ -254,9 +254,11 @@ class AgentChatService(ChatService):
             for chunk in stream:
                 choice = chunk.choices[0] if chunk.choices else None
                 delta = getattr(choice, "delta", None) if choice else None
-                if delta and hasattr(delta, 'content') and delta.content:
-                    accumulated += delta.content
-                    yield {"delta": delta.content}
+                # Use extract_delta_text to handle reasoning_content (Magistral) and content
+                delta_text = extract_delta_text(delta)
+                if delta_text:
+                    accumulated += delta_text
+                    yield {"delta": delta_text}
 
         except Exception as e:
             logger.error(f"[AgentChatService] Standard streaming failed: {e}")
@@ -373,9 +375,13 @@ class AgentChatService(ChatService):
 
             # Execute action
             if action == "respond":
-                # Final answer
-                yield {"status": "final_answer"}
+                # Final answer - stream it character by character
                 final_response = param
+                yield {"status": "final_answer"}
+
+                # Stream the response as deltas for real-time display
+                for char in final_response:
+                    yield {"delta": char}
 
                 msg = self._save_message(
                     conversation.id,
@@ -551,6 +557,10 @@ class AgentChatService(ChatService):
                 # Done!
                 yield {"status": "final_answer"}
 
+                # Stream the response as deltas for real-time display
+                for char in final_answer:
+                    yield {"delta": char}
+
                 msg = self._save_message(
                     conversation.id,
                     ChatbotMessageRole.ASSISTANT,
@@ -604,6 +614,10 @@ class AgentChatService(ChatService):
                         yield {"status": "action", "action": action_name, "param": action_param, "iteration": iteration + 1}
                         final_answer = action_param
                         yield {"status": "final_answer"}
+
+                        # Stream the response as deltas for real-time display
+                        for char in final_answer:
+                            yield {"delta": char}
 
                         msg = self._save_message(
                             conversation.id,
@@ -847,6 +861,10 @@ class AgentChatService(ChatService):
             # Check for final answer
             if final_answer:
                 yield {"status": "final_answer"}
+
+                # Stream the response as deltas for real-time display
+                for char in final_answer:
+                    yield {"delta": char}
 
                 msg = self._save_message(
                     conversation.id,

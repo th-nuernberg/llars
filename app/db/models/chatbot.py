@@ -55,7 +55,7 @@ class Chatbot(db.Model):
     # RAG Configuration
     rag_enabled: Mapped[bool] = mapped_column(db.Boolean, default=True)
     rag_retrieval_k: Mapped[int] = mapped_column(db.Integer, default=4)
-    rag_min_relevance: Mapped[float] = mapped_column(db.Float, default=0.3)
+    rag_min_relevance: Mapped[float] = mapped_column(db.Float, default=0.05)
     rag_include_sources: Mapped[bool] = mapped_column(db.Boolean, default=True)
 
     # Behavior
@@ -237,6 +237,7 @@ class ChatbotPromptSettings(db.Model):
 
     # RAG Citation Settings
     rag_require_citations: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
+    rag_use_cross_encoder: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
     rag_unknown_answer: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_UNKNOWN_ANSWER, nullable=False)
     rag_citation_instructions: Mapped[str] = mapped_column(db.Text, default=DEFAULT_RAG_CITATION_INSTRUCTIONS, nullable=False)
     rag_context_prefix: Mapped[str] = mapped_column(db.String(100), default=DEFAULT_RAG_CONTEXT_PREFIX, nullable=False)
@@ -280,6 +281,7 @@ class ChatbotPromptSettings(db.Model):
         return {
             # RAG Settings
             'rag_require_citations': self.rag_require_citations,
+            'rag_use_cross_encoder': self.rag_use_cross_encoder,
             'rag_unknown_answer': self.rag_unknown_answer,
             'rag_citation_instructions': self.rag_citation_instructions,
             'rag_context_prefix': self.rag_context_prefix,

@@ -432,6 +432,64 @@ class AgentChatService(ChatService):
                 yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
             yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
 
+            # ═══════════════════════════════════════════════════════════════════
+            # ADAPTIVE ITERATION: Check if we have high-confidence results
+            # If so, generate final answer immediately without more iterations
+            # ═══════════════════════════════════════════════════════════════════
+            if sources and self._check_high_confidence(sources):
+                logger.info(f"[AgentChatService] ACT adaptive iteration: high confidence on iteration {iteration + 1}, generating response")
+                yield {"status": "adaptive_iteration", "iteration": iteration + 1, "reason": "high_confidence"}
+
+                reasoning_steps.append({
+                    "type": "adaptive",
+                    "content": "Hohe Konfidenz erreicht - generiere finale Antwort"
+                })
+
+                # Generate response using the high-quality results
+                final_response = ""
+                response_gen = self._generate_adaptive_response(message, sources, result)
+                for event in response_gen:
+                    if "delta" in event:
+                        final_response += event["delta"]
+                    yield event
+
+                # If generator returned a value (the full response), use it
+                if not final_response:
+                    final_response = self._generate_final_response(message, observations, all_sources)
+
+                msg = self._save_message(
+                    conversation.id,
+                    ChatbotMessageRole.ASSISTANT,
+                    final_response,
+                    rag_sources=all_sources if include_sources else [],
+                    agent_trace=reasoning_steps,
+                    stream_metadata={
+                        "mode": "act",
+                        "iterations": iteration + 1,
+                        "sources_count": len(all_sources),
+                        "adaptive_exit": True
+                    }
+                )
+
+                conversation.message_count += 2
+                conversation.last_message_at = datetime.now()
+                self._maybe_set_conversation_title(conversation, message)
+                db.session.commit()
+
+                yield {
+                    "done": True,
+                    "full_response": final_response,
+                    "sources": all_sources if include_sources else [],
+                    "mode": "act",
+                    "iterations": iteration + 1,
+                    "reasoning_steps": reasoning_steps,
+                    "conversation_id": conversation.id,
+                    "title": conversation.title,
+                    "message_id": msg.id,
+                    "adaptive_exit": True
+                }
+                return
+
         # Max iterations reached - force response
         yield {"status": "max_iterations_reached"}
         final_response = self._generate_final_response(message, observations, all_sources)
@@ -520,6 +578,8 @@ class AgentChatService(ChatService):
             yield {"status": "thinking", "iteration": iteration + 1}
             response_text = ""
             last_thought = ""
+            last_action = ""
+            thought_finalized = False
 
             try:
                 stream = self.llm_client.chat.completions.create(
@@ -533,11 +593,29 @@ class AgentChatService(ChatService):
                     if not delta_text:
                         continue
                     response_text += delta_text
-                    thought_partial, _, _ = self._parse_react_response(response_text)
+
+                    # Parse partial response for THOUGHT and ACTION
+                    thought_partial, action_partial, _ = self._parse_react_response(response_text)
+
+                    # Stream THOUGHT deltas
                     if thought_partial and len(thought_partial) > len(last_thought):
                         delta_chunk = thought_partial[len(last_thought):]
                         last_thought = thought_partial
                         yield {"status": "thought_delta", "delta": delta_chunk, "iteration": iteration + 1}
+
+                    # When ACTION starts appearing, finalize THOUGHT and stream ACTION
+                    if action_partial:
+                        # Finalize thought if not already done
+                        if not thought_finalized and last_thought:
+                            yield {"status": "thought", "thought": last_thought, "iteration": iteration + 1}
+                            thought_finalized = True
+
+                        # Stream ACTION deltas
+                        if len(action_partial) > len(last_action):
+                            delta_chunk = action_partial[len(last_action):]
+                            last_action = action_partial
+                            yield {"status": "action_delta", "delta": delta_chunk, "iteration": iteration + 1}
+
             except Exception as e:
                 logger.error(f"[AgentChatService] ReAct streaming failed: {e}")
                 response_text = self._call_llm_sync(messages)
@@ -549,9 +627,13 @@ class AgentChatService(ChatService):
             if final_answer and requires_sources and not has_observation:
                 final_answer = None
 
-            if thought:
+            # Only emit thought if not already finalized during streaming
+            if thought and not thought_finalized:
                 steps.append({"type": "thought", "content": thought})
                 yield {"status": "thought", "thought": thought, "iteration": iteration + 1}
+            elif thought and thought_finalized:
+                # Still add to steps for persistence, but don't emit event again
+                steps.append({"type": "thought", "content": thought})
 
             if final_answer:
                 # Done!
@@ -676,6 +758,63 @@ class AgentChatService(ChatService):
                 for chunk in self._stream_preview_chunks(preview):
                     yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
                 yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
+
+                # ═══════════════════════════════════════════════════════════════════
+                # ADAPTIVE ITERATION: Check if we have high-confidence results
+                # ═══════════════════════════════════════════════════════════════════
+                if sources and self._check_high_confidence(sources):
+                    logger.info(f"[AgentChatService] ReAct adaptive iteration: high confidence on iteration {iteration + 1}")
+                    yield {"status": "adaptive_iteration", "iteration": iteration + 1, "reason": "high_confidence"}
+
+                    steps.append({
+                        "type": "adaptive",
+                        "content": "Hohe Konfidenz erreicht - generiere finale Antwort"
+                    })
+
+                    # Generate response using the high-quality results
+                    final_response = ""
+                    response_gen = self._generate_adaptive_response(message, sources, result)
+                    for event in response_gen:
+                        if "delta" in event:
+                            final_response += event["delta"]
+                        yield event
+
+                    if not final_response:
+                        final_response = self._generate_final_response(message, steps, all_sources)
+
+                    msg = self._save_message(
+                        conversation.id,
+                        ChatbotMessageRole.ASSISTANT,
+                        final_response,
+                        rag_sources=all_sources if include_sources else [],
+                        agent_trace=steps,
+                        stream_metadata={
+                            "mode": "react",
+                            "iterations": iteration + 1,
+                            "sources_count": len(all_sources),
+                            "adaptive_exit": True
+                        }
+                    )
+
+                    conversation.message_count += 2
+                    conversation.last_message_at = datetime.now()
+                    self._maybe_set_conversation_title(conversation, message)
+                    db.session.commit()
+
+                    yield {
+                        "done": True,
+                        "full_response": final_response,
+                        "sources": all_sources if include_sources else [],
+                        "mode": "react",
+                        "iterations": iteration + 1,
+                        "reasoning_steps": steps,
+                        "conversation_id": conversation.id,
+                        "title": conversation.title,
+                        "message_id": msg.id,
+                        "adaptive_exit": True
+                    }
+                    return
+
             elif not final_answer:
                 # If the model skips ACTION, force a lookup when citations are required.
                 if requires_sources and not any(step.get("type") == "action" for step in steps):
@@ -709,6 +848,59 @@ class AgentChatService(ChatService):
                         for chunk in self._stream_preview_chunks(preview):
                             yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
                         yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
+
+                        # Adaptive iteration for fallback search
+                        if sources and self._check_high_confidence(sources):
+                            logger.info(f"[AgentChatService] ReAct adaptive (fallback): high confidence on iteration {iteration + 1}")
+                            yield {"status": "adaptive_iteration", "iteration": iteration + 1, "reason": "high_confidence"}
+
+                            steps.append({
+                                "type": "adaptive",
+                                "content": "Hohe Konfidenz erreicht - generiere finale Antwort"
+                            })
+
+                            final_response = ""
+                            response_gen = self._generate_adaptive_response(message, sources, result)
+                            for event in response_gen:
+                                if "delta" in event:
+                                    final_response += event["delta"]
+                                yield event
+
+                            if not final_response:
+                                final_response = self._generate_final_response(message, steps, all_sources)
+
+                            msg = self._save_message(
+                                conversation.id,
+                                ChatbotMessageRole.ASSISTANT,
+                                final_response,
+                                rag_sources=all_sources if include_sources else [],
+                                agent_trace=steps,
+                                stream_metadata={
+                                    "mode": "react",
+                                    "iterations": iteration + 1,
+                                    "sources_count": len(all_sources),
+                                    "adaptive_exit": True
+                                }
+                            )
+
+                            conversation.message_count += 2
+                            conversation.last_message_at = datetime.now()
+                            self._maybe_set_conversation_title(conversation, message)
+                            db.session.commit()
+
+                            yield {
+                                "done": True,
+                                "full_response": final_response,
+                                "sources": all_sources if include_sources else [],
+                                "mode": "react",
+                                "iterations": iteration + 1,
+                                "reasoning_steps": steps,
+                                "conversation_id": conversation.id,
+                                "title": conversation.title,
+                                "message_id": msg.id,
+                                "adaptive_exit": True
+                            }
+                            return
 
         # Max iterations - generate final response
         yield {"status": "max_iterations_reached"}
@@ -815,6 +1007,9 @@ class AgentChatService(ChatService):
             yield {"status": "reflecting", "iteration": iteration + 1}
             response_text = ""
             last_reflection = ""
+            last_action = ""
+            reflection_finalized = False
+
             try:
                 logger.debug(f"[ReflAct] Starting iteration {iteration + 1}, messages count: {len(messages)}")
                 stream = self.llm_client.chat.completions.create(
@@ -828,9 +1023,11 @@ class AgentChatService(ChatService):
                         continue
                     response_text += delta_text
 
-                    # Stream reflection as it comes
-                    reflection_partial, _, _ = self._parse_reflact_response_v2(response_text)
+                    # Parse partial response for REFLECTION and ACTION
+                    reflection_partial, action_partial, _ = self._parse_reflact_response_v2(response_text)
                     reflection_partial = self._strip_trailing_reflact_fragment(reflection_partial)
+
+                    # Stream REFLECTION deltas
                     if reflection_partial and reflection_partial != last_reflection:
                         if reflection_partial.startswith(last_reflection):
                             delta_chunk = reflection_partial[len(last_reflection):]
@@ -838,6 +1035,19 @@ class AgentChatService(ChatService):
                             yield {"status": "reflection_delta", "delta": delta_chunk, "iteration": iteration + 1}
                         else:
                             last_reflection = reflection_partial
+
+                    # When ACTION starts appearing, finalize REFLECTION and stream ACTION
+                    if action_partial:
+                        # Finalize reflection if not already done
+                        if not reflection_finalized and last_reflection:
+                            yield {"status": "reflection", "reflection": last_reflection, "iteration": iteration + 1}
+                            reflection_finalized = True
+
+                        # Stream ACTION deltas
+                        if len(action_partial) > len(last_action):
+                            delta_chunk = action_partial[len(last_action):]
+                            last_action = action_partial
+                            yield {"status": "action_delta", "delta": delta_chunk, "iteration": iteration + 1}
 
             except Exception as e:
                 logger.error(f"[AgentChatService] ReflAct streaming failed: {e}", exc_info=True)
@@ -854,9 +1064,13 @@ class AgentChatService(ChatService):
             reflection = self._strip_trailing_reflact_fragment(reflection)
             final_answer = self._strip_trailing_reflact_fragment(final_answer)
 
-            if reflection:
+            # Only emit reflection if not already finalized during streaming
+            if reflection and not reflection_finalized:
                 steps.append({"type": "reflection", "content": reflection})
                 yield {"status": "reflection", "reflection": reflection, "iteration": iteration + 1}
+            elif reflection and reflection_finalized:
+                # Still add to steps for persistence, but don't emit event again
+                steps.append({"type": "reflection", "content": reflection})
 
             # Check for final answer
             if final_answer:
@@ -928,6 +1142,62 @@ class AgentChatService(ChatService):
                     yield {"status": "observation_delta", "delta": chunk, "iteration": iteration + 1}
                 yield {"status": "observation", "result_preview": preview, "iteration": iteration + 1}
 
+                # ═══════════════════════════════════════════════════════════════════
+                # ADAPTIVE ITERATION: Check if we have high-confidence results
+                # ═══════════════════════════════════════════════════════════════════
+                if sources and self._check_high_confidence(sources):
+                    logger.info(f"[AgentChatService] ReflAct adaptive iteration: high confidence on iteration {iteration + 1}")
+                    yield {"status": "adaptive_iteration", "iteration": iteration + 1, "reason": "high_confidence"}
+
+                    steps.append({
+                        "type": "adaptive",
+                        "content": "Hohe Konfidenz erreicht - generiere finale Antwort"
+                    })
+
+                    final_response = ""
+                    response_gen = self._generate_adaptive_response(message, sources, result)
+                    for event in response_gen:
+                        if "delta" in event:
+                            final_response += event["delta"]
+                        yield event
+
+                    if not final_response:
+                        final_response = self._generate_final_response(message, steps, all_sources)
+
+                    msg = self._save_message(
+                        conversation.id,
+                        ChatbotMessageRole.ASSISTANT,
+                        final_response,
+                        rag_sources=all_sources if include_sources else [],
+                        agent_trace=steps,
+                        stream_metadata={
+                            "mode": "reflact",
+                            "iterations": iteration + 1,
+                            "sources_count": len(all_sources),
+                            "adaptive_exit": True
+                        }
+                    )
+
+                    conversation.message_count += 2
+                    conversation.last_message_at = datetime.now()
+                    self._maybe_set_conversation_title(conversation, message)
+                    db.session.commit()
+
+                    yield {
+                        "done": True,
+                        "full_response": final_response,
+                        "sources": all_sources if include_sources else [],
+                        "mode": "reflact",
+                        "iterations": iteration + 1,
+                        "goal": goal,
+                        "reasoning_steps": steps,
+                        "conversation_id": conversation.id,
+                        "title": conversation.title,
+                        "message_id": msg.id,
+                        "adaptive_exit": True
+                    }
+                    return
+
         # Max iterations
         yield {"status": "max_iterations_reached"}
         final_response = self._generate_final_response(message, steps, all_sources)
@@ -987,20 +1257,62 @@ class AgentChatService(ChatService):
             return f"Tool '{action}' ist nicht verfügbar oder nicht aktiviert.", []
 
     def _tool_rag_search(self, query: str) -> Tuple[str, List[Dict]]:
-        """Semantic RAG search."""
+        """
+        Semantic RAG search - returns FULL content like standard RAG mode.
+
+        Also calculates quality metrics for adaptive iteration:
+        - avg_relevance: Average relevance score of returned documents
+        - high_confidence: True if results are good enough for direct answer
+        """
         if not self.chatbot.rag_enabled or not self.chatbot.collections:
             return "RAG ist für diesen Chatbot nicht aktiviert.", []
 
         context, sources = self._get_multi_collection_context(query)
         if sources:
-            result = f"Gefunden: {len(sources)} relevante Dokumente.\n\n"
-            for s in sources[:5]:
-                result += f"[{s.get('footnote_id')}] {s.get('title', 'Unbekannt')}: {s.get('excerpt', '')[:200]}...\n\n"
+            # Calculate quality metrics for adaptive iteration
+            relevance_scores = [s.get('relevance', 0) for s in sources]
+            avg_relevance = sum(relevance_scores) / len(relevance_scores) if relevance_scores else 0
+            top_relevance = max(relevance_scores) if relevance_scores else 0
+
+            # High confidence if: top result > 0.75 OR average > 0.6 with 3+ results
+            high_confidence = top_relevance > 0.75 or (avg_relevance > 0.6 and len(sources) >= 3)
+
+            # Build result with FULL content (like standard RAG)
+            result = f"Gefunden: {len(sources)} relevante Dokumente (Durchschnittliche Relevanz: {avg_relevance:.2f}).\n"
+            if high_confidence:
+                result += "HINWEIS: Hohe Konfidenz - diese Ergebnisse sollten ausreichen für eine Antwort.\n\n"
+            else:
+                result += "\n"
+
+            for s in sources:
+                footnote_id = s.get('footnote_id', '?')
+                title = s.get('title', 'Unbekannt')
+                relevance = s.get('relevance', 0)
+                # Use FULL excerpt content, not truncated
+                content = s.get('excerpt', '')
+                collection = s.get('collection_name', '')
+
+                result += f"[{footnote_id}] {title}"
+                if collection:
+                    result += f" (Collection: {collection})"
+                result += f" [Relevanz: {relevance:.2f}]\n"
+                result += f"{content}\n\n"
+                result += "---\n\n"
+
+            # Add metadata to sources for adaptive iteration
+            for s in sources:
+                s['_high_confidence'] = high_confidence
+                s['_avg_relevance'] = avg_relevance
+
             return result, sources
         return "Keine relevanten Dokumente gefunden.", []
 
     def _tool_lexical_search(self, query: str) -> Tuple[str, List[Dict]]:
-        """Lexical (keyword) search."""
+        """
+        Lexical (keyword) search - returns FULL content like standard RAG mode.
+
+        Also calculates quality metrics for adaptive iteration.
+        """
         if not self.chatbot.rag_enabled or not self.chatbot.collections:
             return "RAG ist für diesen Chatbot nicht aktiviert.", []
 
@@ -1019,15 +1331,35 @@ class AgentChatService(ChatService):
 
         if all_results:
             sources = []
-            result = f"Lexikalische Suche: {len(all_results)} Treffer für '{', '.join(tokens)}'.\n\n"
+            # Lexical search has fewer quality signals, use result count as proxy
+            high_confidence = len(all_results) >= 3
+
+            result = f"Lexikalische Suche: {len(all_results)} Treffer für '{', '.join(tokens)}'.\n"
+            if high_confidence:
+                result += "HINWEIS: Mehrere relevante Treffer gefunden.\n\n"
+            else:
+                result += "\n"
+
             for i, r in enumerate(all_results[:5]):
+                title = r.get('title', 'Unbekannt')
+                # Use FULL content, not truncated
+                content = r.get('content', '')
+                collection_name = r.get('collection_name', '')
+
                 sources.append({
                     'footnote_id': i + 1,
-                    'title': r.get('title', 'Unbekannt'),
-                    'excerpt': r.get('content', '')[:300],
-                    'collection_name': r.get('collection_name')
+                    'title': title,
+                    'excerpt': content,  # Full content
+                    'collection_name': collection_name,
+                    '_high_confidence': high_confidence
                 })
-                result += f"[{i+1}] {r.get('title', 'Unbekannt')}: {r.get('content', '')[:200]}...\n\n"
+
+                result += f"[{i+1}] {title}"
+                if collection_name:
+                    result += f" (Collection: {collection_name})"
+                result += f"\n{content}\n\n"
+                result += "---\n\n"
+
             return result, sources
 
         return f"Keine Treffer für '{', '.join(tokens)}'.", []
@@ -1080,6 +1412,84 @@ class AgentChatService(ChatService):
         except Exception as e:
             logger.error(f"[AgentChatService] Web search failed: {e}")
             return f"Web-Suche fehlgeschlagen: {str(e)}", []
+
+    # ==================== Adaptive Iteration Helpers ====================
+
+    def _check_high_confidence(self, sources: List[Dict]) -> bool:
+        """
+        Check if search results have high enough confidence for immediate answer.
+
+        Returns True if the agent should generate a final answer immediately
+        instead of continuing with more iterations.
+        """
+        if not sources:
+            return False
+
+        # Check for _high_confidence flag set by tool methods
+        for s in sources:
+            if s.get('_high_confidence'):
+                return True
+
+        # Fallback: check relevance scores directly
+        relevance_scores = [s.get('relevance', 0) for s in sources if s.get('relevance')]
+        if relevance_scores:
+            avg_relevance = sum(relevance_scores) / len(relevance_scores)
+            top_relevance = max(relevance_scores)
+            return top_relevance > 0.75 or (avg_relevance > 0.6 and len(sources) >= 3)
+
+        return False
+
+    def _generate_adaptive_response(
+        self,
+        message: str,
+        sources: List[Dict],
+        observation: str
+    ) -> Generator[Dict[str, Any], None, str]:
+        """
+        Generate a final answer when adaptive iteration triggers early completion.
+
+        This is called when high-confidence results are found on first iteration,
+        allowing the agent to skip further iterations and respond immediately.
+
+        Yields status updates and returns the final response text.
+        """
+        yield {"status": "adaptive_response", "reason": "high_confidence_results"}
+
+        # Build a focused prompt for generating the answer
+        system_prompt = self._get_act_system_prompt()
+        base_prompt = (self.chatbot.system_prompt or "").strip()
+
+        answer_prompt = f"""Basierend auf den folgenden Suchergebnissen, beantworte die Nutzerfrage.
+Nutze die Quellenverweise [1], [2], etc. für deine Antwort.
+
+SUCHERGEBNISSE:
+{observation}
+
+NUTZERFRAGE: {message}
+
+Gib eine vollständige, gut strukturierte Antwort mit Quellenverweisen."""
+
+        messages = [{"role": "system", "content": base_prompt or system_prompt}]
+        messages.append({"role": "user", "content": answer_prompt})
+
+        # Stream the response
+        final_response = ""
+        try:
+            stream = self.llm_client.chat.completions.create(
+                **self._build_completion_kwargs(messages, stream=True)
+            )
+            for chunk in stream:
+                choice = chunk.choices[0] if chunk.choices else None
+                delta = getattr(choice, "delta", None) if choice else None
+                delta_text = extract_delta_text(delta)
+                if delta_text:
+                    final_response += delta_text
+                    yield {"delta": delta_text}
+        except Exception as e:
+            logger.error(f"[AgentChatService] Adaptive response streaming failed: {e}")
+            final_response = self._call_llm_sync(messages)
+
+        return final_response
 
     # ==================== Prompt Helpers ====================
 

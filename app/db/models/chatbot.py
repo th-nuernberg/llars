@@ -57,6 +57,9 @@ class Chatbot(db.Model):
     rag_retrieval_k: Mapped[int] = mapped_column(db.Integer, default=4)
     rag_min_relevance: Mapped[float] = mapped_column(db.Float, default=0.05)
     rag_include_sources: Mapped[bool] = mapped_column(db.Boolean, default=True)
+    # Reranker: None = use system default, otherwise model_id from llm_models
+    rag_reranker_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, default=None)
+    rag_use_cross_encoder: Mapped[bool] = mapped_column(db.Boolean, default=False)  # Default: off
 
     # Behavior
     welcome_message: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)

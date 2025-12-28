@@ -118,6 +118,8 @@ class ChatbotService:
                 'rag_retrieval_k': bot.rag_retrieval_k,
                 'rag_min_relevance': bot.rag_min_relevance,
                 'rag_include_sources': bot.rag_include_sources,
+                'rag_reranker_model': bot.rag_reranker_model,
+                'rag_use_cross_encoder': bot.rag_use_cross_encoder,
                 'welcome_message': bot.welcome_message,
                 'fallback_message': bot.fallback_message,
                 'max_context_messages': bot.max_context_messages,
@@ -182,6 +184,8 @@ class ChatbotService:
             'rag_retrieval_k': bot.rag_retrieval_k,
             'rag_min_relevance': bot.rag_min_relevance,
             'rag_include_sources': bot.rag_include_sources,
+            'rag_reranker_model': bot.rag_reranker_model,
+            'rag_use_cross_encoder': bot.rag_use_cross_encoder,
             'welcome_message': bot.welcome_message,
             'fallback_message': bot.fallback_message,
             'max_context_messages': bot.max_context_messages,
@@ -261,6 +265,8 @@ class ChatbotService:
             rag_retrieval_k=data.get('rag_retrieval_k', 4),
             rag_min_relevance=data.get('rag_min_relevance', 0.3),
             rag_include_sources=data.get('rag_include_sources', True),
+            rag_reranker_model=data.get('rag_reranker_model'),  # None = use system default
+            rag_use_cross_encoder=data.get('rag_use_cross_encoder', False),  # Default: off
             welcome_message=data.get('welcome_message'),
             fallback_message=data.get('fallback_message', 'Ich konnte leider keine passende Antwort finden.'),
             max_context_messages=data.get('max_context_messages', 10),
@@ -315,6 +321,7 @@ class ChatbotService:
             'display_name', 'description', 'icon', 'avatar_url', 'color',
             'system_prompt', 'model_name', 'temperature', 'max_tokens', 'top_p',
             'rag_enabled', 'rag_retrieval_k', 'rag_min_relevance', 'rag_include_sources',
+            'rag_reranker_model', 'rag_use_cross_encoder',
             'welcome_message', 'fallback_message', 'max_context_messages',
             'is_active', 'is_public', 'allowed_roles'
         ]
@@ -437,6 +444,8 @@ class ChatbotService:
             'rag_retrieval_k': original.rag_retrieval_k,
             'rag_min_relevance': original.rag_min_relevance,
             'rag_include_sources': original.rag_include_sources,
+            'rag_reranker_model': original.rag_reranker_model,
+            'rag_use_cross_encoder': original.rag_use_cross_encoder,
             'welcome_message': original.welcome_message,
             'fallback_message': original.fallback_message,
             'max_context_messages': original.max_context_messages,

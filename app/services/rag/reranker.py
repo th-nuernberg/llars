@@ -26,7 +26,8 @@ def rerank_results(
     query: str,
     results: List[Dict[str, Any]],
     *,
-    use_cross_encoder: Optional[bool] = None
+    use_cross_encoder: Optional[bool] = None,
+    model_name: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Rerank search results to improve relevance.
@@ -36,6 +37,8 @@ def rerank_results(
         results: List of search results to rerank
         use_cross_encoder: If True, use cross-encoder reranking. If False, use lexical.
                           If None, falls back to RAG_RERANK_MODE env var.
+        model_name: Optional specific reranker model to use.
+                   If None, uses the system default reranker model.
 
     Returns:
         Reranked list of results
@@ -52,12 +55,13 @@ def rerank_results(
         return results
 
     if mode in ("cross-encoder", "cross_encoder", "ce"):
-        model_name = _get_default_reranker_model()
-        if not model_name:
-            logger.warning("[Reranker] No reranker model configured in llm_models; falling back to lexical")
+        # Use provided model_name or fall back to system default
+        effective_model = model_name or _get_default_reranker_model()
+        if not effective_model:
+            logger.warning("[Reranker] No reranker model configured; falling back to lexical")
             return _lexical_rerank(query, results)
         try:
-            return _cross_encoder_rerank(query, results, model_name=model_name)
+            return _cross_encoder_rerank(query, results, model_name=effective_model)
         except Exception as e:
             logger.warning(f"[Reranker] Cross-encoder rerank failed, falling back to lexical: {e}")
             return _lexical_rerank(query, results)
@@ -115,8 +119,12 @@ def _get_default_reranker_model() -> Optional[str]:
     return model.model_id if model else None
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
 def _get_cross_encoder(model_name: str):
+    """
+    Load and cache a CrossEncoder model.
+    Caches up to 4 different models to support per-chatbot configuration.
+    """
     from sentence_transformers import CrossEncoder
 
     logger.info(f"[Reranker] Loading CrossEncoder model: {model_name}")

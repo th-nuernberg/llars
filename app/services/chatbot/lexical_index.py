@@ -259,21 +259,12 @@ class LexicalSearchIndex:
         conn = cls._connect()
         try:
             cls._ensure_schema(conn)
-            where = ""
-            params: List[Any] = [fts_query]
-            if collection_ids:
-                # Use exact match or GLOB for unindexed FTS5 columns
-                # LIKE doesn't work reliably with FTS5 unindexed columns
-                filters = []
-                for cid in collection_ids:
-                    # Use exact match for single collection or GLOB for multiple
-                    filters.append("collection_ids = ?")
-                    params.append(f"|{cid}|")
-                where = " AND (" + " OR ".join(filters) + ")"
-            params.append(limit)
+            # FTS5 unindexed columns don't support LIKE/GLOB reliably
+            # So we fetch more results and filter in Python for collection_ids
+            fetch_limit = limit * 10 if collection_ids else limit
 
             rows = conn.execute(
-                f"""
+                """
                 SELECT
                     title,
                     content,
@@ -288,17 +279,30 @@ class LexicalSearchIndex:
                     vector_id,
                     bm25(rag_fts, 5.0, 1.0) AS score
                 FROM rag_fts
-                WHERE rag_fts MATCH ? {where}
+                WHERE rag_fts MATCH ?
                 ORDER BY score
                 LIMIT ?
                 """,
-                params
+                [fts_query, fetch_limit]
             ).fetchall()
         finally:
             conn.close()
 
+        # Filter by collection_ids in Python (FTS5 unindexed columns limitation)
+        if collection_ids:
+            collection_patterns = {f"|{cid}|" for cid in collection_ids}
+            filtered_rows = []
+            for row in rows:
+                row_collection_ids = row[5] or ""  # collection_ids is at index 5
+                # Check if any requested collection is in this document's collections
+                if any(pattern in row_collection_ids for pattern in collection_patterns):
+                    filtered_rows.append(row)
+                    if len(filtered_rows) >= limit:
+                        break
+            rows = filtered_rows
+
         results = []
-        for row in rows:
+        for row in rows[:limit]:
             title, content, doc_id, chunk_id, chunk_index, _, filename, page_number, start_char, end_char, vector_id, score = row
             results.append({
                 'content': content,

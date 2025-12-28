@@ -724,7 +724,12 @@ class ChatService:
 
         try:
             from services.chatbot.lexical_index import LexicalSearchIndex
-            results = LexicalSearchIndex.search(query, [collection.id], limit=limit)
+            # Enrich query with expanded tokens (synonyms, compound words)
+            # This ensures FTS5 can match documents using synonym expansion
+            # e.g., "Inhaber" -> "Inhaber impressum betreiber verantwortlich"
+            enriched_query = " ".join(tokens)
+            logger.debug(f"[ChatService] Lexical search: original='{query}', enriched='{enriched_query}'")
+            results = LexicalSearchIndex.search(enriched_query, [collection.id], limit=limit)
             if results:
                 for r in results:
                     r['collection_id'] = collection.id
@@ -896,13 +901,17 @@ class ChatService:
 
         filtered_results = relevance_filtered
 
-        # Optional reranking - use chatbot-specific setting
+        # Optional reranking - use chatbot-specific settings
         try:
             from services.rag.reranker import rerank_results
-            settings = self._get_prompt_settings()
-            use_cross_encoder = getattr(settings, 'rag_use_cross_encoder', True) if settings else True
-            logger.info(f"[ChatService] Reranking {len(filtered_results)} results (cross_encoder={use_cross_encoder})")
-            filtered_results = rerank_results(query, filtered_results, use_cross_encoder=use_cross_encoder)
+            use_cross_encoder = getattr(self.chatbot, 'rag_use_cross_encoder', True)
+            reranker_model = getattr(self.chatbot, 'rag_reranker_model', None)
+            logger.info(f"[ChatService] Reranking {len(filtered_results)} results (cross_encoder={use_cross_encoder}, model={reranker_model or 'default'})")
+            filtered_results = rerank_results(
+                query, filtered_results,
+                use_cross_encoder=use_cross_encoder,
+                model_name=reranker_model
+            )
         except Exception as e:
             logger.warning(f"[ChatService] Reranking failed: {e}")
 

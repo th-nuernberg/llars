@@ -64,14 +64,20 @@ class EmbeddingModelService:
     Service for managing embedding models with robust fallback chains.
 
     Thread-safe singleton with caching of loaded embeddings.
+    Cache entries have a TTL to prevent stale state issues.
     """
 
     _instance = None
     _lock = threading.Lock()
 
-    # Cache for loaded embeddings
+    # Cache TTL in seconds (1 hour) - prevents stale cache issues
+    CACHE_TTL_SECONDS = 3600
+
+    # Cache for loaded embeddings with timestamps
     _embeddings_cache: Dict[str, Any] = {}
+    _embeddings_cache_time: Dict[str, float] = {}
     _model_info_cache: Dict[str, ModelInfo] = {}
+    _model_info_cache_time: Dict[str, float] = {}
     _cache_lock = threading.Lock()
 
     def __new__(cls):
@@ -86,6 +92,14 @@ class EmbeddingModelService:
         """Get singleton instance."""
         return cls()
 
+    def _is_cache_valid(self, cache_time_dict: Dict[str, float], key: str) -> bool:
+        """Check if a cache entry is still valid (not expired)."""
+        import time
+        if key not in cache_time_dict:
+            return False
+        age = time.time() - cache_time_dict[key]
+        return age < self.CACHE_TTL_SECONDS
+
     def check_model_availability(self, model_id: str, force_refresh: bool = False) -> ModelInfo:
         """
         Check if an embedding model is available.
@@ -97,11 +111,12 @@ class EmbeddingModelService:
         Returns:
             ModelInfo with availability status
         """
+        import time
         cache_key = model_id
 
         if not force_refresh:
             with self._cache_lock:
-                if cache_key in self._model_info_cache:
+                if cache_key in self._model_info_cache and self._is_cache_valid(self._model_info_cache_time, cache_key):
                     return self._model_info_cache[cache_key]
 
         # Check availability
@@ -117,8 +132,10 @@ class EmbeddingModelService:
 
         with self._cache_lock:
             self._model_info_cache[cache_key] = info
+            self._model_info_cache_time[cache_key] = time.time()
             if embeddings is not None:
                 self._embeddings_cache[model_id] = embeddings
+                self._embeddings_cache_time[model_id] = time.time()
 
         return info
 
@@ -128,22 +145,25 @@ class EmbeddingModelService:
 
         Returns None if model is not available.
         """
+        import time
         with self._cache_lock:
-            if model_id in self._embeddings_cache:
+            if model_id in self._embeddings_cache and self._is_cache_valid(self._embeddings_cache_time, model_id):
                 return self._embeddings_cache[model_id]
 
-        # Try to load
+        # Try to load (cache miss or expired)
         embeddings, source, dims, error = self._try_load_model(model_id)
 
         if embeddings is not None:
             with self._cache_lock:
                 self._embeddings_cache[model_id] = embeddings
+                self._embeddings_cache_time[model_id] = time.time()
                 self._model_info_cache[model_id] = ModelInfo(
                     model_id=model_id,
                     source=source,
                     dimensions=dims,
                     is_available=True
                 )
+                self._model_info_cache_time[model_id] = time.time()
 
         return embeddings
 
@@ -383,7 +403,9 @@ class EmbeddingModelService:
         """Clear all caches (useful for testing or after config changes)."""
         with self._cache_lock:
             self._embeddings_cache.clear()
+            self._embeddings_cache_time.clear()
             self._model_info_cache.clear()
+            self._model_info_cache_time.clear()
         logger.info("[EmbeddingModelService] Cache cleared")
 
 

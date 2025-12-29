@@ -1208,7 +1208,39 @@ class ChatService:
             )
 
             # Perform similarity search with scores
-            docs_with_scores = vectorstore.similarity_search_with_score(query, k=k)
+            # Defensive: Handle potential Pydantic validation errors from ChromaDB
+            # This is a known LangChain/ChromaDB bug where page_content can be None
+            # See: https://github.com/langchain-ai/langchain/discussions/21424
+            try:
+                docs_with_scores = vectorstore.similarity_search_with_score(query, k=k)
+            except Exception as search_err:
+                if "page_content" in str(search_err) and "None" in str(search_err):
+                    logger.warning(
+                        f"[ChatService] ChromaDB returned documents with None page_content for collection "
+                        f"{collection.name}. This is a known LangChain/ChromaDB bug. "
+                        f"Attempting recovery via raw query..."
+                    )
+                    # Try raw ChromaDB query as fallback
+                    try:
+                        raw_results = vectorstore._collection.query(
+                            query_embeddings=[embeddings.embed_query(query)],
+                            n_results=k,
+                            include=["documents", "metadatas", "distances"]
+                        )
+                        docs_with_scores = []
+                        if raw_results and raw_results.get("documents"):
+                            for i, doc_content in enumerate(raw_results["documents"][0]):
+                                if doc_content is not None:
+                                    from langchain_core.documents import Document
+                                    metadata = raw_results["metadatas"][0][i] if raw_results.get("metadatas") else {}
+                                    distance = raw_results["distances"][0][i] if raw_results.get("distances") else 0.5
+                                    docs_with_scores.append((Document(page_content=doc_content, metadata=metadata), distance))
+                        logger.info(f"[ChatService] Recovery successful: {len(docs_with_scores)} docs retrieved via raw query")
+                    except Exception as raw_err:
+                        logger.error(f"[ChatService] Raw query recovery also failed: {raw_err}")
+                        docs_with_scores = []
+                else:
+                    raise
 
             if not docs_with_scores and collection.chroma_collection_name:
                 fallback_name = sanitize_chroma_collection_name(collection.name, model_id)

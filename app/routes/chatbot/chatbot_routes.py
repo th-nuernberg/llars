@@ -3,6 +3,7 @@
 API routes for chatbot management and chat functionality.
 """
 
+import os
 import uuid
 import logging
 import json
@@ -983,7 +984,9 @@ def start_wizard_crawl(chatbot_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     data = request.get_json() or {}
-    max_pages = data.get('max_pages', 50)
+    # Default max_pages configurable via env (default: 500 for large sites)
+    default_max_pages = int(os.environ.get('CRAWLER_DEFAULT_MAX_PAGES', 500))
+    max_pages = data.get('max_pages', default_max_pages)
     max_depth = data.get('max_depth', 3)
     use_playwright = data.get('use_playwright', True)
     use_vision_llm = data.get('use_vision_llm', False)

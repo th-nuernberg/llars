@@ -21,6 +21,9 @@ from db.models.permission import (
 # Analytics settings
 from db.models.analytics_settings import AnalyticsSettings
 
+# System settings
+from db.models.system_settings import SystemSettings
+
 # System monitor events
 from db.models.system_event import SystemEvent
 
@@ -163,6 +166,8 @@ __all__ = [
     'PermissionAuditLog',
     # Analytics
     'AnalyticsSettings',
+    # System Settings
+    'SystemSettings',
     # System Monitor
     'SystemEvent',
     # Judge

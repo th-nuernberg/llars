@@ -11,7 +11,6 @@ Responsible for:
 """
 
 import logging
-import os
 import time
 import threading
 from typing import Dict, Any
@@ -21,6 +20,7 @@ from db.tables import (
     Chatbot, RAGCollection, CollectionDocumentLink,
     ChatbotConversation, ChatbotMessage
 )
+from services.system_settings_service import get_crawl_timeout, get_embedding_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +53,7 @@ def _update_wizard_session(chatbot_id: int, status: str, error_message: str = No
 class ChatbotBuildMonitor:
     """Handles monitoring of chatbot build processes."""
 
-    # Timeout and polling settings (configurable via environment)
-    # Default: 1 hour for crawl, 2 hours for embedding (large sites need more time)
-    CRAWL_TIMEOUT_SECONDS = int(os.environ.get('CRAWL_TIMEOUT_SECONDS', 3600))
-    EMBEDDING_TIMEOUT_SECONDS = int(os.environ.get('EMBEDDING_TIMEOUT_SECONDS', 7200))
+    # Polling interval (timeouts are loaded from system_settings DB table)
     POLL_INTERVAL_SECONDS = 2  # Check every 2 seconds
 
     @staticmethod
@@ -78,8 +75,10 @@ class ChatbotBuildMonitor:
         with app.app_context():
             try:
                 elapsed = 0
+                crawl_timeout = get_crawl_timeout()
+                logger.info(f"[ChatbotBuildMonitor] Crawl timeout set to {crawl_timeout}s ({crawl_timeout // 60} min)")
 
-                while elapsed < ChatbotBuildMonitor.CRAWL_TIMEOUT_SECONDS:
+                while elapsed < crawl_timeout:
                     status = crawler_service.get_job_status(job_id)
 
                     if not status:
@@ -210,10 +209,10 @@ class ChatbotBuildMonitor:
         with app.app_context():
             try:
                 elapsed = 0
+                embedding_timeout = get_embedding_timeout()
+                logger.info(f"[ChatbotBuildMonitor] Embedding timeout set to {embedding_timeout}s ({embedding_timeout // 60} min)")
 
-                logger.debug(f"[ChatbotBuildMonitor] Starting monitor loop for chatbot {chatbot_id}")
-
-                while elapsed < ChatbotBuildMonitor.EMBEDDING_TIMEOUT_SECONDS:
+                while elapsed < embedding_timeout:
                     # Force fresh read from database by closing and re-opening session
                     db.session.rollback()  # Rollback any uncommitted changes
                     db.session.close()     # Close the session to release connections

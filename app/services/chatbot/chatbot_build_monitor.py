@@ -11,6 +11,7 @@ Responsible for:
 """
 
 import logging
+import os
 import time
 import threading
 from typing import Dict, Any
@@ -52,9 +53,10 @@ def _update_wizard_session(chatbot_id: int, status: str, error_message: str = No
 class ChatbotBuildMonitor:
     """Handles monitoring of chatbot build processes."""
 
-    # Timeout and polling settings
-    CRAWL_TIMEOUT_SECONDS = 1800  # 30 minutes (large sites need more time)
-    EMBEDDING_TIMEOUT_SECONDS = 3600  # 60 minutes
+    # Timeout and polling settings (configurable via environment)
+    # Default: 1 hour for crawl, 2 hours for embedding (large sites need more time)
+    CRAWL_TIMEOUT_SECONDS = int(os.environ.get('CRAWL_TIMEOUT_SECONDS', 3600))
+    EMBEDDING_TIMEOUT_SECONDS = int(os.environ.get('EMBEDDING_TIMEOUT_SECONDS', 7200))
     POLL_INTERVAL_SECONDS = 2  # Check every 2 seconds
 
     @staticmethod

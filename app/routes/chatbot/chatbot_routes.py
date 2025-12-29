@@ -3,7 +3,6 @@
 API routes for chatbot management and chat functionality.
 """
 
-import os
 import uuid
 import logging
 import json
@@ -21,6 +20,7 @@ from services.chatbot.file_processor import file_processor, FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
 from services.rag.access_service import RAGAccessService
 from services.chatbot_activity_service import ChatbotActivityService
+from services.system_settings_service import get_default_max_pages, get_default_max_depth
 from auth.auth_utils import AuthUtils
 
 logger = logging.getLogger(__name__)
@@ -984,10 +984,9 @@ def start_wizard_crawl(chatbot_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     data = request.get_json() or {}
-    # Default max_pages configurable via env (default: 500 for large sites)
-    default_max_pages = int(os.environ.get('CRAWLER_DEFAULT_MAX_PAGES', 500))
-    max_pages = data.get('max_pages', default_max_pages)
-    max_depth = data.get('max_depth', 3)
+    # Defaults loaded from system_settings DB table
+    max_pages = data.get('max_pages', get_default_max_pages())
+    max_depth = data.get('max_depth', get_default_max_depth())
     use_playwright = data.get('use_playwright', True)
     use_vision_llm = data.get('use_vision_llm', False)
     take_screenshots = data.get('take_screenshots', True)

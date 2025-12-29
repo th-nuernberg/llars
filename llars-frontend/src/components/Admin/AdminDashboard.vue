@@ -155,6 +155,11 @@
           <div v-else-if="activeSection === 'db'" key="db" class="section-container--full">
             <AdminDatabaseSection />
           </div>
+
+          <!-- System Settings Section -->
+          <div v-else-if="activeSection === 'settings'" key="settings" class="section-container">
+            <AdminSystemSettingsSection />
+          </div>
         </v-fade-transition>
       </div>
     </main>
@@ -180,6 +185,7 @@ import AdminSystemHealthSection from './sections/AdminSystemHealthSection.vue';
 import AdminChatbotActivitySection from './sections/AdminChatbotActivitySection.vue';
 import AdminDockerMonitorSection from './sections/AdminDockerMonitorSection.vue';
 import AdminDatabaseSection from './sections/AdminDatabaseSection.vue';
+import AdminSystemSettingsSection from './sections/AdminSystemSettingsSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -219,6 +225,7 @@ const navItems = [
   { title: 'Chatbot Activity', value: 'chatbot-activity', icon: 'mdi-robot-outline', adminOnly: true },
   { title: 'Docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
   { title: 'DB', value: 'db', icon: 'mdi-database', adminOnly: true },
+  { title: 'Einstellungen', value: 'settings', icon: 'mdi-cog', adminOnly: true },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group', adminOnly: true },
   { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
   { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot', permission: 'feature:chatbots:view' },
@@ -245,6 +252,7 @@ const sectionInfo = {
   'chatbot-activity': { title: 'Chatbot Activity', subtitle: 'User-Aktivitäten: Chatbots, Chats, Collections, Dokumente (live)' },
   docker: { title: 'Docker Monitor', subtitle: 'Container Status, Logs und Ressourcen-Auslastung (live)' },
   db: { title: 'DB Explorer', subtitle: 'Read-only Einblick in die LLARS Datenbank (live)' },
+  settings: { title: 'System-Einstellungen', subtitle: 'Crawler-Timeouts, RAG-Defaults und System-Parameter' },
   users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },
   scenarios: { title: 'Szenario-Verwaltung', subtitle: 'Bewertungs-Szenarien erstellen und verwalten' },
   chatbots: { title: 'Chatbot-Verwaltung', subtitle: 'Chatbots mit RAG-Collections erstellen und konfigurieren' },

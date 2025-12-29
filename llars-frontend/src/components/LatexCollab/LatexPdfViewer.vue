@@ -54,10 +54,12 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf.mjs'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-GlobalWorkerOptions.workerSrc = pdfWorker
+// Use worker from public folder - avoids Vite hashing issues that cause
+// "Failed to fetch dynamically imported module" errors in production
+// See: https://medium.com/@prospercoded/how-i-fixed-the-it-works-on-my-machine-pdf-js-nightmare-in-vite-54adfe92e7f2
+GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 const props = defineProps({
   workspaceId: { type: Number, required: true },

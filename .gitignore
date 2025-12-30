@@ -129,3 +129,4 @@ app/data/rag/indexes/**
 !app/data/rag/uploads/.gitkeep
 !app/data/rag/crawls/.gitkeep
 app/data/rag/**/.DS_Store
+GITLAB_CICD_VARIABLES.txt

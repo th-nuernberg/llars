@@ -41,8 +41,8 @@ variables:
   DOCKER_TLS_CERTDIR: "/certs"
   DOCKER_IMAGE_TAG: $CI_COMMIT_SHORT_SHA
 
-  # Deployment
-  LLARS_SERVER_USER: "llars"
+  # Deployment (Server: 141.75.150.128)
+  LLARS_SERVER_USER: "master"
   LLARS_DEPLOY_PATH: "/var/llars"
 
 # Cache für schnellere Builds
@@ -251,9 +251,9 @@ deploy:staging:
 
     # SSH zum Server und Deploy
     - |
-      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << 'ENDSSH'
+      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << ENDSSH
         set -e
-        cd ${LLARS_DEPLOY_PATH}
+        cd /var/llars
 
         echo "=== LLARS Staging Deployment ==="
         echo "Timestamp: $(date)"
@@ -303,9 +303,9 @@ deploy:production:
 
     # SSH zum Server und Deploy
     - |
-      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << 'ENDSSH'
+      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << ENDSSH
         set -e
-        cd ${LLARS_DEPLOY_PATH}
+        cd /var/llars
 
         echo "=========================================="
         echo "=== LLARS PRODUCTION DEPLOYMENT ========="
@@ -421,9 +421,9 @@ rollback:production:
     - echo "Rolling back PRODUCTION..."
 
     - |
-      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << 'ENDSSH'
+      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << ENDSSH
         set -e
-        cd ${LLARS_DEPLOY_PATH}
+        cd /var/llars
 
         echo "=== EMERGENCY ROLLBACK ==="
 

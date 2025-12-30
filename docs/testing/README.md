@@ -54,10 +54,12 @@ docs/testing/
 │       ├── 01_BERECHTIGUNGEN.md      # RBAC, 43 Permissions, Decorators
 │       └── 02_ROLLEN_MATRIX.md       # 4 Rollen, Feature-Zugriff
 │
-└── checklisten/                       # Ausführbare Checklisten (✅ komplett)
-    ├── SMOKE_TEST.md                 # 15-20 min Schnelltest
-    ├── RELEASE_CHECKLIST.md          # Pre/Post Release Schritte
-    └── REGRESSION_TESTS.md           # Vollständige Funktionsprüfung
+├── checklisten/                       # Ausführbare Checklisten (✅ komplett)
+│   ├── SMOKE_TEST.md                 # 15-20 min Schnelltest
+│   ├── RELEASE_CHECKLIST.md          # Pre/Post Release Schritte
+│   └── REGRESSION_TESTS.md           # Vollständige Funktionsprüfung
+│
+└── CICD_SETUP.md                      # GitLab CI/CD Pipeline Setup
 ```
 
 ---

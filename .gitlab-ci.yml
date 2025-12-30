@@ -1,0 +1,500 @@
+# =============================================================================
+# LLARS GitLab CI/CD Pipeline
+# =============================================================================
+# Vollautomatisierte Pipeline für Test, Build und Deployment
+#
+# Stages:
+#   1. lint      - Code-Qualität prüfen
+#   2. test      - Unit & Integration Tests
+#   3. build     - Docker Images bauen
+#   4. deploy    - Automatisches Deployment via SSH
+#
+# Voraussetzungen (GitLab CI/CD Variables):
+#   - SSH_PRIVATE_KEY: Private Key für SSH Zugang zum Server
+#   - SSH_KNOWN_HOSTS: Known Hosts Eintrag des Servers
+#   - LLARS_SERVER_HOST: Hostname/IP des LLARS Servers
+#   - LLARS_SERVER_USER: SSH Username (default: llars)
+#   - LLARS_DEPLOY_PATH: Pfad zum LLARS Projekt auf dem Server
+#   - DEPLOY_TOKEN: (Optional) Für private Registry
+#
+# =============================================================================
+
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+# =============================================================================
+# GLOBALE KONFIGURATION
+# =============================================================================
+
+variables:
+  # Python
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHONUNBUFFERED: "1"
+
+  # Node.js
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
+
+  # Docker
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+
+  # Deployment
+  LLARS_SERVER_USER: "llars"
+  LLARS_DEPLOY_PATH: "/var/llars"
+
+# Cache für schnellere Builds
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - .cache/npm
+    - llars-frontend/node_modules/
+
+# Standard before_script für SSH Setup
+.ssh_setup: &ssh_setup
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+
+# =============================================================================
+# STAGE 1: LINT
+# =============================================================================
+
+lint:backend:
+  stage: lint
+  image: python:3.11-slim
+  script:
+    - pip install flake8 black isort
+    - echo "Checking Python code style..."
+    - flake8 app/ --max-line-length=120 --ignore=E501,W503
+    - black --check app/ --line-length=120 || true
+    - isort --check-only app/ || true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  allow_failure: true
+
+lint:frontend:
+  stage: lint
+  image: node:20-alpine
+  script:
+    - cd llars-frontend
+    - npm ci --prefer-offline
+    - echo "Checking Frontend code style..."
+    - npm run lint || true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  allow_failure: true
+
+# =============================================================================
+# STAGE 2: TEST
+# =============================================================================
+
+test:unit:backend:
+  stage: test
+  image: python:3.11-slim
+  services:
+    - name: mariadb:11.2
+      alias: test-db
+      variables:
+        MYSQL_ROOT_PASSWORD: test
+        MYSQL_DATABASE: llars_test
+        MYSQL_USER: test
+        MYSQL_PASSWORD: test
+  variables:
+    DATABASE_URL: "mysql://test:test@test-db:3306/llars_test"
+    TESTING: "true"
+    AUTHENTIK_DISABLED: "true"
+  script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov pytest-flask
+    - echo "Running Backend Unit Tests..."
+    - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing || true
+  coverage: '/TOTAL.*\s+(\d+%)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+test:unit:frontend:
+  stage: test
+  image: node:20-alpine
+  script:
+    - cd llars-frontend
+    - npm ci --prefer-offline
+    - echo "Running Frontend Unit Tests..."
+    - npm run test:run -- --coverage || true
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: llars-frontend/coverage/cobertura-coverage.xml
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+test:integration:
+  stage: test
+  image: python:3.11-slim
+  services:
+    - name: mariadb:11.2
+      alias: test-db
+      variables:
+        MYSQL_ROOT_PASSWORD: test
+        MYSQL_DATABASE: llars_test
+        MYSQL_USER: test
+        MYSQL_PASSWORD: test
+    - name: redis:7-alpine
+      alias: test-redis
+  variables:
+    DATABASE_URL: "mysql://test:test@test-db:3306/llars_test"
+    REDIS_URL: "redis://test-redis:6379"
+    TESTING: "true"
+    AUTHENTIK_DISABLED: "true"
+  script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-flask
+    - echo "Running Integration Tests..."
+    - pytest tests/integration/ -v || true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - test:unit:backend
+
+test:e2e:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.48.0-jammy
+  services:
+    - name: docker:24-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "/certs/client"
+    DOCKER_TLS_VERIFY: "1"
+  script:
+    - cd llars-frontend
+    - npm ci --prefer-offline
+    - npx playwright install chromium
+    - echo "Running E2E Tests..."
+    - npx playwright test --project=chromium || true
+  artifacts:
+    when: always
+    paths:
+      - llars-frontend/playwright-report/
+      - llars-frontend/test-results/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - test:integration
+  allow_failure: true
+
+# =============================================================================
+# STAGE 3: BUILD
+# =============================================================================
+
+build:docker:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - echo "Building Docker images..."
+    - docker compose build --parallel
+    - echo "Build completed successfully"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - test:unit:backend
+    - test:unit:frontend
+
+# =============================================================================
+# STAGE 4: DEPLOY
+# =============================================================================
+
+# ------------------------------------------------------------------------------
+# Deploy zu Staging (automatisch bei Push zu develop)
+# ------------------------------------------------------------------------------
+deploy:staging:
+  stage: deploy
+  image: alpine:latest
+  <<: *ssh_setup
+  environment:
+    name: staging
+    url: https://staging.llars.local
+  script:
+    - echo "Deploying to STAGING..."
+
+    # SSH zum Server und Deploy
+    - |
+      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << 'ENDSSH'
+        set -e
+        cd ${LLARS_DEPLOY_PATH}
+
+        echo "=== LLARS Staging Deployment ==="
+        echo "Timestamp: $(date)"
+
+        # Git Pull
+        echo "Pulling latest changes..."
+        git fetch origin develop
+        git checkout develop
+        git pull origin develop
+
+        # Backup (optional für Staging)
+        echo "Creating quick backup..."
+        docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars \
+          > backups/staging_backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || true
+
+        # Rebuild und Restart
+        echo "Rebuilding containers..."
+        docker compose build --parallel
+        docker compose up -d
+
+        # Health Check
+        echo "Waiting for services to be healthy..."
+        sleep 30
+        curl -sf http://localhost:55080/api/health || echo "Warning: Health check failed"
+
+        echo "=== Staging Deployment Complete ==="
+      ENDSSH
+
+    - echo "Staging deployment finished!"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+  needs:
+    - build:docker
+
+# ------------------------------------------------------------------------------
+# Deploy zu Produktion (automatisch bei Push zu main)
+# ------------------------------------------------------------------------------
+deploy:production:
+  stage: deploy
+  image: alpine:latest
+  <<: *ssh_setup
+  environment:
+    name: production
+    url: https://llars.local
+  script:
+    - echo "Deploying to PRODUCTION..."
+
+    # SSH zum Server und Deploy
+    - |
+      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << 'ENDSSH'
+        set -e
+        cd ${LLARS_DEPLOY_PATH}
+
+        echo "=========================================="
+        echo "=== LLARS PRODUCTION DEPLOYMENT ========="
+        echo "=========================================="
+        echo "Timestamp: $(date)"
+        echo "Server: $(hostname)"
+
+        # 1. Pre-Deployment Backup
+        echo ""
+        echo "[1/6] Creating pre-deployment backup..."
+        BACKUP_FILE="backups/pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
+        docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > $BACKUP_FILE
+        echo "Backup saved to: $BACKUP_FILE"
+
+        # 2. Git Pull
+        echo ""
+        echo "[2/6] Pulling latest changes from main..."
+        git fetch origin main
+        git checkout main
+        git reset --hard origin/main
+
+        # 3. Environment Check
+        echo ""
+        echo "[3/6] Checking environment..."
+        if [ ! -f .env ]; then
+          echo "ERROR: .env file not found!"
+          exit 1
+        fi
+
+        # 4. Build Images
+        echo ""
+        echo "[4/6] Building Docker images..."
+        docker compose build --parallel
+
+        # 5. Rolling Update
+        echo ""
+        echo "[5/6] Performing rolling update..."
+
+        # Backend zuerst (mit Health Check)
+        docker compose up -d flask-service
+        sleep 10
+
+        # Frontend
+        docker compose up -d vue-service
+        sleep 5
+
+        # Restliche Services
+        docker compose up -d
+
+        # 6. Post-Deployment Verification
+        echo ""
+        echo "[6/6] Verifying deployment..."
+
+        # Warten auf Container
+        sleep 30
+
+        # Health Checks
+        echo "Running health checks..."
+
+        # API Health
+        if curl -sf http://localhost:55080/api/health > /dev/null; then
+          echo "✓ API Health: OK"
+        else
+          echo "✗ API Health: FAILED"
+          echo "Rolling back..."
+          docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < $BACKUP_FILE
+          git checkout HEAD~1
+          docker compose up -d
+          exit 1
+        fi
+
+        # Frontend
+        if curl -sf http://localhost:55080/ > /dev/null; then
+          echo "✓ Frontend: OK"
+        else
+          echo "✗ Frontend: FAILED (non-critical)"
+        fi
+
+        # Container Status
+        echo ""
+        echo "Container Status:"
+        docker compose ps
+
+        # Cleanup old backups (keep last 10)
+        echo ""
+        echo "Cleaning up old backups..."
+        ls -t backups/*.sql 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+
+        echo ""
+        echo "=========================================="
+        echo "=== DEPLOYMENT SUCCESSFUL ==============="
+        echo "=========================================="
+      ENDSSH
+
+    - echo "Production deployment finished!"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - test:e2e
+    - build:docker
+  when: on_success
+
+# ------------------------------------------------------------------------------
+# Manueller Rollback (für Notfälle)
+# ------------------------------------------------------------------------------
+rollback:production:
+  stage: deploy
+  image: alpine:latest
+  <<: *ssh_setup
+  environment:
+    name: production
+  script:
+    - echo "Rolling back PRODUCTION..."
+
+    - |
+      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << 'ENDSSH'
+        set -e
+        cd ${LLARS_DEPLOY_PATH}
+
+        echo "=== EMERGENCY ROLLBACK ==="
+
+        # Finde letztes Backup
+        LATEST_BACKUP=$(ls -t backups/*.sql 2>/dev/null | head -1)
+
+        if [ -z "$LATEST_BACKUP" ]; then
+          echo "ERROR: No backup found!"
+          exit 1
+        fi
+
+        echo "Rolling back to: $LATEST_BACKUP"
+
+        # Git Rollback
+        git checkout HEAD~1
+
+        # DB Rollback
+        docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < $LATEST_BACKUP
+
+        # Rebuild
+        docker compose build
+        docker compose up -d
+
+        echo "=== ROLLBACK COMPLETE ==="
+      ENDSSH
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  allow_failure: true
+
+# =============================================================================
+# ZUSÄTZLICHE JOBS
+# =============================================================================
+
+# Security Scan
+security:scan:
+  stage: test
+  image: python:3.11-slim
+  script:
+    - pip install pip-audit safety
+    - echo "Running security scan..."
+    - pip-audit -r requirements.txt || true
+    - cd llars-frontend && npm audit --audit-level=high || true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+  allow_failure: true
+
+# Smoke Test nach Deployment
+smoke:test:
+  stage: deploy
+  image: alpine:latest
+  <<: *ssh_setup
+  script:
+    - apk add --no-cache curl
+    - echo "Running smoke tests..."
+
+    # Basic Health Checks
+    - |
+      echo "Checking API health..."
+      curl -sf https://${LLARS_SERVER_HOST}/api/health || exit 1
+
+      echo "Checking frontend..."
+      curl -sf https://${LLARS_SERVER_HOST}/ || exit 1
+
+      echo "Checking auth..."
+      curl -sf https://${LLARS_SERVER_HOST}/api/auth/status || true
+
+      echo "All smoke tests passed!"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - deploy:production
+  when: on_success

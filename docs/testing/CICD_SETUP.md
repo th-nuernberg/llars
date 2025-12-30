@@ -77,7 +77,7 @@ sudo mkdir -p /var/llars/backups
 sudo chown -R llars:llars /var/llars
 
 # 6. Git Repository klonen
-sudo -u llars git clone git@gitlab.example.com:team/llars.git /var/llars
+sudo -u llars git clone https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars.git /var/llars
 cd /var/llars
 sudo -u llars cp .env.template.production .env
 # .env anpassen!
@@ -396,7 +396,7 @@ docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me data
 ### Pipeline Status Badge
 
 ```markdown
-[![Pipeline Status](https://gitlab.example.com/team/llars/badges/main/pipeline.svg)](https://gitlab.example.com/team/llars/-/pipelines)
+[![Pipeline Status](https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars/badges/main/pipeline.svg)](https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars/-/pipelines)
 ```
 
 ### Slack/Teams Benachrichtigungen

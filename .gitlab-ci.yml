@@ -245,7 +245,7 @@ deploy:staging:
   <<: *ssh_setup
   environment:
     name: staging
-    url: https://staging.llars.local
+    url: http://141.75.150.128:55080
   script:
     - echo "Deploying to STAGING..."
 
@@ -297,7 +297,7 @@ deploy:production:
   <<: *ssh_setup
   environment:
     name: production
-    url: https://llars.local
+    url: http://141.75.150.128:55080
   script:
     - echo "Deploying to PRODUCTION..."
 

@@ -242,8 +242,8 @@ build:docker:
 # ------------------------------------------------------------------------------
 deploy:staging:
   stage: deploy
-  # Runner muss Shell-Executor haben (kein Docker)
-  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
+  tags:
+    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
   environment:
     name: staging
     url: http://141.75.150.128
@@ -275,8 +275,8 @@ deploy:staging:
 # ------------------------------------------------------------------------------
 deploy:production:
   stage: deploy
-  # Runner muss Shell-Executor haben (kein Docker)
-  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
+  tags:
+    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
   environment:
     name: production
     url: http://141.75.150.128
@@ -347,7 +347,8 @@ deploy:production:
 # ------------------------------------------------------------------------------
 rollback:production:
   stage: deploy
-  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
+  tags:
+    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
   environment:
     name: production
   script:
@@ -387,7 +388,8 @@ security:scan:
 # Smoke Test nach Deployment
 smoke:test:
   stage: deploy
-  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
+  tags:
+    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
   script:
     - echo "Running smoke tests..."
     - echo "Checking API health..."

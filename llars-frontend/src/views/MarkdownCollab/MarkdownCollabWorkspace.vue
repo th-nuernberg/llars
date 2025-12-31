@@ -210,7 +210,6 @@
               >
                 <MarkdownEditorPane
                   ref="editorRef"
-                  :key="selectedNode.id"
                   :document="selectedNode"
                   :readonly="!hasPermission('feature:markdown_collab:edit')"
                   @content-change="onEditorContentChange"

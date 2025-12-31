@@ -285,6 +285,7 @@ class CollectionEmbeddingService:
         total_docs = CollectionDocumentLink.query.filter_by(collection_id=collection_id).count()
 
         # Count indexed documents
+        from db.db import db
         indexed_docs = db.session.query(RAGDocument).join(
             CollectionDocumentLink,
             RAGDocument.id == CollectionDocumentLink.document_id

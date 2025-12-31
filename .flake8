@@ -1,0 +1,36 @@
+[flake8]
+# Line length same as black
+max-line-length = 120
+
+# Ignore common style issues that don't affect code quality
+ignore =
+    # W503: line break before binary operator (conflicts with W504, PEP8 changed recommendation)
+    W503,
+    # W504: line break after binary operator
+    W504,
+    # E226: missing whitespace around arithmetic operator (style preference)
+    E226,
+    # E402: module level import not at top of file (sometimes needed for path setup)
+    E402,
+    # E731: do not assign a lambda expression (sometimes useful)
+    E731
+
+# Exclude directories
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    migrations,
+    node_modules,
+    dist,
+    build,
+    *.egg-info
+
+# Per-file ignores for test files
+per-file-ignores =
+    # Test files can have unused imports for fixtures
+    test_*.py: F401,F811
+    *_test.py: F401,F811
+    # Allow unused imports in __init__.py (re-exports)
+    __init__.py: F401

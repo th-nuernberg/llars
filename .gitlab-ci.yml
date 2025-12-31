@@ -245,7 +245,7 @@ deploy:staging:
     - shell
   environment:
     name: staging
-    url: http://141.75.150.128:55080
+    url: http://141.75.150.128
   script:
     - echo "=== LLARS Staging Deployment ==="
     - echo "Timestamp:" $(date)
@@ -261,7 +261,7 @@ deploy:staging:
     - docker compose up -d
     - echo "Waiting for services to be healthy..."
     - sleep 30
-    - curl -sf http://localhost:55080/api/health || echo "Warning Health check failed"
+    - curl -sf http://localhost/auth/health_check > /dev/null && echo "✓ API Health OK" || echo "✗ API Health FAILED"
     - echo "=== Staging Deployment Complete ==="
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -278,7 +278,7 @@ deploy:production:
     - shell  # Nutze Shell-Executor (kein Docker)
   environment:
     name: production
-    url: http://141.75.150.128:55080
+    url: http://141.75.150.128
   script:
     - echo "=========================================="
     - echo "=== LLARS PRODUCTION DEPLOYMENT ========="
@@ -315,9 +315,9 @@ deploy:production:
     # 5. Rolling Update
     - echo ""
     - echo "[5/6] Performing rolling update..."
-    - docker compose up -d flask-service
+    - docker compose up -d backend-flask-service
     - sleep 10
-    - docker compose up -d vue-service
+    - docker compose up -d frontend-vue-service
     - sleep 5
     - docker compose up -d
 
@@ -326,8 +326,8 @@ deploy:production:
     - echo "[6/6] Verifying deployment..."
     - sleep 30
     - echo "Running health checks..."
-    - curl -sf http://localhost:55080/api/health > /dev/null && echo "✓ API Health OK" || echo "✗ API Health FAILED"
-    - curl -sf http://localhost:55080/ > /dev/null && echo "✓ Frontend OK" || echo "✗ Frontend FAILED"
+    - curl -sf http://localhost/auth/health_check > /dev/null && echo "✓ API Health OK" || echo "✗ API Health FAILED"
+    - curl -sf http://localhost/ > /dev/null && echo "✓ Frontend OK" || echo "✗ Frontend FAILED"
     - echo ""
     - docker compose ps
     - echo ""
@@ -392,11 +392,11 @@ smoke:test:
   script:
     - echo "Running smoke tests..."
     - echo "Checking API health..."
-    - curl -sf http://localhost:55080/api/health || exit 1
+    - curl -sf http://localhost/auth/health_check || exit 1
     - echo "Checking frontend..."
-    - curl -sf http://localhost:55080/ || exit 1
-    - echo "Checking auth..."
-    - curl -sf http://localhost:55080/api/auth/status || true
+    - curl -sf http://localhost/ || exit 1
+    - echo "Checking auth status..."
+    - curl -sf http://localhost/auth/authentik/status || true
     - echo "All smoke tests passed!"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"

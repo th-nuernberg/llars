@@ -1,6 +1,8 @@
 # LLARS Testdokumentation
 
-**Version:** 1.0 | **Stand:** 30. Dezember 2025
+**Version:** 1.1 | **Stand:** 30. Dezember 2025
+
+**Implementierungsstatus:** 🟡 In Arbeit
 
 ---
 
@@ -12,6 +14,26 @@ Diese Dokumentation enthält alle Testanforderungen für das LLARS-System (LLM A
 - Wie es getestet werden soll
 - Welche Priorität jeder Test hat
 - Wer für welche Tests verantwortlich ist
+
+### Quick Start: Tests ausführen
+
+```bash
+# Alle Tests ausführen
+cd /path/to/llars
+pytest tests/
+
+# Nur Unit Tests
+pytest tests/unit/
+
+# Nur Integration Tests
+pytest tests/integration/
+
+# Mit Coverage
+pytest --cov=app --cov-report=html tests/
+
+# Spezifische Test-Klasse
+pytest tests/unit/auth/test_decorators.py::TestAuthentikRequired -v
+```
 
 ---
 
@@ -85,15 +107,35 @@ docs/testing/
 
 ## Zusammenfassung der Testbereiche
 
-| Bereich | Dokumente | Tests | Priorität |
-|---------|-----------|-------|-----------|
-| **Frontend Seiten** | 5 | ~150 | P0-P2 |
-| **Frontend UI/UX** | 6 | ~400 | P1-P2 |
-| **Backend Routen** | 2 | ~100 | P0-P1 |
-| **Features** | 4 | ~120 | P0-P1 |
-| **Security** | 2 | ~80 | P0 |
-| **Checklisten** | 3 | ~200 | P0-P1 |
-| **Gesamt** | 22 | ~1050 | - |
+| Bereich | Dokumente | Tests | Priorität | Status |
+|---------|-----------|-------|-----------|--------|
+| **Backend Auth** | 1 | ~35 | P0 | ✅ Implementiert |
+| **Backend Permissions** | 1 | ~25 | P0 | ✅ Implementiert |
+| **Backend API Routes** | 1 | ~40 | P0-P1 | ✅ Implementiert |
+| **Frontend Seiten** | 5 | ~150 | P0-P2 | ⏳ Geplant |
+| **Frontend UI/UX** | 6 | ~400 | P1-P2 | ⏳ Geplant |
+| **Features** | 4 | ~120 | P0-P1 | ⏳ Geplant |
+| **Security** | 2 | ~80 | P0 | 🟡 Teilweise |
+| **Checklisten** | 3 | ~200 | P0-P1 | ✅ Dokumentiert |
+| **Gesamt** | 22 | ~1050 | - | ~10% ✅ |
+
+### Implementierte Test-Dateien
+
+```
+tests/
+├── conftest.py                                  # ✅ Fixtures & Setup
+├── unit/
+│   ├── auth/
+│   │   └── test_decorators.py                   # ✅ 25 Tests
+│   └── services/
+│       └── permission/
+│           └── test_permission_service.py       # ✅ 18 Tests
+└── integration/
+    ├── auth/
+    │   └── test_login.py                        # ✅ 12 Tests
+    └── api/
+        └── test_route_protection.py             # ✅ 15 Tests
+```
 
 ### Frontend UI/UX Details
 

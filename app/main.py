@@ -108,6 +108,9 @@ def exempt_endpoints():
         return True
     return False
 
+# Flask Secret Key (required for session management, e.g. Zotero OAuth)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production'))
+
 # JWT Configuration (for legacy auth routes)
 # TODO: Complete migration to Authentik and remove legacy JWT auth
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')

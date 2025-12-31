@@ -26,6 +26,26 @@ stages:
   - deploy
 
 # =============================================================================
+# RUNNER TEST JOB (kann nach erfolgreichem Test entfernt werden)
+# =============================================================================
+test:shell-runner:
+  stage: lint
+  tags:
+    - shell
+  script:
+    - echo "=== Shell Runner Test ==="
+    - echo "Hostname:" $(hostname)
+    - echo "User:" $(whoami)
+    - echo "PWD:" $(pwd)
+    - echo "Date:" $(date)
+    - ls -la /var/llars || echo "/var/llars nicht erreichbar"
+    - git --version
+    - docker --version || echo "Docker nicht verfügbar"
+    - echo "=== Test erfolgreich! ==="
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# =============================================================================
 # GLOBALE KONFIGURATION
 # =============================================================================
 

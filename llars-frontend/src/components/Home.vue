@@ -271,6 +271,16 @@ const allItems = ref([
     badgeColor: 'info'
   },
   {
+    title: 'LaTeX Collab KI',
+    description: 'LaTeX-Editor mit KI-Schreibassistent (Ghost Text, @-Commands, RAG Citations)',
+    route: '/LatexCollabAI',
+    icon: 'mdi-robot-outline',
+    permission: 'feature:latex_collab:view',
+    category: 'ai',
+    badge: 'Test',
+    badgeColor: 'warning'
+  },
+  {
     title: 'LLM-as-Judge',
     description: 'Automatisierte Bewertung und Vergleich von Prompt-Säulen',
     route: '/judge',

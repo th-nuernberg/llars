@@ -99,6 +99,11 @@ body,
   --llars-citation-light: #7ba868;
   --llars-citation-dark: #5a8a4a;
 
+  /* AI Collab Color (Distinct Lavender/Purple for AI-generated changes) */
+  --llars-ai-collab: #b39ddb;
+  --llars-ai-collab-bg: rgba(179, 157, 219, 0.25);
+  --llars-ai-collab-border: #9575cd;
+
   /* AppBar/Footer Colors (Light Mode - Sage Green) */
   --llars-appbar-start: #b0ca97;
   --llars-appbar-end: #9ab583;

@@ -61,6 +61,10 @@ import MarkdownCollabWorkspace from "@/views/MarkdownCollab/MarkdownCollabWorksp
 import LatexCollabHome from "@/views/LatexCollab/LatexCollabHome.vue";
 import LatexCollabWorkspace from "@/views/LatexCollab/LatexCollabWorkspace.vue";
 
+// LaTeX Collab AI (Test)
+import LatexCollabAIHome from "@/views/LatexCollabAI/LatexCollabAIHome.vue";
+import LatexCollabAIWorkspace from "@/views/LatexCollabAI/LatexCollabAIWorkspace.vue";
+
 // Evaluation Hub
 import EvaluationHub from "@/components/Evaluation/EvaluationHub.vue";
 
@@ -145,6 +149,11 @@ const routes = [
     { path: '/LatexCollab', name: 'LatexCollabHome', component: LatexCollabHome, meta: { requiresAuth: true } },
     { path: '/LatexCollab/workspace/:workspaceId', name: 'LatexCollabWorkspace', component: LatexCollabWorkspace, meta: { requiresAuth: true } },
     { path: '/LatexCollab/workspace/:workspaceId/document/:documentId', name: 'LatexCollabWorkspaceDocument', component: LatexCollabWorkspace, meta: { requiresAuth: true } },
+
+    // LaTeX Collab AI (Test - KI-Schreibassistent)
+    { path: '/LatexCollabAI', name: 'LatexCollabAIHome', component: LatexCollabAIHome, meta: { requiresAuth: true } },
+    { path: '/LatexCollabAI/workspace/:workspaceId', name: 'LatexCollabAIWorkspace', component: LatexCollabAIWorkspace, meta: { requiresAuth: true } },
+    { path: '/LatexCollabAI/workspace/:workspaceId/document/:documentId', name: 'LatexCollabAIWorkspaceDocument', component: LatexCollabAIWorkspace, meta: { requiresAuth: true } },
 
     { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
 

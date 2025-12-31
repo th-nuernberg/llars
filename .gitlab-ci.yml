@@ -53,10 +53,10 @@ cache:
     - .cache/npm
     - llars-frontend/node_modules/
 
-# Standard before_script für SSH Setup
+# Standard before_script für SSH Setup (Alpine Linux)
 .ssh_setup: &ssh_setup
   before_script:
-    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
+    - 'command -v ssh-agent >/dev/null || apk add --no-cache openssh-client'
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh

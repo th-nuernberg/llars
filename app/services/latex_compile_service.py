@@ -202,8 +202,8 @@ def run_compile_job(job_id: int) -> None:
             cmd = [
                 "latexmk",
                 "-pdf",
+                "-bibtex",
                 "-interaction=nonstopmode",
-                "-halt-on-error",
                 "-file-line-error",
                 "-synctex=1",
                 rel_main,
@@ -225,9 +225,10 @@ def run_compile_job(job_id: int) -> None:
             output = proc.stdout or ""
             job.log_text = _read_log(log_path, output)
 
-            if proc.returncode != 0 or not pdf_path.exists():
+            # Check if PDF was created - latexmk may return non-zero for warnings
+            if not pdf_path.exists():
                 job.status = "failed"
-                job.error_message = "LaTeX compile failed"
+                job.error_message = "LaTeX compile failed - no PDF generated"
                 job.finished_at = datetime.utcnow()
                 db.session.commit()
                 return

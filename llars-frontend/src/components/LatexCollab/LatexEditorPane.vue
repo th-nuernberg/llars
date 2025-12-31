@@ -1,34 +1,159 @@
 <template>
   <div class="editor-pane">
-    <div class="editor-topbar">
-      <div class="d-flex align-center">
-        <v-chip v-if="readonly" size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-lock</v-icon>
-          Read-only
-        </v-chip>
-        <v-chip v-else-if="isConnected" size="small" color="success" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-check-outline</v-icon>
-          Live Sync
-        </v-chip>
-        <v-chip v-else size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-alert-outline</v-icon>
-          Reconnecting…
-        </v-chip>
-      </div>
-      <v-spacer />
-      <div class="d-flex align-center ga-2 users">
-        <v-chip
-          v-for="u in activeUsers"
-          :key="u.userId"
-          size="small"
-          variant="tonal"
-          :style="{ borderColor: u.color }"
-          class="user-chip"
-        >
-          <span class="user-dot" :style="{ backgroundColor: u.color }" />
-          {{ u.username }}
-        </v-chip>
-      </div>
+    <!-- Quick Formatting Toolbar (Overleaf-style) -->
+    <div v-if="!readonly" class="formatting-toolbar" :class="{ collapsed: toolbarCollapsed }">
+      <!-- Toggle button -->
+      <v-tooltip location="bottom">
+        <template #activator="{ props: tp }">
+          <button v-bind="tp" class="toolbar-toggle-btn" @click="toggleToolbar">
+            <v-icon size="14">{{ toolbarCollapsed ? 'mdi-chevron-down' : 'mdi-chevron-up' }}</v-icon>
+          </button>
+        </template>
+        <span>{{ toolbarCollapsed ? 'Toolbar einblenden' : 'Toolbar ausblenden' }}</span>
+      </v-tooltip>
+
+      <!-- Collapsed state: just show label -->
+      <span v-if="toolbarCollapsed" class="toolbar-collapsed-label" @click="toggleToolbar">
+        Formatierung
+      </span>
+
+      <!-- Expanded toolbar content -->
+      <template v-if="!toolbarCollapsed">
+        <!-- Text Formatting -->
+        <div class="toolbar-group">
+          <v-tooltip v-for="btn in textFormatButtons" :key="btn.id" location="bottom">
+            <template #activator="{ props: tp }">
+              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
+                <v-icon size="16">{{ btn.icon }}</v-icon>
+              </button>
+            </template>
+            <span>{{ btn.label }} <kbd v-if="btn.shortcut">{{ btn.shortcut }}</kbd></span>
+          </v-tooltip>
+        </div>
+
+        <div class="toolbar-divider" />
+
+        <!-- Structure -->
+        <div class="toolbar-group">
+          <v-tooltip v-for="btn in structureButtons" :key="btn.id" location="bottom">
+            <template #activator="{ props: tp }">
+              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
+                <v-icon size="16">{{ btn.icon }}</v-icon>
+              </button>
+            </template>
+            <span>{{ btn.label }}</span>
+          </v-tooltip>
+        </div>
+
+        <div class="toolbar-divider" />
+
+        <!-- Lists -->
+        <div class="toolbar-group">
+          <v-tooltip v-for="btn in listButtons" :key="btn.id" location="bottom">
+            <template #activator="{ props: tp }">
+              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
+                <v-icon size="16">{{ btn.icon }}</v-icon>
+              </button>
+            </template>
+            <span>{{ btn.label }}</span>
+          </v-tooltip>
+        </div>
+
+        <div class="toolbar-divider" />
+
+        <!-- Content (Figure, Table) -->
+        <div class="toolbar-group">
+          <template v-for="btn in contentButtons" :key="btn.id">
+            <!-- Special table button with size picker -->
+            <v-menu v-if="btn.hasMenu" v-model="showTablePicker" :close-on-content-click="false" location="bottom">
+              <template #activator="{ props: menuProps }">
+                <v-tooltip location="bottom">
+                  <template #activator="{ props: tp }">
+                    <button v-bind="{ ...tp, ...menuProps }" class="toolbar-btn">
+                      <v-icon size="16">{{ btn.icon }}</v-icon>
+                    </button>
+                  </template>
+                  <span>{{ btn.label }}</span>
+                </v-tooltip>
+              </template>
+              <v-card class="table-picker-card" min-width="200">
+                <v-card-text class="pa-3">
+                  <div class="text-subtitle-2 mb-2">Tabellengröße</div>
+                  <div class="d-flex align-center ga-3 mb-2">
+                    <v-text-field
+                      v-model.number="tableRows"
+                      label="Zeilen"
+                      type="number"
+                      min="1"
+                      max="20"
+                      density="compact"
+                      hide-details
+                      variant="outlined"
+                      style="max-width: 70px"
+                    />
+                    <span class="text-body-2">×</span>
+                    <v-text-field
+                      v-model.number="tableCols"
+                      label="Spalten"
+                      type="number"
+                      min="1"
+                      max="10"
+                      density="compact"
+                      hide-details
+                      variant="outlined"
+                      style="max-width: 70px"
+                    />
+                  </div>
+                  <div class="text-caption text-medium-emphasis mb-2">
+                    Vorschau: {{ tableRows }} × {{ tableCols }}
+                  </div>
+                  <v-btn color="primary" size="small" block @click="insertTable">
+                    <v-icon start size="small">mdi-table-plus</v-icon>
+                    Einfügen
+                  </v-btn>
+                </v-card-text>
+              </v-card>
+            </v-menu>
+            <!-- Regular buttons -->
+            <v-tooltip v-else location="bottom">
+              <template #activator="{ props: tp }">
+                <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
+                  <v-icon size="16">{{ btn.icon }}</v-icon>
+                </button>
+              </template>
+              <span>{{ btn.label }}</span>
+            </v-tooltip>
+          </template>
+        </div>
+
+        <div class="toolbar-divider" />
+
+        <!-- Math -->
+        <div class="toolbar-group">
+          <v-tooltip v-for="btn in mathButtons" :key="btn.id" location="bottom">
+            <template #activator="{ props: tp }">
+              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
+                <v-icon size="16">{{ btn.icon }}</v-icon>
+              </button>
+            </template>
+            <span>{{ btn.label }}</span>
+          </v-tooltip>
+        </div>
+
+        <div class="toolbar-divider" />
+
+        <!-- References -->
+        <div class="toolbar-group">
+          <v-tooltip v-for="btn in refButtons" :key="btn.id" location="bottom">
+            <template #activator="{ props: tp }">
+              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
+                <v-icon size="16">{{ btn.icon }}</v-icon>
+              </button>
+            </template>
+            <span>{{ btn.label }}</span>
+          </v-tooltip>
+        </div>
+      </template>
     </div>
 
     <div v-if="error" class="px-3 pb-3">
@@ -67,14 +192,21 @@ import { useYjsCollaboration } from '@/components/PromptEngineering/composables/
 import { useGitDiff } from '@/components/MarkdownCollab/composables/useGitDiff'
 import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
 
+// AI Collab color for AI-generated changes (distinct lavender/purple)
+const AI_COLLAB_COLOR = '#b39ddb'
+const AI_COLLAB_USERNAME = 'AI Assistant'
+
 const props = defineProps({
   document: { type: Object, required: true },
   readonly: { type: Boolean, default: false },
   comments: { type: Array, default: () => [] },
-  activeCommentId: { type: Number, default: null }
+  activeCommentId: { type: Number, default: null },
+  aiEnabled: { type: Boolean, default: false },
+  ghostTextEnabled: { type: Boolean, default: false },
+  ghostTextDelay: { type: Number, default: 800 }
 })
 
-const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request'])
+const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled'])
 
 const editorEl = ref(null)
 const error = ref('')
@@ -89,6 +221,12 @@ const isConnected = ref(false)
 const remoteCursors = ref({})
 let cursorSendTimer = null
 let cursorChangeTimer = null
+
+// Ghost text (AI completion) state
+const ghostText = ref('')
+const ghostTextPosition = ref(null)
+let ghostTextTimer = null
+let ghostTextDecorationRange = null
 
 const { tokenParsed, collabColor } = useAuth()
 const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
@@ -173,6 +311,105 @@ const latexEnvironmentNames = [
   'center'
 ]
 
+// Quick Formatting Toolbar Button Definitions (Overleaf-style)
+const textFormatButtons = [
+  { id: 'bold', icon: 'mdi-format-bold', label: 'Fett', shortcut: 'Ctrl+B', snippet: '\\textbf{$SEL$}', wrap: true },
+  { id: 'italic', icon: 'mdi-format-italic', label: 'Kursiv', shortcut: 'Ctrl+I', snippet: '\\textit{$SEL$}', wrap: true },
+  { id: 'underline', icon: 'mdi-format-underline', label: 'Unterstrichen', shortcut: 'Ctrl+U', snippet: '\\underline{$SEL$}', wrap: true },
+  { id: 'emph', icon: 'mdi-format-text', label: 'Hervorheben', snippet: '\\emph{$SEL$}', wrap: true },
+  { id: 'typewriter', icon: 'mdi-code-tags', label: 'Typewriter', snippet: '\\texttt{$SEL$}', wrap: true }
+]
+
+const structureButtons = [
+  { id: 'section', icon: 'mdi-format-header-1', label: 'Section', snippet: '\\section{$CURSOR$}\n' },
+  { id: 'subsection', icon: 'mdi-format-header-2', label: 'Subsection', snippet: '\\subsection{$CURSOR$}\n' },
+  { id: 'subsubsection', icon: 'mdi-format-header-3', label: 'Subsubsection', snippet: '\\subsubsection{$CURSOR$}\n' },
+  { id: 'paragraph', icon: 'mdi-format-pilcrow', label: 'Paragraph', snippet: '\\paragraph{$CURSOR$}\n' }
+]
+
+const listButtons = [
+  { id: 'itemize', icon: 'mdi-format-list-bulleted', label: 'Aufzählung (Bullets)', snippet: '\\begin{itemize}\n  \\item $CURSOR$\n\\end{itemize}\n' },
+  { id: 'enumerate', icon: 'mdi-format-list-numbered', label: 'Nummerierte Liste', snippet: '\\begin{enumerate}\n  \\item $CURSOR$\n\\end{enumerate}\n' },
+  { id: 'description', icon: 'mdi-format-list-text', label: 'Description', snippet: '\\begin{description}\n  \\item[$CURSOR$] \n\\end{description}\n' }
+]
+
+const contentButtons = [
+  { id: 'figure', icon: 'mdi-image', label: 'Abbildung', snippet: '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{$CURSOR$}\n  \\caption{Caption}\n  \\label{fig:label}\n\\end{figure}\n' },
+  { id: 'table', icon: 'mdi-table', label: 'Tabelle', hasMenu: true }, // Special handling with size picker
+  { id: 'code', icon: 'mdi-code-braces', label: 'Code Block', snippet: '\\begin{verbatim}\n$CURSOR$\n\\end{verbatim}\n' },
+  { id: 'quote', icon: 'mdi-format-quote-close', label: 'Zitat', snippet: '\\begin{quote}\n  $CURSOR$\n\\end{quote}\n' }
+]
+
+// Table size picker state
+const showTablePicker = ref(false)
+const tableRows = ref(3)
+const tableCols = ref(3)
+
+// Toolbar collapsed state (persisted in localStorage)
+const toolbarCollapsed = ref(localStorage.getItem('latex-toolbar-collapsed') === 'true')
+
+function toggleToolbar() {
+  toolbarCollapsed.value = !toolbarCollapsed.value
+  localStorage.setItem('latex-toolbar-collapsed', toolbarCollapsed.value)
+}
+
+/**
+ * Generate LaTeX table code based on rows and columns
+ */
+function generateTableSnippet(rows, cols) {
+  const colSpec = 'l' + 'c'.repeat(cols - 1)
+  const headers = Array.from({ length: cols }, (_, i) => `Header ${i + 1}`).join(' & ')
+  const emptyRow = Array.from({ length: cols }, () => ' ').join(' & ')
+
+  let tableContent = `\\begin{table}[htbp]\n  \\centering\n  \\caption{Caption}\n  \\label{tab:label}\n  \\begin{tabular}{${colSpec}}\n    \\hline\n    ${headers} \\\\\n    \\hline\n`
+
+  for (let r = 0; r < rows; r++) {
+    if (r === 0) {
+      tableContent += `    $CURSOR$${emptyRow.substring(1)} \\\\\n`
+    } else {
+      tableContent += `    ${emptyRow} \\\\\n`
+    }
+  }
+
+  tableContent += `    \\hline\n  \\end{tabular}\n\\end{table}\n`
+  return tableContent
+}
+
+function insertTable() {
+  const snippet = generateTableSnippet(tableRows.value, tableCols.value)
+  insertSnippet(snippet, false)
+  showTablePicker.value = false
+}
+
+const mathButtons = [
+  { id: 'inline-math', icon: 'mdi-function-variant', label: 'Inline Math', snippet: '$$$SEL$$', wrap: true },
+  { id: 'display-math', icon: 'mdi-function', label: 'Display Math', snippet: '\\[\n  $SEL$\n\\]\n', wrap: true },
+  { id: 'equation', icon: 'mdi-sigma', label: 'Equation (numbered)', snippet: '\\begin{equation}\n  $CURSOR$\n  \\label{eq:label}\n\\end{equation}\n' },
+  { id: 'align', icon: 'mdi-equal', label: 'Align (multi-line)', snippet: '\\begin{align}\n  $CURSOR$ &=  \\\\\n  &= \n\\end{align}\n' },
+  { id: 'frac', icon: 'mdi-division', label: 'Bruch', snippet: '\\frac{$CURSOR$}{}', wrap: false }
+]
+
+const refButtons = [
+  { id: 'cite', icon: 'mdi-book-open-page-variant', label: 'Zitieren', snippet: '\\cite{$CURSOR$}' },
+  { id: 'ref', icon: 'mdi-link-variant', label: 'Referenz', snippet: '\\ref{$CURSOR$}' },
+  { id: 'label', icon: 'mdi-tag', label: 'Label', snippet: '\\label{$CURSOR$}' },
+  { id: 'footnote', icon: 'mdi-message-text-outline', label: 'Fußnote', snippet: '\\footnote{$CURSOR$}' },
+  { id: 'url', icon: 'mdi-web', label: 'URL', snippet: '\\url{$CURSOR$}' }
+]
+
+// AI @-commands for LaTeX AI workspace
+const aiCommandCompletions = [
+  { label: '@ai', type: 'text', info: 'Freie KI-Anfrage', boost: 10, apply: '@ai ' },
+  { label: '@rewrite', type: 'text', info: 'Text umformulieren', boost: 9, apply: '@rewrite ' },
+  { label: '@expand', type: 'text', info: 'Text erweitern', boost: 8, apply: '@expand ' },
+  { label: '@summarize', type: 'text', info: 'Text zusammenfassen', boost: 7, apply: '@summarize ' },
+  { label: '@fix', type: 'text', info: 'LaTeX/Grammatik korrigieren', boost: 6, apply: '@fix ' },
+  { label: '@translate', type: 'text', info: 'Übersetzen (z.B. @translate en)', boost: 5, apply: '@translate ' },
+  { label: '@cite', type: 'text', info: 'Zitat aus RAG finden', boost: 4, apply: '@cite ' },
+  { label: '@abstract', type: 'text', info: 'Abstract generieren', boost: 3, apply: '@abstract' },
+  { label: '@titles', type: 'text', info: 'Titel vorschlagen', boost: 2, apply: '@titles' }
+]
+
 function latexCompletionSource(context) {
   const envMatch = context.matchBefore(/\\(begin|end)\{[A-Za-z]*$/)
   if (envMatch) {
@@ -198,6 +435,62 @@ function latexCompletionSource(context) {
     options: latexCommandCompletions,
     validFor: /^\\[A-Za-z]*$/
   }
+}
+
+// AI @-command completion source (only active when aiEnabled)
+function aiCompletionSource(context) {
+  if (!props.aiEnabled) return null
+
+  // Match @-commands
+  const word = context.matchBefore(/@[A-Za-z]*$/)
+  if (!word || (word.from === word.to && !context.explicit)) return null
+
+  return {
+    from: word.from,
+    options: aiCommandCompletions,
+    validFor: /^@[A-Za-z]*$/
+  }
+}
+
+// Handle Enter key to execute @-commands
+function handleEnterForAICommand(view) {
+  if (!props.aiEnabled) return false
+
+  // Get current line
+  const { state } = view
+  const pos = state.selection.main.head
+  const line = state.doc.lineAt(pos)
+  const lineText = line.text.trim()
+
+  // Check if line starts with @-command
+  const cmdMatch = lineText.match(/^@(\w+)(?:\s+(.*))?$/)
+  if (!cmdMatch) return false
+
+  const command = cmdMatch[1].toLowerCase()
+  const args = (cmdMatch[2] || '').trim()
+
+  // Get selected text if any
+  const sel = state.selection.main
+  const selectedText = sel.from !== sel.to ? state.doc.sliceString(sel.from, sel.to) : ''
+
+  // Commands that work on selection
+  const selectionCommands = ['rewrite', 'expand', 'summarize', 'fix', 'translate', 'cite']
+
+  // If command needs selection but none provided, don't execute
+  if (selectionCommands.includes(command) && !selectedText && !args) {
+    return false
+  }
+
+  // Emit command for parent to handle
+  emit('ai-command', {
+    command,
+    args,
+    selectedText,
+    lineFrom: line.from,
+    lineTo: line.to
+  })
+
+  return true // Prevent default Enter behavior
 }
 
 const activeUsers = computed(() => {
@@ -236,6 +529,30 @@ class CaretWidget extends WidgetType {
     wrap.style.borderLeftColor = this.color
     wrap.title = this.label || ''
     return wrap
+  }
+}
+
+// Ghost text widget for AI completion suggestions
+class GhostTextWidget extends WidgetType {
+  constructor(text) {
+    super()
+    this.text = text
+  }
+  toDOM() {
+    const span = document.createElement('span')
+    span.className = 'ghost-text-suggestion'
+    span.textContent = this.text
+    span.style.cssText = `
+      color: #9e9e9e;
+      opacity: 0.7;
+      font-style: italic;
+      pointer-events: none;
+      user-select: none;
+    `
+    return span
+  }
+  eq(other) {
+    return other.text === this.text
   }
 }
 
@@ -532,6 +849,16 @@ function updateDecorations() {
     )
   }
 
+  // Ghost text decoration (AI completion suggestion)
+  if (ghostText.value && ghostTextPosition.value !== null && ghostTextPosition.value <= docLen) {
+    decorations.push(
+      Decoration.widget({
+        widget: new GhostTextWidget(ghostText.value),
+        side: 1
+      }).range(ghostTextPosition.value)
+    )
+  }
+
   const decoSet = Decoration.set(decorations, true)
   applyingDecorations = true
   try {
@@ -681,6 +1008,173 @@ function scheduleCursorChange() {
   }, 120)
 }
 
+// Ghost text (AI completion) functions
+function scheduleGhostTextRequest() {
+  if (!props.ghostTextEnabled || !props.aiEnabled || !view.value) return
+
+  // Cancel any pending request
+  cancelGhostText()
+
+  ghostTextTimer = setTimeout(() => {
+    if (!view.value) return
+
+    const pos = view.value.state.selection.main.head
+    const doc = view.value.state.doc
+
+    // Get context around cursor (500 chars before, 200 after)
+    const contextStart = Math.max(0, pos - 500)
+    const contextEnd = Math.min(doc.length, pos + 200)
+    const beforeCursor = doc.sliceString(contextStart, pos)
+    const afterCursor = doc.sliceString(pos, contextEnd)
+    const context = beforeCursor + '[CURSOR]' + afterCursor
+
+    // Emit request for parent to handle via AI service
+    emit('request-completion', {
+      context,
+      cursorPosition: beforeCursor.length,
+      documentPosition: pos
+    })
+  }, props.ghostTextDelay)
+}
+
+function setGhostText(text, position) {
+  if (!view.value || !text) {
+    cancelGhostText()
+    return
+  }
+
+  // Verify position is still valid
+  const currentPos = view.value.state.selection.main.head
+  if (position !== currentPos) {
+    // Cursor moved, don't show ghost text
+    return
+  }
+
+  ghostText.value = text
+  ghostTextPosition.value = position
+  updateDecorations()
+}
+
+function acceptGhostText() {
+  if (!ghostText.value || ghostTextPosition.value === null || !view.value || !ytext) {
+    return false
+  }
+
+  const text = ghostText.value
+  const position = ghostTextPosition.value
+
+  // Insert via Yjs with AI collab attributes so it shows as AI-generated
+  const aiAttrs = { collabColor: AI_COLLAB_COLOR, collabUser: AI_COLLAB_USERNAME }
+
+  skipNextTextSync = true
+  ydoc.value.transact(() => {
+    ytext.insert(position, text, aiAttrs)
+  }, 'ai')
+
+  // Update CodeMirror view to reflect the change
+  view.value.dispatch({
+    changes: {
+      from: position,
+      to: position,
+      insert: text
+    },
+    selection: { anchor: position + text.length }
+  })
+
+  cancelGhostText()
+  return true
+}
+
+function cancelGhostText() {
+  if (ghostTextTimer) {
+    clearTimeout(ghostTextTimer)
+    ghostTextTimer = null
+  }
+  ghostText.value = ''
+  ghostTextPosition.value = null
+  updateDecorations()
+}
+
+function toggleGhostText() {
+  emit('update:ghostTextEnabled', !props.ghostTextEnabled)
+}
+
+/**
+ * Insert a LaTeX snippet at the current cursor position
+ * @param {string} snippet - The LaTeX snippet to insert (with $CURSOR$ and $SEL$ placeholders)
+ * @param {boolean} wrap - If true, wrap selected text with the snippet
+ */
+function insertSnippet(snippet, wrap = false) {
+  if (!view.value || !ytext || props.readonly) return
+
+  const state = view.value.state
+  const sel = state.selection.main
+  const selectedText = sel.from !== sel.to ? state.doc.sliceString(sel.from, sel.to) : ''
+
+  let insertText = snippet
+  let cursorOffset = 0
+
+  if (wrap && selectedText) {
+    // Replace $SEL$ with the selected text
+    insertText = snippet.replace(/\$SEL\$/g, selectedText)
+    // Cursor goes to end of insertion
+    cursorOffset = insertText.length
+  } else if (wrap) {
+    // No selection, but wrap mode - replace $SEL$ with empty and position cursor there
+    const selPos = snippet.indexOf('$SEL$')
+    if (selPos !== -1) {
+      insertText = snippet.replace(/\$SEL\$/g, '')
+      cursorOffset = selPos
+    } else {
+      cursorOffset = insertText.length
+    }
+  } else {
+    // Replace $CURSOR$ placeholder and position cursor there
+    const cursorPos = snippet.indexOf('$CURSOR$')
+    if (cursorPos !== -1) {
+      insertText = snippet.replace(/\$CURSOR\$/g, '')
+      cursorOffset = cursorPos
+    } else {
+      cursorOffset = insertText.length
+    }
+  }
+
+  // Get user color for collab highlighting
+  let userColor = collabColor.value
+  if (!userColor && socket.value?.id && users.value?.[socket.value.id]) {
+    userColor = users.value[socket.value.id].color
+  }
+  if (!userColor) {
+    userColor = '#4ECDC4'
+  }
+  const userAttrs = { collabColor: userColor, collabUser: username.value }
+
+  // Insert via Yjs
+  skipNextTextSync = true
+  ydoc.value.transact(() => {
+    // Delete selection if any
+    if (sel.from !== sel.to) {
+      ytext.delete(sel.from, sel.to - sel.from)
+    }
+    // Insert the snippet
+    ytext.insert(sel.from, insertText, userAttrs)
+  }, 'cm')
+
+  // Update CodeMirror view
+  const newCursorPos = sel.from + cursorOffset
+  view.value.dispatch({
+    changes: {
+      from: sel.from,
+      to: sel.to,
+      insert: insertText
+    },
+    selection: { anchor: newCursorPos }
+  })
+
+  // Focus the editor
+  view.value.focus()
+}
+
 function emitSyncRequestFromEvent(event, cmView) {
   const pos = cmView.posAtCoords({ x: event.clientX, y: event.clientY })
   if (pos == null) return false
@@ -743,11 +1237,69 @@ function initEditorIfNeeded() {
       drawSelection(),
       highlightActiveLine(),
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
+      // Custom keymaps for ghost text and AI commands
+      keymap.of([
+        // Tab: Accept ghost text if available, otherwise default behavior
+        {
+          key: 'Tab',
+          run: () => {
+            if (ghostText.value && ghostTextPosition.value !== null) {
+              return acceptGhostText()
+            }
+            return false // Let default Tab behavior (indent) happen
+          }
+        },
+        // Escape: Dismiss ghost text
+        {
+          key: 'Escape',
+          run: () => {
+            if (ghostText.value) {
+              cancelGhostText()
+              return true
+            }
+            return false
+          }
+        },
+        // Enter: Execute @-command if on an @-command line
+        {
+          key: 'Enter',
+          run: (cmView) => handleEnterForAICommand(cmView)
+        },
+        // Ctrl+B: Bold
+        {
+          key: 'Mod-b',
+          run: () => {
+            insertSnippet('\\textbf{$SEL$}', true)
+            return true
+          }
+        },
+        // Ctrl+I: Italic
+        {
+          key: 'Mod-i',
+          run: () => {
+            insertSnippet('\\textit{$SEL$}', true)
+            return true
+          }
+        },
+        // Ctrl+U: Underline
+        {
+          key: 'Mod-u',
+          run: () => {
+            insertSnippet('\\underline{$SEL$}', true)
+            return true
+          }
+        },
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...completionKeymap,
+        indentWithTab
+      ]),
       StreamLanguage.define(stex),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       autocompletion({
-        override: [latexCompletionSource]
+        override: props.aiEnabled
+          ? [aiCompletionSource, latexCompletionSource]
+          : [latexCompletionSource]
       }),
       EditorView.lineWrapping,
       EditorView.domEventHandlers({
@@ -773,11 +1325,25 @@ function initEditorIfNeeded() {
           if (update.selectionSet) {
             scheduleCursorUpdate()
             scheduleCursorChange()
+            // Cancel ghost text when cursor moves
+            if (ghostText.value) {
+              cancelGhostText()
+            }
           }
 
           if (!update.docChanged || props.readonly) {
             updateDecorations()
             return
+          }
+
+          // Cancel ghost text on any document change
+          if (ghostText.value) {
+            cancelGhostText()
+          }
+
+          // Schedule new ghost text request after typing pause
+          if (props.ghostTextEnabled && props.aiEnabled) {
+            scheduleGhostTextRequest()
           }
 
           // Apply CM changes to Yjs text and update git highlights in one transaction
@@ -942,7 +1508,15 @@ defineExpose({
   getSelectionRange,
   getSelectionText,
   jumpToLine,
-  flushDocumentState
+  flushDocumentState,
+  // Ghost text (AI completion) functions
+  setGhostText,
+  cancelGhostText,
+  acceptGhostText,
+  toggleGhostText,
+  // Connection state for parent to display
+  isConnected,
+  activeUsers
 })
 
 // Callback for when another user updates their color
@@ -962,7 +1536,7 @@ const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, o
   autoSync: true,
   onColorUpdate
 })
-const { ydoc, socket, users, updateColor } = collaboration
+const { ydoc, socket, users, updateColor, switchRoom } = collaboration
 
 let onSocketConnect = null
 let onSocketDisconnect = null
@@ -1046,6 +1620,48 @@ watch(
   }
 )
 
+// Watch for document changes to switch rooms without remounting the component
+// This provides a smoother experience when switching between documents
+let previousDocumentId = null
+watch(
+  () => props.document?.id,
+  async (newId, oldId) => {
+    // Skip initial mount (handled by onMounted)
+    if (!previousDocumentId) {
+      previousDocumentId = newId
+      return
+    }
+
+    // Skip if same document
+    if (newId === previousDocumentId) return
+
+    const oldRoom = props.document?.yjs_doc_id || `latex_${previousDocumentId}`
+    const newRoom = props.document?.yjs_doc_id || `latex_${newId}`
+    previousDocumentId = newId
+
+    // Clear remote cursors from old document
+    remoteCursors.value = {}
+
+    // Reset error state
+    error.value = ''
+
+    // Cancel any pending ghost text
+    cancelGhostText()
+
+    // Switch collaboration room (leaves old room, joins new room, creates fresh Yjs doc)
+    switchRoom(oldRoom, newRoom)
+
+    // Load new git baseline for diff comparison
+    await loadBaseline(newId)
+
+    // Wait for the server to send the snapshot, then update decorations
+    // The processYDoc callback will be called when snapshot arrives
+    await nextTick()
+    updateDecorations()
+  },
+  { immediate: false }
+)
+
 function onFallbackInput(val) {
   if (props.readonly) return
   if (!ydoc.value || !ytext) return
@@ -1088,35 +1704,9 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.editor-topbar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-
 .editor-surface {
   flex: 1;
   min-height: 240px;
-}
-
-.users {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 60%;
-}
-
-.user-chip {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-}
-
-.user-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 6px;
 }
 
 :global(.remote-caret) {
@@ -1170,5 +1760,118 @@ onUnmounted(() => {
 /* Real-time user edit line highlighting */
 :global(.cm-user-edit-line) {
   transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Quick Formatting Toolbar Styles */
+.formatting-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  transition: padding 0.2s ease;
+}
+
+.formatting-toolbar.collapsed {
+  padding: 2px 8px;
+  gap: 6px;
+}
+
+.toolbar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.toolbar-toggle-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
+}
+
+.toolbar-collapsed-label {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toolbar-collapsed-label:hover {
+  color: rgb(var(--v-theme-primary));
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.toolbar-btn:active {
+  background: rgba(var(--v-theme-primary), 0.2);
+  transform: scale(0.95);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+  margin: 0 4px;
+}
+
+/* Keyboard shortcut styling in tooltips */
+:global(.v-tooltip kbd) {
+  display: inline-block;
+  padding: 2px 5px;
+  margin-left: 6px;
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Table size picker */
+.table-picker-card {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.table-picker-card :deep(.v-field) {
+  border-radius: 6px;
+}
+
+.table-picker-card :deep(.v-field__input) {
+  text-align: center;
+  font-weight: 500;
 }
 </style>

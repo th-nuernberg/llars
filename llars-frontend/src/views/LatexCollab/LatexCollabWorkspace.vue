@@ -95,7 +95,7 @@
           <v-list-item
             prepend-icon="mdi-folder-multiple"
             title="Alle Workspaces"
-            @click="router.push('/LatexCollab')"
+            @click="router.push(routeBase.value)"
           />
         </v-list>
       </template>
@@ -247,7 +247,7 @@
             size="small"
             class="header-back-btn"
             title="Zurück zu den Workspaces"
-            @click="router.push('/LatexCollab')"
+            @click="router.push(routeBase.value)"
           >
             <v-icon size="18">mdi-arrow-left</v-icon>
             <span v-if="!isMobile" class="header-back-label">Workspaces</span>
@@ -269,6 +269,16 @@
             @click="openShareDialog"
           >
             <v-icon size="20">mdi-account-multiple-plus</v-icon>
+          </v-btn>
+
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            title="Zotero Bibliotheken"
+            @click="zoteroDialog = true"
+          >
+            <v-icon size="20">mdi-book-open-page-variant</v-icon>
           </v-btn>
 
           <v-btn
@@ -294,6 +304,54 @@
           >
             <v-icon size="20">mdi-comment-text-outline</v-icon>
           </v-btn>
+
+          <!-- Divider -->
+          <div v-if="selectedNode?.type === 'file' && !selectedNode?.asset_id" class="header-divider" />
+
+          <!-- Connection Status -->
+          <template v-if="selectedNode?.type === 'file' && !selectedNode?.asset_id">
+            <v-chip v-if="editorRef?.isConnected" size="small" color="success" variant="tonal">
+              <v-icon start size="small">mdi-cloud-check-outline</v-icon>
+              Live Sync
+            </v-chip>
+            <v-chip v-else size="small" color="warning" variant="tonal">
+              <v-icon start size="small">mdi-cloud-alert-outline</v-icon>
+              Reconnecting…
+            </v-chip>
+
+            <!-- Ghost Text Toggle (only in AI mode) -->
+            <v-tooltip v-if="props.aiEnabled" location="bottom">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip
+                  v-bind="tooltipProps"
+                  size="small"
+                  :color="props.ghostTextEnabled ? 'primary' : 'default'"
+                  :variant="props.ghostTextEnabled ? 'flat' : 'outlined'"
+                  class="ghost-text-chip"
+                  @click="editorRef?.toggleGhostText?.()"
+                >
+                  <v-icon start size="small">{{ props.ghostTextEnabled ? 'mdi-lightning-bolt' : 'mdi-lightning-bolt-outline' }}</v-icon>
+                  Ghost Text
+                </v-chip>
+              </template>
+              <span>{{ props.ghostTextEnabled ? 'KI-Autovervollständigung aktiv (Tab = Annehmen, Esc = Ablehnen)' : 'KI-Autovervollständigung deaktiviert' }}</span>
+            </v-tooltip>
+
+            <!-- Active Users -->
+            <div v-if="editorRef?.activeUsers?.length" class="header-users">
+              <v-chip
+                v-for="u in editorRef.activeUsers"
+                :key="u.userId"
+                size="small"
+                variant="tonal"
+                :style="{ borderColor: u.color }"
+                class="user-chip"
+              >
+                <span class="user-dot" :style="{ backgroundColor: u.color }" />
+                {{ u.username }}
+              </v-chip>
+            </div>
+          </template>
 
           <div v-if="isMobile" class="mode-toggle-group">
             <button
@@ -372,14 +430,19 @@
               >
                 <LatexEditorPane
                   ref="editorRef"
-                  :key="selectedNode.id"
                   :document="selectedNode"
                   :readonly="editorReadonly"
                   :comments="comments"
                   :active-comment-id="activeCommentId"
+                  :ai-enabled="props.aiEnabled"
+                  :ghost-text-enabled="props.ghostTextEnabled"
+                  :ghost-text-delay="props.ghostTextDelay"
                   @content-change="onEditorContentChange"
                   @git-summary="(s) => (gitSummary = s)"
                   @sync-request="handleEditorSyncRequest"
+                  @ai-command="(cmd) => emit('ai-command', cmd)"
+                  @request-completion="(req) => emit('request-completion', req)"
+                  @update:ghost-text-enabled="(val) => emit('update:ghostTextEnabled', val)"
                 />
               </div>
 
@@ -545,16 +608,13 @@
               </div>
             </div>
 
-            <!-- Git Panel -->
-            <MarkdownGitPanel
-              v-if="selectedNode && selectedNode.type === 'file' && !selectedNode.asset_id"
-              :document-id="selectedNode.id"
-              :summary="gitSummary"
+            <!-- Git Panel - Workspace-Level Multi-File Commits -->
+            <LatexWorkspaceGitPanel
+              ref="gitPanelRef"
+              :workspace-id="workspaceId"
               :can-commit="hasPermission('feature:latex_collab:edit')"
-              :get-content="() => editorRef?.getCurrentContent?.()"
-              api-prefix="/api/latex-collab"
-              socket-namespace="latex_collab"
               @committed="refreshCommits"
+              @rollback="handleRollback"
             />
           </div>
         </template>
@@ -705,6 +765,31 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+
+    <!-- Zotero Dialog -->
+    <v-dialog v-model="zoteroDialog" max-width="600">
+      <v-card class="zotero-dialog">
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2" color="primary">mdi-book-open-page-variant</v-icon>
+          <div>
+            <div>Zotero Bibliotheken</div>
+            <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
+          </div>
+          <v-spacer />
+          <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="zoteroDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-0">
+          <ZoteroPanel
+            v-if="zoteroDialog && workspaceId"
+            :workspace-id="workspaceId"
+            @library-added="handleZoteroLibraryAdded"
+            @library-synced="handleZoteroLibrarySynced"
+            @library-removed="handleZoteroLibraryRemoved"
+          />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -721,12 +806,39 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import LatexEditorPane from '@/components/LatexCollab/LatexEditorPane.vue'
 import LatexPdfViewer from '@/components/LatexCollab/LatexPdfViewer.vue'
-import MarkdownGitPanel from '@/components/MarkdownCollab/MarkdownGitPanel.vue'
+import LatexWorkspaceGitPanel from '@/components/LatexCollab/LatexWorkspaceGitPanel.vue'
+import ZoteroPanel from '@/components/LatexCollab/Zotero/ZoteroPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
 
+// Props for customizable base path (used by AI wrapper)
+const props = defineProps({
+  basePath: {
+    type: String,
+    default: '/LatexCollab'
+  },
+  aiEnabled: {
+    type: Boolean,
+    default: false
+  },
+  ghostTextEnabled: {
+    type: Boolean,
+    default: false
+  },
+  ghostTextDelay: {
+    type: Number,
+    default: 800
+  }
+})
+
+// Emits for parent communication (used by AI wrapper)
+const emit = defineEmits(['document-change', 'ai-command', 'request-completion', 'update:ghostTextEnabled'])
+
 const route = useRoute()
 const router = useRouter()
+
+// Computed route base for navigation
+const routeBase = computed(() => props.basePath)
 
 const { hasPermission, fetchPermissions, username: currentUsername, isAdmin } = usePermissions()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'document'])
@@ -752,6 +864,7 @@ const currentText = ref('')
 const gitSummary = ref({ users: [], totalChangedLines: 0 })
 const editorRef = ref(null)
 const pdfViewerRef = ref(null)
+const gitPanelRef = ref(null)
 const pendingDocId = ref(null)
 const pendingJump = ref(null)
 
@@ -834,6 +947,9 @@ const commentDialog = ref(false)
 const commentDraft = ref('')
 const commentError = ref('')
 const pendingCommentRange = ref(null)
+
+// Zotero dialog
+const zoteroDialog = ref(false)
 
 const assetInputRef = ref(null)
 
@@ -966,7 +1082,7 @@ const {
 
     // If we're viewing the deleted document, navigate away
     if (routeDocId.value === data.nodeId) {
-      router.push(`/LatexCollab/workspace/${workspaceId.value}`)
+      router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
     }
   },
   onNodeMoved: (data) => {
@@ -1200,7 +1316,7 @@ onMounted(async () => {
   if (!routeDocId.value) {
     const preferred = nodesFlat.value.find(n => n.id === workspace.value?.main_document_id && n.type === 'file' && !n.asset_id)
       || nodesFlat.value.find(n => n.type === 'file' && !n.asset_id)
-    if (preferred) router.replace(`/LatexCollab/workspace/${workspaceId.value}/document/${preferred.id}`)
+    if (preferred) router.replace(`${routeBase.value}/workspace/${workspaceId.value}/document/${preferred.id}`)
   }
 
   if (!isMobile.value) {
@@ -1232,6 +1348,8 @@ function onEditorContentChange(text) {
   }
   scheduleOutlineUpdate(text)
   scheduleAutoCompile()
+  // Emit for AI wrapper component
+  emit('document-change', text)
 }
 
 function authHeaders() {
@@ -1406,6 +1524,22 @@ async function removeMember(username) {
   }
 }
 
+// Zotero library event handlers
+async function handleZoteroLibraryAdded(library) {
+  // Refresh the file tree to show the new .bib file
+  await loadDocuments()
+}
+
+async function handleZoteroLibrarySynced(library) {
+  // Refresh the file tree to reflect updated .bib content
+  await loadDocuments()
+}
+
+async function handleZoteroLibraryRemoved(library) {
+  // The .bib file is kept but no longer synced - no tree refresh needed
+  console.log('Zotero library removed:', library.library_name)
+}
+
 function buildTree(flat) {
   const byId = new Map(flat.map(n => [n.id, { ...n, children: [] }]))
   const roots = []
@@ -1501,12 +1635,12 @@ function handleSelectNode(nodeId) {
   if (!node) return
 
   if (node.type === 'file') {
-    router.push(`/LatexCollab/workspace/${workspaceId.value}/document/${node.id}`)
+    router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${node.id}`)
     return
   }
 
   // Folder: keep workspace route, but don't force a document selection
-  router.push(`/LatexCollab/workspace/${workspaceId.value}`)
+  router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
 }
 
 function openAssetPicker() {
@@ -1626,7 +1760,7 @@ async function handleDeleteNode({ id }) {
 
     // Navigate away if viewing deleted document
     if (routeDocId.value === id) {
-      router.push(`/LatexCollab/workspace/${workspaceId.value}`)
+      router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
     }
   } catch (e) {
     console.error('Failed to delete node:', e)
@@ -1998,7 +2132,7 @@ function jumpToDocument(documentId, line = 1, column = 1) {
     return
   }
   pendingJump.value = { documentId, line, column }
-  router.push(`/LatexCollab/workspace/${workspaceId.value}/document/${documentId}`)
+  router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${documentId}`)
 }
 
 async function refreshCommits() {
@@ -2006,6 +2140,19 @@ async function refreshCommits() {
   await editorRef.value?.refreshBaseline?.()
   editorRef.value?.clearHighlights?.()
   await loadCommitOptions()
+  // Also refresh the workspace git panel
+  gitPanelRef.value?.checkForChanges?.()
+}
+
+async function handleRollback(documentId) {
+  // If the rolled back document is currently open, reload it
+  if (selectedNodeId.value === documentId) {
+    // Reload the document content from the server
+    await loadDocumentContent(documentId)
+    // Refresh the baseline to update diff decorations
+    await editorRef.value?.refreshBaseline?.()
+    editorRef.value?.clearHighlights?.()
+  }
 }
 
 watch(
@@ -2355,6 +2502,43 @@ watch(
   flex-shrink: 0;
 }
 
+.header-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  margin: 0 4px;
+}
+
+.header-users {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+}
+
+.user-chip {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.ghost-text-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ghost-text-chip:hover {
+  transform: scale(1.02);
+}
+
 .mode-toggle-group {
   display: flex;
   background: rgba(var(--v-theme-on-surface), 0.05);
@@ -2625,6 +2809,15 @@ watch(
 
 .compile-log-dialog {
   border-radius: 12px !important;
+}
+
+.zotero-dialog {
+  border-radius: 12px !important;
+}
+
+.zotero-dialog :deep(.v-card-text) {
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .compile-issues {

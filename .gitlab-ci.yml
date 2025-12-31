@@ -241,48 +241,28 @@ build:docker:
 # ------------------------------------------------------------------------------
 deploy:staging:
   stage: deploy
-  image: alpine:latest
-  <<: *ssh_setup
+  tags:
+    - shell
   environment:
     name: staging
     url: http://141.75.150.128:55080
   script:
-    - echo "Deploying to STAGING..."
-
-    # SSH zum Server und Deploy
-    - |
-      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << ENDSSH
-        set -e
-        cd /var/llars
-
-        echo "=== LLARS Staging Deployment ==="
-        echo "Timestamp: $(date)"
-
-        # Git Pull
-        echo "Pulling latest changes..."
-        git fetch origin develop
-        git checkout develop
-        git pull origin develop
-
-        # Backup (optional für Staging)
-        echo "Creating quick backup..."
-        docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars \
-          > backups/staging_backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || true
-
-        # Rebuild und Restart
-        echo "Rebuilding containers..."
-        docker compose build --parallel
-        docker compose up -d
-
-        # Health Check
-        echo "Waiting for services to be healthy..."
-        sleep 30
-        curl -sf http://localhost:55080/api/health || echo "Warning: Health check failed"
-
-        echo "=== Staging Deployment Complete ==="
-      ENDSSH
-
-    - echo "Staging deployment finished!"
+    - echo "=== LLARS Staging Deployment ==="
+    - echo "Timestamp:" $(date)
+    - cd /var/llars
+    - echo "Pulling latest changes..."
+    - git fetch origin develop
+    - git checkout develop
+    - git pull origin develop
+    - echo "Creating quick backup..."
+    - docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > backups/staging_backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || true
+    - echo "Rebuilding containers..."
+    - docker compose build --parallel
+    - docker compose up -d
+    - echo "Waiting for services to be healthy..."
+    - sleep 30
+    - curl -sf http://localhost:55080/api/health || echo "Warning Health check failed"
+    - echo "=== Staging Deployment Complete ==="
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
   needs:
@@ -290,117 +270,70 @@ deploy:staging:
 
 # ------------------------------------------------------------------------------
 # Deploy zu Produktion (automatisch bei Push zu main)
+# Runner ist auf dem LLARS Server - kein SSH nötig!
 # ------------------------------------------------------------------------------
 deploy:production:
   stage: deploy
-  image: alpine:latest
-  <<: *ssh_setup
+  tags:
+    - shell  # Nutze Shell-Executor (kein Docker)
   environment:
     name: production
     url: http://141.75.150.128:55080
   script:
-    - echo "Deploying to PRODUCTION..."
+    - echo "=========================================="
+    - echo "=== LLARS PRODUCTION DEPLOYMENT ========="
+    - echo "=========================================="
+    - echo "Timestamp:" $(date)
+    - echo "Server:" $(hostname)
 
-    # SSH zum Server und Deploy
-    - |
-      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << ENDSSH
-        set -e
-        cd /var/llars
+    - cd /var/llars
 
-        echo "=========================================="
-        echo "=== LLARS PRODUCTION DEPLOYMENT ========="
-        echo "=========================================="
-        echo "Timestamp: $(date)"
-        echo "Server: $(hostname)"
+    # 1. Pre-Deployment Backup
+    - echo ""
+    - echo "[1/6] Creating pre-deployment backup..."
+    - BACKUP_FILE="backups/pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
+    - docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > $BACKUP_FILE || echo "Backup skipped"
+    - echo "Backup saved to:" $BACKUP_FILE
 
-        # 1. Pre-Deployment Backup
-        echo ""
-        echo "[1/6] Creating pre-deployment backup..."
-        BACKUP_FILE="backups/pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
-        docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > $BACKUP_FILE
-        echo "Backup saved to: $BACKUP_FILE"
+    # 2. Git Pull
+    - echo ""
+    - echo "[2/6] Pulling latest changes from main..."
+    - git fetch origin main
+    - git checkout main
+    - git reset --hard origin/main
 
-        # 2. Git Pull
-        echo ""
-        echo "[2/6] Pulling latest changes from main..."
-        git fetch origin main
-        git checkout main
-        git reset --hard origin/main
+    # 3. Environment Check
+    - echo ""
+    - echo "[3/6] Checking environment..."
+    - test -f .env || (echo "ERROR .env not found" && exit 1)
 
-        # 3. Environment Check
-        echo ""
-        echo "[3/6] Checking environment..."
-        if [ ! -f .env ]; then
-          echo "ERROR: .env file not found!"
-          exit 1
-        fi
+    # 4. Build Images
+    - echo ""
+    - echo "[4/6] Building Docker images..."
+    - docker compose build --parallel
 
-        # 4. Build Images
-        echo ""
-        echo "[4/6] Building Docker images..."
-        docker compose build --parallel
+    # 5. Rolling Update
+    - echo ""
+    - echo "[5/6] Performing rolling update..."
+    - docker compose up -d flask-service
+    - sleep 10
+    - docker compose up -d vue-service
+    - sleep 5
+    - docker compose up -d
 
-        # 5. Rolling Update
-        echo ""
-        echo "[5/6] Performing rolling update..."
-
-        # Backend zuerst (mit Health Check)
-        docker compose up -d flask-service
-        sleep 10
-
-        # Frontend
-        docker compose up -d vue-service
-        sleep 5
-
-        # Restliche Services
-        docker compose up -d
-
-        # 6. Post-Deployment Verification
-        echo ""
-        echo "[6/6] Verifying deployment..."
-
-        # Warten auf Container
-        sleep 30
-
-        # Health Checks
-        echo "Running health checks..."
-
-        # API Health
-        if curl -sf http://localhost:55080/api/health > /dev/null; then
-          echo "✓ API Health: OK"
-        else
-          echo "✗ API Health: FAILED"
-          echo "Rolling back..."
-          docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < $BACKUP_FILE
-          git checkout HEAD~1
-          docker compose up -d
-          exit 1
-        fi
-
-        # Frontend
-        if curl -sf http://localhost:55080/ > /dev/null; then
-          echo "✓ Frontend: OK"
-        else
-          echo "✗ Frontend: FAILED (non-critical)"
-        fi
-
-        # Container Status
-        echo ""
-        echo "Container Status:"
-        docker compose ps
-
-        # Cleanup old backups (keep last 10)
-        echo ""
-        echo "Cleaning up old backups..."
-        ls -t backups/*.sql 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
-
-        echo ""
-        echo "=========================================="
-        echo "=== DEPLOYMENT SUCCESSFUL ==============="
-        echo "=========================================="
-      ENDSSH
-
-    - echo "Production deployment finished!"
+    # 6. Post-Deployment Verification
+    - echo ""
+    - echo "[6/6] Verifying deployment..."
+    - sleep 30
+    - echo "Running health checks..."
+    - curl -sf http://localhost:55080/api/health > /dev/null && echo "✓ API Health OK" || echo "✗ API Health FAILED"
+    - curl -sf http://localhost:55080/ > /dev/null && echo "✓ Frontend OK" || echo "✗ Frontend FAILED"
+    - echo ""
+    - docker compose ps
+    - echo ""
+    - echo "=========================================="
+    - echo "=== DEPLOYMENT SUCCESSFUL ==============="
+    - echo "=========================================="
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
@@ -413,42 +346,21 @@ deploy:production:
 # ------------------------------------------------------------------------------
 rollback:production:
   stage: deploy
-  image: alpine:latest
-  <<: *ssh_setup
+  tags:
+    - shell
   environment:
     name: production
   script:
-    - echo "Rolling back PRODUCTION..."
-
-    - |
-      ssh ${LLARS_SERVER_USER}@${LLARS_SERVER_HOST} << ENDSSH
-        set -e
-        cd /var/llars
-
-        echo "=== EMERGENCY ROLLBACK ==="
-
-        # Finde letztes Backup
-        LATEST_BACKUP=$(ls -t backups/*.sql 2>/dev/null | head -1)
-
-        if [ -z "$LATEST_BACKUP" ]; then
-          echo "ERROR: No backup found!"
-          exit 1
-        fi
-
-        echo "Rolling back to: $LATEST_BACKUP"
-
-        # Git Rollback
-        git checkout HEAD~1
-
-        # DB Rollback
-        docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < $LATEST_BACKUP
-
-        # Rebuild
-        docker compose build
-        docker compose up -d
-
-        echo "=== ROLLBACK COMPLETE ==="
-      ENDSSH
+    - echo "=== EMERGENCY ROLLBACK ==="
+    - cd /var/llars
+    - LATEST_BACKUP=$(ls -t backups/*.sql 2>/dev/null | head -1)
+    - test -n "$LATEST_BACKUP" || (echo "ERROR No backup found" && exit 1)
+    - echo "Rolling back to:" $LATEST_BACKUP
+    - git checkout HEAD~1
+    - docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < $LATEST_BACKUP
+    - docker compose build
+    - docker compose up -d
+    - echo "=== ROLLBACK COMPLETE ==="
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
@@ -475,24 +387,17 @@ security:scan:
 # Smoke Test nach Deployment
 smoke:test:
   stage: deploy
-  image: alpine:latest
-  <<: *ssh_setup
+  tags:
+    - shell
   script:
-    - apk add --no-cache curl
     - echo "Running smoke tests..."
-
-    # Basic Health Checks
-    - |
-      echo "Checking API health..."
-      curl -sf https://${LLARS_SERVER_HOST}/api/health || exit 1
-
-      echo "Checking frontend..."
-      curl -sf https://${LLARS_SERVER_HOST}/ || exit 1
-
-      echo "Checking auth..."
-      curl -sf https://${LLARS_SERVER_HOST}/api/auth/status || true
-
-      echo "All smoke tests passed!"
+    - echo "Checking API health..."
+    - curl -sf http://localhost:55080/api/health || exit 1
+    - echo "Checking frontend..."
+    - curl -sf http://localhost:55080/ || exit 1
+    - echo "Checking auth..."
+    - curl -sf http://localhost:55080/api/auth/status || true
+    - echo "All smoke tests passed!"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:

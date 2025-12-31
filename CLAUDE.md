@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 3.0 | **Stand:** 25. Dezember 2025
+**Version:** 3.0 | **Stand:** 31. Dezember 2025
 
 ## Projekt-Übersicht
 
@@ -157,6 +157,361 @@ docker compose logs -f
 
 # Nur Fehler
 docker compose logs -f 2>&1 | grep -i error
+```
+
+---
+
+## GitLab CI/CD Pipeline
+
+### Übersicht
+
+LLARS verwendet GitLab CI/CD für automatisiertes Testing und Deployment. Die Pipeline-Konfiguration liegt in `.gitlab-ci.yml`.
+
+```
+GitLab: git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars
+Server: llars.informatik.fh-nuernberg.de (141.75.150.128)
+Runner: Shell-Executor auf LLARS Server
+```
+
+### Pipeline Stages
+
+| Stage | Jobs | Beschreibung |
+|-------|------|--------------|
+| **lint** | `lint:backend`, `lint:frontend` | Code-Qualität (flake8, eslint) |
+| **test** | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:e2e`, `security:scan` | Tests + Security |
+| **build** | `build:docker` | Docker Images bauen |
+| **deploy** | `deploy:staging`, `deploy:production`, `smoke:test`, `rollback:production` | Deployment |
+
+### Automatisches Deployment
+
+```
+Push to develop → deploy:staging (automatisch)
+Push to main    → deploy:production (nach erfolgreichen Tests)
+```
+
+### CI/CD Variablen (GitLab)
+
+Diese Variablen sind in GitLab Settings → CI/CD → Variables konfiguriert:
+
+| Variable | Beschreibung |
+|----------|--------------|
+| `SSH_PRIVATE_KEY` | Private Key für SSH Zugang zum Server (type: file) |
+| `SSH_KNOWN_HOSTS` | Known Hosts Eintrag des Servers |
+| `LLARS_SERVER_HOST` | `llars.informatik.fh-nuernberg.de` |
+
+### GitLab API Zugriff (lokal)
+
+Der GitLab Token liegt in `.env` (lokal, nicht committen!):
+
+```bash
+GITLAB_TOKEN=glpat-...
+GITLAB_PROJECT_ID=7123
+GITLAB_PROJECT_PATH=kiz-nlp/llars/llars
+```
+
+**Pipeline-Status prüfen:**
+```bash
+# Via API
+curl -s -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/kiz-nlp%2Fllars%2Fllars/pipelines?per_page=5"
+
+# Oder via GitLab UI
+open "https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars/-/pipelines"
+```
+
+**CI/CD Variable setzen:**
+```bash
+curl --request POST \
+  --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  --form "key=VARIABLE_NAME" \
+  --form "value=variable_value" \
+  --form "masked=true" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/variables"
+```
+
+### SSH Deploy Key
+
+Der Deploy-Key liegt auf dem Server unter `~/.ssh/gitlab_ci_deploy`:
+
+```bash
+# Key generieren (falls nicht vorhanden)
+ssh master@llars.informatik.fh-nuernberg.de
+ssh-keygen -t ed25519 -C 'gitlab-ci-deploy' -f ~/.ssh/gitlab_ci_deploy -N ""
+cat ~/.ssh/gitlab_ci_deploy.pub >> ~/.ssh/authorized_keys
+
+# Public Key anzeigen
+cat ~/.ssh/gitlab_ci_deploy.pub
+
+# Private Key (für GitLab Variable)
+cat ~/.ssh/gitlab_ci_deploy
+```
+
+### Troubleshooting CI/CD
+
+| Problem | Lösung |
+|---------|--------|
+| Pipeline startet nicht | Prüfen ob CI/CD aktiviert: Settings → General → Visibility |
+| `requirements.txt not found` | Pfad ist `app/requirements.txt` |
+| SSH connection refused | `SSH_KNOWN_HOSTS` und `SSH_PRIVATE_KEY` Variablen prüfen |
+| Deploy fehlgeschlagen | Logs prüfen: `docker logs llars_flask_service` |
+| Runner offline | `sudo gitlab-runner status` auf Server |
+
+### GitLab Runner (auf Server)
+
+```bash
+# Status prüfen
+sudo gitlab-runner status
+
+# Registrierte Runner anzeigen
+sudo gitlab-runner list
+
+# Runner neu starten
+sudo systemctl restart gitlab-runner
+```
+
+---
+
+## Software Tests - PFLICHT!
+
+**WICHTIG:** Jede neue Komponente, Composable oder Service MUSS mit Tests abgedeckt werden. Ohne Tests wird kein Code akzeptiert.
+
+### Testübersicht
+
+| Bereich | Tool | Pfad |
+|---------|------|------|
+| **Backend Unit** | pytest | `tests/unit/` |
+| **Backend Integration** | pytest | `tests/integration/` |
+| **Frontend Components** | Vitest | `llars-frontend/tests/components/` |
+| **Frontend Composables** | Vitest | `llars-frontend/tests/composables/` |
+
+### Tests ausführen
+
+```bash
+# Backend Tests
+cd /path/to/llars
+pytest tests/                              # Alle Tests
+pytest tests/unit/                         # Nur Unit Tests
+pytest --cov=app --cov-report=html tests/  # Mit Coverage
+
+# Frontend Tests
+cd llars-frontend
+npm run test:run                           # Alle Tests (einmalig)
+npm run test                               # Watch Mode
+npm run test:coverage                      # Mit Coverage
+npm run test:run -- tests/composables/useAuth.spec.js  # Einzelne Datei
+```
+
+### Test-ID Konventionen
+
+Jeder Test hat eine eindeutige ID für Traceability:
+
+| Präfix | Bereich | Beispiel |
+|--------|---------|----------|
+| `AUTH_` | useAuth Composable | AUTH_001, AUTH_002 |
+| `PERM_` | usePermissions | PERM_001 |
+| `COMP_BTN_` | LBtn Component | COMP_BTN_001 |
+| `COMP_TAG_` | LTag Component | COMP_TAG_001 |
+| `SKEL_` | useSkeletonLoading | SKEL_001 |
+| `MOBILE_` | useMobile | MOBILE_001 |
+
+### Frontend Test-Pattern (Vitest + Vue Test Utils)
+
+```javascript
+// tests/composables/useExample.spec.js
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { useExample } from '@/composables/useExample'
+
+describe('useExample Composable', () => {
+  beforeEach(() => {
+    vi.resetModules()  // Wichtig für Singleton-Composables!
+  })
+
+  describe('Exports', () => {
+    it('EXAMPLE_001: exports useExample function', () => {
+      expect(typeof useExample).toBe('function')
+    })
+
+    it('EXAMPLE_002: returns expected properties', () => {
+      const result = useExample()
+      expect(result).toHaveProperty('someValue')
+      expect(result).toHaveProperty('someFunction')
+    })
+  })
+
+  describe('Functionality', () => {
+    it('EXAMPLE_003: does something specific', () => {
+      const { someFunction } = useExample()
+      const result = someFunction('input')
+      expect(result).toBe('expected output')
+    })
+  })
+})
+```
+
+### Komponenten ohne Tests zu zerstören ändern
+
+**Regel 1: Props-Kompatibilität wahren**
+```javascript
+// SCHLECHT - Bricht bestehende Tests
+// Vorher: <LBtn variant="primary">
+// Nachher: <LBtn type="primary">  // Prop umbenannt!
+
+// GUT - Rückwärtskompatibel
+props: {
+  variant: String,
+  type: String,  // Neuer Name
+}
+computed: {
+  resolvedType() {
+    return this.type || this.variant  // Fallback auf alten Namen
+  }
+}
+```
+
+**Regel 2: Emit-Events nicht umbenennen**
+```javascript
+// SCHLECHT
+emit('onUpdate')  // Vorher: emit('update')
+
+// GUT - Beide Events emittieren während Übergang
+emit('update', value)
+emit('onUpdate', value)  // Neues Event zusätzlich
+```
+
+**Regel 3: Default-Werte beibehalten**
+```javascript
+// SCHLECHT - Ändert Default-Verhalten
+props: {
+  size: { type: String, default: 'large' }  // War: 'default'
+}
+
+// GUT - Default unverändert lassen
+props: {
+  size: { type: String, default: 'default' }
+}
+```
+
+**Regel 4: CSS-Klassen nicht entfernen**
+```vue
+<!-- SCHLECHT -->
+<div class="new-class">  <!-- .container entfernt -->
+
+<!-- GUT -->
+<div class="container new-class">  <!-- Alte Klasse behalten -->
+```
+
+### Kaputte Tests reparieren
+
+**Schritt 1: Fehler verstehen**
+```bash
+npm run test:run -- tests/components/LBtn.spec.js
+# Zeigt genau welcher Test fehlschlägt und warum
+```
+
+**Schritt 2: Typische Fehlerursachen**
+
+| Fehler | Ursache | Lösung |
+|--------|---------|--------|
+| `Expected "X" but got "Y"` | Rückgabewert geändert | Test-Erwartung anpassen ODER Code-Änderung überdenken |
+| `Property "X" not found` | Prop/Export entfernt | Prop wiederherstellen ODER alle Tests updaten |
+| `Cannot read property of undefined` | Mock fehlt | Mock hinzufügen (axios, localStorage, etc.) |
+| `TypeError: X is not a function` | API geändert | Funktion wiederherstellen ODER Tests anpassen |
+
+**Schritt 3: Test anpassen (wenn Code-Änderung korrekt ist)**
+```javascript
+// Test-Datei öffnen und Erwartung aktualisieren
+it('COMP_BTN_005: renders with correct size class', () => {
+  const wrapper = mount(LBtn, { props: { size: 'small' } })
+  // Vorher:
+  // expect(wrapper.classes()).toContain('v-btn--size-small')
+  // Nachher (neue Implementierung):
+  expect(wrapper.classes()).toContain('l-btn--small')
+})
+```
+
+**Schritt 4: Alle Tests erneut ausführen**
+```bash
+npm run test:run  # Sicherstellen dass keine Seiteneffekte
+```
+
+### Mocking-Patterns
+
+**Axios mocken:**
+```javascript
+vi.mock('axios', () => ({
+  default: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn()
+  }
+}))
+
+// In Test:
+import axios from 'axios'
+axios.get.mockResolvedValue({ data: { success: true } })
+```
+
+**localStorage mocken:**
+```javascript
+const mockStorage = {}
+vi.stubGlobal('localStorage', {
+  getItem: vi.fn((key) => mockStorage[key] || null),
+  setItem: vi.fn((key, value) => { mockStorage[key] = value }),
+  removeItem: vi.fn((key) => { delete mockStorage[key] }),
+  clear: vi.fn(() => { Object.keys(mockStorage).forEach(k => delete mockStorage[k]) })
+})
+```
+
+**Vue Router mocken:**
+```javascript
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn()
+  }),
+  useRoute: () => ({
+    params: {},
+    query: {}
+  })
+}))
+```
+
+**Vuetify useDisplay mocken:**
+```javascript
+vi.mock('vuetify', () => ({
+  useDisplay: () => ({
+    mobile: { value: false },
+    smAndDown: { value: false },
+    mdAndUp: { value: true },
+    width: { value: 1024 },
+    height: { value: 768 }
+  })
+}))
+```
+
+### Checkliste vor Commit
+
+- [ ] Alle bestehenden Tests laufen durch: `npm run test:run`
+- [ ] Neue Komponente/Composable hat eigene Test-Datei
+- [ ] Test-IDs sind eindeutig und folgen Konvention
+- [ ] Edge Cases getestet (null, undefined, leere Arrays, etc.)
+- [ ] Fehlerbehandlung getestet (API-Fehler, Timeouts)
+- [ ] Coverage prüfen: `npm run test:coverage`
+
+### Test-Dokumentation
+
+Vollständige Testanforderungen: `docs/testing/README.md`
+
+```
+docs/testing/
+├── README.md                    # Übersicht + Quick Start
+├── leitfaden/                   # How-To Guides
+├── anforderungen/               # Was getestet werden muss
+│   ├── frontend/                # Frontend-Spezifisch
+│   ├── backend/                 # Backend-Spezifisch
+│   └── security/                # Security-Tests
+└── checklisten/                 # Smoke Test, Release Checklist
 ```
 
 ---
@@ -1107,4 +1462,4 @@ docker port llars_nginx_service  # Sollte "80/tcp -> 0.0.0.0:80" zeigen
 
 ---
 
-**Stand:** 25. Dezember 2025
+**Stand:** 31. Dezember 2025

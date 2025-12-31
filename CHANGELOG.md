@@ -1,4 +1,6 @@
-# CI/CD Test 20251231-143145
-# CI/CD Fix 20251231-170511
-# Runner config fixed 20251231-174301
-# Permissions fixed 20251231-182948
+# LLARS Changelog
+
+## 2025-12-31
+- CI/CD Pipeline vollständig konfiguriert
+- GitLab Shell Runner für Deployments eingerichtet
+- Frontend Healthcheck Timeout angepasst (60s start_period)

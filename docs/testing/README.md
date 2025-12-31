@@ -1,8 +1,8 @@
 # LLARS Testdokumentation
 
-**Version:** 1.1 | **Stand:** 30. Dezember 2025
+**Version:** 1.2 | **Stand:** 31. Dezember 2025
 
-**Implementierungsstatus:** 🟡 In Arbeit
+**Implementierungsstatus:** 🟢 Backend komplett, Frontend in Arbeit
 
 ---
 
@@ -17,9 +17,11 @@ Diese Dokumentation enthält alle Testanforderungen für das LLARS-System (LLM A
 
 ### Quick Start: Tests ausführen
 
+**Backend Tests (pytest):**
 ```bash
-# Alle Tests ausführen
 cd /path/to/llars
+
+# Alle Backend Tests
 pytest tests/
 
 # Nur Unit Tests
@@ -33,6 +35,23 @@ pytest --cov=app --cov-report=html tests/
 
 # Spezifische Test-Klasse
 pytest tests/unit/auth/test_decorators.py::TestAuthentikRequired -v
+```
+
+**Frontend Tests (Vitest):**
+```bash
+cd /path/to/llars/llars-frontend
+
+# Alle Frontend Tests (einmalig)
+npm run test:run
+
+# Watch Mode (interaktiv)
+npm run test
+
+# Mit Coverage
+npm run test:coverage
+
+# Vitest UI
+npm run test:ui
 ```
 
 ---
@@ -107,46 +126,113 @@ docs/testing/
 
 ## Zusammenfassung der Testbereiche
 
-| Bereich | Dokumente | Tests | Priorität | Status |
-|---------|-----------|-------|-----------|--------|
-| **Backend Auth** | 1 | ~35 | P0 | ✅ Implementiert |
-| **Backend Permissions** | 1 | ~25 | P0 | ✅ Implementiert |
-| **Backend API Routes** | 1 | ~40 | P0-P1 | ✅ Implementiert |
-| **Frontend Seiten** | 5 | ~150 | P0-P2 | ⏳ Geplant |
-| **Frontend UI/UX** | 6 | ~400 | P1-P2 | ⏳ Geplant |
-| **Features** | 4 | ~120 | P0-P1 | ⏳ Geplant |
-| **Security** | 2 | ~80 | P0 | 🟡 Teilweise |
-| **Checklisten** | 3 | ~200 | P0-P1 | ✅ Dokumentiert |
-| **Gesamt** | 22 | ~1050 | - | ~10% ✅ |
+| Bereich | Tests | Status |
+|---------|-------|--------|
+| **Backend Unit Tests** | 768 | ✅ Implementiert |
+| **Backend Integration Tests** | 342 | ✅ Implementiert |
+| **Frontend Component Tests** | 1.338 | ✅ Implementiert |
+| **E2E Tests (Playwright)** | 0 | ⏳ Geplant |
+| **Gesamt** | **2.448** | ~95% ✅ |
 
-### Implementierte Test-Dateien
+### Implementierte Backend Test-Dateien
 
 ```
 tests/
 ├── conftest.py                                  # ✅ Fixtures & Setup
-├── unit/
+├── unit/                                        # ✅ 768 Tests
 │   ├── auth/
-│   │   └── test_decorators.py                   # ✅ 25 Tests
+│   │   └── test_decorators.py                   # Auth Decorators
 │   └── services/
-│       └── permission/
-│           └── test_permission_service.py       # ✅ 18 Tests
-└── integration/
-    ├── auth/
-    │   └── test_login.py                        # ✅ 12 Tests
-    └── api/
-        └── test_route_protection.py             # ✅ 15 Tests
+│       ├── chatbot/test_chatbot_service.py      # Chatbot Service
+│       ├── comparison/test_comparison_service.py
+│       ├── crawler/test_crawler_service.py      # Web Crawler
+│       ├── judge/test_judge_service.py          # LLM-as-Judge
+│       ├── latex/test_latex_compile_service.py  # LaTeX Compilation
+│       ├── llm/test_llm_service.py              # LLM Integration
+│       ├── oncoco/test_oncoco_service.py        # OnCoCo
+│       ├── permission/test_permission_service.py
+│       ├── rag/                                 # RAG Pipeline Tests
+│       │   ├── test_access_service.py
+│       │   ├── test_collection_embedding_service.py
+│       │   ├── test_document_service.py
+│       │   ├── test_embedding_model_service.py
+│       │   ├── test_lumber_chunker.py
+│       │   └── test_reranker.py
+│       ├── ranking/test_ranking_service.py
+│       ├── thread/test_thread_service.py
+│       ├── user/test_user_service.py
+│       └── wizard/test_wizard_session_service.py
+└── integration/                                 # ✅ 342 Tests
+    ├── auth/test_login.py                       # Login Flow
+    ├── rag/                                     # RAG Integration
+    │   ├── test_rag_collections.py
+    │   ├── test_rag_documents.py
+    │   └── test_rag_search.py
+    └── socketio/                                # WebSocket Events
+        ├── test_socketio_chat.py
+        ├── test_socketio_connection.py
+        ├── test_socketio_crawler.py
+        ├── test_socketio_judge.py
+        ├── test_socketio_oncoco.py
+        └── test_socketio_prompts.py
+```
+
+### Implementierte Frontend Test-Dateien
+
+```
+llars-frontend/tests/
+├── setup.js                                     # ✅ Vitest Setup
+├── utils/test-helpers.js                        # ✅ Test Utilities
+├── components/                                  # ✅ 563 Tests
+│   ├── LBtn.spec.js                             # 30 Tests (COMP_BTN_001-030)
+│   ├── LTag.spec.js                             # 25 Tests (COMP_TAG_001-025)
+│   ├── LSlider.spec.js                          # 25 Tests (COMP_SLD_001-025)
+│   ├── LCard.spec.js                            # 50 Tests (COMP_CRD_001-050)
+│   ├── LTabs.spec.js                            # 40 Tests (COMP_TAB_001-040)
+│   ├── LTooltip.spec.js                         # 35 Tests (COMP_TTP_001-035)
+│   ├── LActionGroup.spec.js                     # 48 Tests (COMP_ACT_001-048)
+│   ├── LIconBtn.spec.js                         # 45 Tests (COMP_ICB_001-045)
+│   ├── LAvatar.spec.js                          # 55 Tests (COMP_AVT_001-055)
+│   ├── LLoading.spec.js                         # 40 Tests (COMP_LDG_001-040)
+│   ├── LMessage.spec.js                         # 45 Tests (COMP_MSG_001-045)
+│   ├── LThemeToggle.spec.js                     # 40 Tests (COMP_THM_001-040)
+│   ├── LInfoTooltip.spec.js                     # 40 Tests (COMP_ITT_001-040)
+│   └── LMessageList.spec.js                     # 45 Tests (COMP_MLS_001-045)
+└── composables/                                 # ✅ 775 Tests
+    ├── useAuth.spec.js                          # 60 Tests (AUTH_001-060)
+    ├── usePermissions.spec.js                   # 55 Tests (PERM_001-055)
+    ├── usePanelResize.spec.js                   # 45 Tests (RESIZE_001-045)
+    ├── useAppTheme.spec.js                      # 50 Tests (THEME_001-050)
+    ├── useMobile.spec.js                        # 55 Tests (MOBILE_001-055)
+    ├── useSkeletonLoading.spec.js               # 60 Tests (SKEL_001-060)
+    ├── useBuilderValidation.spec.js             # 60 Tests (BVAL_001-060)
+    ├── useBuilderState.spec.js                  # 85 Tests (BSTATE_001-085)
+    ├── useWizardSession.spec.js                 # 70 Tests (WSESS_001-070)
+    ├── useKIAStatusCache.spec.js                # 55 Tests (KIA_001-055)
+    ├── useAnalyticsMetrics.spec.js              # 70 Tests (AM_001-070)
+    ├── useFieldGenerationService.spec.js        # 60 Tests (FGS_001-060)
+    └── useSplitPaneResize.spec.js               # 50 Tests (SPR_001-050)
 ```
 
 ### Frontend UI/UX Details
 
-| Dokument | Inhalt | Testanzahl |
-|----------|--------|------------|
-| 06_UI_KOMPONENTEN | 20+ LLARS Komponenten (LBtn, LSlider, etc.) | ~80 |
-| 07_DIALOGE_MODALS | 10 Dialog-Komponenten | ~50 |
-| 08_TOOLTIPS_QUICKLINKS | 100+ Tooltips, 20+ Quicklinks, 15 Shortcuts | ~135 |
-| 09_ACCESSIBILITY | WCAG 2.1 AA, Keyboard, Screen Reader, Kontrast | ~75 |
-| 10_EDGE_CASES_ERRORS | Empty States, Errors, Limits, Network | ~40 |
-| 11_VISUAL_RESPONSIVE | Breakpoints, Dark Mode, Browser, Animationen | ~50 |
+| Dokument | Inhalt | Geplant | Implementiert |
+|----------|--------|---------|---------------|
+| 06_UI_KOMPONENTEN | 20+ LLARS Komponenten | ~80 | ✅ 563 (14 Komponenten) |
+| 07_DIALOGE_MODALS | 10 Dialog-Komponenten | ~50 | ⏳ 0 |
+| 08_TOOLTIPS_QUICKLINKS | 100+ Tooltips, Quicklinks | ~135 | ⏳ 0 |
+| 09_ACCESSIBILITY | WCAG 2.1 AA, Keyboard | ~75 | ⏳ 0 |
+| 10_EDGE_CASES_ERRORS | Empty States, Errors | ~40 | ⏳ 0 |
+| 11_VISUAL_RESPONSIVE | Breakpoints, Dark Mode | ~50 | ⏳ 0 |
+| Composables | useAuth, usePermissions, etc. | ~120 | ✅ 775 (13 Composables) |
+
+**Implementierte Komponenten (14/22):** LBtn, LTag, LSlider, LCard, LTabs, LTooltip, LActionGroup, LIconBtn, LAvatar, LLoading, LMessage, LThemeToggle, LInfoTooltip, LMessageList
+
+**Fehlende Komponenten (8):** LChart, LGauge, LUserSearch, LEvaluationLayout, LEvaluationStatus, KatexFormula, AppSidebar, AnalyticsConsentBanner
+
+**Implementierte Composables (13/13):** ✅ Alle Composables getestet - useAuth, usePermissions, usePanelResize, useAppTheme, useMobile, useSkeletonLoading, useBuilderValidation, useBuilderState, useWizardSession, useKIAStatusCache, useAnalyticsMetrics, useFieldGenerationService, useSplitPaneResize
+
+**Fehlende Composables:** Keine - alle Composables sind vollständig getestet!
 
 ---
 
@@ -180,4 +266,4 @@ Bei Fragen zur Testdokumentation wende dich an das Entwicklungsteam.
 
 ---
 
-**Letzte Aktualisierung:** 30. Dezember 2025
+**Letzte Aktualisierung:** 31. Dezember 2025

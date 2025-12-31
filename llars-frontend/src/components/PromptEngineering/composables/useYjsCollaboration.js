@@ -194,12 +194,53 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     })
   }
 
+  /**
+   * Switch to a different room (document) without recreating the socket connection
+   * This allows fast document switching without full reconnection
+   */
+  const switchRoom = (oldRoom, newRoom) => {
+    if (!socket.value?.connected || !newRoom) return
+
+    // Leave old room
+    if (oldRoom) {
+      socket.value.emit('leave_room', { room: oldRoom })
+    }
+
+    // Clear users from old room
+    users.value = {}
+
+    // Create fresh Yjs doc for new room
+    if (ydoc.value) {
+      ydoc.value.destroy()
+    }
+    ydoc.value = new Y.Doc()
+
+    // Set up update handler for new doc
+    ydoc.value.on('update', (update, origin, doc, transaction) => {
+      onProcessYDoc()
+
+      if (autoSync && transaction?.local && !applyingRemoteUpdate && socket.value?.connected) {
+        socket.value.emit('sync_update', {
+          room: roomId.value,
+          update: Array.from(update)
+        })
+      }
+    })
+
+    // Join new room
+    socket.value.emit('join_room', {
+      room: newRoom,
+      username
+    })
+  }
+
   return {
     ydoc,
     socket,
     users,
     initialize,
     cleanup,
-    updateColor
+    updateColor,
+    switchRoom
   }
 }

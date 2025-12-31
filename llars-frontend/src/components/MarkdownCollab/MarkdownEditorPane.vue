@@ -752,7 +752,7 @@ const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, o
   autoSync: true,
   onColorUpdate
 })
-const { ydoc, socket, users, updateColor } = collaboration
+const { ydoc, socket, users, updateColor, switchRoom } = collaboration
 
 let onSocketConnect = null
 let onSocketDisconnect = null
@@ -818,6 +818,45 @@ watch(
       updateColor(newColor)
     }
   }
+)
+
+// Watch for document changes to switch rooms without remounting the component
+// This provides a smoother experience when switching between documents
+let previousDocumentId = null
+watch(
+  () => props.document?.id,
+  async (newId, oldId) => {
+    // Skip initial mount (handled by onMounted)
+    if (!previousDocumentId) {
+      previousDocumentId = newId
+      return
+    }
+
+    // Skip if same document
+    if (newId === previousDocumentId) return
+
+    const oldRoom = props.document?.yjs_doc_id || `markdown_${previousDocumentId}`
+    const newRoom = props.document?.yjs_doc_id || `markdown_${newId}`
+    previousDocumentId = newId
+
+    // Clear remote cursors from old document
+    remoteCursors.value = {}
+
+    // Reset error state
+    error.value = ''
+
+    // Switch collaboration room (leaves old room, joins new room, creates fresh Yjs doc)
+    switchRoom(oldRoom, newRoom)
+
+    // Load new git baseline for diff comparison
+    await loadBaseline(newId)
+
+    // Wait for the server to send the snapshot, then update decorations
+    // The processYDoc callback will be called when snapshot arrives
+    await nextTick()
+    updateDecorations()
+  },
+  { immediate: false }
 )
 
 function onFallbackInput(val) {

@@ -15,6 +15,7 @@ from .rag import initialize_rag_system
 from .chatbots import initialize_default_chatbots
 from .chatbot_prompt_settings import initialize_chatbot_prompt_settings
 from .markdown_collab import initialize_markdown_collab_defaults
+from .latex_collab import initialize_latex_collab_defaults
 from .scenarios import seed_demo_scenarios
 from .legal_assistant import initialize_legal_assistant
 from .analytics_settings import initialize_analytics_settings
@@ -80,6 +81,9 @@ def run_all_seeders(db):
     # Create Markdown Collab demo workspace/tree
     initialize_markdown_collab_defaults(db)
 
+    # Create LaTeX Collab demo workspace with LLARS paper
+    initialize_latex_collab_defaults(db)
+
     # Seed demo scenarios in development mode only
     project_state = os.getenv('PROJECT_STATE', 'development').lower()
     if project_state == 'development':
@@ -105,6 +109,7 @@ __all__ = [
     'initialize_chatbot_prompt_settings',
     'initialize_legal_assistant',
     'initialize_markdown_collab_defaults',
+    'initialize_latex_collab_defaults',
     'initialize_analytics_settings',
     'seed_demo_scenarios',
 ]

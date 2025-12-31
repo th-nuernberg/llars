@@ -822,6 +822,64 @@ def get_baseline(document_id: int):
     }), 200
 
 
+@latex_collab_bp.route("/documents/<int:document_id>/rollback", methods=["POST"])
+@require_permission("feature:latex_collab:edit")
+@handle_api_errors(logger_name="latex_collab")
+def rollback_document(document_id: int):
+    """
+    Rollback a document to its last committed state (baseline).
+    This reverts any uncommitted changes.
+    """
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    doc = LatexDocument.query.get(document_id)
+    if not doc:
+        raise NotFoundError("Document not found")
+    _require_document_access(doc, username)
+
+    # Get the latest commit with content snapshot
+    latest_commit = (
+        LatexCommit.query
+        .filter_by(document_id=document_id)
+        .filter(LatexCommit.content_snapshot.isnot(None))
+        .order_by(LatexCommit.created_at.desc(), LatexCommit.id.desc())
+        .first()
+    )
+
+    if not latest_commit:
+        raise NotFoundError("No commits found for this document - nothing to rollback to")
+
+    baseline_content = latest_commit.content_snapshot or ""
+
+    # Get current content for comparison
+    current_content = doc.content_text or ""
+
+    if current_content == baseline_content:
+        return jsonify({
+            "success": True,
+            "message": "Document already matches baseline - no rollback needed",
+            "rolled_back": False,
+        }), 200
+
+    # Update the document content to the baseline
+    doc.content_text = baseline_content
+    doc.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    logger.info(f"[LatexCollab] Document {document_id} rolled back by {username}")
+
+    return jsonify({
+        "success": True,
+        "message": "Document rolled back to last committed state",
+        "rolled_back": True,
+        "commit_id": latest_commit.id,
+        "commit_message": latest_commit.message,
+        "commit_author": latest_commit.author_username,
+    }), 200
+
+
 @latex_collab_bp.route("/documents/<int:document_id>/comments", methods=["GET"])
 @require_permission("feature:latex_collab:view")
 @handle_api_errors(logger_name="latex_collab")
@@ -1211,6 +1269,213 @@ def synctex_inverse(job_id: int):
         raise ValidationError(msg) from exc
 
     return jsonify({"success": True, "location": location}), 200
+
+
+@latex_collab_bp.route("/workspaces/<int:workspace_id>/changes", methods=["GET"])
+@require_permission("feature:latex_collab:view")
+@handle_api_errors(logger_name="latex_collab")
+def get_workspace_changes(workspace_id: int):
+    """
+    Get list of all changed files in a workspace.
+    Compares current database content (synced via YJS) with last committed baseline for each file.
+    """
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = LatexWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+    _require_workspace_access(ws, username)
+
+    # Get all text files (no asset_id)
+    docs = (
+        LatexDocument.query
+        .filter_by(workspace_id=workspace_id)
+        .filter(LatexDocument.node_type == LatexNodeType.file)
+        .filter(LatexDocument.asset_id.is_(None))
+        .all()
+    )
+
+    changed_files = []
+    for doc in docs:
+        # Use database content (synced via YJS)
+        current_content = doc.content_text or ""
+
+        # Get baseline from last commit
+        latest_commit = (
+            LatexCommit.query
+            .filter_by(document_id=doc.id)
+            .filter(LatexCommit.content_snapshot.isnot(None))
+            .order_by(LatexCommit.created_at.desc(), LatexCommit.id.desc())
+            .first()
+        )
+
+        baseline = latest_commit.content_snapshot if latest_commit else ""
+
+        # Compare content
+        if current_content != baseline:
+            # Calculate simple diff stats
+            baseline_lines = baseline.split('\n') if baseline else []
+            current_lines = current_content.split('\n') if current_content else []
+
+            # For more accurate stats, count actual changed lines
+            from difflib import unified_diff
+            diff_lines = list(unified_diff(baseline_lines, current_lines, lineterm=''))
+            actual_insertions = sum(1 for line in diff_lines if line.startswith('+') and not line.startswith('+++'))
+            actual_deletions = sum(1 for line in diff_lines if line.startswith('-') and not line.startswith('---'))
+
+            changed_files.append({
+                "id": doc.id,
+                "title": doc.title,
+                "path": _build_doc_path(doc),
+                "insertions": actual_insertions,
+                "deletions": actual_deletions,
+                "has_baseline": latest_commit is not None,
+                "baseline_commit_id": latest_commit.id if latest_commit else None,
+            })
+
+    return jsonify({
+        "success": True,
+        "changed_files": changed_files,
+        "total_changed": len(changed_files),
+    }), 200
+
+
+def _build_doc_path(doc: LatexDocument) -> str:
+    """Build full path for a document by traversing parents."""
+    parts = [doc.title]
+    current = doc
+    while current.parent_id:
+        parent = LatexDocument.query.get(current.parent_id)
+        if not parent:
+            break
+        parts.insert(0, parent.title)
+        current = parent
+    return "/".join(parts)
+
+
+@latex_collab_bp.route("/workspaces/<int:workspace_id>/commit", methods=["POST"])
+@require_permission("feature:latex_collab:edit")
+@handle_api_errors(logger_name="latex_collab")
+def create_workspace_commit(workspace_id: int):
+    """
+    Create commits for multiple files at once.
+    Uses database content (synced via YJS) for each file.
+    Expects JSON body: {
+        "message": "Commit message",
+        "document_ids": [1, 2, 3, ...]  // List of document IDs to commit
+    }
+    """
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = LatexWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+    _require_workspace_access(ws, username)
+
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+    document_ids = data.get("document_ids", [])
+
+    if not message:
+        raise ValidationError("message is required")
+    if not document_ids:
+        raise ValidationError("document_ids is required (at least one document must be committed)")
+
+    # Validate all document IDs belong to this workspace
+    doc_ids = [int(doc_id) for doc_id in document_ids]
+    docs = LatexDocument.query.filter(
+        LatexDocument.id.in_(doc_ids),
+        LatexDocument.workspace_id == workspace_id,
+        LatexDocument.node_type == LatexNodeType.file,
+        LatexDocument.asset_id.is_(None)
+    ).all()
+
+    valid_doc_ids = {d.id for d in docs}
+    invalid_ids = [doc_id for doc_id in doc_ids if doc_id not in valid_doc_ids]
+    if invalid_ids:
+        raise ValidationError(f"Invalid document IDs: {invalid_ids}")
+
+    # Build workspace snapshot once for all commits
+    workspace_snapshot = build_workspace_snapshot(workspace_id)
+
+    created_commits = []
+    for doc in docs:
+        # Use database content (synced via YJS)
+        content_snapshot = doc.content_text or ""
+
+        # Get baseline for diff summary
+        latest_commit = (
+            LatexCommit.query
+            .filter_by(document_id=doc.id)
+            .filter(LatexCommit.content_snapshot.isnot(None))
+            .order_by(LatexCommit.created_at.desc(), LatexCommit.id.desc())
+            .first()
+        )
+        baseline = latest_commit.content_snapshot if latest_commit else ""
+
+        # Calculate diff summary
+        from difflib import unified_diff
+        baseline_lines = baseline.split('\n') if baseline else []
+        current_lines = content_snapshot.split('\n') if content_snapshot else []
+        diff_lines = list(unified_diff(baseline_lines, current_lines, lineterm=''))
+        insertions = sum(1 for line in diff_lines if line.startswith('+') and not line.startswith('+++'))
+        deletions = sum(1 for line in diff_lines if line.startswith('-') and not line.startswith('---'))
+
+        diff_summary = {
+            "insertions": insertions,
+            "deletions": deletions
+        }
+
+        commit = LatexCommit(
+            workspace_id=workspace_id,
+            document_id=doc.id,
+            author_username=username,
+            message=message,
+            diff_summary=diff_summary,
+            content_snapshot=content_snapshot,
+            workspace_snapshot=workspace_snapshot,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(commit)
+        created_commits.append((doc.id, commit))
+
+    db.session.commit()
+
+    # Emit socket events for each commit
+    socketio = current_app.extensions.get('socketio')
+    if socketio:
+        try:
+            from socketio_handlers.events_latex_collab import emit_commit_created
+            for doc_id, commit in created_commits:
+                emit_commit_created(socketio, doc_id, {
+                    "id": commit.id,
+                    "document_id": commit.document_id,
+                    "workspace_id": commit.workspace_id,
+                    "author_username": commit.author_username,
+                    "message": commit.message,
+                    "diff_summary": commit.diff_summary,
+                    "content_snapshot": commit.content_snapshot,
+                    "created_at": commit.created_at.isoformat() if commit.created_at else None,
+                })
+        except Exception:
+            pass
+
+    return jsonify({
+        "success": True,
+        "commits": [
+            {
+                "id": commit.id,
+                "document_id": commit.document_id,
+                "message": commit.message,
+            }
+            for _, commit in created_commits
+        ],
+        "total_committed": len(created_commits),
+    }), 201
 
 
 @latex_collab_bp.route("/workspaces/<int:workspace_id>/pdf", methods=["GET"])

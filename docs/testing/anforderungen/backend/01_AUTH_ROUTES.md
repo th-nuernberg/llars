@@ -1,6 +1,8 @@
 # Backend Testanforderungen: Authentifizierung
 
-**Version:** 1.0 | **Stand:** 30. Dezember 2025
+**Version:** 1.1 | **Stand:** 30. Dezember 2025
+
+**Status:** ✅ IMPLEMENTIERT - Tests in `tests/unit/auth/test_decorators.py`
 
 ---
 
@@ -17,68 +19,74 @@ Dieses Dokument beschreibt alle Tests für das LLARS Authentifizierungs-System.
 ### @authentik_required
 
 **Datei:** `app/auth/decorators.py:148-193`
+**Tests:** `tests/unit/auth/test_decorators.py::TestAuthentikRequired`
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| AUTH-D01 | Kein Authorization Header | 401 Unauthorized | Unit |
-| AUTH-D02 | Invalid Bearer Token | 401 Unauthorized | Unit |
-| AUTH-D03 | Expired Token | 401 Unauthorized | Unit |
-| AUTH-D04 | Falsches Token-Format | 401 Unauthorized | Unit |
-| AUTH-D05 | Valid Token | g.authentik_user gesetzt, 200 | Unit |
-| AUTH-D06 | Gelöschter User | 403 ACCOUNT_DELETED | Unit |
-| AUTH-D07 | Gesperrter User | 403 ACCOUNT_LOCKED | Unit |
-| AUTH-D08 | User wird auto-erstellt | User in DB nach Login | Integration |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| AUTH-D01 | Kein Authorization Header | 401 Unauthorized | Unit | ✅ |
+| AUTH-D02 | Invalid Bearer Token | 401 Unauthorized | Unit | ✅ |
+| AUTH-D03 | Expired Token | 401 Unauthorized | Unit | ✅ |
+| AUTH-D04 | Falsches Token-Format | 401 Unauthorized | Unit | ✅ |
+| AUTH-D05 | Valid Token | g.authentik_user gesetzt, 200 | Unit | ✅ |
+| AUTH-D06 | Gelöschter User | 403 ACCOUNT_DELETED | Unit | ✅ |
+| AUTH-D07 | Gesperrter User | 403 ACCOUNT_LOCKED | Unit | ✅ |
+| AUTH-D08 | User wird auto-erstellt | User in DB nach Login | Integration | ✅ |
 
 ### @admin_required
 
 **Datei:** `app/auth/decorators.py:196-220`
+**Tests:** `tests/unit/auth/test_decorators.py::TestAdminRequired`
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| AUTH-A01 | Admin-Token | 200 OK | Unit |
-| AUTH-A02 | Nicht-Admin Token | 403 Forbidden | Unit |
-| AUTH-A03 | Ohne Token | 401 Unauthorized | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| AUTH-A01 | Admin-Token | 200 OK | Unit | ✅ |
+| AUTH-A02 | Nicht-Admin Token | 403 Forbidden | Unit | ✅ |
+| AUTH-A03 | Ohne Token | 401 Unauthorized | Unit | ✅ |
 
 ### @roles_required
 
 **Datei:** `app/auth/decorators.py:223-252`
+**Tests:** `tests/unit/auth/test_decorators.py::TestRolesRequired`
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| AUTH-R01 | Eine von Rollen vorhanden | 200 OK | Unit |
-| AUTH-R02 | Keine Rolle vorhanden | 403 Forbidden | Unit |
-| AUTH-R03 | Mehrere Rollen, eine passt | 200 OK | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| AUTH-R01 | Eine von Rollen vorhanden | 200 OK | Unit | ✅ |
+| AUTH-R02 | Keine Rolle vorhanden | 403 Forbidden | Unit | ✅ |
+| AUTH-R03 | Mehrere Rollen, eine passt | 200 OK | Unit | ✅ |
 
 ### @optional_auth
 
 **Datei:** `app/auth/decorators.py:255-287`
+**Tests:** `tests/unit/auth/test_decorators.py::TestOptionalAuth`
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| AUTH-O01 | Ohne Token | Route funktioniert, kein User | Unit |
-| AUTH-O02 | Mit gültigem Token | g.authentik_user gesetzt | Unit |
-| AUTH-O03 | Mit ungültigem Token | Route funktioniert trotzdem | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| AUTH-O01 | Ohne Token | Route funktioniert, kein User | Unit | ✅ |
+| AUTH-O02 | Mit gültigem Token | g.authentik_user gesetzt | Unit | ✅ |
+| AUTH-O03 | Mit ungültigem Token | Route funktioniert trotzdem | Unit | ✅ |
 
 ### @system_api_key_required
 
 **Datei:** `app/auth/decorators.py:290-346`
+**Tests:** `tests/unit/auth/test_decorators.py::TestSystemApiKeyRequired`
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| AUTH-K01 | Korrekter API Key (Header) | 200 OK | Unit |
-| AUTH-K02 | Korrekter API Key (Query) | 200 OK | Unit |
-| AUTH-K03 | Falscher API Key | 401 Unauthorized | Unit |
-| AUTH-K04 | Kein API Key | 401 Unauthorized | Unit |
-| AUTH-K05 | API Key nicht konfiguriert | 500 Server Error | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| AUTH-K01 | Korrekter API Key (Header) | 200 OK | Unit | ✅ |
+| AUTH-K02 | Korrekter API Key (Query) | 200 OK | Unit | ✅ |
+| AUTH-K03 | Falscher API Key | 401 Unauthorized | Unit | ✅ |
+| AUTH-K04 | Kein API Key | 401 Unauthorized | Unit | ✅ |
+| AUTH-K05 | API Key nicht konfiguriert | 500 Server Error | Unit | ⏳ |
 
 ### @debug_route_protected
 
 **Datei:** `app/auth/decorators.py:349-375`
+**Tests:** `tests/unit/auth/test_decorators.py::TestDebugRouteProtected`
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| AUTH-B01 | Development Mode | API Key Check | Unit |
-| AUTH-B02 | Production Mode | 403 Forbidden | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| AUTH-B01 | Development Mode | API Key Check | Unit | ✅ |
+| AUTH-B02 | Production Mode | 403 Forbidden | Unit | ⏳ |
 
 ---
 
@@ -87,16 +95,17 @@ Dieses Dokument beschreibt alle Tests für das LLARS Authentifizierungs-System.
 ### POST /auth/authentik/login
 
 **Datei:** `app/routes/authentik_routes.py:121-403`
+**Tests:** `tests/integration/auth/test_login.py::TestLoginRoute`
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| LOGIN-001 | Valide Credentials | access_token, llars_roles | Integration |
-| LOGIN-002 | Falsches Passwort | 401 Invalid credentials | Integration |
-| LOGIN-003 | Unbekannter User | 401 Invalid credentials | Integration |
-| LOGIN-004 | Fehlende Felder | 400 Bad Request | Integration |
-| LOGIN-005 | Rate Limit (11+ pro Minute) | 429 Too Many Requests | Integration |
-| LOGIN-006 | Authentik nicht erreichbar | 503 Service Unavailable | Integration |
-| LOGIN-007 | Authentik Timeout | 504 Gateway Timeout | Integration |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| LOGIN-001 | Valide Credentials | access_token, llars_roles | Integration | ⏳ |
+| LOGIN-002 | Falsches Passwort | 401 Invalid credentials | Integration | ⏳ |
+| LOGIN-003 | Unbekannter User | 401 Invalid credentials | Integration | ⏳ |
+| LOGIN-004 | Fehlende Felder | 400 Bad Request | Integration | ✅ |
+| LOGIN-005 | Rate Limit (11+ pro Minute) | 429 Too Many Requests | Integration | ⏳ |
+| LOGIN-006 | Authentik nicht erreichbar | 503 Service Unavailable | Integration | ⏳ |
+| LOGIN-007 | Authentik Timeout | 504 Gateway Timeout | Integration | ⏳ |
 | LOGIN-008 | Cookie gesetzt | authentik_session Cookie | Integration |
 
 **Request:**

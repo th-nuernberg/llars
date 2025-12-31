@@ -1,6 +1,8 @@
 # Security Testanforderungen: Berechtigungen (RBAC)
 
-**Version:** 1.0 | **Stand:** 30. Dezember 2025
+**Version:** 1.1 | **Stand:** 30. Dezember 2025
+
+**Status:** ✅ IMPLEMENTIERT - Tests in `tests/unit/services/permission/test_permission_service.py`
 
 ---
 
@@ -77,40 +79,42 @@ Dieses Dokument beschreibt alle Tests für das LLARS Permission System (RBAC).
 
 ## 2. Permission Check Tests
 
+**Tests:** `tests/unit/services/permission/test_permission_service.py`
+
 ### Deny-by-Default Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-001 | Unbekannte Permission | Return False | Unit |
-| PERM-002 | Keine Rolle, keine Permission | Return False | Unit |
-| PERM-003 | Locked User | Return False | Unit |
-| PERM-004 | Deleted User | Return False | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-001 | Unbekannte Permission | Return False | Unit | ✅ |
+| PERM-002 | Keine Rolle, keine Permission | Return False | Unit | ✅ |
+| PERM-003 | Locked User | Return False | Unit | ✅ |
+| PERM-004 | Deleted User | Return False | Unit | ✅ |
 
 ### Admin Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-010 | Admin hat alle Permissions | Return True für alles | Unit |
-| PERM-011 | Admin bypass | Keine Einzel-Check nötig | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-010 | Admin hat alle Permissions | Return True für alles | Unit | ✅ |
+| PERM-011 | Admin bypass | Keine Einzel-Check nötig | Unit | ✅ |
 
 ### Role Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-020 | Researcher hat view Permissions | Return True | Unit |
-| PERM-021 | Researcher keine Admin Permissions | Return False | Unit |
-| PERM-022 | Viewer nur view Permissions | Return True für view | Unit |
-| PERM-023 | Viewer keine edit Permissions | Return False | Unit |
-| PERM-024 | Chatbot_Manager chatbot Permissions | Return True | Unit |
-| PERM-025 | Chatbot_Manager keine ranking | Return False | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-020 | Researcher hat view Permissions | Return True | Unit | ✅ |
+| PERM-021 | Researcher keine Admin Permissions | Return False | Unit | ✅ |
+| PERM-022 | Viewer nur view Permissions | Return True für view | Unit | ✅ |
+| PERM-023 | Viewer keine edit Permissions | Return False | Unit | ✅ |
+| PERM-024 | Chatbot_Manager chatbot Permissions | Return True | Unit | ✅ |
+| PERM-025 | Chatbot_Manager keine ranking | Return False | Unit | ✅ |
 
 ### Override Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-030 | User Grant > Role Deny | Return True | Unit |
-| PERM-031 | User Deny > Role Grant | Return False | Unit |
-| PERM-032 | Explicit Deny > Implicit Grant | Return False | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-030 | User Grant > Role Deny | Return True | Unit | ✅ |
+| PERM-031 | User Deny > Role Grant | Return False | Unit | ✅ |
+| PERM-032 | Explicit Deny > Implicit Grant | Return False | Unit | ✅ |
 
 ### Unit Test-Code
 
@@ -209,23 +213,25 @@ class TestPermissionCheck:
 
 ## 3. API Route Protection Tests
 
+**Tests:** `tests/integration/api/test_route_protection.py`
+
 ### Auth Decorator Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| ROUTE-001 | Kein Auth Header | 401 Unauthorized | Integration |
-| ROUTE-002 | Invalid Token | 401 Unauthorized | Integration |
-| ROUTE-003 | Expired Token | 401 Unauthorized | Integration |
-| ROUTE-004 | Valid Token | 200 OK | Integration |
-| ROUTE-005 | System API Key | Bypass, 200 OK | Integration |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| ROUTE-001 | Kein Auth Header | 401 Unauthorized | Integration | ✅ |
+| ROUTE-002 | Invalid Token | 401 Unauthorized | Integration | ✅ |
+| ROUTE-003 | Expired Token | 401 Unauthorized | Integration | ✅ |
+| ROUTE-004 | Valid Token | 200 OK | Integration | ✅ |
+| ROUTE-005 | System API Key | Bypass, 200 OK | Integration | ✅ |
 
 ### Permission Decorator Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| ROUTE-010 | Permission granted | 200 OK | Integration |
-| ROUTE-011 | Permission denied | 403 Forbidden | Integration |
-| ROUTE-012 | Admin override | 200 OK | Integration |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| ROUTE-010 | Permission granted | 200 OK | Integration | ✅ |
+| ROUTE-011 | Permission denied | 403 Forbidden | Integration | ✅ |
+| ROUTE-012 | Admin override | 200 OK | Integration | ✅ |
 
 ### Integration Test-Code
 

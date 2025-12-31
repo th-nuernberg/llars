@@ -74,7 +74,8 @@ lint:backend:
   script:
     - pip install flake8 black isort
     - echo "Checking Python code style..."
-    - flake8 app/ --max-line-length=120 --ignore=E501,W503
+    # Uses .flake8 config file for ignore rules
+    - flake8 app/
     - black --check app/ --line-length=120 || true
     - isort --check-only app/ || true
   rules:
@@ -241,8 +242,8 @@ build:docker:
 # ------------------------------------------------------------------------------
 deploy:staging:
   stage: deploy
-  tags:
-    - shell
+  # Runner muss Shell-Executor haben (kein Docker)
+  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
   environment:
     name: staging
     url: http://141.75.150.128
@@ -274,8 +275,8 @@ deploy:staging:
 # ------------------------------------------------------------------------------
 deploy:production:
   stage: deploy
-  tags:
-    - shell  # Nutze Shell-Executor (kein Docker)
+  # Runner muss Shell-Executor haben (kein Docker)
+  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
   environment:
     name: production
     url: http://141.75.150.128
@@ -346,8 +347,7 @@ deploy:production:
 # ------------------------------------------------------------------------------
 rollback:production:
   stage: deploy
-  tags:
-    - shell
+  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
   environment:
     name: production
   script:
@@ -387,8 +387,7 @@ security:scan:
 # Smoke Test nach Deployment
 smoke:test:
   stage: deploy
-  tags:
-    - shell
+  # tags: - shell  # Deaktiviert - Runner läuft ohne Tag-Filter
   script:
     - echo "Running smoke tests..."
     - echo "Checking API health..."

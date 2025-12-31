@@ -1,6 +1,7 @@
 """System-wide settings stored in the LLARS database."""
 
 from datetime import datetime
+from typing import Optional
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import db
@@ -48,17 +49,40 @@ class SystemSettings(db.Model):
         comment="Default overlap between chunks"
     )
 
+    # Zotero OAuth Settings
+    # Admin registers ONE app at zotero.org/oauth/apps and enters credentials here.
+    # All users then use "Connect with Zotero" button to authorize their accounts.
+    zotero_oauth_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable Zotero OAuth login for users"
+    )
+    zotero_client_key: Mapped[Optional[str]] = mapped_column(
+        db.String(255), nullable=True,
+        comment="Zotero OAuth Client Key from zotero.org/oauth/apps"
+    )
+    zotero_client_secret_encrypted: Mapped[Optional[str]] = mapped_column(
+        db.Text, nullable=True,
+        comment="Zotero OAuth Client Secret (encrypted)"
+    )
+
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
-    def to_dict(self):
+    def to_dict(self, include_zotero_secret: bool = False):
         """Convert to dictionary for API responses."""
-        return {
+        result = {
             'crawl_timeout_seconds': self.crawl_timeout_seconds,
             'embedding_timeout_seconds': self.embedding_timeout_seconds,
             'crawler_default_max_pages': self.crawler_default_max_pages,
             'crawler_default_max_depth': self.crawler_default_max_depth,
             'rag_default_chunk_size': self.rag_default_chunk_size,
             'rag_default_chunk_overlap': self.rag_default_chunk_overlap,
+            'zotero_oauth_enabled': self.zotero_oauth_enabled,
+            'zotero_client_key': self.zotero_client_key,
+            'zotero_oauth_configured': bool(self.zotero_client_key and self.zotero_client_secret_encrypted),
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+        # Never expose the actual secret, only indicate if it's set
+        if include_zotero_secret:
+            result['zotero_client_secret_set'] = bool(self.zotero_client_secret_encrypted)
+        return result

@@ -153,6 +153,14 @@ from db.models.authenticity import (
     UserAuthenticityVote,
 )
 
+# Zotero Integration models
+from db.models.zotero import (
+    ZoteroLibraryType,
+    ZoteroConnection,
+    WorkspaceZoteroLibrary,
+    ZoteroSyncLog,
+)
+
 __all__ = [
     # User
     'User',
@@ -266,4 +274,9 @@ __all__ = [
     'ComparisonSession',
     'ComparisonMessage',
     'ComparisonEvaluation',
+    # Zotero
+    'ZoteroLibraryType',
+    'ZoteroConnection',
+    'WorkspaceZoteroLibrary',
+    'ZoteroSyncLog',
 ]

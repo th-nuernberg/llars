@@ -112,7 +112,7 @@
           </v-card>
 
           <!-- RAG Settings -->
-          <v-card variant="outlined">
+          <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1">
               <v-icon class="mr-2" size="small">mdi-file-document-multiple</v-icon>
               RAG Chunking
@@ -149,6 +149,171 @@
             </v-card-text>
           </v-card>
 
+          <!-- Zotero OAuth Settings -->
+          <v-card variant="outlined">
+            <v-card-title class="text-subtitle-1 d-flex align-center">
+              <v-icon class="mr-2" size="small">mdi-book-open-page-variant</v-icon>
+              Zotero Integration
+              <v-spacer />
+              <v-chip
+                :color="zoteroStatus.oauth_available ? 'success' : 'warning'"
+                variant="tonal"
+                size="small"
+              >
+                <v-icon start size="small">
+                  {{ zoteroStatus.oauth_available ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+                </v-icon>
+                {{ zoteroStatusLabel }}
+              </v-chip>
+            </v-card-title>
+            <v-card-text>
+              <!-- Info Alert -->
+              <v-alert
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-4"
+              >
+                <div class="text-body-2">
+                  Zotero OAuth ermöglicht Usern, ihre Bibliotheken mit LaTeX-Workspaces zu synchronisieren.
+                  Registriere eine App unter
+                  <a href="https://www.zotero.org/oauth/apps" target="_blank" rel="noopener">
+                    zotero.org/oauth/apps
+                  </a>.
+                  <br>
+                  <strong>Priorität:</strong> .env-Variablen → Datenbank-Fallback
+                </div>
+              </v-alert>
+
+              <!-- Environment Variables Status (read-only) -->
+              <div class="mb-4">
+                <div class="text-subtitle-2 mb-2 d-flex align-center">
+                  <v-icon size="small" class="mr-1">mdi-file-cog</v-icon>
+                  Umgebungsvariablen (.env)
+                  <v-chip
+                    v-if="zoteroStatus.active_source === 'env'"
+                    color="primary"
+                    variant="flat"
+                    size="x-small"
+                    class="ml-2"
+                  >
+                    AKTIV
+                  </v-chip>
+                </div>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      :model-value="zoteroStatus.env?.client_key || '(nicht gesetzt)'"
+                      label="ZOTERO_CLIENT_KEY"
+                      variant="outlined"
+                      density="compact"
+                      readonly
+                      disabled
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      :model-value="zoteroStatus.env?.client_secret_set ? '••••••••' : '(nicht gesetzt)'"
+                      label="ZOTERO_CLIENT_SECRET"
+                      variant="outlined"
+                      density="compact"
+                      readonly
+                      disabled
+                    />
+                  </v-col>
+                </v-row>
+              </div>
+
+              <v-divider class="mb-4" />
+
+              <!-- Database Fallback (editable) -->
+              <div>
+                <div class="text-subtitle-2 mb-2 d-flex align-center">
+                  <v-icon size="small" class="mr-1">mdi-database</v-icon>
+                  Datenbank-Fallback
+                  <v-chip
+                    v-if="zoteroStatus.active_source === 'database'"
+                    color="primary"
+                    variant="flat"
+                    size="x-small"
+                    class="ml-2"
+                  >
+                    AKTIV
+                  </v-chip>
+                  <v-spacer />
+                  <LBtn
+                    v-if="zoteroDbHasChanges"
+                    variant="primary"
+                    size="small"
+                    :loading="savingZotero"
+                    prepend-icon="mdi-content-save"
+                    @click="saveZoteroSettings"
+                  >
+                    Speichern
+                  </LBtn>
+                </div>
+
+                <v-switch
+                  v-model="zoteroDb.enabled"
+                  label="Datenbank-Fallback aktivieren"
+                  color="primary"
+                  hide-details
+                  density="compact"
+                  class="mb-3"
+                  :disabled="zoteroStatus.env?.configured"
+                />
+
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="zoteroDb.client_key"
+                      label="Client Key"
+                      variant="outlined"
+                      density="comfortable"
+                      hint="Von zotero.org/oauth/apps"
+                      persistent-hint
+                      :disabled="!zoteroDb.enabled || zoteroStatus.env?.configured"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="zoteroDb.client_secret"
+                      :label="zoteroStatus.database?.client_secret_set ? 'Client Secret (gesetzt)' : 'Client Secret'"
+                      :type="showSecret ? 'text' : 'password'"
+                      variant="outlined"
+                      density="comfortable"
+                      :placeholder="zoteroStatus.database?.client_secret_set ? '••••••••' : ''"
+                      hint="Leer lassen um bestehendes Secret beizubehalten"
+                      persistent-hint
+                      :disabled="!zoteroDb.enabled || zoteroStatus.env?.configured"
+                    >
+                      <template #append-inner>
+                        <v-btn
+                          icon
+                          variant="text"
+                          size="small"
+                          @click="showSecret = !showSecret"
+                        >
+                          <v-icon>{{ showSecret ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+                        </v-btn>
+                      </template>
+                    </v-text-field>
+                  </v-col>
+                </v-row>
+
+                <v-alert
+                  v-if="zoteroStatus.env?.configured"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-3"
+                >
+                  .env-Variablen sind gesetzt und haben Priorität. Datenbank-Einstellungen werden ignoriert.
+                </v-alert>
+              </div>
+            </v-card-text>
+          </v-card>
+
           <!-- Last Updated Info -->
           <div v-if="settings.updated_at" class="text-caption text-medium-emphasis mt-4">
             Zuletzt aktualisiert: {{ formatDate(settings.updated_at) }}
@@ -170,6 +335,9 @@ import axios from 'axios'
 
 const loading = ref(true)
 const saving = ref(false)
+const savingZotero = ref(false)
+const showSecret = ref(false)
+
 const snackbar = reactive({
   show: false,
   text: '',
@@ -188,17 +356,72 @@ const settings = reactive({
 
 const originalSettings = ref({})
 
+// Zotero OAuth state
+const zoteroStatus = reactive({
+  env: { configured: false, client_key: null, client_secret_set: false },
+  database: { enabled: false, configured: false, client_key: '', client_secret_set: false },
+  active_source: 'none',
+  oauth_available: false
+})
+
+const zoteroDb = reactive({
+  enabled: false,
+  client_key: '',
+  client_secret: ''
+})
+
+const originalZoteroDb = ref({})
+
 const hasChanges = computed(() => {
   return JSON.stringify(settings) !== JSON.stringify(originalSettings.value)
+})
+
+const zoteroDbHasChanges = computed(() => {
+  const current = {
+    enabled: zoteroDb.enabled,
+    client_key: zoteroDb.client_key,
+    client_secret: zoteroDb.client_secret
+  }
+  const original = {
+    enabled: originalZoteroDb.value.enabled,
+    client_key: originalZoteroDb.value.client_key,
+    client_secret: ''
+  }
+  return JSON.stringify(current) !== JSON.stringify(original)
+})
+
+const zoteroStatusLabel = computed(() => {
+  if (zoteroStatus.active_source === 'env') return 'Aktiv (.env)'
+  if (zoteroStatus.active_source === 'database') return 'Aktiv (DB)'
+  return 'Nicht konfiguriert'
 })
 
 async function loadSettings() {
   loading.value = true
   try {
-    const response = await axios.get('/api/admin/system/settings')
-    if (response.data.success) {
-      Object.assign(settings, response.data.settings)
-      originalSettings.value = { ...response.data.settings }
+    // Load both settings in parallel
+    const [settingsRes, zoteroRes] = await Promise.all([
+      axios.get('/api/admin/system/settings'),
+      axios.get('/api/admin/system/zotero-oauth').catch(() => ({ data: { success: false } }))
+    ])
+
+    if (settingsRes.data.success) {
+      Object.assign(settings, settingsRes.data.settings)
+      originalSettings.value = { ...settingsRes.data.settings }
+    }
+
+    if (zoteroRes.data.success) {
+      const z = zoteroRes.data.zotero_oauth
+      Object.assign(zoteroStatus, z)
+
+      // Set editable database fields
+      zoteroDb.enabled = z.database?.enabled || false
+      zoteroDb.client_key = z.database?.client_key || ''
+      zoteroDb.client_secret = ''
+      originalZoteroDb.value = {
+        enabled: z.database?.enabled || false,
+        client_key: z.database?.client_key || ''
+      }
     }
   } catch (error) {
     console.error('Failed to load system settings:', error)
@@ -236,6 +459,47 @@ async function saveSettings() {
     snackbar.show = true
   } finally {
     saving.value = false
+  }
+}
+
+async function saveZoteroSettings() {
+  savingZotero.value = true
+  try {
+    const payload = {
+      enabled: zoteroDb.enabled,
+      client_key: zoteroDb.client_key
+    }
+    // Only send client_secret if user entered a new one
+    if (zoteroDb.client_secret) {
+      payload.client_secret = zoteroDb.client_secret
+    }
+
+    const response = await axios.patch('/api/admin/system/zotero-oauth', payload)
+
+    if (response.data.success) {
+      const z = response.data.zotero_oauth
+      Object.assign(zoteroStatus, z)
+
+      // Reset editable fields
+      zoteroDb.enabled = z.database?.enabled || false
+      zoteroDb.client_key = z.database?.client_key || ''
+      zoteroDb.client_secret = ''
+      originalZoteroDb.value = {
+        enabled: z.database?.enabled || false,
+        client_key: z.database?.client_key || ''
+      }
+
+      snackbar.text = 'Zotero-Einstellungen gespeichert'
+      snackbar.color = 'success'
+      snackbar.show = true
+    }
+  } catch (error) {
+    console.error('Failed to save Zotero OAuth settings:', error)
+    snackbar.text = 'Fehler beim Speichern der Zotero-Einstellungen'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    savingZotero.value = false
   }
 }
 

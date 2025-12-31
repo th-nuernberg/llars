@@ -75,6 +75,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.oncoco import oncoco_bp
     app.register_blueprint(oncoco_bp)
 
+    # AI Writing Assistant
+    from routes.ai_writing import ai_writing_bp
+    app.register_blueprint(ai_writing_bp)
+
     # ============================================================
     # Document & Knowledge Management
     # ============================================================
@@ -94,6 +98,10 @@ def register_all_blueprints(app: Flask) -> None:
     # LaTeX Collab
     from routes.latex_collab import latex_collab_bp
     app.register_blueprint(latex_collab_bp)
+
+    # Zotero Integration (for LaTeX Collab)
+    from routes.zotero import zotero_bp
+    app.register_blueprint(zotero_bp)
 
     # Anonymize (offline pseudonymization)
     from routes.anonymize import anonymize_bp
@@ -145,6 +153,7 @@ def get_blueprint_info() -> dict:
             {'name': 'llm', 'prefix': '/api/llm', 'description': 'LLM model management'},
             {'name': 'judge', 'prefix': '/api/judge', 'description': 'LLM-as-Judge automated evaluation'},
             {'name': 'oncoco', 'prefix': '/api/oncoco', 'description': 'OnCoCo analysis'},
+            {'name': 'ai_writing', 'prefix': '/api/ai-writing', 'description': 'AI writing assistant for LaTeX/Markdown'},
         ],
         'knowledge_management': [
             {'name': 'rag', 'prefix': '/api/rag', 'description': 'RAG document management and search'},
@@ -152,6 +161,7 @@ def get_blueprint_info() -> dict:
             {'name': 'crawler', 'prefix': '/api/crawler', 'description': 'Web crawler'},
             {'name': 'markdown_collab', 'prefix': '/api/markdown-collab', 'description': 'Markdown Collab workspaces and documents'},
             {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
+            {'name': 'zotero', 'prefix': '/api/zotero', 'description': 'Zotero reference manager integration'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
         ],
         'projects': [

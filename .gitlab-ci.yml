@@ -117,7 +117,7 @@ test:unit:backend:
     TESTING: "true"
     AUTHENTIK_DISABLED: "true"
   script:
-    - pip install -r requirements.txt
+    - pip install -r app/requirements.txt
     - pip install pytest pytest-cov pytest-flask
     - echo "Running Backend Unit Tests..."
     - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing || true
@@ -172,7 +172,7 @@ test:integration:
     TESTING: "true"
     AUTHENTIK_DISABLED: "true"
   script:
-    - pip install -r requirements.txt
+    - pip install -r app/requirements.txt
     - pip install pytest pytest-flask
     - echo "Running Integration Tests..."
     - pytest tests/integration/ -v || true
@@ -465,7 +465,7 @@ security:scan:
   script:
     - pip install pip-audit safety
     - echo "Running security scan..."
-    - pip-audit -r requirements.txt || true
+    - pip-audit -r app/requirements.txt || true
     - cd llars-frontend && npm audit --audit-level=high || true
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

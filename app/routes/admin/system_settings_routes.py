@@ -2,6 +2,8 @@
 Admin routes for system-wide settings management.
 """
 
+import os
+
 from flask import jsonify, request
 
 from db.db import db
@@ -10,6 +12,7 @@ from decorators.permission_decorator import require_permission
 from auth.auth_utils import AuthUtils
 from routes.auth import data_bp
 from services.system_settings_service import invalidate_cache
+from services.zotero.encryption import encrypt_api_key
 
 
 def _get_or_create_settings() -> SystemSettings:
@@ -102,5 +105,144 @@ def update_system_settings():
     return jsonify({
         'success': True,
         'settings': settings.to_dict(),
+        'updated_fields': updated_fields
+    })
+
+
+# ============================================================
+# Zotero OAuth Settings
+# ============================================================
+
+
+def _get_zotero_oauth_status():
+    """
+    Get Zotero OAuth status from both env and database.
+    Returns info about which source is active.
+    """
+    # Check environment variables
+    env_key = os.environ.get("ZOTERO_CLIENT_KEY", "").strip()
+    env_secret = os.environ.get("ZOTERO_CLIENT_SECRET", "").strip()
+    env_configured = bool(env_key and env_secret)
+
+    # Check database
+    settings = _get_or_create_settings()
+    db_configured = bool(
+        settings.zotero_oauth_enabled and
+        settings.zotero_client_key and
+        settings.zotero_client_secret_encrypted
+    )
+
+    # Determine active source
+    if env_configured:
+        active_source = "env"
+    elif db_configured:
+        active_source = "database"
+    else:
+        active_source = "none"
+
+    return {
+        "env": {
+            "configured": env_configured,
+            "client_key": env_key if env_configured else None,
+            # Never expose secrets, just show if set
+            "client_secret_set": bool(env_secret),
+        },
+        "database": {
+            "enabled": settings.zotero_oauth_enabled,
+            "configured": db_configured,
+            "client_key": settings.zotero_client_key or "",
+            "client_secret_set": bool(settings.zotero_client_secret_encrypted),
+        },
+        "active_source": active_source,
+        "oauth_available": active_source != "none",
+    }
+
+
+@data_bp.get("/admin/system/zotero-oauth")
+@require_permission("admin:system:configure")
+def get_zotero_oauth_settings():
+    """
+    Get Zotero OAuth configuration status.
+
+    Shows both environment and database configuration,
+    and indicates which source is currently active.
+    """
+    status = _get_zotero_oauth_status()
+    return jsonify({
+        'success': True,
+        'zotero_oauth': status
+    })
+
+
+@data_bp.patch("/admin/system/zotero-oauth")
+@require_permission("admin:system:configure")
+def update_zotero_oauth_settings():
+    """
+    Update Zotero OAuth configuration in database.
+
+    This is a fallback/override for when env vars are not set.
+    If env vars are set, they take priority over database settings.
+
+    Request body:
+        {
+            "enabled": bool,
+            "client_key": str,
+            "client_secret": str  # Only if changing
+        }
+    """
+    settings = _get_or_create_settings()
+    payload = request.get_json(silent=True) or {}
+
+    if not isinstance(payload, dict):
+        return jsonify({'success': False, 'error': 'JSON object expected'}), 400
+
+    updated_fields = []
+
+    # Update enabled flag
+    if 'enabled' in payload:
+        settings.zotero_oauth_enabled = bool(payload['enabled'])
+        updated_fields.append('zotero_oauth_enabled')
+
+    # Update client key
+    if 'client_key' in payload:
+        client_key = str(payload['client_key']).strip()
+        settings.zotero_client_key = client_key if client_key else None
+        updated_fields.append('zotero_client_key')
+
+    # Update client secret (encrypted)
+    if 'client_secret' in payload:
+        client_secret = str(payload['client_secret']).strip()
+        if client_secret:
+            settings.zotero_client_secret_encrypted = encrypt_api_key(client_secret)
+            updated_fields.append('zotero_client_secret')
+        # Empty string clears the secret
+        elif client_secret == '':
+            settings.zotero_client_secret_encrypted = None
+            updated_fields.append('zotero_client_secret')
+
+    db.session.commit()
+    invalidate_cache()
+
+    # Log the event
+    try:
+        from services.system_event_service import SystemEventService
+
+        acting_username = AuthUtils.extract_username_without_validation() or "admin"
+        SystemEventService.log_event(
+            event_type="admin.zotero_oauth_updated",
+            severity="info",
+            username=acting_username,
+            entity_type="system",
+            entity_id="zotero_oauth",
+            message=f"Zotero OAuth settings updated by '{acting_username}'",
+            details={"updated_fields": updated_fields},
+        )
+    except Exception:
+        pass
+
+    status = _get_zotero_oauth_status()
+    return jsonify({
+        'success': True,
+        'zotero_oauth': status,
         'updated_fields': updated_fields
     })

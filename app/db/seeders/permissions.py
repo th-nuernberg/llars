@@ -135,6 +135,13 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Teilen von LaTeX Collab Dateien und Ordnern'
         },
+        # Feature: LaTeX Collab AI
+        {
+            'permission_key': 'feature:latex_collab:ai',
+            'display_name': 'LaTeX Collab KI-Assistent',
+            'category': 'feature',
+            'description': 'Erlaubt die Nutzung des KI-Schreibassistenten (Ghost Text, @-Commands, Chat, Zitationssuche)'
+        },
         # Admin: Permissions Management
         {
             'permission_key': 'admin:permissions:manage',
@@ -349,6 +356,7 @@ def initialize_permissions(db):
                 'feature:latex_collab:view',
                 'feature:latex_collab:edit',
                 'feature:latex_collab:share',
+                'feature:latex_collab:ai',
                 # Anonymisierung
                 'feature:anonymize:view',
                 # KAIMO
@@ -378,6 +386,7 @@ def initialize_permissions(db):
                 'feature:latex_collab:view',
                 'feature:latex_collab:edit',
                 'feature:latex_collab:share',
+                'feature:latex_collab:ai',
                 # RAG Dokumente
                 'feature:rag:view',
                 'feature:rag:edit',

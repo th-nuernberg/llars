@@ -1,12 +1,14 @@
 # LLARS GitLab CI/CD Setup
 
-**Version:** 1.0 | **Stand:** 30. Dezember 2025
+**Version:** 2.0 | **Stand:** 1. Januar 2026
 
 ---
 
 ## Übersicht
 
 Dieses Dokument beschreibt die Einrichtung der GitLab CI/CD Pipeline für automatisches Testing und Deployment.
+
+**Wichtig:** LLARS verwendet einen **Shell Runner direkt auf dem Server** - kein SSH für Deployments nötig!
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -53,44 +55,47 @@ Dieses Dokument beschreibt die Einrichtung der GitLab CI/CD Pipeline für automa
 
 ## 1. Voraussetzungen
 
-### Auf dem LLARS Server
+### GitLab Shell Runner auf dem Server
+
+LLARS verwendet einen Shell Runner, der direkt auf dem LLARS Server läuft. Damit entfällt SSH-Konfiguration für Deployments.
 
 ```bash
-# 1. SSH User erstellen (falls nicht vorhanden)
-sudo useradd -m -s /bin/bash llars
-sudo usermod -aG docker llars
+# 1. GitLab Runner installieren
+curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | sudo bash
+sudo apt-get install gitlab-runner
 
-# 2. SSH Key für GitLab CI generieren
-sudo -u llars ssh-keygen -t ed25519 -C "gitlab-ci-deploy" -f /home/llars/.ssh/gitlab_deploy
-# KEIN Passwort setzen!
+# 2. Runner registrieren
+sudo gitlab-runner register
+# URL: https://git.informatik.fh-nuernberg.de/
+# Token: aus GitLab → Settings → CI/CD → Runners
+# Executor: shell
+# Tags: shell
 
-# 3. Public Key zu authorized_keys hinzufügen
-sudo -u llars bash -c 'cat ~/.ssh/gitlab_deploy.pub >> ~/.ssh/authorized_keys'
-sudo chmod 600 /home/llars/.ssh/authorized_keys
+# 3. Runner zur docker Gruppe hinzufügen
+sudo usermod -aG docker gitlab-runner
 
-# 4. Private Key anzeigen (für GitLab)
-sudo cat /home/llars/.ssh/gitlab_deploy
-# Diesen Key in GitLab eintragen (siehe unten)
-
-# 5. Projekt-Verzeichnis vorbereiten
-sudo mkdir -p /var/llars/backups
-sudo chown -R llars:llars /var/llars
-
-# 6. Git Repository klonen
-sudo -u llars git clone https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars.git /var/llars
-cd /var/llars
-sudo -u llars cp .env.template.production .env
-# .env anpassen!
+# 4. Projekt-Berechtigungen setzen
+sudo chown -R :gitlab-runner /var/llars
+sudo chmod -R g+rwX /var/llars
+sudo find /var/llars -type d -exec chmod g+s {} \;  # SetGID für neue Dateien
 ```
 
-### Known Hosts ermitteln
+### Runner-Konfiguration
 
 ```bash
-# Auf dem lokalen Rechner oder einem CI Runner
-ssh-keyscan -H llars.example.com
-
-# Ausgabe kopieren für SSH_KNOWN_HOSTS Variable
+# /etc/gitlab-runner/config.toml
+[[runners]]
+  name = "llars-server-shell"
+  url = "https://git.informatik.fh-nuernberg.de/"
+  executor = "shell"
+  [runners.custom_build_dir]
+  [runners.cache]
+    [runners.cache.s3]
+    [runners.cache.gcs]
+    [runners.cache.azure]
 ```
+
+**Wichtig:** Der Shell Runner muss mit `tags = ["shell"]` und `run_untagged = false` konfiguriert werden, damit er nur Jobs mit dem `shell` Tag annimmt.
 
 ---
 
@@ -98,15 +103,13 @@ ssh-keyscan -H llars.example.com
 
 Gehe zu: **Settings → CI/CD → Variables**
 
-### Erforderliche Variablen
+### Erforderliche Variablen (für Shell Runner)
 
-| Variable | Typ | Wert | Protected | Masked |
-|----------|-----|------|-----------|--------|
-| `SSH_PRIVATE_KEY` | Variable | Inhalt von `gitlab_deploy` (Private Key) | ✓ | ✓ |
-| `SSH_KNOWN_HOSTS` | Variable | Ausgabe von `ssh-keyscan` | ✓ | ✗ |
-| `LLARS_SERVER_HOST` | Variable | `llars.example.com` oder IP | ✓ | ✗ |
-| `LLARS_SERVER_USER` | Variable | `llars` | ✓ | ✗ |
-| `LLARS_DEPLOY_PATH` | Variable | `/var/llars` | ✓ | ✗ |
+Bei Shell Runner auf dem Server sind **keine SSH-Variablen nötig**! Die Deploy-Jobs laufen direkt auf dem Server.
+
+| Variable | Typ | Beschreibung | Protected | Masked |
+|----------|-----|--------------|-----------|--------|
+| (keine) | - | Shell Runner benötigt keine Variablen | - | - |
 
 ### Optionale Variablen
 
@@ -115,30 +118,6 @@ Gehe zu: **Settings → CI/CD → Variables**
 | `DEPLOY_TOKEN` | Variable | Für private Docker Registry |
 | `SLACK_WEBHOOK` | Variable | Für Deployment-Benachrichtigungen |
 | `SENTRY_DSN` | Variable | Für Error Tracking |
-
-### Variable einrichten (Schritt für Schritt)
-
-1. **SSH_PRIVATE_KEY:**
-   ```
-   -----BEGIN OPENSSH PRIVATE KEY-----
-   b3BlbnNzaC1rZXktdjEAAAAABG5vbmU...
-   ...
-   -----END OPENSSH PRIVATE KEY-----
-   ```
-
-2. **SSH_KNOWN_HOSTS:**
-   ```
-   llars.example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA...
-   ```
-
-3. **LLARS_SERVER_HOST:**
-   ```
-   llars.example.com
-   ```
-   oder
-   ```
-   192.168.1.100
-   ```
 
 ---
 
@@ -154,11 +133,11 @@ lint:frontend:  # JavaScript: eslint
 **Wann:** Bei jedem Push und Merge Request
 **Failure:** Erlaubt (allow_failure: true)
 
-### Stage 2: Test (~5-15 Minuten)
+### Stage 2: Test (~3-5 Minuten)
 
 ```yaml
 test:unit:backend:     # pytest tests/unit/
-test:unit:frontend:    # npm run test:run
+test:unit:frontend:    # npm run test:run (vitest)
 test:integration:      # pytest tests/integration/
 test:e2e:              # playwright (nur main)
 security:scan:         # pip-audit, npm audit
@@ -169,22 +148,48 @@ security:scan:         # pip-audit, npm audit
 - Integration: Bei MRs und main
 - E2E: Nur main
 
+**Wichtig: Lightweight Test Requirements**
+
+Die Python-Tests verwenden `app/requirements-test.txt` statt `app/requirements.txt`:
+
+```
+Ausgeschlossene Pakete (~3GB gespart):
+- torch
+- transformers
+- sentence-transformers
+- flair
+- langchain-huggingface
+```
+
+Diese schweren ML-Pakete werden in Tests gemockt und sind für Unit/Integration Tests nicht nötig.
+
+**System Dependencies für Python Tests:**
+
+```yaml
+before_script:
+  - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
+  - pip install --upgrade pip
+```
+
 ### Stage 3: Build (~5 Minuten)
 
 ```yaml
 build:docker:   # docker compose build
 ```
 
-**Wann:** Nur auf main Branch
+**Wann:** Nur auf main Branch (nach erfolgreichen Tests)
 
 ### Stage 4: Deploy (~2-5 Minuten)
 
 ```yaml
-deploy:staging:     # Automatisch bei develop
-deploy:production:  # Automatisch bei main
+deploy:staging:     # Automatisch bei develop (Shell Runner)
+deploy:production:  # Automatisch bei main (Shell Runner)
 smoke:test:         # Nach Production Deploy
 rollback:production: # Manuell bei Problemen
 ```
+
+**Shell Runner Jobs:**
+Die Deploy-Jobs laufen mit `tags: [shell]` direkt auf dem LLARS Server.
 
 ---
 
@@ -299,18 +304,35 @@ git push origin main
 
 ## 7. Troubleshooting
 
-### SSH Verbindung schlägt fehl
+### Runner offline
 
 ```bash
-# Prüfe SSH Key Format
-# Der Key muss mit "-----BEGIN" beginnen und mit "-----END" enden
+# Auf dem Server:
+sudo gitlab-runner status
+sudo systemctl restart gitlab-runner
 
-# Teste manuell:
-ssh -i /path/to/key llars@llars.example.com
+# Logs prüfen
+sudo journalctl -u gitlab-runner -f
+```
 
-# Prüfe Berechtigungen auf Server:
-ls -la /home/llars/.ssh/
-# authorized_keys muss 600 sein
+### test:unit:backend schlägt fehl
+
+```bash
+# Prüfe ob requirements-test.txt verwendet wird (nicht requirements.txt!)
+# Die schweren ML-Pakete (torch, flair) dürfen NICHT installiert werden
+
+# Lokal testen:
+pip install -r app/requirements-test.txt
+pytest tests/unit/ -v
+```
+
+### Permission denied bei Deploy
+
+```bash
+# Berechtigungen für gitlab-runner setzen
+sudo chown -R :gitlab-runner /var/llars
+sudo chmod -R g+rwX /var/llars
+sudo find /var/llars -type d -exec chmod g+s {} \;
 ```
 
 ### Docker Build schlägt fehl
@@ -330,10 +352,19 @@ docker system prune -a  # Vorsicht: löscht alle ungenutzten Images!
 ```bash
 # Auf dem Server:
 docker compose ps
-docker compose logs flask-service --tail 100
+docker compose logs backend-flask-service --tail 100
 
 # Manueller Health Check:
-curl http://localhost:55080/api/health
+curl http://localhost/auth/health_check
+```
+
+### pip install timeout
+
+Die ML-Pakete (torch ~2GB, flair, transformers) sollten in `requirements-test.txt` ausgeschlossen sein. Falls nicht:
+
+```bash
+# requirements-test.txt neu generieren:
+cat app/requirements.txt | grep -vE "^(torch|flair|sentence-transformers|transformers|langchain-huggingface)==" > app/requirements-test.txt
 ```
 
 ### Pipeline hängt
@@ -342,7 +373,8 @@ curl http://localhost:55080/api/health
 # In GitLab: Pipeline → Cancel
 
 # Prüfe Runner Status:
-# Settings → CI/CD → Runners
+sudo gitlab-runner list
+sudo gitlab-runner verify
 ```
 
 ---
@@ -424,34 +456,45 @@ notify:failure:
 
 ## 10. Checkliste: CI/CD Einrichtung
 
-### Einmalige Einrichtung
+### Einmalige Einrichtung (Server)
 
-- [ ] SSH User `llars` auf Server erstellt
-- [ ] SSH Key generiert (ohne Passwort)
-- [ ] Public Key zu authorized_keys hinzugefügt
+- [ ] GitLab Runner installiert (`gitlab-runner`)
+- [ ] Runner registriert mit Shell Executor
+- [ ] Runner-Tags: `shell`, `run_untagged = false`
+- [ ] Runner zur `docker` Gruppe hinzugefügt
 - [ ] `/var/llars` Verzeichnis erstellt
 - [ ] Git Repository geklont
 - [ ] `.env` Datei konfiguriert
-- [ ] Docker läuft auf Server
+- [ ] Berechtigungen: `gitlab-runner` Gruppe hat Schreibzugriff
 
 ### GitLab Konfiguration
 
-- [ ] `SSH_PRIVATE_KEY` Variable gesetzt
-- [ ] `SSH_KNOWN_HOSTS` Variable gesetzt
-- [ ] `LLARS_SERVER_HOST` Variable gesetzt
-- [ ] `LLARS_SERVER_USER` Variable gesetzt
-- [ ] `LLARS_DEPLOY_PATH` Variable gesetzt
-- [ ] Branch Protection konfiguriert
+- [ ] Runner in GitLab sichtbar (Settings → CI/CD → Runners)
+- [ ] Branch Protection konfiguriert (main: nur Maintainers)
+- [ ] `requirements-test.txt` vorhanden (ohne torch/flair)
 
 ### Test-Pipeline
 
-- [ ] Erste Pipeline auf develop erfolgreich
-- [ ] Staging Deployment funktioniert
-- [ ] Erste Pipeline auf main erfolgreich
-- [ ] Production Deployment funktioniert
-- [ ] Smoke Tests bestanden
-- [ ] Rollback getestet
+- [ ] lint:backend/frontend erfolgreich (oder allow_failure)
+- [ ] test:unit:backend erfolgreich
+- [ ] test:unit:frontend erfolgreich
+- [ ] test:integration erfolgreich
+- [ ] test:e2e erfolgreich
+- [ ] build:docker erfolgreich
+- [ ] deploy:production erfolgreich
+- [ ] smoke:test erfolgreich
+
+### Verifizierung
+
+```bash
+# Pipeline-Status prüfen
+open "https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars/-/pipelines"
+
+# Server-Health prüfen (auf dem Server)
+curl http://localhost/auth/health_check
+docker compose ps
+```
 
 ---
 
-**Letzte Aktualisierung:** 30. Dezember 2025
+**Letzte Aktualisierung:** 1. Januar 2026

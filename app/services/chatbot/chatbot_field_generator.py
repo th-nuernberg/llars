@@ -135,14 +135,30 @@ class ChatbotFieldGenerator:
             'user_template': "Generiere einen freundlichen Anzeigenamen für einen Chatbot basierend auf:\n- URL: {url}\n- {collection_info}\n\nAntworte NUR mit dem Namen, ohne Erklärung."
         },
         'system_prompt': {
-            'system': "Du bist ein Experte für das Erstellen von System-Prompts für Chatbots. Erstelle einen professionellen System-Prompt.",
-            'user_template': """Erstelle einen System-Prompt für einen Chatbot mit folgenden Eigenschaften:
-- Basiert auf Inhalten von: {url}
-- {collection_info}
-- Soll hilfreich und präzise antworten
-- Soll bei Unsicherheit ehrlich sagen, wenn er keine Antwort weiß
+            'system': """Du bist ein Experte für das Erstellen von System-Prompts für RAG-basierte Chatbots.
 
-Der Prompt sollte 2-3 Absätze lang sein und die Persönlichkeit des Bots definieren."""
+WICHTIGE REGELN:
+1. Verwende NUR Informationen aus dem bereitgestellten Kontext (URL und Dokumentbeschreibungen)
+2. Erfinde KEINE Details über die Organisation, die nicht im Kontext stehen
+3. Halte den Prompt generisch genug, wenn spezifische Informationen fehlen
+4. Der Chatbot hat Zugriff auf eine Wissensbasis und kann daraus zitieren
+
+Erstelle einen professionellen, aber nicht übertriebenen System-Prompt.""",
+            'user_template': """Erstelle einen System-Prompt für einen RAG-Chatbot basierend auf folgendem Kontext:
+
+**Website:** {url}
+
+**Verfügbare Wissensbasis:**
+{collection_info}
+
+**Anforderungen an den System-Prompt:**
+1. Definiere die Rolle des Chatbots basierend auf den Dokumentthemen
+2. Der Bot soll hilfreich und präzise antworten
+3. Bei Unsicherheit ehrlich sagen, dass er die Antwort nicht weiß
+4. Nutzer ermutigen, spezifische Fragen zu stellen
+5. KEINE erfundenen Details über die Organisation
+
+Der Prompt sollte 2-3 Absätze lang sein. Beginne mit "**System-Prompt:**" """
         },
         'welcome_message': {
             'system': "Du bist ein Experte für Chatbot-Kommunikation. Erstelle eine einladende Willkommensnachricht.",
@@ -520,15 +536,20 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
             raise
 
     @staticmethod
-    def _get_collection_context(chatbot: Chatbot) -> str:
+    def _get_collection_context(chatbot: Chatbot, max_docs: int = 10, include_descriptions: bool = True) -> str:
         """
-        Get context information from the chatbot's collection.
+        Get rich context information from the chatbot's collection.
+
+        Includes document titles AND descriptions/content summaries to provide
+        meaningful context for LLM-based field generation (especially system prompts).
 
         Args:
             chatbot: The chatbot instance
+            max_docs: Maximum number of documents to include (default: 10)
+            include_descriptions: Whether to include document descriptions (default: True)
 
         Returns:
-            String with collection context
+            String with detailed collection context
         """
         if not chatbot.primary_collection_id:
             return "Noch keine Dokumente vorhanden"
@@ -537,20 +558,47 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         if not collection:
             return "Noch keine Dokumente vorhanden"
 
-        # Get sample documents
+        # Get sample documents with more context
         links = CollectionDocumentLink.query.filter_by(
             collection_id=collection.id
-        ).limit(5).all()
+        ).limit(max_docs).all()
 
         if not links:
             return "Noch keine Dokumente vorhanden"
 
-        doc_titles = [
-            link.document.title or link.document.filename
-            for link in links if link.document
-        ]
+        # Build rich context with titles and descriptions
+        context_parts = []
+        seen_titles = set()  # Deduplicate similar titles
 
-        return f"Die Wissensbasis enthält Dokumente wie: {', '.join(doc_titles)}"
+        for link in links:
+            if not link.document:
+                continue
+
+            title = link.document.title or link.document.filename
+            # Skip duplicate/very similar titles
+            title_key = title[:50].lower()
+            if title_key in seen_titles:
+                continue
+            seen_titles.add(title_key)
+
+            if include_descriptions and link.document.description:
+                # Truncate description to 200 chars for context
+                desc = link.document.description[:200]
+                if len(link.document.description) > 200:
+                    desc += "..."
+                context_parts.append(f"- \"{title}\": {desc}")
+            else:
+                context_parts.append(f"- \"{title}\"")
+
+        if not context_parts:
+            return "Noch keine Dokumente vorhanden"
+
+        # Build summary
+        doc_count = collection.document_count or len(links)
+        summary = f"Die Wissensbasis enthält {doc_count} Dokumente. Beispiele:\n"
+        summary += "\n".join(context_parts[:8])  # Limit to 8 for prompt length
+
+        return summary
 
     @staticmethod
     def _generate_with_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7) -> str:

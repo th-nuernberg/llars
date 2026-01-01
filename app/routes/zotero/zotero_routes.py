@@ -205,7 +205,6 @@ def oauth_callback():
         logger.warning("Zotero OAuth callback without user_id in session")
         return redirect(f"{_get_base_url()}/LatexCollab?zotero_error=session_expired")
 
-    from db.tables import User
     user = User.query.get(user_id)
     if not user:
         logger.warning(f"Zotero OAuth callback: user {user_id} not found")

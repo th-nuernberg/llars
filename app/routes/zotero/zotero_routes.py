@@ -169,9 +169,11 @@ def start_oauth():
         # Fetch request token
         fetch_response = oauth.fetch_request_token(ZOTERO_REQUEST_TOKEN_URL)
 
-        # Store tokens in session for callback
+        # Store tokens and user_id in session for callback
+        # (callback comes as browser redirect without Bearer token)
         session["zotero_oauth_token"] = fetch_response.get("oauth_token")
         session["zotero_oauth_token_secret"] = fetch_response.get("oauth_token_secret")
+        session["zotero_oauth_user_id"] = user.id
 
         # Get authorization URL
         authorization_url = oauth.authorization_url(ZOTERO_AUTHORIZE_URL)
@@ -187,15 +189,27 @@ def start_oauth():
 
 
 @zotero_bp.route("/connect/oauth/callback", methods=["GET"])
-@authentik_required
 @handle_api_errors(logger_name="zotero")
 def oauth_callback():
     """
     OAuth callback handler - exchanges tokens and saves connection.
 
+    Note: No @authentik_required - callback comes as browser redirect from Zotero
+    without Bearer token. User is identified via session (set in start_oauth).
+
     Redirects user back to frontend with status.
     """
-    user = g.authentik_user
+    # Get user from session (stored during start_oauth)
+    user_id = session.get("zotero_oauth_user_id")
+    if not user_id:
+        logger.warning("Zotero OAuth callback without user_id in session")
+        return redirect(f"{_get_base_url()}/LatexCollab?zotero_error=session_expired")
+
+    from db.tables import User
+    user = User.query.get(user_id)
+    if not user:
+        logger.warning(f"Zotero OAuth callback: user {user_id} not found")
+        return redirect(f"{_get_base_url()}/LatexCollab?zotero_error=user_not_found")
 
     oauth_token = session.get("zotero_oauth_token")
     oauth_token_secret = session.get("zotero_oauth_token_secret")
@@ -241,6 +255,7 @@ def oauth_callback():
         # Clear session tokens
         session.pop("zotero_oauth_token", None)
         session.pop("zotero_oauth_token_secret", None)
+        session.pop("zotero_oauth_user_id", None)
 
         logger.info(f"User {user.username} connected Zotero account {zotero_username}")
         return redirect(f"{_get_base_url()}/LatexCollab?zotero_connected=true")

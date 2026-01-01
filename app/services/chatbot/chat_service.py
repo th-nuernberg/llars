@@ -832,7 +832,7 @@ class ChatService:
         if not self.rag_pipeline:
             return "", []
 
-        final_k = max(1, int(self.chatbot.rag_retrieval_k or 4))
+        final_k = max(1, int(self.chatbot.rag_retrieval_k or 8))
         # Fetch more candidates for reranking - cross-encoder can surface relevant docs
         # that have lower vector scores but higher semantic relevance
         candidate_k = max(final_k * 8, 32)

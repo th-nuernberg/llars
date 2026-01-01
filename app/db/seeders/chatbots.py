@@ -60,7 +60,7 @@ def initialize_default_chatbots(db):
             max_tokens=2048,
             top_p=0.9,
             rag_enabled=True,
-            rag_retrieval_k=4,
+            rag_retrieval_k=8,
             rag_min_relevance=0.3,
             rag_include_sources=True,
             welcome_message=chatbot_welcome,

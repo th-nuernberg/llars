@@ -262,7 +262,7 @@ class ChatbotService:
             max_tokens=data.get('max_tokens', 2048),
             top_p=data.get('top_p', 0.9),
             rag_enabled=data.get('rag_enabled', True),
-            rag_retrieval_k=data.get('rag_retrieval_k', 4),
+            rag_retrieval_k=data.get('rag_retrieval_k', 8),
             rag_min_relevance=data.get('rag_min_relevance', 0.3),
             rag_include_sources=data.get('rag_include_sources', True),
             rag_reranker_model=data.get('rag_reranker_model'),  # None = use system default

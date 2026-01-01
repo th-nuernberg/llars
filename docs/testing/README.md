@@ -130,9 +130,9 @@ docs/testing/
 |---------|-------|--------|
 | **Backend Unit Tests** | 768 | ✅ Implementiert |
 | **Backend Integration Tests** | 342 | ✅ Implementiert |
-| **Frontend Component Tests** | 1.338 | ✅ Implementiert |
+| **Frontend Component Tests** | 1.733 | ✅ Implementiert |
 | **E2E Tests (Playwright)** | 0 | ⏳ Geplant |
-| **Gesamt** | **2.448** | ~95% ✅ |
+| **Gesamt** | **2.843** | ~95% ✅ |
 
 ### Implementierte Backend Test-Dateien
 
@@ -183,7 +183,7 @@ tests/
 llars-frontend/tests/
 ├── setup.js                                     # ✅ Vitest Setup
 ├── utils/test-helpers.js                        # ✅ Test Utilities
-├── components/                                  # ✅ 563 Tests
+├── components/                                  # ✅ 958 Tests
 │   ├── LBtn.spec.js                             # 30 Tests (COMP_BTN_001-030)
 │   ├── LTag.spec.js                             # 25 Tests (COMP_TAG_001-025)
 │   ├── LSlider.spec.js                          # 25 Tests (COMP_SLD_001-025)
@@ -197,7 +197,15 @@ llars-frontend/tests/
 │   ├── LMessage.spec.js                         # 45 Tests (COMP_MSG_001-045)
 │   ├── LThemeToggle.spec.js                     # 40 Tests (COMP_THM_001-040)
 │   ├── LInfoTooltip.spec.js                     # 40 Tests (COMP_ITT_001-040)
-│   └── LMessageList.spec.js                     # 45 Tests (COMP_MLS_001-045)
+│   ├── LMessageList.spec.js                     # 45 Tests (COMP_MLS_001-045)
+│   ├── LUserSearch.spec.js                      # 50 Tests (COMP_USR_001-050)
+│   ├── LGauge.spec.js                           # 55 Tests (COMP_GAU_001-055)
+│   ├── LChart.spec.js                           # 50 Tests (COMP_CHT_001-050)
+│   ├── LEvaluationLayout.spec.js                # 55 Tests (COMP_EVL_001-055)
+│   ├── LEvaluationStatus.spec.js                # 45 Tests (COMP_EVS_001-045)
+│   ├── KatexFormula.spec.js                     # 40 Tests (COMP_KTX_001-040)
+│   ├── AppSidebar.spec.js                       # 55 Tests (COMP_SDB_001-055)
+│   └── AnalyticsConsentBanner.spec.js           # 45 Tests (COMP_ACB_001-045)
 └── composables/                                 # ✅ 775 Tests
     ├── useAuth.spec.js                          # 60 Tests (AUTH_001-060)
     ├── usePermissions.spec.js                   # 55 Tests (PERM_001-055)
@@ -218,7 +226,7 @@ llars-frontend/tests/
 
 | Dokument | Inhalt | Geplant | Implementiert |
 |----------|--------|---------|---------------|
-| 06_UI_KOMPONENTEN | 20+ LLARS Komponenten | ~80 | ✅ 563 (14 Komponenten) |
+| 06_UI_KOMPONENTEN | 20+ LLARS Komponenten | ~80 | ✅ 958 (22 Komponenten) |
 | 07_DIALOGE_MODALS | 10 Dialog-Komponenten | ~50 | ⏳ 0 |
 | 08_TOOLTIPS_QUICKLINKS | 100+ Tooltips, Quicklinks | ~135 | ⏳ 0 |
 | 09_ACCESSIBILITY | WCAG 2.1 AA, Keyboard | ~75 | ⏳ 0 |
@@ -226,9 +234,9 @@ llars-frontend/tests/
 | 11_VISUAL_RESPONSIVE | Breakpoints, Dark Mode | ~50 | ⏳ 0 |
 | Composables | useAuth, usePermissions, etc. | ~120 | ✅ 775 (13 Composables) |
 
-**Implementierte Komponenten (14/22):** LBtn, LTag, LSlider, LCard, LTabs, LTooltip, LActionGroup, LIconBtn, LAvatar, LLoading, LMessage, LThemeToggle, LInfoTooltip, LMessageList
+**Implementierte Komponenten (22/22):** ✅ Alle Komponenten getestet - LBtn, LTag, LSlider, LCard, LTabs, LTooltip, LActionGroup, LIconBtn, LAvatar, LLoading, LMessage, LThemeToggle, LInfoTooltip, LMessageList, LUserSearch, LGauge, LChart, LEvaluationLayout, LEvaluationStatus, KatexFormula, AppSidebar, AnalyticsConsentBanner
 
-**Fehlende Komponenten (8):** LChart, LGauge, LUserSearch, LEvaluationLayout, LEvaluationStatus, KatexFormula, AppSidebar, AnalyticsConsentBanner
+**Fehlende Komponenten:** Keine - alle Komponenten sind vollständig getestet!
 
 **Implementierte Composables (13/13):** ✅ Alle Composables getestet - useAuth, usePermissions, usePanelResize, useAppTheme, useMobile, useSkeletonLoading, useBuilderValidation, useBuilderState, useWizardSession, useKIAStatusCache, useAnalyticsMetrics, useFieldGenerationService, useSplitPaneResize
 
@@ -266,4 +274,4 @@ Bei Fragen zur Testdokumentation wende dich an das Entwicklungsteam.
 
 ---
 
-**Letzte Aktualisierung:** 31. Dezember 2025
+**Letzte Aktualisierung:** 1. Januar 2026

@@ -1,8 +1,8 @@
 <template>
-  <div :class="{ 'node-new': isRecentlyAdded }">
+  <div :class="{ 'node-new': isRecentlyAdded, 'node-zotero': node.is_zotero_managed }">
     <div
       class="tree-row"
-      :class="{ selected: selectedId === node.id }"
+      :class="{ selected: selectedId === node.id, 'zotero-managed': node.is_zotero_managed }"
       :style="{ paddingLeft: `${12 + level * 14}px` }"
       @click="$emit('select', node.id)"
     >
@@ -19,15 +19,29 @@
       </button>
       <span v-else class="expand-spacer" />
 
-      <v-icon size="20" class="mr-2" :color="node.type === 'folder' ? 'primary' : fileIconColor">
-        {{ node.type === 'folder' ? (isExpanded ? folderOpenIcon : folderIcon) : fileIcon }}
+      <v-icon size="20" class="mr-2" :color="nodeIconColor">
+        {{ nodeIcon }}
       </v-icon>
 
       <span class="tree-title text-truncate">{{ node.title }}</span>
 
+      <!-- Zotero badge for managed files -->
+      <v-chip
+        v-if="node.is_zotero_managed"
+        size="x-small"
+        variant="tonal"
+        color="teal"
+        class="ml-1 zotero-badge"
+        title="Diese Datei wird von Zotero verwaltet und ist schreibgeschützt"
+      >
+        <v-icon size="12" start>mdi-book-open-variant</v-icon>
+        Zotero
+      </v-chip>
+
       <v-spacer />
 
-      <div v-if="canEdit" class="tree-actions" @click.stop>
+      <!-- Hide edit actions for Zotero-managed files -->
+      <div v-if="canEdit && !node.is_zotero_managed" class="tree-actions" @click.stop>
         <v-btn
           v-if="node.type === 'folder'"
           size="x-small"
@@ -150,6 +164,29 @@ const emit = defineEmits(['select', 'toggle', 'create', 'rename', 'remove', 'mov
 
 const isExpanded = computed(() => props.expandedIds.has(props.node.id))
 const isRecentlyAdded = computed(() => props.recentlyAddedIds.has(props.node.id))
+
+// Compute icon based on node type and Zotero status
+const nodeIcon = computed(() => {
+  if (props.node.type === 'folder') {
+    return isExpanded.value ? props.folderOpenIcon : props.folderIcon
+  }
+  // Zotero-managed .bib files get a special icon
+  if (props.node.is_zotero_managed) {
+    return 'mdi-bookshelf'
+  }
+  return props.fileIcon
+})
+
+const nodeIconColor = computed(() => {
+  if (props.node.type === 'folder') {
+    return 'primary'
+  }
+  // Zotero-managed files get teal color
+  if (props.node.is_zotero_managed) {
+    return 'teal'
+  }
+  return props.fileIconColor
+})
 
 function emitMove(evt, parentId) {
   const moved = evt?.moved
@@ -275,5 +312,32 @@ function emitMove(evt, parentId) {
     background: transparent;
     box-shadow: none;
   }
+}
+
+/* Zotero-managed file styles */
+.node-zotero .tree-row {
+  border-left: 3px solid #009688;
+}
+
+.tree-row.zotero-managed {
+  background: rgba(0, 150, 136, 0.06);
+}
+
+.tree-row.zotero-managed:hover {
+  background: rgba(0, 150, 136, 0.12);
+}
+
+.tree-row.zotero-managed.selected {
+  background: rgba(0, 150, 136, 0.18);
+}
+
+.zotero-badge {
+  height: 18px !important;
+  font-size: 10px !important;
+  padding: 0 6px !important;
+}
+
+.zotero-badge .v-icon {
+  margin-right: 2px !important;
 }
 </style>

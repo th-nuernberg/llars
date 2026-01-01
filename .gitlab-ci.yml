@@ -117,6 +117,9 @@ test:unit:backend:
     DATABASE_URL: "mysql://test:test@test-db:3306/llars_test"
     TESTING: "true"
     AUTHENTIK_DISABLED: "true"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
+    - pip install --upgrade pip
   script:
     - pip install -r app/requirements.txt
     - pip install pytest pytest-cov pytest-flask
@@ -172,6 +175,9 @@ test:integration:
     REDIS_URL: "redis://test-redis:6379"
     TESTING: "true"
     AUTHENTIK_DISABLED: "true"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
+    - pip install --upgrade pip
   script:
     - pip install -r app/requirements.txt
     - pip install pytest pytest-flask
@@ -375,6 +381,8 @@ rollback:production:
 security:scan:
   stage: test
   image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends nodejs npm
   script:
     - pip install pip-audit safety
     - echo "Running security scan..."

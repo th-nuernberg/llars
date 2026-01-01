@@ -393,22 +393,43 @@ security:scan:
     - if: $CI_COMMIT_BRANCH == "main"
   allow_failure: true
 
-# Smoke Test nach Deployment
+# Smoke Test nach Deployment (Basic Health Checks)
 smoke:test:
   stage: deploy
   tags:
     - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
   script:
-    - echo "Running smoke tests..."
+    - echo "Running basic smoke tests..."
     - echo "Checking API health..."
     - curl -sf http://localhost/auth/health_check || exit 1
     - echo "Checking frontend..."
     - curl -sf http://localhost/ || exit 1
     - echo "Checking auth status..."
     - curl -sf http://localhost/auth/authentik/status || true
-    - echo "All smoke tests passed!"
+    - echo "Basic smoke tests passed!"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - deploy:production
   when: on_success
+
+# Wizard Smoke Test - Testet kompletten Chatbot-Wizard-Workflow
+smoke:wizard:
+  stage: deploy
+  tags:
+    - shell
+  variables:
+    BASE_URL: "http://localhost"
+    SYSTEM_ADMIN_API_KEY: "llars-admin-key-change-in-production-12345"
+    TEST_URL: "https://example.com"
+  script:
+    - echo "Running Chatbot Wizard smoke test..."
+    - cd /var/llars
+    - chmod +x scripts/smoke_test_wizard.sh
+    - ./scripts/smoke_test_wizard.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - smoke:test
+  when: on_success
+  allow_failure: true  # Wizard-Test optional, blockiert nicht das Deployment

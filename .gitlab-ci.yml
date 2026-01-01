@@ -121,8 +121,8 @@ test:unit:backend:
     - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
     - pip install --upgrade pip
   script:
-    - pip install -r app/requirements.txt
-    - pip install pytest pytest-cov pytest-flask
+    # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
+    - pip install -r app/requirements-test.txt
     - echo "Running Backend Unit Tests..."
     - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing || true
   coverage: '/TOTAL.*\s+(\d+%)/'
@@ -179,8 +179,8 @@ test:integration:
     - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
     - pip install --upgrade pip
   script:
-    - pip install -r app/requirements.txt
-    - pip install pytest pytest-flask
+    # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
+    - pip install -r app/requirements-test.txt
     - echo "Running Integration Tests..."
     - pytest tests/integration/ -v || true
   rules:

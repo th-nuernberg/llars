@@ -50,7 +50,7 @@ ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access"
 
 def _get_base_url() -> str:
     """Get the base URL for OAuth callbacks."""
-    return os.environ.get("LLARS_BASE_URL", "http://localhost:55080")
+    return os.environ.get("PROJECT_URL", "http://localhost:55080")
 
 
 def _get_oauth_credentials() -> Tuple[Optional[str], Optional[str], bool, str]:

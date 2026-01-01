@@ -169,81 +169,69 @@ LLARS verwendet GitLab CI/CD für automatisiertes Testing und Deployment. Die Pi
 
 ```
 GitLab: git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars
-Server: llars.informatik.fh-nuernberg.de (141.75.150.128)
-Runner: Shell-Executor auf LLARS Server
+Server: 141.75.150.128 (internes Netz)
+Runner: Shell-Executor direkt auf LLARS Server (kein SSH nötig)
 ```
 
 ### Pipeline Stages
 
 | Stage | Jobs | Beschreibung |
 |-------|------|--------------|
-| **lint** | `lint:backend`, `lint:frontend` | Code-Qualität (flake8, eslint) |
+| **lint** | `lint:backend`, `lint:frontend` | Code-Qualität (flake8, eslint) - allow_failure |
 | **test** | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:e2e`, `security:scan` | Tests + Security |
-| **build** | `build:docker` | Docker Images bauen |
+| **build** | `build:docker` | Docker Images bauen (nur main) |
 | **deploy** | `deploy:staging`, `deploy:production`, `smoke:test`, `rollback:production` | Deployment |
 
 ### Automatisches Deployment
 
 ```
 Push to develop → deploy:staging (automatisch)
-Push to main    → deploy:production (nach erfolgreichen Tests)
+Push to main    → deploy:production (nach erfolgreichen Tests + Build)
 ```
 
-### CI/CD Variablen (GitLab)
+### Shell Runner (auf Server)
 
-Diese Variablen sind in GitLab Settings → CI/CD → Variables konfiguriert:
-
-| Variable | Beschreibung |
-|----------|--------------|
-| `SSH_PRIVATE_KEY` | Private Key für SSH Zugang zum Server (type: file) |
-| `SSH_KNOWN_HOSTS` | Known Hosts Eintrag des Servers |
-| `LLARS_SERVER_HOST` | `llars.informatik.fh-nuernberg.de` |
-
-### GitLab API Zugriff (lokal)
-
-Der GitLab Token liegt in `.env` (lokal, nicht committen!):
+Der GitLab Runner läuft direkt auf dem LLARS Server mit Shell-Executor. Kein SSH nötig für Deployments!
 
 ```bash
-GITLAB_TOKEN=glpat-...
-GITLAB_PROJECT_ID=7123
-GITLAB_PROJECT_PATH=kiz-nlp/llars/llars
+# Runner-Konfiguration: /etc/gitlab-runner/config.toml
+[[runners]]
+  name = "llars-server-shell"
+  executor = "shell"
+  tags = ["shell"]       # Jobs müssen tag: shell haben
+  run_untagged = false   # Nimmt keine ungetaggten Jobs an
 ```
 
-**Pipeline-Status prüfen:**
-```bash
-# Via API
-curl -s -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-  "https://git.informatik.fh-nuernberg.de/api/v4/projects/kiz-nlp%2Fllars%2Fllars/pipelines?per_page=5"
-
-# Oder via GitLab UI
-open "https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars/-/pipelines"
+**Wichtige Verzeichnisse:**
+```
+/var/llars/              # LLARS Projekt
+/etc/gitlab-runner/      # Runner-Konfiguration
+~gitlab-runner/.cache/   # CI Cache
 ```
 
-**CI/CD Variable setzen:**
-```bash
-curl --request POST \
-  --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-  --form "key=VARIABLE_NAME" \
-  --form "value=variable_value" \
-  --form "masked=true" \
-  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/variables"
+### Test Requirements (Lightweight)
+
+Für CI/CD Tests wird `app/requirements-test.txt` verwendet, die schwere ML-Pakete ausschließt:
+
+```
+Ausgeschlossen (~3GB gespart):
+- torch
+- transformers
+- sentence-transformers
+- flair
+- langchain-huggingface
 ```
 
-### SSH Deploy Key
+Die Tests mocken diese Dependencies.
 
-Der Deploy-Key liegt auf dem Server unter `~/.ssh/gitlab_ci_deploy`:
+### System Dependencies (CI Jobs)
 
-```bash
-# Key generieren (falls nicht vorhanden)
-ssh master@llars.informatik.fh-nuernberg.de
-ssh-keygen -t ed25519 -C 'gitlab-ci-deploy' -f ~/.ssh/gitlab_ci_deploy -N ""
-cat ~/.ssh/gitlab_ci_deploy.pub >> ~/.ssh/authorized_keys
+Python-Jobs benötigen System-Pakete für Compilation:
 
-# Public Key anzeigen
-cat ~/.ssh/gitlab_ci_deploy.pub
-
-# Private Key (für GitLab Variable)
-cat ~/.ssh/gitlab_ci_deploy
+```yaml
+before_script:
+  - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
+  - pip install --upgrade pip
 ```
 
 ### Troubleshooting CI/CD
@@ -251,12 +239,13 @@ cat ~/.ssh/gitlab_ci_deploy
 | Problem | Lösung |
 |---------|--------|
 | Pipeline startet nicht | Prüfen ob CI/CD aktiviert: Settings → General → Visibility |
-| `requirements.txt not found` | Pfad ist `app/requirements.txt` |
-| SSH connection refused | `SSH_KNOWN_HOSTS` und `SSH_PRIVATE_KEY` Variablen prüfen |
-| Deploy fehlgeschlagen | Logs prüfen: `docker logs llars_flask_service` |
 | Runner offline | `sudo gitlab-runner status` auf Server |
+| test:unit:backend failed | Prüfen ob `requirements-test.txt` verwendet wird |
+| Deploy fehlgeschlagen | Logs prüfen: `docker logs llars_flask_service` |
+| pip install timeout | ML-Pakete in requirements-test.txt? Sollten ausgeschlossen sein |
+| Permission denied | `/var/llars` muss für `gitlab-runner` schreibbar sein |
 
-### GitLab Runner (auf Server)
+### GitLab Runner Verwaltung (auf Server)
 
 ```bash
 # Status prüfen
@@ -267,6 +256,20 @@ sudo gitlab-runner list
 
 # Runner neu starten
 sudo systemctl restart gitlab-runner
+
+# Logs prüfen
+sudo journalctl -u gitlab-runner -f
+```
+
+### Pipeline-Status prüfen
+
+```bash
+# Via GitLab UI
+open "https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars/-/pipelines"
+
+# Via API (Token in lokaler .env)
+curl -s -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/kiz-nlp%2Fllars%2Fllars/pipelines?per_page=5"
 ```
 
 ---

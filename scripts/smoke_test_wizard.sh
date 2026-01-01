@@ -120,9 +120,33 @@ while [ $WAITED -lt $MAX_WAIT_SECONDS ]; do
         continue
     }
 
-    STATUS=$(echo "$STATUS_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null)
-    CRAWL_PROGRESS=$(echo "$STATUS_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('crawl_progress',0))" 2>/dev/null)
-    EMBED_PROGRESS=$(echo "$STATUS_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('embedding_progress',0))" 2>/dev/null)
+    # Parse nested API response structure:
+    # - status: session.build_status
+    # - crawl_progress: progress.urls_completed / progress.urls_total * 100
+    # - embedding_progress: progress.embedding_progress
+    STATUS=$(echo "$STATUS_RESPONSE" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+session = d.get('session', {})
+print(session.get('build_status', d.get('status', 'unknown')))
+" 2>/dev/null)
+    CRAWL_PROGRESS=$(echo "$STATUS_RESPONSE" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+progress = d.get('progress', {})
+total = progress.get('urls_total', 0)
+completed = progress.get('urls_completed', 0)
+if total > 0:
+    print(int(completed / total * 100))
+else:
+    print(0)
+" 2>/dev/null)
+    EMBED_PROGRESS=$(echo "$STATUS_RESPONSE" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+progress = d.get('progress', {})
+print(int(progress.get('embedding_progress', 0)))
+" 2>/dev/null)
 
     if [ "$STATUS" != "$LAST_STATUS" ]; then
         log_info "Status: $STATUS (Crawl: ${CRAWL_PROGRESS}%, Embed: ${EMBED_PROGRESS}%)"

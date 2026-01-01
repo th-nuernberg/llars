@@ -963,6 +963,9 @@ def create_wizard_chatbot():
             via_wizard=True
         )
 
+        # Add session_id to response (equals chatbot_id, for API consumers)
+        result['session_id'] = chatbot_id
+
     return jsonify(result), 201 if result['success'] else 400
 
 

@@ -81,13 +81,18 @@ class ChatbotCreator:
 
         logger.info(f"[ChatbotCreator] Created draft chatbot {chatbot.id} for URL: {url}")
 
+        # Return both flat fields (for frontend compatibility) and nested 'chatbot' object
+        # (for route logic that creates Redis session)
         return {
             'success': True,
-            'chatbot_id': chatbot.id,
-            'name': chatbot.name,
-            'display_name': chatbot.display_name,
-            'build_status': chatbot.build_status,
-            'source_url': url
+            'chatbot_id': chatbot.id,  # Keep for frontend: response.data.chatbot_id
+            'chatbot': {               # Required for route: result['chatbot']['id']
+                'id': chatbot.id,
+                'name': chatbot.name,
+                'display_name': chatbot.display_name,
+                'build_status': chatbot.build_status,
+                'source_url': url
+            }
         }
 
     @staticmethod

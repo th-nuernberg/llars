@@ -428,6 +428,22 @@
                 class="pane editor-pane"
                 :style="editorPaneStyle"
               >
+                <!-- Zotero read-only notice -->
+                <v-alert
+                  v-if="selectedNode?.is_zotero_managed"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="zotero-readonly-notice"
+                >
+                  <template #prepend>
+                    <v-icon color="teal">mdi-bookshelf</v-icon>
+                  </template>
+                  <span class="text-body-2">
+                    Diese Datei wird von <strong>Zotero</strong> verwaltet und ist schreibgeschützt.
+                    Änderungen werden bei der nächsten Synchronisation überschrieben.
+                  </span>
+                </v-alert>
                 <LatexEditorPane
                   ref="editorRef"
                   :document="selectedNode"
@@ -1108,7 +1124,13 @@ const canShareWorkspace = computed(() => {
   return isAdmin.value || (currentUsername.value && currentUsername.value === workspace.value.owner_username)
 })
 
-const editorReadonly = computed(() => !hasPermission('feature:latex_collab:edit') || reviewMode.value)
+const editorReadonly = computed(() => {
+  // Read-only if user lacks edit permission, in review mode, or document is Zotero-managed
+  if (!hasPermission('feature:latex_collab:edit')) return true
+  if (reviewMode.value) return true
+  if (selectedNode.value?.is_zotero_managed) return true
+  return false
+})
 
 const canSetMainDocument = computed(() => {
   return !!(selectedNode.value && selectedNode.value.type === 'file' && !selectedNode.value.asset_id && hasPermission('feature:latex_collab:edit'))
@@ -2767,6 +2789,19 @@ watch(
 
 .panes-container.mode-preview .preview-pane {
   flex: 1;
+}
+
+/* Zotero read-only notice */
+.zotero-readonly-notice {
+  margin: 8px 8px 0 8px;
+  flex-shrink: 0;
+  border-left: 3px solid #009688 !important;
+}
+
+.zotero-readonly-notice :deep(.v-alert__content) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ============================================

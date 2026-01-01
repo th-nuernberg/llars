@@ -83,6 +83,8 @@ def _ensure_safe_title(title: str) -> None:
 
 
 def _doc_to_dict(doc: LatexDocument) -> dict:
+    # Check if this document is managed by Zotero (linked as .bib file)
+    is_zotero_managed = hasattr(doc, "zotero_library_link") and doc.zotero_library_link is not None
     return {
         "id": doc.id,
         "workspace_id": doc.workspace_id,
@@ -93,6 +95,7 @@ def _doc_to_dict(doc: LatexDocument) -> dict:
         "order_index": doc.order_index,
         "yjs_doc_id": doc.yjs_doc_id,
         "asset_id": doc.asset_id,
+        "is_zotero_managed": is_zotero_managed,
         "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
         "created_at": doc.created_at.isoformat() if doc.created_at else None,
     }

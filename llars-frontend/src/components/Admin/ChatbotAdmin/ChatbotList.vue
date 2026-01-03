@@ -3,7 +3,17 @@
     <!-- Loading State -->
     <v-row v-if="loading">
       <v-col v-for="i in 6" :key="i" cols="12" :sm="isMobile ? 12 : 6" :md="6" :lg="4">
-        <v-skeleton-loader type="card" :height="isMobile ? 200 : 280" />
+        <LCardSkeleton
+          :min-height="isMobile ? 200 : 280"
+          :avatar-size="isMobile ? 32 : 40"
+          :title-width="isMobile ? 120 : 160"
+          :subtitle-width="isMobile ? 80 : 110"
+          :status-width="isMobile ? 52 : 70"
+          :description-min-height="isMobile ? 36 : 48"
+          :stat-width="isMobile ? 70 : 90"
+          :tag-width="isMobile ? 46 : 60"
+          :primary-action-width="isMobile ? 64 : 72"
+        />
       </v-col>
     </v-row>
 

@@ -78,6 +78,14 @@ nav:
       - ACT: agentic-ai/act.md
       - ReACT: agentic-ai/react.md
       - ReflAct: agentic-ai/reflact.md
+  - Entwickler:
+      - API-Referenz: entwickler/api-referenz.md
+      - WebSocket API: entwickler/websocket-api.md
+      - Collaboration System: entwickler/collab-system.md
+      - Datenbank-Schema: entwickler/datenbank-schema.md
+      - Admin-Panel: entwickler/admin-panel.md
+      - Code-Qualität: entwickler/code-qualitaet.md
+      - Production Deployment: entwickler/production-deployment.md
   - Archiv:
       - Übersicht: archive/index.md
       - Refactoring (Complete): archive/refactoring-complete.md

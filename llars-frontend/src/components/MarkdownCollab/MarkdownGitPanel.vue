@@ -120,6 +120,17 @@
 
             <div class="commit-actions">
               <LBtn
+                v-if="canRollback"
+                variant="danger"
+                size="small"
+                :loading="rollingBack"
+                prepend-icon="mdi-undo"
+                title="Änderungen verwerfen"
+                @click="confirmRollback"
+              >
+                Verwerfen
+              </LBtn>
+              <LBtn
                 variant="primary"
                 size="small"
                 :loading="committing"
@@ -280,6 +291,61 @@
                     >
                       Änderungen committen
                     </LBtn>
+                    <LBtn
+                      v-if="canRollback"
+                      variant="danger"
+                      :loading="rollingBack"
+                      prepend-icon="mdi-undo"
+                      block
+                      class="mt-2"
+                      title="Änderungen verwerfen"
+                      @click="confirmRollback"
+                    >
+                      Änderungen verwerfen
+                    </LBtn>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deleted Files Card -->
+              <div v-if="deletedFiles.length > 0" class="git-card mt-4">
+                <div class="card-header deleted-header">
+                  <v-icon size="18" class="mr-2" color="error">mdi-delete</v-icon>
+                  Gelöschte Dateien
+                  <v-spacer />
+                  <span class="deleted-count">{{ deletedFiles.length }}</span>
+                </div>
+                <div class="card-content">
+                  <v-skeleton-loader v-if="isLoading('deleted')" type="list-item@3" />
+                  <div v-else class="deleted-files-list">
+                    <div
+                      v-for="file in deletedFiles"
+                      :key="'deleted-' + file.document_id"
+                      class="deleted-file-item"
+                    >
+                      <span class="status-badge error">D</span>
+                      <v-icon size="16" color="error" class="mr-2">mdi-file-remove-outline</v-icon>
+                      <div class="deleted-file-info">
+                        <span class="deleted-file-name">{{ file.title }}</span>
+                        <span class="deleted-file-date">{{ formatDate(file.deleted_at) }}</span>
+                      </div>
+                      <v-tooltip location="left">
+                        <template #activator="{ props: tp }">
+                          <v-btn
+                            v-bind="tp"
+                            icon
+                            variant="tonal"
+                            size="x-small"
+                            color="success"
+                            :loading="restoringFile === file.document_id"
+                            @click.stop="restoreFile(file)"
+                          >
+                            <v-icon size="14">mdi-restore</v-icon>
+                          </v-btn>
+                        </template>
+                        <span>Datei wiederherstellen</span>
+                      </v-tooltip>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -384,6 +450,33 @@
         </div>
       </div>
     </v-dialog>
+
+    <!-- Rollback Confirmation Dialog -->
+    <v-dialog v-model="showRollbackConfirm" max-width="420" persistent>
+      <v-card class="rollback-confirm-card">
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon color="warning">mdi-alert-circle</v-icon>
+          Änderungen verwerfen?
+        </v-card-title>
+        <v-card-text>
+          <p>
+            Alle nicht committeten Änderungen werden unwiderruflich verworfen und das Dokument wird auf den letzten Commit zurückgesetzt.
+          </p>
+          <p class="text-medium-emphasis mt-2 mb-0">
+            Diese Aktion kann nicht rückgängig gemacht werden.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pa-4 pt-0">
+          <v-spacer />
+          <LBtn variant="cancel" @click="cancelRollback">
+            Abbrechen
+          </LBtn>
+          <LBtn variant="danger" prepend-icon="mdi-undo" @click="executeRollback">
+            Verwerfen
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -397,6 +490,7 @@ import { getSocket } from '@/services/socketService'
 
 const props = defineProps({
   documentId: { type: Number, required: true },
+  workspaceId: { type: Number, default: null },
   summary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false }) },
   canCommit: { type: Boolean, default: false },
   getContent: { type: Function, default: null },
@@ -404,10 +498,10 @@ const props = defineProps({
   socketNamespace: { type: String, default: 'markdown_collab' }
 })
 
-const emit = defineEmits(['committed'])
+const emit = defineEmits(['committed', 'rollback', 'restored'])
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
-const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff'])
+const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff', 'deleted'])
 
 const expanded = ref(false)
 const fullscreen = ref(false)
@@ -422,6 +516,10 @@ const commitError = ref('')
 const loadError = ref('')
 const diffError = ref('')
 
+// Workspace-level deleted files
+const deletedFiles = ref([])
+const restoringFile = ref(null)
+
 const diffBaseText = ref('')
 const diffCompareText = ref('')
 const diffBaseLabel = ref('')
@@ -430,6 +528,10 @@ const diffCompareLabel = ref('')
 const baselineSnapshot = ref('')
 const baselineCommitId = ref(null)
 const baselineCommitMessage = ref('')
+
+// Rollback state
+const rollingBack = ref(false)
+const showRollbackConfirm = ref(false)
 
 const commitSnapshotCache = new Map()
 let workingSyncTimer = null
@@ -697,6 +799,88 @@ async function submitCommit() {
   }
 }
 
+// Rollback functions
+function confirmRollback() {
+  showRollbackConfirm.value = true
+}
+
+function cancelRollback() {
+  showRollbackConfirm.value = false
+}
+
+async function executeRollback() {
+  if (!props.documentId || !baselineCommitId.value) return
+
+  rollingBack.value = true
+  showRollbackConfirm.value = false
+  commitError.value = ''
+
+  try {
+    await axios.post(
+      `${API_BASE}${props.apiPrefix}/documents/${props.documentId}/rollback`,
+      {},
+      { headers: authHeaders() }
+    )
+
+    // Emit rollback event so parent can refresh the editor
+    emit('rollback', props.documentId)
+
+    // Refresh commits and diff
+    await loadCommits(true)
+  } catch (e) {
+    commitError.value = e?.response?.data?.error || e?.message || 'Rollback fehlgeschlagen'
+  } finally {
+    rollingBack.value = false
+  }
+}
+
+// Check if rollback is possible (has baseline and has changes)
+const canRollback = computed(() => {
+  return baselineCommitId.value !== null && props.summary?.hasChanges === true
+})
+
+// Load workspace-level deleted files
+async function loadDeletedFiles() {
+  if (!props.workspaceId) return
+
+  await withLoading('deleted', async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE}${props.apiPrefix}/workspaces/${props.workspaceId}/changes`,
+        { headers: authHeaders() }
+      )
+      deletedFiles.value = res.data.deleted_files || []
+    } catch (e) {
+      console.error('Failed to load deleted files:', e)
+      deletedFiles.value = []
+    }
+  })
+}
+
+async function restoreFile(file) {
+  if (!file || restoringFile.value) return
+
+  restoringFile.value = file.document_id
+
+  try {
+    await axios.post(
+      `${API_BASE}${props.apiPrefix}/documents/${file.document_id}/restore`,
+      {},
+      { headers: authHeaders() }
+    )
+
+    // Refresh deleted files list
+    await loadDeletedFiles()
+
+    // Emit event so parent can refresh the tree
+    emit('restored', file.document_id)
+  } catch (e) {
+    loadError.value = e?.response?.data?.error || e?.message || 'Wiederherstellung fehlgeschlagen'
+  } finally {
+    restoringFile.value = null
+  }
+}
+
 watch(
   () => props.summary,
   () => {
@@ -741,6 +925,9 @@ onMounted(async () => {
   await loadCommits()
   if (props.documentId) {
     setupCommitSocket(props.documentId)
+  }
+  if (props.workspaceId) {
+    await loadDeletedFiles()
   }
 })
 
@@ -1256,5 +1443,97 @@ onUnmounted(() => {
   .fullscreen-right {
     grid-column: span 1;
   }
+}
+
+/* Rollback Confirm Dialog */
+.rollback-confirm-card {
+  border-radius: var(--llars-radius) !important;
+}
+
+.rollback-confirm-card .v-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  padding-bottom: 8px;
+}
+
+.rollback-confirm-card .v-card-text p {
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.status-badge.warning {
+  background: rgba(232, 200, 122, 0.25);
+  color: #f9a825;
+}
+
+.status-badge.info {
+  background: rgba(136, 196, 200, 0.25);
+  color: #0288d1;
+}
+
+.status-badge.error {
+  background: rgba(232, 160, 135, 0.25);
+  color: #c62828;
+}
+
+/* Deleted Files Section */
+.deleted-header {
+  border-bottom-color: rgba(232, 160, 135, 0.3);
+}
+
+.deleted-count {
+  font-weight: 400;
+  font-size: 12px;
+  color: rgb(var(--v-theme-error));
+}
+
+.deleted-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deleted-file-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(232, 160, 135, 0.08);
+  border-radius: var(--llars-radius-sm);
+}
+
+.deleted-file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.deleted-file-name {
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: line-through;
+  color: rgb(var(--v-theme-error));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deleted-file-date {
+  font-size: 11px;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 </style>

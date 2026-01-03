@@ -467,15 +467,32 @@ defineEmits([
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: padding-right 0.15s ease;
+}
+
+.conversation-item:hover .conv-title {
+  padding-right: 56px; /* Space for action buttons */
 }
 
 .conv-actions {
-  display: none;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
   gap: 2px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  padding-left: 8px;
+  /* Gradient fade for smooth text cutoff */
+  background: linear-gradient(to right, transparent, rgba(var(--v-theme-primary), 0.1) 8px, rgba(var(--v-theme-primary), 0.1));
+  border-radius: 4px;
 }
 
 .conversation-item:hover .conv-actions {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
 }
 
 .conv-action {

@@ -18,6 +18,10 @@ pnpm-debug.log*
 # Test coverage
 coverage/
 
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 # Editor directories and files
 .idea
 .vscode

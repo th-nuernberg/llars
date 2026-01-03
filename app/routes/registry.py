@@ -95,9 +95,9 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.markdown_collab import markdown_collab_bp
     app.register_blueprint(markdown_collab_bp)
 
-    # LaTeX Collab
-    from routes.latex_collab import latex_collab_bp
-    app.register_blueprint(latex_collab_bp)
+    # LaTeX Collab (split into 6 sub-blueprints)
+    from routes.latex_collab import register_latex_collab_routes
+    register_latex_collab_routes(app)
 
     # Zotero Integration (for LaTeX Collab)
     from routes.zotero import zotero_bp

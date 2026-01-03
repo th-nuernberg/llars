@@ -8,27 +8,27 @@
     <template #header>
       <div class="l-card-skeleton__header">
         <div class="l-card-skeleton__header-main">
-          <v-skeleton-loader
+          <div
             v-if="showAvatar"
-            type="avatar"
-            :width="avatarSize"
-            :height="avatarSize"
+            class="l-card-skeleton__block l-card-skeleton__block--circle"
+            :style="blockStyle(avatarSize, avatarSize)"
           />
           <div class="l-card-skeleton__titles">
-            <v-skeleton-loader type="text" :width="titleWidth" :height="titleHeight" />
-            <v-skeleton-loader
+            <div
+              class="l-card-skeleton__block l-card-skeleton__block--line"
+              :style="blockStyle(titleWidth, titleHeight)"
+            />
+            <div
               v-if="showSubtitle"
-              type="text"
-              :width="subtitleWidth"
-              :height="subtitleHeight"
+              class="l-card-skeleton__block l-card-skeleton__block--line"
+              :style="blockStyle(subtitleWidth, subtitleHeight)"
             />
           </div>
         </div>
-        <v-skeleton-loader
+        <div
           v-if="showStatus"
-          type="chip"
-          :width="statusWidth"
-          :height="statusHeight"
+          class="l-card-skeleton__block l-card-skeleton__block--pill"
+          :style="blockStyle(statusWidth, statusHeight)"
         />
       </div>
     </template>
@@ -39,37 +39,46 @@
         class="l-card-skeleton__description"
         :style="descriptionStyle"
       >
-        <v-skeleton-loader :type="`paragraph@${descriptionLines}`" />
+        <div
+          v-for="(width, index) in descriptionLineWidthsNormalized"
+          :key="`desc-${index}`"
+          class="l-card-skeleton__block l-card-skeleton__block--line"
+          :style="blockStyle(width, descriptionLineHeight)"
+        />
       </div>
     </template>
 
     <template v-if="statCount > 0" #stats>
       <div class="l-card-skeleton__stats">
-        <v-skeleton-loader
+        <div
           v-for="(width, index) in statWidthsNormalized"
           :key="`stat-${index}`"
-          type="text"
-          :width="width"
+          class="l-card-skeleton__block l-card-skeleton__block--line"
+          :style="blockStyle(width, statHeight)"
         />
       </div>
     </template>
 
     <template v-if="tagCount > 0" #tags>
       <div class="l-card-skeleton__tags">
-        <v-skeleton-loader
+        <div
           v-for="(width, index) in tagWidthsNormalized"
           :key="`tag-${index}`"
-          type="chip"
-          :width="width"
-          :height="tagHeight"
+          class="l-card-skeleton__block l-card-skeleton__block--pill"
+          :style="blockStyle(width, tagHeight)"
         />
       </div>
     </template>
 
-    <template v-if="showActions" #actions>
-      <v-skeleton-loader type="button" :width="primaryActionWidth" :height="actionHeight" />
-      <v-spacer />
-      <v-skeleton-loader type="button" :width="secondaryActionWidth" :height="actionHeight" />
+    <template v-if="actionsNormalized.length > 0" #actions>
+      <template v-for="(action, index) in actionsNormalized" :key="`action-${index}`">
+        <div
+          class="l-card-skeleton__block"
+          :class="action.shape === 'circle' ? 'l-card-skeleton__block--circle' : 'l-card-skeleton__block--pill'"
+          :style="blockStyle(action.width, actionHeightNormalized(action))"
+        />
+        <v-spacer v-if="shouldInsertSpacer(index)" />
+      </template>
     </template>
   </LCard>
 </template>
@@ -138,6 +147,14 @@ const props = defineProps({
     type: [Number, String],
     default: 48
   },
+  descriptionLineHeight: {
+    type: [Number, String],
+    default: 12
+  },
+  descriptionLineWidths: {
+    type: Array,
+    default: () => []
+  },
   statCount: {
     type: Number,
     default: 2
@@ -145,6 +162,10 @@ const props = defineProps({
   statWidth: {
     type: [Number, String],
     default: 90
+  },
+  statHeight: {
+    type: [Number, String],
+    default: 12
   },
   statWidths: {
     type: Array,
@@ -170,6 +191,14 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  actionItems: {
+    type: Array,
+    default: () => []
+  },
+  actionSplitIndex: {
+    type: Number,
+    default: 1
+  },
   primaryActionWidth: {
     type: [Number, String],
     default: 72
@@ -186,6 +215,11 @@ const props = defineProps({
 
 const toCssSize = (value) => (typeof value === 'number' ? `${value}px` : value)
 
+const blockStyle = (width, height) => ({
+  width: toCssSize(width),
+  height: toCssSize(height)
+})
+
 const cardStyle = computed(() => ({
   minHeight: toCssSize(props.minHeight)
 }))
@@ -193,6 +227,18 @@ const cardStyle = computed(() => ({
 const descriptionStyle = computed(() => ({
   minHeight: toCssSize(props.descriptionMinHeight)
 }))
+
+const descriptionLineWidthsNormalized = computed(() => {
+  if (props.descriptionLines <= 0) return []
+  if (props.descriptionLineWidths.length) {
+    return Array.from({ length: props.descriptionLines }, (_, index) => (
+      props.descriptionLineWidths[index] ?? '100%'
+    ))
+  }
+  return Array.from({ length: props.descriptionLines }, (_, index) => (
+    index === props.descriptionLines - 1 ? '72%' : '100%'
+  ))
+})
 
 const statWidthsNormalized = computed(() => {
   if (props.statCount <= 0) return []
@@ -209,9 +255,63 @@ const tagWidthsNormalized = computed(() => {
   }
   return Array.from({ length: props.tagCount }, () => props.tagWidth)
 })
+
+const actionsNormalized = computed(() => {
+  if (!props.showActions) return []
+  if (props.actionItems.length) {
+    return props.actionItems.map(item => ({
+      width: item?.width ?? props.primaryActionWidth,
+      height: item?.height ?? props.actionHeight,
+      shape: item?.shape ?? 'pill'
+    }))
+  }
+  return [
+    { width: props.primaryActionWidth, height: props.actionHeight, shape: 'pill' },
+    { width: props.secondaryActionWidth, height: props.actionHeight, shape: 'circle' }
+  ]
+})
+
+const actionHeightNormalized = (action) => {
+  if (action.shape === 'circle' && !action.height) {
+    return action.width
+  }
+  return action.height ?? props.actionHeight
+}
+
+const shouldInsertSpacer = (index) => {
+  if (!Number.isFinite(props.actionSplitIndex)) return false
+  if (props.actionSplitIndex <= 0) return false
+  if (props.actionSplitIndex >= actionsNormalized.value.length) return false
+  return index === props.actionSplitIndex - 1
+}
 </script>
 
 <style scoped>
+.l-card-skeleton__block {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-on-surface), 0.06) 25%,
+    rgba(var(--v-theme-on-surface), 0.12) 37%,
+    rgba(var(--v-theme-on-surface), 0.06) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: 6px;
+  animation: l-card-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.l-card-skeleton__block--circle {
+  border-radius: 50%;
+}
+
+.l-card-skeleton__block--pill {
+  border-radius: 999px;
+}
+
+@keyframes l-card-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
 .l-card-skeleton__header {
   display: flex;
   align-items: center;
@@ -235,6 +335,9 @@ const tagWidthsNormalized = computed(() => {
 
 .l-card-skeleton__description {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .l-card-skeleton__stats {

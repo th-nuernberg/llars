@@ -1,26 +1,87 @@
+# crawler_service.py
 """
-CrawlerService Module
+CrawlerService - Main orchestration class for web crawling.
 
-Service for managing web crawls and creating RAG collections from crawled content.
-Supports background crawling with WebSocket live updates.
+This is the main entry point for all crawl operations. It coordinates:
+- Background crawl job management
+- Collection creation and updates
+- URL discovery and processing
+- WebSocket progress updates
+- Embedding pipeline integration
+
+The actual implementation is distributed across specialized modules:
+- crawler_constants.py: Configuration and utilities
+- crawler_events.py: WebSocket event emission
+- crawler_collection.py: Collection management
+- crawler_document.py: Document creation/linking
+- crawler_processing.py: URL processing strategies
+- crawler_jobs.py: Job status management
+
+Usage:
+    from services.crawler.modules.crawler_service import crawler_service
+
+    # Start a background crawl
+    job_id = crawler_service.start_crawl_background(
+        urls=["https://example.com"],
+        collection_name="Example Site",
+        app=current_app._get_current_object()
+    )
+
+    # Check status
+    status = crawler_service.get_job_status(job_id)
 """
 
-import os
-import uuid
+from __future__ import annotations
+
 import logging
 import threading
-import asyncio
-import re
+import time
+import uuid
 from datetime import datetime
 from typing import List, Dict, Optional
-from urllib.parse import urlparse
 
+# Import from specialized modules
+from .crawler_constants import (
+    RAG_DOCS_PATH,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_CHUNK_OVERLAP,
+    DEFAULT_ICON,
+    DEFAULT_COLOR,
+)
+from .crawler_events import (
+    emit_progress,
+    emit_page_crawled,
+    emit_complete,
+    emit_error,
+    emit_jobs_updated,
+)
+from .crawler_collection import (
+    create_crawl_collection,
+    update_collection_for_crawl,
+    update_collection_stats,
+)
+from .crawler_jobs import (
+    get_job_status,
+    get_all_jobs,
+    list_jobs,
+    cancel_job,
+    create_job_entry,
+    update_job_started,
+    update_job_completed,
+    update_job_failed,
+)
+from .crawler_processing import (
+    process_urls_basic,
+    process_urls_playwright,
+)
 from .crawler_core import WebCrawler
-from services.rag.collection_embedding_service import get_collection_embedding_service
 
 logger = logging.getLogger(__name__)
 
-# Flag to check if Playwright is available
+# =============================================================================
+# PLAYWRIGHT AVAILABILITY CHECK
+# =============================================================================
+
 PLAYWRIGHT_AVAILABLE = False
 try:
     from .playwright_crawler import PlaywrightCrawler
@@ -30,391 +91,82 @@ except ImportError as e:
     logger.warning(f"[CrawlerService] Playwright not available: {e}")
 
 
+# =============================================================================
+# CRAWLER SERVICE CLASS
+# =============================================================================
+
 class CrawlerService:
     """
-    Service for managing web crawls and creating RAG collections from crawled content.
-    Supports background crawling with WebSocket live updates.
+    Main service class for managing web crawls and RAG collection creation.
+
+    Supports both synchronous and background crawling with real-time
+    WebSocket progress updates. Integrates with the RAG embedding pipeline
+    for automatic document indexing.
+
+    Attributes:
+        active_crawls: Dict mapping job_id to job status
+        _socketio: Flask-SocketIO instance for WebSocket events
+        _background_threads: Dict of background crawl threads
+
+    Class Constants (re-exported from crawler_constants):
+        RAG_DOCS_PATH: Storage path for crawled documents
+        DEFAULT_CHUNK_SIZE: Default chunk size for RAG
+        DEFAULT_CHUNK_OVERLAP: Default chunk overlap
+        DEFAULT_ICON: Default collection icon
+        DEFAULT_COLOR: Default collection color
     """
 
-    RAG_DOCS_PATH = '/app/data/rag/crawls'
-    DEFAULT_CHUNK_SIZE = 1500
-    DEFAULT_CHUNK_OVERLAP = 300
-    DEFAULT_ICON = 'mdi-web'
-    DEFAULT_COLOR = '#2196F3'
+    # Re-export constants for backward compatibility
+    RAG_DOCS_PATH = RAG_DOCS_PATH
+    DEFAULT_CHUNK_SIZE = DEFAULT_CHUNK_SIZE
+    DEFAULT_CHUNK_OVERLAP = DEFAULT_CHUNK_OVERLAP
+    DEFAULT_ICON = DEFAULT_ICON
+    DEFAULT_COLOR = DEFAULT_COLOR
 
     def __init__(self):
+        """Initialize the crawler service."""
         self.active_crawls: Dict[str, Dict] = {}
         self._socketio = None
         self._background_threads: Dict[str, threading.Thread] = {}
 
-    # Minimum content length to consider a page worth indexing (in chars)
-    MIN_CONTENT_LENGTH = 100
+    # =========================================================================
+    # SOCKETIO CONFIGURATION
+    # =========================================================================
 
-    def _slugify(self, value: str, max_length: int = 200) -> str:
-        """Create a safe slug for internal collection names."""
-        value = (value or '').strip().lower()
-        value = re.sub(r'[^a-z0-9]+', '_', value)
-        value = value.strip('_')
-        if not value:
-            value = 'site'
-        return value[:max_length].rstrip('_')
-
-    def _generate_filename_from_url(self, url: str, title: str = None) -> str:
+    def set_socketio(self, socketio) -> None:
         """
-        Generate a meaningful filename from URL and title.
+        Set the SocketIO instance for live progress updates.
 
-        Example: https://example.com/team/ -> example_com_team.md
-        """
-        try:
-            parsed = urlparse(url)
-            # Domain part
-            domain = parsed.netloc.replace('www.', '')
-            domain_slug = self._slugify(domain, max_length=50)
-
-            # Path part
-            path = parsed.path.strip('/')
-            if path:
-                path_slug = self._slugify(path, max_length=100)
-            else:
-                path_slug = 'home'
-
-            filename = f"{domain_slug}_{path_slug}.md"
-            return filename
-        except Exception:
-            # Fallback to UUID if URL parsing fails
-            return f"page_{uuid.uuid4().hex[:12]}.md"
-
-    def _is_content_worth_indexing(self, content: str) -> bool:
-        """
-        Check if content has enough meaningful text to be worth indexing.
-
-        Filters out:
-        - Empty pages
-        - Pages with only navigation/footer text
-        - Pages with mostly whitespace
-        """
-        if not content:
-            return False
-
-        # Strip whitespace and count actual text
-        cleaned = ' '.join(content.split())
-
-        if len(cleaned) < self.MIN_CONTENT_LENGTH:
-            logger.debug(f"Content too short ({len(cleaned)} chars), skipping")
-            return False
-
-        # Check if content is mostly non-text (e.g., just symbols, numbers)
-        alpha_chars = sum(1 for c in cleaned if c.isalpha())
-        if alpha_chars < len(cleaned) * 0.3:  # Less than 30% letters
-            logger.debug(f"Content has too few letters ({alpha_chars}/{len(cleaned)}), skipping")
-            return False
-
-        return True
-
-    def _build_crawl_collection_name(self, urls: List[str], display_name: str, job_id: str) -> str:
-        """Build a unique, safe internal name for crawl collections."""
-        domain = ''
-        if urls:
-            try:
-                domain = urlparse(urls[0]).netloc
-            except Exception:
-                domain = ''
-        base = domain or display_name or 'site'
-        slug = self._slugify(base, max_length=180)
-        return f"crawl_{slug}_{job_id[:8]}"
-
-    def _create_crawl_collection(
-        self,
-        urls: List[str],
-        display_name: str,
-        description: str,
-        created_by: str,
-        job_id: str
-    ):
-        """Create and persist a new RAGCollection for a crawl."""
-        from db.db import db
-        from db.tables import RAGCollection
-
-        internal_name = self._build_crawl_collection_name(urls, display_name, job_id)
-
-        embedding_model = self._get_default_embedding_model_id()
-        collection = RAGCollection(
-            name=internal_name,
-            display_name=display_name,
-            description=description or (f"Webcrawl von: {', '.join(urls)}" if urls else ''),
-            icon=self.DEFAULT_ICON,
-            color=self.DEFAULT_COLOR,
-            embedding_model=embedding_model,
-            chunk_size=self.DEFAULT_CHUNK_SIZE,
-            chunk_overlap=self.DEFAULT_CHUNK_OVERLAP,
-            is_active=True,
-            is_public=True,
-            created_by=created_by,
-            created_at=datetime.now(),
-            source_type='crawler',
-            source_url=urls[0] if urls else None,
-            crawl_job_id=job_id
-        )
-        db.session.add(collection)
-        db.session.flush()
-        return collection
-
-    @staticmethod
-    def _get_default_embedding_model_id() -> str:
-        from db.models.llm_model import LLMModel
-        model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_EMBEDDING)
-        if not model_id:
-            raise ValueError("No default embedding model configured in llm_models")
-        return model_id
-
-    def set_socketio(self, socketio):
-        """Set the SocketIO instance for live updates."""
-        self._socketio = socketio
-
-    def _emit_progress(self, session_id: str, data: dict):
-        """Emit progress update via WebSocket and update wizard session if applicable."""
-        if self._socketio:
-            from socketio_handlers.events_crawler import emit_crawler_progress
-            emit_crawler_progress(self._socketio, session_id, data)
-
-        # Update wizard session if this is a chatbot crawl
-        job = self.active_crawls.get(session_id)
-        if job and job.get('chatbot_id'):
-            try:
-                from services.wizard import get_wizard_session_service
-                from socketio_handlers.events_wizard import emit_wizard_progress
-                wizard_service = get_wizard_session_service()
-                wizard_service.update_crawl_progress(job['chatbot_id'], {
-                    'crawl_stage': data.get('stage', 'crawling'),
-                    'urls_total': data.get('urls_total', 0),
-                    'urls_completed': data.get('urls_completed', data.get('pages_crawled', 0)),
-                    'documents_created': job.get('documents_created', 0),
-                    'current_url': data.get('current_url', ''),
-                })
-                if self._socketio:
-                    emit_wizard_progress(self._socketio, job['chatbot_id'],
-                        wizard_service.get_progress(job['chatbot_id']))
-            except Exception as e:
-                logger.warning(f"[CrawlerService] Failed to update wizard session: {e}")
-
-    def _emit_page_crawled(self, session_id: str, data: dict):
-        """Emit page crawled event via WebSocket."""
-        if self._socketio:
-            from socketio_handlers.events_crawler import emit_crawler_page_crawled
-            emit_crawler_page_crawled(self._socketio, session_id, data)
-
-    def _emit_complete(self, session_id: str, data: dict):
-        """Emit completion event via WebSocket."""
-        if self._socketio:
-            from socketio_handlers.events_crawler import emit_crawler_complete
-            emit_crawler_complete(self._socketio, session_id, data)
-
-    def _emit_error(self, session_id: str, error: str):
-        """Emit error event via WebSocket."""
-        if self._socketio:
-            from socketio_handlers.events_crawler import emit_crawler_error
-            emit_crawler_error(self._socketio, session_id, error)
-
-    def _emit_jobs_updated(self):
-        """Emit global job list update to all subscribed clients."""
-        if self._socketio:
-            from socketio_handlers.events_crawler import emit_crawler_jobs_updated
-            emit_crawler_jobs_updated(self._socketio, self.get_all_jobs())
-
-    def start_crawl(
-        self,
-        urls: List[str],
-        collection_name: str,
-        collection_description: str = '',
-        max_pages_per_site: int = 50,
-        max_depth: int = 3,
-        created_by: str = 'web_crawler'
-    ) -> Dict:
-        """
-        Start a crawl job for one or more URLs and create a RAG collection.
+        Must be called during app initialization to enable WebSocket events.
 
         Args:
-            urls: List of base URLs to crawl
-            collection_name: Name for the new collection
-            collection_description: Description for the collection
-            max_pages_per_site: Max pages to crawl per URL
-            max_depth: Max link depth
-            created_by: Username of requester
-
-        Returns:
-            Dict with job_id and status
+            socketio: Flask-SocketIO instance
         """
-        from db.db import db
-        from db.tables import RAGDocument, RAGProcessingQueue
+        self._socketio = socketio
 
-        job_id = str(uuid.uuid4())
+    # =========================================================================
+    # JOB STATUS METHODS (Delegated to crawler_jobs)
+    # =========================================================================
 
-        # Create collection (synchronous mode)
-        collection = self._create_crawl_collection(
-            urls=urls,
-            display_name=collection_name,
-            description=collection_description,
-            created_by=created_by,
-            job_id=job_id
-        )
+    def get_job_status(self, job_id: str) -> Optional[Dict]:
+        """Get status of a crawl job. See crawler_jobs.get_job_status()."""
+        return get_job_status(job_id, self.active_crawls)
 
-        collection_id = collection.id
+    def get_all_jobs(self) -> List[Dict]:
+        """Get all crawl jobs. See crawler_jobs.get_all_jobs()."""
+        return get_all_jobs(self.active_crawls)
 
-        # Track job
-        self.active_crawls[job_id] = {
-            'status': 'running',
-            'collection_id': collection_id,
-            'urls': urls,
-            'pages_crawled': 0,
-            'documents_created': 0,
-            'errors': [],
-            'started_at': datetime.now().isoformat()
-        }
+    def list_jobs(self) -> List[Dict]:
+        """List all crawl jobs. See crawler_jobs.list_jobs()."""
+        return list_jobs(self.active_crawls)
 
-        try:
-            total_pages = 0
+    def cancel_job(self, job_id: str) -> bool:
+        """Cancel a running job. See crawler_jobs.cancel_job()."""
+        return cancel_job(job_id, self.active_crawls)
 
-            for url in urls:
-                logger.info(f"[Job {job_id}] Starting crawl of {url}")
-
-                crawler = WebCrawler(
-                    base_url=url,
-                    max_pages=max_pages_per_site,
-                    max_depth=max_depth,
-                    delay_seconds=1.0
-                )
-
-                def progress_callback(current, total, page_url):
-                    self.active_crawls[job_id]['pages_crawled'] = total_pages + current
-                    self.active_crawls[job_id]['current_url'] = page_url
-                    # Emit WebSocket progress update
-                    self._emit_progress(job_id, {
-                        'status': 'running',
-                        'stage': 'crawling',
-                        'pages_crawled': total_pages + current,
-                        'max_pages': max_pages_per_site * len(urls),
-                        'current_url': page_url,
-                        'current_url_index': urls.index(url) + 1,
-                        'total_urls': len(urls)
-                    })
-                    # Emit page crawled event
-                    self._emit_page_crawled(job_id, {
-                        'url': page_url,
-                        'page_number': total_pages + current
-                    })
-
-                pages = crawler.crawl(progress_callback=progress_callback)
-                total_pages += len(pages)
-
-                # Create documents from crawled pages
-                seen_hashes = set()
-
-                for page in pages:
-                    try:
-                        # Skip pages with empty/garbage content
-                        if not self._is_content_worth_indexing(page.get('content', '')):
-                            logger.debug(f"Skipping page with insufficient content: {page['url']}")
-                            continue
-
-                        content_hash = page['content_hash']
-                        if content_hash in seen_hashes:
-                            logger.debug(f"Skipping duplicate content for {page['url']}")
-                            continue
-                        seen_hashes.add(content_hash)
-
-                        existing_doc = RAGDocument.query.filter_by(file_hash=content_hash).first()
-                        if existing_doc:
-                            logger.debug(f"Content already exists in DB for {page['url']}")
-                            continue
-
-                        filename = self._generate_filename_from_url(page['url'])
-                        file_path = os.path.join(self.RAG_DOCS_PATH, filename)
-
-                        os.makedirs(self.RAG_DOCS_PATH, exist_ok=True)
-
-                        with open(file_path, 'w', encoding='utf-8') as f:
-                            f.write(page['content'])
-
-                        doc = RAGDocument(
-                            filename=filename,
-                            original_filename=page['metadata'].get('title', page['url'])[:255],
-                            file_path=file_path,
-                            file_size_bytes=len(page['content'].encode('utf-8')),
-                            mime_type='text/markdown',
-                            file_hash=content_hash,
-                            title=page['metadata'].get('title', '')[:255],
-                            description=page['metadata'].get('description', '')[:500],
-                            author=urlparse(page['url']).netloc,
-                            language=page['metadata'].get('language', 'de'),
-                            keywords=page['metadata'].get('keywords', ''),
-                            status='pending',
-                            collection_id=collection_id,
-                            is_public=True,
-                            uploaded_by=created_by,
-                            uploaded_at=datetime.now()
-                        )
-                        db.session.add(doc)
-                        db.session.flush()
-
-                        queue_entry = RAGProcessingQueue(
-                            document_id=doc.id,
-                            priority=5,
-                            status='queued',
-                            created_at=datetime.now()
-                        )
-                        db.session.add(queue_entry)
-                        db.session.commit()
-
-                        self.active_crawls[job_id]['documents_created'] += 1
-
-                    except Exception as e:
-                        logger.error(f"Error creating document for {page['url']}: {e}")
-                        db.session.rollback()
-                        self.active_crawls[job_id]['errors'].append({
-                            'url': page['url'],
-                            'error': str(e)
-                        })
-
-            # Update collection stats
-            try:
-                collection = RAGCollection.query.get(collection_id)
-                if collection:
-                    actual_count = RAGDocument.query.filter_by(collection_id=collection_id).count()
-                    collection.document_count = actual_count
-                    db.session.commit()
-            except Exception as e:
-                logger.warning(f"Could not update collection stats: {e}")
-
-            self.active_crawls[job_id]['status'] = 'completed'
-            self.active_crawls[job_id]['completed_at'] = datetime.now().isoformat()
-
-            logger.info(f"[Job {job_id}] Crawl completed: {total_pages} pages, {self.active_crawls[job_id]['documents_created']} documents")
-
-            self._emit_complete(job_id, {
-                'status': 'completed',
-                'collection_id': collection_id,
-                'pages_crawled': total_pages,
-                'documents_created': self.active_crawls[job_id]['documents_created'],
-                'errors_count': len(self.active_crawls[job_id]['errors'])
-            })
-
-        except Exception as e:
-            logger.error(f"[Job {job_id}] Crawl failed: {e}")
-            self.active_crawls[job_id]['status'] = 'failed'
-            self.active_crawls[job_id]['error'] = str(e)
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
-            self._emit_error(job_id, str(e))
-
-        return {
-            'job_id': job_id,
-            'collection_id': collection_id,
-            'status': self.active_crawls[job_id]['status'],
-            'pages_crawled': self.active_crawls[job_id]['pages_crawled'],
-            'documents_created': self.active_crawls[job_id]['documents_created']
-        }
+    # =========================================================================
+    # BACKGROUND CRAWL (Main Entry Point)
+    # =========================================================================
 
     def start_crawl_background(
         self,
@@ -432,74 +184,119 @@ class CrawlerService:
         chatbot_id: Optional[int] = None
     ) -> str:
         """
-        Start a crawl job in the background (continues even if user leaves).
+        Start a crawl job in the background.
+
+        This is the main entry point for crawling. The crawl runs in a
+        background thread and continues even if the user leaves the page.
+        Progress updates are sent via WebSocket.
 
         Args:
             urls: List of URLs to crawl
-            collection_name: Name for new collection (ignored if existing_collection_id is set)
-            collection_description: Description for new collection
-            max_pages_per_site: Max pages to crawl per URL
-            max_depth: Max link depth
+            collection_name: Display name for the collection
+            collection_description: Description text
+            max_pages_per_site: Maximum pages to crawl per URL
+            max_depth: Maximum link depth to follow
             created_by: Username of requester
-            app: Flask app instance for context
-            existing_collection_id: If set, add documents to this existing collection instead of creating new one
-            use_playwright: Use Playwright headless browser for JavaScript rendering (default: True)
-            use_vision_llm: Use Vision-LLM for intelligent data extraction from screenshots (default: True)
-            take_screenshots: Capture screenshots when using Playwright (default: True)
-            chatbot_id: If set, updates wizard session with crawl progress (for Chatbot Builder)
+            app: Flask app instance (for background context)
+            existing_collection_id: Add to existing collection instead of creating new
+            use_playwright: Use Playwright for JS rendering (default: True)
+            use_vision_llm: Use Vision-LLM for extraction (default: True)
+            take_screenshots: Capture screenshots (default: True)
+            chatbot_id: Associated chatbot ID (for wizard integration)
 
         Returns:
-            job_id: The ID of the started crawl job
+            job_id: UUID string for tracking the crawl job
+
+        Raises:
+            RuntimeError: If collection creation fails
         """
         job_id = str(uuid.uuid4())
 
-        # Check if Playwright is requested but not available
+        # Resolve actual Playwright availability
         actual_use_playwright = use_playwright and PLAYWRIGHT_AVAILABLE
         if use_playwright and not PLAYWRIGHT_AVAILABLE:
-            logger.warning(f"[Job {job_id}] Playwright requested but not available, falling back to basic crawler")
+            logger.warning(
+                f"[Job {job_id}] Playwright requested but not available, "
+                "falling back to basic crawler"
+            )
 
         actual_take_screenshots = bool(take_screenshots) and actual_use_playwright
         actual_use_vision_llm = bool(use_vision_llm) and actual_take_screenshots
 
-        # Pre-create job entry immediately
-        self.active_crawls[job_id] = {
-            'status': 'queued',
-            'urls': urls,
-            'collection_name': collection_name,
-            'existing_collection_id': existing_collection_id,
-            'collection_id': existing_collection_id,
-            'chatbot_id': chatbot_id,  # For wizard session progress updates
-            'max_pages': max_pages_per_site * len(urls),
-            'pages_crawled': 0,
-            'documents_created': 0,
-            'documents_linked': 0,
-            'screenshots_taken': 0,
-            'vision_extractions': 0,
-            'errors': [],
-            'queued_at': datetime.now().isoformat(),
-            'use_playwright': actual_use_playwright,
-            'use_vision_llm': actual_use_vision_llm,
-            'take_screenshots': actual_take_screenshots
-        }
+        # Create job entry
+        self.active_crawls[job_id] = create_job_entry(
+            job_id=job_id,
+            urls=urls,
+            collection_name=collection_name,
+            existing_collection_id=existing_collection_id,
+            chatbot_id=chatbot_id,
+            max_pages_per_site=max_pages_per_site,
+            use_playwright=actual_use_playwright,
+            use_vision_llm=actual_use_vision_llm,
+            take_screenshots=actual_take_screenshots
+        )
 
-        # Create collection synchronously when starting a new crawl (so frontend gets ID immediately)
+        # Pre-create collection (so frontend gets ID immediately)
         if not existing_collection_id:
-            try:
-                new_collection_id = None
-                if app:
-                    with app.app_context():
-                        collection = self._create_crawl_collection(
-                            urls=urls,
-                            display_name=collection_name,
-                            description=collection_description,
-                            created_by=created_by,
-                            job_id=job_id
-                        )
-                        from db.db import db
-                        db.session.commit()
-                        new_collection_id = collection.id
-                else:
-                    collection = self._create_crawl_collection(
+            existing_collection_id = self._create_collection_for_job(
+                job_id=job_id,
+                urls=urls,
+                collection_name=collection_name,
+                collection_description=collection_description,
+                created_by=created_by,
+                app=app
+            )
+
+        # Notify clients about new job
+        emit_jobs_updated(self._socketio, self.get_all_jobs())
+
+        # Start background thread
+        def run_crawl_with_context():
+            if app:
+                with app.app_context():
+                    self._run_background_crawl(
+                        job_id, urls, collection_name, collection_description,
+                        max_pages_per_site, max_depth, created_by,
+                        existing_collection_id, actual_use_playwright,
+                        actual_use_vision_llm, actual_take_screenshots
+                    )
+            else:
+                self._run_background_crawl(
+                    job_id, urls, collection_name, collection_description,
+                    max_pages_per_site, max_depth, created_by,
+                    existing_collection_id, actual_use_playwright,
+                    actual_use_vision_llm, actual_take_screenshots
+                )
+
+        thread = threading.Thread(target=run_crawl_with_context, daemon=True)
+        thread.start()
+        self._background_threads[job_id] = thread
+
+        crawler_type = "Playwright" if actual_use_playwright else "Basic"
+        vision_status = "with Vision-LLM" if actual_use_vision_llm else "without Vision-LLM"
+        logger.info(
+            f"[Job {job_id}] Background crawl started ({crawler_type}, {vision_status}) "
+            f"for {len(urls)} URLs"
+        )
+
+        return job_id
+
+    def _create_collection_for_job(
+        self,
+        job_id: str,
+        urls: List[str],
+        collection_name: str,
+        collection_description: str,
+        created_by: str,
+        app
+    ) -> int:
+        """Create a collection for a new crawl job."""
+        try:
+            new_collection_id = None
+
+            if app:
+                with app.app_context():
+                    collection = create_crawl_collection(
                         urls=urls,
                         display_name=collection_name,
                         description=collection_description,
@@ -509,51 +306,38 @@ class CrawlerService:
                     from db.db import db
                     db.session.commit()
                     new_collection_id = collection.id
-
-                if not new_collection_id:
-                    raise RuntimeError("Collection creation returned no ID")
-
-                existing_collection_id = new_collection_id
-                self.active_crawls[job_id]['collection_id'] = new_collection_id
-                self.active_crawls[job_id]['existing_collection_id'] = new_collection_id
-                logger.info(f"[Job {job_id}] Pre-created crawl collection {new_collection_id}")
-            except Exception as e:
-                logger.error(f"[Job {job_id}] Could not create collection: {e}")
-                self.active_crawls[job_id]['status'] = 'failed'
-                self.active_crawls[job_id]['error'] = str(e)
-                self._emit_error(job_id, str(e))
-                self._emit_jobs_updated()
-                raise
-
-        # Notify all clients about new job
-        self._emit_jobs_updated()
-
-        def run_crawl_with_context():
-            """Run crawl in background thread with Flask app context."""
-            if app:
-                with app.app_context():
-                    self._run_background_crawl(
-                        job_id, urls, collection_name, collection_description,
-                        max_pages_per_site, max_depth, created_by,
-                        existing_collection_id, actual_use_playwright, actual_use_vision_llm, actual_take_screenshots
-                    )
             else:
-                self._run_background_crawl(
-                    job_id, urls, collection_name, collection_description,
-                    max_pages_per_site, max_depth, created_by,
-                    existing_collection_id, actual_use_playwright, actual_use_vision_llm, actual_take_screenshots
+                collection = create_crawl_collection(
+                    urls=urls,
+                    display_name=collection_name,
+                    description=collection_description,
+                    created_by=created_by,
+                    job_id=job_id
                 )
+                from db.db import db
+                db.session.commit()
+                new_collection_id = collection.id
 
-        # Start background thread
-        thread = threading.Thread(target=run_crawl_with_context, daemon=True)
-        thread.start()
-        self._background_threads[job_id] = thread
+            if not new_collection_id:
+                raise RuntimeError("Collection creation returned no ID")
 
-        crawler_type = "Playwright" if actual_use_playwright else "Basic"
-        vision_status = "with Vision-LLM" if actual_use_vision_llm else "without Vision-LLM"
-        logger.info(f"[Job {job_id}] Background crawl started ({crawler_type}, {vision_status}) for {len(urls)} URLs")
+            self.active_crawls[job_id]['collection_id'] = new_collection_id
+            self.active_crawls[job_id]['existing_collection_id'] = new_collection_id
+            logger.info(f"[Job {job_id}] Pre-created crawl collection {new_collection_id}")
 
-        return job_id
+            return new_collection_id
+
+        except Exception as e:
+            logger.error(f"[Job {job_id}] Could not create collection: {e}")
+            self.active_crawls[job_id]['status'] = 'failed'
+            self.active_crawls[job_id]['error'] = str(e)
+            emit_error(self._socketio, job_id, str(e))
+            emit_jobs_updated(self._socketio, self.get_all_jobs())
+            raise
+
+    # =========================================================================
+    # BACKGROUND CRAWL EXECUTION
+    # =========================================================================
 
     def _run_background_crawl(
         self,
@@ -564,47 +348,34 @@ class CrawlerService:
         max_pages_per_site: int,
         max_depth: int,
         created_by: str,
-        existing_collection_id: Optional[int] = None,
-        use_playwright: bool = True,
-        use_vision_llm: bool = True,
-        take_screenshots: bool = True
-    ):
+        existing_collection_id: Optional[int],
+        use_playwright: bool,
+        use_vision_llm: bool,
+        take_screenshots: bool
+    ) -> None:
         """
-        Internal method to run crawl in background.
+        Execute the crawl in the background thread.
 
-        Implements document linking logic:
-        - If a document with the same content hash already exists, it is LINKED to the collection
-        - If the document is new, it is created and linked
-        - Documents can exist in multiple collections via CollectionDocumentLink
-
-        Args:
-            job_id: Unique job identifier
-            urls: List of URLs to crawl
-            collection_name: Name for the collection
-            collection_description: Description for the collection
-            max_pages_per_site: Max pages per URL
-            max_depth: Max link depth
-            created_by: Username
-            existing_collection_id: Optional existing collection ID
-            use_playwright: Use Playwright headless browser (default: True)
-            use_vision_llm: Use Vision-LLM for extraction (default: True)
-            take_screenshots: Capture screenshots when using Playwright (default: True)
+        This method runs the complete crawl workflow:
+        1. Initialize collection
+        2. Start embedding pipeline
+        3. Discover URLs
+        4. Process URLs (basic or Playwright)
+        5. Update collection stats
+        6. Emit completion event
         """
         from db.db import db
-        from db.tables import RAGCollection, RAGDocument, RAGProcessingQueue, CollectionDocumentLink, RAGDocumentChunk
+        from db.tables import RAGCollection
+        from services.rag.collection_embedding_service import get_collection_embedding_service
 
-        self.active_crawls[job_id]['status'] = 'running'
-        self.active_crawls[job_id]['started_at'] = datetime.now().isoformat()
-
+        update_job_started(job_id, self.active_crawls)
         crawler_type = "Playwright" if use_playwright else "Basic"
 
-        # Wait a moment for frontend to subscribe to the room
-        # This prevents race condition where events are emitted before client joins
-        import time
+        # Wait for frontend to subscribe to room
         time.sleep(1.5)
 
-        # Emit started event - use 'planning' stage since discovery starts first
-        self._emit_progress(job_id, {
+        # Emit initial planning status
+        emit_progress(self._socketio, job_id, {
             'status': 'planning',
             'stage': 'planning',
             'pages_crawled': 0,
@@ -614,802 +385,281 @@ class CrawlerService:
             'message': f'Crawl gestartet ({crawler_type})...',
             'crawler_type': crawler_type,
             'use_vision_llm': use_vision_llm
-        })
+        }, self.active_crawls)
 
         try:
-            # Either use existing collection or create new one
-            if existing_collection_id:
-                collection = RAGCollection.query.get(existing_collection_id)
-                if not collection:
-                    raise ValueError(f"Collection with ID {existing_collection_id} not found")
-                collection_id = collection.id
-                logger.info(f"[Job {job_id}] Adding to existing collection: {collection.display_name} (ID: {collection_id})")
+            # Get or create collection
+            collection_id = self._initialize_collection(
+                job_id, urls, collection_name, collection_description,
+                created_by, existing_collection_id
+            )
 
-                # Update source metadata for existing collections
-                collection.crawl_job_id = job_id
-                if collection.source_type == 'upload':
-                    collection.source_type = 'mixed'
-                if not collection.source_url and urls:
-                    collection.source_url = urls[0]
-                db.session.commit()
-            else:
-                # Create new collection (fallback if not pre-created)
-                collection = self._create_crawl_collection(
-                    urls=urls,
-                    display_name=collection_name,
-                    description=collection_description,
-                    created_by=created_by,
-                    job_id=job_id
-                )
-                collection_id = collection.id
-                logger.info(f"[Job {job_id}] Created new collection: {collection.display_name} (ID: {collection_id})")
+            # Start embedding early
+            self._start_early_embedding(job_id, collection_id)
 
-            self.active_crawls[job_id]['collection_id'] = collection_id
-            self.active_crawls[job_id]['documents_linked'] = 0
-            self.active_crawls[job_id]['urls_total'] = 0
-            self.active_crawls[job_id]['urls_completed'] = 0
-            self.active_crawls[job_id]['images_extracted'] = 0
+            # Phase 1: URL Discovery
+            discovered_urls = self._discover_urls(
+                job_id, urls, max_pages_per_site, max_depth, crawler_type
+            )
 
-            # Start embedding early so chunks are indexed while crawling continues
-            try:
-                embedding_service = get_collection_embedding_service()
-                embedding_service.start_embedding(
-                    collection_id,
-                    wait_for_more=True,
-                    source_job_id=job_id
-                )
-                logger.info(f"[Job {job_id}] Embedding started in live mode for collection {collection_id}")
-            except Exception as e:
-                logger.warning(f"[Job {job_id}] Could not start early embedding: {e}")
+            # Phase 2: URL Processing
+            total_pages = self._process_discovered_urls(
+                job_id, discovered_urls, collection_id, created_by,
+                use_playwright, use_vision_llm, take_screenshots, crawler_type
+            )
 
-            total_pages = 0
-            seen_hashes_global = set()
-
-            # ---------- Phase 1: Discovery ----------
-            # Emit initial planning status
-            self._emit_progress(job_id, {
-                'status': 'planning',
-                'stage': 'planning',
-                'pages_crawled': 0,
-                'max_pages': max_pages_per_site * len(urls),
-                'urls_total': 0,
-                'urls_completed': 0,
-                'current_url': urls[0] if urls else '',
-                'crawler_type': crawler_type,
-                'message': 'URL-Erkundung gestartet...'
-            })
-
-            discovered_urls: List[str] = []
-            last_emit_time = [0]  # Use list for closure mutability
-
-            def discovery_progress_callback(count: int, current_url: str):
-                """Callback to emit progress during discovery."""
-                import time
-                now = time.time()
-                # Throttle emissions to max 4 per second for responsive UI
-                if now - last_emit_time[0] < 0.25:
-                    return
-                last_emit_time[0] = now
-
-                self.active_crawls[job_id]['urls_total'] = count
-                self.active_crawls[job_id]['current_url'] = current_url
-
-                self._emit_progress(job_id, {
-                    'status': 'planning',
-                    'stage': 'planning',
-                    'pages_crawled': 0,
-                    'max_pages': max(count, max_pages_per_site * len(urls)),
-                    'urls_total': count,
-                    'urls_completed': 0,
-                    'current_url': current_url,
-                    'crawler_type': crawler_type,
-                    'message': f'{count} URLs gefunden...'
-                })
-
-            for url_index, url in enumerate(urls):
-                logger.info(f"[Job {job_id}] Discovery URL {url_index + 1}/{len(urls)}: {url}")
-                crawler = WebCrawler(
-                    base_url=url,
-                    max_pages=max_pages_per_site,
-                    max_depth=max_depth,
-                    delay_seconds=0.1  # Faster for discovery
-                )
-                discovered_urls.extend(
-                    crawler.discover_urls(
-                        max_pages_per_site,
-                        max_depth,
-                        progress_callback=discovery_progress_callback
-                    )
-                )
-
-            # De-duplicate URLs
-            discovered_urls = list(dict.fromkeys(discovered_urls))
-            self.active_crawls[job_id]['urls_total'] = len(discovered_urls)
-
-            logger.info(f"[Job {job_id}] Discovery complete: {len(discovered_urls)} unique URLs found")
-
-            self._emit_progress(job_id, {
-                'status': 'running',
-                'stage': 'planning_done',
-                'pages_crawled': 0,
-                'max_pages': len(discovered_urls),
-                'urls_total': len(discovered_urls),
-                'urls_completed': 0,
-                'crawler_type': crawler_type,
-                'message': f'{len(discovered_urls)} URLs gefunden, Crawling startet...'
-            })
-
-            if use_playwright and PLAYWRIGHT_AVAILABLE:
-                total_pages = self._process_urls_playwright(
-                    job_id,
-                    discovered_urls,
-                    collection_id,
-                    created_by,
-                    seen_hashes_global,
-                    use_vision_llm,
-                    take_screenshots,
-                    crawler_type
-                )
-            else:
-                total_pages = self._process_urls_basic(
-                    job_id,
-                    discovered_urls,
-                    collection_id,
-                    created_by,
-                    seen_hashes_global,
-                    crawler_type
-                )
-
-            # Update collection stats and brand color
+            # Update collection stats
             brand_color = self.active_crawls[job_id].get('brand_color')
-            try:
-                collection = RAGCollection.query.get(collection_id)
-                if collection:
-                    link_count = CollectionDocumentLink.query.filter_by(collection_id=collection_id).count()
-                    collection.document_count = link_count
-                    # Save brand color if extracted and not already set
-                    if brand_color and not collection.color:
-                        collection.color = brand_color
-                        logger.info(f"[Job {job_id}] Saved brand color to collection: {brand_color}")
-                    db.session.commit()
-            except Exception as e:
-                logger.warning(f"Could not update collection stats: {e}")
+            update_collection_stats(collection_id, brand_color)
 
-            self.active_crawls[job_id]['status'] = 'completed'
-            self.active_crawls[job_id]['completed_at'] = datetime.now().isoformat()
+            # Mark job completed
+            update_job_completed(job_id, self.active_crawls)
 
-            docs_created = self.active_crawls[job_id]['documents_created']
-            docs_linked = self.active_crawls[job_id]['documents_linked']
-            screenshots = self.active_crawls[job_id].get('screenshots_taken', 0)
-            vision_extractions = self.active_crawls[job_id].get('vision_extractions', 0)
-
-            logger.info(f"[Job {job_id}] Background crawl completed: {total_pages} pages, {docs_created} documents neu, {docs_linked} documents verlinkt")
-            if use_playwright:
-                logger.info(f"[Job {job_id}] Playwright stats: {screenshots} screenshots, {vision_extractions} vision extractions")
-
-            self._emit_complete(job_id, {
-                'status': 'completed',
-                'stage': 'completed',
-                'collection_id': collection_id,
-                'pages_crawled': total_pages,
-                'documents_created': docs_created,
-                'documents_linked': docs_linked,
-                'screenshots_taken': screenshots,
-                'vision_extractions': vision_extractions,
-                'errors_count': len(self.active_crawls[job_id]['errors']),
-                'crawler_type': crawler_type,
-                'brand_color': brand_color
-            })
-
-            self._emit_jobs_updated()
+            # Emit completion
+            self._emit_crawl_complete(job_id, collection_id, total_pages, crawler_type)
 
         except Exception as e:
             logger.error(f"[Job {job_id}] Background crawl failed: {e}")
-            self.active_crawls[job_id]['status'] = 'failed'
-            self.active_crawls[job_id]['error'] = str(e)
+            update_job_failed(job_id, str(e), self.active_crawls)
             try:
                 db.session.rollback()
             except Exception:
                 pass
-            self._emit_error(job_id, str(e))
-            self._emit_jobs_updated()
+            emit_error(self._socketio, job_id, str(e))
+            emit_jobs_updated(self._socketio, self.get_all_jobs())
 
-    def get_job_status(self, job_id: str) -> Optional[Dict]:
-        """Get status of a crawl job."""
-        status = self.active_crawls.get(job_id)
-        if status:
-            return status
-        return self._get_persisted_job_status(job_id)
-
-    def _get_persisted_job_status(self, job_id: str) -> Optional[Dict]:
-        """Fallback: reconstruct crawl status from DB when in-memory session is missing."""
-        try:
-            from db.tables import RAGCollection, CollectionDocumentLink
-
-            collection = RAGCollection.query.filter_by(crawl_job_id=job_id).first()
-            if not collection:
-                return None
-
-            docs_created = CollectionDocumentLink.query.filter_by(
-                crawl_job_id=job_id,
-                link_type='new'
-            ).count()
-            docs_linked = CollectionDocumentLink.query.filter_by(
-                crawl_job_id=job_id,
-                link_type='linked'
-            ).count()
-            docs_total = docs_created + docs_linked
-            if docs_total == 0:
-                # No persisted progress yet; treat as missing to surface an actionable error.
-                return None
-
-            completed_at = collection.updated_at or collection.last_indexed_at
-            status = 'completed' if collection.embedding_status != 'failed' else 'failed'
-
-            return {
-                'status': status,
-                'stage': 'completed' if status == 'completed' else 'crawling',
-                'collection_id': collection.id,
-                'collection_name': collection.display_name or collection.name,
-                'documents_created': docs_created,
-                'documents_linked': docs_linked,
-                'pages_crawled': docs_total,
-                'max_pages': docs_total,
-                'urls_total': docs_total,
-                'urls_completed': docs_total,
-                'completed_at': completed_at.isoformat() if completed_at else None,
-                'recovered': True,
-                'error': collection.embedding_error if status == 'failed' else None
-            }
-        except Exception as e:
-            logger.warning(f"[CrawlerService] Could not recover status for job {job_id}: {e}")
-            return None
-
-    def get_all_jobs(self) -> List[Dict]:
-        """Get all crawl jobs (for WebSocket subscription)."""
-        jobs = []
-        for job_id, status in self.active_crawls.items():
-            jobs.append({'job_id': job_id, **status})
-        jobs.sort(key=lambda x: x.get('started_at') or x.get('queued_at') or '', reverse=True)
-        return jobs
-
-    def list_jobs(self) -> List[Dict]:
-        """List all crawl jobs."""
-        return self.get_all_jobs()
-
-    def cancel_job(self, job_id: str) -> bool:
-        """Cancel a running crawl job (marks as cancelled, thread continues until next check)."""
-        if job_id in self.active_crawls:
-            self.active_crawls[job_id]['status'] = 'cancelled'
-            return True
-        return False
-
-    def _process_crawled_page(
-        self,
-        job_id: str,
-        page: Dict,
-        collection_id: int,
-        created_by: str,
-        seen_hashes: set
-    ):
-        """
-        Process a single crawled page immediately.
-        Creates document or links existing document to collection.
-        Also stores extracted images and screenshots as RAGDocumentChunks.
-        """
-        from db.db import db
-        from db.tables import RAGDocument, RAGDocumentChunk, RAGProcessingQueue, CollectionDocumentLink
-
-        try:
-            # Skip pages with empty/garbage content
-            if not self._is_content_worth_indexing(page.get('content', '')):
-                logger.debug(f"Skipping page with insufficient content: {page.get('url', 'unknown')}")
-                return None
-
-            content_hash = page['content_hash']
-
-            if content_hash in seen_hashes:
-                logger.debug(f"Skipping duplicate content within crawl for {page['url']}")
-                return None
-            seen_hashes.add(content_hash)
-
-            existing_doc = RAGDocument.query.filter_by(file_hash=content_hash).first()
-
-            if existing_doc:
-                existing_link = CollectionDocumentLink.query.filter_by(
-                    collection_id=collection_id,
-                    document_id=existing_doc.id
-                ).first()
-
-                if existing_link:
-                    logger.debug(f"Document already linked to collection for {page['url']}")
-                    return None
-
-                screenshot_data = page.get('screenshot') if isinstance(page, dict) else None
-                if screenshot_data and not existing_doc.screenshot_path:
-                    screenshot_path = screenshot_data.get('screenshot_path')
-                    if screenshot_path:
-                        existing_doc.screenshot_path = screenshot_path
-                        if not getattr(existing_doc, 'screenshot_url', None):
-                            existing_doc.screenshot_url = f"/api/rag/documents/{existing_doc.id}/screenshot"
-
-                    has_screenshot_chunks = (
-                        RAGDocumentChunk.query
-                        .filter_by(document_id=existing_doc.id)
-                        .filter(RAGDocumentChunk.chunk_index >= 99999)
-                        .count() > 0
-                    )
-                    if not has_screenshot_chunks:
-                        screenshot_entries = screenshot_data.get('screenshots') or []
-                        if not screenshot_entries and screenshot_path:
-                            screenshot_entries = [{'screenshot_path': screenshot_path}]
-
-                        stored = 0
-                        for idx, shot in enumerate(screenshot_entries):
-                            shot_path = (shot or {}).get('screenshot_path')
-                            if not shot_path:
-                                continue
-                            screenshot_chunk = RAGDocumentChunk(
-                                document_id=existing_doc.id,
-                                chunk_index=99999 + idx,  # Keep legacy index for first screenshot
-                                content=f"[Screenshot der Webseite: {page.get('url', '')}]",
-                                has_image=True,
-                                image_path=shot_path,
-                                image_url=page.get('url'),
-                                image_alt_text=f"Screenshot von {page.get('metadata', {}).get('title', page.get('url'))}",
-                                image_mime_type='image/png',
-                                embedding_status='pending'
-                            )
-                            db.session.add(screenshot_chunk)
-                            stored += 1
-
-                        if stored:
-                            logger.info(
-                                f"[Job {job_id}] Stored {stored} screenshot(s) for existing document {existing_doc.id}"
-                            )
-
-                link = CollectionDocumentLink(
-                    collection_id=collection_id,
-                    document_id=existing_doc.id,
-                    link_type='linked',
-                    source_url=page['url'],
-                    crawl_job_id=job_id,
-                    linked_at=datetime.now(),
-                    linked_by=created_by
-                )
-                db.session.add(link)
-                db.session.commit()
-
-                try:
-                    from services.chatbot.lexical_index import LexicalSearchIndex
-                    LexicalSearchIndex.reindex_document(existing_doc.id)
-                except Exception as exc:
-                    logger.warning(f"[CrawlerService] Lexical index update failed for doc {existing_doc.id}: {exc}")
-
-                self.active_crawls[job_id]['documents_linked'] += 1
-                logger.info(f"[Job {job_id}] Linked existing document {existing_doc.id} to collection {collection_id}")
-
-                try:
-                    from services.rag.document_service import DocumentService
-                    return {
-                        'action': 'linked',
-                        'document': DocumentService.serialize_document(existing_doc)
-                    }
-                except Exception:
-                    return None
-
-            else:
-                filename = self._generate_filename_from_url(page['url'])
-                file_path = os.path.join(self.RAG_DOCS_PATH, filename)
-                os.makedirs(self.RAG_DOCS_PATH, exist_ok=True)
-
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(page['content'])
-
-                # Extract screenshot data if available (from Playwright crawler)
-                screenshot_data = page.get('screenshot')
-                screenshot_path = screenshot_data.get('screenshot_path') if screenshot_data else None
-
-                doc = RAGDocument(
-                    filename=filename,
-                    original_filename=page['metadata'].get('title', page['url'])[:255],
-                    file_path=file_path,
-                    file_size_bytes=len(page['content'].encode('utf-8')),
-                    mime_type='text/markdown',
-                    file_hash=content_hash,
-                    title=page['metadata'].get('title', '')[:255],
-                    description=page['metadata'].get('description', '')[:500],
-                    author=urlparse(page['url']).netloc,
-                    language=page['metadata'].get('language', 'de'),
-                    keywords=page['metadata'].get('keywords', ''),
-                    status='pending',
-                    collection_id=collection_id,
-                    is_public=True,
-                    uploaded_by=created_by,
-                    uploaded_at=datetime.now(),
-                    # New fields for Playwright/Vision-LLM support
-                    screenshot_path=screenshot_path,
-                    source_url=page['url']
-                )
-                db.session.add(doc)
-                db.session.flush()
-
-                # Persist an API URL so UIs (and chats) can fetch the screenshot with auth
-                if screenshot_path and not getattr(doc, 'screenshot_url', None):
-                    doc.screenshot_url = f"/api/rag/documents/{doc.id}/screenshot"
-
-                # Store extracted images as chunks
-                images = page.get('images', [])
-                if images:
-                    for idx, img in enumerate(images):
-                        image_chunk = RAGDocumentChunk(
-                            document_id=doc.id,
-                            chunk_index=10000 + idx,  # High index to avoid collision with text chunks
-                            content=f"[Bild: {img.get('alt_text', 'Bild ohne Beschreibung')}]",
-                            has_image=True,
-                            image_path=img.get('image_path'),
-                            image_url=img.get('source_url'),
-                            image_alt_text=img.get('alt_text'),
-                            image_mime_type=img.get('mime_type', 'image/jpeg'),
-                            embedding_status='pending'
-                        )
-                        db.session.add(image_chunk)
-                logger.info(f"[Job {job_id}] Stored {len(images)} images for document {doc.id}")
-
-                # Store screenshot(s) as special chunks (for Vision-LLM queries and UI inspection)
-                if screenshot_data:
-                    screenshot_entries = screenshot_data.get('screenshots') or []
-                    if not screenshot_entries and screenshot_path:
-                        screenshot_entries = [{'screenshot_path': screenshot_path}]
-
-                    stored = 0
-                    for idx, shot in enumerate(screenshot_entries):
-                        shot_path = (shot or {}).get('screenshot_path')
-                        if not shot_path:
-                            continue
-
-                        screenshot_chunk = RAGDocumentChunk(
-                            document_id=doc.id,
-                            chunk_index=99999 + idx,  # Keep legacy index for first screenshot
-                            content=f"[Screenshot der Webseite: {page['url']}]",
-                            has_image=True,
-                            image_path=shot_path,
-                            image_url=page['url'],
-                            image_alt_text=f"Screenshot von {page['metadata'].get('title', page['url'])}",
-                            image_mime_type='image/png',
-                            embedding_status='pending'
-                        )
-                        db.session.add(screenshot_chunk)
-                        stored += 1
-
-                    if stored:
-                        logger.info(f"[Job {job_id}] Stored {stored} screenshot(s) for document {doc.id}")
-
-                link = CollectionDocumentLink(
-                    collection_id=collection_id,
-                    document_id=doc.id,
-                    link_type='new',
-                    source_url=page['url'],
-                    crawl_job_id=job_id,
-                    linked_at=datetime.now(),
-                    linked_by=created_by
-                )
-                db.session.add(link)
-
-                queue_entry = RAGProcessingQueue(
-                    document_id=doc.id,
-                    priority=5,
-                    status='queued',
-                    created_at=datetime.now()
-                )
-                db.session.add(queue_entry)
-                db.session.commit()
-
-                self.active_crawls[job_id]['documents_created'] += 1
-                if images:
-                    self.active_crawls[job_id]['images_extracted'] = self.active_crawls[job_id].get('images_extracted', 0) + len(images)
-                if screenshot_data and screenshot_path:
-                    self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + screenshot_data.get('screenshot_count', 1)
-                crawler_type = page.get('crawler_type', 'basic')
-                logger.info(f"[Job {job_id}] Created new document {doc.id} for {page['url']} (crawler: {crawler_type})")
-
-                try:
-                    from services.rag.document_service import DocumentService
-                    return {
-                        'action': 'new',
-                        'document': DocumentService.serialize_document(doc)
-                    }
-                except Exception:
-                    return None
-
-            return None
-
-        except Exception as e:
-            logger.error(f"Error processing document for {page['url']}: {e}")
-            db.session.rollback()
-            self.active_crawls[job_id]['errors'].append({
-                'url': page['url'],
-                'error': str(e)
-            })
-            return None
-
-    def _process_urls_basic(
+    def _initialize_collection(
         self,
         job_id: str,
         urls: List[str],
-        collection_id: int,
+        collection_name: str,
+        collection_description: str,
         created_by: str,
-        seen_hashes_global: set,
-        crawler_type: str
+        existing_collection_id: Optional[int]
     ) -> int:
-        """
-        Fetch URLs in parallel using the basic crawler (requests + BeautifulSoup).
-        """
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        """Initialize or get the collection for crawling."""
+        from db.db import db
+        from db.tables import RAGCollection
 
-        if not urls:
-            return 0
+        if existing_collection_id:
+            collection = RAGCollection.query.get(existing_collection_id)
+            if not collection:
+                raise ValueError(f"Collection with ID {existing_collection_id} not found")
 
-        fetch_workers = max(2, min(8, len(urls)))
-
-        def fetch_single(target_url: str):
-            worker = WebCrawler(
-                base_url=target_url,
-                max_pages=1,
-                max_depth=0,
-                delay_seconds=0.05,
-                extract_images=True
+            update_collection_for_crawl(
+                collection_id=existing_collection_id,
+                job_id=job_id,
+                source_url=urls[0] if urls else None
             )
-            return worker.fetch_page_content(target_url)
 
-        total_pages = 0
-        with ThreadPoolExecutor(max_workers=fetch_workers) as executor:
-            future_map = {executor.submit(fetch_single, u): u for u in urls}
-            for future in as_completed(future_map):
-                url = future_map[future]
-                try:
-                    page_data = future.result()
-                except Exception as e:
-                    logger.error(f"[Job {job_id}] Fetch failed for {url}: {e}")
-                    self.active_crawls[job_id]['errors'].append({'url': url, 'error': str(e)})
-                    self.active_crawls[job_id]['urls_completed'] += 1
-                    continue
+            logger.info(
+                f"[Job {job_id}] Adding to existing collection: "
+                f"{collection.display_name} (ID: {existing_collection_id})"
+            )
+            collection_id = existing_collection_id
+        else:
+            # Create new collection (fallback if not pre-created)
+            collection = create_crawl_collection(
+                urls=urls,
+                display_name=collection_name,
+                description=collection_description,
+                created_by=created_by,
+                job_id=job_id
+            )
+            collection_id = collection.id
+            logger.info(
+                f"[Job {job_id}] Created new collection: "
+                f"{collection.display_name} (ID: {collection_id})"
+            )
 
-                self.active_crawls[job_id]['urls_completed'] += 1
+        self.active_crawls[job_id]['collection_id'] = collection_id
+        self.active_crawls[job_id]['documents_linked'] = 0
+        self.active_crawls[job_id]['urls_total'] = 0
+        self.active_crawls[job_id]['urls_completed'] = 0
+        self.active_crawls[job_id]['images_extracted'] = 0
 
-                doc_update = None
-                if page_data:
-                    total_pages += 1
-                    self.active_crawls[job_id]['pages_crawled'] = self.active_crawls[job_id]['urls_completed']
-                    doc_update = self._process_crawled_page(
-                        job_id,
-                        page_data,
-                        collection_id,
-                        created_by,
-                        seen_hashes_global
-                    )
+        return collection_id
 
-                # Emit progress after each processed page (even on failures)
-                self._emit_progress(job_id, {
-                    'status': 'running',
-                    'stage': 'crawling',
-                    'pages_crawled': self.active_crawls[job_id]['urls_completed'],
-                    'max_pages': len(urls),
-                    'current_url': url,
-                    'urls_total': len(urls),
-                    'urls_completed': self.active_crawls[job_id]['urls_completed'],
-                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
-                    'crawler_type': crawler_type
-                })
-                page_payload = {
-                    'url': url,
-                    'page_number': self.active_crawls[job_id]['urls_completed'],
-                    'documents_created': self.active_crawls[job_id]['documents_created'],
-                    'documents_linked': self.active_crawls[job_id]['documents_linked'],
-                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0)
-                }
-                if doc_update:
-                    page_payload.update({
-                        'collection_id': collection_id,
-                        'document_action': doc_update.get('action'),
-                        'document': doc_update.get('document')
-                    })
-                self._emit_page_crawled(job_id, page_payload)
+    def _start_early_embedding(self, job_id: str, collection_id: int) -> None:
+        """Start embedding pipeline early for live indexing."""
+        try:
+            from services.rag.collection_embedding_service import get_collection_embedding_service
+            embedding_service = get_collection_embedding_service()
+            embedding_service.start_embedding(
+                collection_id,
+                wait_for_more=True,
+                source_job_id=job_id
+            )
+            logger.info(
+                f"[Job {job_id}] Embedding started in live mode for collection {collection_id}"
+            )
+        except Exception as e:
+            logger.warning(f"[Job {job_id}] Could not start early embedding: {e}")
 
-        return total_pages
-
-    def _process_urls_playwright(
+    def _discover_urls(
         self,
         job_id: str,
         urls: List[str],
+        max_pages_per_site: int,
+        max_depth: int,
+        crawler_type: str
+    ) -> List[str]:
+        """Discover all URLs to crawl."""
+        emit_progress(self._socketio, job_id, {
+            'status': 'planning',
+            'stage': 'planning',
+            'pages_crawled': 0,
+            'max_pages': max_pages_per_site * len(urls),
+            'urls_total': 0,
+            'urls_completed': 0,
+            'current_url': urls[0] if urls else '',
+            'crawler_type': crawler_type,
+            'message': 'URL-Erkundung gestartet...'
+        }, self.active_crawls)
+
+        discovered_urls: List[str] = []
+        last_emit_time = [0]
+
+        def discovery_progress_callback(count: int, current_url: str):
+            now = time.time()
+            if now - last_emit_time[0] < 0.25:
+                return
+            last_emit_time[0] = now
+
+            self.active_crawls[job_id]['urls_total'] = count
+            self.active_crawls[job_id]['current_url'] = current_url
+
+            emit_progress(self._socketio, job_id, {
+                'status': 'planning',
+                'stage': 'planning',
+                'pages_crawled': 0,
+                'max_pages': max(count, max_pages_per_site * len(urls)),
+                'urls_total': count,
+                'urls_completed': 0,
+                'current_url': current_url,
+                'crawler_type': crawler_type,
+                'message': f'{count} URLs gefunden...'
+            }, self.active_crawls)
+
+        for url_index, url in enumerate(urls):
+            logger.info(f"[Job {job_id}] Discovery URL {url_index + 1}/{len(urls)}: {url}")
+            crawler = WebCrawler(
+                base_url=url,
+                max_pages=max_pages_per_site,
+                max_depth=max_depth,
+                delay_seconds=0.1
+            )
+            discovered_urls.extend(
+                crawler.discover_urls(
+                    max_pages_per_site,
+                    max_depth,
+                    progress_callback=discovery_progress_callback
+                )
+            )
+
+        # Deduplicate
+        discovered_urls = list(dict.fromkeys(discovered_urls))
+        self.active_crawls[job_id]['urls_total'] = len(discovered_urls)
+
+        logger.info(f"[Job {job_id}] Discovery complete: {len(discovered_urls)} unique URLs")
+
+        emit_progress(self._socketio, job_id, {
+            'status': 'running',
+            'stage': 'planning_done',
+            'pages_crawled': 0,
+            'max_pages': len(discovered_urls),
+            'urls_total': len(discovered_urls),
+            'urls_completed': 0,
+            'crawler_type': crawler_type,
+            'message': f'{len(discovered_urls)} URLs gefunden, Crawling startet...'
+        }, self.active_crawls)
+
+        return discovered_urls
+
+    def _process_discovered_urls(
+        self,
+        job_id: str,
+        discovered_urls: List[str],
         collection_id: int,
         created_by: str,
-        seen_hashes_global: set,
+        use_playwright: bool,
         use_vision_llm: bool,
         take_screenshots: bool,
         crawler_type: str
     ) -> int:
-        """
-        Fetch URLs with Playwright (screenshots + vision) using a bounded async worker pool.
-        Emits progress updates in real-time as each URL is processed.
-        """
-        if not urls:
-            return 0
+        """Process discovered URLs with appropriate crawler."""
+        seen_hashes_global: set = set()
 
-        total_pages = 0
-        total_urls = len(urls)
-
-        # Use a queue to collect results and process them with progress updates
-        from queue import Queue
-        import threading
-
-        result_queue = Queue()
-        processing_complete = threading.Event()
-
-        effective_use_vision_llm = use_vision_llm and take_screenshots
-        vision_model_id = None
-        if effective_use_vision_llm:
-            from db.models.llm_model import LLMModel
-            vision_model_id = LLMModel.get_default_model_id(
-                model_type=LLMModel.MODEL_TYPE_LLM,
-                supports_vision=True
+        if use_playwright and PLAYWRIGHT_AVAILABLE:
+            return process_urls_playwright(
+                job_id=job_id,
+                urls=discovered_urls,
+                collection_id=collection_id,
+                created_by=created_by,
+                seen_hashes_global=seen_hashes_global,
+                use_vision_llm=use_vision_llm,
+                take_screenshots=take_screenshots,
+                crawler_type=crawler_type,
+                active_crawls=self.active_crawls,
+                socketio=self._socketio
             )
-            if not vision_model_id:
-                raise ValueError("No vision-capable LLM model configured in llm_models")
+        else:
+            return process_urls_basic(
+                job_id=job_id,
+                urls=discovered_urls,
+                collection_id=collection_id,
+                created_by=created_by,
+                seen_hashes_global=seen_hashes_global,
+                crawler_type=crawler_type,
+                active_crawls=self.active_crawls,
+                socketio=self._socketio
+            )
 
-        # Queue for "starting URL" events (so user sees progress immediately)
-        start_queue = Queue()
+    def _emit_crawl_complete(
+        self,
+        job_id: str,
+        collection_id: int,
+        total_pages: int,
+        crawler_type: str
+    ) -> None:
+        """Emit completion event and update job list."""
+        job = self.active_crawls[job_id]
+        docs_created = job['documents_created']
+        docs_linked = job['documents_linked']
+        screenshots = job.get('screenshots_taken', 0)
+        vision_extractions = job.get('vision_extractions', 0)
+        brand_color = job.get('brand_color')
 
-        async def run():
-            from .playwright_crawler import PlaywrightCrawler
+        logger.info(
+            f"[Job {job_id}] Background crawl completed: {total_pages} pages, "
+            f"{docs_created} documents neu, {docs_linked} documents verlinkt"
+        )
 
-            max_workers = min(4, max(1, len(urls)))
-            sem = asyncio.Semaphore(max_workers)
+        if crawler_type == 'Playwright':
+            logger.info(
+                f"[Job {job_id}] Playwright stats: {screenshots} screenshots, "
+                f"{vision_extractions} vision extractions"
+            )
 
-            async def fetch_url(target_url: str, url_index: int):
-                async with sem:
-                    # Signal that we're starting to crawl this URL
-                    start_queue.put(('start', target_url, url_index))
-                    try:
-                        crawler = PlaywrightCrawler(
-                            base_url=target_url,
-                            max_pages=1,
-                            max_depth=0,
-                            delay_seconds=0.3,  # Fast: reduced delay
-                            extract_images=True,
-                            use_vision_llm=effective_use_vision_llm,
-                            vision_llm_model=vision_model_id,
-                            litellm_base_url=os.environ.get('LITELLM_BASE_URL'),
-                            litellm_api_key=os.environ.get('LITELLM_API_KEY'),
-                            take_screenshots=take_screenshots,
-                            fast_mode=False
-                        )
-                        pages = await crawler.crawl_async()
-                        page = pages[0] if pages else None
-                        return target_url, page, crawler.stats
-                    except Exception as e:
-                        logger.error(f"[Job {job_id}] Playwright fetch failed for {target_url}: {e}")
-                        return target_url, None, {'screenshots_taken': 0, 'vision_extractions': 0}
+        emit_complete(self._socketio, job_id, {
+            'status': 'completed',
+            'stage': 'completed',
+            'collection_id': collection_id,
+            'pages_crawled': total_pages,
+            'documents_created': docs_created,
+            'documents_linked': docs_linked,
+            'screenshots_taken': screenshots,
+            'vision_extractions': vision_extractions,
+            'errors_count': len(job['errors']),
+            'crawler_type': crawler_type,
+            'brand_color': brand_color
+        })
 
-            tasks = [fetch_url(u, i) for i, u in enumerate(urls)]
-            for coro in asyncio.as_completed(tasks):
-                result = await coro
-                result_queue.put(result)
-
-            processing_complete.set()
-
-        # Start async crawling in a separate thread
-        def run_async():
-            asyncio.run(run())
-
-        async_thread = threading.Thread(target=run_async, daemon=True)
-        async_thread.start()
-
-        # Process results as they come in (this runs in the main thread)
-        processed_count = 0
-        active_urls = set()  # Track which URLs are currently being crawled
-
-        while processed_count < total_urls:
-            # First, check for "starting URL" events (non-blocking)
-            while not start_queue.empty():
-                try:
-                    event_type, start_url, url_index = start_queue.get_nowait()
-                    if event_type == 'start':
-                        active_urls.add(start_url)
-                        self.active_crawls[job_id]['current_url'] = start_url
-                        # Emit "starting to crawl" progress immediately
-                        self._emit_progress(job_id, {
-                            'status': 'running',
-                            'stage': 'crawling',
-                            'pages_crawled': processed_count,
-                            'max_pages': total_urls,
-                            'current_url': start_url,
-                            'urls_total': total_urls,
-                            'urls_completed': processed_count,
-                            'documents_created': self.active_crawls[job_id]['documents_created'],
-                            'documents_linked': self.active_crawls[job_id]['documents_linked'],
-                            'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
-                            'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0),
-                            'crawler_type': crawler_type,
-                            'message': f'Crawle Seite...'
-                        })
-                except Exception:
-                    break
-
-            try:
-                # Wait for next result with short timeout to allow checking start_queue
-                result = result_queue.get(timeout=0.5)
-                url, page_data, stats = result
-                processed_count += 1
-                active_urls.discard(url)
-
-                self.active_crawls[job_id]['urls_completed'] = processed_count
-
-                doc_update = None
-                if page_data:
-                    total_pages += 1
-                    self.active_crawls[job_id]['pages_crawled'] = total_pages
-                    doc_update = self._process_crawled_page(
-                        job_id,
-                        page_data,
-                        collection_id,
-                        created_by,
-                        seen_hashes_global
-                    )
-
-                # Aggregate Playwright-specific stats
-                self.active_crawls[job_id]['screenshots_taken'] = self.active_crawls[job_id].get('screenshots_taken', 0) + stats.get('screenshots_taken', 0)
-                self.active_crawls[job_id]['vision_extractions'] = self.active_crawls[job_id].get('vision_extractions', 0) + stats.get('vision_extractions', 0)
-
-                # Capture brand color from first page (homepage)
-                if stats.get('brand_color') and not self.active_crawls[job_id].get('brand_color'):
-                    self.active_crawls[job_id]['brand_color'] = stats.get('brand_color')
-                    logger.info(f"[Job {job_id}] Captured brand color: {stats.get('brand_color')}")
-
-                # Emit progress update immediately after page is done
-                self._emit_progress(job_id, {
-                    'status': 'running',
-                    'stage': 'crawling',
-                    'pages_crawled': total_pages,
-                    'max_pages': total_urls,
-                    'current_url': url,
-                    'urls_total': total_urls,
-                    'urls_completed': processed_count,
-                    'documents_created': self.active_crawls[job_id]['documents_created'],
-                    'documents_linked': self.active_crawls[job_id]['documents_linked'],
-                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
-                    'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0),
-                    'crawler_type': crawler_type
-                })
-                page_payload = {
-                    'url': url,
-                    'page_number': processed_count,
-                    'documents_created': self.active_crawls[job_id]['documents_created'],
-                    'documents_linked': self.active_crawls[job_id]['documents_linked'],
-                    'images_extracted': self.active_crawls[job_id].get('images_extracted', 0),
-                    'screenshots_taken': self.active_crawls[job_id].get('screenshots_taken', 0)
-                }
-                if doc_update:
-                    page_payload.update({
-                        'collection_id': collection_id,
-                        'document_action': doc_update.get('action'),
-                        'document': doc_update.get('document')
-                    })
-                self._emit_page_crawled(job_id, page_payload)
-
-            except Exception as e:
-                if processing_complete.is_set() and result_queue.empty():
-                    break
-                # Timeout is expected when waiting for results - just continue loop
-                if 'Empty' not in str(type(e).__name__):
-                    logger.warning(f"[Job {job_id}] Error processing result: {e}")
-                continue
-
-        # Wait for async thread to finish
-        async_thread.join(timeout=10)
-
-        return total_pages
+        emit_jobs_updated(self._socketio, self.get_all_jobs())
 
 
-# Singleton instance
+# =============================================================================
+# SINGLETON INSTANCE
+# =============================================================================
+
 crawler_service = CrawlerService()

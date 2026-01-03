@@ -437,15 +437,59 @@ ACL_STYLE = r"""% ACL 2023 style file (simplified version for demo)
 """
 
 
+def _ensure_latex_commits(db, workspace, message):
+    from services.latex_compile_service import build_workspace_snapshot
+    from ..models import LatexCommit, LatexDocument, LatexNodeType
+
+    docs = (
+        LatexDocument.query
+        .filter_by(workspace_id=workspace.id)
+        .filter(LatexDocument.node_type == LatexNodeType.file)
+        .filter(LatexDocument.asset_id.is_(None))
+        .all()
+    )
+    if not docs:
+        return 0
+
+    workspace_snapshot = build_workspace_snapshot(workspace.id)
+    created_at = datetime.utcnow()
+    created = 0
+
+    for doc in docs:
+        if LatexCommit.query.filter_by(document_id=doc.id).first():
+            continue
+        content_snapshot = doc.content_text or ""
+        line_count = content_snapshot.count("\n") + (1 if content_snapshot else 0)
+        commit = LatexCommit(
+            workspace_id=workspace.id,
+            document_id=doc.id,
+            author_username='admin',
+            message=message,
+            diff_summary={"files_added": 1, "insertions": line_count, "deletions": 0},
+            content_snapshot=content_snapshot,
+            workspace_snapshot=workspace_snapshot,
+            created_at=created_at,
+        )
+        db.session.add(commit)
+        created += 1
+
+    if created:
+        db.session.commit()
+    return created
+
+
 def initialize_latex_collab_defaults(db):
     """Initialize LaTeX Collab demo workspace with LLARS paper."""
     from ..models import (
-        LatexWorkspace, LatexDocument, LatexNodeType, LatexWorkspaceVisibility, LatexCommit
+        LatexWorkspace, LatexDocument, LatexNodeType, LatexWorkspaceVisibility
     )
 
     # Check if demo workspace already exists
     existing = LatexWorkspace.query.filter_by(name='LLARS Paper 2025').first()
     if existing:
+        created = _ensure_latex_commits(db, existing, "Initial commit: LLARS Paper 2025")
+        if created:
+            print(f"[LaTeX Collab] Backfilled {created} missing commits for LLARS Paper 2025 (id={existing.id})")
         return
 
     # Create workspace
@@ -558,59 +602,5 @@ def initialize_latex_collab_defaults(db):
 
     db.session.commit()
 
-    # Create initial commit with all files
-    all_docs = LatexDocument.query.filter_by(workspace_id=workspace.id).all()
-    docs_by_id = {d.id: d for d in all_docs}
-
-    def get_doc_path(doc_id, cache=None):
-        """Build file path from document hierarchy."""
-        if cache is None:
-            cache = {}
-        if doc_id in cache:
-            return cache[doc_id]
-        doc = docs_by_id.get(doc_id)
-        if not doc:
-            return ""
-        if doc.parent_id is None:
-            path = doc.title
-        else:
-            parent_path = get_doc_path(doc.parent_id, cache)
-            path = f"{parent_path}/{doc.title}" if parent_path else doc.title
-        cache[doc_id] = path
-        return path
-
-    path_cache = {}
-    nodes = []
-    for doc in all_docs:
-        node_type = doc.node_type.value if hasattr(doc.node_type, "value") else str(doc.node_type)
-        nodes.append({
-            "id": doc.id,
-            "path": get_doc_path(doc.id, path_cache),
-            "title": doc.title,
-            "node_type": node_type,
-            "asset_id": doc.asset_id,
-            "content_text": doc.content_text,
-        })
-
-    workspace_snapshot = {
-        "workspace_id": workspace.id,
-        "main_document_id": workspace.main_document_id,
-        "nodes": nodes,
-        "created_at": datetime.utcnow().isoformat(),
-    }
-
-    # Create a single init commit for the workspace (not document-specific)
-    init_commit = LatexCommit(
-        workspace_id=workspace.id,
-        document_id=main_doc.id,  # Reference main.tex as primary document
-        author_username='admin',
-        message='Initial commit: LLARS Paper 2025',
-        diff_summary={"files_added": len([n for n in nodes if n["node_type"] == "file"])},
-        content_snapshot=main_doc.content_text,
-        workspace_snapshot=workspace_snapshot,
-        created_at=datetime.utcnow(),
-    )
-    db.session.add(init_commit)
-    db.session.commit()
-
-    print(f"[LaTeX Collab] Created LLARS Paper 2025 workspace (id={workspace.id}) with initial commit")
+    created = _ensure_latex_commits(db, workspace, "Initial commit: LLARS Paper 2025")
+    print(f"[LaTeX Collab] Created LLARS Paper 2025 workspace (id={workspace.id}) with {created} initial commits")

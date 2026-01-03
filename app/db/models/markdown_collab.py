@@ -100,10 +100,14 @@ class MarkdownDocument(db.Model):
 
     # JSON-encoded Yjs state update (Array<number>) as stringified JSON, stored in MySQL JSON.
     content: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
+    # Plain-text cache for server-side operations and commits.
+    content_text: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
 
     last_editor_username: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    # Soft-delete: when set, document is considered deleted (for git panel restore)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     workspace = db.relationship("MarkdownWorkspace", backref=db.backref("documents", cascade="all, delete-orphan", lazy="selectin"))
     parent = db.relationship(

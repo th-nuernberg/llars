@@ -115,6 +115,8 @@ class LatexDocument(db.Model):
     last_editor_username: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    # Soft-delete: when set, document is considered deleted (for git panel restore)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     workspace = db.relationship(
         "LatexWorkspace",

@@ -19,6 +19,7 @@
     <transition name="slide-right">
       <AISidebar
         v-if="aiSidebarOpen"
+        key="ai-sidebar"
         :document-content="currentDocumentContent"
         @insert-artifact="insertTextAtCursor"
       />
@@ -174,6 +175,7 @@ import LatexCollabWorkspaceOriginal from '@/views/LatexCollab/LatexCollabWorkspa
 import AISidebar from '@/components/LatexCollabAI/ai/AISidebar.vue'
 import AISelectionMenu from '@/components/LatexCollabAI/ai/AISelectionMenu.vue'
 import aiWritingService from '@/services/aiWritingService'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const route = useRoute()
 const workspaceId = computed(() => Number(route.params.workspaceId))
@@ -182,7 +184,7 @@ const workspaceId = computed(() => Number(route.params.workspaceId))
 const workspaceRef = ref(null)
 
 // AI Sidebar state
-const aiSidebarOpen = ref(true)
+const aiSidebarOpen = ref(false)
 
 // Ghost text (inline AI completion) state
 const ghostTextEnabled = ref(true)
@@ -534,9 +536,10 @@ function handleSelectionChange() {
 // Load available RAG collections
 async function loadCollections() {
   try {
+    const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
     const response = await fetch('/api/rag/collections', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${token}`
       }
     })
     const data = await response.json()

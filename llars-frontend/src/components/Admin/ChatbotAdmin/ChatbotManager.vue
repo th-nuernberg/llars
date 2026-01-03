@@ -39,7 +39,15 @@
         <!-- Stats Cards -->
         <div class="stats-row" :class="isMobile ? 'mb-2 mt-2' : 'mb-3'">
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="primary">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="primary">
               <v-card-text class="d-flex align-center py-3">
                 <v-icon size="28" class="mr-3">mdi-robot</v-icon>
@@ -51,7 +59,15 @@
             </v-card>
           </div>
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="success">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="success">
               <v-card-text class="d-flex align-center py-3">
                 <v-icon size="28" class="mr-3">mdi-check-circle</v-icon>
@@ -63,7 +79,15 @@
             </v-card>
           </div>
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="info">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="info">
               <v-card-text class="d-flex align-center py-3">
                 <v-icon size="28" class="mr-3">mdi-message-text</v-icon>
@@ -75,7 +99,15 @@
             </v-card>
           </div>
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="warning">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="warning">
               <v-card-text class="d-flex align-center py-3">
                 <v-icon size="28" class="mr-3">mdi-folder-multiple</v-icon>
@@ -829,6 +861,51 @@ defineExpose({
 
 .stats-card {
   min-width: 0;
+}
+
+.stats-skeleton-icon,
+.stats-skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-on-surface), 0.06) 25%,
+    rgba(var(--v-theme-on-surface), 0.12) 37%,
+    rgba(var(--v-theme-on-surface), 0.06) 63%
+  );
+  background-size: 400% 100%;
+  animation: stats-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.stats-skeleton-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.stats-skeleton-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-skeleton-line {
+  border-radius: 6px;
+}
+
+.stats-skeleton-line--value {
+  width: 36px;
+  height: 14px;
+}
+
+.stats-skeleton-line--label {
+  width: 64px;
+  height: 10px;
+}
+
+@keyframes stats-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
 }
 
 /* Tabs card fills remaining vertical space */

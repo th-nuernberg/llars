@@ -15,7 +15,7 @@
       :get-filtered-conversations="sidebar.getFilteredConversations"
       :get-display-title="sidebar.getDisplayTitle"
       @update:search-query="sidebar.searchQuery.value = $event"
-      @new-chat="createConversation"
+      @new-chat="startNewChat"
       @toggle-bot="handleToggleBot"
       @select-conversation="handleSelectConversation"
       @navigate-home="router.push('/Home')"
@@ -37,7 +37,7 @@
         :get-filtered-conversations="sidebar.getFilteredConversations"
         :get-display-title="sidebar.getDisplayTitle"
         :get-chatbot-type-tag="sidebar.getChatbotTypeTag"
-        @new-chat="createConversation"
+        @new-chat="startNewChat"
         @toggle-collapse="sidebar.toggleSidebar"
         @update:search-query="sidebar.searchQuery.value = $event"
         @toggle-bot="handleToggleBot"
@@ -86,7 +86,7 @@
               </button>
             </LTooltip>
             <LTooltip text="Neuer Chat">
-              <button class="header-action" @click="createConversation()">
+              <button class="header-action" @click="startNewChat()">
                 <v-icon size="20">mdi-plus</v-icon>
               </button>
             </LTooltip>
@@ -337,6 +337,9 @@ const PROCESSING_TIMEOUT_MS = 120000 // 2 minutes
 // Snackbar
 const snackbar = ref({ show: false, text: '', color: 'success' })
 
+// Draft Storage Key
+const DRAFT_STORAGE_KEY = 'llars-chat-drafts'
+
 // ==================== ANALYTICS ====================
 
 const chatbotEntity = computed(() => selectedChatbot.value ? `bot:${selectedChatbot.value.id}` : '')
@@ -390,8 +393,12 @@ async function loadChatbots() {
   }
 }
 
-async function selectChatbot(bot, createNewChat = true) {
+async function selectChatbot(bot, createNewChat = false) {
   matomoTrackEvent('chat', 'chatbot_select', `bot:${bot.id}`, 1, { entity: `bot:${bot.id}` })
+
+  // Save draft before switching chatbot
+  saveDraft()
+
   selectedChatbot.value = bot
   messages.value = []
   sessionId.value = null
@@ -412,10 +419,13 @@ async function selectChatbot(bot, createNewChat = true) {
     capabilities.value = { vision: false, rag: bot.rag_enabled }
   }
 
-  // Load conversations but don't auto-select, create new chat instead
+  // Load conversations but don't auto-select
   await loadConversations(false)
 
-  // Always create a new conversation when clicking on a chatbot directly
+  // Restore draft for this chatbot if exists
+  restoreDraft()
+
+  // Only create conversation if explicitly requested (e.g., via "New Chat" button)
   if (createNewChat) {
     await createConversation()
   }
@@ -444,6 +454,30 @@ async function loadConversations(autoSelect = false) {
   }
 }
 
+/**
+ * Start a new chat - resets state without creating conversation in DB.
+ * The actual conversation is created lazily when the first message is sent.
+ */
+function startNewChat() {
+  if (!selectedChatbot.value) return
+
+  // Save any existing draft before starting new chat
+  saveDraft()
+
+  // Reset state for new chat
+  selectedConversation.value = null
+  messages.value = []
+  sessionId.value = crypto.randomUUID()
+  newMessage.value = ''
+  agentStatus.value = null
+  agentReasoningRef.value?.reset?.()
+  chatMessages.isProcessing.value = false
+}
+
+/**
+ * Create a conversation in the database.
+ * Called lazily when the first message is sent.
+ */
 async function createConversation(title = null) {
   if (!selectedChatbot.value) return
   const botId = selectedChatbot.value.id
@@ -457,7 +491,8 @@ async function createConversation(title = null) {
       conversations.value = [convo, ...conversations.value]
       // Don't add to sidebar yet - only show in history after first message is sent
       // sidebar.upsertConversation() is called in socket response handler
-      await selectConversation(convo)
+      selectedConversation.value = convo
+      sessionId.value = convo.session_id
     }
   } catch (error) {
     showSnackbar('Fehler beim Anlegen des Chats', 'error')
@@ -466,6 +501,10 @@ async function createConversation(title = null) {
 
 async function selectConversation(conversation) {
   if (!conversation || !selectedChatbot.value) return
+
+  // Save draft before switching conversations
+  saveDraft()
+
   selectedConversation.value = conversation
   sessionId.value = conversation.session_id
 
@@ -474,6 +513,7 @@ async function selectConversation(conversation) {
   sourcePanel.resetForConversationChange()
   agentStatus.value = null
   agentReasoningRef.value?.reset?.()
+  newMessage.value = '' // Clear input when switching conversations
 
   await loadConversationMessages(conversation.id)
 }
@@ -555,14 +595,14 @@ async function deleteConversation(conv) {
     conversations.value = conversations.value.filter(c => c.id !== conv.id)
     sidebar.removeConversation(botId, conv.id)
 
-    // If we deleted the currently selected conversation, select another or create new
+    // If we deleted the currently selected conversation, select another or start fresh
     if (selectedConversation.value?.id === conv.id) {
       if (conversations.value.length > 0) {
         // Select the first available conversation
         await selectConversation(conversations.value[0])
       } else {
-        // No conversations left, create a new one
-        await createConversation()
+        // No conversations left, reset to new chat state (lazy creation)
+        startNewChat()
       }
     }
     showSnackbar('Chat gelöscht', 'success')
@@ -577,6 +617,8 @@ async function handleSendMessage({ message, files }) {
   if ((!message && files.length === 0) || chatMessages.isProcessing.value) return
   if (!selectedChatbot.value) return
   if (!sessionId.value) sessionId.value = crypto.randomUUID()
+
+  // Lazy chat creation: only create conversation when actually sending a message
   if (!selectedConversation.value) await createConversation()
 
   if (message) {
@@ -586,6 +628,9 @@ async function handleSendMessage({ message, files }) {
 
   chatMessages.addUserMessage(messages, message, files)
   newMessage.value = ''
+
+  // Clear draft after successfully adding message to queue
+  clearDraft()
   chatMessages.isProcessing.value = true
   agentReasoningRef.value?.reset?.()
 
@@ -666,6 +711,85 @@ async function sendMessageViaREST(message, files = []) {
 
 function showSnackbar(text, color = 'success') {
   snackbar.value = { show: true, text, color }
+}
+
+// ==================== DRAFT PERSISTENCE ====================
+
+/**
+ * Save current draft message to localStorage
+ * Saves per chatbot ID so each chatbot has its own draft
+ */
+function saveDraft() {
+  if (!selectedChatbot.value) return
+
+  const botId = selectedChatbot.value.id
+  const draftText = newMessage.value?.trim()
+
+  try {
+    const drafts = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || '{}')
+
+    if (draftText) {
+      drafts[botId] = {
+        text: draftText,
+        timestamp: Date.now(),
+        conversationId: selectedConversation.value?.id || null
+      }
+    } else {
+      // Remove draft if empty
+      delete drafts[botId]
+    }
+
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts))
+  } catch (error) {
+    console.warn('Failed to save draft:', error)
+  }
+}
+
+/**
+ * Restore draft message from localStorage for current chatbot
+ */
+function restoreDraft() {
+  if (!selectedChatbot.value) return
+
+  const botId = selectedChatbot.value.id
+
+  try {
+    const drafts = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || '{}')
+    const draft = drafts[botId]
+
+    if (draft?.text) {
+      newMessage.value = draft.text
+      // If draft has a conversation ID, try to select that conversation
+      if (draft.conversationId) {
+        const conv = conversations.value.find(c => c.id === draft.conversationId)
+        if (conv) {
+          selectConversation(conv)
+        }
+      }
+    } else {
+      newMessage.value = ''
+    }
+  } catch (error) {
+    console.warn('Failed to restore draft:', error)
+    newMessage.value = ''
+  }
+}
+
+/**
+ * Clear draft for current chatbot (called after successful message send)
+ */
+function clearDraft() {
+  if (!selectedChatbot.value) return
+
+  const botId = selectedChatbot.value.id
+
+  try {
+    const drafts = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || '{}')
+    delete drafts[botId]
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts))
+  } catch (error) {
+    console.warn('Failed to clear draft:', error)
+  }
 }
 
 /**
@@ -805,7 +929,17 @@ function setupSocketHandlers() {
 
 // ==================== LIFECYCLE ====================
 
+/**
+ * Handle browser/tab close - save draft
+ */
+function handleBeforeUnload() {
+  saveDraft()
+}
+
 onMounted(async () => {
+  // Add beforeunload listener to save draft when closing tab/browser
+  window.addEventListener('beforeunload', handleBeforeUnload)
+
   await withLoading('chatbots', loadChatbots)
   for (const bot of chatbots.value) {
     sidebar.loadBotConversations(bot.id)
@@ -816,6 +950,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // Remove beforeunload listener
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  // Save draft before leaving the page
+  saveDraft()
   clearProcessingTimeout()
   chatSocket.disconnectSocket()
 })

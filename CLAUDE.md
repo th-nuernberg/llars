@@ -1465,4 +1465,133 @@ docker port llars_nginx_service  # Sollte "80/tcp -> 0.0.0.0:80" zeigen
 
 ---
 
-**Stand:** 31. Dezember 2025
+## Refactoring Progress Tracker
+
+Dieses Kapitel dokumentiert den Fortschritt des Code-Refactorings.
+
+### Abgeschlossene Refactorings
+
+| Datum | Task | Dateien | Status |
+|-------|------|---------|--------|
+| 2026-01-01 | JWT Security: `extract_username_without_validation()` verbessert | `app/auth/auth_utils.py` | ✅ Erledigt |
+| 2026-01-01 | Debug-Endpoints mit `@debug_route_protected` gesichert | `app/routes/judge/session_debug_routes.py` | ✅ Erledigt |
+| 2026-01-01 | OnCoCo Debug-Endpoints bereits korrekt gesichert | `app/routes/oncoco/oncoco_debug_routes.py` | ✅ Verifiziert |
+| 2026-01-01 | Memory Leak Fix: `ghostTextTimer` Cleanup in onUnmounted | `llars-frontend/src/components/LatexCollab/LatexEditorPane.vue` | ✅ Erledigt |
+| 2026-01-01 | Deprecated `mail_rating/` Verzeichnis gelöscht | `app/routes/mail_rating/` (5 Dateien) | ✅ Erledigt |
+| 2026-01-01 | SQL Injection Fix: Input-Validierung für Schema-Patches | `app/db/seeders/schema_patches.py` | ✅ Erledigt |
+| 2026-01-01 | CollabAccessService extrahiert (DRY) | `app/services/collab/collab_access_service.py` | ✅ Erledigt |
+| 2026-01-01 | ChatWithBots.vue aufgeteilt (3299→1135 Zeilen) | `ChatWithBots/` (8 neue Dateien) | ✅ Erledigt |
+| 2026-01-01 | chat_service.py aufgeteilt (1657→590 Zeilen) | `chat_*.py` (4 neue Module) | ✅ Erledigt |
+| 2026-01-02 | latex_collab_routes.py aufgeteilt (1514→56 Zeilen) | `latex_*.py` (7 neue Module) | ✅ Erledigt |
+| 2026-01-02 | agent_chat_service.py aufgeteilt (1263→301 Zeilen) | `agent_modes/` (7 Module: config, helpers, standard, act, react, reflact) | ✅ Erledigt |
+| 2026-01-02 | JudgeSession.vue CSS extrahiert (2174→579 Zeilen) | `JudgeSession/styles/JudgeSession.css` | ✅ Erledigt |
+| 2026-01-02 | LatexCollabWorkspace.vue refaktoriert (3085→2237 Zeilen) | `LatexCollab/composables/` (5 neue), CSS extrahiert | ✅ Erledigt |
+| 2026-01-02 | ChatWithBots.vue weiter refaktoriert (1135→774 Zeilen) | `ChatWithBots/mobile/MobileChatDrawer.vue`, CSS extrahiert | ✅ Erledigt |
+| 2026-01-02 | LatexCollabWorkspace.vue weiter refaktoriert (2237→1844 Zeilen) | `LatexCollab/components/` (5 neue Komponenten) | ✅ Erledigt |
+| 2026-01-02 | LatexCollabWorkspace.vue Composables integriert (1844→1259 Zeilen) | 5 Composables nun aktiv genutzt | ✅ Erledigt |
+| 2026-01-02 | chatbot_routes.py aufgeteilt (1273→35 Zeilen) | 6 neue Module (crud, collection, chat, conversation, stats, wizard) | ✅ Erledigt |
+| 2026-01-02 | markdown_collab_routes.py aufgeteilt (798→24 Zeilen) | 4 neue Module (workspace, document, helpers, registry) | ✅ Erledigt |
+| 2026-01-02 | anonymize_service.py aufgeteilt (1275→445 Zeilen) | 6 neue Module (constants, paths, entity_detection, llm_detection, generators, service) | ✅ Erledigt |
+| 2026-01-02 | crawler_service.py aufgeteilt (1415→666 Zeilen) | 7 Module (constants, events, collection, document, processing, jobs, service) | ✅ Erledigt |
+| 2026-01-02 | judge_worker_pool.py aufgeteilt (1067→618 Zeilen) | 6 Module in workers/pool/ (constants, events, recovery, comparison, statistics, pool) | ✅ Erledigt |
+| 2026-01-02 | collection_embedding_service.py aufgeteilt (1046→606 Zeilen) | 6 Module in services/rag/embedding/ (constants, chroma, chunks, events, database, service) | ✅ Erledigt |
+| 2026-01-02 | embedding_worker.py aufgeteilt (825→67 Zeilen) | 7 Module in workers/embedding/ (constants, embedding_resolver, document_processor, image_processor, batch_processor, progress_emitter, worker) | ✅ Erledigt |
+| 2026-01-02 | Entwickler-Dokumentation erstellt | docs/docs/entwickler/ (6 neue Docs: API, WebSocket, DB-Schema, Admin, Code-Qualität, Deployment) | ✅ Erledigt |
+| 2026-01-03 | Metriken-Automatisierung eingerichtet | scripts/metrics/ (4 Scripts), .gitlab-ci.yml (2 neue Jobs: metrics:collect, metrics:update-docs) | ✅ Erledigt |
+| 2026-01-03 | ChatbotEditor.vue aufgeteilt (1967→507 Zeilen) | 6 Tab-Komponenten in tabs/, constants.js, styles/ChatbotEditor.css | ✅ Erledigt |
+
+### Offene Security-Issues
+
+| Issue | Datei | Priorität | Status |
+|-------|-------|-----------|--------|
+| SQL Injection Risiko (column_definition_sql) | `app/db/seeders/schema_patches.py:44` | HOCH | ✅ Behoben |
+
+*Alle bekannten Security-Issues wurden behoben.*
+
+### Offene Refactoring-Aufgaben
+
+#### Priority 1 - Kritisch (Diese Woche)
+
+| Task | Dateien | Aufwand | Status |
+|------|---------|---------|--------|
+| `/app/routes/mail_rating/` löschen (deprecated) | Ganzes Verzeichnis | 1 Std | ✅ Erledigt |
+| CollabAccessService extrahieren | latex_collab_routes.py, markdown_collab_routes.py | 3 Std | ✅ Erledigt |
+| Memory Leak Fix (ghostTextTimer) | `LatexEditorPane.vue:1681-1696` | 30 Min | ✅ Erledigt |
+
+#### Priority 2 - Große Dateien aufteilen
+
+| Datei | Zeilen | Ziel | Status |
+|-------|--------|------|--------|
+| `services/chatbot/chat_service.py` | 1657→590 | <400 pro Datei | ✅ Erledigt |
+| `services/chatbot/agent_chat_service.py` | 1263→301 | 7 Module (agent_modes/) | ✅ Erledigt |
+| `routes/latex_collab/latex_collab_routes.py` | 1514→56 | 7 Module | ✅ Erledigt |
+| `components/ChatWithBots.vue` | 3299→774 | 6 Komponenten + CSS | ✅ Erledigt |
+| `views/LatexCollab/LatexCollabWorkspace.vue` | 3085→1259 | 5 Composables + 5 Components + CSS | ✅ Erledigt |
+| `components/Judge/JudgeSession.vue` | 2174→579 | CSS extrahiert | ✅ Erledigt |
+| `routes/chatbot/chatbot_routes.py` | 1273→35 | 6 Module | ✅ Erledigt |
+| `routes/markdown_collab/markdown_collab_routes.py` | 798→24 | 4 Module | ✅ Erledigt |
+| `services/anonymize/anonymize_service.py` | 1275→445 | 6 Module | ✅ Erledigt |
+| `services/crawler/modules/crawler_service.py` | 1415→666 | 7 Module | ✅ Erledigt |
+| `workers/judge_worker_pool.py` | 1067→618 | 6 Module (workers/pool/) | ✅ Erledigt |
+| `services/rag/collection_embedding_service.py` | 1046→606 | 6 Module (embedding/) | ✅ Erledigt |
+| `workers/embedding_worker.py` | 825→67 | 7 Module (workers/embedding/) | ✅ Erledigt |
+| `components/ChatbotAdmin/ChatbotEditor.vue` | 1967→507 | 6 Tab-Komponenten + CSS + constants | ✅ Erledigt |
+
+#### Priority 3 - Testing
+
+| Bereich | Aktuell | Ziel | Status |
+|---------|---------|------|--------|
+| Backend Services Coverage | 21% | 50% | ⏳ Offen |
+| Frontend Components Coverage | 14% | 40% | ⏳ Offen |
+| E2E Specs | 2 Dateien | 8 Dateien | ⏳ Offen |
+
+### Metriken
+
+```
+Stand: 2026-01-03 (automatisch aktualisiert via scripts/metrics/)
+
+Docstring Coverage (Backend Python):
+- Function Coverage: 82.1% ✅
+- Class Coverage:    74.8% ✅
+- Module Coverage:   93.0% ✅
+
+JSDoc Coverage (Frontend Vue.js):
+- Gesamt: 35% ❌ (104/293 Dateien)
+- Components: 31% (80/256)
+- Composables: 69% (9/13)
+- Views: 67% (12/18)
+- Services: 50% (3/6)
+
+Codebase:
+- Backend: 287 Python-Dateien, 72,607 Zeilen
+- Frontend: 293 Vue/JS-Dateien, 112,096 Zeilen
+- Große Dateien (>500 Zeilen Backend): 12 ⚠️
+- Große Komponenten (>500 Zeilen Frontend): 82 ⚠️
+
+Refactoring abgeschlossen (16 Major):
+  - ChatWithBots.vue (3299→774 Zeilen)
+  - chat_service.py (1657→590 Zeilen)
+  - latex_collab_routes.py (1514→56 Zeilen)
+  - agent_chat_service.py (1263→301 Zeilen)
+  - JudgeSession.vue (2174→579 Zeilen)
+  - LatexCollabWorkspace.vue (3085→1259 Zeilen)
+  - chatbot_routes.py (1273→35 Zeilen)
+  - markdown_collab_routes.py (798→24 Zeilen)
+  - anonymize_service.py (1275→445 Zeilen)
+  - crawler_service.py (1415→666 Zeilen)
+  - judge_worker_pool.py (1067→618 Zeilen)
+  - collection_embedding_service.py (1046→606 Zeilen)
+  - embedding_worker.py (825→67 Zeilen, 7 Module)
+  - ChatbotEditor.vue (1967→507 Zeilen, 6 Tab-Komponenten)
+  - Entwickler-Dokumentation (6 neue Docs)
+  - Metriken-Automatisierung (CI/CD + Scripts)
+
+Automatisierung:
+- Scripts: scripts/metrics/ (collect_python_metrics.py, collect_frontend_metrics.js, update_docs.py)
+- CI/CD: metrics:collect + metrics:update-docs Jobs in .gitlab-ci.yml
+- Output: docs/metrics/*.json (automatisch aktualisiert)
+```
+
+---
+
+**Stand:** 3. Januar 2026

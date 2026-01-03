@@ -4,9 +4,46 @@ Schema Patches (Idempotent)
 LLARS uses `db.create_all()` on startup without Alembic migrations.
 To keep existing databases compatible, we apply small, idempotent schema patches
 for newly introduced columns.
+
+Security Note:
+    This module uses dynamic SQL for ALTER TABLE statements. All inputs are
+    validated against strict patterns to prevent SQL injection. Only alphanumeric
+    identifiers with underscores are allowed. This code only runs at application
+    startup with hardcoded values from this file - there is no user input path.
 """
 
+import re
 from sqlalchemy import text
+
+
+# Strict pattern for SQL identifiers: alphanumeric + underscore, must start with letter/underscore
+_SQL_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+# Pattern for column definitions: allows common SQL types and constraints
+# Matches: `column_name` TYPE[(size)] [NOT NULL] [DEFAULT ...] [UNIQUE] etc.
+_COLUMN_DEF_PATTERN = re.compile(
+    r'^`[a-zA-Z_][a-zA-Z0-9_]*`\s+'  # Column name in backticks
+    r'[A-Z]+',                        # Type name (VARCHAR, INT, etc.)
+    re.IGNORECASE
+)
+
+
+def _validate_identifier(name: str, context: str) -> None:
+    """Validate that a name is a safe SQL identifier."""
+    if not name or not _SQL_IDENTIFIER_PATTERN.match(name):
+        raise ValueError(
+            f"Invalid SQL identifier for {context}: '{name}'. "
+            "Only alphanumeric characters and underscores are allowed."
+        )
+
+
+def _validate_column_definition(definition: str) -> None:
+    """Validate that a column definition follows expected SQL patterns."""
+    if not definition or not _COLUMN_DEF_PATTERN.match(definition.strip()):
+        raise ValueError(
+            f"Invalid column definition format: '{definition[:50]}...'. "
+            "Must start with backtick-quoted column name followed by SQL type."
+        )
 
 
 def _column_exists(db, table_name: str, column_name: str) -> bool:
@@ -31,13 +68,21 @@ def _ensure_column(db, table_name: str, column_name: str, column_definition_sql:
 
     Args:
         db: SQLAlchemy instance
-        table_name: DB table name
-        column_name: Column to check
-        column_definition_sql: Full SQL definition for ADD COLUMN (including the column name)
+        table_name: DB table name (validated against SQL identifier pattern)
+        column_name: Column to check (validated against SQL identifier pattern)
+        column_definition_sql: Full SQL definition for ADD COLUMN (validated format)
 
     Returns:
         True if the column was added, False if it already existed.
+
+    Raises:
+        ValueError: If any parameter fails validation
     """
+    # Validate all inputs to prevent SQL injection
+    _validate_identifier(table_name, "table_name")
+    _validate_identifier(column_name, "column_name")
+    _validate_column_definition(column_definition_sql)
+
     if _column_exists(db, table_name, column_name):
         return False
 
@@ -94,6 +139,27 @@ def _unique_index_exists(db, table_name: str, column_names: list[str]) -> bool:
 def _ensure_unique_constraint(
     db, table_name: str, constraint_name: str, column_names: list[str]
 ) -> bool:
+    """
+    Ensure a unique constraint exists on specified columns.
+
+    Args:
+        db: SQLAlchemy instance
+        table_name: DB table name (validated)
+        constraint_name: Name for the constraint (validated)
+        column_names: List of column names to include (all validated)
+
+    Returns:
+        True if the constraint was added, False if it already existed.
+
+    Raises:
+        ValueError: If any parameter fails validation
+    """
+    # Validate all inputs to prevent SQL injection
+    _validate_identifier(table_name, "table_name")
+    _validate_identifier(constraint_name, "constraint_name")
+    for col in column_names:
+        _validate_identifier(col, f"column_name '{col}'")
+
     if _unique_constraint_exists(db, table_name, constraint_name):
         return False
     if _unique_index_exists(db, table_name, column_names):
@@ -346,6 +412,26 @@ def apply_schema_patches(db) -> None:
             table_name="latex_compile_jobs",
             column_name="created_at",
             column_definition_sql="`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        )
+
+        # Soft-delete support for git panel (deleted file restore)
+        changed |= _ensure_column(
+            db,
+            table_name="latex_documents",
+            column_name="deleted_at",
+            column_definition_sql="`deleted_at` DATETIME NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="markdown_documents",
+            column_name="deleted_at",
+            column_definition_sql="`deleted_at` DATETIME NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="markdown_documents",
+            column_name="content_text",
+            column_definition_sql="`content_text` TEXT NULL",
         )
 
         if changed:

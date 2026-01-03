@@ -1,9 +1,13 @@
 """Debug routes for LLM-as-Judge sessions.
 
-These endpoints are only available in development mode.
+These endpoints are only available in development mode and require
+the System Admin API Key for authentication.
+
+Security: Uses @debug_route_protected which:
+- In development: Requires System Admin API Key (X-API-Key header)
+- In production: Completely disabled (returns 403)
 """
 
-import os
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 
@@ -13,22 +17,21 @@ from db.tables import (
     JudgeComparisonStatus,
     PillarThread
 )
+from auth.decorators import debug_route_protected
+from decorators.error_handler import handle_api_errors
 
 session_debug_bp = Blueprint('judge_sessions_debug', __name__)
 
 
-def _is_development():
-    """Check if we're in development mode."""
-    return os.environ.get('FLASK_ENV') == 'development'
-
-
 @session_debug_bp.route('/sessions-debug', methods=['GET'])
+@debug_route_protected
+@handle_api_errors(logger_name='judge_debug')
 def list_sessions_debug():
     """
-    DEBUG ONLY: List all sessions without authentication.
+    DEBUG ONLY: List all sessions.
+    Requires SYSTEM_ADMIN_API_KEY via X-API-Key header.
+    Only available in development mode.
     """
-    if not _is_development():
-        return jsonify({'error': 'Debug endpoint disabled'}), 403
 
     sessions = JudgeSession.query.order_by(JudgeSession.created_at.desc()).all()
 
@@ -53,14 +56,14 @@ def list_sessions_debug():
 
 
 @session_debug_bp.route('/sessions-debug', methods=['POST'])
+@debug_route_protected
+@handle_api_errors(logger_name='judge_debug')
 def create_session_debug():
     """
-    DEBUG ONLY: Create session without authentication.
-    Remove in production!
+    DEBUG ONLY: Create session.
+    Requires SYSTEM_ADMIN_API_KEY via X-API-Key header.
+    Only available in development mode.
     """
-    if not _is_development():
-        return jsonify({'error': 'Debug endpoint disabled'}), 403
-
     from routes.judge.session_helpers import configure_session_comparisons
 
     data = request.get_json() or {}
@@ -139,14 +142,14 @@ def create_session_debug():
 
 
 @session_debug_bp.route('/sessions/<int:session_id>/start-debug', methods=['POST'])
+@debug_route_protected
+@handle_api_errors(logger_name='judge_debug')
 def start_session_debug(session_id: int):
     """
-    DEBUG ONLY: Start session without authentication.
-    Remove in production!
+    DEBUG ONLY: Start session.
+    Requires SYSTEM_ADMIN_API_KEY via X-API-Key header.
+    Only available in development mode.
     """
-    if not _is_development():
-        return jsonify({'error': 'Debug endpoint disabled'}), 403
-
     session = JudgeSession.query.get_or_404(session_id)
 
     # Reset to QUEUED if needed for restart

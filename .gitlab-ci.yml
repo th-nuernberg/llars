@@ -433,3 +433,60 @@ smoke:wizard:
     - smoke:test
   when: on_success
   allow_failure: true  # Wizard-Test optional, blockiert nicht das Deployment
+
+# =============================================================================
+# CODE METRICS COLLECTION
+# =============================================================================
+# Collects and reports code quality metrics (docstrings, coverage, file sizes)
+
+metrics:collect:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends nodejs npm
+  script:
+    - echo "📊 Collecting Code Quality Metrics..."
+    - pip install pytest pytest-cov
+    - python scripts/metrics/collect_python_metrics.py --json > python_metrics.json
+    - cd llars-frontend && npm ci --prefer-offline --silent
+    - cd .. && node scripts/metrics/collect_frontend_metrics.js --json > frontend_metrics.json
+    - echo ""
+    - echo "=== PYTHON METRICS ==="
+    - python -c "import json; m=json.load(open('python_metrics.json')); s=m['summary']; print(f\"Function Coverage: {s['function_coverage']}%\"); print(f\"Class Coverage: {s['class_coverage']}%\")"
+    - echo ""
+    - echo "=== FRONTEND METRICS ==="
+    - node -e "const m=require('./frontend_metrics.json'); console.log('JSDoc Coverage: '+m.summary.coverage+'%')"
+  artifacts:
+    paths:
+      - python_metrics.json
+      - frontend_metrics.json
+    reports:
+      metrics:
+        - python_metrics.json
+        - frontend_metrics.json
+    expire_in: 30 days
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  allow_failure: true
+
+# Update documentation with metrics (only on main branch)
+metrics:update-docs:
+  stage: deploy
+  tags:
+    - shell
+  script:
+    - echo "📝 Updating documentation with metrics..."
+    - cd /var/llars
+    - python scripts/metrics/collect_python_metrics.py
+    - node scripts/metrics/collect_frontend_metrics.js
+    - python scripts/metrics/update_docs.py
+    - echo "Metrics documentation updated"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - metrics:collect
+    - deploy:production
+  when: on_success
+  allow_failure: true

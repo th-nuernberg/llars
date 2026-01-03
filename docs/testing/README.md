@@ -54,6 +54,29 @@ npm run test:coverage
 npm run test:ui
 ```
 
+**E2E Tests (Playwright):**
+```bash
+cd /path/to/llars/llars-frontend
+
+# Alle E2E Tests
+npm run e2e
+
+# Nur Chromium
+npm run e2e:chromium
+
+# Mit Browser UI (headed)
+npm run e2e:headed
+
+# Debug Mode
+npm run e2e:debug
+
+# Playwright UI
+npm run e2e:ui
+
+# Report anzeigen
+npm run e2e:report
+```
+
 ---
 
 ## Dokumentenstruktur
@@ -131,8 +154,8 @@ docs/testing/
 | **Backend Unit Tests** | 768 | ✅ Implementiert |
 | **Backend Integration Tests** | 342 | ✅ Implementiert |
 | **Frontend Component Tests** | 1.733 | ✅ Implementiert |
-| **E2E Tests (Playwright)** | 0 | ⏳ Geplant |
-| **Gesamt** | **2.843** | ~95% ✅ |
+| **E2E Tests (Playwright)** | 25 | ✅ Implementiert |
+| **Gesamt** | **2.868** | ~98% ✅ |
 
 ### Implementierte Backend Test-Dateien
 
@@ -242,6 +265,20 @@ llars-frontend/tests/
 
 **Fehlende Composables:** Keine - alle Composables sind vollständig getestet!
 
+### Implementierte E2E Test-Dateien (Playwright)
+
+```
+llars-frontend/e2e/
+└── login.spec.js                            # ✅ 25 Tests (E2E_LOGIN_001-025)
+    ├── Login Page (5 Tests)                 # Page load, form fields, focus, password type, visibility toggle
+    ├── Successful Login (6 Tests)           # All 4 user roles + token storage + loading state
+    ├── Failed Login (5 Tests)               # Wrong credentials, empty fields, error dismissal
+    ├── Logout (2 Tests)                     # Logout flow, token cleared
+    ├── Session & Redirects (4 Tests)        # Auth redirects, protected routes
+    ├── Keyboard Navigation (2 Tests)        # Enter submit, Tab navigation
+    └── Mobile Responsive (1 Test)           # Mobile viewport login
+```
+
 ---
 
 ## Priorisierung
@@ -275,3 +312,23 @@ Bei Fragen zur Testdokumentation wende dich an das Entwicklungsteam.
 ---
 
 **Letzte Aktualisierung:** 1. Januar 2026
+
+---
+
+## E2E Test Konfiguration
+
+Die E2E Tests verwenden Playwright und sind wie folgt konfiguriert:
+
+**Browser-Projekte:**
+- Chromium (Desktop Chrome)
+- Firefox (Desktop Firefox)
+- WebKit (Desktop Safari)
+- Mobile Chrome (Pixel 5)
+- Mobile Safari (iPhone 12)
+
+**Konfiguration:** `llars-frontend/playwright.config.js`
+
+**Voraussetzungen:**
+- LLARS muss unter `http://localhost:55080` laufen
+- Alle Test-Benutzer (admin, researcher, viewer, chatbot_manager) müssen in Authentik existieren
+- Passwort für alle Test-Benutzer: `admin123`

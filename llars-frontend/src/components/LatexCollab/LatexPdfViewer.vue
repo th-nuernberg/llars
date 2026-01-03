@@ -68,7 +68,7 @@ const props = defineProps({
   isCompiling: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['pdf-click'])
+const emit = defineEmits(['pdf-click', 'no-pdf'])
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 
@@ -382,6 +382,8 @@ async function loadPdf({ isRetry = false } = {}) {
         scheduleRetry()
       } else {
         pendingPdf.value = false
+        // Emit event when no PDF exists for this workspace
+        emit('no-pdf')
       }
     } else if (status === 429) {
       retryBackoff = Math.min(8000, Math.max(retryBackoff, 1200) * 1.6 || 1200)

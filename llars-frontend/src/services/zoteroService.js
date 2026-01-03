@@ -6,12 +6,13 @@
 
 import axios from 'axios'
 import { BASE_URL } from '@/config.js'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const API_BASE = `${BASE_URL}/api/zotero`
 
 // Create axios instance with auth header
 function getAuthHeaders() {
-  const token = localStorage.getItem('token')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

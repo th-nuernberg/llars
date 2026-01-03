@@ -75,10 +75,14 @@ socketio = SocketIO(
 )
 
 # Rate Limiting - Schützt vor Brute-Force und DoS
+# In development mode, use much higher limits to support E2E testing
+is_development = os.environ.get('FLASK_ENV', 'production') == 'development'
+rate_limit_defaults = ["10000 per day", "1000 per hour"] if is_development else ["200 per day", "50 per hour"]
+
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=rate_limit_defaults,
     storage_uri="memory://",  # In production: Redis verwenden
 )
 

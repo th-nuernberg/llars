@@ -1,5 +1,6 @@
 <template>
-  <div class="ai-sidebar" :class="{ collapsed: !expanded }">
+  <div class="ai-sidebar-wrapper">
+    <div class="ai-sidebar" :class="{ collapsed: !expanded }">
     <!-- Header -->
     <div class="ai-sidebar-header" @click="expanded = !expanded">
       <div class="ai-header-content">
@@ -307,6 +308,7 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+  </div>
 </template>
 
 <script setup>

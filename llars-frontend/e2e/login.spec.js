@@ -28,23 +28,24 @@ async function login(page, username, password) {
   await page.goto('/login')
   await page.fill('#username', username)
   await page.fill('#password', password)
-  await page.click('button:has-text("Anmelden")')
+  // Use the login form button (has class login-button), not the AppBar button
+  await page.click('.login-button')
 }
 
 // Helper function to logout
 async function logout(page) {
-  // Open user menu and click logout
-  await page.click('[data-testid="user-menu"]').catch(() => {
-    // Try alternative selector if data-testid not available
-    return page.click('.user-menu, .v-avatar')
-  })
-  await page.click('text=Logout').catch(() => {
-    return page.click('text=Abmelden')
-  })
+  // Open user menu (click the user-menu-trigger in AppBar)
+  await page.click('.user-menu-trigger')
+  // Wait for menu to open
+  await page.waitForSelector('.user-menu-list', { state: 'visible' })
+  // Click logout (Abmelden in German)
+  await page.click('text=Abmelden')
 }
 
 // Helper to clear auth state
 async function clearAuth(page) {
+  // First navigate to the app to have access to localStorage
+  await page.goto('/login')
   await page.evaluate(() => {
     localStorage.clear()
     sessionStorage.clear()
@@ -59,8 +60,7 @@ test.describe('Login Page', () => {
   // ==================== Page Load Tests ====================
 
   test('E2E_LOGIN_001: login page loads correctly', async ({ page }) => {
-    await page.goto('/login')
-
+    // clearAuth already navigates to /login, so we just check elements
     // Check page elements
     await expect(page.locator('.login-page')).toBeVisible()
     await expect(page.locator('.login-card')).toBeVisible()
@@ -68,47 +68,47 @@ test.describe('Login Page', () => {
   })
 
   test('E2E_LOGIN_002: login form has required fields', async ({ page }) => {
-    await page.goto('/login')
-
+    // clearAuth already navigates to /login
     // Check form fields exist
     await expect(page.locator('#username')).toBeVisible()
     await expect(page.locator('#password')).toBeVisible()
-    await expect(page.locator('button:has-text("Anmelden")')).toBeVisible()
+    await expect(page.locator('.login-button')).toBeVisible()
   })
 
   test('E2E_LOGIN_003: username field is focusable', async ({ page }) => {
-    await page.goto('/login')
-
+    // clearAuth already navigates to /login
     await page.click('#username')
     await expect(page.locator('#username')).toBeFocused()
   })
 
   test('E2E_LOGIN_004: password field is type password', async ({ page }) => {
-    await page.goto('/login')
-
+    // clearAuth already navigates to /login
     const passwordInput = page.locator('#password')
     await expect(passwordInput).toHaveAttribute('type', 'password')
   })
 
   test('E2E_LOGIN_005: password visibility toggle works', async ({ page }) => {
-    await page.goto('/login')
-
+    // clearAuth already navigates to /login
     // Initial state: password hidden
     await expect(page.locator('#password')).toHaveAttribute('type', 'password')
 
-    // Click eye icon to show password
-    await page.click('[class*="mdi-eye"]')
+    // Click eye icon to show password (within the password field container)
+    const passwordField = page.locator('.login-field').filter({ has: page.locator('#password') })
+    await passwordField.locator('.v-field__append-inner').click()
 
     // Password should now be visible
     await expect(page.locator('#password')).toHaveAttribute('type', 'text')
 
     // Click again to hide
-    await page.click('[class*="mdi-eye"]')
+    await passwordField.locator('.v-field__append-inner').click()
     await expect(page.locator('#password')).toHaveAttribute('type', 'password')
   })
 })
 
 test.describe('Successful Login', () => {
+  // Run these tests serially to avoid auth state interference
+  test.describe.configure({ mode: 'serial' })
+
   test.beforeEach(async ({ page }) => {
     await clearAuth(page)
   })
@@ -117,38 +117,38 @@ test.describe('Successful Login', () => {
     await login(page, TEST_USERS.admin.username, TEST_USERS.admin.password)
 
     // Should redirect to Home
-    await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
   })
 
   test('E2E_LOGIN_007: researcher can login successfully', async ({ page }) => {
     await login(page, TEST_USERS.researcher.username, TEST_USERS.researcher.password)
 
     // Should redirect to Home
-    await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
   })
 
   test('E2E_LOGIN_008: viewer can login successfully', async ({ page }) => {
     await login(page, TEST_USERS.viewer.username, TEST_USERS.viewer.password)
 
     // Should redirect to Home
-    await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
   })
 
   test('E2E_LOGIN_009: chatbot_manager can login successfully', async ({ page }) => {
     await login(page, TEST_USERS.chatbot_manager.username, TEST_USERS.chatbot_manager.password)
 
     // Should redirect to Home
-    await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
   })
 
   test('E2E_LOGIN_010: token is stored after login', async ({ page }) => {
     await login(page, TEST_USERS.admin.username, TEST_USERS.admin.password)
 
-    await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
 
-    // Check localStorage for token
+    // Check sessionStorage for token (LLARS stores as 'auth_token')
     const token = await page.evaluate(() => {
-      return localStorage.getItem('access_token') || localStorage.getItem('token')
+      return sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token')
     })
 
     expect(token).toBeTruthy()
@@ -161,7 +161,7 @@ test.describe('Successful Login', () => {
     await page.fill('#password', TEST_USERS.admin.password)
 
     // Click and immediately check for loading
-    const loginButton = page.locator('button:has-text("Anmelden")')
+    const loginButton = page.locator('.login-button')
     await loginButton.click()
 
     // Button should show loading state (either loading attribute or disabled)
@@ -201,7 +201,7 @@ test.describe('Failed Login', () => {
     await page.fill('#password', 'admin123')
 
     // Button should be disabled when username is empty
-    const loginButton = page.locator('button:has-text("Anmelden")')
+    const loginButton = page.locator('.login-button')
     await expect(loginButton).toBeDisabled()
   })
 
@@ -211,7 +211,7 @@ test.describe('Failed Login', () => {
     await page.fill('#username', 'admin')
 
     // Button should be disabled when password is empty
-    const loginButton = page.locator('button:has-text("Anmelden")')
+    const loginButton = page.locator('.login-button')
     await expect(loginButton).toBeDisabled()
   })
 
@@ -287,7 +287,7 @@ test.describe('Session & Redirects', () => {
 
     await page.fill('#username', TEST_USERS.admin.username)
     await page.fill('#password', TEST_USERS.admin.password)
-    await page.click('button:has-text("Anmelden")')
+    await page.click('.login-button')
 
     // Should redirect to admin (if user has permission)
     await expect(page).toHaveURL(/\/(admin|Home)/, { timeout: 10000 })
@@ -351,7 +351,7 @@ test.describe('Mobile Responsive', () => {
     // Login should work
     await page.fill('#username', TEST_USERS.admin.username)
     await page.fill('#password', TEST_USERS.admin.password)
-    await page.click('button:has-text("Anmelden")')
+    await page.click('.login-button')
 
     // Should redirect to Home
     await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })

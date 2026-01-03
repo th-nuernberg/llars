@@ -55,7 +55,7 @@
     </v-app-bar>
 
     <v-main>
-      <router-view :key="$route.fullPath"></router-view>
+      <router-view :key="routerViewKey"></router-view>
     </v-main>
 
     <AnalyticsConsentBanner />
@@ -91,7 +91,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useAppTheme } from '@/composables/useAppTheme';
 import { usePermissions } from '@/composables/usePermissions';
@@ -104,10 +104,29 @@ import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.v
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuth();
 const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
 const { isMobile } = useMobile();
+
+/**
+ * Smart router-view key that prevents full remount on document switches.
+ * For collab workspaces (LaTeX, Markdown), use workspace-level key so switching
+ * documents only updates editor content, not the entire workspace component.
+ */
+const routerViewKey = computed(() => {
+  const path = route.path
+  // Match LaTeX/Markdown collab workspace routes with document IDs
+  // Pattern: /LatexCollab/workspace/:id/document/:docId or /LatexCollabAI/workspace/:id/document/:docId
+  const collabMatch = path.match(/^\/(LatexCollab|LatexCollabAI|MarkdownCollab)\/workspace\/(\d+)/)
+  if (collabMatch) {
+    // Return workspace-level key, ignoring document ID changes
+    return `${collabMatch[1]}-workspace-${collabMatch[2]}`
+  }
+  // For all other routes, use full path as before
+  return route.fullPath
+})
 
 const isAuthenticated = computed(() => auth.isAuthenticated.value);
 const username = computed(() => {

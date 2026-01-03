@@ -8,12 +8,51 @@ Idempotent: will not create duplicates on repeated startups.
 from datetime import datetime
 
 
+def _ensure_markdown_commits(db, workspace, message):
+    from ..tables import MarkdownCommit, MarkdownDocument, MarkdownNodeType
+
+    docs = (
+        MarkdownDocument.query
+        .filter_by(workspace_id=workspace.id)
+        .filter(MarkdownDocument.node_type == MarkdownNodeType.file)
+        .filter(MarkdownDocument.deleted_at.is_(None))
+        .all()
+    )
+    if not docs:
+        return 0
+
+    created_at = datetime.utcnow()
+    created = 0
+
+    for doc in docs:
+        if MarkdownCommit.query.filter_by(document_id=doc.id).first():
+            continue
+        content_snapshot = doc.content_text or ""
+        commit = MarkdownCommit(
+            document_id=doc.id,
+            author_username='admin',
+            message=message,
+            diff_summary={"files_added": 1},
+            content_snapshot=content_snapshot,
+            created_at=created_at,
+        )
+        db.session.add(commit)
+        created += 1
+
+    if created:
+        db.session.commit()
+    return created
+
+
 def initialize_markdown_collab_defaults(db):
     # Lazy import to avoid circular dependencies
     from ..tables import MarkdownWorkspace, MarkdownDocument, MarkdownNodeType, MarkdownWorkspaceVisibility
 
-    existing = MarkdownWorkspace.query.first()
+    existing = MarkdownWorkspace.query.filter_by(name='Markdown Collab Demo').first()
     if existing:
+        created = _ensure_markdown_commits(db, existing, "Initial commit: Markdown Collab Demo")
+        if created:
+            print(f"✅ Backfilled {created} markdown commits for demo workspace (id={existing.id})")
         return
 
     workspace = MarkdownWorkspace(
@@ -75,4 +114,5 @@ def initialize_markdown_collab_defaults(db):
     notes.yjs_doc_id = f"markdown_{notes.id}"
 
     db.session.commit()
-    print(f"✅ Created Markdown Collab demo workspace (id={workspace.id})")
+    created = _ensure_markdown_commits(db, workspace, "Initial commit: Markdown Collab Demo")
+    print(f"✅ Created Markdown Collab demo workspace (id={workspace.id}) with {created} initial commits")

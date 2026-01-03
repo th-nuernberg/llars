@@ -5,28 +5,56 @@
  * - @-command autocompletion and execution
  * - Ghost text completion (inline suggestions)
  * - AI-powered text operations
+ *
+ * @module LatexCollabAI/composables/useAIEditor
  */
 
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import aiWritingService from '@/services/aiWritingService'
 
-// AI Collab Color - distinct lavender/purple for AI-generated changes
-// This matches the CSS custom property --llars-ai-collab in global.css
-export const AI_COLLAB_COLOR = '#b39ddb'
-export const AI_COLLAB_USERNAME = 'AI Assistant'
+// Import shared constants from LatexEditorPane module
+// These are used across both LaTeX and LaTeX AI editors
+import {
+  AI_COLLAB_COLOR,
+  AI_COLLAB_USERNAME,
+  AI_COMMAND_COMPLETIONS
+} from '@/components/LatexCollab/LatexEditorPane/constants'
 
-// Available @-commands with descriptions
-const AI_COMMANDS = [
-  { label: '@ai', type: 'ai', info: 'Freie KI-Anfrage', description: 'Stelle eine beliebige Frage oder gib eine Anweisung' },
-  { label: '@rewrite', type: 'ai', info: 'Text umformulieren', description: 'Formuliert den markierten Text wissenschaftlicher' },
-  { label: '@expand', type: 'ai', info: 'Text erweitern', description: 'Erweitert den markierten Text mit mehr Details' },
-  { label: '@summarize', type: 'ai', info: 'Text zusammenfassen', description: 'Fasst den markierten Text zusammen' },
-  { label: '@fix', type: 'ai', info: 'Fehler korrigieren', description: 'Korrigiert LaTeX- und Grammatikfehler' },
-  { label: '@translate', type: 'ai', info: 'Übersetzen', description: 'Übersetzt den Text (z.B. @translate en)' },
-  { label: '@cite', type: 'ai', info: 'Zitat finden', description: 'Sucht passende Quellen für die Aussage' },
-  { label: '@abstract', type: 'ai', info: 'Abstract generieren', description: 'Generiert ein Abstract für das Dokument' },
-  { label: '@titles', type: 'ai', info: 'Titel vorschlagen', description: 'Schlägt Titel für das Dokument vor' }
-]
+// Re-export for consumers of this composable
+export { AI_COLLAB_COLOR, AI_COLLAB_USERNAME }
+
+/**
+ * Extended AI commands with additional description field for UI display.
+ * Based on AI_COMMAND_COMPLETIONS from LatexEditorPane/constants.js
+ * with enhanced metadata for command palette and help dialogs.
+ *
+ * @constant {Array<Object>}
+ */
+const AI_COMMANDS = AI_COMMAND_COMPLETIONS.map(cmd => ({
+  ...cmd,
+  type: 'ai',
+  description: getCommandDescription(cmd.label)
+}))
+
+/**
+ * Get human-readable description for AI command
+ * @param {string} label - Command label (e.g., '@ai', '@rewrite')
+ * @returns {string} Description text
+ */
+function getCommandDescription(label) {
+  const descriptions = {
+    '@ai': 'Stelle eine beliebige Frage oder gib eine Anweisung',
+    '@rewrite': 'Formuliert den markierten Text wissenschaftlicher',
+    '@expand': 'Erweitert den markierten Text mit mehr Details',
+    '@summarize': 'Fasst den markierten Text zusammen',
+    '@fix': 'Korrigiert LaTeX- und Grammatikfehler',
+    '@translate': 'Übersetzt den Text (z.B. @translate en)',
+    '@cite': 'Sucht passende Quellen für die Aussage',
+    '@abstract': 'Generiert ein Abstract für das Dokument',
+    '@titles': 'Schlägt Titel für das Dokument vor'
+  }
+  return descriptions[label] || ''
+}
 
 export function useAIEditor() {
   // State

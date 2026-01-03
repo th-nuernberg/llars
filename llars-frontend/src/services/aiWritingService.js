@@ -7,12 +7,13 @@
 
 import axios from 'axios'
 import { BASE_URL } from '@/config.js'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const API_BASE = `${BASE_URL}/api/ai-writing`
 
 // Create axios instance with auth header
 function getAuthHeaders() {
-  const token = localStorage.getItem('token')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -152,7 +153,7 @@ export async function chat(params) {
  * @returns {Promise<{response: string, artifacts: Array}>}
  */
 export async function streamChat(params, onChunk) {
-  const token = localStorage.getItem('token')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   const response = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
     headers: {

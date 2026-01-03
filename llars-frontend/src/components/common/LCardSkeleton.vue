@@ -261,7 +261,7 @@ const actionsNormalized = computed(() => {
   if (props.actionItems.length) {
     return props.actionItems.map(item => ({
       width: item?.width ?? props.primaryActionWidth,
-      height: item?.height ?? props.actionHeight,
+      height: item?.height,
       shape: item?.shape ?? 'pill'
     }))
   }

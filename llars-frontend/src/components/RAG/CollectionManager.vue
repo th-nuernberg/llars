@@ -23,7 +23,13 @@
           md="4"
           lg="3"
         >
-          <v-skeleton-loader type="card" height="280"></v-skeleton-loader>
+          <LCardSkeleton
+            :min-height="280"
+            :show-status="false"
+            :tag-count="0"
+            :stat-count="2"
+            :action-items="collectionSkeletonActions"
+          />
         </v-col>
       </template>
 
@@ -149,6 +155,13 @@ const getIcon = (iconName) => {
   }
   return iconMap[iconName] || 'mdi-folder'
 }
+
+const collectionSkeletonActions = [
+  { width: 88, height: 28, shape: 'pill' },
+  { width: 28, height: 28, shape: 'circle' },
+  { width: 28, height: 28, shape: 'circle' },
+  { width: 28, height: 28, shape: 'circle' }
+]
 
 const formatSize = (bytes) => {
   if (!bytes || bytes === 0) return '0 B'

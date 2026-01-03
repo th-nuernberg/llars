@@ -71,7 +71,7 @@ const props = defineProps({
   readonly: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['content-change', 'git-summary'])
+const emit = defineEmits(['content-change', 'git-summary', 'document-saved'])
 
 const editorEl = ref(null)
 const error = ref('')
@@ -733,8 +733,6 @@ function refresh() {
   view.value?.requestMeasure?.()
 }
 
-defineExpose({ clearHighlights, refresh, refreshBaseline, getCurrentContent })
-
 // Callback for when another user updates their color
 function onColorUpdate(userId, newColor) {
   // Update the remote cursor color if it exists
@@ -748,11 +746,37 @@ function onColorUpdate(userId, newColor) {
   updateDecorations()
 }
 
+/**
+ * Initialize Yjs collaboration with WebSocket connection.
+ *
+ * The onDocumentSaved callback enables real-time Git panel updates:
+ * - YJS server saves document to DB after 2s debounce
+ * - Server broadcasts `document_saved` to workspace room
+ * - We forward this event to parent component (MarkdownCollabWorkspace)
+ * - Parent refreshes Git panel via gitPanelRef.checkForChanges()
+ *
+ * Event flow: YJS Server → Socket.IO → useYjsCollaboration → EditorPane → Workspace → GitPanel
+ */
 const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, {
   autoSync: true,
-  onColorUpdate
+  onColorUpdate,
+  /**
+   * Handle document_saved event from YJS server.
+   * @param {Object} data - Event payload
+   * @param {number} data.documentId - Saved document ID
+   * @param {number} data.workspaceId - Workspace containing the document
+   * @param {string} data.kind - Document type ('markdown')
+   * @param {number} data.contentLength - Content length in characters
+   * @param {string} data.savedAt - ISO timestamp
+   */
+  onDocumentSaved: (data) => {
+    console.log('[MarkdownEditorPane] document_saved, emitting to parent:', data)
+    emit('document-saved', data)
+  }
 })
-const { ydoc, socket, users, updateColor, switchRoom } = collaboration
+const { ydoc, socket, users, updateColor, switchRoom, reloadRoom, reloadAnyRoom } = collaboration
+
+defineExpose({ clearHighlights, refresh, refreshBaseline, getCurrentContent, reloadRoom, reloadAnyRoom })
 
 let onSocketConnect = null
 let onSocketDisconnect = null
@@ -851,9 +875,13 @@ watch(
     // Load new git baseline for diff comparison
     await loadBaseline(newId)
 
-    // Wait for the server to send the snapshot, then update decorations
-    // The processYDoc callback will be called when snapshot arrives
+    // Wait for the server to send the snapshot
+    // Give the socket time to receive and process the snapshot
+    await new Promise(resolve => setTimeout(resolve, 100))
     await nextTick()
+
+    // Process the new Yjs doc to emit content-change and update editor
+    processYDoc()
     updateDecorations()
   },
   { immediate: false }

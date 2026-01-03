@@ -14,7 +14,14 @@
         >
           {{ changedFiles.length }} {{ changedFiles.length === 1 ? 'Datei' : 'Dateien' }}
         </LTag>
-        <LTag v-else variant="gray" size="small">
+        <LTag
+          v-if="deletedFiles.length > 0"
+          variant="danger"
+          size="small"
+        >
+          {{ deletedFiles.length }} gelöscht
+        </LTag>
+        <LTag v-if="changedFiles.length === 0 && deletedFiles.length === 0" variant="gray" size="small">
           Keine Änderungen
         </LTag>
         <v-spacer />
@@ -37,7 +44,14 @@
         >
           {{ changedFiles.length }} geändert
         </LTag>
-        <LTag v-else variant="success" size="small">
+        <LTag
+          v-if="deletedFiles.length > 0"
+          variant="danger"
+          size="small"
+        >
+          {{ deletedFiles.length }} gelöscht
+        </LTag>
+        <LTag v-if="changedFiles.length === 0 && deletedFiles.length === 0" variant="success" size="small">
           Synced
         </LTag>
         <v-spacer />
@@ -93,12 +107,12 @@
             </div>
 
             <v-skeleton-loader v-if="checkingChanges" type="list-item@3" />
-            <div v-else-if="changedFiles.length === 0" class="empty-files">
+            <div v-else-if="changedFiles.length === 0 && deletedFiles.length === 0" class="empty-files">
               Keine Änderungen
             </div>
             <div v-else class="file-list">
-              <!-- Select All -->
-              <div class="select-all-row">
+              <!-- Select All (only if there are changed files) -->
+              <div v-if="changedFiles.length > 0" class="select-all-row">
                 <v-checkbox
                   v-model="allSelected"
                   density="compact"
@@ -112,7 +126,7 @@
                 </v-checkbox>
               </div>
 
-              <!-- File list -->
+              <!-- Changed File list -->
               <div
                 v-for="file in changedFiles"
                 :key="file.id"
@@ -125,6 +139,15 @@
                   hide-details
                   @update:model-value="toggleFile(file.id)"
                 />
+                <!-- Status badge -->
+                <v-tooltip location="top">
+                  <template #activator="{ props: tp }">
+                    <span v-bind="tp" class="status-badge" :class="getStatusBadge(file).color">
+                      {{ getStatusBadge(file).text }}
+                    </span>
+                  </template>
+                  <span>{{ getStatusBadge(file).tooltip }}</span>
+                </v-tooltip>
                 <v-icon size="16" class="file-icon">mdi-file-document-outline</v-icon>
                 <div class="file-info">
                   <span class="file-path">{{ file.path }}</span>
@@ -152,6 +175,44 @@
                   <span>Änderungen verwerfen</span>
                 </v-tooltip>
               </div>
+
+              <!-- Deleted Files Section -->
+              <template v-if="deletedFiles.length > 0">
+                <v-divider v-if="changedFiles.length > 0" class="my-2" />
+                <div class="deleted-section-title">
+                  <v-icon size="14" color="error" class="mr-1">mdi-delete</v-icon>
+                  Gelöschte Dateien
+                </div>
+                <div
+                  v-for="file in deletedFiles"
+                  :key="'deleted-' + file.id"
+                  class="file-item deleted"
+                >
+                  <!-- Status badge -->
+                  <span class="status-badge error">D</span>
+                  <v-icon size="16" class="file-icon" color="error">mdi-file-remove-outline</v-icon>
+                  <div class="file-info">
+                    <span class="file-path deleted-path">{{ file.title }}</span>
+                  </div>
+                  <!-- Restore button -->
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tp }">
+                      <v-btn
+                        v-bind="tp"
+                        icon
+                        variant="text"
+                        size="x-small"
+                        color="success"
+                        :loading="restoringFile === file.id"
+                        @click.stop="restoreFile({ id: file.id, ...file })"
+                      >
+                        <v-icon size="14">mdi-restore</v-icon>
+                      </v-btn>
+                    </template>
+                    <span>Datei wiederherstellen</span>
+                  </v-tooltip>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -210,6 +271,13 @@
           >
             {{ changedFiles.length }} geänderte Dateien
           </LTag>
+          <LTag
+            v-if="deletedFiles.length > 0"
+            variant="danger"
+            size="small"
+          >
+            {{ deletedFiles.length }} gelöscht
+          </LTag>
           <v-spacer />
           <LBtn
             variant="text"
@@ -240,8 +308,9 @@
           </v-alert>
 
           <div class="fullscreen-grid">
-            <!-- Left Column: Changed Files -->
+            <!-- Left Column: Changed Files + Commit -->
             <div class="fullscreen-left">
+              <!-- Changed Files Card -->
               <div class="git-card">
                 <div class="card-header">
                   <v-icon size="18" class="mr-2">mdi-file-document-multiple</v-icon>
@@ -251,13 +320,13 @@
                 </div>
                 <div class="card-content">
                   <v-skeleton-loader v-if="checkingChanges" type="list-item@6" />
-                  <div v-else-if="changedFiles.length === 0" class="empty-state">
+                  <div v-else-if="changedFiles.length === 0 && deletedFiles.length === 0" class="empty-state">
                     <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-check-circle</v-icon>
                     <span>Keine uncommitted Änderungen</span>
                   </div>
                   <div v-else>
-                    <!-- Select All / None buttons -->
-                    <div class="bulk-actions">
+                    <!-- Select All / None buttons (only if there are changed files) -->
+                    <div v-if="changedFiles.length > 0" class="bulk-actions">
                       <LBtn variant="text" size="small" @click="selectAll">
                         Alle auswählen
                       </LBtn>
@@ -266,9 +335,9 @@
                       </LBtn>
                     </div>
 
-                    <v-divider class="my-2" />
+                    <v-divider v-if="changedFiles.length > 0" class="my-2" />
 
-                    <!-- File list -->
+                    <!-- Changed File list -->
                     <div class="file-list-full">
                       <div
                         v-for="file in changedFiles"
@@ -284,6 +353,15 @@
                           @click.stop
                           @update:model-value="toggleFile(file.id)"
                         />
+                        <!-- Status badge -->
+                        <v-tooltip location="top">
+                          <template #activator="{ props: tp }">
+                            <span v-bind="tp" class="status-badge-full" :class="getStatusBadge(file).color">
+                              {{ getStatusBadge(file).text }}
+                            </span>
+                          </template>
+                          <span>{{ getStatusBadge(file).tooltip }}</span>
+                        </v-tooltip>
                         <v-icon size="20" class="file-icon" :color="getFileIconColor(file.path)">
                           {{ getFileIcon(file.path) }}
                         </v-icon>
@@ -292,7 +370,6 @@
                           <div class="file-stats-full">
                             <span class="stat-badge success">+{{ file.insertions }}</span>
                             <span class="stat-badge error">-{{ file.deletions }}</span>
-                            <span v-if="!file.has_baseline" class="new-badge">NEU</span>
                           </div>
                         </div>
                         <!-- Rollback button -->
@@ -313,15 +390,56 @@
                           <span>Änderungen verwerfen</span>
                         </v-tooltip>
                       </div>
+
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Right Column: Commit -->
-            <div class="fullscreen-right">
-              <div class="git-card">
+              <!-- Deleted Files Card -->
+              <div v-if="deletedFiles.length > 0" class="git-card mt-4">
+                <div class="card-header deleted-header">
+                  <v-icon size="18" class="mr-2" color="error">mdi-delete</v-icon>
+                  Gelöschte Dateien
+                  <v-spacer />
+                  <span class="deleted-count">{{ deletedFiles.length }}</span>
+                </div>
+                <div class="card-content">
+                  <div class="deleted-files-list">
+                    <div
+                      v-for="file in deletedFiles"
+                      :key="'deleted-' + file.id"
+                      class="deleted-file-item"
+                    >
+                      <span class="status-badge error">D</span>
+                      <v-icon size="16" color="error" class="mr-2">mdi-file-remove-outline</v-icon>
+                      <div class="deleted-file-info">
+                        <span class="deleted-file-name">{{ file.title }}</span>
+                        <span class="deleted-file-date">{{ formatDate(file.deleted_at) }}</span>
+                      </div>
+                      <v-tooltip location="left">
+                        <template #activator="{ props: tp }">
+                          <v-btn
+                            v-bind="tp"
+                            icon
+                            variant="tonal"
+                            size="x-small"
+                            color="success"
+                            :loading="restoringFile === file.id"
+                            @click.stop="restoreFile({ id: file.id, ...file })"
+                          >
+                            <v-icon size="14">mdi-restore</v-icon>
+                          </v-btn>
+                        </template>
+                        <span>Datei wiederherstellen</span>
+                      </v-tooltip>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Commit Card -->
+              <div class="git-card mt-4">
                 <div class="card-header">
                   <v-icon size="18" class="mr-2">mdi-pencil-plus</v-icon>
                   Commit erstellen
@@ -359,7 +477,7 @@
                     variant="outlined"
                     density="comfortable"
                     :disabled="!canCommit"
-                    rows="4"
+                    rows="3"
                     hide-details
                     class="commit-textarea"
                   />
@@ -379,23 +497,30 @@
                   </div>
                 </div>
               </div>
+            </div>
 
-              <!-- Recent Commits -->
-              <div class="git-card mt-4">
+            <!-- Middle Column: Commit History -->
+            <div class="fullscreen-middle">
+              <div class="git-card">
                 <div class="card-header">
                   <v-icon size="18" class="mr-2">mdi-history</v-icon>
-                  Letzte Commits
+                  Commit History
+                  <v-spacer />
+                  <span class="commit-count">{{ recentCommits.length }} Commits</span>
                 </div>
                 <div class="card-content history-content">
-                  <v-skeleton-loader v-if="loadingCommits" type="list-item@4" />
-                  <div v-else-if="recentCommits.length === 0" class="empty-state small">
-                    <span>Noch keine Commits</span>
+                  <v-skeleton-loader v-if="loadingCommits" type="list-item@8" />
+                  <div v-else-if="recentCommits.length === 0" class="empty-state">
+                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</v-icon>
+                    <span>Noch keine Commits vorhanden</span>
                   </div>
                   <div v-else class="history-list-full">
                     <div
                       v-for="c in recentCommits"
                       :key="c.id"
                       class="history-item-full"
+                      :class="{ active: c.id === compareCommitId }"
+                      @click="selectCommitForDiff(c.id)"
                     >
                       <div class="commit-indicator" />
                       <div class="commit-details">
@@ -406,8 +531,74 @@
                           <span class="files-count">{{ c.file_count || 1 }} Datei(en)</span>
                         </div>
                       </div>
+                      <LTag variant="gray" size="small">#{{ c.id }}</LTag>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Diff Viewer -->
+            <div class="fullscreen-right">
+              <div class="git-card">
+                <div class="card-header">
+                  <v-icon size="18" class="mr-2">mdi-file-compare</v-icon>
+                  Diff Ansicht
+                  <v-spacer />
+                  <v-btn-toggle
+                    v-model="compareMode"
+                    density="compact"
+                    variant="outlined"
+                    divided
+                    mandatory
+                    class="mode-toggle"
+                  >
+                    <v-btn value="working" size="small" title="Working Tree anzeigen">Working</v-btn>
+                    <v-btn value="commit-range" size="small" title="Commit-Bereich vergleichen">Commits</v-btn>
+                  </v-btn-toggle>
+                </div>
+                <div class="card-content diff-content">
+                  <!-- No document selected message -->
+                  <div v-if="!selectedDocumentId" class="no-document-selected">
+                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-file-document-outline</v-icon>
+                    <span>Wähle eine Datei aus, um den Diff anzuzeigen</span>
+                  </div>
+                  <template v-else>
+                    <!-- Commit range selectors -->
+                    <div v-if="compareMode === 'commit-range'" class="diff-selectors">
+                      <v-select
+                        v-model="baseCommitId"
+                        :items="baseCommitOptions"
+                        label="Basis"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                      />
+                      <v-icon class="mx-2">mdi-arrow-right</v-icon>
+                      <v-select
+                        v-model="compareCommitId"
+                        :items="commitOptions"
+                        label="Vergleich"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                      />
+                    </div>
+
+                    <v-alert v-if="diffError" type="error" variant="tonal" class="mb-3">
+                      {{ diffError }}
+                    </v-alert>
+
+                    <v-skeleton-loader v-if="isLoading('diff')" type="table" height="400" />
+                    <MarkdownDiffViewer
+                      v-else
+                      :base-text="diffBaseText"
+                      :compare-text="diffCompareText"
+                      :base-label="diffBaseLabel"
+                      :compare-label="diffCompareLabel"
+                      class="diff-viewer-full"
+                    />
+                  </template>
                 </div>
               </div>
             </div>
@@ -424,13 +615,21 @@
           Änderungen verwerfen?
         </v-card-title>
         <v-card-text>
-          <p>
+          <p v-if="forceRollback">
+            Der letzte Commit ist leer. Dieser Rollback würde
+            <strong>{{ rollbackTarget?.path }}</strong>
+            vollständig leeren.
+          </p>
+          <p v-else>
             Alle nicht committeten Änderungen in
             <strong>{{ rollbackTarget?.path }}</strong>
             werden unwiderruflich verworfen.
           </p>
           <p class="text-medium-emphasis mt-2 mb-0">
             Die Datei wird auf den letzten Commit zurückgesetzt.
+            <span v-if="forceRollbackDetails?.commit_id">
+              (Commit #{{ forceRollbackDetails.commit_id }})
+            </span>
           </p>
         </v-card-text>
         <v-card-actions class="pa-4 pt-0">
@@ -450,27 +649,37 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from 'axios'
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import MarkdownDiffViewer from '@/components/MarkdownCollab/MarkdownDiffViewer.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getSocket } from '@/services/socketService'
 
 const props = defineProps({
   workspaceId: { type: Number, required: true },
   canCommit: { type: Boolean, default: false },
-  apiPrefix: { type: String, default: '/api/latex-collab' }
+  apiPrefix: { type: String, default: '/api/latex-collab' },
+  // For diff viewer: provide the selected document ID and content getter
+  selectedDocumentId: { type: Number, default: null },
+  getContent: { type: Function, default: null },
+  beforeRollback: { type: Function, default: null },
+  beforeCommit: { type: Function, default: null }
 })
 
-const emit = defineEmits(['committed', 'rollback'])
+const emit = defineEmits(['committed', 'rollback', 'restored'])
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff'])
 
 const expanded = ref(false)
 const fullscreen = ref(false)
 
 // Changed files state
 const changedFiles = ref([])
+const deletedFiles = ref([])
 const selectedFiles = ref([])
 const checkingChanges = ref(false)
 const loadError = ref('')
+const restoringFile = ref(null) // file id being restored
 
 // Commit state
 const commitMessage = ref('')
@@ -485,6 +694,25 @@ const loadingCommits = ref(false)
 const rollingBack = ref(null) // file id being rolled back
 const showRollbackConfirm = ref(false)
 const rollbackTarget = ref(null) // file to rollback
+const forceRollback = ref(false)
+const forceRollbackDetails = ref(null)
+
+// Diff viewer state
+const compareMode = ref('working')
+const baseCommitId = ref(null)
+const compareCommitId = ref(null)
+const diffBaseText = ref('')
+const diffCompareText = ref('')
+const diffBaseLabel = ref('')
+const diffCompareLabel = ref('')
+const diffError = ref('')
+const baselineSnapshot = ref('')
+const baselineCommitId = ref(null)
+const baselineCommitMessage = ref('')
+const commitSnapshotCache = new Map()
+let workingSyncTimer = null
+
+const INITIAL_BASE = '__initial__'
 
 // Computed
 const allSelected = computed(() =>
@@ -512,6 +740,17 @@ const canSubmitCommit = computed(() => {
          commitMessage.value.trim().length > 0 &&
          selectedFiles.value.length > 0
 })
+
+// Commit options for diff selector
+const commitOptions = computed(() => recentCommits.value.map((c) => ({
+  title: `#${c.id} · ${c.message}`,
+  value: c.id
+})))
+
+const baseCommitOptions = computed(() => [
+  { title: 'Initial (kein Commit)', value: INITIAL_BASE },
+  ...commitOptions.value
+])
 
 // Helper functions
 function authHeaders() {
@@ -590,11 +829,15 @@ function deselectAll() {
 // Rollback functions
 function confirmRollback(file) {
   rollbackTarget.value = file
+  forceRollback.value = false
+  forceRollbackDetails.value = null
   showRollbackConfirm.value = true
 }
 
 function cancelRollback() {
   rollbackTarget.value = null
+  forceRollback.value = false
+  forceRollbackDetails.value = null
   showRollbackConfirm.value = false
 }
 
@@ -606,22 +849,37 @@ async function executeRollback() {
   showRollbackConfirm.value = false
 
   try {
-    await axios.post(
+    if (typeof props.beforeRollback === 'function') {
+      await props.beforeRollback(file.id)
+    }
+
+    const res = await axios.post(
       `${API_BASE}${props.apiPrefix}/documents/${file.id}/rollback`,
-      {},
+      forceRollback.value ? { force: true } : {},
       { headers: authHeaders() }
     )
 
     // Emit rollback event so parent can refresh the editor
-    emit('rollback', file.id)
+    emit('rollback', { documentId: file.id, baseline: res?.data?.baseline ?? null })
 
     // Refresh changes list
     await checkForChanges()
   } catch (e) {
+    const details = e?.response?.data?.details
+    if (details?.requires_force && !forceRollback.value) {
+      forceRollback.value = true
+      forceRollbackDetails.value = details
+      showRollbackConfirm.value = true
+      return
+    }
     commitError.value = e?.response?.data?.error || e?.message || 'Rollback fehlgeschlagen'
   } finally {
     rollingBack.value = null
-    rollbackTarget.value = null
+    if (!showRollbackConfirm.value) {
+      rollbackTarget.value = null
+      forceRollback.value = false
+      forceRollbackDetails.value = null
+    }
   }
 }
 
@@ -640,15 +898,178 @@ async function checkForChanges() {
     )
 
     changedFiles.value = res.data.changed_files || []
+    deletedFiles.value = res.data.deleted_files || []
 
     // Auto-select all changed files
     selectedFiles.value = changedFiles.value.map(f => f.id)
   } catch (e) {
     loadError.value = e?.response?.data?.error || e?.message || 'Fehler beim Prüfen der Änderungen'
     changedFiles.value = []
+    deletedFiles.value = []
     selectedFiles.value = []
   } finally {
     checkingChanges.value = false
+  }
+}
+
+async function restoreFile(file) {
+  if (!file || restoringFile.value) return
+
+  restoringFile.value = file.id
+
+  try {
+    await axios.post(
+      `${API_BASE}${props.apiPrefix}/documents/${file.id}/restore`,
+      {},
+      { headers: authHeaders() }
+    )
+
+    // Refresh changes list
+    await checkForChanges()
+
+    // Emit event so parent can refresh the tree
+    emit('restored', file.id)
+  } catch (e) {
+    loadError.value = e?.response?.data?.error || e?.message || 'Wiederherstellung fehlgeschlagen'
+  } finally {
+    restoringFile.value = null
+  }
+}
+
+function getStatusBadge(file) {
+  if (file.status === 'D') return { text: 'D', color: 'error', tooltip: 'Gelöscht' }
+  if (file.status === 'A' || !file.has_baseline) return { text: 'A', color: 'info', tooltip: 'Neu' }
+  return { text: 'M', color: 'warning', tooltip: 'Geändert' }
+}
+
+function getCommitById(commitId) {
+  return recentCommits.value.find((c) => c.id === commitId) || null
+}
+
+function formatCommitLabel(commit) {
+  if (!commit) return '—'
+  const message = commit.message ? String(commit.message).trim() : ''
+  return `#${commit.id}${message ? ` · ${message}` : ''}`
+}
+
+// Diff functions
+async function loadBaselineSnapshot(force = false) {
+  if (!props.selectedDocumentId) return
+  if (!force && baselineCommitId.value !== null) return
+
+  const res = await axios.get(
+    `${API_BASE}${props.apiPrefix}/documents/${props.selectedDocumentId}/baseline`,
+    { headers: authHeaders() }
+  )
+  baselineSnapshot.value = res.data?.baseline || ''
+  baselineCommitId.value = res.data?.commit_id ?? null
+  baselineCommitMessage.value = res.data?.commit_message || ''
+}
+
+async function fetchCommitSnapshot(commitId) {
+  if (!commitId || commitId === INITIAL_BASE) return ''
+  if (!props.selectedDocumentId) return ''
+  if (commitSnapshotCache.has(commitId)) {
+    return commitSnapshotCache.get(commitId) || ''
+  }
+  const res = await axios.get(
+    `${API_BASE}${props.apiPrefix}/documents/${props.selectedDocumentId}/commits/${commitId}`,
+    { headers: authHeaders() }
+  )
+  const snapshot = res.data?.commit?.content_snapshot || ''
+  commitSnapshotCache.set(commitId, snapshot)
+  return snapshot
+}
+
+function syncWorkingDiffText() {
+  if (compareMode.value !== 'working') return
+  if (workingSyncTimer) clearTimeout(workingSyncTimer)
+  workingSyncTimer = setTimeout(() => {
+    diffCompareText.value = props.getContent ? String(props.getContent() || '') : ''
+  }, 120)
+}
+
+async function refreshDiff(force = false) {
+  if (!props.selectedDocumentId) {
+    diffBaseText.value = ''
+    diffCompareText.value = ''
+    diffBaseLabel.value = 'Keine Datei ausgewählt'
+    diffCompareLabel.value = '—'
+    return
+  }
+
+  await withLoading('diff', async () => {
+    diffError.value = ''
+    try {
+      if (compareMode.value === 'working') {
+        await loadBaselineSnapshot(force)
+        diffBaseText.value = baselineSnapshot.value || ''
+        diffCompareText.value = props.getContent ? String(props.getContent() || '') : ''
+        diffBaseLabel.value = baselineCommitId.value
+          ? `#${baselineCommitId.value}${baselineCommitMessage.value ? ` · ${baselineCommitMessage.value}` : ''}`
+          : 'Initial (kein Commit)'
+        diffCompareLabel.value = 'Working tree'
+        return
+      }
+
+      const compareCommit = getCommitById(compareCommitId.value)
+      if (!compareCommit) {
+        diffBaseText.value = ''
+        diffCompareText.value = ''
+        diffBaseLabel.value = '—'
+        diffCompareLabel.value = '—'
+        return
+      }
+
+      const baseCommit = getCommitById(baseCommitId.value)
+      const [compareSnapshot, baseSnapshot] = await Promise.all([
+        fetchCommitSnapshot(compareCommit.id),
+        fetchCommitSnapshot(baseCommit?.id || baseCommitId.value)
+      ])
+
+      diffBaseText.value = baseSnapshot || ''
+      diffCompareText.value = compareSnapshot || ''
+      diffBaseLabel.value = baseCommit
+        ? formatCommitLabel(baseCommit)
+        : 'Initial (kein Commit)'
+      diffCompareLabel.value = formatCommitLabel(compareCommit)
+    } catch (e) {
+      diffBaseText.value = ''
+      diffCompareText.value = ''
+      diffBaseLabel.value = '—'
+      diffCompareLabel.value = '—'
+      diffError.value = e?.response?.data?.error || e?.message || 'Diff konnte nicht geladen werden'
+    }
+  })
+}
+
+function selectCommitForDiff(commitId) {
+  if (!commitId) return
+  compareCommitId.value = commitId
+  compareMode.value = 'commit-range'
+  if (!baseCommitId.value || baseCommitId.value === commitId) {
+    const selectedIndex = recentCommits.value.findIndex((c) => c.id === commitId)
+    const previous = selectedIndex >= 0 ? recentCommits.value[selectedIndex + 1] : null
+    baseCommitId.value = previous ? previous.id : INITIAL_BASE
+  }
+}
+
+function resetDiffState() {
+  diffBaseText.value = ''
+  diffCompareText.value = ''
+  diffBaseLabel.value = ''
+  diffCompareLabel.value = ''
+  diffError.value = ''
+  compareMode.value = 'working'
+  baseCommitId.value = INITIAL_BASE
+  compareCommitId.value = null
+  baselineSnapshot.value = ''
+  baselineCommitId.value = null
+  baselineCommitMessage.value = ''
+  commitSnapshotCache.clear()
+  if (workingSyncTimer) {
+    clearTimeout(workingSyncTimer)
+    workingSyncTimer = null
   }
 }
 
@@ -712,6 +1133,10 @@ async function submitCommit() {
   commitError.value = ''
 
   try {
+    if (typeof props.beforeCommit === 'function') {
+      await props.beforeCommit([...selectedFiles.value])
+    }
+
     // Backend uses database content (synced via YJS)
     await axios.post(
       `${API_BASE}${props.apiPrefix}/workspaces/${props.workspaceId}/commit`,
@@ -781,10 +1206,40 @@ watch(() => props.workspaceId, async (newId, oldId) => {
   selectedFiles.value = []
   commitMessage.value = ''
   recentCommits.value = []
+  resetDiffState()
 
   if (newId) {
     await Promise.all([checkForChanges(), loadRecentCommits()])
     setupSocket()
+  }
+})
+
+// Watch for document changes to refresh diff
+watch(() => props.selectedDocumentId, async (newId, oldId) => {
+  if (newId !== oldId) {
+    resetDiffState()
+    if (newId && fullscreen.value) {
+      await refreshDiff(true)
+    }
+  }
+})
+
+// Watch compare mode changes
+watch(compareMode, async () => {
+  await refreshDiff(false)
+})
+
+// Watch commit selection changes
+watch([baseCommitId, compareCommitId], async () => {
+  if (compareMode.value === 'commit-range') {
+    await refreshDiff(false)
+  }
+})
+
+// Watch fullscreen to load diff when opening
+watch(fullscreen, async (isFullscreen) => {
+  if (isFullscreen && props.selectedDocumentId) {
+    await refreshDiff(true)
   }
 })
 
@@ -798,6 +1253,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cleanupSocket()
+  resetDiffState()
 })
 
 // Expose method for parent to trigger refresh
@@ -1056,12 +1512,13 @@ defineExpose({
 
 .fullscreen-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 300px 350px 1fr;
   gap: 24px;
-  min-height: calc(100vh - 140px);
+  height: calc(100vh - 120px);
 }
 
 .fullscreen-left,
+.fullscreen-middle,
 .fullscreen-right {
   display: flex;
   flex-direction: column;
@@ -1270,10 +1727,84 @@ defineExpose({
   padding-bottom: 8px;
 }
 
+/* Commit count */
+.commit-count {
+  font-weight: 400;
+  font-size: 12px;
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+/* History item active state */
+.history-item-full {
+  cursor: pointer;
+}
+
+.history-item-full.active {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+.history-item-full.active .commit-indicator {
+  background: var(--llars-accent);
+  box-shadow: 0 0 0 3px rgba(136, 196, 200, 0.3);
+}
+
+/* Mode toggle */
+.mode-toggle {
+  border-radius: var(--llars-radius-sm) !important;
+}
+
+.mode-toggle .v-btn {
+  font-size: 11px !important;
+  text-transform: none !important;
+}
+
+/* Diff Section */
+.diff-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-selectors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.diff-selectors .v-select {
+  flex: 1;
+}
+
+.no-document-selected {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-size: 13px;
+  text-align: center;
+}
+
+.diff-viewer-full {
+  flex: 1;
+  min-height: 0;
+}
+
 /* Responsive */
+@media (max-width: 1400px) {
+  .fullscreen-grid {
+    grid-template-columns: 280px 300px 1fr;
+  }
+}
+
 @media (max-width: 1200px) {
   .fullscreen-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fullscreen-right {
+    grid-column: span 2;
   }
 }
 
@@ -1281,5 +1812,162 @@ defineExpose({
   .content-grid {
     grid-template-columns: 1fr;
   }
+
+  .fullscreen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fullscreen-right {
+    grid-column: span 1;
+  }
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.status-badge.warning {
+  background: rgba(232, 200, 122, 0.25);
+  color: #f9a825;
+}
+
+.status-badge.info {
+  background: rgba(136, 196, 200, 0.25);
+  color: #0288d1;
+}
+
+.status-badge.error {
+  background: rgba(232, 160, 135, 0.25);
+  color: #c62828;
+}
+
+.status-badge-full {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.status-badge-full.warning {
+  background: rgba(232, 200, 122, 0.25);
+  color: #f9a825;
+}
+
+.status-badge-full.info {
+  background: rgba(136, 196, 200, 0.25);
+  color: #0288d1;
+}
+
+.status-badge-full.error {
+  background: rgba(232, 160, 135, 0.25);
+  color: #c62828;
+}
+
+/* Deleted Files Section */
+.deleted-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-error));
+  display: flex;
+  align-items: center;
+  padding: 6px 4px;
+  margin-top: 4px;
+}
+
+.deleted-section-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-error));
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.file-item.deleted {
+  opacity: 0.85;
+  background: rgba(232, 160, 135, 0.08);
+}
+
+.file-item-full.deleted {
+  opacity: 0.85;
+  background: rgba(232, 160, 135, 0.08);
+}
+
+.deleted-path {
+  text-decoration: line-through;
+  color: rgb(var(--v-theme-error));
+}
+
+.deleted-text {
+  text-decoration: line-through;
+  color: rgb(var(--v-theme-error));
+}
+
+.deleted-date {
+  font-size: 11px;
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+/* Deleted Files Card (fullscreen) */
+.deleted-header {
+  border-bottom-color: rgba(232, 160, 135, 0.3);
+}
+
+.deleted-count {
+  font-weight: 400;
+  font-size: 12px;
+  color: rgb(var(--v-theme-error));
+}
+
+.deleted-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deleted-file-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(232, 160, 135, 0.08);
+  border-radius: var(--llars-radius-sm);
+}
+
+.deleted-file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.deleted-file-name {
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: line-through;
+  color: rgb(var(--v-theme-error));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deleted-file-date {
+  font-size: 11px;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 </style>

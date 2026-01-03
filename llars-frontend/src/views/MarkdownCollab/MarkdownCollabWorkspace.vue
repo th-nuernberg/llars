@@ -213,7 +213,7 @@
                   :document="selectedNode"
                   :readonly="!hasPermission('feature:markdown_collab:edit')"
                   @content-change="onEditorContentChange"
-                  @git-summary="(s) => (gitSummary = s)"
+                  @document-saved="handleDocumentSaved"
                 />
               </div>
 
@@ -233,14 +233,19 @@
               </div>
             </div>
 
-            <!-- Git Panel -->
-            <MarkdownGitPanel
-              v-if="selectedNode && selectedNode.type === 'file'"
-              :document-id="selectedNode.id"
-              :summary="gitSummary"
+            <!-- Git Panel - Workspace-Level Multi-File Commits -->
+            <LatexWorkspaceGitPanel
+              ref="gitPanelRef"
+              :workspace-id="workspaceId"
+              :selected-document-id="selectedNodeId"
               :can-commit="hasPermission('feature:markdown_collab:edit')"
-              :get-content="() => editorRef?.getCurrentContent?.()"
+              :get-content="getEditorContent"
+              :before-commit="handleBeforeCommit"
+              :before-rollback="handleBeforeRollback"
+              api-prefix="/api/markdown-collab"
               @committed="refreshCommits"
+              @rollback="handleRollback"
+              @restored="handleRestored"
             />
           </div>
         </template>
@@ -341,7 +346,7 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import MarkdownEditorPane from '@/components/MarkdownCollab/MarkdownEditorPane.vue'
 import MarkdownPreviewPane from '@/components/MarkdownCollab/MarkdownPreviewPane.vue'
-import MarkdownGitPanel from '@/components/MarkdownCollab/MarkdownGitPanel.vue'
+import LatexWorkspaceGitPanel from '@/components/LatexCollab/LatexWorkspaceGitPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
 
@@ -365,8 +370,8 @@ const workspace = ref(null)
 const nodesFlat = ref([])
 
 const currentText = ref('')
-const gitSummary = ref({ users: [], totalChangedLines: 0 })
 const editorRef = ref(null)
+const gitPanelRef = ref(null)
 const pendingDocId = ref(null)
 
 // Panel states
@@ -570,6 +575,36 @@ function onEditorContentChange(text) {
   if (pendingDocId.value && pendingDocId.value === selectedNodeId.value) {
     setLoading('document', false)
     pendingDocId.value = null
+  }
+}
+
+/**
+ * Handle document_saved events from YJS server for real-time Git panel updates.
+ *
+ * This function is the final step in the real-time update chain:
+ *   1. User types in editor → Yjs local update
+ *   2. Yjs syncs to server → 2s debounce timer starts
+ *   3. After 2s inactivity → YJS server saves to DB
+ *   4. Server broadcasts `document_saved` to workspace room
+ *   5. useYjsCollaboration receives event → calls onDocumentSaved callback
+ *   6. EditorPane emits 'document-saved' event to parent
+ *   7. This function receives the event and refreshes Git panel
+ *
+ * The workspace-level check ensures we only refresh for documents in THIS
+ * workspace, not unrelated workspaces the user might have open in other tabs.
+ *
+ * @param {Object} data - Event payload from YJS server
+ * @param {number} data.documentId - The document that was saved
+ * @param {number} data.workspaceId - Workspace containing the document
+ * @param {string} data.kind - Document type ('markdown')
+ * @param {number} data.contentLength - Length of saved content
+ * @param {string} data.savedAt - ISO timestamp of save
+ */
+function handleDocumentSaved(data) {
+  console.log('[MarkdownCollabWorkspace] document_saved received:', data)
+  // Only refresh Git panel if the saved document belongs to our workspace
+  if (data.workspaceId === workspaceId.value) {
+    gitPanelRef.value?.checkForChanges?.()
   }
 }
 
@@ -801,20 +836,82 @@ async function handleMoveNode({ id, parentId, orderIndex }) {
   }
 }
 
+function getEditorContent() {
+  return editorRef.value?.getCurrentContent?.() ?? ''
+}
+
+async function handleBeforeCommit(documentIds) {
+  // Save current content before commit
+  // The YJS server automatically syncs content to DB, but we ensure it's flushed
+  if (editorRef.value?.saveToDb) {
+    await editorRef.value.saveToDb()
+  }
+}
+
+async function handleBeforeRollback(documentId) {
+  // Any pre-rollback logic (e.g., saving state)
+  // Currently empty, but available for future use
+}
+
 async function refreshCommits() {
   // Refresh the git baseline after commit to update diff decorations
   await editorRef.value?.refreshBaseline?.()
   editorRef.value?.clearHighlights?.()
+  // Also refresh git panel changes
+  gitPanelRef.value?.checkForChanges?.()
 }
 
+async function handleRollback(payload) {
+  // Handle payload from LatexWorkspaceGitPanel (object with documentId) or legacy (just documentId)
+  const documentId = typeof payload === 'object' && payload !== null ? payload.documentId : payload
+  console.log('[handleRollback] Called with documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
+
+  // Build the room name for this document
+  const roomName = `markdown_${documentId}`
+
+  // If the rolled back document is currently open, use reloadRoom which:
+  // 1. Destroys the local ydoc (clearing all local state/history)
+  // 2. Creates a fresh ydoc
+  // 3. Sends reload_room to server which clears cache and reloads from DB
+  // 4. Server broadcasts snapshot_document to all clients
+  // This ensures a clean slate without Yjs merge conflicts
+  if (selectedNodeId.value === documentId) {
+    console.log('[handleRollback] Document is currently open, using reloadRoom for clean reset')
+    const result = await editorRef.value?.reloadRoom?.()
+    console.log('[handleRollback] reloadRoom result:', result)
+    // Refresh the baseline to update diff decorations
+    await editorRef.value?.refreshBaseline?.()
+    editorRef.value?.clearHighlights?.()
+  } else {
+    // If the document is NOT currently open, only invalidate the YJS server cache
+    // This is necessary because the YJS server caches room state and would serve
+    // stale content when the user later opens this document
+    console.log('[handleRollback] Document is NOT open, invalidating YJS cache for room:', roomName)
+    const cacheResult = await editorRef.value?.reloadAnyRoom?.(roomName)
+    console.log('[handleRollback] reloadAnyRoom result:', cacheResult)
+  }
+}
+
+async function handleRestored(documentId) {
+  console.log('[handleRestored] File restored:', documentId)
+  // Refresh the tree to show the restored file
+  await loadTree()
+}
+
+// Track if this is the initial mount vs subsequent document switches
+let isInitialDocumentLoad = true
 watch(
   selectedNodeId,
   (docId) => {
     currentText.value = ''
-    gitSummary.value = { users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }
     if (docId) {
-      pendingDocId.value = docId
-      setLoading('document', true)
+      // Only show loading skeleton on initial mount, not on document switches
+      // Document switches are handled smoothly by the editor's YJS room switch
+      if (isInitialDocumentLoad) {
+        pendingDocId.value = docId
+        setLoading('document', true)
+        isInitialDocumentLoad = false
+      }
     } else {
       pendingDocId.value = null
       setLoading('document', false)

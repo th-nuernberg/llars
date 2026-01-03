@@ -21,7 +21,7 @@
       <template v-if="!toolbarCollapsed">
         <!-- Text Formatting -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in textFormatButtons" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in TEXT_FORMAT_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <v-icon size="16">{{ btn.icon }}</v-icon>
@@ -35,7 +35,7 @@
 
         <!-- Structure -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in structureButtons" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in STRUCTURE_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <v-icon size="16">{{ btn.icon }}</v-icon>
@@ -49,7 +49,7 @@
 
         <!-- Lists -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in listButtons" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in LIST_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <v-icon size="16">{{ btn.icon }}</v-icon>
@@ -63,7 +63,7 @@
 
         <!-- Content (Figure, Table) -->
         <div class="toolbar-group">
-          <template v-for="btn in contentButtons" :key="btn.id">
+          <template v-for="btn in CONTENT_BUTTONS" :key="btn.id">
             <!-- Special table button with size picker -->
             <v-menu v-if="btn.hasMenu" v-model="showTablePicker" :close-on-content-click="false" location="bottom">
               <template #activator="{ props: menuProps }">
@@ -130,7 +130,7 @@
 
         <!-- Math -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in mathButtons" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in MATH_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <v-icon size="16">{{ btn.icon }}</v-icon>
@@ -144,7 +144,7 @@
 
         <!-- References -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in refButtons" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in REF_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <v-icon size="16">{{ btn.icon }}</v-icon>
@@ -178,23 +178,54 @@
 </template>
 
 <script setup>
+/**
+ * LatexEditorPane
+ *
+ * Collaborative LaTeX editor component with real-time synchronization via Yjs.
+ * Features:
+ * - CodeMirror 6 with LaTeX syntax highlighting
+ * - Real-time collaboration with remote cursor display
+ * - Git-like diff visualization
+ * - AI ghost text completions (optional)
+ * - Rich formatting toolbar (Overleaf-style)
+ * - Comment range highlighting
+ *
+ * @component LatexEditorPane
+ * @module LatexCollab
+ */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as Y from 'yjs'
 import { EditorState, StateEffect, StateField, RangeSet } from '@codemirror/state'
-import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap, gutter, GutterMarker } from '@codemirror/view'
+import { EditorView, Decoration, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap, gutter } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { autocompletion, completionKeymap } from '@codemirror/autocomplete'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
 import { StreamLanguage, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
 
+// External composables
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
 import { useGitDiff } from '@/components/MarkdownCollab/composables/useGitDiff'
 import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
 
-// AI Collab color for AI-generated changes (distinct lavender/purple)
-const AI_COLLAB_COLOR = '#b39ddb'
-const AI_COLLAB_USERNAME = 'AI Assistant'
+// Local modules - constants (shared with LatexAI editor)
+import {
+  AI_COLLAB_COLOR,
+  AI_COLLAB_USERNAME,
+  LATEX_COMMAND_COMPLETIONS,
+  LATEX_ENVIRONMENT_NAMES,
+  AI_COMMAND_COMPLETIONS,
+  TEXT_FORMAT_BUTTONS,
+  STRUCTURE_BUTTONS,
+  LIST_BUTTONS,
+  CONTENT_BUTTONS,
+  MATH_BUTTONS,
+  REF_BUTTONS,
+  generateTableSnippet
+} from './LatexEditorPane/constants'
+
+// Local modules - CodeMirror widgets (shared with LatexAI editor)
+import { CaretWidget, GhostTextWidget, deletionMarkerInstance } from './LatexEditorPane/widgets'
 
 const props = defineProps({
   document: { type: Object, required: true },
@@ -206,7 +237,7 @@ const props = defineProps({
   ghostTextDelay: { type: Number, default: 800 }
 })
 
-const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled'])
+const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled', 'document-saved'])
 
 const editorEl = ref(null)
 const error = ref('')
@@ -256,89 +287,9 @@ const {
 // Track deleted lines for gutter markers
 const deletedLinesRef = ref(new Set())
 
-const latexCommandCompletions = [
-  { label: '\\documentclass', type: 'keyword', info: 'Dokumentklasse', apply: '\\documentclass{}' },
-  { label: '\\usepackage', type: 'keyword', info: 'Paket laden', apply: '\\usepackage{}' },
-  { label: '\\begin', type: 'keyword', info: 'Umgebung starten', apply: '\\begin{}' },
-  { label: '\\end', type: 'keyword', info: 'Umgebung beenden', apply: '\\end{}' },
-  { label: '\\section', type: 'keyword', info: 'Abschnitt', apply: '\\section{}' },
-  { label: '\\subsection', type: 'keyword', info: 'Unterabschnitt', apply: '\\subsection{}' },
-  { label: '\\subsubsection', type: 'keyword', info: 'Unter-Unterabschnitt', apply: '\\subsubsection{}' },
-  { label: '\\paragraph', type: 'keyword', info: 'Paragraph', apply: '\\paragraph{}' },
-  { label: '\\textbf', type: 'function', info: 'Fett', apply: '\\textbf{}' },
-  { label: '\\textit', type: 'function', info: 'Kursiv', apply: '\\textit{}' },
-  { label: '\\emph', type: 'function', info: 'Hervorheben', apply: '\\emph{}' },
-  { label: '\\underline', type: 'function', info: 'Unterstreichen', apply: '\\underline{}' },
-  { label: '\\item', type: 'keyword', info: 'Listenpunkt', apply: '\\item ' },
-  { label: '\\label', type: 'keyword', info: 'Label', apply: '\\label{}' },
-  { label: '\\ref', type: 'keyword', info: 'Referenz', apply: '\\ref{}' },
-  { label: '\\pageref', type: 'keyword', info: 'Seitenreferenz', apply: '\\pageref{}' },
-  { label: '\\cite', type: 'keyword', info: 'Zitat', apply: '\\cite{}' },
-  { label: '\\citet', type: 'keyword', info: 'Textzitat', apply: '\\citet{}' },
-  { label: '\\citep', type: 'keyword', info: 'Klammerzitat', apply: '\\citep{}' },
-  { label: '\\includegraphics', type: 'keyword', info: 'Grafik', apply: '\\includegraphics[]{}' },
-  { label: '\\caption', type: 'keyword', info: 'Caption', apply: '\\caption{}' },
-  { label: '\\centering', type: 'keyword', info: 'Zentrieren', apply: '\\centering' },
-  { label: '\\footnote', type: 'keyword', info: 'Fussnote', apply: '\\footnote{}' },
-  { label: '\\url', type: 'keyword', info: 'URL', apply: '\\url{}' },
-  { label: '\\href', type: 'keyword', info: 'Link', apply: '\\href{}{}' },
-  { label: '\\title', type: 'keyword', info: 'Titel', apply: '\\title{}' },
-  { label: '\\author', type: 'keyword', info: 'Autor', apply: '\\author{}' },
-  { label: '\\date', type: 'keyword', info: 'Datum', apply: '\\date{}' },
-  { label: '\\maketitle', type: 'keyword', info: 'Titelseite', apply: '\\maketitle' },
-  { label: '\\tableofcontents', type: 'keyword', info: 'Inhaltsverzeichnis', apply: '\\tableofcontents' },
-  { label: '\\newcommand', type: 'keyword', info: 'Neues Kommando', apply: '\\newcommand{}{}' },
-  { label: '\\renewcommand', type: 'keyword', info: 'Kommando aendern', apply: '\\renewcommand{}{}' },
-  { label: '\\input', type: 'keyword', info: 'Datei einfügen', apply: '\\input{}' },
-  { label: '\\include', type: 'keyword', info: 'Datei einbinden', apply: '\\include{}' },
-  { label: '\\frac', type: 'function', info: 'Bruch', apply: '\\frac{}{}' },
-  { label: '\\sqrt', type: 'function', info: 'Wurzel', apply: '\\sqrt{}' },
-  { label: '\\sum', type: 'keyword', info: 'Summe', apply: '\\sum' },
-  { label: '\\int', type: 'keyword', info: 'Integral', apply: '\\int' }
-]
-
-const latexEnvironmentNames = [
-  'itemize',
-  'enumerate',
-  'description',
-  'figure',
-  'table',
-  'tabular',
-  'equation',
-  'align',
-  'quote',
-  'verbatim',
-  'center'
-]
-
-// Quick Formatting Toolbar Button Definitions (Overleaf-style)
-const textFormatButtons = [
-  { id: 'bold', icon: 'mdi-format-bold', label: 'Fett', shortcut: 'Ctrl+B', snippet: '\\textbf{$SEL$}', wrap: true },
-  { id: 'italic', icon: 'mdi-format-italic', label: 'Kursiv', shortcut: 'Ctrl+I', snippet: '\\textit{$SEL$}', wrap: true },
-  { id: 'underline', icon: 'mdi-format-underline', label: 'Unterstrichen', shortcut: 'Ctrl+U', snippet: '\\underline{$SEL$}', wrap: true },
-  { id: 'emph', icon: 'mdi-format-text', label: 'Hervorheben', snippet: '\\emph{$SEL$}', wrap: true },
-  { id: 'typewriter', icon: 'mdi-code-tags', label: 'Typewriter', snippet: '\\texttt{$SEL$}', wrap: true }
-]
-
-const structureButtons = [
-  { id: 'section', icon: 'mdi-format-header-1', label: 'Section', snippet: '\\section{$CURSOR$}\n' },
-  { id: 'subsection', icon: 'mdi-format-header-2', label: 'Subsection', snippet: '\\subsection{$CURSOR$}\n' },
-  { id: 'subsubsection', icon: 'mdi-format-header-3', label: 'Subsubsection', snippet: '\\subsubsection{$CURSOR$}\n' },
-  { id: 'paragraph', icon: 'mdi-format-pilcrow', label: 'Paragraph', snippet: '\\paragraph{$CURSOR$}\n' }
-]
-
-const listButtons = [
-  { id: 'itemize', icon: 'mdi-format-list-bulleted', label: 'Aufzählung (Bullets)', snippet: '\\begin{itemize}\n  \\item $CURSOR$\n\\end{itemize}\n' },
-  { id: 'enumerate', icon: 'mdi-format-list-numbered', label: 'Nummerierte Liste', snippet: '\\begin{enumerate}\n  \\item $CURSOR$\n\\end{enumerate}\n' },
-  { id: 'description', icon: 'mdi-format-list-text', label: 'Description', snippet: '\\begin{description}\n  \\item[$CURSOR$] \n\\end{description}\n' }
-]
-
-const contentButtons = [
-  { id: 'figure', icon: 'mdi-image', label: 'Abbildung', snippet: '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{$CURSOR$}\n  \\caption{Caption}\n  \\label{fig:label}\n\\end{figure}\n' },
-  { id: 'table', icon: 'mdi-table', label: 'Tabelle', hasMenu: true }, // Special handling with size picker
-  { id: 'code', icon: 'mdi-code-braces', label: 'Code Block', snippet: '\\begin{verbatim}\n$CURSOR$\n\\end{verbatim}\n' },
-  { id: 'quote', icon: 'mdi-format-quote-close', label: 'Zitat', snippet: '\\begin{quote}\n  $CURSOR$\n\\end{quote}\n' }
-]
+// =============================================================================
+// TOOLBAR STATE
+// =============================================================================
 
 // Table size picker state
 const showTablePicker = ref(false)
@@ -346,77 +297,41 @@ const tableRows = ref(3)
 const tableCols = ref(3)
 
 // Toolbar collapsed state (persisted in localStorage)
-const toolbarCollapsed = ref(localStorage.getItem('latex-toolbar-collapsed') === 'true')
+// Default to collapsed unless user explicitly expanded it before
+const toolbarCollapsed = ref(localStorage.getItem('latex-toolbar-collapsed') !== 'false')
 
+/**
+ * Toggle toolbar visibility and persist preference
+ */
 function toggleToolbar() {
   toolbarCollapsed.value = !toolbarCollapsed.value
   localStorage.setItem('latex-toolbar-collapsed', toolbarCollapsed.value)
 }
 
 /**
- * Generate LaTeX table code based on rows and columns
+ * Insert a table with the specified dimensions
  */
-function generateTableSnippet(rows, cols) {
-  const colSpec = 'l' + 'c'.repeat(cols - 1)
-  const headers = Array.from({ length: cols }, (_, i) => `Header ${i + 1}`).join(' & ')
-  const emptyRow = Array.from({ length: cols }, () => ' ').join(' & ')
-
-  let tableContent = `\\begin{table}[htbp]\n  \\centering\n  \\caption{Caption}\n  \\label{tab:label}\n  \\begin{tabular}{${colSpec}}\n    \\hline\n    ${headers} \\\\\n    \\hline\n`
-
-  for (let r = 0; r < rows; r++) {
-    if (r === 0) {
-      tableContent += `    $CURSOR$${emptyRow.substring(1)} \\\\\n`
-    } else {
-      tableContent += `    ${emptyRow} \\\\\n`
-    }
-  }
-
-  tableContent += `    \\hline\n  \\end{tabular}\n\\end{table}\n`
-  return tableContent
-}
-
 function insertTable() {
   const snippet = generateTableSnippet(tableRows.value, tableCols.value)
   insertSnippet(snippet, false)
   showTablePicker.value = false
 }
 
-const mathButtons = [
-  { id: 'inline-math', icon: 'mdi-function-variant', label: 'Inline Math', snippet: '$$$SEL$$', wrap: true },
-  { id: 'display-math', icon: 'mdi-function', label: 'Display Math', snippet: '\\[\n  $SEL$\n\\]\n', wrap: true },
-  { id: 'equation', icon: 'mdi-sigma', label: 'Equation (numbered)', snippet: '\\begin{equation}\n  $CURSOR$\n  \\label{eq:label}\n\\end{equation}\n' },
-  { id: 'align', icon: 'mdi-equal', label: 'Align (multi-line)', snippet: '\\begin{align}\n  $CURSOR$ &=  \\\\\n  &= \n\\end{align}\n' },
-  { id: 'frac', icon: 'mdi-division', label: 'Bruch', snippet: '\\frac{$CURSOR$}{}', wrap: false }
-]
-
-const refButtons = [
-  { id: 'cite', icon: 'mdi-book-open-page-variant', label: 'Zitieren', snippet: '\\cite{$CURSOR$}' },
-  { id: 'ref', icon: 'mdi-link-variant', label: 'Referenz', snippet: '\\ref{$CURSOR$}' },
-  { id: 'label', icon: 'mdi-tag', label: 'Label', snippet: '\\label{$CURSOR$}' },
-  { id: 'footnote', icon: 'mdi-message-text-outline', label: 'Fußnote', snippet: '\\footnote{$CURSOR$}' },
-  { id: 'url', icon: 'mdi-web', label: 'URL', snippet: '\\url{$CURSOR$}' }
-]
-
-// AI @-commands for LaTeX AI workspace
-const aiCommandCompletions = [
-  { label: '@ai', type: 'text', info: 'Freie KI-Anfrage', boost: 10, apply: '@ai ' },
-  { label: '@rewrite', type: 'text', info: 'Text umformulieren', boost: 9, apply: '@rewrite ' },
-  { label: '@expand', type: 'text', info: 'Text erweitern', boost: 8, apply: '@expand ' },
-  { label: '@summarize', type: 'text', info: 'Text zusammenfassen', boost: 7, apply: '@summarize ' },
-  { label: '@fix', type: 'text', info: 'LaTeX/Grammatik korrigieren', boost: 6, apply: '@fix ' },
-  { label: '@translate', type: 'text', info: 'Übersetzen (z.B. @translate en)', boost: 5, apply: '@translate ' },
-  { label: '@cite', type: 'text', info: 'Zitat aus RAG finden', boost: 4, apply: '@cite ' },
-  { label: '@abstract', type: 'text', info: 'Abstract generieren', boost: 3, apply: '@abstract' },
-  { label: '@titles', type: 'text', info: 'Titel vorschlagen', boost: 2, apply: '@titles' }
-]
-
+/**
+ * LaTeX command and environment autocompletion source.
+ * Provides completions for \commands and environment names within \begin{}/\end{}.
+ *
+ * @param {CompletionContext} context - CodeMirror completion context
+ * @returns {CompletionResult|null} Completion result or null if no match
+ */
 function latexCompletionSource(context) {
+  // Check for environment name completion inside \begin{} or \end{}
   const envMatch = context.matchBefore(/\\(begin|end)\{[A-Za-z]*$/)
   if (envMatch) {
     const braceIndex = envMatch.text.lastIndexOf('{')
     const from = braceIndex >= 0 ? envMatch.from + braceIndex + 1 : envMatch.from
     if (from === context.pos && !context.explicit) return null
-    const options = latexEnvironmentNames.map((env) => ({
+    const options = LATEX_ENVIRONMENT_NAMES.map((env) => ({
       label: env,
       type: 'keyword',
       apply: env
@@ -428,16 +343,24 @@ function latexCompletionSource(context) {
     }
   }
 
+  // Check for LaTeX command completion (starting with \)
   const word = context.matchBefore(/\\[A-Za-z]*$/)
   if (!word || (word.from === word.to && !context.explicit)) return null
   return {
     from: word.from,
-    options: latexCommandCompletions,
+    options: LATEX_COMMAND_COMPLETIONS,
     validFor: /^\\[A-Za-z]*$/
   }
 }
 
-// AI @-command completion source (only active when aiEnabled)
+/**
+ * AI @-command completion source.
+ * Only active when aiEnabled prop is true.
+ * Provides completions for AI commands like @ai, @rewrite, @expand, etc.
+ *
+ * @param {CompletionContext} context - CodeMirror completion context
+ * @returns {CompletionResult|null} Completion result or null if no match
+ */
 function aiCompletionSource(context) {
   if (!props.aiEnabled) return null
 
@@ -447,7 +370,7 @@ function aiCompletionSource(context) {
 
   return {
     from: word.from,
-    options: aiCommandCompletions,
+    options: AI_COMMAND_COMPLETIONS,
     validFor: /^@[A-Za-z]*$/
   }
 }
@@ -517,55 +440,9 @@ const decorationsField = StateField.define({
   provide: f => EditorView.decorations.from(f)
 })
 
-class CaretWidget extends WidgetType {
-  constructor(color, label) {
-    super()
-    this.color = color
-    this.label = label
-  }
-  toDOM() {
-    const wrap = document.createElement('span')
-    wrap.className = 'remote-caret'
-    wrap.style.borderLeftColor = this.color
-    wrap.title = this.label || ''
-    return wrap
-  }
-}
-
-// Ghost text widget for AI completion suggestions
-class GhostTextWidget extends WidgetType {
-  constructor(text) {
-    super()
-    this.text = text
-  }
-  toDOM() {
-    const span = document.createElement('span')
-    span.className = 'ghost-text-suggestion'
-    span.textContent = this.text
-    span.style.cssText = `
-      color: #9e9e9e;
-      opacity: 0.7;
-      font-style: italic;
-      pointer-events: none;
-      user-select: none;
-    `
-    return span
-  }
-  eq(other) {
-    return other.text === this.text
-  }
-}
-
-// Gutter marker for deleted lines (red indicator)
-class DeletionMarker extends GutterMarker {
-  toDOM() {
-    const el = document.createElement('div')
-    el.className = 'cm-diff-delete-gutter'
-    el.title = 'Gelöschter Text'
-    return el
-  }
-}
-const deletionMarkerInstance = new DeletionMarker()
+// =============================================================================
+// EDITOR STATE FLAGS
+// =============================================================================
 
 let applyingYjsToEditor = false
 let skipNextTextSync = false
@@ -1432,6 +1309,29 @@ async function refreshBaseline() {
 }
 
 /**
+ * Replace the editor content with the provided text (used for rollback recovery).
+ */
+function replaceContent(nextText) {
+  if (!ydoc.value || !ytext) return false
+  const text = String(nextText ?? '')
+  const current = ytext.toString()
+  if (text === current) return true
+
+  ydoc.value.transact(() => {
+    if (current.length > 0) {
+      ytext.delete(0, current.length)
+    }
+    if (text) {
+      ytext.insert(0, text)
+    }
+  }, 'rollback')
+
+  emit('content-change', text)
+  emit('git-summary', computeGitSummary())
+  return true
+}
+
+/**
  * Get current content for commit
  */
 function getCurrentContent() {
@@ -1500,25 +1400,6 @@ function flushDocumentState() {
   })
 }
 
-defineExpose({
-  clearHighlights,
-  refresh,
-  refreshBaseline,
-  getCurrentContent,
-  getSelectionRange,
-  getSelectionText,
-  jumpToLine,
-  flushDocumentState,
-  // Ghost text (AI completion) functions
-  setGhostText,
-  cancelGhostText,
-  acceptGhostText,
-  toggleGhostText,
-  // Connection state for parent to display
-  isConnected,
-  activeUsers
-})
-
 // Callback for when another user updates their color
 function onColorUpdate(userId, newColor) {
   // Update the remote cursor color if it exists
@@ -1532,11 +1413,57 @@ function onColorUpdate(userId, newColor) {
   updateDecorations()
 }
 
+/**
+ * Initialize Yjs collaboration with WebSocket connection.
+ *
+ * The onDocumentSaved callback enables real-time Git panel updates:
+ * - YJS server saves document to DB after 2s debounce
+ * - Server broadcasts `document_saved` to workspace room
+ * - We forward this event to parent component (LatexCollabWorkspace)
+ * - Parent refreshes Git panel via gitPanelRef.checkForChanges()
+ *
+ * Event flow: YJS Server → Socket.IO → useYjsCollaboration → EditorPane → Workspace → GitPanel
+ */
 const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, {
   autoSync: true,
-  onColorUpdate
+  onColorUpdate,
+  /**
+   * Handle document_saved event from YJS server.
+   * @param {Object} data - Event payload
+   * @param {number} data.documentId - Saved document ID
+   * @param {number} data.workspaceId - Workspace containing the document
+   * @param {string} data.kind - Document type ('latex')
+   * @param {number} data.contentLength - Content length in characters
+   * @param {string} data.savedAt - ISO timestamp
+   */
+  onDocumentSaved: (data) => {
+    console.log('[LatexEditorPane] document_saved, emitting to parent:', data)
+    emit('document-saved', data)
+  }
 })
-const { ydoc, socket, users, updateColor, switchRoom } = collaboration
+const { ydoc, socket, users, updateColor, switchRoom, reloadRoom, reloadAnyRoom } = collaboration
+
+defineExpose({
+  clearHighlights,
+  refresh,
+  refreshBaseline,
+  replaceContent,
+  getCurrentContent,
+  getSelectionRange,
+  getSelectionText,
+  jumpToLine,
+  flushDocumentState,
+  reloadRoom,
+  reloadAnyRoom,
+  // Ghost text (AI completion) functions
+  setGhostText,
+  cancelGhostText,
+  acceptGhostText,
+  toggleGhostText,
+  // Connection state for parent to display
+  isConnected,
+  activeUsers
+})
 
 let onSocketConnect = null
 let onSocketDisconnect = null
@@ -1654,9 +1581,13 @@ watch(
     // Load new git baseline for diff comparison
     await loadBaseline(newId)
 
-    // Wait for the server to send the snapshot, then update decorations
-    // The processYDoc callback will be called when snapshot arrives
+    // Wait for the server to send the snapshot
+    // Give the socket time to receive and process the snapshot
+    await new Promise(resolve => setTimeout(resolve, 100))
     await nextTick()
+
+    // Process the new Yjs doc to emit content-change and update editor
+    processYDoc()
     updateDecorations()
   },
   { immediate: false }
@@ -1683,8 +1614,14 @@ onUnmounted(() => {
     sendCursorUpdate(null)
   } catch {}
 
+  // Clean up all timers to prevent memory leaks
   if (cursorSendTimer) clearTimeout(cursorSendTimer)
   if (cursorChangeTimer) clearTimeout(cursorChangeTimer)
+  if (ghostTextTimer) {
+    clearTimeout(ghostTextTimer)
+    ghostTextTimer = null
+  }
+
   if (socket.value) {
     if (onSocketConnect) socket.value.off('connect', onSocketConnect)
     if (onSocketConnectError) socket.value.off('connect_error', onSocketConnectError)
@@ -1697,181 +1634,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.editor-pane {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.editor-surface {
-  flex: 1;
-  min-height: 240px;
-}
-
-:global(.remote-caret) {
-  border-left: 2px solid;
-  margin-left: -1px;
-  height: 1.2em;
-  display: inline-block;
-}
-
-/* Git diff highlighting - character level with underline */
-:global(.cm-diff-insert) {
-  background: rgba(var(--v-theme-success), 0.2);
-  border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-success), 0.45);
-  text-decoration: underline;
-  text-decoration-color: rgb(var(--v-theme-success));
-  text-underline-offset: 2px;
-}
-
-/* Diff gutter styling */
-:global(.cm-diff-gutter) {
-  width: 4px;
-  min-width: 4px;
-  margin-right: 2px;
-}
-
-:global(.cm-diff-delete-gutter) {
-  width: 4px;
-  height: 100%;
-  background: rgba(245, 101, 101, 0.8);
-  border-radius: 1px;
-}
-
-/* Comment ranges */
-:global(.cm-comment-range) {
-  background: rgba(var(--v-theme-warning), 0.18);
-  border-bottom: 2px solid rgba(var(--v-theme-warning), 0.6);
-  border-radius: 2px;
-}
-
-:global(.cm-comment-range-resolved) {
-  background: rgba(var(--v-theme-surface-variant), 0.35);
-  border-bottom: 2px solid rgba(var(--v-theme-on-surface), 0.35);
-}
-
-:global(.cm-comment-range-active) {
-  background: rgba(var(--v-theme-warning), 0.32);
-  box-shadow: inset 0 -2px 0 rgba(var(--v-theme-warning), 0.75);
-}
-
-/* Real-time user edit line highlighting */
-:global(.cm-user-edit-line) {
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-/* Quick Formatting Toolbar Styles */
-.formatting-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  background: rgba(var(--v-theme-surface-variant), 0.4);
-  border-radius: 8px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  transition: padding 0.2s ease;
-}
-
-.formatting-toolbar.collapsed {
-  padding: 2px 8px;
-  gap: 6px;
-}
-
-.toolbar-toggle-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 4px;
-  cursor: pointer;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.toolbar-toggle-btn:hover {
-  background: rgba(var(--v-theme-primary), 0.15);
-  color: rgb(var(--v-theme-primary));
-}
-
-.toolbar-collapsed-label {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  cursor: pointer;
-  user-select: none;
-}
-
-.toolbar-collapsed-label:hover {
-  color: rgb(var(--v-theme-primary));
-}
-
-.toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  transition: all 0.15s ease;
-}
-
-.toolbar-btn:hover {
-  background: rgba(var(--v-theme-primary), 0.12);
-  color: rgb(var(--v-theme-primary));
-}
-
-.toolbar-btn:active {
-  background: rgba(var(--v-theme-primary), 0.2);
-  transform: scale(0.95);
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 20px;
-  background: rgba(var(--v-theme-on-surface), 0.12);
-  margin: 0 4px;
-}
-
-/* Keyboard shortcut styling in tooltips */
-:global(.v-tooltip kbd) {
-  display: inline-block;
-  padding: 2px 5px;
-  margin-left: 6px;
-  font-size: 10px;
-  font-family: ui-monospace, monospace;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* Table size picker */
-.table-picker-card {
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
-
-.table-picker-card :deep(.v-field) {
-  border-radius: 6px;
-}
-
-.table-picker-card :deep(.v-field__input) {
-  text-align: center;
-  font-weight: 500;
-}
+/**
+ * LatexEditorPane Styles
+ *
+ * Imports shared styles from the LatexEditorPane module.
+ * Includes editor layout, remote cursors, git diff highlighting,
+ * comment ranges, and formatting toolbar styles.
+ *
+ * @see ./LatexEditorPane/styles/LatexEditorPane.css
+ */
+@import './LatexEditorPane/styles/LatexEditorPane.css';
 </style>

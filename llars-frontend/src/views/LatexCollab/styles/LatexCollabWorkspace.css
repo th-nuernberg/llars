@@ -1,0 +1,892 @@
+/**
+ * LatexCollabWorkspace.css
+ *
+ * Extracted styles for the LaTeX collaborative workspace view.
+ * Organized into logical sections for maintainability.
+ */
+
+/* ============================================
+   1. ROOT & LAYOUT VARIABLES
+   ============================================ */
+.workspace-root {
+  --llars-primary: #b0ca97;
+  --llars-accent: #88c4c8;
+  --llars-radius: 16px 4px 16px 4px;
+  --llars-radius-sm: 8px 2px 8px 2px;
+
+  height: calc(100vh - 94px);
+  display: flex;
+  background-color: rgb(var(--v-theme-background));
+  overflow: hidden;
+}
+
+/* ============================================
+   2. TREE PANEL
+   ============================================ */
+.tree-panel {
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-panel.collapsed {
+  width: 48px !important;
+}
+
+.tree-expanded {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.tree-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ============================================
+   3. TREE OUTLINE PANEL
+   ============================================ */
+.tree-outline-panel {
+  flex-shrink: 0;
+  margin: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface-variant), 0.18);
+  overflow: hidden;
+  max-height: 240px;
+}
+
+.tree-outline-panel.collapsed {
+  height: 32px;
+  max-height: 32px;
+}
+
+.tree-outline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.tree-outline-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.tree-outline-panel.collapsed .tree-outline-list {
+  display: none;
+}
+
+.tree-outline-list {
+  overflow: auto;
+  padding: 6px 4px 8px;
+  max-height: 200px;
+}
+
+.tree-outline-empty {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.tree-outline-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+
+.tree-outline-item:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.tree-outline-toggle,
+.tree-outline-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
+.tree-outline-link {
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.tree-outline-spacer {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}
+
+/* ============================================
+   4. COLLAPSED TREE STATE
+   ============================================ */
+.tree-collapsed {
+  height: 100%;
+  cursor: pointer;
+}
+
+.collapsed-bar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  gap: 12px;
+  background: linear-gradient(180deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
+}
+
+.collapsed-icon-box {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 6px 2px 6px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.collapsed-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-weight: 600;
+  font-size: 13px;
+  color: white;
+  letter-spacing: 1px;
+}
+
+.expand-icon {
+  color: white;
+  opacity: 0.8;
+  margin-top: auto;
+}
+
+/* ============================================
+   5. RESIZE DIVIDER
+   ============================================ */
+.resize-divider {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.resize-divider.vertical {
+  width: 6px;
+  cursor: col-resize;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.resize-divider.vertical:hover,
+.resize-divider.vertical.resizing {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+.resize-handle {
+  width: 3px;
+  height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+  transition: background 0.15s, height 0.15s;
+}
+
+.resize-divider:hover .resize-handle,
+.resize-divider.resizing .resize-handle {
+  background: rgb(var(--v-theme-primary));
+  height: 60px;
+}
+
+/* ============================================
+   6. CONTENT AREA
+   ============================================ */
+.content-area {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================================
+   7. CONTENT HEADER
+   ============================================ */
+.content-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.header-back-btn {
+  margin-right: 6px;
+}
+
+.header-back-label {
+  margin-left: 4px;
+  font-size: 12px;
+  text-transform: none;
+}
+
+.header-title {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.header-subtitle {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.header-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  margin: 0 4px;
+}
+
+.header-users {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+}
+
+.user-chip {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.ghost-text-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ghost-text-chip:hover {
+  transform: scale(1.02);
+}
+
+/* ============================================
+   8. MODE TOGGLE
+   ============================================ */
+.mode-toggle-group {
+  display: flex;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.mode-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.mode-btn.active {
+  background: var(--llars-primary);
+  color: white;
+}
+
+/* ============================================
+   9. CONTENT BODY
+   ============================================ */
+.content-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.document-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(var(--v-theme-background), 0.55);
+}
+
+.document-loading-skeleton {
+  width: 100%;
+  max-width: 980px;
+}
+
+/* ============================================
+   10. EDITOR LAYOUT & PANES
+   ============================================ */
+.editor-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.panes-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.pane {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.preview-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-pane :deep(.pdf-viewer) {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Split mode */
+.panes-container.mode-split .editor-pane {
+  flex-shrink: 0;
+}
+
+.panes-container.mode-split .preview-pane {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Editor only mode */
+.panes-container.mode-editor {
+  flex-direction: column;
+}
+
+.panes-container.mode-editor .editor-pane {
+  flex: 1;
+  width: 100% !important;
+}
+
+.panes-container.mode-editor .preview-pane {
+  display: none;
+}
+
+/* Preview only mode */
+.panes-container.mode-preview {
+  flex-direction: column;
+}
+
+.panes-container.mode-preview .editor-pane {
+  display: none;
+}
+
+.panes-container.mode-preview .preview-pane {
+  flex: 1;
+}
+
+/* Default 50/50 split */
+.panes-container.mode-split .editor-pane,
+.panes-container.mode-split .preview-pane {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+/* ============================================
+   11. PREVIEW TOOLBAR & COMPILE
+   ============================================ */
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compile-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compile-select {
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.compile-settings {
+  min-width: 260px;
+}
+
+/* ============================================
+   12. COMMENTS PANEL
+   ============================================ */
+.comments-panel {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  background: rgba(var(--v-theme-surface), 0.7);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+  max-height: 260px;
+  overflow: hidden;
+}
+
+.comments-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comments-empty {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  padding: 8px;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.comment-item {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.comment-item.active {
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 4px;
+}
+
+.comment-author {
+  font-weight: 600;
+}
+
+.comment-body {
+  font-size: 12px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+/* ============================================
+   13. ZOTERO READ-ONLY NOTICE
+   ============================================ */
+.zotero-readonly-notice {
+  margin: 8px 8px 0 8px;
+  flex-shrink: 0;
+  border-left: 3px solid #009688 !important;
+}
+
+.zotero-readonly-notice :deep(.v-alert__content) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================
+   14. ASSET INPUT (HIDDEN)
+   ============================================ */
+.asset-input {
+  display: none;
+}
+
+/* ============================================
+   15. SHARE DIALOG
+   ============================================ */
+.share-dialog {
+  border-radius: 12px !important;
+}
+
+.share-header {
+  display: flex;
+  align-items: center;
+}
+
+.share-body {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member-count {
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* ============================================
+   16. COMPILE LOG DIALOG
+   ============================================ */
+.compile-log-dialog {
+  border-radius: 12px !important;
+}
+
+.compile-issues {
+  margin-bottom: 12px;
+}
+
+.issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.issue-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  font-size: 12px;
+}
+
+.issue-row.clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.issue-row.clickable:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.3);
+}
+
+.issue-message {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.issue-location {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.compile-log {
+  max-height: 50vh;
+  overflow: auto;
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  background: rgba(var(--v-theme-surface-variant), 0.25);
+  color: rgb(var(--v-theme-on-surface));
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+/* ============================================
+   17. ZOTERO DIALOG
+   ============================================ */
+.zotero-dialog {
+  border-radius: 12px !important;
+}
+
+.zotero-dialog :deep(.v-card-text) {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* ============================================
+   18. USER CARDS & AVATARS
+   ============================================ */
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.user-avatar.small {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.user-avatar.x-small {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.user-card.owner-card {
+  background: rgba(var(--v-theme-primary), 0.04);
+  border-color: rgba(var(--v-theme-primary), 0.12);
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 13px;
+  color: rgb(var(--v-theme-on-surface));
+  line-height: 1.2;
+}
+
+.user-meta {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* ============================================
+   19. MEMBERS SECTION
+   ============================================ */
+.empty-members {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-size: 12px;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ============================================
+   20. MOBILE RESPONSIVE STYLES
+   ============================================ */
+.workspace-root.is-mobile {
+  /* 64px AppBar + 24px Footer = 88px */
+  height: calc(100vh - 88px);
+  height: calc(100dvh - 88px);
+  overflow: hidden;
+  max-width: 100vw;
+}
+
+.mobile-tree-drawer {
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.mobile-tree-drawer :deep(.tree-panel) {
+  height: 100%;
+}
+
+.mobile-tree-content {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-tree-content .tree-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mobile-tree-content .tree-outline-panel {
+  margin: 0 12px 12px;
+}
+
+/* Mobile content area takes full width */
+.workspace-root.is-mobile .content-area {
+  width: 100%;
+}
+
+/* Mobile header adjustments */
+.workspace-root.is-mobile .content-header {
+  padding: 6px 8px;
+}
+
+.workspace-root.is-mobile .header-title {
+  font-size: 13px;
+}
+
+.workspace-root.is-mobile .header-subtitle {
+  font-size: 10px;
+}
+
+.workspace-root.is-mobile .mode-toggle-group {
+  padding: 1px;
+}
+
+.workspace-root.is-mobile .mode-btn {
+  width: 28px;
+  height: 28px;
+}
+
+/* Mobile editor layout */
+.workspace-root.is-mobile .editor-layout {
+  padding: 4px;
+  gap: 4px;
+}
+
+/* Mobile: On split mode, stack vertically instead of horizontal */
+.workspace-root.is-mobile .panes-container.mode-split {
+  flex-direction: column;
+}
+
+.workspace-root.is-mobile .panes-container.mode-split .editor-pane {
+  width: 100% !important;
+  flex: 1;
+}
+
+.workspace-root.is-mobile .panes-container.mode-split .preview-pane {
+  flex: 1;
+}
+
+.workspace-root.is-mobile .panes-container.mode-split .resize-divider {
+  display: none;
+}
+
+/* Hide Git panel on mobile in compact mode */
+.workspace-root.is-mobile .git-panel {
+  max-height: 120px;
+}
+
+/* ============================================
+   21. TABLET ADJUSTMENTS
+   ============================================ */
+.workspace-root.is-tablet .tree-panel {
+  max-width: 240px;
+}

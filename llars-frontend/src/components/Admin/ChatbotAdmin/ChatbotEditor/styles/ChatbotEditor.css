@@ -1,0 +1,67 @@
+/**
+ * ChatbotEditor Styles
+ *
+ * Shared styles for the ChatbotEditor dialog and its components.
+ */
+
+/* Dialog Card - fills viewport with max constraints */
+.chatbot-editor-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  height: 100%;
+}
+
+/* Body scrolls - uses flex to fill available space */
+.chatbot-editor-body {
+  flex: 1;
+  min-height: 0; /* Critical for flex children to scroll */
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Window fills body and items scroll */
+.chatbot-editor-body :deep(.v-window) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chatbot-editor-body :deep(.v-window__container) {
+  height: 100%;
+}
+
+.chatbot-editor-body :deep(.v-window-item) {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Override default overflow for LLM tab - we handle scrolling in textareas */
+.chatbot-editor-body :deep(.v-window-item:has(.llm-tab-form)) {
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive - smaller screens get fullscreen dialog */
+@media (max-width: 960px) {
+  .chatbot-editor-card {
+    border-radius: 0;
+  }
+}
+
+:deep(.chatbot-editor-dialog) {
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* Shared text styles */
+.text-medium-emphasis {
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}

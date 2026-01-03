@@ -1,16 +1,12 @@
-# app/workers/embedding_worker.py
+# app/workers/embedding/__init__.py
 """
 Background Worker for RAG Document Embedding Processing.
 
-IMPORTANT: This file is a backwards-compatibility shim.
-The worker implementation has been refactored into the `embedding/` package.
+This package provides the embedding worker which processes documents in the
+background, creating vector embeddings and storing them in ChromaDB.
 
-New code should import from:
-    from workers.embedding import start_embedding_worker, stop_embedding_worker
-
-This file re-exports all public APIs for backwards compatibility.
-
-Architecture (see workers/embedding/):
+Architecture:
+    The worker is split into focused modules:
     - constants.py: Configuration constants and ChromaDB metadata
     - embedding_resolver.py: Model resolution with LiteLLM/HuggingFace fallback
     - document_processor.py: Core document processing and chunking
@@ -18,6 +14,15 @@ Architecture (see workers/embedding/):
     - batch_processor.py: Batch processing and stale document recovery
     - progress_emitter.py: Socket.IO progress updates
     - worker.py: Main worker class coordinating all modules
+
+Usage:
+    from workers.embedding import start_embedding_worker, stop_embedding_worker
+
+    # Start during app initialization
+    start_embedding_worker(app)
+
+    # Stop during shutdown
+    stop_embedding_worker()
 
 Features:
     - Thread-based background processing
@@ -28,27 +33,18 @@ Features:
     - Multi-model embedding support (LiteLLM API + local HuggingFace)
     - Image embedding for multimodal models (VDR-2B)
 
-Usage:
-    from workers.embedding_worker import start_embedding_worker, stop_embedding_worker
-
-    # Start during app initialization
-    start_embedding_worker(app)
-
-    # Stop during shutdown
-    stop_embedding_worker()
-
 Author: LLARS Team
-Date: November 2025 (refactored January 2026)
+Date: January 2026 (refactored from monolithic embedding_worker.py)
 """
 
-# Re-export everything from the new package for backwards compatibility
-from workers.embedding import (
-    # Worker class and management
+from workers.embedding.worker import (
     EmbeddingWorker,
     get_embedding_worker,
     start_embedding_worker,
     stop_embedding_worker,
-    # Constants
+)
+
+from workers.embedding.constants import (
     CHROMA_COLLECTION_METADATA,
     POLL_INTERVAL,
     BATCH_SIZE,
@@ -56,10 +52,12 @@ from workers.embedding import (
 )
 
 __all__ = [
+    # Worker class and management
     'EmbeddingWorker',
     'get_embedding_worker',
     'start_embedding_worker',
     'stop_embedding_worker',
+    # Constants
     'CHROMA_COLLECTION_METADATA',
     'POLL_INTERVAL',
     'BATCH_SIZE',

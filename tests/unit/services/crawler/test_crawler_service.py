@@ -30,160 +30,130 @@ def temp_image_path():
 # =============================================================================
 
 class TestCrawlerServiceSlugify:
-    """Tests für CrawlerService._slugify."""
+    """Tests für slugify helper function."""
 
     def test_CRAWL_001_slugify_basic(self):
         """CRAWL-001: Einfacher Slug aus Text."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import slugify
 
-        service = CrawlerService()
-
-        result = service._slugify("Hello World")
+        result = slugify("Hello World")
         assert result == "hello_world"
 
     def test_CRAWL_002_slugify_special_chars(self):
         """CRAWL-002: Slug mit Sonderzeichen."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import slugify
 
-        service = CrawlerService()
-
-        result = service._slugify("Test! @#$%^& Value?")
+        result = slugify("Test! @#$%^& Value?")
         assert result == "test_value"
 
     def test_CRAWL_003_slugify_max_length(self):
         """CRAWL-003: Slug wird auf max_length begrenzt."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        from services.crawler.modules.crawler_constants import slugify
 
         long_text = "a" * 300
-        result = service._slugify(long_text, max_length=50)
+        result = slugify(long_text, max_length=50)
         assert len(result) <= 50
 
     def test_CRAWL_004_slugify_empty(self):
         """CRAWL-004: Leerer String gibt 'site' zurück."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import slugify
 
-        service = CrawlerService()
-
-        result = service._slugify("")
+        result = slugify("")
         assert result == "site"
 
     def test_CRAWL_005_slugify_only_special_chars(self):
         """CRAWL-005: Nur Sonderzeichen gibt 'site' zurück."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import slugify
 
-        service = CrawlerService()
-
-        result = service._slugify("!@#$%^&*()")
+        result = slugify("!@#$%^&*()")
         assert result == "site"
 
     def test_CRAWL_006_slugify_german_text(self):
         """CRAWL-006: Deutsche Umlaute werden entfernt."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import slugify
 
-        service = CrawlerService()
-
-        result = service._slugify("Über uns - Große Änderung")
+        result = slugify("Über uns - Große Änderung")
         # Umlaute werden zu _ (weil sie nicht a-z0-9 sind)
         assert "_" in result or result == "ber_uns_gro_e_nderung"
 
 
 class TestCrawlerServiceFilename:
-    """Tests für CrawlerService._generate_filename_from_url."""
+    """Tests für generate_filename_from_url helper function."""
 
     def test_CRAWL_010_filename_basic(self):
         """CRAWL-010: Dateiname aus einfacher URL."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import generate_filename_from_url
 
-        service = CrawlerService()
-
-        result = service._generate_filename_from_url("https://example.com/about")
+        result = generate_filename_from_url("https://example.com/about")
         assert result.endswith(".md")
         assert "example" in result
         assert "about" in result
 
     def test_CRAWL_011_filename_with_www(self):
         """CRAWL-011: www. wird aus Domain entfernt."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import generate_filename_from_url
 
-        service = CrawlerService()
-
-        result = service._generate_filename_from_url("https://www.example.com/page")
+        result = generate_filename_from_url("https://www.example.com/page")
         assert "www" not in result
 
     def test_CRAWL_012_filename_root_path(self):
         """CRAWL-012: Root-Path gibt 'home' zurück."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import generate_filename_from_url
 
-        service = CrawlerService()
-
-        result = service._generate_filename_from_url("https://example.com/")
+        result = generate_filename_from_url("https://example.com/")
         assert "home" in result
 
     def test_CRAWL_013_filename_complex_path(self):
         """CRAWL-013: Komplexer Pfad wird zu Slug."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import generate_filename_from_url
 
-        service = CrawlerService()
-
-        result = service._generate_filename_from_url("https://example.com/team/about-us/")
+        result = generate_filename_from_url("https://example.com/team/about-us/")
         assert result.endswith(".md")
         assert "team" in result or "about" in result
 
 
 class TestCrawlerServiceContentCheck:
-    """Tests für CrawlerService._is_content_worth_indexing."""
+    """Tests für is_content_worth_indexing helper function."""
 
     def test_CRAWL_020_content_worth_indexing_yes(self):
         """CRAWL-020: Ausreichender Content wird akzeptiert."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        from services.crawler.modules.crawler_constants import is_content_worth_indexing
 
         content = "Dies ist ein ausreichend langer Text mit genügend Buchstaben " * 10
-        result = service._is_content_worth_indexing(content)
+        result = is_content_worth_indexing(content)
         assert result is True
 
     def test_CRAWL_021_content_worth_indexing_empty(self):
         """CRAWL-021: Leerer Content wird abgelehnt."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import is_content_worth_indexing
 
-        service = CrawlerService()
-
-        result = service._is_content_worth_indexing("")
+        result = is_content_worth_indexing("")
         assert result is False
 
     def test_CRAWL_022_content_worth_indexing_too_short(self):
         """CRAWL-022: Zu kurzer Content wird abgelehnt."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import is_content_worth_indexing
 
-        service = CrawlerService()
-
-        result = service._is_content_worth_indexing("Kurz")
+        result = is_content_worth_indexing("Kurz")
         assert result is False
 
     def test_CRAWL_023_content_worth_indexing_numbers_only(self):
         """CRAWL-023: Nur Zahlen werden abgelehnt."""
-        from services.crawler.modules.crawler_service import CrawlerService
-
-        service = CrawlerService()
+        from services.crawler.modules.crawler_constants import is_content_worth_indexing
 
         content = "12345 67890 " * 50
-        result = service._is_content_worth_indexing(content)
+        result = is_content_worth_indexing(content)
         assert result is False
 
 
 class TestCrawlerServiceCollectionName:
-    """Tests für CrawlerService._build_crawl_collection_name."""
+    """Tests für build_crawl_collection_name helper function."""
 
     def test_CRAWL_030_collection_name_from_url(self):
         """CRAWL-030: Collection-Name aus URL."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import build_crawl_collection_name
 
-        service = CrawlerService()
-
-        result = service._build_crawl_collection_name(
+        result = build_crawl_collection_name(
             urls=["https://example.com"],
             display_name="Test",
             job_id="12345678-abcd-efgh"
@@ -195,11 +165,9 @@ class TestCrawlerServiceCollectionName:
 
     def test_CRAWL_031_collection_name_no_urls(self):
         """CRAWL-031: Collection-Name ohne URLs."""
-        from services.crawler.modules.crawler_service import CrawlerService
+        from services.crawler.modules.crawler_constants import build_crawl_collection_name
 
-        service = CrawlerService()
-
-        result = service._build_crawl_collection_name(
+        result = build_crawl_collection_name(
             urls=[],
             display_name="My Collection",
             job_id="abcdef12-3456-7890"

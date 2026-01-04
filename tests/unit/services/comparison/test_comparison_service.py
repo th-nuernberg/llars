@@ -196,7 +196,7 @@ class TestComparisonSessionService:
             assert session.id == sample_session['id']
             assert session.scenario_id == sample_session['scenario_id']
 
-    def test_COMP_002_get_session_by_id_not_found(self, app):
+    def test_COMP_002_get_session_by_id_not_found(self, app, db):
         """COMP-002: Nicht existierende Session gibt None zurück."""
         with app.app_context():
             from services.comparison.session_service import ComparisonSessionService
@@ -449,7 +449,7 @@ class TestComparisonSessionService:
             # Empty string is falsy, so result should be falsy
             assert not result
 
-    def test_COMP_019_is_response_complete_not_found(self, app):
+    def test_COMP_019_is_response_complete_not_found(self, app, db):
         """COMP-019: Response-Check für nicht existierende Message."""
         with app.app_context():
             from services.comparison.session_service import ComparisonSessionService

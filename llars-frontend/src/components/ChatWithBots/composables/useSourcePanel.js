@@ -38,11 +38,19 @@ export function useSourcePanel() {
    * Show source detail dialog
    */
   function showSourceDetail(source) {
+    console.log('[useSourcePanel] showSourceDetail called with:', source)
+    console.log('[useSourcePanel] sourcePanel.pinned:', sourcePanel.value.pinned)
+    console.log('[useSourcePanel] sourcePanel.open:', sourcePanel.value.open)
     if (sourcePanel.value.pinned) {
+      console.log('[useSourcePanel] Panel is pinned, opening in panel')
       openSourceInPanel(source)
       return
     }
-    sourceDialog.value = { show: true, source }
+    console.log('[useSourcePanel] Opening dialog')
+    // Set properties individually to maintain reactivity
+    sourceDialog.value.source = source
+    sourceDialog.value.show = true
+    console.log('[useSourcePanel] sourceDialog.show:', sourceDialog.value.show)
   }
 
   /**

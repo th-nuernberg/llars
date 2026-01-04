@@ -68,7 +68,7 @@
                 variant="tonal"
                 color="success"
                 class="source-chip mr-1 mb-1"
-                @click="$emit('show-source', source)"
+                @click.stop="handleSourceClick(source)"
               >
                 <span class="font-weight-bold mr-1">[{{ source.footnote_id }}]</span>
                 <span class="text-truncate" style="max-width: 180px;">
@@ -107,6 +107,14 @@ const props = defineProps({
 const emit = defineEmits(['show-source', 'footnote-click'])
 
 const containerRef = ref(null)
+
+/**
+ * Handle source chip click - explicit handler for debugging
+ */
+function handleSourceClick(source) {
+  console.log('[ChatMessageList] Source clicked:', source)
+  emit('show-source', source)
+}
 
 /**
  * Format message content with markdown and footnote support

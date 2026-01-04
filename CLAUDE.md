@@ -114,6 +114,8 @@ Push to main    → deploy:production (nach Tests)
 
 ### GitLab API Zugriff
 
+**Skill verfuegbar:** `.claude/skills/ci-cd-debugging/` - Automatisches CI/CD Debugging
+
 Die `.env` enthält GitLab API Credentials für Pipeline-Monitoring:
 
 ```bash
@@ -126,15 +128,36 @@ curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
 curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
   "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines/{PIPELINE_ID}/jobs"
 
-# Job-Log abrufen
+# Job-Log abrufen (letzte 50 Zeilen)
 curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/jobs/{JOB_ID}/trace"
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/jobs/{JOB_ID}/trace" | tail -50
+
+# CI-Konfiguration validieren
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/ci/lint?ref=main"
+
+# Pipeline manuell triggern
+curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipeline?ref=main"
+
+# Fehlgeschlagene Pipeline neu starten
+curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines/{PIPELINE_ID}/retry"
 ```
 
 **Umgebungsvariablen (.env):**
-- `GITLAB_TOKEN` - API Token mit `api` Scope
+- `GITLAB_TOKEN` - API Token mit `read_api` Scope
 - `GITLAB_PROJECT_ID` - Projekt-ID (7123)
 - `GITLAB_PROJECT_PATH` - Projekt-Pfad
+
+### CI/CD Troubleshooting
+
+| Problem | Loesung |
+|---------|---------|
+| Pipeline 0 Jobs | Auto-cancel aktiv? YAML validieren |
+| E2E Tests scheitern | App auf Server laufen? PLAYWRIGHT_BASE_URL korrekt? |
+| Job haengt bei pending | Shell-Runner online? Tags korrekt? |
+| Lint fehlschlaegt | flake8 lokal ausfuehren, .flake8 Config pruefen |
 
 ---
 

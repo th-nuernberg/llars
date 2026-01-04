@@ -188,29 +188,27 @@ test:integration:
   needs:
     - test:unit:backend
 
+# E2E Tests laufen auf dem Server wo die App bereits läuft
+# Dies ermöglicht echte End-to-End Tests gegen die laufende Anwendung
 test:e2e:
   stage: test
-  image: mcr.microsoft.com/playwright:v1.48.0-jammy
-  services:
-    - name: docker:24-dind
-      alias: docker
+  tags:
+    - shell  # Shell-Executor auf dem LLARS Server
   variables:
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_CERT_PATH: "/certs/client"
-    DOCKER_TLS_VERIFY: "1"
+    PLAYWRIGHT_BASE_URL: "http://localhost"
   script:
-    - cd llars-frontend
+    - echo "Running E2E Tests against running LLARS instance..."
+    - cd /var/llars/llars-frontend
     - npm ci --prefer-offline
-    - npx playwright install chromium
-    - echo "Running E2E Tests..."
+    - npx playwright install chromium --with-deps
+    - echo "Starting E2E test run..."
     # Run with single worker to avoid flaky parallel execution
     - npx playwright test --project=chromium --workers=1
   artifacts:
     when: always
     paths:
-      - llars-frontend/playwright-report/
-      - llars-frontend/test-results/
+      - /var/llars/llars-frontend/playwright-report/
+      - /var/llars/llars-frontend/test-results/
     expire_in: 1 week
   rules:
     - if: $CI_COMMIT_BRANCH == "main"

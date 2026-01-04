@@ -452,10 +452,10 @@ metrics:collect:
     - cd .. && node scripts/metrics/collect_frontend_metrics.js --json > frontend_metrics.json
     - echo ""
     - echo "=== PYTHON METRICS ==="
-    - python -c "import json; m=json.load(open('python_metrics.json')); s=m['summary']; print(f\"Function Coverage: {s['function_coverage']}%\"); print(f\"Class Coverage: {s['class_coverage']}%\")"
+    - python -c "import json; m=json.load(open('python_metrics.json')); s=m['summary']; print('Function Coverage:', str(s['function_coverage'])+'%'); print('Class Coverage:', str(s['class_coverage'])+'%')"
     - echo ""
     - echo "=== FRONTEND METRICS ==="
-    - node -e "const m=require('./frontend_metrics.json'); console.log('JSDoc Coverage: '+m.summary.coverage+'%')"
+    - node -e "const m=require('./frontend_metrics.json'); console.log('JSDoc Coverage:', m.summary.coverage+'%')"
   artifacts:
     paths:
       - python_metrics.json

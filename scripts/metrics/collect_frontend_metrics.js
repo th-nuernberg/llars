@@ -240,12 +240,14 @@ if (outputJson) {
   printHumanReadable(metrics);
 }
 
-// Save to file
-const outputDir = path.join(__dirname, '../../docs/metrics');
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
-}
+// Save to file (only in non-JSON mode to avoid corrupting stdout output)
+if (!outputJson) {
+  const outputDir = path.join(__dirname, '../../docs/metrics');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
 
-const outputFile = path.join(outputDir, 'frontend_metrics.json');
-fs.writeFileSync(outputFile, JSON.stringify(metrics, null, 2));
-console.log(`\n💾 Metrics saved to: ${outputFile}`);
+  const outputFile = path.join(outputDir, 'frontend_metrics.json');
+  fs.writeFileSync(outputFile, JSON.stringify(metrics, null, 2));
+  console.log(`\n💾 Metrics saved to: ${outputFile}`);
+}

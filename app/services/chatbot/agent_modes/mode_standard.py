@@ -70,7 +70,7 @@ def chat_standard_stream(
         - {"delta": str} (multiple)
         - {"done": True, "full_response": str, ...}
     """
-    from db.db import db
+    from db.database import db
     from db.models.chatbot import ChatbotMessageRole
 
     yield {"status": "starting", "mode": "standard"}

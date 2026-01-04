@@ -6,7 +6,7 @@ Endpoints for retrieving available LLM models and their configurations.
 
 from flask import jsonify, request
 from db.models.llm_model import LLMModel
-from db.db import db
+from db.database import db
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
 
 from routes.llm import llm_bp

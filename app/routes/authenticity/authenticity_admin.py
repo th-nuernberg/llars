@@ -27,7 +27,7 @@ from decorators.error_handler import handle_api_errors, NotFoundError, Validatio
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.feature_service import FeatureService
-from db.db import db
+from db.database import db
 from db.models import EmailThread, Message, AuthenticityConversation, UserAuthenticityVote
 from db.tables import (RatingScenarios, ScenarioUsers, ScenarioThreads,
                        ScenarioThreadDistribution, ScenarioRoles, User)

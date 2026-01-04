@@ -3,7 +3,7 @@
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy import func
 
-from db.db import db
+from db.database import db
 from db.tables import (
     PillarThread, EmailThread
 )

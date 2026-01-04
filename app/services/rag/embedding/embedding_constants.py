@@ -78,7 +78,7 @@ def retry_on_deadlock(max_retries: int = 3, delay: float = 0.5):
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args, **kwargs) -> T:
-            from db.db import db
+            from db.database import db
 
             last_exception = None
             current_delay = delay

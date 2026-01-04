@@ -85,7 +85,7 @@ def process_crawled_page(
         - May create RAGProcessingQueue entry
         - Commits on success, rolls back on error
     """
-    from db.db import db
+    from db.database import db
     from db.tables import (
         RAGDocument,
         RAGDocumentChunk,
@@ -136,7 +136,7 @@ def process_crawled_page(
 
     except Exception as e:
         logger.error(f"Error processing document for {page.get('url', 'unknown')}: {e}")
-        from db.db import db
+        from db.database import db
         db.session.rollback()
         active_crawls[job_id]['errors'].append({
             'url': page.get('url', 'unknown'),
@@ -175,7 +175,7 @@ def _link_existing_document(
     Returns:
         Dict with action='linked' and serialized document, or None
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocumentChunk, CollectionDocumentLink
 
     # Check if already linked to this collection
@@ -264,7 +264,7 @@ def _create_new_document(
     Returns:
         Dict with action='new' and serialized document, or None
     """
-    from db.db import db
+    from db.database import db
     from db.tables import (
         RAGDocument,
         RAGDocumentChunk,
@@ -423,7 +423,7 @@ def _add_screenshots_to_document(
         page: Crawled page data
         screenshot_data: Screenshot data from Playwright crawler
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocumentChunk
 
     screenshot_path = screenshot_data.get('screenshot_path')
@@ -463,7 +463,7 @@ def _store_image_chunks(doc_id: int, images: list) -> None:
         doc_id: Document ID to attach images to
         images: List of image dicts with path, url, alt_text, mime_type
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocumentChunk
 
     for idx, img in enumerate(images):
@@ -501,7 +501,7 @@ def _store_screenshot_chunks(
     Returns:
         Number of screenshots stored
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocumentChunk
 
     screenshot_entries = screenshot_data.get('screenshots') or []

@@ -106,7 +106,7 @@ def _update_collection_progress_in_db(collection_id: int, progress: int) -> None
         interrupt the embedding process.
     """
     try:
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection
 
         collection = RAGCollection.query.get(collection_id)
@@ -116,7 +116,7 @@ def _update_collection_progress_in_db(collection_id: int, progress: int) -> None
     except Exception as e:
         logger.debug(f"[CollectionEmbedding] Could not update progress in DB: {e}")
         try:
-            from db.db import db
+            from db.database import db
             db.session.rollback()
         except Exception:
             pass
@@ -206,7 +206,7 @@ def emit_embedding_completed(
         - Emits 'collection:completed' to all subscribed clients
     """
     try:
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection
         from db.models.rag import CollectionEmbedding
 
@@ -281,7 +281,7 @@ def emit_embedding_error(
         ... )
     """
     try:
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection
         from db.models.rag import CollectionEmbedding
 

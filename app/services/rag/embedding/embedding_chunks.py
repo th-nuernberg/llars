@@ -63,7 +63,7 @@ def process_document_chunks(
         - Updates existing chunks if found
         - Does NOT commit - caller must commit
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocumentChunk
 
     # Get existing chunks for this document (text chunks only)
@@ -257,7 +257,7 @@ def embed_image_chunks_for_document(
         - Updates RAGDocumentChunk records with embedding info
         - Commits changes
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocumentChunk
     from services.rag.image_embedding_service import ImageEmbeddingService
     from .embedding_chroma import get_vectorstore_without_embeddings

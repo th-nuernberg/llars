@@ -62,7 +62,7 @@ def claim_next_comparison(
         - Sets started_at and last_heartbeat to NOW()
         - Commits the claim
     """
-    from db.db import db
+    from db.database import db
     from db.tables import JudgeComparison, JudgeComparisonStatus
     from sqlalchemy import text
 
@@ -161,7 +161,7 @@ def start_heartbeat_thread(
         while not stop_event.wait(timeout=HEARTBEAT_INTERVAL):
             try:
                 with app.app_context():
-                    from db.db import db
+                    from db.database import db
                     from db.tables import JudgeComparison
 
                     comparison = db.session.get(JudgeComparison, comparison_id)
@@ -221,7 +221,7 @@ def handle_comparison_failure(
     Side Effects:
         - Sleeps for exponential backoff time if resetting to PENDING
     """
-    from db.db import db
+    from db.database import db
     from db.tables import JudgeComparisonStatus
 
     error_msg = str(error)[:400]  # Truncate long errors
@@ -270,7 +270,7 @@ def increment_attempt_count(comparison) -> int:
         - Updates last_heartbeat
         - Commits changes
     """
-    from db.db import db
+    from db.database import db
 
     new_attempt = comparison.attempt_count + 1
     comparison.attempt_count = new_attempt

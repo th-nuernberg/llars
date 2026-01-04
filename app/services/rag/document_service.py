@@ -14,7 +14,7 @@ import hashlib
 import uuid
 import logging
 
-from db.db import db
+from db.database import db
 from db.models.rag import (
     RAGDocument,
     RAGDocumentChunk,

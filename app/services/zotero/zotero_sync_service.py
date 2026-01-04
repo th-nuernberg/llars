@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from typing import Optional, Tuple
 
-from db.db import db
+from db.database import db
 from db.models import (
     ZoteroConnection,
     WorkspaceZoteroLibrary,

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-03T08:44:56.762480",
+  "timestamp": "2026-01-04T13:03:58.811681",
   "directories": {
     "services": {
       "path": "app/services",
@@ -39,17 +39,20 @@
     "routes": {
       "path": "app/routes",
       "files": 107,
-      "lines": 22115,
-      "functions": 493,
-      "functions_with_docstrings": 392,
-      "function_coverage": 79.5,
+      "lines": 22660,
+      "functions": 498,
+      "functions_with_docstrings": 398,
+      "function_coverage": 79.9,
       "classes": 0,
       "classes_with_docstrings": 0,
       "class_coverage": 0.0,
-      "overall_coverage": 81.3,
+      "overall_coverage": 81.7,
       "large_files": [
+        "app/routes/latex_collab/latex_commit_routes.py (610 lines)",
         "app/routes/rag/collection_routes.py (599 lines)",
         "app/routes/zotero/zotero_routes.py (737 lines)",
+        "app/routes/markdown_collab/markdown_workspace_routes.py (595 lines)",
+        "app/routes/markdown_collab/markdown_document_routes.py (513 lines)",
         "app/routes/prompts/prompt_routes.py (680 lines)",
         "app/routes/authenticity/authenticity_admin.py (557 lines)",
         "app/routes/oncoco/oncoco_analysis_routes.py (622 lines)"
@@ -75,19 +78,19 @@
     "models": {
       "path": "app/db",
       "files": 36,
-      "lines": 7586,
-      "functions": 52,
-      "functions_with_docstrings": 32,
-      "function_coverage": 61.5,
+      "lines": 7642,
+      "functions": 53,
+      "functions_with_docstrings": 31,
+      "function_coverage": 58.5,
       "classes": 104,
       "classes_with_docstrings": 58,
       "class_coverage": 55.8,
-      "overall_coverage": 64.6,
+      "overall_coverage": 63.7,
       "large_files": [
         "app/db/models/rag.py (501 lines)",
         "app/db/seeders/scenarios.py (955 lines)",
         "app/db/seeders/permissions.py (571 lines)",
-        "app/db/seeders/latex_collab.py (617 lines)"
+        "app/db/seeders/latex_collab.py (607 lines)"
       ]
     },
     "auth": {
@@ -118,8 +121,8 @@
     }
   },
   "summary": {
-    "total_functions": 1640,
-    "functions_with_docstrings": 1347,
+    "total_functions": 1646,
+    "functions_with_docstrings": 1352,
     "function_coverage": 82.1,
     "total_classes": 226,
     "classes_with_docstrings": 169,
@@ -150,8 +153,11 @@
     "app/services/judge/judge_service.py (593 lines)",
     "app/services/oncoco/oncoco_service.py (720 lines)",
     "app/services/oncoco/oncoco_labels.py (603 lines)",
+    "app/routes/latex_collab/latex_commit_routes.py (610 lines)",
     "app/routes/rag/collection_routes.py (599 lines)",
     "app/routes/zotero/zotero_routes.py (737 lines)",
+    "app/routes/markdown_collab/markdown_workspace_routes.py (595 lines)",
+    "app/routes/markdown_collab/markdown_document_routes.py (513 lines)",
     "app/routes/prompts/prompt_routes.py (680 lines)",
     "app/routes/authenticity/authenticity_admin.py (557 lines)",
     "app/routes/oncoco/oncoco_analysis_routes.py (622 lines)",
@@ -161,7 +167,7 @@
     "app/db/models/rag.py (501 lines)",
     "app/db/seeders/scenarios.py (955 lines)",
     "app/db/seeders/permissions.py (571 lines)",
-    "app/db/seeders/latex_collab.py (617 lines)"
+    "app/db/seeders/latex_collab.py (607 lines)"
   ],
   "files_without_module_docstring": [
     "app/services/chatbot/lexical_index.py",

@@ -30,7 +30,7 @@ from flask import request
 from flask_socketio import emit, join_room, leave_room
 from openai import OpenAI
 
-from db.db import db
+from db.database import db
 from db.tables import (
     Chatbot, ChatbotConversation, ChatbotMessage, ChatbotMessageRole
 )

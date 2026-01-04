@@ -105,7 +105,7 @@ class CollectionEmbeddingService:
             >>> print(result)
             {'success': True, 'message': 'Embedding started'}
         """
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection
         from .embedding_database import (
             recover_stuck_documents,
@@ -170,7 +170,7 @@ class CollectionEmbeddingService:
             >>> service.pause_embedding(collection_id=42)
             {'success': True, 'message': 'Embedding paused'}
         """
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection
 
         if collection_id in self._stop_events:
@@ -209,7 +209,7 @@ class CollectionEmbeddingService:
             >>> status = service.get_status(collection_id=42)
             >>> print(f"Progress: {status['progress']}%")
         """
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection, RAGDocument, CollectionDocumentLink
 
         collection = RAGCollection.query.get(collection_id)
@@ -282,7 +282,7 @@ class CollectionEmbeddingService:
         Raises:
             ValueError: If collection not found
         """
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection, RAGDocumentChunk, CollectionDocumentLink
         from rag_pipeline import RAGPipeline
         from services.rag.embedding_model_service import get_embedding_model_service
@@ -532,7 +532,7 @@ class CollectionEmbeddingService:
             error: Error message
             collection_id: Parent collection ID
         """
-        from db.db import db
+        from db.database import db
         from .embedding_database import update_document_status
         from .embedding_events import emit_document_processed
 
@@ -556,7 +556,7 @@ class CollectionEmbeddingService:
             collection_id: Collection that failed
             error: Error message
         """
-        from db.db import db
+        from db.database import db
         from .embedding_events import emit_embedding_error
 
         try:

@@ -282,7 +282,7 @@ class PooledJudgeWorker:
 
     def _process_queue(self) -> None:
         """Process comparisons from the queue."""
-        from db.db import db
+        from db.database import db
         from db.tables import JudgeSession, JudgeSessionStatus
         from services.judge.judge_service import JudgeService
 
@@ -384,7 +384,7 @@ class PooledJudgeWorker:
 
     def _process_comparison_with_retry(self, comparison, session, judge_service) -> None:
         """Process a comparison with retry logic and heartbeat."""
-        from db.db import db
+        from db.database import db
         from db.tables import JudgeComparisonStatus
 
         # Increment attempt count
@@ -417,7 +417,7 @@ class PooledJudgeWorker:
 
     def _process_comparison(self, comparison, session, judge_service) -> None:
         """Process a single comparison."""
-        from db.db import db
+        from db.database import db
         from db.tables import JudgeComparisonStatus, JudgeEvaluation, JudgeWinner
 
         logger.info(

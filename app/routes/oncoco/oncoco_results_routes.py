@@ -12,7 +12,7 @@ import logging
 from flask import Blueprint, request, jsonify
 from sqlalchemy import func
 
-from db.db import db
+from db.database import db
 from db.tables import (
     OnCoCoAnalysis,
     OnCoCoSentenceLabel, OnCoCoPillarStatistics,

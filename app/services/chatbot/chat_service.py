@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 from openai import OpenAI
 
-from db.db import db
+from db.database import db
 from db.tables import (
     Chatbot,
     ChatbotConversation,

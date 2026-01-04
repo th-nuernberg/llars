@@ -10,7 +10,7 @@ from flask import jsonify, request, g
 
 from auth.decorators import authentik_required, admin_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
-from db.db import db
+from db.database import db
 from routes.auth import data_bp
 from services.feature_service import FeatureService
 from services.ranking_service import RankingService

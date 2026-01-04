@@ -1,5 +1,5 @@
 
-from db.db import db
+from db.database import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,

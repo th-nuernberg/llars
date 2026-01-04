@@ -2,7 +2,7 @@
 
 from flask import Blueprint, request, jsonify, g
 
-from db.db import db
+from db.database import db
 from db.tables import (
     JudgeSession,
     JudgeComparison, JudgeComparisonStatus,

@@ -53,7 +53,7 @@ def _ensure_default_viewer_role(username: str) -> None:
     """
     if not username:
         return
-    from db.db import db
+    from db.database import db
     from db.tables import Role, UserRole
 
     existing_role = UserRole.query.filter_by(username=username).first()
@@ -88,7 +88,7 @@ def get_or_create_user(username: str):
     Returns:
         User object from database
     """
-    from db.db import db
+    from db.database import db
     from db.tables import User, UserGroup
     from services.user_profile_service import pick_collab_color
 

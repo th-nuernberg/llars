@@ -7,7 +7,7 @@ Provides access control, dict conversion, and ordering utilities.
 from datetime import datetime
 from typing import Optional
 
-from db.db import db
+from db.database import db
 from db.tables import (
     LatexWorkspace,
     LatexDocument,

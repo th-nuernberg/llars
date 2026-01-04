@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from urllib.parse import urlparse
 
-from db.db import db
+from db.database import db
 from db.tables import Chatbot, ChatbotCollection, RAGCollection
 from db.models.llm_model import LLMModel
 

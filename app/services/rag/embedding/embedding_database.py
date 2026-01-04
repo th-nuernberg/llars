@@ -79,7 +79,7 @@ def update_document_status(
     Note:
         Uses @retry_on_deadlock decorator - see embedding_constants.py
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocument
 
     doc = RAGDocument.query.get(doc_id)
@@ -145,7 +145,7 @@ def update_collection_stats(
         ...     doc_count=10
         ... )
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGCollection, RAGDocumentChunk, CollectionDocumentLink
 
     collection = RAGCollection.query.get(collection_id)
@@ -196,7 +196,7 @@ def finalize_collection_stats(collection_id: int) -> int:
         This is called at the end of embedding to ensure stats are
         accurate before marking the collection as completed.
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGCollection, RAGDocumentChunk, CollectionDocumentLink
 
     collection = RAGCollection.query.get(collection_id)
@@ -257,7 +257,7 @@ def recover_stuck_documents(collection_id: int) -> int:
         >>> recovered = recover_stuck_documents(collection_id=42)
         >>> print(f"Recovered {recovered} stuck documents")
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocument, CollectionDocumentLink
 
     try:
@@ -310,7 +310,7 @@ def reset_collection_for_restart(collection_id: int) -> bool:
     Database Effects:
         - Sets RAGCollection.embedding_status = 'idle'
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGCollection
 
     try:
@@ -363,7 +363,7 @@ def create_or_update_collection_embedding(
         - Updates existing record if found
         - Sets status='processing' and progress=0
     """
-    from db.db import db
+    from db.database import db
     from db.models.rag import CollectionEmbedding
 
     # Check for existing record
@@ -420,7 +420,7 @@ def set_collection_chroma_name(collection_id: int, chroma_collection_name: str) 
     Database Effects:
         - Sets RAGCollection.chroma_collection_name if not already set
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGCollection
 
     collection = RAGCollection.query.get(collection_id)
@@ -469,7 +469,7 @@ def count_indexed_documents(collection_id: int) -> int:
     Returns:
         Number of indexed documents
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocument, CollectionDocumentLink
 
     return (

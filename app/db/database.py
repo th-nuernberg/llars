@@ -6,7 +6,7 @@ from flask_migrate import Migrate
 
 from . import db as db_instance
 
-# Keep the public name `db` for backwards compatibility (many modules import `from db.db import db`)
+# Re-export the db instance for backwards compatibility (modules import `from db.database import db`)
 db = db_instance
 
 migrate = Migrate()  # Initialisiere Flask-Migrate

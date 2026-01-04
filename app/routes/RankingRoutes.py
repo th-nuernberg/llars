@@ -9,7 +9,7 @@ from werkzeug.exceptions import BadRequest
 from auth.decorators import authentik_required, admin_required, roles_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 
-from db.db import db
+from db.database import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        UserGroup, UserPrompt, UserPromptShare,

@@ -6,7 +6,7 @@ import os
 
 from flask import jsonify, request
 
-from db.db import db
+from db.database import db
 from db.models.system_settings import SystemSettings
 from decorators.permission_decorator import require_permission
 from auth.auth_utils import AuthUtils

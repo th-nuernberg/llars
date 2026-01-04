@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
-from db.db import db
+from db.database import db
 from db.models.llm_model import LLMModel
 
 

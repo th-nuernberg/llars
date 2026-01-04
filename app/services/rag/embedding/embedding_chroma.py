@@ -239,7 +239,7 @@ def backfill_empty_collection(
     Database Effects:
         Reads chunks via joins, does not modify database
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGDocument, RAGDocumentChunk, CollectionDocumentLink
 
     try:

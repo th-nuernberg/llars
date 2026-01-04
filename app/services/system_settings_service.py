@@ -10,7 +10,7 @@ import threading
 import time
 from typing import Optional
 
-from db.db import db
+from db.database import db
 from db.models.system_settings import SystemSettings
 
 logger = logging.getLogger(__name__)

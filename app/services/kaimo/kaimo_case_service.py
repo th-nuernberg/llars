@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from sqlalchemy import func
 
-from db.db import db
+from db.database import db
 from db.models import (
     KaimoCase,
     KaimoDocument,

@@ -10,7 +10,7 @@ import threading
 from typing import Optional, Tuple, Dict, Any
 
 from db.tables import ComparisonSession, ComparisonMessage, ComparisonEvaluation
-from db.db import db
+from db.database import db
 from single_message_evaluation import SingleEvaluator
 
 from .persona_formatter import PersonaFormatter

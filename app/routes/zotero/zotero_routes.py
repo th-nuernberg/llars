@@ -20,7 +20,7 @@ from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
 
-from db.db import db
+from db.database import db
 from db.models import (
     User,
     ZoteroConnection,

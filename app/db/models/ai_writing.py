@@ -9,7 +9,7 @@ from enum import Enum as PyEnum
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Enum, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from db.db import db
+from db.database import db
 
 
 class AIFeatureType(PyEnum):

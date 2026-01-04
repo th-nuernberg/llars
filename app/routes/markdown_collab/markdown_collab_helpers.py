@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from db.db import db
+from db.database import db
 from db.tables import (
     MarkdownWorkspace,
     MarkdownWorkspaceMember,

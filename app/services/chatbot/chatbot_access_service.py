@@ -11,7 +11,7 @@ from typing import List, Optional, Set, Any
 
 from sqlalchemy import and_, or_, select
 
-from db.db import db
+from db.database import db
 from db.tables import Chatbot, ChatbotUserAccess, Role, UserRole
 from services.permission_service import PermissionService
 

@@ -76,7 +76,7 @@ def create_crawl_collection(
         >>> print(collection.id)  # Available after flush
         42
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGCollection
 
     # Generate safe internal name from domain + job ID
@@ -156,7 +156,7 @@ def update_collection_for_crawl(
         - May set source_url if not already set
         - Commits changes
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGCollection
 
     collection = RAGCollection.query.get(collection_id)
@@ -198,7 +198,7 @@ def update_collection_stats(
         - May update color if brand_color provided and no color set
         - Commits changes
     """
-    from db.db import db
+    from db.database import db
     from db.tables import RAGCollection, CollectionDocumentLink
 
     try:

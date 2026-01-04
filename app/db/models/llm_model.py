@@ -281,7 +281,7 @@ def seed_default_models():
     Seed default LLM models into the database.
     Called during application startup.
     """
-    from db.db import db
+    from db.database import db
 
     for model_data in DEFAULT_LLM_MODELS:
         model_type = model_data.get("model_type") or LLMModel.MODEL_TYPE_LLM

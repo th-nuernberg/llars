@@ -7,7 +7,7 @@ import uuid
 import logging
 from typing import List, Dict, Any, Optional
 
-from db.db import db
+from db.database import db
 from db.tables import (
     ChatbotConversation,
     ChatbotMessage,

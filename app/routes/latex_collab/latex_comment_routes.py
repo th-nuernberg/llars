@@ -9,7 +9,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 
 from auth.auth_utils import AuthUtils
-from db.db import db
+from db.database import db
 from db.tables import LatexDocument, LatexComment
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 from decorators.permission_decorator import require_permission

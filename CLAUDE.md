@@ -112,6 +112,30 @@ Push to main    → deploy:production (nach Tests)
 
 **Test-Requirements:** `app/requirements-test.txt` (ohne torch, transformers, flair - ~3GB gespart)
 
+### GitLab API Zugriff
+
+Die `.env` enthält GitLab API Credentials für Pipeline-Monitoring:
+
+```bash
+# Pipelines abrufen
+source .env
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines?per_page=5"
+
+# Jobs einer Pipeline abrufen
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines/{PIPELINE_ID}/jobs"
+
+# Job-Log abrufen
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/jobs/{JOB_ID}/trace"
+```
+
+**Umgebungsvariablen (.env):**
+- `GITLAB_TOKEN` - API Token mit `api` Scope
+- `GITLAB_PROJECT_ID` - Projekt-ID (7123)
+- `GITLAB_PROJECT_PATH` - Projekt-Pfad
+
 ---
 
 ## Tests - PFLICHT!

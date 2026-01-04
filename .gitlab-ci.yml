@@ -76,13 +76,13 @@ lint:backend:
     - echo "Checking Python code style..."
     # Uses .flake8 config file for ignore rules
     - flake8 app/
-    - black --check app/ --line-length=120 || true
-    - isort --check-only app/ || true
+    # Note: black and isort are informational only (not enforced yet)
+    - black --check app/ --line-length=120 || echo "black: formatting suggestions available"
+    - isort --check-only app/ || echo "isort: import order suggestions available"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
-  allow_failure: true
 
 lint:frontend:
   stage: lint
@@ -91,12 +91,11 @@ lint:frontend:
     - cd llars-frontend
     - npm ci --prefer-offline
     - echo "Checking Frontend code style..."
-    - npm run lint || true
+    - npm run lint
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
-  allow_failure: true
 
 # =============================================================================
 # STAGE 2: TEST
@@ -124,7 +123,7 @@ test:unit:backend:
     # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
     - pip install -r app/requirements-test.txt
     - echo "Running Backend Unit Tests..."
-    - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing || true
+    - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
     reports:
@@ -144,7 +143,7 @@ test:unit:frontend:
     - cd llars-frontend
     - npm ci --prefer-offline
     - echo "Running Frontend Unit Tests..."
-    - npm run test:run -- --coverage || true
+    - npm run test:run -- --coverage
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:
     reports:
@@ -182,7 +181,7 @@ test:integration:
     # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
     - pip install -r app/requirements-test.txt
     - echo "Running Integration Tests..."
-    - pytest tests/integration/ -v || true
+    - pytest tests/integration/ -v
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -205,7 +204,8 @@ test:e2e:
     - npm ci --prefer-offline
     - npx playwright install chromium
     - echo "Running E2E Tests..."
-    - npx playwright test --project=chromium || true
+    # Run with single worker to avoid flaky parallel execution
+    - npx playwright test --project=chromium --workers=1
   artifacts:
     when: always
     paths:
@@ -216,7 +216,6 @@ test:e2e:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - test:integration
-  allow_failure: true
 
 # =============================================================================
 # STAGE 3: BUILD
@@ -377,7 +376,7 @@ rollback:production:
 # ZUSÄTZLICHE JOBS
 # =============================================================================
 
-# Security Scan
+# Security Scan (informational - doesn't block pipeline)
 security:scan:
   stage: test
   image: python:3.11-slim
@@ -386,12 +385,12 @@ security:scan:
   script:
     - pip install pip-audit safety
     - echo "Running security scan..."
-    - pip-audit -r app/requirements.txt || true
-    - cd llars-frontend && npm audit --audit-level=high || true
+    - pip-audit -r app/requirements.txt || echo "⚠️ pip-audit found vulnerabilities"
+    - cd llars-frontend && npm audit --audit-level=high || echo "⚠️ npm audit found vulnerabilities"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
-  allow_failure: true
+  allow_failure: true  # Security scan is informational, doesn't block deployment
 
 # Smoke Test nach Deployment (Basic Health Checks)
 smoke:test:

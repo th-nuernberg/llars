@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 3.0 | **Stand:** 3. Januar 2026
+**Version:** 3.0 | **Stand:** 4. Januar 2026
 
 ## Projekt-Übersicht
 
@@ -8,7 +8,7 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 **Features:** Rating/Ranking-System | LLM-as-Judge | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool
 
-**Quick Reference:** Siehe `agent.md` für kompakte Kurzreferenz.
+**Quick Reference:** Dieses Dokument enthält alle wichtigen Informationen für die Entwicklung.
 
 ---
 
@@ -187,6 +187,55 @@ vi.stubGlobal('localStorage', { getItem: vi.fn(), setItem: vi.fn() })
 // Vue Router
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 ```
+
+---
+
+## CI/CD Quality Policy
+
+**KRITISCH: Robuste Pipeline ohne Workarounds!**
+
+### Grundprinzipien
+
+1. **Keine `|| true` bei Tests** - Tests MÜSSEN fehlschlagen wenn sie fehlschlagen
+2. **Keine `allow_failure: true`** bei kritischen Jobs - Nur bei optionalen Jobs erlaubt
+3. **Fix Code oder Test** - Niemals Tests überspringen oder ignorieren
+4. **E2E Tests müssen bestehen** - Deployment nur bei grüner Pipeline
+
+### Erlaubte `allow_failure` Jobs
+
+| Job | Grund |
+|-----|-------|
+| `rollback:production` | Manueller Notfall-Job |
+| `smoke:wizard` | Optionaler erweiterter Test |
+| `metrics:*` | Reporting, nicht kritisch |
+
+### Verboten
+
+```yaml
+# ❌ NIEMALS so:
+- pytest tests/ || true
+- npm run test:run || true
+- npx playwright test || true
+
+# ✅ Korrekt:
+- pytest tests/
+- npm run test:run
+- npx playwright test
+```
+
+### E2E Test Best Practices
+
+- **Keine `waitForTimeout()`** - Verwende condition-based waits
+- **Web-first assertions** - `toBeVisible()`, `toHaveURL()`, `toHaveText()`
+- **`domcontentloaded`** statt `networkidle` - Vermeidet Analytics-Timeouts
+- **Consent-Banner früh dismissieren** - Vor Element-Interaktionen
+
+### Bei Test-Fehlern
+
+1. **Analysiere den Fehler** - Lies Logs und Screenshots
+2. **Reproduziere lokal** - `npm run e2e:chromium -- --workers=1`
+3. **Fix Code ODER Test** - Je nachdem was falsch ist
+4. **Verifiziere Pipeline** - Commit, Push, Monitor
 
 ---
 

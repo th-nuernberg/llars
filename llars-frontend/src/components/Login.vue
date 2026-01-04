@@ -14,13 +14,14 @@
         </div>
 
         <!-- Login Form -->
-        <div class="login-form">
+        <div class="login-form" data-testid="login-form">
           <v-form @submit.prevent="handleLogin" action="/login" method="post">
             <v-text-field
               v-model="username"
               label="Username"
               name="username"
               id="username"
+              data-testid="username-input"
               autocomplete="username"
               variant="outlined"
               density="comfortable"
@@ -35,6 +36,7 @@
               label="Passwort"
               name="password"
               id="password"
+              data-testid="password-input"
               autocomplete="current-password"
               variant="outlined"
               density="comfortable"
@@ -57,6 +59,7 @@
               :disabled="isLogging || !username || !password"
               prepend-icon="mdi-login"
               class="login-button"
+              data-testid="login-btn"
             >
               Anmelden
             </LBtn>
@@ -85,6 +88,7 @@
             <LBtn
               v-for="user in devUsers"
               :key="user.username"
+              :data-testid="`dev-login-btn-${user.username}`"
               :variant="user.username === 'admin' ? 'danger' : user.username === 'researcher' ? 'primary' : 'secondary'"
               :prepend-icon="user.icon"
               size="small"

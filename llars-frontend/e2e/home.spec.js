@@ -16,6 +16,9 @@
 import { test, expect } from '@playwright/test'
 import { TEST_USERS, quickLogin, dismissConsentBanner, waitForLoading } from './helpers.js'
 
+// Increase timeout for CI environment
+test.setTimeout(60000)
+
 // ==================== HELPER FUNCTIONS ====================
 
 async function goToHome(page) {

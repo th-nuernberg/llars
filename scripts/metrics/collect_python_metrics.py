@@ -442,4 +442,6 @@ if __name__ == '__main__':
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(metrics, f, indent=2)
 
-    print(f"\n💾 Metrics saved to: {output_file}")
+    # Only print status message when not in JSON mode (to avoid corrupting JSON output)
+    if not output_json:
+        print(f"\n💾 Metrics saved to: {output_file}")

@@ -74,11 +74,9 @@ lint:backend:
   script:
     - pip install flake8 black isort
     - echo "Checking Python code style..."
-    # Uses .flake8 config file for ignore rules
     - flake8 app/
-    # Note: black and isort are informational only (not enforced yet)
-    - black --check app/ --line-length=120 || echo "black: formatting suggestions available"
-    - isort --check-only app/ || echo "isort: import order suggestions available"
+    - black --check app/ --line-length=120 || true
+    - isort --check-only app/ || true
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"

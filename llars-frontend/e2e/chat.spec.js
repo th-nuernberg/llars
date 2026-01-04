@@ -31,37 +31,58 @@ const TEST_USER = { username: 'admin', password: 'admin123' }
  * Uses condition-based waits instead of fixed timeouts
  */
 async function dismissConsentBanner(page) {
-  const consentBtn = page.locator('.analytics-consent button').first()
-  if (await consentBtn.isVisible({ timeout: 500 }).catch(() => false)) {
-    await consentBtn.click({ force: true })
-    // Wait for banner to disappear instead of fixed timeout
-    await consentBtn.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {})
+  try {
+    // Try old analytics-consent banner
+    const consentBtn = page.locator('.analytics-consent button').first()
+    if (await consentBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await consentBtn.click({ force: true })
+      await consentBtn.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {})
+    }
+
+    // Try new Analytics & Datenschutz dialog - look for ZUSTIMMEN or ABLEHNEN buttons
+    const zustimmenBtn = page.locator('button:has-text("ZUSTIMMEN"), button:has-text("Zustimmen")').first()
+    if (await zustimmenBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zustimmenBtn.click({ force: true })
+      await zustimmenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+    }
+  } catch (e) {
+    // Page might be closed, ignore
   }
 }
 
 /**
  * Login using dev quick-login buttons with retry
  * Uses condition-based waits for reliable synchronization
+ * Handles Datenschutz page redirect properly
  */
 async function login(page, retries = 2) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
+      // Use domcontentloaded to avoid analytics timeout
+      await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
       await page.evaluate(() => {
         localStorage.clear()
         sessionStorage.clear()
       })
 
+      // Dismiss consent banner early
       await dismissConsentBanner(page)
 
-      // Handle privacy page redirect using URL check
-      if (page.url().includes('Datenschutz')) {
-        const acceptBtn = page.locator('button:has-text("Zustimmen"), button:has-text("Ablehnen")').first()
-        await acceptBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
-        if (await acceptBtn.isVisible()) {
-          await acceptBtn.click()
-          await page.waitForURL(/\/login/, { timeout: 10000 }).catch(() => {})
+      // Handle privacy/Datenschutz page redirect
+      const currentUrl = page.url()
+      const isOnPrivacyPage = currentUrl.includes('Datenschutz') || currentUrl.includes('datenschutz') ||
+        await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
+
+      if (isOnPrivacyPage) {
+        // After consent, click "Anmelden" button in header or navigate to /login
+        const anmeldenBtn = page.locator('button:has-text("Anmelden"), a:has-text("Anmelden")').first()
+        if (await anmeldenBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await anmeldenBtn.click()
+          await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+        } else {
+          await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
         }
+        await dismissConsentBanner(page)
       }
 
       // Wait for login form
@@ -86,7 +107,7 @@ async function login(page, retries = 2) {
     } catch (error) {
       if (attempt === retries) throw error
       // Use page reload for retry instead of fixed timeout
-      await page.reload({ waitUntil: 'networkidle', timeout: 10000 }).catch(() => {})
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {})
     }
   }
 }
@@ -95,17 +116,21 @@ async function login(page, retries = 2) {
  * Navigate to chat page with proper synchronization
  */
 async function goToChat(page) {
-  await page.goto('/chat', { waitUntil: 'networkidle', timeout: 30000 })
+  // Use domcontentloaded instead of networkidle to avoid timeout from analytics
+  await page.goto('/chat', { waitUntil: 'domcontentloaded', timeout: 30000 })
 
-  // Handle redirect to login
-  if (page.url().includes('/login') || page.url().includes('/datenschutz')) {
+  // Dismiss consent banner early - it can block page interactions
+  await dismissConsentBanner(page)
+
+  // Handle redirect to login or privacy page
+  if (page.url().includes('/login') || page.url().includes('/datenschutz') || page.url().includes('/Datenschutz')) {
     await login(page)
-    await page.goto('/chat', { waitUntil: 'networkidle', timeout: 30000 })
+    await page.goto('/chat', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsentBanner(page)
   }
 
   // Wait for chat page to be ready
   await page.locator('.chat-page').waitFor({ state: 'visible', timeout: 15000 })
-  await dismissConsentBanner(page)
 }
 
 // ==================== CHAT PAGE ACCESS TESTS ====================
@@ -156,7 +181,7 @@ test.describe('Chatbot Selection', () => {
       await chatbot.click({ force: true })
 
       // Wait for chat to load using condition-based wait
-      await page.waitForLoadState('networkidle', { timeout: 10000 })
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
 
       // Verify chat area is visible - look for textbox (input) or messages
       const chatContent = page.locator('textbox, input[placeholder], textarea, main p, article p, button[class*="active"]').first()
@@ -178,8 +203,8 @@ test.describe('Chatbot Selection', () => {
       await chatbot.waitFor({ state: 'visible', timeout: 5000 })
       await chatbot.click({ force: true })
 
-      // Wait for content to load using networkidle
-      await page.waitForLoadState('networkidle', { timeout: 10000 })
+      // Wait for content to load
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
 
       // Chat area, welcome message, or input should be visible
       const chatContent = page.locator('.chat-input, .chat-messages, .chat-main, h3, [class*="chat"]').first()
@@ -201,7 +226,7 @@ test.describe('Floating Chat Widget', () => {
 
   test('E2E_CHAT_007: floating chat toggle exists', async ({ page }) => {
     await login(page)
-    await page.goto('/Home', { waitUntil: 'networkidle', timeout: 30000 })
+    await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await dismissConsentBanner(page)
 
     // Check if floating chat toggle exists (might be disabled/hidden)
@@ -244,13 +269,15 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL(/\/chat/)
 
     // Go back to home
-    await page.goto('/Home', { waitUntil: 'networkidle', timeout: 30000 })
+    await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsentBanner(page)
     await expect(page).toHaveURL(/\/Home/)
   })
 
   test('E2E_CHAT_011: chat page accessible via URL', async ({ page }) => {
     await login(page)
-    await page.goto('/chat', { waitUntil: 'networkidle', timeout: 30000 })
+    await page.goto('/chat', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsentBanner(page)
 
     // Should either be on chat or redirected to login
     const url = page.url()
@@ -298,7 +325,8 @@ test.describe('Error Recovery', () => {
     await goToChat(page)
 
     // Navigate away
-    await page.goto('/Home', { waitUntil: 'networkidle', timeout: 30000 })
+    await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsentBanner(page)
 
     // Navigate back
     await goToChat(page)

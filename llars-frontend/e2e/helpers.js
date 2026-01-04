@@ -33,12 +33,18 @@ export async function dismissConsentBanner(page) {
       await consentBtn.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {})
     }
 
-    // Try new Analytics & Datenschutz dialog
-    const analyticsDialog = page.locator('button:has-text("Zustimmen"), button:has-text("Ablehnen")').first()
-    if (await analyticsDialog.isVisible({ timeout: 500 }).catch(() => false)) {
-      await analyticsDialog.click({ force: true })
+    // Try new Analytics & Datenschutz dialog - look for ZUSTIMMEN or ABLEHNEN buttons
+    // These appear as uppercase in the UI
+    const zustimmenBtn = page.locator('button:has-text("ZUSTIMMEN"), button:has-text("Zustimmen")').first()
+    const ablehnenBtn = page.locator('button:has-text("ABLEHNEN"), button:has-text("Ablehnen")').first()
+
+    if (await zustimmenBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zustimmenBtn.click({ force: true })
       // Wait for dialog to close
-      await page.locator('.v-dialog, .v-overlay').first().waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {})
+      await zustimmenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+    } else if (await ablehnenBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await ablehnenBtn.click({ force: true })
+      await ablehnenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
     }
   } catch (e) {
     // Page might be closed, ignore
@@ -57,7 +63,7 @@ export async function handlePrivacyPage(page) {
     if (isOnPrivacyPage) {
       await dismissConsentBanner(page)
       // Wait for navigation if it happens, but don't block
-      await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {})
+      await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {})
     }
     return isOnPrivacyPage
   } catch (e) {
@@ -71,13 +77,14 @@ export async function handlePrivacyPage(page) {
  * Best practices applied:
  * - Uses waitFor() for explicit synchronization
  * - Uses waitForURL() instead of fixed delays
- * - Uses networkidle for reliable page load detection
+ * - Uses domcontentloaded for reliable page load detection (avoids analytics timeouts)
+ * - Handles Datenschutz page redirect properly
  */
 export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      // Navigate to login page
-      await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
+      // Navigate to login page - use domcontentloaded to avoid analytics timeout
+      await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
 
       // Clear storage for clean state
       await page.evaluate(() => {
@@ -85,17 +92,30 @@ export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2
         sessionStorage.clear()
       })
 
-      await dismissConsentBanner(page)
+      // Handle privacy/Datenschutz page redirect - this is a common first-visit redirect
+      // Check URL or page content for privacy page
+      const currentUrl = page.url()
+      const isOnPrivacyPage = currentUrl.includes('Datenschutz') || currentUrl.includes('datenschutz') ||
+        await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
 
-      // Handle privacy page redirect if it occurs
-      if (page.url().includes('Datenschutz')) {
-        const acceptBtn = page.locator('button:has-text("Zustimmen"), button:has-text("Ablehnen")').first()
-        await acceptBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
-        if (await acceptBtn.isVisible()) {
-          await acceptBtn.click()
-          await page.waitForURL(/\/login/, { timeout: 10000 }).catch(() => {})
+      if (isOnPrivacyPage) {
+        // Dismiss consent dialog first
+        await dismissConsentBanner(page)
+
+        // After consent, click "Anmelden" button in header or navigate to /login
+        const anmeldenBtn = page.locator('button:has-text("Anmelden"), a:has-text("Anmelden")').first()
+        if (await anmeldenBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await anmeldenBtn.click()
+          await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+        } else {
+          // Fallback: navigate directly to login
+          await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
         }
+        await dismissConsentBanner(page)
       }
+
+      // Dismiss any remaining consent dialogs
+      await dismissConsentBanner(page)
 
       // Wait for login form to be ready
       const loginForm = page.locator('.dev-login-buttons, #username, .login-form, [data-testid="login-form"]')
@@ -125,8 +145,8 @@ export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2
       return // Success
     } catch (error) {
       if (attempt === retries) throw error
-      // Use exponential backoff with page reload
-      await page.reload({ waitUntil: 'networkidle', timeout: 10000 }).catch(() => {})
+      // Use page reload for retry
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {})
     }
   }
 }
@@ -159,8 +179,8 @@ export async function waitForPageReady(page, timeout = 10000) {
   // Wait for any loading states
   await waitForLoading(page, timeout)
 
-  // Optionally wait for network to settle
-  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {})
+  // Wait for DOM to be ready (avoid networkidle due to analytics)
+  await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {})
 }
 
 /**
@@ -193,7 +213,7 @@ export async function clickFirstThread(page) {
   try {
     await threadCard.waitFor({ state: 'visible', timeout: 5000 })
     await threadCard.click()
-    await page.waitForLoadState('networkidle', { timeout: 10000 })
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
     return true
   } catch {
     return false
@@ -209,15 +229,15 @@ export async function clickFirstThread(page) {
 export async function navigateTo(page, path, options = {}) {
   const { requireAuth = true, user = TEST_USERS.researcher } = options
 
-  await page.goto(path, { waitUntil: 'networkidle', timeout: 30000 })
+  await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 30000 })
+  await dismissConsentBanner(page)
 
   // Check if redirected to login
   if (page.url().includes('/login') && requireAuth) {
     await quickLogin(page, user)
-    await page.goto(path, { waitUntil: 'networkidle', timeout: 30000 })
+    await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsentBanner(page)
   }
-
-  await dismissConsentBanner(page)
 }
 
 /**
@@ -252,6 +272,6 @@ export async function clickAndWait(page, selector, apiPattern = null) {
     ])
   } else {
     await element.click()
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {})
   }
 }

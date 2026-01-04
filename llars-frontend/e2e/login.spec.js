@@ -28,7 +28,20 @@ const TEST_USERS = {
 
 // Helper function to login
 async function login(page, username, password) {
-  await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
+  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+  await dismissConsent(page)
+
+  // Handle privacy page redirect
+  if (page.url().includes('Datenschutz') || page.url().includes('datenschutz')) {
+    const anmeldenBtn = page.locator('button:has-text("Anmelden")').first()
+    if (await anmeldenBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await anmeldenBtn.click()
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+    } else {
+      await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    }
+    await dismissConsent(page)
+  }
 
   // Wait for login form to be ready
   await page.locator('#username').waitFor({ state: 'visible', timeout: 10000 })
@@ -49,14 +62,48 @@ async function logout(page) {
   await page.click('text=Abmelden')
 }
 
-// Helper to clear auth state
+// Helper to dismiss consent banner
+async function dismissConsent(page) {
+  try {
+    const zustimmenBtn = page.locator('button:has-text("ZUSTIMMEN"), button:has-text("Zustimmen")').first()
+    if (await zustimmenBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zustimmenBtn.click({ force: true })
+      await zustimmenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+    }
+  } catch (e) {
+    // Ignore
+  }
+}
+
+// Helper to clear auth state and navigate to login
 async function clearAuth(page) {
   // First navigate to the app to have access to localStorage
-  await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
+  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+
+  // Clear storage
   await page.evaluate(() => {
     localStorage.clear()
     sessionStorage.clear()
   })
+
+  // Dismiss consent early
+  await dismissConsent(page)
+
+  // Handle privacy page redirect
+  const isOnPrivacyPage = page.url().includes('Datenschutz') ||
+    await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
+
+  if (isOnPrivacyPage) {
+    // Click Anmelden button or navigate to login
+    const anmeldenBtn = page.locator('button:has-text("Anmelden")').first()
+    if (await anmeldenBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await anmeldenBtn.click()
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+    } else {
+      await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    }
+    await dismissConsent(page)
+  }
 }
 
 test.describe('Login Page', () => {
@@ -162,7 +209,8 @@ test.describe('Successful Login', () => {
   })
 
   test('E2E_LOGIN_011: login button shows loading state', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsent(page)
 
     await page.fill('#username', TEST_USERS.admin.username)
     await page.fill('#password', TEST_USERS.admin.password)
@@ -274,15 +322,17 @@ test.describe('Session & Redirects', () => {
     await clearAuth(page)
 
     // Try to access protected page
-    await page.goto('/Home')
+    await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsent(page)
 
-    // Should redirect to login
-    await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
+    // Should redirect to login (or privacy page for first visit)
+    await expect(page).toHaveURL(/\/(login|Datenschutz)/, { timeout: 10000 })
   })
 
   test('E2E_LOGIN_020: authenticated user can access Home', async ({ page }) => {
     await login(page, TEST_USERS.admin.username, TEST_USERS.admin.password)
     await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
+    await dismissConsent(page)
 
     // Home page content should be visible
     await expect(page.locator('.home-container, .feature-cards, [class*="home"]')).toBeVisible()
@@ -292,7 +342,8 @@ test.describe('Session & Redirects', () => {
     await clearAuth(page)
 
     // Go to login with redirect param
-    await page.goto('/login?redirect=/admin')
+    await page.goto('/login?redirect=/admin', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsent(page)
 
     await page.fill('#username', TEST_USERS.admin.username)
     await page.fill('#password', TEST_USERS.admin.password)
@@ -306,9 +357,10 @@ test.describe('Session & Redirects', () => {
     // First login
     await login(page, TEST_USERS.admin.username, TEST_USERS.admin.password)
     await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
+    await dismissConsent(page)
 
     // Try to go to login page
-    await page.goto('/login')
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
 
     // Should redirect back to Home
     await expect(page).toHaveURL(/\/Home/, { timeout: 10000 })
@@ -321,7 +373,8 @@ test.describe('Keyboard Navigation', () => {
   })
 
   test('E2E_LOGIN_023: Enter key submits login form', async ({ page }) => {
-    await page.goto('/login')
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsent(page)
 
     await page.fill('#username', TEST_USERS.admin.username)
     await page.fill('#password', TEST_USERS.admin.password)
@@ -334,7 +387,8 @@ test.describe('Keyboard Navigation', () => {
   })
 
   test('E2E_LOGIN_024: Tab navigation works through form', async ({ page }) => {
-    await page.goto('/login')
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsent(page)
 
     // Focus username
     await page.click('#username')
@@ -352,7 +406,8 @@ test.describe('Mobile Responsive', () => {
   test('E2E_LOGIN_025: login works on mobile viewport', async ({ page }) => {
     await clearAuth(page)
 
-    await page.goto('/login')
+    await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await dismissConsent(page)
 
     // Check mobile-specific class
     await expect(page.locator('.login-page')).toBeVisible()

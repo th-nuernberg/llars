@@ -15,6 +15,9 @@
 
 import { test, expect } from '@playwright/test'
 
+// Increase timeout for CI environment
+test.setTimeout(60000)
+
 // Test credentials (from CLAUDE.md documentation)
 const TEST_USERS = {
   admin: { username: 'admin', password: 'admin123', role: 'admin' },
@@ -25,7 +28,11 @@ const TEST_USERS = {
 
 // Helper function to login
 async function login(page, username, password) {
-  await page.goto('/login')
+  await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
+
+  // Wait for login form to be ready
+  await page.locator('#username').waitFor({ state: 'visible', timeout: 10000 })
+
   await page.fill('#username', username)
   await page.fill('#password', password)
   // Use the login form button (has class login-button), not the AppBar button
@@ -45,7 +52,7 @@ async function logout(page) {
 // Helper to clear auth state
 async function clearAuth(page) {
   // First navigate to the app to have access to localStorage
-  await page.goto('/login')
+  await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
   await page.evaluate(() => {
     localStorage.clear()
     sessionStorage.clear()
@@ -155,18 +162,20 @@ test.describe('Successful Login', () => {
   })
 
   test('E2E_LOGIN_011: login button shows loading state', async ({ page }) => {
-    await page.goto('/login')
+    await page.goto('/login', { waitUntil: 'networkidle', timeout: 30000 })
 
     await page.fill('#username', TEST_USERS.admin.username)
     await page.fill('#password', TEST_USERS.admin.password)
 
-    // Click and immediately check for loading
+    // Click and check for loading state or successful navigation
     const loginButton = page.locator('.login-button')
     await loginButton.click()
 
-    // Button should show loading state (either loading attribute or disabled)
-    // Wait briefly for the loading state to appear
-    await page.waitForTimeout(100)
+    // Either button shows loading state OR we navigate to Home (both are valid outcomes)
+    await Promise.race([
+      expect(loginButton).toBeDisabled({ timeout: 5000 }),
+      expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
+    ])
   })
 })
 

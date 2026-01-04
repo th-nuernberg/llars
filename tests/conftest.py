@@ -162,8 +162,58 @@ def app():
 
     # Import all models to ensure they're registered
     with test_app.app_context():
-        # Import models - they use the same db instance we just initialized
-        from db.tables import User, Role, Permission, UserRole, RolePermission, UserPermission  # noqa: F401
+        # Import ALL models - they use the same db instance we just initialized
+        # This ensures all tables are created, including comparison_sessions, comparison_messages, etc.
+        # Core models
+        from db.models.user import User, UserGroup  # noqa: F401
+        from db.models.permission import (  # noqa: F401
+            Permission, Role, RolePermission, UserPermission, UserRole, PermissionAuditLog
+        )
+        # Scenario models (includes ComparisonSession, ComparisonMessage, etc.)
+        from db.models.scenario import (  # noqa: F401
+            FeatureFunctionType, EmailThread, Message, LLM, FeatureType,
+            ConsultingCategoryType, UserConsultingCategorySelection, Feature,
+            UserFeatureRanking, UserFeatureRating, RatingScenarios, ScenarioUsers,
+            ScenarioThreads, ScenarioThreadDistribution, UserMailHistoryRating,
+            UserMessageRating, UserPrompt, UserPromptShare, PromptCommit,
+            ComparisonSession, ComparisonMessage, ComparisonEvaluation
+        )
+        # Other models that may be referenced
+        from db.models.chatbot import (  # noqa: F401
+            Chatbot, ChatbotPromptSettings, ChatbotUserAccess, ChatbotCollection,
+            ChatbotConversation, ChatbotMessage
+        )
+        from db.models.rag import (  # noqa: F401
+            RAGCollection, RAGCollectionPermission, CollectionDocumentLink,
+            RAGDocument, RAGDocumentChunk, RAGDocumentVersion, RAGRetrievalLog,
+            RAGDocumentPermission, CollectionEmbedding, RAGProcessingQueue
+        )
+        from db.models.llm_model import LLMModel  # noqa: F401
+        from db.models.judge import (  # noqa: F401
+            PillarThread, JudgeSession, JudgeComparison, JudgeEvaluation, PillarStatistics
+        )
+        from db.models.analytics_settings import AnalyticsSettings  # noqa: F401
+        from db.models.system_settings import SystemSettings  # noqa: F401
+        from db.models.system_event import SystemEvent  # noqa: F401
+        from db.models.oncoco import (  # noqa: F401
+            OnCoCoAnalysis, OnCoCoSentenceLabel, OnCoCoPillarStatistics, OnCoCoTransitionMatrix
+        )
+        from db.models.markdown_collab import (  # noqa: F401
+            MarkdownWorkspace, MarkdownWorkspaceMember, MarkdownDocument, MarkdownCommit
+        )
+        from db.models.latex_collab import (  # noqa: F401
+            LatexWorkspace, LatexWorkspaceMember, LatexDocument, LatexAsset,
+            LatexCommit, LatexCompileJob, LatexComment
+        )
+        from db.models.kaimo import (  # noqa: F401
+            KaimoCase, KaimoDocument, KaimoCategory, KaimoSubcategory, KaimoHint,
+            KaimoCaseCategory, KaimoAIContent, KaimoUserAssessment, KaimoHintAssignment,
+            KaimoCasePermission
+        )
+        from db.models.authenticity import AuthenticityConversation, UserAuthenticityVote  # noqa: F401
+        from db.models.zotero import (  # noqa: F401
+            ZoteroConnection, WorkspaceZoteroLibrary, ZoteroSyncLog
+        )
 
         # Create all tables
         _test_db_instance.create_all()

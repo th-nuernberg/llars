@@ -119,11 +119,13 @@ def _get_db_instance():
     """
     Get the SQLAlchemy db instance from the db package.
 
-    This uses importlib to avoid naming conflicts with db.db module.
+    IMPORTANT: Must use 'from db.db import db' to get the actual SQLAlchemy
+    instance, not the db.db module. When doing 'importlib.import_module('db').db',
+    Python prioritizes the submodule db.db over the variable db, returning
+    the module object instead of the SQLAlchemy instance.
     """
-    import importlib
-    db_package = importlib.import_module('db')
-    return db_package.db
+    from db.db import db
+    return db
 
 
 @pytest.fixture(scope='session')

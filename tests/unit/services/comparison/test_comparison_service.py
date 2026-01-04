@@ -14,51 +14,16 @@ import pytest
 from datetime import datetime
 from unittest.mock import patch, MagicMock, Mock
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'app'))
-
-from flask import Flask
-from db.db import db
-
 
 # =============================================================================
-# Fixtures
+# Fixtures - Using global fixtures from conftest.py
 # =============================================================================
 
-@pytest.fixture
-def app():
-    """Erstellt Flask-App mit SQLite In-Memory Datenbank."""
-    app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['TESTING'] = True
-
-    db.init_app(app)
-
-    with app.app_context():
-        # Import models to register them
-        from db.models.user import User, UserGroup
-        from db.models.scenario import (
-            RatingScenarios, ComparisonSession, ComparisonMessage,
-            ComparisonEvaluation, FeatureFunctionType
-        )
-        db.create_all()
-
-    yield app
-
-    with app.app_context():
-        db.drop_all()
+# Note: app, db, client fixtures are inherited from conftest.py
 
 
 @pytest.fixture
-def client(app):
-    """Flask Test Client."""
-    return app.test_client()
-
-
-@pytest.fixture
-def sample_user(app):
+def sample_user(app, db):
     """Erstellt einen Test-Benutzer."""
     with app.app_context():
         from db.models.user import User, UserGroup
@@ -80,7 +45,7 @@ def sample_user(app):
 
 
 @pytest.fixture
-def sample_scenario(app, sample_user):
+def sample_scenario(app, db, sample_user):
     """Erstellt ein Test-Szenario."""
     with app.app_context():
         from db.models.scenario import RatingScenarios, FeatureFunctionType
@@ -143,7 +108,7 @@ def sample_persona():
 
 
 @pytest.fixture
-def sample_session(app, sample_user, sample_scenario, sample_persona):
+def sample_session(app, db, sample_user, sample_scenario, sample_persona):
     """Erstellt eine Test-Comparison-Session."""
     with app.app_context():
         from db.models.scenario import ComparisonSession
@@ -164,7 +129,7 @@ def sample_session(app, sample_user, sample_scenario, sample_persona):
 
 
 @pytest.fixture
-def sample_messages(app, sample_session):
+def sample_messages(app, db, sample_session):
     """Erstellt Test-Messages für eine Session."""
     with app.app_context():
         from db.models.scenario import ComparisonMessage
@@ -254,7 +219,7 @@ class TestComparisonSessionService:
             assert mapping['llm1'] == 'gpt-4'
             assert mapping['llm2'] == 'claude-3'
 
-    def test_COMP_004_get_model_mapping_no_scenario(self, app, sample_user, sample_persona):
+    def test_COMP_004_get_model_mapping_no_scenario(self, app, db, sample_user, sample_persona):
         """COMP-004: Model-Mapping ohne gültiges Szenario wirft Error."""
         with app.app_context():
             from services.comparison.session_service import ComparisonSessionService
@@ -462,7 +427,7 @@ class TestComparisonSessionService:
             # is_response_complete returns last truthy value from and-chain
             assert result  # Truthy check
 
-    def test_COMP_018_is_response_complete_false(self, app, sample_session):
+    def test_COMP_018_is_response_complete_false(self, app, db, sample_session):
         """COMP-018: Response ist nicht komplett (nur ein LLM)."""
         with app.app_context():
             from services.comparison.session_service import ComparisonSessionService
@@ -587,7 +552,7 @@ class TestComparisonEvaluationService:
 
             assert result is None
 
-    def test_COMP_029_save_user_justification(self, app, sample_session, sample_messages):
+    def test_COMP_029_save_user_justification(self, app, db, sample_session, sample_messages):
         """COMP-029: User-Begründung speichern."""
         with app.app_context():
             from services.comparison.evaluation_service import ComparisonEvaluationService
@@ -629,7 +594,7 @@ class TestComparisonEvaluationService:
 
             assert result is False
 
-    def test_COMP_031_perform_evaluation_with_existing(self, app, sample_session, sample_messages):
+    def test_COMP_031_perform_evaluation_with_existing(self, app, db, sample_session, sample_messages):
         """COMP-031: Evaluation mit existierender AI-Bewertung durchführen."""
         with app.app_context():
             from services.comparison.evaluation_service import ComparisonEvaluationService
@@ -656,7 +621,7 @@ class TestComparisonEvaluationService:
             assert details['ai_selection'] == 'llm1'
             assert details['user_selection'] == 'llm1'
 
-    def test_COMP_032_perform_evaluation_mismatch(self, app, sample_session, sample_messages):
+    def test_COMP_032_perform_evaluation_mismatch(self, app, db, sample_session, sample_messages):
         """COMP-032: Evaluation mit unterschiedlicher User/AI-Wahl."""
         with app.app_context():
             from services.comparison.evaluation_service import ComparisonEvaluationService
@@ -1131,7 +1096,7 @@ class TestComparisonIntegration:
             assert serialized['content']['llm1'] == 'Mir geht es gut.'
             assert serialized['content']['llm2'] == 'Ich bin erschöpft.'
 
-    def test_COMP_081_evaluation_flow(self, app, sample_session, sample_messages):
+    def test_COMP_081_evaluation_flow(self, app, db, sample_session, sample_messages):
         """COMP-081: Kompletter Evaluation-Flow."""
         with app.app_context():
             from services.comparison.evaluation_service import ComparisonEvaluationService

@@ -198,17 +198,16 @@ test:e2e:
     PLAYWRIGHT_BASE_URL: "http://localhost"
   script:
     - echo "Running E2E Tests against running LLARS instance..."
-    - cd /var/llars/llars-frontend
+    - cd llars-frontend
     - npm ci --prefer-offline
     - npx playwright install chromium --with-deps
     - echo "Starting E2E test run..."
-    # Run with single worker to avoid flaky parallel execution
     - npx playwright test --project=chromium --workers=1
   artifacts:
     when: always
     paths:
-      - /var/llars/llars-frontend/playwright-report/
-      - /var/llars/llars-frontend/test-results/
+      - llars-frontend/playwright-report/
+      - llars-frontend/test-results/
     expire_in: 1 week
   rules:
     - if: $CI_COMMIT_BRANCH == "main"

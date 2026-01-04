@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from db.db import db
+from db.database import db
 from db.tables import RAGDocument, RAGDocumentChunk, CollectionDocumentLink
 
 logger = logging.getLogger(__name__)

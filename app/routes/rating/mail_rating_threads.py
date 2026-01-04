@@ -7,7 +7,7 @@ import logging
 from flask import jsonify, g
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
-from db.db import db
+from db.database import db
 from db.tables import (EmailThread, Message, FeatureFunctionType,
                        UserMailHistoryRating, ProgressionStatus)
 from .. import data_blueprint

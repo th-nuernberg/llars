@@ -15,7 +15,7 @@ import re
 from typing import List, Optional, Set, Dict, Any
 from datetime import datetime
 from sqlalchemy import select, and_, or_
-from db.db import db
+from db.database import db
 from db.tables import (
     Permission,
     Role,

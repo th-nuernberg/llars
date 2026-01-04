@@ -28,7 +28,7 @@ from db.tables import (
 )
 from db.models.rag import CollectionEmbedding
 from db.models.llm_model import LLMModel
-from db.db import db
+from db.database import db
 from sqlalchemy import desc
 from auth.auth_utils import AuthUtils
 from services.rag.access_service import RAGAccessService

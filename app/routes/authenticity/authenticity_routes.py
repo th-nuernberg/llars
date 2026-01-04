@@ -17,7 +17,7 @@ from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.feature_service import FeatureService
 from services.thread_service import ThreadService
-from db.db import db
+from db.database import db
 from db.models import Message, UserAuthenticityVote
 
 

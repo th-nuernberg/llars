@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash
 from . import data_blueprint
 from . import auth_blueprint
 from auth.decorators import authentik_required, admin_required, roles_required
-from db.db import db
+from db.database import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,

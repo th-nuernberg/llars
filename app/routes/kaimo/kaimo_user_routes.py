@@ -13,7 +13,7 @@ from decorators.error_handler import (
     ForbiddenError,
     UnauthorizedError,
 )
-from db.db import db
+from db.database import db
 from db.models import (
     KaimoCase,
     KaimoDocument,

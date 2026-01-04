@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from db.db import db
+from db.database import db
 from db.tables import (
     LatexWorkspace,
     LatexDocument,

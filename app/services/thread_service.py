@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 from dateutil import parser as date_parser
 
-from db.db import db
+from db.database import db
 
 
 class ThreadService:

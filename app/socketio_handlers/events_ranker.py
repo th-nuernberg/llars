@@ -89,7 +89,7 @@ def _fetch_user_ranking_stats(scenario_id: int = None) -> list:
     Returns:
         List of user statistics dictionaries
     """
-    from db.db import db
+    from db.database import db
     from db.tables import User, EmailThread, Feature, UserFeatureRanking
 
     user_stats = []

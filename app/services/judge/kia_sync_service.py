@@ -329,7 +329,7 @@ class KIASyncService:
         Returns:
             SyncResult with statistics
         """
-        from db.db import db
+        from db.database import db
         from db.tables import EmailThread, Message, PillarThread
 
         result = SyncResult(success=False, pillar_number=pillar_number)
@@ -429,7 +429,7 @@ class KIASyncService:
         Returns:
             "created", "updated", "skipped", or "error"
         """
-        from db.db import db
+        from db.database import db
         from db.tables import EmailThread, Message, PillarThread
 
         # Extract thread info - handle various JSON structures
@@ -581,7 +581,7 @@ class KIASyncService:
         Returns:
             Dict with pillar status and database statistics
         """
-        from db.db import db
+        from db.database import db
         from db.tables import PillarThread, EmailThread, Message
 
         # Check GitLab availability

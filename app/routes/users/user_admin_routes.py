@@ -22,7 +22,7 @@ from decorators.error_handler import (
     handle_api_errors,
 )
 from decorators.permission_decorator import require_permission
-from db.db import db
+from db.database import db
 from db.models import Role, User, UserGroup, UserPermission, UserRole
 from routes.auth import data_bp
 from services.permission_service import PermissionService

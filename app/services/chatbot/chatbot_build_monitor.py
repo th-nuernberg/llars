@@ -15,7 +15,7 @@ import time
 import threading
 from typing import Dict, Any
 
-from db.db import db
+from db.database import db
 from db.tables import (
     Chatbot, RAGCollection, CollectionDocumentLink,
     ChatbotConversation, ChatbotMessage

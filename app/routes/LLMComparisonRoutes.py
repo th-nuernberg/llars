@@ -5,7 +5,7 @@ from pathlib import Path
 from flask import request, jsonify
 
 from . import data_blueprint
-from db.db import db
+from db.database import db
 from db.tables import (
     User,
     ComparisonSession,

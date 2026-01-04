@@ -215,7 +215,7 @@ class CitationService:
             Success status
         """
         try:
-            from db.db import db
+            from db.database import db
             from db.tables import AICitationIgnore
 
             text_hash = hashlib.sha256(text.encode()).hexdigest()[:64]

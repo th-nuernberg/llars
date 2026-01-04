@@ -204,7 +204,7 @@ class LLMResponseGenerator:
             from main import app
             with app.app_context():
                 from db.tables import ComparisonMessage
-                from db.db import db
+                from db.database import db
 
                 message = ComparisonMessage.query.filter_by(id=message_id).first()
                 if message:
@@ -226,7 +226,7 @@ class LLMResponseGenerator:
 
         except Exception as e:
             logger.error(f"Error saving {llm_type} response: {str(e)}")
-            from db.db import db
+            from db.database import db
             db.session.rollback()
 
     @classmethod

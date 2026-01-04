@@ -11,7 +11,7 @@ import logging
 from flask import Blueprint, jsonify, request, current_app
 
 from auth.auth_utils import AuthUtils
-from db.db import db
+from db.database import db
 from db.tables import (
     LatexWorkspace,
     LatexDocument,

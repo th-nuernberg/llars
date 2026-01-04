@@ -112,7 +112,7 @@ def _get_queue_for_user(username: str):
 def _get_image_chunk_stats(collection_id: int) -> tuple[int, int]:
     """Return (total_image_chunks, completed_image_chunks) for a collection."""
     try:
-        from db.db import db
+        from db.database import db
         from db.tables import RAGDocumentChunk, CollectionDocumentLink
 
         linked_doc_ids = db.session.query(CollectionDocumentLink.document_id).filter(

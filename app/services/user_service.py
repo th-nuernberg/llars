@@ -12,7 +12,7 @@ from typing import Optional, Tuple
 from uuid import uuid4
 from datetime import datetime
 
-from db.db import db
+from db.database import db
 from services.user_profile_service import is_valid_collab_color, pick_collab_color
 
 

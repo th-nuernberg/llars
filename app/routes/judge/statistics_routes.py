@@ -9,7 +9,7 @@ are split into separate modules:
 
 from flask import Blueprint, jsonify
 
-from db.db import db
+from db.database import db
 from db.tables import (
     JudgeSession,
     PillarStatistics

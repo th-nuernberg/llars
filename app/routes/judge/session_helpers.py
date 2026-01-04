@@ -1,7 +1,7 @@
 """Helper functions for session management."""
 
 import logging
-from db.db import db
+from db.database import db
 from db.tables import (
     JudgeSessionStatus,
     JudgeComparison, JudgeComparisonStatus,

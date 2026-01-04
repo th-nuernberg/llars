@@ -8,7 +8,7 @@ from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identi
 from werkzeug.security import check_password_hash
 from . import data_blueprint
 from . import auth_blueprint
-from db.db import db
+from db.database import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserGroup, ConsultingCategoryType,
                        UserConsultingCategorySelection, UserMessageRating, UserPrompt, UserPromptShare)

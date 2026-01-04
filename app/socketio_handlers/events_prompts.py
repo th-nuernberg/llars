@@ -54,7 +54,7 @@ def register_prompts_events(socketio):
             logger.info(f"[Prompts Socket] Client {request.sid} subscribed to prompts for user {user_id}")
 
             # Fetch and send current prompts
-            from db.db import db
+            from db.database import db
             from db.tables import UserPrompt, UserPromptShare, User
 
             user_prompts = UserPrompt.query.filter_by(user_id=user_id).all()
@@ -113,7 +113,7 @@ def emit_prompts_updated(socketio, user_id: int, prompts: list = None):
     """
     try:
         if prompts is None:
-            from db.db import db
+            from db.database import db
             from db.tables import UserPrompt, UserPromptShare, User
 
             user_prompts = UserPrompt.query.filter_by(user_id=user_id).all()
@@ -176,7 +176,7 @@ def emit_shared_prompts_updated(socketio, user_id: int, shared_prompts: list = N
     """
     try:
         if shared_prompts is None:
-            from db.db import db
+            from db.database import db
             from db.tables import UserPrompt, UserPromptShare
 
             shared_rows = db.session.query(

@@ -11,7 +11,7 @@ Handles all ranking-related business logic including:
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 
-from db.db import db
+from db.database import db
 
 
 class RankingService:

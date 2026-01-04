@@ -8,7 +8,7 @@ from flask import jsonify, request, g
 from sqlalchemy import func
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
-from db.db import db
+from db.database import db
 from db.tables import UserMessageRating
 from .. import data_blueprint
 from ..HelperFunctions import can_access_thread

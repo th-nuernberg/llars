@@ -10,7 +10,7 @@ from auth.decorators import admin_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
-from db.db import db
+from db.database import db
 from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        EmailThread, ScenarioThreads, ScenarioRoles, User,
                        ScenarioThreadDistribution)

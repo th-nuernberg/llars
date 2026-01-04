@@ -189,7 +189,7 @@ class EmbeddingWorker:
         logger.error(f"[EmbeddingWorker] Error in processing loop: {error}")
 
         try:
-            from db.db import db
+            from db.database import db
             db.session.rollback()
         except Exception:
             pass

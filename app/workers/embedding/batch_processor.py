@@ -50,7 +50,7 @@ def process_batch(
     Returns:
         int: Number of documents successfully processed
     """
-    from db.db import db
+    from db.database import db
 
     # Ensure clean session at batch start
     _safe_rollback(db)

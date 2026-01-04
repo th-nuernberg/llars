@@ -88,7 +88,7 @@ class JudgeWorker:
 
     def _process_queue(self):
         """Process the evaluation queue."""
-        from db.db import db
+        from db.database import db
         from db.tables import (
             JudgeSession, JudgeSessionStatus,
             JudgeComparison, JudgeComparisonStatus,
@@ -146,7 +146,7 @@ class JudgeWorker:
 
     def _process_comparison(self, comparison, session, judge_service):
         """Process a single comparison."""
-        from db.db import db
+        from db.database import db
         from db.tables import (
             JudgeComparisonStatus, JudgeEvaluation, JudgeWinner,
             PillarStatistics, Message
@@ -270,7 +270,7 @@ class JudgeWorker:
 
     def _update_statistics(self, pillar_a: int, pillar_b: int, winner: str, confidence: float):
         """Update pillar statistics."""
-        from db.db import db
+        from db.database import db
         from db.tables import PillarStatistics
 
         stat = PillarStatistics.query.filter_by(
@@ -310,7 +310,7 @@ class JudgeWorker:
 
     def _mark_session_failed(self, error: str):
         """Mark session as failed."""
-        from db.db import db
+        from db.database import db
         from db.tables import JudgeSession, JudgeSessionStatus
 
         try:

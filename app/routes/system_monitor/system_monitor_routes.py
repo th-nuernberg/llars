@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from flask import Response, jsonify, request, stream_with_context
 from sqlalchemy import or_
 
-from db.db import db
+from db.database import db
 from db.models.system_event import SystemEvent
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp

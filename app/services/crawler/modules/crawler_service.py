@@ -303,7 +303,7 @@ class CrawlerService:
                         created_by=created_by,
                         job_id=job_id
                     )
-                    from db.db import db
+                    from db.database import db
                     db.session.commit()
                     new_collection_id = collection.id
             else:
@@ -314,7 +314,7 @@ class CrawlerService:
                     created_by=created_by,
                     job_id=job_id
                 )
-                from db.db import db
+                from db.database import db
                 db.session.commit()
                 new_collection_id = collection.id
 
@@ -364,7 +364,7 @@ class CrawlerService:
         5. Update collection stats
         6. Emit completion event
         """
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection
         from services.rag.collection_embedding_service import get_collection_embedding_service
 
@@ -438,7 +438,7 @@ class CrawlerService:
         existing_collection_id: Optional[int]
     ) -> int:
         """Initialize or get the collection for crawling."""
-        from db.db import db
+        from db.database import db
         from db.tables import RAGCollection
 
         if existing_collection_id:

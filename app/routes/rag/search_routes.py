@@ -23,7 +23,7 @@ from decorators.error_handler import (
 from auth.auth_utils import AuthUtils
 from services.rag.access_service import RAGAccessService
 from db.tables import RAGCollection, RAGDocument, RAGRetrievalLog
-from db.db import db
+from db.database import db
 from sqlalchemy import func, desc, select
 
 rag_search_bp = Blueprint('rag_search', __name__)

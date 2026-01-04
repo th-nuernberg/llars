@@ -11,7 +11,7 @@ Security: Uses @debug_route_protected which:
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 
-from db.db import db
+from db.database import db
 from db.tables import (
     JudgeSession, JudgeSessionStatus,
     JudgeComparisonStatus,

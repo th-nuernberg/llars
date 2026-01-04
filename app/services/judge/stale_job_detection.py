@@ -105,7 +105,7 @@ class StaleJobDetector:
 
     def _detect_and_reset_stale(self):
         """Detect stale comparisons and reset them to PENDING or mark as FAILED."""
-        from db.db import db
+        from db.database import db
         from db.models.judge import (
             JudgeComparison, JudgeComparisonStatus,
             JudgeSession, JudgeSessionStatus

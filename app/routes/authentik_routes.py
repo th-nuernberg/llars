@@ -55,7 +55,7 @@ def get_current_user():
     Uses Authentik token to return user details
     Rate limit: 100 requests per hour per IP
     """
-    from db.db import db
+    from db.database import db
 
     # g.authentik_user is now a User object after decorators.py fix
     user = g.authentik_user
@@ -406,7 +406,7 @@ def login():
 def _enrich_token_with_roles(token_data: dict, username: str) -> None:
     """Add LLARS-specific roles from MariaDB to the token response"""
     try:
-        from db.db import db
+        from db.database import db
         from sqlalchemy import text
         user_roles = ['user']
 

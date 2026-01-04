@@ -10,7 +10,7 @@ from auth.decorators import authentik_required, admin_required, roles_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
 )
-from db.db import db
+from db.database import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,

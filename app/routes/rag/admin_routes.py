@@ -17,7 +17,7 @@ from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 )
 from db.tables import RAGProcessingQueue
-from db.db import db
+from db.database import db
 from sqlalchemy import desc
 from auth.auth_utils import AuthUtils
 from services.rag.access_service import RAGAccessService

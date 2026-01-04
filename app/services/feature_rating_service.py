@@ -8,7 +8,7 @@ Handles feature-rating related business logic including:
 
 from typing import Dict, List
 
-from db.db import db
+from db.database import db
 
 
 class FeatureRatingService:

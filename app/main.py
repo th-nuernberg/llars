@@ -1,6 +1,6 @@
 from flask import Flask, request
 from flask_socketio import SocketIO
-from db.db import configure_database
+from db.database import configure_database
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -170,7 +170,7 @@ if _should_start_background_threads():
 def fix_missing_chroma_collection_names():
     """Set chroma_collection_name for collections where it's missing."""
     from db.tables import RAGCollection
-    from db.db import db
+    from db.database import db
     from db.models.llm_model import seed_default_models
     from rag_pipeline import RAGPipeline
     from services.rag.collection_embedding_service import sanitize_chroma_collection_name

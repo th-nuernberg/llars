@@ -2,7 +2,7 @@
 
 from flask import Blueprint, request, jsonify, g
 
-from db.db import db
+from db.database import db
 from db.tables import PillarThread, EmailThread
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission

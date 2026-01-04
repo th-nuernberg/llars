@@ -102,7 +102,7 @@ def chat_react(
         - {"delta": str} (multiple)
         - {"done": True, ...}
     """
-    from db.db import db
+    from db.database import db
     from db.models.chatbot import ChatbotMessageRole
 
     yield {"status": "starting", "mode": "react"}

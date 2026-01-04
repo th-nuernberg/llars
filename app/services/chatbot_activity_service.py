@@ -32,7 +32,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 from flask import request, has_request_context
 
-from db.db import db
+from db.database import db
 from db.models.system_event import SystemEvent
 
 logger = logging.getLogger(__name__)

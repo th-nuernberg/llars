@@ -6,7 +6,7 @@ Chatbot statistics routes.
 import logging
 from flask import Blueprint, jsonify
 from db.tables import Chatbot, ChatbotConversation, ChatbotMessage
-from db.db import db
+from db.database import db
 from sqlalchemy import func
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import handle_errors

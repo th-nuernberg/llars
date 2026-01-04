@@ -9,7 +9,7 @@ import statistics as stats_module
 from flask import Blueprint, jsonify
 from collections import defaultdict
 
-from db.db import db
+from db.database import db
 from db.tables import (
     JudgeSession,
     JudgeComparison, JudgeComparisonStatus,

@@ -58,7 +58,7 @@ def update_pillar_statistics(
         - Updates avg_confidence using running average
         - Commits changes (or rolls back on error)
     """
-    from db.db import db
+    from db.database import db
     from db.tables import PillarStatistics
     from sqlalchemy.exc import IntegrityError
 
@@ -154,7 +154,7 @@ def atomic_increment_progress(session_id: int, worker_id: int) -> int:
         MariaDB doesn't support RETURNING clause, so we execute
         a separate SELECT after the UPDATE.
     """
-    from db.db import db
+    from db.database import db
     from sqlalchemy import text
 
     try:
@@ -223,7 +223,7 @@ def try_complete_session(
         - Clears current_comparison_id
         - Commits changes
     """
-    from db.db import db
+    from db.database import db
     from db.tables import (
         JudgeSession, JudgeSessionStatus,
         JudgeComparison, JudgeComparisonStatus

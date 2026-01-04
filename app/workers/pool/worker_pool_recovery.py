@@ -57,7 +57,7 @@ def recover_stale_comparisons(session_id: int, worker_id: int) -> int:
         Only worker 0 should call this to avoid conflicting recovery attempts.
         The main worker loop handles this coordination.
     """
-    from db.db import db
+    from db.database import db
     from db.tables import JudgeComparison, JudgeComparisonStatus
 
     try:
@@ -105,7 +105,7 @@ def recover_stale_comparisons(session_id: int, worker_id: int) -> int:
             f"[JudgeWorker:{session_id}:{worker_id}] "
             f"Error recovering stale comparisons: {e}"
         )
-        from db.db import db
+        from db.database import db
         db.session.rollback()
         return 0
 
@@ -180,7 +180,7 @@ def get_stale_comparison_count(session_id: int) -> int:
     Returns:
         Number of comparisons that would be recovered
     """
-    from db.db import db
+    from db.database import db
     from db.tables import JudgeComparison, JudgeComparisonStatus
 
     stale_threshold = datetime.now() - timedelta(seconds=STALE_TIMEOUT)

@@ -6,7 +6,7 @@ Chatbot conversation routes - conversation management and message rating.
 import logging
 from flask import Blueprint, request, jsonify
 from db.tables import Chatbot, ChatbotConversation
-from db.db import db
+from db.database import db
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import handle_errors
 from services.chatbot.chat_service import ChatService

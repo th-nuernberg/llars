@@ -12,7 +12,7 @@ from typing import Optional, Set, List
 
 from sqlalchemy import and_, or_, select, exists
 
-from db.db import db
+from db.database import db
 from db.models.rag import (
     RAGDocument,
     RAGDocumentPermission,

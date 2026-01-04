@@ -14,7 +14,7 @@ from PIL import Image
 
 from auth.decorators import authentik_required
 from decorators.error_handler import NotFoundError, ValidationError, handle_api_errors
-from db.db import db
+from db.database import db
 from db.models.user import generate_avatar_seed
 from routes.auth import data_bp
 from services.user_profile_service import build_avatar_url, is_valid_collab_color, pick_collab_color

@@ -48,7 +48,7 @@
       />
 
       <!-- Main Chat Area -->
-      <div class="chat-main" :style="sourcePanel.sourcePanel.open ? leftPanelStyle() : {}">
+      <div class="chat-main" :style="sourcePanelState.open ? leftPanelStyle() : {}">
         <!-- Chat Header -->
         <div v-if="selectedChatbot" class="chat-header">
           <div class="header-left">
@@ -80,9 +80,9 @@
             </div>
           </div>
           <div class="header-actions">
-            <LTooltip :text="sourcePanel.sourcePanel.open ? 'Quellen ausblenden' : 'Quellen anzeigen'">
-              <button class="header-action" @click="sourcePanel.toggleSourcePanel">
-                <v-icon size="20">{{ sourcePanel.sourcePanel.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</v-icon>
+            <LTooltip :text="sourcePanelState.open ? 'Quellen ausblenden' : 'Quellen anzeigen'">
+              <button class="header-action" @click="sourcePanelComposable.toggleSourcePanel">
+                <v-icon size="20">{{ sourcePanelState.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</v-icon>
               </button>
             </LTooltip>
             <LTooltip text="Neuer Chat">
@@ -119,8 +119,8 @@
           ref="messageListRef"
           :messages="messages"
           :chatbot="selectedChatbot"
-          @show-source="sourcePanel.showSourceDetail"
-          @footnote-click="sourcePanel.openSourceFromCitation"
+          @show-source="sourcePanelComposable.showSourceDetail"
+          @footnote-click="sourcePanelComposable.openSourceFromCitation"
         >
           <template #agent-reasoning>
             <AgentReasoningDisplay
@@ -145,7 +145,7 @@
 
       <!-- Resize Divider -->
       <div
-        v-if="sourcePanel.sourcePanel.open"
+        v-if="sourcePanelState.open"
         class="resize-divider"
         :class="{ resizing: isResizing }"
         @mousedown="startResize"
@@ -155,51 +155,51 @@
 
       <!-- Sources Side Panel -->
       <SourcePanel
-        v-if="sourcePanel.sourcePanel.open"
-        :source="sourcePanel.sourcePanel.source"
-        :active-tab="sourcePanel.sourcePanel.tab"
-        :pinned="sourcePanel.sourcePanel.pinned"
+        v-if="sourcePanelState.open"
+        :source="sourcePanelState.source"
+        :active-tab="sourcePanelState.tab"
+        :pinned="sourcePanelState.pinned"
         :panel-style="rightPanelStyle()"
-        :document-content="sourcePanel.sourcePanel.documentContent"
-        :screenshot-url="sourcePanel.sourcePanel.screenshotBlobUrl"
-        :loading-screenshot="sourcePanel.sourcePanel.loadingScreenshot"
-        :loading-content="sourcePanel.sourcePanel.loadingContent"
-        :screenshot-error="sourcePanel.sourcePanel.screenshotError"
-        :content-error="sourcePanel.sourcePanel.contentError"
-        @close="sourcePanel.closeSourcePanel"
-        @update:pinned="sourcePanel.sourcePanel.pinned = $event"
-        @update:active-tab="sourcePanel.sourcePanel.tab = $event"
-        @fullscreen="sourcePanel.openFullscreen"
+        :document-content="sourcePanelState.documentContent"
+        :screenshot-url="sourcePanelState.screenshotBlobUrl"
+        :loading-screenshot="sourcePanelState.loadingScreenshot"
+        :loading-content="sourcePanelState.loadingContent"
+        :screenshot-error="sourcePanelState.screenshotError"
+        :content-error="sourcePanelState.contentError"
+        @close="sourcePanelComposable.closeSourcePanel"
+        @update:pinned="sourcePanelState.pinned = $event"
+        @update:active-tab="sourcePanelState.tab = $event"
+        @fullscreen="sourcePanelComposable.openFullscreen"
       />
     </div>
 
     <!-- Fullscreen Dialog -->
-    <v-dialog v-model="sourcePanel.fullscreenDialog.show" fullscreen transition="dialog-bottom-transition">
+    <v-dialog v-model="fullscreenDialog.show" fullscreen transition="dialog-bottom-transition">
       <div class="fullscreen-dialog">
         <div class="fullscreen-header">
           <div class="fullscreen-title">
-            <v-icon size="20" class="mr-2">{{ sourcePanel.fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</v-icon>
-            <span>{{ sourcePanel.sourcePanel.source?.title || sourcePanel.sourcePanel.source?.filename || 'Quelle' }}</span>
+            <v-icon size="20" class="mr-2">{{ fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</v-icon>
+            <span>{{ sourcePanelState.source?.title || sourcePanelState.source?.filename || 'Quelle' }}</span>
           </div>
-          <button class="fullscreen-close" @click="sourcePanel.fullscreenDialog.show = false">
+          <button class="fullscreen-close" @click="fullscreenDialog.show = false">
             <v-icon size="20">mdi-close</v-icon>
           </button>
         </div>
         <div class="fullscreen-body">
-          <template v-if="sourcePanel.fullscreenDialog.type === 'screenshot'">
+          <template v-if="fullscreenDialog.type === 'screenshot'">
             <div class="fullscreen-image-wrapper">
               <img
-                v-if="sourcePanel.sourcePanel.screenshotBlobUrl"
-                :src="sourcePanel.sourcePanel.screenshotBlobUrl"
+                v-if="sourcePanelState.screenshotBlobUrl"
+                :src="sourcePanelState.screenshotBlobUrl"
                 alt="Screenshot"
                 class="fullscreen-img"
               />
             </div>
           </template>
-          <template v-else-if="sourcePanel.fullscreenDialog.type === 'document'">
+          <template v-else-if="fullscreenDialog.type === 'document'">
             <div class="fullscreen-document-wrapper">
               <div class="fullscreen-doc-text">
-                {{ sourcePanel.sourcePanel.documentContent }}
+                {{ sourcePanelState.documentContent }}
               </div>
             </div>
           </template>
@@ -213,33 +213,33 @@
     </v-snackbar>
 
     <!-- Source Detail Dialog -->
-    <v-dialog v-model="sourcePanel.sourceDialog.show" max-width="600">
+    <v-dialog v-model="sourceDialog.show" max-width="600">
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-chip size="small" color="primary" class="mr-2">
-            [{{ sourcePanel.sourceDialog.source?.footnote_id }}]
+            [{{ sourceDialog.source?.footnote_id }}]
           </v-chip>
-          {{ sourcePanel.sourceDialog.source?.title || sourcePanel.sourceDialog.source?.filename || 'Quelle' }}
+          {{ sourceDialog.source?.title || sourceDialog.source?.filename || 'Quelle' }}
         </v-card-title>
-        <v-card-subtitle v-if="sourcePanel.sourceDialog.source?.collection_name">
+        <v-card-subtitle v-if="sourceDialog.source?.collection_name">
           <v-icon size="14" class="mr-1">mdi-folder</v-icon>
-          {{ sourcePanel.sourceDialog.source?.collection_name }}
+          {{ sourceDialog.source?.collection_name }}
           <LTag variant="success" size="sm" class="ml-2">
-            {{ ((sourcePanel.sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% relevant
+            {{ ((sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% relevant
           </LTag>
         </v-card-subtitle>
         <v-divider />
         <v-card-text class="source-excerpt">
-          {{ sourcePanel.sourceDialog.source?.excerpt }}
+          {{ sourceDialog.source?.excerpt }}
         </v-card-text>
         <v-card-actions>
-          <v-btn variant="text" @click="sourcePanel.pinSourceToPanel(sourcePanel.sourceDialog.source)">
+          <v-btn variant="text" @click="sourcePanelComposable.pinSourceToPanel(sourceDialog.source)">
             <v-icon start>mdi-pin</v-icon>
             Anheften
           </v-btn>
           <v-btn
-            v-if="sourcePanel.sourceDialog.source?.download_url"
-            :href="sourcePanel.sourceDialog.source.download_url"
+            v-if="sourceDialog.source?.download_url"
+            :href="sourceDialog.source.download_url"
             target="_blank"
             rel="noopener"
             color="primary"
@@ -249,7 +249,7 @@
             Dokument
           </v-btn>
           <v-spacer />
-          <v-btn variant="text" @click="sourcePanel.sourceDialog.show = false">
+          <v-btn variant="text" @click="sourceDialog.show = false">
             Schließen
           </v-btn>
         </v-card-actions>
@@ -290,7 +290,13 @@ import AgentReasoningDisplay from './Chat/AgentReasoningDisplay.vue'
 const chatMessages = useChatMessages()
 const chatSocket = useChatSocket()
 const sidebar = useChatSidebar()
-const sourcePanel = useSourcePanel()
+const sourcePanelComposable = useSourcePanel()
+// Destructure refs for proper Vue reactivity in template
+const {
+  sourcePanel: sourcePanelState,
+  sourceDialog,
+  fullscreenDialog
+} = sourcePanelComposable
 const { isLoading, withLoading } = useSkeletonLoading(['chatbots', 'conversations'])
 const { isMobile, isTablet } = useMobile()
 
@@ -510,7 +516,7 @@ async function selectConversation(conversation) {
 
   // Reset processing state when switching conversations
   chatMessages.isProcessing.value = false
-  sourcePanel.resetForConversationChange()
+  sourcePanelComposable.resetForConversationChange()
   agentStatus.value = null
   agentReasoningRef.value?.reset?.()
   newMessage.value = '' // Clear input when switching conversations

@@ -52,22 +52,85 @@ async function performLogin(page, user) {
     }
   }
 
-  // Wait for login form
-  await page.waitForSelector('.dev-login-buttons, #username, .login-form', { timeout: 15000 })
-
-  // Use dev quick-login
+  // Check for dev-login buttons first (development environment)
   const devBtn = page.locator('.dev-login-buttons button:not([disabled])').filter({ hasText: user.username })
   if (await devBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
     await devBtn.click()
     await page.waitForURL(/\/Home/, { timeout: 25000 })
-  } else {
-    // Fallback to form login
-    await page.locator('#username, input[placeholder*="username" i]').first().fill(user.username)
-    await page.locator('#password, input[type="password"]').first().fill(user.password)
-    await page.locator('.login-button, button:has-text("Anmelden")').first().click()
-    await page.waitForURL(/\/Home/, { timeout: 25000 })
+    await dismissConsentBanner(page)
+    return
   }
 
+  // Production: Authentik OAuth flow
+  // Click "Mit Authentik anmelden" or similar OAuth button to initiate Authentik login
+  const authentikBtn = page.locator('button:has-text("Authentik"), button:has-text("OAuth"), a:has-text("Authentik"), .oauth-button, .authentik-login').first()
+  if (await authentikBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await authentikBtn.click()
+    await page.waitForLoadState('load')
+  }
+
+  // Wait for Authentik login form (different selectors for Authentik UI)
+  // Authentik uses input[name="uidField"] for username and input[name="password"] for password
+  const usernameSelectors = [
+    'input[name="uidField"]',
+    'input[name="uid_field"]',
+    'input[autocomplete="username"]',
+    '#id_uid_field',
+    '#username',
+    'input[placeholder*="username" i]',
+    'input[placeholder*="Username" i]',
+    'input[placeholder*="E-Mail" i]'
+  ]
+
+  // Wait for any username input to appear
+  await page.waitForSelector(usernameSelectors.join(', '), { timeout: 15000 })
+
+  // Fill username - try multiple selectors
+  for (const selector of usernameSelectors) {
+    const input = page.locator(selector).first()
+    if (await input.isVisible({ timeout: 500 }).catch(() => false)) {
+      await input.fill(user.username)
+      break
+    }
+  }
+
+  // Fill password
+  const passwordSelectors = [
+    'input[name="password"]',
+    'input[type="password"]',
+    '#id_password',
+    '#password'
+  ]
+  for (const selector of passwordSelectors) {
+    const input = page.locator(selector).first()
+    if (await input.isVisible({ timeout: 500 }).catch(() => false)) {
+      await input.fill(user.password)
+      break
+    }
+  }
+
+  // Click login button - try multiple selectors for Authentik
+  const loginBtnSelectors = [
+    'button[type="submit"]',
+    'input[type="submit"]',
+    'button:has-text("Log in")',
+    'button:has-text("Login")',
+    'button:has-text("Anmelden")',
+    'button:has-text("Sign in")',
+    '.pf-c-button--primary',
+    '.ak-flow-submit'
+  ]
+
+  for (const selector of loginBtnSelectors) {
+    const btn = page.locator(selector).first()
+    if (await btn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await btn.click()
+      break
+    }
+  }
+
+  // Wait for redirect back to app (Home page)
+  await page.waitForURL(/\/Home/, { timeout: 30000 })
   await dismissConsentBanner(page)
 }
 

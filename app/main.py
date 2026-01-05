@@ -110,6 +110,9 @@ def exempt_endpoints():
     # Exempt LaTeX compile status + SyncTeX endpoints (frequently polled)
     if request.path and request.path.startswith('/api/latex-collab/compile/'):
         return True
+    # Exempt data import endpoints (bulk uploads can exceed normal limits)
+    if request.path and request.path.startswith('/api/import/'):
+        return True
     return False
 
 # Flask Secret Key (required for session management, e.g. Zotero OAuth)

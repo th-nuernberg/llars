@@ -196,6 +196,8 @@ test:e2e:
     PLAYWRIGHT_BASE_URL: "http://localhost"
   script:
     - echo "Running E2E Tests against running LLARS instance..."
+    # Load test password from server .env (production uses different passwords)
+    - export E2E_TEST_PASSWORD=$(grep LLARS_ADMIN_PASSWORD /var/llars/.env | cut -d= -f2)
     - cd llars-frontend
     - npm ci --prefer-offline
     - npx playwright install chromium  # deps already installed on server

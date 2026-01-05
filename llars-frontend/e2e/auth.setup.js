@@ -42,12 +42,14 @@ async function performLogin(page, user) {
   await dismissConsentBanner(page)
   await page.waitForTimeout(300)
 
-  // Handle privacy page redirect
+  // Handle privacy page redirect - click "Anmelden" in header to go to actual login
   const isOnPrivacyPage = await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
   if (isOnPrivacyPage) {
-    const acceptBtn = page.locator('button:has-text("Zustimmen"), button:has-text("Ablehnen")').first()
-    if (await acceptBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await acceptBtn.click()
+    // Privacy page has "Anmelden" button in header to navigate to login
+    const headerLoginBtn = page.locator('button:has-text("Anmelden")').first()
+    if (await headerLoginBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await headerLoginBtn.click()
+      await page.waitForLoadState('load')
       await page.waitForTimeout(500)
     }
   }

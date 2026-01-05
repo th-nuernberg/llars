@@ -11,7 +11,7 @@
     <v-text-field
       v-model="localUrl"
       label="Website URL"
-      placeholder="https://example.com"
+      placeholder="example.com"
       prepend-inner-icon="mdi-link"
       variant="outlined"
       :rules="[rules.required, rules.url]"
@@ -216,13 +216,29 @@ const localConfig = ref({
   takeScreenshots: props.config.takeScreenshots !== false
 })
 
+const FALLBACK_URL = 'https://www.dg-agentur.de/'
+const SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//
+
+const isBlank = (value) => !value || !value.trim()
+
+const getEffectiveUrl = (value) => {
+  if (isBlank(value)) return ''
+  const trimmed = value.trim()
+  if (SCHEME_REGEX.test(trimmed)) {
+    return trimmed
+  }
+  return FALLBACK_URL
+}
+
 // Validation rules
 const rules = {
-  required: v => !!v || 'URL ist erforderlich',
+  required: v => !isBlank(v) || 'URL ist erforderlich',
   url: v => {
-    if (!v) return true
+    if (isBlank(v)) return true
+    const trimmed = v.trim()
+    if (!SCHEME_REGEX.test(trimmed)) return true
     try {
-      const url = new URL(v)
+      const url = new URL(trimmed)
       if (!['http:', 'https:'].includes(url.protocol)) {
         return 'URL muss mit http:// oder https:// beginnen'
       }
@@ -249,9 +265,14 @@ const updateConfig = () => {
 }
 
 const handleStart = () => {
-  if (localUrl.value && !props.loading) {
+  if (!props.loading) {
+    const effectiveUrl = getEffectiveUrl(localUrl.value)
+    if (!effectiveUrl) return
     try {
-      new URL(localUrl.value)
+      const url = new URL(effectiveUrl)
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return
+      }
       emit('start')
     } catch {
       // Invalid URL, don't emit

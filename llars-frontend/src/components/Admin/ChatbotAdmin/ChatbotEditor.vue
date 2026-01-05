@@ -400,10 +400,6 @@ async function startCrawlForChatbot() {
         formData.value.collection_ids.push(data.collection_id);
       }
 
-      if (data.brand_color && !formData.value.color) {
-        formData.value.color = data.brand_color;
-      }
-
       emit('collection-created', data.collection_id);
     }
   });

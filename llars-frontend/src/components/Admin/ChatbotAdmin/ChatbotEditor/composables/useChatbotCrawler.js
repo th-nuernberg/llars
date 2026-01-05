@@ -88,15 +88,13 @@ export function useChatbotCrawler() {
         message: `Crawl abgeschlossen!`,
         pages_crawled: data.pages_crawled,
         documents_created: data.documents_created,
-        collection_id: data.collection_id,
-        brand_color: data.brand_color
+        collection_id: data.collection_id
       };
 
-      // Callback to parent with brand_color
+      // Callback to parent with crawl result
       if (callbacks.onComplete) {
         callbacks.onComplete({
-          ...data,
-          brand_color: data.brand_color
+          ...data
         });
       }
 

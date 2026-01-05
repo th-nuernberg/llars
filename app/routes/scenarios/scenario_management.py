@@ -11,6 +11,7 @@ from auth.decorators import admin_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
+from decorators.permission_decorator import require_permission
 from db.database import db
 from db.tables import (RatingScenarios, EmailThread, ScenarioThreads,
                        ScenarioUsers, ScenarioRoles, ScenarioThreadDistribution)
@@ -19,7 +20,7 @@ from ..HelperFunctions import get_scenario_distribution_mode, DISTRIBUTION_MODE_
 
 
 @data_blueprint.route('/admin/add_threads_to_scenario', methods=['POST'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def add_threads_to_scenario():
     """Add threads to an existing scenario and distribute them to raters"""
@@ -99,7 +100,7 @@ def add_threads_to_scenario():
 
 
 @data_blueprint.route('/admin/add_viewers_to_scenario', methods=['POST'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def add_viewers_to_scenario():
     """Add or update viewers for a scenario"""

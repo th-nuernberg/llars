@@ -66,6 +66,25 @@
     <!-- User Settings Dialog -->
     <UserSettingsDialog v-model="settingsDialogOpen" />
 
+    <!-- Global Snackbar -->
+    <v-snackbar
+      v-model="snackbarModel.show"
+      :color="snackbarModel.color"
+      :timeout="snackbarModel.timeout"
+      location="bottom"
+      class="global-snackbar"
+    >
+      <div class="d-flex align-center">
+        <v-icon v-if="snackbarModel.icon" class="mr-2">{{ snackbarModel.icon }}</v-icon>
+        {{ snackbarModel.message }}
+      </div>
+      <template v-slot:actions>
+        <v-btn variant="text" size="small" @click="snackbarModel.show = false">
+          Schließen
+        </v-btn>
+      </template>
+    </v-snackbar>
+
     <v-footer app :height="isMobile ? 24 : 30" class="llars-footer" :class="{ 'is-mobile': isMobile, 'px-2': isMobile, 'px-4': !isMobile }">
       <v-row no-gutters align="center" justify="space-between">
         <v-col cols="auto">
@@ -96,9 +115,13 @@ import { useAuth } from '@/composables/useAuth';
 import { useAppTheme } from '@/composables/useAppTheme';
 import { usePermissions } from '@/composables/usePermissions';
 import { useMobile } from '@/composables/useMobile';
+import { useSnackbar } from '@/composables/useSnackbar';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
+
+// Global Snackbar
+const { snackbarModel } = useSnackbar();
 
 // Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren

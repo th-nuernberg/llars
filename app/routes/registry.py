@@ -111,6 +111,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.crawler import crawler_bp
     app.register_blueprint(crawler_bp)
 
+    # Data Importer (Universal data import with AI assistance)
+    from routes.data_import import bp as import_bp
+    app.register_blueprint(import_bp)
+
     # ============================================================
     # Project-Specific Features
     # ============================================================
@@ -163,6 +167,7 @@ def get_blueprint_info() -> dict:
             {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
             {'name': 'zotero', 'prefix': '/api/zotero', 'description': 'Zotero reference manager integration'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
+            {'name': 'import', 'prefix': '/api/import', 'description': 'Universal data import with AI assistance'},
         ],
         'projects': [
             {'name': 'kaimo', 'prefix': '/api/kaimo', 'description': 'KAIMO project routes'},

@@ -11,10 +11,13 @@ import { test as setup, expect } from '@playwright/test'
 import path from 'path'
 import fs from 'fs'
 
+// Password can be overridden via E2E_TEST_PASSWORD env variable for production servers
+const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
+
 const TEST_USERS = {
-  researcher: { username: 'researcher', password: 'admin123' },
-  viewer: { username: 'viewer', password: 'admin123' },
-  admin: { username: 'admin', password: 'admin123' }
+  researcher: { username: 'researcher', password: testPassword },
+  viewer: { username: 'viewer', password: testPassword },
+  admin: { username: 'admin', password: testPassword }
 }
 
 const AUTH_DIR = path.join(process.cwd(), '.auth')

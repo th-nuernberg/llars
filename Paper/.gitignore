@@ -1,0 +1,20 @@
+# Build output directory
+out/
+
+# LaTeX auxiliary files (in case they end up in root)
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+
+# Generated PDF (keep llars.pdf, ignore others)
+# Uncomment to ignore all PDFs:
+# *.pdf

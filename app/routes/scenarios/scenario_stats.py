@@ -9,6 +9,7 @@ from auth.decorators import admin_required, authentik_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
+from decorators.permission_decorator import require_permission
 from db.database import db
 from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        ScenarioThreads, ScenarioRoles, User, ScenarioThreadDistribution,
@@ -18,7 +19,7 @@ from .. import data_blueprint
 
 
 @data_blueprint.route('/admin/scenario_progress_stats/<int:scenario_id>', methods=['GET'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def get_scenario_user_progress_stats(scenario_id):
     """Get detailed progress statistics for all users in a scenario"""

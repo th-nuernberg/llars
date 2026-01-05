@@ -181,6 +181,12 @@ def initialize_permissions(db):
             'description': 'Erlaubt das Importieren von Daten'
         },
         {
+            'permission_key': 'data:manage_scenarios',
+            'display_name': 'Szenarien verwalten',
+            'category': 'data',
+            'description': 'Erlaubt das Erstellen und Verwalten von Evaluations-Szenarien'
+        },
+        {
             'permission_key': 'data:delete',
             'display_name': 'Daten löschen',
             'category': 'data',
@@ -362,6 +368,9 @@ def initialize_permissions(db):
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Data Import (für Evaluation-Daten)
+                'data:import',
+                'data:manage_scenarios',
             ]
         },
         {

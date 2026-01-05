@@ -10,6 +10,7 @@ from auth.decorators import admin_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
+from decorators.permission_decorator import require_permission
 from db.database import db
 from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        EmailThread, ScenarioThreads, ScenarioRoles, User,
@@ -25,7 +26,7 @@ from ..HelperFunctions import (
 
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def get_scenario_list():
     """Get list of all scenarios with their status"""
@@ -82,7 +83,7 @@ def get_scenario_list():
 
 
 @data_blueprint.route('/admin/scenarios/<int:scenario_id>', methods=['GET'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def get_scenario_details(scenario_id=None):
     """Get detailed information about a specific scenario"""
@@ -157,7 +158,7 @@ def get_scenario_details(scenario_id=None):
 
 
 @data_blueprint.route('/admin/create_scenario', methods=['POST'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def create_scenario():
     """Create a new rating scenario with users and threads"""
@@ -372,7 +373,7 @@ def create_scenario():
 
 
 @data_blueprint.route('/admin/delete_scenario/<int:scenario_id>', methods=['DELETE'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def delete_scenario(scenario_id):
     """Delete a scenario and all associated records"""
@@ -410,7 +411,7 @@ def delete_scenario(scenario_id):
 
 
 @data_blueprint.route('/admin/edit_scenario', methods=['POST'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def edit_scenario():
     """Edit an existing scenario's name and dates"""

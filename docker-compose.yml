@@ -201,7 +201,8 @@ services:
       - TZ=Europe/Berlin
       # Note: Don't set NODE_ENV here - it breaks npm install for build
       # All URLs derived from PROJECT_URL (includes protocol)
-      - VITE_API_BASE_URL=${PROJECT_URL:-http://localhost:55080}
+      # Use VITE_API_BASE_URL if set (even if empty for relative URLs), else PROJECT_URL
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL-${PROJECT_URL:-http://localhost:55080}}
       - VITE_PROJECT_STATE=${PROJECT_STATE:-development}
       - VITE_MKDOCS_URL=${PROJECT_URL:-http://localhost:55080}/docs
       - VITE_KEYCLOAK_URL=${PROJECT_URL:-http://localhost:55080}/authentik

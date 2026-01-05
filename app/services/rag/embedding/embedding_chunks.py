@@ -42,8 +42,8 @@ def process_document_chunks(
     """
     Process document chunks and prepare them for ChromaDB.
 
-    Handles both new chunks and existing chunks (for retries/deduplication).
-    Existing chunks are updated in place, new chunks are created.
+    Deletes existing text chunks first to prevent duplicate key errors,
+    then creates fresh chunks for the document.
 
     Args:
         doc: RAGDocument object being processed
@@ -59,21 +59,28 @@ def process_document_chunks(
             - all_vector_ids: All vector IDs (for document update)
 
     Database Effects:
-        - Creates new RAGDocumentChunk records for new chunks
-        - Updates existing chunks if found
+        - Deletes existing text chunks for the document (prevents duplicate key errors)
+        - Creates new RAGDocumentChunk records
         - Does NOT commit - caller must commit
     """
     from db.database import db
     from db.tables import RAGDocumentChunk
 
-    # Get existing chunks for this document (text chunks only)
-    existing_chunks = (
+    # Delete existing text chunks to prevent duplicate key errors
+    # This handles retries, re-processing, and cases where chunk count changes
+    deleted_count = (
         RAGDocumentChunk.query
         .filter_by(document_id=doc.id)
         .filter(RAGDocumentChunk.has_image.is_(False))
-        .all()
+        .delete(synchronize_session='fetch')
     )
-    existing_by_index = {c.chunk_index: c for c in existing_chunks}
+    if deleted_count > 0:
+        logger.info(
+            f"[EmbeddingChunks] Deleted {deleted_count} existing text chunks "
+            f"for document {doc.id} before re-processing"
+        )
+        # Flush the delete to ensure no constraint violations on insert
+        db.session.flush()
 
     chroma_texts = []
     chroma_ids = []
@@ -83,20 +90,12 @@ def process_document_chunks(
     for i, chunk in enumerate(chunks):
         chunk_text = chunk.text
         content_hash = hash_content(chunk_text)
-        existing_chunk = existing_by_index.get(i)
 
-        if existing_chunk:
-            # Reuse existing DB chunk, update content
-            texts, ids, metadatas, vector_id = _update_existing_chunk(
-                existing_chunk, chunk, chunk_text, content_hash,
-                doc, collection_id, pipeline
-            )
-        else:
-            # Create new chunk
-            texts, ids, metadatas, vector_id = _create_new_chunk(
-                i, chunk, chunk_text, content_hash,
-                doc, collection_id, pipeline, db
-            )
+        # Always create new chunks (existing ones were deleted above)
+        texts, ids, metadatas, vector_id = _create_new_chunk(
+            i, chunk, chunk_text, content_hash,
+            doc, collection_id, pipeline, db
+        )
 
         chroma_texts.extend(texts)
         chroma_ids.extend(ids)
@@ -104,64 +103,6 @@ def process_document_chunks(
         all_vector_ids.append(vector_id)
 
     return chroma_texts, chroma_ids, chroma_metadatas, all_vector_ids
-
-
-def _update_existing_chunk(
-    existing_chunk,
-    chunk,
-    chunk_text: str,
-    content_hash: str,
-    doc,
-    collection_id: int,
-    pipeline
-) -> Tuple[List[str], List[str], List[Dict], str]:
-    """
-    Update an existing chunk with new content.
-
-    Args:
-        existing_chunk: Existing RAGDocumentChunk object
-        chunk: New chunk data from chunker
-        chunk_text: Text content of the chunk
-        content_hash: SHA-256 hash of content
-        doc: Parent RAGDocument
-        collection_id: Collection ID for metadata
-        pipeline: RAGPipeline with model info
-
-    Returns:
-        Tuple of (texts, ids, metadatas, vector_id) for ChromaDB
-    """
-    # Update existing chunk fields
-    existing_chunk.content = chunk_text
-    existing_chunk.content_hash = content_hash
-
-    # Ensure vector_id exists
-    if not existing_chunk.vector_id:
-        existing_chunk.vector_id = f"doc_{doc.id}_chunk_{existing_chunk.chunk_index}_{uuid.uuid4().hex[:8]}"
-
-    # Update position and model info
-    existing_chunk.page_number = chunk.page_number
-    existing_chunk.start_char = chunk.start_char
-    existing_chunk.end_char = chunk.end_char
-    existing_chunk.embedding_model = pipeline.model_name
-    existing_chunk.embedding_dimensions = getattr(pipeline, "embedding_dimensions", None)
-    existing_chunk.embedding_status = 'completed'
-    existing_chunk.embedding_error = None
-
-    chunk_id = existing_chunk.vector_id
-
-    # Prepare ChromaDB data
-    metadata = sanitize_chroma_metadata({
-        'document_id': doc.id,
-        'chunk_index': existing_chunk.chunk_index,
-        'filename': doc.filename,
-        'collection_id': collection_id,
-        'page_number': chunk.page_number,
-        'start_char': chunk.start_char,
-        'end_char': chunk.end_char,
-        'vector_id': chunk_id
-    })
-
-    return [chunk_text], [chunk_id], [metadata], chunk_id
 
 
 def _create_new_chunk(

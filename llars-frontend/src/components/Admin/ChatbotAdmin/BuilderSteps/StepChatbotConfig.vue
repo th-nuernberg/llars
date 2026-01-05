@@ -80,6 +80,7 @@
     </v-row>
 
     <v-textarea
+      ref="systemPromptRef"
       v-model="localConfig.systemPrompt"
       label="System Prompt"
       prepend-inner-icon="mdi-text-box"
@@ -159,6 +160,7 @@
     </v-autocomplete>
 
     <v-textarea
+      ref="welcomeMessageRef"
       v-model="localConfig.welcomeMessage"
       label="Willkommensnachricht"
       prepend-inner-icon="mdi-message-text"
@@ -263,7 +265,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 
 const props = defineProps({
   config: {
@@ -319,6 +321,8 @@ const emit = defineEmits(['update:config', 'generate-field', 'refresh-models'])
 
 // Local state
 const localConfig = ref({ ...props.config })
+const systemPromptRef = ref(null)
+const welcomeMessageRef = ref(null)
 
 // Validation rules
 const rules = {
@@ -372,10 +376,33 @@ const updateConfig = () => {
   emit('update:config', localConfig.value)
 }
 
+const scrollTextareaToBottom = (fieldRef) => {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const textarea = fieldRef.value?.$el?.querySelector('textarea')
+      if (textarea) {
+        textarea.scrollTop = textarea.scrollHeight
+      }
+    })
+  })
+}
+
 // Watch props for external updates
 watch(() => props.config, (newVal) => {
   localConfig.value = { ...newVal }
 }, { deep: true })
+
+watch(() => localConfig.value.systemPrompt, () => {
+  if (props.generatingFields?.system_prompt) {
+    scrollTextareaToBottom(systemPromptRef)
+  }
+})
+
+watch(() => localConfig.value.welcomeMessage, () => {
+  if (props.generatingFields?.welcome_message) {
+    scrollTextareaToBottom(welcomeMessageRef)
+  }
+})
 </script>
 
 <style scoped>

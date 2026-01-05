@@ -11,11 +11,15 @@ Responsible for:
 - Selecting appropriate icons (constrained decoding)
 """
 
+import asyncio
+import hashlib
 import logging
 import os
 import re
 import json
+import threading
 from typing import Dict, Any, Optional, Iterable, List
+from urllib.parse import urlparse
 
 from openai import OpenAI
 from llm.openai_utils import extract_delta_text, extract_message_text
@@ -123,6 +127,7 @@ class ChatbotFieldGenerator:
 
     # LLM settings for field generation
     DEFAULT_MODEL = None
+    _SCREENSHOT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     # Field generation prompts
     PROMPTS = {
@@ -210,6 +215,14 @@ Antworte NUR mit einem HEX-Farbcode (z.B. #3498db), ohne Erklärung.""",
 Berücksichtige die Branche und das Thema. Wähle eine professionelle, ansprechende Farbe.
 Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         }
+    }
+    COLOR_VISION_PROMPT = {
+        'system': """Du bist ein Branding-Experte. Analysiere den Screenshot einer Landingpage.
+Wähle die dominierende Markenfarbe aus Logo, Buttons oder klaren Akzenten.
+Antworte NUR mit einem HEX-Farbcode (z.B. #3498db), ohne Erklärung.""",
+        'user_template': """URL: {url}
+Bestimme eine Primärfarbe, die klar zur sichtbaren Marken-/Farbwelt der Seite passt.
+Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
     }
 
     # Common brand colors by industry for fallback
@@ -370,13 +383,13 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         """
         Generate an appropriate color for a chatbot.
 
-        First checks if the collection has a brand_color from crawling (unless force_llm=True).
-        Falls back to LLM generation if no brand color exists or force_llm is set.
+        Uses a Vision-LLM on a screenshot of the landing page to select a brand color.
+        Falls back to text-based LLM generation if Vision or screenshot capture fails.
 
         Args:
             chatbot_id: The chatbot ID
             context: Optional additional context
-            force_llm: If True, skip crawled color and always use LLM generation
+            force_llm: If True, prefer LLM even if a cached value exists (kept for compatibility)
 
         Returns:
             Dict with generated color hex code
@@ -385,19 +398,17 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         if not chatbot:
             raise ValueError('Chatbot not found')
 
-        # Check for crawled brand color (unless force_llm is set)
-        if not force_llm and chatbot.primary_collection_id:
-            collection = RAGCollection.query.get(chatbot.primary_collection_id)
-            if collection and collection.color:
-                logger.info(f"[ChatbotFieldGenerator] Using brand color from collection: {collection.color}")
-                return {
-                    'success': True,
-                    'field': 'color',
-                    'value': collection.color,
-                    'source': 'crawled'
-                }
+        vision_color = ChatbotFieldGenerator._generate_color_from_screenshot(chatbot)
+        if vision_color:
+            logger.info(f"[ChatbotFieldGenerator] Generated color from landing page screenshot: {vision_color}")
+            return {
+                'success': True,
+                'field': 'color',
+                'value': vision_color,
+                'source': 'vision'
+            }
 
-        # LLM generation (either as fallback or forced)
+        # Text-only LLM generation (fallback)
         collection_info = ChatbotFieldGenerator._get_collection_context(chatbot)
 
         prompt_config = ChatbotFieldGenerator.PROMPTS['color']
@@ -466,11 +477,174 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         return ChatbotFieldGenerator.INDUSTRY_COLORS['default']
 
     @staticmethod
+    def _get_default_vision_model_id() -> str:
+        model_id = LLMModel.get_default_model_id(
+            model_type=LLMModel.MODEL_TYPE_LLM,
+            supports_vision=True
+        )
+        if not model_id:
+            raise ValueError("No vision-capable LLM model configured in llm_models")
+        return model_id
+
+    @staticmethod
     def _get_default_llm_model_id() -> str:
         model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
         if not model_id:
             raise ValueError("No default LLM model configured in llm_models")
         return model_id
+
+    @staticmethod
+    def _run_async(coro):
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+
+        if loop.is_running():
+            result_container = {}
+            error_container = {}
+
+            def runner():
+                try:
+                    result_container['result'] = asyncio.run(coro)
+                except Exception as exc:
+                    error_container['error'] = exc
+
+            thread = threading.Thread(target=runner, daemon=True)
+            thread.start()
+            thread.join()
+            if error_container.get('error'):
+                raise error_container['error']
+            return result_container.get('result')
+
+        return loop.run_until_complete(coro)
+
+    @staticmethod
+    def _capture_landing_page_screenshot(url: str) -> Optional[str]:
+        parsed = urlparse(url or '')
+        if parsed.scheme not in ('http', 'https'):
+            logger.warning(f"[ChatbotFieldGenerator] Unsupported URL scheme for screenshot: {url}")
+            return None
+
+        try:
+            from playwright.async_api import async_playwright
+        except Exception as e:
+            logger.warning(f"[ChatbotFieldGenerator] Playwright unavailable for screenshot: {e}")
+            return None
+
+        async def _capture():
+            from services.crawler.modules.screenshot_capture import ScreenshotCapture
+
+            screenshot_capture = ScreenshotCapture()
+            page_hash = hashlib.sha256(url.encode()).hexdigest()
+
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                context = await browser.new_context(
+                    viewport={
+                        'width': screenshot_capture.SCREENSHOT_WIDTH,
+                        'height': screenshot_capture.SCREENSHOT_HEIGHT
+                    },
+                    user_agent=ChatbotFieldGenerator._SCREENSHOT_USER_AGENT,
+                    locale='de-DE',
+                    ignore_https_errors=True
+                )
+                page = await context.new_page()
+                page.set_default_timeout(20000)
+
+                try:
+                    await page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                except Exception as e:
+                    logger.warning(f"[ChatbotFieldGenerator] Landing page load failed for {url}: {e}")
+                    await context.close()
+                    await browser.close()
+                    return None
+
+                try:
+                    await page.wait_for_load_state('networkidle', timeout=10000)
+                except Exception:
+                    pass
+
+                screenshot = await screenshot_capture.capture_page(
+                    page,
+                    url,
+                    page_hash,
+                    full_page=False
+                )
+
+                await context.close()
+                await browser.close()
+
+                if screenshot and screenshot.get('base64_data'):
+                    return screenshot['base64_data']
+
+                return None
+
+        try:
+            return ChatbotFieldGenerator._run_async(_capture())
+        except Exception as e:
+            logger.warning(f"[ChatbotFieldGenerator] Screenshot capture failed for {url}: {e}")
+            return None
+
+    @staticmethod
+    def _generate_with_vision_llm(
+        system_prompt: str,
+        user_prompt: str,
+        screenshot_base64: str,
+        temperature: float = 0.2
+    ) -> str:
+        client = OpenAI(
+            base_url=os.environ.get('LITELLM_BASE_URL', 'https://kiz1.in.ohmportal.de/llmproxy/v1'),
+            api_key=os.environ.get('LITELLM_API_KEY', 'dummy')
+        )
+
+        response = client.chat.completions.create(
+            model=ChatbotFieldGenerator._get_default_vision_model_id(),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{screenshot_base64}"}}
+                    ]
+                }
+            ],
+            temperature=temperature,
+            max_tokens=80
+        )
+
+        text = extract_message_text(response.choices[0].message)
+        return (text or "").strip()
+
+    @staticmethod
+    def _generate_color_from_screenshot(chatbot: Chatbot) -> Optional[str]:
+        url = chatbot.source_url
+        if not url:
+            return None
+
+        screenshot_base64 = ChatbotFieldGenerator._capture_landing_page_screenshot(url)
+        if not screenshot_base64:
+            return None
+
+        prompt = ChatbotFieldGenerator.COLOR_VISION_PROMPT
+        user_prompt = prompt['user_template'].format(url=url)
+
+        try:
+            generated_color = ChatbotFieldGenerator._generate_with_vision_llm(
+                system_prompt=prompt['system'],
+                user_prompt=user_prompt,
+                screenshot_base64=screenshot_base64
+            )
+        except Exception as e:
+            logger.warning(f"[ChatbotFieldGenerator] Vision color generation failed: {e}")
+            return None
+
+        if not generated_color or not re.search(r'#?[0-9a-fA-F]{3,6}', generated_color):
+            logger.warning("[ChatbotFieldGenerator] Vision color response missing hex value")
+            return None
+
+        return ChatbotFieldGenerator._clean_color(generated_color)
 
     @staticmethod
     def generate_field(chatbot_id: int, field: str, context: Optional[str] = None, force_llm: bool = False) -> Dict[str, Any]:

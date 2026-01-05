@@ -495,16 +495,35 @@ function handleSkipToConfig() {
   requestCollectionDocuments({ force: true })
 }
 
+const FALLBACK_URL = 'https://www.dg-agentur.de/'
+const SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//
+
+const getEffectiveWizardUrl = (value) => {
+  if (!value || !value.trim()) return ''
+  const trimmed = value.trim()
+  if (SCHEME_REGEX.test(trimmed)) {
+    return trimmed
+  }
+  return FALLBACK_URL
+}
+
 // ===== Wizard Start =====
 async function handleStartWizard() {
-  if (!wizardData.value.url) {
+  const rawUrl = wizardData.value.url
+  if (!rawUrl || !rawUrl.trim()) {
     setError('url', 'URL ist erforderlich')
     return
   }
 
+  const effectiveUrl = getEffectiveWizardUrl(rawUrl)
+
   // Validate URL
   try {
-    new URL(wizardData.value.url)
+    const parsedUrl = new URL(effectiveUrl)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      setError('url', 'URL muss mit http:// oder https:// beginnen')
+      return
+    }
   } catch {
     setError('url', 'Ungültige URL')
     return
@@ -516,7 +535,7 @@ async function handleStartWizard() {
   try {
     // Create wizard chatbot
     const response = await axios.post('/api/chatbots/wizard', {
-      url: wizardData.value.url
+      url: effectiveUrl
     })
 
     if (response.data.success) {
@@ -895,11 +914,6 @@ function handleCrawlerComplete(data) {
     stage: 'completed'
   })
 
-  if (data?.brand_color && (wizardData.value.color === '#5d7a4a' || !wizardData.value.color)) {
-    wizardData.value.color = data.brand_color
-    console.log('[Wizard] Auto-set brand color from crawl:', data.brand_color)
-  }
-
   // Transition to embedding
   setStatus(BUILD_STATUS.EMBEDDING)
   requestCollectionDocuments({ force: true })
@@ -1171,9 +1185,9 @@ async function autoGenerateFields() {
 
   const fields = ['name', 'display_name', 'system_prompt', 'welcome_message', 'icon', 'color']
   for (const field of fields) {
-    // Skip color generation if brand color was already extracted from crawl
+    // Skip color generation if the user or backend already set a non-default value
     if (field === 'color' && wizardData.value.color && wizardData.value.color !== '#5d7a4a') {
-      console.log('[Wizard] Skipping color generation - brand color already set:', wizardData.value.color)
+      console.log('[Wizard] Skipping color generation - color already set:', wizardData.value.color)
       continue
     }
     await handleGenerateField(field)

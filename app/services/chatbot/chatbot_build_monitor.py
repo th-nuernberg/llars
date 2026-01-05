@@ -104,12 +104,6 @@ class ChatbotBuildMonitor:
                         # Transition to embedding
                         chatbot = Chatbot.query.get(chatbot_id)
                         if chatbot:
-                            collection = RAGCollection.query.get(collection_id)
-                            if collection and collection.color and (not chatbot.color or chatbot.color == '#5d7a4a'):
-                                chatbot.color = collection.color
-                                logger.info(
-                                    f"[ChatbotBuildMonitor] Set chatbot color from crawled brand color: {collection.color}"
-                                )
                             chatbot.build_status = 'embedding'
                             db.session.commit()
 
@@ -241,7 +235,7 @@ class ChatbotBuildMonitor:
                         try:
                             from .chatbot_field_generator import ChatbotFieldGenerator
 
-                            # Generate color (uses crawled brand color if available, else LLM)
+                            # Generate color using Vision-LLM on the landing page
                             color_result = ChatbotFieldGenerator.generate_color(chatbot_id)
                             if color_result.get('success') and color_result.get('value'):
                                 chatbot.color = color_result['value']

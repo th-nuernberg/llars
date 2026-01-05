@@ -231,6 +231,17 @@ const allItems = ref([
     category: 'rating'
   },
   {
+    title: 'Evaluations-Assistent',
+    description: 'Daten importieren und KI-gestützt Evaluations-Szenarien erstellen',
+    route: '/import',
+    icon: 'mdi-database-import-outline',
+    emoji: '📊',
+    permission: 'data:import',
+    category: 'rating',
+    badge: 'Neu',
+    badgeColor: 'success'
+  },
+  {
     title: 'Chatbot',
     description: 'Interaktiver Chat mit LLars KI-Assistent',
     route: '/chat',

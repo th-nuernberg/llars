@@ -198,7 +198,7 @@ test:e2e:
     - echo "Running E2E Tests against running LLARS instance..."
     - cd llars-frontend
     - npm ci --prefer-offline
-    - npx playwright install chromium --with-deps
+    - npx playwright install chromium  # deps already installed on server
     - echo "Starting E2E test run..."
     - npx playwright test --project=chromium --workers=1
   artifacts:

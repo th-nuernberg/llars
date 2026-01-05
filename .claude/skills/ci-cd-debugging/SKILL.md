@@ -10,14 +10,32 @@ description: Debug and monitor GitLab CI/CD pipelines for the LLARS project. Use
 - **GitLab URL**: git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars
 - **Project ID**: 7123
 - **Server**: 141.75.150.128 (internes Netz)
+- **SSH Alias**: `ssh llars`
 
-## API Commands
+## Prerequisites
 
-All API calls require the GitLab token. The user should provide it or it should be in environment:
+### API Token
+The GitLab token must have **`api`** scope (not just `read_api`) to access job logs.
+Token is stored in `.env`:
 
 ```bash
-export GITLAB_TOKEN="glpat-..."
+source .env
+# GITLAB_TOKEN is now available
 ```
+
+### Server Access
+SSH access via configured alias:
+```bash
+ssh llars
+```
+
+### Server Environment (as of 2026-01-05)
+- **Node.js**: v20.19.6 (installed at /usr/bin/node)
+- **npm**: 10.8.2 (installed at /usr/bin/npm)
+- **Playwright deps**: installed for chromium
+- **gitlab-runner**: has access to node/npm
+
+## API Commands
 
 ### List Recent Pipelines
 
@@ -89,12 +107,47 @@ curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
 
 ### E2E tests fail
 - Tests run on shell runner against deployed app at localhost
-- Ensure app is running on server
-- Check PLAYWRIGHT_BASE_URL is correct
+- Ensure app is running on server: `ssh llars "docker ps"`
+- Check PLAYWRIGHT_BASE_URL is correct (should be `http://localhost`)
+- Verify npm is available: `ssh llars "which npm node"`
+
+### "npm: command not found" in E2E
+- Node.js must be installed globally on the server
+- Install with: `curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && sudo apt install -y nodejs`
+- Install Playwright deps: `sudo npx playwright install-deps chromium`
+
+### Job logs return 401 Unauthorized
+- Token needs `api` scope, not just `read_api`
+- Create new token at: https://git.informatik.fh-nuernberg.de/-/user_settings/personal_access_tokens
+- Update token in `.env` file
 
 ### Job stuck pending
 - Check runner availability with `tags: [shell]`
 - Verify runner is online in GitLab Admin
+- Check runner status: `ssh llars "sudo gitlab-runner status"`
+
+## SSH Server Commands
+
+### Check App Status
+```bash
+ssh llars "docker ps --format 'table {{.Names}}\t{{.Status}}'"
+ssh llars "curl -s http://localhost | head -20"
+```
+
+### Check Runner Logs
+```bash
+ssh llars "journalctl -u gitlab-runner --since '1 hour ago' | tail -50"
+```
+
+### Check Build Directory
+```bash
+ssh llars "ls -la /home/gitlab-runner/builds/"
+```
+
+### Restart Services
+```bash
+ssh llars "cd /var/llars && docker compose restart"
+```
 
 ## Deployment Flow
 

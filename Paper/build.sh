@@ -1,46 +1,55 @@
 #!/bin/bash
 # =============================================================================
-# Build script for ACL LaTeX paper
+# Build script for IJCAI-ECAI 2026 Demo Paper (LLARS)
 # =============================================================================
 
 set -e
 
 cd "$(dirname "$0")"
 
-echo "Building ACL paper..."
+PAPER_NAME="llars"
+OUT_DIR="out"
+
+echo "Building IJCAI-ECAI 2026 Demo Paper: ${PAPER_NAME}.tex"
+echo ""
+
+# Create output directory
+mkdir -p "${OUT_DIR}"
 
 # Clean old aux files
-rm -f acl_latex.aux acl_latex.bbl acl_latex.blg acl_latex.log acl_latex.out 2>/dev/null || true
+rm -f "${OUT_DIR}/${PAPER_NAME}".{aux,bbl,blg,log,out,toc,lof,lot} 2>/dev/null || true
 
 # First pass
 echo "  [1/4] pdflatex (1st pass)..."
-pdflatex -interaction=nonstopmode acl_latex.tex > /dev/null 2>&1
+pdflatex -interaction=nonstopmode -output-directory="${OUT_DIR}" "${PAPER_NAME}.tex" > /dev/null 2>&1
 
 # Bibliography
 echo "  [2/4] bibtex..."
-bibtex acl_latex > /dev/null 2>&1 || true
+cp *.bib "${OUT_DIR}/" 2>/dev/null || true
+cp *.bst "${OUT_DIR}/" 2>/dev/null || true
+cd "${OUT_DIR}"
+bibtex "${PAPER_NAME}" > /dev/null 2>&1 || true
+cd ..
 
 # Second pass
 echo "  [3/4] pdflatex (2nd pass)..."
-pdflatex -interaction=nonstopmode acl_latex.tex > /dev/null 2>&1
+pdflatex -interaction=nonstopmode -output-directory="${OUT_DIR}" "${PAPER_NAME}.tex" > /dev/null 2>&1
 
 # Third pass
 echo "  [4/4] pdflatex (3rd pass)..."
-pdflatex -interaction=nonstopmode acl_latex.tex > /dev/null 2>&1
+pdflatex -interaction=nonstopmode -output-directory="${OUT_DIR}" "${PAPER_NAME}.tex" > /dev/null 2>&1
 
-# Clean up
-rm -f acl_latex.aux acl_latex.bbl acl_latex.blg acl_latex.log acl_latex.out 2>/dev/null || true
+# Copy final PDF to Paper folder
+cp "${OUT_DIR}/${PAPER_NAME}.pdf" "./${PAPER_NAME}.pdf"
 
 echo ""
-echo "Done! Output: acl_latex.pdf"
-
-# Copy to project root
-cp acl_latex.pdf ../acl_latex.pdf
-ls -lh ../acl_latex.pdf
-
-echo "PDF saved to project root: acl_latex.pdf"
+echo "Done!"
+echo ""
+ls -lh "./${PAPER_NAME}.pdf"
+echo ""
+echo "Output: Paper/${PAPER_NAME}.pdf"
 
 # Open PDF on macOS
 if command -v open &> /dev/null; then
-    open ../acl_latex.pdf
+    open "./${PAPER_NAME}.pdf"
 fi

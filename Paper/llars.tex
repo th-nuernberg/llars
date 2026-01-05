@@ -1,0 +1,237 @@
+%%%% llars.tex - IJCAI-ECAI 2026 Demo Paper
+
+\typeout{LLARS Demo Paper for IJCAI--ECAI 2026}
+
+\documentclass{article}
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+
+\usepackage{ijcai26}
+
+% Packages
+\usepackage{times}
+\usepackage{soul}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage[small]{caption}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[switch]{lineno}
+
+% Comment out this line in the camera-ready submission
+\linenumbers
+
+\urlstyle{same}
+
+% PDF Info
+\pdfinfo{
+/TemplateVersion (IJCAI.2026.0)
+}
+
+\title{LLARS: Enabling Interdisciplinary LLM Evaluation\\for Domain Experts Without ML Expertise}
+
+% TODO: Add all co-authors with ORCID before submission
+\author{
+Philipp Steigerwald$^1$
+\affiliations
+$^1$Technische Hochschule N\"urnberg Georg Simon Ohm\\
+\emails
+philipp.steigerwald@th-nuernberg.de
+}
+
+\begin{document}
+
+\maketitle
+
+%==============================================================================
+\begin{abstract}
+%==============================================================================
+Evaluating Large Language Model (LLM) outputs in specialized domains requires domain expertise that machine learning researchers often lack.
+We present LLARS, an open-source platform that enables interdisciplinary teams to collaboratively evaluate LLM-generated content without requiring ML expertise.
+Originally developed for psychosocial online counseling, LLARS provides flexible evaluation workflows including rating scales, bucket-based ranking, and pairwise comparisons.
+The system computes inter-annotator agreement (Krippendorff's $\alpha$) automatically and supports collaborative prompt engineering with integrated testing.
+We demonstrate how LLARS bridges the gap between domain experts and AI researchers, enabling rigorous human evaluation studies in sensitive application domains.
+A demonstration video is available at: \url{https://llars.2ds.de/demo}
+\end{abstract}
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+The deployment of Large Language Models in specialized domains such as healthcare, legal advice, and psychosocial counseling requires rigorous evaluation by domain experts \cite{chang2024survey}.
+However, current evaluation practices face a fundamental challenge: the people best qualified to assess output quality---domain experts---often lack the technical infrastructure to conduct systematic evaluations.
+
+Consider psychosocial online counseling, where counselors must evaluate whether LLM-generated responses are empathetic, appropriate, and safe.
+Evaluating outputs from different prompting strategies, models, and fine-tuning approaches requires comparing hundreds of samples---a task that becomes cognitively overwhelming without proper tooling.
+
+Existing solutions fall short in several ways:
+\textbf{(1)} Spreadsheet-based approaches lack structure and produce inconsistent data.
+\textbf{(2)} Crowdsourcing platforms are unsuitable for sensitive domains requiring expert knowledge.
+\textbf{(3)} Custom evaluation scripts require ML expertise that domain experts lack.
+\textbf{(4)} There is no integrated way to collaboratively develop prompts and immediately test their outputs.
+
+We present LLARS (LLM Assisted Research System), a platform designed to enable interdisciplinary LLM evaluation.
+LLARS has been successfully deployed for evaluating LLM responses in psychosocial online counseling \cite{steigerwald2025anonymization}, demonstrating its applicability to sensitive, high-stakes domains.
+
+%==============================================================================
+\section{System Architecture}
+%==============================================================================
+
+% TODO: Add architecture diagram
+% \begin{figure}[t]
+% \centering
+% \includegraphics[width=\columnwidth]{figures/architecture.png}
+% \caption{LLARS system architecture.}
+% \label{fig:architecture}
+% \end{figure}
+
+LLARS follows a microservices architecture deployed via Docker Compose for reproducibility.
+The \textbf{backend} (Python/Flask) provides RESTful APIs and WebSocket connections for real-time collaboration.
+The \textbf{frontend} (Vue.js/Vuetify) offers responsive evaluation interfaces.
+\textbf{Authentication} is handled via OAuth2/OIDC (Authentik), enabling integration with institutional identity providers.
+
+The system is designed for \textbf{extensibility}: developers can add custom evaluation scenarios, rating dimensions, and analysis modules.
+All components are containerized and configurable via environment variables.
+
+%==============================================================================
+\section{Key Features}
+%==============================================================================
+
+%------------------------------------------------------------------------------
+\subsection{Flexible Evaluation Paradigms}
+%------------------------------------------------------------------------------
+
+LLARS supports multiple evaluation approaches to match different research designs:
+
+\textbf{Rating:} Evaluators assign scores on configurable scales (e.g., 1--5 stars, Likert scales).
+Multiple rating dimensions can be defined per scenario.
+
+\textbf{Bucket-Based Ranking:} To reduce cognitive load in large-scale evaluations, LLARS implements a two-phase ranking approach.
+Evaluators first sort samples into qualitative buckets (e.g., ``good'', ``acceptable'', ``poor''), then perform relative ranking \emph{within} each bucket.
+This eliminates the need to make absolute judgments across all samples simultaneously.
+
+\textbf{Pairwise Comparison:} For fine-grained distinctions, evaluators compare two samples side-by-side and select the better one, with optional justification.
+
+%------------------------------------------------------------------------------
+\subsection{Inter-Annotator Agreement}
+%------------------------------------------------------------------------------
+
+LLARS automatically computes Krippendorff's $\alpha$ to quantify agreement between evaluators.
+This is critical for establishing evaluation reliability, particularly when:
+\begin{itemize}
+    \item Training new annotators and validating their calibration
+    \item Identifying ambiguous samples that require discussion
+    \item Reporting evaluation quality in publications
+\end{itemize}
+
+Results are visualized in real-time dashboards, allowing researchers to monitor annotation progress and identify disagreements early.
+
+%------------------------------------------------------------------------------
+\subsection{Authenticity Detection Scenarios}
+%------------------------------------------------------------------------------
+
+Beyond quality evaluation, LLARS supports \textbf{authenticity detection} scenarios where evaluators distinguish between human-written and AI-generated content.
+This is particularly relevant for:
+\begin{itemize}
+    \item Evaluating LLM output naturalness
+    \item Fake news and misinformation detection research
+    \item Training annotators to recognize AI-generated text
+\end{itemize}
+
+The system provides automatic accuracy analysis comparing evaluator judgments against ground truth labels.
+
+%------------------------------------------------------------------------------
+\subsection{Collaborative Prompt Engineering}
+%------------------------------------------------------------------------------
+
+LLARS integrates prompt development directly into the evaluation workflow.
+Teams can:
+\begin{itemize}
+    \item Collaboratively edit prompts in real-time (CRDT-based synchronization)
+    \item Test prompts against multiple LLM backends instantly
+    \item Compare outputs from different prompt versions side-by-side
+    \item Version control prompt iterations with annotations
+\end{itemize}
+
+This tight integration between prompt development and evaluation accelerates the iteration cycle in applied LLM research.
+
+%------------------------------------------------------------------------------
+\subsection{Additional Platform Capabilities}
+%------------------------------------------------------------------------------
+
+Beyond evaluation, LLARS provides integrated tools for the full LLM research lifecycle:
+
+\textbf{RAG Chatbot Wizard:}
+A no-code interface for creating Retrieval-Augmented Generation (RAG) chatbots.
+Users provide a URL, and LLARS automatically crawls the website, chunks the content, generates embeddings, and deploys a domain-specific chatbot.
+This enables domain experts to prototype RAG applications without writing code.
+
+\textbf{Agent Reasoning Modes:}
+LLARS supports multiple LLM agent architectures for complex tasks:
+\begin{itemize}
+    \item \textbf{Act:} Direct action execution without explicit reasoning
+    \item \textbf{ReAct:} Interleaved reasoning and acting \cite{yao2023react}, where the model generates thought-action-observation traces
+    \item \textbf{Reflect:} Self-reflective agents that critique and refine their own outputs before finalizing responses
+\end{itemize}
+These modes can be compared side-by-side to evaluate which reasoning strategy performs best for specific domains.
+
+\textbf{Collaborative LaTeX Editing:}
+For research teams writing publications, LLARS includes a real-time collaborative LaTeX editor with AI assistance.
+Multiple users can simultaneously edit documents with CRDT-based conflict resolution, while an integrated LLM provides writing suggestions, citation formatting, and structure recommendations.
+
+%==============================================================================
+\section{Demonstration}
+%==============================================================================
+
+% TODO: Add screenshot
+% \begin{figure}[t]
+% \centering
+% \includegraphics[width=\columnwidth]{figures/screenshot.png}
+% \caption{Bucket-based ranking interface in LLARS.}
+% \label{fig:screenshot}
+% \end{figure}
+
+The live demonstration showcases a complete evaluation workflow:
+
+\textbf{Step 1: Scenario Setup.}
+We create an evaluation scenario for psychosocial counseling responses, defining rating dimensions (empathy, appropriateness, helpfulness) and configuring bucket-based ranking.
+
+\textbf{Step 2: Sample Import.}
+LLM outputs from different prompting strategies are imported.
+Each sample includes metadata (model, prompt version, temperature).
+
+\textbf{Step 3: Evaluation.}
+Attendees experience the bucket-based ranking interface, first sorting responses into quality tiers, then ranking within tiers.
+
+\textbf{Step 4: Analysis.}
+We demonstrate real-time agreement visualization (Krippendorff's $\alpha$) and export functionality for statistical analysis.
+
+\textbf{Step 5: Prompt Engineering.}
+We show collaborative prompt editing and instant testing against configured LLM backends.
+
+%==============================================================================
+\section{Related Work}
+%==============================================================================
+
+Existing annotation platforms like Prodigy, Label Studio, and Doccano focus primarily on NLP labeling tasks rather than LLM output evaluation.
+LLM-specific tools like Chatbot Arena \cite{zheng2024judging} emphasize crowdsourced preferences but lack support for expert-driven evaluation with structured rating dimensions.
+LLARS fills this gap by providing a platform specifically designed for domain expert evaluation with built-in agreement metrics and collaborative workflows.
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+
+LLARS enables interdisciplinary teams to conduct rigorous LLM evaluations without requiring ML expertise.
+The platform has been validated in psychosocial online counseling research and is designed for extension to other sensitive domains.
+LLARS is open-source and available at: \url{https://github.com/2ds-2ds/llars}
+
+% Bibliography
+\bibliographystyle{named}
+\bibliography{llars}
+
+\end{document}

@@ -68,6 +68,9 @@ import LatexCollabAIWorkspace from "@/views/LatexCollabAI/LatexCollabAIWorkspace
 // Evaluation Hub
 import EvaluationHub from "@/components/Evaluation/EvaluationHub.vue";
 
+// Data Importer
+import DataImporterView from "@/views/DataImporter/DataImporterView.vue";
+
 // Fake/Echt (Authenticity)
 import AuthenticityOverview from "@/components/Authenticity/AuthenticityOverview.vue";
 import AuthenticityDetail from "@/components/Authenticity/AuthenticityDetail.vue";
@@ -80,6 +83,7 @@ const routes = [
 
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
     { path: '/evaluation', name: 'EvaluationHub', component: EvaluationHub, meta: { requiresAuth: true } },
+    { path: '/data-import', alias: '/import', name: 'DataImporter', component: DataImporterView, meta: { requiresAuth: true } },
     { path: '/Ranker', name: 'Ranker', component: Ranker, meta: { requiresAuth: true } },
     { path: '/Ranker/:id', name: 'RankerDetail', component: RankerDetail, props: true, meta: { requiresAuth: true } },
     { path: '/Rater', name: 'Rater', component: Rater, meta: { requiresAuth: true } },

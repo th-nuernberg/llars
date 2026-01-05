@@ -13,6 +13,8 @@ import fs from 'fs'
 
 // Password can be overridden via E2E_TEST_PASSWORD env variable for production servers
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
+// Production servers typically only have admin user, not test users
+const isProduction = !!process.env.E2E_TEST_PASSWORD
 
 const TEST_USERS = {
   researcher: { username: 'researcher', password: testPassword },
@@ -87,17 +89,30 @@ async function performLogin(page, user) {
   await dismissConsentBanner(page)
 }
 
+// Admin authentication - always runs first
+setup('authenticate as admin', async ({ page }) => {
+  await performLogin(page, TEST_USERS.admin)
+  await page.context().storageState({ path: path.join(AUTH_DIR, 'admin.json') })
+
+  // On production, create fallback auth files for researcher/viewer using admin's auth
+  // This allows tests to run (with admin permissions) even if these users don't exist
+  if (isProduction) {
+    const adminAuth = fs.readFileSync(path.join(AUTH_DIR, 'admin.json'), 'utf-8')
+    fs.writeFileSync(path.join(AUTH_DIR, 'researcher.json'), adminAuth)
+    fs.writeFileSync(path.join(AUTH_DIR, 'viewer.json'), adminAuth)
+  }
+})
+
 setup('authenticate as researcher', async ({ page }) => {
+  // Skip on production - admin's auth is used as fallback
+  setup.skip(isProduction, 'researcher user not available on production, using admin fallback')
   await performLogin(page, TEST_USERS.researcher)
   await page.context().storageState({ path: path.join(AUTH_DIR, 'researcher.json') })
 })
 
 setup('authenticate as viewer', async ({ page }) => {
+  // Skip on production - admin's auth is used as fallback
+  setup.skip(isProduction, 'viewer user not available on production, using admin fallback')
   await performLogin(page, TEST_USERS.viewer)
   await page.context().storageState({ path: path.join(AUTH_DIR, 'viewer.json') })
-})
-
-setup('authenticate as admin', async ({ page }) => {
-  await performLogin(page, TEST_USERS.admin)
-  await page.context().storageState({ path: path.join(AUTH_DIR, 'admin.json') })
 })

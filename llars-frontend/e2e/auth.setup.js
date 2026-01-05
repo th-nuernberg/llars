@@ -61,75 +61,26 @@ async function performLogin(page, user) {
     return
   }
 
-  // Production: Authentik OAuth flow
-  // Click "Mit Authentik anmelden" or similar OAuth button to initiate Authentik login
-  const authentikBtn = page.locator('button:has-text("Authentik"), button:has-text("OAuth"), a:has-text("Authentik"), .oauth-button, .authentik-login').first()
-  if (await authentikBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await authentikBtn.click()
-    await page.waitForLoadState('load')
-  }
+  // Production: LLARS has its own login form that posts to backend
+  // Wait for the login form to be visible (data-testid is most reliable for Vuetify)
+  await page.waitForSelector('[data-testid="login-form"], .login-form', { timeout: 15000 })
 
-  // Wait for Authentik login form (different selectors for Authentik UI)
-  // Authentik uses input[name="uidField"] for username and input[name="password"] for password
-  const usernameSelectors = [
-    'input[name="uidField"]',
-    'input[name="uid_field"]',
-    'input[autocomplete="username"]',
-    '#id_uid_field',
-    '#username',
-    'input[placeholder*="username" i]',
-    'input[placeholder*="Username" i]',
-    'input[placeholder*="E-Mail" i]'
-  ]
-
-  // Wait for any username input to appear
-  await page.waitForSelector(usernameSelectors.join(', '), { timeout: 15000 })
-
-  // Fill username - try multiple selectors
-  for (const selector of usernameSelectors) {
-    const input = page.locator(selector).first()
-    if (await input.isVisible({ timeout: 500 }).catch(() => false)) {
-      await input.fill(user.username)
-      break
-    }
-  }
+  // Fill username using data-testid (works with Vuetify v-text-field)
+  const usernameInput = page.locator('[data-testid="username-input"] input, #username input, input[name="username"]').first()
+  await usernameInput.waitFor({ state: 'visible', timeout: 10000 })
+  await usernameInput.fill(user.username)
 
   // Fill password
-  const passwordSelectors = [
-    'input[name="password"]',
-    'input[type="password"]',
-    '#id_password',
-    '#password'
-  ]
-  for (const selector of passwordSelectors) {
-    const input = page.locator(selector).first()
-    if (await input.isVisible({ timeout: 500 }).catch(() => false)) {
-      await input.fill(user.password)
-      break
-    }
-  }
+  const passwordInput = page.locator('[data-testid="password-input"] input, #password input, input[name="password"]').first()
+  await passwordInput.waitFor({ state: 'visible', timeout: 5000 })
+  await passwordInput.fill(user.password)
 
-  // Click login button - try multiple selectors for Authentik
-  const loginBtnSelectors = [
-    'button[type="submit"]',
-    'input[type="submit"]',
-    'button:has-text("Log in")',
-    'button:has-text("Login")',
-    'button:has-text("Anmelden")',
-    'button:has-text("Sign in")',
-    '.pf-c-button--primary',
-    '.ak-flow-submit'
-  ]
+  // Click login button
+  const loginBtn = page.locator('[data-testid="login-btn"], .login-button, button:has-text("Anmelden")').first()
+  await loginBtn.waitFor({ state: 'visible', timeout: 5000 })
+  await loginBtn.click()
 
-  for (const selector of loginBtnSelectors) {
-    const btn = page.locator(selector).first()
-    if (await btn.isVisible({ timeout: 500 }).catch(() => false)) {
-      await btn.click()
-      break
-    }
-  }
-
-  // Wait for redirect back to app (Home page)
+  // Wait for redirect to Home page after successful login
   await page.waitForURL(/\/Home/, { timeout: 30000 })
   await dismissConsentBanner(page)
 }

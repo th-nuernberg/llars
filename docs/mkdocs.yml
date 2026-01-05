@@ -64,6 +64,9 @@ nav:
           - Überblick: projekte/authentik/overview.md
           - Migration: projekte/authentik/migration.md
           - Testplan: projekte/authentik/testing-plan.md
+      - Data Importer:
+          - Übersicht: projekte/data-importer/index.md
+          - Konzept: projekte/data-importer/konzept.md
       - Splitting & Refactoring:
           - Konzept: projekte/splitting-refactoring/konzept.md
           - Umsetzung: projekte/splitting-refactoring/umsetzung.md

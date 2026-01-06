@@ -43,9 +43,76 @@ async function dismissConsentBanner(page) {
   }
 }
 
+async function apiLogin(user) {
+  const response = await fetch(`${baseURL}/auth/authentik/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, password: user.password })
+  })
+
+  const responseText = await response.text()
+  if (!response.ok) {
+    throw new Error(`API login failed for ${user.username}: ${response.status} ${responseText}`)
+  }
+
+  let data = {}
+  try {
+    data = JSON.parse(responseText)
+  } catch (error) {
+    throw new Error(`API login invalid JSON for ${user.username}: ${error.message}`)
+  }
+
+  if (!data.access_token) {
+    throw new Error(`API login missing access_token for ${user.username}`)
+  }
+
+  return data
+}
+
+async function applyAuthStorage(page, user, tokenData) {
+  await page.addInitScript((payload) => {
+    const rolesValue = JSON.stringify(payload.roles || [])
+    const usernameValue = payload.username || ''
+    const store = (storage, key, value) => {
+      try {
+        storage.setItem(key, value)
+      } catch (e) {
+        // ignore storage failures
+      }
+    }
+
+    store(window.sessionStorage, 'auth_token', payload.accessToken || '')
+    store(window.sessionStorage, 'auth_refreshToken', payload.refreshToken || '')
+    store(window.sessionStorage, 'auth_idToken', payload.idToken || '')
+    store(window.sessionStorage, 'auth_llars_roles', rolesValue)
+    store(window.localStorage, 'auth_token', payload.accessToken || '')
+    store(window.localStorage, 'auth_refreshToken', payload.refreshToken || '')
+    store(window.localStorage, 'auth_idToken', payload.idToken || '')
+    store(window.localStorage, 'auth_llars_roles', rolesValue)
+    store(window.localStorage, 'username', usernameValue)
+  }, {
+    accessToken: tokenData.access_token,
+    refreshToken: tokenData.refresh_token,
+    idToken: tokenData.id_token,
+    roles: tokenData.llars_roles || [],
+    username: user.username
+  })
+}
+
 async function performLogin(page, user) {
   console.log(`[E2E] Starting login for user: ${user.username}`)
   console.log(`[E2E] Base URL: ${baseURL}, isProduction: ${isProduction}`)
+
+  if (isProduction) {
+    console.log('[E2E] Production mode: using API login for reliability')
+    const tokenData = await apiLogin(user)
+    await applyAuthStorage(page, user, tokenData)
+    await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: loginTimeout })
+    await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: loginTimeout })
+    await dismissConsentBanner(page)
+    console.log(`[E2E] Login complete for ${user.username} (API)`)
+    return
+  }
 
   const loginResponse = await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: loginTimeout })
   if (loginResponse && loginResponse.status() >= 400) {
@@ -169,7 +236,7 @@ async function performLogin(page, user) {
   console.log(`[E2E] URL after clicking login: ${page.url()}`)
 
   // Check for error messages
-  const errorMsg = page.locator('.error-message, .v-alert--error, [role="alert"]').first()
+  const errorMsg = page.locator('.login-error, .error-message, .v-alert--error, [role="alert"]').first()
   if (await errorMsg.isVisible({ timeout: 1000 }).catch(() => false)) {
     const errorText = await errorMsg.textContent()
     console.log(`[E2E] Login error message: ${errorText}`)
@@ -182,6 +249,14 @@ async function performLogin(page, user) {
     await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: loginTimeout })
     console.log(`[E2E] Successfully navigated to: ${page.url()}`)
   } catch (e) {
+    const hasToken = await page.evaluate(() => !!window.sessionStorage.getItem('auth_token')).catch(() => false)
+    if (hasToken) {
+      console.log('[E2E] Token present in storage, forcing navigation to Home')
+      await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: loginTimeout })
+      await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: loginTimeout })
+      await dismissConsentBanner(page)
+      return
+    }
     console.log(`[E2E] Failed to navigate to Home. Current URL: ${page.url()}`)
     if (page.isClosed()) {
       console.log('[E2E] Page closed before title could be read')

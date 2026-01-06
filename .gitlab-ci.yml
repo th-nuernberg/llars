@@ -223,7 +223,7 @@ test:e2e:
   script:
     - echo "Running E2E Tests against fresh LLARS instance..."
     - |
-      cat > .env.ci <<'EOF'
+      cat > .env <<'EOF'
       PROJECT_STATE=development
       PROJECT_URL=http://nginx-service
       PROJECT_HOST=nginx-service
@@ -234,8 +234,8 @@ test:e2e:
       AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
       AUTHENTIK_API_TOKEN=llars-dev-api-token-do-not-use-in-production
       EOF
-    - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env.ci | tr -d '\r')"
-    - docker compose --env-file .env.ci up -d --build nginx-service authentik-init authentik-worker
+    - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env | tr -d '\r')"
+    - docker compose --env-file .env up -d --build nginx-service authentik-init authentik-worker
     - |
       echo "Waiting for Authentik init to complete..."
       for i in $(seq 1 60); do
@@ -287,7 +287,7 @@ test:e2e:
         mcr.microsoft.com/playwright:v1.49.0-jammy \
         bash -lc "npm ci --prefer-offline && npx playwright test --project=chromium --workers=1 ${E2E_SPEC}"
   after_script:
-    - docker compose --env-file .env.ci down -v || true
+    - docker compose --env-file .env down -v || true
   artifacts:
     when: always
     paths:

@@ -564,6 +564,7 @@ const getRoleColor = (roleName) => {
   const colors = {
     'admin': 'error',
     'researcher': 'primary',
+    'evaluator': 'info',
     'viewer': 'info'
   };
   return colors[roleName] || 'grey';
@@ -573,6 +574,7 @@ const getRoleVariant = (roleName) => {
   const variants = {
     'admin': 'danger',
     'researcher': 'primary',
+    'evaluator': 'info',
     'viewer': 'info'
   };
   return variants[roleName] || 'gray';

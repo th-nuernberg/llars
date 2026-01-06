@@ -404,16 +404,22 @@ def initialize_permissions(db):
             ]
         },
         {
-            'role_name': 'viewer',
-            'display_name': 'Betrachter',
-            'description': 'Nur Lesezugriff auf Features',
+            'role_name': 'evaluator',
+            'display_name': 'Evaluator',
+            'description': 'Nimmt an Evaluationen teil und kann in zugewiesenen Szenarien bewerten',
             'permissions': [
+                # Evaluierungsfeatures - kann an Szenarien teilnehmen
                 'feature:mail_rating:view',
+                'feature:mail_rating:edit',
                 'feature:ranking:view',
+                'feature:ranking:edit',
                 'feature:rating:view',
+                'feature:rating:edit',
                 'feature:comparison:view',
+                'feature:comparison:edit',
                 'feature:authenticity:view',
                 'feature:authenticity:edit',
+                # Allgemeine Features
                 'feature:prompt_engineering:view',
                 'feature:rag:view',
                 'feature:chatbots:view',
@@ -554,7 +560,7 @@ def assign_default_demo_roles(db):
 
     role_map = {
         'researcher': 'researcher',
-        'viewer': 'viewer',
+        'evaluator': 'evaluator',
         'chatbot_manager': 'chatbot_manager',
     }
 

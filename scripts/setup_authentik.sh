@@ -360,7 +360,7 @@ print("  - Username: admin")
 print("  - Password: (from LLARS_ADMIN_PASSWORD)")
 EOF
 else
-    print_info "Development mode: Creating test users (admin, researcher, viewer, chatbot_manager)"
+    print_info "Development mode: Creating test users (admin, researcher, evaluator, chatbot_manager)"
 
     $COMPOSE_CMD exec -T authentik-server ak shell <<EOF
 import os
@@ -390,9 +390,9 @@ users_data = [
         'is_admin': False
     },
     {
-        'username': 'viewer',
-        'name': 'Viewer User',
-        'email': 'viewer@localhost',
+        'username': 'evaluator',
+        'name': 'Evaluator User',
+        'email': 'evaluator@localhost',
         'is_admin': False
     },
     {
@@ -435,7 +435,7 @@ print("\n✓ Development users setup complete!")
 print("\nTest Credentials:")
 print(f"  - admin / {admin_password[:3]}*** (admin)")
 print(f"  - researcher / {admin_password[:3]}*** (researcher)")
-print(f"  - viewer / {admin_password[:3]}*** (viewer)")
+print(f"  - evaluator / {admin_password[:3]}*** (evaluator)")
 print(f"  - chatbot_manager / {admin_password[:3]}*** (chatbot manager)")
 EOF
 fi
@@ -504,7 +504,7 @@ apps = Application.objects.filter(slug__icontains='llars').count()
 print(f"  ✓ Applications: {apps}")
 
 # Check users
-users = User.objects.filter(username__in=['admin', 'akadmin', 'researcher', 'viewer', 'chatbot_manager']).count()
+users = User.objects.filter(username__in=['admin', 'akadmin', 'researcher', 'evaluator', 'chatbot_manager']).count()
 print(f"  ✓ Test users: {users}")
 
 print("\n✓ Verification complete!")
@@ -543,7 +543,7 @@ if [ "$PROJECT_STATE" = "production" ]; then
 else
     echo "  • admin / (LLARS_ADMIN_PASSWORD) - Administrator"
     echo "  • researcher / (LLARS_ADMIN_PASSWORD) - Researcher"
-    echo "  • viewer / (LLARS_ADMIN_PASSWORD) - Viewer"
+    echo "  • evaluator / (LLARS_ADMIN_PASSWORD) - Evaluator"
     echo "  • chatbot_manager / (LLARS_ADMIN_PASSWORD) - Chatbot Manager"
     echo ""
     echo -e "${YELLOW}Development Mode Active:${NC}"

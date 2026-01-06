@@ -113,14 +113,14 @@ class TestRoutePermissions:
         response = authenticated_client.get('/api/health')
         assert response.status_code == 200
 
-    def test_ROUTE_011_permission_denied(self, authenticated_client_viewer, mock_token_validation, app_context):
+    def test_ROUTE_011_permission_denied(self, authenticated_client_evaluator, mock_token_validation, app_context):
         """
         [ROUTE-011] Fehlende Permission gibt 403
 
         Users without required permission should get 403.
         """
-        # Viewer trying to access admin routes
-        response = authenticated_client_viewer.get('/api/admin/users')
+        # Evaluator trying to access admin routes
+        response = authenticated_client_evaluator.get('/api/admin/users')
         assert response.status_code in [403, 401]
 
     def test_ROUTE_012_admin_override(self, authenticated_client_admin, admin_user, mock_token_validation, app_context):

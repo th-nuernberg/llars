@@ -66,11 +66,11 @@ test.describe('Admin Access', () => {
   })
 
   test('E2E_ADMIN_004: non-admin redirected or denied', async ({ page }) => {
-    await quickLogin(page, TEST_USERS.viewer)
+    await quickLogin(page, TEST_USERS.evaluator)
     await page.goto('/admin')
     await page.waitForLoadState('load')
 
-    // Viewer should be redirected to Home or see access denied
+    // Evaluator should be redirected to Home or see access denied
     const url = page.url()
     const hasAccessDenied = await page.locator('text=Zugriff verweigert, text=Access denied, text=keine Berechtigung').first().isVisible({ timeout: 3000 }).catch(() => false)
     expect(url.includes('/Home') || url.includes('/admin') || hasAccessDenied).toBeTruthy()
@@ -121,7 +121,7 @@ test.describe('Admin Permissions', () => {
     // Wait for skeleton to disappear
     await page.waitForSelector('.v-skeleton-loader', { state: 'hidden', timeout: 10000 }).catch(() => {})
 
-    const hasRoles = await page.locator('.role-card, text=admin, text=researcher, text=viewer').first().isVisible({ timeout: 5000 }).catch(() => false)
+    const hasRoles = await page.locator('.role-card, text=admin, text=researcher, text=evaluator').first().isVisible({ timeout: 5000 }).catch(() => false)
     expect(hasRoles || true).toBeTruthy()
   })
 

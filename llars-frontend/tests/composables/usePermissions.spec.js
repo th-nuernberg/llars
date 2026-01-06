@@ -208,7 +208,7 @@ describe('usePermissions Composable', () => {
           success: true,
           data: {
             permissions: [],
-            roles: [{ role_name: 'researcher' }, { role_name: 'viewer' }],
+            roles: [{ role_name: 'researcher' }, { role_name: 'evaluator' }],
             username: 'testuser'
           }
         }
@@ -217,7 +217,7 @@ describe('usePermissions Composable', () => {
       const perms = usePermissions()
       await perms.fetchPermissions()
 
-      expect(perms.roles.value).toEqual([{ role_name: 'researcher' }, { role_name: 'viewer' }])
+      expect(perms.roles.value).toEqual([{ role_name: 'researcher' }, { role_name: 'evaluator' }])
     })
 
     it('PERM_018: fetchPermissions populates username', async () => {
@@ -573,7 +573,7 @@ describe('usePermissions Composable', () => {
           success: true,
           data: {
             permissions: [],
-            roles: [{ role_name: 'viewer', id: 1 }],
+            roles: [{ role_name: 'evaluator', id: 1 }],
             username: 'user'
           }
         }
@@ -582,7 +582,7 @@ describe('usePermissions Composable', () => {
       const perms = usePermissions()
       await perms.fetchPermissions()
 
-      expect(perms.hasRole('viewer')).toBe(true)
+      expect(perms.hasRole('evaluator')).toBe(true)
       expect(perms.hasRole('1')).toBe(false)
     })
   })
@@ -602,7 +602,7 @@ describe('usePermissions Composable', () => {
           success: true,
           data: {
             permissions: [],
-            roles: [{ role_name: 'viewer' }],
+            roles: [{ role_name: 'evaluator' }],
             username: 'user'
           }
         }
@@ -611,7 +611,7 @@ describe('usePermissions Composable', () => {
       const perms = usePermissions()
       await perms.fetchPermissions()
 
-      expect(perms.hasAnyRole('admin', 'viewer')).toBe(true)
+      expect(perms.hasAnyRole('admin', 'evaluator')).toBe(true)
     })
 
     it('PERM_041: hasAnyRole works with single role', async () => {

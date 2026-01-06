@@ -194,6 +194,28 @@ def require_any_permission(*permission_keys):
     return decorator
 
 
+def has_role(user, role_name: str) -> bool:
+    """
+    Check if a user has a specific system role.
+
+    Args:
+        user: User object or username (from g.authentik_user)
+        role_name: The role name to check (e.g., 'admin', 'researcher', 'evaluator')
+
+    Returns:
+        True if user has the role, False otherwise
+
+    Example:
+        if has_role(g.authentik_user, 'admin'):
+            # Admin-only logic
+    """
+    username = getattr(user, 'username', str(user)) if user else None
+    if not username:
+        return False
+
+    return PermissionService.user_has_role(username, role_name)
+
+
 def require_all_permissions(*permission_keys):
     """
     Decorator to require ALL of the specified permissions (AND logic).

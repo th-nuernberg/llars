@@ -26,8 +26,8 @@
       <v-col cols="6" sm="3">
         <v-card variant="tonal" color="info" class="pa-4 text-center">
           <v-icon size="32" class="mb-2">mdi-eye</v-icon>
-          <div class="text-h5">{{ viewerCount }}</div>
-          <div class="text-caption">Viewer</div>
+          <div class="text-h5">{{ evaluatorCount }}</div>
+          <div class="text-caption">Evaluator</div>
         </v-card>
       </v-col>
     </v-row>
@@ -188,8 +188,8 @@ const raterCount = computed(() => {
   return props.userConfig?.raters?.length || 0
 })
 
-const viewerCount = computed(() => {
-  return props.userConfig?.viewers?.length || 0
+const evaluatorCount = computed(() => {
+  return props.userConfig?.evaluators?.length || props.userConfig?.viewers?.length || 0
 })
 
 const warnings = computed(() => {

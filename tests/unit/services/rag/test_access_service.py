@@ -843,7 +843,7 @@ class TestPermissionManagement:
         perm = RAGCollectionPermission(
             collection_id=collection.id,
             permission_type='user',
-            target_identifier='viewer',
+            target_identifier='evaluator',
             can_view=True
         )
         db.session.add(perm)
@@ -852,7 +852,7 @@ class TestPermissionManagement:
         result = RAGAccessService.get_collection_permissions(collection.id)
 
         assert len(result['users']) == 1
-        assert result['users'][0]['target'] == 'viewer'
+        assert result['users'][0]['target'] == 'evaluator'
 
     def test_ACC_066_set_collection_permissions(self, app, db, app_context):
         """
@@ -870,13 +870,13 @@ class TestPermissionManagement:
         result = RAGAccessService.set_collection_permissions(
             collection_id=collection.id,
             usernames=['user1'],
-            role_names=['viewer'],
+            role_names=['evaluator'],
             granted_by='admin',
             access={'can_view': True, 'can_edit': False}
         )
 
         assert 'user1' in result['usernames']
-        assert 'viewer' in result['role_names']
+        assert 'evaluator' in result['role_names']
 
         # Verify in database
         perms = RAGCollectionPermission.query.filter_by(collection_id=collection.id).all()
@@ -1125,11 +1125,11 @@ class TestRoleBasedAccess:
         from db.tables import RAGCollection, RAGCollectionPermission, Role, UserRole
 
         # Create role and user assignment (use unique role name to avoid conflicts)
-        role = Role(role_name='test_coll_viewer', display_name='Test Viewer', description='Viewer role')
+        role = Role(role_name='test_coll_evaluator', display_name='Test Evaluator', description='Evaluator role')
         db.session.add(role)
         db.session.flush()
 
-        user_role = UserRole(username='viewer_user', role_id=role.id)
+        user_role = UserRole(username='evaluator_user', role_id=role.id)
         db.session.add(user_role)
 
         # Create collection
@@ -1144,12 +1144,12 @@ class TestRoleBasedAccess:
         perm = RAGCollectionPermission(
             collection_id=collection.id,
             permission_type='role',
-            target_identifier='test_coll_viewer',
+            target_identifier='test_coll_evaluator',
             can_view=True
         )
         db.session.add(perm)
         db.session.commit()
 
         with patch.object(RAGAccessService, 'is_admin_user', return_value=False):
-            result = RAGAccessService.can_view_collection('viewer_user', collection)
+            result = RAGAccessService.can_view_collection('evaluator_user', collection)
             assert result is True

@@ -136,7 +136,7 @@ const devPassword = import.meta.env.VITE_DEV_PASSWORD || 'admin123';
 const devUsers = [
   { username: 'admin', password: devPassword, label: 'Admin', icon: 'mdi-shield-crown', color: 'error' },
   { username: 'researcher', password: devPassword, label: 'Researcher', icon: 'mdi-flask', color: 'primary' },
-  { username: 'viewer', password: devPassword, label: 'Viewer', icon: 'mdi-eye', color: 'secondary' },
+  { username: 'evaluator', password: devPassword, label: 'Evaluator', icon: 'mdi-eye', color: 'secondary' },
   { username: 'chatbot_manager', password: devPassword, label: 'Chatbot Manager', icon: 'mdi-robot', color: 'info' }
 ];
 

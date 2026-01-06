@@ -1,6 +1,11 @@
 """
 Scenario CRUD Operations
 Handles basic Create, Read, Update, Delete operations for rating scenarios.
+
+Ownership Rules:
+- Admins can manage all scenarios
+- Researchers can only manage scenarios they created (created_by field)
+- Evaluators can only participate in scenarios they're assigned to
 """
 
 import logging
@@ -8,15 +13,15 @@ from datetime import datetime
 from flask import jsonify, request, g
 from auth.decorators import admin_required
 from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError
+    handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 )
-from decorators.permission_decorator import require_permission
+from decorators.permission_decorator import require_permission, has_role
 from db.database import db
 from db.tables import (RatingScenarios, FeatureFunctionType, ScenarioUsers,
                        EmailThread, ScenarioThreads, ScenarioRoles, User,
                        ScenarioThreadDistribution)
 from .. import data_blueprint
-from .scenario_management import distribute_threads_to_users
+from .scenario_utils import distribute_threads_to_users, check_scenario_ownership, is_scenario_owner
 from ..HelperFunctions import (
     ALLOWED_DISTRIBUTION_MODES,
     ALLOWED_ORDER_MODES,
@@ -29,14 +34,24 @@ from ..HelperFunctions import (
 @require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def get_scenario_list():
-    """Get list of all scenarios with their status"""
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
+    """
+    Get list of scenarios with their status.
 
-    scenarios = RatingScenarios.query.all()
+    - Admins see all scenarios
+    - Researchers see only their own scenarios (created_by)
+    """
+    user = g.authentik_user
+    username = getattr(user, 'username', str(user))
+    is_admin = has_role(user, 'admin')
+
+    # Admins see all, researchers see only their own
+    if is_admin:
+        scenarios = RatingScenarios.query.all()
+    else:
+        scenarios = RatingScenarios.query.filter_by(created_by=username).all()
 
     if not scenarios:
-        return jsonify({'scenarios': ['No scenarios available']}), 200
+        return jsonify({'scenarios': []}), 200
 
     formatted_scenarios = {
         'scenarios': []
@@ -55,6 +70,9 @@ def get_scenario_list():
         else:
             status = 'Fehlerhafte Start/Endzeit'
 
+        # Count users by role
+        user_count = ScenarioUsers.query.filter_by(scenario_id=scenario.id).count()
+
         formatted_scenario = {
             'scenario_id': scenario.id,
             'name': scenario.scenario_name,
@@ -63,21 +81,23 @@ def get_scenario_list():
             'begin_date': scenario.begin,
             'end_date': scenario.end,
             'status': status,
+            'created_by': scenario.created_by,
+            'user_count': user_count,
         }
         formatted_scenarios['scenarios'].append(formatted_scenario)
 
-        status_order = {
-            'ausstehend': 2,
-            'aktiv': 1,
-            'beendet': 3,
-            'Fehlerhafte Start/Endzeit': 0
-        }
+    status_order = {
+        'ausstehend': 2,
+        'aktiv': 1,
+        'beendet': 3,
+        'Fehlerhafte Start/Endzeit': 0
+    }
 
-        # Sort the scenarios based on the status order
-        formatted_scenarios['scenarios'] = sorted(
-            formatted_scenarios['scenarios'],
-            key=lambda x: status_order.get(x['status'], 99)
-        )
+    # Sort the scenarios based on the status order
+    formatted_scenarios['scenarios'] = sorted(
+        formatted_scenarios['scenarios'],
+        key=lambda x: status_order.get(x['status'], 99)
+    )
 
     return jsonify(formatted_scenarios), 200
 
@@ -106,25 +126,21 @@ def get_scenario_details(scenario_id=None):
 
     # divide the users into the roles
     scenario_raters = []
-    scenario_viewers = []
+    scenario_evaluators = []
+    scenario_owner = None
     for scenario_user in scenario_users:
-        if scenario_user.role == ScenarioRoles.RATER:
-            scenario_raters.append(
-                {
-                    'user_id': scenario_user.user_id,
-                    'username': scenario_user.user.username,
-                    'role': scenario_user.role.value,
-                }
-            )
+        user_info = {
+            'user_id': scenario_user.user_id,
+            'username': scenario_user.user.username,
+            'role': scenario_user.role.value,
+        }
 
-        if scenario_user.role == ScenarioRoles.VIEWER:
-            scenario_viewers.append(
-                {
-                    'user_id': scenario_user.user_id,
-                    'username': scenario_user.user.username,
-                    'role': scenario_user.role.value,
-                }
-            )
+        if scenario_user.role == ScenarioRoles.OWNER:
+            scenario_owner = user_info
+        elif scenario_user.role == ScenarioRoles.RATER:
+            scenario_raters.append(user_info)
+        elif scenario_user.role == ScenarioRoles.EVALUATOR:
+            scenario_evaluators.append(user_info)
 
     # get all the threads of the scenario
     scenario_threads = (db.session.query(ScenarioThreads)
@@ -147,12 +163,14 @@ def get_scenario_details(scenario_id=None):
         'func_type': func_type,
         'begin_date': scenario.begin.isoformat(),
         'end_date': scenario.end.isoformat(),
+        'created_by': scenario.created_by,
         'llm1_model': getattr(scenario, 'llm1_model', None),
         'llm2_model': getattr(scenario, 'llm2_model', None),
         'config_json': getattr(scenario, 'config_json', None),
         'threads': threads,
+        'owner': scenario_owner,
         'raters': scenario_raters,
-        'viewers': scenario_viewers,
+        'evaluators': scenario_evaluators,
     }
     return jsonify(scenario_details), 200
 
@@ -161,9 +179,13 @@ def get_scenario_details(scenario_id=None):
 @require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def create_scenario():
-    """Create a new rating scenario with users and threads"""
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
+    """
+    Create a new rating scenario with users and threads.
+
+    The creating user is automatically set as OWNER.
+    """
+    user = g.authentik_user
+    creating_username = getattr(user, 'username', str(user))
 
     try:
         data = request.get_json()
@@ -183,19 +205,28 @@ def create_scenario():
         if order_mode is not None and order_mode not in ALLOWED_ORDER_MODES:
             raise ValidationError("Invalid order_mode")
 
+    # Accept both 'evaluator' (new) and 'viewer' (legacy) field names
+    evaluators_list = data.get('evaluator') or data.get('evaluators') or data.get('viewer') or []
+
     client_data = {
         "scenario_name": data.get('scenario_name'),
         "func_type_id": data.get('function_type_id'),
         "begin": data.get('begin'),
         "end": data.get('end'),
-        "rater": data.get('rater'),
-        "viewer": data.get("viewer"),
-        "threads": data.get('threads')
+        "rater": data.get('rater') or data.get('raters') or [],
+        "evaluator": evaluators_list,
+        "threads": data.get('threads') or []
     }
 
-    for key, value in client_data.items():
-        if value is None:
-            raise ValidationError(f'Missing value for {key}')
+    # Validate required fields
+    if not client_data['scenario_name']:
+        raise ValidationError('Missing value for scenario_name')
+    if not client_data['func_type_id']:
+        raise ValidationError('Missing value for function_type_id')
+    if not client_data['begin']:
+        raise ValidationError('Missing value for begin')
+    if not client_data['end']:
+        raise ValidationError('Missing value for end')
 
     # Validate function type
     function_type = FeatureFunctionType.query.filter_by(function_type_id=data.get('function_type_id')).first()
@@ -214,26 +245,34 @@ def create_scenario():
     if end < begin:
         raise ValidationError('End date must be before begin')
 
-    # Create new scenario
+    # Create new scenario with created_by
     new_scenario = RatingScenarios(
         scenario_name=client_data['scenario_name'],
         function_type_id=function_type_id,
         begin=begin,
         end=end,
+        created_by=creating_username,
         llm1_model=(str(data.get("llm1_model")).strip() if data.get("llm1_model") else None),
         llm2_model=(str(data.get("llm2_model")).strip() if data.get("llm2_model") else None),
         config_json=config_json,
     )
 
     rater_error_list = []
-    viewer_error_list = []
+    evaluator_error_list = []
     new_scenario_users = []
     seen_user = set()
 
+    # Add the creating user as OWNER
+    creating_user = User.query.filter_by(username=creating_username).first()
+    if creating_user:
+        new_scenario_users.append({"id": creating_user.id, "role": ScenarioRoles.OWNER})
+        seen_user.add(creating_user.id)
+
     # Validate and collect raters
-    if not isinstance(client_data['rater'], list):
-        raise ValidationError('rater is not a list')
-    for user_id in client_data['rater']:
+    rater_list = client_data['rater']
+    if not isinstance(rater_list, list):
+        rater_list = []
+    for user_id in rater_list:
         if not isinstance(user_id, int):
             continue
         user = User.query.filter_by(id=user_id).first()
@@ -242,33 +281,24 @@ def create_scenario():
             continue
         if user.id in seen_user:
             continue
-        new_scenario_users.append({"id": user.id, "role": "Rater"})
+        new_scenario_users.append({"id": user.id, "role": ScenarioRoles.RATER})
         seen_user.add(user.id)
 
-    # Validate and collect viewers
-    if not isinstance(client_data['viewer'], list):
-        raise ValidationError('viewer is not a list')
-    for user_id in client_data['viewer']:
+    # Validate and collect evaluators
+    evaluator_list = client_data['evaluator']
+    if not isinstance(evaluator_list, list):
+        evaluator_list = []
+    for user_id in evaluator_list:
         if not isinstance(user_id, int):
             continue
         user = User.query.filter_by(id=user_id).first()
         if user is None:
-            viewer_error_list.append(user_id)
+            evaluator_error_list.append(user_id)
             continue
         if user.id in seen_user:
             continue
-        new_scenario_users.append({"id": user.id, "role": "Viewer"})
+        new_scenario_users.append({"id": user.id, "role": ScenarioRoles.EVALUATOR})
         seen_user.add(user.id)
-
-    # Always include the creating admin user (so admins can evaluate their own scenarios).
-    try:
-        acting_user_id = getattr(g.authentik_user, "id", None)
-        if acting_user_id and acting_user_id not in seen_user:
-            new_scenario_users.append({"id": int(acting_user_id), "role": "Viewer"})
-            seen_user.add(int(acting_user_id))
-    except Exception:
-        # Never fail scenario creation because of this convenience feature
-        pass
 
     # Validate threads
     thread_error_list = []
@@ -303,7 +333,7 @@ def create_scenario():
             )
             db.session.add(new_scenario_user)
             db.session.flush()
-            if new_scenario_user.role == "Rater":
+            if new_scenario_user.role == ScenarioRoles.RATER:
                 scenario_rater.append(new_scenario_user.id)
 
         # Add threads
@@ -343,21 +373,20 @@ def create_scenario():
     try:
         from services.system_event_service import SystemEventService
 
-        acting_username = getattr(g.authentik_user, "username", None) or str(g.authentik_user)
         SystemEventService.log_event(
             event_type="admin.scenario_created",
             severity="info",
-            username=acting_username,
+            username=creating_username,
             entity_type="scenario",
             entity_id=str(new_scenario.id),
-            message=f"Scenario '{new_scenario.scenario_name}' created by '{acting_username}'",
+            message=f"Scenario '{new_scenario.scenario_name}' created by '{creating_username}'",
             details={
                 "scenario_id": int(new_scenario.id),
                 "function_type_id": int(function_type_id),
                 "begin": begin.isoformat(),
                 "end": end.isoformat(),
-                "raters": len(client_data.get("rater") or []),
-                "viewers": len(client_data.get("viewer") or []),
+                "raters": len(rater_list),
+                "evaluators": len(evaluator_list),
                 "threads": len(threads_for_scenario),
             },
         )
@@ -365,25 +394,31 @@ def create_scenario():
         pass
 
     return_msg = {
-        'notification': 'successfully created scenarios',
-        'not_found_users': viewer_error_list + rater_error_list,
+        'notification': 'successfully created scenario',
+        'scenario_id': new_scenario.id,
+        'created_by': creating_username,
+        'not_found_users': evaluator_error_list + rater_error_list,
         'not_found_threads': thread_error_list,
     }
-    return jsonify(return_msg), 200
+    return jsonify(return_msg), 201
 
 
 @data_blueprint.route('/admin/delete_scenario/<int:scenario_id>', methods=['DELETE'])
 @require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def delete_scenario(scenario_id):
-    """Delete a scenario and all associated records"""
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
+    """
+    Delete a scenario and all associated records.
 
+    Only the scenario owner or admin can delete.
+    """
     scenario = RatingScenarios.query.get(scenario_id)
 
     if not scenario:
         raise NotFoundError('Scenario not found')
+
+    # Check ownership - raises ForbiddenError if not authorized
+    check_scenario_ownership(scenario, g.authentik_user)
 
     try:
         scenario_name = getattr(scenario, "scenario_name", None)
@@ -414,10 +449,11 @@ def delete_scenario(scenario_id):
 @require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def edit_scenario():
-    """Edit an existing scenario's name and dates"""
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
+    """
+    Edit an existing scenario's name and dates.
 
+    Only the scenario owner or admin can edit.
+    """
     try:
         data = request.get_json()
     except (ValueError, TypeError) as e:
@@ -438,6 +474,9 @@ def edit_scenario():
     scenario = RatingScenarios.query.filter_by(id=client_data['id']).first()
     if not scenario:
         raise NotFoundError('Scenario not found')
+
+    # Check ownership - raises ForbiddenError if not authorized
+    check_scenario_ownership(scenario, g.authentik_user)
 
     # Use existing values if new ones not provided
     if not client_data['name']:

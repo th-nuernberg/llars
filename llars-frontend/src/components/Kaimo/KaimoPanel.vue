@@ -21,7 +21,7 @@
               </div>
             </div>
             <div class="text-body-2 text-medium-emphasis">
-              {{ canManageKaimo ? 'Researcher: Fälle verwalten und bearbeiten.' : 'Viewer: Freigegebene Fälle bearbeiten.' }}
+              {{ canManageKaimo ? 'Researcher: Fälle verwalten und bearbeiten.' : 'Evaluator: Freigegebene Fälle bearbeiten.' }}
             </div>
           </div>
           <v-spacer />
@@ -30,7 +30,7 @@
               Researcher
             </v-chip>
             <v-chip v-else color="primary" variant="outlined" prepend-icon="mdi-account">
-              Viewer
+              Evaluator
             </v-chip>
             <v-btn
               v-if="canManageKaimo"
@@ -270,7 +270,7 @@
         </v-card-title>
         <v-card-text>
           <p>Möchtest du den Fall <strong>{{ caseToPublish?.display_name }}</strong> veröffentlichen?</p>
-          <p class="text-medium-emphasis">Nach der Veröffentlichung können Viewer den Fall bearbeiten.</p>
+          <p class="text-medium-emphasis">Nach der Veröffentlichung können Evaluator den Fall bearbeiten.</p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />

@@ -5,7 +5,7 @@
       <v-card-subtitle>{{functionTypeTexts.subheader}}</v-card-subtitle>
     </v-card>
 
-    <!-- Rater und Viewer Panels -->
+    <!-- Rater und Evaluator Panels -->
     <v-expansion-panels v-model="openPanels" multiple>
       <!-- Rater Panel -->
       <v-expansion-panel>
@@ -102,13 +102,13 @@
         </v-expansion-panel-text>
       </v-expansion-panel>
 
-      <!-- Viewer Panel -->
+      <!-- Evaluator Panel -->
       <v-expansion-panel>
         <v-expansion-panel-title>
-          <h3>Viewer</h3>
+          <h3>Evaluator</h3>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
-          <!-- Legende für Viewer -->
+          <!-- Legende für Evaluator -->
           <v-card class="mb-2 legend-card">
             <v-card-text class="py-2">
               <v-row align="center" no-gutters class="legend-row">
@@ -134,7 +134,7 @@
             </v-card-text>
           </v-card>
 
-          <v-card v-for="user in viewerStats" :key="user.username" class="mb-2 user-card">
+          <v-card v-for="user in evaluatorStats" :key="user.username" class="mb-2 user-card">
             <v-card-text class="py-2">
               <v-row align="center" no-gutters class="user-row">
                 <v-col cols="2" sm="1" class="username-col">
@@ -289,7 +289,7 @@ const functionTypeMappings = {
 
 // Benutzerstatistiken
 const raterStats = ref([]);
-const viewerStats = ref([]);
+const evaluatorStats = ref([]);
 const dialogVisible = ref(false);
 const selectedUser = ref({});
 const openPanels = ref([0]); // Rater Panel standardmäßig geöffnet
@@ -344,8 +344,9 @@ const fetchUserStats = async () => {
       }));
     }
 
-    if (Array.isArray(response.data.viewer_stats)) {
-      viewerStats.value = response.data.viewer_stats.map(user => ({
+    const evaluatorPayload = response.data.evaluator_stats || response.data.viewer_stats || [];
+    if (Array.isArray(evaluatorPayload)) {
+      evaluatorStats.value = evaluatorPayload.map(user => ({
         ...user,
         ...calculateProgressSections(user.total_threads, user.done_threads, user.progressing_threads),
       }));

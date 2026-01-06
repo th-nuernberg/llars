@@ -260,7 +260,8 @@ const getRoleValue = () => {
     if (!list.length) return 'authenticated'
     if (list.includes('admin')) return 'admin'
     if (list.includes('researcher')) return 'researcher'
-    if (list.includes('viewer')) return 'viewer'
+    if (list.includes('evaluator')) return 'evaluator'
+    if (list.includes('viewer')) return 'evaluator'
     return String(list[0])
   } catch (e) {
     return 'authenticated'

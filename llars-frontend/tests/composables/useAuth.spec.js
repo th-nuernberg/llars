@@ -240,14 +240,14 @@ describe('useAuth Composable', () => {
           access_token: 'valid_token',
           refresh_token: 'refresh_123',
           id_token: 'id_123',
-          llars_roles: ['researcher', 'viewer']
+          llars_roles: ['researcher', 'evaluator']
         }
       })
 
       const auth = useAuth()
       await auth.login('testuser', 'password')
 
-      expect(auth.userRoles.value).toEqual(['researcher', 'viewer'])
+      expect(auth.userRoles.value).toEqual(['researcher', 'evaluator'])
     })
 
     it('AUTH_012: login with admin role sets isAdmin to true', async () => {
@@ -1055,7 +1055,7 @@ describe('useAuth Composable', () => {
         data: {
           access_token: 'valid_token',
           refresh_token: 'refresh_123',
-          llars_roles: ['researcher', 'viewer'] // No admin
+          llars_roles: ['researcher', 'evaluator'] // No admin
         }
       })
       axios.get.mockResolvedValue({ data: {} })

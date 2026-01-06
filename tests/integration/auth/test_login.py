@@ -146,13 +146,13 @@ class TestAdminCheckRoute:
     Route location: app/routes/authentik_routes.py:109-118
     """
 
-    def test_ADM_CHK_002_non_admin(self, authenticated_client_viewer, mock_token_validation, app_context):
+    def test_ADM_CHK_002_non_admin(self, authenticated_client_evaluator, mock_token_validation, app_context):
         """
         [ADM-CHK-002] Nicht-Admin User gibt 403
 
         Non-admin users should get 403 at admin check.
         """
-        response = authenticated_client_viewer.get('/auth/authentik/admin/check')
+        response = authenticated_client_evaluator.get('/auth/authentik/admin/check')
         assert response.status_code == 403
 
 

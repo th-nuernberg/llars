@@ -181,8 +181,8 @@ def can_access_thread(user_id, thread_id, function_type_id):
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
-        if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer oder All-Distribution-Rater sehen alle Threads des Szenarios
+        if role == ScenarioRoles.EVALUATOR or raters_receive_all_threads(scenario, function_type_id):
+            # Evaluator oder All-Distribution-Rater sehen alle Threads des Szenarios
             if db.session.query(ScenarioThreads).join(
                 RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id
             ).filter(
@@ -264,8 +264,8 @@ def get_user_threads(user_id, function_type_id):
         if scenario_id not in scenario_order_modes:
             scenario_order_modes[scenario_id] = get_scenario_order_mode(scenario)
 
-        if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer oder All-Distribution-Rater sehen alle Threads im Szenario
+        if role == ScenarioRoles.EVALUATOR or raters_receive_all_threads(scenario, function_type_id):
+            # Evaluator oder All-Distribution-Rater sehen alle Threads im Szenario
             threads = (
                 db.session.query(EmailThread)
                 .join(ScenarioThreads, ScenarioThreads.thread_id == EmailThread.thread_id)

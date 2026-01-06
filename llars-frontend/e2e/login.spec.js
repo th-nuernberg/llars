@@ -19,11 +19,16 @@ import { test, expect } from '@playwright/test'
 test.setTimeout(60000)
 
 // Test credentials (from CLAUDE.md documentation)
+const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
+const isProduction = !!process.env.E2E_TEST_PASSWORD
+const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
+const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
+const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'
 const TEST_USERS = {
-  admin: { username: 'admin', password: 'admin123', role: 'admin' },
-  researcher: { username: 'researcher', password: 'admin123', role: 'researcher' },
-  viewer: { username: 'viewer', password: 'admin123', role: 'viewer' },
-  chatbot_manager: { username: 'chatbot_manager', password: 'admin123', role: 'chatbot_manager' }
+  admin: { username: 'admin', password: testPassword, role: 'admin' },
+  researcher: { username: researcherUsername, password: testPassword, role: 'researcher' },
+  evaluator: { username: evaluatorUsername, password: testPassword, role: 'evaluator' },
+  chatbot_manager: { username: chatbotManagerUsername, password: testPassword, role: 'chatbot_manager' }
 }
 
 // Helper function to login
@@ -181,8 +186,8 @@ test.describe('Successful Login', () => {
     await expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
   })
 
-  test('E2E_LOGIN_008: viewer can login successfully', async ({ page }) => {
-    await login(page, TEST_USERS.viewer.username, TEST_USERS.viewer.password)
+  test('E2E_LOGIN_008: evaluator can login successfully', async ({ page }) => {
+    await login(page, TEST_USERS.evaluator.username, TEST_USERS.evaluator.password)
 
     // Should redirect to Home
     await expect(page).toHaveURL(/\/Home/, { timeout: 15000 })
@@ -243,7 +248,7 @@ test.describe('Failed Login', () => {
   })
 
   test('E2E_LOGIN_013: wrong username shows error', async ({ page }) => {
-    await login(page, 'nonexistentuser', 'admin123')
+    await login(page, 'nonexistentuser', testPassword)
 
     // Should show error message
     await expect(page.locator('.login-error, .v-alert')).toBeVisible({ timeout: 10000 })
@@ -255,7 +260,7 @@ test.describe('Failed Login', () => {
   test('E2E_LOGIN_014: empty username prevents submit', async ({ page }) => {
     await page.goto('/login')
 
-    await page.fill('#password', 'admin123')
+    await page.fill('#password', testPassword)
 
     // Button should be disabled when username is empty
     const loginButton = page.locator('.login-button')

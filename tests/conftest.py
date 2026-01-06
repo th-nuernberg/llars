@@ -593,7 +593,7 @@ def _seed_test_roles(db_instance):
     roles_data = [
         ('admin', 'Administrator', 'Administrator with full access'),
         ('researcher', 'Researcher', 'Researcher with evaluation access'),
-        ('viewer', 'Viewer', 'Viewer with read-only access'),
+        ('evaluator', 'Evaluator', 'Evaluator with read-only access'),
         ('chatbot_manager', 'Chatbot Manager', 'Chatbot manager'),
     ]
 
@@ -644,7 +644,7 @@ def _seed_test_roles(db_instance):
     # Assign permissions to roles
     admin_role = roles.get('admin')
     researcher_role = roles.get('researcher')
-    viewer_role = roles.get('viewer')
+    evaluator_role = roles.get('evaluator')
 
     # Admin gets all permissions
     if admin_role:
@@ -674,19 +674,19 @@ def _seed_test_roles(db_instance):
                         permission_id=perm.id
                     ))
 
-    # Viewer gets view permissions only
-    if viewer_role:
+    # Evaluator gets view permissions only
+    if evaluator_role:
         view_perms = ['feature:ranking:view', 'feature:rating:view',
                      'feature:chatbots:view', 'feature:rag:view']
         for perm_name in view_perms:
             perm = permissions.get(perm_name)
             if perm:
                 existing = RolePermission.query.filter_by(
-                    role_id=viewer_role.id, permission_id=perm.id
+                    role_id=evaluator_role.id, permission_id=perm.id
                 ).first()
                 if not existing:
                     db_instance.session.add(RolePermission(
-                        role_id=viewer_role.id,
+                        role_id=evaluator_role.id,
                         permission_id=perm.id
                     ))
 
@@ -712,14 +712,14 @@ def app_context(app, db):
 
 @pytest.fixture
 def mock_user(db, app):
-    """Create a basic viewer user."""
+    """Create a basic evaluator user."""
     from db.tables import User
 
     with app.app_context():
         user = User(
             username='testuser',
             password_hash='test-password-hash',
-            api_key='test-api-key-viewer',
+            api_key='test-api-key-evaluator',
             collab_color='#FF5733',
             avatar_seed='test-avatar-seed',
             is_active=True
@@ -797,27 +797,27 @@ def researcher_user(db, app):
 
 
 @pytest.fixture
-def viewer_user(db, app):
-    """Create a viewer user with viewer role."""
+def evaluator_user(db, app):
+    """Create a evaluator user with evaluator role."""
     from db.tables import User, Role, UserRole
 
     with app.app_context():
         user = User(
-            username='viewer',
+            username='evaluator',
             password_hash='test-password-hash',
-            api_key='test-api-key-viewer-role',
+            api_key='test-api-key-evaluator-role',
             collab_color='#7733FF',
             is_active=True
         )
         db.session.add(user)
         db.session.commit()
 
-        # Assign viewer role
-        viewer_role = Role.query.filter_by(role_name='viewer').first()
-        if viewer_role:
+        # Assign evaluator role
+        evaluator_role = Role.query.filter_by(role_name='evaluator').first()
+        if evaluator_role:
             user_role = UserRole(
-                username='viewer',
-                role_id=viewer_role.id,
+                username='evaluator',
+                role_id=evaluator_role.id,
                 assigned_by='test',
                 assigned_at=datetime.utcnow()
             )
@@ -873,7 +873,7 @@ def create_test_token(username: str, groups: list = None, expired: bool = False,
                       extra_claims: dict = None) -> str:
     """Helper function to create test JWT tokens."""
     if groups is None:
-        groups = ['viewer']
+        groups = ['evaluator']
 
     exp_time = datetime.utcnow() - timedelta(hours=1) if expired else datetime.utcnow() + timedelta(hours=1)
 
@@ -897,8 +897,8 @@ def create_test_token(username: str, groups: list = None, expired: bool = False,
 
 @pytest.fixture
 def valid_token():
-    """Generate a valid viewer token."""
-    return create_test_token('testuser', groups=['viewer'])
+    """Generate a valid evaluator token."""
+    return create_test_token('testuser', groups=['evaluator'])
 
 
 @pytest.fixture
@@ -916,19 +916,19 @@ def researcher_token():
 @pytest.fixture
 def expired_token():
     """Generate an expired token."""
-    return create_test_token('testuser', groups=['viewer'], expired=True)
+    return create_test_token('testuser', groups=['evaluator'], expired=True)
 
 
 @pytest.fixture
 def deleted_user_token():
     """Token for a deleted user."""
-    return create_test_token('deleted_user', groups=['viewer'])
+    return create_test_token('deleted_user', groups=['evaluator'])
 
 
 @pytest.fixture
 def locked_user_token():
     """Token for a locked user."""
-    return create_test_token('locked_user', groups=['viewer'])
+    return create_test_token('locked_user', groups=['evaluator'])
 
 
 # =============================================================================
@@ -966,7 +966,7 @@ class AuthenticatedTestClient:
 
 @pytest.fixture
 def authenticated_client(client, valid_token):
-    """Client with valid viewer authentication."""
+    """Client with valid evaluator authentication."""
     return AuthenticatedTestClient(client, valid_token)
 
 
@@ -977,8 +977,8 @@ def authenticated_client_admin(client, admin_token):
 
 
 @pytest.fixture
-def authenticated_client_viewer(client, valid_token):
-    """Alias for viewer client."""
+def authenticated_client_evaluator(client, valid_token):
+    """Alias for evaluator client."""
     return AuthenticatedTestClient(client, valid_token)
 
 
@@ -1069,7 +1069,7 @@ def seed_roles(db, app):
         for role_name, display_name, desc in [
             ('admin', 'Administrator', 'Admin'),
             ('researcher', 'Researcher', 'Researcher'),
-            ('viewer', 'Viewer', 'Viewer'),
+            ('evaluator', 'Evaluator', 'Evaluator'),
             ('chatbot_manager', 'Chatbot Manager', 'CM')
         ]:
             existing = Role.query.filter_by(role_name=role_name).first()

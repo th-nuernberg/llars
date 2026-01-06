@@ -31,8 +31,8 @@ REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 | User | Passwort | Rolle |
 |------|----------|-------|
 | admin | admin123 | admin |
-| researcher | admin123 | researcher (RATER) |
-| viewer | admin123 | viewer (VIEWER) |
+| researcher | admin123 | researcher (kann Szenarien erstellen) |
+| evaluator | admin123 | evaluator (nimmt an Evaluationen teil) |
 | chatbot_manager | admin123 | chatbot_manager |
 
 ---
@@ -281,7 +281,7 @@ def my_route():
 |-------|---------------|
 | admin | alle |
 | researcher | Evaluation + Prompt Engineering + Markdown Collab |
-| viewer | Lesezugriff |
+| evaluator | Lesezugriff |
 | chatbot_manager | Chatbot + RAG + Prompt Engineering |
 
 **Backend:**
@@ -343,7 +343,7 @@ EmailThread
 └── Features[] (LLM-generierte Analysen)
 
 Scenario
-├── ScenarioUsers[] (VIEWER oder RATER)
+├── ScenarioUsers[] (EVALUATOR oder RATER)
 ├── ScenarioThreads[]
 └── config_json (distribution_mode, order_mode)
 ```

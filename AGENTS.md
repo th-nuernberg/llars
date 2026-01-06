@@ -26,7 +26,7 @@ REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 |------|----------|-------|
 | admin | admin123 | admin |
 | researcher | admin123 | researcher |
-| viewer | admin123 | viewer |
+| evaluator | admin123 | evaluator |
 
 ---
 

@@ -23,6 +23,10 @@
 \usepackage{amssymb}
 \usepackage[switch]{lineno}
 
+% TikZ for diagrams
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, fit, backgrounds, shadows.blur, decorations.pathreplacing}
+
 % Comment out this line in the camera-ready submission
 \linenumbers
 
@@ -83,24 +87,136 @@ While recent updates have added LLM evaluation templates, these tools were not d
 Crowdsourcing platforms like Chatbot Arena \cite{zheng2024judging} emphasize preference collection at scale but are unsuitable for sensitive domains requiring specialized expertise.
 
 We present LLARS (LLM Assisted Research System), a platform designed specifically for interdisciplinary LLM evaluation.
-LLARS has been successfully deployed in two published studies: evaluating anonymization quality in counseling transcripts \cite{steigerwald2025anonymization} and assessing automated subject line generation for e-mental health \cite{steigerwald2025subjectline}.
+LLARS has been successfully deployed in multiple published studies, including automated subject line generation for e-mental health \cite{steigerwald2025subjectline} and field evaluation of AI-assisted counseling support \cite{steigerwald2025caia}.
 The platform is open-source and actively used by research teams combining AI expertise with domain knowledge from psychology and social work.
 
 %==============================================================================
 \section{System Overview}
 %==============================================================================
 
-LLARS follows a microservices architecture deployed via Docker Compose (see Figure~\ref{fig:architecture}).
-The backend provides RESTful APIs and WebSocket connections for real-time collaboration, while the Vue.js frontend offers responsive evaluation interfaces.
-Authentication integrates with institutional identity providers via OAuth2/OIDC.
-All evaluation data, user annotations, and collaboration artifacts are stored in a relational database with full audit trails.
+% Colors for diagrams
+\definecolor{domaincolor}{RGB}{79,70,229}
+\definecolor{aicolor}{RGB}{16,185,129}
+\definecolor{platformcolor}{RGB}{245,158,11}
+\definecolor{layerblue}{RGB}{59,130,246}
+\definecolor{layergreen}{RGB}{34,197,94}
+\definecolor{layerpurple}{RGB}{168,85,247}
+\definecolor{layergray}{RGB}{107,114,128}
 
+% Concept Figure (Bridge Metaphor)
 \begin{figure}[t]
 \centering
-\fbox{\parbox{0.9\columnwidth}{\centering\vspace{2em}[Architecture Diagram Placeholder]\\\small Flask Backend $\leftrightarrow$ Vue.js Frontend\\MariaDB + ChromaDB + Authentik\vspace{2em}}}
-\caption{LLARS system architecture showing the microservices deployment with backend, frontend, and integrated services.}
+\begin{tikzpicture}[
+    >={Stealth[length=2.5mm]},
+    userbox/.style={
+        rectangle, rounded corners=4pt,
+        minimum width=2.4cm, minimum height=1.2cm,
+        line width=1pt, font=\small\sffamily, align=center
+    },
+    llarsbox/.style={
+        rectangle, rounded corners=6pt,
+        minimum width=2.2cm, minimum height=1.4cm,
+        draw=platformcolor, fill=platformcolor!20, line width=1.5pt,
+        font=\sffamily\bfseries, align=center
+    },
+    outputbox/.style={
+        rectangle, rounded corners=3pt,
+        minimum width=1.8cm, minimum height=0.55cm,
+        draw=gray!50, fill=gray!10, line width=0.6pt,
+        font=\scriptsize\sffamily, align=center
+    }
+]
+
+% User groups
+\node[userbox, draw=domaincolor, fill=domaincolor!15] (domain) at (-2.8,0.8) {Domain\\Experts};
+\node[userbox, draw=aicolor, fill=aicolor!15] (ai) at (2.8,0.8) {AI\\Researchers};
+
+% LLARS center
+\node[llarsbox] (llars) at (0,0.8) {LLARS};
+
+% Arrows to LLARS
+\draw[->, line width=1.2pt, draw=domaincolor!70] (domain) -- (llars);
+\draw[->, line width=1.2pt, draw=aicolor!70] (ai) -- (llars);
+
+% Outputs below
+\node[outputbox] (eval) at (-2.4,-0.5) {Evaluation};
+\node[outputbox] (prompt) at (0,-0.5) {Prompts};
+\node[outputbox] (rag) at (2.4,-0.5) {RAG Chatbots};
+
+% Arrows from LLARS to outputs
+\draw[->, line width=0.8pt, draw=gray!60] (llars.south) -- ++(0,-0.4) -| (eval.north);
+\draw[->, line width=0.8pt, draw=gray!60] (llars.south) -- (prompt.north);
+\draw[->, line width=0.8pt, draw=gray!60] (llars.south) -- ++(0,-0.4) -| (rag.north);
+
+% Labels
+\node[font=\tiny\sffamily, text=domaincolor!80] at (-2.8,1.7) {Psychology, Medicine...};
+\node[font=\tiny\sffamily, text=aicolor!80] at (2.8,1.7) {ML, NLP...};
+
+\end{tikzpicture}
+\caption{LLARS bridges domain experts and AI researchers, enabling collaborative evaluation, prompt engineering, and RAG chatbot development.}
+\label{fig:concept}
+\end{figure}
+
+LLARS bridges the gap between domain experts and AI researchers through a unified platform for LLM evaluation (Figure~\ref{fig:concept}).
+The system is fully containerized using Docker Compose, enabling reproducible deployment across development, staging, and production environments.
+
+Figure~\ref{fig:architecture} shows the layered architecture.
+An Nginx reverse proxy routes requests to the appropriate services: the Vue.js frontend for the user interface, the Flask backend for API requests, and a dedicated Yjs server for real-time collaboration via WebSockets.
+
+% Architecture Figure (Layered)
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+    layer/.style={
+        rectangle, rounded corners=3pt,
+        minimum width=7.2cm, minimum height=0.7cm,
+        line width=0.8pt, font=\small\sffamily, align=center
+    },
+    component/.style={
+        rectangle, rounded corners=2pt,
+        minimum width=1.5cm, minimum height=0.5cm,
+        line width=0.6pt, font=\scriptsize\sffamily, align=center
+    }
+]
+
+% Layer 1: Frontend
+\node[layer, draw=layerblue, fill=layerblue!15] (ui) at (0,2.8) {\textbf{Frontend} -- Vue.js 3 + Vuetify};
+
+% Layer 2: Gateway
+\node[layer, draw=layergray, fill=layergray!10] (gateway) at (0,2.0) {Nginx Reverse Proxy + Yjs WebSocket Server};
+
+% Layer 3: Backend
+\node[layer, draw=layergreen, fill=layergreen!15] (backend) at (0,1.2) {\textbf{Backend} -- Flask REST API + Socket.IO};
+
+% Layer 4: Services (components)
+\node[layer, draw=layerpurple, fill=layerpurple!10, minimum height=0.9cm] (services) at (0,0.2) {};
+\node[component, draw=layerpurple!70, fill=white] at (-2.4,0.2) {Evaluation};
+\node[component, draw=layerpurple!70, fill=white] at (-0.8,0.2) {LLM Gateway};
+\node[component, draw=layerpurple!70, fill=white] at (0.8,0.2) {RAG Pipeline};
+\node[component, draw=layerpurple!70, fill=white] at (2.4,0.2) {Kripp.~$\alpha$};
+
+% Layer 5: Data
+\node[layer, draw=layergray, fill=layergray!15, minimum height=0.9cm] (data) at (0,-0.85) {};
+\node[component, draw=layergray!70, fill=white] at (-2.2,-0.85) {MariaDB};
+\node[component, draw=layergray!70, fill=white] at (0,-0.85) {ChromaDB};
+\node[component, draw=layergray!70, fill=white] at (2.2,-0.85) {Authentik};
+
+% Arrows between layers
+\draw[->, line width=0.6pt, gray] (ui.south) -- (gateway.north);
+\draw[->, line width=0.6pt, gray] (gateway.south) -- (backend.north);
+\draw[->, line width=0.6pt, gray] (backend.south) -- (services.north);
+\draw[->, line width=0.6pt, gray] (services.south) -- (data.north);
+
+\end{tikzpicture}
+\caption{Layered system architecture. All components run as Docker containers orchestrated via Docker Compose.}
 \label{fig:architecture}
 \end{figure}
+
+The backend orchestrates four core services: (1)~the \textbf{Evaluation Engine} manages scenarios, annotations, and inter-rater agreement computation; (2)~the \textbf{LLM Gateway} provides a unified interface to multiple LLM providers via LiteLLM; (3)~the \textbf{RAG Pipeline} handles document ingestion, chunking, and semantic search using ChromaDB as the vector store; and (4)~the \textbf{Agreement Calculator} computes Krippendorff's~$\alpha$ in real-time as annotations arrive.
+
+Data persistence is handled by MariaDB for relational data (users, scenarios, annotations) and ChromaDB for vector embeddings.
+Authentication uses Authentik as an OAuth2/OIDC provider, supporting institutional single sign-on.
+The entire stack comprises 8 Docker containers that can be deployed with a single command, ensuring consistent environments from development to production.
 
 %==============================================================================
 \section{Evaluation Workflows}
@@ -135,13 +251,14 @@ LLARS also supports authenticity detection scenarios where evaluators distinguis
 This functionality supports research on LLM output naturalness and misinformation detection.
 
 All evaluation modes automatically compute Krippendorff's~$\alpha$ \cite{krippendorff2011computing} to quantify inter-annotator agreement.
-Results are visualized in real-time dashboards (Figure~\ref{fig:dashboard}), enabling researchers to monitor annotation progress, identify ambiguous samples requiring discussion, and establish evaluation reliability for publication.
+Results are visualized in real-time dashboards, enabling researchers to monitor annotation progress, identify ambiguous samples requiring discussion, and establish evaluation reliability for publication.
 
+% Screenshot placeholder for bucket ranking interface
 \begin{figure}[t]
 \centering
-\fbox{\parbox{0.9\columnwidth}{\centering\vspace{2em}[Dashboard Screenshot Placeholder]\\\small Real-time agreement metrics\\Progress tracking per evaluator\vspace{2em}}}
-\caption{Evaluation dashboard showing Krippendorff's~$\alpha$ and annotation progress across evaluators.}
-\label{fig:dashboard}
+\fbox{\parbox{0.95\columnwidth}{\centering\vspace{1.5cm}\textit{Screenshot: Bucket-based ranking interface showing\\drag-and-drop sorting into quality tiers}\vspace{1.5cm}}}
+\caption{The bucket ranking interface allows evaluators to sort LLM outputs into quality tiers before fine-grained ranking within each tier.}
+\label{fig:bucket-ranking}
 \end{figure}
 
 %==============================================================================
@@ -165,7 +282,15 @@ This integration reduces friction between human expertise and AI capabilities th
 Beyond evaluation and prompt engineering, LLARS provides tools for the complete LLM research lifecycle.
 
 The \textbf{RAG Chatbot Wizard} offers a no-code interface for creating domain-specific chatbots.
-Users provide a URL, and LLARS automatically crawls the content, generates embeddings, and deploys a Retrieval-Augmented Generation chatbot---enabling domain experts to prototype RAG applications without programming.
+Users provide a URL, and LLARS automatically crawls the content, generates embeddings, and deploys a Retrieval-Augmented Generation chatbot---enabling domain experts to prototype RAG applications without programming (Figure~\ref{fig:rag-wizard}).
+
+% Screenshot placeholder for RAG Chatbot Wizard
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\columnwidth}{\centering\vspace{1.5cm}\textit{Screenshot: RAG Chatbot Wizard with URL input,\\crawling progress, and deployed chatbot interface}\vspace{1.5cm}}}
+\caption{The RAG Chatbot Wizard enables domain experts to create knowledge-grounded chatbots from web content without programming.}
+\label{fig:rag-wizard}
+\end{figure}
 
 LLARS supports multiple \textbf{agent reasoning modes} including Act (direct execution), ReAct \cite{yao2023react} (interleaved reasoning and acting), and Reflect (self-critique before response).
 These can be compared side-by-side to evaluate which reasoning strategy performs best for specific domains.

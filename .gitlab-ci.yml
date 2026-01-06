@@ -257,8 +257,8 @@ test:e2e:
       echo "Waiting for services to be healthy..."
       READY=false
       for i in $(seq 1 60); do
-        if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" curlimages/curl:8.10.0 \
-          sh -c "curl -fsS http://nginx-service/health >/dev/null && curl -fsS http://nginx-service/auth/health_check >/dev/null && curl -fsS http://nginx-service/auth/authentik/health_check >/dev/null"; then
+        if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" --entrypoint sh curlimages/curl:8.10.0 \
+          -c "curl -fsS http://nginx-service/health >/dev/null && curl -fsS http://nginx-service/auth/health_check >/dev/null && curl -fsS http://nginx-service/auth/authentik/health_check >/dev/null"; then
           READY=true
           echo "Health checks OK."
           break

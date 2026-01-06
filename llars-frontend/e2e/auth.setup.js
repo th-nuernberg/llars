@@ -169,9 +169,22 @@ setup('authenticate as admin', async ({ page }) => {
 
   // On production, create temporary test users
   if (isProduction) {
-    adminToken = await getAdminToken()
-    await createTestUser(adminToken, TEST_USERS.researcher.username, testPassword, 'researcher')
-    await createTestUser(adminToken, TEST_USERS.viewer.username, testPassword, 'viewer')
+    console.log('Production mode detected, creating temporary test users...')
+    try {
+      adminToken = await getAdminToken()
+      console.log('Got admin token, creating users...')
+
+      await createTestUser(adminToken, TEST_USERS.researcher.username, testPassword, 'researcher')
+      await createTestUser(adminToken, TEST_USERS.viewer.username, testPassword, 'viewer')
+
+      // Wait for Authentik to sync the new users (they need to be available for login)
+      console.log('Waiting 5s for Authentik user sync...')
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      console.log('Test users created successfully')
+    } catch (error) {
+      console.error('Failed to create test users:', error.message)
+      throw error
+    }
   }
 })
 

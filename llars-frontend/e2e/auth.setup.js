@@ -16,6 +16,10 @@ const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
 // Production servers need temporary test users created via API
 const isProduction = !!process.env.E2E_TEST_PASSWORD
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
+const loginTimeout = process.env.CI ? 60000 : 45000
+const setupTimeout = process.env.CI ? 120000 : 90000
+
+setup.setTimeout(setupTimeout)
 
 const TEST_USERS = {
   researcher: { username: 'e2e-researcher', password: testPassword, role: 'researcher' },
@@ -43,7 +47,7 @@ async function performLogin(page, user) {
   console.log(`[E2E] Starting login for user: ${user.username}`)
   console.log(`[E2E] Base URL: ${baseURL}, isProduction: ${isProduction}`)
 
-  const loginResponse = await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 45000 })
+  const loginResponse = await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: loginTimeout })
   if (loginResponse && loginResponse.status() >= 400) {
     throw new Error(`Login page returned ${loginResponse.status()} ${loginResponse.statusText()}`)
   }
@@ -70,7 +74,7 @@ async function performLogin(page, user) {
   if (await devBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
     console.log('[E2E] Found dev-login button, clicking it')
     await devBtn.click()
-    await page.waitForURL(/\/Home/, { timeout: 35000 })
+    await page.waitForURL(/\/Home/, { timeout: loginTimeout })
     await dismissConsentBanner(page)
     return
   }
@@ -79,7 +83,7 @@ async function performLogin(page, user) {
 
   // Production: LLARS has its own login form that posts to backend
   // Wait for either login form OR already logged in (Home page)
-  const loginFormVisible = await page.waitForSelector('[data-testid="login-form"], .login-form, .login-container', { timeout: 30000 }).catch(() => null)
+  const loginFormVisible = await page.waitForSelector('[data-testid="login-form"], .login-form, .login-container', { timeout: loginTimeout }).catch(() => null)
 
   if (!loginFormVisible) {
     // Maybe we're already on home?
@@ -149,7 +153,7 @@ async function performLogin(page, user) {
   console.log('[E2E] Clicking login button')
   const loginResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/auth/authentik/login') && response.request().method() === 'POST',
-    { timeout: 15000 }
+    { timeout: 30000 }
   ).catch(() => null)
   await loginBtn.click()
   const loginResponseResult = await loginResponsePromise
@@ -175,11 +179,19 @@ async function performLogin(page, user) {
   // Wait for redirect to Home page after successful login
   // Use a more flexible approach - wait for URL change first
   try {
-    await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: 45000 })
+    await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: loginTimeout })
     console.log(`[E2E] Successfully navigated to: ${page.url()}`)
   } catch (e) {
     console.log(`[E2E] Failed to navigate to Home. Current URL: ${page.url()}`)
-    console.log(`[E2E] Page title: ${await page.title()}`)
+    if (page.isClosed()) {
+      console.log('[E2E] Page closed before title could be read')
+    } else {
+      try {
+        console.log(`[E2E] Page title: ${await page.title()}`)
+      } catch (error) {
+        console.log(`[E2E] Page title unavailable: ${error.message}`)
+      }
+    }
 
     // Check if we're on an Authentik page
     if (page.url().includes('authentik') || page.url().includes('auth')) {

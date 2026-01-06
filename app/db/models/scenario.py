@@ -9,8 +9,9 @@ from db import db
 
 
 class ScenarioRoles(Enum):
-    VIEWER = 'Viewer'
-    RATER = 'Rater'
+    OWNER = 'Owner'      # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
+    RATER = 'Rater'      # Kann bewerten
+    EVALUATOR = 'Evaluator'  # Kann an Evaluationen teilnehmen (ehemals Viewer)
 
 
 class ProgressionStatus(Enum):
@@ -131,6 +132,8 @@ class RatingScenarios(db.Model):
     begin = mapped_column(db.DateTime, default=datetime.utcnow)
     end = mapped_column(db.DateTime, default=datetime.utcnow)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+    # Wer hat das Szenario erstellt (Username aus Authentik)
+    created_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, index=True)
     # Modellkonfiguration für Comparison-Szenarien
     llm1_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     llm2_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)

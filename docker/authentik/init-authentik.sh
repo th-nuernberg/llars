@@ -9,7 +9,7 @@ echo "======================================="
 # Environment variables
 BACKEND_CLIENT_ID="${AUTHENTIK_BACKEND_CLIENT_ID:-llars-backend}"
 BACKEND_CLIENT_SECRET="${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-change-in-production}"
-# Use LLARS_ADMIN_PASSWORD for LLARS users (admin, researcher, viewer)
+# Use LLARS_ADMIN_PASSWORD for LLARS users (admin, researcher, evaluator)
 # Falls back to AUTHENTIK_BOOTSTRAP_PASSWORD for backwards compatibility
 ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}}"
 
@@ -269,7 +269,7 @@ else:
 "
 
 if [ "$PROJECT_STATE" = "development" ]; then
-    echo "[6/7] Creating additional users (researcher, viewer, chatbot_manager) - DEVELOPMENT MODE..."
+    echo "[6/7] Creating additional users (researcher, evaluator, chatbot_manager) - DEVELOPMENT MODE..."
 
     ak shell -c "
 from authentik.core.models import User
@@ -290,21 +290,21 @@ if created:
 else:
     print('  Researcher user already exists')
 
-# Viewer user
-viewer, created = User.objects.get_or_create(
-    username='viewer',
+# Evaluator user
+evaluator, created = User.objects.get_or_create(
+    username='evaluator',
     defaults={
-        'name': 'Viewer User',
-        'email': 'viewer@localhost',
+        'name': 'Evaluator User',
+        'email': 'evaluator@localhost',
         'is_active': True
     }
 )
 if created:
-    viewer.set_password('$ADMIN_PASSWORD')
-    viewer.save()
-    print('  Created viewer user')
+    evaluator.set_password('$ADMIN_PASSWORD')
+    evaluator.save()
+    print('  Created evaluator user')
 else:
-    print('  Viewer user already exists')
+    print('  Evaluator user already exists')
 
 # Chatbot Manager user
 chatbot_manager, created = User.objects.get_or_create(
@@ -323,7 +323,7 @@ else:
     print('  Chatbot Manager user already exists')
 "
 else
-    echo "[6/7] Skipping dev users (researcher, viewer, chatbot_manager) - PRODUCTION MODE"
+    echo "[6/7] Skipping dev users (researcher, evaluator, chatbot_manager) - PRODUCTION MODE"
 fi
 
 echo "[7/8] Creating Admin API Token for LLARS..."
@@ -419,7 +419,7 @@ echo ""
 echo "  Username: researcher"
 echo "  Password: $ADMIN_PASSWORD"
 echo ""
-echo "  Username: viewer"
+echo "  Username: evaluator"
 echo "  Password: $ADMIN_PASSWORD"
 echo ""
 echo "  Username: chatbot_manager"

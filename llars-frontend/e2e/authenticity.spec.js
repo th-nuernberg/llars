@@ -371,12 +371,12 @@ test.describe('Authenticity Permissions', () => {
     expect(hasAccess || hasContent || page.url().includes('/Home')).toBeTruthy()
   })
 
-  test('E2E_AUTH_024: viewer access behavior', async ({ page }) => {
-    await quickLogin(page, TEST_USERS.viewer)
+  test('E2E_AUTH_024: evaluator access behavior', async ({ page }) => {
+    await quickLogin(page, TEST_USERS.evaluator)
     await page.goto('/authenticity')
     await page.waitForLoadState('load')
 
-    // Viewer might have access or be redirected
+    // Evaluator might have access or be redirected
     const url = page.url()
     expect(url.includes('/authenticity') || url.includes('/Home')).toBeTruthy()
   })

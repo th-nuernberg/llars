@@ -5,34 +5,35 @@
  */
 
 export function useBuilderValidation() {
-  const FALLBACK_URL = 'https://www.dg-agentur.de/'
-  const SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//
-
-  const getEffectiveUrl = (value) => {
-    if (!value || !value.trim()) return ''
+  const isValidHttpUrl = (value) => {
+    if (typeof value !== 'string') return false
     const trimmed = value.trim()
-    if (SCHEME_REGEX.test(trimmed)) {
-      return trimmed
+    if (!trimmed) return false
+    try {
+      const parsedUrl = new URL(trimmed)
+      return ['http:', 'https:'].includes(parsedUrl.protocol)
+    } catch {
+      return false
     }
-    return FALLBACK_URL
   }
 
   // Validation rules
   const rules = {
-    required: v => !!(v && v.trim()) || 'Pflichtfeld',
+    required: v => {
+      if (v === null || v === undefined) return 'Pflichtfeld'
+      if (typeof v === 'string') return v.length > 0 || 'Pflichtfeld'
+      if (typeof v === 'number') return v !== 0 || 'Pflichtfeld'
+      if (typeof v === 'boolean') return v || 'Pflichtfeld'
+      if (Array.isArray(v)) return v.length > 0 || 'Pflichtfeld'
+      if (typeof v === 'object') return Object.keys(v).length > 0 || 'Pflichtfeld'
+      return v ? true : 'Pflichtfeld'
+    },
     url: v => {
-      if (!v || !v.trim()) return true
+      if (v === null || v === undefined || v === '') return true
+      if (typeof v !== 'string') return 'Ungültige URL'
       const trimmed = v.trim()
-      if (!SCHEME_REGEX.test(trimmed)) return true
-      try {
-        const parsedUrl = new URL(trimmed)
-        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-          return 'URL muss mit http:// oder https:// beginnen'
-        }
-        return true
-      } catch {
-        return 'Ungültige URL'
-      }
+      if (!trimmed) return true
+      return isValidHttpUrl(trimmed) || 'Ungültige URL'
     }
   }
 
@@ -57,15 +58,11 @@ export function useBuilderValidation() {
   }
 
   const validateUrl = (url) => {
-    if (!url || !url.trim()) {
+    if (typeof url !== 'string' || !url.trim()) {
       return { valid: false, error: 'URL ist erforderlich' }
     }
     try {
-      const parsedUrl = new URL(getEffectiveUrl(url))
-      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-        return { valid: false, error: 'URL muss mit http:// oder https:// beginnen' }
-      }
-      return { valid: true, error: null }
+      return isValidHttpUrl(url) ? { valid: true, error: null } : { valid: false, error: 'Ungültige URL' }
     } catch {
       return { valid: false, error: 'Ungültige URL' }
     }

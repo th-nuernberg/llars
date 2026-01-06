@@ -414,7 +414,7 @@ def get_authenticity_scenario_stats(scenario_id: int):
         user = su.user
         user_id = user.id
 
-        # Get threads assigned to this user (for RATER role) or all threads (for VIEWER)
+        # Get threads assigned to this user (for RATER role) or all threads (for EVALUATOR)
         if su.role == ScenarioRoles.RATER and distribution_mode != DISTRIBUTION_MODE_ALL:
             user_thread_ids = [
                 dist.scenario_thread.thread.thread_id

@@ -177,32 +177,32 @@ class TestRolePermissions:
         assert service.check_permission(researcher_user.username, 'admin:users:manage') is False
         assert service.check_permission(researcher_user.username, 'admin:system:configure') is False
 
-    def test_PERM_022_viewer_has_view_permissions(self, app, db, viewer_user, app_context):
+    def test_PERM_022_evaluator_has_view_permissions(self, app, db, evaluator_user, app_context):
         """
-        [PERM-022] Viewer hat nur view Permissions
+        [PERM-022] Evaluator hat nur view Permissions
 
-        Viewer-Rolle soll nur :view Permissions haben.
+        Evaluator-Rolle soll nur :view Permissions haben.
         """
         from services.permission_service import PermissionService
 
         service = PermissionService()
 
         # Should have view permissions
-        assert service.check_permission(viewer_user.username, 'feature:ranking:view') is True
-        assert service.check_permission(viewer_user.username, 'feature:rating:view') is True
+        assert service.check_permission(evaluator_user.username, 'feature:ranking:view') is True
+        assert service.check_permission(evaluator_user.username, 'feature:rating:view') is True
 
-    def test_PERM_023_viewer_no_edit_permissions(self, app, db, viewer_user, app_context):
+    def test_PERM_023_evaluator_no_edit_permissions(self, app, db, evaluator_user, app_context):
         """
-        [PERM-023] Viewer hat KEINE edit Permissions
+        [PERM-023] Evaluator hat KEINE edit Permissions
 
-        Viewer-Rolle soll keinen Schreibzugriff haben.
+        Evaluator-Rolle soll keinen Schreibzugriff haben.
         """
         from services.permission_service import PermissionService
 
         service = PermissionService()
 
-        assert service.check_permission(viewer_user.username, 'feature:ranking:edit') is False
-        assert service.check_permission(viewer_user.username, 'feature:rating:edit') is False
+        assert service.check_permission(evaluator_user.username, 'feature:ranking:edit') is False
+        assert service.check_permission(evaluator_user.username, 'feature:rating:edit') is False
 
     def test_PERM_024_chatbot_manager_permissions(self, app, db, app_context):
         """
@@ -308,7 +308,7 @@ class TestPermissionOverrides:
         from db.tables import Permission, UserPermission
         from services.permission_service import PermissionService
 
-        # Give user explicit permission that viewer role doesn't have
+        # Give user explicit permission that evaluator role doesn't have
         admin_perm = Permission.query.filter_by(permission_key='admin:users:manage').first()
         if admin_perm:
             user_perm = UserPermission(

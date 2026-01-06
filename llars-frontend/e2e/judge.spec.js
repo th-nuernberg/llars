@@ -462,12 +462,12 @@ test.describe('Judge Permissions', () => {
     expect(hasAccess || hasContent || page.url().includes('/Home')).toBeTruthy()
   })
 
-  test('E2E_JUDGE_026: viewer access to judge', async ({ page }) => {
-    await quickLogin(page, TEST_USERS.viewer)
+  test('E2E_JUDGE_026: evaluator access to judge', async ({ page }) => {
+    await quickLogin(page, TEST_USERS.evaluator)
     await page.goto('/judge')
     await page.waitForLoadState('load')
 
-    // Viewer might have restricted access
+    // Evaluator might have restricted access
     const url = page.url()
     const hasContent = await page.locator('.judge-overview-page, .page-header, h1, main, .empty-state').first().isVisible({ timeout: 5000 }).catch(() => false)
 

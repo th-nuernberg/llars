@@ -60,10 +60,10 @@ def run_tests():
         print("  ✓ PASSED: Non-existent user denied\n")
 
         # Test 2: Assign role to user
-        print("Test 2: Assign 'viewer' role to testuser")
+        print("Test 2: Assign 'evaluator' role to testuser")
         print("-" * 80)
-        success = PermissionService.assign_role('testuser', 'viewer', 'admin')
-        print(f"  assign_role('testuser', 'viewer', 'admin'): {success}")
+        success = PermissionService.assign_role('testuser', 'evaluator', 'admin')
+        print(f"  assign_role('testuser', 'evaluator', 'admin'): {success}")
         assert success == True, "Role assignment should succeed"
         print("  ✓ PASSED: Role assigned successfully\n")
 
@@ -72,11 +72,11 @@ def run_tests():
         print("-" * 80)
         result = PermissionService.check_permission('testuser', 'feature:mail_rating:view')
         print(f"  check_permission('testuser', 'feature:mail_rating:view'): {result}")
-        assert result == True, "User with viewer role should have view permission"
+        assert result == True, "User with evaluator role should have view permission"
 
         result = PermissionService.check_permission('testuser', 'feature:mail_rating:edit')
         print(f"  check_permission('testuser', 'feature:mail_rating:edit'): {result}")
-        assert result == False, "User with viewer role should not have edit permission"
+        assert result == False, "User with evaluator role should not have edit permission"
         print("  ✓ PASSED: Role-based permissions working correctly\n")
 
         # Test 4: Get user permissions
@@ -130,7 +130,7 @@ def run_tests():
         for role in roles:
             print(f"    - {role['role_name']}: {role['display_name']}")
         assert len(roles) == 1
-        assert roles[0]['role_name'] == 'viewer'
+        assert roles[0]['role_name'] == 'evaluator'
         print("  ✓ PASSED: User roles retrieved correctly\n")
 
         # Test 8: Assign admin role
@@ -164,8 +164,8 @@ def run_tests():
         # Test 10: Unassign role
         print("Test 10: Unassign role")
         print("-" * 80)
-        success = PermissionService.unassign_role('testuser', 'viewer', 'admin')
-        print(f"  unassign_role('testuser', 'viewer', 'admin'): {success}")
+        success = PermissionService.unassign_role('testuser', 'evaluator', 'admin')
+        print(f"  unassign_role('testuser', 'evaluator', 'admin'): {success}")
         assert success == True
 
         roles = PermissionService.get_user_roles('testuser')

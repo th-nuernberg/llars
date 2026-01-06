@@ -17,6 +17,7 @@ AUTHENTIK_BOOTSTRAP_PASSWORD = os.getenv('AUTHENTIK_BOOTSTRAP_PASSWORD', 'admin1
 FRONTEND_CLIENT_ID = os.getenv('AUTHENTIK_FRONTEND_CLIENT_ID', 'llars-frontend')
 BACKEND_CLIENT_ID = os.getenv('AUTHENTIK_BACKEND_CLIENT_ID', 'llars-backend')
 BACKEND_CLIENT_SECRET = os.getenv('AUTHENTIK_BACKEND_CLIENT_SECRET', 'llars-backend-secret-change-in-production')
+PROJECT_STATE = os.getenv('PROJECT_STATE', 'development').lower()
 
 class AuthentikSetup:
     def __init__(self):
@@ -292,27 +293,39 @@ class AuthentikSetup:
             name="Admin User"
         )
 
-        self.create_test_user(
-            username="researcher",
-            email="researcher@llars.local",
-            password="researcher123",
-            name="Researcher User"
-        )
+        if PROJECT_STATE != 'production':
+            self.create_test_user(
+                username="researcher",
+                email="researcher@llars.local",
+                password="researcher123",
+                name="Researcher User"
+            )
 
-        self.create_test_user(
-            username="viewer",
-            email="viewer@llars.local",
-            password="viewer123",
-            name="Viewer User"
-        )
+            self.create_test_user(
+                username="evaluator",
+                email="evaluator@llars.local",
+                password="evaluator123",
+                name="Evaluator User"
+            )
+
+            self.create_test_user(
+                username="chatbot_manager",
+                email="chatbot_manager@llars.local",
+                password="chatbot_manager123",
+                name="Chatbot Manager"
+            )
 
         print("\n" + "=" * 60)
         print("✅ Setup completed!")
         print("=" * 60)
         print("\n📝 Test Credentials:")
         print("   Admin:      admin / admin123")
-        print("   Researcher: researcher / researcher123")
-        print("   Viewer:     viewer / viewer123")
+        if PROJECT_STATE != 'production':
+            print("   Researcher: researcher / researcher123")
+            print("   Evaluator:  evaluator / evaluator123")
+            print("   Chatbot:    chatbot_manager / chatbot_manager123")
+        else:
+            print("   (Production mode: only admin user created)")
         print("\n🌐 URLs:")
         print(f"   Authentik Admin: {self.base_url}")
         print("   LLARS Frontend:  http://localhost:55080")

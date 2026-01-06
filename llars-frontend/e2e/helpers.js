@@ -11,12 +11,18 @@
  * @see https://playwright.dev/docs/best-practices
  */
 
+const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
+const isProduction = !!process.env.E2E_TEST_PASSWORD
+const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
+const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
+const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'
+
 export const TEST_USERS = {
-  rater: { username: 'researcher', password: 'admin123' },
-  researcher: { username: 'researcher', password: 'admin123' },
-  viewer: { username: 'viewer', password: 'admin123' },
-  admin: { username: 'admin', password: 'admin123' },
-  chatbot_manager: { username: 'chatbot_manager', password: 'admin123' }
+  rater: { username: researcherUsername, password: testPassword },
+  researcher: { username: researcherUsername, password: testPassword },
+  evaluator: { username: evaluatorUsername, password: testPassword },
+  admin: { username: 'admin', password: testPassword },
+  chatbot_manager: { username: chatbotManagerUsername, password: testPassword }
 }
 
 /**

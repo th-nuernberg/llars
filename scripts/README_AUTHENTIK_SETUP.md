@@ -115,7 +115,7 @@ Provider: llars-frontend-provider
 | admin      | admin123   | admin@localhost       | Admin      |
 | akadmin    | admin123   | akadmin@localhost     | Admin      |
 | researcher | admin123   | researcher@localhost  | User       |
-| viewer     | admin123   | viewer@localhost      | User       |
+| evaluator  | admin123   | evaluator@localhost   | User       |
 
 **Admin users** are added to the `authentik Admins` group, giving them superuser access to the Authentik UI.
 
@@ -193,7 +193,7 @@ print(OAuth2Provider.objects.filter(name__icontains='llars').count())
 # Check test users exist
 docker compose exec -T authentik-server ak shell -c "
 from authentik.core.models import User
-users = ['admin', 'akadmin', 'researcher', 'viewer']
+users = ['admin', 'akadmin', 'researcher', 'evaluator']
 print(User.objects.filter(username__in=users).count())
 "
 ```

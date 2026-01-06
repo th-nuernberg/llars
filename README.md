@@ -78,7 +78,7 @@ Das Skript startet alle Docker-Container und konfiguriert Authentik automatisch.
 |------|----------|-------|
 | admin | admin123 | Administrator |
 | researcher | admin123 | Researcher |
-| viewer | admin123 | Viewer |
+| evaluator | admin123 | Evaluator |
 | chatbot_manager | admin123 | Chatbot Manager |
 
 ---

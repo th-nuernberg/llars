@@ -4,7 +4,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2">mdi-account-group</v-icon>
-        Benutzer zuweisen
+        Benutzer einladen
         <v-spacer />
         <v-chip color="primary" variant="tonal" size="small">
           {{ selectedCount }} ausgewählt
@@ -12,75 +12,84 @@
       </v-card-title>
 
       <v-card-text>
-        <!-- Quick Actions -->
-        <div class="d-flex flex-wrap gap-2 mb-4">
-          <LBtn variant="text" size="small" @click="selectAllAsRaters">
-            Alle als Rater
-          </LBtn>
-          <LBtn variant="text" size="small" @click="selectResearchersAsRaters">
-            Researcher als Rater
-          </LBtn>
-          <LBtn variant="text" size="small" @click="clearSelection">
-            Auswahl löschen
-          </LBtn>
+        <!-- Loading -->
+        <div v-if="loadingUsers" class="text-center pa-6">
+          <v-progress-circular indeterminate color="primary" />
+          <div class="text-caption mt-2">Lade Benutzer...</div>
         </div>
 
-        <!-- User List -->
-        <v-table density="comfortable" hover>
-          <thead>
-            <tr>
-              <th style="width: 50%">Benutzer</th>
-              <th class="text-center">Rater</th>
-              <th class="text-center">Viewer</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id">
-              <td>
-                <div class="d-flex align-center">
-                  <v-avatar size="32" color="primary" class="mr-2">
-                    <span class="text-caption">{{ getInitials(user.name) }}</span>
-                  </v-avatar>
-                  <div>
-                    <div class="font-weight-medium">{{ user.name }}</div>
-                    <div class="text-caption text-medium-emphasis">{{ user.email }}</div>
+        <template v-else>
+          <!-- Quick Actions -->
+          <div class="d-flex flex-wrap gap-2 mb-4">
+            <LBtn variant="text" size="small" @click="selectAllAsRaters">
+              Alle als Rater
+            </LBtn>
+            <LBtn variant="text" size="small" @click="selectResearchersAsRaters">
+              Researcher als Rater
+            </LBtn>
+            <LBtn variant="text" size="small" @click="clearSelection">
+              Auswahl löschen
+            </LBtn>
+          </div>
+
+          <!-- User List -->
+          <v-table density="comfortable" hover>
+            <thead>
+              <tr>
+                <th style="width: 50%">Benutzer</th>
+                <th class="text-center">Rater</th>
+                <th class="text-center">Evaluator</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in users" :key="user.id">
+                <td>
+                  <div class="d-flex align-center">
+                    <v-avatar size="32" color="primary" class="mr-2">
+                      <span class="text-caption">{{ getInitials(user.username) }}</span>
+                    </v-avatar>
+                    <div>
+                      <div class="font-weight-medium">{{ user.username }}</div>
+                      <div v-if="user.email" class="text-caption text-medium-emphasis">{{ user.email }}</div>
+                    </div>
+                    <v-chip
+                      v-if="user.in_scenario"
+                      size="x-small"
+                      variant="tonal"
+                      color="info"
+                      class="ml-2"
+                    >
+                      {{ user.scenario_role }}
+                    </v-chip>
                   </div>
-                  <v-chip
-                    v-if="user.role"
-                    size="x-small"
-                    variant="tonal"
-                    class="ml-2"
-                  >
-                    {{ user.role }}
-                  </v-chip>
-                </div>
-              </td>
-              <td class="text-center">
-                <v-checkbox
-                  :model-value="localConfig.raters.includes(user.id)"
-                  hide-details
-                  density="compact"
-                  color="primary"
-                  @update:model-value="toggleRater(user.id, $event)"
-                />
-              </td>
-              <td class="text-center">
-                <v-checkbox
-                  :model-value="localConfig.viewers.includes(user.id)"
-                  hide-details
-                  density="compact"
-                  color="secondary"
-                  @update:model-value="toggleViewer(user.id, $event)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+                </td>
+                <td class="text-center">
+                  <v-checkbox
+                    :model-value="localConfig.raters.includes(user.id)"
+                    hide-details
+                    density="compact"
+                    color="primary"
+                    @update:model-value="toggleRater(user.id, $event)"
+                  />
+                </td>
+                <td class="text-center">
+                  <v-checkbox
+                    :model-value="localConfig.evaluators.includes(user.id)"
+                    hide-details
+                    density="compact"
+                    color="secondary"
+                    @update:model-value="toggleEvaluator(user.id, $event)"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
 
-        <div v-if="!users.length" class="text-center text-medium-emphasis pa-6">
-          <v-icon size="48" class="mb-2">mdi-account-off</v-icon>
-          <div>Keine Benutzer verfügbar</div>
-        </div>
+          <div v-if="!users.length" class="text-center text-medium-emphasis pa-6">
+            <v-icon size="48" class="mb-2">mdi-account-off</v-icon>
+            <div>Keine Benutzer verfügbar</div>
+          </div>
+        </template>
       </v-card-text>
     </v-card>
 
@@ -110,26 +119,39 @@
       </v-card-text>
     </v-card>
 
-    <!-- Info Alert -->
+    <!-- Role Explanation -->
     <v-alert
-      v-if="localConfig.raters.length === 0"
+      type="info"
+      variant="tonal"
+      class="mt-4"
+      density="compact"
+    >
+      <div class="text-body-2">
+        <strong>Rater:</strong> Können Items im Szenario bewerten/ranken.<br>
+        <strong>Evaluator:</strong> Können an Evaluationen teilnehmen und Ergebnisse sehen.
+      </div>
+    </v-alert>
+
+    <!-- Selection Summary -->
+    <v-alert
+      v-if="localConfig.raters.length === 0 && localConfig.evaluators.length === 0"
       type="warning"
       variant="tonal"
       class="mt-4"
     >
       <v-icon class="mr-2">mdi-alert</v-icon>
-      Mindestens ein Rater muss ausgewählt werden.
+      Mindestens ein Benutzer sollte ausgewählt werden (optional).
     </v-alert>
 
     <v-alert
       v-else
-      type="info"
+      type="success"
       variant="tonal"
       class="mt-4"
     >
       <div>
         <strong>{{ localConfig.raters.length }} Rater</strong> und
-        <strong>{{ localConfig.viewers.length }} Viewer</strong> werden dem Szenario zugewiesen.
+        <strong>{{ localConfig.evaluators.length }} Evaluatoren</strong> werden eingeladen.
       </div>
     </v-alert>
   </div>
@@ -152,6 +174,10 @@ const props = defineProps({
     type: Object,
     default: null
   },
+  scenarioId: {
+    type: Number,
+    default: null
+  },
   loading: {
     type: Boolean,
     default: false
@@ -160,8 +186,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update:userConfig'])
 
-// Local copy
-const localConfig = ref({ ...props.userConfig })
+// Local copy - ensure evaluators array exists
+const localConfig = ref({
+  raters: props.userConfig?.raters || [],
+  evaluators: props.userConfig?.evaluators || props.userConfig?.viewers || []
+})
 
 // Sync
 watch(localConfig, (newVal) => {
@@ -169,13 +198,17 @@ watch(localConfig, (newVal) => {
 }, { deep: true })
 
 watch(() => props.userConfig, (newVal) => {
-  localConfig.value = { ...newVal }
+  localConfig.value = {
+    raters: newVal?.raters || [],
+    evaluators: newVal?.evaluators || newVal?.viewers || []
+  }
 }, { deep: true })
 
 const users = ref([])
+const loadingUsers = ref(false)
 
 const selectedCount = computed(() => {
-  return localConfig.value.raters.length + localConfig.value.viewers.length
+  return localConfig.value.raters.length + localConfig.value.evaluators.length
 })
 
 const itemCount = computed(() => {
@@ -196,7 +229,7 @@ const getInitials = (name) => {
 
 const getUserName = (userId) => {
   const user = users.value.find(u => u.id === userId)
-  return user?.name || 'Unbekannt'
+  return user?.username || 'Unbekannt'
 }
 
 const toggleRater = (userId, isSelected) => {
@@ -204,10 +237,10 @@ const toggleRater = (userId, isSelected) => {
     if (!localConfig.value.raters.includes(userId)) {
       localConfig.value.raters.push(userId)
     }
-    // Remove from viewers if added as rater
-    const viewerIdx = localConfig.value.viewers.indexOf(userId)
-    if (viewerIdx > -1) {
-      localConfig.value.viewers.splice(viewerIdx, 1)
+    // Remove from evaluators if added as rater
+    const evalIdx = localConfig.value.evaluators.indexOf(userId)
+    if (evalIdx > -1) {
+      localConfig.value.evaluators.splice(evalIdx, 1)
     }
   } else {
     const idx = localConfig.value.raters.indexOf(userId)
@@ -217,47 +250,75 @@ const toggleRater = (userId, isSelected) => {
   }
 }
 
-const toggleViewer = (userId, isSelected) => {
+const toggleEvaluator = (userId, isSelected) => {
   if (isSelected) {
-    if (!localConfig.value.viewers.includes(userId)) {
-      localConfig.value.viewers.push(userId)
+    if (!localConfig.value.evaluators.includes(userId)) {
+      localConfig.value.evaluators.push(userId)
     }
-    // Remove from raters if added as viewer
+    // Remove from raters if added as evaluator
     const raterIdx = localConfig.value.raters.indexOf(userId)
     if (raterIdx > -1) {
       localConfig.value.raters.splice(raterIdx, 1)
     }
   } else {
-    const idx = localConfig.value.viewers.indexOf(userId)
+    const idx = localConfig.value.evaluators.indexOf(userId)
     if (idx > -1) {
-      localConfig.value.viewers.splice(idx, 1)
+      localConfig.value.evaluators.splice(idx, 1)
     }
   }
 }
 
 const selectAllAsRaters = () => {
   localConfig.value.raters = users.value.map(u => u.id)
-  localConfig.value.viewers = []
+  localConfig.value.evaluators = []
 }
 
 const selectResearchersAsRaters = () => {
+  // Filter users by system role (researcher or admin should be raters)
   localConfig.value.raters = users.value
-    .filter(u => u.role === 'researcher' || u.role === 'admin')
+    .filter(u => !u.in_scenario) // Only users not already in scenario
     .map(u => u.id)
 }
 
 const clearSelection = () => {
   localConfig.value.raters = []
-  localConfig.value.viewers = []
+  localConfig.value.evaluators = []
 }
 
-onMounted(async () => {
+const loadUsers = async () => {
+  loadingUsers.value = true
   try {
-    const response = await axios.get('/api/users')
-    users.value = response.data.users || response.data || []
+    // Use the new endpoint for available users
+    const params = props.scenarioId ? { scenario_id: props.scenarioId } : {}
+    const response = await axios.get('/api/admin/available_users_for_scenario', { params })
+    users.value = response.data.users || []
   } catch (err) {
     console.error('Failed to load users:', err)
+    // Fallback to general users endpoint
+    try {
+      const response = await axios.get('/api/users')
+      users.value = (response.data.users || response.data || []).map(u => ({
+        id: u.id,
+        username: u.username || u.name,
+        email: u.email,
+        in_scenario: false
+      }))
+    } catch (fallbackErr) {
+      console.error('Fallback also failed:', fallbackErr)
+      users.value = []
+    }
+  } finally {
+    loadingUsers.value = false
   }
+}
+
+onMounted(() => {
+  loadUsers()
+})
+
+// Reload users if scenarioId changes
+watch(() => props.scenarioId, () => {
+  loadUsers()
 })
 </script>
 

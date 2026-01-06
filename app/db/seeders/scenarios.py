@@ -4,7 +4,7 @@ Scenario Seeder for Development
 Seeds example Rating and Ranking scenarios with sample email threads,
 messages, and LLM-generated features for testing purposes.
 
-Maps scenarios to 'viewer' and 'researcher' users.
+Maps scenarios to 'evaluator' and 'researcher' users.
 """
 
 from datetime import datetime, timedelta
@@ -17,8 +17,8 @@ def seed_demo_scenarios(db):
     Creates:
     - Sample email threads with messages
     - LLM-generated features for the threads
-    - A Rating scenario mapped to viewer/researcher
-    - A Ranking scenario mapped to viewer/researcher
+    - A Rating scenario mapped to evaluator/researcher
+    - A Ranking scenario mapped to evaluator/researcher
 
     Args:
         db: SQLAlchemy database instance
@@ -36,7 +36,7 @@ def seed_demo_scenarios(db):
     import uuid
 
     # Get or create users for demo scenarios
-    viewer_user = User.query.filter_by(username='viewer').first()
+    evaluator_user = User.query.filter_by(username='evaluator').first()
     researcher_user = User.query.filter_by(username='researcher').first()
     admin_user = User.query.filter_by(username='admin').first()
 
@@ -47,15 +47,15 @@ def seed_demo_scenarios(db):
         db.session.add(default_group)
         db.session.flush()
 
-    if not viewer_user:
-        viewer_user = User(
-            username='viewer',
+    if not evaluator_user:
+        evaluator_user = User(
+            username='evaluator',
             password_hash='',  # Auth via Authentik, no local password
             api_key=str(uuid.uuid4()),
             group_id=default_group.id
         )
-        db.session.add(viewer_user)
-        print("  Created user: viewer")
+        db.session.add(evaluator_user)
+        print("  Created user: evaluator")
 
     if not researcher_user:
         researcher_user = User(
@@ -69,9 +69,9 @@ def seed_demo_scenarios(db):
 
     db.session.flush()
     if admin_user:
-        print(f"  Users ready: viewer (id={viewer_user.id}), researcher (id={researcher_user.id}), admin (id={admin_user.id})")
+        print(f"  Users ready: evaluator (id={evaluator_user.id}), researcher (id={researcher_user.id}), admin (id={admin_user.id})")
     else:
-        print(f"  Users ready: viewer (id={viewer_user.id}), researcher (id={researcher_user.id})")
+        print(f"  Users ready: evaluator (id={evaluator_user.id}), researcher (id={researcher_user.id})")
 
     # Get function types
     rating_type = FeatureFunctionType.query.filter_by(name='rating').first()
@@ -593,7 +593,7 @@ def seed_demo_scenarios(db):
         db.session.flush()
 
         # Add users to scenario
-        for user, role in [(viewer_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
             scenario_user = ScenarioUsers(
                 scenario_id=rating_scenario.id,
                 user_id=user.id,
@@ -637,7 +637,7 @@ def seed_demo_scenarios(db):
 
     # Ensure admin can evaluate demo scenarios
     if admin_user and rating_scenario:
-        _ensure_scenario_user(rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+        _ensure_scenario_user(rating_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
 
     # Create Ranking Scenario
     if not existing_ranking:
@@ -652,7 +652,7 @@ def seed_demo_scenarios(db):
         db.session.flush()
 
         # Add users to scenario
-        for user, role in [(viewer_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
             scenario_user = ScenarioUsers(
                 scenario_id=ranking_scenario.id,
                 user_id=user.id,
@@ -689,7 +689,7 @@ def seed_demo_scenarios(db):
         ranking_scenario = existing_ranking
 
     if admin_user and ranking_scenario:
-        _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+        _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
 
     # Create Mail Rating Scenario (Verlauf Bewerter)
     if not existing_mail_rating:
@@ -704,7 +704,7 @@ def seed_demo_scenarios(db):
         db.session.flush()
 
         # Add users to scenario
-        for user, role in [(viewer_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
             scenario_user = ScenarioUsers(
                 scenario_id=mail_rating_scenario.id,
                 user_id=user.id,
@@ -746,7 +746,7 @@ def seed_demo_scenarios(db):
         mail_rating_scenario = existing_mail_rating
 
     if admin_user and mail_rating_scenario:
-        _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+        _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
 
     # Create Fake/Echt Scenario (Authenticity)
     if not existing_authenticity:
@@ -765,7 +765,7 @@ def seed_demo_scenarios(db):
         db.session.add(authenticity_scenario)
         db.session.flush()
 
-        for user, role in [(viewer_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
             scenario_user = ScenarioUsers(
                 scenario_id=authenticity_scenario.id,
                 user_id=user.id,
@@ -805,7 +805,7 @@ def seed_demo_scenarios(db):
         authenticity_scenario = existing_authenticity
 
     if admin_user and authenticity_scenario:
-        _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+        _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
 
     # Create Comparison Scenario (Gegenüberstellung) – placeholder without sessions
     if not existing_comparison:
@@ -826,7 +826,7 @@ def seed_demo_scenarios(db):
         db.session.add(comparison_scenario)
         db.session.flush()
 
-        for user, role in [(viewer_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
             db.session.add(
                 ScenarioUsers(
                     scenario_id=comparison_scenario.id,
@@ -840,7 +840,7 @@ def seed_demo_scenarios(db):
         comparison_scenario = existing_comparison
 
     if admin_user and comparison_scenario:
-        _ensure_scenario_user(comparison_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+        _ensure_scenario_user(comparison_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
 
     # Seed demo ComparisonSessions so the dashboard is not empty
     if comparison_scenario:
@@ -900,7 +900,7 @@ def seed_demo_scenarios(db):
             ),
         ]
 
-        users_for_comparison = [viewer_user, researcher_user]
+        users_for_comparison = [evaluator_user, researcher_user]
         if admin_user:
             users_for_comparison.append(admin_user)
 

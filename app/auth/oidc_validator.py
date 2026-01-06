@@ -301,8 +301,10 @@ def has_role(token_payload: Dict, role: str) -> bool:
         'administrators': 'admin',
         'Researchers': 'researcher',
         'researchers': 'researcher',
-        'Viewers': 'viewer',
-        'viewers': 'viewer',
+        'Evaluators': 'evaluator',
+        'evaluators': 'evaluator',
+        'Viewers': 'evaluator',
+        'viewers': 'evaluator',
     }
 
     # Convert Authentik groups to roles
@@ -324,6 +326,10 @@ def has_role(token_payload: Dict, role: str) -> bool:
 
     # Combine all roles from all sources
     all_roles = keycloak_roles + client_roles + authentik_roles
+
+    # Backwards compatibility: treat viewer as evaluator
+    if 'viewer' in all_roles and 'evaluator' not in all_roles:
+        all_roles.append('evaluator')
 
     # Check if the requested role is in any of the sources
     return role in all_roles

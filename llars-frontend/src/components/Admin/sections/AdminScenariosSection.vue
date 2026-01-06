@@ -123,6 +123,16 @@
             </LTag>
           </template>
 
+          <template v-slot:item.created_by="{ item }">
+            <div v-if="item.created_by" class="d-flex align-center">
+              <v-avatar size="24" color="secondary" class="mr-2">
+                <span class="text-caption">{{ item.created_by.charAt(0).toUpperCase() }}</span>
+              </v-avatar>
+              <span class="text-body-2">{{ item.created_by }}</span>
+            </div>
+            <span v-else class="text-medium-emphasis text-caption">System</span>
+          </template>
+
           <template v-slot:item.begin_date="{ item }">
             {{ formatDate(item.begin_date) }}
           </template>
@@ -298,6 +308,7 @@ const typeOptions = [
 const headers = [
   { title: 'Name', key: 'name', sortable: true },
   { title: 'Typ', key: 'function_type_name', sortable: true },
+  { title: 'Ersteller', key: 'created_by', sortable: true },
   { title: 'Beginn', key: 'begin_date', sortable: true },
   { title: 'Ende', key: 'end_date', sortable: true },
   { title: 'Status', key: 'status', sortable: true },

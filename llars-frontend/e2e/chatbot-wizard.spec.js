@@ -37,7 +37,7 @@ const TEST_CONFIG = {
   testDocumentContent: `
     LLARS ist ein System zur kollaborativen Bewertung von LLM-generierten Inhalten.
     Die Hauptfunktionen umfassen Rating, Ranking und LLM-as-Judge Evaluierungen.
-    Das System unterstützt mehrere Benutzerrollen: Admin, Researcher und Viewer.
+    Das System unterstützt mehrere Benutzerrollen: Admin, Researcher und Evaluator.
     RAG (Retrieval-Augmented Generation) ermöglicht kontextbasierte Antworten.
     Die Architektur basiert auf Flask Backend und Vue.js Frontend.
   `,
@@ -714,12 +714,12 @@ test.describe('Chatbot Wizard - Smoke Tests', () => {
     expect(hasAccess).toBeTruthy()
   })
 
-  test('E2E_WIZARD_SMOKE_003: viewer cannot create chatbots', async ({ page }) => {
-    await quickLogin(page, TEST_USERS.viewer)
+  test('E2E_WIZARD_SMOKE_003: evaluator cannot create chatbots', async ({ page }) => {
+    await quickLogin(page, TEST_USERS.evaluator)
     await page.goto('/admin?tab=chatbots')
     await page.waitForLoadState('load')
 
-    // Viewer should be denied or redirected
+    // Evaluator should be denied or redirected
     const url = page.url()
     const hasAccessDenied = await page.locator('text=Zugriff verweigert, text=keine Berechtigung').first().isVisible({ timeout: 3000 }).catch(() => false)
 

@@ -49,7 +49,7 @@ flow_count = Flow.objects.filter(slug='llars-api-authentication').count()
 flow_stages = FlowStageBinding.objects.filter(target__slug='llars-api-authentication').count()
 provider_count = OAuth2Provider.objects.filter(name__icontains='llars').count()
 app_count = Application.objects.filter(slug__icontains='llars').count()
-user_count = User.objects.filter(username__in=['admin', 'akadmin', 'researcher', 'viewer']).count()
+user_count = User.objects.filter(username__in=['admin', 'akadmin', 'researcher', 'evaluator']).count()
 admin_count = User.objects.filter(username__in=['admin', 'akadmin'], ak_groups__name='authentik Admins').count()
 
 # Check specific objects
@@ -146,7 +146,7 @@ echo -e "${BLUE}Test Credentials:${NC}"
 echo "  admin      / admin123 (admin)"
 echo "  akadmin    / admin123 (admin)"
 echo "  researcher / admin123 (user)"
-echo "  viewer     / admin123 (user)"
+echo "  evaluator  / admin123 (user)"
 
 echo ""
 echo -e "${GREEN}Verification complete!${NC}"

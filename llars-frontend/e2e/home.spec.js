@@ -284,13 +284,13 @@ test.describe('Permission-Based Features', () => {
     expect(cardCount).toBeGreaterThan(0)
   })
 
-  test('E2E_HOME_019: viewer sees limited features', async ({ page }) => {
-    await quickLogin(page, TEST_USERS.viewer)
+  test('E2E_HOME_019: evaluator sees limited features', async ({ page }) => {
+    await quickLogin(page, TEST_USERS.evaluator)
     await goToHome(page)
 
     await waitForLoading(page)
 
-    // Viewer should still see some features
+    // Evaluator should still see some features
     const hasContent = await page.locator('.features-grid, .feature-card, .empty-state').first().isVisible({ timeout: 5000 }).catch(() => false)
     expect(hasContent).toBeTruthy()
   })

@@ -22,7 +22,7 @@ import { test, expect } from '@playwright/test'
 test.setTimeout(60000)
 
 // Test credentials
-const TEST_USER = { username: 'admin', password: 'admin123' }
+const TEST_USER = { username: 'admin', password: process.env.E2E_TEST_PASSWORD || 'admin123' }
 
 // ==================== HELPER FUNCTIONS ====================
 

@@ -422,6 +422,8 @@ def _enrich_token_with_roles(token_data: dict, username: str) -> None:
 
         for row in result:
             role_name = row[0]
+            if role_name == 'viewer':
+                role_name = 'evaluator'
             if role_name not in user_roles:
                 user_roles.append(role_name)
 

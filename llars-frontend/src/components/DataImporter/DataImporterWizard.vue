@@ -110,8 +110,17 @@
           :error="error"
         />
 
-        <!-- Step 4: Execute Import -->
-        <div v-else-if="currentStep === 4" class="step-execute pa-6">
+        <!-- Step 4: User Invitation -->
+        <StepUsers
+          v-else-if="currentStep === 4"
+          v-model:user-config="userConfig"
+          :session="session"
+          :scenario-config="scenarioConfig"
+          :loading="loading"
+        />
+
+        <!-- Step 5: Execute Import -->
+        <div v-else-if="currentStep === 5" class="step-execute pa-6">
           <div class="execute-summary">
             <v-icon size="64" color="primary" class="mb-4">mdi-rocket-launch</v-icon>
             <h2 class="text-h5 mb-2">Bereit zum Import</h2>
@@ -131,6 +140,10 @@
               <div class="summary-card">
                 <div class="summary-value">{{ getTaskTypeLabel(scenarioConfig.taskType) }}</div>
                 <div class="summary-label">Task-Typ</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-value">{{ totalUsersCount }}</div>
+                <div class="summary-label">Benutzer</div>
               </div>
             </div>
 
@@ -191,7 +204,7 @@
         <v-spacer />
 
         <LBtn
-          v-if="currentStep < 4 && !importComplete"
+          v-if="currentStep < 5 && !importComplete"
           variant="primary"
           append-icon="mdi-arrow-right"
           :disabled="!canProceed || loading"
@@ -222,6 +235,7 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import StepUpload from './steps/StepUpload.vue'
 import StepDescribe from './steps/StepDescribe.vue'
 import StepReviewNew from './steps/StepReviewNew.vue'
+import StepUsers from './steps/StepUsers.vue'
 
 import { useImportWizard } from './composables/useImportWizard'
 
@@ -261,15 +275,16 @@ const scenarioConfig = ref({
 
 const userConfig = ref({
   raters: [],
-  viewers: []
+  evaluators: []
 })
 
-// Step definitions (simplified to 4 steps)
+// Step definitions (5 steps with user invitation)
 const steps = [
   { value: 1, title: 'Upload', icon: 'mdi-upload' },
   { value: 2, title: 'Beschreiben', icon: 'mdi-chat-question' },
   { value: 3, title: 'Konfigurieren', icon: 'mdi-cog' },
-  { value: 4, title: 'Import', icon: 'mdi-rocket-launch' }
+  { value: 4, title: 'Benutzer', icon: 'mdi-account-group' },
+  { value: 5, title: 'Import', icon: 'mdi-rocket-launch' }
 ]
 
 const taskTypeLabels = {
@@ -286,6 +301,10 @@ const totalItemCount = computed(() => {
   return sessions.value.reduce((sum, s) => sum + (s.item_count || s.structure?.item_count || 0), 0)
 })
 
+const totalUsersCount = computed(() => {
+  return (userConfig.value.raters?.length || 0) + (userConfig.value.evaluators?.length || 0)
+})
+
 const canProceed = computed(() => {
   switch (currentStep.value) {
     case 1:
@@ -295,6 +314,9 @@ const canProceed = computed(() => {
     case 3:
       return scenarioConfig.value.name?.trim().length > 0
     case 4:
+      // Users step - always allow proceeding (optional)
+      return true
+    case 5:
       return true
     default:
       return false
@@ -308,6 +330,8 @@ const nextButtonText = computed(() => {
     case 2:
       return 'Konfigurieren'
     case 3:
+      return 'Benutzer einladen'
+    case 4:
       return 'Import vorbereiten'
     default:
       return 'Weiter'
@@ -328,7 +352,7 @@ const navigateToStep = (step) => {
 }
 
 const nextStep = () => {
-  if (currentStep.value < 4 && canProceed.value) {
+  if (currentStep.value < 5 && canProceed.value) {
     currentStep.value++
   }
 }

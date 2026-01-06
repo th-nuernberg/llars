@@ -341,8 +341,8 @@ test.describe('Ranking Navigation', () => {
 // ==================== PERMISSION TESTS ====================
 
 test.describe('Ranking Permissions', () => {
-  test('E2E_RANKING_021: viewer can access ranking page', async ({ page }) => {
-    await quickLogin(page, TEST_USERS.viewer)
+  test('E2E_RANKING_021: evaluator can access ranking page', async ({ page }) => {
+    await quickLogin(page, TEST_USERS.evaluator)
     await page.goto('/Ranker')
     await page.waitForLoadState('load')
 

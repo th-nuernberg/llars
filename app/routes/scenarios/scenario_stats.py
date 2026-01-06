@@ -39,7 +39,7 @@ def get_scenario_user_progress_stats(scenario_id):
         raise NotFoundError('Function type does not exist')
 
     rater_stats = []
-    viewer_stats = []
+    evaluator_stats = []
 
     scenario_users = (db.session.query(ScenarioUsers).join(User, ScenarioUsers.user_id == User.id)
                      .filter(ScenarioUsers.scenario_id == scenario_id).all())
@@ -53,7 +53,7 @@ def get_scenario_user_progress_stats(scenario_id):
         total_not_started_threads = 0
 
         use_full_threads = (
-            scenario_user.role == ScenarioRoles.VIEWER
+            scenario_user.role == ScenarioRoles.EVALUATOR
             or (scenario_user.role == ScenarioRoles.RATER and raters_receive_all_threads(scenario))
         )
 
@@ -125,10 +125,14 @@ def get_scenario_user_progress_stats(scenario_id):
 
         if scenario_user.role == ScenarioRoles.RATER:
             rater_stats.append(new_data)
-        elif scenario_user.role == ScenarioRoles.VIEWER:
-            viewer_stats.append(new_data)
+        elif scenario_user.role == ScenarioRoles.EVALUATOR:
+            evaluator_stats.append(new_data)
 
-    return jsonify({'rater_stats': rater_stats, "viewer_stats": viewer_stats}), 200
+    return jsonify({
+        'rater_stats': rater_stats,
+        'evaluator_stats': evaluator_stats,
+        'viewer_stats': evaluator_stats,  # backward compatibility
+    }), 200
 
 
 @data_blueprint.route('/evaluation/thread_counts', methods=['GET'])

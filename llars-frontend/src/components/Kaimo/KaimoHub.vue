@@ -30,7 +30,7 @@
               Konzept Phase
             </v-chip>
             <v-chip color="secondary" variant="outlined" prepend-icon="mdi-account-badge-outline">
-              Rollen: Viewer &amp; Researcher
+              Rollen: Evaluator &amp; Researcher
             </v-chip>
             <v-chip v-if="canViewKaimo" color="primary" variant="outlined" prepend-icon="mdi-folder">
               {{ caseStats.total }} Fälle ({{ caseStats.published }} live / {{ caseStats.draft }} Entwürfe)

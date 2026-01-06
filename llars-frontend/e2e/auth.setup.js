@@ -19,7 +19,8 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
 
 const TEST_USERS = {
   researcher: { username: 'e2e-researcher', password: testPassword, role: 'researcher' },
-  viewer: { username: 'e2e-viewer', password: testPassword, role: 'viewer' },
+  evaluator: { username: 'e2e-evaluator', password: testPassword, role: 'evaluator' },
+  chatbot_manager: { username: 'e2e-chatbot-manager', password: testPassword, role: 'chatbot_manager' },
   admin: { username: 'admin', password: testPassword }
 }
 
@@ -42,8 +43,10 @@ async function performLogin(page, user) {
   console.log(`[E2E] Starting login for user: ${user.username}`)
   console.log(`[E2E] Base URL: ${baseURL}, isProduction: ${isProduction}`)
 
-  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
-  await page.waitForLoadState('load')
+  const loginResponse = await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 45000 })
+  if (loginResponse && loginResponse.status() >= 400) {
+    throw new Error(`Login page returned ${loginResponse.status()} ${loginResponse.statusText()}`)
+  }
   console.log(`[E2E] Current URL after goto /login: ${page.url()}`)
 
   await dismissConsentBanner(page)
@@ -56,7 +59,7 @@ async function performLogin(page, user) {
     const headerLoginBtn = page.locator('button:has-text("Anmelden")').first()
     if (await headerLoginBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await headerLoginBtn.click()
-      await page.waitForLoadState('load')
+      await page.waitForLoadState('domcontentloaded')
       await page.waitForTimeout(500)
       console.log(`[E2E] After clicking Anmelden, URL: ${page.url()}`)
     }
@@ -67,7 +70,7 @@ async function performLogin(page, user) {
   if (await devBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
     console.log('[E2E] Found dev-login button, clicking it')
     await devBtn.click()
-    await page.waitForURL(/\/Home/, { timeout: 25000 })
+    await page.waitForURL(/\/Home/, { timeout: 35000 })
     await dismissConsentBanner(page)
     return
   }
@@ -76,7 +79,7 @@ async function performLogin(page, user) {
 
   // Production: LLARS has its own login form that posts to backend
   // Wait for either login form OR already logged in (Home page)
-  const loginFormVisible = await page.waitForSelector('[data-testid="login-form"], .login-form, .login-container', { timeout: 15000 }).catch(() => null)
+  const loginFormVisible = await page.waitForSelector('[data-testid="login-form"], .login-form, .login-container', { timeout: 30000 }).catch(() => null)
 
   if (!loginFormVisible) {
     // Maybe we're already on home?
@@ -144,13 +147,21 @@ async function performLogin(page, user) {
   const loginBtn = page.locator('[data-testid="login-btn"], .login-button, button:has-text("Anmelden"), button[type="submit"]').first()
   await loginBtn.waitFor({ state: 'visible', timeout: 5000 })
   console.log('[E2E] Clicking login button')
+  const loginResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/auth/authentik/login') && response.request().method() === 'POST',
+    { timeout: 15000 }
+  ).catch(() => null)
   await loginBtn.click()
+  const loginResponseResult = await loginResponsePromise
+  if (loginResponseResult && !loginResponseResult.ok()) {
+    throw new Error(`Login failed: ${loginResponseResult.status()} ${loginResponseResult.statusText()}`)
+  }
 
   // Wait for navigation - could be to /Home or could show error
   console.log('[E2E] Waiting for navigation after login...')
 
   // First, wait for any navigation or for the page to settle
-  await page.waitForTimeout(2000)
+  await page.waitForTimeout(1500)
   console.log(`[E2E] URL after clicking login: ${page.url()}`)
 
   // Check for error messages
@@ -164,7 +175,7 @@ async function performLogin(page, user) {
   // Wait for redirect to Home page after successful login
   // Use a more flexible approach - wait for URL change first
   try {
-    await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: 25000 })
+    await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: 45000 })
     console.log(`[E2E] Successfully navigated to: ${page.url()}`)
   } catch (e) {
     console.log(`[E2E] Failed to navigate to Home. Current URL: ${page.url()}`)
@@ -206,14 +217,41 @@ async function createTestUser(accessToken, username, password, roleName) {
   if (!response.ok) {
     const text = await response.text()
     // User might already exist from a previous failed run - that's ok
-    if (text.includes('already exists')) {
+    if (response.status === 409 || text.includes('already exists')) {
       console.log(`Test user ${username} already exists, will reuse`)
-      return true
+      return { existed: true }
     }
     throw new Error(`Failed to create test user ${username}: ${response.status} ${text}`)
   }
-  console.log(`Created temporary test user: ${username}`)
-  return true
+
+  const data = await response.json().catch(() => ({}))
+  if (data.warning && data.authentik_created === false) {
+    throw new Error(`Authentik user not created for ${username}: ${data.warning}`)
+  }
+
+  console.log(`Created temporary test user: ${username} (${roleName})`)
+  return data
+}
+
+async function waitForUserLogin(username, password, attempts = 6, delayMs = 3000) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const response = await fetch(`${baseURL}/auth/authentik/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      if (response.ok) {
+        console.log(`User ${username} login verified`)
+        return true
+      }
+      console.log(`User ${username} login not ready (attempt ${attempt}/${attempts})`)
+    } catch (error) {
+      console.log(`User ${username} login check failed (attempt ${attempt}/${attempts})`)
+    }
+    await new Promise(resolve => setTimeout(resolve, delayMs))
+  }
+  throw new Error(`User ${username} could not log in after ${attempts} attempts`)
 }
 
 /**
@@ -272,12 +310,14 @@ setup('authenticate as admin', async ({ page }) => {
       console.log('Got admin token, creating users...')
 
       await createTestUser(adminToken, TEST_USERS.researcher.username, testPassword, 'researcher')
-      await createTestUser(adminToken, TEST_USERS.viewer.username, testPassword, 'viewer')
+      await createTestUser(adminToken, TEST_USERS.evaluator.username, testPassword, 'evaluator')
+      await createTestUser(adminToken, TEST_USERS.chatbot_manager.username, testPassword, 'chatbot_manager')
 
-      // Wait for Authentik to sync the new users (they need to be available for login)
-      console.log('Waiting 5s for Authentik user sync...')
-      await new Promise(resolve => setTimeout(resolve, 5000))
-      console.log('Test users created successfully')
+      console.log('Verifying test users can log in...')
+      await waitForUserLogin(TEST_USERS.researcher.username, testPassword)
+      await waitForUserLogin(TEST_USERS.evaluator.username, testPassword)
+      await waitForUserLogin(TEST_USERS.chatbot_manager.username, testPassword)
+      console.log('Test users ready')
     } catch (error) {
       console.error('Failed to create test users:', error.message)
       throw error
@@ -291,10 +331,10 @@ setup('authenticate as researcher', async ({ page }) => {
   await page.context().storageState({ path: path.join(AUTH_DIR, 'researcher.json') })
 })
 
-setup('authenticate as viewer', async ({ page }) => {
-  const user = isProduction ? TEST_USERS.viewer : { username: 'viewer', password: testPassword }
+setup('authenticate as evaluator', async ({ page }) => {
+  const user = isProduction ? TEST_USERS.evaluator : { username: 'evaluator', password: testPassword }
   await performLogin(page, user)
-  await page.context().storageState({ path: path.join(AUTH_DIR, 'viewer.json') })
+  await page.context().storageState({ path: path.join(AUTH_DIR, 'evaluator.json') })
 })
 
 // Cleanup: Delete temporary test users after all setup tests complete
@@ -302,6 +342,7 @@ setup.afterAll(async () => {
   if (isProduction && adminToken) {
     console.log('Cleaning up temporary test users...')
     await deleteTestUser(adminToken, TEST_USERS.researcher.username)
-    await deleteTestUser(adminToken, TEST_USERS.viewer.username)
+    await deleteTestUser(adminToken, TEST_USERS.evaluator.username)
+    await deleteTestUser(adminToken, TEST_USERS.chatbot_manager.username)
   }
 })

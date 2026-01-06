@@ -514,6 +514,7 @@ const getRoleColor = (roleName) => {
   const colors = {
     'admin': 'error',
     'researcher': 'primary',
+    'evaluator': 'info',
     'viewer': 'info'
   };
   return colors[roleName] || 'grey';
@@ -523,6 +524,7 @@ const getRoleIcon = (roleName) => {
   const icons = {
     'admin': 'mdi-shield-crown',
     'researcher': 'mdi-flask',
+    'evaluator': 'mdi-eye',
     'viewer': 'mdi-eye'
   };
   return icons[roleName] || 'mdi-account';

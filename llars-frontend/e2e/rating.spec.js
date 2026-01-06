@@ -299,8 +299,8 @@ test.describe('Rating Navigation', () => {
 // ==================== PERMISSION TESTS ====================
 
 test.describe('Rating Permissions', () => {
-  test('E2E_RATING_020: viewer can access rating page', async ({ page }) => {
-    await quickLogin(page, TEST_USERS.viewer)
+  test('E2E_RATING_020: evaluator can access rating page', async ({ page }) => {
+    await quickLogin(page, TEST_USERS.evaluator)
     await page.goto('/Rater')
     await page.waitForLoadState('load')
 

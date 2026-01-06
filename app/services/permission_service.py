@@ -194,15 +194,57 @@ class PermissionService:
 
         roles = db.session.execute(roles_query).scalars().all()
 
-        return [
-            {
+        normalized_roles = []
+        seen = set()
+        for role in roles:
+            role_name = role.role_name
+            display_name = role.display_name
+            if role_name == 'viewer':
+                role_name = 'evaluator'
+                display_name = 'Evaluator'
+            if role_name in seen:
+                continue
+            seen.add(role_name)
+            normalized_roles.append({
                 'id': role.id,
-                'role_name': role.role_name,
-                'display_name': role.display_name,
+                'role_name': role_name,
+                'display_name': display_name,
                 'description': role.description
-            }
-            for role in roles
-        ]
+            })
+        return normalized_roles
+
+    @staticmethod
+    def user_has_role(username: str, role_name: str) -> bool:
+        """
+        Check if a user has a specific role.
+
+        Args:
+            username: The username to check
+            role_name: The role name (e.g., 'admin', 'researcher', 'evaluator')
+
+        Returns:
+            True if user has the role, False otherwise
+        """
+        if not username or not role_name:
+            return False
+
+        role_names = [role_name]
+        if role_name == 'evaluator':
+            role_names.append('viewer')
+
+        role_query = (
+            select(Role)
+            .join(UserRole, UserRole.role_id == Role.id)
+            .where(
+                and_(
+                    UserRole.username == username,
+                    Role.role_name.in_(role_names)
+                )
+            )
+        )
+
+        role = db.session.execute(role_query).scalar_one_or_none()
+        return role is not None
 
     @staticmethod
     def grant_permission(
@@ -551,16 +593,25 @@ class PermissionService:
             for rid, perm_key in rows:
                 permissions_by_role_id.setdefault(rid, []).append(perm_key)
 
-        return [
-            {
+        normalized_roles = []
+        seen = set()
+        for r in roles:
+            role_name = r.role_name
+            display_name = r.display_name
+            if role_name == 'viewer':
+                role_name = 'evaluator'
+                display_name = 'Evaluator'
+            if role_name in seen:
+                continue
+            seen.add(role_name)
+            normalized_roles.append({
                 'id': r.id,
-                'role_name': r.role_name,
-                'display_name': r.display_name,
+                'role_name': role_name,
+                'display_name': display_name,
                 'description': r.description,
                 'permissions': permissions_by_role_id.get(r.id, []),
-            }
-            for r in roles
-        ]
+            })
+        return normalized_roles
 
     @staticmethod
     def create_role(

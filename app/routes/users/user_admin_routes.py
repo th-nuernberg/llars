@@ -56,6 +56,9 @@ def _get_roles_by_username(usernames: List[str]) -> Dict[str, List[dict]]:
 
     roles_by_username: Dict[str, List[dict]] = {u: [] for u in usernames}
     for username, role_id, role_name, display_name in rows:
+        if role_name == "viewer":
+            role_name = "evaluator"
+            display_name = "Evaluator"
         roles_by_username.setdefault(username, []).append(
             {
                 "id": role_id,

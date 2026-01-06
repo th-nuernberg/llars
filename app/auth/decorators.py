@@ -47,9 +47,10 @@ def _check_user_account_state(user):
     return None
 
 
-def _ensure_default_viewer_role(username: str) -> None:
+def _ensure_default_evaluator_role(username: str) -> None:
     """
-    Ensure a newly created user has at least the viewer role so basic features work.
+    Ensure a newly created user has at least the evaluator role so basic features work.
+    Falls back to legacy viewer role if evaluator is missing.
     """
     if not username:
         return
@@ -60,20 +61,22 @@ def _ensure_default_viewer_role(username: str) -> None:
     if existing_role:
         return
 
-    viewer_role = Role.query.filter_by(role_name='viewer').first()
-    if not viewer_role:
-        logger.warning(f"Viewer role missing; cannot auto-assign for {username}")
+    evaluator_role = Role.query.filter_by(role_name='evaluator').first()
+    if not evaluator_role:
+        evaluator_role = Role.query.filter_by(role_name='viewer').first()
+    if not evaluator_role:
+        logger.warning(f"Evaluator role missing; cannot auto-assign for {username}")
         return
 
     try:
         db.session.add(UserRole(
             username=username,
-            role_id=viewer_role.id,
+            role_id=evaluator_role.id,
             assigned_by='system',
             assigned_at=datetime.utcnow()
         ))
         db.session.commit()
-        logger.info(f"Assigned viewer role to new user {username}")
+        logger.info(f"Assigned evaluator role to new user {username}")
     except Exception:
         db.session.rollback()
 
@@ -137,7 +140,7 @@ def get_or_create_user(username: str):
         changed = True
     if changed:
         db.session.commit()
-    _ensure_default_viewer_role(username)
+    _ensure_default_evaluator_role(username)
     return user
 
 # System Admin API Key (loaded from environment)

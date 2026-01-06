@@ -20,6 +20,7 @@ FRONTEND_CLIENT_ID = os.getenv("AUTHENTIK_FRONTEND_CLIENT_ID", "llars-frontend")
 BACKEND_CLIENT_ID = os.getenv("AUTHENTIK_BACKEND_CLIENT_ID", "llars-backend")
 BACKEND_CLIENT_SECRET = os.getenv("AUTHENTIK_BACKEND_CLIENT_SECRET", "llars-backend-secret-change-in-production")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:55080")
+PROJECT_STATE = os.getenv("PROJECT_STATE", "development").lower()
 
 print("🔧 Authentik Auto-Configuration Script (API-based)")
 print("=" * 50)
@@ -482,11 +483,16 @@ def main():
         create_application(api_token, "LLARS Frontend", "llars-frontend",
                          frontend_provider_pk, BASE_URL)
 
-    # Create test users (password must be set manually or via Django shell)
-    print("\n👥 Creating test users...")
-    create_user(api_token, "admin", "admin@llars.local")
-    create_user(api_token, "researcher", "researcher@llars.local")
-    create_user(api_token, "viewer", "viewer@llars.local")
+    # Create users (password must be set manually or via Django shell)
+    if PROJECT_STATE == "production":
+        print("\n👥 Creating production user...")
+        create_user(api_token, "admin", "admin@llars.local")
+    else:
+        print("\n👥 Creating test users...")
+        create_user(api_token, "admin", "admin@llars.local")
+        create_user(api_token, "researcher", "researcher@llars.local")
+        create_user(api_token, "evaluator", "evaluator@llars.local")
+        create_user(api_token, "chatbot_manager", "chatbot_manager@llars.local")
 
     print("\n" + "=" * 50)
     print("✅ Authentik auto-configuration complete!")
@@ -495,8 +501,11 @@ def main():
     print(f"   Authentik Admin: {AUTHENTIK_URL}")
     print(f"\n   Default user: akadmin")
     print(f"   Password: {AUTHENTIK_BOOTSTRAP_PASSWORD}")
-    print(f"\n   ⚠️  Test users (admin, researcher, viewer) were created")
-    print(f"   but passwords must be set via Authentik admin UI or recovery flow")
+    if PROJECT_STATE == "production":
+        print(f"\n   ⚠️  Production mode: only admin user was created")
+    else:
+        print(f"\n   ⚠️  Test users (admin, researcher, evaluator, chatbot_manager) were created")
+        print(f"   but passwords must be set via Authentik admin UI or recovery flow")
     print("=" * 50)
 
 

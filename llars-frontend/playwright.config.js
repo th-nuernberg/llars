@@ -33,7 +33,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
 
     /* Video on failure */
-    video: 'on-first-retry',
+    video: process.env.CI ? 'off' : 'on-first-retry',
   },
 
   /* Configure projects for major browsers */

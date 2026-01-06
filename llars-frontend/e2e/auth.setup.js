@@ -16,6 +16,7 @@ const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
 // Production servers need temporary test users created via API
 const isProduction = !!process.env.E2E_TEST_PASSWORD
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
+const apiBaseURL = process.env.PLAYWRIGHT_API_BASE_URL || baseURL
 const loginTimeout = process.env.CI ? 60000 : 45000
 const setupTimeout = process.env.CI ? 120000 : 90000
 
@@ -44,7 +45,7 @@ async function dismissConsentBanner(page) {
 }
 
 async function apiLogin(user) {
-  const response = await fetch(`${baseURL}/auth/authentik/login`, {
+  const response = await fetch(`${apiBaseURL}/auth/authentik/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: user.username, password: user.password })
@@ -101,7 +102,7 @@ async function applyAuthStorage(page, user, tokenData) {
 
 async function performLogin(page, user) {
   console.log(`[E2E] Starting login for user: ${user.username}`)
-  console.log(`[E2E] Base URL: ${baseURL}, isProduction: ${isProduction}`)
+  console.log(`[E2E] Base URL: ${baseURL}, API Base: ${apiBaseURL}, isProduction: ${isProduction}`)
 
   if (isProduction) {
     console.log('[E2E] Production mode: using API login for reliability')
@@ -284,7 +285,7 @@ async function performLogin(page, user) {
  * Creates a temporary test user via the admin API
  */
 async function createTestUser(accessToken, username, password, roleName, hasRetried = false) {
-  const response = await fetch(`${baseURL}/api/admin/users`, {
+  const response = await fetch(`${apiBaseURL}/api/admin/users`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -327,7 +328,7 @@ async function createTestUser(accessToken, username, password, roleName, hasRetr
 async function waitForUserLogin(username, password, attempts = 6, delayMs = 3000) {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const response = await fetch(`${baseURL}/auth/authentik/login`, {
+      const response = await fetch(`${apiBaseURL}/auth/authentik/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -349,7 +350,7 @@ async function waitForUserLogin(username, password, attempts = 6, delayMs = 3000
  * Deletes a temporary test user via the admin API
  */
 async function deleteTestUser(accessToken, username) {
-  const response = await fetch(`${baseURL}/api/admin/users/${username}`, {
+  const response = await fetch(`${apiBaseURL}/api/admin/users/${username}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${accessToken}`
@@ -368,7 +369,7 @@ async function deleteTestUser(accessToken, username) {
  * Gets admin access token for API calls
  */
 async function getAdminToken() {
-  const response = await fetch(`${baseURL}/auth/login`, {
+  const response = await fetch(`${apiBaseURL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

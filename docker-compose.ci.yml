@@ -1,0 +1,53 @@
+services:
+  nginx-service:
+    container_name: llars_ci_nginx_service
+  matomo-service:
+    container_name: llars_ci_matomo_service
+  matomo-archiver:
+    container_name: llars_ci_matomo_archiver
+  matomo-init:
+    container_name: llars_ci_matomo_init
+  backend-flask-service:
+    container_name: llars_ci_flask_service
+  frontend-vue-service:
+    container_name: llars_ci_frontend_service
+  backend-supervisor-service:
+    container_name: llars_ci_supervisor_service
+  db-maria-service:
+    container_name: llars_ci_db_service
+  matomo-db-service:
+    container_name: llars_ci_matomo_db_service
+  yjs-service:
+    container_name: llars_ci_yjs_service
+  mkdocs-service:
+    container_name: llars_ci_mkdocs_service
+  authentik-server:
+    container_name: llars_ci_authentik_server
+  authentik-worker:
+    container_name: llars_ci_authentik_worker
+  authentik-db:
+    container_name: llars_ci_authentik_db
+  authentik-redis:
+    container_name: llars_ci_authentik_redis
+  llars-redis:
+    container_name: llars_ci_redis
+  authentik-init:
+    container_name: llars_ci_authentik_init
+
+volumes:
+  llarsdb:
+    name: llars_ci_llarsdb
+  rag_storage:
+    name: llars_ci_rag_storage
+  rag_docs:
+    name: llars_ci_rag_docs
+  authentikdb:
+    name: llars_ci_authentikdb
+  authentik_media:
+    name: llars_ci_authentik_media
+  matomo_data:
+    name: llars_ci_matomo_data
+  matomodb:
+    name: llars_ci_matomodb
+  llars_redis_data:
+    name: llars_ci_redis_data

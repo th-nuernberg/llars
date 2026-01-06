@@ -198,12 +198,13 @@ test:e2e:
     - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' "$LLARS_ENV_FILE" | tr -d '\r')"
     - export PROJECT_URL="$(awk -F= '/^PROJECT_URL=/{print substr($0,index($0,"=")+1); exit}' "$LLARS_ENV_FILE" | tr -d '\r')"
     - export NGINX_EXTERNAL_PORT="$(awk -F= '/^NGINX_EXTERNAL_PORT=/{print substr($0,index($0,"=")+1); exit}' "$LLARS_ENV_FILE" | tr -d '\r')"
-    - if [ -z "$PROJECT_URL" ]; then
+    - |
+      if [ -z "$PROJECT_URL" ]; then
         if [ -z "$NGINX_EXTERNAL_PORT" ] || [ "$NGINX_EXTERNAL_PORT" = "80" ]; then
-          PROJECT_URL="http://localhost";
+          PROJECT_URL="http://localhost"
         else
-          PROJECT_URL="http://localhost:${NGINX_EXTERNAL_PORT}";
-        fi;
+          PROJECT_URL="http://localhost:${NGINX_EXTERNAL_PORT}"
+        fi
       fi
     - export PLAYWRIGHT_BASE_URL="${PROJECT_URL%/}"
     - echo "E2E base URL: $PLAYWRIGHT_BASE_URL"

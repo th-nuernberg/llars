@@ -278,7 +278,7 @@ test:e2e:
       READY=false
       for i in $(seq 1 60); do
         if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" --entrypoint sh curlimages/curl:8.10.0 \
-          -c \"curl -fsS http://backend-flask-service:8081/auth/health_check >/dev/null && curl -fsS http://backend-flask-service:8081/auth/authentik/health_check >/dev/null && curl -fsS http://frontend-vue-service:5173/login >/dev/null\"; then
+          -c 'curl -fsS http://backend-flask-service:8081/auth/health_check >/dev/null && curl -fsS http://backend-flask-service:8081/auth/authentik/health_check >/dev/null && curl -fsS http://frontend-vue-service:5173/login >/dev/null'; then
           READY=true
           echo "Health checks OK."
           break

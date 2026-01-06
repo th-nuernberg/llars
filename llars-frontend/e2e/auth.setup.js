@@ -283,7 +283,7 @@ async function performLogin(page, user) {
 /**
  * Creates a temporary test user via the admin API
  */
-async function createTestUser(accessToken, username, password, roleName) {
+async function createTestUser(accessToken, username, password, roleName, hasRetried = false) {
   const response = await fetch(`${baseURL}/api/admin/users`, {
     method: 'POST',
     headers: {
@@ -303,6 +303,10 @@ async function createTestUser(accessToken, username, password, roleName) {
 
   if (!response.ok) {
     const text = await response.text()
+    if (!hasRetried && roleName === 'evaluator' && text.includes('Unknown role')) {
+      console.log(`Role evaluator not supported by server, retrying with viewer for ${username}`)
+      return createTestUser(accessToken, username, password, 'viewer', true)
+    }
     // User might already exist from a previous failed run - that's ok
     if (response.status === 409 || text.includes('already exists')) {
       console.log(`Test user ${username} already exists, will reuse`)

@@ -404,11 +404,18 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role (support evaluator -> viewer fallback)
+            # Get role (prefer evaluator, keep viewer fallback for legacy)
+            lookup_name = role_name
+            if role_name == 'viewer':
+                lookup_name = 'evaluator'
             role = db.session.execute(
-                select(Role).where(Role.role_name == role_name)
+                select(Role).where(Role.role_name == lookup_name)
             ).scalar_one_or_none()
             if not role and role_name == 'evaluator':
+                role = db.session.execute(
+                    select(Role).where(Role.role_name == 'viewer')
+                ).scalar_one_or_none()
+            if not role and role_name == 'viewer':
                 role = db.session.execute(
                     select(Role).where(Role.role_name == 'viewer')
                 ).scalar_one_or_none()
@@ -474,11 +481,18 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role (support evaluator -> viewer fallback)
+            # Get role (prefer evaluator, keep viewer fallback for legacy)
+            lookup_name = role_name
+            if role_name == 'viewer':
+                lookup_name = 'evaluator'
             role = db.session.execute(
-                select(Role).where(Role.role_name == role_name)
+                select(Role).where(Role.role_name == lookup_name)
             ).scalar_one_or_none()
             if not role and role_name == 'evaluator':
+                role = db.session.execute(
+                    select(Role).where(Role.role_name == 'viewer')
+                ).scalar_one_or_none()
+            if not role and role_name == 'viewer':
                 role = db.session.execute(
                     select(Role).where(Role.role_name == 'viewer')
                 ).scalar_one_or_none()

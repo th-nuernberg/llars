@@ -432,6 +432,11 @@ def initialize_permissions(db):
         },
     ]
 
+    role_permissions_map = {
+        role["role_name"]: list(role.get("permissions", []))
+        for role in roles_data
+    }
+
     # Create roles and assign permissions (idempotent)
     for role_data in roles_data:
         role_name = role_data['role_name']
@@ -501,6 +506,45 @@ def initialize_permissions(db):
                     print(f"Role '{role_name}' - removed: {removed_perms}")
             else:
                 print(f"Role already exists: {role_name}")
+
+    # Keep legacy viewer role in sync with evaluator permissions (if present)
+    evaluator_permissions = role_permissions_map.get('evaluator', [])
+    viewer_role = Role.query.filter_by(role_name='viewer').first()
+    if viewer_role and evaluator_permissions:
+        existing_role_perms = RolePermission.query.filter_by(role_id=viewer_role.id).all()
+        existing_perm_ids = {rp.permission_id for rp in existing_role_perms}
+
+        target_perm_ids = set()
+        for perm_key in evaluator_permissions:
+            if perm_key in permission_map:
+                target_perm_ids.add(permission_map[perm_key].id)
+
+        added_perms = []
+        for perm_key in evaluator_permissions:
+            if perm_key in permission_map:
+                perm = permission_map[perm_key]
+                if perm.id not in existing_perm_ids:
+                    db.session.add(RolePermission(role_id=viewer_role.id, permission_id=perm.id))
+                    added_perms.append(perm_key)
+
+        removed_perms = []
+        for rp in existing_role_perms:
+            if rp.permission_id not in target_perm_ids:
+                perm_key = next(
+                    (k for k, p in permission_map.items() if p.id == rp.permission_id),
+                    f"id:{rp.permission_id}"
+                )
+                removed_perms.append(perm_key)
+                db.session.delete(rp)
+
+        if added_perms or removed_perms:
+            viewer_role.display_name = 'Evaluator'
+            viewer_role.description = 'Legacy viewer role mapped to evaluator permissions'
+            db.session.commit()
+            if added_perms:
+                print("Role 'viewer' - added: " + str(added_perms))
+            if removed_perms:
+                print("Role 'viewer' - removed: " + str(removed_perms))
 
     # Assign admin role to default admin user
     assign_default_admin_role(db)

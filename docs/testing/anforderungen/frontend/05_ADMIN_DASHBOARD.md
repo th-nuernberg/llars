@@ -54,8 +54,8 @@ test.describe('Admin Dashboard Access', () => {
     await expect(page).not.toHaveURL(/.*admin/)
   })
 
-  test('ADM-004: viewer cannot access', async ({ page }) => {
-    await login(page, testUsers.viewer)
+  test('ADM-004: evaluator cannot access', async ({ page }) => {
+    await login(page, testUsers.evaluator)
     await page.goto('/admin')
 
     await expect(page).not.toHaveURL(/.*admin/)
@@ -330,13 +330,13 @@ test.describe('User Management', () => {
     await adminPage.goto('/admin?tab=users')
 
     // User-Zeile finden
-    await adminPage.click('.user-row:has-text("viewer") .action-lock')
+    await adminPage.click('.user-row:has-text("evaluator") .action-lock')
 
     // Bestätigen
     await adminPage.click('button:has-text("Sperren")')
 
     // Status prüfen
-    await expect(adminPage.locator('.user-row:has-text("viewer") .status-badge')).toContainText('gesperrt')
+    await expect(adminPage.locator('.user-row:has-text("evaluator") .status-badge')).toContainText('gesperrt')
   })
 
   test('USER-C04: create user', async ({ adminPage }) => {
@@ -345,7 +345,7 @@ test.describe('User Management', () => {
     await adminPage.click('button:has-text("Neuer User")')
 
     await adminPage.fill('input[name="username"]', 'testuser_e2e')
-    await adminPage.selectOption('select[name="roles"]', 'viewer')
+    await adminPage.selectOption('select[name="roles"]', 'evaluator')
     await adminPage.click('button:has-text("Erstellen")')
 
     await expect(adminPage.locator('.v-snackbar')).toContainText('erstellt')

@@ -11,7 +11,7 @@
 ### 1) Docker & Infrastruktur (100 %)
 - Keycloak-Container (Port 8090) + PostgreSQL-DB (`llars_keycloakdb`)
 - `docker-compose.yml` konfiguriert, Realm-Import (`llars`, Clients: `llars-frontend`, `llars-backend`)
-- Admin-User `admin/admin123`, Rollen `admin`, `rater`, `viewer`
+- Admin-User `admin/admin123`, Rollen `admin`, `rater`, `evaluator`
 - CORS- und Env-Variablen gesetzt
 
 ### 2) Backend (100 %)

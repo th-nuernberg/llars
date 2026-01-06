@@ -330,5 +330,5 @@ Die E2E Tests verwenden Playwright und sind wie folgt konfiguriert:
 
 **Voraussetzungen:**
 - LLARS muss unter `http://localhost:55080` laufen
-- Alle Test-Benutzer (admin, researcher, viewer, chatbot_manager) müssen in Authentik existieren
+- Alle Test-Benutzer (admin, researcher, evaluator, chatbot_manager) müssen in Authentik existieren
 - Passwort für alle Test-Benutzer: `admin123`

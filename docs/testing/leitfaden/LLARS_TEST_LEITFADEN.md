@@ -886,7 +886,7 @@ def _seed_base_data(db):
     roles = [
         Role(name='admin', description='Administrator'),
         Role(name='researcher', description='Researcher'),
-        Role(name='viewer', description='Viewer'),
+        Role(name='evaluator', description='Evaluator'),
         Role(name='chatbot_manager', description='Chatbot Manager'),
     ]
 
@@ -922,8 +922,8 @@ from app.db.models import User, Role
 
 @pytest.fixture
 def mock_user(db):
-    """Standard Test-User (Viewer-Rolle)"""
-    viewer_role = Role.query.filter_by(name='viewer').first()
+    """Standard Test-User (Evaluator-Rolle)"""
+    evaluator_role = Role.query.filter_by(name='evaluator').first()
 
     user = User(
         username='test_user',
@@ -931,7 +931,7 @@ def mock_user(db):
         is_active=True,
         account_status='active'
     )
-    user.roles.append(viewer_role)
+    user.roles.append(evaluator_role)
     db.session.add(user)
     db.session.commit()
     return user
@@ -1395,7 +1395,7 @@ import { test as base, expect, Page } from '@playwright/test'
 export const testUsers = {
   admin: { username: 'admin', password: 'admin123' },
   researcher: { username: 'researcher', password: 'admin123' },
-  viewer: { username: 'viewer', password: 'admin123' }
+  evaluator: { username: 'evaluator', password: 'admin123' }
 }
 
 export async function login(page: Page, user: typeof testUsers.admin) {
@@ -1686,13 +1686,13 @@ class TestCheckPermission:
     # ROLE TESTS
     # =========================================================================
 
-    def test_viewer_has_view_permissions(self, app, service, mock_user):
-        """Viewer hat View-Permissions"""
+    def test_evaluator_has_view_permissions(self, app, service, mock_user):
+        """Evaluator hat View-Permissions"""
         with app.app_context():
             assert service.check_permission(mock_user, 'feature:ranking:view') is True
 
-    def test_viewer_denied_edit_permissions(self, app, service, mock_user):
-        """Viewer hat keine Edit-Permissions"""
+    def test_evaluator_denied_edit_permissions(self, app, service, mock_user):
+        """Evaluator hat keine Edit-Permissions"""
         with app.app_context():
             assert service.check_permission(mock_user, 'feature:ranking:edit') is False
 

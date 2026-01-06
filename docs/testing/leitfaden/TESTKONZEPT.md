@@ -451,19 +451,19 @@ class TestGetOrCreateUser:
 
             assert user.id == mock_authentik_user.id
 
-    def test_new_user_gets_viewer_role(self, app, db):
-        """Neuer User bekommt automatisch Viewer-Rolle"""
+    def test_new_user_gets_evaluator_role(self, app, db):
+        """Neuer User bekommt automatisch Evaluator-Rolle"""
         with app.app_context():
             token_data = {
-                'sub': 'viewer_user',
-                'email': 'viewer@llars.local',
-                'preferred_username': 'viewer_user'
+                'sub': 'evaluator_user',
+                'email': 'evaluator@llars.local',
+                'preferred_username': 'evaluator_user'
             }
 
             user = get_or_create_user(token_data)
             role_names = [r.name for r in user.roles]
 
-            assert 'viewer' in role_names
+            assert 'evaluator' in role_names
 
     def test_locked_user_returns_none(self, app, db, mock_authentik_user):
         """Gesperrter User wird nicht zurückgegeben"""
@@ -502,16 +502,16 @@ class TestPermissionService:
         assert permission_service.check_permission(admin_user, 'feature:any:action') is True
         assert permission_service.check_permission(admin_user, 'admin:users:delete') is True
 
-    def test_viewer_has_limited_permissions(self, permission_service, db):
-        """Viewer hat nur Lese-Permissions"""
-        viewer = User(username='viewer', email='viewer@test.local', is_active=True)
-        viewer_role = Role(name='viewer')
-        viewer.roles.append(viewer_role)
-        db.session.add(viewer)
+    def test_evaluator_has_limited_permissions(self, permission_service, db):
+        """Evaluator hat nur Lese-Permissions"""
+        evaluator = User(username='evaluator', email='evaluator@test.local', is_active=True)
+        evaluator_role = Role(name='evaluator')
+        evaluator.roles.append(evaluator_role)
+        db.session.add(evaluator)
         db.session.commit()
 
-        assert permission_service.check_permission(viewer, 'feature:ranking:view') is True
-        assert permission_service.check_permission(viewer, 'feature:ranking:edit') is False
+        assert permission_service.check_permission(evaluator, 'feature:ranking:view') is True
+        assert permission_service.check_permission(evaluator, 'feature:ranking:edit') is False
 
     def test_deny_overrides_grant(self, permission_service, db, researcher_user):
         """Deny schlägt Grant (auch von Rolle)"""
@@ -1009,9 +1009,9 @@ describe('usePermissions', () => {
       expect(hasPermission('feature:ranking:edit')).toBe(true)
     })
 
-    it('returns false for viewer on edit permissions', () => {
+    it('returns false for evaluator on edit permissions', () => {
       useAuth.mockReturnValue({
-        getUserInfo: () => ({ groups: ['viewer'] }),
+        getUserInfo: () => ({ groups: ['evaluator'] }),
         isAuthenticated: { value: true }
       })
 
@@ -1242,9 +1242,9 @@ class TestAuthFlowIntegration:
         assert user is not None
         assert user.email == 'integration@llars.local'
 
-        # Hat Viewer-Rolle (Default)
+        # Hat Evaluator-Rolle (Default)
         role_names = [r.name for r in user.roles]
-        assert 'viewer' in role_names
+        assert 'evaluator' in role_names
 
     def test_subsequent_login_returns_existing_user(self, client, db, authentik_mock):
         """Folgende Logins geben existierenden User zurück"""
@@ -1712,7 +1712,7 @@ import { test as base, expect } from '@playwright/test'
 export const testUsers = {
   admin: { username: 'admin', password: 'admin123' },
   researcher: { username: 'researcher', password: 'admin123' },
-  viewer: { username: 'viewer', password: 'admin123' }
+  evaluator: { username: 'evaluator', password: 'admin123' }
 }
 
 // Erweiterte Test-Fixture mit Auth

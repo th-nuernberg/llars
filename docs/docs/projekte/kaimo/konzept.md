@@ -62,7 +62,7 @@ KAIMO_PERMISSIONS = {
         'admin:kaimo:manage',
         'admin:kaimo:results'
     ],
-    'viewer': [
+    'evaluator': [
         'feature:kaimo:view',
         'feature:kaimo:edit'
     ]

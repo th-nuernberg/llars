@@ -246,7 +246,7 @@ Granulares RBAC mit 40 Permissions:
 | **Admin** | Vollzugriff (40 Permissions) | Projektleiter |
 | **Researcher** | Evaluierung + Prompt Engineering + Markdown Collab + Anonymisierung + KAIMO (19) | Wissenschaftler |
 | **Chatbot Manager** | Chatbots + RAG + Prompt Engineering + Markdown Collab (14) | Content Owner |
-| **Viewer** | Lesezugriff + ausgewählte Edit-Rechte (13) | Externe Reviewer |
+| **Evaluator** | Lesezugriff + ausgewählte Edit-Rechte (13) | Externe Reviewer |
 
 ---
 

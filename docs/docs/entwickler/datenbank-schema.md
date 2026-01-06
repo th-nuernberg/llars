@@ -67,7 +67,7 @@ Benutzerrollen mit Berechtigungen.
 | Spalte | Typ | Beschreibung |
 |--------|-----|--------------|
 | `id` | INT | Primary Key |
-| `name` | VARCHAR(50) | Rollenname (admin, researcher, viewer) |
+| `name` | VARCHAR(50) | Rollenname (admin, researcher, evaluator) |
 | `description` | TEXT | Beschreibung |
 
 ### Permission

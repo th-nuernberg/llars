@@ -19,7 +19,7 @@ cp .env.template.development .env
 |----------|----------|
 | admin | admin123 |
 | researcher | admin123 |
-| viewer | admin123 |
+| evaluator | admin123 |
 
 ## 4) Matomo (Admin)
 

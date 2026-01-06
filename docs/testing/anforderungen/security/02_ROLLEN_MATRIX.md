@@ -17,7 +17,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 | **admin** | Vollzugriff auf alles | `admin` |
 | **researcher** | Evaluation + Collab + KAIMO | `researcher` |
 | **chatbot_manager** | Chatbots + RAG + Collab | `chatbot_manager` |
-| **viewer** | Nur lesen + KAIMO/Authenticity votes | `viewer` |
+| **evaluator** | Nur lesen + KAIMO/Authenticity votes | `evaluator` |
 
 ---
 
@@ -25,7 +25,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### Navigation & Grundfunktionen
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | Login | ✅ | ✅ | ✅ | ✅ |
 | Home Dashboard | ✅ | ✅ | ✅ | ✅ |
@@ -36,7 +36,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### Evaluation Features
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | **Ranking** |
 | - Kachel sichtbar | ✅ | ✅ | ❌ | ✅ |
@@ -168,7 +168,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 import { test, expect, testUsers, login } from '../fixtures/auth'
 
 // Test für jede Rolle
-const roles = ['admin', 'researcher', 'chatbot_manager', 'viewer']
+const roles = ['admin', 'researcher', 'chatbot_manager', 'evaluator']
 
 for (const role of roles) {
   test.describe(`${role} role access`, () => {
@@ -230,11 +230,11 @@ for (const role of roles) {
 | ROLE-C02 | chatbot_mgr | RAG hochladen | Dokument hochgeladen | E2E |
 | ROLE-C03 | chatbot_mgr | Kein Ranking/Rating | Features nicht sichtbar | E2E |
 | ROLE-C04 | chatbot_mgr | Admin nur Chatbot Tab | Nur bestimmte Tabs | E2E |
-| ROLE-V01 | viewer | Nur lesen | Keine Edit-Buttons | E2E |
-| ROLE-V02 | viewer | Authenticity voten | Vote funktioniert | E2E |
-| ROLE-V03 | viewer | KAIMO bewerten | Vote funktioniert | E2E |
-| ROLE-V04 | viewer | Kein Admin-Zugang | Redirect | E2E |
-| ROLE-V05 | viewer | Kein Collab-Edit | Nur lesen | E2E |
+| ROLE-E01 | evaluator | Nur lesen | Keine Edit-Buttons | E2E |
+| ROLE-E02 | evaluator | Authenticity voten | Vote funktioniert | E2E |
+| ROLE-E03 | evaluator | KAIMO bewerten | Vote funktioniert | E2E |
+| ROLE-E04 | evaluator | Kein Admin-Zugang | Redirect | E2E |
+| ROLE-E05 | evaluator | Kein Collab-Edit | Nur lesen | E2E |
 
 ---
 
@@ -242,7 +242,7 @@ for (const role of roles) {
 
 ### Home Dashboard Kacheln
 
-| Kachel | admin | researcher | chatbot_manager | viewer |
+| Kachel | admin | researcher | chatbot_manager | evaluator |
 |--------|:-----:|:----------:|:---------------:|:------:|
 | Ranking | ✅ | ✅ | ❌ | ✅ |
 | Rating | ✅ | ✅ | ❌ | ✅ |
@@ -296,8 +296,8 @@ test.describe('Tile Visibility by Role', () => {
     await expect(page.locator('text=Admin')).toBeVisible()
   })
 
-  test('viewer sees only view tiles', async ({ page }) => {
-    await login(page, testUsers.viewer)
+  test('evaluator sees only view tiles', async ({ page }) => {
+    await login(page, testUsers.evaluator)
     await page.goto('/Home')
 
     await expect(page.locator('text=Ranking')).toBeVisible()

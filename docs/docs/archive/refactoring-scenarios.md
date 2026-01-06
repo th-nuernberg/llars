@@ -17,7 +17,7 @@ Das monolithische `ScenarioRoutes.py` (729 Zeilen, 11 Routen) wurde in ein Paket
 | Modul | Zweck | Wichtige Routen |
 |-------|-------|-----------------|
 | `scenario_crud.py` | Szenario-CRUD (Listen, Details, Anlegen, Bearbeiten, Löschen) | `/admin/scenarios`, `/admin/create_scenario`, `/admin/delete_scenario/<id>` |
-| `scenario_management.py` | Thread-/Viewer-Verteilung (Round-Robin) | `/admin/add_threads_to_scenario`, `/admin/add_viewers_to_scenario` |
+| `scenario_management.py` | Thread-/Evaluator-Verteilung (Round-Robin) | `/admin/add_threads_to_scenario`, `/admin/add_viewers_to_scenario` |
 | `scenario_resources.py` | Referenzdaten für das UI | `/admin/get_function_types`, `/admin/get_users`, `/admin/get_threads_from_function_type/<id>` |
 | `scenario_stats.py` | Fortschritts- und Statusberechnung | `/admin/scenario_progress_stats/<id>` |
 

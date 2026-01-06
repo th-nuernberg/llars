@@ -22,7 +22,7 @@ Beim Start legt `authentik-init` u. a. an (idempotent):
 - Authentication Flow: `llars-api-authentication`
 - OAuth2 Provider + Application: `llars-backend`
 - OAuth2 Provider + Application (Matomo SSO): `llars-matomo` inkl. Redirects für `/analytics/` (und Legacy `/matomo/`)
-- Default-User: `admin`, `researcher`, `viewer` (Passwort: `admin123`)
+- Default-User: `admin`, `researcher`, `evaluator` (Passwort: `admin123`)
 
 ## Reset / Neuaufbau
 

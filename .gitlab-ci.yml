@@ -29,6 +29,12 @@ stages:
 # GLOBALE KONFIGURATION
 # =============================================================================
 
+# Optional test-only switches (set one to run only that job)
+# - UNIT_BACKEND_ONLY
+# - UNIT_FRONTEND_ONLY
+# - INTEGRATION_ONLY
+# - E2E_ONLY (can be a Playwright spec path to run a single file)
+
 variables:
   # Python
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -64,6 +70,11 @@ cache:
     - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
 
+# Shared rule to skip non-test jobs when a test-only switch is set
+.test_only_skip: &test_only_skip
+  if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY || $E2E_ONLY'
+  when: never
+
 # =============================================================================
 # STAGE 1: LINT
 # =============================================================================
@@ -78,6 +89,7 @@ lint:backend:
     - black --check app/ --line-length=120 || true
     - isort --check-only app/ || true
   rules:
+    - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -91,6 +103,7 @@ lint:frontend:
     - echo "Checking Frontend code style..."
     - npm run lint || true
   rules:
+    - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -130,6 +143,9 @@ test:unit:backend:
         path: coverage.xml
     expire_in: 1 week
   rules:
+    - if: '$UNIT_BACKEND_ONLY'
+    - if: '$UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY || $E2E_ONLY'
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -150,6 +166,9 @@ test:unit:frontend:
         path: llars-frontend/coverage/cobertura-coverage.xml
     expire_in: 1 week
   rules:
+    - if: '$UNIT_FRONTEND_ONLY'
+    - if: '$UNIT_BACKEND_ONLY || $INTEGRATION_ONLY || $E2E_ONLY'
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -181,57 +200,94 @@ test:integration:
     - echo "Running Integration Tests..."
     - pytest tests/integration/ -v
   rules:
+    - if: '$INTEGRATION_ONLY'
+    - if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $E2E_ONLY'
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
-    - test:unit:backend
+    - job: test:unit:backend
+      optional: true
 
-# E2E Tests laufen auf dem Server wo die App bereits läuft
-# Dies ermöglicht echte End-to-End Tests gegen die laufende Anwendung
+# E2E Tests laufen gegen eine frische CI-Umgebung (Docker Compose im Job)
+# Dies stellt sicher, dass die Tests den aktuellen Code prüfen
 test:e2e:
   stage: test
-  tags:
-    - shell  # Shell-Executor auf dem LLARS Server
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    COMPOSE_PROJECT_NAME: "llars-ci"
   script:
-    - echo "Running E2E Tests against running LLARS instance..."
-    - export LLARS_ENV_FILE="/var/llars/.env"
-    - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' "$LLARS_ENV_FILE" | tr -d '\r')"
-    - export PROJECT_URL="$(awk -F= '/^PROJECT_URL=/{print substr($0,index($0,"=")+1); exit}' "$LLARS_ENV_FILE" | tr -d '\r')"
-    - export NGINX_EXTERNAL_PORT="$(awk -F= '/^NGINX_EXTERNAL_PORT=/{print substr($0,index($0,"=")+1); exit}' "$LLARS_ENV_FILE" | tr -d '\r')"
+    - echo "Running E2E Tests against fresh LLARS instance..."
     - |
-      if [ -z "$PROJECT_URL" ]; then
-        if [ -z "$NGINX_EXTERNAL_PORT" ] || [ "$NGINX_EXTERNAL_PORT" = "80" ]; then
-          PROJECT_URL="http://localhost"
-        else
-          PROJECT_URL="http://localhost:${NGINX_EXTERNAL_PORT}"
+      cat > .env.ci <<'EOF'
+      PROJECT_STATE=development
+      PROJECT_URL=http://nginx-service
+      PROJECT_HOST=nginx-service
+      NGINX_EXTERNAL_PORT=55080
+      AUTHENTIK_EXTERNAL_PORT=55095
+      LLARS_ADMIN_PASSWORD=admin123
+      AUTHENTIK_BOOTSTRAP_PASSWORD=admin123
+      AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
+      AUTHENTIK_API_TOKEN=llars-dev-api-token-do-not-use-in-production
+      EOF
+    - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env.ci | tr -d '\r')"
+    - docker compose --env-file .env.ci up -d --build nginx-service
+    - |
+      echo "Waiting for Authentik init to complete..."
+      for i in $(seq 1 60); do
+        status=$(docker inspect -f '{{.State.Status}}' llars_authentik_init 2>/dev/null || true)
+        exit_code=$(docker inspect -f '{{.State.ExitCode}}' llars_authentik_init 2>/dev/null || true)
+        if [ "$status" = "exited" ] && [ "$exit_code" = "0" ]; then
+          echo "Authentik init completed."
+          break
         fi
+        echo "Authentik init not done yet ($i/60)..."
+        sleep 5
+      done
+      if [ "$status" != "exited" ] || [ "$exit_code" != "0" ]; then
+        echo "Authentik init did not complete successfully."
+        docker logs llars_authentik_init || true
+        exit 1
       fi
-    - export PLAYWRIGHT_BASE_URL="${PROJECT_URL%/}"
-    - 'echo "E2E base URL: $PLAYWRIGHT_BASE_URL"'
     - |
       echo "Waiting for services to be healthy..."
       READY=false
-      for i in $(seq 1 30); do
-        if curl -fsSL "$PLAYWRIGHT_BASE_URL/health" >/dev/null \
-          && curl -fsSL "$PLAYWRIGHT_BASE_URL/auth/health_check" >/dev/null \
-          && curl -fsSL "$PLAYWRIGHT_BASE_URL/auth/authentik/health_check" >/dev/null; then
+      for i in $(seq 1 60); do
+        if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" curlimages/curl:8.10.0 \
+          sh -c "curl -fsS http://nginx-service/health >/dev/null && curl -fsS http://nginx-service/auth/health_check >/dev/null && curl -fsS http://nginx-service/auth/authentik/health_check >/dev/null"; then
           READY=true
           echo "Health checks OK."
           break
         fi
-        echo "Health check failed ($i/30), retrying in 5s..."
+        echo "Health check failed ($i/60), retrying in 5s..."
         sleep 5
       done
       if [ "$READY" != "true" ]; then
         echo "Health checks failed after retries."
+        docker compose ps
         exit 1
       fi
-      curl -fsSL "$PLAYWRIGHT_BASE_URL/login" >/dev/null
-    - cd llars-frontend
-    - npm ci --prefer-offline
-    - npx playwright install chromium  # deps already installed on server
-    - echo "Starting E2E test run..."
-    - npx playwright test --project=chromium --workers=1
+    - chmod -R a+rwX llars-frontend
+    - |
+      E2E_SPEC=""
+      if [ -n "${E2E_ONLY:-}" ] && [ "${E2E_ONLY}" != "true" ]; then
+        E2E_SPEC="${E2E_ONLY}"
+      fi
+      docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" \
+        -v "$CI_PROJECT_DIR/llars-frontend:/work" \
+        -w /work \
+        -e CI=true \
+        -e PLAYWRIGHT_BASE_URL=http://nginx-service \
+        -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
+        -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+        mcr.microsoft.com/playwright:v1.49.0-jammy \
+        bash -lc "npm ci --prefer-offline && npx playwright test --project=chromium --workers=1 ${E2E_SPEC}"
+  after_script:
+    - docker compose --env-file .env.ci down -v || true
   artifacts:
     when: always
     paths:
@@ -239,9 +295,13 @@ test:e2e:
       - llars-frontend/test-results/
     expire_in: 1 week
   rules:
+    - if: '$E2E_ONLY'
+    - if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY'
+      when: never
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
-    - test:integration
+    - job: test:integration
+      optional: true
 
 # =============================================================================
 # STAGE 3: BUILD
@@ -259,6 +319,7 @@ build:docker:
     - docker compose build --parallel
     - echo "Build completed successfully"
   rules:
+    - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - test:unit:backend
@@ -296,6 +357,7 @@ deploy:staging:
     - curl -sf http://localhost/auth/health_check > /dev/null && echo "✓ API Health OK" || echo "✗ API Health FAILED"
     - echo "=== Staging Deployment Complete ==="
   rules:
+    - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "develop"
   needs:
     - build:docker
@@ -367,6 +429,7 @@ deploy:production:
     - echo "=== DEPLOYMENT SUCCESSFUL ==============="
     - echo "=========================================="
   rules:
+    - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - test:e2e
@@ -394,6 +457,7 @@ rollback:production:
     - docker compose up -d
     - echo "=== ROLLBACK COMPLETE ==="
   rules:
+    - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
   allow_failure: true
@@ -414,6 +478,7 @@ security:scan:
     - pip-audit -r app/requirements.txt || echo "⚠️ pip-audit found vulnerabilities"
     - cd llars-frontend && npm audit --audit-level=high || echo "⚠️ npm audit found vulnerabilities"
   rules:
+    - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
   allow_failure: true  # Security scan is informational, doesn't block deployment
@@ -433,6 +498,7 @@ smoke:test:
     - curl -sf http://localhost/auth/authentik/status || true
     - echo "Basic smoke tests passed!"
   rules:
+    - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - deploy:production
@@ -453,6 +519,7 @@ smoke:wizard:
     - chmod +x scripts/smoke_test_wizard.sh
     - ./scripts/smoke_test_wizard.sh
   rules:
+    - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - smoke:test
@@ -491,6 +558,7 @@ metrics:collect:
         - frontend_metrics.json
     expire_in: 30 days
   rules:
+    - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -509,6 +577,7 @@ metrics:update-docs:
     - python scripts/metrics/update_docs.py
     - echo "Metrics documentation updated"
   rules:
+    - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - metrics:collect

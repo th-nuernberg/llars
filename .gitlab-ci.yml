@@ -232,25 +232,47 @@ test:e2e:
       AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
       AUTHENTIK_API_TOKEN=llars-dev-api-token-do-not-use-in-production
       EOF
+    - set -a
+    - . ./.env
+    - set +a
     - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env | tr -d '\r')"
-    - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env up -d --build backend-flask-service db-maria-service llars-redis authentik-db authentik-redis authentik-server authentik-worker authentik-init backend-supervisor-service frontend-vue-service yjs-service
+    - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env up -d --build backend-flask-service db-maria-service llars-redis authentik-db authentik-redis authentik-server authentik-worker backend-supervisor-service frontend-vue-service yjs-service
     - |
-      echo "Waiting for Authentik init to complete..."
+      echo "Waiting for Authentik server to be healthy..."
+      READY=false
       for i in $(seq 1 60); do
-        status=$(docker inspect -f '{{.State.Status}}' llars_ci_authentik_init 2>/dev/null || true)
-        exit_code=$(docker inspect -f '{{.State.ExitCode}}' llars_ci_authentik_init 2>/dev/null || true)
-        if [ "$status" = "exited" ] && [ "$exit_code" = "0" ]; then
-          echo "Authentik init completed."
+        status=$(docker inspect -f '{{.State.Health.Status}}' llars_ci_authentik_server 2>/dev/null || true)
+        if [ "$status" = "healthy" ]; then
+          READY=true
+          echo "Authentik server healthy."
           break
         fi
-        echo "Authentik init not done yet ($i/60)..."
+        echo "Authentik not healthy yet ($i/60)..."
         sleep 5
       done
-      if [ "$status" != "exited" ] || [ "$exit_code" != "0" ]; then
-        echo "Authentik init did not complete successfully."
-        docker logs llars_ci_authentik_init || true
+      if [ "$READY" != "true" ]; then
+        echo "Authentik server did not become healthy."
+        docker logs llars_ci_authentik_server || true
         exit 1
       fi
+    - |
+      echo "Running Authentik init script..."
+      docker cp docker/authentik/init-authentik.sh llars_ci_authentik_server:/tmp/init-authentik.sh
+      docker exec \
+        -e AUTHENTIK_BACKEND_CLIENT_ID=llars-backend \
+        -e AUTHENTIK_BACKEND_CLIENT_SECRET=llars-backend-secret-change-in-production \
+        -e AUTHENTIK_MATOMO_CLIENT_ID=llars-matomo \
+        -e AUTHENTIK_MATOMO_CLIENT_SECRET=llars-matomo-secret-change-in-production \
+        -e AUTHENTIK_MATOMO_APP_SLUG=llars-matomo \
+        -e LLARS_ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD}" \
+        -e AUTHENTIK_BOOTSTRAP_PASSWORD="${AUTHENTIK_BOOTSTRAP_PASSWORD}" \
+        -e AUTHENTIK_BOOTSTRAP_EMAIL="${AUTHENTIK_BOOTSTRAP_EMAIL}" \
+        -e PROJECT_STATE="${PROJECT_STATE}" \
+        -e PROJECT_URL="${PROJECT_URL}" \
+        -e PROJECT_HOST="${PROJECT_HOST}" \
+        -e NGINX_EXTERNAL_PORT="${NGINX_EXTERNAL_PORT}" \
+        -e AUTHENTIK_API_TOKEN="${AUTHENTIK_API_TOKEN}" \
+        llars_ci_authentik_server bash /tmp/init-authentik.sh
     - |
       echo "Waiting for services to be healthy..."
       READY=false

@@ -214,35 +214,31 @@ test:integration:
 test:e2e:
   stage: test
   image: docker:24
-  privileged: true
-  services:
-    - name: docker:24-dind
-      command: ["--host=tcp://0.0.0.0:2375", "--tls=false"]
   variables:
-    DOCKER_HOST: "tcp://docker:2375"
-    DOCKER_TLS_CERTDIR: ""
     COMPOSE_PROJECT_NAME: "llars-ci"
   script:
     - echo "Running E2E Tests against fresh LLARS instance..."
     - |
       cat > .env <<'EOF'
       PROJECT_STATE=development
-      PROJECT_URL=http://nginx-service
-      PROJECT_HOST=nginx-service
-      NGINX_EXTERNAL_PORT=55080
-      AUTHENTIK_EXTERNAL_PORT=55095
+      PROJECT_URL=http://frontend-vue-service:5173
+      PROJECT_HOST=frontend-vue-service
+      NGINX_EXTERNAL_PORT=55081
+      AUTHENTIK_EXTERNAL_PORT=55096
+      DB_EXTERNAL_PORT=55307
+      VITE_API_BASE_URL=http://backend-flask-service:8081
       LLARS_ADMIN_PASSWORD=admin123
       AUTHENTIK_BOOTSTRAP_PASSWORD=admin123
       AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
       AUTHENTIK_API_TOKEN=llars-dev-api-token-do-not-use-in-production
       EOF
     - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env | tr -d '\r')"
-    - docker compose --env-file .env up -d --build nginx-service authentik-init authentik-worker
+    - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env up -d --build backend-flask-service db-maria-service llars-redis authentik-db authentik-redis authentik-server authentik-worker authentik-init backend-supervisor-service frontend-vue-service yjs-service
     - |
       echo "Waiting for Authentik init to complete..."
       for i in $(seq 1 60); do
-        status=$(docker inspect -f '{{.State.Status}}' llars_authentik_init 2>/dev/null || true)
-        exit_code=$(docker inspect -f '{{.State.ExitCode}}' llars_authentik_init 2>/dev/null || true)
+        status=$(docker inspect -f '{{.State.Status}}' llars_ci_authentik_init 2>/dev/null || true)
+        exit_code=$(docker inspect -f '{{.State.ExitCode}}' llars_ci_authentik_init 2>/dev/null || true)
         if [ "$status" = "exited" ] && [ "$exit_code" = "0" ]; then
           echo "Authentik init completed."
           break
@@ -252,7 +248,7 @@ test:e2e:
       done
       if [ "$status" != "exited" ] || [ "$exit_code" != "0" ]; then
         echo "Authentik init did not complete successfully."
-        docker logs llars_authentik_init || true
+        docker logs llars_ci_authentik_init || true
         exit 1
       fi
     - |
@@ -260,7 +256,7 @@ test:e2e:
       READY=false
       for i in $(seq 1 60); do
         if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" --entrypoint sh curlimages/curl:8.10.0 \
-          -c "curl -fsS http://nginx-service/health >/dev/null && curl -fsS http://nginx-service/auth/health_check >/dev/null && curl -fsS http://nginx-service/auth/authentik/health_check >/dev/null"; then
+          -c \"curl -fsS http://backend-flask-service:8081/auth/health_check >/dev/null && curl -fsS http://backend-flask-service:8081/auth/authentik/health_check >/dev/null && curl -fsS http://frontend-vue-service:5173/login >/dev/null\"; then
           READY=true
           echo "Health checks OK."
           break
@@ -283,13 +279,14 @@ test:e2e:
         -v "$CI_PROJECT_DIR/llars-frontend:/work" \
         -w /work \
         -e CI=true \
-        -e PLAYWRIGHT_BASE_URL=http://nginx-service \
+        -e PLAYWRIGHT_BASE_URL=http://frontend-vue-service:5173 \
+        -e PLAYWRIGHT_API_BASE_URL=http://backend-flask-service:8081 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
         -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
         mcr.microsoft.com/playwright:v1.57.0-jammy \
         bash -lc "npm ci --prefer-offline && npx playwright test --project=chromium --workers=1 ${E2E_SPEC}"
   after_script:
-    - docker compose --env-file .env down -v || true
+    - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env down -v || true
   artifacts:
     when: always
     paths:

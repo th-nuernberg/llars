@@ -124,10 +124,10 @@ test.describe('Home Dashboard', () => {
     }
   })
 
-  test('HOME-005: viewer only sees allowed tiles', async ({ page }) => {
-    // Login als Viewer
+  test('HOME-005: evaluator only sees allowed tiles', async ({ page }) => {
+    // Login als Evaluator
     await page.goto('/login')
-    await page.fill('input[name="username"]', 'viewer')
+    await page.fill('input[name="username"]', 'evaluator')
     await page.fill('input[name="password"]', 'admin123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/Home')
@@ -250,10 +250,10 @@ test.describe('Navigation Guards', () => {
     await expect(page).toHaveURL(/.*login/)
   })
 
-  test('NAV-005: viewer cannot access admin', async ({ page }) => {
-    // Login als Viewer
+  test('NAV-005: evaluator cannot access admin', async ({ page }) => {
+    // Login als Evaluator
     await page.goto('/login')
-    await page.fill('input[name="username"]', 'viewer')
+    await page.fill('input[name="username"]', 'evaluator')
     await page.fill('input[name="password"]', 'admin123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/Home')

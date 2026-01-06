@@ -21,7 +21,7 @@ Der `authentik-init` Container läuft bei jedem `docker compose up` und konfigur
 |------|----------|----------|
 | admin | `LLARS_ADMIN_PASSWORD` | ✅ |
 | researcher | - | ❌ |
-| viewer | - | ❌ |
+| evaluator | - | ❌ |
 
 ### Development (`PROJECT_STATE=development`)
 
@@ -29,7 +29,7 @@ Der `authentik-init` Container läuft bei jedem `docker compose up` und konfigur
 |------|----------|----------|
 | admin | `LLARS_ADMIN_PASSWORD` | ✅ |
 | researcher | `LLARS_ADMIN_PASSWORD` | ✅ |
-| viewer | `LLARS_ADMIN_PASSWORD` | ✅ |
+| evaluator | `LLARS_ADMIN_PASSWORD` | ✅ |
 
 ## Environment-Variablen
 

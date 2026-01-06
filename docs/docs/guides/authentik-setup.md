@@ -21,7 +21,7 @@ cp .env.template.development .env
 |----------|----------|-------|
 | admin | admin123 | admin |
 | researcher | admin123 | researcher |
-| viewer | admin123 | viewer |
+| evaluator | admin123 | evaluator |
 
 ## Verifizieren / Debug
 

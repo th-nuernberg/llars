@@ -242,7 +242,7 @@ Dieses Dokument beschreibt alle Tests für das LLARS Authentifizierungs-System.
 | USER-003 | Auto collab_color | Farbe generiert | Unit |
 | USER-004 | Auto api_key | UUID generiert | Unit |
 | USER-005 | Auto avatar_seed | Seed generiert | Unit |
-| USER-006 | Default viewer Rolle | Viewer zugewiesen | Unit |
+| USER-006 | Default evaluator Rolle | Evaluator zugewiesen | Unit |
 | USER-007 | Event geloggt | user.created Event | Unit |
 
 ---
@@ -433,7 +433,7 @@ def valid_token(app):
     payload = {
         'sub': 'test-user-id',
         'preferred_username': 'testuser',
-        'groups': ['viewer'],
+        'groups': ['evaluator'],
         'exp': datetime.utcnow() + timedelta(hours=1),
         'iss': app.config['AUTHENTIK_ISSUER_URL'],
         'aud': 'llars-backend'

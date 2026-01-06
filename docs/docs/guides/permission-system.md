@@ -25,7 +25,7 @@ RBAC mit „deny by default“ über Frontend und Backend:
 
 **Seed-Daten:**
 - 40 Permissions (feature, admin, data)
-- 4 Rollen: `admin` (40), `researcher` (19), `chatbot_manager` (14), `viewer` (13)
+- 4 Rollen: `admin` (40), `researcher` (19), `chatbot_manager` (14), `evaluator` (13)
 
 ---
 
@@ -112,7 +112,7 @@ data:delete
 - **admin:** alle 40 Permissions – Plattform- und Benutzerverwaltung  
 - **researcher:** 19 Permissions – Evaluierung + Prompt Engineering + Markdown Collab + Anonymisierung + KAIMO  
 - **chatbot_manager:** 14 Permissions – Chatbots + RAG + Prompt Engineering + Markdown Collab  
-- **viewer:** 13 Permissions – Lesezugriff + ausgewählte Edit-Rechte
+- **evaluator:** 13 Permissions – Lesezugriff + ausgewählte Edit-Rechte
 
 ---
 

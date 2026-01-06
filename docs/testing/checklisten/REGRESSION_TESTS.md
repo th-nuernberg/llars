@@ -21,7 +21,7 @@ Diese Checkliste dient zur systematischen Überprüfung aller Kernfunktionalitä
 |------|--------|---------|
 | Login mit admin/admin123 | ⬜ | |
 | Login mit researcher/admin123 | ⬜ | |
-| Login mit viewer/admin123 | ⬜ | |
+| Login mit evaluator/admin123 | ⬜ | |
 | Falsches Passwort → Fehler | ⬜ | |
 | Logout → Redirect zu /login | ⬜ | |
 | Token wird gelöscht | ⬜ | |

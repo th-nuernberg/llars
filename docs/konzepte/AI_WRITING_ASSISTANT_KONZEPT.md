@@ -839,7 +839,7 @@ AI_WRITING_PERMISSIONS = [
 | admin | ✅ | ✅ | ✅ | ✅ | ✅ |
 | researcher | ✅ | ✅ | ✅ | ✅ | ✅ |
 | chatbot_manager | ✅ | ✅ | ❌ | ✅ | ❌ |
-| viewer | ❌ | ❌ | ❌ | ❌ | ❌ |
+| evaluator | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### 7.3 Rate Limiting
 

@@ -39,8 +39,12 @@ async function dismissConsentBanner(page) {
 }
 
 async function performLogin(page, user) {
+  console.log(`[E2E] Starting login for user: ${user.username}`)
+  console.log(`[E2E] Base URL: ${baseURL}, isProduction: ${isProduction}`)
+
   await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
   await page.waitForLoadState('load')
+  console.log(`[E2E] Current URL after goto /login: ${page.url()}`)
 
   await dismissConsentBanner(page)
   await page.waitForTimeout(300)
@@ -48,41 +52,134 @@ async function performLogin(page, user) {
   // Handle privacy page redirect - click "Anmelden" in header to go to actual login
   const isOnPrivacyPage = await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
   if (isOnPrivacyPage) {
+    console.log('[E2E] On privacy page, clicking Anmelden button')
     const headerLoginBtn = page.locator('button:has-text("Anmelden")').first()
     if (await headerLoginBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await headerLoginBtn.click()
       await page.waitForLoadState('load')
       await page.waitForTimeout(500)
+      console.log(`[E2E] After clicking Anmelden, URL: ${page.url()}`)
     }
   }
 
   // Check for dev-login buttons first (development environment)
   const devBtn = page.locator('.dev-login-buttons button:not([disabled])').filter({ hasText: user.username })
   if (await devBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    console.log('[E2E] Found dev-login button, clicking it')
     await devBtn.click()
     await page.waitForURL(/\/Home/, { timeout: 25000 })
     await dismissConsentBanner(page)
     return
   }
 
+  console.log('[E2E] No dev-login buttons found, using production login form')
+
   // Production: LLARS has its own login form that posts to backend
-  await page.waitForSelector('[data-testid="login-form"], .login-form', { timeout: 15000 })
+  // Wait for either login form OR already logged in (Home page)
+  const loginFormVisible = await page.waitForSelector('[data-testid="login-form"], .login-form, .login-container', { timeout: 15000 }).catch(() => null)
 
-  const usernameInput = page.locator('[data-testid="username-input"] input, #username input, input[name="username"]').first()
-  await usernameInput.waitFor({ state: 'visible', timeout: 10000 })
+  if (!loginFormVisible) {
+    // Maybe we're already on home?
+    if (page.url().includes('/Home')) {
+      console.log('[E2E] Already on Home page, login not needed')
+      return
+    }
+    console.log(`[E2E] Login form not found, current URL: ${page.url()}`)
+    console.log(`[E2E] Page content: ${await page.content().then(c => c.substring(0, 500))}`)
+    throw new Error('Login form not found')
+  }
+
+  // Try multiple selectors for username input
+  const usernameSelectors = [
+    '[data-testid="username-input"] input',
+    '#username input',
+    'input[name="username"]',
+    'input[type="text"]'
+  ]
+
+  let usernameInput = null
+  for (const selector of usernameSelectors) {
+    const input = page.locator(selector).first()
+    if (await input.isVisible({ timeout: 1000 }).catch(() => false)) {
+      usernameInput = input
+      console.log(`[E2E] Found username input with selector: ${selector}`)
+      break
+    }
+  }
+
+  if (!usernameInput) {
+    console.log(`[E2E] Username input not found, page URL: ${page.url()}`)
+    throw new Error('Username input not found')
+  }
+
   await usernameInput.fill(user.username)
+  console.log(`[E2E] Filled username: ${user.username}`)
 
-  const passwordInput = page.locator('[data-testid="password-input"] input, #password input, input[name="password"]').first()
-  await passwordInput.waitFor({ state: 'visible', timeout: 5000 })
+  // Try multiple selectors for password input
+  const passwordSelectors = [
+    '[data-testid="password-input"] input',
+    '#password input',
+    'input[name="password"]',
+    'input[type="password"]'
+  ]
+
+  let passwordInput = null
+  for (const selector of passwordSelectors) {
+    const input = page.locator(selector).first()
+    if (await input.isVisible({ timeout: 1000 }).catch(() => false)) {
+      passwordInput = input
+      console.log(`[E2E] Found password input with selector: ${selector}`)
+      break
+    }
+  }
+
+  if (!passwordInput) {
+    throw new Error('Password input not found')
+  }
+
   await passwordInput.fill(user.password)
+  console.log('[E2E] Filled password')
 
-  const loginBtn = page.locator('[data-testid="login-btn"], .login-button, button:has-text("Anmelden")').first()
+  // Find and click login button
+  const loginBtn = page.locator('[data-testid="login-btn"], .login-button, button:has-text("Anmelden"), button[type="submit"]').first()
   await loginBtn.waitFor({ state: 'visible', timeout: 5000 })
+  console.log('[E2E] Clicking login button')
   await loginBtn.click()
 
+  // Wait for navigation - could be to /Home or could show error
+  console.log('[E2E] Waiting for navigation after login...')
+
+  // First, wait for any navigation or for the page to settle
+  await page.waitForTimeout(2000)
+  console.log(`[E2E] URL after clicking login: ${page.url()}`)
+
+  // Check for error messages
+  const errorMsg = page.locator('.error-message, .v-alert--error, [role="alert"]').first()
+  if (await errorMsg.isVisible({ timeout: 1000 }).catch(() => false)) {
+    const errorText = await errorMsg.textContent()
+    console.log(`[E2E] Login error message: ${errorText}`)
+    throw new Error(`Login failed with error: ${errorText}`)
+  }
+
   // Wait for redirect to Home page after successful login
-  await page.waitForURL(/\/Home/, { timeout: 30000 })
+  // Use a more flexible approach - wait for URL change first
+  try {
+    await page.waitForURL(/\/(Home|home|dashboard)/i, { timeout: 25000 })
+    console.log(`[E2E] Successfully navigated to: ${page.url()}`)
+  } catch (e) {
+    console.log(`[E2E] Failed to navigate to Home. Current URL: ${page.url()}`)
+    console.log(`[E2E] Page title: ${await page.title()}`)
+
+    // Check if we're on an Authentik page
+    if (page.url().includes('authentik') || page.url().includes('auth')) {
+      console.log('[E2E] Appears to be on Authentik auth page')
+    }
+
+    throw e
+  }
+
   await dismissConsentBanner(page)
+  console.log(`[E2E] Login complete for ${user.username}`)
 }
 
 /**

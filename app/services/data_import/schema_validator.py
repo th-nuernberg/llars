@@ -56,9 +56,9 @@ class SchemaValidator:
         warnings = []
 
         # Check required fields
-        for field in self.REQUIRED_ITEM_FIELDS:
-            if field not in item:
-                errors.append(f"Item {index}: Missing required field '{field}'")
+        for field_name in self.REQUIRED_ITEM_FIELDS:
+            if field_name not in item:
+                errors.append(f"Item {index}: Missing required field '{field_name}'")
 
         # Validate ID
         if "id" in item:
@@ -116,9 +116,9 @@ class SchemaValidator:
             return errors, warnings
 
         # Check required fields
-        for field in self.REQUIRED_MESSAGE_FIELDS:
-            if field not in message:
-                errors.append(f"{prefix}: Missing required field '{field}'")
+        for field_name in self.REQUIRED_MESSAGE_FIELDS:
+            if field_name not in message:
+                errors.append(f"{prefix}: Missing required field '{field_name}'")
 
         # Validate role
         if "role" in message:

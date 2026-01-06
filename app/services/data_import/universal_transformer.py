@@ -300,15 +300,15 @@ class UniversalTransformer:
         # Try common ID fields
         id_fields = ["id", "conversation_id", "sample_id", "item_id", "uuid", "_id"]
 
-        for field in id_fields:
-            if field in data:
-                return str(data[field])
+        for field_name in id_fields:
+            if field_name in data:
+                return str(data[field_name])
 
         # Check metadata
         if "metadata" in data and isinstance(data["metadata"], dict):
-            for field in id_fields:
-                if field in data["metadata"]:
-                    return str(data["metadata"][field])
+            for field_name in id_fields:
+                if field_name in data["metadata"]:
+                    return str(data["metadata"][field_name])
 
             # Create composite ID from metadata
             meta = data["metadata"]
@@ -548,9 +548,9 @@ class UniversalTransformer:
             "source_conversation_id", "num_replacements", "replaced_positions"
         ]
 
-        for field in preserve_fields:
-            if field in data:
-                metadata[field] = data[field]
+        for field_name in preserve_fields:
+            if field_name in data:
+                metadata[field_name] = data[field_name]
 
         return metadata
 

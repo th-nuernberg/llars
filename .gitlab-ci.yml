@@ -235,7 +235,7 @@ test:e2e:
       AUTHENTIK_API_TOKEN=llars-dev-api-token-do-not-use-in-production
       EOF
     - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env.ci | tr -d '\r')"
-    - docker compose --env-file .env.ci up -d --build nginx-service
+    - docker compose --env-file .env.ci up -d --build nginx-service authentik-init authentik-worker
     - |
       echo "Waiting for Authentik init to complete..."
       for i in $(seq 1 60); do

@@ -404,10 +404,14 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role
+            # Get role (support evaluator -> viewer fallback)
             role = db.session.execute(
                 select(Role).where(Role.role_name == role_name)
             ).scalar_one_or_none()
+            if not role and role_name == 'evaluator':
+                role = db.session.execute(
+                    select(Role).where(Role.role_name == 'viewer')
+                ).scalar_one_or_none()
 
             if not role:
                 return False
@@ -470,10 +474,14 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role
+            # Get role (support evaluator -> viewer fallback)
             role = db.session.execute(
                 select(Role).where(Role.role_name == role_name)
             ).scalar_one_or_none()
+            if not role and role_name == 'evaluator':
+                role = db.session.execute(
+                    select(Role).where(Role.role_name == 'viewer')
+                ).scalar_one_or_none()
 
             if not role:
                 return False

@@ -266,7 +266,7 @@ test:e2e:
       echo "Waiting for Authentik shell to be ready..."
       SHELL_READY=false
       for i in $(seq 1 120); do
-        if docker exec llars_ci_authentik_server bash -lc "ak shell -c \"from django.db import connections; connections['default'].ensure_connection(); from authentik.core.models import User; User.objects.count()\""; then
+        if docker exec llars_ci_authentik_server bash -lc "/ak-root/venv/bin/python -m manage shell -c \"from django.db import connections; connections['default'].ensure_connection(); from authentik.core.models import User; User.objects.count()\""; then
           SHELL_READY=true
           echo "Authentik shell ready."
           break

@@ -387,6 +387,40 @@ class PermissionService:
             return False
 
     @staticmethod
+    def _resolve_role(role_name: str, seed_missing: bool = False) -> Optional[Role]:
+        lookup_name = role_name
+        if role_name == 'viewer':
+            lookup_name = 'evaluator'
+
+        role = db.session.execute(
+            select(Role).where(Role.role_name == lookup_name)
+        ).scalar_one_or_none()
+
+        if not role and role_name in ('evaluator', 'viewer'):
+            role = db.session.execute(
+                select(Role).where(Role.role_name == 'viewer')
+            ).scalar_one_or_none()
+
+        if not role and seed_missing:
+            try:
+                from db.seeders.permissions import initialize_permissions
+
+                initialize_permissions(db)
+            except Exception as exc:
+                print(f"Error seeding permissions: {exc}")
+
+            role = db.session.execute(
+                select(Role).where(Role.role_name == lookup_name)
+            ).scalar_one_or_none()
+
+            if not role and role_name in ('evaluator', 'viewer'):
+                role = db.session.execute(
+                    select(Role).where(Role.role_name == 'viewer')
+                ).scalar_one_or_none()
+
+        return role
+
+    @staticmethod
     def assign_role(
         username: str,
         role_name: str,
@@ -404,21 +438,10 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role (prefer evaluator, keep viewer fallback for legacy)
-            lookup_name = role_name
-            if role_name == 'viewer':
-                lookup_name = 'evaluator'
-            role = db.session.execute(
-                select(Role).where(Role.role_name == lookup_name)
-            ).scalar_one_or_none()
-            if not role and role_name == 'evaluator':
-                role = db.session.execute(
-                    select(Role).where(Role.role_name == 'viewer')
-                ).scalar_one_or_none()
-            if not role and role_name == 'viewer':
-                role = db.session.execute(
-                    select(Role).where(Role.role_name == 'viewer')
-                ).scalar_one_or_none()
+            normalized_role_name = (role_name or '').strip().lower()
+            if not normalized_role_name:
+                return False
+            role = PermissionService._resolve_role(normalized_role_name, seed_missing=True)
 
             if not role:
                 return False
@@ -452,7 +475,7 @@ class PermissionService:
                 admin_username=admin_username,
                 target_username=username,
                 permission_key=None,
-                details={'role_name': role_name, 'role_id': role.id}
+                details={'role_name': normalized_role_name, 'role_id': role.id}
             )
 
             db.session.commit()
@@ -481,21 +504,10 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role (prefer evaluator, keep viewer fallback for legacy)
-            lookup_name = role_name
-            if role_name == 'viewer':
-                lookup_name = 'evaluator'
-            role = db.session.execute(
-                select(Role).where(Role.role_name == lookup_name)
-            ).scalar_one_or_none()
-            if not role and role_name == 'evaluator':
-                role = db.session.execute(
-                    select(Role).where(Role.role_name == 'viewer')
-                ).scalar_one_or_none()
-            if not role and role_name == 'viewer':
-                role = db.session.execute(
-                    select(Role).where(Role.role_name == 'viewer')
-                ).scalar_one_or_none()
+            normalized_role_name = (role_name or '').strip().lower()
+            if not normalized_role_name:
+                return False
+            role = PermissionService._resolve_role(normalized_role_name)
 
             if not role:
                 return False
@@ -523,7 +535,7 @@ class PermissionService:
                 admin_username=admin_username,
                 target_username=username,
                 permission_key=None,
-                details={'role_name': role_name, 'role_id': role.id}
+                details={'role_name': normalized_role_name, 'role_id': role.id}
             )
 
             db.session.commit()

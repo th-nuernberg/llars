@@ -362,7 +362,7 @@ Dieses Dokument beschreibt Tests für ALLE Dialoge und Modals in LLARS.
 | ID | Test | Erwartung | Art |
 |----|------|-----------|-----|
 | SDD-U01 | Rater angezeigt | Mit Cards | E2E |
-| SDD-U02 | Viewer angezeigt | Mit Cards | E2E |
+| SDD-U02 | Evaluator angezeigt | Mit Cards | E2E |
 | SDD-U03 | User hinzufügen | Checkbox-Auswahl | E2E |
 | SDD-U04 | User entfernen | Aus Liste entfernt | E2E |
 

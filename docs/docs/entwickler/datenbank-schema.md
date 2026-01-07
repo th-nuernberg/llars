@@ -196,7 +196,7 @@ Benutzer-Zuordnung zu Szenarien.
 | `id` | INT | Primary Key |
 | `scenario_id` | INT | FK → RatingScenario |
 | `user_id` | INT | FK → User |
-| `role` | ENUM | VIEWER, RATER |
+| `role` | ENUM | EVALUATOR, RATER |
 
 ### EmailThread
 

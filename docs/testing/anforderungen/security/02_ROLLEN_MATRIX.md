@@ -62,7 +62,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### KAIMO
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | Kachel sichtbar | ✅ | ✅ | ❌ | ✅ |
 | Cases ansehen | ✅ | ✅ | ❌ | ✅ |
@@ -74,7 +74,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### Chatbot Features
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | Chat nutzen | ✅ | ✅ | ✅ | ✅ |
 | Chatbot erstellen | ✅ | ❌ | ✅ | ❌ |
@@ -86,7 +86,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### RAG Features
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | Dokumente ansehen | ✅ | ❌ | ✅ | ✅ |
 | Dokumente hochladen | ✅ | ❌ | ✅ | ❌ |
@@ -98,7 +98,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### Collaboration Features
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | **Markdown Collab** |
 | - Kachel sichtbar | ✅ | ✅ | ✅ | ✅ |
@@ -120,7 +120,7 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### Prompt Engineering
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | Kachel sichtbar | ✅ | ✅ | ✅ | ✅ |
 | Prompts ansehen | ✅ | ✅ | ✅ | ✅ |
@@ -131,14 +131,14 @@ Dieses Dokument definiert die vollständige Zugriffs-Matrix für alle 4 Rollen u
 
 ### Anonymize
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | Kachel sichtbar | ✅ | ✅ | ❌ | ✅ |
 | Tool nutzen | ✅ | ✅ | ❌ | ✅ |
 
 ### Admin Dashboard
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|:-----:|:----------:|:---------------:|:------:|
 | Dashboard sichtbar | ✅ | ❌ | ⚠️ | ❌ |
 | Overview Tab | ✅ | ❌ | ❌ | ❌ |
@@ -318,8 +318,8 @@ test.describe('Tile Visibility by Role', () => {
 | NAV-R01 | Researcher → /admin | Redirect zu /Home | E2E |
 | NAV-R02 | Researcher → /judge | Redirect zu /Home | E2E |
 | NAV-R03 | Researcher → /oncoco | Redirect zu /Home | E2E |
-| NAV-V01 | Viewer → /admin | Redirect zu /Home | E2E |
-| NAV-V02 | Viewer → /LatexCollabAI | Redirect zu /Home | E2E |
+| NAV-V01 | Evaluator → /admin | Redirect zu /Home | E2E |
+| NAV-V02 | Evaluator → /LatexCollabAI | Redirect zu /Home | E2E |
 | NAV-C01 | Chatbot_Mgr → /Ranker | Redirect zu /Home | E2E |
 | NAV-C02 | Chatbot_Mgr → /judge | Redirect zu /Home | E2E |
 
@@ -354,7 +354,7 @@ test.describe('Tile Visibility by Role', () => {
 - [ ] Kein Ranking/Rating
 - [ ] Kein Judge/OnCoCo
 
-### Viewer-Rolle
+### Evaluator-Rolle
 - [ ] Nur lesen überall
 - [ ] Keine Edit-Buttons
 - [ ] KAIMO + Authenticity Votes funktionieren

@@ -9,13 +9,13 @@
 KAIMo (KI-gestützte Analyse und Modellierung) ist ein Lerntool zur Schulung von Fachkräften in der Kindeswohlgefährdung. Das System wird in LLARS mit zwei unterschiedlichen Panels integriert:
 
 - **KAIMO Admin Panel** (für Researcher): Fälle anlegen, Dokumente/Hinweise verwalten, Ergebnisse auswerten
-- **KAIMO Panel** (für Viewer): Fälle durcharbeiten, Hinweise zuordnen, Bewertungen abgeben
+- **KAIMO Panel** (für Evaluator): Fälle durcharbeiten, Hinweise zuordnen, Bewertungen abgeben
 
 ## Dokumentation
 
 | Dokument | Beschreibung | Status |
 |----------|--------------|--------|
-| [Panel-Konzept](konzept.md) | **NEU:** Detailliertes Konzept mit Admin/Viewer-Trennung | In Review |
+| [Panel-Konzept](konzept.md) | **NEU:** Detailliertes Konzept mit Admin/Evaluator-Trennung | In Review |
 | [Anfrage-Einschätzung](anfrage-einschaetzung.md) | Strategische Bewertung der 3 Varianten | Entscheidung offen |
 | [Integration Konzept](integration-konzept.md) | Technische Analyse mit Aufwandsschätzung | Fertig |
 
@@ -24,7 +24,7 @@ KAIMo (KI-gestützte Analyse und Modellierung) ist ein Lerntool zur Schulung von
 | Rolle | Panel | Berechtigungen |
 |-------|-------|----------------|
 | **Researcher** | Admin Panel | Fälle anlegen/bearbeiten, Ergebnisse einsehen |
-| **Viewer** | User Panel | Fälle durcharbeiten, Bewertungen abgeben |
+| **Evaluator** | User Panel | Fälle durcharbeiten, Bewertungen abgeben |
 
 ### Permissions
 
@@ -45,7 +45,7 @@ admin:kaimo:results      # Ergebnisse einsehen (Admin)
 4. **Musterlösung hinterlegen** - Erwartete Zuordnungen für Auswertung
 5. **Ergebnisse analysieren** - Aggregierte Bewertungen aller Fachkräfte
 
-### User Panel (Viewer)
+### User Panel (Evaluator)
 
 1. **Fälle durcharbeiten** - Dokumente lesen, Hinweise analysieren
 2. **Hinweise zuordnen** - Drag & Drop in Kategorien

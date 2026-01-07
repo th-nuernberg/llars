@@ -312,12 +312,17 @@ test:e2e:
     - |
       E2E_SPEC=""
       if [ -n "${E2E_ONLY:-}" ] && [ "${E2E_ONLY}" != "true" ]; then
-        E2E_SPEC="${E2E_ONLY}"
+        case "${E2E_ONLY}" in
+          *.spec.*|*.js|*.ts|*/*)
+            E2E_SPEC="${E2E_ONLY}"
+            ;;
+        esac
       fi
       docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" \
         -v "$CI_PROJECT_DIR/llars-frontend:/work" \
         -w /work \
         -e CI=true \
+        -e E2E_ONLY="${E2E_ONLY:-}" \
         -e PLAYWRIGHT_BASE_URL=http://frontend-vue-service:5173 \
         -e PLAYWRIGHT_API_BASE_URL=http://backend-flask-service:8081 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \

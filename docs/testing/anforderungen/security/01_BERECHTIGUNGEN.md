@@ -103,8 +103,8 @@ Dieses Dokument beschreibt alle Tests für das LLARS Permission System (RBAC).
 |----|------|-----------|-----|--------|
 | PERM-020 | Researcher hat view Permissions | Return True | Unit | ✅ |
 | PERM-021 | Researcher keine Admin Permissions | Return False | Unit | ✅ |
-| PERM-022 | Viewer nur view Permissions | Return True für view | Unit | ✅ |
-| PERM-023 | Viewer keine edit Permissions | Return False | Unit | ✅ |
+| PERM-022 | Evaluator nur view Permissions | Return True für view | Unit | ✅ |
+| PERM-023 | Evaluator keine edit Permissions | Return False | Unit | ✅ |
 | PERM-024 | Chatbot_Manager chatbot Permissions | Return True | Unit | ✅ |
 | PERM-025 | Chatbot_Manager keine ranking | Return False | Unit | ✅ |
 

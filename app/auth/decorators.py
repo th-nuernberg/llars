@@ -63,6 +63,14 @@ def _ensure_default_evaluator_role(username: str) -> None:
 
     evaluator_role = Role.query.filter_by(role_name='evaluator').first()
     if not evaluator_role:
+        try:
+            from db.seeders.permissions import initialize_permissions
+
+            initialize_permissions(db)
+        except Exception as exc:
+            logger.warning(f"Failed to seed permissions while assigning evaluator role: {exc}")
+        evaluator_role = Role.query.filter_by(role_name='evaluator').first()
+    if not evaluator_role:
         evaluator_role = Role.query.filter_by(role_name='viewer').first()
     if not evaluator_role:
         logger.warning(f"Evaluator role missing; cannot auto-assign for {username}")

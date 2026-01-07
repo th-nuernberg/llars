@@ -236,7 +236,7 @@ test.describe('Anonymize Tool', () => {
 | NAV-002 | Token expired | Redirect zu `/login` | E2E |
 | NAV-003 | Nach Login ursprüngliche Route | Redirect zu gespeicherter URL | E2E |
 | NAV-004 | Logout löscht Token | localStorage leer | E2E |
-| NAV-005 | Admin-Route als Viewer | Redirect oder 403 | E2E |
+| NAV-005 | Admin-Route als Evaluator | Redirect oder 403 | E2E |
 
 ### E2E Test-Code
 
@@ -301,7 +301,7 @@ test.describe('Navigation Guards', () => {
 
 - [ ] Admin sieht alle Kacheln
 - [ ] Researcher sieht nur erlaubte Kacheln
-- [ ] Viewer sieht eingeschränkte Kacheln
+- [ ] Evaluator sieht eingeschränkte Kacheln
 - [ ] Chatbot_Manager sieht Chatbot + RAG
 
 ---

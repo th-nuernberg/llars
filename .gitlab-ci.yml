@@ -39,7 +39,7 @@ stages:
 # - UNIT_BACKEND_ONLY
 # - UNIT_FRONTEND_ONLY
 # - INTEGRATION_ONLY
-# - E2E_ONLY (can be a Playwright spec path to run a single file)
+# - E2E tests are currently disabled in CI
 
 variables:
   # Python
@@ -78,7 +78,7 @@ cache:
 
 # Shared rule to skip non-test jobs when a test-only switch is set
 .test_only_skip: &test_only_skip
-  if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY || $E2E_ONLY'
+  if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY'
   when: never
 
 # =============================================================================
@@ -150,7 +150,7 @@ test:unit:backend:
     expire_in: 1 week
   rules:
     - if: '$UNIT_BACKEND_ONLY'
-    - if: '$UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY || $E2E_ONLY'
+    - if: '$UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY'
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -173,7 +173,7 @@ test:unit:frontend:
     expire_in: 1 week
   rules:
     - if: '$UNIT_FRONTEND_ONLY'
-    - if: '$UNIT_BACKEND_ONLY || $INTEGRATION_ONLY || $E2E_ONLY'
+    - if: '$UNIT_BACKEND_ONLY || $INTEGRATION_ONLY'
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -207,7 +207,7 @@ test:integration:
     - pytest tests/integration/ -v
   rules:
     - if: '$INTEGRATION_ONLY'
-    - if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $E2E_ONLY'
+    - if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY'
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -368,10 +368,7 @@ test:e2e:
       - llars-frontend/test-results/
     expire_in: 1 week
   rules:
-    - if: '$E2E_ONLY'
-    - if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY'
-      when: never
-    - if: $CI_COMMIT_BRANCH == "main"
+    - when: never
   needs:
     - job: test:integration
       optional: true

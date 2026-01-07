@@ -36,7 +36,8 @@ log() {
 }
 
 while [ "$(date +%s)" -lt "$end_ts" ]; do
-  pipelines_json=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  pipelines_json=$(curl -sS --fail --max-time 20 --connect-timeout 5 \
+    --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
     "$GITLAB_API_BASE/projects/$GITLAB_PROJECT_ID/pipelines?ref=$BRANCH&per_page=1" || true)
 
   if [ -z "$pipelines_json" ]; then
@@ -58,7 +59,8 @@ while [ "$(date +%s)" -lt "$end_ts" ]; do
   fi
 
   if [ "$pipeline_status" = "failed" ]; then
-    jobs_json=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    jobs_json=$(curl -sS --fail --max-time 20 --connect-timeout 5 \
+      --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
       "$GITLAB_API_BASE/projects/$GITLAB_PROJECT_ID/pipelines/$pipeline_id/jobs?per_page=100" || true)
 
     failed_jobs=$(python3 -c 'import json,sys; jobs=json.load(sys.stdin); print(\"\\n\".join(f\"{j.get(\\\"id\\\")}\\|{j.get(\\\"name\\\")}\" for j in jobs if j.get(\"status\") == \"failed\"))' \
@@ -67,7 +69,8 @@ while [ "$(date +%s)" -lt "$end_ts" ]; do
     while IFS='|' read -r job_id job_name; do
       [ -z "$job_id" ] && continue
       log "Job failed: $job_name ($job_id)"
-      curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+      curl -sS --fail --max-time 20 --connect-timeout 5 \
+        --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
         "$GITLAB_API_BASE/projects/$GITLAB_PROJECT_ID/jobs/$job_id/trace" \
         | tail -50 | sed 's/^/  /' >> "$LOG_FILE"
     done <<< "$failed_jobs"

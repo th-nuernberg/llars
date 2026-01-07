@@ -6,6 +6,18 @@ sleep 2
 export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
 export FLASK_APP="main"
 
+python - <<'PY'
+import importlib
+import traceback
+import sys
+
+try:
+    importlib.import_module("main")
+except Exception:
+    traceback.print_exc()
+    sys.exit(1)
+PY
+
 DB_HOST="${MYSQL_HOST:-db-maria-service}"
 DB_PORT="${MYSQL_PORT:-3306}"
 DB_NAME="${MYSQL_DATABASE:-database_llars}"

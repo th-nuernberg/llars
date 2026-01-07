@@ -382,7 +382,7 @@ security:routes:
   image: python:3.11-slim
   script:
     - pip install pytest
-    - pytest tests/security/test_route_security.py -q
+    - pytest tests/security/test_route_security.py -q --confcutdir=tests/security
   rules:
     - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

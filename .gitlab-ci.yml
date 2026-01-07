@@ -228,12 +228,12 @@ test:e2e:
     - |
       cat > .env <<'EOF'
       PROJECT_STATE=development
-      PROJECT_URL=http://frontend-vue-service:5173
-      PROJECT_HOST=frontend-vue-service
+      PROJECT_URL=http://llars_ci_frontend_service:5173
+      PROJECT_HOST=llars_ci_frontend_service
       NGINX_EXTERNAL_PORT=55081
       AUTHENTIK_EXTERNAL_PORT=55096
       DB_EXTERNAL_PORT=55307
-      VITE_API_BASE_URL=http://backend-flask-service:8081
+      VITE_API_BASE_URL=http://llars_ci_flask_service:8081
       LLARS_ADMIN_PASSWORD=admin123
       AUTHENTIK_BOOTSTRAP_PASSWORD=admin123
       AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
@@ -302,7 +302,7 @@ test:e2e:
       READY=false
       for i in $(seq 1 60); do
         if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" --entrypoint sh curlimages/curl:8.10.0 \
-          -c 'curl -fsS http://backend-flask-service:8081/auth/health_check >/dev/null && curl -fsS http://backend-flask-service:8081/auth/authentik/health_check >/dev/null && curl -fsS http://frontend-vue-service:5173/login >/dev/null'; then
+          -c 'curl -fsS http://llars_ci_flask_service:8081/auth/health_check >/dev/null && curl -fsS http://llars_ci_flask_service:8081/auth/authentik/health_check >/dev/null && curl -fsS http://llars_ci_frontend_service:5173/login >/dev/null'; then
           READY=true
           echo "Health checks OK."
           break
@@ -330,8 +330,8 @@ test:e2e:
         -w /work \
         -e CI=true \
         -e E2E_ONLY="${E2E_ONLY:-}" \
-        -e PLAYWRIGHT_BASE_URL=http://frontend-vue-service:5173 \
-        -e PLAYWRIGHT_API_BASE_URL=http://backend-flask-service:8081 \
+        -e PLAYWRIGHT_BASE_URL=http://llars_ci_frontend_service:5173 \
+        -e PLAYWRIGHT_API_BASE_URL=http://llars_ci_flask_service:8081 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
         -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
         mcr.microsoft.com/playwright:v1.57.0-jammy \

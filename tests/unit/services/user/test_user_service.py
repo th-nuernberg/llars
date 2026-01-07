@@ -640,6 +640,7 @@ class TestGroupManagement:
         """
         from services.user_service import UserService
         from db.models import User, UserGroup
+        from db.tables import Role, UserRole
 
         # Create groups
         admin_group = UserGroup(name='Admin')
@@ -717,6 +718,7 @@ class TestGroupManagement:
         """
         from services.user_service import UserService
         from db.models import User, UserGroup
+        from db.tables import Role, UserRole
 
         # Create admin group and admin
         admin_group = UserGroup(name='Admin082')
@@ -746,6 +748,7 @@ class TestGroupManagement:
         """
         from services.user_service import UserService
         from db.models import User, UserGroup
+        from db.tables import Role, UserRole
 
         # Create admin group
         admin_group = UserGroup(name='Admin')

@@ -22,6 +22,16 @@ PROJECT_URL="${PROJECT_URL:-}"
 PROJECT_HOST="${PROJECT_HOST:-localhost}"
 NGINX_EXTERNAL_PORT="${NGINX_EXTERNAL_PORT:-80}"
 
+AK_PYTHON="/ak-root/venv/bin/python"
+if [ ! -x "$AK_PYTHON" ]; then
+  echo "WARN: $AK_PYTHON not found, falling back to system python"
+  AK_PYTHON="python"
+fi
+
+ak_shell() {
+  "$AK_PYTHON" -m manage shell -c "$1"
+}
+
 BASE_URL="${PROJECT_URL%/}"
 if [ -z "$BASE_URL" ]; then
   if [ "$PROJECT_STATE" = "production" ]; then
@@ -51,7 +61,7 @@ sleep 5
 # Run all configuration via ak shell (Python Django shell)
 echo "[2/7] Creating authentication flow 'llars-api-authentication'..."
 
-ak shell -c "
+ak_shell "
 from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
 from authentik.stages.identification.models import IdentificationStage, UserFields
 from authentik.stages.password.models import PasswordStage
@@ -99,7 +109,7 @@ else:
 
 echo "[2b/7] Ensuring provider authorization flow..."
 
-ak shell -c "
+ak_shell "
 from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
 from django.db.models.fields import NOT_PROVIDED
 try:
@@ -175,7 +185,7 @@ ensure_authorization_flow()
 
 echo "[3/7] Creating OAuth2 provider 'llars-backend'..."
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 from authentik.crypto.models import CertificateKeyPair
 from authentik.flows.models import Flow, FlowDesignation
@@ -246,7 +256,7 @@ else:
 
 echo "[4/7] Creating OAuth2 provider 'llars-matomo'..."
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 from authentik.crypto.models import CertificateKeyPair
 from authentik.flows.models import Flow, FlowDesignation
@@ -319,7 +329,7 @@ else:
 
 echo "[5/7] Creating admin user..."
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import User, Group
 
 # Create or update admin user
@@ -355,7 +365,7 @@ else:
 if [ "$PROJECT_STATE" = "development" ]; then
     echo "[6/7] Creating additional users (researcher, evaluator, chatbot_manager) - DEVELOPMENT MODE..."
 
-    ak shell -c "
+    ak_shell "
 from authentik.core.models import User
 
 # Researcher user
@@ -415,7 +425,7 @@ echo "[7/8] Creating Admin API Token for LLARS..."
 # Use predefined token from env if available (for reproducible setups)
 PREDEFINED_TOKEN="${AUTHENTIK_API_TOKEN:-}"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import Token, User
 
 # Get the akadmin (bootstrap admin) user
@@ -455,7 +465,7 @@ else:
 
 echo "[8/8] Verifying configuration..."
 
-ak shell -c "
+ak_shell "
 from authentik.flows.models import Flow
 from authentik.providers.oauth2.models import OAuth2Provider
 from authentik.core.models import User, Application
@@ -464,27 +474,27 @@ from authentik.core.models import User, Application
 flow = Flow.objects.filter(slug='llars-api-authentication').first()
 print(f'  Flow llars-api-authentication: {\"OK\" if flow else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider
 provider = OAuth2Provider.objects.filter(name='llars-backend').first()
 print(f'  OAuth2 Provider llars-backend: {\"OK\" if provider else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider
 provider = OAuth2Provider.objects.filter(name='llars-matomo').first()
 print(f'  OAuth2 Provider llars-matomo: {\"OK\" if provider else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import Application
 app = Application.objects.filter(slug='llars-backend').first()
 print(f'  Application llars-backend: {\"OK\" if app else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import Application
 app = Application.objects.filter(slug='$MATOMO_APP_SLUG').first()
 print(f'  Application $MATOMO_APP_SLUG: {\"OK\" if app else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import User
 admin = User.objects.filter(username='admin').first()
 print(f'  User admin: {\"OK\" if admin else \"MISSING\"}')"

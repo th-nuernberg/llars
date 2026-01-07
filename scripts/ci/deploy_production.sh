@@ -3,6 +3,8 @@ set -euo pipefail
 
 DEPLOY_PATH="${LLARS_DEPLOY_PATH:-/var/llars}"
 BRANCH="${LLARS_PRODUCTION_BRANCH:-main}"
+BACKUP_DIR="$DEPLOY_PATH/backups"
+ROLLBACK_DIR="$DEPLOY_PATH/.deploy"
 
 cd "$DEPLOY_PATH"
 
@@ -11,10 +13,30 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "ERROR: Working tree has uncommitted changes."
-  git status --short
-  exit 1
+mkdir -p "$BACKUP_DIR" "$ROLLBACK_DIR"
+
+if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+  CLEAN_TS="$(date +%Y%m%d_%H%M%S)"
+  CLEAN_DIR="$BACKUP_DIR/dirty_worktree_$CLEAN_TS"
+  mkdir -p "$CLEAN_DIR"
+
+  git status --short > "$CLEAN_DIR/status.txt" || true
+  git diff --binary > "$CLEAN_DIR/working_tree.patch" || true
+  git diff --cached --binary > "$CLEAN_DIR/index.patch" || true
+
+  git ls-files --others --exclude-standard -z > "$CLEAN_DIR/untracked.zlist" || true
+  if [ -s "$CLEAN_DIR/untracked.zlist" ]; then
+    tr '\0' '\n' < "$CLEAN_DIR/untracked.zlist" > "$CLEAN_DIR/untracked.txt"
+    tar --null --files-from="$CLEAN_DIR/untracked.zlist" \
+      --exclude="backups/*" \
+      --exclude=".deploy/*" \
+      --exclude=".env" \
+      -czf "$CLEAN_DIR/untracked.tar.gz" || true
+  fi
+
+  echo "INFO: Working tree dirty. Backup saved to $CLEAN_DIR"
+  git reset --hard
+  git clean -fd -e backups/ -e .deploy/ -e .env
 fi
 
 if [ ! -f .env ]; then
@@ -23,10 +45,6 @@ if [ ! -f .env ]; then
 fi
 
 PREVIOUS_COMMIT="$(git rev-parse HEAD)"
-BACKUP_DIR="$DEPLOY_PATH/backups"
-ROLLBACK_DIR="$DEPLOY_PATH/.deploy"
-mkdir -p "$BACKUP_DIR" "$ROLLBACK_DIR"
-
 BACKUP_FILE="$BACKUP_DIR/pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
 
 echo "[1/6] Creating pre-deploy backup: $BACKUP_FILE"

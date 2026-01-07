@@ -6,6 +6,16 @@ sleep 2
 export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
 export FLASK_APP="main"
 
+echo "App directory listing:"
+ls -la /app || true
+python - <<'PY'
+import os
+import sys
+
+print("sys.path:", sys.path)
+print("main exists:", os.path.exists("/app/main.py"))
+PY
+
 python - <<'PY'
 import importlib
 import traceback

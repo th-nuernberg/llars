@@ -36,12 +36,22 @@ class LatexWorkspace(db.Model):
     )
     main_document_id: Mapped[Optional[int]] = mapped_column(
         db.Integer,
-        db.ForeignKey("latex_documents.id", ondelete="SET NULL"),
+        db.ForeignKey(
+            "latex_documents.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_latex_workspaces_main_document_id",
+        ),
         nullable=True,
     )
     latest_compile_job_id: Mapped[Optional[int]] = mapped_column(
         db.Integer,
-        db.ForeignKey("latex_compile_jobs.id", ondelete="SET NULL"),
+        db.ForeignKey(
+            "latex_compile_jobs.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_latex_workspaces_latest_compile_job_id",
+        ),
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)

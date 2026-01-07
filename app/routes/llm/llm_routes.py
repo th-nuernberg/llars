@@ -8,11 +8,13 @@ from flask import jsonify, request
 from db.models.llm_model import LLMModel
 from db.database import db
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
+from decorators.permission_decorator import require_permission
 
 from routes.llm import llm_bp
 
 
 @llm_bp.route('/models', methods=['GET'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def get_models():
     """
@@ -56,6 +58,7 @@ def get_models():
 
 
 @llm_bp.route('/models/default', methods=['GET'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def get_default_model():
     """Get the default LLM model."""
@@ -76,6 +79,7 @@ def get_default_model():
 
 
 @llm_bp.route('/models/<int:model_id>', methods=['GET'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def get_model(model_id):
     """Get a specific LLM model by ID."""
@@ -91,6 +95,7 @@ def get_model(model_id):
 
 
 @llm_bp.route('/models/by-model-id/<path:model_id>', methods=['GET'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def get_model_by_model_id(model_id):
     """Get a specific LLM model by its model_id string."""
@@ -106,6 +111,7 @@ def get_model_by_model_id(model_id):
 
 
 @llm_bp.route('/models/<int:model_id>/set-default', methods=['POST'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def set_default_model(model_id):
     """Set a model as the default."""
@@ -135,6 +141,7 @@ def set_default_model(model_id):
 
 
 @llm_bp.route('/models', methods=['POST'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def create_model():
     """Create a new LLM model configuration."""
@@ -193,6 +200,7 @@ def create_model():
 
 
 @llm_bp.route('/models/<int:model_id>', methods=['PUT'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def update_model(model_id):
     """Update an existing LLM model configuration."""
@@ -247,6 +255,7 @@ def update_model(model_id):
 
 
 @llm_bp.route('/models/<int:model_id>', methods=['DELETE'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def delete_model(model_id):
     """Delete an LLM model configuration."""
@@ -268,6 +277,7 @@ def delete_model(model_id):
 
 
 @llm_bp.route('/models/sync', methods=['POST'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')
 def sync_models():
     """

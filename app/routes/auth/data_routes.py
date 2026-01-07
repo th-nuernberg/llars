@@ -15,12 +15,16 @@ from routes.auth import data_bp
 from services.ranking_service import RankingService
 from services.thread_service import ThreadService
 from services.user_service import UserService
+from auth.auth_utils import AuthUtils
+from auth.decorators import get_or_create_user
+from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
+    handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
 )
 
 
 @data_bp.route('/email_threads', methods=['POST'])
+@require_permission('data:import')
 @handle_api_errors(logger_name='auth')
 def create_email_thread():
     """Create or update an email thread with messages and features"""
@@ -91,18 +95,10 @@ def create_email_thread():
 
 
 @data_bp.route('/rankings/csv', methods=['GET'])
+@require_permission('data:export')
 @handle_api_errors(logger_name='auth')
 def download_rankings_csv():
     """Download rankings as CSV file"""
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        raise UnauthorizedError('API key is missing')
-
-    # Use UserService for authentication
-    is_valid, user, error_msg = UserService.validate_api_key(api_key)
-    if not is_valid:
-        raise UnauthorizedError(error_msg)
-
     # Use RankingService to generate CSV data
     csv_rows = RankingService.generate_rankings_csv_data()
 
@@ -126,38 +122,10 @@ def download_rankings_csv():
 
 
 @data_bp.route('/email_threads/consulting_category_types', methods=['GET'])
+@require_permission('feature:mail_rating:view')
 @handle_api_errors(logger_name='auth')
 def get_consulting_category_types():
     """Get all consulting category types"""
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header:
-        raise UnauthorizedError('Authorization header is missing')
-
-    # Authentik Bearer token support (preferred)
-    if auth_header.startswith('Bearer '):
-        from auth.oidc_validator import validate_token, get_username
-        from auth.decorators import get_or_create_user, _check_user_account_state
-
-        token = auth_header[7:]
-        token_payload = validate_token(token)
-        if not token_payload:
-            raise UnauthorizedError('Invalid or expired token')
-
-        username = get_username(token_payload)
-        if not username:
-            raise UnauthorizedError('Token is missing username information')
-        user = get_or_create_user(username)
-
-        denied = _check_user_account_state(user)
-        if denied is not None:
-            return denied
-
-    # Legacy API-key support (backwards compatibility)
-    else:
-        is_valid, user, error_msg = UserService.validate_api_key(auth_header)
-        if not is_valid:
-            raise UnauthorizedError(error_msg)
-
     # Use ThreadService to get consulting category types
     categories = ThreadService.get_consulting_category_types()
 
@@ -169,18 +137,14 @@ def get_consulting_category_types():
 
 
 @data_bp.route('/admin/change_user_group', methods=['POST'])
+@require_permission('admin:users:manage')
 @handle_api_errors(logger_name='auth')
 def change_user_group():
     """Change a user's group (admin only)"""
-    api_key = request.headers.get('Authorization')
-
-    if not api_key:
-        raise UnauthorizedError('API key is missing')
-
-    # Use UserService for authentication
-    is_valid, admin_user, error_msg = UserService.validate_api_key(api_key)
-    if not is_valid:
-        raise UnauthorizedError(error_msg)
+    admin_username = AuthUtils.extract_username_without_validation()
+    admin_user = get_or_create_user(admin_username) if admin_username else None
+    if not admin_user:
+        raise UnauthorizedError('Invalid token')
 
     data = request.get_json()
     username = data.get('username')

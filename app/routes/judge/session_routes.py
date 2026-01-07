@@ -33,13 +33,15 @@ session_bp = Blueprint('judge_sessions', __name__)
 # ============================================================================
 
 @session_bp.route('/estimate', methods=['POST'])
+@authentik_required
+@require_permission('feature:comparison:view')
 @handle_api_errors(logger_name='judge')
 def estimate_comparisons_endpoint():
     """
     Estimate the number of comparisons for a given configuration.
 
     This endpoint helps the UI show expected workload before creating a session.
-    No authentication required for estimation.
+    Requires comparison view permissions.
 
     Body:
         pillar_ids: List of pillar IDs [1, 3, 5]
@@ -99,6 +101,8 @@ def estimate_comparisons_endpoint():
 
 
 @session_bp.route('/comparison-modes', methods=['GET'])
+@authentik_required
+@require_permission('feature:comparison:view')
 @handle_api_errors(logger_name='judge')
 def get_comparison_modes():
     """

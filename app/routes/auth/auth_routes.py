@@ -13,12 +13,14 @@ from flask_jwt_extended import jwt_required
 
 from routes.auth import auth_bp
 from services.user_service import UserService
+from auth.decorators import public_endpoint
 from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
+    handle_api_errors, ValidationError, ConflictError, UnauthorizedError
 )
 
 
 @auth_bp.route('/register', methods=['POST'])
+@public_endpoint
 @handle_api_errors(logger_name='auth')
 def register():
     """Register a new user"""
@@ -62,6 +64,7 @@ def register():
 
 
 @auth_bp.route('/health_check', methods=['GET'])
+@public_endpoint
 @handle_api_errors(logger_name='auth')
 def health_check():
     """Health check endpoint"""
@@ -69,6 +72,7 @@ def health_check():
 
 
 @auth_bp.route('/login', methods=['POST'])
+@public_endpoint
 @handle_api_errors(logger_name='auth')
 def login():
     """
@@ -89,6 +93,7 @@ def logout():
 
 
 @auth_bp.route('/register_admin', methods=['POST'])
+@public_endpoint
 @handle_api_errors(logger_name='auth')
 def register_admin():
     """Register an admin user with admin registration key"""

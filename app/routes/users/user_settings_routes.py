@@ -12,7 +12,7 @@ from pathlib import Path
 from flask import g, jsonify, request, send_file
 from PIL import Image
 
-from auth.decorators import authentik_required
+from auth.decorators import authentik_required, public_endpoint
 from decorators.error_handler import NotFoundError, ValidationError, handle_api_errors
 from db.database import db
 from db.models.user import generate_avatar_seed
@@ -255,6 +255,7 @@ def reset_user_avatar():
 
 
 @data_bp.route("/users/avatar/<avatar_id>", methods=["GET"])
+@public_endpoint
 @handle_api_errors(logger_name="user_settings")
 def get_user_avatar(avatar_id: str):
     from db.models import User

@@ -469,6 +469,7 @@ def ignore_warning():
 # =============================================================================
 
 @ai_writing_blueprint.route('/health', methods=['GET'])
+@require_permission('feature:latex_collab:ai')
 @handle_errors(logger_name='ai_writing')
 def health_check():
     """Check if AI writing service is available."""

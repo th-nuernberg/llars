@@ -16,7 +16,7 @@ from typing import Tuple, Optional
 from flask import Blueprint, request, jsonify, redirect, session, g, url_for
 from requests_oauthlib import OAuth1Session
 
-from auth.decorators import authentik_required
+from auth.decorators import authentik_required, public_endpoint
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
 
@@ -189,6 +189,7 @@ def start_oauth():
 
 
 @zotero_bp.route("/connect/oauth/callback", methods=["GET"])
+@public_endpoint
 @handle_api_errors(logger_name="zotero")
 def oauth_callback():
     """

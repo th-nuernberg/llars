@@ -9,9 +9,18 @@ GITLAB_API_BASE="${GITLAB_API_BASE:-https://git.informatik.fh-nuernberg.de/api/v
 ENV_FILE="${ENV_FILE:-.env}"
 
 if [ -f "$ENV_FILE" ]; then
-  set -a
-  . "$ENV_FILE"
-  set +a
+  while IFS='=' read -r key value; do
+    case "$key" in
+      GITLAB_TOKEN|GITLAB_PROJECT_ID|GITLAB_API_BASE)
+        value="${value%\"}"
+        value="${value#\"}"
+        value="${value%\'}"
+        value="${value#\'}"
+        value="${value%$'\r'}"
+        export "$key=$value"
+        ;;
+    esac
+  done < <(grep -E '^(GITLAB_TOKEN|GITLAB_PROJECT_ID|GITLAB_API_BASE)=' "$ENV_FILE" || true)
 fi
 
 if [ -z "${GITLAB_TOKEN:-}" ] || [ -z "${GITLAB_PROJECT_ID:-}" ]; then

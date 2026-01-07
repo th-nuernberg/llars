@@ -245,6 +245,16 @@ test:e2e:
     - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env | tr -d '\r')"
     - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env up -d --build backend-flask-service db-maria-service llars-redis authentik-db authentik-redis authentik-server authentik-worker backend-supervisor-service frontend-vue-service yjs-service
     - |
+      export BACKEND_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' llars_ci_flask_service)"
+      export FRONTEND_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' llars_ci_frontend_service)"
+      if [ -z "$BACKEND_IP" ] || [ -z "$FRONTEND_IP" ]; then
+        echo "Failed to resolve container IPs (backend=$BACKEND_IP, frontend=$FRONTEND_IP)"
+        docker compose ps
+        exit 1
+      fi
+      echo "Backend IP: $BACKEND_IP"
+      echo "Frontend IP: $FRONTEND_IP"
+    - |
       echo "Waiting for Authentik server to be healthy..."
       READY=false
       for i in $(seq 1 60); do
@@ -302,7 +312,7 @@ test:e2e:
       READY=false
       for i in $(seq 1 60); do
         if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" --entrypoint sh curlimages/curl:8.10.0 \
-          -c 'curl -fsS http://llars_ci_flask_service:8081/auth/health_check >/dev/null && curl -fsS http://llars_ci_flask_service:8081/auth/authentik/health_check >/dev/null && curl -fsS http://llars_ci_frontend_service:5173/login >/dev/null'; then
+          -c "curl -fsS http://${BACKEND_IP}:8081/auth/health_check >/dev/null && curl -fsS http://${BACKEND_IP}:8081/auth/authentik/health_check >/dev/null && curl -fsS http://${FRONTEND_IP}:5173/login >/dev/null"; then
           READY=true
           echo "Health checks OK."
           break
@@ -330,8 +340,8 @@ test:e2e:
         -w /work \
         -e CI=true \
         -e E2E_ONLY="${E2E_ONLY:-}" \
-        -e PLAYWRIGHT_BASE_URL=http://llars_ci_frontend_service:5173 \
-        -e PLAYWRIGHT_API_BASE_URL=http://llars_ci_flask_service:8081 \
+        -e PLAYWRIGHT_BASE_URL="http://${FRONTEND_IP}:5173" \
+        -e PLAYWRIGHT_API_BASE_URL="http://${BACKEND_IP}:8081" \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
         -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
         mcr.microsoft.com/playwright:v1.57.0-jammy \

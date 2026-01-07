@@ -3,6 +3,9 @@
 echo "Waiting for 2 seconds before starting the Flask app..."
 sleep 2
 
+export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
+export FLASK_APP="main"
+
 DB_HOST="${MYSQL_HOST:-db-maria-service}"
 DB_PORT="${MYSQL_PORT:-3306}"
 DB_NAME="${MYSQL_DATABASE:-database_llars}"
@@ -21,4 +24,4 @@ fi
 # Note: Using threading async_mode for SocketIO, which works with flask run
 # WebSocket will use long-polling fallback but is fully functional
 echo "Starting Flask app on port 8081..."
-flask run --host=0.0.0.0 --port=8081 --reload
+python -m flask --app main run --host=0.0.0.0 --port=8081 --reload

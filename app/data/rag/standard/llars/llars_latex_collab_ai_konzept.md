@@ -482,7 +482,7 @@ AI_WRITING_PERMISSIONS = [
 | admin | ✅ | ✅ | ✅ | ✅ | ✅ |
 | researcher | ✅ | ✅ | ✅ | ✅ | ✅ |
 | chatbot_manager | ✅ | ✅ | ❌ | ✅ | ❌ |
-| viewer | ❌ | ❌ | ❌ | ❌ | ❌ |
+| evaluator | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

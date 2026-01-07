@@ -256,6 +256,23 @@ test:e2e:
         exit 1
       fi
     - |
+      echo "Waiting for Authentik authorization flow..."
+      FLOW_READY=false
+      for i in $(seq 1 60); do
+        if docker exec llars_ci_authentik_server bash -lc "ak shell -c \"from authentik.flows.models import Flow; import sys; sys.exit(0 if Flow.objects.filter(slug='default-provider-authorization-implicit-consent').exists() or Flow.objects.filter(slug='default-provider-authorization-explicit-consent').exists() else 1)\""; then
+          FLOW_READY=true
+          echo "Authorization flow ready."
+          break
+        fi
+        echo "Authorization flow not ready yet ($i/60)..."
+        sleep 5
+      done
+      if [ "$FLOW_READY" != "true" ]; then
+        echo "Authorization flow did not become ready."
+        docker logs llars_ci_authentik_server || true
+        exit 1
+      fi
+    - |
       echo "Running Authentik init script..."
       docker cp docker/authentik/init-authentik.sh llars_ci_authentik_server:/tmp/init-authentik.sh
       docker exec \

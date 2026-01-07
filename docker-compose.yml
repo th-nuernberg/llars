@@ -175,6 +175,7 @@ services:
       - REDIS_HOST=${REDIS_HOST:-llars-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
+      - LLARS_SKIP_STARTUP_TASKS=${LLARS_SKIP_STARTUP_TASKS:-}
     depends_on:
       db-maria-service:
         condition: service_healthy

@@ -153,11 +153,12 @@ def resume_session(session_id: int):
 
 
 @session_control_bp.route('/sessions/<int:session_id>/internal-resume', methods=['POST'])
+@require_permission('admin:system:configure')
 @handle_api_errors(logger_name='judge')
 def internal_resume_session(session_id: int):
     """
-    Internal-only endpoint to resume a session without auth.
-    Only accessible from localhost/127.0.0.1.
+    Internal-only endpoint to resume a session.
+    Requires admin permission (or system API key) and localhost access.
 
     Used for recovering stuck sessions after backend restarts.
     """

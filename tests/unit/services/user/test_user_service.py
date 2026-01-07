@@ -34,6 +34,9 @@ class TestUserLookup:
         """
         from services.user_service import UserService
         from db.models import User, UserGroup
+        from db.tables import Role, UserRole
+        from db.tables import Role, UserRole
+        from db.tables import Role, UserRole
 
         # Create group and user
         group = UserGroup(name='TestGroup001')
@@ -651,6 +654,8 @@ class TestGroupManagement:
         admin.api_key = str(uuid4())
         admin.group = admin_group
         db.session.add(admin)
+        admin_role = Role.query.filter_by(role_name='admin').first()
+        db.session.add(UserRole(username=admin.username, role_id=admin_role.id))
 
         # Create target user
         target = User(username='target_080')
@@ -724,6 +729,8 @@ class TestGroupManagement:
         admin.group = admin_group
         admin.group.name = 'Admin'  # Must be 'Admin' to have permission
         db.session.add(admin)
+        admin_role = Role.query.filter_by(role_name='admin').first()
+        db.session.add(UserRole(username=admin.username, role_id=admin_role.id))
         db.session.commit()
 
         success, error = UserService.change_user_group('nonexistent_user', 'SomeGroup', admin)
@@ -752,6 +759,8 @@ class TestGroupManagement:
         admin.api_key = str(uuid4())
         admin.group = admin_group
         db.session.add(admin)
+        admin_role = Role.query.filter_by(role_name='admin').first()
+        db.session.add(UserRole(username=admin.username, role_id=admin_role.id))
 
         # Create target user
         target = User(username='target_083')

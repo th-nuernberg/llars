@@ -9,6 +9,7 @@ from db.models.analytics_settings import AnalyticsSettings
 from decorators.permission_decorator import require_permission
 from auth.auth_utils import AuthUtils
 from routes.auth import data_bp
+from auth.decorators import public_endpoint
 
 
 def _normalize_base_url(value: Optional[str]) -> str:
@@ -60,6 +61,7 @@ def _serialize_settings(settings: AnalyticsSettings) -> Dict[str, Any]:
 
 
 @data_bp.get("/analytics/config")
+@public_endpoint
 def get_analytics_config():
     """Public runtime config for the frontend."""
     settings = _get_or_create_settings()

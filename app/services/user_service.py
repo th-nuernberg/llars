@@ -271,7 +271,15 @@ class UserService:
             - error_message: Error message if failed, None otherwise
         """
         # Check admin permission
-        if not admin_user or admin_user.group.name != 'Admin':
+        if not admin_user or not getattr(admin_user, 'username', None):
+            return False, "You do not have permission to change user groups"
+
+        try:
+            from services.permission_service import PermissionService
+
+            if not PermissionService.check_permission(admin_user.username, 'admin:users:manage'):
+                return False, "You do not have permission to change user groups"
+        except Exception:
             return False, "You do not have permission to change user groups"
 
         # Find user

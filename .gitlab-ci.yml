@@ -6,8 +6,11 @@
 # Stages:
 #   1. lint      - Code-Qualität prüfen
 #   2. test      - Unit & Integration Tests
-#   3. build     - Docker Images bauen
-#   4. deploy    - Automatisches Deployment via SSH
+#   3. security  - Security/Route Protection Checks
+#   4. build     - Docker Images bauen
+#   5. deploy    - Deployment auf Server
+#   6. smoke     - Smoke Tests (inkl. Wizard-Workflow)
+#   7. rollback  - Rollback (manuell oder via Smoke-Fail)
 #
 # Voraussetzungen (GitLab CI/CD Variables):
 #   - SSH_PRIVATE_KEY: Private Key für SSH Zugang zum Server
@@ -22,8 +25,11 @@
 stages:
   - lint
   - test
+  - security
   - build
   - deploy
+  - smoke
+  - rollback
 
 # =============================================================================
 # GLOBALE KONFIGURATION
@@ -205,6 +211,7 @@ test:integration:
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
   needs:
     - job: test:unit:backend
       optional: true
@@ -256,19 +263,19 @@ test:e2e:
         exit 1
       fi
     - |
-      echo "Waiting for Authentik authorization flow..."
-      FLOW_READY=false
-      for i in $(seq 1 60); do
-        if docker exec llars_ci_authentik_server bash -lc "ak shell -c \"from authentik.flows.models import Flow; import sys; sys.exit(0 if Flow.objects.filter(slug='default-provider-authorization-implicit-consent').exists() or Flow.objects.filter(slug='default-provider-authorization-explicit-consent').exists() else 1)\""; then
-          FLOW_READY=true
-          echo "Authorization flow ready."
+      echo "Waiting for Authentik shell to be ready..."
+      SHELL_READY=false
+      for i in $(seq 1 120); do
+        if docker exec llars_ci_authentik_server bash -lc "ak shell -c \"from django.db import connections; connections['default'].ensure_connection(); from authentik.core.models import User; User.objects.count()\""; then
+          SHELL_READY=true
+          echo "Authentik shell ready."
           break
         fi
-        echo "Authorization flow not ready yet ($i/60)..."
+        echo "Authentik shell not ready yet ($i/120)..."
         sleep 5
       done
-      if [ "$FLOW_READY" != "true" ]; then
-        echo "Authorization flow did not become ready."
+      if [ "$SHELL_READY" != "true" ]; then
+        echo "Authentik shell did not become ready."
         docker logs llars_ci_authentik_server || true
         exit 1
       fi
@@ -331,6 +338,7 @@ test:e2e:
         bash -lc "npm ci --prefer-offline && npx playwright test --project=chromium --workers=1 ${E2E_SPEC}"
   after_script:
     - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env down -v || true
+    - docker system prune -af --volumes || true
   artifacts:
     when: always
     paths:
@@ -347,7 +355,23 @@ test:e2e:
       optional: true
 
 # =============================================================================
-# STAGE 3: BUILD
+# STAGE 3: SECURITY
+# =============================================================================
+
+security:routes:
+  stage: security
+  image: python:3.11-slim
+  script:
+    - pip install pytest
+    - pytest tests/security/test_route_security.py -q
+  rules:
+    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+# =============================================================================
+# STAGE 4: BUILD
 # =============================================================================
 
 build:docker:
@@ -364,12 +388,9 @@ build:docker:
   rules:
     - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
-  needs:
-    - test:unit:backend
-    - test:unit:frontend
 
 # =============================================================================
-# STAGE 4: DEPLOY
+# STAGE 5: DEPLOY
 # =============================================================================
 
 # ------------------------------------------------------------------------------
@@ -382,28 +403,13 @@ deploy:staging:
   environment:
     name: staging
     url: http://141.75.150.128
+  resource_group: staging
   script:
     - echo "=== LLARS Staging Deployment ==="
-    - echo "Timestamp:" $(date)
-    - cd /var/llars
-    - echo "Pulling latest changes..."
-    - git fetch origin develop
-    - git checkout develop
-    - git pull origin develop
-    - echo "Creating quick backup..."
-    - docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > backups/staging_backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || true
-    - echo "Rebuilding containers..."
-    - docker compose build --parallel
-    - docker compose up -d
-    - echo "Waiting for services to be healthy..."
-    - sleep 30
-    - curl -sf http://localhost/auth/health_check > /dev/null && echo "✓ API Health OK" || echo "✗ API Health FAILED"
-    - echo "=== Staging Deployment Complete ==="
+    - bash scripts/ci/deploy_staging.sh
   rules:
     - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "develop"
-  needs:
-    - build:docker
 
 # ------------------------------------------------------------------------------
 # Deploy zu Produktion (automatisch bei Push zu main)
@@ -416,89 +422,33 @@ deploy:production:
   environment:
     name: production
     url: http://141.75.150.128
+  resource_group: production
   script:
     - echo "=========================================="
     - echo "=== LLARS PRODUCTION DEPLOYMENT ========="
     - echo "=========================================="
     - echo "Timestamp:" $(date)
     - echo "Server:" $(hostname)
-
-    - cd /var/llars
-
-    # 1. Pre-Deployment Backup
-    - echo ""
-    - echo "[1/6] Creating pre-deployment backup..."
-    - BACKUP_FILE="backups/pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
-    - docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > $BACKUP_FILE || echo "Backup skipped"
-    - echo "Backup saved to:" $BACKUP_FILE
-
-    # 2. Git Pull
-    - echo ""
-    - echo "[2/6] Pulling latest changes from main..."
-    - git fetch origin main
-    - git checkout main
-    - git reset --hard origin/main
-
-    # 3. Environment Check
-    - echo ""
-    - echo "[3/6] Checking environment..."
-    - test -f .env || (echo "ERROR .env not found" && exit 1)
-
-    # 4. Build Images
-    - echo ""
-    - echo "[4/6] Building Docker images..."
-    - docker compose build --parallel
-
-    # 5. Rolling Update
-    - echo ""
-    - echo "[5/6] Performing rolling update..."
-    - docker compose up -d backend-flask-service
-    - sleep 10
-    - docker compose up -d frontend-vue-service
-    - sleep 5
-    - docker compose up -d
-
-    # 6. Post-Deployment Verification
-    - echo ""
-    - echo "[6/6] Verifying deployment..."
-    - sleep 30
-    - echo "Running health checks..."
-    - curl -sf http://localhost/auth/health_check > /dev/null && echo "✓ API Health OK" || echo "✗ API Health FAILED"
-    - curl -sf http://localhost/ > /dev/null && echo "✓ Frontend OK" || echo "✗ Frontend FAILED"
-    - echo ""
-    - docker compose ps
-    - echo ""
-    - echo "=========================================="
-    - echo "=== DEPLOYMENT SUCCESSFUL ==============="
-    - echo "=========================================="
+    - bash scripts/ci/deploy_production.sh
   rules:
     - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
-  needs:
-    - test:e2e
-    - build:docker
   when: on_success
 
-# ------------------------------------------------------------------------------
+# =============================================================================
+# STAGE 7: ROLLBACK
+# =============================================================================
 # Manueller Rollback (für Notfälle)
-# ------------------------------------------------------------------------------
 rollback:production:
-  stage: deploy
+  stage: rollback
   tags:
     - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
   environment:
     name: production
+  resource_group: production
   script:
     - echo "=== EMERGENCY ROLLBACK ==="
-    - cd /var/llars
-    - LATEST_BACKUP=$(ls -t backups/*.sql 2>/dev/null | head -1)
-    - test -n "$LATEST_BACKUP" || (echo "ERROR No backup found" && exit 1)
-    - echo "Rolling back to:" $LATEST_BACKUP
-    - git checkout HEAD~1
-    - docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < $LATEST_BACKUP
-    - docker compose build
-    - docker compose up -d
-    - echo "=== ROLLBACK COMPLETE ==="
+    - bash scripts/ci/rollback_production.sh
   rules:
     - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
@@ -511,7 +461,7 @@ rollback:production:
 
 # Security Scan (informational - doesn't block pipeline)
 security:scan:
-  stage: test
+  stage: security
   image: python:3.11-slim
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm
@@ -524,50 +474,35 @@ security:scan:
     - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
   allow_failure: true  # Security scan is informational, doesn't block deployment
 
-# Smoke Test nach Deployment (Basic Health Checks)
-smoke:test:
-  stage: deploy
+# =============================================================================
+# STAGE 6: SMOKE
+# =============================================================================
+# Smoke Tests nach Deployment (inkl. Wizard-Workflow)
+smoke:production:
+  stage: smoke
   tags:
     - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
+  environment:
+    name: production
+  resource_group: production
   script:
-    - echo "Running basic smoke tests..."
-    - echo "Checking API health..."
-    - curl -sf http://localhost/auth/health_check || exit 1
-    - echo "Checking frontend..."
-    - curl -sf http://localhost/ || exit 1
-    - echo "Checking auth status..."
-    - curl -sf http://localhost/auth/authentik/status || true
-    - echo "Basic smoke tests passed!"
+    - echo "Running production smoke tests..."
+    - bash scripts/ci/smoke_test.sh
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" != "success" ]; then
+        echo "Smoke tests failed; triggering rollback."
+        bash scripts/ci/rollback_production.sh || true
+      fi
   rules:
     - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - deploy:production
   when: on_success
-
-# Wizard Smoke Test - Testet kompletten Chatbot-Wizard-Workflow
-smoke:wizard:
-  stage: deploy
-  tags:
-    - shell
-  variables:
-    BASE_URL: "http://localhost"
-    SYSTEM_ADMIN_API_KEY: "llars-admin-key-change-in-production-12345"
-    TEST_URL: "https://example.com"
-  script:
-    - echo "Running Chatbot Wizard smoke test..."
-    - cd /var/llars
-    - chmod +x scripts/smoke_test_wizard.sh
-    - ./scripts/smoke_test_wizard.sh
-  rules:
-    - *test_only_skip
-    - if: $CI_COMMIT_BRANCH == "main"
-  needs:
-    - smoke:test
-  when: on_success
-  allow_failure: true  # Wizard-Test optional, blockiert nicht das Deployment
 
 # =============================================================================
 # CODE METRICS COLLECTION
@@ -609,7 +544,7 @@ metrics:collect:
 
 # Update documentation with metrics (only on main branch)
 metrics:update-docs:
-  stage: deploy
+  stage: smoke
   tags:
     - shell
   script:
@@ -624,6 +559,6 @@ metrics:update-docs:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - metrics:collect
-    - deploy:production
+    - smoke:production
   when: on_success
   allow_failure: true

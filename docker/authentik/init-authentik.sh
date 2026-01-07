@@ -97,12 +97,88 @@ else:
     print('  Stage bindings created')
 "
 
+echo "[2b/7] Ensuring provider authorization flow..."
+
+ak shell -c "
+from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
+from django.db.models.fields import NOT_PROVIDED
+try:
+    from authentik.stages.consent.models import ConsentStage
+except Exception:
+    ConsentStage = None
+
+def ensure_authorization_flow():
+    flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
+    if not flow:
+        flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
+    if flow:
+        print(f'  Found default authorization flow: {flow.slug}')
+        return flow
+
+    flow = Flow.objects.filter(slug='llars-provider-authorization').first()
+    if flow:
+        print('  Using existing LLARS authorization flow')
+        return flow
+
+    flow = Flow.objects.filter(designation=FlowDesignation.AUTHORIZATION).first()
+    if flow:
+        print(f'  Using existing authorization flow: {flow.slug}')
+        return flow
+
+    flow = Flow.objects.create(
+        slug='llars-provider-authorization',
+        name='LLARS Provider Authorization',
+        designation=FlowDesignation.AUTHORIZATION,
+        title='LLARS Authorization'
+    )
+    print('  Created LLARS authorization flow')
+
+    consent_stage = None
+    if ConsentStage:
+        consent_stage = ConsentStage.objects.filter(name='llars-provider-consent').first()
+        if not consent_stage:
+            kwargs = {'name': 'llars-provider-consent'}
+            try:
+                mode_field = ConsentStage._meta.get_field('mode')
+                mode_value = mode_field.default
+                if mode_value is NOT_PROVIDED:
+                    mode_value = None
+                if callable(mode_value):
+                    mode_value = mode_value()
+                if mode_value is None and getattr(mode_field, 'choices', None):
+                    mode_value = mode_field.choices[0][0]
+                if mode_value is not None:
+                    kwargs['mode'] = mode_value
+            except Exception as exc:
+                print(f'  Could not determine consent stage mode: {exc}')
+            try:
+                consent_stage = ConsentStage.objects.create(**kwargs)
+                print('  Created consent stage')
+            except Exception as exc:
+                print(f'  Failed to create consent stage: {exc}')
+                consent_stage = None
+
+    if consent_stage:
+        FlowStageBinding.objects.get_or_create(
+            target=flow,
+            stage=consent_stage,
+            defaults={'order': 10}
+        )
+        print('  Bound consent stage to authorization flow')
+    else:
+        print('  Authorization flow has no consent stage bound')
+
+    return flow
+
+ensure_authorization_flow()
+"
+
 echo "[3/7] Creating OAuth2 provider 'llars-backend'..."
 
 ak shell -c "
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 from authentik.crypto.models import CertificateKeyPair
-from authentik.flows.models import Flow
+from authentik.flows.models import Flow, FlowDesignation
 from authentik.core.models import Application
 
 # Check if provider already exists
@@ -123,6 +199,10 @@ else:
     auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
     if not auth_flow:
         auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
+    if not auth_flow:
+        auth_flow = Flow.objects.filter(slug='llars-provider-authorization').first()
+    if not auth_flow:
+        auth_flow = Flow.objects.filter(designation=FlowDesignation.AUTHORIZATION).first()
     if auth_flow:
         print(f'  Using authorization flow: {auth_flow.slug}')
 
@@ -169,7 +249,7 @@ echo "[4/7] Creating OAuth2 provider 'llars-matomo'..."
 ak shell -c "
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 from authentik.crypto.models import CertificateKeyPair
-from authentik.flows.models import Flow
+from authentik.flows.models import Flow, FlowDesignation
 from authentik.core.models import Application
 
 existing = OAuth2Provider.objects.filter(name='llars-matomo').first()
@@ -182,6 +262,10 @@ if cert:
 auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
 if not auth_flow:
     auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
+if not auth_flow:
+    auth_flow = Flow.objects.filter(slug='llars-provider-authorization').first()
+if not auth_flow:
+    auth_flow = Flow.objects.filter(designation=FlowDesignation.AUTHORIZATION).first()
 if not auth_flow:
     print('  ERROR: No authorization flow found!')
     raise Exception('No authorization flow found')

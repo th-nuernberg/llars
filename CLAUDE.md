@@ -102,12 +102,15 @@ Runner: Shell-Executor direkt auf Server
 |-------|------|
 | lint | `lint:backend`, `lint:frontend` |
 | test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:e2e` |
+| security | `security:routes`, `security:scan` |
 | build | `build:docker` (nur main) |
 | deploy | `deploy:staging`, `deploy:production` |
+| smoke | `smoke:production` |
+| rollback | `rollback:production` (manual) |
 
 ```
 Push to develop → deploy:staging (automatisch)
-Push to main    → deploy:production (nach Tests)
+Push to main    → deploy:production → smoke:production (Auto-Rollback bei Smoke-Fail)
 ```
 
 **Test-Requirements:** `app/requirements-test.txt` (ohne torch, transformers, flair - ~3GB gespart)
@@ -143,6 +146,16 @@ curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
 # Fehlgeschlagene Pipeline neu starten
 curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
   "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines/{PIPELINE_ID}/retry"
+```
+
+### Pipeline Monitoring Script
+
+```bash
+# 6h Monitoring, alle 10 Minuten (default)
+./scripts/ci/monitor_pipelines.sh
+
+# Custom Laufzeit/Intervall
+DURATION_SECONDS=21600 INTERVAL_SECONDS=600 BRANCH=main ./scripts/ci/monitor_pipelines.sh
 ```
 
 **Umgebungsvariablen (.env):**

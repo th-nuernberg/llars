@@ -263,6 +263,17 @@ def roles_required(*required_roles):
     return decorator
 
 
+def public_endpoint(f):
+    """
+    Decorator to explicitly mark a route as public (no auth required).
+
+    This is used by security tests to ensure every route is either protected
+    or intentionally public.
+    """
+    setattr(f, "_public_endpoint", True)
+    return f
+
+
 def optional_auth(f):
     """
     Decorator for routes that work with or without authentication

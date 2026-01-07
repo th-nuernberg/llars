@@ -108,7 +108,7 @@ Dieses Dokument beschreibt alle Tests für das LLARS Offline Anonymisierungs-Too
 |----|------|-----------|-----|
 | ANON-P01 | Admin Zugriff | Erlaubt | E2E |
 | ANON-P02 | Researcher Zugriff | Erlaubt | E2E |
-| ANON-P03 | Viewer Zugriff | Erlaubt | E2E |
+| ANON-P03 | Evaluator Zugriff | Erlaubt | E2E |
 | ANON-P04 | Chatbot_Manager | Nicht erlaubt | E2E |
 
 ---
@@ -367,7 +367,7 @@ def recommender(app):
 ### Permissions
 - [ ] Admin hat Zugriff
 - [ ] Researcher hat Zugriff
-- [ ] Viewer hat Zugriff
+- [ ] Evaluator hat Zugriff
 - [ ] Chatbot_Manager hat KEINEN Zugriff
 
 ---

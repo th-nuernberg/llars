@@ -12,7 +12,7 @@
 
 ## Ziel
 
-KAIMO (KI-gestützte Analyse und Modellierung) wird in LLARS als interaktives Lerntool integriert. Das System unterscheidet zwischen **Researcher (Admin Panel)** und **Viewer (User Panel)**, wobei Researcher neue Fälle anlegen und verwalten können, während Viewer diese durcharbeiten und bewerten.
+KAIMO (KI-gestützte Analyse und Modellierung) wird in LLARS als interaktives Lerntool integriert. Das System unterscheidet zwischen **Researcher (Admin Panel)** und **Evaluator (User Panel)**, wobei Researcher neue Fälle anlegen und verwalten können, während Evaluator diese durcharbeiten und bewerten.
 
 !!! info "KI-Integration: Vorbereitet, nicht implementiert"
     Die Datenbank und API sind für spätere KI-Integration vorbereitet (Tabelle `kaimo_ai_content`, API-Endpoints).
@@ -21,7 +21,7 @@ KAIMO (KI-gestützte Analyse und Modellierung) wird in LLARS als interaktives Le
 **Kernidee:**
 ```
 Researcher: Fall anlegen → Dokumente/Hinweise definieren → Fachkräfte zuweisen
-Viewer:     Fall auswählen → Hinweise zuordnen → Bewertung abgeben → Ergebnis sehen
+Evaluator:     Fall auswählen → Hinweise zuordnen → Bewertung abgeben → Ergebnis sehen
 ```
 
 ---
@@ -33,11 +33,11 @@ Viewer:     Fall auswählen → Hinweise zuordnen → Bewertung abgeben → Erge
 | Rolle | Panel | Beschreibung |
 |-------|-------|--------------|
 | **Researcher** | KAIMO Admin Panel | Kann Fälle anlegen, bearbeiten, löschen und Ergebnisse auswerten |
-| **Viewer** | KAIMO Panel | Kann zugewiesene Fälle durcharbeiten und Bewertungen abgeben |
+| **Evaluator** | KAIMO Panel | Kann zugewiesene Fälle durcharbeiten und Bewertungen abgeben |
 
 ### Permission-System
 
-| Permission | Beschreibung | Researcher | Viewer |
+| Permission | Beschreibung | Researcher | Evaluator |
 |------------|--------------|:----------:|:------:|
 | `feature:kaimo:view` | KAIMO-Bereich sehen, Fälle durcharbeiten | ✓ | ✓ |
 | `feature:kaimo:edit` | Eigene Bewertungen abgeben | ✓ | ✓ |
@@ -82,10 +82,10 @@ KAIMO_PERMISSIONS = {
 | F03 | Researcher kann Hinweise definieren und Kategorien zuordnen | Hoch | Admin |
 | F04 | Researcher kann Texte (Zusammenfassung, Folgenabschätzung) manuell eingeben | Hoch | Admin |
 | F05 | Researcher kann Fall für bestimmte Benutzer/Gruppen freigeben | Mittel | Admin |
-| F06 | Viewer sieht Liste der freigegebenen Fälle | Hoch | User |
-| F07 | Viewer kann Hinweise in Kategorien zuordnen (Drag & Drop) | Hoch | User |
-| F08 | Viewer kann Hinweise als Risiko/Ressource/Unklar bewerten | Hoch | User |
-| F09 | Viewer gibt finale Fallbeurteilung ab | Hoch | User |
+| F06 | Evaluator sieht Liste der freigegebenen Fälle | Hoch | User |
+| F07 | Evaluator kann Hinweise in Kategorien zuordnen (Drag & Drop) | Hoch | User |
+| F08 | Evaluator kann Hinweise als Risiko/Ressource/Unklar bewerten | Hoch | User |
+| F09 | Evaluator gibt finale Fallbeurteilung ab | Hoch | User |
 | F10 | Researcher sieht aggregierte Ergebnisse aller Bewertungen | Mittel | Admin |
 | F11 | Researcher kann Musterlösung hinterlegen und Abweichungen analysieren | Niedrig | Admin |
 
@@ -96,7 +96,7 @@ KAIMO_PERMISSIONS = {
 | NF01 | Performance: Flüssige Drag & Drop Interaktion | Hoch |
 | NF02 | Usability: Intuitive Benutzerführung für Fachkräfte ohne IT-Kenntnisse | Hoch |
 | NF03 | Sicherheit: Strikte Rollentrennung, keine Einsicht in fremde Bewertungen | Hoch |
-| NF04 | Responsivität: Mobile-optimierte Ansicht für Viewer-Panel | Mittel |
+| NF04 | Responsivität: Mobile-optimierte Ansicht für Evaluator-Panel | Mittel |
 
 ---
 
@@ -976,7 +976,7 @@ Klick auf Kategorie öffnet Detail-Ansicht mit Hinweisen zum Zuordnen.
 
 ## Offene Fragen
 
-- [ ] Sollen Viewer ihre eigenen abgeschlossenen Ergebnisse mit der Musterlösung vergleichen können?
+- [ ] Sollen Evaluator ihre eigenen abgeschlossenen Ergebnisse mit der Musterlösung vergleichen können?
 - [ ] Wie granular soll die Freigabe sein? (Einzelnutzer vs. Gruppen vs. Alle)
 - [ ] Soll es eine Zeitbegrenzung für die Fallbearbeitung geben?
 

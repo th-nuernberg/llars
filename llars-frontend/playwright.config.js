@@ -1,6 +1,17 @@
 // @ts-check
 import { defineConfig, devices } from '@playwright/test'
 
+const e2eOnlyRaw = process.env.E2E_ONLY
+const e2eOnlyValue = e2eOnlyRaw && e2eOnlyRaw !== 'true' ? e2eOnlyRaw : ''
+const looksLikeSpec =
+  e2eOnlyValue &&
+  (e2eOnlyValue.includes('/') ||
+    e2eOnlyValue.includes('.spec.') ||
+    e2eOnlyValue.endsWith('.js') ||
+    e2eOnlyValue.endsWith('.ts'))
+const e2eOnlyMatch = looksLikeSpec ? [e2eOnlyValue] : undefined
+const e2eOnlyGrep = e2eOnlyValue && !looksLikeSpec ? new RegExp(e2eOnlyValue) : undefined
+
 /**
  * LLARS Playwright E2E Test Configuration
  *
@@ -8,6 +19,7 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './e2e',
+  testMatch: e2eOnlyMatch || undefined,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -51,6 +63,7 @@ export default defineConfig({
         // Use admin auth state by default
         storageState: '.auth/admin.json',
       },
+      grep: e2eOnlyGrep || undefined,
       dependencies: ['setup'],
     },
 
@@ -60,6 +73,7 @@ export default defineConfig({
         ...devices['Desktop Firefox'],
         storageState: '.auth/admin.json',
       },
+      grep: e2eOnlyGrep || undefined,
       dependencies: ['setup'],
     },
 
@@ -69,6 +83,7 @@ export default defineConfig({
         ...devices['Desktop Safari'],
         storageState: '.auth/admin.json',
       },
+      grep: e2eOnlyGrep || undefined,
       dependencies: ['setup'],
     },
 
@@ -79,6 +94,7 @@ export default defineConfig({
         ...devices['Pixel 5'],
         storageState: '.auth/admin.json',
       },
+      grep: e2eOnlyGrep || undefined,
       dependencies: ['setup'],
     },
     {
@@ -87,6 +103,7 @@ export default defineConfig({
         ...devices['iPhone 12'],
         storageState: '.auth/admin.json',
       },
+      grep: e2eOnlyGrep || undefined,
       dependencies: ['setup'],
     },
   ],

@@ -46,7 +46,7 @@ Der LLARS Data Importer macht das System für jeden nutzbar - unabhängig vom Da
 │                                                                       │
 │                          →  [5. Benutzer]  →  [6. Deploy]            │
 │                                  ↓                ↓                   │
-│                             RATER/VIEWER     Evaluation               │
+│                           RATER/EVALUATOR    Evaluation               │
 │                             zuweisen         aktivieren               │
 │                                                                       │
 └──────────────────────────────────────────────────────────────────────┘
@@ -230,7 +230,7 @@ Wenn automatisches Mapping nicht möglich:
 
 **UI-Elemente:**
 - User-Liste mit Checkboxen
-- Rollen-Auswahl pro User (RATER / VIEWER)
+- Rollen-Auswahl pro User (RATER / EVALUATOR)
 - Quick-Actions: "Alle Researcher als RATER"
 
 **Features:**

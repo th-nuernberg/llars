@@ -316,7 +316,7 @@ test.describe('LLM-as-Judge', () => {
 ### Ranking/Rating
 - [ ] Alle Threads des Szenarios sichtbar
 - [ ] Zeitraum wird beachtet (begin/end)
-- [ ] RATER vs VIEWER Unterschied
+- [ ] RATER vs EVALUATOR Unterschied
 - [ ] Distribution Mode funktioniert
 - [ ] Order Mode (shuffle) funktioniert
 

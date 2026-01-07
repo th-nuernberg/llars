@@ -74,7 +74,7 @@ RUN chmod +x /usr/local/bin/start_flask.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # Setzt die benötigten Umgebungsvariablen für Flask
-ENV FLASK_APP=main.py
+ENV FLASK_APP=main
 
 # Set permissions
 RUN chown -R flaskuser:flaskuser /app && \

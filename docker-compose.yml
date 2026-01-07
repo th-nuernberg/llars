@@ -156,7 +156,7 @@ services:
     environment:
       - TZ=Europe/Berlin
       - FLASK_ENV=${FLASK_ENV:-development}
-      - FLASK_APP=/app/main.py
+      - FLASK_APP=main
       # MariaDB (defaults are for development; override via .env for production)
       - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
       - MYSQL_USER=${MYSQL_USER:-dev_user}

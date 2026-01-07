@@ -9,8 +9,12 @@ services:
     container_name: llars_ci_matomo_init
   backend-flask-service:
     container_name: llars_ci_flask_service
+    volumes:
+      - rag_storage:/app/storage
+      - rag_docs:/app/rag_docs
   frontend-vue-service:
     container_name: llars_ci_frontend_service
+    volumes: []
   backend-supervisor-service:
     container_name: llars_ci_supervisor_service
   db-maria-service:

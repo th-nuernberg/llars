@@ -42,6 +42,10 @@ if flask_env == 'development':
 else:
     socket_cors = allowed_origins
 
+
+def _skip_startup_tasks() -> bool:
+    return os.environ.get('LLARS_SKIP_STARTUP_TASKS', '').lower() in ('1', 'true', 'yes')
+
 # SocketIO with increased timeouts for long-running LLM streams
 # ping_timeout: How long to wait for pong before disconnecting (default: 20s)
 # ping_interval: How often to send ping to keep connection alive (default: 25s)
@@ -149,6 +153,8 @@ def _should_start_background_threads() -> bool:
     In development, `flask run` spawns a reloader parent process and a child process.
     The child sets `WERKZEUG_RUN_MAIN=true`. Background threads must only start once.
     """
+    if _skip_startup_tasks():
+        return False
     if os.environ.get('FLASK_ENV', 'production') == 'development':
         return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
     return True
@@ -172,20 +178,28 @@ if _should_start_background_threads():
 # This is a one-time migration for collections created before the fix
 def fix_missing_chroma_collection_names():
     """Set chroma_collection_name for collections where it's missing."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping chroma collection name fix (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
     from db.tables import RAGCollection
     from db.database import db
-    from db.models.llm_model import seed_default_models
-    from rag_pipeline import RAGPipeline
     from services.rag.collection_embedding_service import sanitize_chroma_collection_name
 
     with app.app_context():
         try:
-            seed_default_models()
-            pipeline = RAGPipeline()
             collections = RAGCollection.query.filter(
                 RAGCollection.chroma_collection_name.is_(None),
                 RAGCollection.embedding_status == 'completed'
             ).all()
+
+            if not collections:
+                return
+
+            from db.models.llm_model import seed_default_models
+            from rag_pipeline import RAGPipeline
+
+            seed_default_models()
+            pipeline = RAGPipeline()
 
             for collection in collections:
                 chroma_name = sanitize_chroma_collection_name(collection.name, pipeline.model_name)
@@ -204,6 +218,9 @@ fix_missing_chroma_collection_names()
 # Seed default LLM models into the database
 def seed_llm_models():
     """Seed default LLM models on startup."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping LLM model seeding (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
     from db.models.llm_model import seed_default_models
 
     with app.app_context():

@@ -223,6 +223,7 @@ test:e2e:
   image: docker:24
   variables:
     COMPOSE_PROJECT_NAME: "llars-ci"
+    LLARS_SKIP_STARTUP_TASKS: "true"
   script:
     - echo "Running E2E Tests against fresh LLARS instance..."
     - |
@@ -316,6 +317,17 @@ test:e2e:
           READY=true
           echo "Health checks OK."
           break
+        fi
+        backend_status=$(docker inspect -f '{{.State.Status}}' llars_ci_flask_service 2>/dev/null || true)
+        if [ "$backend_status" = "exited" ] || [ "$backend_status" = "dead" ]; then
+          echo "Backend container status: $backend_status"
+          docker logs --tail 200 llars_ci_flask_service || true
+          docker compose ps
+          exit 1
+        fi
+        if [ "$i" -eq 10 ] || [ "$i" -eq 30 ]; then
+          echo "Backend container status: ${backend_status:-unknown}"
+          docker logs --tail 200 llars_ci_flask_service || true
         fi
         echo "Health check failed ($i/60), retrying in 5s..."
         sleep 5

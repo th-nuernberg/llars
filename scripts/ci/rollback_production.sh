@@ -2,6 +2,10 @@
 set -euo pipefail
 
 DEPLOY_PATH="${LLARS_DEPLOY_PATH:-/var/llars}"
+
+# Mark deploy directory as safe for git (required when running as different user)
+git config --global --add safe.directory "$DEPLOY_PATH" 2>/dev/null || true
+
 ROLLBACK_ENV="$DEPLOY_PATH/.deploy/rollback.env"
 
 if [ ! -f "$ROLLBACK_ENV" ]; then

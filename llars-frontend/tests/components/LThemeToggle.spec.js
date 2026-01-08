@@ -56,8 +56,12 @@ function mountLThemeToggle(props = {}, options = {}) {
           `
         },
         'v-icon': {
-          template: '<i class="v-icon">{{ $attrs.size ? "" : "" }}<slot /></i>',
-          props: ['size']
+          template: '<i class="v-icon">{{ icon }}<slot /></i>',
+          props: ['size', 'icon']
+        },
+        'LIcon': {
+          template: '<i class="v-icon">{{ icon }}<slot /></i>',
+          props: ['size', 'icon', 'color']
         }
       }
     },
@@ -411,7 +415,8 @@ describe('LThemeToggle', () => {
             'v-menu': {
               template: '<div class="v-menu"><slot name="activator" :props="{}"></slot><slot></slot></div>'
             },
-            'v-icon': { template: '<i class="v-icon"><slot /></i>' }
+            'v-icon': { template: '<i class="v-icon">{{ icon }}<slot /></i>', props: ['icon', 'size'] },
+            'LIcon': { template: '<i class="v-icon">{{ icon }}<slot /></i>', props: ['icon', 'size', 'color'] }
           }
         }
       })

@@ -44,8 +44,12 @@ function mountAppSidebar(props = {}, options = {}) {
     global: {
       stubs: {
         'v-icon': {
-          template: '<i class="v-icon" :style="{ fontSize: size + \'px\' }"><slot>{{ $attrs.icon }}</slot></i>',
+          template: '<i class="v-icon" :style="{ fontSize: size + \'px\' }">{{ icon }}<slot /></i>',
           props: ['size', 'icon']
+        },
+        'LIcon': {
+          template: '<i class="v-icon">{{ icon }}<slot /></i>',
+          props: ['size', 'icon', 'color']
         },
         'v-chip': {
           template: '<span class="v-chip" :class="[`bg-${color}`, variant]"><slot /></span>',

@@ -15,6 +15,14 @@ fi
 
 mkdir -p "$BACKUP_DIR" "$ROLLBACK_DIR"
 
+# Fix file ownership - Docker may have created files as root
+# Use docker to run chown as root to fix permissions
+echo "[0/6] Fixing file ownership for deployment..."
+docker run --rm -v "$DEPLOY_PATH:/work" alpine:3.19 sh -c "
+  chown -R $(id -u):$(id -g) /work 2>/dev/null || true
+  chmod -R u+rw /work 2>/dev/null || true
+" || echo "WARN: Could not fix all file permissions, continuing..."
+
 if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
   CLEAN_TS="$(date +%Y%m%d_%H%M%S)"
   CLEAN_DIR="$BACKUP_DIR/dirty_worktree_$CLEAN_TS"

@@ -10,7 +10,12 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <path class="l-its-hover__file-page" d="M7 3h7l5 5v12a1 1 0 0 1 -1 1H7a1 1 0 0 1 -1 -1V4a1 1 0 0 1 1 -1z" />
+    <path class="l-its-hover__file-outline" d="M7 3h7" />
+    <path
+      class="l-its-hover__file-outline"
+      d="M19 8v12a1 1 0 0 1 -1 1H7a1 1 0 0 1 -1 -1V4a1 1 0 0 1 1 -1"
+    />
+    <path class="l-its-hover__file-crease" d="M14 3L19 8" />
     <path class="l-its-hover__file-fold" d="M14 3v5h5" />
   </svg>
 </template>

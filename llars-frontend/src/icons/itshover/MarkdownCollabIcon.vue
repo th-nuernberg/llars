@@ -10,7 +10,9 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <path class="l-its-hover__markdown-file" d="M6 3h8l4 4v14H6z" />
+    <path class="l-its-hover__markdown-file" d="M6 3h8" />
+    <path class="l-its-hover__markdown-file" d="M18 7v14H6V3" />
+    <path class="l-its-hover__file-crease" d="M14 3L18 7" />
     <path class="l-its-hover__markdown-fold" d="M14 3v4h4" />
     <path class="l-its-hover__markdown-hash" d="M9 10v6M12 10v6M7.5 12h6.5M7.5 14h6.5" />
     <g class="l-its-hover__markdown-link">

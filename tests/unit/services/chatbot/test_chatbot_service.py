@@ -1109,7 +1109,7 @@ class TestEdgeCases:
             'system_prompt': 'Prompt'
         }
 
-        with pytest.raises(ValueError, match="No default LLM model"):
+        with pytest.raises(ValueError, match="No accessible LLM model"):
             ChatbotService.create_chatbot(data, 'test_user')
 
     def test_CBOT_081_duplicate_chatbot_increments_counter(self, app, db, app_context):

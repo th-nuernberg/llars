@@ -28,20 +28,19 @@ class TestJudgeServiceInitialization:
     Tests for JudgeService constructor and configuration.
     """
 
-    def test_JUDGE_001_init_with_env_vars(self, app, app_context):
+    def test_JUDGE_001_init_with_explicit_api_key(self, app, app_context):
         """
-        [JUDGE-001] Initialisierung mit Umgebungsvariablen
+        [JUDGE-001] Initialisierung mit explizitem API Key
 
-        Service sollte API Key aus env lesen.
+        Service sollte explizit übergebenen API Key verwenden.
         """
-        with patch.dict(os.environ, {'LITELLM_API_KEY': 'test-key-123'}):
-            with patch('services.judge.judge_service.OpenAI'):
-                from services.judge.judge_service import JudgeService
-                from db.models.llm_model import LLMModel
+        with patch('services.judge.judge_service.OpenAI'):
+            from services.judge.judge_service import JudgeService
+            from db.models.llm_model import LLMModel
 
-                with patch.object(LLMModel, 'get_default_model_id', return_value='test/model'):
-                    service = JudgeService()
-                    assert service.api_key == 'test-key-123'
+            with patch.object(LLMModel, 'get_default_model_id', return_value='test/model'):
+                service = JudgeService(api_key='test-key-123', base_url='http://test.local/v1')
+                assert service.api_key == 'test-key-123'
 
     def test_JUDGE_002_init_with_explicit_params(self, app, app_context):
         """
@@ -61,36 +60,35 @@ class TestJudgeServiceInitialization:
             assert service.base_url == 'http://test.local/v1'
             assert service.model == 'test/explicit-model'
 
-    def test_JUDGE_003_init_no_api_key_raises(self, app, app_context):
+    def test_JUDGE_003_init_no_default_model_raises(self, app, app_context):
         """
-        [JUDGE-003] Initialisierung ohne API Key
+        [JUDGE-003] Initialisierung ohne Default-Modell
 
-        Sollte ValueError werfen wenn kein API Key.
+        Sollte ValueError werfen wenn kein Default LLM-Modell konfiguriert.
         """
-        with patch.dict(os.environ, {}, clear=True):
-            # Remove LITELLM_API_KEY if present
-            os.environ.pop('LITELLM_API_KEY', None)
+        from services.judge.judge_service import JudgeService
+        from db.models.llm_model import LLMModel
 
-            from services.judge.judge_service import JudgeService
-
-            with pytest.raises(ValueError, match="LITELLM_API_KEY must be provided"):
+        with patch.object(LLMModel, 'get_default_model_id', return_value=None):
+            with pytest.raises(ValueError, match="No default LLM model"):
                 JudgeService()
 
-    def test_JUDGE_004_init_default_base_url(self, app, app_context):
+    def test_JUDGE_004_init_with_provider_client(self, app, app_context):
         """
-        [JUDGE-004] Default Base URL
+        [JUDGE-004] Initialisierung mit Provider Client
 
-        Sollte Standard-URL verwenden wenn nicht angegeben.
+        Sollte LLMClientFactory verwenden wenn keine expliziten Parameter.
         """
-        with patch.dict(os.environ, {'LITELLM_API_KEY': 'test-key'}):
-            os.environ.pop('LITELLM_BASE_URL', None)
-            with patch('services.judge.judge_service.OpenAI'):
-                from services.judge.judge_service import JudgeService
-                from db.models.llm_model import LLMModel
+        from services.judge.judge_service import JudgeService
+        from services.judge.judge_service import LLMClientFactory
+        from db.models.llm_model import LLMModel
 
-                with patch.object(LLMModel, 'get_default_model_id', return_value='test/model'):
-                    service = JudgeService()
-                    assert 'kiz1.in.ohmportal.de' in service.base_url
+        mock_client = MagicMock()
+        with patch.object(LLMModel, 'get_default_model_id', return_value='test/model'):
+            with patch.object(LLMClientFactory, 'get_client_for_model', return_value=mock_client):
+                service = JudgeService()
+                assert service.client == mock_client
+                assert service.model == 'test/model'
 
     def test_JUDGE_005_init_no_default_model_raises(self, app, db, app_context):
         """

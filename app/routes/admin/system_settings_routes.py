@@ -53,10 +53,34 @@ def update_system_settings():
         'crawler_default_max_depth': (int, 1, 10),       # 1 - 10 levels
         'rag_default_chunk_size': (int, 100, 10000),     # 100 - 10000 chars
         'rag_default_chunk_overlap': (int, 0, 5000),     # 0 - 5000 chars
+        'llm_ai_log_response_max': (int, 0, 10000),      # 0 - 10000 chars
+        'llm_ai_log_prompt_max': (int, 0, 10000),        # 0 - 10000 chars
+    }
+
+    bool_fields = {
+        'llm_ai_log_responses',
+        'llm_ai_log_prompts',
+    }
+
+    string_fields = {
+        'llm_ai_log_tasks',
     }
 
     errors = []
     updated_fields = []
+
+    def _coerce_bool(value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(int(value))
+        if isinstance(value, str):
+            val = value.strip().lower()
+            if val in {'1', 'true', 'yes', 'on'}:
+                return True
+            if val in {'0', 'false', 'no', 'off', ''}:
+                return False
+        raise ValueError("Invalid boolean")
 
     for key, (expected_type, min_val, max_val) in updatable_fields.items():
         if key not in payload:
@@ -71,6 +95,31 @@ def update_system_settings():
             continue
 
         setattr(settings, key, coerced)
+        updated_fields.append(key)
+
+    for key in bool_fields:
+        if key not in payload:
+            continue
+        try:
+            coerced = _coerce_bool(payload.get(key))
+        except (TypeError, ValueError):
+            errors.append(f"Invalid value for {key}")
+            continue
+        setattr(settings, key, coerced)
+        updated_fields.append(key)
+
+    for key in string_fields:
+        if key not in payload:
+            continue
+        raw = payload.get(key)
+        if raw is None:
+            value = ""
+        else:
+            value = str(raw)
+        value = ",".join([part.strip().lower() for part in value.split(",") if part.strip()])
+        if len(value) > 255:
+            value = value[:255]
+        setattr(settings, key, value)
         updated_fields.append(key)
 
     if errors:

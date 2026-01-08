@@ -22,13 +22,11 @@ Integration:
 """
 
 import logging
-import os
 import time
 import base64
 from datetime import datetime
 from flask import request
 from flask_socketio import emit, join_room, leave_room
-from openai import OpenAI
 
 from db.database import db
 from db.tables import (
@@ -38,6 +36,7 @@ from services.chatbot.chat_service import ChatService
 from services.chatbot.agent_chat_service import AgentChatService
 from services.chatbot.file_processor import FileProcessor
 from services.chatbot.chatbot_access_service import ChatbotAccessService
+from services.llm.llm_client_factory import LLMClientFactory
 from services.permission_service import PermissionService
 from auth.oidc_validator import validate_token
 from sqlalchemy.exc import OperationalError
@@ -751,11 +750,8 @@ def register_chatbot_events(socketio):
                 chat_service, conversation, user_message, rag_context, sources_with_ids, rag_images
             )
 
-            # Initialize LLM client
-            llm_client = OpenAI(
-                api_key=os.environ.get('LITELLM_API_KEY'),
-                base_url=os.environ.get('LITELLM_BASE_URL')
-            )
+            # Initialize LLM client (provider-aware)
+            llm_client = LLMClientFactory.get_client_for_model(chatbot.model_name)
 
             # Stream response
             assistant_message = ""

@@ -45,6 +45,11 @@ def _load_settings_to_cache() -> dict:
         'crawler_default_max_depth': settings.crawler_default_max_depth,
         'rag_default_chunk_size': settings.rag_default_chunk_size,
         'rag_default_chunk_overlap': settings.rag_default_chunk_overlap,
+        'llm_ai_log_responses': settings.llm_ai_log_responses,
+        'llm_ai_log_tasks': settings.llm_ai_log_tasks,
+        'llm_ai_log_response_max': settings.llm_ai_log_response_max,
+        'llm_ai_log_prompts': settings.llm_ai_log_prompts,
+        'llm_ai_log_prompt_max': settings.llm_ai_log_prompt_max,
     }
 
     with _cache_lock:

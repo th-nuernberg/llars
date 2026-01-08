@@ -4,7 +4,7 @@ Rating Routes
 Provides endpoints for rating email threads and features.
 """
 
-from flask import jsonify, request, g
+from flask import jsonify, request, g, current_app
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
@@ -14,8 +14,21 @@ from db.tables import (
     FeatureType, UserFeatureRating, Feature, Message
 )
 from services.feature_rating_service import FeatureRatingService
+from services.scenario_stats_service import get_scenario_ids_for_thread
 
 from routes.HelperFunctions import can_access_thread
+
+
+def _emit_scenario_stats_updates(thread_id: int) -> None:
+    socketio = current_app.extensions.get('socketio')
+    if not socketio:
+        return
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        for scenario_id in get_scenario_ids_for_thread(thread_id):
+            emit_scenario_stats_updated(socketio, scenario_id)
+    except Exception:
+        pass
 
 
 @data_bp.route('/email_threads/ratings/<int:thread_id>', methods=['GET'])
@@ -214,6 +227,8 @@ def save_rating(thread_id, feature_id):
         db.session.add(new_rating)
 
     db.session.commit()
+
+    _emit_scenario_stats_updates(thread_id)
 
     return jsonify({'status': 'Rating saved successfully'}), 201
 

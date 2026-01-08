@@ -49,6 +49,28 @@ class SystemSettings(db.Model):
         comment="Default overlap between chunks"
     )
 
+    # LLM AI Task Logging
+    llm_ai_log_responses: Mapped[bool] = mapped_column(
+        db.Boolean, default=True, nullable=False,
+        comment="Enable logging of LLM evaluator responses"
+    )
+    llm_ai_log_tasks: Mapped[str] = mapped_column(
+        db.String(255), default="authenticity", nullable=False,
+        comment="Comma-separated task types to log (empty = all)"
+    )
+    llm_ai_log_response_max: Mapped[int] = mapped_column(
+        db.Integer, default=800, nullable=False,
+        comment="Max characters for logged LLM responses"
+    )
+    llm_ai_log_prompts: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable logging of LLM evaluator prompts"
+    )
+    llm_ai_log_prompt_max: Mapped[int] = mapped_column(
+        db.Integer, default=800, nullable=False,
+        comment="Max characters for logged LLM prompts"
+    )
+
     # Zotero OAuth Settings
     # Admin registers ONE app at zotero.org/oauth/apps and enters credentials here.
     # All users then use "Connect with Zotero" button to authorize their accounts.
@@ -77,6 +99,11 @@ class SystemSettings(db.Model):
             'crawler_default_max_depth': self.crawler_default_max_depth,
             'rag_default_chunk_size': self.rag_default_chunk_size,
             'rag_default_chunk_overlap': self.rag_default_chunk_overlap,
+            'llm_ai_log_responses': self.llm_ai_log_responses,
+            'llm_ai_log_tasks': self.llm_ai_log_tasks,
+            'llm_ai_log_response_max': self.llm_ai_log_response_max,
+            'llm_ai_log_prompts': self.llm_ai_log_prompts,
+            'llm_ai_log_prompt_max': self.llm_ai_log_prompt_max,
             'zotero_oauth_enabled': self.zotero_oauth_enabled,
             'zotero_client_key': self.zotero_client_key,
             'zotero_oauth_configured': bool(self.zotero_client_key and self.zotero_client_secret_encrypted),

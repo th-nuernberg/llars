@@ -18,14 +18,13 @@ Integration:
 """
 
 import logging
-import os
 import random
 import requests
 from flask import request
 from flask_socketio import emit
-from openai import OpenAI
 from llm.openai_utils import extract_delta_text
 from db.models.llm_model import LLMModel
+from services.llm.llm_client_factory import LLMClientFactory
 
 
 def register_chat_events(socketio, chat_manager):
@@ -158,16 +157,10 @@ def register_chat_events(socketio, chat_manager):
                 chat_history=chat_history
             )
 
-            # Use LiteLLM Proxy with OpenAI-compatible interface
-            litellm_api_key = os.getenv("LITELLM_API_KEY", "sk-RgzbaiE9HM8w0I5IWgZz6g")
-            client = OpenAI(
-                api_key=litellm_api_key,
-                base_url="https://kiz1.in.ohmportal.de/llmproxy/v1"
-            )
-
             model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
             if not model_id:
                 raise RuntimeError("No default LLM model configured in llm_models")
+            client = LLMClientFactory.get_client_for_model(model_id)
 
             assistant_message = ""
             # Stream chat completion from LiteLLM Proxy
@@ -241,12 +234,7 @@ def register_chat_events(socketio, chat_manager):
 
         logging.info(f"handle_test_prompt_stream: model={model}, temp={temperature}, max_tokens={max_tokens}")
 
-        # Initialize LiteLLM client
-        litellm_api_key = os.getenv("LITELLM_API_KEY", "sk-RgzbaiE9HM8w0I5IWgZz6g")
-        client = OpenAI(
-            api_key=litellm_api_key,
-            base_url="https://kiz1.in.ohmportal.de/llmproxy/v1"
-        )
+        client = LLMClientFactory.get_client_for_model(model)
 
         try:
             messages = [{"role": "user", "content": user_prompt}]

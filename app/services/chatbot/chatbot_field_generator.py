@@ -14,15 +14,14 @@ Responsible for:
 import asyncio
 import hashlib
 import logging
-import os
 import re
 import json
 import threading
 from typing import Dict, Any, Optional, Iterable, List
 from urllib.parse import urlparse
 
-from openai import OpenAI
 from llm.openai_utils import extract_delta_text, extract_message_text
+from services.llm.llm_client_factory import LLMClientFactory
 
 from db.tables import Chatbot, RAGCollection, CollectionDocumentLink
 from db.models.llm_model import LLMModel
@@ -593,13 +592,11 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         screenshot_base64: str,
         temperature: float = 0.2
     ) -> str:
-        client = OpenAI(
-            base_url=os.environ.get('LITELLM_BASE_URL', 'https://kiz1.in.ohmportal.de/llmproxy/v1'),
-            api_key=os.environ.get('LITELLM_API_KEY', 'dummy')
-        )
+        model_id = ChatbotFieldGenerator._get_default_vision_model_id()
+        client = LLMClientFactory.get_client_for_model(model_id)
 
         response = client.chat.completions.create(
-            model=ChatbotFieldGenerator._get_default_vision_model_id(),
+            model=model_id,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
@@ -790,14 +787,10 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         Raises:
             Exception: If LLM request fails
         """
-        # Use LiteLLM endpoint
-        client = OpenAI(
-            base_url=os.environ.get('LITELLM_BASE_URL', 'https://kiz1.in.ohmportal.de/llmproxy/v1'),
-            api_key=os.environ.get('LITELLM_API_KEY', 'dummy')
-        )
-
+        model_id = ChatbotFieldGenerator._get_default_llm_model_id()
+        client = LLMClientFactory.get_client_for_model(model_id)
         response = client.chat.completions.create(
-            model=ChatbotFieldGenerator._get_default_llm_model_id(),
+            model=model_id,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -841,14 +834,10 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
             collection_info=collection_info
         )
 
-        # Use LiteLLM endpoint in streaming mode
-        client = OpenAI(
-            base_url=os.environ.get('LITELLM_BASE_URL', 'https://kiz1.in.ohmportal.de/llmproxy/v1'),
-            api_key=os.environ.get('LITELLM_API_KEY', 'dummy')
-        )
-
+        model_id = ChatbotFieldGenerator._get_default_llm_model_id()
+        client = LLMClientFactory.get_client_for_model(model_id)
         stream = client.chat.completions.create(
-            model=ChatbotFieldGenerator._get_default_llm_model_id(),
+            model=model_id,
             messages=[
                 {"role": "system", "content": prompt_config['system']},
                 {"role": "user", "content": user_prompt}

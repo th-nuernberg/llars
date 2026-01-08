@@ -12,6 +12,7 @@ Event Namespaces:
     - judge:*     - LLM-as-Judge evaluation sessions
     - rag:*       - RAG document processing queue
     - ranker:*    - Ranking statistics updates
+    - scenario:*  - Scenario statistics updates
     - prompts:*   - User prompt list updates
     - crawler:*   - Web crawler job progress
     - oncoco:*    - OnCoCo analysis progress
@@ -30,6 +31,7 @@ from .events_crawler import register_crawler_events
 from .events_prompts import register_prompts_events
 from .events_rag import register_rag_events
 from .events_ranker import register_ranker_events
+from .events_scenarios import register_scenarios_events
 from .events_docker_monitor import register_docker_monitor_events
 from .events_comparison import register_comparison_events
 from .events_markdown_collab import register_markdown_collab_events
@@ -108,6 +110,7 @@ def configure_socket_routes(socketio, verbose=True):
     register_prompts_events(socketio)
     register_rag_events(socketio)
     register_ranker_events(socketio)
+    register_scenarios_events(socketio)
     register_docker_monitor_events(socketio)
     register_comparison_events(socketio)
     register_markdown_collab_events(socketio)

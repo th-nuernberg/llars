@@ -13,13 +13,13 @@ Features:
 
 import json
 import logging
-import os
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from openai import OpenAI
 from llm.openai_utils import extract_delta_text, extract_message_text
 from db.models.llm_model import LLMModel
+from services.llm.llm_client_factory import LLMClientFactory
 
 from .judge_schema import (
     JudgeEvaluationResult,
@@ -108,18 +108,12 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
         Initialize the Judge Service.
 
         Args:
-            api_key: LiteLLM API key (default: from LITELLM_API_KEY env var)
-            base_url: LiteLLM proxy URL (default: from LITELLM_BASE_URL env var)
+            api_key: API key override (optional)
+            base_url: Base URL override for OpenAI-compatible endpoints
             model: Model to use for evaluation
         """
-        self.api_key = api_key or os.getenv("LITELLM_API_KEY")
-        if not self.api_key:
-            raise ValueError("LITELLM_API_KEY must be provided or set in environment")
-
-        self.base_url = base_url or os.getenv(
-            "LITELLM_BASE_URL",
-            "https://kiz1.in.ohmportal.de/llmproxy/v1"
-        )
+        self.api_key = api_key
+        self.base_url = base_url
         if model:
             self.model = model
         else:
@@ -128,13 +122,15 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
                 raise ValueError("No default LLM model configured in llm_models")
             self.model = model_id
 
-        # Initialize OpenAI client for LiteLLM proxy
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
-
-        logger.info(f"[JudgeService] Initialized with model={self.model}")
+        if self.api_key or self.base_url:
+            self.client = OpenAI(
+                api_key=self.api_key or "EMPTY",
+                base_url=self.base_url,
+            )
+            logger.info(f"[JudgeService] Initialized override client with model={self.model}")
+        else:
+            self.client = LLMClientFactory.get_client_for_model(self.model)
+            logger.info(f"[JudgeService] Initialized provider client with model={self.model}")
 
     def format_thread_for_prompt(self, messages: List[Dict[str, Any]]) -> str:
         """

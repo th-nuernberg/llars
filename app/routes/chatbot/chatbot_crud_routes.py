@@ -187,7 +187,7 @@ def update_chatbot(chatbot_id):
             if old_val != new_val:
                 changed_fields[field] = {'old': old_val, 'new': new_val}
 
-    updated_chatbot = ChatbotService.update_chatbot(chatbot_id, data)
+    updated_chatbot = ChatbotService.update_chatbot(chatbot_id, data, username)
     if not updated_chatbot:
         return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
 

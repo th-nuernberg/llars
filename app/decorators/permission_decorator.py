@@ -135,6 +135,14 @@ def require_permission(permission_key: str):
                     'required_permission': permission_key
                 }), 403
 
+            # Populate g.authentik_user for downstream handlers that rely on it.
+            if not hasattr(g, 'authentik_user') or g.authentik_user is None:
+                from auth.decorators import get_or_create_user
+
+                g.authentik_user = get_or_create_user(username)
+                if not hasattr(g, 'authentik_user_id') or g.authentik_user_id is None:
+                    g.authentik_user_id = getattr(g.authentik_user, 'id', None)
+
             # Permission granted, execute the route
             return f(*args, **kwargs)
 

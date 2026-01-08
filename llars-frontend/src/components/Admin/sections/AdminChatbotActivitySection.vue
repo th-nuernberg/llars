@@ -3,7 +3,7 @@
     <!-- Compact Header -->
     <div class="monitor-header">
       <div class="header-left">
-        <v-icon size="24" color="white">mdi-robot</v-icon>
+        <LIcon size="24" color="white">mdi-robot</LIcon>
         <h2>Chatbot Activity</h2>
         <LTag :variant="connectionVariant" :prepend-icon="connectionIcon" size="small" class="connection-tag">
           {{ connectionLabel }}
@@ -42,42 +42,42 @@
     <!-- Stats Cards -->
     <div class="stats-bar">
       <div class="stat-card">
-        <v-icon size="20" color="primary">mdi-robot</v-icon>
+        <LIcon size="20" color="primary">mdi-robot</LIcon>
         <div class="stat-content">
           <span class="stat-value">{{ stats.by_category?.chatbot || 0 }}</span>
           <span class="stat-label">Chatbots</span>
         </div>
       </div>
       <div class="stat-card">
-        <v-icon size="20" color="accent">mdi-magic-staff</v-icon>
+        <LIcon size="20" color="accent">mdi-magic-staff</LIcon>
         <div class="stat-content">
           <span class="stat-value">{{ stats.by_category?.wizard || 0 }}</span>
           <span class="stat-label">Wizard</span>
         </div>
       </div>
       <div class="stat-card">
-        <v-icon size="20" color="success">mdi-message-text</v-icon>
+        <LIcon size="20" color="success">mdi-message-text</LIcon>
         <div class="stat-content">
           <span class="stat-value">{{ stats.by_category?.chat || 0 }}</span>
           <span class="stat-label">Chats</span>
         </div>
       </div>
       <div class="stat-card">
-        <v-icon size="20" color="info">mdi-folder-multiple</v-icon>
+        <LIcon size="20" color="info">mdi-folder-multiple</LIcon>
         <div class="stat-content">
           <span class="stat-value">{{ stats.by_category?.collection || 0 }}</span>
           <span class="stat-label">Collections</span>
         </div>
       </div>
       <div class="stat-card">
-        <v-icon size="20" color="warning">mdi-file-document-multiple</v-icon>
+        <LIcon size="20" color="warning">mdi-file-document-multiple</LIcon>
         <div class="stat-content">
           <span class="stat-value">{{ stats.by_category?.document || 0 }}</span>
           <span class="stat-label">Dokumente</span>
         </div>
       </div>
       <div class="stat-card stat-card--total">
-        <v-icon size="20" color="grey">mdi-sigma</v-icon>
+        <LIcon size="20" color="grey">mdi-sigma</LIcon>
         <div class="stat-content">
           <span class="stat-value">{{ stats.total_events || 0 }}</span>
           <span class="stat-label">Gesamt</span>
@@ -153,7 +153,7 @@
                 </td>
                 <td class="col-type">
                   <LTag :variant="getTypeVariant(activity.event_type)" size="small">
-                    <v-icon size="14" class="mr-1">{{ getTypeIcon(activity.event_type) }}</v-icon>
+                    <LIcon size="14" class="mr-1">{{ getTypeIcon(activity.event_type) }}</LIcon>
                     {{ formatEventType(activity.event_type) }}
                   </LTag>
                 </td>
@@ -176,7 +176,7 @@
                       variant="text"
                       @click="showDetails(activity)"
                     >
-                      <v-icon size="16">mdi-information-outline</v-icon>
+                      <LIcon size="16">mdi-information-outline</LIcon>
                     </v-btn>
                   </LTooltip>
                 </td>
@@ -186,7 +186,7 @@
         </table>
 
         <div v-if="filteredActivities.length === 0" class="empty-state">
-          <v-icon size="48" color="grey">mdi-robot-off</v-icon>
+          <LIcon size="48" color="grey">mdi-robot-off</LIcon>
           <p>Keine Chatbot-Aktivitaten vorhanden</p>
         </div>
       </div>
@@ -196,7 +196,7 @@
     <v-dialog v-model="detailsDialog" max-width="600">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-information</v-icon>
+          <LIcon class="mr-2">mdi-information</LIcon>
           Aktivitats-Details
         </v-card-title>
         <v-card-text>

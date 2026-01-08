@@ -8,7 +8,7 @@
         :class="{ 'l-tab--active': modelValue === (tab.value || index) }"
         @click="selectTab(tab.value || index)"
       >
-        <v-icon v-if="tab.icon" class="l-tab__icon">{{ tab.icon }}</v-icon>
+        <LIcon v-if="tab.icon" class="l-tab__icon">{{ tab.icon }}</LIcon>
         <span class="l-tab__label">{{ tab.label }}</span>
         <span v-if="tab.badge !== undefined" class="l-tab__badge">{{ tab.badge }}</span>
       </button>

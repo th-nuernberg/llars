@@ -29,7 +29,7 @@
 
       <!-- Empty State -->
       <v-card v-else variant="outlined" class="empty-state pa-12 text-center">
-        <v-icon size="96" color="primary" class="mb-4">mdi-database-import</v-icon>
+        <LIcon size="96" color="primary" class="mb-4">llars:evaluation-assistant</LIcon>
         <h2 class="text-h5 mb-2">Daten importieren</h2>
         <p class="text-body-1 text-medium-emphasis mb-6" style="max-width: 500px; margin: 0 auto;">
           Lade deine Daten hoch und lass LLARS das Format automatisch erkennen.
@@ -49,7 +49,7 @@
         <v-row class="mt-8" justify="center">
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
-              <v-icon size="32" color="primary" class="mb-2">mdi-auto-fix</v-icon>
+              <LIcon size="32" color="primary" class="mb-2">mdi-auto-fix</LIcon>
               <div class="text-body-1 font-weight-medium">Auto-Detection</div>
               <div class="text-caption text-medium-emphasis">
                 Erkennt OpenAI, LMSYS, CSV und mehr
@@ -58,7 +58,7 @@
           </v-col>
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
-              <v-icon size="32" color="purple" class="mb-2">mdi-robot</v-icon>
+              <LIcon size="32" color="purple" class="mb-2">mdi-robot</LIcon>
               <div class="text-body-1 font-weight-medium">KI-Unterstützung</div>
               <div class="text-caption text-medium-emphasis">
                 LLM analysiert und transformiert Daten
@@ -67,7 +67,7 @@
           </v-col>
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
-              <v-icon size="32" color="success" class="mb-2">mdi-wizard-hat</v-icon>
+              <LIcon size="32" color="success" class="mb-2">mdi-wizard-hat</LIcon>
               <div class="text-body-1 font-weight-medium">Wizard-Flow</div>
               <div class="text-caption text-medium-emphasis">
                 Von Upload bis Evaluation in einem Flow

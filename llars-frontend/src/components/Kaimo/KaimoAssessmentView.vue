@@ -8,7 +8,7 @@
     <div class="assessment-header">
       <h1 class="assessment-title">Abschließende Fallbeurteilung</h1>
       <button class="overview-btn" @click="showSidebar = !showSidebar">
-        <v-icon size="20">mdi-folder-open-outline</v-icon>
+        <LIcon size="20">mdi-folder-open-outline</LIcon>
       </button>
     </div>
 
@@ -127,8 +127,8 @@
                 :disabled="!selectedVerdict || submitting"
                 @click="submitAssessment"
               >
-                <v-icon v-if="submitting" size="20" class="mr-2">mdi-loading mdi-spin</v-icon>
-                <v-icon v-else size="20" class="mr-2">mdi-check</v-icon>
+                <LIcon v-if="submitting" size="20" class="mr-2">mdi-loading mdi-spin</LIcon>
+                <LIcon v-else size="20" class="mr-2">mdi-check</LIcon>
                 Bewertung abschließen
               </button>
             </div>
@@ -142,7 +142,7 @@
       <div class="sidebar-header">
         <span class="sidebar-title">Fallübersicht</span>
         <button class="sidebar-close" @click="showSidebar = false">
-          <v-icon size="20">mdi-close</v-icon>
+          <LIcon size="20">mdi-close</LIcon>
         </button>
       </div>
       <div class="sidebar-content">

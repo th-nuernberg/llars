@@ -81,7 +81,7 @@
           <div class="panel-header tabs-header">
             <v-tabs v-model="activeTab" density="compact" color="primary">
               <v-tab value="live" :disabled="session?.status === 'completed'">
-                <v-icon start size="18">mdi-play-circle</v-icon>
+                <LIcon start size="18">mdi-play-circle</LIcon>
                 Live
                 <v-chip
                   v-if="workerCount > 1 && activeWorkerCount > 0"
@@ -89,7 +89,7 @@
                   color="warning"
                   class="ml-2 pulse-chip"
                 >
-                  <v-icon size="10" class="mr-1">mdi-circle</v-icon>
+                  <LIcon size="10" class="mr-1">mdi-circle</LIcon>
                   {{ activeWorkerCount }}
                 </v-chip>
                 <v-chip
@@ -98,11 +98,11 @@
                   color="success"
                   class="ml-2 pulse-chip"
                 >
-                  <v-icon size="10" class="mr-1">mdi-circle</v-icon>
+                  <LIcon size="10" class="mr-1">mdi-circle</LIcon>
                 </v-chip>
               </v-tab>
               <v-tab value="history">
-                <v-icon start size="18">mdi-history</v-icon>
+                <LIcon start size="18">mdi-history</LIcon>
                 Verlauf
                 <v-chip size="x-small" class="ml-2">{{ completedComparisons.length }}</v-chip>
               </v-tab>
@@ -126,7 +126,7 @@
                 <!-- View Toggle Header -->
                 <div class="live-view-header">
                   <div class="live-view-info">
-                    <v-icon size="18" class="mr-2">mdi-account-group</v-icon>
+                    <LIcon size="18" class="mr-2">mdi-account-group</LIcon>
                     <span class="live-view-title">{{ activeWorkerCount }}/{{ workerCount }} Worker aktiv</span>
                     <v-chip
                       v-if="activeWorkerCount > 0"
@@ -140,10 +140,10 @@
                   <div class="live-view-actions">
                     <v-btn-toggle v-model="liveViewMode" density="compact" mandatory color="primary">
                       <v-btn value="detailed" size="small" variant="text" title="Detaillierte Ansicht">
-                        <v-icon size="18">mdi-view-grid</v-icon>
+                        <LIcon size="18">mdi-view-grid</LIcon>
                       </v-btn>
                       <v-btn value="compact" size="small" variant="text" title="Kompakte Ansicht">
-                        <v-icon size="18">mdi-view-list</v-icon>
+                        <LIcon size="18">mdi-view-list</LIcon>
                       </v-btn>
                     </v-btn-toggle>
                     <v-btn
@@ -206,7 +206,7 @@
                   @enable-auto-scroll="enableAutoScroll"
                 />
                 <div v-else class="empty-state">
-                  <v-icon size="48" color="grey">mdi-compare-horizontal</v-icon>
+                  <LIcon size="48" color="grey">mdi-compare-horizontal</LIcon>
                   <p class="mt-2 text-medium-emphasis">Kein aktiver Vergleich</p>
                   <p class="text-caption text-medium-emphasis">
                     {{ session?.status === 'completed' ? 'Session abgeschlossen. Siehe Verlauf.' : 'Starten Sie die Session um Vergleiche zu generieren.' }}

@@ -19,7 +19,7 @@
 
     <!-- Empty State -->
     <LCard v-else-if="chatbots.length === 0" flat :class="isMobile ? 'text-center pa-4' : 'text-center pa-8'">
-      <v-icon :size="isMobile ? 48 : 64" color="grey-lighten-1" class="mb-4">mdi-robot-outline</v-icon>
+      <LIcon :size="isMobile ? 48 : 64" color="grey-lighten-1" class="mb-4">mdi-robot-outline</LIcon>
       <div :class="isMobile ? 'text-subtitle-1 mb-2' : 'text-h6 mb-2'">Keine Chatbots vorhanden</div>
       <div class="text-medium-emphasis" :class="isMobile ? 'text-body-2' : ''">
         Erstellen Sie Ihren ersten Chatbot, um zu beginnen
@@ -91,25 +91,25 @@
                   @click="$emit('resume', chatbot)"
                 >
                   <template #prepend>
-                    <v-icon>mdi-wizard-hat</v-icon>
+                    <LIcon>mdi-wizard-hat</LIcon>
                   </template>
                   <v-list-item-title>Konfiguration fortsetzen</v-list-item-title>
                 </v-list-item>
                 <v-list-item @click="$emit('edit', chatbot)">
                   <template #prepend>
-                    <v-icon>mdi-pencil</v-icon>
+                    <LIcon>mdi-pencil</LIcon>
                   </template>
                   <v-list-item-title>Bearbeiten</v-list-item-title>
                 </v-list-item>
                 <v-list-item @click="$emit('manage-collections', chatbot)">
                   <template #prepend>
-                    <v-icon>mdi-folder-cog</v-icon>
+                    <LIcon>mdi-folder-cog</LIcon>
                   </template>
                   <v-list-item-title>Collections verwalten</v-list-item-title>
                 </v-list-item>
                 <v-list-item @click="$emit('duplicate', chatbot)">
                   <template #prepend>
-                    <v-icon>mdi-content-copy</v-icon>
+                    <LIcon>mdi-content-copy</LIcon>
                   </template>
                   <v-list-item-title>Duplizieren</v-list-item-title>
                 </v-list-item>
@@ -118,14 +118,14 @@
                   @click="$emit('share', chatbot)"
                 >
                   <template #prepend>
-                    <v-icon>mdi-account-multiple-plus</v-icon>
+                    <LIcon>mdi-account-multiple-plus</LIcon>
                   </template>
                   <v-list-item-title>Zugriff teilen</v-list-item-title>
                 </v-list-item>
                 <v-divider />
                 <v-list-item @click="$emit('delete', chatbot)">
                   <template #prepend>
-                    <v-icon color="error">mdi-delete</v-icon>
+                    <LIcon color="error">mdi-delete</LIcon>
                   </template>
                   <v-list-item-title class="text-error">
                     Löschen

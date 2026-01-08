@@ -15,7 +15,7 @@
           <v-skeleton-loader v-if="isLoading('header')" type="heading" width="300" />
           <template v-else>
             <h1 class="page-title">
-              <v-icon class="mr-2" color="primary">mdi-chart-box</v-icon>
+              <LIcon class="mr-2" color="primary">mdi-chart-box</LIcon>
               Auswertung
             </h1>
             <div class="page-subtitle">

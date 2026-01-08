@@ -3,7 +3,7 @@
     <!-- Detection Result Card -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2" color="success">mdi-check-circle</v-icon>
+        <LIcon class="mr-2" color="success">mdi-check-circle</LIcon>
         Format erkannt
         <v-spacer />
         <v-chip color="primary" size="small">
@@ -42,7 +42,7 @@
         <div v-if="suggestedTaskType" class="mt-4">
           <div class="text-caption text-medium-emphasis mb-2">Empfohlener Aufgabentyp</div>
           <v-chip color="secondary" size="small">
-            <v-icon start size="small">{{ taskTypeIcon }}</v-icon>
+            <LIcon start size="small">{{ taskTypeIcon }}</LIcon>
             {{ taskTypeName }}
           </v-chip>
         </div>
@@ -52,7 +52,7 @@
     <!-- AI Analysis Card -->
     <v-card variant="outlined" class="mb-4 ai-card">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2" color="purple">mdi-robot</v-icon>
+        <LIcon class="mr-2" color="purple">mdi-robot</LIcon>
         KI-Analyse
         <v-chip class="ml-2" size="x-small" color="purple" variant="tonal">
           Optional
@@ -90,7 +90,7 @@
                 <tr v-for="(value, key) in aiAnalysis.field_mapping" :key="key">
                   <td class="text-caption">{{ key }}</td>
                   <td>
-                    <v-icon size="small" class="mx-2">mdi-arrow-right</v-icon>
+                    <LIcon size="small" class="mx-2">mdi-arrow-right</LIcon>
                   </td>
                   <td class="font-weight-medium">{{ value || '—' }}</td>
                 </tr>
@@ -124,7 +124,7 @@
     <!-- Data Preview -->
     <v-card variant="outlined">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-eye</v-icon>
+        <LIcon class="mr-2">mdi-eye</LIcon>
         Daten-Vorschau
         <v-spacer />
         <LBtn

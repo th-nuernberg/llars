@@ -39,13 +39,13 @@
         <div class="worker-info">
           <span class="worker-title">Worker {{ workerId + 1 }}</span>
           <div class="worker-subtitle">
-            <v-icon
+            <LIcon
               size="10"
               :color="statusColor"
               :class="{ 'rotating': isStreaming }"
             >
               {{ statusIcon }}
-            </v-icon>
+            </LIcon>
             <span class="status-text">{{ statusText }}</span>
           </div>
         </div>
@@ -67,19 +67,19 @@
           @click="$emit('open-fullscreen', workerId)"
           title="Vollbild"
         >
-          <v-icon size="18">mdi-fullscreen</v-icon>
+          <LIcon size="18">mdi-fullscreen</LIcon>
         </v-btn>
       </div>
 
       <!-- Pillar Pair Badge -->
       <div v-if="currentComparison" class="pillar-pair-badge">
         <div class="pillar-chip pillar-a">
-          <v-icon size="12">{{ getPillarIcon(currentComparison.pillar_a) }}</v-icon>
+          <LIcon size="12">{{ getPillarIcon(currentComparison.pillar_a) }}</LIcon>
           <span>{{ getPillarShortName(currentComparison.pillar_a_name) }}</span>
         </div>
-        <v-icon size="14" class="vs-icon">mdi-sword-cross</v-icon>
+        <LIcon size="14" class="vs-icon">mdi-sword-cross</LIcon>
         <div class="pillar-chip pillar-b">
-          <v-icon size="12">{{ getPillarIcon(currentComparison.pillar_b) }}</v-icon>
+          <LIcon size="12">{{ getPillarIcon(currentComparison.pillar_b) }}</LIcon>
           <span>{{ getPillarShortName(currentComparison.pillar_b_name) }}</span>
         </div>
       </div>
@@ -92,7 +92,7 @@
       <!-- Empty State -->
       <div v-if="!streamContent && !currentComparison" class="empty-state">
         <div class="empty-icon-container">
-          <v-icon size="40" class="empty-icon">mdi-robot-off-outline</v-icon>
+          <LIcon size="40" class="empty-icon">mdi-robot-off-outline</LIcon>
         </div>
         <span class="empty-text">Wartet auf Aufgabe...</span>
       </div>
@@ -111,12 +111,12 @@
           >
             <div class="battle-card-header">
               <span class="thread-label">A</span>
-              <v-icon v-if="parsedResult?.winner === 'A'" size="16" color="warning" class="winner-icon">
+              <LIcon v-if="parsedResult?.winner === 'A'" size="16" color="warning" class="winner-icon">
                 mdi-trophy
-              </v-icon>
+              </LIcon>
             </div>
             <div class="battle-card-pillar">
-              <v-icon size="14">{{ getPillarIcon(currentComparison?.pillar_a) }}</v-icon>
+              <LIcon size="14">{{ getPillarIcon(currentComparison?.pillar_a) }}</LIcon>
               <span>{{ getPillarShortName(currentComparison?.pillar_a_name) }}</span>
             </div>
             <div class="battle-card-score">
@@ -131,15 +131,15 @@
           <!-- VS Indicator -->
           <div class="vs-container">
             <div class="vs-badge" :class="{ 'has-winner': parsedResult?.winner }">
-              <v-icon
+              <LIcon
                 v-if="isStreaming && !parsedResult?.winner"
                 size="20"
                 class="rotating"
               >
                 mdi-loading
-              </v-icon>
+              </LIcon>
               <template v-else>
-                <v-icon v-if="parsedResult?.winner" size="18" color="warning">mdi-trophy</v-icon>
+                <LIcon v-if="parsedResult?.winner" size="18" color="warning">mdi-trophy</LIcon>
                 <span class="winner-letter">{{ parsedResult?.winner || 'VS' }}</span>
               </template>
             </div>
@@ -158,12 +158,12 @@
           >
             <div class="battle-card-header">
               <span class="thread-label">B</span>
-              <v-icon v-if="parsedResult?.winner === 'B'" size="16" color="warning" class="winner-icon">
+              <LIcon v-if="parsedResult?.winner === 'B'" size="16" color="warning" class="winner-icon">
                 mdi-trophy
-              </v-icon>
+              </LIcon>
             </div>
             <div class="battle-card-pillar">
-              <v-icon size="14">{{ getPillarIcon(currentComparison?.pillar_b) }}</v-icon>
+              <LIcon size="14">{{ getPillarIcon(currentComparison?.pillar_b) }}</LIcon>
               <span>{{ getPillarShortName(currentComparison?.pillar_b_name) }}</span>
             </div>
             <div class="battle-card-score">
@@ -266,7 +266,7 @@
         <!-- Analysis Timeline -->
         <div class="timeline-section">
           <div class="timeline-header">
-            <v-icon size="14">mdi-timeline-clock-outline</v-icon>
+            <LIcon size="14">mdi-timeline-clock-outline</LIcon>
             <span>Analyse-Fortschritt</span>
             <span class="step-counter">{{ completedSteps }}/6</span>
           </div>
@@ -282,19 +282,19 @@
               }"
             >
               <div class="step-node">
-                <v-icon
+                <LIcon
                   v-if="getStepByKey(step.key)?.isStreaming"
                   size="12"
                   class="rotating"
                 >
                   mdi-loading
-                </v-icon>
-                <v-icon
+                </LIcon>
+                <LIcon
                   v-else-if="getStepByKey(step.key)"
                   size="12"
                 >
                   mdi-check
-                </v-icon>
+                </LIcon>
                 <span v-else class="step-number">{{ index + 1 }}</span>
               </div>
               <span class="step-label">{{ step.short }}</span>
@@ -305,7 +305,7 @@
           <!-- Live Step Preview -->
           <div v-if="currentActiveStep" class="live-preview">
             <div class="preview-header">
-              <v-icon size="12" class="rotating">mdi-loading</v-icon>
+              <LIcon size="12" class="rotating">mdi-loading</LIcon>
               <span>{{ currentActiveStep.title }}</span>
             </div>
             <div class="preview-content">

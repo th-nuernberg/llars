@@ -77,7 +77,7 @@
         />
 
         <v-btn variant="tonal" color="primary" icon @click="settingsDialogOpen = true" :title="'Einstellungen'">
-          <v-icon>mdi-tune</v-icon>
+          <LIcon>mdi-tune</LIcon>
         </v-btn>
       </v-col>
     </v-row>
@@ -93,7 +93,7 @@
       <v-col cols="12" lg="4">
         <v-card class="panel-card">
           <v-card-title class="panel-title">
-            <v-icon class="mr-2">mdi-text</v-icon>
+            <LIcon class="mr-2">mdi-text</LIcon>
             Input
           </v-card-title>
           <v-divider />
@@ -129,7 +129,7 @@
       <v-col cols="12" lg="4">
         <v-card class="panel-card">
           <v-card-title class="panel-title">
-            <v-icon class="mr-2">mdi-text-box-check-outline</v-icon>
+            <LIcon class="mr-2">mdi-text-box-check-outline</LIcon>
             Output
           </v-card-title>
           <v-divider />
@@ -165,7 +165,7 @@
       <v-col cols="12" lg="4">
         <v-card class="panel-card">
           <v-card-title class="panel-title">
-            <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
+            <LIcon class="mr-2">mdi-format-list-bulleted</LIcon>
             Entitäten
             <v-spacer />
             <v-chip size="small" variant="tonal">{{ groups.length }}</v-chip>
@@ -223,7 +223,7 @@
                           :disabled="isLoading('process')"
                           @click="randomizeGroup(g)"
                         >
-                          <v-icon start size="small">mdi-shuffle</v-icon>
+                          <LIcon start size="small">mdi-shuffle</LIcon>
                           Randomize
                         </v-btn>
                       </v-col>
@@ -263,13 +263,13 @@
               </v-alert>
             </v-col>
             <v-col cols="12" v-if="engine !== 'offline'">
-              <v-text-field
+              <LlmModelSelect
                 v-model="llmModel"
                 label="LLM Modell (optional)"
-                placeholder="z.B. mistralai/Mistral-Small-3.2-24B-Instruct-2506"
                 density="compact"
-                variant="outlined"
-                hide-details
+                :clearable="true"
+                :auto-select-default="false"
+                :hide-details="true"
               />
               <div class="settings-hint mt-2">
                 Leer lassen = Backend-Default. Status: {{ llmReady ? 'bereit' : 'nicht bereit' }}
@@ -318,6 +318,7 @@ import { BASE_URL } from '@/config.js'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
+import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 
 const { isMobile } = useMobile()
 

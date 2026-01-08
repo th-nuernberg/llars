@@ -47,11 +47,11 @@
           <!-- Tabs -->
           <v-tabs v-model="activeTab" bg-color="surface">
             <v-tab value="general">
-              <v-icon start>mdi-information</v-icon>
+              <LIcon start>mdi-information</LIcon>
               Grunddaten
             </v-tab>
             <v-tab value="documents">
-              <v-icon start>mdi-file-document-multiple</v-icon>
+              <LIcon start>mdi-file-document-multiple</LIcon>
               Dokumente
               <v-chip
                 v-if="documents.length > 0"
@@ -64,7 +64,7 @@
               </v-chip>
             </v-tab>
             <v-tab value="hints">
-              <v-icon start>mdi-lightbulb-on</v-icon>
+              <LIcon start>mdi-lightbulb-on</LIcon>
               Hinweise
               <v-chip
                 v-if="hints.length > 0"
@@ -77,7 +77,7 @@
               </v-chip>
             </v-tab>
             <v-tab value="preview">
-              <v-icon start>mdi-eye</v-icon>
+              <LIcon start>mdi-eye</LIcon>
               Vorschau
             </v-tab>
           </v-tabs>
@@ -219,9 +219,9 @@
                   </template>
                   <template #no-data>
                     <div class="text-center pa-8 text-medium-emphasis">
-                      <v-icon size="48" color="grey-lighten-1" class="mb-2">
+                      <LIcon size="48" color="grey-lighten-1" class="mb-2">
                         mdi-file-document-outline
-                      </v-icon>
+                      </LIcon>
                       <div>Noch keine Dokumente vorhanden</div>
                     </div>
                   </template>
@@ -291,9 +291,9 @@
                   </template>
                   <template #no-data>
                     <div class="text-center pa-8 text-medium-emphasis">
-                      <v-icon size="48" color="grey-lighten-1" class="mb-2">
+                      <LIcon size="48" color="grey-lighten-1" class="mb-2">
                         mdi-lightbulb-outline
-                      </v-icon>
+                      </LIcon>
                       <div>Noch keine Hinweise vorhanden</div>
                     </div>
                   </template>
@@ -343,7 +343,7 @@
                     >
                       <v-card variant="outlined" class="pa-3">
                         <div class="d-flex align-center mb-2">
-                          <v-icon class="mr-2" color="primary">mdi-file-document</v-icon>
+                          <LIcon class="mr-2" color="primary">mdi-file-document</LIcon>
                           <div class="font-weight-medium">{{ doc.title }}</div>
                           <v-spacer />
                           <v-chip size="x-small" variant="outlined">
@@ -379,7 +379,7 @@
                       variant="flat"
                       size="small"
                     >
-                      <v-icon start size="small">mdi-lightbulb-on</v-icon>
+                      <LIcon start size="small">mdi-lightbulb-on</LIcon>
                       {{ getCategoryName(hint.expected_category_id) }}
                       <v-tooltip activator="parent" location="bottom">
                         {{ hint.content }}
@@ -437,7 +437,7 @@
     >
       <v-card>
         <v-card-title class="bg-primary">
-          <v-icon class="mr-2">{{ editingDocument?.id ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <LIcon class="mr-2">{{ editingDocument?.id ? 'mdi-pencil' : 'mdi-plus' }}</LIcon>
           {{ editingDocument?.id ? 'Dokument bearbeiten' : 'Neues Dokument' }}
         </v-card-title>
         <v-card-text class="pt-4">
@@ -513,7 +513,7 @@
     >
       <v-card>
         <v-card-title class="bg-primary">
-          <v-icon class="mr-2">{{ editingHint?.id ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <LIcon class="mr-2">{{ editingHint?.id ? 'mdi-pencil' : 'mdi-plus' }}</LIcon>
           {{ editingHint?.id ? 'Hinweis bearbeiten' : 'Neuer Hinweis' }}
         </v-card-title>
         <v-card-text class="pt-4">
@@ -600,7 +600,7 @@
     <v-dialog v-model="deleteDialog" max-width="500">
       <v-card>
         <v-card-title class="bg-error">
-          <v-icon class="mr-2">mdi-alert</v-icon>
+          <LIcon class="mr-2">mdi-alert</LIcon>
           Löschen bestätigen
         </v-card-title>
         <v-card-text class="pt-4">

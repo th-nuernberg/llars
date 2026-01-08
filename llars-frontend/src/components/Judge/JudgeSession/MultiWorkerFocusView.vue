@@ -23,7 +23,7 @@
                 {{ getWorkerParsedResult(i - 1)?.winner ? `Sieger: ${getWorkerParsedResult(i - 1).winner}` : (workerStreams[i - 1]?.isStreaming ? 'Streamt...' : 'Wartet') }}
               </div>
             </div>
-            <v-icon v-if="workerStreams[i - 1]?.isStreaming" size="small" color="warning" class="rotating ml-auto">mdi-loading</v-icon>
+            <LIcon v-if="workerStreams[i - 1]?.isStreaming" size="small" color="warning" class="rotating ml-auto">mdi-loading</LIcon>
           </div>
         </div>
       </v-col>
@@ -50,9 +50,9 @@
               variant="flat"
               size="large"
             >
-              <v-icon start :class="{ 'rotating': workerStreams[focusedWorkerId]?.isStreaming }">
+              <LIcon start :class="{ 'rotating': workerStreams[focusedWorkerId]?.isStreaming }">
                 {{ workerStreams[focusedWorkerId]?.isStreaming ? 'mdi-loading' : (workerStreams[focusedWorkerId]?.comparison ? 'mdi-check-circle' : 'mdi-sleep') }}
-              </v-icon>
+              </LIcon>
               {{ workerStreams[focusedWorkerId]?.isStreaming ? 'Streamt...' : (workerStreams[focusedWorkerId]?.comparison ? 'Aktiv' : 'Wartet') }}
             </v-chip>
           </v-card-title>
@@ -63,7 +63,7 @@
           <v-card-text class="flex-grow-1 overflow-y-auto pa-4">
             <!-- Empty State -->
             <div v-if="!workerStreams[focusedWorkerId]?.content && !workerStreams[focusedWorkerId]?.comparison" class="d-flex flex-column align-center justify-center h-100 text-medium-emphasis">
-              <v-icon size="64" class="mb-4">mdi-robot-off</v-icon>
+              <LIcon size="64" class="mb-4">mdi-robot-off</LIcon>
               <span class="text-h6">Wartet auf Aufgabe...</span>
             </div>
 
@@ -89,9 +89,9 @@
                     class="mb-3"
                     :class="{ 'pulse-chip': workerStreams[focusedWorkerId]?.isStreaming && !getWorkerParsedResult(focusedWorkerId)?.winner }"
                   >
-                    <v-icon start size="large" :class="{ 'rotating': workerStreams[focusedWorkerId]?.isStreaming && !getWorkerParsedResult(focusedWorkerId)?.winner }">
+                    <LIcon start size="large" :class="{ 'rotating': workerStreams[focusedWorkerId]?.isStreaming && !getWorkerParsedResult(focusedWorkerId)?.winner }">
                       {{ workerStreams[focusedWorkerId]?.isStreaming && !getWorkerParsedResult(focusedWorkerId)?.winner ? 'mdi-loading' : 'mdi-trophy' }}
-                    </v-icon>
+                    </LIcon>
                     {{ getWorkerParsedResult(focusedWorkerId)?.winner || (workerStreams[focusedWorkerId]?.isStreaming ? '...' : '?') }}
                   </v-chip>
                   <div class="text-center">
@@ -172,13 +172,13 @@
                   >
                     <div class="step-header-detailed d-flex align-center">
                       <v-avatar size="28" :color="getWorkerStep(focusedWorkerId, stepKey) ? 'primary' : 'grey'" class="mr-2">
-                        <v-icon size="16" :class="{ 'rotating': getWorkerStep(focusedWorkerId, stepKey)?.isStreaming }">
+                        <LIcon size="16" :class="{ 'rotating': getWorkerStep(focusedWorkerId, stepKey)?.isStreaming }">
                           {{ getWorkerStep(focusedWorkerId, stepKey)?.isStreaming ? 'mdi-loading' : stepDef.icon }}
-                        </v-icon>
+                        </LIcon>
                       </v-avatar>
                       <span :class="{ 'text-medium-emphasis': !getWorkerStep(focusedWorkerId, stepKey) }">{{ stepDef.title }}</span>
                       <v-spacer></v-spacer>
-                      <v-icon v-if="getWorkerStep(focusedWorkerId, stepKey) && !getWorkerStep(focusedWorkerId, stepKey)?.isStreaming" size="small" color="success">mdi-check</v-icon>
+                      <LIcon v-if="getWorkerStep(focusedWorkerId, stepKey) && !getWorkerStep(focusedWorkerId, stepKey)?.isStreaming" size="small" color="success">mdi-check</LIcon>
                     </div>
                     <div v-if="getWorkerStep(focusedWorkerId, stepKey)" class="step-content-detailed mt-2">
                       {{ getWorkerStep(focusedWorkerId, stepKey).content }}<span v-if="getWorkerStep(focusedWorkerId, stepKey)?.isStreaming" class="cursor-blink">|</span>

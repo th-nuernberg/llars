@@ -5,9 +5,9 @@
 -->
 <template>
   <div v-if="collections.length === 0" class="text-center pa-8">
-    <v-icon size="48" color="grey-lighten-1" class="mb-2">
+    <LIcon size="48" color="grey-lighten-1" class="mb-2">
       mdi-folder-off
-    </v-icon>
+    </LIcon>
     <div class="text-medium-emphasis">
       Keine Collections verfügbar
     </div>
@@ -34,7 +34,7 @@
     <v-divider class="my-4" />
 
     <div class="d-flex align-center mb-2">
-      <v-icon class="mr-2" color="primary">mdi-upload</v-icon>
+      <LIcon class="mr-2" color="primary">mdi-upload</LIcon>
       <span class="text-subtitle-1 font-weight-medium">Dokumente hinzufügen</span>
     </div>
     <v-alert type="info" variant="tonal" density="compact" class="mb-3">
@@ -50,7 +50,7 @@
       >
         <v-card variant="outlined">
           <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-folder</v-icon>
+            <LIcon class="mr-2">mdi-folder</LIcon>
             <span class="text-truncate">{{ collection.display_name || collection.name }}</span>
             <v-spacer />
             <LBtn
@@ -69,7 +69,7 @@
       </v-col>
     </v-row>
     <div v-else class="text-center pa-6 text-medium-emphasis">
-      <v-icon size="48" class="mb-2">mdi-folder-plus</v-icon>
+      <LIcon size="48" class="mb-2">mdi-folder-plus</LIcon>
       <div>Bitte zuerst mindestens eine Collection auswählen.</div>
     </div>
   </template>

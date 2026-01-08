@@ -26,12 +26,12 @@
     <v-dialog v-model="infoDialog" max-width="600">
       <v-card>
         <v-card-title class="text-h5 bg-primary text-white pa-4">
-          <v-icon start class="mr-2">mdi-information</v-icon>
+          <LIcon start class="mr-2">mdi-information</LIcon>
           Informationen zur Gegenüberstellung
         </v-card-title>
         <v-card-text class="pa-6">
           <div class="text-body-1 mb-4">
-            <v-icon color="primary" class="mr-2">mdi-robot</v-icon>
+            <LIcon color="primary" class="mr-2">mdi-robot</LIcon>
             <strong>Was ist der Gegenüberstellungsmodus?</strong>
           </div>
           <p class="mb-4">
@@ -39,7 +39,7 @@
           </p>
 
           <div class="text-body-1 mb-4">
-            <v-icon color="primary" class="mr-2">mdi-account-details</v-icon>
+            <LIcon color="primary" class="mr-2">mdi-account-details</LIcon>
             <strong>Persona-Informationen</strong>
           </div>
           <p class="mb-4">
@@ -47,7 +47,7 @@
           </p>
 
           <div class="text-body-1 mb-4">
-            <v-icon color="primary" class="mr-2">mdi-star</v-icon>
+            <LIcon color="primary" class="mr-2">mdi-star</LIcon>
             <strong>Bewertung und Interaktion</strong>
           </div>
           <p class="mb-4">
@@ -55,7 +55,7 @@
           </p>
 
           <div class="text-body-1 mb-4">
-            <v-icon color="primary" class="mr-2">mdi-infinity</v-icon>
+            <LIcon color="primary" class="mr-2">mdi-infinity</LIcon>
             <strong>Keine Limits</strong>
           </div>
           <p class="mb-0">
@@ -106,7 +106,7 @@
     <!-- Action Bar Right Slot: Additional rating info -->
     <template #action-bar-right>
       <span class="rating-info">
-        <v-icon size="16" class="mr-1">mdi-message-check</v-icon>
+        <LIcon size="16" class="mr-1">mdi-message-check</LIcon>
         {{ getRatedMessagesCount() }} / {{ messagesToRate }} Nachrichten bewertet
       </span>
     </template>

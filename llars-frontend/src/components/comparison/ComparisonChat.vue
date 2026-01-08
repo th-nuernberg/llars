@@ -50,15 +50,15 @@
           <div v-if="!message.selected && !isStreaming(message)" class="rating-container">
             <v-btn-group variant="outlined" divided>
               <v-btn @click="selectResponse(message.messageId, 'llm1')" color="primary">
-                <v-icon class="mr-1">mdi-thumb-up</v-icon>
+                <LIcon class="mr-1">mdi-thumb-up</LIcon>
                 Modell 1 ist besser
               </v-btn>
               <v-btn @click="selectResponse(message.messageId, 'tie')" color="warning">
-                <v-icon class="mr-1">mdi-equal</v-icon>
+                <LIcon class="mr-1">mdi-equal</LIcon>
                 Beide gleich gut
               </v-btn>
               <v-btn @click="selectResponse(message.messageId, 'llm2')" color="primary">
-                <v-icon class="mr-1">mdi-thumb-up</v-icon>
+                <LIcon class="mr-1">mdi-thumb-up</LIcon>
                 Modell 2 ist besser
               </v-btn>
             </v-btn-group>
@@ -89,22 +89,22 @@
         >
           <template v-slot:prepend-inner>
             <div class="input-status-icon">
-              <v-icon
+              <LIcon
                 v-if="!canSendMessage"
                 color="error"
                 size="small"
                 class="status-icon lock-icon"
               >
                 mdi-lock
-              </v-icon>
-              <v-icon
+              </LIcon>
+              <LIcon
                 v-else-if="isProcessing"
                 color="primary"
                 size="small"
                 class="status-icon processing-icon"
               >
                 mdi-clock-outline
-              </v-icon>
+              </LIcon>
             </div>
           </template>
 
@@ -118,7 +118,7 @@
               class="send-button"
               :loading="isProcessing"
             >
-              <v-icon>mdi-send</v-icon>
+              <LIcon>mdi-send</LIcon>
             </v-btn>
           </template>
         </v-textarea>
@@ -126,11 +126,11 @@
 
       <transition name="hint-fade">
         <div v-if="!canSendMessage" class="input-hint error-hint">
-          <v-icon size="small" color="error" class="mr-2">mdi-information-outline</v-icon>
+          <LIcon size="small" color="error" class="mr-2">mdi-information-outline</LIcon>
           Bitte bewerten Sie zuerst die vorherigen Antworten, bevor Sie eine neue Nachricht senden.
         </div>
         <div v-else-if="isProcessing" class="input-hint processing-hint">
-          <v-icon size="small" color="primary" class="mr-2">mdi-clock-outline</v-icon>
+          <LIcon size="small" color="primary" class="mr-2">mdi-clock-outline</LIcon>
           Antworten werden generiert...
         </div>
       </transition>
@@ -140,7 +140,7 @@
     <v-dialog v-model="showJustificationDialog" max-width="600" persistent>
       <v-card>
         <v-card-title class="text-h5 bg-warning text-white pa-4">
-          <v-icon start class="mr-2">mdi-alert-circle</v-icon>
+          <LIcon start class="mr-2">mdi-alert-circle</LIcon>
           Bewertungsabweichung
         </v-card-title>
         <v-card-text class="pa-6">

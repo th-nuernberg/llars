@@ -7,7 +7,7 @@
   <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="480">
     <v-card class="share-dialog">
       <v-card-title class="share-header">
-        <v-icon class="mr-2" color="primary">mdi-account-multiple-plus</v-icon>
+        <LIcon class="mr-2" color="primary">mdi-account-multiple-plus</LIcon>
         <div>
           <div>Workspace teilen</div>
           <div class="text-caption text-medium-emphasis">{{ workspaceName }}</div>
@@ -54,7 +54,7 @@
         <v-skeleton-loader v-if="loading" type="list-item-avatar@3" />
 
         <div v-else-if="members.length === 0" class="empty-members">
-          <v-icon size="28" color="grey-lighten-1">mdi-account-group-outline</v-icon>
+          <LIcon size="28" color="grey-lighten-1">mdi-account-group-outline</LIcon>
           <span>Noch keine Mitglieder</span>
         </div>
 
@@ -75,7 +75,7 @@
               title="Mitglied entfernen"
               @click="$emit('remove', m.username)"
             >
-              <v-icon size="18">mdi-close</v-icon>
+              <LIcon size="18">mdi-close</LIcon>
             </v-btn>
           </div>
         </div>

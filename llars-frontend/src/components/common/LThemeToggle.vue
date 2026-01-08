@@ -13,7 +13,7 @@
           :class="{ 'on-primary': onPrimary }"
           :title="currentThemeOption?.title || 'Theme'"
         >
-          <v-icon size="20">{{ currentIcon }}</v-icon>
+          <LIcon size="20">{{ currentIcon }}</LIcon>
         </button>
       </template>
 
@@ -26,15 +26,15 @@
           :class="{ active: themePreference === option.value }"
           @click="setTheme(option.value)"
         >
-          <v-icon size="18" class="option-icon">{{ option.icon }}</v-icon>
+          <LIcon size="18" class="option-icon">{{ option.icon }}</LIcon>
           <span class="option-label">{{ option.title }}</span>
-          <v-icon
+          <LIcon
             v-if="themePreference === option.value"
             size="16"
             class="check-icon"
           >
             mdi-check
-          </v-icon>
+          </LIcon>
         </button>
       </div>
     </v-menu>

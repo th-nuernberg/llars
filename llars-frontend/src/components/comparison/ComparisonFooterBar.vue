@@ -11,7 +11,7 @@
               :disabled="isFirstSession"
               class="mr-2"
             >
-              <v-icon start>mdi-chevron-left</v-icon>
+              <LIcon start>mdi-chevron-left</LIcon>
               Vorheriger Chat
             </v-btn>
 
@@ -21,7 +21,7 @@
               @click="navigateToOverview"
               class="mr-2"
             >
-              <v-icon start>mdi-view-dashboard</v-icon>
+              <LIcon start>mdi-view-dashboard</LIcon>
               Übersicht
             </v-btn>
 
@@ -32,7 +32,7 @@
               :disabled="isLastSession"
             >
               Nächster Chat
-              <v-icon end>mdi-chevron-right</v-icon>
+              <LIcon end>mdi-chevron-right</LIcon>
             </v-btn>
           </v-col>
 

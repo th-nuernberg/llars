@@ -37,7 +37,7 @@
         title="KI-Assistent öffnen (Ctrl+Shift+A)"
         @click="aiSidebarOpen = true"
       >
-        <v-icon>mdi-robot-outline</v-icon>
+        <LIcon>llars:latex-collab-ai</LIcon>
       </v-btn>
     </transition>
 
@@ -60,7 +60,7 @@
     <v-dialog v-model="citationDialog" max-width="700">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="primary">mdi-book-search</v-icon>
+          <LIcon class="mr-2" color="primary">mdi-book-search</LIcon>
           Zitat finden
         </v-card-title>
         <v-card-text>
@@ -92,7 +92,7 @@
             class="mt-3"
             @click="searchCitations"
           >
-            <v-icon class="mr-1">mdi-magnify</v-icon>
+            <LIcon class="mr-1">mdi-magnify</LIcon>
             Suchen
           </LBtn>
 
@@ -123,7 +123,7 @@
                     title="BibTeX einfügen"
                     @click="insertCitation(citation)"
                   >
-                    <v-icon>mdi-plus</v-icon>
+                    <LIcon>mdi-plus</LIcon>
                   </v-btn>
                 </template>
               </v-list-item>
@@ -141,7 +141,7 @@
     <v-dialog v-model="shortcutsDialog" max-width="500">
       <v-card>
         <v-card-title>
-          <v-icon class="mr-2">mdi-keyboard</v-icon>
+          <LIcon class="mr-2">mdi-keyboard</LIcon>
           KI-Tastenkürzel
         </v-card-title>
         <v-card-text>

@@ -2,7 +2,7 @@
   <div class="system-settings-section">
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-cog</v-icon>
+        <LIcon class="mr-2">mdi-cog</LIcon>
         System-Einstellungen
         <v-spacer />
         <LBtn
@@ -26,7 +26,7 @@
           <!-- Crawler Timeouts -->
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1">
-              <v-icon class="mr-2" size="small">mdi-timer-outline</v-icon>
+              <LIcon class="mr-2" size="small">mdi-timer-outline</LIcon>
               Crawler Timeouts
             </v-card-title>
             <v-card-text>
@@ -76,7 +76,7 @@
           <!-- Crawler Defaults -->
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1">
-              <v-icon class="mr-2" size="small">mdi-spider-web</v-icon>
+              <LIcon class="mr-2" size="small">mdi-spider-web</LIcon>
               Crawler Defaults
             </v-card-title>
             <v-card-text>
@@ -114,7 +114,7 @@
           <!-- RAG Settings -->
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1">
-              <v-icon class="mr-2" size="small">mdi-file-document-multiple</v-icon>
+              <LIcon class="mr-2" size="small">mdi-file-document-multiple</LIcon>
               RAG Chunking
             </v-card-title>
             <v-card-text>
@@ -149,10 +149,89 @@
             </v-card-text>
           </v-card>
 
+          <!-- LLM Logging Settings -->
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title class="text-subtitle-1">
+              <LIcon class="mr-2" size="small">mdi-robot-outline</LIcon>
+              LLM Logging
+            </v-card-title>
+            <v-card-text>
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-switch
+                    v-model="settings.llm_ai_log_responses"
+                    label="Antworten loggen"
+                    color="primary"
+                    hide-details
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-switch
+                    v-model="settings.llm_ai_log_prompts"
+                    label="Prompts loggen"
+                    color="warning"
+                    hide-details
+                    density="compact"
+                  />
+                </v-col>
+              </v-row>
+
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="settings.llm_ai_log_tasks"
+                    label="Tasks (Komma-getrennt)"
+                    variant="outlined"
+                    density="comfortable"
+                    hint="z.B. authenticity, ranking, rating – leer = alle"
+                    persistent-hint
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model.number="settings.llm_ai_log_response_max"
+                    label="Max Zeichen (Antworten)"
+                    type="number"
+                    :min="0"
+                    :max="10000"
+                    variant="outlined"
+                    density="comfortable"
+                    hint="Standard: 800"
+                    persistent-hint
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model.number="settings.llm_ai_log_prompt_max"
+                    label="Max Zeichen (Prompts)"
+                    type="number"
+                    :min="0"
+                    :max="10000"
+                    variant="outlined"
+                    density="comfortable"
+                    hint="Standard: 800"
+                    persistent-hint
+                  />
+                </v-col>
+              </v-row>
+
+              <v-alert
+                v-if="settings.llm_ai_log_prompts"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mt-2"
+              >
+                Prompt-Logging enthält Konversationen. Bitte datenschutzkonform verwenden.
+              </v-alert>
+            </v-card-text>
+          </v-card>
+
           <!-- Zotero OAuth Settings -->
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-1 d-flex align-center">
-              <v-icon class="mr-2" size="small">mdi-book-open-page-variant</v-icon>
+              <LIcon class="mr-2" size="small">mdi-book-open-page-variant</LIcon>
               Zotero Integration
               <v-spacer />
               <v-chip
@@ -160,9 +239,9 @@
                 variant="tonal"
                 size="small"
               >
-                <v-icon start size="small">
+                <LIcon start size="small">
                   {{ zoteroStatus.oauth_available ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-                </v-icon>
+                </LIcon>
                 {{ zoteroStatusLabel }}
               </v-chip>
             </v-card-title>
@@ -188,7 +267,7 @@
               <!-- Environment Variables Status (read-only) -->
               <div class="mb-4">
                 <div class="text-subtitle-2 mb-2 d-flex align-center">
-                  <v-icon size="small" class="mr-1">mdi-file-cog</v-icon>
+                  <LIcon size="small" class="mr-1">mdi-file-cog</LIcon>
                   Umgebungsvariablen (.env)
                   <v-chip
                     v-if="zoteroStatus.active_source === 'env'"
@@ -229,7 +308,7 @@
               <!-- Database Fallback (editable) -->
               <div>
                 <div class="text-subtitle-2 mb-2 d-flex align-center">
-                  <v-icon size="small" class="mr-1">mdi-database</v-icon>
+                  <LIcon size="small" class="mr-1">mdi-database</LIcon>
                   Datenbank-Fallback
                   <v-chip
                     v-if="zoteroStatus.active_source === 'database'"
@@ -294,7 +373,7 @@
                           size="small"
                           @click="showSecret = !showSecret"
                         >
-                          <v-icon>{{ showSecret ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+                          <LIcon>{{ showSecret ? 'mdi-eye-off' : 'mdi-eye' }}</LIcon>
                         </v-btn>
                       </template>
                     </v-text-field>
@@ -351,6 +430,11 @@ const settings = reactive({
   crawler_default_max_depth: 3,
   rag_default_chunk_size: 1000,
   rag_default_chunk_overlap: 200,
+  llm_ai_log_responses: true,
+  llm_ai_log_tasks: 'authenticity',
+  llm_ai_log_response_max: 800,
+  llm_ai_log_prompts: false,
+  llm_ai_log_prompt_max: 800,
   updated_at: null
 })
 
@@ -442,7 +526,12 @@ async function saveSettings() {
       crawler_default_max_pages: settings.crawler_default_max_pages,
       crawler_default_max_depth: settings.crawler_default_max_depth,
       rag_default_chunk_size: settings.rag_default_chunk_size,
-      rag_default_chunk_overlap: settings.rag_default_chunk_overlap
+      rag_default_chunk_overlap: settings.rag_default_chunk_overlap,
+      llm_ai_log_responses: settings.llm_ai_log_responses,
+      llm_ai_log_tasks: settings.llm_ai_log_tasks,
+      llm_ai_log_response_max: settings.llm_ai_log_response_max,
+      llm_ai_log_prompts: settings.llm_ai_log_prompts,
+      llm_ai_log_prompt_max: settings.llm_ai_log_prompt_max
     })
 
     if (response.data.success) {

@@ -56,7 +56,7 @@
         @click:close="reconnectionFailed = false"
       >
         <template v-slot:prepend>
-          <v-icon>mdi-wifi-off</v-icon>
+          <LIcon>mdi-wifi-off</LIcon>
         </template>
         <div class="d-flex justify-space-between align-center flex-wrap ga-2">
           <div>
@@ -110,7 +110,7 @@
       <v-col cols="12" :md="watchingJob ? 5 : 6">
         <v-card elevation="2">
           <v-card-title class="d-flex align-center bg-primary text-white">
-            <v-icon start>mdi-web-plus</v-icon>
+            <LIcon start>mdi-web-plus</LIcon>
             Neuen Crawl starten
           </v-card-title>
           <v-card-text class="pt-4">
@@ -157,7 +157,7 @@
             <v-expansion-panels variant="accordion" class="mb-4">
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  <v-icon start size="small">mdi-tune</v-icon>
+                  <LIcon start size="small">mdi-tune</LIcon>
                   Erweiterte Einstellungen
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -275,7 +275,7 @@
         <v-slide-y-transition>
           <v-card v-if="preview" class="mt-4" elevation="2">
             <v-card-title class="bg-surface-variant">
-              <v-icon start color="info">mdi-file-search</v-icon>
+              <LIcon start color="info">mdi-file-search</LIcon>
               Vorschau: {{ preview.title || 'Seite' }}
             </v-card-title>
             <v-card-text class="pt-3">
@@ -316,9 +316,9 @@
                 width="2"
                 class="mr-2"
               />
-              <v-icon v-else :color="getStatusColor(watchingJob.status)" class="mr-2">
+              <LIcon v-else :color="getStatusColor(watchingJob.status)" class="mr-2">
                 {{ getStatusIcon(watchingJob.status) }}
-              </v-icon>
+              </LIcon>
               <span>Live Crawl Session</span>
             </div>
             <LIconBtn
@@ -356,7 +356,7 @@
             >
               <v-card-text class="py-2">
                 <div class="d-flex align-center">
-                  <v-icon class="mr-2 mdi-spin" size="small">mdi-loading</v-icon>
+                  <LIcon class="mr-2 mdi-spin" size="small">mdi-loading</LIcon>
                   <div class="flex-grow-1 overflow-hidden">
                     <div class="text-caption text-medium-emphasis">Aktuell wird gecrawlt:</div>
                     <div class="text-body-2 font-weight-medium text-truncate">
@@ -419,11 +419,11 @@
                   class="log-entry d-flex align-center py-1"
                   :class="{ 'font-weight-bold': idx === 0 }"
                 >
-                  <v-icon size="x-small" color="success" class="mr-2">mdi-check-circle</v-icon>
+                  <LIcon size="x-small" color="success" class="mr-2">mdi-check-circle</LIcon>
                   <span class="text-truncate log-url">{{ page.url }}</span>
                 </div>
                 <div v-if="recentPages.length === 0" class="text-center text-medium-emphasis py-4">
-                  <v-icon size="large" class="mb-2">mdi-spider-web</v-icon>
+                  <LIcon size="large" class="mb-2">mdi-spider-web</LIcon>
                   <div>Warte auf erste Seite...</div>
                 </div>
               </v-sheet>
@@ -441,7 +441,7 @@
                   <strong>Crawl erfolgreich abgeschlossen!</strong>
                   <div class="text-body-2">{{ watchingJob.documents_created }} Dokumente wurden erstellt.</div>
                   <div v-if="watchingJob.skipped_existing > 0" class="text-body-2 text-warning">
-                    <v-icon size="small" color="warning" class="mr-1">mdi-alert-circle</v-icon>
+                    <LIcon size="small" color="warning" class="mr-1">mdi-alert-circle</LIcon>
                     {{ watchingJob.skipped_existing }} Seite(n) übersprungen (Inhalt bereits in der Datenbank vorhanden).
                   </div>
                 </div>
@@ -472,7 +472,7 @@
         <!-- Empty State -->
         <v-card v-else elevation="1" class="d-flex flex-column align-center justify-center text-center" min-height="400">
           <v-card-text>
-            <v-icon size="80" color="primary" class="mb-4 opacity-50">mdi-spider-web</v-icon>
+            <LIcon size="80" color="primary" class="mb-4 opacity-50">mdi-spider-web</LIcon>
             <h3 class="text-h6 mb-2">Bereit zum Crawlen</h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
               Starten Sie einen neuen Crawl oder wählen Sie einen<br>laufenden Job aus der Liste unten.
@@ -494,7 +494,7 @@
     <v-card class="mt-4" elevation="2">
       <v-card-title class="d-flex justify-space-between align-center">
         <div class="d-flex align-center">
-          <v-icon start>mdi-history</v-icon>
+          <LIcon start>mdi-history</LIcon>
           Crawl-Verlauf
         </div>
         <LIconBtn
@@ -572,7 +572,7 @@
           </template>
           <template v-slot:no-data>
             <div class="text-center text-medium-emphasis py-8">
-              <v-icon size="48" class="mb-2 opacity-50">mdi-folder-open-outline</v-icon>
+              <LIcon size="48" class="mb-2 opacity-50">mdi-folder-open-outline</LIcon>
               <div>Noch keine Crawl-Jobs vorhanden</div>
             </div>
           </template>

@@ -18,10 +18,10 @@
           class="mr-2"
           @click="showMobileCategories = !showMobileCategories"
         >
-          <v-icon>{{ showMobileCategories ? 'mdi-close' : 'mdi-filter-variant' }}</v-icon>
+          <LIcon>{{ showMobileCategories ? 'mdi-close' : 'mdi-filter-variant' }}</LIcon>
         </v-btn>
         <v-chip color="primary" variant="flat" class="user-chip" :size="isMobile ? 'small' : 'default'">
-          <v-icon start :size="isMobile ? 16 : 20">mdi-account</v-icon>
+          <LIcon start :size="isMobile ? 16 : 20">mdi-account</LIcon>
           <span v-if="!isMobile">{{ username }}</span>
         </v-chip>
       </div>
@@ -32,7 +32,7 @@
       <div v-if="isMobile && showMobileCategories" class="mobile-categories-overlay">
         <div class="mobile-categories-content">
           <div class="mobile-category-header">
-            <v-icon class="mr-2">mdi-filter-variant</v-icon>
+            <LIcon class="mr-2">mdi-filter-variant</LIcon>
             <span>Kategorien</span>
           </div>
           <div class="mobile-categories-list">
@@ -43,14 +43,14 @@
               :class="{ active: selectedCategory === cat.id }"
               @click="selectCategory(cat.id)"
             >
-              <v-icon :color="selectedCategory === cat.id ? 'primary' : undefined">
+              <LIcon :color="selectedCategory === cat.id ? 'primary' : undefined">
                 {{ cat.icon }}
-              </v-icon>
+              </LIcon>
               <span class="mobile-category-name">{{ cat.name }}</span>
               <span class="mobile-category-count">{{ getCategoryCount(cat.id) }}</span>
-              <v-icon v-if="selectedCategory === cat.id" color="primary" size="18">
+              <LIcon v-if="selectedCategory === cat.id" color="primary" size="18">
                 mdi-check
-              </v-icon>
+              </LIcon>
             </div>
           </div>
         </div>
@@ -62,7 +62,7 @@
       <!-- Left Panel: Categories (Desktop only) -->
       <div v-if="!isMobile" class="left-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2">mdi-filter-variant</v-icon>
+          <LIcon class="mr-2">mdi-filter-variant</LIcon>
           <span>Kategorien</span>
         </div>
         <div class="panel-content">
@@ -74,16 +74,16 @@
               :class="{ active: selectedCategory === cat.id }"
               @click="selectCategory(cat.id)"
             >
-              <v-icon class="category-icon" :color="selectedCategory === cat.id ? 'primary' : undefined">
+              <LIcon class="category-icon" :color="selectedCategory === cat.id ? 'primary' : undefined">
                 {{ cat.icon }}
-              </v-icon>
+              </LIcon>
               <div class="category-info">
                 <span class="category-name">{{ cat.name }}</span>
                 <span class="category-count">{{ getCategoryCount(cat.id) }} Features</span>
               </div>
-              <v-icon v-if="selectedCategory === cat.id" class="category-check" color="primary">
+              <LIcon v-if="selectedCategory === cat.id" class="category-check" color="primary">
                 mdi-check-circle
-              </v-icon>
+              </LIcon>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@
       <!-- Right Panel: Features Grid -->
       <div class="right-panel" :style="isMobile ? {} : rightPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2">mdi-apps</v-icon>
+          <LIcon class="mr-2">mdi-apps</LIcon>
           <span>{{ selectedCategoryName }}</span>
           <v-spacer />
           <LTag variant="primary" size="sm">
@@ -129,7 +129,7 @@
               @click="navigateTo(item.route)"
             >
               <div class="feature-icon">
-                <v-icon size="32" color="primary">{{ item.icon }}</v-icon>
+                <LIcon size="32" color="primary">{{ item.icon }}</LIcon>
               </div>
               <div class="feature-title">
                 <span v-if="item.emoji" class="feature-emoji">{{ item.emoji }}</span>
@@ -145,7 +145,7 @@
 
             <!-- Empty State -->
             <div v-if="filteredItems.length === 0" class="empty-state">
-              <v-icon size="64" color="grey">mdi-folder-open-outline</v-icon>
+              <LIcon size="64" color="grey">mdi-folder-open-outline</LIcon>
               <p>Keine Features in dieser Kategorie verfügbar</p>
             </div>
           </div>
@@ -219,7 +219,7 @@ const allItems = ref([
     title: 'Evaluierung',
     description: 'Ranking, Rating, Fake/Echt, Verlaufsbewertung & Gegenüberstellung',
     route: '/evaluation',
-    icon: 'mdi-clipboard-check-outline',
+    icon: 'llars:evaluation',
     emoji: '🧪',
     permissionsAny: [
       'feature:ranking:view',
@@ -234,7 +234,7 @@ const allItems = ref([
     title: 'Evaluations-Assistent',
     description: 'Daten importieren und KI-gestützt Evaluations-Szenarien erstellen',
     route: '/import',
-    icon: 'mdi-database-import-outline',
+    icon: 'llars:evaluation-assistant',
     emoji: '📊',
     permission: 'data:import',
     category: 'rating',
@@ -265,7 +265,7 @@ const allItems = ref([
     title: 'Markdown Collab',
     description: 'Kollaboratives Arbeiten an Markdown-Dateien mit Live-Preview',
     route: '/MarkdownCollab',
-    icon: 'mdi-language-markdown',
+    icon: 'llars:markdown-collab',
     permission: 'feature:markdown_collab:view',
     category: 'research',
     badge: 'Beta',
@@ -285,7 +285,7 @@ const allItems = ref([
     title: 'LaTeX Collab KI',
     description: 'LaTeX-Editor mit KI-Schreibassistent (Ghost Text, @-Commands, RAG Citations)',
     route: '/LatexCollabAI',
-    icon: 'mdi-robot-outline',
+    icon: 'llars:latex-collab-ai',
     permission: 'feature:latex_collab:view',
     category: 'ai',
     badge: 'Test',
@@ -303,7 +303,7 @@ const allItems = ref([
     title: 'Anonymisierung',
     description: 'Texte, DOCX und PDFs offline pseudonymisieren',
     route: '/Anonymize',
-    icon: 'mdi-incognito',
+    icon: 'llars:anonymize',
     permission: 'feature:anonymize:view',
     category: 'ai',
     badge: 'Beta',
@@ -321,7 +321,7 @@ const allItems = ref([
     title: 'OnCoCo Analyse',
     description: 'Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)',
     route: '/oncoco',
-    icon: 'mdi-chart-timeline-variant-shimmer',
+    icon: 'llars:oncoco',
     permission: 'feature:oncoco:view',
     category: 'ai'
   },
@@ -329,7 +329,7 @@ const allItems = ref([
     title: 'Admin Dashboard',
     description: 'Benutzer, Rollen und Berechtigungen verwalten',
     route: '/admin?tab=permissions',
-    icon: 'mdi-shield-account',
+    icon: 'llars:admin-dashboard',
     permission: 'admin:permissions:manage',
     category: 'admin'
   },
@@ -337,7 +337,7 @@ const allItems = ref([
     title: 'Chatbot Verwaltung',
     description: 'Chatbots erstellen, konfigurieren und teilen',
     route: '/admin?tab=chatbots',
-    icon: 'mdi-robot',
+    icon: 'llars:chatbot-manage',
     permission: 'feature:chatbots:edit',
     category: 'admin'
   },

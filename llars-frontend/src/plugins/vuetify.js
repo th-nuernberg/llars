@@ -5,17 +5,31 @@
  */
 
 // Styles
-import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 
 // Composables
 import { createVuetify } from 'vuetify'
+import { h } from 'vue'
 
 // Theme configuration
 import { lightTheme, darkTheme } from '@/config/theme'
+import { llarsAliases, resolveIconComponent } from '@/icons/itshover'
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 export default createVuetify({
+  icons: {
+    defaultSet: 'llars',
+    aliases: llarsAliases,
+    sets: {
+      llars: {
+        component: (props) => {
+          const { icon, tag, ...rest } = props
+          const IconComponent = resolveIconComponent(icon)
+          return IconComponent ? h(IconComponent, rest) : h(tag || 'span', rest)
+        }
+      }
+    }
+  },
   theme: {
     defaultTheme: 'light',
     themes: {

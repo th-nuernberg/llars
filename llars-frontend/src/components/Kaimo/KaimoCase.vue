@@ -4,7 +4,7 @@
     <div class="kaimo-sidebar">
       <!-- Logo -->
       <div class="kaimo-logo">
-        <v-icon size="28" color="white">mdi-shield-account</v-icon>
+        <LIcon size="28" color="white">mdi-shield-account</LIcon>
       </div>
 
       <!-- Navigation Icons -->
@@ -17,7 +17,7 @@
               :class="{ 'nav-item-active': activeView === 'documents' }"
               @click="activeView = 'documents'"
             >
-              <v-icon size="24">mdi-file-document-multiple-outline</v-icon>
+              <LIcon size="24">mdi-file-document-multiple-outline</LIcon>
             </div>
           </template>
           <span>Fallakte</span>
@@ -31,7 +31,7 @@
               :class="{ 'nav-item-active': activeView === 'diagram' }"
               @click="activeView = 'diagram'"
             >
-              <v-icon size="24">mdi-sitemap</v-icon>
+              <LIcon size="24">mdi-sitemap</LIcon>
             </div>
           </template>
           <span>Diagramm</span>
@@ -45,7 +45,7 @@
               :class="{ 'nav-item-active': activeView === 'assessment' }"
               @click="activeView = 'assessment'"
             >
-              <v-icon size="24">mdi-scale-unbalanced</v-icon>
+              <LIcon size="24">mdi-scale-unbalanced</LIcon>
             </div>
           </template>
           <span>Bewertung</span>

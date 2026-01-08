@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="queue-header">
       <div class="d-flex align-center gap-1">
-        <v-icon size="16">mdi-playlist-play</v-icon>
+        <LIcon size="16">mdi-playlist-play</LIcon>
         <span class="queue-title">Warteschlange</span>
       </div>
       <div class="d-flex align-center gap-1">
@@ -39,7 +39,7 @@
           <div class="queue-position">#{{ item.queue_position + 1 }}</div>
           <div class="queue-pillars">
             <span class="pillar-badge pillar-a">{{ truncatePillar(item.pillar_a_name) }}</span>
-            <v-icon size="10" color="grey">mdi-arrow-left-right</v-icon>
+            <LIcon size="10" color="grey">mdi-arrow-left-right</LIcon>
             <span class="pillar-badge pillar-b">{{ truncatePillar(item.pillar_b_name) }}</span>
           </div>
           <div class="queue-status">
@@ -48,9 +48,9 @@
               :color="getQueueStatusColor(item.status)"
               variant="flat"
             >
-              <v-icon start size="10" :class="{ 'rotating': item.status === 'running' }">
+              <LIcon start size="10" :class="{ 'rotating': item.status === 'running' }">
                 {{ getQueueStatusIcon(item.status) }}
-              </v-icon>
+              </LIcon>
               {{ getQueueStatusText(item.status) }}
             </v-chip>
           </div>
@@ -66,7 +66,7 @@
 
       <!-- Empty State -->
       <div v-else class="queue-empty">
-        <v-icon size="24" color="grey">mdi-playlist-remove</v-icon>
+        <LIcon size="24" color="grey">mdi-playlist-remove</LIcon>
         <span class="text-caption text-medium-emphasis">Keine Vergleiche in Warteschlange</span>
       </div>
     </div>

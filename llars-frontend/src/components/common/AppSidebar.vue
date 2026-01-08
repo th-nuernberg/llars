@@ -7,20 +7,20 @@
     <div class="sidebar-header">
       <div class="header-content" :class="{ 'justify-center': isCollapsed }">
         <template v-if="!isCollapsed">
-          <v-icon v-if="icon" class="header-icon" size="24">{{ icon }}</v-icon>
+          <LIcon v-if="icon" class="header-icon" size="24">{{ icon }}</LIcon>
           <div class="header-text">
             <span class="header-title">{{ title }}</span>
             <span v-if="subtitle" class="header-subtitle">{{ subtitle }}</span>
           </div>
         </template>
-        <v-icon v-else class="header-icon-collapsed" size="24">{{ icon }}</v-icon>
+        <LIcon v-else class="header-icon-collapsed" size="24">{{ icon }}</LIcon>
       </div>
       <button
         class="collapse-btn"
         @click="toggleCollapse"
         :title="isCollapsed ? 'Erweitern' : 'Zuklappen'"
       >
-        <v-icon size="20">{{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
+        <LIcon size="20">{{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</LIcon>
       </button>
     </div>
 
@@ -37,7 +37,7 @@
         :title="isCollapsed ? item.title : undefined"
       >
         <div class="nav-icon">
-          <v-icon size="20">{{ item.icon }}</v-icon>
+          <LIcon size="20">{{ item.icon }}</LIcon>
         </div>
         <span v-if="!isCollapsed" class="nav-label">{{ item.title }}</span>
         <v-chip
@@ -63,7 +63,7 @@
           :title="isCollapsed ? 'Zur Startseite' : undefined"
         >
           <div class="nav-icon">
-            <v-icon size="20">mdi-home</v-icon>
+            <LIcon size="20">mdi-home</LIcon>
           </div>
           <span v-if="!isCollapsed" class="nav-label">Zur Startseite</span>
         </button>

@@ -11,7 +11,7 @@
             <span class="pillar-badge">A</span>
             {{ getPillarName(workerStream.comparison.pillar_a) }}
           </div>
-          <v-icon size="18">mdi-arrow-left-right</v-icon>
+          <LIcon size="18">mdi-arrow-left-right</LIcon>
           <div class="pillar-tag pillar-b">
             {{ getPillarName(workerStream.comparison.pillar_b) }}
             <span class="pillar-badge">B</span>
@@ -21,15 +21,15 @@
       </div>
       <div class="header-right">
         <div v-if="workerStream?.isStreaming" class="status-chip streaming">
-          <v-icon size="14" class="rotating">mdi-loading</v-icon>
+          <LIcon size="14" class="rotating">mdi-loading</LIcon>
           Analysiert
         </div>
         <div v-else-if="workerResult?.winner" class="status-chip complete">
-          <v-icon size="14">mdi-check-circle</v-icon>
+          <LIcon size="14">mdi-check-circle</LIcon>
           Fertig
         </div>
         <div v-else-if="workerStream?.comparison" class="status-chip pending">
-          <v-icon size="14">mdi-clock-outline</v-icon>
+          <LIcon size="14">mdi-clock-outline</LIcon>
           Ausstehend
         </div>
       </div>
@@ -47,7 +47,7 @@
           size="small"
           @click="activeTab = tab.key"
         >
-          <v-icon start size="16">{{ tab.icon }}</v-icon>
+          <LIcon start size="16">{{ tab.icon }}</LIcon>
           {{ tab.label }}
         </v-btn>
       </div>
@@ -90,7 +90,7 @@
 
           <!-- Streaming Status -->
           <div v-else-if="workerStream?.isStreaming" class="streaming-card">
-            <v-icon size="40" color="secondary" class="rotating">mdi-loading</v-icon>
+            <LIcon size="40" color="secondary" class="rotating">mdi-loading</LIcon>
             <span class="streaming-text">LLM analysiert die Threads...</span>
             <div class="streaming-progress">
               <div class="progress-bar-animated"></div>
@@ -99,7 +99,7 @@
 
           <!-- Pending Status -->
           <div v-else class="pending-card">
-            <v-icon size="40">mdi-clock-outline</v-icon>
+            <LIcon size="40">mdi-clock-outline</LIcon>
             <span>Warte auf Analyse</span>
           </div>
         </div>
@@ -142,7 +142,7 @@
             </div>
           </div>
           <div v-else class="no-scores">
-            <v-icon size="48">mdi-chart-bar</v-icon>
+            <LIcon size="48">mdi-chart-bar</LIcon>
             <span>Scores noch nicht verfügbar</span>
           </div>
         </div>
@@ -160,7 +160,7 @@
               class="step-btn"
               @click="activeStep = step.key"
             >
-              <v-icon start size="14">{{ step.icon }}</v-icon>
+              <LIcon start size="14">{{ step.icon }}</LIcon>
               {{ step.name }}
             </v-btn>
           </div>
@@ -171,7 +171,7 @@
               {{ getStepContent(activeStep) }}
             </div>
             <div v-else class="step-empty">
-              <v-icon size="32">mdi-text-search</v-icon>
+              <LIcon size="32">mdi-text-search</LIcon>
               <span>{{ workerStream?.isStreaming ? 'Wird analysiert...' : 'Kein Inhalt für diesen Schritt' }}</span>
             </div>
           </div>
@@ -182,7 +182,7 @@
           <div class="stream-header">
             <span>Raw LLM Output</span>
             <v-chip v-if="workerStream?.isStreaming" color="secondary" size="x-small" class="pulse">
-              <v-icon start size="12">mdi-broadcast</v-icon>
+              <LIcon start size="12">mdi-broadcast</LIcon>
               Live
             </v-chip>
           </div>
@@ -195,7 +195,7 @@
 
     <!-- Idle State -->
     <div v-else class="focus-idle">
-      <v-icon size="80" color="grey-lighten-1">mdi-robot-off-outline</v-icon>
+      <LIcon size="80" color="grey-lighten-1">mdi-robot-off-outline</LIcon>
       <span class="idle-title">Worker ist inaktiv</span>
       <span class="idle-subtitle">Wartet auf den nächsten Vergleich</span>
     </div>

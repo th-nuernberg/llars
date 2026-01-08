@@ -2,7 +2,7 @@
   <div class="health-bar" :class="{ 'health-bar--loading': loading }">
     <div class="health-bar__header">
       <span class="health-bar__title">
-        <v-icon icon="mdi-heart-pulse" size="16" class="mr-1" />
+        <LIcon icon="mdi-heart-pulse" size="16" class="mr-1" />
         System Health
       </span>
       <LTag
@@ -20,7 +20,7 @@
       <!-- Host -->
       <div class="health-item" @click="navigateTo('health')">
         <div class="health-item__icon" :style="{ backgroundColor: getColorBg('host'), color: getColor('host') }">
-          <v-icon icon="mdi-server" size="18" />
+          <LIcon icon="mdi-server" size="18" />
         </div>
         <div class="health-item__content">
           <span class="health-item__label">Host</span>
@@ -40,7 +40,7 @@
       <!-- API -->
       <div class="health-item" @click="navigateTo('health')">
         <div class="health-item__icon" :style="{ backgroundColor: getColorBg('api'), color: getColor('api') }">
-          <v-icon icon="mdi-api" size="18" />
+          <LIcon icon="mdi-api" size="18" />
         </div>
         <div class="health-item__content">
           <span class="health-item__label">API</span>
@@ -52,7 +52,7 @@
       <!-- WebSocket -->
       <div class="health-item" @click="navigateTo('health')">
         <div class="health-item__icon" :style="{ backgroundColor: getColorBg('ws'), color: getColor('ws') }">
-          <v-icon icon="mdi-connection" size="18" />
+          <LIcon icon="mdi-connection" size="18" />
         </div>
         <div class="health-item__content">
           <span class="health-item__label">WebSocket</span>
@@ -64,7 +64,7 @@
       <!-- Docker -->
       <div class="health-item" @click="navigateTo('docker')">
         <div class="health-item__icon" :style="{ backgroundColor: getColorBg('docker'), color: getColor('docker') }">
-          <v-icon icon="mdi-docker" size="18" />
+          <LIcon icon="mdi-docker" size="18" />
         </div>
         <div class="health-item__content">
           <span class="health-item__label">Docker</span>
@@ -76,7 +76,7 @@
       <!-- DB -->
       <div class="health-item" @click="navigateTo('db')">
         <div class="health-item__icon" :style="{ backgroundColor: getColorBg('db'), color: getColor('db') }">
-          <v-icon icon="mdi-database" size="18" />
+          <LIcon icon="mdi-database" size="18" />
         </div>
         <div class="health-item__content">
           <span class="health-item__label">DB</span>
@@ -86,7 +86,7 @@
 
       <!-- Details Link -->
       <div class="health-item health-item--link" @click="navigateTo('health')">
-        <v-icon icon="mdi-arrow-right" size="18" />
+        <LIcon icon="mdi-arrow-right" size="18" />
         <span>Details</span>
       </div>
     </div>

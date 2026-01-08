@@ -60,10 +60,10 @@
               class="mr-2"
               @click="sidebar.mobileSidebarOpen.value = true"
             >
-              <v-icon>mdi-menu</v-icon>
+              <LIcon>mdi-menu</LIcon>
             </v-btn>
             <v-avatar :color="selectedChatbot.color || '#b0ca97'" :size="isMobile ? 32 : 36" class="bot-avatar">
-              <v-icon color="white" :size="isMobile ? 18 : 20">{{ selectedChatbot.icon || 'mdi-robot' }}</v-icon>
+              <LIcon color="white" :size="isMobile ? 18 : 20">{{ selectedChatbot.icon || 'mdi-robot' }}</LIcon>
             </v-avatar>
             <div class="header-info">
               <div class="header-title" :class="{ 'streaming-text': getHeaderTitle().isStreaming }">
@@ -82,12 +82,12 @@
           <div class="header-actions">
             <LTooltip :text="sourcePanelState.open ? 'Quellen ausblenden' : 'Quellen anzeigen'">
               <button class="header-action" @click="sourcePanelComposable.toggleSourcePanel">
-                <v-icon size="20">{{ sourcePanelState.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</v-icon>
+                <LIcon size="20">{{ sourcePanelState.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</LIcon>
               </button>
             </LTooltip>
             <LTooltip text="Neuer Chat">
               <button class="header-action" @click="startNewChat()">
-                <v-icon size="20">mdi-plus</v-icon>
+                <LIcon size="20">mdi-plus</LIcon>
               </button>
             </LTooltip>
           </div>
@@ -104,9 +104,9 @@
             class="mb-4"
             @click="sidebar.mobileSidebarOpen = true"
           >
-            <v-icon>mdi-menu</v-icon>
+            <LIcon>mdi-menu</LIcon>
           </v-btn>
-          <v-icon :size="isMobile ? 60 : 80" color="grey-lighten-1">mdi-robot-confused</v-icon>
+          <LIcon :size="isMobile ? 60 : 80" color="grey-lighten-1">mdi-robot-confused</LIcon>
           <h3 :class="isMobile ? 'text-h6 mt-3' : 'text-h5 mt-4'">Chatbot auswählen</h3>
           <p class="text-medium-emphasis" :class="isMobile ? 'text-body-2 px-4' : ''">
             {{ isMobile ? 'Tippen Sie auf das Menü oben' : 'Wählen Sie einen Chatbot aus der Liste' }}, um eine Unterhaltung zu beginnen.
@@ -178,11 +178,11 @@
       <div class="fullscreen-dialog">
         <div class="fullscreen-header">
           <div class="fullscreen-title">
-            <v-icon size="20" class="mr-2">{{ fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</v-icon>
+            <LIcon size="20" class="mr-2">{{ fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</LIcon>
             <span>{{ sourcePanelState.source?.title || sourcePanelState.source?.filename || 'Quelle' }}</span>
           </div>
           <button class="fullscreen-close" @click="fullscreenDialog.show = false">
-            <v-icon size="20">mdi-close</v-icon>
+            <LIcon size="20">mdi-close</LIcon>
           </button>
         </div>
         <div class="fullscreen-body">
@@ -222,7 +222,7 @@
           {{ sourceDialog.source?.title || sourceDialog.source?.filename || 'Quelle' }}
         </v-card-title>
         <v-card-subtitle v-if="sourceDialog.source?.collection_name">
-          <v-icon size="14" class="mr-1">mdi-folder</v-icon>
+          <LIcon size="14" class="mr-1">mdi-folder</LIcon>
           {{ sourceDialog.source?.collection_name }}
           <LTag variant="success" size="sm" class="ml-2">
             {{ ((sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% relevant
@@ -234,7 +234,7 @@
         </v-card-text>
         <v-card-actions>
           <v-btn variant="text" @click="sourcePanelComposable.pinSourceToPanel(sourceDialog.source)">
-            <v-icon start>mdi-pin</v-icon>
+            <LIcon start>mdi-pin</LIcon>
             Anheften
           </v-btn>
           <v-btn
@@ -245,7 +245,7 @@
             color="primary"
             variant="tonal"
           >
-            <v-icon start>mdi-download</v-icon>
+            <LIcon start>mdi-download</LIcon>
             Dokument
           </v-btn>
           <v-spacer />

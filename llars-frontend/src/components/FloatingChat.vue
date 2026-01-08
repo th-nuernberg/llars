@@ -6,7 +6,7 @@
       size="large"
       elevation="4"
     >
-      <v-icon>{{ isChatOpen ? 'mdi-close' : 'mdi-message' }}</v-icon>
+      <LIcon>{{ isChatOpen ? 'mdi-close' : 'mdi-message' }}</LIcon>
     </v-btn>
   </div>
 
@@ -34,7 +34,7 @@
         <h3>LLars</h3>
       </div>
       <v-btn icon size="small" @click="toggleChat">
-        <v-icon>mdi-close</v-icon>
+        <LIcon>mdi-close</LIcon>
       </v-btn>
     </div>
 

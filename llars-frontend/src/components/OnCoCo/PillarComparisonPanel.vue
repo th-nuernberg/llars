@@ -1,7 +1,7 @@
 <template>
   <v-card variant="outlined" class="pillar-comparison-panel">
     <v-card-title class="d-flex align-center py-2">
-      <v-icon start color="primary">mdi-compare-horizontal</v-icon>
+      <LIcon start color="primary">mdi-compare-horizontal</LIcon>
       Paarweise Säulen-Vergleiche
     </v-card-title>
 
@@ -13,7 +13,7 @@
         :value="idx"
       >
         <v-chip size="small" :color="getPillarColor(pair.pillarA)" class="mr-1">{{ pair.labelA }}</v-chip>
-        <v-icon size="x-small">mdi-swap-horizontal</v-icon>
+        <LIcon size="x-small">mdi-swap-horizontal</LIcon>
         <v-chip size="small" :color="getPillarColor(pair.pillarB)" class="ml-1">{{ pair.labelB }}</v-chip>
       </v-tab>
     </v-tabs>
@@ -29,7 +29,7 @@
           <!-- Left Column: Top Differences -->
           <v-col cols="12" md="6">
             <div class="text-subtitle-2 font-weight-bold mb-2">
-              <v-icon start size="small">mdi-arrow-split-vertical</v-icon>
+              <LIcon start size="small">mdi-arrow-split-vertical</LIcon>
               Größte Unterschiede
             </div>
 
@@ -41,13 +41,13 @@
                 @click="$emit('highlight-transition', { from: diff.from_label, to: diff.to_label })"
               >
                 <template v-slot:prepend>
-                  <v-icon
+                  <LIcon
                     :color="diff.difference > 0 ? 'success' : 'error'"
                     size="small"
                     class="mr-2"
                   >
                     {{ diff.difference > 0 ? 'mdi-arrow-up-bold' : 'mdi-arrow-down-bold' }}
-                  </v-icon>
+                  </LIcon>
                 </template>
 
                 <v-list-item-title class="text-body-2">
@@ -80,7 +80,7 @@
           <!-- Right Column: Statistics -->
           <v-col cols="12" md="6">
             <div class="text-subtitle-2 font-weight-bold mb-2">
-              <v-icon start size="small">mdi-chart-box</v-icon>
+              <LIcon start size="small">mdi-chart-box</LIcon>
               Statistische Metriken
             </div>
 
@@ -131,13 +131,13 @@
                   </v-chip>
                 </div>
                 <div class="text-caption mt-1">
-                  <v-icon
+                  <LIcon
                     :color="currentComparison.statistical_tests.permutation_test.p_value < 0.05 ? 'success' : 'warning'"
                     size="x-small"
                     class="mr-1"
                   >
                     {{ currentComparison.statistical_tests.permutation_test.p_value < 0.05 ? 'mdi-check-circle' : 'mdi-minus-circle' }}
-                  </v-icon>
+                  </LIcon>
                   {{ currentComparison.statistical_tests.permutation_test.p_value < 0.05
                     ? 'Signifikanter Unterschied'
                     : 'Nicht signifikant' }}
@@ -186,7 +186,7 @@
           <!-- Missing Transitions -->
           <v-expansion-panel v-if="hasMissingTransitions">
             <v-expansion-panel-title>
-              <v-icon start size="small">mdi-help-circle-outline</v-icon>
+              <LIcon start size="small">mdi-help-circle-outline</LIcon>
               Fehlende Transitionen
               <v-chip size="x-small" class="ml-2" variant="tonal">
                 {{ totalMissingTransitions }}
@@ -235,7 +235,7 @@
           <!-- Chi-Square Details -->
           <v-expansion-panel v-if="currentComparison.statistical_tests?.chi_square?.row_details">
             <v-expansion-panel-title>
-              <v-icon start size="small">mdi-chart-bar</v-icon>
+              <LIcon start size="small">mdi-chart-bar</LIcon>
               Chi-Quadrat Details pro Zustand
             </v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -249,9 +249,9 @@
                   <span class="font-weight-medium">{{ item.state }}</span>
                 </template>
                 <template v-slot:item.significant="{ item }">
-                  <v-icon :color="item.significant ? 'success' : 'grey'" size="small">
+                  <LIcon :color="item.significant ? 'success' : 'grey'" size="small">
                     {{ item.significant ? 'mdi-check-circle' : 'mdi-minus-circle' }}
-                  </v-icon>
+                  </LIcon>
                 </template>
               </v-data-table>
             </v-expansion-panel-text>

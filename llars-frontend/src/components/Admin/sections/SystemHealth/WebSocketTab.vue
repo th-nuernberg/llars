@@ -93,7 +93,7 @@
     <!-- Namespace Breakdown -->
     <div class="section-card">
       <h3 class="section-card__title">
-        <v-icon icon="mdi-format-list-group" size="18" class="mr-2" />
+        <LIcon icon="mdi-format-list-group" size="18" class="mr-2" />
         Namespace Breakdown
       </h3>
       <div class="namespace-table">
@@ -110,7 +110,7 @@
           class="namespace-row"
         >
           <span class="ns-col ns-col--name">
-            <v-icon :icon="getNamespaceIcon(ns.namespace)" size="16" class="mr-2" />
+            <LIcon :icon="getNamespaceIcon(ns.namespace)" size="16" class="mr-2" />
             {{ ns.label }}
           </span>
           <span class="ns-col ns-col--clients">
@@ -129,7 +129,7 @@
     <!-- Recent Events -->
     <div class="section-card">
       <h3 class="section-card__title">
-        <v-icon icon="mdi-history" size="18" class="mr-2" />
+        <LIcon icon="mdi-history" size="18" class="mr-2" />
         Connection Events
       </h3>
       <div class="events-list">
@@ -139,7 +139,7 @@
           class="event-item"
           :class="{ 'event-item--connect': event.event_type === 'connect' }"
         >
-          <v-icon
+          <LIcon
             :icon="event.event_type === 'connect' ? 'mdi-login' : 'mdi-logout'"
             :color="event.event_type === 'connect' ? 'success' : 'grey'"
             size="16"

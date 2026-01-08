@@ -1,7 +1,7 @@
 <template>
   <v-card flat class="pa-4">
     <div class="text-center">
-      <v-icon size="80" color="success">mdi-check-circle</v-icon>
+      <LIcon size="80" color="success">mdi-check-circle</LIcon>
       <h2 class="text-h4 mt-4">Chatbot erstellt!</h2>
       <p class="text-medium-emphasis mt-2">
         Ihr Chatbot "{{ config.displayName }}" wurde erfolgreich erstellt.
@@ -39,7 +39,7 @@
         <v-card-text>
           <div class="d-flex align-center mb-4">
             <v-avatar :color="config.color" size="48" class="mr-4">
-              <v-icon color="white">{{ config.icon || 'mdi-robot' }}</v-icon>
+              <LIcon color="white">{{ config.icon || 'mdi-robot' }}</LIcon>
             </v-avatar>
             <div class="text-left">
               <div class="text-h6">{{ config.displayName }}</div>

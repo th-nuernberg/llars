@@ -9,7 +9,7 @@
       class="mobile-sidebar-drawer"
     >
       <div class="mobile-sidebar-header">
-        <v-icon color="primary" size="24" class="mr-3">mdi-shield-crown</v-icon>
+        <LIcon color="primary" size="24" class="mr-3">llars:admin-dashboard</LIcon>
         <div>
           <div class="text-subtitle-1 font-weight-bold">Admin</div>
           <div class="text-caption text-medium-emphasis">Dashboard</div>
@@ -48,7 +48,7 @@
       :items="filteredNavItems"
       title="Admin"
       subtitle="Dashboard"
-      icon="mdi-shield-crown"
+      icon="llars:admin-dashboard"
       storage-key="admin"
       :show-home-link="true"
     />
@@ -67,24 +67,14 @@
             class="mr-2"
             @click="mobileSidebarOpen = true"
           >
-            <v-icon>mdi-menu</v-icon>
+            <LIcon>mdi-menu</LIcon>
           </v-btn>
-          <div class="flex-grow-1 min-width-0">
+          <div v-if="currentSectionTitle" class="flex-grow-1 min-width-0">
             <h1 :class="isMobile ? 'text-h6 font-weight-bold text-truncate' : 'text-h4 font-weight-bold'">
               {{ currentSectionTitle }}
             </h1>
-            <p v-if="!isMobile" class="text-subtitle-1 text-medium-emphasis">{{ currentSectionSubtitle }}</p>
           </div>
           <v-spacer />
-          <v-chip
-            color="primary"
-            variant="flat"
-            :size="isMobile ? 'small' : 'default'"
-            class="ml-2"
-          >
-            <v-icon start :size="isMobile ? 14 : 18">mdi-account</v-icon>
-            <span v-if="!isMobile">{{ username }}</span>
-          </v-chip>
         </div>
       </div>
 
@@ -131,6 +121,11 @@
             <AdminPermissionsSection />
           </div>
 
+          <!-- LLM Providers Section -->
+          <div v-else-if="activeSection === 'llm-providers'" key="llm-providers" class="section-container">
+            <AdminLlmProvidersSection />
+          </div>
+
           <!-- System Health Section -->
           <div v-else-if="activeSection === 'health'" key="health" class="section-container--full">
             <AdminSystemHealthSection />
@@ -169,7 +164,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuth } from '@/composables/useAuth';
 import { usePermissions } from '@/composables/usePermissions';
 import { useMobile } from '@/composables/useMobile';
 
@@ -180,6 +174,7 @@ import AdminUsersSection from './sections/AdminUsersSection.vue';
 import AdminScenariosSection from './sections/AdminScenariosSection.vue';
 import AdminRAGSection from './sections/AdminRAGSection.vue';
 import AdminPermissionsSection from './sections/AdminPermissionsSection.vue';
+import AdminLlmProvidersSection from './sections/AdminLlmProvidersSection.vue';
 import AdminSystemMonitorSection from './sections/AdminSystemMonitorSection.vue';
 import AdminSystemHealthSection from './sections/AdminSystemHealthSection.vue';
 import AdminChatbotActivitySection from './sections/AdminChatbotActivitySection.vue';
@@ -190,12 +185,10 @@ import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
 
-const auth = useAuth();
 const { hasPermission, hasAnyPermission, fetchPermissions, isAdmin } = usePermissions();
 const route = useRoute();
 const router = useRouter();
 const { isMobile, isTablet, isSmallScreen } = useMobile();
-const username = computed(() => auth.tokenParsed.value?.preferred_username || 'Admin');
 
 // Mobile sidebar state
 const mobileSidebarOpen = ref(false);
@@ -228,10 +221,11 @@ const navItems = [
   { title: 'Einstellungen', value: 'settings', icon: 'mdi-cog', adminOnly: true },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group', adminOnly: true },
   { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
-  { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot', permission: 'feature:chatbots:view' },
+  { title: 'Chatbots', value: 'chatbots', icon: 'llars:chatbot-manage', permission: 'feature:chatbots:view' },
   { title: 'Web Crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },
   { title: 'RAG Dokumente', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
   { title: 'Berechtigungen', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
+  { title: 'LLM Provider', value: 'llm-providers', icon: 'mdi-connection', adminOnly: true },
 ];
 
 const filteredNavItems = computed(() => {
@@ -243,26 +237,7 @@ const filteredNavItems = computed(() => {
   });
 });
 
-// Section titles and subtitles
-const sectionInfo = {
-  overview: { title: 'Dashboard Übersicht', subtitle: 'Schnellübersicht aller wichtigen Kennzahlen' },
-  analytics: { title: 'Analytics', subtitle: 'Matomo Dashboard und Tracking-Status' },
-  health: { title: 'System Health', subtitle: 'Host-Metriken, API Performance und WebSocket-Verbindungen (live)' },
-  system: { title: 'System Events', subtitle: 'Live System-Events und Admin-Aktionen' },
-  'chatbot-activity': { title: 'Chatbot Activity', subtitle: 'User-Aktivitäten: Chatbots, Chats, Collections, Dokumente (live)' },
-  docker: { title: 'Docker Monitor', subtitle: 'Container Status, Logs und Ressourcen-Auslastung (live)' },
-  db: { title: 'DB Explorer', subtitle: 'Read-only Einblick in die LLARS Datenbank (live)' },
-  settings: { title: 'System-Einstellungen', subtitle: 'Crawler-Timeouts, RAG-Defaults und System-Parameter' },
-  users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },
-  scenarios: { title: 'Szenario-Verwaltung', subtitle: 'Bewertungs-Szenarien erstellen und verwalten' },
-  chatbots: { title: 'Chatbot-Verwaltung', subtitle: 'Chatbots mit RAG-Collections erstellen und konfigurieren' },
-  crawler: { title: 'Website Crawler', subtitle: 'Websites crawlen und RAG-Collections erstellen' },
-  rag: { title: 'RAG Dokumente', subtitle: 'Dokumente für die RAG-Pipeline verwalten' },
-  permissions: { title: 'Berechtigungen', subtitle: 'Rollen und Berechtigungen konfigurieren' },
-};
-
-const currentSectionTitle = computed(() => sectionInfo[activeSection.value]?.title || '');
-const currentSectionSubtitle = computed(() => sectionInfo[activeSection.value]?.subtitle || '');
+const currentSectionTitle = computed(() => '');
 
 // Route query sync for tab navigation (e.g., /admin?tab=rag)
 function initFromRoute() {

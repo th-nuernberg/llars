@@ -119,7 +119,7 @@
                   class="zotero-readonly-notice"
                 >
                   <template #prepend>
-                    <v-icon color="teal">mdi-bookshelf</v-icon>
+                    <LIcon color="teal">mdi-bookshelf</LIcon>
                   </template>
                   <span class="text-body-2">
                     Diese Datei wird von <strong>Zotero</strong> verwaltet und ist schreibgeschützt.
@@ -191,12 +191,12 @@
                       title="Logs anzeigen"
                       @click="compileLogDialog = true"
                     >
-                      <v-icon size="16">mdi-text-box-outline</v-icon>
+                      <LIcon size="16">mdi-text-box-outline</LIcon>
                     </v-btn>
                     <v-menu>
                       <template #activator="{ props: menuProps }">
                         <v-btn icon variant="text" size="x-small" v-bind="menuProps" title="Auto-Compile">
-                          <v-icon size="16">mdi-tune-variant</v-icon>
+                          <LIcon size="16">mdi-tune-variant</LIcon>
                         </v-btn>
                       </template>
                       <v-card class="compile-settings">
@@ -244,7 +244,7 @@
                 <div class="comments-panel">
                   <div class="comments-header">
                     <div class="d-flex align-center ga-2">
-                      <v-icon size="18">mdi-comment-multiple-outline</v-icon>
+                      <LIcon size="18">mdi-comment-multiple-outline</LIcon>
                       <span class="text-body-2">Kommentare</span>
                     </div>
                     <v-spacer />
@@ -290,7 +290,7 @@
                           :title="c.resolved_at ? 'Reopen' : 'Resolve'"
                           @click.stop="toggleCommentResolved(c)"
                         >
-                          <v-icon size="16">mdi-check</v-icon>
+                          <LIcon size="16">mdi-check</LIcon>
                         </v-btn>
                         <v-btn
                           icon
@@ -299,7 +299,7 @@
                           title="Löschen"
                           @click.stop="deleteComment(c)"
                         >
-                          <v-icon size="16">mdi-delete-outline</v-icon>
+                          <LIcon size="16">mdi-delete-outline</LIcon>
                         </v-btn>
                       </div>
                     </div>
@@ -344,7 +344,7 @@
     <v-dialog v-model="commentDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-comment-plus-outline</v-icon>
+          <LIcon class="mr-2">mdi-comment-plus-outline</LIcon>
           Kommentar hinzufügen
           <v-spacer />
           <LIconBtn icon="mdi-close" tooltip="Schließen" @click="commentDialog = false" />
@@ -383,7 +383,7 @@
     <v-dialog v-model="zoteroDialog" max-width="600">
       <v-card class="zotero-dialog">
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="primary">mdi-book-open-page-variant</v-icon>
+          <LIcon class="mr-2" color="primary">mdi-book-open-page-variant</LIcon>
           <div>
             <div>Zotero Bibliotheken</div>
             <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>

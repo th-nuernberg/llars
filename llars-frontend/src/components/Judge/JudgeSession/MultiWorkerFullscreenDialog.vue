@@ -12,11 +12,11 @@
         <div class="fullscreen-header-main">
           <div class="fullscreen-header-left">
             <v-btn icon variant="text" @click="$emit('close')" class="mr-2">
-              <v-icon>mdi-close</v-icon>
+              <LIcon>mdi-close</LIcon>
             </v-btn>
             <div class="fullscreen-title-section">
               <div class="fullscreen-icon-badge">
-                <v-icon size="24">mdi-account-group</v-icon>
+                <LIcon size="24">mdi-account-group</LIcon>
               </div>
               <div class="fullscreen-title-text">
                 <span class="fullscreen-title">Worker-Pool Live View</span>
@@ -49,9 +49,9 @@
               variant="flat"
               class="mr-2"
             >
-              <v-icon start size="small" :class="{ 'rotating': session?.status === 'running' }">
+              <LIcon start size="small" :class="{ 'rotating': session?.status === 'running' }">
                 {{ session?.status === 'running' ? 'mdi-loading' : 'mdi-pause-circle' }}
-              </v-icon>
+              </LIcon>
               {{ getStatusText(session?.status) }}
             </v-chip>
 
@@ -65,10 +65,10 @@
               variant="outlined"
             >
               <v-btn value="grid" size="small" title="Grid-Ansicht">
-                <v-icon size="small">mdi-view-grid</v-icon>
+                <LIcon size="small">mdi-view-grid</LIcon>
               </v-btn>
               <v-btn value="focus" size="small" title="Fokus-Ansicht">
-                <v-icon size="small">mdi-card-outline</v-icon>
+                <LIcon size="small">mdi-card-outline</LIcon>
               </v-btn>
             </v-btn-toggle>
           </div>
@@ -86,7 +86,7 @@
                 '--pillar-bg': getPillarColor(pillar.id) + '20'
               }"
             >
-              <v-icon size="14">{{ getPillarIcon(pillar.id) }}</v-icon>
+              <LIcon size="14">{{ getPillarIcon(pillar.id) }}</LIcon>
               <span>{{ pillar.short }}</span>
             </div>
           </div>
@@ -153,7 +153,7 @@
             </v-col>
             <v-col cols="12" md="4" class="text-right">
               <v-chip size="small" :color="getStatusColor(session?.status)" class="mr-2">
-                <v-icon start size="small">{{ getStatusIcon(session?.status) }}</v-icon>
+                <LIcon start size="small">{{ getStatusIcon(session?.status) }}</LIcon>
                 {{ getStatusText(session?.status) }}
               </v-chip>
               <span class="text-caption">Session: {{ session?.session_name }}</span>

@@ -9,7 +9,7 @@
       <!-- Header -->
       <v-card-title class="d-flex align-center justify-space-between bg-primary">
         <div class="d-flex align-center">
-          <v-icon class="mr-2">mdi-folder-cog</v-icon>
+          <LIcon class="mr-2">mdi-folder-cog</LIcon>
           <div>
             <div>Collections verwalten</div>
             <div class="text-caption font-weight-regular">
@@ -30,7 +30,7 @@
           <!-- Assigned Collections -->
           <v-col cols="12" md="6">
             <div class="section-header mb-3">
-              <v-icon class="mr-2" color="success">mdi-check-circle</v-icon>
+              <LIcon class="mr-2" color="success">mdi-check-circle</LIcon>
               <span class="text-subtitle-1 font-weight-medium">
                 Zugewiesen ({{ selectedCollections.length }})
               </span>
@@ -55,9 +55,9 @@
                     >
                       <!-- Drag Handle -->
                       <template #prepend>
-                        <v-icon class="drag-handle" size="20">
+                        <LIcon class="drag-handle" size="20">
                           mdi-drag-vertical
-                        </v-icon>
+                        </LIcon>
                       </template>
 
                       <!-- Collection Info -->
@@ -65,7 +65,7 @@
                         {{ element.display_name }}
                       </v-list-item-title>
                       <v-list-item-subtitle>
-                        <v-icon size="12">mdi-file-document</v-icon>
+                        <LIcon size="12">mdi-file-document</LIcon>
                         {{ element.document_count || 0 }} Dokumente
                       </v-list-item-subtitle>
 
@@ -92,9 +92,9 @@
                 </draggable>
               </v-list>
               <div v-else class="text-center pa-8">
-                <v-icon size="48" color="grey-lighten-1" class="mb-2">
+                <LIcon size="48" color="grey-lighten-1" class="mb-2">
                   mdi-folder-off
-                </v-icon>
+                </LIcon>
                 <div class="text-medium-emphasis">
                   Keine Collections zugewiesen
                 </div>
@@ -108,7 +108,7 @@
               class="mt-3"
             >
               <div class="text-caption">
-                <v-icon size="14" class="mr-1">mdi-information</v-icon>
+                <LIcon size="14" class="mr-1">mdi-information</LIcon>
                 Ziehen Sie Collections, um die Priorität zu ändern
               </div>
             </v-alert>
@@ -117,7 +117,7 @@
           <!-- Available Collections -->
           <v-col cols="12" md="6">
             <div class="section-header mb-3">
-              <v-icon class="mr-2" color="grey">mdi-folder-multiple</v-icon>
+              <LIcon class="mr-2" color="grey">mdi-folder-multiple</LIcon>
               <span class="text-subtitle-1 font-weight-medium">
                 Verfügbar ({{ unassignedCollections.length }})
               </span>
@@ -151,7 +151,7 @@
                     {{ collection.display_name }}
                   </v-list-item-title>
                   <v-list-item-subtitle>
-                    <v-icon size="12">mdi-file-document</v-icon>
+                    <LIcon size="12">mdi-file-document</LIcon>
                     {{ collection.document_count || 0 }} Dokumente
                   </v-list-item-subtitle>
 
@@ -168,9 +168,9 @@
                 </v-list-item>
               </v-list>
               <div v-else class="text-center pa-8">
-                <v-icon size="48" color="grey-lighten-1" class="mb-2">
+                <LIcon size="48" color="grey-lighten-1" class="mb-2">
                   mdi-folder-search
-                </v-icon>
+                </LIcon>
                 <div class="text-medium-emphasis">
                   {{ searchQuery ? 'Keine Ergebnisse' : 'Alle Collections zugewiesen' }}
                 </div>

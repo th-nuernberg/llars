@@ -13,15 +13,15 @@
         @click.stop="$emit('toggle', node.id)"
         :title="isExpanded ? 'Einklappen' : 'Ausklappen'"
       >
-        <v-icon size="18" class="text-medium-emphasis">
+        <LIcon size="18" class="text-medium-emphasis">
           {{ isExpanded ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
-        </v-icon>
+        </LIcon>
       </button>
       <span v-else class="expand-spacer" />
 
-      <v-icon size="20" class="mr-2" :color="nodeIconColor">
+      <LIcon size="20" class="mr-2" :color="nodeIconColor">
         {{ nodeIcon }}
-      </v-icon>
+      </LIcon>
 
       <span class="tree-title text-truncate">{{ node.title }}</span>
 
@@ -34,7 +34,7 @@
         class="ml-1 zotero-badge"
         title="Diese Datei wird von Zotero verwaltet und ist schreibgeschützt"
       >
-        <v-icon size="12" start>mdi-book-open-variant</v-icon>
+        <LIcon size="12" start>mdi-book-open-variant</LIcon>
         Zotero
       </v-chip>
 
@@ -88,7 +88,7 @@
         <template #item="{ element }">
           <div class="drag-wrapper">
             <span class="drag-handle" title="Ziehen">
-              <v-icon size="14" class="text-medium-emphasis">mdi-drag</v-icon>
+              <LIcon size="14" class="text-medium-emphasis">mdi-drag</LIcon>
             </span>
             <MarkdownTreeNode
               :node="element"

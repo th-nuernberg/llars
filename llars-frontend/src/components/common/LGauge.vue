@@ -2,7 +2,7 @@
   <div class="l-gauge" :class="gaugeClasses">
     <div class="l-gauge__header">
       <div class="l-gauge__icon-wrapper" :style="iconStyle">
-        <v-icon :icon="icon" :size="iconSize" />
+        <LIcon :icon="icon" :size="iconSize" />
       </div>
       <div class="l-gauge__info">
         <span class="l-gauge__label">{{ label }}</span>

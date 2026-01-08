@@ -50,13 +50,13 @@
           density="comfortable"
         >
           <template #selection="{ item }">
-            <v-icon class="mr-2">{{ item.value }}</v-icon>
+            <LIcon class="mr-2">{{ item.value }}</LIcon>
             {{ item.title }}
           </template>
           <template #item="{ props, item }">
             <v-list-item v-bind="props">
               <template #prepend>
-                <v-icon>{{ item.value }}</v-icon>
+                <LIcon>{{ item.value }}</LIcon>
               </template>
             </v-list-item>
           </template>
@@ -69,7 +69,7 @@
               :disabled="generatingIcon"
               @click.stop="$emit('generate-icon')"
             >
-              <v-icon>mdi-auto-fix</v-icon>
+              <LIcon>mdi-auto-fix</LIcon>
               <v-tooltip activator="parent" location="top">
                 {{ isEdit ? 'Icon vorschlagen (LLM)' : 'Zufälliges Icon' }}
               </v-tooltip>
@@ -102,7 +102,7 @@
               :disabled="generatingColor"
               @click.stop="$emit('generate-color')"
             >
-              <v-icon>mdi-auto-fix</v-icon>
+              <LIcon>mdi-auto-fix</LIcon>
               <v-tooltip activator="parent" location="top">
                 {{ isEdit ? 'Farbe vorschlagen (LLM/Brand)' : 'Zufällige Farbe' }}
               </v-tooltip>

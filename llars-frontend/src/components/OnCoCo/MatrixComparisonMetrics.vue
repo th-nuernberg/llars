@@ -3,7 +3,7 @@
     <!-- Header with Help Button (hidden when used in dialog) -->
     <div v-if="!hideHeader" class="d-flex align-center mb-3">
       <div class="text-h6 font-weight-bold">
-        <v-icon start>mdi-chart-scatter-plot</v-icon>
+        <LIcon start>mdi-chart-scatter-plot</LIcon>
         Statistische Matrix-Vergleichsmetriken
       </div>
       <v-spacer></v-spacer>
@@ -51,7 +51,7 @@
           <template v-slot:append>
             <v-tooltip location="top">
               <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" size="small">mdi-information</v-icon>
+                <LIcon v-bind="props" size="small">mdi-information</LIcon>
               </template>
               <span>Additive Glättung für Nullzählungen. 0 = keine, 1 = Standard</span>
             </v-tooltip>
@@ -73,7 +73,7 @@
           <template v-slot:append>
             <v-tooltip location="top">
               <template v-slot:activator="{ props }">
-                <v-icon v-bind="props" size="small">mdi-information</v-icon>
+                <LIcon v-bind="props" size="small">mdi-information</LIcon>
               </template>
               <span>Anzahl der Permutationen für Signifikanztest (mehr = genauer, aber langsamer)</span>
             </v-tooltip>
@@ -88,7 +88,7 @@
           :loading="loading"
           block
         >
-          <v-icon start>mdi-refresh</v-icon>
+          <LIcon start>mdi-refresh</LIcon>
           Berechnen
         </v-btn>
       </v-col>
@@ -107,7 +107,7 @@
           <v-card variant="outlined" class="h-100">
             <v-card-title class="text-subtitle-1 py-2 d-flex align-center">
               <v-chip size="small" color="primary" class="mr-2">{{ comparison.pillar_a?.name || 'Säule A' }}</v-chip>
-              <v-icon size="small">mdi-swap-horizontal</v-icon>
+              <LIcon size="small">mdi-swap-horizontal</LIcon>
               <v-chip size="small" color="secondary" class="ml-2">{{ comparison.pillar_b?.name || 'Säule B' }}</v-chip>
             </v-card-title>
 
@@ -168,13 +168,13 @@
                   </v-chip>
                 </div>
                 <div class="text-caption mt-1">
-                  <v-icon
+                  <LIcon
                     :color="(comparison.statistical_tests?.permutation_test?.p_value || 1) < 0.05 ? 'success' : 'warning'"
                     size="small"
                     class="mr-1"
                   >
                     {{ (comparison.statistical_tests?.permutation_test?.p_value || 1) < 0.05 ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-                  </v-icon>
+                  </LIcon>
                   {{ (comparison.statistical_tests?.permutation_test?.p_value || 1) < 0.05
                     ? 'Statistisch signifikanter Unterschied (p < 0.05)'
                     : 'Kein signifikanter Unterschied nachgewiesen' }}
@@ -229,7 +229,7 @@
               <div class="metric-row mb-3" v-if="comparison.outlier_transitions">
                 <div class="d-flex align-center justify-space-between mb-2">
                   <span class="text-body-2 font-weight-bold">
-                    <v-icon start size="small">mdi-alert-outline</v-icon>
+                    <LIcon start size="small">mdi-alert-outline</LIcon>
                     Ausreißer-Transitionen
                   </span>
                   <v-chip size="x-small" color="warning" variant="tonal">
@@ -249,12 +249,12 @@
                           class="px-0"
                         >
                           <template v-slot:prepend>
-                            <v-icon
+                            <LIcon
                               :color="outlier.difference > 0 ? 'success' : 'error'"
                               size="small"
                             >
                               {{ outlier.difference > 0 ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
-                            </v-icon>
+                            </LIcon>
                           </template>
                           <v-list-item-title class="text-caption">
                             {{ outlier.from_label }} -> {{ outlier.to_label }}
@@ -278,7 +278,7 @@
               <div class="metric-row" v-if="comparison.missing_transitions">
                 <div class="d-flex align-center justify-space-between mb-2">
                   <span class="text-body-2 font-weight-bold">
-                    <v-icon start size="small">mdi-help-circle-outline</v-icon>
+                    <LIcon start size="small">mdi-help-circle-outline</LIcon>
                     Fehlende Transitionen
                   </span>
                   <div>
@@ -360,11 +360,11 @@
     <v-dialog v-model="showMethodologyDialog" max-width="900" scrollable>
       <v-card class="methodology-dialog-card">
         <v-card-title class="d-flex align-center">
-          <v-icon start>mdi-book-open-variant</v-icon>
+          <LIcon start>mdi-book-open-variant</LIcon>
           Methodik & Erklärungen
           <v-spacer></v-spacer>
           <v-btn icon variant="text" @click="showMethodologyDialog = false">
-            <v-icon>mdi-close</v-icon>
+            <LIcon>mdi-close</LIcon>
           </v-btn>
         </v-card-title>
 
@@ -373,7 +373,7 @@
             <!-- Frobenius Distance -->
             <v-expansion-panel>
               <v-expansion-panel-title>
-                <v-icon start color="primary">mdi-matrix</v-icon>
+                <LIcon start color="primary">mdi-matrix</LIcon>
                 Frobenius-Distanz
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -409,7 +409,7 @@
             <!-- Jensen-Shannon Divergence -->
             <v-expansion-panel>
               <v-expansion-panel-title>
-                <v-icon start color="secondary">mdi-chart-bell-curve</v-icon>
+                <LIcon start color="secondary">mdi-chart-bell-curve</LIcon>
                 Jensen-Shannon Divergenz (JSD)
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -447,7 +447,7 @@
             <!-- Permutation Test -->
             <v-expansion-panel>
               <v-expansion-panel-title>
-                <v-icon start color="info">mdi-shuffle-variant</v-icon>
+                <LIcon start color="info">mdi-shuffle-variant</LIcon>
                 Permutationstest
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -485,7 +485,7 @@
             <!-- Effect Size -->
             <v-expansion-panel>
               <v-expansion-panel-title>
-                <v-icon start color="warning">mdi-arrow-expand-horizontal</v-icon>
+                <LIcon start color="warning">mdi-arrow-expand-horizontal</LIcon>
                 Effektstärke
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -522,7 +522,7 @@
             <!-- Chi-Square Test -->
             <v-expansion-panel>
               <v-expansion-panel-title>
-                <v-icon start color="error">mdi-chart-bar</v-icon>
+                <LIcon start color="error">mdi-chart-bar</LIcon>
                 Chi-Quadrat-Test für Markov-Ketten
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -559,7 +559,7 @@
             <!-- Laplace Smoothing -->
             <v-expansion-panel>
               <v-expansion-panel-title>
-                <v-icon start color="purple">mdi-tune</v-icon>
+                <LIcon start color="purple">mdi-tune</LIcon>
                 Laplace-Glättung (Additive Smoothing)
               </v-expansion-panel-title>
               <v-expansion-panel-text>

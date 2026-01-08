@@ -8,7 +8,7 @@
     <v-col cols="12">
       <v-alert type="info" variant="tonal" class="mb-4">
         <template #prepend>
-          <v-icon>mdi-spider-web</v-icon>
+          <LIcon>mdi-spider-web</LIcon>
         </template>
         <div class="text-subtitle-2">Website automatisch crawlen</div>
         <div class="text-body-2">
@@ -34,7 +34,7 @@
       <v-expansion-panels>
         <v-expansion-panel>
           <v-expansion-panel-title>
-            <v-icon start>mdi-cog</v-icon>
+            <LIcon start>mdi-cog</LIcon>
             Crawler-Einstellungen
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -97,7 +97,7 @@
         </v-progress-linear>
         <!-- Current URL being crawled -->
         <div v-if="crawlStatus.current_url" class="text-caption text-truncate mt-1">
-          <v-icon size="small">mdi-link</v-icon>
+          <LIcon size="small">mdi-link</LIcon>
           {{ crawlStatus.current_url }}
         </div>
       </v-alert>
@@ -105,7 +105,7 @@
       <!-- Live crawled pages list -->
       <v-card v-if="crawling && crawledPages.length > 0" variant="outlined" class="mt-2">
         <v-card-title class="text-subtitle-2 py-2">
-          <v-icon start size="small">mdi-format-list-bulleted</v-icon>
+          <LIcon start size="small">mdi-format-list-bulleted</LIcon>
           Zuletzt gecrawlte Seiten
         </v-card-title>
         <v-list dense class="py-0" style="max-height: 150px; overflow-y: auto;">
@@ -115,7 +115,7 @@
             density="compact"
             class="text-caption"
           >
-            <v-icon start size="x-small" color="success">mdi-check</v-icon>
+            <LIcon start size="x-small" color="success">mdi-check</LIcon>
             <span class="text-truncate">{{ url }}</span>
           </v-list-item>
         </v-list>

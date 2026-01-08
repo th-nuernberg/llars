@@ -16,7 +16,7 @@
             @click="close"
           ></v-btn>
           <div class="header-title-section">
-            <v-icon size="24" class="mr-2">{{ modeIcon }}</v-icon>
+            <LIcon size="24" class="mr-2">{{ modeIcon }}</LIcon>
             <div class="header-titles">
               <span class="header-title">{{ modeTitle }}</span>
               <span class="header-subtitle">{{ modeSubtitle }}</span>
@@ -55,18 +55,18 @@
             class="mr-2"
           >
             <v-btn value="grid" size="small" variant="text" title="Übersicht">
-              <v-icon size="18">mdi-view-grid</v-icon>
+              <LIcon size="18">mdi-view-grid</LIcon>
             </v-btn>
             <v-btn value="compare" size="small" variant="text" title="Vergleichen">
-              <v-icon size="18">mdi-compare</v-icon>
+              <LIcon size="18">mdi-compare</LIcon>
             </v-btn>
             <v-btn value="focus" size="small" variant="text" title="Detail">
-              <v-icon size="18">mdi-card-account-details</v-icon>
+              <LIcon size="18">mdi-card-account-details</LIcon>
             </v-btn>
           </v-btn-toggle>
 
           <v-chip v-if="mode.startsWith('live')" color="secondary" size="small" class="pulse-chip">
-            <v-icon start size="14">mdi-broadcast</v-icon>
+            <LIcon start size="14">mdi-broadcast</LIcon>
             Live
           </v-chip>
         </div>
@@ -106,16 +106,16 @@
                   </div>
                   <div v-if="workerStreams[i - 1]?.comparison" class="wcg-pillars">
                     <span class="pillar-tag pillar-a">{{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_a) }}</span>
-                    <v-icon size="16">mdi-arrow-left-right</v-icon>
+                    <LIcon size="16">mdi-arrow-left-right</LIcon>
                     <span class="pillar-tag pillar-b">{{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_b) }}</span>
                   </div>
                   <span v-else class="idle-label">Wartet...</span>
-                  <v-icon
+                  <LIcon
                     v-if="workerStreams[i - 1]?.isStreaming"
                     size="18"
                     color="secondary"
                     class="streaming-icon"
-                  >mdi-circle</v-icon>
+                  >mdi-circle</LIcon>
                 </div>
 
                 <!-- Card Body -->
@@ -124,7 +124,7 @@
                     <!-- Status -->
                     <div class="wcg-status">
                       <div v-if="workerStreams[i - 1]?.isStreaming" class="status-streaming">
-                        <v-icon size="20" class="rotating">mdi-loading</v-icon>
+                        <LIcon size="20" class="rotating">mdi-loading</LIcon>
                         <span>Analysiert...</span>
                       </div>
                       <div v-else-if="getWorkerResult(i - 1)?.winner" class="status-complete">
@@ -140,7 +140,7 @@
                         </div>
                       </div>
                       <div v-else class="status-pending">
-                        <v-icon size="24">mdi-clock-outline</v-icon>
+                        <LIcon size="24">mdi-clock-outline</LIcon>
                         <span>Ausstehend</span>
                       </div>
                     </div>
@@ -162,7 +162,7 @@
                   </template>
                   <template v-else>
                     <div class="wcg-idle">
-                      <v-icon size="40" color="grey-lighten-1">mdi-robot-off-outline</v-icon>
+                      <LIcon size="40" color="grey-lighten-1">mdi-robot-off-outline</LIcon>
                       <span>Wartet auf Aufgabe</span>
                     </div>
                   </template>
@@ -177,7 +177,7 @@
                     color="primary"
                     @click="openFocusView(i - 1)"
                   >
-                    <v-icon start size="16">mdi-eye</v-icon>
+                    <LIcon start size="16">mdi-eye</LIcon>
                     Details
                   </v-btn>
                 </div>
@@ -268,12 +268,12 @@
                   {{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_a) }}↔{{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_b) }}
                 </span>
                 <span v-else class="tab-idle">Idle</span>
-                <v-icon
+                <LIcon
                   v-if="workerStreams[i - 1]?.isStreaming"
                   size="12"
                   color="secondary"
                   class="streaming-dot"
-                >mdi-circle</v-icon>
+                >mdi-circle</LIcon>
               </v-btn>
             </div>
 
@@ -288,7 +288,7 @@
               :analysis-steps="ANALYSIS_STEPS"
             />
             <div v-else class="focus-empty">
-              <v-icon size="64">mdi-account-question</v-icon>
+              <LIcon size="64">mdi-account-question</LIcon>
               <span>Wähle einen Worker aus</span>
             </div>
           </div>

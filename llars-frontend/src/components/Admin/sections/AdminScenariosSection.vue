@@ -49,7 +49,7 @@
         <v-col cols="6" md="3">
           <v-card variant="tonal" color="success">
             <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
+              <LIcon size="32" class="mr-3">mdi-check-circle</LIcon>
               <div>
                 <div class="text-h5 font-weight-bold">{{ scenarioStats.aktiv }}</div>
                 <div class="text-caption">Aktiv</div>
@@ -60,7 +60,7 @@
         <v-col cols="6" md="3">
           <v-card variant="tonal" color="warning">
             <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-clock-outline</v-icon>
+              <LIcon size="32" class="mr-3">mdi-clock-outline</LIcon>
               <div>
                 <div class="text-h5 font-weight-bold">{{ scenarioStats.ausstehend }}</div>
                 <div class="text-caption">Ausstehend</div>
@@ -71,7 +71,7 @@
         <v-col cols="6" md="3">
           <v-card variant="tonal" color="grey">
             <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-check-all</v-icon>
+              <LIcon size="32" class="mr-3">mdi-check-all</LIcon>
               <div>
                 <div class="text-h5 font-weight-bold">{{ scenarioStats.beendet }}</div>
                 <div class="text-caption">Beendet</div>
@@ -82,7 +82,7 @@
         <v-col cols="6" md="3">
           <v-card variant="tonal" color="primary">
             <v-card-text class="d-flex align-center">
-              <v-icon size="32" class="mr-3">mdi-sigma</v-icon>
+              <LIcon size="32" class="mr-3">mdi-sigma</LIcon>
               <div>
                 <div class="text-h5 font-weight-bold">{{ scenarios.length }}</div>
                 <div class="text-caption">Gesamt</div>
@@ -109,9 +109,9 @@
           <template v-slot:item.name="{ item }">
             <div class="d-flex align-center">
               <LTooltip :text="getFunctionTypeName(item.function_type_name)">
-                <v-icon :color="getTypeColor(item.function_type_name)" class="mr-2">
+                <LIcon :color="getTypeColor(item.function_type_name)" class="mr-2">
                   {{ getTypeIcon(item.function_type_name) }}
-                </v-icon>
+                </LIcon>
               </LTooltip>
               <span class="font-weight-medium">{{ item.name }}</span>
             </div>
@@ -165,7 +165,7 @@
 
           <template v-slot:no-data>
             <div class="text-center py-8">
-              <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-clipboard-outline</v-icon>
+              <LIcon size="48" class="mb-2 text-medium-emphasis">mdi-clipboard-outline</LIcon>
               <div class="text-medium-emphasis">Keine Szenarien gefunden</div>
               <LBtn variant="primary" class="mt-4" prepend-icon="mdi-refresh" @click="fetchScenarios">
                 Aktualisieren
@@ -176,62 +176,16 @@
       </v-card-text>
     </v-card>
 
-    <!-- Scenario Stats Dialog -->
-    <v-dialog v-model="statsDialog" max-width="900" scrollable>
-      <v-card v-if="selectedScenario">
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-chart-bar</v-icon>
-          {{ selectedScenario.name }} - Fortschrittsstatistiken
-          <v-spacer></v-spacer>
-          <LIconBtn icon="mdi-close" @click="statsDialog = false" />
-        </v-card-title>
-        <v-divider></v-divider>
-        <v-card-text>
-          <v-progress-linear v-if="loadingStats" indeterminate color="primary"></v-progress-linear>
-
-          <!-- User Progress Table -->
-          <v-data-table
-            v-else
-            :headers="statsHeaders"
-            :items="userStats"
-            :items-per-page="10"
-            class="elevation-0"
-          >
-            <template v-slot:item.username="{ item }">
-              <div class="d-flex align-center">
-                <v-avatar size="32" color="primary" class="mr-2">
-                  <span class="text-caption">{{ item.username.charAt(0).toUpperCase() }}</span>
-                </v-avatar>
-                {{ item.username }}
-              </div>
-            </template>
-
-            <template v-slot:item.progress="{ item }">
-              <v-progress-linear
-                :model-value="calculateProgress(item)"
-                height="20"
-                rounded
-                color="primary"
-              >
-                <template v-slot:default="{ value }">
-                  <strong>{{ Math.round(value) }}%</strong>
-                </template>
-              </v-progress-linear>
-            </template>
-
-            <template v-slot:item.completed="{ item }">
-              {{ item.done_threads || 0 }} / {{ item.total_threads || 0 }}
-            </template>
-          </v-data-table>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+    <ScenarioStatsDialog
+      v-model="statsDialog"
+      :scenario="selectedScenario"
+    />
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
         <v-card-title class="text-h6">
-          <v-icon color="error" class="mr-2">mdi-alert</v-icon>
+          <LIcon color="error" class="mr-2">mdi-alert</LIcon>
           Szenario löschen?
         </v-card-title>
         <v-card-text>
@@ -262,6 +216,7 @@ import axios from 'axios';
 import CreateScenarioDialog from '@/components/parts/CreateScenarioDialog.vue';
 import ScenarioDetailDialog from '@/components/parts/ScenarioDetailsDialog.vue';
 import AuthenticityStatsDialog from '@/components/Admin/sections/AuthenticityStatsDialog.vue';
+import ScenarioStatsDialog from '@/components/Admin/sections/ScenarioStatsDialog.vue';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // State
@@ -275,8 +230,6 @@ const { isLoading, withLoading } = useSkeletonLoading(['stats', 'table']);
 // Stats dialog (generic)
 const statsDialog = ref(false);
 const selectedScenario = ref(null);
-const userStats = ref([]);
-const loadingStats = ref(false);
 
 // Authenticity stats dialog
 const authenticityStatsDialog = ref(false);
@@ -315,11 +268,6 @@ const headers = [
   { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
 ];
 
-const statsHeaders = [
-  { title: 'Benutzer', key: 'username', sortable: true },
-  { title: 'Fortschritt', key: 'progress', sortable: false },
-  { title: 'Abgeschlossen', key: 'completed', sortable: true }
-];
 
 // Computed
 const filteredScenarios = computed(() => {
@@ -423,10 +371,6 @@ const isExpired = (dateString) => {
   return new Date(dateString) < new Date();
 };
 
-const calculateProgress = (user) => {
-  if (!user.total_threads || user.total_threads === 0) return 0;
-  return ((user.done_threads || 0) / user.total_threads) * 100;
-};
 
 // API calls
 const fetchScenarios = async () => {
@@ -456,17 +400,6 @@ const viewScenarioStats = async (scenario) => {
   // Generic stats dialog for other scenario types
   selectedScenario.value = scenario;
   statsDialog.value = true;
-  loadingStats.value = true;
-
-  try {
-    const response = await axios.get(`/api/admin/scenario_progress_stats/${scenario.scenario_id}`);
-    userStats.value = response.data.rater_stats || [];
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    userStats.value = [];
-  }
-
-  loadingStats.value = false;
 };
 
 const confirmDelete = (scenario) => {

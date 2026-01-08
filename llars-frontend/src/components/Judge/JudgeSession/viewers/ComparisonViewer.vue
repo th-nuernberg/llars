@@ -10,7 +10,7 @@
           size="small"
           @click="$emit('close')"
         ></v-btn>
-        <v-icon size="20" class="mr-2">{{ isHistorical ? 'mdi-history' : 'mdi-eye' }}</v-icon>
+        <LIcon size="20" class="mr-2">{{ isHistorical ? 'mdi-history' : 'mdi-eye' }}</LIcon>
         <span class="header-title">{{ isHistorical ? 'Vergleich #' + comparisonIndex : 'Live Vergleich' }}</span>
         <v-chip size="x-small" variant="outlined" class="ml-2">
           {{ pillarAName }} vs {{ pillarBName }}
@@ -58,15 +58,15 @@
         <div class="thread-messages">
           <div v-for="(msg, idx) in threadAMessages" :key="idx" class="message-item">
             <div class="message-role" :class="msg.role === 'assistant' ? 'role-counsellor' : 'role-client'">
-              <v-icon size="12" class="mr-1">
+              <LIcon size="12" class="mr-1">
                 {{ msg.role === 'assistant' ? 'mdi-message-reply' : 'mdi-account' }}
-              </v-icon>
+              </LIcon>
               {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
             </div>
             <div class="message-text">{{ msg.content }}</div>
           </div>
           <div v-if="!threadAMessages?.length" class="empty-messages">
-            <v-icon size="24">mdi-message-off</v-icon>
+            <LIcon size="24">mdi-message-off</LIcon>
             <span>Keine Nachrichten</span>
           </div>
         </div>
@@ -75,13 +75,13 @@
       <!-- Center: Evaluation -->
       <div class="evaluation-panel">
         <div class="eval-status">
-          <v-icon
+          <LIcon
             :color="comparison?.winner ? 'success' : (isStreaming ? 'warning' : 'grey')"
             size="32"
             :class="{ 'rotating': isStreaming && !comparison?.winner }"
           >
             {{ comparison?.winner ? 'mdi-check-circle' : (isStreaming ? 'mdi-loading' : 'mdi-clock-outline') }}
-          </v-icon>
+          </LIcon>
           <span class="status-text">
             {{ comparison?.winner ? 'Abgeschlossen' : (isStreaming ? 'Analysiert...' : 'Wartend') }}
           </span>
@@ -89,7 +89,7 @@
 
         <!-- Winner Display -->
         <div v-if="comparison?.winner" class="winner-display" :class="'winner-' + comparison.winner.toLowerCase()">
-          <v-icon size="36" color="warning">mdi-trophy</v-icon>
+          <LIcon size="36" color="warning">mdi-trophy</LIcon>
           <div class="winner-letter">{{ comparison.winner }}</div>
           <div v-if="comparison.confidence_score" class="confidence-value">
             {{ Math.round(comparison.confidence_score * 100) }}%
@@ -132,15 +132,15 @@
         <div class="thread-messages">
           <div v-for="(msg, idx) in threadBMessages" :key="idx" class="message-item">
             <div class="message-role" :class="msg.role === 'assistant' ? 'role-counsellor' : 'role-client'">
-              <v-icon size="12" class="mr-1">
+              <LIcon size="12" class="mr-1">
                 {{ msg.role === 'assistant' ? 'mdi-message-reply' : 'mdi-account' }}
-              </v-icon>
+              </LIcon>
               {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
             </div>
             <div class="message-text">{{ msg.content }}</div>
           </div>
           <div v-if="!threadBMessages?.length" class="empty-messages">
-            <v-icon size="24">mdi-message-off</v-icon>
+            <LIcon size="24">mdi-message-off</LIcon>
             <span>Keine Nachrichten</span>
           </div>
         </div>
@@ -151,9 +151,9 @@
     <div class="stream-section">
       <div class="stream-header">
         <div class="stream-header-left">
-          <v-icon size="16" :class="{ 'rotating': isStreaming }">
+          <LIcon size="16" :class="{ 'rotating': isStreaming }">
             {{ isStreaming ? 'mdi-loading' : 'mdi-robot' }}
-          </v-icon>
+          </LIcon>
           <span class="stream-title">LLM Analyse</span>
           <v-chip size="x-small" :color="isStreaming ? 'warning' : (streamContent ? 'success' : 'grey')">
             {{ isStreaming ? 'Streamt...' : (streamContent ? 'Fertig' : 'Wartend') }}
@@ -162,10 +162,10 @@
         <div class="stream-header-right">
           <v-btn-toggle v-model="viewMode" density="compact" mandatory>
             <v-btn value="formatted" size="x-small" variant="text" title="Formatiert">
-              <v-icon size="14">mdi-format-list-bulleted</v-icon>
+              <LIcon size="14">mdi-format-list-bulleted</LIcon>
             </v-btn>
             <v-btn value="raw" size="x-small" variant="text" title="Raw JSON">
-              <v-icon size="14">mdi-code-json</v-icon>
+              <LIcon size="14">mdi-code-json</LIcon>
             </v-btn>
           </v-btn-toggle>
           <v-btn
@@ -192,7 +192,7 @@
                 class="cot-step"
               >
                 <div class="cot-step-header">
-                  <v-icon size="14" color="primary">mdi-thought-bubble</v-icon>
+                  <LIcon size="14" color="primary">mdi-thought-bubble</LIcon>
                   <span>{{ formatStepName(key) }}</span>
                 </div>
                 <div class="cot-step-content">{{ step }}</div>
@@ -212,7 +212,7 @@
           <pre v-if="streamContent" class="stream-pre">{{ streamContent }}<span v-if="isStreaming" class="cursor-blink">|</span></pre>
           <div v-else class="stream-empty">
             <v-progress-circular v-if="isStreaming" indeterminate size="24" color="primary"></v-progress-circular>
-            <v-icon v-else size="24">mdi-text-box-outline</v-icon>
+            <LIcon v-else size="24">mdi-text-box-outline</LIcon>
             <span>{{ isStreaming ? 'Warte auf Ausgabe...' : 'Keine Ausgabe' }}</span>
           </div>
         </template>
@@ -226,7 +226,7 @@
           rounded
           @click="enableAutoScroll"
         >
-          <v-icon start size="14">mdi-arrow-down</v-icon>
+          <LIcon start size="14">mdi-arrow-down</LIcon>
           Folgen
         </v-btn>
       </div>

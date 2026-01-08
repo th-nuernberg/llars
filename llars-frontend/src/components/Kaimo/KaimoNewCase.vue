@@ -11,7 +11,7 @@
           <div>
             <div class="d-flex align-center mb-1">
               <v-avatar color="secondary" size="42" class="mr-3">
-                <v-icon color="white">mdi-clipboard-plus-outline</v-icon>
+                <LIcon color="white">mdi-clipboard-plus-outline</LIcon>
               </v-avatar>
               <div>
                 <div class="text-h5 font-weight-bold">KAIMO Fall anlegen</div>
@@ -73,7 +73,7 @@
       <v-col cols="12" md="7">
         <v-card class="pa-4" elevation="2">
           <v-card-title class="px-0">
-            <v-icon class="mr-2" color="secondary">mdi-clipboard-text-outline</v-icon>
+            <LIcon class="mr-2" color="secondary">mdi-clipboard-text-outline</LIcon>
             Neuen Fall anlegen
           </v-card-title>
           <v-card-text class="px-0">
@@ -144,7 +144,7 @@
         <v-card class="pa-4" color="secondary" variant="tonal" elevation="2">
           <div class="d-flex align-center mb-3">
             <v-avatar color="secondary" size="40" class="mr-3">
-              <v-icon color="white">mdi-shield-key-outline</v-icon>
+              <LIcon color="white">mdi-shield-key-outline</LIcon>
             </v-avatar>
             <div>
               <div class="text-subtitle-1 font-weight-bold">Berechtigungen</div>

@@ -40,7 +40,7 @@
         ></v-skeleton-loader>
         <v-card v-else>
           <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
+            <LIcon class="mr-2">mdi-format-list-bulleted</LIcon>
             Meine OnCoCo Analysen
             <v-spacer></v-spacer>
             <v-chip-group v-model="statusFilter" mandatory class="mr-2">
@@ -173,7 +173,7 @@
             <!-- Empty State -->
             <template v-slot:no-data>
               <div class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-1">mdi-chart-bar</v-icon>
+                <LIcon size="64" color="grey-lighten-1">mdi-chart-bar</LIcon>
                 <div class="text-h6 mt-4 text-medium-emphasis">Keine Analysen gefunden</div>
                 <div class="text-body-2 text-medium-emphasis mb-4">
                   Erstellen Sie Ihre erste OnCoCo Analyse, um zu beginnen
@@ -200,7 +200,7 @@
         <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="primary" size="56" class="mr-4">
-              <v-icon icon="mdi-chart-bar" color="white" size="28"></v-icon>
+              <LIcon icon="mdi-chart-bar" color="white" size="28"></LIcon>
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ totalAnalyses }}</div>
@@ -219,7 +219,7 @@
         <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="success" size="56" class="mr-4">
-              <v-icon icon="mdi-check-circle" color="white" size="28"></v-icon>
+              <LIcon icon="mdi-check-circle" color="white" size="28"></LIcon>
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ completedAnalyses }}</div>
@@ -238,7 +238,7 @@
         <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="info" size="56" class="mr-4">
-              <v-icon icon="mdi-play-circle" color="white" size="28"></v-icon>
+              <LIcon icon="mdi-play-circle" color="white" size="28"></LIcon>
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ runningAnalyses }}</div>
@@ -257,7 +257,7 @@
         <v-card v-else class="stat-card">
           <v-card-text class="d-flex align-center">
             <v-avatar color="purple" size="56" class="mr-4">
-              <v-icon icon="mdi-tag-multiple" color="white" size="28"></v-icon>
+              <LIcon icon="mdi-tag-multiple" color="white" size="28"></LIcon>
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ labelCount }}</div>
@@ -278,7 +278,7 @@
         ></v-skeleton-loader>
         <v-card v-else>
           <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2" color="primary">mdi-brain</v-icon>
+            <LIcon class="mr-2" color="primary">mdi-brain</LIcon>
             OnCoCo Modell Status
             <v-spacer></v-spacer>
             <v-chip
@@ -328,7 +328,7 @@
     <v-dialog v-model="deleteDialog" max-width="500">
       <v-card>
         <v-card-title class="text-h5">
-          <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+          <LIcon class="mr-2" color="error">mdi-alert-circle</LIcon>
           Analyse löschen?
         </v-card-title>
         <v-card-text>

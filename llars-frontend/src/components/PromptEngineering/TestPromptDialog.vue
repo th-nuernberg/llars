@@ -10,11 +10,11 @@
       <template #header>
         <div class="dialog-header">
           <div class="header-left">
-            <v-icon size="24" color="primary" class="mr-2">mdi-rocket-launch</v-icon>
+            <LIcon size="24" color="primary" class="mr-2">mdi-rocket-launch</LIcon>
             <span class="header-title">Prompt testen</span>
           </div>
           <v-btn icon variant="text" size="small" @click="closeDialog">
-            <v-icon>mdi-close</v-icon>
+            <LIcon>mdi-close</LIcon>
           </v-btn>
         </div>
       </template>
@@ -26,17 +26,16 @@
             <!-- Model Selection -->
             <div class="config-item">
               <label class="config-label">
-                <v-icon size="14" class="mr-1">mdi-brain</v-icon>
+                <LIcon size="14" class="mr-1">mdi-brain</LIcon>
                 Modell
               </label>
-              <v-select
+              <LlmModelSelect
                 v-model="selectedModel"
-                :items="availableModels"
-                item-title="name"
-                item-value="id"
+                label=""
+                prepend-icon=""
                 density="compact"
-                variant="outlined"
-                hide-details
+                :clearable="false"
+                :hide-details="true"
                 class="config-select"
               />
             </div>
@@ -44,7 +43,7 @@
             <!-- Temperature -->
             <div class="config-item">
               <label class="config-label">
-                <v-icon size="14" class="mr-1">mdi-thermometer</v-icon>
+                <LIcon size="14" class="mr-1">mdi-thermometer</LIcon>
                 Temperatur: {{ temperature.toFixed(2) }}
               </label>
               <v-slider
@@ -61,7 +60,7 @@
             <!-- Max Tokens -->
             <div class="config-item">
               <label class="config-label">
-                <v-icon size="14" class="mr-1">mdi-counter</v-icon>
+                <LIcon size="14" class="mr-1">mdi-counter</LIcon>
                 Max Tokens
               </label>
               <v-text-field
@@ -85,7 +84,7 @@
               @click="jsonMode = !jsonMode"
               class="mode-chip"
             >
-              <v-icon start size="16">mdi-code-json</v-icon>
+              <LIcon start size="16">mdi-code-json</LIcon>
               JSON Mode
             </v-chip>
             <v-chip
@@ -94,7 +93,7 @@
               @click="sngMode = !sngMode"
               class="mode-chip"
             >
-              <v-icon start size="16">mdi-graph</v-icon>
+              <LIcon start size="16">mdi-graph</LIcon>
               SNG Visualisierung
             </v-chip>
           </div>
@@ -103,7 +102,7 @@
         <!-- Examples Section -->
         <div class="examples-section">
           <div class="section-header">
-            <v-icon size="16" class="mr-1">mdi-file-document-multiple</v-icon>
+            <LIcon size="16" class="mr-1">mdi-file-document-multiple</LIcon>
             <span class="section-title">Beispieldaten</span>
           </div>
           <div class="examples-chips">
@@ -116,7 +115,7 @@
               class="example-chip"
             >
               {{ ex.name }}
-              <v-icon v-if="ex.error" end size="14" color="error">mdi-alert-circle</v-icon>
+              <LIcon v-if="ex.error" end size="14" color="error">mdi-alert-circle</LIcon>
             </v-chip>
           </div>
 
@@ -131,7 +130,7 @@
                   size="x-small"
                   @click="showExamplePreview = false"
                 >
-                  <v-icon size="16">mdi-chevron-up</v-icon>
+                  <LIcon size="16">mdi-chevron-up</LIcon>
                 </v-btn>
               </div>
               <pre class="preview-content">{{ selectedExampleFormatted }}</pre>
@@ -153,7 +152,7 @@
         <v-expand-transition>
           <div v-if="jsonMode" class="schema-section">
             <div class="section-header">
-              <v-icon size="16" class="mr-1">mdi-code-braces</v-icon>
+              <LIcon size="16" class="mr-1">mdi-code-braces</LIcon>
               <span class="section-title">JSON Schema</span>
             </div>
             <v-textarea
@@ -171,7 +170,7 @@
         <!-- Sent Prompt Section -->
         <div class="prompt-section">
           <div class="section-header">
-            <v-icon size="16" class="mr-1">mdi-message-text</v-icon>
+            <LIcon size="16" class="mr-1">mdi-message-text</LIcon>
             <span class="section-title">Gesendetes Prompt</span>
             <v-spacer />
             <LBtn
@@ -189,7 +188,7 @@
         <!-- Response Section -->
         <div class="response-section">
           <div class="section-header">
-            <v-icon size="16" class="mr-1">mdi-robot</v-icon>
+            <LIcon size="16" class="mr-1">mdi-robot</LIcon>
             <span class="section-title">Antwort</span>
             <v-spacer />
             <LTag v-if="isStreaming" variant="info" size="small">
@@ -202,7 +201,7 @@
               Generiert...
             </LTag>
             <LTag v-else-if="responseComplete" variant="success" size="small">
-              <v-icon start size="12">mdi-check</v-icon>
+              <LIcon start size="12">mdi-check</LIcon>
               Fertig
             </LTag>
           </div>
@@ -240,12 +239,12 @@
                 :data="networkJson"
               />
               <div v-else-if="parseError" class="sng-error">
-                <v-icon size="48" color="error">mdi-alert-circle</v-icon>
+                <LIcon size="48" color="error">mdi-alert-circle</LIcon>
                 <span class="error-text">Fehler: Ungültiges JSON für SocialNetworkGraph</span>
                 <pre class="error-detail">{{ response }}</pre>
               </div>
               <div v-else class="sng-empty">
-                <v-icon size="48" color="grey">mdi-graph-outline</v-icon>
+                <LIcon size="48" color="grey">mdi-graph-outline</LIcon>
                 <span>Keine Daten zum Plotten verfügbar</span>
               </div>
             </template>
@@ -278,6 +277,7 @@ import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { io } from 'socket.io-client'
 import SocialNetworkGraph from './SocialNetworkGraph.vue'
 import { sanitizeHtml } from '@/utils/sanitize'
+import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 
 // Socket.IO configuration
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
@@ -300,13 +300,7 @@ const emit = defineEmits(['update:modelValue'])
 let socket = null
 
 // Configuration state
-const availableModels = ref([
-  { id: 'mistralai/Mistral-Small-3.2-24B-Instruct-2506', name: 'Mistral Small 3.2 (24B)' },
-  { id: 'mistralai/Mistral-Large-2411', name: 'Mistral Large' },
-  { id: 'gpt-4o', name: 'GPT-4o' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
-])
-const selectedModel = ref('mistralai/Mistral-Small-3.2-24B-Instruct-2506')
+const selectedModel = ref('')
 const temperature = ref(0.15)
 const maxTokens = ref(4096)
 const jsonMode = ref(true)

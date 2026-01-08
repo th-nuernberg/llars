@@ -2,7 +2,7 @@
   <div ref="viewerEl" class="pdf-viewer">
     <div class="pdf-toolbar">
       <div class="d-flex align-center ga-2">
-        <v-icon size="18">mdi-file-pdf-box</v-icon>
+        <LIcon size="18">mdi-file-pdf-box</LIcon>
         <span class="text-body-2">PDF Preview</span>
       </div>
       <div v-if="props.isCompiling" class="pdf-compile-indicator">
@@ -12,16 +12,16 @@
       <v-spacer />
       <div class="pdf-zoom-controls">
         <v-btn icon variant="text" size="x-small" title="Zoom out" @click="zoomOut">
-          <v-icon size="16">mdi-minus</v-icon>
+          <LIcon size="16">mdi-minus</LIcon>
         </v-btn>
         <v-chip size="x-small" variant="tonal" class="pdf-zoom-chip">
           {{ zoomLabel }}
         </v-chip>
         <v-btn icon variant="text" size="x-small" title="Zoom in" @click="zoomIn">
-          <v-icon size="16">mdi-plus</v-icon>
+          <LIcon size="16">mdi-plus</LIcon>
         </v-btn>
         <v-btn icon variant="text" size="x-small" title="Fit width" @click="resetZoom">
-          <v-icon size="16">mdi-arrow-expand-horizontal</v-icon>
+          <LIcon size="16">mdi-arrow-expand-horizontal</LIcon>
         </v-btn>
       </div>
       <v-chip v-if="pageCount" size="x-small" variant="tonal">
@@ -37,7 +37,7 @@
 
     <div v-else class="pdf-body">
       <div v-if="!hasPdf && !showLoading" class="pdf-empty">
-        <v-icon size="36" color="grey">mdi-file-pdf-box</v-icon>
+        <LIcon size="36" color="grey">mdi-file-pdf-box</LIcon>
         <div class="text-body-2 text-medium-emphasis mt-2">Noch kein PDF gerendert</div>
       </div>
 

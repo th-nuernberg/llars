@@ -21,7 +21,7 @@
               :size="isMobile ? 'small' : 'default'"
               @click="openWizard()"
             >
-              <v-icon v-if="isMobile" size="18" class="mr-1">mdi-wizard-hat</v-icon>
+              <LIcon v-if="isMobile" size="18" class="mr-1">mdi-wizard-hat</LIcon>
               {{ isMobile ? 'Wizard' : 'Builder Wizard' }}
             </LBtn>
             <LBtn
@@ -30,7 +30,7 @@
               :size="isMobile ? 'small' : 'default'"
               @click="openCreateDialog"
             >
-              <v-icon v-if="isMobile" size="18" class="mr-1">mdi-plus</v-icon>
+              <LIcon v-if="isMobile" size="18" class="mr-1">mdi-plus</LIcon>
               {{ isMobile ? 'Neu' : 'Neuer Chatbot' }}
             </LBtn>
           </div>
@@ -50,7 +50,7 @@
             </v-card>
             <v-card v-else variant="tonal" color="primary">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-robot</v-icon>
+                <LIcon size="28" class="mr-3">llars:chatbot-manage</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ stats.total_chatbots }}</div>
                   <div class="text-caption">Chatbots</div>
@@ -70,7 +70,7 @@
             </v-card>
             <v-card v-else variant="tonal" color="success">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-check-circle</v-icon>
+                <LIcon size="28" class="mr-3">mdi-check-circle</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ stats.active_chatbots }}</div>
                   <div class="text-caption">Aktiv</div>
@@ -90,7 +90,7 @@
             </v-card>
             <v-card v-else variant="tonal" color="info">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-message-text</v-icon>
+                <LIcon size="28" class="mr-3">mdi-message-text</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ stats.total_conversations }}</div>
                   <div class="text-caption">Gespräche</div>
@@ -110,7 +110,7 @@
             </v-card>
             <v-card v-else variant="tonal" color="warning">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-folder-multiple</v-icon>
+                <LIcon size="28" class="mr-3">mdi-folder-multiple</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ collectionsCount }}</div>
                   <div class="text-caption">Collections</div>
@@ -126,7 +126,7 @@
         <LTabs
           v-model="activeTab"
           :tabs="[
-            { value: 'chatbots', label: 'Chatbots', icon: 'mdi-robot' },
+            { value: 'chatbots', label: 'Chatbots', icon: 'llars:chatbot-manage' },
             { value: 'collections', label: 'Collections', icon: 'mdi-folder-multiple' },
             { value: 'documents', label: 'Dokumente', icon: 'mdi-file-document-multiple' }
           ]"
@@ -272,7 +272,7 @@
         <v-skeleton-loader v-if="shareLoading" type="paragraph@2, list-item" />
         <div v-else>
           <div class="section-label mt-2">
-            <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+            <LIcon size="16" class="mr-1">mdi-account-multiple-plus</LIcon>
             Nutzer hinzufügen
           </div>
           <div v-if="shareUsernames.length > 0" class="invited-users mb-2">

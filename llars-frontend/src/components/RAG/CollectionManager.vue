@@ -106,7 +106,7 @@
         <!-- Empty State -->
         <v-col v-if="!collections || collections.length === 0" cols="12">
           <LCard outlined class="text-center pa-8">
-            <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open</v-icon>
+            <LIcon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open</LIcon>
             <div class="text-h5 mb-2">Keine Collections vorhanden</div>
             <div class="text-medium-emphasis mb-4">
               Erstellen Sie Ihre erste Collection, um Dokumente zu organisieren.

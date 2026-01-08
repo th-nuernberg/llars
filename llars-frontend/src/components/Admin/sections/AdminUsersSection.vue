@@ -107,7 +107,7 @@
             <!-- Roles Section -->
             <v-col cols="12" md="6">
               <h4 class="text-subtitle-1 font-weight-bold mb-3">
-                <v-icon class="mr-1">mdi-shield-account</v-icon>
+                <LIcon class="mr-1">mdi-shield-account</LIcon>
                 Zugewiesene Rollen
               </h4>
               <div class="d-flex flex-wrap gap-2 mb-3">
@@ -153,7 +153,7 @@
             <!-- Permissions Section -->
             <v-col cols="12" md="6">
               <h4 class="text-subtitle-1 font-weight-bold mb-3">
-                <v-icon class="mr-1">mdi-key</v-icon>
+                <LIcon class="mr-1">mdi-key</LIcon>
                 Effektive Berechtigungen ({{ selectedUser.permissions.length }})
               </h4>
               <div class="permissions-list">
@@ -184,7 +184,7 @@
     <!-- Users Table -->
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-account-group</v-icon>
+        <LIcon class="mr-2">mdi-account-group</LIcon>
         Benutzer
         <v-spacer></v-spacer>
         <LBtn variant="text" @click="loadUsers" :loading="loadingUsers" prepend-icon="mdi-refresh">
@@ -262,7 +262,7 @@
 
           <template v-slot:no-data>
             <div class="text-center py-8">
-              <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-account-search</v-icon>
+              <LIcon size="48" class="mb-2 text-medium-emphasis">mdi-account-search</LIcon>
               <div class="text-medium-emphasis">
                 {{ searchQuery ? 'Keine Benutzer gefunden' : 'Suchen Sie nach einem Benutzer oder laden Sie alle Benutzer mit Rollen' }}
               </div>
@@ -276,7 +276,7 @@
     <v-dialog v-model="createDialog" max-width="600">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-account-plus</v-icon>
+          <LIcon class="mr-2">mdi-account-plus</LIcon>
           Benutzer anlegen
           <v-spacer></v-spacer>
           <LIconBtn icon="mdi-close" @click="createDialog = false" />
@@ -448,7 +448,7 @@
     <v-dialog v-model="deleteDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="error">mdi-alert</v-icon>
+          <LIcon class="mr-2" color="error">mdi-alert</LIcon>
           Benutzer löschen
           <v-spacer></v-spacer>
           <LIconBtn icon="mdi-close" @click="deleteDialog = false" />

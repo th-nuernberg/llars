@@ -7,7 +7,7 @@
   >
     <v-card v-if="document">
       <v-card-title class="d-flex align-center pa-4">
-        <v-icon :icon="getFileIcon(document.file_type)" :color="getFileColor(document.file_type)" class="mr-2"></v-icon>
+        <LIcon :icon="getFileIcon(document.file_type)" :color="getFileColor(document.file_type)" class="mr-2"></LIcon>
         {{ document.filename }}
         <v-spacer></v-spacer>
         <v-btn
@@ -22,19 +22,19 @@
       <v-card-text class="pa-0" style="height: 650px;">
         <v-tabs v-model="activeTab" bg-color="surface-variant">
           <v-tab value="info">
-            <v-icon icon="mdi-information" class="mr-2"></v-icon>
+            <LIcon icon="mdi-information" class="mr-2"></LIcon>
             Info
           </v-tab>
           <v-tab v-if="documentDetails?.has_screenshot" value="screenshot">
-            <v-icon icon="mdi-image" class="mr-2"></v-icon>
+            <LIcon icon="mdi-image" class="mr-2"></LIcon>
             Screenshot
           </v-tab>
           <v-tab value="content">
-            <v-icon icon="mdi-text" class="mr-2"></v-icon>
+            <LIcon icon="mdi-text" class="mr-2"></LIcon>
             Inhalt
           </v-tab>
           <v-tab value="chunks">
-            <v-icon icon="mdi-puzzle" class="mr-2"></v-icon>
+            <LIcon icon="mdi-puzzle" class="mr-2"></LIcon>
             Chunks ({{ document.chunk_count || 0 }})
           </v-tab>
         </v-tabs>
@@ -99,7 +99,7 @@
                     <v-card variant="outlined">
                       <v-card-text class="pa-3">
                         <div class="d-flex align-center">
-                          <v-icon size="small" color="info" class="mr-2">mdi-web</v-icon>
+                          <LIcon size="small" color="info" class="mr-2">mdi-web</LIcon>
                           <a
                             :href="documentDetails.source_url"
                             target="_blank"
@@ -191,7 +191,7 @@
               <div v-else class="screenshot-container">
                 <!-- Source URL -->
                 <div v-if="documentDetails?.source_url" class="d-flex align-center mb-2 text-caption text-medium-emphasis">
-                  <v-icon size="14" class="mr-1">mdi-web</v-icon>
+                  <LIcon size="14" class="mr-1">mdi-web</LIcon>
                   <a :href="documentDetails.source_url" target="_blank" class="source-link text-truncate">
                     {{ documentDetails.source_url }}
                   </a>
@@ -213,7 +213,7 @@
                     </template>
                   </v-img>
                   <div v-else class="text-center pa-8 text-medium-emphasis">
-                    <v-icon size="48" class="mb-2">mdi-image-off</v-icon>
+                    <LIcon size="48" class="mb-2">mdi-image-off</LIcon>
                     <div>Screenshot nicht verfügbar</div>
                   </div>
                 </v-card>
@@ -239,7 +239,7 @@
                     {{ content }}
                   </div>
                   <div v-else class="text-center text-medium-emphasis pa-8">
-                    <v-icon size="48" class="mb-2">mdi-file-document-outline</v-icon>
+                    <LIcon size="48" class="mb-2">mdi-file-document-outline</LIcon>
                     <div>Kein Inhalt verfügbar</div>
                   </div>
                 </v-card-text>
@@ -260,7 +260,7 @@
                   <!-- Text Chunks -->
                   <div v-if="textChunks.length > 0">
                     <div class="text-subtitle-2 text-medium-emphasis mb-2 d-flex align-center">
-                      <v-icon size="18" class="mr-1">mdi-text</v-icon>
+                      <LIcon size="18" class="mr-1">mdi-text</LIcon>
                       Text‑Chunks ({{ textChunks.length }})
                     </div>
                     <v-expansion-panels variant="accordion">
@@ -289,7 +289,7 @@
                   <!-- Image / Screenshot Chunks -->
                   <div v-if="imageChunks.length > 0" class="mt-4">
                     <div class="text-subtitle-2 text-medium-emphasis mb-2 d-flex align-center">
-                      <v-icon size="18" class="mr-1" color="info">mdi-image</v-icon>
+                      <LIcon size="18" class="mr-1" color="info">mdi-image</LIcon>
                       Bild‑/Screenshot‑Chunks ({{ imageChunks.length }})
                     </div>
                     <v-expansion-panels variant="accordion">
@@ -300,7 +300,7 @@
                         <v-expansion-panel-title>
                           <div class="d-flex align-center">
                             <v-chip size="small" class="mr-2">{{ index + 1 }}</v-chip>
-                            <v-icon size="small" color="info" class="mr-1">mdi-image</v-icon>
+                            <LIcon size="small" color="info" class="mr-1">mdi-image</LIcon>
                             <span class="text-truncate">{{ chunk.content ? chunk.content.substring(0, 100) + '...' : '[Bild/Screenshot]' }}</span>
                           </div>
                         </v-expansion-panel-title>
@@ -320,7 +320,7 @@
                                 </template>
                                 <template #error>
                                   <div class="d-flex align-center justify-center fill-height text-medium-emphasis">
-                                    <v-icon class="mr-1">mdi-image-broken</v-icon>
+                                    <LIcon class="mr-1">mdi-image-broken</LIcon>
                                     Bild konnte nicht geladen werden
                                   </div>
                                 </template>
@@ -347,7 +347,7 @@
 
                 <v-card v-else variant="outlined">
                   <v-card-text class="text-center pa-8">
-                    <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-puzzle-outline</v-icon>
+                    <LIcon size="48" class="mb-2 text-medium-emphasis">mdi-puzzle-outline</LIcon>
                     <div class="text-medium-emphasis">Keine Chunks vorhanden</div>
                   </v-card-text>
                 </v-card>

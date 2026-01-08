@@ -9,7 +9,7 @@
       <v-card variant="tonal" color="primary" class="pa-4">
         <div class="d-flex align-center mb-2">
           <v-avatar :color="chatbot.color || 'primary'" size="32" class="mr-2">
-            <v-icon color="white" size="18">{{ chatbot.icon || 'mdi-robot' }}</v-icon>
+            <LIcon color="white" size="18">{{ chatbot.icon || 'mdi-robot' }}</LIcon>
           </v-avatar>
           <span class="font-weight-bold">{{ chatbot.display_name }}</span>
         </div>
@@ -26,7 +26,7 @@
       <!-- Bot Avatar -->
       <template v-if="message.sender === 'bot'">
         <v-avatar :color="chatbot?.color || 'primary'" size="36" class="message-avatar">
-          <v-icon color="white" size="20">{{ chatbot?.icon || 'mdi-robot' }}</v-icon>
+          <LIcon color="white" size="20">{{ chatbot?.icon || 'mdi-robot' }}</LIcon>
         </v-avatar>
       </template>
 
@@ -40,9 +40,9 @@
             variant="outlined"
             class="mr-1 mb-1"
           >
-            <v-icon start size="14">
+            <LIcon start size="14">
               {{ getFileIcon(file.type) }}
-            </v-icon>
+            </LIcon>
             {{ file.filename }}
           </v-chip>
         </div>
@@ -57,7 +57,7 @@
         <div v-if="message.sources && message.sources.length > 0" class="message-sources mt-2">
           <div class="sources-legend">
             <div class="sources-header text-caption d-flex align-center mb-1">
-              <v-icon size="14" class="mr-1">mdi-bookmark-multiple</v-icon>
+              <LIcon size="14" class="mr-1">mdi-bookmark-multiple</LIcon>
               <span>Quellen</span>
             </div>
             <div class="sources-list">

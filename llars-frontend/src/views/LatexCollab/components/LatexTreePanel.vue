@@ -71,11 +71,11 @@
     <div v-if="treeCollapsed" class="tree-collapsed" @click="$emit('update:treeCollapsed', false)">
       <div class="collapsed-bar">
         <div class="collapsed-icon-box">
-          <v-icon size="18">mdi-file-tree</v-icon>
+          <LIcon size="18">mdi-file-tree</LIcon>
         </div>
         <span class="collapsed-label">Dateien</span>
         <v-spacer />
-        <v-icon size="18" class="expand-icon">mdi-chevron-right</v-icon>
+        <LIcon size="18" class="expand-icon">mdi-chevron-right</LIcon>
       </div>
     </div>
 
@@ -107,7 +107,7 @@
                 title="Asset hochladen"
                 @click.stop="$emit('open-asset-picker')"
               >
-                <v-icon size="18">mdi-paperclip</v-icon>
+                <LIcon size="18">mdi-paperclip</LIcon>
               </v-btn>
               <v-btn
                 icon
@@ -116,7 +116,7 @@
                 title="Einklappen"
                 @click.stop="$emit('update:treeCollapsed', true)"
               >
-                <v-icon size="18">mdi-chevron-left</v-icon>
+                <LIcon size="18">mdi-chevron-left</LIcon>
               </v-btn>
             </template>
           </MarkdownTreePanel>

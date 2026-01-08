@@ -24,7 +24,7 @@
         <v-skeleton-loader v-if="loadingStats" type="text" width="60"></v-skeleton-loader>
         <template v-else>
           <v-avatar :color="stat.color" size="40" class="stat-avatar">
-            <v-icon :icon="stat.icon" color="white" size="20"></v-icon>
+            <LIcon :icon="stat.icon" color="white" size="20"></LIcon>
           </v-avatar>
           <div class="stat-content">
             <div class="stat-value">{{ stat.value }}</div>
@@ -39,7 +39,7 @@
       <!-- Left Panel: Sessions Table -->
       <div class="left-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2" size="small">mdi-format-list-bulleted</v-icon>
+          <LIcon class="mr-2" size="small">mdi-format-list-bulleted</LIcon>
           <span class="font-weight-medium">Meine Sessions</span>
           <v-spacer></v-spacer>
           <v-chip-group v-model="statusFilter" mandatory density="compact" class="filter-chips">
@@ -66,7 +66,7 @@
 
             <!-- Sessions List -->
             <div v-if="filteredSessions.length === 0" class="empty-state">
-              <v-icon size="48" color="grey-lighten-1">mdi-folder-open</v-icon>
+              <LIcon size="48" color="grey-lighten-1">mdi-folder-open</LIcon>
               <div class="text-body-1 mt-2 text-medium-emphasis">Keine Sessions</div>
               <LBtn
                 variant="primary"
@@ -147,7 +147,7 @@
       <!-- Right Panel: KIA Data Sync (hidden on mobile) -->
       <div v-if="!isMobile" class="right-panel" :style="rightPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2" size="small">mdi-database-sync</v-icon>
+          <LIcon class="mr-2" size="small">mdi-database-sync</LIcon>
           <span class="font-weight-medium">KIA Daten-Sync</span>
         </div>
         <div class="panel-content">
@@ -165,7 +165,7 @@
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
         <v-card-title class="text-subtitle-1">
-          <v-icon class="mr-2" color="error" size="small">mdi-alert-circle</v-icon>
+          <LIcon class="mr-2" color="error" size="small">mdi-alert-circle</LIcon>
           Session löschen?
         </v-card-title>
         <v-card-text class="text-body-2">

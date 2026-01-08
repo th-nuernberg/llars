@@ -8,7 +8,7 @@
   <div class="tree-outline-panel" :class="{ collapsed: collapsed }">
     <div class="tree-outline-header">
       <div class="tree-outline-title">
-        <v-icon size="14">mdi-format-list-bulleted</v-icon>
+        <LIcon size="14">mdi-format-list-bulleted</LIcon>
         Verzeichnis
       </div>
       <v-btn
@@ -18,7 +18,7 @@
         :title="collapsed ? 'Verzeichnis anzeigen' : 'Verzeichnis ausblenden'"
         @click="$emit('toggle-collapsed')"
       >
-        <v-icon size="16">{{ collapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+        <LIcon size="16">{{ collapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
       </v-btn>
     </div>
     <div v-if="!collapsed" class="tree-outline-list">
@@ -38,9 +38,9 @@
           :title="isItemCollapsed(item.id) ? 'Aufklappen' : 'Einklappen'"
           @click.stop="$emit('toggle-item', item.id)"
         >
-          <v-icon size="14">
+          <LIcon size="14">
             {{ isItemCollapsed(item.id) ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
-          </v-icon>
+          </LIcon>
         </button>
         <span v-else class="tree-outline-spacer"></span>
         <button

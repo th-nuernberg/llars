@@ -7,7 +7,7 @@
   >
     <v-card>
       <v-card-title class="text-h5 pa-4">
-        <v-icon :icon="isEdit ? 'mdi-pencil' : 'mdi-plus'" class="mr-2"></v-icon>
+        <LIcon :icon="isEdit ? 'mdi-pencil' : 'mdi-plus'" class="mr-2"></LIcon>
         {{ isEdit ? 'Collection bearbeiten' : 'Neue Collection erstellen' }}
       </v-card-title>
 
@@ -64,13 +64,13 @@
                   density="comfortable"
                 >
                   <template v-slot:selection="{ item }">
-                    <v-icon :icon="item.raw.icon" class="mr-2"></v-icon>
+                    <LIcon :icon="item.raw.icon" class="mr-2"></LIcon>
                     {{ item.raw.title }}
                   </template>
                   <template v-slot:item="{ item, props }">
                     <v-list-item v-bind="props">
                       <template v-slot:prepend>
-                        <v-icon :icon="item.raw.icon"></v-icon>
+                        <LIcon :icon="item.raw.icon"></LIcon>
                       </template>
                     </v-list-item>
                   </template>
@@ -118,7 +118,7 @@
           <v-expansion-panels variant="accordion">
             <v-expansion-panel>
               <v-expansion-panel-title>
-                <v-icon icon="mdi-cog" class="mr-2"></v-icon>
+                <LIcon icon="mdi-cog" class="mr-2"></LIcon>
                 Erweiterte Einstellungen
               </v-expansion-panel-title>
               <v-expansion-panel-text>

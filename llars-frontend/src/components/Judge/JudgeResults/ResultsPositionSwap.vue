@@ -2,7 +2,7 @@
   <!-- Detailed Position Swap Analysis -->
   <div class="results-card position-swap-card" v-if="detailedAnalysis && detailedAnalysis.summary">
     <div class="card-header">
-      <v-icon class="header-icon">mdi-swap-horizontal</v-icon>
+      <LIcon class="header-icon">mdi-swap-horizontal</LIcon>
       <span class="header-title">Position-Swap Konsistenz (MT-Bench Methodik)</span>
       <div class="header-tags">
         <LTag
@@ -93,12 +93,12 @@
             <!-- Likert Stability Analysis -->
             <v-card variant="outlined" class="mb-4" v-if="detailedAnalysis.likert_stability && Object.keys(detailedAnalysis.likert_stability).length">
               <v-card-title class="text-subtitle-1">
-                <v-icon class="mr-2" size="small">mdi-chart-bell-curve</v-icon>
+                <LIcon class="mr-2" size="small">mdi-chart-bell-curve</LIcon>
                 Likert-Score Stabilität bei Position-Swap
                 <a href="https://arxiv.org/abs/2310.05470" target="_blank" class="source-link ml-1" title="Auto-J / Li et al. 2023">³</a>
                 <v-tooltip location="top">
                   <template v-slot:activator="{ props }">
-                    <v-icon v-bind="props" size="small" class="ml-2">mdi-information-outline</v-icon>
+                    <LIcon v-bind="props" size="small" class="ml-2">mdi-information-outline</LIcon>
                   </template>
                   <span>Misst wie stark sich Likert-Scores für denselben Thread ändern, wenn seine Position (A↔B) getauscht wird. Niedrigere Deltas = stabiler. (Auto-J Calibration)</span>
                 </v-tooltip>
@@ -136,7 +136,7 @@
             <!-- Detailed Pair Analysis Table -->
             <v-card variant="outlined" v-if="detailedAnalysis.pairs?.length">
               <v-card-title class="text-subtitle-1 d-flex align-center">
-                <v-icon class="mr-2" size="small">mdi-table</v-icon>
+                <LIcon class="mr-2" size="small">mdi-table</LIcon>
                 Detaillierte Paar-Analyse
                 <v-chip size="x-small" class="ml-2" color="info">
                   {{ detailedAnalysis.pairs.length }} Paare
@@ -187,7 +187,7 @@
                     :color="item.is_consistent ? 'success' : 'error'"
                     variant="flat"
                   >
-                    <v-icon start size="x-small">{{ item.is_consistent ? 'mdi-check' : 'mdi-alert' }}</v-icon>
+                    <LIcon start size="x-small">{{ item.is_consistent ? 'mdi-check' : 'mdi-alert' }}</LIcon>
                     {{ item.consistency_type === 'consistent_win' ? 'Win' :
                        item.consistency_type === 'consistent_tie' ? 'Tie' :
                        'Inkonsistent' }}
@@ -221,7 +221,7 @@
                     <td :colspan="columns.length" class="expanded-content pa-4">
                       <v-card variant="outlined">
                         <v-card-title class="text-subtitle-2">
-                          <v-icon class="mr-2" size="small">mdi-chart-bar</v-icon>
+                          <LIcon class="mr-2" size="small">mdi-chart-bar</LIcon>
                           Likert-Score Vergleich (Original vs Swapped)
                         </v-card-title>
                         <v-divider></v-divider>
@@ -285,7 +285,7 @@
             <v-expansion-panels class="mt-4" v-if="detailedAnalysis.methodology">
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  <v-icon class="mr-2" size="small">mdi-book-open-variant</v-icon>
+                  <LIcon class="mr-2" size="small">mdi-book-open-variant</LIcon>
                   Methodik & Referenzen
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -295,7 +295,7 @@
                   <v-list density="compact">
                     <v-list-item v-for="(data, metric) in detailedAnalysis.methodology.metrics_explanation" :key="metric">
                       <template v-slot:prepend>
-                        <v-icon size="small">mdi-circle-small</v-icon>
+                        <LIcon size="small">mdi-circle-small</LIcon>
                       </template>
                       <v-list-item-title class="text-body-2">
                         <strong>{{ metric }}:</strong>
@@ -353,7 +353,7 @@
     <v-col cols="12">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-swap-horizontal</v-icon>
+          <LIcon class="mr-2">mdi-swap-horizontal</LIcon>
           Position-Swap Konsistenz
           <v-chip
             class="ml-3"
@@ -396,9 +396,9 @@
                 </v-chip>
               </template>
               <template v-slot:item.consistent="{ item }">
-                <v-icon :color="item.isConsistent ? 'success' : 'error'">
+                <LIcon :color="item.isConsistent ? 'success' : 'error'">
                   {{ item.isConsistent ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-                </v-icon>
+                </LIcon>
               </template>
             </v-data-table>
           </template>

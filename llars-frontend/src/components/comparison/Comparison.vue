@@ -50,7 +50,7 @@
           </div>
 
           <div v-if="sessions.length === 0" class="empty-state">
-            <v-icon size="64" color="grey-lighten-1">mdi-compare-horizontal</v-icon>
+            <LIcon size="64" color="grey-lighten-1">mdi-compare-horizontal</LIcon>
             <h3>Keine Sessions verfügbar</h3>
             <p class="text-medium-emphasis">
               Es wurden noch keine Gegenüberstellungs-Sessions erstellt.

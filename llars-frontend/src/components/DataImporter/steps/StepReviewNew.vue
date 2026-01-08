@@ -5,7 +5,7 @@
       <!-- Left: Scenario Config -->
       <div class="config-section">
         <div class="section-header">
-          <v-icon size="20" class="mr-2" color="primary">mdi-folder-cog</v-icon>
+          <LIcon size="20" class="mr-2" color="primary">mdi-folder-cog</LIcon>
           <span>Szenario-Einstellungen</span>
         </div>
 
@@ -32,7 +32,7 @@
                 :class="{ 'task-type-btn--selected': localScenarioConfig.taskType === taskType.value }"
                 @click="localScenarioConfig.taskType = taskType.value"
               >
-                <v-icon size="20" class="mb-1">{{ taskType.icon }}</v-icon>
+                <LIcon size="20" class="mb-1">{{ taskType.icon }}</LIcon>
                 <span class="task-type-label">{{ taskType.label }}</span>
               </button>
             </div>
@@ -62,7 +62,7 @@
       <!-- Right: Analysis Summary -->
       <div class="config-section">
         <div class="section-header">
-          <v-icon size="20" class="mr-2" color="success">mdi-check-decagram</v-icon>
+          <LIcon size="20" class="mr-2" color="success">mdi-check-decagram</LIcon>
           <span>KI-Analyse</span>
         </div>
 
@@ -83,7 +83,7 @@
                 class="mapping-item"
               >
                 <code>{{ source }}</code>
-                <v-icon size="12" class="mx-1">mdi-arrow-right</v-icon>
+                <LIcon size="12" class="mx-1">mdi-arrow-right</LIcon>
                 <span>{{ target }}</span>
               </div>
             </div>
@@ -130,7 +130,7 @@
         </div>
 
         <div v-else class="no-analysis">
-          <v-icon size="48" color="grey-lighten-1">mdi-robot-confused</v-icon>
+          <LIcon size="48" color="grey-lighten-1">mdi-robot-confused</LIcon>
           <span class="text-body-2 text-medium-emphasis mt-2">
             Keine KI-Analyse durchgeführt
           </span>
@@ -141,7 +141,7 @@
     <!-- Data Overview -->
     <div class="data-overview mt-6">
       <div class="section-header">
-        <v-icon size="20" class="mr-2" color="accent">mdi-database</v-icon>
+        <LIcon size="20" class="mr-2" color="accent">mdi-database</LIcon>
         <span>Daten-Übersicht</span>
         <v-spacer />
         <span class="data-count">{{ sessions.length }} Dateien</span>

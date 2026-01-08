@@ -4,7 +4,7 @@
     <div v-if="!expanded" class="git-panel-collapsed" @click="expanded = true">
       <div class="collapsed-content">
         <div class="collapsed-icon-box">
-          <v-icon size="18">mdi-source-branch</v-icon>
+          <LIcon size="18">mdi-source-branch</LIcon>
         </div>
         <span class="collapsed-label">Git</span>
         <LTag
@@ -22,7 +22,7 @@
           Keine Änderungen
         </LTag>
         <v-spacer />
-        <v-icon size="18" class="expand-icon">mdi-chevron-up</v-icon>
+        <LIcon size="18" class="expand-icon">mdi-chevron-up</LIcon>
       </div>
     </div>
 
@@ -31,7 +31,7 @@
       <!-- Header -->
       <div class="panel-header">
         <div class="header-icon-box">
-          <v-icon size="20" color="white">mdi-source-branch</v-icon>
+          <LIcon size="20" color="white">mdi-source-branch</LIcon>
         </div>
         <span class="header-title">Git Panel</span>
         <LTag
@@ -53,7 +53,7 @@
             title="Aktualisieren"
             @click="loadCommits(true)"
           >
-            <v-icon size="18">mdi-refresh</v-icon>
+            <LIcon size="18">mdi-refresh</LIcon>
           </v-btn>
           <v-btn
             icon
@@ -62,7 +62,7 @@
             title="Einklappen"
             @click="expanded = false"
           >
-            <v-icon size="18">mdi-chevron-down</v-icon>
+            <LIcon size="18">mdi-chevron-down</LIcon>
           </v-btn>
         </div>
       </div>
@@ -78,7 +78,7 @@
           <!-- Left: Commit Section -->
           <div class="commit-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-pencil-plus</v-icon>
+              <LIcon size="16" class="mr-1">mdi-pencil-plus</LIcon>
               Änderungen committen
             </div>
 
@@ -126,7 +126,7 @@
           <!-- Right: History Section -->
           <div class="history-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-history</v-icon>
+              <LIcon size="16" class="mr-1">mdi-history</LIcon>
               History ({{ commits.length }})
             </div>
 

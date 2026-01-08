@@ -50,7 +50,7 @@
           </div>
 
           <div v-if="threads.length === 0" class="empty-state">
-            <v-icon size="64" color="grey-lighten-1">mdi-clipboard-text-off-outline</v-icon>
+            <LIcon size="64" color="grey-lighten-1">mdi-clipboard-text-off-outline</LIcon>
             <h3>Keine Threads verfügbar</h3>
             <p class="text-medium-emphasis">
               Stelle sicher, dass ein aktives Szenario existiert und Threads zugewiesen sind.

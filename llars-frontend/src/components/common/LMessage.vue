@@ -8,7 +8,7 @@
       <!-- Header -->
       <div class="l-message__header">
         <LTag :variant="tagVariant" size="small">
-          <v-icon v-if="showIcon" size="14" class="mr-1">{{ senderIcon }}</v-icon>
+          <LIcon v-if="showIcon" size="14" class="mr-1">{{ senderIcon }}</LIcon>
           {{ sender }}
         </LTag>
         <span v-if="timestamp" class="l-message__timestamp">{{ formattedTimestamp }}</span>

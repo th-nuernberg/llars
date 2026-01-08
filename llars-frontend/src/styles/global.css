@@ -14,6 +14,8 @@
 /* Local Roboto font stack (no Google Fonts) */
 :root {
   --v-font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  --llars-icon-stroke: 1.35;
+  --llars-icon-hover-scale: 1.04;
 }
 
 body,

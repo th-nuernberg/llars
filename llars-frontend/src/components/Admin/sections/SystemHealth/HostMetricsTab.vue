@@ -88,7 +88,7 @@
     <!-- Disk Usage -->
     <div class="section-card">
       <h3 class="section-card__title">
-        <v-icon icon="mdi-harddisk" size="18" class="mr-2" />
+        <LIcon icon="mdi-harddisk" size="18" class="mr-2" />
         Disk Usage
       </h3>
       <div class="disk-list">
@@ -124,7 +124,7 @@
     <!-- System Info -->
     <div class="section-card">
       <h3 class="section-card__title">
-        <v-icon icon="mdi-information" size="18" class="mr-2" />
+        <LIcon icon="mdi-information" size="18" class="mr-2" />
         System Info
       </h3>
       <div class="info-grid">

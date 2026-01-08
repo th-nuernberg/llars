@@ -7,11 +7,13 @@
  *
  * Usage (after global registration):
  *   <LBtn variant="primary">Click me</LBtn>
+ *   <LIcon icon="mdi-information" />
  *   <LIconBtn icon="mdi-delete" variant="danger" tooltip="Löschen" />
  */
 
 // Button Components
 export { default as LBtn } from './LBtn.vue'
+export { default as LIcon } from './LIcon.vue'
 export { default as LIconBtn } from './LIconBtn.vue'
 export { default as LInfoTooltip } from './LInfoTooltip.vue'
 export { default as LActionGroup } from './LActionGroup.vue'
@@ -41,6 +43,7 @@ export const LlarsComponents = {
   install(app) {
     // Register all components globally
     app.component('LBtn', () => import('./LBtn.vue'))
+    app.component('LIcon', () => import('./LIcon.vue'))
     app.component('LIconBtn', () => import('./LIconBtn.vue'))
     app.component('LInfoTooltip', () => import('./LInfoTooltip.vue'))
     app.component('LActionGroup', () => import('./LActionGroup.vue'))

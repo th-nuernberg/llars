@@ -3,7 +3,7 @@
     <!-- Pillar Ranking Card -->
     <div class="results-card">
       <div class="card-header">
-        <v-icon class="header-icon">mdi-podium</v-icon>
+        <LIcon class="header-icon">mdi-podium</LIcon>
         <span class="header-title">Säulen-Ranking</span>
       </div>
       <div class="card-content">
@@ -39,7 +39,7 @@
           </div>
 
           <div v-if="pillarRanking.length === 0" class="empty-state">
-            <v-icon size="48" color="grey-lighten-1">mdi-chart-line</v-icon>
+            <LIcon size="48" color="grey-lighten-1">mdi-chart-line</LIcon>
             <div class="empty-text">Keine Daten verfügbar</div>
           </div>
         </template>
@@ -49,7 +49,7 @@
     <!-- Win Matrix Heatmap -->
     <div class="results-card">
       <div class="card-header">
-        <v-icon class="header-icon">mdi-grid</v-icon>
+        <LIcon class="header-icon">mdi-grid</LIcon>
         <span class="header-title">Vergleichs-Matrix</span>
       </div>
       <div class="card-content">

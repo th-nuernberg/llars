@@ -4,16 +4,16 @@
     <div class="kia-header">
       <div class="d-flex align-center">
         <div class="gitlab-icon-wrapper">
-          <v-icon size="20" color="white">mdi-gitlab</v-icon>
+          <LIcon size="20" color="white">mdi-gitlab</LIcon>
         </div>
         <div class="ml-3">
           <div class="text-subtitle-2 font-weight-bold">KIA Datenquellen</div>
           <div class="text-caption text-medium-emphasis">
             <span v-if="gitlabConnected" class="text-success">
-              <v-icon size="12" class="mr-1">mdi-check-circle</v-icon>Verbunden
+              <LIcon size="12" class="mr-1">mdi-check-circle</LIcon>Verbunden
             </span>
             <span v-else class="text-warning">
-              <v-icon size="12" class="mr-1">mdi-alert</v-icon>Token erforderlich
+              <LIcon size="12" class="mr-1">mdi-alert</LIcon>Token erforderlich
             </span>
           </div>
         </div>
@@ -29,7 +29,7 @@
           :loading="checking"
           @click="forceRefresh"
         >
-          <v-icon size="18">mdi-refresh</v-icon>
+          <LIcon size="18">mdi-refresh</LIcon>
         </v-btn>
       </div>
     </div>
@@ -49,11 +49,11 @@
           <div class="pillar-name">{{ pillar.name }}</div>
           <div class="pillar-stats">
             <span v-if="pillar.db_thread_count > 0" class="stat-item">
-              <v-icon size="12">mdi-database</v-icon>
+              <LIcon size="12">mdi-database</LIcon>
               {{ pillar.db_thread_count }}
             </span>
             <span v-if="pillar.gitlab_file_count > 0" class="stat-item">
-              <v-icon size="12">mdi-file-document-multiple</v-icon>
+              <LIcon size="12">mdi-file-document-multiple</LIcon>
               {{ pillar.gitlab_file_count }}
             </span>
             <span v-if="pillar.gitlab_status !== 'available'" class="stat-item text-medium-emphasis">
@@ -70,7 +70,7 @@
           @click="syncPillar(num)"
           class="sync-btn"
         >
-          <v-icon size="16">mdi-sync</v-icon>
+          <LIcon size="16">mdi-sync</LIcon>
         </v-btn>
       </div>
     </div>
@@ -125,7 +125,7 @@
     <v-dialog v-model="showTokenDialog" max-width="400">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="orange">mdi-gitlab</v-icon>
+          <LIcon class="mr-2" color="orange">mdi-gitlab</LIcon>
           GitLab Token
         </v-card-title>
         <v-card-text>
@@ -147,7 +147,7 @@
             href="https://git.informatik.fh-nuernberg.de/-/user_settings/personal_access_tokens"
             target="_blank"
           >
-            <v-icon start size="16">mdi-open-in-new</v-icon>
+            <LIcon start size="16">mdi-open-in-new</LIcon>
             Token erstellen
           </v-btn>
           <v-spacer />

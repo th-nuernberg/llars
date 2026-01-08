@@ -19,7 +19,7 @@
         <!-- Überblick -->
         <section class="docs-section">
           <div class="section-header">
-            <v-icon size="24">mdi-information-outline</v-icon>
+            <LIcon size="24">mdi-information-outline</LIcon>
             <h2>Was ist LLARS?</h2>
           </div>
           <div class="section-body">
@@ -34,33 +34,33 @@
         <!-- Hauptfunktionen -->
         <section class="docs-section">
           <div class="section-header">
-            <v-icon size="24">mdi-apps</v-icon>
+            <LIcon size="24">mdi-apps</LIcon>
             <h2>Hauptfunktionen</h2>
           </div>
           <div class="section-body">
             <div class="feature-grid">
               <div class="feature-item">
-                <v-icon color="primary">mdi-chart-bar-stacked</v-icon>
+                <LIcon color="primary">mdi-chart-bar-stacked</LIcon>
                 <span>Ranking & Rating</span>
               </div>
               <div class="feature-item">
-                <v-icon color="primary">mdi-scale-balance</v-icon>
+                <LIcon color="primary">mdi-scale-balance</LIcon>
                 <span>LLM-as-Judge</span>
               </div>
               <div class="feature-item">
-                <v-icon color="primary">mdi-robot</v-icon>
+                <LIcon color="primary">mdi-robot</LIcon>
                 <span>RAG-Chatbots</span>
               </div>
               <div class="feature-item">
-                <v-icon color="primary">mdi-text-search</v-icon>
+                <LIcon color="primary">mdi-text-search</LIcon>
                 <span>Prompt Engineering</span>
               </div>
               <div class="feature-item">
-                <v-icon color="primary">mdi-account-multiple</v-icon>
+                <LIcon color="primary">mdi-account-multiple</LIcon>
                 <span>Echtzeit-Kollaboration</span>
               </div>
               <div class="feature-item">
-                <v-icon color="primary">mdi-shield-account</v-icon>
+                <LIcon color="primary">mdi-shield-account</LIcon>
                 <span>Anonymisierung</span>
               </div>
             </div>
@@ -70,7 +70,7 @@
         <!-- Technische Dokumentation - Prominent! -->
         <section class="docs-section highlight">
           <div class="section-header">
-            <v-icon size="24">mdi-book-open-variant</v-icon>
+            <LIcon size="24">mdi-book-open-variant</LIcon>
             <h2>Technische Dokumentation</h2>
           </div>
           <div class="section-body">
@@ -81,12 +81,12 @@
             </p>
             <div class="mkdocs-link-container">
               <a href="/mkdocs/" class="mkdocs-link" @click="openMkDocs">
-                <v-icon size="32">mdi-book-open-page-variant</v-icon>
+                <LIcon size="32">mdi-book-open-page-variant</LIcon>
                 <div class="mkdocs-link-text">
                   <span class="mkdocs-link-title">MkDocs Dokumentation öffnen</span>
                   <span class="mkdocs-link-url">/mkdocs/</span>
                 </div>
-                <v-icon>mdi-open-in-new</v-icon>
+                <LIcon>mdi-open-in-new</LIcon>
               </a>
             </div>
             <div class="doc-topics">
@@ -103,7 +103,7 @@
         <!-- Quick Start -->
         <section class="docs-section">
           <div class="section-header">
-            <v-icon size="24">mdi-rocket-launch</v-icon>
+            <LIcon size="24">mdi-rocket-launch</LIcon>
             <h2>Schnellstart</h2>
           </div>
           <div class="section-body">
@@ -123,17 +123,17 @@ cp .env.template.development .env
         <!-- Kontakt -->
         <section class="docs-section">
           <div class="section-header">
-            <v-icon size="24">mdi-email-outline</v-icon>
+            <LIcon size="24">mdi-email-outline</LIcon>
             <h2>Kontakt</h2>
           </div>
           <div class="section-body">
             <div class="contact-row">
               <a href="mailto:info@e-beratungsinstitut.de" class="contact-link">
-                <v-icon>mdi-email</v-icon>
+                <LIcon>mdi-email</LIcon>
                 <span>info@e-beratungsinstitut.de</span>
               </a>
               <a href="https://www.e-beratungsinstitut.de" target="_blank" class="contact-link">
-                <v-icon>mdi-web</v-icon>
+                <LIcon>mdi-web</LIcon>
                 <span>e-beratungsinstitut.de</span>
               </a>
             </div>

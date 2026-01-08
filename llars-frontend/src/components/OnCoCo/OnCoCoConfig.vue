@@ -17,7 +17,7 @@
       <v-col cols="12" md="8">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2" color="primary">mdi-cog</v-icon>
+            <LIcon class="mr-2" color="primary">mdi-cog</LIcon>
             Neue OnCoCo Analyse konfigurieren
           </v-card-title>
 
@@ -36,7 +36,7 @@
 
               <!-- Pillar Selection -->
               <div class="text-subtitle-1 font-weight-medium mb-2">
-                <v-icon class="mr-1">mdi-database</v-icon>
+                <LIcon class="mr-1">mdi-database</LIcon>
                 Säulen auswählen
               </div>
               <v-row class="mb-4">
@@ -90,7 +90,7 @@
               <v-expansion-panels class="mb-4">
                 <v-expansion-panel>
                   <v-expansion-panel-title>
-                    <v-icon class="mr-2">mdi-tune</v-icon>
+                    <LIcon class="mr-2">mdi-tune</LIcon>
                     Erweiterte Optionen
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
@@ -155,7 +155,7 @@
       <v-col cols="12" md="4">
         <v-card class="mb-4">
           <v-card-title>
-            <v-icon class="mr-2" color="info">mdi-information</v-icon>
+            <LIcon class="mr-2" color="info">mdi-information</LIcon>
             Über OnCoCo
           </v-card-title>
           <v-card-text>
@@ -188,7 +188,7 @@
 
         <v-card>
           <v-card-title>
-            <v-icon class="mr-2" color="warning">mdi-alert</v-icon>
+            <LIcon class="mr-2" color="warning">mdi-alert</LIcon>
             Hinweise
           </v-card-title>
           <v-card-text>

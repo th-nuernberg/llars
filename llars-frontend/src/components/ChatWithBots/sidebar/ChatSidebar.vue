@@ -20,7 +20,7 @@
           :disabled="!selectedChatbot"
           @click="$emit('new-chat')"
         >
-          <v-icon size="20">mdi-plus</v-icon>
+          <LIcon size="20">mdi-plus</LIcon>
         </button>
       </LTooltip>
       <button
@@ -28,7 +28,7 @@
         @click="$emit('toggle-collapse')"
         :title="collapsed ? 'Erweitern' : 'Zuklappen'"
       >
-        <v-icon size="18">{{ collapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
+        <LIcon size="18">{{ collapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</LIcon>
       </button>
     </div>
 
@@ -65,7 +65,7 @@
           >
             <div class="chatbot-avatar">
               <v-avatar :color="bot.color || '#b0ca97'" size="28">
-                <v-icon color="white" size="16">{{ bot.icon || 'mdi-robot' }}</v-icon>
+                <LIcon color="white" size="16">{{ bot.icon || 'mdi-robot' }}</LIcon>
               </v-avatar>
             </div>
             <template v-if="!collapsed">
@@ -84,9 +84,9 @@
                   </span>
                 </div>
               </div>
-              <v-icon class="expand-icon" size="18">
+              <LIcon class="expand-icon" size="18">
                 {{ expandedBots[bot.id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
-              </v-icon>
+              </LIcon>
             </template>
           </button>
 
@@ -111,7 +111,7 @@
                 }"
                 @click.stop="$emit('select-conversation', bot, conv)"
               >
-                <v-icon size="16" class="conv-icon">mdi-chat-outline</v-icon>
+                <LIcon size="16" class="conv-icon">mdi-chat-outline</LIcon>
                 <span class="conv-title" :class="{ 'streaming-text': getDisplayTitle(conv).isStreaming }">
                   {{ getDisplayTitle(conv).text }}
                   <span v-if="getDisplayTitle(conv).isStreaming" class="typing-cursor"></span>
@@ -119,12 +119,12 @@
                 <div class="conv-actions">
                   <LTooltip text="Umbenennen" location="top">
                     <button class="conv-action" @click.stop="$emit('rename-conversation', conv)">
-                      <v-icon size="14">mdi-pencil</v-icon>
+                      <LIcon size="14">mdi-pencil</LIcon>
                     </button>
                   </LTooltip>
                   <LTooltip text="Löschen" location="top">
                     <button class="conv-action delete" @click.stop="$emit('delete-conversation', conv)">
-                      <v-icon size="14">mdi-delete</v-icon>
+                      <LIcon size="14">mdi-delete</LIcon>
                     </button>
                   </LTooltip>
                 </div>
@@ -137,7 +137,7 @@
         </div>
 
         <div v-if="chatbots.length === 0 && !collapsed" class="empty-sidebar">
-          <v-icon size="32" class="mb-2">mdi-robot-off</v-icon>
+          <LIcon size="32" class="mb-2">mdi-robot-off</LIcon>
           <div>Keine Chatbots verfügbar</div>
         </div>
       </template>
@@ -151,7 +151,7 @@
         @click="$emit('navigate-home')"
         :title="collapsed ? 'Zur Startseite' : undefined"
       >
-        <v-icon size="20">mdi-home</v-icon>
+        <LIcon size="20">mdi-home</LIcon>
         <span v-if="!collapsed">Startseite</span>
       </button>
     </div>

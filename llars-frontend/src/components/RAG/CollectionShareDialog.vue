@@ -17,7 +17,7 @@
       <v-skeleton-loader v-if="loading" type="paragraph@2, list-item" />
       <div v-else>
         <div class="section-label mt-2">
-          <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+          <LIcon size="16" class="mr-1">mdi-account-multiple-plus</LIcon>
           Nutzer hinzufuegen
         </div>
         <div v-if="shareUsernames.length > 0" class="invited-users mb-2">

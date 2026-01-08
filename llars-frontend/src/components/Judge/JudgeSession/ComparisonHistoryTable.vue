@@ -18,7 +18,7 @@
       <template v-slot:item.pillars="{ item }">
         <div class="d-flex align-center gap-1">
           <span class="pillar-badge pillar-a">{{ item.pillar_a_name?.substring(0, 8) || 'A' }}</span>
-          <v-icon size="12" color="grey">mdi-arrow-left-right</v-icon>
+          <LIcon size="12" color="grey">mdi-arrow-left-right</LIcon>
           <span class="pillar-badge pillar-b">{{ item.pillar_b_name?.substring(0, 8) || 'B' }}</span>
         </div>
       </template>
@@ -61,7 +61,7 @@
 
     <!-- Empty State -->
     <div v-else class="empty-state">
-      <v-icon size="24" color="grey">mdi-history</v-icon>
+      <LIcon size="24" color="grey">mdi-history</LIcon>
       <span class="text-caption text-medium-emphasis">Noch keine Vergleiche abgeschlossen</span>
     </div>
   </div>

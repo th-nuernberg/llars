@@ -67,7 +67,7 @@
         <v-col cols="12">
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-1">
-              <v-icon start>mdi-format-quote-close</v-icon>
+              <LIcon start>mdi-format-quote-close</LIcon>
               Quellen & Antwortregeln
             </v-card-title>
             <v-card-text>

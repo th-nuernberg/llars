@@ -33,7 +33,7 @@
           <!-- Searching Magnifying Glass -->
           <div class="magnifier">
             <div class="magnifier-glass">
-              <v-icon size="24" color="white">mdi-magnify</v-icon>
+              <LIcon size="24" color="white">mdi-magnify</LIcon>
             </div>
             <div class="magnifier-handle"></div>
           </div>
@@ -42,7 +42,7 @@
         <!-- Easter Egg Message -->
         <transition name="fade">
           <div v-if="showEasterEgg" class="easter-egg">
-            <v-icon size="16" class="mr-1">mdi-lightbulb</v-icon>
+            <LIcon size="16" class="mr-1">mdi-lightbulb</LIcon>
             {{ easterEggMessages[currentEasterEgg] }}
           </div>
         </transition>
@@ -59,7 +59,7 @@
       <!-- Search Box -->
       <div class="search-section">
         <div class="search-box">
-          <v-icon class="search-icon">mdi-magnify</v-icon>
+          <LIcon class="search-icon">mdi-magnify</LIcon>
           <input
             v-model="searchQuery"
             type="text"
@@ -108,7 +108,7 @@
 
     <!-- Attempted Path Info -->
     <div class="path-info">
-      <v-icon size="14" class="mr-1">mdi-link-variant</v-icon>
+      <LIcon size="14" class="mr-1">mdi-link-variant</LIcon>
       <span class="path-text">{{ currentPath }}</span>
     </div>
   </div>

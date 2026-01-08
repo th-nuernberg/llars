@@ -6,7 +6,7 @@
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="primary">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-file-document-multiple</v-icon>
+            <LIcon size="32" class="mr-3">mdi-file-document-multiple</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.total_documents }}</div>
               <div class="text-caption">Dokumente</div>
@@ -18,7 +18,7 @@
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="success">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
+            <LIcon size="32" class="mr-3">mdi-check-circle</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.processed }}</div>
               <div class="text-caption">Verarbeitet</div>
@@ -30,7 +30,7 @@
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="info">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-folder-multiple</v-icon>
+            <LIcon size="32" class="mr-3">mdi-folder-multiple</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.total_collections }}</div>
               <div class="text-caption">Collections</div>
@@ -42,7 +42,7 @@
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="warning">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-harddisk</v-icon>
+            <LIcon size="32" class="mr-3">mdi-harddisk</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ formatFileSize(stats.total_size) }}</div>
               <div class="text-caption">Gesamtgröße</div>
@@ -56,7 +56,7 @@
     <v-skeleton-loader v-if="isLoading('embedding')" type="card" height="250" class="mb-4" />
     <v-card v-else class="mb-4" variant="outlined">
       <v-card-title class="d-flex align-center">
-        <v-icon start color="primary">mdi-brain</v-icon>
+        <LIcon start color="primary">mdi-brain</LIcon>
         Embedding Model
         <v-spacer></v-spacer>
         <v-chip
@@ -73,21 +73,21 @@
             <v-list density="compact" class="bg-transparent">
               <v-list-item>
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-cube-outline</v-icon>
+                  <LIcon color="primary" size="small">mdi-cube-outline</LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">Aktives Model</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.model_name }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-vector-line</v-icon>
+                  <LIcon color="primary" size="small">mdi-vector-line</LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">Dimensionen</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.dimensions }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-server</v-icon>
+                  <LIcon color="primary" size="small">mdi-server</LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">Model Typ</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold text-uppercase">{{ embeddingInfo.model_type }}</v-list-item-subtitle>
@@ -98,9 +98,9 @@
             <v-list density="compact" class="bg-transparent">
               <v-list-item>
                 <template v-slot:prepend>
-                  <v-icon :color="embeddingInfo.litellm_configured ? 'success' : 'warning'" size="small">
+                  <LIcon :color="embeddingInfo.litellm_configured ? 'success' : 'warning'" size="small">
                     {{ embeddingInfo.litellm_configured ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-                  </v-icon>
+                  </LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM Status</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">
@@ -109,7 +109,7 @@
               </v-list-item>
               <v-list-item v-if="embeddingInfo.litellm_configured">
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-link</v-icon>
+                  <LIcon color="primary" size="small">mdi-link</LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM URL</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold text-truncate" style="max-width: 300px;">
@@ -118,7 +118,7 @@
               </v-list-item>
               <v-list-item>
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-swap-horizontal</v-icon>
+                  <LIcon color="primary" size="small">mdi-swap-horizontal</LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">Fallback Model</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.fallback_model }}</v-list-item-subtitle>
@@ -130,7 +130,7 @@
         <v-row>
           <v-col cols="12">
             <div class="d-flex align-center">
-              <v-icon size="small" color="grey" class="mr-2">mdi-folder-open</v-icon>
+              <LIcon size="small" color="grey" class="mr-2">mdi-folder-open</LIcon>
               <span class="text-caption text-medium-emphasis mr-2">Collection:</span>
               <code class="text-caption">{{ embeddingInfo.collection_name }}</code>
             </div>
@@ -154,15 +154,15 @@
     <v-card>
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="documents">
-          <v-icon start>mdi-file-document</v-icon>
+          <LIcon start>mdi-file-document</LIcon>
           Dokumente
         </v-tab>
         <v-tab value="collections">
-          <v-icon start>mdi-folder</v-icon>
+          <LIcon start>mdi-folder</LIcon>
           Collections
         </v-tab>
         <v-tab value="upload">
-          <v-icon start>mdi-upload</v-icon>
+          <LIcon start>mdi-upload</LIcon>
           Hochladen
         </v-tab>
       </v-tabs>
@@ -211,9 +211,9 @@
             >
               <template v-slot:item.filename="{ item }">
                 <div class="d-flex align-center">
-                  <v-icon :color="getFileTypeColor(item.file_type)" class="mr-2">
+                  <LIcon :color="getFileTypeColor(item.file_type)" class="mr-2">
                     {{ getFileTypeIcon(item.file_type) }}
-                  </v-icon>
+                  </LIcon>
                   <span class="font-weight-medium">{{ item.filename }}</span>
                 </div>
               </template>
@@ -285,9 +285,9 @@
             >
               <template v-slot:item.name="{ item }">
                 <div class="d-flex align-center">
-                  <v-icon color="primary" class="mr-2">mdi-folder</v-icon>
+                  <LIcon color="primary" class="mr-2">mdi-folder</LIcon>
                   <span class="font-weight-medium text-primary">{{ item.name }}</span>
-                  <v-icon size="small" class="ml-1" color="grey">mdi-open-in-new</v-icon>
+                  <LIcon size="small" class="ml-1" color="grey">mdi-open-in-new</LIcon>
                 </div>
               </template>
 
@@ -403,7 +403,7 @@
     <v-dialog v-model="deleteCollDialog" max-width="500">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon color="error" class="mr-2">mdi-delete-alert</v-icon>
+          <LIcon color="error" class="mr-2">mdi-delete-alert</LIcon>
           Collection löschen?
         </v-card-title>
         <v-card-text>
@@ -452,7 +452,7 @@
     <v-dialog v-model="collectionDetailDialog" max-width="1200" scrollable>
       <v-card v-if="selectedCollection">
         <v-card-title class="d-flex align-center bg-primary">
-          <v-icon start color="white">mdi-folder-open</v-icon>
+          <LIcon start color="white">mdi-folder-open</LIcon>
           <span class="text-white">{{ selectedCollection.display_name || selectedCollection.name }}</span>
           <v-spacer></v-spacer>
           <LIconBtn icon="mdi-close" @click="collectionDetailDialog = false" />
@@ -470,13 +470,13 @@
                 <v-row dense>
                   <v-col cols="6">
                     <v-chip color="primary" variant="flat" size="small" class="mr-1">
-                      <v-icon start size="small">mdi-file-document-multiple</v-icon>
+                      <LIcon start size="small">mdi-file-document-multiple</LIcon>
                       {{ selectedCollection.document_count }} Dokumente
                     </v-chip>
                   </v-col>
                   <v-col cols="6">
                     <v-chip color="info" variant="flat" size="small">
-                      <v-icon start size="small">mdi-harddisk</v-icon>
+                      <LIcon start size="small">mdi-harddisk</LIcon>
                       {{ formatFileSize(selectedCollection.total_size_bytes) }}
                     </v-chip>
                   </v-col>
@@ -484,7 +484,7 @@
                 <v-row dense class="mt-2">
                   <v-col cols="12">
                     <div class="text-caption text-medium-emphasis">
-                      <v-icon size="x-small" class="mr-1">mdi-puzzle</v-icon>
+                      <LIcon size="x-small" class="mr-1">mdi-puzzle</LIcon>
                       Chunk: {{ selectedCollection.chunk_size || 1000 }} Zeichen, {{ selectedCollection.chunk_overlap || 200 }} Overlap
                     </div>
                   </v-col>
@@ -503,7 +503,7 @@
             color="warning"
           >
             <v-card-title class="d-flex align-center py-2">
-              <v-icon start color="warning" size="small">mdi-progress-clock</v-icon>
+              <LIcon start color="warning" size="small">mdi-progress-clock</LIcon>
               <span class="text-body-1">Embedding-Verarbeitung</span>
               <v-spacer></v-spacer>
               <v-chip color="warning" size="x-small" variant="flat">
@@ -527,19 +527,19 @@
               </div>
               <div class="d-flex gap-2 flex-wrap">
                 <v-chip size="x-small" color="warning" variant="tonal">
-                  <v-icon start size="x-small">mdi-clock-outline</v-icon>
+                  <LIcon start size="x-small">mdi-clock-outline</LIcon>
                   {{ collectionEmbeddingProgress.pending }} warten
                 </v-chip>
                 <v-chip size="x-small" color="info" variant="tonal">
-                  <v-icon start size="x-small">mdi-cog</v-icon>
+                  <LIcon start size="x-small">mdi-cog</LIcon>
                   {{ collectionEmbeddingProgress.processing }} verarbeiten
                 </v-chip>
                 <v-chip size="x-small" color="success" variant="tonal">
-                  <v-icon start size="x-small">mdi-check</v-icon>
+                  <LIcon start size="x-small">mdi-check</LIcon>
                   {{ collectionEmbeddingProgress.indexed }} fertig
                 </v-chip>
                 <v-chip v-if="collectionEmbeddingProgress.failed > 0" size="x-small" color="error" variant="tonal">
-                  <v-icon start size="x-small">mdi-alert</v-icon>
+                  <LIcon start size="x-small">mdi-alert</LIcon>
                   {{ collectionEmbeddingProgress.failed }} fehlgeschlagen
                 </v-chip>
               </div>
@@ -585,9 +585,9 @@
             >
               <template v-slot:item.filename="{ item }">
                 <div class="d-flex align-center">
-                  <v-icon :color="getDocumentColor(item)" class="mr-2">
+                  <LIcon :color="getDocumentColor(item)" class="mr-2">
                     {{ getDocumentIcon(item) }}
-                  </v-icon>
+                  </LIcon>
                   <div>
                     <div class="font-weight-medium text-primary d-flex align-center flex-wrap">
                       <span>{{ item.title || item.filename }}</span>
@@ -614,7 +614,7 @@
                       {{ item.filename }}
                     </div>
                     <div v-if="item.source_url" class="text-caption text-medium-emphasis d-flex align-center mt-1">
-                      <v-icon size="12" class="mr-1">mdi-web</v-icon>
+                      <LIcon size="12" class="mr-1">mdi-web</LIcon>
                       <a :href="item.source_url" target="_blank" class="text-truncate">
                         {{ item.source_url }}
                       </a>
@@ -629,7 +629,7 @@
 
               <template v-slot:item.status="{ item }">
                 <v-chip :color="getStatusColor(item.status)" size="small">
-                  <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
+                  <LIcon start size="x-small">{{ getStatusIcon(item.status) }}</LIcon>
                   {{ item.status }}
                 </v-chip>
               </template>
@@ -649,7 +649,7 @@
 
               <template v-slot:no-data>
                 <div class="text-center pa-8">
-                  <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open-outline</v-icon>
+                  <LIcon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open-outline</LIcon>
                   <div class="text-h6 text-grey">Keine Dokumente in dieser Collection</div>
                   <div class="text-body-2 text-grey-darken-1">
                     Laden Sie Dokumente hoch oder starten Sie einen Crawl-Job.

@@ -3,7 +3,7 @@
     <!-- Header with Filters -->
     <div class="history-header">
       <div class="header-left">
-        <v-icon size="20" class="mr-2">mdi-history</v-icon>
+        <LIcon size="20" class="mr-2">mdi-history</LIcon>
         <span class="header-title">Verlauf</span>
         <v-chip size="x-small" color="success" class="ml-2">
           {{ comparisons.length }} Vergleiche
@@ -68,7 +68,7 @@
     <!-- Comparison List -->
     <div class="history-content">
       <div v-if="filteredComparisons.length === 0" class="empty-state">
-        <v-icon size="48" color="grey">mdi-clipboard-text-off</v-icon>
+        <LIcon size="48" color="grey">mdi-clipboard-text-off</LIcon>
         <p>{{ hasActiveFilters ? 'Keine Vergleiche mit diesen Filtern' : 'Noch keine abgeschlossenen Vergleiche' }}</p>
       </div>
 
@@ -86,7 +86,7 @@
 
             <div class="item-pillars">
               <span class="pillar-chip pillar-a">{{ comparison.pillar_a_name || 'S' + comparison.pillar_a }}</span>
-              <v-icon size="12">mdi-arrow-left-right</v-icon>
+              <LIcon size="12">mdi-arrow-left-right</LIcon>
               <span class="pillar-chip pillar-b">{{ comparison.pillar_b_name || 'S' + comparison.pillar_b }}</span>
             </div>
 
@@ -139,7 +139,7 @@
                   </div>
                 </div>
                 <div v-if="comparison.reasoning" class="preview-reasoning">
-                  <v-icon size="14" class="mr-1">mdi-message-text</v-icon>
+                  <LIcon size="14" class="mr-1">mdi-message-text</LIcon>
                   {{ truncate(comparison.reasoning, 150) }}
                 </div>
                 <v-btn
@@ -149,7 +149,7 @@
                   class="mt-2"
                   @click="$emit('view-detail', comparison)"
                 >
-                  <v-icon start size="16">mdi-eye</v-icon>
+                  <LIcon start size="16">mdi-eye</LIcon>
                   Vollständig anzeigen
                 </v-btn>
               </div>

@@ -31,9 +31,9 @@
               :color="workerStreams[i - 1]?.isStreaming ? 'warning' : (workerStreams[i - 1]?.comparison ? 'info' : 'grey')"
               variant="flat"
             >
-              <v-icon start size="small" :class="{ 'rotating': workerStreams[i - 1]?.isStreaming }">
+              <LIcon start size="small" :class="{ 'rotating': workerStreams[i - 1]?.isStreaming }">
                 {{ workerStreams[i - 1]?.isStreaming ? 'mdi-loading' : (workerStreams[i - 1]?.comparison ? 'mdi-play-circle' : 'mdi-sleep') }}
-              </v-icon>
+              </LIcon>
               {{ workerStreams[i - 1]?.isStreaming ? 'Streamt' : (workerStreams[i - 1]?.comparison ? 'Arbeitet' : 'Wartet') }}
             </v-chip>
           </v-card-title>
@@ -44,7 +44,7 @@
               <v-chip size="small" color="blue" variant="outlined">
                 {{ workerStreams[i - 1]?.comparison?.pillar_a_name || 'A' }}
               </v-chip>
-              <v-icon size="small">mdi-arrow-left-right</v-icon>
+              <LIcon size="small">mdi-arrow-left-right</LIcon>
               <v-chip size="small" color="green" variant="outlined">
                 {{ workerStreams[i - 1]?.comparison?.pillar_b_name || 'B' }}
               </v-chip>
@@ -57,7 +57,7 @@
           <v-card-text class="flex-grow-1 overflow-y-auto pa-3">
             <!-- Empty State -->
             <div v-if="!workerStreams[i - 1]?.content && !workerStreams[i - 1]?.comparison" class="d-flex flex-column align-center justify-center h-100 text-medium-emphasis">
-              <v-icon size="48" class="mb-2">mdi-robot-off</v-icon>
+              <LIcon size="48" class="mb-2">mdi-robot-off</LIcon>
               <span>Wartet auf Aufgabe...</span>
             </div>
 
@@ -72,9 +72,9 @@
                     size="large"
                     :class="{ 'pulse-chip': workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.winner }"
                   >
-                    <v-icon start :class="{ 'rotating': workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.winner }">
+                    <LIcon start :class="{ 'rotating': workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.winner }">
                       {{ workerStreams[i - 1]?.isStreaming && !getWorkerParsedResult(i - 1)?.winner ? 'mdi-loading' : 'mdi-trophy' }}
-                    </v-icon>
+                    </LIcon>
                     {{ getWorkerParsedResult(i - 1)?.winner || (workerStreams[i - 1]?.isStreaming ? '...' : '-') }}
                   </v-chip>
                   <div class="thread-badge thread-b" :class="{ 'is-winner': getWorkerParsedResult(i - 1)?.winner === 'B' }">B</div>
@@ -147,9 +147,9 @@
                     }"
                     :title="stepDef.title"
                   >
-                    <v-icon size="16" :class="{ 'rotating': getWorkerStep(i - 1, stepKey)?.isStreaming }">
+                    <LIcon size="16" :class="{ 'rotating': getWorkerStep(i - 1, stepKey)?.isStreaming }">
                       {{ getWorkerStep(i - 1, stepKey)?.isStreaming ? 'mdi-loading' : (getWorkerStep(i - 1, stepKey) ? 'mdi-check-circle' : 'mdi-circle-outline') }}
-                    </v-icon>
+                    </LIcon>
                   </div>
                 </div>
               </div>
@@ -164,9 +164,9 @@
               <v-expansion-panels class="mt-3" variant="accordion">
                 <v-expansion-panel>
                   <v-expansion-panel-title class="py-2">
-                    <v-icon size="small" class="mr-2" :class="{ 'rotating': workerStreams[i - 1]?.isStreaming }">
+                    <LIcon size="small" class="mr-2" :class="{ 'rotating': workerStreams[i - 1]?.isStreaming }">
                       {{ workerStreams[i - 1]?.isStreaming ? 'mdi-loading' : 'mdi-code-json' }}
-                    </v-icon>
+                    </LIcon>
                     <span class="text-caption">Raw Stream ({{ (workerStreams[i - 1]?.content || '').length }} Zeichen)</span>
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>

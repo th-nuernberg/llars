@@ -1,7 +1,7 @@
 <template>
   <div class="results-card metrics-card">
     <div class="card-header">
-      <v-icon class="header-icon">mdi-chart-bar</v-icon>
+      <LIcon class="header-icon">mdi-chart-bar</LIcon>
       <span class="header-title">Detaillierte Metriken</span>
     </div>
 

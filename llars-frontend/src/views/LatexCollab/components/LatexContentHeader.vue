@@ -17,7 +17,7 @@
         title="Menü öffnen"
         @click="$emit('open-mobile-menu')"
       >
-        <v-icon>mdi-menu</v-icon>
+        <LIcon>mdi-menu</LIcon>
       </v-btn>
       <v-btn
         variant="text"
@@ -26,10 +26,10 @@
         title="Zurück zu den Workspaces"
         @click="$emit('navigate-back')"
       >
-        <v-icon size="18">mdi-arrow-left</v-icon>
+        <LIcon size="18">mdi-arrow-left</LIcon>
         <span v-if="!isMobile" class="header-back-label">Workspaces</span>
       </v-btn>
-      <v-icon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-file-code-outline</v-icon>
+      <LIcon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-file-code-outline</LIcon>
       <div class="header-info">
         <div class="header-title">{{ documentTitle }}</div>
         <div class="header-subtitle">{{ workspaceName }}</div>
@@ -45,7 +45,7 @@
         title="Workspace teilen"
         @click="$emit('open-share')"
       >
-        <v-icon size="20">mdi-account-multiple-plus</v-icon>
+        <LIcon size="20">mdi-account-multiple-plus</LIcon>
       </v-btn>
 
       <v-btn
@@ -55,7 +55,7 @@
         title="Zotero Bibliotheken"
         @click="$emit('open-zotero')"
       >
-        <v-icon size="20">mdi-book-open-page-variant</v-icon>
+        <LIcon size="20">mdi-book-open-page-variant</LIcon>
       </v-btn>
 
       <v-btn
@@ -66,7 +66,7 @@
         title="Als main.tex setzen"
         @click="$emit('set-main-document')"
       >
-        <v-icon size="20">{{ isMainDocument ? 'mdi-star' : 'mdi-star-outline' }}</v-icon>
+        <LIcon size="20">{{ isMainDocument ? 'mdi-star' : 'mdi-star-outline' }}</LIcon>
       </v-btn>
 
       <v-btn
@@ -77,7 +77,7 @@
         title="Review Mode"
         @click="$emit('toggle-review-mode')"
       >
-        <v-icon size="20">mdi-comment-text-outline</v-icon>
+        <LIcon size="20">mdi-comment-text-outline</LIcon>
       </v-btn>
 
       <!-- Divider -->
@@ -86,11 +86,11 @@
       <!-- Connection Status -->
       <template v-if="showConnectionStatus">
         <v-chip v-if="isConnected" size="small" color="success" variant="tonal">
-          <v-icon start size="small">mdi-cloud-check-outline</v-icon>
+          <LIcon start size="small">mdi-cloud-check-outline</LIcon>
           Live Sync
         </v-chip>
         <v-chip v-else size="small" color="warning" variant="tonal">
-          <v-icon start size="small">mdi-cloud-alert-outline</v-icon>
+          <LIcon start size="small">mdi-cloud-alert-outline</LIcon>
           Reconnecting…
         </v-chip>
 
@@ -105,7 +105,7 @@
               class="ghost-text-chip"
               @click="$emit('toggle-ghost-text')"
             >
-              <v-icon start size="small">{{ ghostTextEnabled ? 'mdi-lightning-bolt' : 'mdi-lightning-bolt-outline' }}</v-icon>
+              <LIcon start size="small">{{ ghostTextEnabled ? 'mdi-lightning-bolt' : 'mdi-lightning-bolt-outline' }}</LIcon>
               Ghost Text
             </v-chip>
           </template>
@@ -135,7 +135,7 @@
           title="Editor"
           @click="$emit('update:viewMode', 'editor')"
         >
-          <v-icon size="18">mdi-pencil</v-icon>
+          <LIcon size="18">mdi-pencil</LIcon>
         </button>
         <button
           class="mode-btn"
@@ -143,7 +143,7 @@
           title="Split"
           @click="$emit('update:viewMode', 'split')"
         >
-          <v-icon size="18">mdi-view-split-vertical</v-icon>
+          <LIcon size="18">mdi-view-split-vertical</LIcon>
         </button>
         <button
           class="mode-btn"
@@ -151,7 +151,7 @@
           title="PDF"
           @click="$emit('update:viewMode', 'preview')"
         >
-          <v-icon size="18">mdi-file-pdf-box</v-icon>
+          <LIcon size="18">mdi-file-pdf-box</LIcon>
         </button>
       </div>
     </div>

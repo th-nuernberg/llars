@@ -11,7 +11,7 @@
           <div>
             <div class="d-flex align-center mb-1">
               <v-avatar color="primary" size="44" class="mr-3">
-                <v-icon color="white">mdi-shield-account</v-icon>
+                <LIcon color="white">mdi-shield-account</LIcon>
               </v-avatar>
               <div>
                 <div class="text-h5 font-weight-bold">KAIMO</div>
@@ -84,7 +84,7 @@
         >
           <div class="d-flex align-center mb-3">
             <v-avatar :color="card.avatarColor" size="46" class="mr-3">
-              <v-icon color="white">{{ card.icon }}</v-icon>
+              <LIcon color="white">{{ card.icon }}</LIcon>
             </v-avatar>
             <div>
               <div class="text-h6 font-weight-bold">{{ card.title }}</div>

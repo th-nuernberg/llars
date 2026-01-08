@@ -6,7 +6,7 @@
     :data-matomo-name="matomoName"
     @click="$emit('click', $event)"
   >
-    <v-icon :icon="icon" :size="iconSize" />
+    <LIcon :icon="icon" :size="iconSize" />
     <v-tooltip v-if="tooltip" activator="parent" :location="tooltipLocation">
       {{ tooltip }}
     </v-tooltip>

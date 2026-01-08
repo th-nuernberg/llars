@@ -7,7 +7,7 @@
   >
     <v-card>
       <v-card-title class="text-h5 pa-4">
-        <v-icon icon="mdi-upload" class="mr-2"></v-icon>
+        <LIcon icon="mdi-upload" class="mr-2"></LIcon>
         Dokumente hochladen
       </v-card-title>
 
@@ -25,14 +25,14 @@
           class="mb-4"
         >
           <template v-slot:selection="{ item }">
-            <v-icon :icon="getIcon(item.raw.icon)" :color="item.raw.color" class="mr-2"></v-icon>
+            <LIcon :icon="getIcon(item.raw.icon)" :color="item.raw.color" class="mr-2"></LIcon>
             {{ item.raw.display_name }}
           </template>
           <template v-slot:item="{ item, props }">
             <v-list-item v-bind="props">
               <template v-slot:prepend>
                 <v-avatar :color="item.raw.color" size="32">
-                  <v-icon :icon="getIcon(item.raw.icon)" color="white" size="20"></v-icon>
+                  <LIcon :icon="getIcon(item.raw.icon)" color="white" size="20"></LIcon>
                 </v-avatar>
               </template>
             </v-list-item>
@@ -48,12 +48,12 @@
           @drop.prevent="handleDrop"
         >
           <v-card-text class="text-center pa-8">
-            <v-icon
+            <LIcon
               :icon="isDragging ? 'mdi-cloud-upload' : 'mdi-cloud-upload-outline'"
               :size="isDragging ? 72 : 64"
               :color="isDragging ? 'primary' : 'grey-lighten-1'"
               class="mb-4"
-            ></v-icon>
+            ></LIcon>
 
             <div class="text-h6 mb-2">
               {{ isDragging ? 'Dateien hier ablegen' : 'Dateien hierher ziehen' }}
@@ -98,10 +98,10 @@
               class="file-item"
             >
               <template v-slot:prepend>
-                <v-icon
+                <LIcon
                   :icon="getFileIcon(file.name)"
                   :color="getFileColor(file.name)"
-                ></v-icon>
+                ></LIcon>
               </template>
 
               <v-list-item-title>{{ file.name }}</v-list-item-title>
@@ -119,13 +119,13 @@
                   >
                     <span class="text-caption">{{ uploadProgress[index] }}</span>
                   </v-progress-circular>
-                  <v-icon v-else color="success" icon="mdi-check-circle"></v-icon>
+                  <LIcon v-else color="success" icon="mdi-check-circle"></LIcon>
                 </div>
 
                 <!-- Error Status -->
                 <v-tooltip v-if="uploadErrors[index]" location="top">
                   <template v-slot:activator="{ props }">
-                    <v-icon v-bind="props" color="error" icon="mdi-alert-circle" class="mr-2"></v-icon>
+                    <LIcon v-bind="props" color="error" icon="mdi-alert-circle" class="mr-2"></LIcon>
                   </template>
                   <span>{{ uploadErrors[index] }}</span>
                 </v-tooltip>

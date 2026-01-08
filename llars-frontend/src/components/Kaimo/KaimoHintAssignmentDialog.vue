@@ -7,7 +7,7 @@
   >
     <v-card>
       <v-card-title class="d-flex align-center pa-4 bg-grey-lighten-4">
-        <v-icon class="mr-2" color="primary">mdi-folder-open</v-icon>
+        <LIcon class="mr-2" color="primary">mdi-folder-open</LIcon>
         <span class="text-h6">{{ category?.display_name || 'Kategorie' }}</span>
         <v-spacer />
         <LIconBtn icon="mdi-close" tooltip="Schließen" @click="closeDialog" />
@@ -113,7 +113,7 @@
             </div>
 
             <div v-if="relevantHints.length === 0" class="no-hints">
-              <v-icon size="48" color="grey-lighten-1">mdi-lightbulb-outline</v-icon>
+              <LIcon size="48" color="grey-lighten-1">mdi-lightbulb-outline</LIcon>
               <p class="text-grey">Keine Hinweise für diese Kategorie</p>
             </div>
           </template>

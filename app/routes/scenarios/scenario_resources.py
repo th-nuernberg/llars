@@ -55,7 +55,12 @@ def get_users():
     # Current user available in g.authentik_user
 
     # Include admins as well (useful for demo/testing scenarios).
-    db_users = db.session.query(User).join(UserGroup, User.group_id == UserGroup.id).all()
+    db_users = (
+        db.session.query(User)
+        .join(UserGroup, User.group_id == UserGroup.id)
+        .filter(User.is_ai == False)
+        .all()
+    )
 
     users = []
     for db_user in db_users:

@@ -48,9 +48,9 @@ git checkout "$ROLLBACK_COMMIT"
 echo "[2/4] Restoring database from $BACKUP_PATH"
 docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < "$BACKUP_PATH"
 
-echo "[3/4] Rebuilding and starting services"
-docker compose build --parallel
-docker compose up -d --remove-orphans
+echo "[3/4] Rebuilding and starting services (production mode)"
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build --parallel
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
 echo "[4/4] Rollback completed"
-docker compose ps
+docker compose -f docker-compose.yml -f docker-compose.prod.yml ps

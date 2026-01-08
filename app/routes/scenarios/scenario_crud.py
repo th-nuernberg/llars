@@ -28,6 +28,10 @@ from ..HelperFunctions import (
     DISTRIBUTION_MODE_ALL,
     get_scenario_distribution_mode,
 )
+from services.llm.llm_access_service import LLMAccessService
+from services.llm.llm_ai_task_runner import LLMAITaskRunner
+
+logger = logging.getLogger(__name__)
 
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
@@ -197,13 +201,44 @@ def create_scenario():
         config_json = data.get("config")
     if config_json is not None and not isinstance(config_json, dict):
         raise ValidationError("config_json must be an object")
-    if config_json is not None:
-        distribution_mode = config_json.get("distribution_mode")
-        order_mode = config_json.get("order_mode")
-        if distribution_mode is not None and distribution_mode not in ALLOWED_DISTRIBUTION_MODES:
-            raise ValidationError("Invalid distribution_mode")
-        if order_mode is not None and order_mode not in ALLOWED_ORDER_MODES:
-            raise ValidationError("Invalid order_mode")
+    config_json = config_json or {}
+
+    distribution_mode = config_json.get("distribution_mode")
+    order_mode = config_json.get("order_mode")
+    if distribution_mode is not None and distribution_mode not in ALLOWED_DISTRIBUTION_MODES:
+        raise ValidationError("Invalid distribution_mode")
+    if order_mode is not None and order_mode not in ALLOWED_ORDER_MODES:
+        raise ValidationError("Invalid order_mode")
+
+    raw_llm_evaluators = data.get("llm_evaluators")
+    if raw_llm_evaluators is None:
+        raw_llm_evaluators = config_json.get("llm_evaluators")
+    if isinstance(raw_llm_evaluators, str):
+        raw_llm_evaluators = [raw_llm_evaluators]
+    if raw_llm_evaluators is None:
+        raw_llm_evaluators = []
+    if not isinstance(raw_llm_evaluators, list):
+        raise ValidationError("llm_evaluators must be a list of model IDs")
+
+    llm_evaluators = []
+    for model_id in raw_llm_evaluators:
+        if not isinstance(model_id, str):
+            continue
+        mid = model_id.strip()
+        if mid and mid not in llm_evaluators:
+            llm_evaluators.append(mid)
+
+    if llm_evaluators:
+        unauthorized = [
+            model_id
+            for model_id in llm_evaluators
+            if not LLMAccessService.user_can_access_model(creating_username, model_id)
+        ]
+        if unauthorized:
+            raise ForbiddenError("No access to LLM models: " + ", ".join(unauthorized))
+        config_json["llm_evaluators"] = llm_evaluators
+    else:
+        config_json.pop("llm_evaluators", None)
 
     # Accept both 'evaluator' (new) and 'viewer' (legacy) field names
     evaluators_list = data.get('evaluator') or data.get('evaluators') or data.get('viewer') or []
@@ -392,6 +427,12 @@ def create_scenario():
         )
     except Exception:
         pass
+
+    try:
+        if llm_evaluators:
+            LLMAITaskRunner.run_for_scenario_async(new_scenario.id, model_ids=llm_evaluators)
+    except Exception as exc:
+        logger.warning("[LLM AI Runner] Scenario create trigger failed: %s", exc)
 
     return_msg = {
         'notification': 'successfully created scenario',

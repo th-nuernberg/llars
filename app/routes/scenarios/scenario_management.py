@@ -21,6 +21,9 @@ from db.tables import (RatingScenarios, EmailThread, ScenarioThreads,
 from .. import data_blueprint
 from ..HelperFunctions import get_scenario_distribution_mode, DISTRIBUTION_MODE_ALL
 from .scenario_utils import check_scenario_ownership, distribute_threads_to_users
+from services.llm.llm_ai_task_runner import LLMAITaskRunner
+
+logger = logging.getLogger(__name__)
 
 
 @data_blueprint.route('/admin/add_threads_to_scenario', methods=['POST'])
@@ -99,6 +102,15 @@ def add_threads_to_scenario():
     except Exception as e:
         db.session.rollback()
         raise
+
+    try:
+        if validated_threads:
+            LLMAITaskRunner.run_for_scenario_async(
+                scenario.id,
+                thread_ids=validated_threads,
+            )
+    except Exception as exc:
+        logger.warning("[LLM AI Runner] Add threads trigger failed: %s", exc)
 
     return jsonify({'message': 'Successfully added threads to the db', 'not_found_threads': failed_threads}), 200
 
@@ -191,7 +203,6 @@ def invite_users_to_scenario():
     added_users = []
     updated_users = []
     failed_users = []
-
     for user_data in users_to_invite:
         user_id = user_data.get('user_id')
         role_str = user_data.get('role', 'evaluator').lower()
@@ -309,10 +320,11 @@ def get_available_users_for_scenario():
     """
     scenario_id = request.args.get('scenario_id', type=int)
 
-    # Get all active users
+    # Get all active human users
     users = User.query.filter(
         User.deleted_at.is_(None),
-        User.is_active == True
+        User.is_active == True,
+        User.is_ai == False
     ).all()
 
     result = []

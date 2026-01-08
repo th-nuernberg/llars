@@ -85,7 +85,10 @@ const iconAttrs = computed(() => {
 .l-its-hover__file-fold,
 .l-its-hover__markdown-fold,
 .l-its-hover__latex-fold {
-  transform-origin: 0% 100%;
+  transform-box: fill-box;
+  transform-origin: 0% 0%;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
 }
 
 .l-its-hover--refresh,
@@ -427,7 +430,11 @@ const iconAttrs = computed(() => {
 :is(.v-icon:hover, .feature-card:hover .v-icon) .l-its-hover__file-fold,
 :is(.v-icon:hover, .feature-card:hover .v-icon) .l-its-hover__markdown-fold,
 :is(.v-icon:hover, .feature-card:hover .v-icon) .l-its-hover__latex-fold {
-  transform: rotate(-20deg) translate(2px, -2px) scale(1.08);
+  transform: perspective(200px) rotate(45deg) rotateX(-180deg) rotate(-45deg);
+}
+
+:is(.v-icon:hover, .feature-card:hover .v-icon) .l-its-hover__file-crease {
+  opacity: 0.25;
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-link {

@@ -10,7 +10,9 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <path class="l-its-hover__latex-file" d="M6 3h8l4 4v14H6z" />
+    <path class="l-its-hover__latex-file" d="M6 3h8" />
+    <path class="l-its-hover__latex-file" d="M18 7v14H6V3" />
+    <path class="l-its-hover__file-crease" d="M14 3L18 7" />
     <path class="l-its-hover__latex-fold" d="M14 3v4h4" />
     <path class="l-its-hover__latex-sigma" d="M9 8h4l-3 3l3 3H9" />
     <path class="l-its-hover__latex-eq" d="M9 16h5" />

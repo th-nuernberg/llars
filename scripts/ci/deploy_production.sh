@@ -74,7 +74,7 @@ if ! docker inspect -f '{{.State.Running}}' llars_db_service >/dev/null 2>&1; th
   exit 1
 fi
 
-if ! docker exec llars_db_service mysqldump -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" > "$BACKUP_FILE"; then
+if ! docker exec llars_db_service mariadb-dump -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" > "$BACKUP_FILE"; then
   echo "ERROR: Backup failed. Aborting deploy."
   docker logs --tail 200 llars_db_service || true
   exit 1

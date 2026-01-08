@@ -50,7 +50,16 @@ git fetch origin main || true
 git checkout "$ROLLBACK_COMMIT"
 
 echo "[2/4] Restoring database from $BACKUP_PATH"
-docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars < "$BACKUP_PATH"
+# Source .env to get database credentials
+if [ -f "$DEPLOY_PATH/.env" ]; then
+  set -a
+  . "$DEPLOY_PATH/.env"
+  set +a
+fi
+DB_USER="${MYSQL_USER:-dev_user}"
+DB_PASS="${MYSQL_PASSWORD:-dev_password_change_me}"
+DB_NAME="${MYSQL_DATABASE:-database_llars}"
+docker exec -i llars_db_service mariadb -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" < "$BACKUP_PATH"
 
 echo "[3/4] Rebuilding and starting services (production mode)"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml build --parallel

@@ -6,9 +6,14 @@ Endpoints for retrieving available LLM models and their configurations.
 
 from flask import jsonify, request
 from db.models.llm_model import LLMModel
+from db.models.llm_provider import LLMProvider
 from db.database import db
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
 from decorators.permission_decorator import require_permission
+from services.llm.llm_access_service import LLMAccessService
+from services.llm.llm_provider_service import LLMProviderService
+from services.llm.model_sync_service import LLMModelSyncService
+from auth.auth_utils import AuthUtils
 
 from routes.llm import llm_bp
 
@@ -49,6 +54,40 @@ def get_models():
         query = query.filter_by(supports_reasoning=True)
 
     models = query.order_by(LLMModel.is_default.desc(), LLMModel.display_name).all()
+
+    return jsonify({
+        'success': True,
+        'models': [m.to_dict() for m in models],
+        'count': len(models)
+    })
+
+
+@llm_bp.route('/models/available', methods=['GET'])
+@require_permission('feature:llm:view')
+@handle_api_errors(logger_name='llm')
+def get_available_models():
+    """
+    Get available LLM models for the current user.
+
+    Query params:
+        - active_only: bool (default: true) - Only return active models
+        - model_type: str (optional) - Filter by model type (llm/embedding/reranker)
+        - vision_only: bool (default: false) - Only return vision-capable models
+        - reasoning_only: bool (default: false) - Only return reasoning-capable models
+    """
+    active_only = request.args.get('active_only', 'true').lower() == 'true'
+    vision_only = request.args.get('vision_only', 'false').lower() == 'true'
+    reasoning_only = request.args.get('reasoning_only', 'false').lower() == 'true'
+    model_type = (request.args.get('model_type') or '').strip() or None
+
+    username = AuthUtils.extract_username_without_validation()
+    models = LLMAccessService.get_accessible_models(
+        username,
+        active_only=active_only,
+        model_type=model_type,
+        vision_only=vision_only,
+        reasoning_only=reasoning_only,
+    )
 
     return jsonify({
         'success': True,
@@ -164,11 +203,20 @@ def create_model():
     if not isinstance(model_type, str) or not model_type.strip():
         raise ValidationError('model_type must be a non-empty string')
 
+    provider_id = data.get('provider_id')
+    if provider_id is not None:
+        try:
+            provider_id = int(provider_id)
+        except Exception:
+            raise ValidationError('provider_id must be an integer')
+
+    admin_username = AuthUtils.extract_username_without_validation()
     model = LLMModel(
         model_id=data['model_id'],
         display_name=data['display_name'],
         provider=data['provider'],
         description=data.get('description'),
+        provider_id=provider_id,
         model_type=model_type.strip(),
         supports_vision=data.get('supports_vision', False),
         supports_reasoning=data.get('supports_reasoning', False),
@@ -180,6 +228,8 @@ def create_model():
         output_cost_per_million=data.get('output_cost_per_million', 0.0),
         is_default=data.get('is_default', False),
         is_active=data.get('is_active', True),
+        created_by=admin_username,
+        updated_by=admin_username,
     )
 
     # If setting as default, unset current default
@@ -215,6 +265,8 @@ def update_model(model_id):
 
     old_model_type = model.model_type
 
+    admin_username = AuthUtils.extract_username_without_validation()
+
     # Update allowed fields
     updatable_fields = [
         'display_name', 'description', 'model_type', 'supports_vision', 'supports_reasoning',
@@ -232,6 +284,16 @@ def update_model(model_id):
             else:
                 setattr(model, field, data[field])
 
+    if 'provider_id' in data:
+        provider_id = data.get('provider_id')
+        if provider_id is None:
+            model.provider_id = None
+        else:
+            try:
+                model.provider_id = int(provider_id)
+            except Exception:
+                raise ValidationError('provider_id must be an integer')
+
     # Handle is_default separately
     if data.get('is_default') and not model.is_default:
         LLMModel.query.filter_by(
@@ -244,6 +306,9 @@ def update_model(model_id):
             is_default=True,
             model_type=model.model_type
         ).filter(LLMModel.id != model.id).update({'is_default': False})
+
+    if admin_username:
+        model.updated_by = admin_username
 
     db.session.commit()
 
@@ -287,7 +352,209 @@ def sync_models():
       - LITELLM_BASE_URL
       - LITELLM_API_KEY (optional depending on gateway)
     """
-    from services.llm.model_sync_service import LLMModelSyncService
-
-    result = LLMModelSyncService.sync_from_litellm()
+    admin_username = AuthUtils.extract_username_without_validation()
+    provider = LLMProviderService.get_default_provider()
+    if provider:
+        result = LLMModelSyncService.sync_from_provider(provider, synced_by=admin_username)
+    else:
+        result = LLMModelSyncService.sync_from_litellm(synced_by=admin_username)
     return jsonify(result), 200 if result.get('success') else 400
+
+
+@llm_bp.route('/providers', methods=['GET'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def list_providers():
+    include_inactive = request.args.get('include_inactive', 'true').lower() == 'true'
+    providers = LLMProviderService.list_providers(include_inactive=include_inactive)
+    return jsonify({
+        'success': True,
+        'providers': [p.to_dict() for p in providers],
+        'count': len(providers)
+    })
+
+
+@llm_bp.route('/providers', methods=['POST'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def create_provider():
+    data = request.get_json() or {}
+    provider = LLMProviderService.create_provider(data)
+
+    sync_models_flag = bool(data.get('sync_models'))
+    model_ids = data.get('model_ids') or []
+    sync_result = None
+    if sync_models_flag or model_ids:
+        admin_username = AuthUtils.extract_username_without_validation()
+        sync_result = LLMProviderService.sync_models(
+            provider,
+            model_ids=model_ids or None,
+            synced_by=admin_username,
+        )
+
+    return jsonify({
+        'success': True,
+        'provider': provider.to_dict(),
+        'sync_result': sync_result,
+    }), 201
+
+
+@llm_bp.route('/providers/<int:provider_id>', methods=['PUT'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def update_provider(provider_id: int):
+    data = request.get_json() or {}
+    provider = LLMProviderService.update_provider(provider_id, data)
+    model_ids = data.get('model_ids') or []
+    if isinstance(model_ids, str):
+        model_ids = [m.strip() for m in model_ids.split(',') if m.strip()]
+    sync_models_flag = bool(data.get('sync_models'))
+    sync_result = None
+    if sync_models_flag or model_ids:
+        admin_username = AuthUtils.extract_username_without_validation()
+        sync_result = LLMProviderService.sync_models(
+            provider,
+            model_ids=model_ids or None,
+            synced_by=admin_username,
+        )
+    return jsonify({'success': True, 'provider': provider.to_dict(), 'sync_result': sync_result})
+
+
+@llm_bp.route('/providers/<int:provider_id>', methods=['DELETE'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def delete_provider(provider_id: int):
+    provider = LLMProvider.query.get(provider_id)
+    if not provider:
+        raise NotFoundError('Provider not found')
+    provider.is_active = False
+    provider.is_default = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@llm_bp.route('/providers/<int:provider_id>/test', methods=['POST'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def test_provider(provider_id: int):
+    provider = LLMProvider.query.get(provider_id)
+    if not provider:
+        raise NotFoundError('Provider not found')
+    result = LLMProviderService.test_provider(provider)
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+@llm_bp.route('/providers/<int:provider_id>/sync-models', methods=['POST'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def sync_provider_models(provider_id: int):
+    provider = LLMProvider.query.get(provider_id)
+    if not provider:
+        raise NotFoundError('Provider not found')
+    data = request.get_json() or {}
+    model_ids = data.get('model_ids') or []
+    admin_username = AuthUtils.extract_username_without_validation()
+    result = LLMProviderService.sync_models(
+        provider,
+        model_ids=model_ids or None,
+        synced_by=admin_username,
+    )
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+@llm_bp.route('/models/access/overview', methods=['GET'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def get_llm_access_overview():
+    """Get an overview of LLM model access assignments (admin only)."""
+    include_inactive = request.args.get('include_inactive', 'false').lower() == 'true'
+
+    query = LLMModel.query
+    if not include_inactive:
+        query = query.filter(LLMModel.is_active == True)
+
+    models = query.order_by(LLMModel.is_default.desc(), LLMModel.display_name).all()
+    provider_ids = {m.provider_id for m in models if m.provider_id}
+    providers = {}
+    if provider_ids:
+        rows = LLMProvider.query.filter(LLMProvider.id.in_(provider_ids)).all()
+        providers = {p.id: p for p in rows}
+    payload = []
+    for model in models:
+        allowed_usernames = LLMAccessService.get_allowed_usernames(model.id)
+        allowed_roles = LLMAccessService.get_allowed_roles(model.id)
+        provider = providers.get(model.provider_id) if model.provider_id else None
+        provider_label = None
+        provider_type = None
+        provider_base_url = None
+        if provider:
+            provider_label = provider.name
+            provider_type = provider.provider_type
+            provider_base_url = provider.base_url
+        payload.append({
+            'id': model.id,
+            'model_id': model.model_id,
+            'display_name': model.display_name,
+            'provider': model.provider,
+            'provider_id': model.provider_id,
+            'provider_label': provider_label,
+            'provider_type': provider_type,
+            'provider_base_url': provider_base_url,
+            'model_type': model.model_type,
+            'is_active': model.is_active,
+            'is_default': model.is_default,
+            'created_by': model.created_by,
+            'updated_by': model.updated_by,
+            'allowed_usernames': allowed_usernames,
+            'allowed_roles': allowed_roles,
+            'is_restricted': bool(allowed_usernames or allowed_roles),
+        })
+
+    return jsonify({'success': True, 'models': payload, 'count': len(payload)})
+
+
+@llm_bp.route('/models/<int:model_id>/access', methods=['GET'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def get_llm_model_access(model_id: int):
+    """Get access allowlist for a specific LLM model (admin only)."""
+    model = LLMModel.query.get(model_id)
+    if not model:
+        raise NotFoundError(f'Model with ID {model_id} not found')
+
+    return jsonify({
+        'success': True,
+        'model_id': model_id,
+        'allowed_usernames': LLMAccessService.get_allowed_usernames(model_id),
+        'allowed_roles': LLMAccessService.get_allowed_roles(model_id),
+    })
+
+
+@llm_bp.route('/models/<int:model_id>/access', methods=['PUT'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def set_llm_model_access(model_id: int):
+    """Replace access allowlist for a specific LLM model (admin only)."""
+    data = request.get_json() or {}
+    usernames = data.get('usernames', data.get('allowed_usernames', [])) or []
+    role_names = (
+        data.get('role_names')
+        or data.get('roles')
+        or data.get('allowed_roles')
+        or []
+    )
+
+    admin_username = AuthUtils.extract_username_without_validation()
+    access = LLMAccessService.set_model_access(
+        model_id=model_id,
+        usernames=usernames,
+        role_names=role_names,
+        granted_by=admin_username,
+    )
+
+    return jsonify({
+        'success': True,
+        'model_id': model_id,
+        'allowed_usernames': access.get('allowed_usernames', []),
+        'allowed_roles': access.get('allowed_roles', []),
+    })

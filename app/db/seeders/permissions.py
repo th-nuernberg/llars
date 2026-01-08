@@ -248,6 +248,13 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Teilen von Chatbots mit anderen Benutzern'
         },
+        # Feature: LLM Selection
+        {
+            'permission_key': 'feature:llm:view',
+            'display_name': 'LLM Modelle auswählen',
+            'category': 'feature',
+            'description': 'Erlaubt das Anzeigen und Auswählen verfügbarer LLM-Modelle'
+        },
         # Feature: Anonymize
         {
             'permission_key': 'feature:anonymize:view',
@@ -351,6 +358,8 @@ def initialize_permissions(db):
                 'feature:authenticity:edit',
                 # Chatbot (nur ansehen und nutzen)
                 'feature:chatbots:view',
+                # LLM selection
+                'feature:llm:view',
                 # Prompt Engineering
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
@@ -384,6 +393,7 @@ def initialize_permissions(db):
                 'feature:chatbots:delete',
                 'feature:chatbots:advanced',
                 'feature:chatbots:share',
+                'feature:llm:view',
                 # Prompt Engineering
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
@@ -423,6 +433,7 @@ def initialize_permissions(db):
                 'feature:prompt_engineering:view',
                 'feature:rag:view',
                 'feature:chatbots:view',
+                'feature:llm:view',
                 'feature:markdown_collab:view',
                 'feature:latex_collab:view',
                 'feature:anonymize:view',

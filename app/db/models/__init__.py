@@ -104,6 +104,9 @@ from db.models.llm_model import (
     DEFAULT_LLM_MODELS,
     seed_default_models,
 )
+from db.models.llm_model_permission import LLMModelPermission
+from db.models.llm_provider import LLMProvider
+from db.models.llm_task_result import LLMTaskResult
 
 # KAIMO models
 from db.models.kaimo import (
@@ -235,6 +238,9 @@ __all__ = [
     'LLMModel',
     'DEFAULT_LLM_MODELS',
     'seed_default_models',
+    'LLMModelPermission',
+    'LLMProvider',
+    'LLMTaskResult',
     # KAIMO
     'KaimoCase',
     'KaimoDocument',

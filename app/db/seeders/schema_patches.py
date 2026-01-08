@@ -136,6 +136,31 @@ def _unique_index_exists(db, table_name: str, column_names: list[str]) -> bool:
     return False
 
 
+def _table_exists(db, table_name: str) -> bool:
+    _validate_identifier(table_name, "table_name")
+    result = db.session.execute(
+        text(
+            """
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+            """
+        ),
+        {"table_name": table_name},
+    ).scalar()
+    return bool(result and int(result) > 0)
+
+
+def _ensure_table(db, table_name: str, create_sql: str) -> bool:
+    _validate_identifier(table_name, "table_name")
+    if _table_exists(db, table_name):
+        return False
+    db.session.execute(text(create_sql))
+    db.session.commit()
+    return True
+
+
 def _ensure_unique_constraint(
     db, table_name: str, constraint_name: str, column_names: list[str]
 ) -> bool:
@@ -241,6 +266,18 @@ def apply_schema_patches(db) -> None:
             table_name="users",
             column_name="avatar_change_date",
             column_definition_sql="`avatar_change_date` DATE NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="is_ai",
+            column_definition_sql="`is_ai` TINYINT(1) NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="llm_model_id",
+            column_definition_sql="`llm_model_id` VARCHAR(255) NULL",
         )
 
         # Scenarios: per-scenario config + comparison model config
@@ -353,6 +390,126 @@ def apply_schema_patches(db) -> None:
             db.session.commit()
         except Exception:
             db.session.rollback()
+
+        # LLM models: provider registry linkage
+        changed |= _ensure_column(
+            db,
+            table_name="llm_models",
+            column_name="provider_id",
+            column_definition_sql="`provider_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_models",
+            column_name="created_by",
+            column_definition_sql="`created_by` VARCHAR(255) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_models",
+            column_name="updated_by",
+            column_definition_sql="`updated_by` VARCHAR(255) NULL",
+        )
+
+        # LLM providers registry table
+        changed |= _ensure_table(
+            db,
+            table_name="llm_providers",
+            create_sql=(
+                """
+                CREATE TABLE `llm_providers` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `provider_type` VARCHAR(50) NOT NULL,
+                    `name` VARCHAR(255) NOT NULL,
+                    `base_url` VARCHAR(512) NULL,
+                    `api_key_encrypted` TEXT NULL,
+                    `config_json` JSON NULL,
+                    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                    `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+                    `is_openai_compatible` TINYINT(1) NOT NULL DEFAULT 1,
+                    `created_at` DATETIME NOT NULL,
+                    `updated_at` DATETIME NOT NULL,
+                    PRIMARY KEY (`id`)
+                )
+                """
+            ),
+        )
+
+        # LLM model access table
+        changed |= _ensure_table(
+            db,
+            table_name="llm_model_permissions",
+            create_sql=(
+                """
+                CREATE TABLE `llm_model_permissions` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `llm_model_id` INT NOT NULL,
+                    `permission_type` VARCHAR(20) NOT NULL,
+                    `target_identifier` VARCHAR(255) NOT NULL,
+                    `granted_by` VARCHAR(255) NULL,
+                    `granted_at` DATETIME NOT NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_llm_model_permission` (`llm_model_id`, `permission_type`, `target_identifier`)
+                )
+                """
+            ),
+        )
+
+        # LLM scenario task results (LLM evaluators without user accounts)
+        changed |= _ensure_table(
+            db,
+            table_name="llm_task_results",
+            create_sql=(
+                """
+                CREATE TABLE `llm_task_results` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `scenario_id` INT NOT NULL,
+                    `thread_id` INT NOT NULL,
+                    `model_id` VARCHAR(255) NOT NULL,
+                    `task_type` VARCHAR(50) NOT NULL,
+                    `payload_json` JSON NULL,
+                    `raw_response` TEXT NULL,
+                    `error` TEXT NULL,
+                    `created_at` DATETIME NOT NULL,
+                    `updated_at` DATETIME NOT NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_llm_task_result` (`scenario_id`, `thread_id`, `model_id`, `task_type`)
+                )
+                """
+            ),
+        )
+
+        # System settings: LLM AI logging
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="llm_ai_log_responses",
+            column_definition_sql="`llm_ai_log_responses` TINYINT(1) NOT NULL DEFAULT 1",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="llm_ai_log_tasks",
+            column_definition_sql="`llm_ai_log_tasks` VARCHAR(255) NOT NULL DEFAULT 'authenticity'",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="llm_ai_log_response_max",
+            column_definition_sql="`llm_ai_log_response_max` INT NOT NULL DEFAULT 800",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="llm_ai_log_prompts",
+            column_definition_sql="`llm_ai_log_prompts` TINYINT(1) NOT NULL DEFAULT 0",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="llm_ai_log_prompt_max",
+            column_definition_sql="`llm_ai_log_prompt_max` INT NOT NULL DEFAULT 800",
+        )
 
         # Analytics settings: custom dimensions
         changed |= _ensure_column(

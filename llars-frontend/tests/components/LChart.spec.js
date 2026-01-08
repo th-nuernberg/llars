@@ -66,6 +66,10 @@ function mountLChart(props = {}, options = {}) {
         'v-icon': {
           template: '<i class="v-icon">{{ icon }}</i>',
           props: ['icon', 'size', 'color']
+        },
+        'LIcon': {
+          template: '<i class="v-icon">{{ icon }}</i>',
+          props: ['icon', 'size', 'color']
         }
       }
     },

@@ -25,14 +25,15 @@ if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --o
   git diff --cached --binary > "$CLEAN_DIR/index.patch" || true
 
   git ls-files --others --exclude-standard -z > "$CLEAN_DIR/untracked.zlist" || true
-  if [ -s "$CLEAN_DIR/untracked.zlist" ]; then
-    tr '\0' '\n' < "$CLEAN_DIR/untracked.zlist" > "$CLEAN_DIR/untracked.txt"
-    tar --null --files-from="$CLEAN_DIR/untracked.zlist" \
+if [ -s "$CLEAN_DIR/untracked.zlist" ]; then
+  tr '\0' '\n' < "$CLEAN_DIR/untracked.zlist" > "$CLEAN_DIR/untracked.txt"
+  tar --null \
       --exclude="backups/*" \
       --exclude=".deploy/*" \
       --exclude=".env" \
-      -czf "$CLEAN_DIR/untracked.tar.gz" || true
-  fi
+      -czf "$CLEAN_DIR/untracked.tar.gz" \
+      --files-from="$CLEAN_DIR/untracked.zlist" || true
+fi
 
   echo "INFO: Working tree dirty. Backup saved to $CLEAN_DIR"
   git reset --hard
@@ -44,12 +45,27 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+set -a
+. ./.env
+set +a
+
 PREVIOUS_COMMIT="$(git rev-parse HEAD)"
 BACKUP_FILE="$BACKUP_DIR/pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
 
 echo "[1/6] Creating pre-deploy backup: $BACKUP_FILE"
-if ! docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > "$BACKUP_FILE"; then
+DB_USER="${MYSQL_USER:-dev_user}"
+DB_PASS="${MYSQL_PASSWORD:-dev_password_change_me}"
+DB_NAME="${MYSQL_DATABASE:-database_llars}"
+
+if ! docker inspect -f '{{.State.Running}}' llars_db_service >/dev/null 2>&1; then
+  echo "ERROR: llars_db_service is not running. Aborting deploy."
+  docker ps -a
+  exit 1
+fi
+
+if ! docker exec llars_db_service mysqldump -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" > "$BACKUP_FILE"; then
   echo "ERROR: Backup failed. Aborting deploy."
+  docker logs --tail 200 llars_db_service || true
   exit 1
 fi
 

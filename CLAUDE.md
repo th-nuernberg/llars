@@ -54,6 +54,23 @@ Databases: MariaDB (:3306 - LLARS), PostgreSQL (:5432 - Authentik)
 
 ---
 
+## LLM Modelle & Sichtbarkeit
+
+- Verfügbare Modelle für Nutzer: `GET /api/llm/models/available` (Permission: `feature:llm:view`)
+- Admin-Übersicht/Allowlist: `GET /api/llm/models/access/overview`, `PUT /api/llm/models/<id>/access`
+- Standard: Keine Zuweisung = öffentlich; sobald Nutzer/Rollen gesetzt sind, gilt die Allowlist.
+- DB-Tabelle: `llm_model_permissions`
+
+---
+
+## LLM Provider Registry
+
+- Admin Endpoints: `GET/POST /api/llm/providers`, `PUT/DELETE /api/llm/providers/<id>`, `POST /api/llm/providers/<id>/test`, `POST /api/llm/providers/<id>/sync-models`
+- Routing: `llm_models.provider_id` → Provider-Config; Fallback = Default-Provider oder `LITELLM_*`/`OPENAI_API_KEY`
+- DB-Tabelle: `llm_providers`
+
+---
+
 ## Server-Operationen
 
 ### Neustart / Bereinigung

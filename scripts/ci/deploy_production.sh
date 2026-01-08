@@ -84,11 +84,11 @@ git pull --ff-only origin "$BRANCH"
 
 DEPLOYED_COMMIT="$(git rev-parse HEAD)"
 
-echo "[3/6] Building Docker images"
-docker compose build --parallel
+echo "[3/6] Building Docker images (production mode)"
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build --parallel
 
-echo "[4/6] Starting services"
-docker compose up -d --remove-orphans
+echo "[4/6] Starting services (production mode)"
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
 cat > "$ROLLBACK_DIR/rollback.env" <<EOF
 ROLLBACK_COMMIT=$PREVIOUS_COMMIT
@@ -100,4 +100,4 @@ EOF
 echo "[5/6] Deployment complete"
 
 echo "[6/6] Current status"
-docker compose ps
+docker compose -f docker-compose.yml -f docker-compose.prod.yml ps

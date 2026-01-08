@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 from db.database import db
 from db.tables import Chatbot, ChatbotCollection, RAGCollection
 from db.models.llm_model import LLMModel
+from services.llm.llm_access_service import LLMAccessService
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +62,15 @@ class ChatbotCreator:
             name = f"{base_name}_{counter}"
             counter += 1
 
-        # Create draft chatbot
-        default_model = LLMModel.get_default_model(model_type=LLMModel.MODEL_TYPE_LLM)
-        if not default_model:
-            raise ValueError("No default LLM model configured in llm_models")
+        # Create draft chatbot with accessible default model
+        accessible = LLMAccessService.get_accessible_models(
+            username,
+            active_only=True,
+            model_type=LLMModel.MODEL_TYPE_LLM,
+        )
+        if not accessible:
+            raise ValueError("No accessible LLM model configured for this user")
+        default_model = next((m for m in accessible if m.is_default), accessible[0])
         chatbot = Chatbot(
             name=name,
             display_name=f"Chatbot for {parsed.netloc}",

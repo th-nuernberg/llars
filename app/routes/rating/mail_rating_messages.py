@@ -4,12 +4,13 @@ Handles individual message ratings within email threads.
 """
 
 import logging
-from flask import jsonify, request, g
+from flask import jsonify, request, g, current_app
 from sqlalchemy import func
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 from db.database import db
 from db.tables import UserMessageRating
+from services.scenario_stats_service import get_scenario_ids_for_thread
 from .. import data_blueprint
 from ..HelperFunctions import can_access_thread
 
@@ -104,4 +105,17 @@ def save_message_ratings(thread_id):
 
     # commit all changes to the db
     db.session.commit()
+
+    _emit_scenario_stats_updates(thread_id)
+
     return jsonify({'status': 'Message ratings saved successfully'}), 201
+def _emit_scenario_stats_updates(thread_id: int) -> None:
+    socketio = current_app.extensions.get('socketio')
+    if not socketio:
+        return
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        for scenario_id in get_scenario_ids_for_thread(thread_id):
+            emit_scenario_stats_updated(socketio, scenario_id)
+    except Exception:
+        pass

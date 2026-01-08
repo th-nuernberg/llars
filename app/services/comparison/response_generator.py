@@ -16,6 +16,7 @@ from .session_service import ComparisonSessionService
 from .prompt_generator import ComparisonPromptGenerator
 from .evaluation_service import ComparisonEvaluationService
 from db.models.llm_model import LLMModel
+from services.llm.llm_client_factory import LLMClientFactory
 
 logger = logging.getLogger(__name__)
 
@@ -133,11 +134,6 @@ class LLMResponseGenerator:
     ) -> None:
         """Generate response from a single LLM with streaming."""
         try:
-            client = OpenAI(
-                api_key="EMPTY",
-                base_url=f"http://{self.ssh_container}:{self.ssh_container_port}/v1"
-            )
-
             from main import app
             with app.app_context():
                 session = ComparisonSessionService.get_session_by_id(session_id)
@@ -148,6 +144,15 @@ class LLMResponseGenerator:
                     session
                 )
                 model_name = model_mapping.get(llm_type)
+
+                model_entry = LLMModel.get_by_model_id(model_name) if model_name else None
+                client = LLMClientFactory.get_client_for_model(model_name) if model_entry else None
+
+            if client is None:
+                client = OpenAI(
+                    api_key="EMPTY",
+                    base_url=f"http://{self.ssh_container}:{self.ssh_container_port}/v1"
+                )
 
             stream = client.chat.completions.create(
                 model=model_name,

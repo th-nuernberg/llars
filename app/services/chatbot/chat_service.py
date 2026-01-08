@@ -10,12 +10,10 @@ This is the main orchestration service that coordinates:
 - ChatConversationService: Conversation CRUD
 """
 
-import os
 import logging
 import time
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
-from openai import OpenAI
 
 from db.database import db
 from db.tables import (
@@ -31,6 +29,7 @@ from services.chatbot.chat_prompt_builder import ChatPromptBuilder
 from services.chatbot.chat_rag_retrieval import ChatRAGRetrieval
 from services.chatbot.chat_conversation_service import ChatConversationService
 from llm.openai_utils import extract_delta_text, extract_message_text
+from services.llm.llm_client_factory import LLMClientFactory
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +45,7 @@ class ChatService:
         self.rag_pipeline = RAGPipeline() if self.chatbot.rag_enabled else None
 
         # Initialize LLM client
-        self.llm_client = OpenAI(
-            api_key=os.environ.get('LITELLM_API_KEY'),
-            base_url=os.environ.get('LITELLM_BASE_URL')
-        )
+        self.llm_client = LLMClientFactory.get_client_for_model(self.chatbot.model_name)
 
         # Initialize helper services
         self.prompt_builder = ChatPromptBuilder(self.chatbot)

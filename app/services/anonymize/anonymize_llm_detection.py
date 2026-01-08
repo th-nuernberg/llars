@@ -9,7 +9,6 @@ import json
 import logging
 import os
 import re
-from functools import lru_cache
 from typing import Any, Optional
 
 from .anonymize_constants import (
@@ -18,6 +17,8 @@ from .anonymize_constants import (
     LLM_LABEL_ALIASES,
     LLM_DETECTION_PROMPT,
 )
+from services.llm.llm_provider_service import LLMProviderService
+from services.llm.llm_client_factory import LLMClientFactory
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,15 @@ def llm_quick_status() -> dict[str, Any]:
         default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
     except Exception:
         default_model_id = None
+
+    provider = LLMProviderService.get_default_provider()
+    if provider:
+        return {
+            "ready": bool(provider.is_active),
+            "provider": provider.provider_type,
+            "base_url": provider.base_url,
+            "default_model": default_model_id,
+        }
 
     if litellm_key.strip():
         return {
@@ -65,24 +75,6 @@ def _resolve_llm_model_id(model: Optional[str] = None) -> str:
     if not default_model:
         raise RuntimeError("No default LLM model configured in llm_models")
     return default_model.model_id
-
-
-@lru_cache(maxsize=1)
-def _llm_client():
-    """Get the OpenAI client for LLM calls (cached)."""
-    from openai import OpenAI
-
-    litellm_key = os.environ.get("LITELLM_API_KEY") or ""
-    litellm_base_url = os.environ.get("LITELLM_BASE_URL") or ""
-    if litellm_key.strip():
-        if not litellm_base_url.strip():
-            raise RuntimeError("LITELLM_BASE_URL is not configured")
-        return OpenAI(api_key=litellm_key, base_url=litellm_base_url)
-
-    openai_key = os.environ.get("OPENAI_API_KEY") or ""
-    if not openai_key.strip():
-        raise RuntimeError("Neither LITELLM_API_KEY nor OPENAI_API_KEY is configured")
-    return OpenAI(api_key=openai_key)
 
 
 def _parse_llm_json(response_text: str) -> dict[str, Any]:
@@ -130,8 +122,8 @@ def find_llm_entities(text: str, model: Optional[str] = None, max_entities: int 
     if not status.get("ready"):
         raise RuntimeError("LLM is not configured (missing API key/base URL)")
 
-    client = _llm_client()
     model_id = _resolve_llm_model_id(model)
+    client = LLMClientFactory.get_client_for_model(model_id)
 
     response = client.chat.completions.create(
         model=model_id,

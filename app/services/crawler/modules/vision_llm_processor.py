@@ -12,6 +12,9 @@ import logging
 from typing import Dict, Optional
 
 from llm.openai_utils import extract_message_text
+from services.llm.llm_client_factory import LLMClientFactory
+from services.llm.llm_provider_service import LLMProviderService
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +70,8 @@ Wichtig:
 
         Args:
             model: Vision-capable LLM model name
-            litellm_base_url: LiteLLM API base URL
-            litellm_api_key: LiteLLM API key
+            litellm_base_url: Override base URL for OpenAI-compatible endpoints
+            litellm_api_key: Override API key for OpenAI-compatible endpoints
             max_tokens: Maximum tokens in response
             temperature: LLM temperature (0.0-1.0)
         """
@@ -83,13 +86,34 @@ Wichtig:
             if not default_model:
                 raise RuntimeError("No vision-capable LLM model configured in llm_models")
             self.model = default_model.model_id
-        self.litellm_base_url = litellm_base_url or os.getenv(
-            'LITELLM_BASE_URL',
-            'https://kiz1.in.ohmportal.de/llmproxy/v1'
-        )
-        self.litellm_api_key = litellm_api_key or os.getenv('LITELLM_API_KEY', '')
+        self.litellm_base_url = litellm_base_url
+        self.litellm_api_key = litellm_api_key
         self.max_tokens = max_tokens if max_tokens is not None else self.DEFAULT_MAX_TOKENS
         self.temperature = temperature or self.DEFAULT_TEMPERATURE
+
+        if self.litellm_api_key or self.litellm_base_url:
+            self.client = OpenAI(
+                api_key=self.litellm_api_key or "EMPTY",
+                base_url=self.litellm_base_url,
+            )
+        else:
+            provider = None
+            try:
+                from db.models.llm_model import LLMModel
+                from db.models.llm_provider import LLMProvider
+                model_entry = LLMModel.get_by_model_id(self.model)
+                if model_entry and model_entry.provider_id:
+                    provider = LLMProvider.query.get(model_entry.provider_id)
+            except Exception:
+                provider = None
+
+            if not provider:
+                provider = LLMProviderService.get_default_provider()
+
+            if provider and not provider.is_openai_compatible:
+                raise RuntimeError("Vision-LLM requires an OpenAI-compatible provider for image inputs")
+
+            self.client = LLMClientFactory.get_client_for_model(self.model)
 
     async def extract_structured_data(
         self,
@@ -110,13 +134,6 @@ Wichtig:
             Empty dict if extraction fails
         """
         try:
-            import openai
-
-            client = openai.OpenAI(
-                base_url=self.litellm_base_url,
-                api_key=self.litellm_api_key
-            )
-
             completion_kwargs = {
                 "model": self.model,
                 "messages": [
@@ -141,7 +158,7 @@ Wichtig:
             if self.max_tokens is not None:
                 completion_kwargs["max_tokens"] = self.max_tokens
 
-            response = client.chat.completions.create(**completion_kwargs)
+            response = self.client.chat.completions.create(**completion_kwargs)
 
             response_text = extract_message_text(response.choices[0].message).strip()
             if not response_text:
@@ -202,4 +219,9 @@ Wichtig:
         Returns:
             True if API credentials are configured
         """
-        return bool(self.litellm_base_url and self.litellm_api_key)
+        if self.litellm_api_key or self.litellm_base_url:
+            return True
+        provider = LLMProviderService.get_default_provider()
+        if provider:
+            return provider.is_active
+        return bool(os.environ.get("LITELLM_BASE_URL") or os.environ.get("OPENAI_API_KEY"))

@@ -6,7 +6,7 @@ Provides endpoints for ranking features across email threads.
 
 import logging
 
-from flask import jsonify, request, g
+from flask import jsonify, request, g, current_app
 
 from auth.decorators import authentik_required, admin_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
@@ -14,10 +14,23 @@ from db.database import db
 from routes.auth import data_bp
 from services.feature_service import FeatureService
 from services.ranking_service import RankingService
+from services.scenario_stats_service import get_scenario_ids_for_thread
 from services.thread_service import ThreadService
 
 
 logger = logging.getLogger(__name__)
+
+
+def _emit_scenario_stats_updates(thread_id: int) -> None:
+    socketio = current_app.extensions.get('socketio')
+    if not socketio:
+        return
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        for scenario_id in get_scenario_ids_for_thread(thread_id):
+            emit_scenario_stats_updated(socketio, scenario_id)
+    except Exception:
+        pass
 
 
 @data_bp.route('/email_threads/rankings', methods=['GET'])
@@ -225,6 +238,8 @@ def save_ranking(thread_id):
     except Exception:
         db.session.rollback()
         raise
+
+    _emit_scenario_stats_updates(thread_id)
 
     return jsonify({'status': 'Ranking saved successfully'}), 201
 

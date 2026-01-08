@@ -313,6 +313,8 @@ def get_wizard_status(chatbot_id):
 def finalize_wizard_chatbot(chatbot_id):
     """Finalize the chatbot configuration and mark as ready."""
     from services.chatbot.chatbot_builder_service import ChatbotBuilderService
+    from services.chatbot.chatbot_service import ChatbotService
+    from services.llm.llm_access_service import LLMAccessService
     from services.wizard import get_wizard_session_service
     from socketio_handlers.events_wizard import emit_wizard_status_changed
     from main import socketio
@@ -326,6 +328,9 @@ def finalize_wizard_chatbot(chatbot_id):
         return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
     data = request.get_json() or {}
+    model_name = ChatbotService._coerce_model_name(data.get('model_name'))
+    if model_name and not LLMAccessService.user_can_access_model(username, model_name):
+        return jsonify({'success': False, 'error': 'Model not available for this user'}), 403
     result = ChatbotBuilderService.finalize_chatbot(chatbot_id, data)
 
     # Log wizard completed

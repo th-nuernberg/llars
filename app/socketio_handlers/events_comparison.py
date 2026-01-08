@@ -215,6 +215,13 @@ def register_comparison_events(socketio) -> None:
                 emit("error", {"message": "Message not found"}, room=client_id)
                 return
 
+            try:
+                from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+                if session.scenario_id:
+                    emit_scenario_stats_updated(socketio, session.scenario_id)
+            except Exception:
+                pass
+
             matches, ai_evaluation = ComparisonEvaluationService.perform_evaluation(
                 message_id=message_id,
                 session_id=session_id,
@@ -297,4 +304,3 @@ def register_comparison_events(socketio) -> None:
         except Exception as e:
             logger.error(f"[Comparison] Error saving justification: {e}")
             emit("error", {"message": "Failed to save justification"}, room=client_id)
-

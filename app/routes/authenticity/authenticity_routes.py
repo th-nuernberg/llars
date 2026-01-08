@@ -9,16 +9,29 @@ User workflow:
 
 from __future__ import annotations
 
-from flask import jsonify, request, g
+from flask import jsonify, request, g, current_app
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.feature_service import FeatureService
+from services.scenario_stats_service import get_scenario_ids_for_thread
 from services.thread_service import ThreadService
 from db.database import db
 from db.models import Message, UserAuthenticityVote
+
+
+def _emit_scenario_stats_updates(thread_id: int) -> None:
+    socketio = current_app.extensions.get('socketio')
+    if not socketio:
+        return
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        for scenario_id in get_scenario_ids_for_thread(thread_id):
+            emit_scenario_stats_updated(socketio, scenario_id)
+    except Exception:
+        pass
 
 
 def _normalize_vote(value: str) -> str:
@@ -175,6 +188,8 @@ def save_authenticity_vote(thread_id: int):
 
     db.session.commit()
 
+    _emit_scenario_stats_updates(thread_id)
+
     return jsonify({"ok": True, "thread_id": thread_id, "vote": vote_value, "confidence": confidence}), 200
 
 
@@ -237,10 +252,11 @@ def update_authenticity_metadata(thread_id: int):
 
     db.session.commit()
 
+    _emit_scenario_stats_updates(thread_id)
+
     return jsonify({
         "ok": True,
         "thread_id": thread_id,
         "confidence": row.confidence,
         "notes": row.notes
     }), 200
-

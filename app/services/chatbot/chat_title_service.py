@@ -4,13 +4,13 @@ Service for generating and managing chat conversation titles.
 Supports LLM-based smart title generation with streaming.
 """
 
-import os
 import re
 import logging
 from typing import Optional, Callable
-from openai import OpenAI
 
 from llm.openai_utils import extract_delta_text, extract_message_text
+from services.llm.llm_client_factory import LLMClientFactory
+from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
 
@@ -85,13 +85,13 @@ class ChatTitleService:
             return None
 
         try:
-            llm_client = OpenAI(
-                api_key=os.environ.get('LITELLM_API_KEY'),
-                base_url=os.environ.get('LITELLM_BASE_URL')
-            )
-
             # Always use fast model for title generation
             model = 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+            if not LLMModel.get_by_model_id(model):
+                default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+                if default_model_id:
+                    model = default_model_id
+            llm_client = LLMClientFactory.get_client_for_model(model)
 
             messages = [
                 {

@@ -8,10 +8,12 @@ from flask import jsonify, request
 from pypdf import PdfReader
 from docx.api import Document
 
-from decorators.error_handler import handle_api_errors, ValidationError
+from decorators.error_handler import handle_api_errors, ValidationError, ForbiddenError
 from decorators.permission_decorator import require_permission
 from routes.anonymize import anonymize_bp
 from services.anonymize import AnonymizeService
+from services.llm.llm_access_service import LLMAccessService
+from auth.auth_utils import AuthUtils
 
 
 def _extract_text_from_docx(file_bytes: bytes) -> str:
@@ -87,6 +89,9 @@ def anonymize_pseudonymize() -> Any:
         db_model = LLMModel.get_by_model_id(llm_model.strip())
         if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
             raise ValidationError("Selected llm_model is not an active LLM model")
+        username = AuthUtils.extract_username_without_validation()
+        if not LLMAccessService.user_can_access_model(username, llm_model.strip()):
+            raise ForbiddenError("Selected llm_model is not available for this user")
 
     status_offline = AnonymizeService.quick_status()
     status_llm = AnonymizeService.llm_quick_status()
@@ -164,6 +169,9 @@ def anonymize_pseudonymize_file() -> Any:
         db_model = LLMModel.get_by_model_id(llm_model.strip())
         if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
             raise ValidationError("Selected llm_model is not an active LLM model")
+        username = AuthUtils.extract_username_without_validation()
+        if not LLMAccessService.user_can_access_model(username, llm_model.strip()):
+            raise ForbiddenError("Selected llm_model is not available for this user")
 
     status_offline = AnonymizeService.quick_status()
     status_llm = AnonymizeService.llm_quick_status()

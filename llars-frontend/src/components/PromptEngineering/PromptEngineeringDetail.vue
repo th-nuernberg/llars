@@ -96,7 +96,7 @@
               class="mr-2"
               @click="mobileSidebarOpen = true"
             >
-              <v-icon>mdi-menu</v-icon>
+              <LIcon>mdi-menu</LIcon>
             </v-btn>
             <h1 class="prompt-title">{{ promptName }}</h1>
           </div>
@@ -105,7 +105,7 @@
               {{ blocks.length }} {{ blocks.length === 1 ? 'Block' : 'Blöcke' }}
             </LTag>
             <span v-if="sharedWithUsers.length && !isMobile" class="text-caption text-medium-emphasis ml-2">
-              <v-icon size="14" class="mr-1">mdi-share-variant</v-icon>
+              <LIcon size="14" class="mr-1">mdi-share-variant</LIcon>
               {{ sharedWithUsers.length }} Nutzer
             </span>
           </div>
@@ -125,7 +125,7 @@
               <div class="editor-block">
                 <div class="editor-header">
                   <div class="drag-handle" title="Ziehen um zu sortieren">
-                    <v-icon size="18">mdi-drag</v-icon>
+                    <LIcon size="18">mdi-drag</LIcon>
                   </div>
 
                   <!-- Block Title -->
@@ -157,7 +157,7 @@
                       @click="startEditBlockTitle(block)"
                       title="Umbenennen"
                     >
-                      <v-icon size="16">mdi-pencil</v-icon>
+                      <LIcon size="16">mdi-pencil</LIcon>
                     </v-btn>
                     <v-btn
                       icon
@@ -167,7 +167,7 @@
                       @click="openDeleteBlockDialog(block)"
                       title="Löschen"
                     >
-                      <v-icon size="16">mdi-delete</v-icon>
+                      <LIcon size="16">mdi-delete</LIcon>
                     </v-btn>
                   </div>
                 </div>
@@ -180,7 +180,7 @@
 
           <!-- Empty State -->
           <div v-else class="empty-blocks">
-            <v-icon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</v-icon>
+            <LIcon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</LIcon>
             <div class="text-subtitle-1 mt-3">Noch keine Blöcke</div>
             <div class="text-body-2 text-medium-emphasis mb-4">
               Erstellen Sie Ihren ersten Prompt-Block.
@@ -215,7 +215,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2" color="accent">mdi-plus-circle</v-icon>
+            <LIcon class="mr-2" color="accent">mdi-plus-circle</LIcon>
             <span class="text-h6">Neuen Block erstellen</span>
           </div>
         </template>
@@ -245,7 +245,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+            <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
             <span class="text-h6">Block löschen</span>
           </div>
         </template>
@@ -270,7 +270,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2" color="secondary">mdi-upload</v-icon>
+            <LIcon class="mr-2" color="secondary">mdi-upload</LIcon>
             <span class="text-h6">JSON importieren</span>
           </div>
         </template>

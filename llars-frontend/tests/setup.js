@@ -9,6 +9,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { vi } from 'vitest'
+import LIcon from '@/components/common/LIcon.vue'
 
 // Create Vuetify instance for tests
 const vuetify = createVuetify({
@@ -18,6 +19,10 @@ const vuetify = createVuetify({
 
 // Configure Vue Test Utils globally
 config.global.plugins = [vuetify]
+config.global.components = {
+  ...(config.global.components || {}),
+  LIcon,
+}
 
 // Add common stubs
 config.global.stubs = {

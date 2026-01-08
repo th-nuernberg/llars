@@ -3,16 +3,16 @@
     <!-- Header with view toggle -->
     <div class="mw-header">
       <div class="mw-title">
-        <v-icon size="20" class="mr-2">mdi-account-group</v-icon>
+        <LIcon size="20" class="mr-2">mdi-account-group</LIcon>
         <span>{{ activeWorkerCount }}/{{ workerCount }} Worker aktiv</span>
       </div>
       <div class="mw-actions">
         <v-btn-toggle v-model="viewMode" mandatory density="compact" class="mr-2">
           <v-btn value="grid" size="small" variant="text">
-            <v-icon size="18">mdi-view-grid</v-icon>
+            <LIcon size="18">mdi-view-grid</LIcon>
           </v-btn>
           <v-btn value="list" size="small" variant="text">
-            <v-icon size="18">mdi-view-list</v-icon>
+            <LIcon size="18">mdi-view-list</LIcon>
           </v-btn>
         </v-btn-toggle>
         <v-btn
@@ -44,16 +44,16 @@
             <span class="worker-badge" :style="{ backgroundColor: WORKER_COLORS[(i - 1) % WORKER_COLORS.length] }">
               W{{ i }}
             </span>
-            <v-icon
+            <LIcon
               v-if="workerStreams[i - 1]?.isStreaming"
               size="14"
               class="streaming-indicator"
-            >mdi-circle</v-icon>
+            >mdi-circle</LIcon>
           </div>
           <div class="worker-status">
             <template v-if="workerStreams[i - 1]?.comparison">
               <span class="pillar-tag pillar-a">{{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_a) }}</span>
-              <v-icon size="12">mdi-arrow-left-right</v-icon>
+              <LIcon size="12">mdi-arrow-left-right</LIcon>
               <span class="pillar-tag pillar-b">{{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_b) }}</span>
             </template>
             <span v-else class="text-medium-emphasis text-caption">Wartet...</span>
@@ -118,7 +118,7 @@
           </template>
           <template v-else>
             <div class="empty-worker">
-              <v-icon size="24" color="grey-lighten-1">mdi-robot-off-outline</v-icon>
+              <LIcon size="24" color="grey-lighten-1">mdi-robot-off-outline</LIcon>
               <span class="text-caption text-medium-emphasis">Idle</span>
             </div>
           </template>
@@ -131,7 +131,7 @@
       <div v-if="selectedWorkerId !== null && workerStreams[selectedWorkerId]?.comparison" class="selected-worker-detail">
         <div class="detail-header">
           <span class="detail-title">
-            <v-icon size="16" class="mr-1">mdi-eye</v-icon>
+            <LIcon size="16" class="mr-1">mdi-eye</LIcon>
             Worker {{ selectedWorkerId + 1 }} Detail
           </span>
           <LIconBtn icon="mdi-close" size="x-small" tooltip="Schließen" @click="selectedWorkerId = null" />

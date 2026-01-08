@@ -3,11 +3,11 @@
   <div class="sidebar">
     <!-- Sidebar Header -->
     <div class="sidebar-header">
-      <v-icon size="20" color="primary" class="mr-2">mdi-file-document-edit-outline</v-icon>
+      <LIcon size="20" color="primary" class="mr-2">mdi-file-document-edit-outline</LIcon>
       <span class="sidebar-title text-truncate">{{ promptName }}</span>
       <v-spacer />
       <v-btn icon variant="text" size="small" @click="goToOverview">
-        <v-icon size="18">mdi-arrow-left</v-icon>
+        <LIcon size="18">mdi-arrow-left</LIcon>
       </v-btn>
     </div>
 
@@ -16,7 +16,7 @@
       <!-- Online Users -->
       <div class="sidebar-section">
         <div class="section-label">
-          <v-icon size="14" class="mr-1">mdi-account-multiple</v-icon>
+          <LIcon size="14" class="mr-1">mdi-account-multiple</LIcon>
           Online ({{ Object.keys(users).length }})
         </div>
         <div class="users-list">
@@ -33,7 +33,7 @@
       <!-- Actions -->
       <div class="sidebar-section">
         <div class="section-label">
-          <v-icon size="14" class="mr-1">mdi-lightning-bolt</v-icon>
+          <LIcon size="14" class="mr-1">mdi-lightning-bolt</LIcon>
           Aktionen
         </div>
         <div class="actions-grid">
@@ -52,7 +52,7 @@
       <!-- Import/Export -->
       <div class="sidebar-section">
         <div class="section-label">
-          <v-icon size="14" class="mr-1">mdi-swap-horizontal</v-icon>
+          <LIcon size="14" class="mr-1">mdi-swap-horizontal</LIcon>
           Import / Export
         </div>
         <div class="actions-grid">
@@ -72,13 +72,13 @@
       <!-- Options Section -->
       <div class="sidebar-section">
         <div class="section-label">
-          <v-icon size="14" class="mr-1">mdi-cog</v-icon>
+          <LIcon size="14" class="mr-1">mdi-cog</LIcon>
           Optionen
         </div>
         <div class="option-item" @click="$emit('toggleGitPanel')">
-          <v-icon size="16" :color="showGitPanel ? 'primary' : 'grey'" class="mr-2">
+          <LIcon size="16" :color="showGitPanel ? 'primary' : 'grey'" class="mr-2">
             mdi-source-branch
-          </v-icon>
+          </LIcon>
           <span class="option-label">Git-Panel</span>
           <v-spacer />
           <v-switch
@@ -94,7 +94,7 @@
       <!-- Sharing Section -->
       <div class="sidebar-section">
         <div class="section-label">
-          <v-icon size="14" class="mr-1">mdi-share-variant</v-icon>
+          <LIcon size="14" class="mr-1">mdi-share-variant</LIcon>
           Freigaben
         </div>
 
@@ -120,7 +120,7 @@
               color="error"
               @click="unsharePromptWithUser(user)"
             >
-              <v-icon size="14">mdi-close</v-icon>
+              <LIcon size="14">mdi-close</LIcon>
             </v-btn>
           </div>
         </div>
@@ -154,7 +154,7 @@
         <LCard>
           <template #header>
             <div class="d-flex align-center w-100">
-              <v-icon class="mr-2" color="primary">mdi-eye</v-icon>
+              <LIcon class="mr-2" color="primary">mdi-eye</LIcon>
               <span class="text-h6">Vorschau: {{ promptName }}</span>
               <v-spacer />
               <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="showPreview = false" />
@@ -167,7 +167,7 @@
               <div class="preview-block-content">{{ getBlockContent(block) }}</div>
             </div>
             <div v-if="sortedBlocks.length === 0" class="empty-preview">
-              <v-icon size="32" color="grey-lighten-1">mdi-file-document-outline</v-icon>
+              <LIcon size="32" color="grey-lighten-1">mdi-file-document-outline</LIcon>
               <span class="text-body-2 text-medium-emphasis mt-2">Keine Blöcke vorhanden</span>
             </div>
           </div>

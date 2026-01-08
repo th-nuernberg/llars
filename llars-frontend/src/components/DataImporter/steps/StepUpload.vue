@@ -42,7 +42,7 @@
 
       <!-- Success State -->
       <template v-else-if="hasUploads && !hasErrors">
-        <v-icon size="64" color="success" class="mb-2">mdi-check-circle</v-icon>
+        <LIcon size="64" color="success" class="mb-2">mdi-check-circle</LIcon>
         <div class="text-h6 font-weight-medium">{{ uploadSummary }}</div>
         <div class="text-body-2 text-medium-emphasis mt-1">
           {{ totalItemCount.toLocaleString() }} Einträge geladen
@@ -54,7 +54,7 @@
 
       <!-- Partial Success State -->
       <template v-else-if="hasUploads && hasErrors">
-        <v-icon size="64" color="warning" class="mb-2">mdi-alert-circle</v-icon>
+        <LIcon size="64" color="warning" class="mb-2">mdi-alert-circle</LIcon>
         <div class="text-h6 font-weight-medium">{{ uploadSummary }}</div>
         <div class="text-body-2 text-warning mt-1">
           {{ failedFiles.length }} Dateien fehlgeschlagen
@@ -63,7 +63,7 @@
 
       <!-- Error State -->
       <template v-else-if="uploadError">
-        <v-icon size="64" color="error" class="mb-2">mdi-close-circle</v-icon>
+        <LIcon size="64" color="error" class="mb-2">mdi-close-circle</LIcon>
         <div class="text-h6 font-weight-medium text-error">Upload fehlgeschlagen</div>
         <div class="text-body-2 mt-2">{{ uploadError }}</div>
         <LBtn variant="text" size="small" class="mt-3" @click.stop="clearError">
@@ -73,9 +73,9 @@
 
       <!-- Empty State -->
       <template v-else>
-        <v-icon size="64" color="primary" :class="{ 'bounce': isDragging }">
+        <LIcon size="64" color="primary" :class="{ 'bounce': isDragging }">
           mdi-cloud-upload-outline
-        </v-icon>
+        </LIcon>
         <div class="text-h6 mt-3 font-weight-medium">Dateien & Ordner hochladen</div>
         <div class="text-body-2 text-medium-emphasis mt-2">
           Drag & Drop oder klicken
@@ -93,7 +93,7 @@
       <div v-if="hasUploads" class="uploaded-section mt-6">
         <div class="d-flex align-center justify-space-between mb-3">
           <span class="text-subtitle-2 d-flex align-center">
-            <v-icon size="18" class="mr-2" color="primary">mdi-file-tree</v-icon>
+            <LIcon size="18" class="mr-2" color="primary">mdi-file-tree</LIcon>
             Hochgeladene Inhalte
           </span>
           <LBtn
@@ -117,15 +117,15 @@
               class="folder-row"
               @click="toggleFolder(folderPath)"
             >
-              <v-icon size="20" color="amber-darken-2" class="mr-2">
+              <LIcon size="20" color="amber-darken-2" class="mr-2">
                 {{ expandedFolders[folderPath] ? 'mdi-folder-open' : 'mdi-folder' }}
-              </v-icon>
+              </LIcon>
               <span class="folder-name">{{ folderPath }}</span>
               <v-spacer />
               <span class="file-count">{{ group.length }}</span>
-              <v-icon size="18" class="ml-1">
+              <LIcon size="18" class="ml-1">
                 {{ expandedFolders[folderPath] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
-              </v-icon>
+              </LIcon>
             </div>
 
             <!-- Files -->
@@ -137,9 +137,9 @@
                   class="file-row"
                   :class="{ 'file-row--nested': folderPath !== '_root' }"
                 >
-                  <v-icon size="18" :color="getFormatColor(file.detected_format)" class="mr-2">
+                  <LIcon size="18" :color="getFormatColor(file.detected_format)" class="mr-2">
                     {{ getFormatIcon(file.detected_format) }}
-                  </v-icon>
+                  </LIcon>
                   <span class="file-name">{{ file.displayName || file.filename }}</span>
                   <v-spacer />
                   <span class="file-meta">
@@ -152,7 +152,7 @@
                     class="ml-1 remove-btn"
                     @click.stop="removeFile(file.session_id)"
                   >
-                    <v-icon size="16">mdi-close</v-icon>
+                    <LIcon size="16">mdi-close</LIcon>
                   </v-btn>
                 </div>
               </div>

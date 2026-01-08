@@ -6,7 +6,7 @@
       <div class="sources-panel-header">
         <div class="header-title-area">
           <div class="source-icon">
-            <v-icon size="20">mdi-bookmark-multiple</v-icon>
+            <LIcon size="20">mdi-bookmark-multiple</LIcon>
           </div>
           <div class="source-title-info">
             <span class="source-title">
@@ -24,12 +24,12 @@
               :class="{ active: pinned }"
               @click="$emit('update:pinned', !pinned)"
             >
-              <v-icon size="18">{{ pinned ? 'mdi-pin' : 'mdi-pin-outline' }}</v-icon>
+              <LIcon size="18">{{ pinned ? 'mdi-pin' : 'mdi-pin-outline' }}</LIcon>
             </button>
           </LTooltip>
           <LTooltip text="Schließen">
             <button class="panel-action close" @click="$emit('close')">
-              <v-icon size="18">mdi-close</v-icon>
+              <LIcon size="18">mdi-close</LIcon>
             </button>
           </LTooltip>
         </div>
@@ -42,7 +42,7 @@
           :class="{ active: activeTab === 'excerpt' }"
           @click="$emit('update:activeTab', 'excerpt')"
         >
-          <v-icon size="16">mdi-text-box</v-icon>
+          <LIcon size="16">mdi-text-box</LIcon>
           <span>Ausschnitt</span>
         </button>
         <button
@@ -51,7 +51,7 @@
           :disabled="!hasScreenshot"
           @click="$emit('update:activeTab', 'screenshot')"
         >
-          <v-icon size="16">mdi-image</v-icon>
+          <LIcon size="16">mdi-image</LIcon>
           <span>Screenshot</span>
         </button>
         <button
@@ -60,7 +60,7 @@
           :disabled="!hasDocument"
           @click="$emit('update:activeTab', 'document')"
         >
-          <v-icon size="16">mdi-file-document</v-icon>
+          <LIcon size="16">mdi-file-document</LIcon>
           <span>Dokument</span>
         </button>
       </div>
@@ -70,7 +70,7 @@
         <!-- Excerpt Tab -->
         <div v-if="activeTab === 'excerpt'" class="tab-content">
           <div v-if="!source" class="empty-source">
-            <v-icon size="48" class="mb-2">mdi-bookmark-outline</v-icon>
+            <LIcon size="48" class="mb-2">mdi-bookmark-outline</LIcon>
             <div>Quelle auswählen</div>
           </div>
           <template v-else>
@@ -93,7 +93,7 @@
             <!-- Excerpt Text -->
             <div class="excerpt-box">
               <div class="excerpt-label">
-                <v-icon size="14">mdi-format-quote-open</v-icon>
+                <LIcon size="14">mdi-format-quote-open</LIcon>
                 Textausschnitt
               </div>
               <div class="excerpt-text">
@@ -131,12 +131,12 @@
         <div v-else-if="activeTab === 'screenshot'" class="tab-content">
           <v-skeleton-loader v-if="loadingScreenshot" type="image" height="320" class="skeleton-llars" />
           <div v-else-if="screenshotError" class="error-box">
-            <v-icon size="24" color="error">mdi-alert-circle</v-icon>
+            <LIcon size="24" color="error">mdi-alert-circle</LIcon>
             <span>{{ screenshotError }}</span>
           </div>
           <div v-else class="screenshot-container">
             <div v-if="!screenshotUrl" class="empty-source">
-              <v-icon size="48" class="mb-2">mdi-image-off</v-icon>
+              <LIcon size="48" class="mb-2">mdi-image-off</LIcon>
               <div>Kein Screenshot verfügbar</div>
             </div>
             <template v-else>
@@ -167,12 +167,12 @@
         <div v-else-if="activeTab === 'document'" class="tab-content">
           <v-skeleton-loader v-if="loadingContent" type="article" class="skeleton-llars" />
           <div v-else-if="contentError" class="error-box">
-            <v-icon size="24" color="error">mdi-alert-circle</v-icon>
+            <LIcon size="24" color="error">mdi-alert-circle</LIcon>
             <span>{{ contentError }}</span>
           </div>
           <div v-else class="document-container">
             <div v-if="!documentContent" class="empty-source">
-              <v-icon size="48" class="mb-2">mdi-file-document-outline</v-icon>
+              <LIcon size="48" class="mb-2">mdi-file-document-outline</LIcon>
               <div>Kein Inhalt verfügbar</div>
             </div>
             <template v-else>

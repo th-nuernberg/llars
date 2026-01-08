@@ -33,7 +33,7 @@
       <!-- Header -->
       <v-card-title class="d-flex align-center justify-space-between bg-primary">
         <div class="d-flex align-center">
-          <v-icon class="mr-2">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <LIcon class="mr-2">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</LIcon>
           <span>{{ isEdit ? 'Chatbot bearbeiten' : 'Neuer Chatbot' }}</span>
         </div>
         <v-btn
@@ -46,28 +46,28 @@
       <!-- Tabs -->
       <v-tabs v-model="activeTab" bg-color="surface">
         <v-tab value="general">
-          <v-icon start>mdi-information</v-icon>
+          <LIcon start>mdi-information</LIcon>
           Allgemein
         </v-tab>
         <v-tab value="llm">
-          <v-icon start>mdi-brain</v-icon>
+          <LIcon start>mdi-brain</LIcon>
           LLM-Einstellungen
         </v-tab>
         <v-tab value="rag">
-          <v-icon start>mdi-magnify</v-icon>
+          <LIcon start>mdi-magnify</LIcon>
           RAG
         </v-tab>
         <v-tab v-if="canUseAdvancedModes" value="agent">
-          <v-icon start>mdi-robot-outline</v-icon>
+          <LIcon start>mdi-robot-outline</LIcon>
           Agent
           <LTag variant="warning" size="sm" class="ml-2">PRO</LTag>
         </v-tab>
         <v-tab value="collections">
-          <v-icon start>mdi-folder-multiple</v-icon>
+          <LIcon start>mdi-folder-multiple</LIcon>
           Collections
         </v-tab>
         <v-tab value="webcrawler">
-          <v-icon start>mdi-spider-web</v-icon>
+          <LIcon start>mdi-spider-web</LIcon>
           Web Crawler
         </v-tab>
       </v-tabs>
@@ -93,10 +93,7 @@
           <v-window-item value="llm" eager>
             <LlmSettingsTab
               :form-data="formData"
-              :llm-model-items="llmModelItems"
-              :llm-models-loading="llmModelsLoading"
               :prompt-templates="promptTemplates"
-              @sync-models="syncAndLoadModels"
               @apply-template="applyPromptTemplate"
               @update-line-count="updateLineCount"
             />
@@ -250,72 +247,6 @@ const uploadDialogOpen = ref(false);
 const uploadInitialCollectionId = ref(null);
 const generatingIcon = ref(false);
 const generatingColor = ref(false);
-
-// ===== LLM Models =====
-const llmModels = ref([]);
-const llmModelsLoading = ref(false);
-
-const llmModelItems = computed(() => {
-  const current = formData.value?.model_name;
-  const items = Array.isArray(llmModels.value) ? [...llmModels.value] : [];
-  const hasCurrent = current && items.some(m => m.model_id === current);
-
-  if (current && !hasCurrent) {
-    items.unshift({
-      model_id: current,
-      display_name: current,
-      provider: 'custom',
-      supports_vision: false,
-      supports_reasoning: false,
-      context_window: 0,
-      max_output_tokens: 0
-    });
-  }
-
-  return items.map(m => ({
-    title: m.display_name || m.model_id,
-    value: m.model_id,
-    ...m
-  }));
-});
-
-async function loadModels() {
-  llmModelsLoading.value = true;
-  try {
-    const response = await axios.get('/api/llm/models?active_only=true&model_type=llm');
-    if (response.data?.success) {
-      llmModels.value = response.data.models || [];
-
-      // Default selection for "create" mode only
-      if (!props.isEdit) {
-        const current = formData.value?.model_name;
-        const def = llmModels.value.find(m => m.is_default) || llmModels.value[0];
-        if (def?.model_id && (!current || current === 'gpt-4')) {
-          formData.value.model_name = def.model_id;
-        }
-      }
-    } else {
-      llmModels.value = [];
-    }
-  } catch (error) {
-    console.warn('[ChatbotEditor] Error loading LLM models:', error);
-    llmModels.value = [];
-  } finally {
-    llmModelsLoading.value = false;
-  }
-}
-
-async function syncAndLoadModels() {
-  llmModelsLoading.value = true;
-  try {
-    await axios.post('/api/llm/models/sync');
-  } catch (error) {
-    console.warn('[ChatbotEditor] Model sync failed:', error);
-  } finally {
-    llmModelsLoading.value = false;
-  }
-  await loadModels();
-}
 
 // ===== Reranker Models =====
 const rerankerModels = ref([]);
@@ -489,11 +420,9 @@ watch(
 
 watch(() => props.modelValue, (isOpen) => {
   if (!isOpen) {
-    llmModels.value = [];
     rerankerModels.value = [];
     return;
   }
-  loadModels();
   loadRerankerModels();
 }, { immediate: true });
 </script>

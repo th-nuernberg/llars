@@ -3,7 +3,7 @@
     <v-card class="wizard-card" variant="outlined">
       <!-- Header -->
       <v-card-title class="d-flex align-center pa-4">
-        <v-icon class="mr-2" color="primary">mdi-database-import</v-icon>
+        <LIcon class="mr-2" color="primary">llars:evaluation-assistant</LIcon>
         <div>
           <div class="text-h6">Data Importer</div>
           <div class="text-caption text-medium-emphasis">
@@ -55,12 +55,12 @@
               @click="navigateToStep(step.value)"
             >
               <div class="step-circle mx-auto mb-1">
-                <v-icon v-if="currentStep > step.value" size="small" color="white">
+                <LIcon v-if="currentStep > step.value" size="small" color="white">
                   mdi-check
-                </v-icon>
-                <v-icon v-else size="small" :color="currentStep === step.value ? 'white' : 'grey'">
+                </LIcon>
+                <LIcon v-else size="small" :color="currentStep === step.value ? 'white' : 'grey'">
                   {{ step.icon }}
-                </v-icon>
+                </LIcon>
               </div>
               <div class="step-title text-caption">{{ step.title }}</div>
             </div>
@@ -122,7 +122,7 @@
         <!-- Step 5: Execute Import -->
         <div v-else-if="currentStep === 5" class="step-execute pa-6">
           <div class="execute-summary">
-            <v-icon size="64" color="primary" class="mb-4">mdi-rocket-launch</v-icon>
+            <LIcon size="64" color="primary" class="mb-4">mdi-rocket-launch</LIcon>
             <h2 class="text-h5 mb-2">Bereit zum Import</h2>
             <p class="text-body-1 text-medium-emphasis mb-6">
               {{ sessions.length }} Dateien werden als "{{ scenarioConfig.name }}" importiert.

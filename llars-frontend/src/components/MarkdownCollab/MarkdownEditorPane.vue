@@ -3,15 +3,15 @@
     <div class="editor-topbar">
       <div class="d-flex align-center">
         <v-chip v-if="readonly" size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-lock</v-icon>
+          <LIcon start size="small">mdi-lock</LIcon>
           Read-only
         </v-chip>
         <v-chip v-else-if="isConnected" size="small" color="success" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-check-outline</v-icon>
+          <LIcon start size="small">mdi-cloud-check-outline</LIcon>
           Live Sync
         </v-chip>
         <v-chip v-else size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-alert-outline</v-icon>
+          <LIcon start size="small">mdi-cloud-alert-outline</LIcon>
           Reconnecting…
         </v-chip>
       </div>

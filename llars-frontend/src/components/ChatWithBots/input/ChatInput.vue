@@ -11,7 +11,7 @@
         class="mr-1"
         @click:close="removeFile(idx)"
       >
-        <v-icon start size="14">{{ getFileIcon(file.type) }}</v-icon>
+        <LIcon start size="14">{{ getFileIcon(file.type) }}</LIcon>
         {{ file.name }}
         <span class="text-caption ml-1">({{ formatFileSize(file.size) }})</span>
       </v-chip>
@@ -26,7 +26,7 @@
         @click="triggerFileInput"
         :title="fileUploadTooltip"
       >
-        <v-icon>mdi-paperclip</v-icon>
+        <LIcon>mdi-paperclip</LIcon>
       </v-btn>
       <input
         ref="fileInput"
@@ -61,7 +61,7 @@
         :loading="loading"
         @click="handleSend"
       >
-        <v-icon>mdi-send</v-icon>
+        <LIcon>mdi-send</LIcon>
       </v-btn>
     </div>
 

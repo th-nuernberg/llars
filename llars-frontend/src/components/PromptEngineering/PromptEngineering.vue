@@ -5,7 +5,7 @@
     <div class="page-header">
       <div class="header-content">
         <div class="header-left">
-          <v-icon :size="isMobile ? 22 : 28" color="primary" :class="isMobile ? 'mr-2' : 'mr-3'">mdi-file-document-edit-outline</v-icon>
+          <LIcon :size="isMobile ? 22 : 28" color="primary" :class="isMobile ? 'mr-2' : 'mr-3'">mdi-file-document-edit-outline</LIcon>
           <div>
             <h1 class="page-title">{{ isMobile ? 'Prompts' : 'Prompt Engineering' }}</h1>
             <p v-if="!isMobile" class="page-subtitle">Erstellen und verwalten Sie Ihre Prompts</p>
@@ -17,7 +17,7 @@
           :size="isMobile ? 'small' : 'default'"
           @click="openCreateDialog"
         >
-          <v-icon v-if="isMobile">mdi-plus</v-icon>
+          <LIcon v-if="isMobile">mdi-plus</LIcon>
           <span v-else>Neues Prompt</span>
         </LBtn>
       </div>
@@ -28,7 +28,7 @@
       <!-- Meine Prompts Section -->
       <div class="section">
         <div class="section-header">
-          <v-icon size="20" class="mr-2" color="primary">mdi-folder-account</v-icon>
+          <LIcon size="20" class="mr-2" color="primary">mdi-folder-account</LIcon>
           <span class="section-title">Meine Prompts</span>
           <span v-if="prompts.length" class="section-count">{{ prompts.length }}</span>
           <v-spacer />
@@ -62,11 +62,11 @@
 
             <div class="prompt-meta">
               <div class="d-flex align-center text-caption text-medium-emphasis">
-                <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
+                <LIcon size="14" class="mr-1">mdi-clock-outline</LIcon>
                 {{ formatRelativeDate(prompt.created_at) }}
               </div>
               <div v-if="prompt.shared_with?.length" class="shared-info mt-2">
-                <v-icon size="14" color="warning" class="mr-1">mdi-share-variant</v-icon>
+                <LIcon size="14" color="warning" class="mr-1">mdi-share-variant</LIcon>
                 <span class="text-caption">{{ prompt.shared_with.length }} Nutzer</span>
                 <div class="shared-avatars ml-2">
                   <img
@@ -94,7 +94,7 @@
         </transition-group>
 
         <div v-else class="empty-state">
-          <v-icon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</v-icon>
+          <LIcon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</LIcon>
           <div class="text-subtitle-1 mt-3">Noch keine Prompts</div>
           <div class="text-body-2 text-medium-emphasis mb-4">
             Erstellen Sie Ihr erstes Prompt, um loszulegen.
@@ -108,7 +108,7 @@
       <!-- Geteilte Prompts Section -->
       <div class="section mt-8">
         <div class="section-header">
-          <v-icon size="20" class="mr-2" color="warning">mdi-account-group</v-icon>
+          <LIcon size="20" class="mr-2" color="warning">mdi-account-group</LIcon>
           <span class="section-title">Mit mir geteilt</span>
           <span v-if="sharedPrompts.length" class="section-count">{{ sharedPrompts.length }}</span>
         </div>
@@ -138,11 +138,11 @@
 
             <div class="prompt-meta">
               <div class="d-flex align-center text-caption text-medium-emphasis">
-                <v-icon size="14" class="mr-1">mdi-account</v-icon>
+                <LIcon size="14" class="mr-1">mdi-account</LIcon>
                 {{ prompt.owner }}
               </div>
               <div class="d-flex align-center text-caption text-medium-emphasis mt-1">
-                <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
+                <LIcon size="14" class="mr-1">mdi-clock-outline</LIcon>
                 {{ formatRelativeDate(prompt.shared_at) }}
               </div>
             </div>
@@ -150,7 +150,7 @@
         </transition-group>
 
         <div v-else class="empty-state-small">
-          <v-icon size="32" color="grey-lighten-1">mdi-account-group-outline</v-icon>
+          <LIcon size="32" color="grey-lighten-1">mdi-account-group-outline</LIcon>
           <span class="text-body-2 text-medium-emphasis ml-3">
             Keine geteilten Prompts vorhanden
           </span>
@@ -163,7 +163,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2" color="primary">mdi-file-document-plus</v-icon>
+            <LIcon class="mr-2" color="primary">mdi-file-document-plus</LIcon>
             <span class="text-h6">Neues Prompt erstellen</span>
             <v-spacer />
             <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="closeCreateDialog" />
@@ -187,7 +187,7 @@
 
         <!-- User invite section -->
         <div class="section-label mt-4">
-          <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+          <LIcon size="16" class="mr-1">mdi-account-multiple-plus</LIcon>
           Mit Nutzern teilen (optional)
         </div>
         <div v-if="selectedUsers.length > 0" class="invited-users mb-2">
@@ -228,7 +228,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2">mdi-rename-box</v-icon>
+            <LIcon class="mr-2">mdi-rename-box</LIcon>
             <span class="text-h6">Prompt umbenennen</span>
             <v-spacer />
             <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="closeRenameDialog" />
@@ -259,7 +259,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+            <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
             <span class="text-h6">Prompt löschen</span>
           </div>
         </template>

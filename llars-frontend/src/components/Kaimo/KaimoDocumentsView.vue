@@ -3,7 +3,7 @@
     <!-- Top Bar with Search and Filters (exactly like prototype) -->
     <div class="documents-header">
       <div class="search-wrapper">
-        <v-icon size="16" class="search-icon">mdi-magnify</v-icon>
+        <LIcon size="16" class="search-icon">mdi-magnify</LIcon>
         <input
           v-model="searchQuery"
           type="text"
@@ -15,11 +15,11 @@
       <div class="filter-buttons">
         <button class="filter-btn" @click="toggleMerkmale">
           <span>Merkmale</span>
-          <v-icon size="16">mdi-chevron-down</v-icon>
+          <LIcon size="16">mdi-chevron-down</LIcon>
         </button>
         <button class="filter-btn" @click="toggleAkteure">
           <span>Akteure</span>
-          <v-icon size="16">mdi-chevron-down</v-icon>
+          <LIcon size="16">mdi-chevron-down</LIcon>
         </button>
       </div>
 
@@ -27,7 +27,7 @@
 
       <!-- Toggle button for document list -->
       <button class="toggle-list-btn" @click="showList = !showList">
-        <v-icon size="20">{{ showList ? 'mdi-menu-open' : 'mdi-menu' }}</v-icon>
+        <LIcon size="20">{{ showList ? 'mdi-menu-open' : 'mdi-menu' }}</LIcon>
       </button>
     </div>
 
@@ -48,8 +48,8 @@
             @click="selectDocument(doc)"
           >
             <div class="document-item-indicator">
-              <v-icon v-if="selectedDocument?.id === doc.id" size="14" color="grey-darken-1">mdi-menu-right</v-icon>
-              <v-icon v-else size="14" color="grey-lighten-1">mdi-circle-outline</v-icon>
+              <LIcon v-if="selectedDocument?.id === doc.id" size="14" color="grey-darken-1">mdi-menu-right</LIcon>
+              <LIcon v-else size="14" color="grey-lighten-1">mdi-circle-outline</LIcon>
             </div>
             <div class="document-item-content">
               <div class="document-item-title">{{ doc.title }}</div>

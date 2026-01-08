@@ -30,7 +30,7 @@
                 {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
               </LTag>
             </div>
-            <v-icon :size="isMobile ? 'x-small' : 'small'" :class="isMobile ? '' : 'ml-1'" color="white">mdi-chevron-down</v-icon>
+            <LIcon :size="isMobile ? 'x-small' : 'small'" :class="isMobile ? '' : 'ml-1'" color="white">mdi-chevron-down</LIcon>
           </div>
         </template>
 
@@ -75,7 +75,7 @@
       class="global-snackbar"
     >
       <div class="d-flex align-center">
-        <v-icon v-if="snackbarModel.icon" class="mr-2">{{ snackbarModel.icon }}</v-icon>
+        <LIcon v-if="snackbarModel.icon" class="mr-2">{{ snackbarModel.icon }}</LIcon>
         {{ snackbarModel.message }}
       </div>
       <template v-slot:actions>

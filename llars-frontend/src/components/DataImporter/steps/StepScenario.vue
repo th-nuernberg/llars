@@ -9,7 +9,7 @@
     >
       <v-card-text>
         <div class="d-flex align-start">
-          <v-icon class="mr-3 mt-1" color="purple">mdi-robot</v-icon>
+          <LIcon class="mr-3 mt-1" color="purple">mdi-robot</LIcon>
           <div class="flex-grow-1">
             <div class="text-subtitle-2 font-weight-bold mb-1">
               KI-Empfehlung basierend auf deinen Daten
@@ -52,7 +52,7 @@
           <v-radio value="new" color="primary">
             <template #label>
               <div class="d-flex align-center">
-                <v-icon class="mr-2" size="small">mdi-plus-circle</v-icon>
+                <LIcon class="mr-2" size="small">mdi-plus-circle</LIcon>
                 <span>Neues Szenario erstellen</span>
               </div>
             </template>
@@ -60,7 +60,7 @@
           <v-radio value="existing" color="primary">
             <template #label>
               <div class="d-flex align-center">
-                <v-icon class="mr-2" size="small">mdi-folder-open</v-icon>
+                <LIcon class="mr-2" size="small">mdi-folder-open</LIcon>
                 <span>Zu bestehendem Szenario hinzufügen</span>
               </div>
             </template>
@@ -72,7 +72,7 @@
     <!-- Existing Scenario Selection -->
     <v-card v-if="scenarioMode === 'existing'" variant="outlined" class="mb-4">
       <v-card-title>
-        <v-icon class="mr-2">mdi-folder-open</v-icon>
+        <LIcon class="mr-2">mdi-folder-open</LIcon>
         Bestehendes Szenario auswählen
       </v-card-title>
 
@@ -92,9 +92,9 @@
           <template #item="{ item, props }">
             <v-list-item v-bind="props">
               <template #prepend>
-                <v-icon :color="getTaskTypeColor(item.raw.function_type)">
+                <LIcon :color="getTaskTypeColor(item.raw.function_type)">
                   {{ getTaskTypeIcon(item.raw.function_type) }}
-                </v-icon>
+                </LIcon>
               </template>
               <v-list-item-subtitle>
                 {{ item.raw.thread_count || 0 }} Threads |
@@ -115,7 +115,7 @@
       <!-- Basic Info -->
       <v-card variant="outlined" class="mb-4">
         <v-card-title>
-          <v-icon class="mr-2">mdi-information</v-icon>
+          <LIcon class="mr-2">mdi-information</LIcon>
           Szenario-Informationen
           <v-spacer />
           <v-btn
@@ -173,14 +173,14 @@
                 <template #item="{ item, props }">
                   <v-list-item v-bind="props">
                     <template #prepend>
-                      <v-icon :color="item.raw.color">{{ item.raw.icon }}</v-icon>
+                      <LIcon :color="item.raw.color">{{ item.raw.icon }}</LIcon>
                     </template>
                     <v-list-item-subtitle>{{ item.raw.description }}</v-list-item-subtitle>
                   </v-list-item>
                 </template>
 
                 <template #selection="{ item }">
-                  <v-icon class="mr-2" :color="item.raw.color">{{ item.raw.icon }}</v-icon>
+                  <LIcon class="mr-2" :color="item.raw.color">{{ item.raw.icon }}</LIcon>
                   {{ item.raw.name }}
                 </template>
               </v-select>
@@ -215,7 +215,7 @@
       <!-- Dates -->
       <v-card variant="outlined" class="mb-4">
         <v-card-title>
-          <v-icon class="mr-2">mdi-calendar</v-icon>
+          <LIcon class="mr-2">mdi-calendar</LIcon>
           Zeitraum
         </v-card-title>
 
@@ -261,7 +261,7 @@
       <!-- Distribution Settings -->
       <v-card variant="outlined" class="mb-4">
         <v-card-title>
-          <v-icon class="mr-2">mdi-account-switch</v-icon>
+          <LIcon class="mr-2">mdi-account-switch</LIcon>
           Verteilung & Reihenfolge
         </v-card-title>
 
@@ -310,9 +310,9 @@
     <!-- Summary Info -->
     <v-alert :type="scenarioMode === 'existing' ? 'warning' : 'info'" variant="tonal" class="mt-4">
       <div class="d-flex align-center">
-        <v-icon class="mr-2">
+        <LIcon class="mr-2">
           {{ scenarioMode === 'existing' ? 'mdi-alert' : 'mdi-information' }}
-        </v-icon>
+        </LIcon>
         <div>
           <strong>{{ itemCount }} Einträge</strong>
           <template v-if="scenarioMode === 'new'">

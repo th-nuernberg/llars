@@ -33,7 +33,7 @@
       <LCard class="activity-card">
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2">mdi-clock-outline</v-icon>
+            <LIcon class="mr-2">mdi-clock-outline</LIcon>
             <span class="text-h6">Letzte Aktivitäten</span>
           </div>
         </template>
@@ -53,7 +53,7 @@
           </v-list-item>
         </v-list>
         <div v-else class="empty-state">
-          <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-information-outline</v-icon>
+          <LIcon size="48" class="mb-2 text-medium-emphasis">mdi-information-outline</LIcon>
           <div class="text-medium-emphasis">Keine kürzlichen Aktivitäten</div>
         </div>
       </LCard>
@@ -64,7 +64,7 @@
         <LCard class="quick-actions-card">
           <template #header>
             <div class="d-flex align-center w-100">
-              <v-icon class="mr-2">mdi-lightning-bolt</v-icon>
+              <LIcon class="mr-2">mdi-lightning-bolt</LIcon>
               <span class="text-h6">Schnellaktionen</span>
             </div>
           </template>
@@ -76,9 +76,9 @@
               class="quick-action-item"
               @click="action.action"
             >
-              <v-icon :icon="action.icon" class="mr-3" />
+              <LIcon :icon="action.icon" class="mr-3" />
               <span>{{ action.title }}</span>
-              <v-icon class="ml-auto" size="small">mdi-chevron-right</v-icon>
+              <LIcon class="ml-auto" size="small">mdi-chevron-right</LIcon>
             </div>
           </div>
         </LCard>
@@ -87,7 +87,7 @@
         <LCard v-if="warnings.length > 0" color="#e8c87a" class="warnings-card">
           <template #header>
             <div class="d-flex align-center w-100">
-              <v-icon class="mr-2" color="warning">mdi-alert</v-icon>
+              <LIcon class="mr-2" color="warning">mdi-alert</LIcon>
               <span class="text-h6">Hinweise</span>
             </div>
           </template>
@@ -111,7 +111,7 @@
       <template #header>
         <div class="d-flex align-center justify-space-between w-100">
           <div class="d-flex align-center">
-            <v-icon class="mr-2">mdi-clipboard-list</v-icon>
+            <LIcon class="mr-2">mdi-clipboard-list</LIcon>
             <span class="text-h6">Aktive Szenarien</span>
           </div>
           <LBtn variant="text" append-icon="mdi-arrow-right" @click="$parent.$parent.activeSection = 'scenarios'">
@@ -132,9 +132,9 @@
       >
         <template v-slot:item.name="{ item }">
           <div class="d-flex align-center">
-            <v-icon :color="getTypeColor(item.function_type_name)" class="mr-2" size="small">
+            <LIcon :color="getTypeColor(item.function_type_name)" class="mr-2" size="small">
               {{ getTypeIcon(item.function_type_name) }}
-            </v-icon>
+            </LIcon>
             <span class="font-weight-medium">{{ item.name }}</span>
           </div>
         </template>
@@ -174,7 +174,7 @@
       </v-data-table>
 
       <div v-else class="empty-state">
-        <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-clipboard-outline</v-icon>
+        <LIcon size="48" class="mb-2 text-medium-emphasis">mdi-clipboard-outline</LIcon>
         <div class="text-medium-emphasis">Keine aktiven Szenarien</div>
       </div>
     </LCard>

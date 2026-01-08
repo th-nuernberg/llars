@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="monitor-header">
       <div class="header-left">
-        <v-icon :size="isMobile ? 20 : 24">mdi-docker</v-icon>
+        <LIcon :size="isMobile ? 20 : 24">mdi-docker</LIcon>
         <h2>{{ isMobile ? 'Docker' : 'Docker Monitor' }}</h2>
         <LTag :variant="connectionVariant" :prepend-icon="isMobile ? '' : connectionIcon" size="small">
           {{ isMobile ? '' : connectionLabel }}
@@ -24,13 +24,13 @@
         </LBtn>
       </div>
       <LBtn v-else icon variant="text" size="small" @click="resubscribeStats">
-        <v-icon>mdi-refresh</v-icon>
+        <LIcon>mdi-refresh</LIcon>
       </LBtn>
     </div>
 
     <!-- Error Banner -->
     <div v-if="errorMessage" class="error-banner">
-      <v-icon size="18">mdi-alert-circle</v-icon>
+      <LIcon size="18">mdi-alert-circle</LIcon>
       <span>{{ errorMessage }}</span>
     </div>
 
@@ -73,7 +73,7 @@
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">
-                  <v-icon size="16" color="primary">mdi-chip</v-icon>
+                  <LIcon size="16" color="primary">mdi-chip</LIcon>
                   <span>CPU</span>
                 </div>
                 <div class="chart-value chart-value--primary">
@@ -90,7 +90,7 @@
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">
-                  <v-icon size="16" color="accent">mdi-memory</v-icon>
+                  <LIcon size="16" color="accent">mdi-memory</LIcon>
                   <span>Memory</span>
                 </div>
                 <div class="chart-value chart-value--accent">
@@ -107,7 +107,7 @@
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">
-                  <v-icon size="16" color="info">mdi-download</v-icon>
+                  <LIcon size="16" color="info">mdi-download</LIcon>
                   <span>Net RX</span>
                 </div>
                 <div class="chart-value chart-value--info">
@@ -124,7 +124,7 @@
             <div class="chart-card">
               <div class="chart-header">
                 <div class="chart-title">
-                  <v-icon size="16" color="warning">mdi-upload</v-icon>
+                  <LIcon size="16" color="warning">mdi-upload</LIcon>
                   <span>Net TX</span>
                 </div>
                 <div class="chart-value chart-value--warning">
@@ -142,7 +142,7 @@
           <!-- Container Table -->
           <div class="table-section">
             <div class="section-header">
-              <v-icon size="16">mdi-view-list</v-icon>
+              <LIcon size="16">mdi-view-list</LIcon>
               <span>Container</span>
               <LTag variant="gray" size="small" class="ml-auto">{{ containers.length }}</LTag>
             </div>
@@ -183,7 +183,7 @@
       <!-- Bottom Section: Logs (full width) -->
       <div class="logs-section">
         <div class="section-header">
-          <v-icon size="16">mdi-text-box-outline</v-icon>
+          <LIcon size="16">mdi-text-box-outline</LIcon>
           <span>Logs</span>
           <LTag v-if="logMode === 'container' && activeLogContainerName" variant="accent" size="small" class="ml-2">
             {{ activeLogContainerName }}
@@ -197,14 +197,14 @@
             </template>
             <LTag v-if="logsPaused" variant="warning" size="small">{{ isMobile ? '' : 'pausiert' }}</LTag>
             <LBtn :icon="isMobile" :prepend-icon="!isMobile ? (logsPaused ? 'mdi-play' : 'mdi-pause') : ''" variant="tonal" size="small" @click="toggleLogsPause">
-              <v-icon v-if="isMobile">{{ logsPaused ? 'mdi-play' : 'mdi-pause' }}</v-icon>
+              <LIcon v-if="isMobile">{{ logsPaused ? 'mdi-play' : 'mdi-pause' }}</LIcon>
               <template v-else>{{ logsPaused ? 'Live' : 'Pause' }}</template>
             </LBtn>
             <LBtn v-if="!isMobile" prepend-icon="mdi-trash-can-outline" variant="tonal" size="small" @click="clearLogs">
               Leeren
             </LBtn>
             <LBtn :icon="isMobile" :prepend-icon="!isMobile ? 'mdi-connection' : ''" variant="primary" size="small" @click="resubscribeLogs">
-              <v-icon v-if="isMobile">mdi-connection</v-icon>
+              <LIcon v-if="isMobile">mdi-connection</LIcon>
               <template v-else>Verbinden</template>
             </LBtn>
           </div>
@@ -214,7 +214,7 @@
             <div v-for="n in 14" :key="'log-skel-' + n" class="logs-skeleton-line"></div>
           </div>
           <div v-else-if="!formattedLogHtml" class="logs-empty">
-            <v-icon size="20">mdi-text-box-outline</v-icon>
+            <LIcon size="20">mdi-text-box-outline</LIcon>
             <span>Keine Logs (noch)</span>
           </div>
           <div v-else class="logs-content" v-html="formattedLogHtml"></div>

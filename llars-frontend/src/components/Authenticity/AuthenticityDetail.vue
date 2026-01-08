@@ -33,7 +33,7 @@
         <!-- Left Panel: Messages -->
         <div class="panel left-panel" :style="leftPanelStyle()">
           <div class="panel-header">
-            <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
+            <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
             <span class="panel-title">Verlauf</span>
             <v-spacer />
             <LTag v-if="thread?.sender" variant="gray" size="small">{{ thread.sender }}</LTag>
@@ -55,13 +55,13 @@
         <!-- Right Panel: Voting -->
         <div class="panel right-panel" :style="rightPanelStyle()">
           <div class="panel-header">
-            <v-icon size="20" class="mr-2">mdi-check-decagram</v-icon>
+            <LIcon size="20" class="mr-2">mdi-check-decagram</LIcon>
             <span class="panel-title">Abstimmung</span>
           </div>
           <div class="panel-content">
             <!-- Info Box -->
             <div class="info-box">
-              <v-icon size="18" class="mr-2">mdi-information-outline</v-icon>
+              <LIcon size="18" class="mr-2">mdi-information-outline</LIcon>
               <span>Ein Verlauf ist <strong>fake</strong>, sobald ein Modell eine oder mehrere Nachrichten ersetzt hat.</span>
             </div>
 
@@ -75,7 +75,7 @@
                   @click="submitVote('real')"
                   :disabled="saving"
                 >
-                  <v-icon size="24">mdi-account-check</v-icon>
+                  <LIcon size="24">mdi-account-check</LIcon>
                   <span>Echt</span>
                   <span class="vote-hint">Von Menschen geschrieben</span>
                 </button>
@@ -85,7 +85,7 @@
                   @click="submitVote('fake')"
                   :disabled="saving"
                 >
-                  <v-icon size="24">mdi-robot</v-icon>
+                  <LIcon size="24">mdi-robot</LIcon>
                   <span>Fake</span>
                   <span class="vote-hint">KI-generierte Anteile</span>
                 </button>
@@ -97,14 +97,14 @@
               <div class="d-flex align-center mb-2">
                 <span class="section-label">Confidence (optional)</span>
                 <v-fade-transition>
-                  <v-icon
+                  <LIcon
                     v-if="savingMetadata"
                     size="14"
                     class="ml-2 saving-indicator"
                     color="primary"
                   >
                     mdi-cloud-sync
-                  </v-icon>
+                  </LIcon>
                 </v-fade-transition>
               </div>
               <LSlider

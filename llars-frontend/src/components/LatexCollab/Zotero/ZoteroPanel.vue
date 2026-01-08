@@ -3,7 +3,7 @@
     <!-- Connection Status -->
     <div class="zotero-section">
       <div class="section-header">
-        <v-icon class="mr-2" color="primary">mdi-book-open-page-variant</v-icon>
+        <LIcon class="mr-2" color="primary">mdi-book-open-page-variant</LIcon>
         <span class="section-title">Zotero Verbindung</span>
       </div>
 
@@ -15,7 +15,7 @@
         <!-- Connected State -->
         <div v-if="isConnected" class="connection-info">
           <v-chip color="success" variant="tonal" size="small" class="mb-2">
-            <v-icon start size="small">mdi-check-circle</v-icon>
+            <LIcon start size="small">mdi-check-circle</LIcon>
             Verbunden
           </v-chip>
           <div class="text-body-2 mb-2">
@@ -45,7 +45,7 @@
             <template v-if="oauthAvailable">
               <div class="method-card method-primary">
                 <div class="method-title">
-                  <v-icon size="small" class="mr-1" color="primary">mdi-login</v-icon>
+                  <LIcon size="small" class="mr-1" color="primary">mdi-login</LIcon>
                   Mit Zotero anmelden
                 </div>
                 <p class="text-caption text-medium-emphasis mb-3">
@@ -56,7 +56,7 @@
                   :loading="connectingOAuth"
                   @click="handleConnectWithOAuth"
                 >
-                  <v-icon start>mdi-open-in-new</v-icon>
+                  <LIcon start>mdi-open-in-new</LIcon>
                   Mit Zotero verbinden
                 </LBtn>
               </div>
@@ -69,7 +69,7 @@
             <!-- API Key Method -->
             <div class="method-card" :class="{ 'method-primary': !oauthAvailable }">
               <div class="method-title">
-                <v-icon size="small" class="mr-1">mdi-key</v-icon>
+                <LIcon size="small" class="mr-1">mdi-key</LIcon>
                 API-Key eingeben
               </div>
               <p class="text-caption text-medium-emphasis mb-2">
@@ -97,7 +97,7 @@
               <div class="text-caption text-medium-emphasis mt-2">
                 <a href="https://www.zotero.org/settings/keys" target="_blank" rel="noopener">
                   API-Key erstellen auf zotero.org
-                  <v-icon size="x-small">mdi-open-in-new</v-icon>
+                  <LIcon size="x-small">mdi-open-in-new</LIcon>
                 </a>
               </div>
             </div>
@@ -109,7 +109,7 @@
     <!-- Linked Libraries (only shown when connected) -->
     <div v-if="isConnected" class="zotero-section mt-4">
       <div class="section-header">
-        <v-icon class="mr-2" color="secondary">mdi-library</v-icon>
+        <LIcon class="mr-2" color="secondary">mdi-library</LIcon>
         <span class="section-title">Verknüpfte Bibliotheken</span>
         <v-spacer />
         <LBtn
@@ -127,7 +127,7 @@
       </div>
 
       <div v-else-if="workspaceLibraries.length === 0" class="empty-state">
-        <v-icon size="48" color="grey-lighten-1">mdi-book-off-outline</v-icon>
+        <LIcon size="48" color="grey-lighten-1">mdi-book-off-outline</LIcon>
         <p class="text-body-2 text-medium-emphasis mt-2">
           Keine Bibliotheken verknüpft
         </p>
@@ -149,9 +149,9 @@
           class="library-card"
         >
           <div class="library-header">
-            <v-icon size="small" class="mr-2" :color="lib.library_type === 'group' ? 'info' : 'primary'">
+            <LIcon size="small" class="mr-2" :color="lib.library_type === 'group' ? 'info' : 'primary'">
               {{ lib.library_type === 'group' ? 'mdi-account-group' : 'mdi-bookshelf' }}
-            </v-icon>
+            </LIcon>
             <div class="library-name">
               {{ lib.library_name }}
               <span v-if="lib.collection_name" class="collection-name">
@@ -182,7 +182,7 @@
           </div>
 
           <div v-if="lib.last_sync_error" class="library-error">
-            <v-icon size="small" color="error">mdi-alert-circle</v-icon>
+            <LIcon size="small" color="error">mdi-alert-circle</LIcon>
             {{ lib.last_sync_error }}
           </div>
 
@@ -222,7 +222,7 @@
     <v-dialog v-model="showAddLibraryDialog" max-width="500">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="primary">mdi-plus-circle</v-icon>
+          <LIcon class="mr-2" color="primary">mdi-plus-circle</LIcon>
           Bibliothek hinzufügen
         </v-card-title>
 
@@ -247,9 +247,9 @@
               <template #item="{ item, props }">
                 <v-list-item v-bind="props">
                   <template #prepend>
-                    <v-icon :color="item.raw.library_type === 'group' ? 'info' : 'primary'">
+                    <LIcon :color="item.raw.library_type === 'group' ? 'info' : 'primary'">
                       {{ item.raw.library_type === 'group' ? 'mdi-account-group' : 'mdi-bookshelf' }}
-                    </v-icon>
+                    </LIcon>
                   </template>
                 </v-list-item>
               </template>
@@ -324,7 +324,7 @@
     <v-dialog v-model="showSettingsDialog" max-width="400">
       <v-card v-if="editingLibrary">
         <v-card-title>
-          <v-icon class="mr-2">mdi-cog</v-icon>
+          <LIcon class="mr-2">mdi-cog</LIcon>
           Sync-Einstellungen
         </v-card-title>
 
@@ -375,7 +375,7 @@
     <v-dialog v-model="showRemoveDialog" max-width="400">
       <v-card v-if="removingLibrary">
         <v-card-title class="text-error">
-          <v-icon class="mr-2" color="error">mdi-alert</v-icon>
+          <LIcon class="mr-2" color="error">mdi-alert</LIcon>
           Bibliothek entfernen?
         </v-card-title>
 

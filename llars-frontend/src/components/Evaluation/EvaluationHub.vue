@@ -52,7 +52,7 @@
               @click="navigateTo(tool.route, tool)"
             >
               <div class="feature-icon" :class="{ 'feature-icon--disabled': !hasScenarios(tool) }">
-                <v-icon size="32" :color="hasScenarios(tool) ? 'primary' : 'grey'">{{ tool.icon }}</v-icon>
+                <LIcon size="32" :color="hasScenarios(tool) ? 'primary' : 'grey'">{{ tool.icon }}</LIcon>
               </div>
               <div class="feature-title">
                 <span v-if="tool.emoji" class="feature-emoji">{{ tool.emoji }}</span>

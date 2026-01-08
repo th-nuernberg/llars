@@ -21,7 +21,7 @@
       <!-- Left Panel: Configuration Form -->
       <div class="left-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2" size="small">mdi-cog</v-icon>
+          <LIcon class="mr-2" size="small">mdi-cog</LIcon>
           <span class="font-weight-medium">Konfiguration</span>
         </div>
         <div class="panel-content">
@@ -42,7 +42,7 @@
             <!-- Pillar Selection -->
             <div class="config-section">
               <div class="section-title">
-                <v-icon class="mr-1" size="small">mdi-pillar</v-icon>
+                <LIcon class="mr-1" size="small">mdi-pillar</LIcon>
                 Säulen auswählen
               </div>
               <v-chip-group
@@ -60,7 +60,7 @@
                   color="primary"
                   size="small"
                 >
-                  <v-icon start size="small">{{ pillar.icon }}</v-icon>
+                  <LIcon start size="small">{{ pillar.icon }}</LIcon>
                   {{ pillar.name }}
                   <span v-if="pillar.threadCount" class="ml-1 text-caption">
                     ({{ pillar.threadCount }})
@@ -81,7 +81,7 @@
             <!-- Comparison Mode -->
             <div class="config-section">
               <div class="section-title">
-                <v-icon class="mr-1" size="small">mdi-compare</v-icon>
+                <LIcon class="mr-1" size="small">mdi-compare</LIcon>
                 Vergleichs-Modus
               </div>
               <v-radio-group v-model="config.comparisonMode" class="comparison-mode-group" hide-details>
@@ -135,7 +135,7 @@
             <!-- Samples per Pillar (only for pillar_sample mode) -->
             <div v-if="config.comparisonMode === 'pillar_sample'" class="config-section">
               <div class="section-title">
-                <v-icon class="mr-1" size="small">mdi-numeric</v-icon>
+                <LIcon class="mr-1" size="small">mdi-numeric</LIcon>
                 Samples pro Säule: {{ config.samplesPerPillar }}
               </div>
               <v-slider
@@ -166,7 +166,7 @@
             <!-- Max Threads per Pillar (for round_robin and free_for_all) -->
             <div v-if="config.comparisonMode !== 'pillar_sample'" class="config-section">
               <div class="section-title">
-                <v-icon class="mr-1" size="small">mdi-filter-variant</v-icon>
+                <LIcon class="mr-1" size="small">mdi-filter-variant</LIcon>
                 Max. Threads pro Säule
                 <v-chip v-if="config.maxThreadsPerPillar" size="x-small" color="info" class="ml-2">
                   Limitiert auf {{ config.maxThreadsPerPillar }}
@@ -208,7 +208,7 @@
                 <template v-slot:label>
                   <div>
                     <div class="d-flex align-center">
-                      <v-icon class="mr-1" size="small">mdi-swap-horizontal</v-icon>
+                      <LIcon class="mr-1" size="small">mdi-swap-horizontal</LIcon>
                       <span class="font-weight-medium">Position-Swap</span>
                       <v-chip size="x-small" color="info" class="ml-2">Empfohlen</v-chip>
                     </div>
@@ -223,7 +223,7 @@
             <!-- Worker Count -->
             <div class="config-section">
               <div class="section-title">
-                <v-icon class="mr-1" size="small">mdi-server</v-icon>
+                <LIcon class="mr-1" size="small">mdi-server</LIcon>
                 Parallele Worker: {{ config.workerCount }}
               </div>
               <v-slider
@@ -252,7 +252,7 @@
             <!-- Repetitions per Pair (only for pillar_sample mode) -->
             <div v-if="config.comparisonMode === 'pillar_sample'" class="config-section">
               <div class="section-title">
-                <v-icon class="mr-1" size="small">mdi-repeat</v-icon>
+                <LIcon class="mr-1" size="small">mdi-repeat</LIcon>
                 Wiederholungen pro Paar: {{ config.repetitionsPerPair }}
               </div>
               <v-slider
@@ -287,7 +287,7 @@
       <!-- Right Panel: Summary (hidden on mobile) -->
       <div v-if="!isMobile" class="right-panel" :style="rightPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2" size="small">mdi-information</v-icon>
+          <LIcon class="mr-2" size="small">mdi-information</LIcon>
           <span class="font-weight-medium">Zusammenfassung</span>
         </div>
         <div class="panel-content">
@@ -392,7 +392,7 @@
               <!-- Calculation Info -->
               <div class="calculation-info">
                 <div class="calc-title">
-                  <v-icon size="x-small" class="mr-1">mdi-calculator</v-icon>
+                  <LIcon size="x-small" class="mr-1">mdi-calculator</LIcon>
                   Berechnungsdetails
                 </div>
                 <div class="text-caption text-medium-emphasis">

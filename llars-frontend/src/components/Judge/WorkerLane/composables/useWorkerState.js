@@ -11,7 +11,7 @@ import { computed } from 'vue';
 export const PILLAR_CONFIG = {
   1: { name: 'Rollenspiele', icon: 'mdi-theater', color: '#E91E63', short: 'S1' },
   2: { name: 'Feature', icon: 'mdi-star', color: '#9C27B0', short: 'S2' },
-  3: { name: 'Anonymisiert', icon: 'mdi-incognito', color: '#2196F3', short: 'S3' },
+  3: { name: 'Anonymisiert', icon: 'llars:anonymize', color: '#2196F3', short: 'S3' },
   4: { name: 'Synthetisch', icon: 'mdi-robot', color: '#FF9800', short: 'S4' },
   5: { name: 'Live-Tests', icon: 'mdi-lightning-bolt', color: '#4CAF50', short: 'S5' }
 };

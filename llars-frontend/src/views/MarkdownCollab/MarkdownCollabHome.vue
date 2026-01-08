@@ -3,7 +3,7 @@
     <div class="page-header" :class="{ 'flex-column align-start': isMobile }">
       <div>
         <div class="d-flex align-center">
-          <v-icon :class="isMobile ? 'mr-1' : 'mr-2'" :size="isMobile ? 20 : 24" color="primary">mdi-language-markdown</v-icon>
+          <LIcon :class="isMobile ? 'mr-1' : 'mr-2'" :size="isMobile ? 20 : 24" color="primary">llars:markdown-collab</LIcon>
           <h2 :class="isMobile ? 'text-h6' : 'text-h5'" class="mb-0">{{ isMobile ? 'Markdown' : 'Markdown Collab' }}</h2>
         </div>
         <div v-if="!isMobile" class="text-body-2 text-medium-emphasis mt-1">
@@ -19,7 +19,7 @@
         :disabled="!hasPermission('feature:markdown_collab:edit')"
         @click="createDialog = true"
       >
-        <v-icon v-if="isMobile" class="mr-1">mdi-plus</v-icon>
+        <LIcon v-if="isMobile" class="mr-1">mdi-plus</LIcon>
         {{ isMobile ? 'Neu' : 'Workspace erstellen' }}
       </LBtn>
     </div>
@@ -40,7 +40,7 @@
         <LCard v-else outlined>
           <template #header>
             <div class="d-flex align-center w-100">
-              <v-icon class="mr-2">mdi-folder-multiple-outline</v-icon>
+              <LIcon class="mr-2">mdi-folder-multiple-outline</LIcon>
               <span class="text-h6">Workspaces</span>
               <v-spacer />
               <LIconBtn icon="mdi-refresh" tooltip="Aktualisieren" @click="loadWorkspaces(true)" />
@@ -89,11 +89,11 @@
                 </template>
 
                 <div class="text-medium-emphasis mb-2">
-                  <v-icon size="14" class="mr-1">mdi-account</v-icon>
+                  <LIcon size="14" class="mr-1">mdi-account</LIcon>
                   {{ ws.owner_username }}
                 </div>
                 <div class="d-flex align-center text-caption">
-                  <v-icon size="16" class="mr-1">mdi-clock-outline</v-icon>
+                  <LIcon size="16" class="mr-1">mdi-clock-outline</LIcon>
                   <span>Zuletzt geändert: {{ formatDate(ws.updated_at) }}</span>
                 </div>
 
@@ -129,7 +129,7 @@
           </transition-group>
 
           <div v-else class="empty-state">
-            <v-icon size="56" class="mb-3" color="grey">mdi-folder-open-outline</v-icon>
+            <LIcon size="56" class="mb-3" color="grey">mdi-folder-open-outline</LIcon>
             <div class="text-subtitle-1 mb-1">Noch keine Workspaces</div>
             <div class="text-body-2 text-medium-emphasis mb-4">
               Erstelle deinen ersten Markdown Collab Workspace.
@@ -151,7 +151,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2">mdi-plus-circle</v-icon>
+            <LIcon class="mr-2">mdi-plus-circle</LIcon>
             <span class="text-h6">Workspace erstellen</span>
             <v-spacer />
             <LIconBtn icon="mdi-close" tooltip="Schließen" @click="createDialog = false; resetCreateDialog()" />
@@ -180,7 +180,7 @@
 
         <!-- User invite section -->
         <div class="section-label mt-4">
-          <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+          <LIcon size="16" class="mr-1">mdi-account-multiple-plus</LIcon>
           Mitglieder einladen (optional)
         </div>
         <div v-if="invitedUsers.length > 0" class="invited-users mb-2">
@@ -221,7 +221,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+            <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
             <span class="text-h6">Workspace löschen</span>
             <v-spacer />
             <LIconBtn icon="mdi-close" tooltip="Schließen" @click="deleteDialog = false" />
@@ -255,7 +255,7 @@
       <LCard>
         <template #header>
           <div class="d-flex align-center w-100">
-            <v-icon class="mr-2" color="warning">mdi-exit-run</v-icon>
+            <LIcon class="mr-2" color="warning">mdi-exit-run</LIcon>
             <span class="text-h6">Workspace verlassen</span>
             <v-spacer />
             <LIconBtn icon="mdi-close" tooltip="Schließen" @click="leaveDialog = false" />

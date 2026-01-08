@@ -10,7 +10,7 @@
       <v-col cols="12">
         <v-card variant="outlined" class="agent-explanation-card mb-4">
           <v-card-title class="d-flex align-center">
-            <v-icon start color="primary">mdi-robot-outline</v-icon>
+            <LIcon start color="primary">mdi-robot-outline</LIcon>
             <span>Agent-Modi verstehen</span>
             <v-spacer />
             <v-btn
@@ -28,7 +28,7 @@
                 <!-- What are Agent Modes -->
                 <div class="mb-4">
                   <div class="text-subtitle-2 mb-2">
-                    <v-icon start size="small" color="info">mdi-help-circle</v-icon>
+                    <LIcon start size="small" color="info">mdi-help-circle</LIcon>
                     Was sind Agent-Modi?
                   </div>
                   <p class="text-body-2 text-medium-emphasis">
@@ -41,7 +41,7 @@
                 <!-- Mode Comparison -->
                 <div class="mb-4">
                   <div class="text-subtitle-2 mb-2">
-                    <v-icon start size="small" color="success">mdi-compare</v-icon>
+                    <LIcon start size="small" color="success">mdi-compare</LIcon>
                     Ablauf-Vergleich
                   </div>
                   <div class="agent-flow-comparison">
@@ -60,7 +60,7 @@
                 <!-- When to use which -->
                 <div>
                   <div class="text-subtitle-2 mb-2">
-                    <v-icon start size="small" color="warning">mdi-lightbulb</v-icon>
+                    <LIcon start size="small" color="warning">mdi-lightbulb</LIcon>
                     Empfehlungen
                   </div>
                   <v-table density="compact" class="agent-recommendations-table">
@@ -111,7 +111,7 @@
             <v-card-text>
               <!-- Header -->
               <div class="d-flex align-center mb-2">
-                <v-icon :color="mode.color" size="28" class="mr-2">{{ mode.icon }}</v-icon>
+                <LIcon :color="mode.color" size="28" class="mr-2">{{ mode.icon }}</LIcon>
                 <span class="text-h6 font-weight-bold">{{ mode.label }}</span>
                 <LTag v-if="mode.badge" :variant="mode.badgeColor" size="sm" class="ml-auto">
                   {{ mode.badge }}
@@ -126,7 +126,7 @@
                 <div v-if="formData.prompt_settings.agent_mode === mode.value" class="mode-details mb-3">
                   <div class="text-caption text-medium-emphasis mb-2">{{ mode.details }}</div>
                   <div class="mode-example">
-                    <v-icon size="small" class="mr-1">mdi-code-tags</v-icon>
+                    <LIcon size="small" class="mr-1">mdi-code-tags</LIcon>
                     <code class="text-caption">{{ mode.example }}</code>
                   </div>
                 </div>
@@ -173,7 +173,7 @@
           >
             <v-card-text class="pa-3">
               <div class="d-flex align-center mb-1">
-                <v-icon color="primary" size="20" class="mr-2">{{ task.icon }}</v-icon>
+                <LIcon color="primary" size="20" class="mr-2">{{ task.icon }}</LIcon>
                 <span class="font-weight-medium">{{ task.label }}</span>
                 <LTag v-if="task.badge" :variant="task.badgeColor" size="sm" class="ml-auto">
                   {{ task.badge }}
@@ -189,7 +189,7 @@
       <v-col v-if="formData.prompt_settings.agent_mode !== 'standard'" cols="12">
         <v-alert type="success" variant="tonal" density="compact">
           <div class="d-flex align-center">
-            <v-icon start>mdi-information</v-icon>
+            <LIcon start>mdi-information</LIcon>
             <span>
               Aktuelle Konfiguration:
               <strong>{{ agentModes.find(m => m.value === formData.prompt_settings.agent_mode)?.label }}</strong>
@@ -235,7 +235,7 @@
       <v-col v-if="isAgentMode" cols="12">
         <v-card variant="outlined">
           <v-card-title class="text-subtitle-1 d-flex align-center">
-            <v-icon start color="info">mdi-web</v-icon>
+            <LIcon start color="info">mdi-web</LIcon>
             Web-Suche (Tavily)
             <LTag v-if="formData.prompt_settings.web_search_enabled" variant="success" size="sm" class="ml-2">
               Aktiv
@@ -262,7 +262,7 @@
                 density="comfortable"
               />
               <v-alert type="info" variant="tonal" density="compact" class="mt-3">
-                <v-icon start size="small">mdi-key</v-icon>
+                <LIcon start size="small">mdi-key</LIcon>
                 Der Tavily API-Key wird über Umgebungsvariablen konfiguriert (TAVILY_API_KEY)
               </v-alert>
             </div>
@@ -275,7 +275,7 @@
         <v-expansion-panels>
           <v-expansion-panel>
             <v-expansion-panel-title>
-              <v-icon start>mdi-play</v-icon>
+              <LIcon start>mdi-play</LIcon>
               ACT System-Prompt anpassen
             </v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -298,7 +298,7 @@
         <v-expansion-panels>
           <v-expansion-panel>
             <v-expansion-panel-title>
-              <v-icon start>mdi-thought-bubble</v-icon>
+              <LIcon start>mdi-thought-bubble</LIcon>
               ReAct System-Prompt anpassen
             </v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -321,7 +321,7 @@
         <v-expansion-panels>
           <v-expansion-panel>
             <v-expansion-panel-title>
-              <v-icon start>mdi-target</v-icon>
+              <LIcon start>mdi-target</LIcon>
               ReflAct System-Prompt anpassen
             </v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -344,7 +344,7 @@
         <v-expansion-panels>
           <v-expansion-panel>
             <v-expansion-panel-title>
-              <v-icon start>mdi-check-decagram</v-icon>
+              <LIcon start>mdi-check-decagram</LIcon>
               Reflection Prompt anpassen
             </v-expansion-panel-title>
             <v-expansion-panel-text>

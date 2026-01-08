@@ -12,14 +12,14 @@
     <v-list class="export-menu">
       <v-list-item @click="$emit('export-csv')" class="export-item">
         <template v-slot:prepend>
-          <v-icon color="success">mdi-file-delimited</v-icon>
+          <LIcon color="success">mdi-file-delimited</LIcon>
         </template>
         <v-list-item-title>Als CSV exportieren</v-list-item-title>
         <v-list-item-subtitle>Tabellenformat für Excel</v-list-item-subtitle>
       </v-list-item>
       <v-list-item @click="$emit('export-json')" class="export-item">
         <template v-slot:prepend>
-          <v-icon color="info">mdi-code-json</v-icon>
+          <LIcon color="info">mdi-code-json</LIcon>
         </template>
         <v-list-item-title>Als JSON exportieren</v-list-item-title>
         <v-list-item-subtitle>Strukturierte Daten</v-list-item-subtitle>

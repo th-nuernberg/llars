@@ -113,12 +113,20 @@
           </v-row>
 
           <v-expansion-panels>
-            <!-- Nutzer Panel -->
+            <!-- Evaluator Panel -->
             <v-expansion-panel :class="{ 'error-panel': errors.raters }">
               <v-expansion-panel-title>
-                Nutzer
+                Evaluator
               </v-expansion-panel-title>
               <v-expansion-panel-text>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <LBtn size="small" variant="text" @click="selectAllUsersAsRaters">
+                    Alle als Viewer
+                  </LBtn>
+                  <LBtn size="small" variant="text" @click="clearUserSelection">
+                    Auswahl löschen
+                  </LBtn>
+                </div>
                 <v-row>
                   <v-col
                     v-for="user in state.users"
@@ -129,14 +137,18 @@
                   >
                     <v-card outlined class="user-card" density="compact">
                       <v-card-item>
-                        <div class="text-subtitle-1 mb-1">{{user.name}}</div>
-                        <div class="text-caption text-grey">ID: {{user.id}}</div>
+                        <div class="text-subtitle-1 mb-1 d-flex align-center">
+                          {{ getDisplayName(user) }}
+                        </div>
+                        <div class="text-caption text-grey">
+                          ID: {{ user.id }}
+                        </div>
 
                         <v-row class="d-flex align-center">
                           <v-col cols="auto">
                             <v-checkbox
                               v-model="formData.userRoles[user.id].viewer"
-                              label="Viewer"
+                              label="Evaluator"
                               density="compact"
                               hide-details
                               @change="handleCheckboxChange(user.id, 'viewer')"
@@ -145,7 +157,7 @@
                           <v-col cols="auto">
                             <v-checkbox
                               v-model="formData.userRoles[user.id].rater"
-                              label="Rater"
+                              label="Viewer"
                               density="compact"
                               hide-details
                               @change="handleCheckboxChange(user.id, 'rater')"
@@ -156,6 +168,75 @@
                     </v-card>
                   </v-col>
                 </v-row>
+
+                <div class="mt-4">
+                  <v-divider class="mb-4"></v-divider>
+                  <div class="d-flex flex-wrap align-center justify-space-between mb-2">
+                    <div class="text-subtitle-2">LLM Nutzer</div>
+                    <div class="text-caption text-medium-emphasis">
+                      Verfügbare Modelle richten sich nach den LLM-Rechten des aktuellen Nutzers.
+                    </div>
+                  </div>
+                  <div v-if="!supportsLlmEvaluators" class="text-caption text-medium-emphasis mb-2">
+                    Nur für Ranking, Rating und Fake/Echt verfügbar.
+                  </div>
+
+                  <v-progress-linear
+                    v-if="state.isLoadingLlmModels"
+                    indeterminate
+                    color="primary"
+                    class="mb-3"
+                  ></v-progress-linear>
+
+                  <template v-else>
+                    <div v-if="!state.llmModels.length" class="text-caption text-medium-emphasis mb-2">
+                      Keine LLM-Modelle verfügbar.
+                    </div>
+                    <v-row v-else>
+                      <v-col
+                        v-for="model in state.llmModels"
+                        :key="model.model_id"
+                        cols="12"
+                        sm="6"
+                        md="4"
+                      >
+                        <v-card outlined class="user-card user-card--llm" density="compact">
+                          <v-card-item>
+                            <div class="text-subtitle-1 mb-1 d-flex align-center">
+                              <v-icon
+                                size="18"
+                                class="mr-2"
+                                :color="model.supports_vision ? 'success' : undefined"
+                              >
+                                {{ model.supports_vision ? 'mdi-eye' : 'mdi-robot-outline' }}
+                              </v-icon>
+                              {{ model.display_name || model.model_id }}
+                              <LTag v-if="model.is_default" variant="info" size="sm" class="ml-2">
+                                Standard
+                              </LTag>
+                            </div>
+                            <div class="text-caption text-grey">
+                              {{ model.provider || 'Unbekannt' }} · {{ model.model_id }}
+                            </div>
+
+                            <v-row class="d-flex align-center">
+                              <v-col cols="auto">
+                                <v-checkbox
+                                  :model-value="isLlmSelected(model.model_id)"
+                                  label="Evaluator"
+                                  density="compact"
+                                  hide-details
+                                  :disabled="!supportsLlmEvaluators"
+                                  @update:model-value="(value) => toggleLlmEvaluator(model.model_id, value)"
+                                ></v-checkbox>
+                              </v-col>
+                            </v-row>
+                          </v-card-item>
+                        </v-card>
+                      </v-col>
+                    </v-row>
+                  </template>
+                </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
 
@@ -166,46 +247,24 @@
               <v-expansion-panel-text>
                 <v-row>
                   <v-col cols="12" md="6">
-                    <v-select
+                    <LlmModelSelect
                       v-model="formData.llm1Model"
-                      :items="modelItems"
-                      :loading="state.isLoadingModels"
                       label="Language-Modell 1"
-                      outlined
                       density="comfortable"
                       hint="Erstes Modell für die Gegenüberstellung"
                       persistent-hint
                       clearable
-                    >
-                      <template v-slot:no-data>
-                        <v-list-item>
-                          <v-list-item-title>
-                            {{ state.isLoadingModels ? 'Lade Modelle...' : 'Keine Modelle verfügbar' }}
-                          </v-list-item-title>
-                        </v-list-item>
-                      </template>
-                    </v-select>
+                    />
                   </v-col>
                   <v-col cols="12" md="6">
-                    <v-select
+                    <LlmModelSelect
                       v-model="formData.llm2Model"
-                      :items="modelItems"
-                      :loading="state.isLoadingModels"
                       label="Language-Modell 2"
-                      outlined
                       density="comfortable"
                       hint="Zweites Modell für die Gegenüberstellung"
                       persistent-hint
                       clearable
-                    >
-                      <template v-slot:no-data>
-                        <v-list-item>
-                          <v-list-item-title>
-                            {{ state.isLoadingModels ? 'Lade Modelle...' : 'Keine Modelle verfügbar' }}
-                          </v-list-item-title>
-                        </v-list-item>
-                      </template>
-                    </v-select>
+                    />
                   </v-col>
                 </v-row>
                 <v-alert
@@ -213,20 +272,7 @@
                   variant="tonal"
                   class="mt-3"
                 >
-                  <template v-if="state.isLoadingModels">
-                    <v-progress-circular
-                      indeterminate
-                      size="16"
-                      class="mr-2"
-                    ></v-progress-circular>
-                    Modelle werden geladen...
-                  </template>
-                  <template v-else-if="state.availableModels.length > 0">
-                    {{ state.availableModels.length }} verfügbare Modelle geladen.
-                  </template>
-                  <template v-else>
-                    Bitte wählen Sie Modelle aus der Liste der verfügbaren Modelle aus.
-                  </template>
+                  Verfügbare Modelle richten sich nach den LLM-Rechten des aktuellen Nutzers.
                 </v-alert>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -537,17 +583,19 @@ oder als Array:
 
 <script>
 import {reactive, onMounted, computed, ref} from 'vue';
+import axios from 'axios';
 import {
   getFunctionTypes,
   getAllUsers,
   getThreadsOfType,
-  createScenario,
-  getAvailableModels
+  createScenario
 } from '@/services/scenarioApi';
 import { importAuthenticityDataset } from '@/services/authenticityApi';
+import LlmModelSelect from '@/components/common/LlmModelSelect.vue';
 
 export default {
   name: 'ScenarioDialog',
+  components: { LlmModelSelect },
 
   setup(props, {emit}) {
     const folderInputRef = ref(null);
@@ -565,8 +613,8 @@ export default {
       users: [],
       threads: [],
       isLoadingThreads: false,
-      availableModels: [],
-      isLoadingModels: false
+      llmModels: [],
+      isLoadingLlmModels: false
     });
 
     const formData = reactive({
@@ -578,6 +626,7 @@ export default {
       selectedThreads: [],
       llm1Model: '',
       llm2Model: '',
+      llmEvaluators: [],
       distributionMode: 'round_robin',
       orderMode: 'shuffle_same'
     });
@@ -672,7 +721,7 @@ export default {
       }
 
       const raters = Object.entries(formData.userRoles).filter(([, role]) => role.rater).map(([id]) => Number(id));
-      errors.raters = raters.length > 0 ? "" : "Bitte wählen Sie mindestens einen Rater aus.";
+      errors.raters = raters.length > 0 ? "" : "Bitte wählen Sie mindestens einen Viewer aus.";
 
       if(formData.selectedCategory !== 4) {
         errors.selectedThreads = formData.selectedThreads.length > 0 ? ""
@@ -737,6 +786,22 @@ export default {
       'authenticity': 'Fake/Echt'
     };
 
+    const llmEvaluatorTaskNames = new Set(['ranking', 'rating', 'authenticity']);
+
+    const getDisplayName = (user) => {
+      if (!user) return 'Unbekannt';
+      return user.name || 'Unbekannt';
+    };
+
+    const selectedCategoryMeta = computed(() => {
+      return state.categories.find(category => category.function_type_id === formData.selectedCategory);
+    });
+
+    const supportsLlmEvaluators = computed(() => {
+      const name = selectedCategoryMeta.value?.name;
+      return name ? llmEvaluatorTaskNames.has(name) : false;
+    });
+
     const categoryItems = computed(() => {
       return state.categories.map(category => ({
         value: category.function_type_id,
@@ -755,14 +820,6 @@ export default {
       { title: 'Gemischt – für alle gleich', value: 'shuffle_same' },
       { title: 'Gemischt – pro Nutzer unterschiedlich', value: 'shuffle_per_user' }
     ];
-
-    const modelItems = computed(() => {
-      return state.availableModels.map(model => ({
-        value: model.id,
-        title: model.name,
-        subtitle: model.owned_by ? `Owned by: ${model.owned_by}` : undefined
-      }));
-    });
 
     const filteredThreads = computed(() => {
       if (!state.threads) return [];
@@ -802,16 +859,25 @@ export default {
       }
     };
 
-    const fetchAvailableModels = async () => {
-      state.isLoadingModels = true;
+    const fetchLlmModels = async () => {
+      state.isLoadingLlmModels = true;
       try {
-        state.availableModels = await getAvailableModels();
+        const response = await axios.get('/api/llm/models/available', {
+          params: {
+            active_only: true,
+            model_type: 'llm'
+          }
+        });
+        if (response.data?.success) {
+          state.llmModels = response.data.models || [];
+        } else {
+          state.llmModels = [];
+        }
       } catch (error) {
-        console.error("Fehler beim Laden der verfügbaren Modelle:", error);
-        handleApiError(error);
-        state.availableModels = [];
+        console.error("Fehler beim Laden der LLM-Modelle:", error);
+        state.llmModels = [];
       } finally {
-        state.isLoadingModels = false;
+        state.isLoadingLlmModels = false;
       }
     };
 
@@ -838,16 +904,15 @@ export default {
       await fetchThreads(newCategoryId);
 
       const selected = state.categories.find(category => category.function_type_id === newCategoryId);
+      if (!llmEvaluatorTaskNames.has(selected?.name)) {
+        formData.llmEvaluators = [];
+      }
       if (selected?.name === 'mail_rating') {
         formData.distributionMode = 'all';
       } else {
         formData.distributionMode = 'round_robin';
       }
       formData.orderMode = 'shuffle_same';
-      
-      if (newCategoryId === 4) {
-        await fetchAvailableModels();
-      }
     };
 
     const _dateToPickerString = (date) => {
@@ -995,6 +1060,38 @@ export default {
       }
     };
 
+    const isLlmSelected = (modelId) => {
+      if (!modelId) return false;
+      return Array.isArray(formData.llmEvaluators) && formData.llmEvaluators.includes(modelId);
+    };
+
+    const toggleLlmEvaluator = (modelId, isSelected) => {
+      if (!modelId) return;
+      const current = Array.isArray(formData.llmEvaluators) ? [...formData.llmEvaluators] : [];
+      const next = new Set(current);
+      if (isSelected) {
+        next.add(modelId);
+      } else {
+        next.delete(modelId);
+      }
+      formData.llmEvaluators = Array.from(next);
+    };
+
+    const selectAllUsersAsRaters = () => {
+      state.users.forEach(user => {
+        formData.userRoles[user.id].rater = true;
+        formData.userRoles[user.id].viewer = false;
+      });
+    };
+
+    const clearUserSelection = () => {
+      state.users.forEach(user => {
+        formData.userRoles[user.id].rater = false;
+        formData.userRoles[user.id].viewer = false;
+      });
+      formData.llmEvaluators = [];
+    };
+
     const handleApiError = (error) => {
       if (error.response?.status === 401) {
         alert('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.');
@@ -1018,6 +1115,7 @@ export default {
       formData.selectedThreads = [];
       formData.llm1Model = '';
       formData.llm2Model = '';
+      formData.llmEvaluators = [];
       formData.distributionMode = 'round_robin';
       formData.orderMode = 'shuffle_same';
       authImport.mode = 'files';
@@ -1054,10 +1152,18 @@ export default {
       }
 
       const raters = Object.entries(formData.userRoles).filter(([, role]) => role.rater).map(([id]) => Number(id));
-      const viewers = Object.entries(formData.userRoles).filter(([, role]) => role.viewer).map(([id]) => Number(id));
+      const evaluators = Object.entries(formData.userRoles).filter(([, role]) => role.viewer).map(([id]) => Number(id));
       const startDateISO = new Date(formData.startDate).toISOString().substring(0, 19);
       const endDateISO = new Date(formData.endDate).toISOString().substring(0, 19);
       const threadIds = Object.values(formData.selectedThreads);
+      const llmEvaluators = supportsLlmEvaluators.value
+        ? (Array.isArray(formData.llmEvaluators) ? formData.llmEvaluators : [])
+        : [];
+      const cleanedLlmEvaluators = Array.from(new Set(
+        llmEvaluators
+          .map(value => (typeof value === 'string' ? value.trim() : ''))
+          .filter(Boolean)
+      ));
 
       const payload = {
         scenario_name: formData.scenarioName,
@@ -1066,10 +1172,11 @@ export default {
         end: endDateISO,
         rater: raters,
         threads: threadIds,
-        viewer: viewers,
+        evaluator: evaluators,
         config_json: {
           distribution_mode: formData.distributionMode,
-          order_mode: formData.orderMode
+          order_mode: formData.orderMode,
+          ...(cleanedLlmEvaluators.length ? { llm_evaluators: cleanedLlmEvaluators } : {})
         }
       };
 
@@ -1100,7 +1207,7 @@ export default {
 
     onMounted(async () => {
       try {
-        await Promise.all([fetchCategories(), fetchUsers()]);
+        await Promise.all([fetchCategories(), fetchUsers(), fetchLlmModels()]);
       } catch (error) {
         console.error("Fehler beim Initialisieren der Daten:", error);
       }
@@ -1116,7 +1223,6 @@ export default {
       categoryItems,
       distributionOptions,
       orderOptions,
-      modelItems,
       filteredThreads,
       canImport,
       importButtonLabel,
@@ -1125,6 +1231,8 @@ export default {
       closeDialog,
       handleCategoryChange,
       handleCheckboxChange,
+      isLlmSelected,
+      toggleLlmEvaluator,
       importAuthenticity,
       triggerFolderSelect,
       handleFolderSelect,
@@ -1135,6 +1243,10 @@ export default {
       validateAndSubmitScenario,
       datePickerProps,
       formatDate,
+      getDisplayName,
+      selectAllUsersAsRaters,
+      clearUserSelection,
+      supportsLlmEvaluators,
       errors,
       selectAllFilteredThreads,
       deselectAllFilteredThreads
@@ -1200,6 +1312,7 @@ export default {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 

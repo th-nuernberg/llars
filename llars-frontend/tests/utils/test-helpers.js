@@ -9,6 +9,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { vi } from 'vitest'
+import LIcon from '@/components/common/LIcon.vue'
 
 /**
  * Create a fresh Vuetify instance for testing
@@ -33,6 +34,10 @@ export function mountWithVuetify(component, options = {}) {
   return mount(component, {
     global: {
       plugins: [vuetify],
+      components: {
+        LIcon,
+        ...options.global?.components,
+      },
       stubs: {
         'router-link': { template: '<a><slot /></a>', props: ['to'] },
         'router-view': { template: '<div><slot /></div>' },
@@ -72,6 +77,10 @@ export function shallowMountWithVuetify(component, options = {}) {
   return shallowMount(component, {
     global: {
       plugins: [vuetify],
+      components: {
+        LIcon,
+        ...options.global?.components,
+      },
       stubs: {
         'router-link': { template: '<a><slot /></a>', props: ['to'] },
         'router-view': { template: '<div><slot /></div>' },

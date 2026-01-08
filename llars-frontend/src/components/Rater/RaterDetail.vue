@@ -29,7 +29,7 @@
         <!-- Feature-Bereich (links) -->
         <div class="panel features-panel" :style="leftPanelStyle()">
           <div class="panel-header">
-            <v-icon size="20" class="mr-2">mdi-format-list-bulleted</v-icon>
+            <LIcon size="20" class="mr-2">mdi-format-list-bulleted</LIcon>
             <span class="panel-title">Features</span>
             <v-spacer />
             <LTooltip v-if="ratedCount > 0" text="Bewertete Features / Gesamtfeatures">
@@ -50,14 +50,14 @@
                       <v-card-title class="feature-card-title d-flex align-center">
                         <span>{{ feature.model_name }}</span>
                         <v-spacer />
-                        <v-icon
+                        <LIcon
                           v-if="feature.user_rating !== null && feature.user_rating !== undefined"
                           color="success"
                           size="18"
                         >
                           mdi-check-circle
-                        </v-icon>
-                        <v-icon v-else color="grey" size="18">mdi-circle-outline</v-icon>
+                        </LIcon>
+                        <LIcon v-else color="grey" size="18">mdi-circle-outline</LIcon>
                       </v-card-title>
                       <v-card-text class="feature-card-text">{{ feature.content }}</v-card-text>
                     </v-card>
@@ -81,7 +81,7 @@
         <!-- E-Mail Verlauf (rechts, hidden on mobile) -->
         <div v-if="!isMobile" class="panel email-panel" :style="rightPanelStyle()">
           <div class="panel-header">
-            <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
+            <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
             <span class="panel-title">E-Mail Verlauf</span>
           </div>
           <div class="panel-content">

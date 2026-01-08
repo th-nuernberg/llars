@@ -5,7 +5,7 @@
       <div class="header-left">
         <div class="mode-badge">
           <div class="mode-icon-wrapper" :class="{ pulse: isProcessing }">
-            <v-icon size="16">{{ modeIcon }}</v-icon>
+            <LIcon size="16">{{ modeIcon }}</LIcon>
           </div>
           <span class="mode-name">{{ modeLabel }}</span>
         </div>
@@ -15,7 +15,7 @@
       <div class="header-right">
         <span v-if="currentStatus" class="status-pill">{{ currentStatus }}</span>
         <span v-if="iteration" class="iter-pill">Schritt {{ iteration }}</span>
-        <v-icon size="18" class="chevron">{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+        <LIcon size="18" class="chevron">{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
       </div>
     </div>
 
@@ -39,7 +39,7 @@
             <div class="timeline-rail">
               <div class="rail-line top" :class="{ hidden: index === 0 }"></div>
               <div class="rail-dot">
-                <v-icon size="12">{{ getStepIcon(step.type) }}</v-icon>
+                <LIcon size="12">{{ getStepIcon(step.type) }}</LIcon>
               </div>
               <div class="rail-line bottom" :class="{ hidden: index === steps.length - 1 }"></div>
             </div>

@@ -49,11 +49,11 @@
       <div v-if="treeCollapsed" class="tree-collapsed" @click="treeCollapsed = false">
         <div class="collapsed-bar">
           <div class="collapsed-icon-box">
-            <v-icon size="18">mdi-file-tree</v-icon>
+            <LIcon size="18">mdi-file-tree</LIcon>
           </div>
           <span class="collapsed-label">Dateien</span>
           <v-spacer />
-          <v-icon size="18" class="expand-icon">mdi-chevron-right</v-icon>
+          <LIcon size="18" class="expand-icon">mdi-chevron-right</LIcon>
         </div>
       </div>
 
@@ -80,7 +80,7 @@
               title="Einklappen"
               @click.stop="treeCollapsed = true"
             >
-              <v-icon size="18">mdi-chevron-left</v-icon>
+              <LIcon size="18">mdi-chevron-left</LIcon>
             </v-btn>
           </template>
         </MarkdownTreePanel>
@@ -111,7 +111,7 @@
             class="mr-2"
             @click="mobileSidebarOpen = true"
           >
-            <v-icon>mdi-menu</v-icon>
+            <LIcon>mdi-menu</LIcon>
           </v-btn>
           <v-btn
             variant="text"
@@ -120,10 +120,10 @@
             title="Zurück zu den Workspaces"
             @click="router.push('/MarkdownCollab')"
           >
-            <v-icon size="18">mdi-arrow-left</v-icon>
+            <LIcon size="18">mdi-arrow-left</LIcon>
             <span v-if="!isMobile" class="header-back-label">Workspaces</span>
           </v-btn>
-          <v-icon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-language-markdown</v-icon>
+          <LIcon v-if="!isMobile" size="20" color="primary" class="mr-2">llars:markdown-collab</LIcon>
           <div class="header-info">
             <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
             <div class="header-subtitle">{{ workspace?.name || `Workspace #${workspaceId}` }}</div>
@@ -139,7 +139,7 @@
             title="Workspace teilen"
             @click="openShareDialog"
           >
-            <v-icon size="20">mdi-account-multiple-plus</v-icon>
+            <LIcon size="20">mdi-account-multiple-plus</LIcon>
           </v-btn>
 
           <div class="mode-toggle-group">
@@ -149,7 +149,7 @@
               title="Editor"
               @click="viewMode = 'editor'"
             >
-              <v-icon size="18">mdi-pencil</v-icon>
+              <LIcon size="18">mdi-pencil</LIcon>
             </button>
             <button
               class="mode-btn"
@@ -157,7 +157,7 @@
               title="Split"
               @click="viewMode = 'split'"
             >
-              <v-icon size="18">mdi-view-split-vertical</v-icon>
+              <LIcon size="18">mdi-view-split-vertical</LIcon>
             </button>
             <button
               class="mode-btn"
@@ -165,7 +165,7 @@
               title="Preview"
               @click="viewMode = 'preview'"
             >
-              <v-icon size="18">mdi-eye-outline</v-icon>
+              <LIcon size="18">mdi-eye-outline</LIcon>
             </button>
           </div>
         </div>
@@ -256,7 +256,7 @@
     <v-dialog v-model="shareDialog" max-width="480">
       <v-card class="share-dialog">
         <v-card-title class="share-header">
-          <v-icon class="mr-2" color="primary">mdi-account-multiple-plus</v-icon>
+          <LIcon class="mr-2" color="primary">mdi-account-multiple-plus</LIcon>
           <div>
             <div>Workspace teilen</div>
             <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
@@ -303,7 +303,7 @@
           <v-skeleton-loader v-if="membersLoading" type="list-item-avatar@3" />
 
           <div v-else-if="members.length === 0" class="empty-members">
-            <v-icon size="28" color="grey-lighten-1">mdi-account-group-outline</v-icon>
+            <LIcon size="28" color="grey-lighten-1">mdi-account-group-outline</LIcon>
             <span>Noch keine Mitglieder</span>
           </div>
 
@@ -323,7 +323,7 @@
                 :loading="removingUsername === m.username"
                 @click="removeMember(m.username)"
               >
-                <v-icon size="18">mdi-close</v-icon>
+                <LIcon size="18">mdi-close</LIcon>
               </v-btn>
             </div>
           </div>

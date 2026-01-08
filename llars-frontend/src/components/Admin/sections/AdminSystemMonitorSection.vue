@@ -3,7 +3,7 @@
     <!-- Compact Header -->
     <div class="monitor-header">
       <div class="header-left">
-        <v-icon size="24" color="white">mdi-monitor-dashboard</v-icon>
+        <LIcon size="24" color="white">mdi-monitor-dashboard</LIcon>
         <h2>System Monitor</h2>
         <LTag :variant="connectionVariant" :prepend-icon="connectionIcon" size="small" class="connection-tag">
           {{ connectionLabel }}
@@ -133,7 +133,7 @@
         </table>
 
         <div v-if="filteredEvents.length === 0" class="empty-state">
-          <v-icon size="48" color="grey">mdi-format-list-bulleted</v-icon>
+          <LIcon size="48" color="grey">mdi-format-list-bulleted</LIcon>
           <p>Keine Events vorhanden</p>
         </div>
       </div>

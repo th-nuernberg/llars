@@ -39,7 +39,7 @@
               >
                 <span class="likert-circle">
                   <template v-if="rating === selectedRating">
-                    <v-icon class="check-icon" size="small">mdi-check</v-icon>
+                    <LIcon class="check-icon" size="small">mdi-check</LIcon>
                   </template>
                 </span>
               </div>

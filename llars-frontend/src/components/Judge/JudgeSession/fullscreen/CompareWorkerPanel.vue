@@ -2,7 +2,7 @@
   <div class="compare-worker-panel">
     <!-- No Worker Selected -->
     <div v-if="workerId === null" class="panel-empty">
-      <v-icon size="48">mdi-account-question</v-icon>
+      <LIcon size="48">mdi-account-question</LIcon>
       <span>Worker auswählen</span>
     </div>
 
@@ -11,19 +11,19 @@
       <!-- Status Header -->
       <div class="panel-status" :style="{ '--worker-color': workerColor }">
         <div v-if="workerStream?.isStreaming" class="status-badge status-streaming">
-          <v-icon size="16" class="rotating">mdi-loading</v-icon>
+          <LIcon size="16" class="rotating">mdi-loading</LIcon>
           <span>Analysiert</span>
         </div>
         <div v-else-if="workerResult?.winner" class="status-badge status-complete">
-          <v-icon size="16">mdi-check-circle</v-icon>
+          <LIcon size="16">mdi-check-circle</LIcon>
           <span>Fertig</span>
         </div>
         <div v-else-if="workerStream?.comparison" class="status-badge status-pending">
-          <v-icon size="16">mdi-clock-outline</v-icon>
+          <LIcon size="16">mdi-clock-outline</LIcon>
           <span>Ausstehend</span>
         </div>
         <div v-else class="status-badge status-idle">
-          <v-icon size="16">mdi-sleep</v-icon>
+          <LIcon size="16">mdi-sleep</LIcon>
           <span>Idle</span>
         </div>
       </div>
@@ -34,7 +34,7 @@
           <span class="pillar-badge">A</span>
           <span class="pillar-name">{{ getPillarName(workerStream.comparison.pillar_a) }}</span>
         </div>
-        <v-icon size="20" color="grey">mdi-arrow-left-right</v-icon>
+        <LIcon size="20" color="grey">mdi-arrow-left-right</LIcon>
         <div class="pillar-item pillar-b">
           <span class="pillar-name">{{ getPillarName(workerStream.comparison.pillar_b) }}</span>
           <span class="pillar-badge">B</span>
@@ -106,7 +106,7 @@
       <!-- Stream Preview (if streaming or no result yet) -->
       <div v-else-if="workerStream?.comparison" class="panel-stream">
         <div class="stream-label">
-          <v-icon size="14">mdi-text</v-icon>
+          <LIcon size="14">mdi-text</LIcon>
           <span>LLM Output</span>
         </div>
         <div class="stream-preview">
@@ -116,7 +116,7 @@
 
       <!-- Idle State -->
       <div v-else class="panel-idle">
-        <v-icon size="64" color="grey-lighten-1">mdi-robot-off-outline</v-icon>
+        <LIcon size="64" color="grey-lighten-1">mdi-robot-off-outline</LIcon>
         <span>Worker wartet auf nächste Aufgabe</span>
       </div>
     </template>

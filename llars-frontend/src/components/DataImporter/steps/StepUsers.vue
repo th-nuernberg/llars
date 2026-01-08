@@ -3,7 +3,7 @@
     <!-- User Selection -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-account-group</v-icon>
+        <LIcon class="mr-2">mdi-account-group</LIcon>
         Benutzer einladen
         <v-spacer />
         <v-chip color="primary" variant="tonal" size="small">
@@ -45,12 +45,18 @@
               <tr v-for="user in users" :key="user.id">
                 <td>
                   <div class="d-flex align-center">
-                    <v-avatar size="32" color="primary" class="mr-2">
-                      <span class="text-caption">{{ getInitials(user.username) }}</span>
+                    <v-avatar
+                      size="32"
+                      color="primary"
+                      class="mr-2"
+                    >
+                      <span class="text-caption">{{ getInitials(getDisplayName(user)) }}</span>
                     </v-avatar>
                     <div>
-                      <div class="font-weight-medium">{{ user.username }}</div>
-                      <div v-if="user.email" class="text-caption text-medium-emphasis">{{ user.email }}</div>
+                      <div class="font-weight-medium">{{ getDisplayName(user) }}</div>
+                      <div v-if="user.email" class="text-caption text-medium-emphasis">
+                        {{ user.email }}
+                      </div>
                     </div>
                     <v-chip
                       v-if="user.in_scenario"
@@ -86,7 +92,7 @@
           </v-table>
 
           <div v-if="!users.length" class="text-center text-medium-emphasis pa-6">
-            <v-icon size="48" class="mb-2">mdi-account-off</v-icon>
+            <LIcon size="48" class="mb-2">mdi-account-off</LIcon>
             <div>Keine Benutzer verfügbar</div>
           </div>
         </template>
@@ -96,7 +102,7 @@
     <!-- Distribution Preview -->
     <v-card v-if="localConfig.raters.length && scenarioConfig?.distributionMode !== 'all'" variant="outlined">
       <v-card-title>
-        <v-icon class="mr-2">mdi-chart-pie</v-icon>
+        <LIcon class="mr-2">mdi-chart-pie</LIcon>
         Verteilungs-Vorschau
       </v-card-title>
 
@@ -139,7 +145,7 @@
       variant="tonal"
       class="mt-4"
     >
-      <v-icon class="mr-2">mdi-alert</v-icon>
+      <LIcon class="mr-2">mdi-alert</LIcon>
       Mindestens ein Benutzer sollte ausgewählt werden (optional).
     </v-alert>
 
@@ -227,9 +233,14 @@ const getInitials = (name) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
+const getDisplayName = (user) => {
+  if (!user) return 'Unbekannt'
+  return user.username || 'Unbekannt'
+}
+
 const getUserName = (userId) => {
   const user = users.value.find(u => u.id === userId)
-  return user?.username || 'Unbekannt'
+  return getDisplayName(user)
 }
 
 const toggleRater = (userId, isSelected) => {
@@ -276,7 +287,7 @@ const selectAllAsRaters = () => {
 const selectResearchersAsRaters = () => {
   // Filter users by system role (researcher or admin should be raters)
   localConfig.value.raters = users.value
-    .filter(u => !u.in_scenario) // Only users not already in scenario
+    .filter(u => !u.in_scenario)
     .map(u => u.id)
 }
 

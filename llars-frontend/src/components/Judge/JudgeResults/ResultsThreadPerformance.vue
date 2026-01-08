@@ -3,7 +3,7 @@
     <v-col cols="12">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-account-details</v-icon>
+          <LIcon class="mr-2">mdi-account-details</LIcon>
           Thread-Performance Analyse
           <v-chip class="ml-3" color="info" size="small">
             {{ performance.total_threads }} Threads
@@ -57,7 +57,7 @@
             <!-- Likert Consistency Global -->
             <v-card variant="outlined" class="mb-4" v-if="performance.likert_consistency?.global">
               <v-card-title class="text-subtitle-1">
-                <v-icon class="mr-2" size="small">mdi-chart-bell-curve</v-icon>
+                <LIcon class="mr-2" size="small">mdi-chart-bell-curve</LIcon>
                 Globale Likert-Konsistenz
               </v-card-title>
               <v-divider></v-divider>
@@ -95,7 +95,7 @@
               <v-col cols="12" md="6" v-if="performance.consistent_winners?.length">
                 <v-card variant="tonal" color="success">
                   <v-card-title class="text-subtitle-1">
-                    <v-icon class="mr-2" size="small">mdi-trophy</v-icon>
+                    <LIcon class="mr-2" size="small">mdi-trophy</LIcon>
                     Konsistente Gewinner (≥70% Win-Rate)
                   </v-card-title>
                   <v-card-text>
@@ -119,7 +119,7 @@
               <v-col cols="12" md="6" v-if="performance.consistent_losers?.length">
                 <v-card variant="tonal" color="error">
                   <v-card-title class="text-subtitle-1">
-                    <v-icon class="mr-2" size="small">mdi-alert-circle</v-icon>
+                    <LIcon class="mr-2" size="small">mdi-alert-circle</LIcon>
                     Konsistente Verlierer (≥70% Loss-Rate)
                   </v-card-title>
                   <v-card-text>
@@ -211,9 +211,9 @@
 
               <!-- Status -->
               <template v-slot:item.status="{ item }">
-                <v-icon v-if="item.is_consistent_winner" color="success" size="small">mdi-trophy</v-icon>
-                <v-icon v-else-if="item.is_consistent_loser" color="error" size="small">mdi-alert-circle</v-icon>
-                <v-icon v-else color="grey" size="small">mdi-minus</v-icon>
+                <LIcon v-if="item.is_consistent_winner" color="success" size="small">mdi-trophy</LIcon>
+                <LIcon v-else-if="item.is_consistent_loser" color="error" size="small">mdi-alert-circle</LIcon>
+                <LIcon v-else color="grey" size="small">mdi-minus</LIcon>
               </template>
 
               <!-- Expanded Row - Likert Details -->
@@ -222,7 +222,7 @@
                   <td :colspan="columns.length" class="expanded-content pa-4">
                     <v-card variant="outlined">
                       <v-card-title class="text-subtitle-1">
-                        <v-icon class="mr-2" size="small">mdi-chart-bar</v-icon>
+                        <LIcon class="mr-2" size="small">mdi-chart-bar</LIcon>
                         Likert-Scores für Thread #{{ item.thread_id }}
                       </v-card-title>
                       <v-divider></v-divider>
@@ -252,8 +252,8 @@
                             </div>
                             <div class="text-caption text-medium-emphasis">
                               σ = {{ data.std_dev }}
-                              <v-icon v-if="data.is_consistent" size="x-small" color="success" class="ml-1">mdi-check</v-icon>
-                              <v-icon v-else size="x-small" color="warning" class="ml-1">mdi-alert</v-icon>
+                              <LIcon v-if="data.is_consistent" size="x-small" color="success" class="ml-1">mdi-check</LIcon>
+                              <LIcon v-else size="x-small" color="warning" class="ml-1">mdi-alert</LIcon>
                             </div>
                           </v-col>
                         </v-row>

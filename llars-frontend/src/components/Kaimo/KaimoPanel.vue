@@ -11,7 +11,7 @@
           <div>
             <div class="d-flex align-center mb-1">
               <v-avatar color="primary" size="42" class="mr-3">
-                <v-icon color="white">mdi-human-child</v-icon>
+                <LIcon color="white">mdi-human-child</LIcon>
               </v-avatar>
               <div>
                 <div class="text-h5 font-weight-bold">KAIMO Panel</div>
@@ -85,7 +85,7 @@
       <v-col cols="12" :md="canManageKaimo ? 12 : 7">
         <v-card class="pa-4" elevation="2">
           <v-card-title class="px-0 d-flex align-center">
-            <v-icon class="mr-2" color="primary">mdi-format-list-bulleted</v-icon>
+            <LIcon class="mr-2" color="primary">mdi-format-list-bulleted</LIcon>
             Fälle
             <v-chip class="ml-2" size="small" color="primary" variant="outlined">
               {{ cases.length }}
@@ -192,7 +192,7 @@
                 </tr>
                 <tr v-if="cases.length === 0">
                   <td :colspan="canManageKaimo ? 6 : 5" class="text-center text-medium-emphasis py-4">
-                    <v-icon class="mr-2">mdi-folder-open-outline</v-icon>
+                    <LIcon class="mr-2">mdi-folder-open-outline</LIcon>
                     Keine KAIMO Fälle verfügbar.
                     <v-btn
                       v-if="canManageKaimo"
@@ -216,7 +216,7 @@
         <v-card class="pa-4" color="primary" variant="tonal" elevation="2">
           <div class="d-flex align-center mb-3">
             <v-avatar color="primary" size="40" class="mr-3">
-              <v-icon color="white">mdi-information-outline</v-icon>
+              <LIcon color="white">mdi-information-outline</LIcon>
             </v-avatar>
             <div>
               <div class="text-subtitle-1 font-weight-bold">Hinweise</div>
@@ -241,7 +241,7 @@
     <v-dialog v-model="deleteDialog" max-width="450">
       <v-card>
         <v-card-title class="text-h6">
-          <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+          <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
           Fall löschen?
         </v-card-title>
         <v-card-text>
@@ -265,7 +265,7 @@
     <v-dialog v-model="publishDialog" max-width="450">
       <v-card>
         <v-card-title class="text-h6">
-          <v-icon class="mr-2" color="success">mdi-publish</v-icon>
+          <LIcon class="mr-2" color="success">mdi-publish</LIcon>
           Fall veröffentlichen?
         </v-card-title>
         <v-card-text>

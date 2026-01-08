@@ -10,31 +10,14 @@
       <v-row dense>
         <!-- Model Selection -->
         <v-col cols="12" md="6">
-          <v-combobox
+          <LlmModelSelect
             v-model="formData.model_name"
-            :items="llmModelItems"
-            item-title="title"
-            item-value="value"
-            :return-object="false"
             label="Modell"
-            variant="outlined"
             density="compact"
-            :loading="llmModelsLoading"
-            clearable
-            hide-details
-          >
-            <template #append>
-              <v-btn
-                icon
-                variant="text"
-                size="x-small"
-                :loading="llmModelsLoading"
-                @click="$emit('sync-models')"
-              >
-                <v-icon size="18">mdi-refresh</v-icon>
-              </v-btn>
-            </template>
-          </v-combobox>
+            :clearable="true"
+            :hide-details="true"
+            :allow-sync="true"
+          />
         </v-col>
 
         <!-- Temperature -->
@@ -75,7 +58,7 @@
               size="small"
               @click="$emit('apply-template', template)"
             >
-              <v-icon start size="14">{{ template.icon }}</v-icon>
+              <LIcon start size="14">{{ template.icon }}</LIcon>
               {{ template.name }}
             </v-chip>
           </div>
@@ -88,7 +71,7 @@
       <!-- System Prompt -->
       <div class="prompt-panel">
         <div class="prompt-panel-header">
-          <v-icon size="18" class="mr-1">mdi-code-braces</v-icon>
+          <LIcon size="18" class="mr-1">mdi-code-braces</LIcon>
           System Prompt
           <span class="text-caption text-medium-emphasis ml-auto">
             {{ formData.system_prompt?.length || 0 }} Zeichen
@@ -107,7 +90,7 @@
       <!-- Welcome Message -->
       <div class="prompt-panel">
         <div class="prompt-panel-header">
-          <v-icon size="18" class="mr-1">mdi-message-text</v-icon>
+          <LIcon size="18" class="mr-1">mdi-message-text</LIcon>
           Willkommensnachricht
           <span class="text-caption text-medium-emphasis ml-auto">
             {{ formData.welcome_message?.length || 0 }} Zeichen
@@ -131,21 +114,13 @@
  * @description LLM configuration tab with model selection and prompts.
  */
 
+import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
+
 defineProps({
   /** Form data object */
   formData: {
     type: Object,
     required: true
-  },
-  /** Available LLM models */
-  llmModelItems: {
-    type: Array,
-    default: () => []
-  },
-  /** LLM models loading state */
-  llmModelsLoading: {
-    type: Boolean,
-    default: false
   },
   /** Available prompt templates */
   promptTemplates: {
@@ -154,7 +129,7 @@ defineProps({
   }
 });
 
-defineEmits(['sync-models', 'apply-template', 'update-line-count']);
+defineEmits(['apply-template', 'update-line-count']);
 </script>
 
 <style scoped>

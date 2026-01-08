@@ -1,7 +1,7 @@
 <template>
   <div class="results-card verbosity-card" v-if="analysis">
     <div class="card-header">
-      <v-icon class="header-icon">mdi-text-long</v-icon>
+      <LIcon class="header-icon">mdi-text-long</LIcon>
       <span class="header-title">Verbosity Bias Analyse</span>
       <LTag
         :variant="biasVariant"
@@ -17,7 +17,7 @@
       <template v-else>
         <!-- Alert -->
         <div class="bias-alert" :class="'bias-alert--' + biasType">
-          <v-icon class="alert-icon" size="20">{{ alertIcon }}</v-icon>
+          <LIcon class="alert-icon" size="20">{{ alertIcon }}</LIcon>
           <span v-if="analysis.verbosity_bias_rate > 0.6">
             <strong>Warnung:</strong> Das LLM zeigt einen starken Verbosity Bias - längere Threads werden bevorzugt.
           </span>

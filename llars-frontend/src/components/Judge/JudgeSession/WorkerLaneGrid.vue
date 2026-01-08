@@ -5,7 +5,7 @@
       <div class="header-main">
         <div class="header-title-section">
           <div class="header-icon-badge">
-            <v-icon size="24">mdi-account-group</v-icon>
+            <LIcon size="24">mdi-account-group</LIcon>
           </div>
           <div class="header-title-text">
             <span class="header-title">Worker-Pool Live View</span>
@@ -18,13 +18,13 @@
         <!-- Session Stats -->
         <div class="header-stats">
           <div class="stat-item">
-            <v-icon size="16">mdi-check-circle-outline</v-icon>
+            <LIcon size="16">mdi-check-circle-outline</LIcon>
             <span class="stat-value">{{ displayCompleted }}</span>
             <span class="stat-label">/{{ displayTotal }}</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
-            <v-icon size="16">mdi-percent</v-icon>
+            <LIcon size="16">mdi-percent</LIcon>
             <span class="stat-value">{{ Math.round(Math.min(progress, 100)) }}%</span>
           </div>
         </div>
@@ -38,7 +38,7 @@
             class="mr-2"
             @click="$emit('open-fullscreen')"
           >
-            <v-icon start size="18">mdi-fullscreen</v-icon>
+            <LIcon start size="18">mdi-fullscreen</LIcon>
             Vollbild
           </v-btn>
           <v-btn
@@ -48,7 +48,7 @@
             @click="$emit('refresh')"
             color="white"
           >
-            <v-icon size="20">mdi-refresh</v-icon>
+            <LIcon size="20">mdi-refresh</LIcon>
           </v-btn>
         </div>
       </div>
@@ -56,7 +56,7 @@
       <!-- Pillar Overview Bar -->
       <div v-if="sessionPillars.length > 0" class="pillars-overview">
         <div class="pillars-label">
-          <v-icon size="14">mdi-pillar</v-icon>
+          <LIcon size="14">mdi-pillar</LIcon>
           <span>Säulen im Vergleich:</span>
         </div>
         <div class="pillars-chips">
@@ -66,7 +66,7 @@
             class="pillar-badge"
             :style="{ '--pillar-color': getPillarColor(pillar.id) }"
           >
-            <v-icon size="14">{{ getPillarIcon(pillar.id) }}</v-icon>
+            <LIcon size="14">{{ getPillarIcon(pillar.id) }}</LIcon>
             <span>{{ pillar.short }}</span>
           </div>
         </div>

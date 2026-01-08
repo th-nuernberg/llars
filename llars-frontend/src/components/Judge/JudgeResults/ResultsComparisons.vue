@@ -3,7 +3,7 @@
     <v-col cols="12">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-format-list-bulleted-square</v-icon>
+          <LIcon class="mr-2">mdi-format-list-bulleted-square</LIcon>
           Alle Vergleiche ({{ comparisons.length }})
         </v-card-title>
         <v-divider></v-divider>
@@ -29,12 +29,12 @@
               <v-chip size="small" color="blue" variant="outlined">
                 {{ item.pillar_a_name }}
               </v-chip>
-              <v-icon size="small">mdi-sword-cross</v-icon>
+              <LIcon size="small">mdi-sword-cross</LIcon>
               <v-chip size="small" color="green" variant="outlined">
                 {{ item.pillar_b_name }}
               </v-chip>
               <v-chip v-if="item.position_order === 2" size="x-small" color="warning" variant="tonal">
-                <v-icon start size="x-small">mdi-swap-horizontal</v-icon>
+                <LIcon start size="x-small">mdi-swap-horizontal</LIcon>
                 Swapped
               </v-chip>
             </div>
@@ -47,7 +47,7 @@
               :color="item.winner === 'A' ? 'blue' : item.winner === 'B' ? 'green' : 'grey'"
               variant="flat"
             >
-              <v-icon start size="small">mdi-trophy</v-icon>
+              <LIcon start size="small">mdi-trophy</LIcon>
               {{ item.winner }}
             </v-chip>
           </template>
@@ -74,7 +74,7 @@
               <td :colspan="columns.length" class="expanded-content pa-4">
                 <v-card variant="outlined">
                   <v-card-title class="text-subtitle-1">
-                    <v-icon class="mr-2" size="small">mdi-robot</v-icon>
+                    <LIcon class="mr-2" size="small">mdi-robot</LIcon>
                     LLM Raw Output
                   </v-card-title>
                   <v-divider></v-divider>
@@ -114,7 +114,7 @@
                     <v-expansion-panels v-if="item.raw_response">
                       <v-expansion-panel>
                         <v-expansion-panel-title>
-                          <v-icon class="mr-2" size="small">mdi-code-json</v-icon>
+                          <LIcon class="mr-2" size="small">mdi-code-json</LIcon>
                           Raw LLM Response ({{ item.raw_response?.length || 0 }} Zeichen)
                         </v-expansion-panel-title>
                         <v-expansion-panel-text>

@@ -37,8 +37,8 @@
         <v-col cols="6" sm="3" class="stat-item">
           <div class="d-flex align-center">
             <v-avatar :color="getSignificanceColor(pValue)" size="48" class="text-white">
-              <v-icon v-if="pValue < 0.05">mdi-check</v-icon>
-              <v-icon v-else>mdi-minus</v-icon>
+              <LIcon v-if="pValue < 0.05">mdi-check</LIcon>
+              <LIcon v-else>mdi-minus</LIcon>
             </v-avatar>
             <div class="ml-3">
               <div class="text-caption text-medium-emphasis">Signifikanz</div>
@@ -79,7 +79,7 @@
             @click="$emit('show-methodology')"
             title="Methodik & Erklärungen"
           >
-            <v-icon>mdi-information-outline</v-icon>
+            <LIcon>mdi-information-outline</LIcon>
           </v-btn>
         </v-col>
       </v-row>

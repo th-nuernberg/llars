@@ -11,9 +11,9 @@
       </div>
 
       <div class="comparison-meta">
-        <v-icon v-if="isStreaming" color="secondary" class="rotating">mdi-loading</v-icon>
-        <v-icon v-else-if="parsedResult?.winner" color="success">mdi-check-circle</v-icon>
-        <v-icon v-else size="32">mdi-scale-balance</v-icon>
+        <LIcon v-if="isStreaming" color="secondary" class="rotating">mdi-loading</LIcon>
+        <LIcon v-else-if="parsedResult?.winner" color="success">mdi-check-circle</LIcon>
+        <LIcon v-else size="32">mdi-scale-balance</LIcon>
       </div>
 
       <div class="pillar-side pillar-b">
@@ -71,7 +71,7 @@
         <div class="stream-header">
           <span>LLM Analyse</span>
           <v-chip v-if="isStreaming" color="secondary" size="x-small" class="pulse-chip">
-            <v-icon start size="12">mdi-broadcast</v-icon>
+            <LIcon start size="12">mdi-broadcast</LIcon>
             Streaming
           </v-chip>
         </div>

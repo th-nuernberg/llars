@@ -1,7 +1,7 @@
 <template>
   <div class="tree-panel">
     <div class="tree-header">
-      <v-icon size="20" class="header-icon">mdi-file-tree</v-icon>
+      <LIcon size="20" class="header-icon">mdi-file-tree</LIcon>
       <span class="header-title">Workspace</span>
       <div class="header-actions">
         <v-btn
@@ -12,7 +12,7 @@
           title="Neue Datei"
           @click="openCreateDialog('file')"
         >
-          <v-icon size="18">mdi-file-document-plus-outline</v-icon>
+          <LIcon size="18">mdi-file-document-plus-outline</LIcon>
         </v-btn>
         <v-btn
           icon
@@ -22,7 +22,7 @@
           title="Neuer Ordner"
           @click="openCreateDialog('folder')"
         >
-          <v-icon size="18">mdi-folder-plus-outline</v-icon>
+          <LIcon size="18">mdi-folder-plus-outline</LIcon>
         </v-btn>
         <slot name="header-append" />
       </div>
@@ -56,7 +56,7 @@
           <template #item="{ element }">
             <div class="drag-wrapper">
               <span class="drag-handle" title="Ziehen">
-                <v-icon size="14" class="text-medium-emphasis">mdi-drag</v-icon>
+                <LIcon size="14" class="text-medium-emphasis">mdi-drag</LIcon>
               </span>
               <MarkdownTreeNode
                 :node="element"
@@ -109,7 +109,7 @@
     <v-dialog v-model="createDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">{{ createType === 'folder' ? 'mdi-folder-plus-outline' : 'mdi-file-document-plus-outline' }}</v-icon>
+          <LIcon class="mr-2">{{ createType === 'folder' ? 'mdi-folder-plus-outline' : 'mdi-file-document-plus-outline' }}</LIcon>
           {{ createType === 'folder' ? 'Neuer Ordner' : 'Neue Datei' }}
           <v-spacer />
           <LIconBtn icon="mdi-close" tooltip="Schließen" @click="createDialog = false" />
@@ -144,7 +144,7 @@
     <v-dialog v-model="renameDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-rename-box</v-icon>
+          <LIcon class="mr-2">mdi-rename-box</LIcon>
           Umbenennen
           <v-spacer />
           <LIconBtn icon="mdi-close" tooltip="Schließen" @click="renameDialog = false" />
@@ -173,7 +173,7 @@
     <v-dialog v-model="deleteDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="error">mdi-delete-outline</v-icon>
+          <LIcon class="mr-2" color="error">mdi-delete-outline</LIcon>
           Löschen
           <v-spacer />
           <LIconBtn icon="mdi-close" tooltip="Schließen" @click="deleteDialog = false" />

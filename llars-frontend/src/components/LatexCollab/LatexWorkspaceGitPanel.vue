@@ -4,7 +4,7 @@
     <div v-if="!expanded && !fullscreen" class="git-panel-collapsed" @click="expanded = true">
       <div class="collapsed-content">
         <div class="collapsed-icon-box">
-          <v-icon size="18">mdi-source-branch</v-icon>
+          <LIcon size="18">mdi-source-branch</LIcon>
         </div>
         <span class="collapsed-label">Git</span>
         <LTag
@@ -25,7 +25,7 @@
           Keine Änderungen
         </LTag>
         <v-spacer />
-        <v-icon size="18" class="expand-icon">mdi-chevron-up</v-icon>
+        <LIcon size="18" class="expand-icon">mdi-chevron-up</LIcon>
       </div>
     </div>
 
@@ -34,7 +34,7 @@
       <!-- Header -->
       <div class="panel-header">
         <div class="header-icon-box">
-          <v-icon size="20" color="white">mdi-source-branch</v-icon>
+          <LIcon size="20" color="white">mdi-source-branch</LIcon>
         </div>
         <span class="header-title">Git Panel</span>
         <LTag
@@ -64,7 +64,7 @@
             :loading="checkingChanges"
             @click="checkForChanges"
           >
-            <v-icon size="18">mdi-refresh</v-icon>
+            <LIcon size="18">mdi-refresh</LIcon>
           </v-btn>
           <v-btn
             icon
@@ -73,7 +73,7 @@
             title="Vollbild"
             @click="fullscreen = true"
           >
-            <v-icon size="18">mdi-fullscreen</v-icon>
+            <LIcon size="18">mdi-fullscreen</LIcon>
           </v-btn>
           <v-btn
             icon
@@ -82,7 +82,7 @@
             title="Einklappen"
             @click="expanded = false"
           >
-            <v-icon size="18">mdi-chevron-down</v-icon>
+            <LIcon size="18">mdi-chevron-down</LIcon>
           </v-btn>
         </div>
       </div>
@@ -98,7 +98,7 @@
           <!-- Left: Changed Files -->
           <div class="files-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-file-document-multiple</v-icon>
+              <LIcon size="16" class="mr-1">mdi-file-document-multiple</LIcon>
               Geänderte Dateien
               <v-spacer />
               <span v-if="changedFiles.length > 0" class="file-count">
@@ -148,7 +148,7 @@
                   </template>
                   <span>{{ getStatusBadge(file).tooltip }}</span>
                 </v-tooltip>
-                <v-icon size="16" class="file-icon">mdi-file-document-outline</v-icon>
+                <LIcon size="16" class="file-icon">mdi-file-document-outline</LIcon>
                 <div class="file-info">
                   <span class="file-path">{{ file.path }}</span>
                   <span class="file-stats">
@@ -169,7 +169,7 @@
                       :loading="rollingBack === file.id"
                       @click.stop="confirmRollback(file)"
                     >
-                      <v-icon size="14">mdi-undo</v-icon>
+                      <LIcon size="14">mdi-undo</LIcon>
                     </v-btn>
                   </template>
                   <span>Änderungen verwerfen</span>
@@ -180,7 +180,7 @@
               <template v-if="deletedFiles.length > 0">
                 <v-divider v-if="changedFiles.length > 0" class="my-2" />
                 <div class="deleted-section-title">
-                  <v-icon size="14" color="error" class="mr-1">mdi-delete</v-icon>
+                  <LIcon size="14" color="error" class="mr-1">mdi-delete</LIcon>
                   Gelöschte Dateien
                 </div>
                 <div
@@ -190,7 +190,7 @@
                 >
                   <!-- Status badge -->
                   <span class="status-badge error">D</span>
-                  <v-icon size="16" class="file-icon" color="error">mdi-file-remove-outline</v-icon>
+                  <LIcon size="16" class="file-icon" color="error">mdi-file-remove-outline</LIcon>
                   <div class="file-info">
                     <span class="file-path deleted-path">{{ file.title }}</span>
                   </div>
@@ -206,7 +206,7 @@
                         :loading="restoringFile === file.id"
                         @click.stop="restoreFile({ id: file.id, ...file })"
                       >
-                        <v-icon size="14">mdi-restore</v-icon>
+                        <LIcon size="14">mdi-restore</LIcon>
                       </v-btn>
                     </template>
                     <span>Datei wiederherstellen</span>
@@ -219,7 +219,7 @@
           <!-- Right: Commit Section -->
           <div class="commit-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-pencil-plus</v-icon>
+              <LIcon size="16" class="mr-1">mdi-pencil-plus</LIcon>
               Commit
             </div>
 
@@ -261,7 +261,7 @@
         <!-- Fullscreen Header -->
         <div class="fullscreen-header">
           <div class="header-icon-box large">
-            <v-icon size="24" color="white">mdi-source-branch</v-icon>
+            <LIcon size="24" color="white">mdi-source-branch</LIcon>
           </div>
           <span class="header-title">Workspace Commit</span>
           <LTag
@@ -313,7 +313,7 @@
               <!-- Changed Files Card -->
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-file-document-multiple</v-icon>
+                  <LIcon size="18" class="mr-2">mdi-file-document-multiple</LIcon>
                   Geänderte Dateien
                   <v-spacer />
                   <span class="file-count-header">{{ selectedFiles.length }}/{{ changedFiles.length }}</span>
@@ -321,7 +321,7 @@
                 <div class="card-content">
                   <v-skeleton-loader v-if="checkingChanges" type="list-item@6" />
                   <div v-else-if="changedFiles.length === 0 && deletedFiles.length === 0" class="empty-state">
-                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-check-circle</v-icon>
+                    <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-check-circle</LIcon>
                     <span>Keine uncommitted Änderungen</span>
                   </div>
                   <div v-else>
@@ -362,9 +362,9 @@
                           </template>
                           <span>{{ getStatusBadge(file).tooltip }}</span>
                         </v-tooltip>
-                        <v-icon size="20" class="file-icon" :color="getFileIconColor(file.path)">
+                        <LIcon size="20" class="file-icon" :color="getFileIconColor(file.path)">
                           {{ getFileIcon(file.path) }}
-                        </v-icon>
+                        </LIcon>
                         <div class="file-details">
                           <div class="file-path-full">{{ file.path }}</div>
                           <div class="file-stats-full">
@@ -384,7 +384,7 @@
                               :loading="rollingBack === file.id"
                               @click.stop="confirmRollback(file)"
                             >
-                              <v-icon size="18">mdi-undo</v-icon>
+                              <LIcon size="18">mdi-undo</LIcon>
                             </v-btn>
                           </template>
                           <span>Änderungen verwerfen</span>
@@ -399,7 +399,7 @@
               <!-- Deleted Files Card -->
               <div v-if="deletedFiles.length > 0" class="git-card mt-4">
                 <div class="card-header deleted-header">
-                  <v-icon size="18" class="mr-2" color="error">mdi-delete</v-icon>
+                  <LIcon size="18" class="mr-2" color="error">mdi-delete</LIcon>
                   Gelöschte Dateien
                   <v-spacer />
                   <span class="deleted-count">{{ deletedFiles.length }}</span>
@@ -412,7 +412,7 @@
                       class="deleted-file-item"
                     >
                       <span class="status-badge error">D</span>
-                      <v-icon size="16" color="error" class="mr-2">mdi-file-remove-outline</v-icon>
+                      <LIcon size="16" color="error" class="mr-2">mdi-file-remove-outline</LIcon>
                       <div class="deleted-file-info">
                         <span class="deleted-file-name">{{ file.title }}</span>
                         <span class="deleted-file-date">{{ formatDate(file.deleted_at) }}</span>
@@ -428,7 +428,7 @@
                             :loading="restoringFile === file.id"
                             @click.stop="restoreFile({ id: file.id, ...file })"
                           >
-                            <v-icon size="14">mdi-restore</v-icon>
+                            <LIcon size="14">mdi-restore</LIcon>
                           </v-btn>
                         </template>
                         <span>Datei wiederherstellen</span>
@@ -441,27 +441,27 @@
               <!-- Commit Card -->
               <div class="git-card mt-4">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-pencil-plus</v-icon>
+                  <LIcon size="18" class="mr-2">mdi-pencil-plus</LIcon>
                   Commit erstellen
                 </div>
                 <div class="card-content">
                   <!-- Summary -->
                   <div v-if="selectedFiles.length > 0" class="commit-summary">
                     <div class="summary-item">
-                      <v-icon size="16" color="primary">mdi-file-check</v-icon>
+                      <LIcon size="16" color="primary">mdi-file-check</LIcon>
                       <span>{{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'Datei' : 'Dateien' }} ausgewählt</span>
                     </div>
                     <div class="summary-item">
-                      <v-icon size="16" color="success">mdi-plus</v-icon>
+                      <LIcon size="16" color="success">mdi-plus</LIcon>
                       <span>{{ totalInsertions }} Zeilen hinzugefügt</span>
                     </div>
                     <div class="summary-item">
-                      <v-icon size="16" color="error">mdi-minus</v-icon>
+                      <LIcon size="16" color="error">mdi-minus</LIcon>
                       <span>{{ totalDeletions }} Zeilen entfernt</span>
                     </div>
                   </div>
                   <div v-else class="no-selection">
-                    <v-icon size="32" color="grey-lighten-1" class="mb-2">mdi-checkbox-blank-off-outline</v-icon>
+                    <LIcon size="32" color="grey-lighten-1" class="mb-2">mdi-checkbox-blank-off-outline</LIcon>
                     <span>Keine Dateien ausgewählt</span>
                   </div>
 
@@ -503,7 +503,7 @@
             <div class="fullscreen-middle">
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-history</v-icon>
+                  <LIcon size="18" class="mr-2">mdi-history</LIcon>
                   Commit History
                   <v-spacer />
                   <span class="commit-count">{{ recentCommits.length }} Commits</span>
@@ -511,7 +511,7 @@
                 <div class="card-content history-content">
                   <v-skeleton-loader v-if="loadingCommits" type="list-item@8" />
                   <div v-else-if="recentCommits.length === 0" class="empty-state">
-                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</v-icon>
+                    <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</LIcon>
                     <span>Noch keine Commits vorhanden</span>
                   </div>
                   <div v-else class="history-list-full">
@@ -542,7 +542,7 @@
             <div class="fullscreen-right">
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-file-compare</v-icon>
+                  <LIcon size="18" class="mr-2">mdi-file-compare</LIcon>
                   Diff Ansicht
                   <v-spacer />
                   <v-btn-toggle
@@ -560,7 +560,7 @@
                 <div class="card-content diff-content">
                   <!-- No document selected message -->
                   <div v-if="!selectedDocumentId" class="no-document-selected">
-                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-file-document-outline</v-icon>
+                    <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-file-document-outline</LIcon>
                     <span>Wähle eine Datei aus, um den Diff anzuzeigen</span>
                   </div>
                   <template v-else>
@@ -574,7 +574,7 @@
                         variant="outlined"
                         hide-details
                       />
-                      <v-icon class="mx-2">mdi-arrow-right</v-icon>
+                      <LIcon class="mx-2">mdi-arrow-right</LIcon>
                       <v-select
                         v-model="compareCommitId"
                         :items="commitOptions"
@@ -611,7 +611,7 @@
     <v-dialog v-model="showRollbackConfirm" max-width="420" persistent>
       <v-card class="rollback-confirm-card">
         <v-card-title class="d-flex align-center ga-2">
-          <v-icon color="warning">mdi-alert-circle</v-icon>
+          <LIcon color="warning">mdi-alert-circle</LIcon>
           Änderungen verwerfen?
         </v-card-title>
         <v-card-text>

@@ -3,7 +3,7 @@
     <!-- Transformation Status -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2" :color="statusColor">{{ statusIcon }}</v-icon>
+        <LIcon class="mr-2" :color="statusColor">{{ statusIcon }}</LIcon>
         {{ statusTitle }}
       </v-card-title>
 
@@ -65,7 +65,7 @@
     <!-- Field Mapping Options -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-map</v-icon>
+        <LIcon class="mr-2">mdi-map</LIcon>
         Feld-Mapping
         <v-spacer />
         <v-switch
@@ -141,7 +141,7 @@
     <!-- AI Script Generation -->
     <v-card variant="outlined" class="ai-card">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2" color="purple">mdi-code-braces</v-icon>
+        <LIcon class="mr-2" color="purple">mdi-code-braces</LIcon>
         KI-Transformationsskript
         <v-chip class="ml-2" size="x-small" color="purple" variant="tonal">
           Für komplexe Formate

@@ -16,7 +16,7 @@
               :disabled="loadingAction !== null"
               @click="handleAction(action)"
             >
-              <v-icon v-if="loadingAction !== action.key" size="18">{{ action.icon }}</v-icon>
+              <LIcon v-if="loadingAction !== action.key" size="18">{{ action.icon }}</LIcon>
               <v-progress-circular
                 v-else
                 indeterminate

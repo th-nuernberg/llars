@@ -85,7 +85,7 @@
     <!-- Latency Distribution -->
     <div class="section-card">
       <h3 class="section-card__title">
-        <v-icon icon="mdi-chart-bar" size="18" class="mr-2" />
+        <LIcon icon="mdi-chart-bar" size="18" class="mr-2" />
         Latency Distribution
       </h3>
       <div class="latency-bars">
@@ -125,7 +125,7 @@
     <!-- Top Endpoints -->
     <div class="section-card">
       <h3 class="section-card__title">
-        <v-icon icon="mdi-api" size="18" class="mr-2" />
+        <LIcon icon="mdi-api" size="18" class="mr-2" />
         Top Endpoints (by latency)
       </h3>
       <div class="endpoints-table">
@@ -173,7 +173,7 @@
     <!-- Recent Errors -->
     <div v-if="recentErrors.length > 0" class="section-card section-card--errors">
       <h3 class="section-card__title">
-        <v-icon icon="mdi-alert" size="18" class="mr-2" color="error" />
+        <LIcon icon="mdi-alert" size="18" class="mr-2" color="error" />
         Recent Errors
       </h3>
       <div class="errors-list">

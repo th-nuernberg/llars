@@ -5,7 +5,7 @@
       <v-skeleton-loader v-if="loading" type="avatar, text" />
       <template v-else>
         <div class="stat-icon stat-icon--primary">
-          <v-icon size="28">mdi-compare</v-icon>
+          <LIcon size="28">mdi-compare</LIcon>
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ totalComparisons }}</div>
@@ -19,7 +19,7 @@
       <v-skeleton-loader v-if="loading" type="avatar, text" />
       <template v-else>
         <div class="stat-icon stat-icon--success">
-          <v-icon size="28">mdi-trophy</v-icon>
+          <LIcon size="28">mdi-trophy</LIcon>
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ topPillar?.name || '-' }}</div>
@@ -33,7 +33,7 @@
       <v-skeleton-loader v-if="loading" type="avatar, text" />
       <template v-else>
         <div class="stat-icon stat-icon--info">
-          <v-icon size="28">mdi-percent</v-icon>
+          <LIcon size="28">mdi-percent</LIcon>
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ averageConfidence }}%</div>
@@ -47,7 +47,7 @@
       <v-skeleton-loader v-if="loading" type="avatar, text" />
       <template v-else>
         <div class="stat-icon stat-icon--warning">
-          <v-icon size="28">mdi-clock-outline</v-icon>
+          <LIcon size="28">mdi-clock-outline</LIcon>
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ duration }}</div>

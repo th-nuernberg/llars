@@ -22,7 +22,7 @@
         <v-col cols="12">
           <v-card>
             <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="primary">mdi-chart-bar</v-icon>
+              <LIcon class="mr-2" color="primary">mdi-chart-bar</LIcon>
               {{ analysis.name }}
               <v-spacer></v-spacer>
               <v-chip
@@ -132,7 +132,7 @@
                 <v-col cols="12" md="4">
                   <v-card variant="outlined" class="h-100">
                     <v-card-title class="text-subtitle-1">
-                      <v-icon class="mr-2">mdi-chip</v-icon>
+                      <LIcon class="mr-2">mdi-chip</LIcon>
                       Hardware
                     </v-card-title>
                     <v-card-text v-if="liveData.hardware">
@@ -179,7 +179,7 @@
                 <v-col cols="12" md="4">
                   <v-card variant="outlined" class="h-100">
                     <v-card-title class="text-subtitle-1">
-                      <v-icon class="mr-2">mdi-file-document-outline</v-icon>
+                      <LIcon class="mr-2">mdi-file-document-outline</LIcon>
                       Aktueller Thread
                     </v-card-title>
                     <v-card-text v-if="liveData.current_thread">
@@ -217,7 +217,7 @@
                 <v-col cols="12" md="4">
                   <v-card variant="outlined" class="h-100">
                     <v-card-title class="text-subtitle-1">
-                      <v-icon class="mr-2">mdi-speedometer</v-icon>
+                      <LIcon class="mr-2">mdi-speedometer</LIcon>
                       Performance
                     </v-card-title>
                     <v-card-text v-if="liveData.timing">
@@ -254,7 +254,7 @@
                 <v-col cols="12">
                   <v-card variant="outlined">
                     <v-card-title class="text-subtitle-1 py-2">
-                      <v-icon class="mr-2">mdi-message-text</v-icon>
+                      <LIcon class="mr-2">mdi-message-text</LIcon>
                       Zuletzt klassifiziert
                     </v-card-title>
                     <v-card-text class="py-2">
@@ -505,7 +505,7 @@
 
                     <!-- Transition Heatmaps per Pillar -->
                     <div class="text-h6 font-weight-bold mb-3">
-                      <v-icon start>mdi-grid</v-icon>
+                      <LIcon start>mdi-grid</LIcon>
                       Transitions-Heatmaps pro Säule
                     </div>
 
@@ -520,7 +520,7 @@
                       >
                         <v-card variant="outlined" class="h-100 heatmap-card">
                           <v-card-title class="text-subtitle-1 py-2">
-                            <v-icon start size="small" color="primary">mdi-chart-box</v-icon>
+                            <LIcon start size="small" color="primary">mdi-chart-box</LIcon>
                             {{ getPillarName(pillarNum) }}
                             <v-chip size="x-small" class="ml-2" variant="tonal">
                               {{ data.totalTransitions }} Transitionen
@@ -549,9 +549,9 @@
                     <v-expand-transition>
                       <v-card v-if="hoveredTransition" variant="tonal" color="primary" class="mt-3">
                         <v-card-title class="text-subtitle-1 py-2">
-                          <v-icon start size="small">mdi-compare</v-icon>
+                          <LIcon start size="small">mdi-compare</LIcon>
                           Vergleich: {{ hoveredTransition.fromDisplay }}
-                          <v-icon size="x-small" class="mx-1">mdi-arrow-right</v-icon>
+                          <LIcon size="x-small" class="mx-1">mdi-arrow-right</LIcon>
                           {{ hoveredTransition.toDisplay }}
                         </v-card-title>
                         <v-card-text class="py-2">
@@ -597,7 +597,7 @@
                     <v-expansion-panels variant="accordion">
                       <v-expansion-panel>
                         <v-expansion-panel-title>
-                          <v-icon start>mdi-format-list-numbered</v-icon>
+                          <LIcon start>mdi-format-list-numbered</LIcon>
                           Top 20 Transitionen
                           <span v-if="transitionPillar" class="text-caption ml-2">(Säule {{ transitionPillar }})</span>
                           <span v-else class="text-caption ml-2">(Alle Säulen)</span>
@@ -619,7 +619,7 @@
                                 </v-chip>
                               </template>
                               <v-list-item-title class="d-flex align-center">
-                                <v-icon size="small" class="mx-2">mdi-arrow-right</v-icon>
+                                <LIcon size="small" class="mx-2">mdi-arrow-right</LIcon>
                                 <v-chip
                                   size="small"
                                   :color="link.target.startsWith('CO-') ? 'primary' : 'secondary'"
@@ -648,7 +648,7 @@
                     <v-card class="methodology-dialog-card" rounded="lg">
                       <!-- Dialog Header with Close Button -->
                       <v-toolbar color="primary" density="compact">
-                        <v-icon class="ml-2">mdi-chart-scatter-plot</v-icon>
+                        <LIcon class="ml-2">mdi-chart-scatter-plot</LIcon>
                         <v-toolbar-title class="text-body-1 font-weight-medium">
                           Statistische Matrix-Vergleichsmetriken
                         </v-toolbar-title>

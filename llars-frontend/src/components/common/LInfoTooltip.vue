@@ -8,7 +8,7 @@
         :size="size"
         :aria-label="resolvedAriaLabel"
       >
-        <v-icon :icon="icon" :size="iconSize" />
+        <LIcon :icon="icon" :size="iconSize" />
       </v-btn>
     </template>
     <div class="l-info-tooltip__content" :style="contentStyle">

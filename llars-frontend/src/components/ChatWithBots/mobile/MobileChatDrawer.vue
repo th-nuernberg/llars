@@ -55,7 +55,7 @@
           >
             <template #prepend>
               <v-avatar :color="bot.color || '#b0ca97'" size="32">
-                <v-icon color="white" size="18">{{ bot.icon || 'mdi-robot' }}</v-icon>
+                <LIcon color="white" size="18">{{ bot.icon || 'mdi-robot' }}</LIcon>
               </v-avatar>
             </template>
             <v-list-item-title>{{ bot.display_name }}</v-list-item-title>
@@ -63,7 +63,7 @@
               {{ getChatCount(bot.id) }} Chats
             </v-list-item-subtitle>
             <template #append>
-              <v-icon>{{ expandedBots[bot.id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+              <LIcon>{{ expandedBots[bot.id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
             </template>
           </v-list-item>
 
@@ -78,7 +78,7 @@
                   class="mobile-conversation-item"
                 >
                   <template #prepend>
-                    <v-icon size="16">mdi-chat-outline</v-icon>
+                    <LIcon size="16">mdi-chat-outline</LIcon>
                   </template>
                   <v-list-item-title class="text-body-2">
                     {{ getDisplayTitle(conv).text }}

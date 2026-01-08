@@ -4,7 +4,7 @@
     <div v-if="!expanded && !fullscreen" class="git-panel-collapsed" @click="expanded = true">
       <div class="collapsed-content">
         <div class="collapsed-icon-box">
-          <v-icon size="18">mdi-source-branch</v-icon>
+          <LIcon size="18">mdi-source-branch</LIcon>
         </div>
         <span class="collapsed-label">Git</span>
         <LTag
@@ -22,7 +22,7 @@
           Keine Änderungen
         </LTag>
         <v-spacer />
-        <v-icon size="18" class="expand-icon">mdi-chevron-up</v-icon>
+        <LIcon size="18" class="expand-icon">mdi-chevron-up</LIcon>
       </div>
     </div>
 
@@ -31,7 +31,7 @@
       <!-- Header -->
       <div class="panel-header">
         <div class="header-icon-box">
-          <v-icon size="20" color="white">mdi-source-branch</v-icon>
+          <LIcon size="20" color="white">mdi-source-branch</LIcon>
         </div>
         <span class="header-title">Git Panel</span>
         <LTag
@@ -53,7 +53,7 @@
             title="Aktualisieren"
             @click="loadCommits(true)"
           >
-            <v-icon size="18">mdi-refresh</v-icon>
+            <LIcon size="18">mdi-refresh</LIcon>
           </v-btn>
           <v-btn
             icon
@@ -62,7 +62,7 @@
             title="Vollbild"
             @click="fullscreen = true"
           >
-            <v-icon size="18">mdi-fullscreen</v-icon>
+            <LIcon size="18">mdi-fullscreen</LIcon>
           </v-btn>
           <v-btn
             icon
@@ -71,7 +71,7 @@
             title="Einklappen"
             @click="expanded = false"
           >
-            <v-icon size="18">mdi-chevron-down</v-icon>
+            <LIcon size="18">mdi-chevron-down</LIcon>
           </v-btn>
         </div>
       </div>
@@ -87,7 +87,7 @@
           <!-- Left: Commit Section -->
           <div class="commit-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-pencil-plus</v-icon>
+              <LIcon size="16" class="mr-1">mdi-pencil-plus</LIcon>
               Änderungen committen
             </div>
 
@@ -147,7 +147,7 @@
           <!-- Right: History Section -->
           <div class="history-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-history</v-icon>
+              <LIcon size="16" class="mr-1">mdi-history</LIcon>
               History
             </div>
 
@@ -184,7 +184,7 @@
         <!-- Fullscreen Header -->
         <div class="fullscreen-header">
           <div class="header-icon-box large">
-            <v-icon size="24" color="white">mdi-source-branch</v-icon>
+            <LIcon size="24" color="white">mdi-source-branch</LIcon>
           </div>
           <span class="header-title">Git Panel</span>
           <LTag
@@ -228,23 +228,23 @@
               <!-- Commit Card -->
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-pencil-plus</v-icon>
+                  <LIcon size="18" class="mr-2">mdi-pencil-plus</LIcon>
                   Neuer Commit
                 </div>
                 <div class="card-content">
                   <!-- Change Stats -->
                   <div v-if="summary?.hasChanges" class="change-stats">
                     <div class="stat-item success">
-                      <v-icon size="16">mdi-plus</v-icon>
+                      <LIcon size="16">mdi-plus</LIcon>
                       <span>{{ summary?.insertions || 0 }} eingefügt</span>
                     </div>
                     <div class="stat-item error">
-                      <v-icon size="16">mdi-minus</v-icon>
+                      <LIcon size="16">mdi-minus</LIcon>
                       <span>{{ summary?.deletions || 0 }} gelöscht</span>
                     </div>
                   </div>
                   <div v-else class="no-changes">
-                    <v-icon size="32" color="success" class="mb-2">mdi-check-circle</v-icon>
+                    <LIcon size="32" color="success" class="mb-2">mdi-check-circle</LIcon>
                     <span>Keine uncommitted Änderungen</span>
                   </div>
 
@@ -310,7 +310,7 @@
               <!-- Deleted Files Card -->
               <div v-if="deletedFiles.length > 0" class="git-card mt-4">
                 <div class="card-header deleted-header">
-                  <v-icon size="18" class="mr-2" color="error">mdi-delete</v-icon>
+                  <LIcon size="18" class="mr-2" color="error">mdi-delete</LIcon>
                   Gelöschte Dateien
                   <v-spacer />
                   <span class="deleted-count">{{ deletedFiles.length }}</span>
@@ -324,7 +324,7 @@
                       class="deleted-file-item"
                     >
                       <span class="status-badge error">D</span>
-                      <v-icon size="16" color="error" class="mr-2">mdi-file-remove-outline</v-icon>
+                      <LIcon size="16" color="error" class="mr-2">mdi-file-remove-outline</LIcon>
                       <div class="deleted-file-info">
                         <span class="deleted-file-name">{{ file.title }}</span>
                         <span class="deleted-file-date">{{ formatDate(file.deleted_at) }}</span>
@@ -340,7 +340,7 @@
                             :loading="restoringFile === file.document_id"
                             @click.stop="restoreFile(file)"
                           >
-                            <v-icon size="14">mdi-restore</v-icon>
+                            <LIcon size="14">mdi-restore</LIcon>
                           </v-btn>
                         </template>
                         <span>Datei wiederherstellen</span>
@@ -355,7 +355,7 @@
             <div class="fullscreen-middle">
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-history</v-icon>
+                  <LIcon size="18" class="mr-2">mdi-history</LIcon>
                   Commit History
                   <v-spacer />
                   <span class="commit-count">{{ commits.length }} Commits</span>
@@ -363,7 +363,7 @@
                 <div class="card-content history-content">
                   <v-skeleton-loader v-if="isLoading('commits')" type="list-item@8" />
                   <div v-else-if="commits.length === 0" class="empty-state">
-                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</v-icon>
+                    <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</LIcon>
                     <span>Noch keine Commits vorhanden</span>
                   </div>
                   <div v-else class="history-list-full">
@@ -393,7 +393,7 @@
             <div class="fullscreen-right">
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-file-compare</v-icon>
+                  <LIcon size="18" class="mr-2">mdi-file-compare</LIcon>
                   Diff Ansicht
                   <v-spacer />
                   <v-btn-toggle
@@ -419,7 +419,7 @@
                       variant="outlined"
                       hide-details
                     />
-                    <v-icon class="mx-2">mdi-arrow-right</v-icon>
+                    <LIcon class="mx-2">mdi-arrow-right</LIcon>
                     <v-select
                       v-model="compareCommitId"
                       :items="commitOptions"
@@ -455,7 +455,7 @@
     <v-dialog v-model="showRollbackConfirm" max-width="420" persistent>
       <v-card class="rollback-confirm-card">
         <v-card-title class="d-flex align-center ga-2">
-          <v-icon color="warning">mdi-alert-circle</v-icon>
+          <LIcon color="warning">mdi-alert-circle</LIcon>
           Änderungen verwerfen?
         </v-card-title>
         <v-card-text>

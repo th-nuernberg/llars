@@ -10,7 +10,7 @@
     <v-row v-if="!hasPermission('admin:permissions:manage')">
       <v-col cols="12">
         <v-alert type="error" prominent>
-          <v-icon large>mdi-lock</v-icon>
+          <LIcon large>mdi-lock</LIcon>
           Sie haben keine Berechtigung, diese Seite zu sehen. Erforderlich: admin:permissions:manage
         </v-alert>
       </v-col>
@@ -48,7 +48,7 @@
               <!-- User info card -->
               <v-card v-if="selectedUser" class="mt-4" elevation="2">
                 <v-card-title>
-                  <v-icon left>mdi-account</v-icon>
+                  <LIcon left>mdi-account</LIcon>
                   {{ selectedUser.username }}
                 </v-card-title>
 
@@ -123,7 +123,7 @@
                   :subtitle="role.description"
                 >
                   <template v-slot:prepend>
-                    <v-icon>mdi-shield-account</v-icon>
+                    <LIcon>mdi-shield-account</LIcon>
                   </template>
 
                   <template v-slot:append>

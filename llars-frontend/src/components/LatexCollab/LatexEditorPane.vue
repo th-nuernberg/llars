@@ -6,7 +6,7 @@
       <v-tooltip location="bottom">
         <template #activator="{ props: tp }">
           <button v-bind="tp" class="toolbar-toggle-btn" @click="toggleToolbar">
-            <v-icon size="14">{{ toolbarCollapsed ? 'mdi-chevron-down' : 'mdi-chevron-up' }}</v-icon>
+            <LIcon size="14">{{ toolbarCollapsed ? 'mdi-chevron-down' : 'mdi-chevron-up' }}</LIcon>
           </button>
         </template>
         <span>{{ toolbarCollapsed ? 'Toolbar einblenden' : 'Toolbar ausblenden' }}</span>
@@ -24,7 +24,7 @@
           <v-tooltip v-for="btn in TEXT_FORMAT_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <v-icon size="16">{{ btn.icon }}</v-icon>
+                <LIcon size="16">{{ btn.icon }}</LIcon>
               </button>
             </template>
             <span>{{ btn.label }} <kbd v-if="btn.shortcut">{{ btn.shortcut }}</kbd></span>
@@ -38,7 +38,7 @@
           <v-tooltip v-for="btn in STRUCTURE_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <v-icon size="16">{{ btn.icon }}</v-icon>
+                <LIcon size="16">{{ btn.icon }}</LIcon>
               </button>
             </template>
             <span>{{ btn.label }}</span>
@@ -52,7 +52,7 @@
           <v-tooltip v-for="btn in LIST_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <v-icon size="16">{{ btn.icon }}</v-icon>
+                <LIcon size="16">{{ btn.icon }}</LIcon>
               </button>
             </template>
             <span>{{ btn.label }}</span>
@@ -70,7 +70,7 @@
                 <v-tooltip location="bottom">
                   <template #activator="{ props: tp }">
                     <button v-bind="{ ...tp, ...menuProps }" class="toolbar-btn">
-                      <v-icon size="16">{{ btn.icon }}</v-icon>
+                      <LIcon size="16">{{ btn.icon }}</LIcon>
                     </button>
                   </template>
                   <span>{{ btn.label }}</span>
@@ -108,7 +108,7 @@
                     Vorschau: {{ tableRows }} × {{ tableCols }}
                   </div>
                   <v-btn color="primary" size="small" block @click="insertTable">
-                    <v-icon start size="small">mdi-table-plus</v-icon>
+                    <LIcon start size="small">mdi-table-plus</LIcon>
                     Einfügen
                   </v-btn>
                 </v-card-text>
@@ -118,7 +118,7 @@
             <v-tooltip v-else location="bottom">
               <template #activator="{ props: tp }">
                 <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                  <v-icon size="16">{{ btn.icon }}</v-icon>
+                  <LIcon size="16">{{ btn.icon }}</LIcon>
                 </button>
               </template>
               <span>{{ btn.label }}</span>
@@ -133,7 +133,7 @@
           <v-tooltip v-for="btn in MATH_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <v-icon size="16">{{ btn.icon }}</v-icon>
+                <LIcon size="16">{{ btn.icon }}</LIcon>
               </button>
             </template>
             <span>{{ btn.label }}</span>
@@ -147,7 +147,7 @@
           <v-tooltip v-for="btn in REF_BUTTONS" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <v-icon size="16">{{ btn.icon }}</v-icon>
+                <LIcon size="16">{{ btn.icon }}</LIcon>
               </button>
             </template>
             <span>{{ btn.label }}</span>

@@ -4,28 +4,28 @@
     <v-row class="mb-4">
       <v-col cols="6" sm="3">
         <v-card variant="tonal" color="primary" class="pa-4 text-center">
-          <v-icon size="32" class="mb-2">mdi-file-document-multiple</v-icon>
+          <LIcon size="32" class="mb-2">mdi-file-document-multiple</LIcon>
           <div class="text-h5">{{ itemCount }}</div>
           <div class="text-caption">Einträge</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="3">
         <v-card variant="tonal" color="secondary" class="pa-4 text-center">
-          <v-icon size="32" class="mb-2">mdi-message-text</v-icon>
+          <LIcon size="32" class="mb-2">mdi-message-text</LIcon>
           <div class="text-h5">{{ messageCount }}</div>
           <div class="text-caption">Nachrichten</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="3">
         <v-card variant="tonal" color="success" class="pa-4 text-center">
-          <v-icon size="32" class="mb-2">mdi-account-edit</v-icon>
+          <LIcon size="32" class="mb-2">mdi-account-edit</LIcon>
           <div class="text-h5">{{ raterCount }}</div>
           <div class="text-caption">Rater</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="3">
         <v-card variant="tonal" color="info" class="pa-4 text-center">
-          <v-icon size="32" class="mb-2">mdi-eye</v-icon>
+          <LIcon size="32" class="mb-2">mdi-eye</LIcon>
           <div class="text-h5">{{ evaluatorCount }}</div>
           <div class="text-caption">Evaluator</div>
         </v-card>
@@ -35,7 +35,7 @@
     <!-- Configuration Summary -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title>
-        <v-icon class="mr-2">mdi-clipboard-check</v-icon>
+        <LIcon class="mr-2">mdi-clipboard-check</LIcon>
         Konfiguration
       </v-card-title>
 
@@ -50,7 +50,7 @@
               <td class="text-medium-emphasis">Aufgabentyp</td>
               <td>
                 <v-chip size="small" :color="taskTypeColor">
-                  <v-icon start size="small">{{ taskTypeIcon }}</v-icon>
+                  <LIcon start size="small">{{ taskTypeIcon }}</LIcon>
                   {{ taskTypeName }}
                 </v-chip>
               </td>
@@ -114,7 +114,7 @@
       class="ready-card"
     >
       <v-card-text class="text-center pa-6">
-        <v-icon size="64" color="success" class="mb-4">mdi-rocket-launch</v-icon>
+        <LIcon size="64" color="success" class="mb-4">mdi-rocket-launch</LIcon>
         <div class="text-h6 mb-2">Bereit zum Import</div>
         <div class="text-body-2 text-medium-emphasis mb-4">
           Alle Einstellungen wurden geprüft. Klicke auf "Import starten" um die Daten

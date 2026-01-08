@@ -26,7 +26,7 @@
  *
  * Usage:
  *   <LTooltip text="This is a helpful hint">
- *     <v-icon>mdi-help-circle</v-icon>
+ *     <LIcon>mdi-help-circle</LIcon>
  *   </LTooltip>
  *
  *   <LTooltip text="Click to save" location="top">

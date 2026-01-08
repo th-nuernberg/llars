@@ -9,7 +9,7 @@
 
     <v-card v-else class="mb-4">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-chart-bar</v-icon>
+        <LIcon class="mr-2">mdi-chart-bar</LIcon>
         Matomo Analytics
         <v-spacer></v-spacer>
         <LBtn
@@ -241,7 +241,7 @@
 
     <v-card v-if="!isLoading('settings')">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-open-in-new</v-icon>
+        <LIcon class="mr-2">mdi-open-in-new</LIcon>
         Matomo Dashboard
       </v-card-title>
       <v-divider></v-divider>

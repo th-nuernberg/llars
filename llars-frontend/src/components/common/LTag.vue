@@ -3,16 +3,16 @@
     :class="tagClasses"
     @click="handleClick"
   >
-    <v-icon v-if="prependIcon" :icon="prependIcon" :size="iconSize" />
+    <LIcon v-if="prependIcon" :icon="prependIcon" :size="iconSize" />
     <slot></slot>
-    <v-icon
+    <LIcon
       v-if="closable"
       icon="mdi-close"
       :size="iconSize"
       class="close-icon"
       @click.stop="$emit('close')"
     />
-    <v-icon v-else-if="appendIcon" :icon="appendIcon" :size="iconSize" />
+    <LIcon v-else-if="appendIcon" :icon="appendIcon" :size="iconSize" />
   </span>
 </template>
 

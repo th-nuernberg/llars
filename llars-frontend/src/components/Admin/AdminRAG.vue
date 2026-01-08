@@ -3,7 +3,7 @@
     <v-row>
       <v-col cols="12">
         <h1 class="text-h4 mb-4">
-          <v-icon class="mr-2">mdi-database-search</v-icon>
+          <LIcon class="mr-2">mdi-database-search</LIcon>
           RAG Dokumentenverwaltung
         </h1>
       </v-col>
@@ -13,7 +13,7 @@
     <v-row v-if="!hasPermission('feature:rag:view')">
       <v-col cols="12">
         <v-alert type="error" prominent>
-          <v-icon large>mdi-lock</v-icon>
+          <LIcon large>mdi-lock</LIcon>
           Sie haben keine Berechtigung, diese Seite zu sehen. Erforderlich: feature:rag:view
         </v-alert>
       </v-col>
@@ -26,7 +26,7 @@
         <v-col cols="12" md="3">
           <v-card class="stat-card" elevation="2">
             <v-card-text class="text-center">
-              <v-icon size="48" color="primary">mdi-folder-multiple</v-icon>
+              <LIcon size="48" color="primary">mdi-folder-multiple</LIcon>
               <div class="text-h4 mt-2">{{ stats.collections?.total || 0 }}</div>
               <div class="text-subtitle-1">Collections</div>
             </v-card-text>
@@ -35,7 +35,7 @@
         <v-col cols="12" md="3">
           <v-card class="stat-card" elevation="2">
             <v-card-text class="text-center">
-              <v-icon size="48" color="success">mdi-file-document-multiple</v-icon>
+              <LIcon size="48" color="success">mdi-file-document-multiple</LIcon>
               <div class="text-h4 mt-2">{{ stats.documents?.total || 0 }}</div>
               <div class="text-subtitle-1">Dokumente</div>
             </v-card-text>
@@ -44,7 +44,7 @@
         <v-col cols="12" md="3">
           <v-card class="stat-card" elevation="2">
             <v-card-text class="text-center">
-              <v-icon size="48" color="info">mdi-harddisk</v-icon>
+              <LIcon size="48" color="info">mdi-harddisk</LIcon>
               <div class="text-h4 mt-2">{{ stats.documents?.total_size_mb || 0 }} MB</div>
               <div class="text-subtitle-1">Speicher</div>
             </v-card-text>
@@ -53,7 +53,7 @@
         <v-col cols="12" md="3">
           <v-card class="stat-card" elevation="2">
             <v-card-text class="text-center">
-              <v-icon size="48" color="warning">mdi-puzzle</v-icon>
+              <LIcon size="48" color="warning">mdi-puzzle</LIcon>
               <div class="text-h4 mt-2">{{ stats.documents?.total_chunks || 0 }}</div>
               <div class="text-subtitle-1">Chunks</div>
             </v-card-text>
@@ -64,19 +64,19 @@
       <!-- Tabs for different sections -->
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="documents">
-          <v-icon left>mdi-file-document</v-icon>
+          <LIcon left>mdi-file-document</LIcon>
           Dokumente
         </v-tab>
         <v-tab value="collections">
-          <v-icon left>mdi-folder</v-icon>
+          <LIcon left>mdi-folder</LIcon>
           Collections
         </v-tab>
         <v-tab value="upload">
-          <v-icon left>mdi-upload</v-icon>
+          <LIcon left>mdi-upload</LIcon>
           Upload
         </v-tab>
         <v-tab value="analytics">
-          <v-icon left>mdi-chart-bar</v-icon>
+          <LIcon left>mdi-chart-bar</LIcon>
           Analytik
         </v-tab>
       </v-tabs>
@@ -148,10 +148,10 @@
                 </template>
                 <template v-slot:item.actions="{ item }">
                   <v-btn icon size="small" @click="viewDocument(item)" title="Details">
-                    <v-icon>mdi-eye</v-icon>
+                    <LIcon>mdi-eye</LIcon>
                   </v-btn>
                   <v-btn icon size="small" @click="downloadDocument(item)" title="Download">
-                    <v-icon>mdi-download</v-icon>
+                    <LIcon>mdi-download</LIcon>
                   </v-btn>
                   <v-btn
                     v-if="hasPermission('feature:rag:delete')"
@@ -161,7 +161,7 @@
                     @click="confirmDeleteDocument(item)"
                     title="Löschen"
                   >
-                    <v-icon>mdi-delete</v-icon>
+                    <LIcon>mdi-delete</LIcon>
                   </v-btn>
                 </template>
               </v-data-table>
@@ -202,15 +202,15 @@
                         {{ collection.description }}
                       </p>
                       <v-chip class="mr-1 mb-1" size="small" color="primary">
-                        <v-icon left size="small">mdi-file-document</v-icon>
+                        <LIcon left size="small">mdi-file-document</LIcon>
                         {{ collection.document_count }} Dokumente
                       </v-chip>
                       <v-chip class="mr-1 mb-1" size="small" color="info">
-                        <v-icon left size="small">mdi-harddisk</v-icon>
+                        <LIcon left size="small">mdi-harddisk</LIcon>
                         {{ collection.total_size_mb }} MB
                       </v-chip>
                       <v-chip class="mb-1" size="small" color="secondary">
-                        <v-icon left size="small">mdi-puzzle</v-icon>
+                        <LIcon left size="small">mdi-puzzle</LIcon>
                         {{ collection.total_chunks }} Chunks
                       </v-chip>
                     </v-card-text>
@@ -225,7 +225,7 @@
                         size="small"
                         @click="editCollection(collection)"
                       >
-                        <v-icon>mdi-pencil</v-icon>
+                        <LIcon>mdi-pencil</LIcon>
                       </v-btn>
                     </v-card-actions>
                   </v-card>
@@ -241,7 +241,7 @@
                 <v-col cols="12" md="8" offset-md="2">
                   <v-card class="upload-zone pa-8" elevation="0" outlined>
                     <div class="text-center">
-                      <v-icon size="80" color="primary">mdi-cloud-upload</v-icon>
+                      <LIcon size="80" color="primary">mdi-cloud-upload</LIcon>
                       <h3 class="text-h5 mt-4">Dokumente hochladen</h3>
                       <p class="text-body-2 mt-2">
                         Erlaubte Formate: PDF, TXT, MD, DOCX, DOC (max. 50 MB)
@@ -320,7 +320,7 @@
                 <v-col cols="12" md="6">
                   <v-card elevation="2">
                     <v-card-title>
-                      <v-icon left>mdi-fire</v-icon>
+                      <LIcon left>mdi-fire</LIcon>
                       Top Dokumente
                     </v-card-title>
                     <v-card-text>
@@ -331,7 +331,7 @@
                           :subtitle="`${doc.retrieval_count} Abrufe`"
                         >
                           <template v-slot:prepend>
-                            <v-icon>mdi-file-document</v-icon>
+                            <LIcon>mdi-file-document</LIcon>
                           </template>
                           <v-list-item-title>{{ doc.title || doc.filename }}</v-list-item-title>
                         </v-list-item>
@@ -347,7 +347,7 @@
                 <v-col cols="12" md="6">
                   <v-card elevation="2">
                     <v-card-title>
-                      <v-icon left>mdi-clock-outline</v-icon>
+                      <LIcon left>mdi-clock-outline</LIcon>
                       Letzte Uploads
                     </v-card-title>
                     <v-card-text>
@@ -358,7 +358,7 @@
                           :subtitle="formatDate(doc.uploaded_at)"
                         >
                           <template v-slot:prepend>
-                            <v-icon>mdi-file-upload</v-icon>
+                            <LIcon>mdi-file-upload</LIcon>
                           </template>
                           <v-list-item-title>{{ doc.title || doc.filename }}</v-list-item-title>
                         </v-list-item>
@@ -376,7 +376,7 @@
                 <v-col cols="12" md="6">
                   <v-card elevation="2">
                     <v-card-title>
-                      <v-icon left>mdi-chart-pie</v-icon>
+                      <LIcon left>mdi-chart-pie</LIcon>
                       Status Verteilung
                     </v-card-title>
                     <v-card-text>
@@ -402,7 +402,7 @@
     <v-dialog v-model="showDocumentDialog" max-width="800">
       <v-card v-if="selectedDocument">
         <v-card-title>
-          <v-icon left>mdi-file-document</v-icon>
+          <LIcon left>mdi-file-document</LIcon>
           {{ selectedDocument.title || selectedDocument.filename }}
         </v-card-title>
         <v-card-text>

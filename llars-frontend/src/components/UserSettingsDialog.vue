@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
         <span class="text-h5">
-          <v-icon class="mr-2">mdi-account-cog</v-icon>
+          <LIcon class="mr-2">mdi-account-cog</LIcon>
           Profil & Einstellungen
         </span>
         <v-btn
@@ -19,7 +19,7 @@
         <!-- Profile Section -->
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
-            <v-icon class="mr-2">mdi-account</v-icon>
+            <LIcon class="mr-2">mdi-account</LIcon>
             Mein Profil
           </h3>
 
@@ -113,7 +113,7 @@
         <!-- Theme Settings Section -->
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
-            <v-icon class="mr-2">mdi-palette</v-icon>
+            <LIcon class="mr-2">mdi-palette</LIcon>
             Design & Darstellung
           </h3>
 
@@ -134,7 +134,7 @@
                   class="theme-chip"
                   @click="changeTheme(option.value)"
                 >
-                  <v-icon :icon="option.icon" start></v-icon>
+                  <LIcon :icon="option.icon" start></LIcon>
                   {{ option.title }}
                 </v-chip>
               </v-chip-group>
@@ -161,7 +161,7 @@
         <!-- Collaboration Color Section -->
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
-            <v-icon class="mr-2">mdi-palette-swatch</v-icon>
+            <LIcon class="mr-2">mdi-palette-swatch</LIcon>
             Kollaborationsfarbe
           </h3>
 
@@ -206,7 +206,7 @@
         <!-- Additional Settings Section (Placeholder) -->
         <div class="mb-4">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
-            <v-icon class="mr-2">mdi-account-cog</v-icon>
+            <LIcon class="mr-2">mdi-account-cog</LIcon>
             Weitere Einstellungen
           </h3>
 
@@ -214,7 +214,7 @@
             <v-list lines="two" density="compact">
               <v-list-item>
                 <template v-slot:prepend>
-                  <v-icon>mdi-bell</v-icon>
+                  <LIcon>mdi-bell</LIcon>
                 </template>
                 <v-list-item-title>Benachrichtigungen</v-list-item-title>
                 <v-list-item-subtitle>Systembenachrichtigungen aktivieren</v-list-item-subtitle>
@@ -232,7 +232,7 @@
 
               <v-list-item>
                 <template v-slot:prepend>
-                  <v-icon>mdi-translate</v-icon>
+                  <LIcon>mdi-translate</LIcon>
                 </template>
                 <v-list-item-title>Sprache</v-list-item-title>
                 <v-list-item-subtitle>Deutsch (DE)</v-list-item-subtitle>

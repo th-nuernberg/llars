@@ -1,7 +1,7 @@
 <template>
   <v-card>
     <v-card-title class="d-flex align-center pa-4">
-      <v-icon icon="mdi-file-document-multiple" class="mr-2"></v-icon>
+      <LIcon icon="mdi-file-document-multiple" class="mr-2"></LIcon>
       Dokumente
       <v-spacer></v-spacer>
       <LBtn
@@ -106,7 +106,7 @@
       <!-- Dateiname mit Icon -->
       <template v-slot:item.filename="{ item }">
         <div class="d-flex align-center">
-          <v-icon :icon="getFileIcon(item.file_type)" :color="getFileColor(item.file_type)" class="mr-2"></v-icon>
+          <LIcon :icon="getFileIcon(item.file_type)" :color="getFileColor(item.file_type)" class="mr-2"></LIcon>
           <span>{{ item.filename }}</span>
         </div>
       </template>
@@ -164,7 +164,7 @@
       <!-- Empty State -->
       <template v-slot:no-data>
         <div class="text-center pa-8">
-          <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-file-document-multiple-outline</v-icon>
+          <LIcon size="64" color="grey-lighten-1" class="mb-4">mdi-file-document-multiple-outline</LIcon>
           <div class="text-h6 mb-2">Keine Dokumente gefunden</div>
           <div class="text-medium-emphasis mb-4">
             {{ search || selectedCollection || selectedStatus ? 'Versuchen Sie, Ihre Filter anzupassen.' : 'Laden Sie Ihr erstes Dokument hoch.' }}

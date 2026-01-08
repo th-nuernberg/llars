@@ -58,7 +58,7 @@
       class="mt-2"
       @click="handleAdd"
     >
-      <v-icon start size="small">mdi-account-plus</v-icon>
+      <LIcon start size="small">mdi-account-plus</LIcon>
       {{ addButtonText }}
     </LBtn>
   </div>

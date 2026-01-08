@@ -19,7 +19,7 @@
             class="l-card__avatar"
           >
             <slot name="avatar">
-              <v-icon :color="iconColor">{{ icon }}</v-icon>
+              <LIcon :color="iconColor">{{ icon }}</LIcon>
             </slot>
           </v-avatar>
 
@@ -52,7 +52,7 @@
           :key="index"
           class="l-card__stat"
         >
-          <v-icon v-if="stat.icon" size="16" class="mr-1">{{ stat.icon }}</v-icon>
+          <LIcon v-if="stat.icon" size="16" class="mr-1">{{ stat.icon }}</LIcon>
           <span class="l-card__stat-value">{{ stat.value }}</span>
           <span v-if="stat.label" class="l-card__stat-label">{{ stat.label }}</span>
         </div>

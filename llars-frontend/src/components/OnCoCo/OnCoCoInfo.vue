@@ -8,7 +8,7 @@
             <v-col cols="12" md="8">
               <div class="d-flex align-center mb-3">
                 <div class="hero-icon mr-4">
-                  <v-icon size="48" color="primary">mdi-message-text-outline</v-icon>
+                  <LIcon size="48" color="primary">mdi-message-text-outline</LIcon>
                 </div>
                 <div>
                   <h1 class="text-h3 font-weight-bold">OnCoCo 1.0</h1>
@@ -24,23 +24,23 @@
               </p>
               <div class="d-flex flex-wrap ga-2">
                 <v-chip color="primary" variant="flat" size="small">
-                  <v-icon start size="16">mdi-tag-multiple</v-icon>
+                  <LIcon start size="16">mdi-tag-multiple</LIcon>
                   66 Kategorien
                 </v-chip>
                 <v-chip color="success" variant="flat" size="small">
-                  <v-icon start size="16">mdi-chart-line</v-icon>
+                  <LIcon start size="16">mdi-chart-line</LIcon>
                   F1 Macro: 0.78
                 </v-chip>
                 <v-chip color="info" variant="flat" size="small">
-                  <v-icon start size="16">mdi-translate</v-icon>
+                  <LIcon start size="16">mdi-translate</LIcon>
                   Bilingual DE/EN
                 </v-chip>
                 <v-chip color="secondary" variant="flat" size="small">
-                  <v-icon start size="16">mdi-database</v-icon>
+                  <LIcon start size="16">mdi-database</LIcon>
                   2.778 Nachrichten
                 </v-chip>
                 <v-chip color="purple" variant="flat" size="small">
-                  <v-icon start size="16">mdi-license</v-icon>
+                  <LIcon start size="16">mdi-license</LIcon>
                   CC BY-SA 4.0
                 </v-chip>
               </div>
@@ -66,7 +66,7 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <v-icon color="primary" class="mr-2">mdi-sitemap</v-icon>
+            <LIcon color="primary" class="mr-2">mdi-sitemap</LIcon>
             Das hierarchische Kategoriensystem
           </v-card-title>
           <v-card-text>
@@ -85,25 +85,25 @@
                   <div class="code-label">Rolle</div>
                   <div class="code-desc">Counselor (Berater)</div>
                 </div>
-                <v-icon class="code-separator">mdi-chevron-right</v-icon>
+                <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value success">IF</div>
                   <div class="code-label">Level 1</div>
                   <div class="code-desc">Impact Factors</div>
                 </div>
-                <v-icon class="code-separator">mdi-chevron-right</v-icon>
+                <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value info">AC</div>
                   <div class="code-label">Level 2</div>
                   <div class="code-desc">Analysis & Clarification</div>
                 </div>
-                <v-icon class="code-separator">mdi-chevron-right</v-icon>
+                <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value warning">RF</div>
                   <div class="code-label">Level 3</div>
                   <div class="code-desc">Reflection (Fact)</div>
                 </div>
-                <v-icon class="code-separator">mdi-chevron-right</v-icon>
+                <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value purple">RLS-SR</div>
                   <div class="code-label">Level 4-5</div>
@@ -112,7 +112,7 @@
               </div>
               <v-divider class="my-3"></v-divider>
               <div class="text-caption text-medium-emphasis">
-                <v-icon size="small" class="mr-1">mdi-information</v-icon>
+                <LIcon size="small" class="mr-1">mdi-information</LIcon>
                 Vollständiger Code: <code class="bg-grey-lighten-3 px-2 py-1 rounded">CO-IF-AC-RF-RLS-SR</code>
                 – „Frage nach sozialen Beziehungen/Lebenssituation"
               </div>
@@ -128,7 +128,7 @@
         <v-card class="h-100" color="primary" variant="tonal">
           <v-card-title class="d-flex align-center">
             <v-avatar color="primary" size="36" class="mr-3">
-              <v-icon>mdi-account-tie</v-icon>
+              <LIcon>mdi-account-tie</LIcon>
             </v-avatar>
             Berater-Kategorien (CO-)
           </v-card-title>
@@ -192,7 +192,7 @@
         <v-card class="h-100" color="secondary" variant="tonal">
           <v-card-title class="d-flex align-center">
             <v-avatar color="secondary" size="36" class="mr-3">
-              <v-icon>mdi-account</v-icon>
+              <LIcon>mdi-account</LIcon>
             </v-avatar>
             Klienten-Kategorien (CL-)
           </v-card-title>
@@ -258,7 +258,7 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <v-icon color="warning" class="mr-2">mdi-star-four-points</v-icon>
+            <LIcon color="warning" class="mr-2">mdi-star-four-points</LIcon>
             Impact Factors – Das Herzstück
           </v-card-title>
           <v-card-text>
@@ -290,7 +290,7 @@
       <v-col cols="12" md="6">
         <v-card class="h-100">
           <v-card-title class="d-flex align-center">
-            <v-icon color="success" class="mr-2">mdi-target</v-icon>
+            <LIcon color="success" class="mr-2">mdi-target</LIcon>
             Anwendungsfelder
           </v-card-title>
           <v-card-text>
@@ -323,7 +323,7 @@
       <v-col cols="12" md="6">
         <v-card class="h-100">
           <v-card-title class="d-flex align-center">
-            <v-icon color="info" class="mr-2">mdi-chip</v-icon>
+            <LIcon color="info" class="mr-2">mdi-chip</LIcon>
             Modell & Technik
           </v-card-title>
           <v-card-text>
@@ -369,7 +369,7 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <v-icon color="purple" class="mr-2">mdi-text-box-search</v-icon>
+            <LIcon color="purple" class="mr-2">mdi-text-box-search</LIcon>
             Beispiel-Klassifikationen
           </v-card-title>
           <v-card-text>
@@ -405,7 +405,7 @@
       <v-col cols="12">
         <v-card variant="tonal" color="primary">
           <v-card-title class="d-flex align-center">
-            <v-icon class="mr-2">mdi-link-variant</v-icon>
+            <LIcon class="mr-2">mdi-link-variant</LIcon>
             Ressourcen & Referenzen
           </v-card-title>
           <v-card-text>
@@ -453,7 +453,7 @@
         <v-expansion-panels variant="accordion">
           <v-expansion-panel>
             <v-expansion-panel-title>
-              <v-icon color="primary" class="mr-2">mdi-account-tie</v-icon>
+              <LIcon color="primary" class="mr-2">mdi-account-tie</LIcon>
               <span class="font-weight-bold">Alle Berater-Labels ({{ counselorLabels.length }})</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -478,7 +478,7 @@
 
           <v-expansion-panel>
             <v-expansion-panel-title>
-              <v-icon color="secondary" class="mr-2">mdi-account</v-icon>
+              <LIcon color="secondary" class="mr-2">mdi-account</LIcon>
               <span class="font-weight-bold">Alle Klienten-Labels ({{ clientLabels.length }})</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -509,7 +509,7 @@
       <v-col cols="12">
         <v-alert type="info" variant="tonal" prominent>
           <template v-slot:prepend>
-            <v-icon size="large">mdi-rocket-launch</v-icon>
+            <LIcon size="large">mdi-rocket-launch</LIcon>
           </template>
           <v-alert-title>Bereit für die Analyse?</v-alert-title>
           <p class="mb-2">

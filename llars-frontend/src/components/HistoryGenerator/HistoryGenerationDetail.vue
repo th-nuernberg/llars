@@ -33,14 +33,14 @@
         <!-- Left Panel: Messages -->
         <div class="panel left-panel" :style="leftPanelStyle()">
           <div class="panel-header">
-            <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
+            <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
             <span class="panel-title">Verlauf</span>
             <v-spacer />
             <LTag v-if="meta?.sender" variant="gray" size="small">{{ meta.sender }}</LTag>
           </div>
           <div class="panel-content">
             <div v-if="messages.length === 0" class="empty-state">
-              <v-icon size="48" color="grey-lighten-1">mdi-email-off-outline</v-icon>
+              <LIcon size="48" color="grey-lighten-1">mdi-email-off-outline</LIcon>
               <p class="text-medium-emphasis mt-2">Keine Nachrichten gefunden.</p>
             </div>
 
@@ -85,7 +85,7 @@
         <!-- Right Panel: Rating Form -->
         <div class="panel right-panel" :style="rightPanelStyle()">
           <div class="panel-header">
-            <v-icon size="20" class="mr-2">mdi-clipboard-check-outline</v-icon>
+            <LIcon size="20" class="mr-2">llars:evaluation</LIcon>
             <span class="panel-title">Bewertung</span>
           </div>
           <div class="panel-content">
@@ -147,7 +147,7 @@
             <!-- Category Selection -->
             <div class="rating-section">
               <div class="section-header">
-                <v-icon size="18" class="section-icon">mdi-tag-outline</v-icon>
+                <LIcon size="18" class="section-icon">mdi-tag-outline</LIcon>
                 <div class="section-info">
                   <h4>Fallkategorie</h4>
                 </div>
@@ -179,7 +179,7 @@
             <!-- Notes -->
             <div class="rating-section">
               <div class="section-header">
-                <v-icon size="18" class="section-icon">mdi-note-text-outline</v-icon>
+                <LIcon size="18" class="section-icon">mdi-note-text-outline</LIcon>
                 <div class="section-info">
                   <h4>Notizen</h4>
                 </div>

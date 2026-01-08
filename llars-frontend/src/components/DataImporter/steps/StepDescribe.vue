@@ -5,7 +5,7 @@
       <!-- Left: Data Preview -->
       <div class="data-preview-panel">
         <div class="panel-header">
-          <v-icon size="20" color="primary" class="mr-2">mdi-database-eye</v-icon>
+          <LIcon size="20" color="primary" class="mr-2">mdi-database-eye</LIcon>
           <span class="panel-title">Deine Daten</span>
           <v-spacer />
           <v-chip size="small" variant="tonal" color="primary">
@@ -41,15 +41,15 @@
             <!-- Detected Structure -->
             <div v-if="detectedStructure" class="structure-summary">
               <div class="structure-item">
-                <v-icon size="16" class="mr-1">mdi-format-list-bulleted</v-icon>
+                <LIcon size="16" class="mr-1">mdi-format-list-bulleted</LIcon>
                 <span>{{ detectedStructure.item_count || '?' }} Einträge</span>
               </div>
               <div v-if="detectedStructure.fields?.length" class="structure-item">
-                <v-icon size="16" class="mr-1">mdi-code-braces</v-icon>
+                <LIcon size="16" class="mr-1">mdi-code-braces</LIcon>
                 <span>{{ detectedStructure.fields.length }} Felder</span>
               </div>
               <div v-if="detectedFormat" class="structure-item">
-                <v-icon size="16" class="mr-1">mdi-file-document-outline</v-icon>
+                <LIcon size="16" class="mr-1">mdi-file-document-outline</LIcon>
                 <span>{{ detectedFormat }}</span>
               </div>
             </div>
@@ -57,7 +57,7 @@
 
           <!-- No Data -->
           <div v-else class="no-sample">
-            <v-icon size="48" color="grey-lighten-1">mdi-file-question</v-icon>
+            <LIcon size="48" color="grey-lighten-1">mdi-file-question</LIcon>
             <span class="text-body-2 text-medium-emphasis mt-2">
               Keine Vorschau verfügbar
             </span>
@@ -68,7 +68,7 @@
       <!-- Right: Intent Input -->
       <div class="intent-panel">
         <div class="panel-header">
-          <v-icon size="20" color="accent" class="mr-2">mdi-chat-question</v-icon>
+          <LIcon size="20" color="accent" class="mr-2">mdi-chat-question</LIcon>
           <span class="panel-title">Was möchtest du machen?</span>
         </div>
 
@@ -116,7 +116,7 @@
     <v-expand-transition>
       <div v-if="analysisResult" class="analysis-results">
         <div class="results-header">
-          <v-icon size="24" color="success" class="mr-2">mdi-check-circle</v-icon>
+          <LIcon size="24" color="success" class="mr-2">mdi-check-circle</LIcon>
           <span class="results-title">Verstanden!</span>
         </div>
 
@@ -124,12 +124,12 @@
           <!-- Detected Task Type -->
           <div class="result-card">
             <div class="result-card-header">
-              <v-icon size="18" class="mr-2">mdi-target</v-icon>
+              <LIcon size="18" class="mr-2">mdi-target</LIcon>
               Erkanntes Ziel
             </div>
             <div class="result-card-content">
               <div class="task-type-badge">
-                <v-icon size="20" class="mr-2">{{ getTaskTypeIcon(analysisResult.task_type) }}</v-icon>
+                <LIcon size="20" class="mr-2">{{ getTaskTypeIcon(analysisResult.task_type) }}</LIcon>
                 {{ getTaskTypeLabel(analysisResult.task_type) }}
               </div>
               <p v-if="analysisResult.task_description" class="task-description">
@@ -141,7 +141,7 @@
           <!-- Field Mapping Preview -->
           <div class="result-card">
             <div class="result-card-header">
-              <v-icon size="18" class="mr-2">mdi-link-variant</v-icon>
+              <LIcon size="18" class="mr-2">mdi-link-variant</LIcon>
               Feld-Mapping
             </div>
             <div class="result-card-content">
@@ -151,7 +151,7 @@
                 class="mapping-row"
               >
                 <span class="mapping-source">{{ source }}</span>
-                <v-icon size="14" class="mx-2" color="primary">mdi-arrow-right</v-icon>
+                <LIcon size="14" class="mx-2" color="primary">mdi-arrow-right</LIcon>
                 <span class="mapping-target">{{ target }}</span>
               </div>
               <div v-if="!Object.keys(analysisResult.field_mapping || {}).length" class="text-caption text-medium-emphasis">
@@ -163,7 +163,7 @@
           <!-- Evaluation Criteria (if applicable) -->
           <div v-if="analysisResult.evaluation_criteria?.length" class="result-card result-card--wide">
             <div class="result-card-header">
-              <v-icon size="18" class="mr-2">mdi-star-outline</v-icon>
+              <LIcon size="18" class="mr-2">mdi-star-outline</LIcon>
               Bewertungskriterien
             </div>
             <div class="result-card-content">
@@ -191,7 +191,7 @@
               :class="{ 'alternative-btn--selected': selectedTaskType === alt.value }"
               @click="selectTaskType(alt.value)"
             >
-              <v-icon size="18" class="mr-1">{{ alt.icon }}</v-icon>
+              <LIcon size="18" class="mr-1">{{ alt.icon }}</LIcon>
               {{ alt.label }}
             </button>
           </div>

@@ -4,7 +4,7 @@
     <!-- Header -->
     <div class="ai-sidebar-header" @click="expanded = !expanded">
       <div class="ai-header-content">
-        <v-icon class="mr-2" :color="expanded ? 'white' : 'primary'">mdi-robot-happy</v-icon>
+        <LIcon class="mr-2" :color="expanded ? 'white' : 'primary'">mdi-robot-happy</LIcon>
         <span v-if="expanded" class="ai-header-title">KI-Assistent</span>
       </div>
       <v-btn
@@ -15,7 +15,7 @@
         color="white"
         @click.stop="expanded = false"
       >
-        <v-icon>mdi-chevron-right</v-icon>
+        <LIcon>mdi-chevron-right</LIcon>
       </v-btn>
     </div>
 
@@ -25,7 +25,7 @@
         <!-- Quick Tools Section -->
         <div class="ai-section">
           <div class="ai-section-title">
-            <v-icon size="16" class="mr-1">mdi-lightning-bolt</v-icon>
+            <LIcon size="16" class="mr-1">mdi-lightning-bolt</LIcon>
             Quick Tools
           </div>
           <div class="quick-tools-grid">
@@ -77,7 +77,7 @@
         <!-- Chat Section -->
         <div class="ai-section ai-chat-section">
           <div class="ai-section-title">
-            <v-icon size="16" class="mr-1">mdi-chat</v-icon>
+            <LIcon size="16" class="mr-1">mdi-chat</LIcon>
             Chat
             <v-spacer />
             <v-btn
@@ -88,7 +88,7 @@
               title="Chat leeren"
               @click="aiChat.clearHistory()"
             >
-              <v-icon size="14">mdi-delete-outline</v-icon>
+              <LIcon size="14">mdi-delete-outline</LIcon>
             </v-btn>
           </div>
 
@@ -96,7 +96,7 @@
             <!-- Welcome Message -->
             <div v-if="!aiChat.hasMessages.value" class="chat-message assistant">
               <div class="message-avatar">
-                <v-icon size="20" color="white">mdi-robot</v-icon>
+                <LIcon size="20" color="white">mdi-robot</LIcon>
               </div>
               <div class="message-content">
                 <p>Hallo! Ich bin dein KI-Schreibassistent.</p>
@@ -104,10 +104,10 @@
                   Ich kann dir helfen mit:
                 </p>
                 <ul class="feature-list">
-                  <li><v-icon size="14" color="success">mdi-check</v-icon> Textformulierungen</li>
-                  <li><v-icon size="14" color="success">mdi-check</v-icon> LaTeX-Fragen</li>
-                  <li><v-icon size="14" color="success">mdi-check</v-icon> Dokumentstruktur</li>
-                  <li><v-icon size="14" color="success">mdi-check</v-icon> Literatursuche</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> Textformulierungen</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> LaTeX-Fragen</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> Dokumentstruktur</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> Literatursuche</li>
                 </ul>
               </div>
             </div>
@@ -120,9 +120,9 @@
               :class="msg.role"
             >
               <div class="message-avatar">
-                <v-icon size="20" color="white">
+                <LIcon size="20" color="white">
                   {{ msg.role === 'user' ? 'mdi-account' : 'mdi-robot' }}
-                </v-icon>
+                </LIcon>
               </div>
               <div class="message-content">
                 <div v-html="formatMessage(msg.content)"></div>
@@ -134,7 +134,7 @@
                     class="artifact-block"
                   >
                     <div class="artifact-header">
-                      <v-icon size="14" class="mr-1">mdi-code-tags</v-icon>
+                      <LIcon size="14" class="mr-1">mdi-code-tags</LIcon>
                       {{ artifact.language }}
                       <v-spacer />
                       <v-btn
@@ -143,7 +143,7 @@
                         title="In Editor einfügen"
                         @click="$emit('insert-artifact', artifact.content)"
                       >
-                        <v-icon size="14">mdi-plus</v-icon>
+                        <LIcon size="14">mdi-plus</LIcon>
                       </v-btn>
                     </div>
                     <pre class="artifact-code">{{ artifact.content }}</pre>
@@ -155,7 +155,7 @@
             <!-- Loading Indicator -->
             <div v-if="aiChat.isLoading.value" class="chat-message assistant">
               <div class="message-avatar">
-                <v-icon size="20" color="white">mdi-robot</v-icon>
+                <LIcon size="20" color="white">mdi-robot</LIcon>
               </div>
               <div class="message-content">
                 <v-progress-circular
@@ -190,7 +190,7 @@
               class="mt-2"
               @click="sendChatMessage"
             >
-              <v-icon>mdi-send</v-icon>
+              <LIcon>mdi-send</LIcon>
             </LBtn>
           </div>
         </div>
@@ -198,7 +198,7 @@
 
       <!-- Footer -->
       <div class="ai-sidebar-footer">
-        <v-icon size="14" class="mr-1" color="primary">mdi-information</v-icon>
+        <LIcon size="14" class="mr-1" color="primary">mdi-information</LIcon>
         <span class="text-caption">
           Tip: Nutze @-Commands im Editor
         </span>
@@ -210,7 +210,7 @@
   <v-dialog v-model="toolResultDialog" max-width="600">
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2" color="primary">{{ toolResultIcon }}</v-icon>
+        <LIcon class="mr-2" color="primary">{{ toolResultIcon }}</LIcon>
         {{ toolResultTitle }}
       </v-card-title>
       <v-card-text>
@@ -236,7 +236,7 @@
                   <v-chip size="x-small" color="primary">{{ i + 1 }}</v-chip>
                 </template>
                 <template #append>
-                  <v-icon size="small">mdi-plus</v-icon>
+                  <LIcon size="small">mdi-plus</LIcon>
                 </template>
               </v-list-item>
             </v-list>
@@ -259,9 +259,9 @@
                 :subtitle="warning.reason"
               >
                 <template #prepend>
-                  <v-icon :color="warning.severity === 'high' ? 'error' : 'warning'" size="small">
+                  <LIcon :color="warning.severity === 'high' ? 'error' : 'warning'" size="small">
                     mdi-alert
-                  </v-icon>
+                  </LIcon>
                 </template>
                 <template #title>
                   <span class="text-body-2">{{ warning.text.substring(0, 80) }}...</span>
@@ -282,7 +282,7 @@
                   :subtitle="err.description"
                 >
                   <template #prepend>
-                    <v-icon color="error" size="small">mdi-alert-circle</v-icon>
+                    <LIcon color="error" size="small">mdi-alert-circle</LIcon>
                   </template>
                   <template #title>
                     <code>{{ err.original }}</code> → <code>{{ err.corrected }}</code>

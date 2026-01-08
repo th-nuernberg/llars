@@ -7,7 +7,7 @@
   <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="760">
     <v-card class="compile-log-dialog">
       <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-text-box-outline</v-icon>
+        <LIcon class="mr-2">mdi-text-box-outline</LIcon>
         Compile Log
         <v-spacer />
         <LIconBtn icon="mdi-close" tooltip="Schließen" @click="$emit('update:modelValue', false)" />

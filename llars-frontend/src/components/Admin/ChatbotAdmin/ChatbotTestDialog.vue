@@ -14,7 +14,7 @@
             size="32"
             class="mr-3"
           >
-            <v-icon color="white" size="20">{{ chatbot?.icon || 'mdi-robot' }}</v-icon>
+            <LIcon color="white" size="20">{{ chatbot?.icon || 'mdi-robot' }}</LIcon>
           </v-avatar>
           <div>
             <div>{{ chatbot?.display_name || 'Chatbot Test' }}</div>
@@ -64,7 +64,7 @@
           <div class="message" :class="[`${message.role}-message`, { 'system-info-message': message.isSystemInfo }]">
             <div class="message-header" v-if="message.role === 'assistant'">
               <v-avatar :color="chatbot?.color || 'primary'" size="24" class="mr-2">
-                <v-icon color="white" size="16">{{ chatbot?.icon || 'mdi-robot' }}</v-icon>
+                <LIcon color="white" size="16">{{ chatbot?.icon || 'mdi-robot' }}</LIcon>
               </v-avatar>
               <span class="text-caption">{{ chatbot?.display_name }}</span>
             </div>
@@ -74,7 +74,7 @@
             <div v-if="message.sources && message.sources.length > 0" class="sources mt-2">
               <v-divider class="mb-2" />
               <div class="text-caption text-medium-emphasis mb-1">
-                <v-icon size="14" class="mr-1">mdi-file-document</v-icon>
+                <LIcon size="14" class="mr-1">mdi-file-document</LIcon>
                 Quellen:
               </div>
               <v-chip
@@ -98,10 +98,10 @@
             <!-- Metadata -->
             <div v-if="message.metadata" class="metadata mt-2">
               <div class="text-caption text-medium-emphasis">
-                <v-icon size="12">mdi-clock-outline</v-icon>
+                <LIcon size="12">mdi-clock-outline</LIcon>
                 {{ message.metadata.response_time }}ms
                 <span v-if="message.metadata.tokens" class="ml-2">
-                  <v-icon size="12">mdi-counter</v-icon>
+                  <LIcon size="12">mdi-counter</LIcon>
                   {{ message.metadata.tokens }} Tokens
                 </span>
               </div>
@@ -153,15 +153,15 @@
         <div class="d-flex justify-space-between align-center text-caption text-medium-emphasis">
           <div class="d-flex gap-4">
             <div>
-              <v-icon size="14">mdi-message-text</v-icon>
+              <LIcon size="14">mdi-message-text</LIcon>
               {{ messages.length }} Nachrichten
             </div>
             <div v-if="totalResponseTime > 0">
-              <v-icon size="14">mdi-clock-outline</v-icon>
+              <LIcon size="14">mdi-clock-outline</LIcon>
               Ø {{ averageResponseTime }}ms
             </div>
             <div v-if="totalTokens > 0">
-              <v-icon size="14">mdi-counter</v-icon>
+              <LIcon size="14">mdi-counter</LIcon>
               {{ totalTokens }} Tokens gesamt
             </div>
           </div>
@@ -277,7 +277,7 @@
           <LIconBtn icon="mdi-close" @click="sourceDialog.show = false" />
         </v-card-title>
         <v-card-subtitle v-if="sourceDialog.source?.collection_name" class="d-flex align-center">
-          <v-icon size="14" class="mr-1">mdi-folder</v-icon>
+          <LIcon size="14" class="mr-1">mdi-folder</LIcon>
           {{ sourceDialog.source.collection_name }}
           <v-chip v-if="sourceDialog.source?.relevance !== undefined" size="x-small" class="ml-2" color="success" variant="tonal">
             {{ ((sourceDialog.source.relevance || 0) * 100).toFixed(0) }}% relevant
@@ -296,7 +296,7 @@
             color="primary"
             variant="tonal"
           >
-            <v-icon start>mdi-download</v-icon>
+            <LIcon start>mdi-download</LIcon>
             Dokument
           </v-btn>
           <v-spacer />

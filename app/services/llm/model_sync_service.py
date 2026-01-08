@@ -16,6 +16,8 @@ import requests
 
 from db.database import db
 from db.models.llm_model import LLMModel
+from db.models.llm_provider import LLMProvider
+from services.llm.secret_encryption import decrypt_api_key
 
 
 logger = logging.getLogger(__name__)
@@ -23,11 +25,16 @@ logger = logging.getLogger(__name__)
 
 class LLMModelSyncService:
     @staticmethod
+    def infer_model_defaults(model_id: str) -> Dict[str, Any]:
+        return _infer_model_defaults(model_id)
+
+    @staticmethod
     def sync_from_litellm(
         *,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         activate_existing: bool = True,
+        synced_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Pull model IDs from the configured LiteLLM/OpenAI-compatible `/models` endpoint
@@ -68,6 +75,8 @@ class LLMModelSyncService:
             if existing:
                 if activate_existing and not existing.is_active:
                     existing.is_active = True
+                    if synced_by:
+                        existing.updated_by = synced_by
                     updated += 1
                 else:
                     skipped += 1
@@ -90,6 +99,104 @@ class LLMModelSyncService:
                 output_cost_per_million=0.0,
                 is_default=False,
                 is_active=True,
+                created_by=synced_by,
+                updated_by=synced_by,
+            )
+            db.session.add(model)
+            inserted += 1
+
+        db.session.commit()
+
+        return {
+            "success": True,
+            "source": url,
+            "total_remote": len(set(model_ids)),
+            "inserted": inserted,
+            "updated": updated,
+            "skipped": skipped,
+        }
+
+    @staticmethod
+    def sync_from_provider(
+        provider: LLMProvider,
+        *,
+        activate_existing: bool = True,
+        synced_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if not provider:
+            return {"success": False, "error": "Provider not found"}
+
+        if not provider.is_openai_compatible:
+            return {"success": False, "error": "Provider is not OpenAI-compatible"}
+
+        base_url = (provider.base_url or "").rstrip("/")
+        if not base_url:
+            return {"success": False, "error": "Provider base_url is not configured"}
+
+        api_key = None
+        if provider.api_key_encrypted:
+            api_key = decrypt_api_key(provider.api_key_encrypted)
+
+        url = f"{base_url}/models"
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+        payload = resp.json()
+
+        items = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(items, list):
+            return {"success": False, "error": "Unexpected /models response format"}
+
+        model_ids: List[str] = []
+        for item in items:
+            if isinstance(item, dict):
+                mid = item.get("id") or item.get("model")
+                if mid:
+                    model_ids.append(str(mid))
+
+        inserted = 0
+        updated = 0
+        skipped = 0
+
+        for model_id in sorted(set(model_ids)):
+            existing = LLMModel.get_by_model_id(model_id)
+            if existing:
+                if activate_existing and not existing.is_active:
+                    existing.is_active = True
+                    if synced_by:
+                        existing.updated_by = synced_by
+                    updated += 1
+                if existing.provider_id != provider.id:
+                    existing.provider_id = provider.id
+                    if synced_by:
+                        existing.updated_by = synced_by
+                else:
+                    skipped += 1
+                continue
+
+            inferred = _infer_model_defaults(model_id)
+            model = LLMModel(
+                model_id=model_id,
+                display_name=inferred["display_name"],
+                provider=inferred["provider"],
+                description=None,
+                model_type=inferred["model_type"],
+                supports_vision=inferred["supports_vision"],
+                supports_reasoning=inferred["supports_reasoning"],
+                supports_function_calling=True,
+                supports_streaming=True,
+                context_window=inferred["context_window"],
+                max_output_tokens=inferred["max_output_tokens"],
+                input_cost_per_million=0.0,
+                output_cost_per_million=0.0,
+                is_default=False,
+                is_active=True,
+                provider_id=provider.id,
+                created_by=synced_by,
+                updated_by=synced_by,
             )
             db.session.add(model)
             inserted += 1

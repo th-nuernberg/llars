@@ -12,13 +12,12 @@ Key Features:
 """
 
 import logging
-import os
 from typing import Any, Dict, List, Optional
-
-from openai import OpenAI
 
 from llm.openai_utils import extract_delta_text, extract_message_text
 from db.models.llm_model import LLMModel
+from services.llm.llm_client_factory import LLMClientFactory
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,6 @@ class LiteLLMClient:
     Provides simple access to Mistral models hosted on TH Nürnberg's infrastructure.
     """
 
-    DEFAULT_BASE_URL = "https://kiz1.in.ohmportal.de/llmproxy/v1"
     DEFAULT_MODEL = None
     METADATA_TAGS = ["Technische Hochschule Nürnberg", "prj-llars"]
 
@@ -48,13 +46,9 @@ class LiteLLMClient:
             base_url: Base URL for LiteLLM proxy (default: from LITELLM_BASE_URL env var)
             model: Model to use (default: Mistral-Small-3.2-24B-Instruct-2506)
         """
-        self.api_key = api_key or os.getenv("LITELLM_API_KEY")
-        if not self.api_key:
-            raise ValueError(
-                "LITELLM_API_KEY must be provided or set in environment variables"
-            )
+        self.api_key = api_key
+        self.base_url = base_url
 
-        self.base_url = base_url or os.getenv("LITELLM_BASE_URL", self.DEFAULT_BASE_URL)
         if model:
             self.model = model
         else:
@@ -63,13 +57,16 @@ class LiteLLMClient:
                 raise ValueError("No default LLM model configured in llm_models")
             self.model = default_model_id
 
-        # Initialize OpenAI client
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
-
-        logger.info(f"[LiteLLM] Initialized client with model={self.model}, base_url={self.base_url}")
+        # Initialize client (provider-aware)
+        if self.api_key or self.base_url:
+            self.client = OpenAI(
+                api_key=self.api_key or "EMPTY",
+                base_url=self.base_url,
+            )
+            logger.info(f"[LiteLLM] Initialized override client with model={self.model}, base_url={self.base_url}")
+        else:
+            self.client = LLMClientFactory.get_client_for_model(self.model)
+            logger.info(f"[LiteLLM] Initialized provider client with model={self.model}")
 
     def complete(
         self,

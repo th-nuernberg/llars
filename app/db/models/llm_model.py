@@ -31,6 +31,12 @@ class LLMModel(db.Model):
     model_id: Mapped[str] = mapped_column(db.String(255), unique=True, nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(db.String(100), nullable=False)  # e.g., 'mistral', 'openai', 'anthropic'
+    provider_id: Mapped[Optional[int]] = mapped_column(
+        db.Integer,
+        db.ForeignKey('llm_providers.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
     description: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     model_type: Mapped[str] = mapped_column(
         db.String(50),
@@ -57,6 +63,10 @@ class LLMModel(db.Model):
     is_default: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False, index=True)
 
+    # Audit
+    created_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, index=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now)
@@ -71,6 +81,7 @@ class LLMModel(db.Model):
             'model_id': self.model_id,
             'display_name': self.display_name,
             'provider': self.provider,
+            'provider_id': self.provider_id,
             'description': self.description,
             'model_type': self.model_type,
             'supports_vision': self.supports_vision,
@@ -83,6 +94,8 @@ class LLMModel(db.Model):
             'output_cost_per_million': self.output_cost_per_million,
             'is_default': self.is_default,
             'is_active': self.is_active,
+            'created_by': self.created_by,
+            'updated_by': self.updated_by,
         }
 
     @classmethod

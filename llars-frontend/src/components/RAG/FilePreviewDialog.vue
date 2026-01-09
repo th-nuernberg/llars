@@ -261,7 +261,11 @@ async function loadFileBlob() {
     if (blobUrl.value) {
       URL.revokeObjectURL(blobUrl.value)
     }
-    blobUrl.value = URL.createObjectURL(response.data)
+    // Get mime type from response or document
+    const contentType = response.headers['content-type'] || props.document?.mime_type || 'application/octet-stream'
+    // Create blob with correct type
+    const blob = new Blob([response.data], { type: contentType })
+    blobUrl.value = URL.createObjectURL(blob)
   } catch (error) {
     console.error('Error loading file:', error)
     blobUrl.value = null

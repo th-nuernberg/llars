@@ -6,15 +6,20 @@
       type="error"
       variant="tonal"
       density="compact"
-      class="mb-4"
+      class="mb-3"
       closable
       @click:close="error = null"
     >
       {{ error }}
     </v-alert>
 
+    <!-- Gauges Row Skeleton -->
+    <template v-if="loading">
+      <LSkeleton type="health-bar" :count="4" />
+    </template>
+
     <!-- Gauges Row -->
-    <div class="gauges-row">
+    <div v-else class="gauges-row">
       <LGauge
         icon="mdi-connection"
         label="Active"
@@ -24,7 +29,6 @@
         subtitle="Connections"
         color="primary"
         color-mode="fixed"
-        :loading="loading"
       />
       <LGauge
         icon="mdi-arrow-down"
@@ -36,7 +40,6 @@
         :subtitle="`${formatBytes(bytesInPerSec)}/s`"
         color="success"
         color-mode="fixed"
-        :loading="loading"
       />
       <LGauge
         icon="mdi-arrow-up"
@@ -48,7 +51,6 @@
         :subtitle="`${formatBytes(bytesOutPerSec)}/s`"
         color="accent"
         color-mode="fixed"
-        :loading="loading"
       />
       <LGauge
         icon="mdi-swap-vertical"
@@ -60,12 +62,19 @@
         :subtitle="`↓${formatBytes(bytesInPerSec)} ↑${formatBytes(bytesOutPerSec)}`"
         color="secondary"
         color-mode="fixed"
-        :loading="loading"
       />
     </div>
 
+    <!-- Charts Row Skeleton -->
+    <template v-if="loading">
+      <div class="charts-row">
+        <div class="chart-card"><LSkeleton type="chart" /></div>
+        <div class="chart-card"><LSkeleton type="chart" /></div>
+      </div>
+    </template>
+
     <!-- Charts Row -->
-    <div class="charts-row">
+    <div v-else class="charts-row">
       <div class="chart-card">
         <LChart
           title="Connections (5min)"
@@ -90,8 +99,17 @@
       </div>
     </div>
 
+    <!-- Namespace Breakdown Skeleton -->
+    <div v-if="loading" class="section-card">
+      <h3 class="section-card__title">
+        <LIcon icon="mdi-format-list-group" size="18" class="mr-2" />
+        Namespace Breakdown
+      </h3>
+      <LSkeleton type="table" :count="4" :columns="5" />
+    </div>
+
     <!-- Namespace Breakdown -->
-    <div class="section-card">
+    <div v-else class="section-card">
       <h3 class="section-card__title">
         <LIcon icon="mdi-format-list-group" size="18" class="mr-2" />
         Namespace Breakdown
@@ -120,14 +138,23 @@
           <span class="ns-col ns-col--in">{{ ns.messages_in_per_sec }}</span>
           <span class="ns-col ns-col--out">{{ ns.messages_out_per_sec }}</span>
         </div>
-        <div v-if="!namespaces.length && !loading" class="namespace-empty">
+        <div v-if="!namespaces.length" class="namespace-empty">
           Keine aktiven Namespaces
         </div>
       </div>
     </div>
 
+    <!-- Recent Events Skeleton -->
+    <div v-if="loading" class="section-card">
+      <h3 class="section-card__title">
+        <LIcon icon="mdi-history" size="18" class="mr-2" />
+        Connection Events
+      </h3>
+      <LSkeleton type="activity-list" :count="5" />
+    </div>
+
     <!-- Recent Events -->
-    <div class="section-card">
+    <div v-else class="section-card">
       <h3 class="section-card__title">
         <LIcon icon="mdi-history" size="18" class="mr-2" />
         Connection Events
@@ -155,7 +182,7 @@
           </span>
           <span class="event-item__age">{{ formatAge(event.age_seconds) }}</span>
         </div>
-        <div v-if="!recentEvents.length && !loading" class="events-empty">
+        <div v-if="!recentEvents.length" class="events-empty">
           Keine Verbindungs-Events
         </div>
       </div>
@@ -243,7 +270,7 @@ onBeforeUnmount(() => {
 .websocket-tab {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .gauges-row {

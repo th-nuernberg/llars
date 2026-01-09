@@ -226,7 +226,13 @@ def register_chat_events(socketio, chat_manager):
         if not model:
             model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
             if not model:
-                raise RuntimeError("No default LLM model configured in llm_models")
+                logging.error("No default LLM model configured in llm_models")
+                emit(
+                    "test_prompt_response",
+                    {"content": "Fehler: Kein Standard-LLM-Modell konfiguriert. Bitte kontaktieren Sie den Administrator.", "complete": True},
+                    room=client_id
+                )
+                return
 
         # Validate parameters
         temperature = max(0.0, min(1.0, float(temperature)))

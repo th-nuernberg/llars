@@ -44,8 +44,8 @@
                 <span>Ranking & Rating</span>
               </div>
               <div class="feature-item">
-                <LIcon color="primary">mdi-scale-balance</LIcon>
-                <span>LLM-as-Judge</span>
+                <LIcon color="primary">mdi-sword-cross</LIcon>
+                <span>Chatbot Arena</span>
               </div>
               <div class="feature-item">
                 <LIcon color="primary">mdi-robot</LIcon>
@@ -93,7 +93,7 @@
               <LTag variant="info" size="small">Agentic AI</LTag>
               <LTag variant="info" size="small">RAG Pipeline</LTag>
               <LTag variant="info" size="small">Hybrid Search</LTag>
-              <LTag variant="info" size="small">LLM-as-Judge</LTag>
+              <LTag variant="info" size="small">Chatbot Arena</LTag>
               <LTag variant="info" size="small">API Reference</LTag>
               <LTag variant="info" size="small">Installation</LTag>
             </div>

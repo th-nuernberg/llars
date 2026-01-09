@@ -111,9 +111,9 @@ export function useAppTheme() {
    * Get available theme options for UI
    */
   const themeOptions = computed(() => [
-    { value: 'system', title: 'System', icon: 'mdi-brightness-auto' },
-    { value: 'light', title: 'Hell', icon: 'mdi-white-balance-sunny' },
-    { value: 'dark', title: 'Dunkel', icon: 'mdi-moon-waning-crescent' },
+    { value: 'system', title: 'System', icon: 'llars:system-theme' },
+    { value: 'light', title: 'Hell', icon: 'llars:sun' },
+    { value: 'dark', title: 'Dunkel', icon: 'llars:moon' },
   ])
 
   /**

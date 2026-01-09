@@ -209,17 +209,17 @@
               :loading="loadingDocuments"
               :items-per-page="10"
             >
-              <template v-slot:item.filename="{ item }">
+              <template v-slot:item.title="{ item }">
                 <div class="d-flex align-center">
-                  <LIcon :color="getFileTypeColor(item.file_type)" class="mr-2">
-                    {{ getFileTypeIcon(item.file_type) }}
+                  <LIcon :color="getFileTypeColor(item.mime_type)" class="mr-2">
+                    {{ getFileTypeIcon(item.mime_type) }}
                   </LIcon>
-                  <span class="font-weight-medium">{{ item.filename }}</span>
+                  <span class="font-weight-medium">{{ item.title || item.filename }}</span>
                 </div>
               </template>
 
-              <template v-slot:item.file_size="{ item }">
-                {{ formatFileSize(item.file_size) }}
+              <template v-slot:item.file_size_bytes="{ item }">
+                {{ formatFileSize(item.file_size_bytes) }}
               </template>
 
               <template v-slot:item.status="{ item }">
@@ -318,10 +318,13 @@
               <v-col cols="12" md="6">
                 <v-select
                   v-model="uploadCollection"
-                  :items="collectionOptions.filter(c => c !== 'Alle')"
+                  :items="uploadCollectionOptions"
+                  item-title="title"
+                  item-value="value"
                   label="Ziel-Collection"
                   variant="outlined"
                   prepend-inner-icon="mdi-folder"
+                  clearable
                 ></v-select>
               </v-col>
             </v-row>
@@ -623,8 +626,8 @@
                 </div>
               </template>
 
-              <template v-slot:item.file_size="{ item }">
-                {{ formatFileSize(item.file_size_bytes || item.file_size) }}
+              <template v-slot:item.file_size_bytes="{ item }">
+                {{ formatFileSize(item.file_size_bytes) }}
               </template>
 
               <template v-slot:item.status="{ item }">
@@ -754,6 +757,7 @@ const {
   deletingDocument,
   documentHeaders,
   collectionOptions,
+  uploadCollectionOptions,
   filteredDocuments,
   fetchDocuments,
   handleFileSelect,

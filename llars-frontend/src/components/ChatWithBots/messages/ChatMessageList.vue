@@ -57,7 +57,7 @@
         <div v-if="message.sources && message.sources.length > 0" class="message-sources mt-2">
           <div class="sources-legend">
             <div class="sources-header text-caption d-flex align-center mb-1">
-              <LIcon size="14" class="mr-1">mdi-bookmark-multiple</LIcon>
+              <LIcon size="14" class="mr-1">mdi-text-box-multiple-outline</LIcon>
               <span>Quellen</span>
             </div>
             <div class="sources-list">

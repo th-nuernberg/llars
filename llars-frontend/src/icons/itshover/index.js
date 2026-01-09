@@ -3,6 +3,7 @@ import AnonymizeIcon from './AnonymizeIcon.vue'
 import AlphaAIcon from './AlphaAIcon.vue'
 import AlphaBIcon from './AlphaBIcon.vue'
 import ArrowBackIcon from './ArrowBackIcon.vue'
+import ClaudeIcon from './ClaudeIcon.vue'
 import ArrowNarrowDownIcon from './ArrowNarrowDownIcon.vue'
 import ArrowNarrowLeftIcon from './ArrowNarrowLeftIcon.vue'
 import ArrowNarrowRightIcon from './ArrowNarrowRightIcon.vue'
@@ -11,6 +12,7 @@ import BellIcon from './BellIcon.vue'
 import BoltIcon from './BoltIcon.vue'
 import BookIcon from './BookIcon.vue'
 import CalendarIcon from './CalendarIcon.vue'
+import ChatbotIcon from './ChatbotIcon.vue'
 import ChatbotManageIcon from './ChatbotManageIcon.vue'
 import ChartBarIcon from './ChartBarIcon.vue'
 import ChatIcon from './ChatIcon.vue'
@@ -34,6 +36,7 @@ import FlaskIcon from './FlaskIcon.vue'
 import FolderIcon from './FolderIcon.vue'
 import FullscreenIcon from './FullscreenIcon.vue'
 import GearIcon from './GearIcon.vue'
+import GeminiIcon from './GeminiIcon.vue'
 import GlobeIcon from './GlobeIcon.vue'
 import GridIcon from './GridIcon.vue'
 import HeartIcon from './HeartIcon.vue'
@@ -42,21 +45,28 @@ import HomeIcon from './HomeIcon.vue'
 import ImageIcon from './ImageIcon.vue'
 import InfoCircleIcon from './InfoCircleIcon.vue'
 import LatexCollabAiIcon from './LatexCollabAiIcon.vue'
+import LatexDocIcon from './LatexDocIcon.vue'
 import LightbulbIcon from './LightbulbIcon.vue'
 import LinkIcon from './LinkIcon.vue'
+import LitellmIcon from './LitellmIcon.vue'
 import LockIcon from './LockIcon.vue'
 import MailIcon from './MailIcon.vue'
 import MarkdownCollabIcon from './MarkdownCollabIcon.vue'
 import MenuIcon from './MenuIcon.vue'
 import MinusIcon from './MinusIcon.vue'
+import MoonIcon from './MoonIcon.vue'
+import OllamaIcon from './OllamaIcon.vue'
 import OncocoIcon from './OncocoIcon.vue'
+import OpenAiIcon from './OpenAiIcon.vue'
 import PaletteIcon from './PaletteIcon.vue'
 import PauseIcon from './PauseIcon.vue'
 import PencilIcon from './PencilIcon.vue'
 import PinIcon from './PinIcon.vue'
 import PlayerIcon from './PlayerIcon.vue'
+import PromptEngineeringIcon from './PromptEngineeringIcon.vue'
 import PlusIcon from './PlusIcon.vue'
 import QuestionIcon from './QuestionIcon.vue'
+import RagIcon from './RagIcon.vue'
 import RefreshIcon from './RefreshIcon.vue'
 import RobotIcon from './RobotIcon.vue'
 import ScaleIcon from './ScaleIcon.vue'
@@ -67,6 +77,8 @@ import ShieldCheckIcon from './ShieldCheckIcon.vue'
 import SimpleCheckedIcon from './SimpleCheckedIcon.vue'
 import SpinnerIcon from './SpinnerIcon.vue'
 import StarIcon from './StarIcon.vue'
+import SunIcon from './SunIcon.vue'
+import SystemThemeIcon from './SystemThemeIcon.vue'
 import StopIcon from './StopIcon.vue'
 import SwapIcon from './SwapIcon.vue'
 import TagIcon from './TagIcon.vue'
@@ -82,6 +94,7 @@ import UserCheckIcon from './UserCheckIcon.vue'
 import UserPlusIcon from './UserPlusIcon.vue'
 import UsersGroupIcon from './UsersGroupIcon.vue'
 import UsersIcon from './UsersIcon.vue'
+import VllmIcon from './VllmIcon.vue'
 import WandIcon from './WandIcon.vue'
 import XIcon from './XIcon.vue'
 
@@ -99,11 +112,13 @@ export const iconComponents = {
   'bolt': BoltIcon,
   'book': BookIcon,
   'calendar': CalendarIcon,
+  'chatbot': ChatbotIcon,
   'chatbot-manage': ChatbotManageIcon,
   'chart-bar': ChartBarIcon,
   'chat': ChatIcon,
   'check': SimpleCheckedIcon,
   'check-circle': CheckedIcon,
+  'claude': ClaudeIcon,
   'clipboard': ClipboardIcon,
   'clock': ClockIcon,
   'cloud': CloudIcon,
@@ -123,6 +138,7 @@ export const iconComponents = {
   'folder': FolderIcon,
   'fullscreen': FullscreenIcon,
   'gear': GearIcon,
+  'gemini': GeminiIcon,
   'globe': GlobeIcon,
   'grid': GridIcon,
   'heart': HeartIcon,
@@ -131,21 +147,28 @@ export const iconComponents = {
   'image': ImageIcon,
   'info-circle': InfoCircleIcon,
   'latex-collab-ai': LatexCollabAiIcon,
+  'latex-doc': LatexDocIcon,
   'lightbulb': LightbulbIcon,
   'link': LinkIcon,
+  'litellm': LitellmIcon,
   'lock': LockIcon,
   'mail': MailIcon,
   'markdown-collab': MarkdownCollabIcon,
   'menu': MenuIcon,
   'minus': MinusIcon,
+  'moon': MoonIcon,
+  'ollama': OllamaIcon,
   'oncoco': OncocoIcon,
+  'openai': OpenAiIcon,
   'palette': PaletteIcon,
   'pause': PauseIcon,
   'pencil': PencilIcon,
   'pin': PinIcon,
   'play': PlayerIcon,
   'plus': PlusIcon,
+  'prompt-engineering': PromptEngineeringIcon,
   'question': QuestionIcon,
+  'rag': RagIcon,
   'refresh': RefreshIcon,
   'robot': RobotIcon,
   'scale': ScaleIcon,
@@ -155,6 +178,8 @@ export const iconComponents = {
   'shield-check': ShieldCheckIcon,
   'spinner': SpinnerIcon,
   'star': StarIcon,
+  'sun': SunIcon,
+  'system-theme': SystemThemeIcon,
   'stop': StopIcon,
   'swap': SwapIcon,
   'tag': TagIcon,
@@ -170,6 +195,7 @@ export const iconComponents = {
   'user-plus': UserPlusIcon,
   'users-group': UsersGroupIcon,
   'users': UsersIcon,
+  'vllm': VllmIcon,
   'wand': WandIcon,
   'x': XIcon,
 }
@@ -308,7 +334,10 @@ export const resolveIconKey = (iconName) => {
   if (tokens.includes('lightbulb') || tokens.includes('idea')) return 'lightbulb'
   if (hasAny(tokens, ['bolt', 'lightning'])) return 'bolt'
 
-  if (hasAny(tokens, ['palette', 'color', 'brightness', 'sun', 'sunny', 'moon', 'theme'])) return 'palette'
+  if (hasAny(tokens, ['palette', 'color'])) return 'palette'
+  if (hasAny(tokens, ['sun', 'sunny', 'light', 'day', 'brightness'])) return 'sun'
+  if (hasAny(tokens, ['moon', 'night', 'dark'])) return 'moon'
+  if (hasAny(tokens, ['theme', 'auto', 'system'])) return 'system-theme'
 
   if (tokens.includes('fullscreen')) return 'fullscreen'
 
@@ -401,6 +430,12 @@ export const llarsAliases = {
   eyeDropper: 'palette',
   upload: 'upload',
   color: 'palette',
+  lightMode: 'sun',
+  darkMode: 'moon',
+  systemMode: 'system-theme',
+  themeLight: 'sun',
+  themeDark: 'moon',
+  themeSystem: 'system-theme',
   command: 'menu',
   ctrl: 'menu',
   space: 'menu',

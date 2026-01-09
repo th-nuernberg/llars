@@ -10,15 +10,30 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <rect class="l-its-hover__admin-panel" x="3" y="4" width="18" height="16" rx="2" />
-    <path class="l-its-hover__admin-header" d="M3 8h18" />
-    <path class="l-its-hover__admin-nav" d="M7 8v12" />
-    <path class="l-its-hover__admin-bar l-its-hover__admin-bar--one" d="M10.5 16v3" />
-    <path class="l-its-hover__admin-bar l-its-hover__admin-bar--two" d="M13.5 14v5" />
-    <path class="l-its-hover__admin-bar l-its-hover__admin-bar--three" d="M16.5 12v7" />
-    <path
-      class="l-its-hover__admin-badge"
-      d="M18 4.5l2 1v1.8c0 1.5-.9 2.6-2 3.1-1.1-.5-2-1.6-2-3.1V5.5l2-1z"
-    />
+    <!-- Monitor/Screen -->
+    <rect class="l-its-hover__admin-screen" x="2" y="3" width="20" height="14" rx="2" />
+
+    <!-- Screen stand -->
+    <path class="l-its-hover__admin-stand" d="M8 21h8M12 17v4" />
+
+    <!-- Dashboard content: Speedometer/Gauge - compact -->
+    <g class="l-its-hover__admin-gauge">
+      <path d="M7.5 13a3 3 0 0 1 6 0" />
+      <path class="l-its-hover__admin-needle" d="M10.5 13l-1.3-2" />
+      <circle cx="10.5" cy="13" r="0.7" fill="currentColor" stroke="none" />
+    </g>
+
+    <!-- Status indicators -->
+    <g class="l-its-hover__admin-status">
+      <circle class="l-its-hover__admin-dot l-its-hover__admin-dot--one" cx="6" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle class="l-its-hover__admin-dot l-its-hover__admin-dot--two" cx="9" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle class="l-its-hover__admin-dot l-its-hover__admin-dot--three" cx="12" cy="6" r="1" fill="currentColor" stroke="none" />
+    </g>
+
+    <!-- Mini bars on right side - compact -->
+    <g class="l-its-hover__admin-bars">
+      <path d="M17 9v4" />
+      <path d="M19 10v3" />
+    </g>
   </svg>
 </template>

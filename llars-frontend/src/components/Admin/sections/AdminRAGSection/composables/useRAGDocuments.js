@@ -17,7 +17,7 @@ export function useRAGDocuments(collectionsRef) {
 
   // Upload
   const filesToUpload = ref([]);
-  const uploadCollection = ref('default');
+  const uploadCollection = ref(null);
   const uploading = ref(false);
   const uploadProgress = ref(0);
 
@@ -28,18 +28,26 @@ export function useRAGDocuments(collectionsRef) {
 
   // Table headers
   const documentHeaders = [
-    { title: 'Dateiname', key: 'filename', sortable: true },
+    { title: 'Dateiname', key: 'title', sortable: true },
     { title: 'Collection', key: 'collection_name', sortable: true },
-    { title: 'Größe', key: 'file_size', sortable: true },
+    { title: 'Größe', key: 'file_size_bytes', sortable: true },
     { title: 'Status', key: 'status', sortable: true },
     { title: 'Hochgeladen', key: 'uploaded_at', sortable: true },
     { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
   ];
 
-  // Computed
+  // Computed - use display_name to match API response (doc.collection_name = display_name)
   const collectionOptions = computed(() => {
-    const options = ['Alle', ...collectionsRef.value.map(c => c.name)];
+    const options = ['Alle', ...collectionsRef.value.map(c => c.display_name || c.name)];
     return options;
+  });
+
+  // Collection options for upload (with IDs)
+  const uploadCollectionOptions = computed(() => {
+    return collectionsRef.value.map(c => ({
+      title: c.display_name || c.name,
+      value: c.id
+    }));
   });
 
   const filteredDocuments = computed(() => {
@@ -77,10 +85,12 @@ export function useRAGDocuments(collectionsRef) {
     for (const file of filesToUpload.value) {
       formData.append('files', file);
     }
-    formData.append('collection', uploadCollection.value || 'default');
+    if (uploadCollection.value) {
+      formData.append('collection_id', uploadCollection.value);
+    }
 
     try {
-      await axios.post('/api/rag/upload', formData, {
+      await axios.post('/api/rag/documents/upload-multiple', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -133,6 +143,7 @@ export function useRAGDocuments(collectionsRef) {
 
     // Computed
     collectionOptions,
+    uploadCollectionOptions,
     filteredDocuments,
 
     // Methods

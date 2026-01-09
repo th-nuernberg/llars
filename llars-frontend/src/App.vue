@@ -30,7 +30,7 @@
                 {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
               </LTag>
             </div>
-            <LIcon :size="isMobile ? 'x-small' : 'small'" :class="isMobile ? '' : 'ml-1'" color="white">mdi-chevron-down</LIcon>
+            <LIcon :size="isMobile ? 16 : 20" :class="['menu-arrow', isMobile ? '' : 'ml-1']" color="white">mdi-menu-down</LIcon>
           </div>
         </template>
 
@@ -450,6 +450,14 @@ function openSettings() {
 .user-menu-trigger:hover {
   background-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
+}
+
+.user-menu-trigger:hover .menu-arrow :deep(.l-its-hover__svg) {
+  transform: scale(1.15);
+}
+
+.menu-arrow :deep(.l-its-hover__svg) {
+  transition: transform 0.2s ease;
 }
 
 .user-info {

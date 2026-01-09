@@ -423,7 +423,7 @@
                 <div class="text-caption">
                   <strong>Keine Threads verfügbar.</strong><br>
                   Bitte synchronisieren Sie zuerst KIA-Daten unter
-                  <router-link to="/judge" class="text-primary">LLM-as-Judge Übersicht</router-link>.
+                  <router-link to="/judge" class="text-primary">Chatbot Arena Übersicht</router-link>.
                 </div>
               </v-alert>
 

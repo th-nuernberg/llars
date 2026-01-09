@@ -82,7 +82,7 @@
           <div class="header-actions">
             <LTooltip :text="sourcePanelState.open ? 'Quellen ausblenden' : 'Quellen anzeigen'">
               <button class="header-action" @click="sourcePanelComposable.toggleSourcePanel">
-                <LIcon size="20">{{ sourcePanelState.open ? 'mdi-bookmark-off-outline' : 'mdi-bookmark-multiple-outline' }}</LIcon>
+                <LIcon size="20">{{ sourcePanelState.open ? 'mdi-text-box-remove-outline' : 'mdi-text-box-search-outline' }}</LIcon>
               </button>
             </LTooltip>
             <LTooltip text="Neuer Chat">
@@ -695,6 +695,10 @@ async function sendMessageViaREST(message, files = []) {
         updateConversationTitle(result.conversationId || selectedConversation.value?.id, result.conversationTitle)
       }
       chatMessages.updateBotMessage(messages, result.content, new Date().toLocaleTimeString(), false, result.sources)
+      // Automatically show first source in panel
+      if (result.sources && result.sources.length > 0) {
+        sourcePanelComposable.openSourceFromCitation(result.sources[0])
+      }
       if (result.mode && result.mode !== 'standard') {
         agentEventCounter.value++
         agentStatus.value = { type: 'complete', mode: result.mode, task_type: result.task_type, reasoning_steps: result.reasoning_steps || [], _eventId: agentEventCounter.value }
@@ -865,6 +869,10 @@ function setupSocketHandlers() {
       const lastIdx = messages.value.length - 1
       if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot') {
         messages.value[lastIdx].sources = chatMessages.currentSources.value
+      }
+      // Automatically show first source in panel
+      if (data.sources && data.sources.length > 0) {
+        sourcePanelComposable.openSourceFromCitation(data.sources[0])
       }
     },
     onResponse: (data) => {

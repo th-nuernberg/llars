@@ -3,9 +3,9 @@
     <!-- Page Header -->
     <div class="page-header">
       <div class="header-content">
-        <h1 class="text-h5 font-weight-bold">LLM-as-Judge</h1>
+        <h1 class="text-h5 font-weight-bold">Chatbot Arena</h1>
         <p class="text-caption text-medium-emphasis mb-0">
-          Automatisierte Bewertung von Prompt-Säulen mit KI
+          Paarweise Vergleiche von Chatbot-Antworten im Arena-Modus
         </p>
       </div>
       <v-spacer></v-spacer>

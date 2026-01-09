@@ -25,9 +25,9 @@ const mockThemePreference = ref('system')
 const mockIsDark = ref(false)
 const mockSetThemePreference = vi.fn()
 const mockThemeOptions = [
-  { value: 'light', title: 'Hell', icon: 'mdi-white-balance-sunny' },
-  { value: 'dark', title: 'Dunkel', icon: 'mdi-weather-night' },
-  { value: 'system', title: 'System', icon: 'mdi-brightness-auto' }
+  { value: 'system', title: 'System', icon: 'llars:system-theme' },
+  { value: 'light', title: 'Hell', icon: 'llars:sun' },
+  { value: 'dark', title: 'Dunkel', icon: 'llars:moon' }
 ]
 
 vi.mock('@/composables/useAppTheme', () => ({
@@ -121,46 +121,46 @@ describe('LThemeToggle', () => {
   // ==================== Theme Options Tests ====================
 
   describe('Theme Options', () => {
-    it('COMP_THM_007: light option has correct label', () => {
+    it('COMP_THM_007: system option has correct label', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[0].find('.option-label').text()).toBe('Hell')
+      expect(options[0].find('.option-label').text()).toBe('System')
     })
 
-    it('COMP_THM_008: dark option has correct label', () => {
+    it('COMP_THM_008: light option has correct label', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[1].find('.option-label').text()).toBe('Dunkel')
+      expect(options[1].find('.option-label').text()).toBe('Hell')
     })
 
-    it('COMP_THM_009: system option has correct label', () => {
+    it('COMP_THM_009: dark option has correct label', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[2].find('.option-label').text()).toBe('System')
+      expect(options[2].find('.option-label').text()).toBe('Dunkel')
     })
 
-    it('COMP_THM_010: light option has sun icon', () => {
+    it('COMP_THM_010: system option has system-theme icon', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[0].find('.option-icon').text()).toContain('mdi-white-balance-sunny')
+      expect(options[0].find('.option-icon').text()).toContain('llars:system-theme')
     })
 
-    it('COMP_THM_011: dark option has moon icon', () => {
+    it('COMP_THM_011: light option has sun icon', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[1].find('.option-icon').text()).toContain('mdi-weather-night')
+      expect(options[1].find('.option-icon').text()).toContain('llars:sun')
     })
 
-    it('COMP_THM_012: system option has auto icon', () => {
+    it('COMP_THM_012: dark option has moon icon', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[2].find('.option-icon').text()).toContain('mdi-brightness-auto')
+      expect(options[2].find('.option-icon').text()).toContain('llars:moon')
     })
   })
 
@@ -172,21 +172,11 @@ describe('LThemeToggle', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[2].classes()).toContain('active')
+      expect(options[0].classes()).toContain('active')
     })
 
     it('COMP_THM_014: light option is active when theme is light', () => {
       mockThemePreference.value = 'light'
-      const wrapper = mountLThemeToggle()
-      const options = wrapper.findAll('.theme-option')
-
-      expect(options[0].classes()).toContain('active')
-      expect(options[1].classes()).not.toContain('active')
-      expect(options[2].classes()).not.toContain('active')
-    })
-
-    it('COMP_THM_015: dark option is active when theme is dark', () => {
-      mockThemePreference.value = 'dark'
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
@@ -195,12 +185,22 @@ describe('LThemeToggle', () => {
       expect(options[2].classes()).not.toContain('active')
     })
 
+    it('COMP_THM_015: dark option is active when theme is dark', () => {
+      mockThemePreference.value = 'dark'
+      const wrapper = mountLThemeToggle()
+      const options = wrapper.findAll('.theme-option')
+
+      expect(options[2].classes()).toContain('active')
+      expect(options[0].classes()).not.toContain('active')
+      expect(options[1].classes()).not.toContain('active')
+    })
+
     it('COMP_THM_016: active option shows check icon', () => {
       mockThemePreference.value = 'dark'
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      expect(options[1].find('.check-icon').exists()).toBe(true)
+      expect(options[2].find('.check-icon').exists()).toBe(true)
       expect(options[0].find('.check-icon').exists()).toBe(false)
     })
 

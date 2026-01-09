@@ -153,12 +153,12 @@
           @update:model-value="updateConfig"
         >
           <template #prepend-inner>
-            <LIcon
+            <v-icon
               :color="localConfig.color || '#5d7a4a'"
               :class="{ 'icon-generating': generatingFields.icon }"
             >
               {{ localConfig.icon || 'mdi-robot' }}
-            </LIcon>
+            </v-icon>
           </template>
           <template #append>
             <v-btn

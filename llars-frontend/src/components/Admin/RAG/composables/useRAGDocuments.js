@@ -67,9 +67,9 @@ export function useRAGDocuments() {
     }
   };
 
-  const uploadFiles = async (files = null, collection = null) => {
+  const uploadFiles = async (files = null, collectionId = null) => {
     const filesToProcess = files || filesToUpload.value;
-    const targetCollection = collection || uploadCollection.value || 'default';
+    const targetCollectionId = collectionId || uploadCollection.value;
 
     if (!filesToProcess || filesToProcess.length === 0) {
       return { success: false, error: 'No files selected' };
@@ -82,10 +82,12 @@ export function useRAGDocuments() {
     for (const file of filesToProcess) {
       formData.append('files', file);
     }
-    formData.append('collection', targetCollection);
+    if (targetCollectionId) {
+      formData.append('collection_id', targetCollectionId);
+    }
 
     try {
-      const response = await axios.post('/api/rag/upload', formData, {
+      const response = await axios.post('/api/rag/documents/upload-multiple', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);

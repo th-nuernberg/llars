@@ -10,9 +10,17 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <rect class="l-its-hover__evaluation-clip" x="9" y="3" width="6" height="3" rx="1" />
-    <rect class="l-its-hover__evaluation-board" x="6" y="5" width="12" height="16" rx="2" />
-    <path class="l-its-hover__evaluation-check" d="M9 13l2 2l4-4" />
-    <path class="l-its-hover__evaluation-line" d="M9 17h6" />
+    <!-- Clipboard -->
+    <g class="l-its-hover__evaluation-board">
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path class="l-its-hover__evaluation-clip" d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
+    </g>
+    <!-- Checklist items -->
+    <g class="l-its-hover__evaluation-list">
+      <path class="l-its-hover__evaluation-check" d="M8 10l1.5 1.5L12 9" />
+      <path class="l-its-hover__evaluation-line" d="M14 10h3" />
+      <path class="l-its-hover__evaluation-check l-its-hover__evaluation-check--two" d="M8 14l1.5 1.5L12 13" />
+      <path class="l-its-hover__evaluation-line" d="M14 14h3" />
+    </g>
   </svg>
 </template>

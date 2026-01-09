@@ -128,6 +128,22 @@ body,
   --llars-btn-cancel-gradient: linear-gradient(135deg, #9e9e9e 0%, #8a8a8a 100%);
   --llars-btn-cancel-hover: linear-gradient(135deg, #969696 0%, #828282 100%);
 
+  /* LLM Provider Brand Colors */
+  --llars-provider-openai: #10a37f;
+  --llars-provider-openai-light: rgba(16, 163, 127, 0.12);
+  --llars-provider-anthropic: #cc785c;
+  --llars-provider-anthropic-light: rgba(204, 120, 92, 0.12);
+  --llars-provider-gemini: #4285f4;
+  --llars-provider-gemini-light: rgba(66, 133, 244, 0.12);
+  --llars-provider-ollama: #1a1a2e;
+  --llars-provider-ollama-light: rgba(26, 26, 46, 0.08);
+  --llars-provider-vllm: #7c3aed;
+  --llars-provider-vllm-light: rgba(124, 58, 237, 0.12);
+  --llars-provider-litellm: #06b6d4;
+  --llars-provider-litellm-light: rgba(6, 182, 212, 0.12);
+  --llars-provider-custom: #888888;
+  --llars-provider-custom-light: rgba(136, 136, 136, 0.12);
+
   /* LLARS Signature Border Radius */
   --llars-radius: 16px 4px 16px 4px;
   --llars-radius-sm: 8px 2px 8px 2px;
@@ -256,6 +272,22 @@ body,
   /* Citation/Source Colors (Dark Mode) */
   --llars-citation-light: #a8d090;
   --llars-citation-dark: #8ab878;
+
+  /* LLM Provider Brand Colors (Dark Mode - slightly adjusted for dark backgrounds) */
+  --llars-provider-openai: #12b886;
+  --llars-provider-openai-light: rgba(18, 184, 134, 0.15);
+  --llars-provider-anthropic: #d99070;
+  --llars-provider-anthropic-light: rgba(217, 144, 112, 0.15);
+  --llars-provider-gemini: #5a9cf4;
+  --llars-provider-gemini-light: rgba(90, 156, 244, 0.15);
+  --llars-provider-ollama: #8888aa;
+  --llars-provider-ollama-light: rgba(136, 136, 170, 0.12);
+  --llars-provider-vllm: #9466ff;
+  --llars-provider-vllm-light: rgba(148, 102, 255, 0.15);
+  --llars-provider-litellm: #22d3ee;
+  --llars-provider-litellm-light: rgba(34, 211, 238, 0.15);
+  --llars-provider-custom: #aaaaaa;
+  --llars-provider-custom-light: rgba(170, 170, 170, 0.12);
 
   /* Shadows (stärker im Dark Mode) */
   --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -721,6 +753,164 @@ html, body {
 /* Prevent pull-to-refresh on specific elements */
 .no-pull-refresh {
   overscroll-behavior-y: contain;
+}
+
+/* ========================================
+   LLARS Quick Connect Card Styles
+   Reusable provider/service connection cards
+   ======================================== */
+.llars-quick-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  min-height: 72px; /* Ensures equal card heights */
+  background: var(--quick-card-bg, rgba(0, 0, 0, 0.03));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: var(--llars-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.llars-quick-card:hover {
+  border-color: var(--quick-card-color, var(--llars-primary));
+  box-shadow: var(--llars-shadow-md);
+  transform: translateY(-2px);
+}
+
+.llars-quick-card:hover .llars-quick-card__arrow {
+  opacity: 1;
+  color: var(--quick-card-color, var(--llars-primary));
+}
+
+/* Connected state - gradient to LLARS green */
+.llars-quick-card--connected {
+  border-color: var(--quick-card-color, var(--llars-primary));
+  background: linear-gradient(135deg, var(--quick-card-bg, rgba(0, 0, 0, 0.03)) 0%, rgba(176, 202, 151, 0.25) 100%);
+}
+
+.llars-quick-card--connected::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--llars-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(176, 202, 151, 0.7);
+}
+
+.llars-quick-card__icon-wrapper {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--v-theme-surface));
+  border-radius: var(--llars-radius-sm);
+  margin-right: 12px;
+  box-shadow: var(--llars-shadow-sm);
+}
+
+.llars-quick-card__icon {
+  color: var(--quick-card-color, var(--llars-primary)) !important;
+}
+
+.llars-quick-card__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.llars-quick-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+  line-height: 1.3;
+}
+
+.llars-quick-card__subtitle {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin: 1px 0 0;
+  line-height: 1.2;
+}
+
+.llars-quick-card__meta {
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-right: 4px;
+}
+
+.llars-quick-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--llars-radius-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.llars-quick-card__badge--connected {
+  background: var(--llars-primary);
+  color: #2d4a1c;
+}
+
+.llars-quick-card__badge--locked {
+  background: rgba(232, 160, 135, 0.2);
+  color: var(--llars-danger);
+}
+
+.llars-quick-card__badge--key {
+  background: rgba(232, 200, 122, 0.2);
+  color: #7a6a2a;
+}
+
+.llars-quick-card__badge--free {
+  background: rgba(152, 212, 187, 0.2);
+  color: #3a7a5e;
+}
+
+.llars-quick-card__arrow {
+  flex-shrink: 0;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  transition: all 0.2s ease;
+}
+
+/* Quick Connect Grid */
+.llars-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+/* Ensure all cards in a row have same height */
+.llars-quick-grid > * {
+  height: 100%;
+}
+
+/* Dark mode adjustments */
+.v-theme--dark .llars-quick-card {
+  background: var(--quick-card-bg, rgba(255, 255, 255, 0.03));
+}
+
+.v-theme--dark .llars-quick-card--connected {
+  background: linear-gradient(135deg, var(--quick-card-bg, rgba(255, 255, 255, 0.03)) 0%, rgba(90, 107, 74, 0.25) 100%);
+}
+
+.v-theme--dark .llars-quick-card__badge--connected {
+  background: var(--llars-primary);
+  color: #e8f5e9;
 }
 
 /* ========================================

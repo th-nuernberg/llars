@@ -91,7 +91,7 @@
                   @click="$emit('resume', chatbot)"
                 >
                   <template #prepend>
-                    <LIcon>mdi-wizard-hat</LIcon>
+                    <LIcon>wand</LIcon>
                   </template>
                   <v-list-item-title>Konfiguration fortsetzen</v-list-item-title>
                 </v-list-item>

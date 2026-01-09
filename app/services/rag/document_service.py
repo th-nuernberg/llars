@@ -19,7 +19,8 @@ from db.models.rag import (
     RAGDocument,
     RAGDocumentChunk,
     RAGCollection,
-    RAGProcessingQueue
+    RAGProcessingQueue,
+    CollectionDocumentLink
 )
 from sqlalchemy import desc, or_
 
@@ -275,6 +276,16 @@ class DocumentService:
             db.session.add(new_doc)
             db.session.flush()  # Get the ID
 
+            # Create collection-document link (n:m relationship)
+            if collection_id:
+                link = CollectionDocumentLink(
+                    collection_id=collection_id,
+                    document_id=new_doc.id,
+                    link_type='new',
+                    linked_at=datetime.now()
+                )
+                db.session.add(link)
+
             # Add to processing queue
             queue_entry = RAGProcessingQueue(
                 document_id=new_doc.id,
@@ -398,6 +409,16 @@ class DocumentService:
                 db.session.add(new_doc)
                 db.session.flush()
 
+                # Create collection-document link (n:m relationship)
+                if collection_id:
+                    link = CollectionDocumentLink(
+                        collection_id=collection_id,
+                        document_id=new_doc.id,
+                        link_type='new',
+                        linked_at=datetime.now()
+                    )
+                    db.session.add(link)
+
                 # Add to processing queue
                 queue_entry = RAGProcessingQueue(
                     document_id=new_doc.id,
@@ -410,6 +431,7 @@ class DocumentService:
                 results['uploaded'].append({
                     'id': new_doc.id,
                     'filename': original_filename,
+                    'file_size_bytes': file_size,
                     'file_size_mb': round(file_size / (1024*1024), 2)
                 })
 

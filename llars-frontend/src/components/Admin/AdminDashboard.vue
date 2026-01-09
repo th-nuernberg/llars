@@ -122,7 +122,7 @@
           </div>
 
           <!-- LLM Providers Section -->
-          <div v-else-if="activeSection === 'llm-providers'" key="llm-providers" class="section-container">
+          <div v-else-if="activeSection === 'llm-providers'" key="llm-providers" class="section-container--full">
             <AdminLlmProvidersSection />
           </div>
 
@@ -193,8 +193,8 @@ const { isMobile, isTablet, isSmallScreen } = useMobile();
 // Mobile sidebar state
 const mobileSidebarOpen = ref(false);
 
-// Active section (synced with route query)
-const activeSection = ref('overview');
+// Active section (synced with route query) - initialize from URL immediately to prevent flash
+const activeSection = ref(route.query.tab || 'overview');
 
 // Close sidebar when section changes on mobile
 watch(activeSection, () => {

@@ -13,7 +13,7 @@ import uuid
 import hashlib
 
 from db.database import db
-from db.models.scenario import EmailThread, Message as DBMessage
+from db.models.scenario import EmailThread, Message as DBMessage, RatingScenarios, ScenarioThreads
 
 from .format_detector import FormatDetector
 from .schema_validator import SchemaValidator, ValidationResult
@@ -55,7 +55,7 @@ class ImportSession:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API response."""
-        return {
+        result = {
             "session_id": self.session_id,
             "created_at": self.created_at.isoformat(),
             "status": self.status,
@@ -76,6 +76,13 @@ class ImportSession:
             "errors": self.errors,
             "warnings": self.warnings,
         }
+        # Add scenario info if created
+        if self.options.get("scenario_id"):
+            result["scenario"] = {
+                "id": self.options["scenario_id"],
+                "name": self.options.get("scenario_name"),
+            }
+        return result
 
 
 class ImportService:
@@ -328,7 +335,10 @@ class ImportService:
         self,
         session_id: str,
         task_type: TaskType | None = None,
-        source_name: str | None = None
+        source_name: str | None = None,
+        create_scenario: bool = True,
+        created_by: str | None = None,
+        ai_analysis: dict | None = None
     ) -> ImportSession:
         """
         Execute the import and create database records.
@@ -337,6 +347,9 @@ class ImportService:
             session_id: Session ID
             task_type: Override task type
             source_name: Name for the import source
+            create_scenario: Whether to create a scenario for the imported data
+            created_by: Username of creator (for scenario)
+            ai_analysis: AI analysis result with evaluation criteria etc.
 
         Returns:
             Updated session with import results
@@ -357,22 +370,43 @@ class ImportService:
 
         try:
             imported = 0
+            imported_threads = []
 
             for item in session.transformed_items:
                 try:
                     thread = self._create_thread(item, final_task_type, source)
                     if thread:
                         imported += 1
+                        imported_threads.append(thread)
                 except Exception as e:
                     session.warnings.append(f"Failed to import item {item.id}: {str(e)}")
+
+            db.session.flush()
+
+            # Create scenario and link threads
+            scenario = None
+            if create_scenario and imported_threads:
+                scenario = self._create_scenario(
+                    source_name=source,
+                    task_type=final_task_type,
+                    threads=imported_threads,
+                    created_by=created_by,
+                    ai_analysis=ai_analysis
+                )
 
             db.session.commit()
 
             session.imported_count = imported
             session.status = "complete"
 
+            # Add scenario info to session options for API response
+            if scenario:
+                session.options["scenario_id"] = scenario.id
+                session.options["scenario_name"] = scenario.scenario_name
+
             logger.info(
                 f"Import complete: {imported}/{len(session.transformed_items)} items imported"
+                + (f", scenario_id={scenario.id}" if scenario else "")
             )
 
         except Exception as e:
@@ -573,6 +607,84 @@ class ImportService:
 
         sample = session.transformed_items[:count]
         return [item.to_dict() for item in sample]
+
+    def _create_scenario(
+        self,
+        source_name: str,
+        task_type: TaskType,
+        threads: list[EmailThread],
+        created_by: str | None,
+        ai_analysis: dict | None
+    ) -> RatingScenarios:
+        """
+        Create a scenario for imported data and link threads.
+
+        Args:
+            source_name: Name for the scenario
+            task_type: Task type for the scenario
+            threads: List of imported EmailThread objects
+            created_by: Username of creator
+            ai_analysis: AI analysis result (may contain evaluation_criteria, classification_labels)
+
+        Returns:
+            Created RatingScenarios object
+        """
+        # Map task type to function_type_id
+        task_type_mapping = {
+            TaskType.RANKING: 1,
+            TaskType.RATING: 2,
+            TaskType.MAIL_RATING: 3,
+            TaskType.COMPARISON: 4,
+            TaskType.AUTHENTICITY: 5,
+            TaskType.JUDGE: 6,
+            TaskType.TEXT_CLASSIFICATION: 7,
+            TaskType.TEXT_RATING: 8,
+        }
+        function_type_id = task_type_mapping.get(task_type, 3)
+
+        # Build config_json from AI analysis
+        config_json = {}
+        if ai_analysis:
+            # Include evaluation criteria if present
+            if 'evaluation_criteria' in ai_analysis:
+                config_json['evaluation_criteria'] = ai_analysis['evaluation_criteria']
+
+            # Include classification labels if present (for text_classification)
+            if 'classification_labels' in ai_analysis:
+                config_json['classification_labels'] = ai_analysis['classification_labels']
+
+            # Include task description
+            if 'task_description' in ai_analysis:
+                config_json['task_description'] = ai_analysis['task_description']
+
+            # Include any custom config
+            if 'config' in ai_analysis:
+                config_json.update(ai_analysis['config'])
+
+        # Create scenario
+        scenario = RatingScenarios(
+            scenario_name=source_name,
+            function_type_id=function_type_id,
+            created_by=created_by,
+            config_json=config_json if config_json else None,
+        )
+        db.session.add(scenario)
+        db.session.flush()  # Get scenario ID
+
+        # Link threads to scenario
+        for thread in threads:
+            scenario_thread = ScenarioThreads(
+                scenario_id=scenario.id,
+                thread_id=thread.thread_id,
+            )
+            db.session.add(scenario_thread)
+
+        logger.info(
+            f"Created scenario '{source_name}' (id={scenario.id}) "
+            f"with {len(threads)} threads, task_type={task_type.value}"
+        )
+
+        return scenario
 
     def get_available_formats(self) -> list[dict[str, Any]]:
         """Get list of all supported formats."""

@@ -6,7 +6,7 @@
       <div class="sources-panel-header">
         <div class="header-title-area">
           <div class="source-icon">
-            <LIcon size="20">mdi-bookmark-multiple</LIcon>
+            <LIcon size="20">mdi-text-box-multiple-outline</LIcon>
           </div>
           <div class="source-title-info">
             <span class="source-title">
@@ -70,7 +70,7 @@
         <!-- Excerpt Tab -->
         <div v-if="activeTab === 'excerpt'" class="tab-content">
           <div v-if="!source" class="empty-source">
-            <LIcon size="48" class="mb-2">mdi-bookmark-outline</LIcon>
+            <LIcon size="48" class="mb-2">mdi-text-box-outline</LIcon>
             <div>Quelle auswählen</div>
           </div>
           <template v-else>

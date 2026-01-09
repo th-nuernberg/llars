@@ -10,15 +10,15 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <path class="l-its-hover__markdown-file" d="M6 3h8" />
-    <path class="l-its-hover__markdown-file" d="M18 7v14H6V3" />
-    <path class="l-its-hover__file-crease" d="M14 3L18 7" />
-    <path class="l-its-hover__markdown-fold" d="M14 3v4h4" />
-    <path class="l-its-hover__markdown-hash" d="M9 10v6M12 10v6M7.5 12h6.5M7.5 14h6.5" />
-    <g class="l-its-hover__markdown-link">
-      <circle cx="16.5" cy="17.5" r="1" fill="currentColor" />
-      <circle cx="19" cy="17.5" r="1" fill="currentColor" />
-      <path d="M17.5 17.5h1" />
-    </g>
+    <!-- Document body (same structure as latex-ai for consistent fold) -->
+    <path class="l-its-hover__markdown-file" d="M6 3h7.5" />
+    <path class="l-its-hover__markdown-file" d="M18 7.5v13.5H6V3" />
+
+    <!-- Fold corner - 4x4, aligned with page edges -->
+    <path class="l-its-hover__markdown-crease" d="M14.5 3.5L17.5 6.5" />
+    <path class="l-its-hover__markdown-fold" d="M14 3v3q0 1 1 1h3" />
+
+    <!-- Markdown hash symbol (#) - smaller and more compact -->
+    <path class="l-its-hover__markdown-hash" d="M9.5 10.5v5M11.5 10.5v5M8 12h5M8 14h5" />
   </svg>
 </template>

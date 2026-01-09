@@ -216,7 +216,7 @@
           />
 
           <!-- Response Content -->
-          <div v-if="!sngMode" class="response-container" ref="responseContainer">
+          <div v-if="!sngMode" class="response-container" ref="responseContainer" @scroll="handleScroll">
             <div class="response-content">
               <pre class="response-text">{{ response }}</pre>
               <div v-if="isStreaming" class="typing-indicator">
@@ -255,10 +255,17 @@
       <template #actions>
         <div class="dialog-actions">
           <LBtn
+            v-if="isStreaming"
+            variant="danger"
+            prepend-icon="mdi-stop"
+            @click="cancelGeneration"
+          >
+            Abbrechen
+          </LBtn>
+          <LBtn
+            v-else
             variant="accent"
             prepend-icon="mdi-refresh"
-            :loading="isStreaming"
-            :disabled="isStreaming"
             @click="regenerate"
           >
             Erneut generieren
@@ -299,10 +306,14 @@ const emit = defineEmits(['update:modelValue'])
 // Socket connection
 let socket = null
 
-// Configuration state
-const selectedModel = ref('')
-const temperature = ref(0.15)
-const maxTokens = ref(4096)
+// Configuration state - load from localStorage if available
+const STORAGE_KEY_MODEL = 'llars_test_prompt_model'
+const STORAGE_KEY_TEMP = 'llars_test_prompt_temperature'
+const STORAGE_KEY_TOKENS = 'llars_test_prompt_max_tokens'
+
+const selectedModel = ref(localStorage.getItem(STORAGE_KEY_MODEL) || '')
+const temperature = ref(parseFloat(localStorage.getItem(STORAGE_KEY_TEMP)) || 0.15)
+const maxTokens = ref(parseInt(localStorage.getItem(STORAGE_KEY_TOKENS)) || 4096)
 const jsonMode = ref(true)
 const sngMode = ref(false)
 const jsonSchemaInput = ref('{}')
@@ -320,6 +331,10 @@ const isStreaming = ref(false)
 const responseComplete = ref(false)
 const responseContainer = ref(null)
 const follow = ref(true)
+
+// Request tracking to prevent race conditions
+let pendingRequest = false
+let requestId = 0
 
 // SNG state
 const networkJson = ref(null)
@@ -420,8 +435,9 @@ function initSocket() {
   socket.on('connect', () => {
     console.log('[TestPrompt] Socket connected, id:', socket.id)
     socketConnected.value = true
-    // Auto-send prompt when socket connects if dialog is open
-    if (props.modelValue && !responseComplete.value && response.value === '') {
+    // Auto-send prompt when socket connects if dialog is open and request is pending
+    if (props.modelValue && pendingRequest) {
+      pendingRequest = false
       sendTestPrompt()
     }
   })
@@ -485,22 +501,26 @@ function parseSngResponse() {
 function sendTestPrompt() {
   console.log('[TestPrompt] sendTestPrompt called, socket:', socket ? 'exists' : 'null', 'connected:', socket?.connected)
 
-  if (!socket?.connected) {
-    console.log('[TestPrompt] Socket not connected yet, waiting for connection...')
-    isStreaming.value = true
-    return
-  }
-
-  const promptText = props.prompt
-  console.log('[TestPrompt] Sending test prompt, length:', promptText?.length, 'first 100 chars:', promptText?.slice(0, 100))
-
-  // Reset state
+  // Reset state immediately
   response.value = ''
   isStreaming.value = true
   responseComplete.value = false
   networkJson.value = null
   parseError.value = false
   follow.value = true
+
+  // Increment request ID to track this request
+  requestId++
+  const currentRequestId = requestId
+
+  if (!socket?.connected) {
+    console.log('[TestPrompt] Socket not connected yet, marking request as pending...')
+    pendingRequest = true
+    return
+  }
+
+  const promptText = props.prompt
+  console.log('[TestPrompt] Sending test prompt, length:', promptText?.length, 'first 100 chars:', promptText?.slice(0, 100))
 
   const placeholder = '{{complete_email_history}}'
   const exampleText = selectedExampleFormatted.value
@@ -522,7 +542,8 @@ function sendTestPrompt() {
     sngMode: sngMode.value,
     model: selectedModel.value,
     temperature: temperature.value,
-    maxTokens: maxTokens.value
+    maxTokens: maxTokens.value,
+    requestId: currentRequestId
   }
 
   console.log('[TestPrompt] Emitting test_prompt_stream with payload:', {
@@ -544,7 +565,25 @@ function regenerate() {
   sendTestPrompt()
 }
 
+function cancelGeneration() {
+  console.log('[TestPrompt] Cancelling generation')
+  // Increment request ID to ignore any further responses from current request
+  requestId++
+  pendingRequest = false
+  isStreaming.value = false
+  responseComplete.value = true
+  if (response.value === '') {
+    response.value = '[Generierung abgebrochen]'
+  } else {
+    response.value += '\n\n[Generierung abgebrochen]'
+  }
+}
+
 function closeDialog() {
+  // Cancel any running generation when closing
+  if (isStreaming.value) {
+    cancelGeneration()
+  }
   emit('update:modelValue', false)
 }
 
@@ -560,22 +599,19 @@ function handleScroll() {
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     // Reset state when dialog opens
-    response.value = ''
-    isStreaming.value = true
-    responseComplete.value = false
-    networkJson.value = null
-    parseError.value = false
     promptCollapsed.value = true
+    pendingRequest = false
 
     // Initialize socket - will auto-send prompt when connected
     initSocket()
 
-    // If socket is already connected, send immediately
-    if (socket?.connected) {
-      nextTick(() => {
-        sendTestPrompt()
-      })
-    }
+    // Send the prompt - sendTestPrompt handles both connected and not-connected cases
+    nextTick(() => {
+      sendTestPrompt()
+    })
+  } else {
+    // Dialog closed - cancel any pending request
+    pendingRequest = false
   }
 })
 
@@ -591,6 +627,21 @@ watch(sngMode, () => {
     parseError.value = false
     sendTestPrompt()
   }
+})
+
+// Persist configuration to localStorage
+watch(selectedModel, (val) => {
+  if (val) {
+    localStorage.setItem(STORAGE_KEY_MODEL, val)
+  }
+})
+
+watch(temperature, (val) => {
+  localStorage.setItem(STORAGE_KEY_TEMP, String(val))
+})
+
+watch(maxTokens, (val) => {
+  localStorage.setItem(STORAGE_KEY_TOKENS, String(val))
 })
 
 onMounted(() => {

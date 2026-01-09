@@ -3,7 +3,7 @@
     <v-card class="wizard-card" variant="outlined">
       <!-- Header -->
       <v-card-title class="d-flex align-center pa-4">
-        <LIcon class="mr-2" color="primary">mdi-wizard-hat</LIcon>
+        <LIcon class="mr-2" color="primary">wand</LIcon>
         <div>
           <div class="text-h6">Chatbot Builder</div>
           <div class="text-caption text-medium-emphasis">
@@ -68,7 +68,7 @@
                 @click="handleStepClick(item.value)"
               >
                 <div class="step-circle mx-auto mb-1">
-                  <LIcon v-if="currentStep > item.value" size="small" color="white">mdi-check</LIcon>
+                  <v-icon v-if="currentStep > item.value" size="small" color="white">mdi-check</v-icon>
                   <span v-else>{{ item.value }}</span>
                 </div>
                 <div class="step-title text-caption">{{ item.title }}</div>
@@ -453,7 +453,6 @@ function handleSkipToConfig() {
   requestCollectionDocuments({ force: true })
 }
 
-const FALLBACK_URL = 'https://www.dg-agentur.de/'
 const SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//
 
 const getEffectiveWizardUrl = (value) => {
@@ -462,7 +461,8 @@ const getEffectiveWizardUrl = (value) => {
   if (SCHEME_REGEX.test(trimmed)) {
     return trimmed
   }
-  return FALLBACK_URL
+  // Prepend https:// if no scheme is provided
+  return `https://${trimmed}`
 }
 
 // ===== Wizard Start =====

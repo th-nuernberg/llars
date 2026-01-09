@@ -49,7 +49,7 @@
         </div>
       </div>
       <div class="stat-card">
-        <LIcon size="20" color="accent">mdi-magic-staff</LIcon>
+        <LIcon size="20" color="accent">wand</LIcon>
         <div class="stat-content">
           <span class="stat-value">{{ stats.by_category?.wizard || 0 }}</span>
           <span class="stat-label">Wizard</span>
@@ -332,7 +332,7 @@ const getTypeIcon = (type) => {
     'chatbot.updated': 'mdi-robot-outline',
     'chatbot.deleted': 'mdi-robot-off',
     'chatbot.duplicated': 'mdi-content-copy',
-    'wizard.started': 'mdi-magic-staff',
+    'wizard.started': 'wand',
     'wizard.completed': 'mdi-check-circle',
     'wizard.failed': 'mdi-alert-circle',
     'wizard.cancelled': 'mdi-close-circle',
@@ -346,7 +346,7 @@ const getTypeIcon = (type) => {
   }
   return icons[type] || {
     chatbot: 'mdi-robot',
-    wizard: 'mdi-magic-staff',
+    wizard: 'wand',
     chat: 'mdi-message-text',
     collection: 'mdi-folder-multiple',
     document: 'mdi-file-document'

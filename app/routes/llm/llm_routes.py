@@ -399,6 +399,33 @@ def create_provider():
     }), 201
 
 
+@llm_bp.route('/providers/test-connection', methods=['POST'])
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='llm')
+def test_provider_connection():
+    """
+    Test a provider connection without saving it.
+
+    Request body:
+        - provider_type: str (required) - Type of provider (openai, anthropic, ollama, etc.)
+        - base_url: str (optional) - Base URL for the provider API
+        - api_key: str (optional) - API key
+        - config: dict (optional) - Additional configuration
+
+    Returns:
+        - success: bool
+        - message or error: str
+    """
+    data = request.get_json() or {}
+    result = LLMProviderService.test_connection(
+        provider_type=data.get('provider_type'),
+        base_url=data.get('base_url'),
+        api_key=data.get('api_key'),
+        config=data.get('config'),
+    )
+    return jsonify(result), 200 if result.get('success') else 400
+
+
 @llm_bp.route('/providers/<int:provider_id>', methods=['PUT'])
 @require_permission('admin:system:configure')
 @handle_api_errors(logger_name='llm')

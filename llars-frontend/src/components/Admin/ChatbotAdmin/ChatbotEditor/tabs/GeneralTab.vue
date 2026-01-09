@@ -50,13 +50,13 @@
           density="comfortable"
         >
           <template #selection="{ item }">
-            <LIcon class="mr-2">{{ item.value }}</LIcon>
+            <v-icon class="mr-2">{{ item.value }}</v-icon>
             {{ item.title }}
           </template>
           <template #item="{ props, item }">
             <v-list-item v-bind="props">
               <template #prepend>
-                <LIcon>{{ item.value }}</LIcon>
+                <v-icon>{{ item.value }}</v-icon>
               </template>
             </v-list-item>
           </template>

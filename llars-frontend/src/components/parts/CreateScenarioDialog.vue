@@ -786,7 +786,7 @@ export default {
       'authenticity': 'Fake/Echt'
     };
 
-    const llmEvaluatorTaskNames = new Set(['ranking', 'rating', 'authenticity']);
+    const llmEvaluatorTaskNames = new Set(['ranking', 'rating', 'authenticity', 'mail_rating', 'text_classification', 'comparison']);
 
     const getDisplayName = (user) => {
       if (!user) return 'Unbekannt';

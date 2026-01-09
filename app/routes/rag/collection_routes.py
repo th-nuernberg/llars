@@ -425,6 +425,10 @@ def set_collection_access(collection_id):
     if not RAGAccessService.can_share_collection(username, collection):
         raise ForbiddenError('Keine Berechtigung für diese Collection')
 
+    # Get previous users before changing permissions (for WebSocket notification)
+    previous_permissions = RAGAccessService.get_collection_permissions(collection_id)
+    previous_users = [u['target'] for u in previous_permissions.get('users', [])]
+
     data = request.get_json() or {}
 
     # Check if using batch mode (user_permissions with individual access levels)
@@ -451,8 +455,8 @@ def set_collection_access(collection_id):
             access=access
         )
 
-    # Emit WebSocket event for real-time updates
-    emit_collection_shared(collection, result, username)
+    # Emit WebSocket event for real-time updates (includes removed users)
+    emit_collection_shared(collection, result, username, previous_users)
 
     return jsonify({'success': True, 'collection_id': collection_id, **result}), 200
 

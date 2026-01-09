@@ -107,7 +107,7 @@ def create_crawl_collection(
 
         # Status flags
         is_active=True,
-        is_public=True,
+        is_public=False,  # Private by default, share explicitly
 
         # Ownership and timestamps
         created_by=created_by,

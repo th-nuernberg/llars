@@ -438,6 +438,22 @@ def set_collection_access(collection_id):
     return jsonify({'success': True, 'collection_id': collection_id, **result}), 200
 
 
+@rag_collection_bp.route('/collections/<int:collection_id>/access/required', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def get_collection_required_access(collection_id):
+    """Get users/roles who need collection access because of chatbot sharing."""
+    username = AuthUtils.extract_username_without_validation()
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    if not RAGAccessService.can_view_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
+
+    required = RAGAccessService.get_chatbot_required_access(collection_id)
+    return jsonify({'success': True, 'collection_id': collection_id, **required}), 200
+
+
 # ============================================================================
 # Embedding API Endpoints
 # ============================================================================

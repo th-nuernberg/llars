@@ -12,8 +12,9 @@ from typing import List, Optional, Set, Any
 from sqlalchemy import and_, or_, select
 
 from db.database import db
-from db.tables import Chatbot, ChatbotUserAccess, Role, UserRole
+from db.tables import Chatbot, ChatbotUserAccess, Role, UserRole, ChatbotCollection
 from services.permission_service import PermissionService
+from services.rag.access_service import RAGAccessService
 
 
 class ChatbotAccessService:
@@ -241,8 +242,27 @@ class ChatbotAccessService:
             ))
 
         chatbot.allowed_roles = normalized_roles or None
+
+        # Also share associated collections with the same users/roles
+        collection_links = ChatbotCollection.query.filter_by(chatbot_id=chatbot_id).all()
+        shared_collections = []
+        for link in collection_links:
+            collection_id = link.collection_id
+            # Grant view access to collections when chatbot is shared
+            # Skip chatbot check since WE are the chatbot sharing operation
+            RAGAccessService.set_collection_permissions(
+                collection_id=collection_id,
+                usernames=normalized_users,
+                role_names=normalized_roles,
+                granted_by=granted_by,
+                access={'can_view': True, 'can_edit': False, 'can_delete': False, 'can_share': False},
+                skip_chatbot_check=True
+            )
+            shared_collections.append(collection_id)
+
         db.session.commit()
         return {
             'allowed_usernames': normalized_users,
             'allowed_roles': normalized_roles,
+            'shared_collections': shared_collections,
         }

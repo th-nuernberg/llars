@@ -268,7 +268,7 @@ class DocumentService:
                 language=language,
                 status='pending',  # Will be processed by background job
                 collection_id=collection_id,
-                is_public=True,
+                is_public=False,  # Inherit visibility from collection
                 uploaded_by=uploaded_by,
                 uploaded_at=datetime.now()
             )
@@ -401,7 +401,7 @@ class DocumentService:
                     language='de',
                     status='pending',
                     collection_id=collection_id,
-                    is_public=True,
+                    is_public=False,  # Inherit visibility from collection
                     uploaded_by=uploaded_by,
                     uploaded_at=datetime.now()
                 )

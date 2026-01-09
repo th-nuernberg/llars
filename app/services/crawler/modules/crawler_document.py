@@ -307,7 +307,7 @@ def _create_new_document(
         # Status and collection
         status='pending',
         collection_id=collection_id,
-        is_public=True,
+        is_public=False,  # Inherit visibility from collection
 
         # Ownership
         uploaded_by=created_by,

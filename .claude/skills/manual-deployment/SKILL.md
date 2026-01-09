@@ -1,20 +1,34 @@
 # Manual Deployment for LLARS
 
-## Quick Deploy
+## Quick Deploy (One-Liner from Local Machine)
+
+```bash
+# Recommended: Pull and restart with start_llars.sh
+ssh llars "cd /var/llars && git pull origin main && ./start_llars.sh"
+```
+
+This pulls the latest code and restarts all services with health checks.
+
+## Quick Deploy (Step by Step on Server)
 
 ```bash
 # 1. SSH to server
 ssh llars
 
-# 2. Fix permissions (if needed)
+# 2. Navigate to project
 cd /var/llars
-docker run --rm -v /var/llars:/work alpine:3.19 chown -R 1002:1002 /work
 
 # 3. Pull latest code
 git pull origin main
 
-# 4. Restart LLARS
+# 4. Restart LLARS (rebuilds containers if needed)
 ./start_llars.sh
+```
+
+## Fix Permissions (if git pull fails)
+
+```bash
+ssh llars "cd /var/llars && docker run --rm -v /var/llars:/work alpine:3.19 chown -R 1002:1002 /work"
 ```
 
 ## Full Deployment Steps

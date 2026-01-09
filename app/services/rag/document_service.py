@@ -451,9 +451,33 @@ class DocumentService:
 
         db.session.commit()
 
+        # Determine success based on results
+        uploaded_count = len(results['uploaded'])
+        error_count = len(results['errors'])
+        skipped_count = len(results['skipped'])
+
+        # If nothing was uploaded and there were errors, it's a failure
+        if uploaded_count == 0 and error_count > 0:
+            error_messages = [f"{e['filename']}: {e['error']}" for e in results['errors']]
+            return {
+                'success': False,
+                'message': f"Upload fehlgeschlagen: {'; '.join(error_messages)}",
+                'error': results['errors'][0]['error'] if results['errors'] else 'Unbekannter Fehler',
+                'results': results
+            }
+
+        # Partial success - some uploaded, some failed
+        if uploaded_count > 0 and (error_count > 0 or skipped_count > 0):
+            return {
+                'success': True,
+                'message': f"{uploaded_count} Dokument(e) hochgeladen, {skipped_count} übersprungen, {error_count} Fehler",
+                'results': results
+            }
+
+        # Full success
         return {
             'success': True,
-            'message': f"Uploaded {len(results['uploaded'])} documents",
+            'message': f"{uploaded_count} Dokument(e) erfolgreich hochgeladen",
             'results': results
         }
 

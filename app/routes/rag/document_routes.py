@@ -238,14 +238,20 @@ def upload_multiple_documents():
         collection_id=collection_id
     )
 
+    # Check if upload failed completely
+    if not result.get('success'):
+        raise ValidationError(result.get('message', 'Upload fehlgeschlagen'))
+
     # Log activity for successful uploads
-    if result.get('success') and result.get('uploaded'):
+    results_data = result.get('results', {})
+    uploaded_docs = results_data.get('uploaded', [])
+
+    if uploaded_docs:
         collection_name = None
         if collection_id:
             collection = RAGCollection.query.get(collection_id)
             collection_name = collection.display_name if collection else None
 
-        uploaded_docs = result['uploaded']
         document_ids = [d.get('id') for d in uploaded_docs if d.get('id')]
         filenames = [d.get('filename') or d.get('original_filename') for d in uploaded_docs]
         total_size = sum(d.get('file_size_bytes', 0) for d in uploaded_docs)

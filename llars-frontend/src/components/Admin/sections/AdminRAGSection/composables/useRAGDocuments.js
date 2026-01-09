@@ -20,6 +20,8 @@ export function useRAGDocuments(collectionsRef) {
   const uploadCollection = ref(null);
   const uploading = ref(false);
   const uploadProgress = ref(0);
+  const uploadError = ref(null);
+  const uploadMessage = ref(null);
 
   // Delete
   const deleteDocDialog = ref(false);
@@ -80,6 +82,8 @@ export function useRAGDocuments(collectionsRef) {
 
     uploading.value = true;
     uploadProgress.value = 0;
+    uploadError.value = null;
+    uploadMessage.value = null;
 
     const formData = new FormData();
     for (const file of filesToUpload.value) {
@@ -90,20 +94,46 @@ export function useRAGDocuments(collectionsRef) {
     }
 
     try {
-      await axios.post('/api/rag/documents/upload-multiple', formData, {
+      const response = await axios.post('/api/rag/documents/upload-multiple', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         }
       });
 
+      // Show success message with details
+      uploadMessage.value = response.data.message;
+
+      // Check for partial failures (skipped or errors)
+      const results = response.data.results || {};
+      if (results.skipped?.length > 0 || results.errors?.length > 0) {
+        const warnings = [];
+        if (results.skipped?.length > 0) {
+          warnings.push(`${results.skipped.length} übersprungen (Duplikate)`);
+        }
+        if (results.errors?.length > 0) {
+          warnings.push(`${results.errors.length} Fehler`);
+        }
+        uploadMessage.value += ` (${warnings.join(', ')})`;
+      }
+
       filesToUpload.value = [];
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error('Error uploading files:', error);
+      // Extract error message from response
+      const errorMessage = error.response?.data?.message
+        || error.response?.data?.error
+        || 'Upload fehlgeschlagen. Bitte versuchen Sie es erneut.';
+      uploadError.value = errorMessage;
     }
 
     uploading.value = false;
+  };
+
+  const clearUploadMessages = () => {
+    uploadError.value = null;
+    uploadMessage.value = null;
   };
 
   const confirmDeleteDocument = (doc) => {
@@ -136,6 +166,8 @@ export function useRAGDocuments(collectionsRef) {
     uploadCollection,
     uploading,
     uploadProgress,
+    uploadError,
+    uploadMessage,
     deleteDocDialog,
     documentToDelete,
     deletingDocument,
@@ -150,6 +182,7 @@ export function useRAGDocuments(collectionsRef) {
     fetchDocuments,
     handleFileSelect,
     uploadFiles,
+    clearUploadMessages,
     confirmDeleteDocument,
     deleteDocument
   };

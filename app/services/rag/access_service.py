@@ -515,15 +515,78 @@ class RAGAccessService:
         return {'users': users, 'roles': roles}
 
     @staticmethod
+    def get_chatbot_required_access(collection_id: int) -> dict:
+        """
+        Get users/roles who need collection access because a chatbot using
+        this collection is shared with them.
+
+        Returns: {'users': [username, ...], 'roles': [role_name, ...], 'chatbots': [{id, name}, ...]}
+        """
+        from db.tables import Chatbot, ChatbotUserAccess, ChatbotCollection
+
+        # Find chatbots using this collection
+        chatbot_links = ChatbotCollection.query.filter_by(collection_id=collection_id).all()
+        chatbot_ids = [link.chatbot_id for link in chatbot_links]
+
+        if not chatbot_ids:
+            return {'users': [], 'roles': [], 'chatbots': []}
+
+        chatbots = Chatbot.query.filter(Chatbot.id.in_(chatbot_ids)).all()
+        required_users = set()
+        required_roles = set()
+        chatbot_info = []
+
+        for chatbot in chatbots:
+            chatbot_info.append({'id': chatbot.id, 'name': chatbot.name})
+
+            # Get users with access to this chatbot
+            user_access = ChatbotUserAccess.query.filter_by(chatbot_id=chatbot.id).all()
+            for access in user_access:
+                required_users.add(access.username)
+
+            # Get roles with access to this chatbot
+            if chatbot.allowed_roles:
+                if isinstance(chatbot.allowed_roles, list):
+                    required_roles.update(chatbot.allowed_roles)
+                elif isinstance(chatbot.allowed_roles, str):
+                    required_roles.add(chatbot.allowed_roles)
+
+        return {
+            'users': sorted(required_users),
+            'roles': sorted(required_roles),
+            'chatbots': chatbot_info
+        }
+
+    @staticmethod
     def set_collection_permissions(
         collection_id: int,
         usernames=None,
         role_names=None,
         granted_by: Optional[str] = None,
-        access: Optional[dict] = None
+        access: Optional[dict] = None,
+        skip_chatbot_check: bool = False
     ) -> dict:
         usernames = RAGAccessService._normalize_strings(usernames)
         role_names = RAGAccessService._normalize_strings(role_names)
+
+        # Check if we're removing access from users/roles who need it for chatbot access
+        if not skip_chatbot_check:
+            required = RAGAccessService.get_chatbot_required_access(collection_id)
+            missing_users = [u for u in required['users'] if u not in usernames]
+            missing_roles = [r for r in required['roles'] if r not in role_names]
+
+            if missing_users or missing_roles:
+                chatbot_names = ', '.join([c['name'] for c in required['chatbots']])
+                error_parts = []
+                if missing_users:
+                    error_parts.append(f"User: {', '.join(missing_users)}")
+                if missing_roles:
+                    error_parts.append(f"Rollen: {', '.join(missing_roles)}")
+                raise ValueError(
+                    f"Collection-Zugriff kann nicht entfernt werden für {' und '.join(error_parts)} - "
+                    f"Chatbot(s) '{chatbot_names}' sind mit diesen Usern/Rollen geteilt. "
+                    f"Entferne zuerst den Chatbot-Zugriff."
+                )
         access = access or {}
         can_view = bool(access.get('can_view', True))
         can_edit = bool(access.get('can_edit', True))

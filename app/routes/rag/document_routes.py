@@ -146,6 +146,40 @@ def download_document(document_id):
     )
 
 
+@rag_document_bp.route('/documents/<int:document_id>/view', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def view_document(document_id):
+    """View document file inline (for PDF viewer, images, etc.)"""
+    username = AuthUtils.extract_username_without_validation()
+    document = DocumentService.get_document_by_id(document_id, username=username, access='view')
+    if not document:
+        raise NotFoundError(f'Document with ID {document_id} not found')
+
+    if not os.path.exists(document.file_path):
+        raise NotFoundError('Document file not found on disk')
+
+    # Determine mime type for inline viewing
+    mime_type = document.mime_type or 'application/octet-stream'
+
+    # For viewable types, serve inline
+    viewable_types = [
+        'application/pdf',
+        'text/plain', 'text/html', 'text/markdown', 'text/csv',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    ]
+
+    # Check if file is viewable
+    is_viewable = any(mime_type.startswith(t.split('/')[0]) for t in viewable_types) or mime_type in viewable_types
+
+    return send_file(
+        document.file_path,
+        as_attachment=not is_viewable,
+        download_name=document.original_filename,
+        mimetype=mime_type
+    )
+
+
 @rag_document_bp.route('/documents/upload', methods=['POST'])
 @require_permission('feature:rag:edit')
 @handle_api_errors(logger_name='rag')

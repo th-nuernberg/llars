@@ -25,6 +25,10 @@
             <LIcon icon="mdi-information" class="mr-2"></LIcon>
             Info
           </v-tab>
+          <v-tab v-if="canViewOriginal" value="original">
+            <LIcon :icon="getFileIcon(document.file_type)" class="mr-2"></LIcon>
+            Datei
+          </v-tab>
           <v-tab v-if="documentDetails?.has_screenshot" value="screenshot">
             <LIcon icon="mdi-image" class="mr-2"></LIcon>
             Screenshot
@@ -41,6 +45,46 @@
 
         <v-window v-model="activeTab">
           <!-- Info Tab -->
+          <v-window-item value="info">
+
+          <!-- Original File Tab (PDF, Images) -->
+          </v-window-item>
+          <v-window-item value="original">
+            <div class="original-file-container h-100">
+              <!-- PDF Viewer -->
+              <iframe
+                v-if="isPdf"
+                :src="viewUrl"
+                class="w-100 h-100 border-0"
+                style="background: #525659; min-height: 550px;"
+              />
+
+              <!-- Image Viewer -->
+              <div v-else-if="isImage" class="d-flex align-center justify-center h-100 bg-grey-darken-4 pa-4" style="min-height: 550px;">
+                <img
+                  :src="viewUrl"
+                  :alt="document?.filename"
+                  style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                />
+              </div>
+
+              <!-- Unsupported format -->
+              <div v-else class="d-flex flex-column align-center justify-center h-100 pa-8">
+                <LIcon size="64" color="grey" class="mb-4">mdi-file-document-outline</LIcon>
+                <div class="text-h6 text-grey mb-2">Vorschau nicht verfügbar</div>
+                <div class="text-body-2 text-grey mb-4">{{ document?.file_type?.toUpperCase() || 'Unbekanntes Format' }}</div>
+                <v-btn
+                  variant="tonal"
+                  color="primary"
+                  prepend-icon="mdi-download"
+                  @click="handleDownload"
+                >
+                  Herunterladen
+                </v-btn>
+              </div>
+            </div>
+          </v-window-item>
+
           <v-window-item value="info">
             <v-container class="pa-4">
               <v-row>
@@ -440,6 +484,29 @@ const content = ref('')
 const chunks = ref([])
 const loadingContent = ref(false)
 const loadingChunks = ref(false)
+
+// Original file viewing
+const viewUrl = computed(() => {
+  if (!props.document?.id) return ''
+  return `/api/rag/documents/${props.document.id}/view`
+})
+
+const isPdf = computed(() => {
+  const fileType = props.document?.file_type?.toLowerCase() || ''
+  const mimeType = props.document?.mime_type || ''
+  return fileType === 'pdf' || mimeType === 'application/pdf'
+})
+
+const isImage = computed(() => {
+  const fileType = props.document?.file_type?.toLowerCase() || ''
+  const mimeType = props.document?.mime_type || ''
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileType) ||
+    mimeType.startsWith('image/')
+})
+
+const canViewOriginal = computed(() => {
+  return isPdf.value || isImage.value
+})
 
 // Split chunks into text vs image/screenshot for clearer UI
 const textChunks = computed(() =>

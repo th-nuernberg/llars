@@ -30,6 +30,7 @@ export function useRAGCollections() {
   // Table headers
   const collectionHeaders = [
     { title: 'Name', key: 'name', sortable: true },
+    { title: 'Erstellt von', key: 'created_by', sortable: true },
     { title: 'Dokumente', key: 'document_count', sortable: true },
     { title: 'Erstellt', key: 'created_at', sortable: true },
     { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }

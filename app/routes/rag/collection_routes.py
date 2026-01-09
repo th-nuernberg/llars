@@ -416,6 +416,8 @@ def get_collection_access(collection_id):
 @handle_api_errors(logger_name='rag')
 def set_collection_access(collection_id):
     """Replace collection access assignments (owner/admin)."""
+    from socketio_handlers.events_rag import emit_collection_shared
+
     username = AuthUtils.extract_username_without_validation()
     collection = RAGCollection.query.get(collection_id)
     if not collection:
@@ -424,17 +426,34 @@ def set_collection_access(collection_id):
         raise ForbiddenError('Keine Berechtigung für diese Collection')
 
     data = request.get_json() or {}
-    usernames = data.get('usernames') or data.get('users') or []
-    role_names = data.get('role_names') or data.get('roles') or []
-    access = data.get('access') or {}
 
-    result = RAGAccessService.set_collection_permissions(
-        collection_id=collection_id,
-        usernames=usernames,
-        role_names=role_names,
-        granted_by=username,
-        access=access
-    )
+    # Check if using batch mode (user_permissions with individual access levels)
+    user_permissions = data.get('user_permissions')
+    if user_permissions is not None:
+        # Batch mode - individual permissions per user
+        role_names = data.get('role_names') or data.get('roles') or []
+        result = RAGAccessService.set_collection_permissions_batch(
+            collection_id=collection_id,
+            user_permissions=user_permissions,
+            role_names=role_names,
+            granted_by=username
+        )
+    else:
+        # Legacy mode - same access for all users
+        usernames = data.get('usernames') or data.get('users') or []
+        role_names = data.get('role_names') or data.get('roles') or []
+        access = data.get('access') or {}
+        result = RAGAccessService.set_collection_permissions(
+            collection_id=collection_id,
+            usernames=usernames,
+            role_names=role_names,
+            granted_by=username,
+            access=access
+        )
+
+    # Emit WebSocket event for real-time updates
+    emit_collection_shared(collection, result, username)
+
     return jsonify({'success': True, 'collection_id': collection_id, **result}), 200
 
 

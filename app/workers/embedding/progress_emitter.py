@@ -55,7 +55,7 @@ def emit_document_progress(
         True
     """
     try:
-        from app import socketio
+        from main import socketio
         from socketio_handlers.events_rag import emit_document_progress as _emit
 
         _emit(
@@ -96,7 +96,7 @@ def emit_batch_progress(
         bool: True if emission succeeded, False otherwise
     """
     try:
-        from app import socketio
+        from main import socketio
 
         socketio.emit(
             'batch:progress',

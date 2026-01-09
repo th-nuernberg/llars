@@ -382,6 +382,30 @@
                 {{ Math.round(value) }}%
               </template>
             </v-progress-linear>
+
+            <!-- Upload Error Message -->
+            <v-alert
+              v-if="uploadError"
+              type="error"
+              variant="tonal"
+              class="mt-4"
+              closable
+              @click:close="clearUploadMessages"
+            >
+              {{ uploadError }}
+            </v-alert>
+
+            <!-- Upload Success Message -->
+            <v-alert
+              v-if="uploadMessage"
+              type="success"
+              variant="tonal"
+              class="mt-4"
+              closable
+              @click:close="clearUploadMessages"
+            >
+              {{ uploadMessage }}
+            </v-alert>
           </v-card-text>
         </v-window-item>
       </v-window>
@@ -752,6 +776,8 @@ const {
   uploadCollection,
   uploading,
   uploadProgress,
+  uploadError,
+  uploadMessage,
   deleteDocDialog,
   documentToDelete,
   deletingDocument,
@@ -762,6 +788,7 @@ const {
   fetchDocuments,
   handleFileSelect,
   uploadFiles: uploadFilesFn,
+  clearUploadMessages,
   confirmDeleteDocument,
   deleteDocument: deleteDocumentFn
 } = useRAGDocuments(collections);
@@ -866,6 +893,7 @@ const createCollection = async () => {
 const uploadFiles = async () => {
   await uploadFilesFn(async () => {
     await fetchDocuments();
+    await fetchCollections();  // Update collection document counts
     await fetchStats();
     activeTab.value = 'documents';
   });

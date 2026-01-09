@@ -1046,6 +1046,15 @@ function setupWebSocket() {
       }
     });
 
+    // Real-time updates when another user uploads a document
+    socket.on('rag:document_uploaded', async (data) => {
+      console.log('[RAG] Dokument hochgeladen (von anderem User):', data.document?.filename, '- Collection:', data.collection?.display_name);
+      // Refresh data to show the new document
+      await fetchDocuments();
+      await fetchCollections();
+      await fetchStats();
+    });
+
     if (socket.connected) {
       socket.emit('rag:subscribe_queue');
       console.log('[RAG] WebSocket subscribed');
@@ -1065,6 +1074,7 @@ function cleanupWebSocket() {
     socket.off('rag:progress');
     socket.off('rag:document_processed');
     socket.off('rag:document_progress');
+    socket.off('rag:document_uploaded');
     socket.emit('rag:unsubscribe_queue');
     console.log('[RAG] WebSocket unsubscribed');
   }

@@ -234,6 +234,21 @@
 
               <template v-slot:item.actions="{ item }">
                 <LIconBtn
+                  icon="mdi-eye"
+                  variant="text"
+                  tooltip="Ansehen"
+                  class="mr-1"
+                  @click="openDocumentViewer(item)"
+                />
+                <LIconBtn
+                  icon="mdi-download"
+                  variant="text"
+                  tooltip="Herunterladen"
+                  class="mr-1"
+                  :href="`/api/rag/documents/${item.id}/download`"
+                  target="_blank"
+                />
+                <LIconBtn
                   icon="mdi-delete"
                   variant="danger"
                   tooltip="Löschen"

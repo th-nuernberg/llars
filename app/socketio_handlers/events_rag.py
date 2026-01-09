@@ -581,3 +581,62 @@ def emit_document_uploaded(socketio, document_id: int, collection_id: int, uploa
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting document uploaded: {e}")
+
+
+def emit_collection_shared(collection, permissions_result: dict, shared_by: str):
+    """
+    Emit when a collection's permissions are changed.
+    This notifies affected users so they can see the collection in real-time.
+
+    Args:
+        collection: The RAGCollection object
+        permissions_result: Result from set_collection_permissions or set_collection_permissions_batch
+        shared_by: Username who changed the permissions
+    """
+    try:
+        from main import socketio
+
+        if not collection:
+            return
+
+        # Build list of affected users
+        affected_users = set()
+
+        # From batch result format
+        if 'users' in permissions_result:
+            for user in permissions_result['users']:
+                if isinstance(user, dict):
+                    affected_users.add(user.get('target'))
+                else:
+                    affected_users.add(user)
+
+        # From legacy result format
+        if 'usernames' in permissions_result:
+            affected_users.update(permissions_result['usernames'])
+
+        payload = {
+            'event': 'collection_shared',
+            'collection_id': collection.id,
+            'collection': {
+                'id': collection.id,
+                'name': collection.name,
+                'display_name': collection.display_name,
+                'description': collection.description,
+                'created_by': collection.created_by,
+                'document_count': collection.document_count
+            },
+            'shared_by': shared_by,
+            'affected_users': list(affected_users)
+        }
+
+        # Emit to all subscribed users who might be affected
+        for username in _get_queue_subscriber_usernames():
+            # Send to the user who shared (for confirmation)
+            # and to all affected users (so they see the collection)
+            if username == shared_by or username in affected_users:
+                socketio.emit('rag:collection_shared', payload, room=_queue_room(username))
+
+        logger.info(f"[RAG Socket] Emitted collection_shared for collection {collection.id} to {len(affected_users)} users")
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting collection shared: {e}")

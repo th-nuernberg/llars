@@ -291,6 +291,13 @@
                 </div>
               </template>
 
+              <template v-slot:item.created_by="{ item }">
+                <v-chip size="small" variant="tonal" color="grey">
+                  <LIcon start size="small">mdi-account</LIcon>
+                  {{ item.created_by || 'Unbekannt' }}
+                </v-chip>
+              </template>
+
               <template v-slot:item.document_count="{ item }">
                 <v-chip size="small" variant="tonal" :color="item.document_count > 0 ? 'success' : 'grey'">
                   {{ item.document_count }} Dokumente
@@ -1055,6 +1062,13 @@ function setupWebSocket() {
       await fetchStats();
     });
 
+    // Real-time updates when a collection is shared with the current user
+    socket.on('rag:collection_shared', async (data) => {
+      console.log('[RAG] Collection geteilt:', data.collection?.name, '- von:', data.shared_by);
+      // Refresh collections to show newly shared collections
+      await fetchCollections();
+    });
+
     if (socket.connected) {
       socket.emit('rag:subscribe_queue');
       console.log('[RAG] WebSocket subscribed');
@@ -1075,6 +1089,7 @@ function cleanupWebSocket() {
     socket.off('rag:document_processed');
     socket.off('rag:document_progress');
     socket.off('rag:document_uploaded');
+    socket.off('rag:collection_shared');
     socket.emit('rag:unsubscribe_queue');
     console.log('[RAG] WebSocket unsubscribed');
   }

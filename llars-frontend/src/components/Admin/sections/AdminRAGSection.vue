@@ -208,13 +208,17 @@
               :items="filteredDocuments"
               :loading="loadingDocuments"
               :items-per-page="10"
+              hover
+              @click:row="(event, { item }) => openDocumentViewer(item)"
+              class="cursor-pointer"
             >
               <template v-slot:item.title="{ item }">
                 <div class="d-flex align-center">
                   <LIcon :color="getFileTypeColor(item.mime_type)" class="mr-2">
                     {{ getFileTypeIcon(item.mime_type) }}
                   </LIcon>
-                  <span class="font-weight-medium">{{ item.title || item.filename }}</span>
+                  <span class="font-weight-medium text-primary">{{ item.title || item.filename }}</span>
+                  <LIcon size="small" class="ml-1" color="grey">mdi-open-in-new</LIcon>
                 </div>
               </template>
 
@@ -238,21 +242,27 @@
                   variant="text"
                   tooltip="Ansehen"
                   class="mr-1"
-                  @click="openDocumentViewer(item)"
+                  @click.stop="openDocumentViewer(item)"
+                />
+                <LIconBtn
+                  icon="mdi-information-outline"
+                  variant="text"
+                  tooltip="Details"
+                  class="mr-1"
+                  @click.stop="openDocumentPreview(item)"
                 />
                 <LIconBtn
                   icon="mdi-download"
                   variant="text"
                   tooltip="Herunterladen"
                   class="mr-1"
-                  :href="`/api/rag/documents/${item.id}/download`"
-                  target="_blank"
+                  @click.stop="downloadDocument(item)"
                 />
                 <LIconBtn
                   icon="mdi-delete"
                   variant="danger"
-                  tooltip="Löschen"
-                  @click="confirmDeleteDocument(item)"
+                  tooltip="Loeschen"
+                  @click.stop="confirmDeleteDocument(item)"
                 />
               </template>
             </v-data-table>
@@ -629,7 +639,7 @@
               :loading="loadingCollectionDocs"
               :items-per-page="10"
               hover
-              @click:row="(event, { item }) => openDocumentPreview(item)"
+              @click:row="(event, { item }) => openFilePreview(item)"
               class="cursor-pointer elevation-1"
             >
               <template v-slot:item.filename="{ item }">
@@ -690,9 +700,25 @@
               </template>
 
               <template v-slot:item.actions="{ item }">
-                <LActionGroup
-                  :actions="['view', 'download']"
-                  @action="(key) => handleDocumentDetailAction(key, item)"
+                <LIconBtn
+                  icon="mdi-eye"
+                  variant="text"
+                  tooltip="Ansehen"
+                  class="mr-1"
+                  @click.stop="openFilePreview(item)"
+                />
+                <LIconBtn
+                  icon="mdi-information-outline"
+                  variant="text"
+                  tooltip="Details"
+                  class="mr-1"
+                  @click.stop="openDocumentPreview(item)"
+                />
+                <LIconBtn
+                  icon="mdi-download"
+                  variant="text"
+                  tooltip="Herunterladen"
+                  @click.stop="downloadDocument(item)"
                 />
               </template>
 
@@ -718,6 +744,14 @@
       @download="downloadDocument"
       @delete="handleDeleteFromViewer"
     />
+
+    <!-- File Preview Dialog (direct PDF/image viewing) -->
+    <FilePreviewDialog
+      v-model="filePreviewDialog"
+      :document="filePreviewDocument"
+      @download="downloadDocument"
+      @showDetails="showDocumentDetails"
+    />
   </div>
 </template>
 
@@ -729,6 +763,7 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useAuth } from '@/composables/useAuth';
 import { getSocket } from '@/services/socketService';
 import DocumentViewer from '@/components/RAG/DocumentViewer.vue';
+import FilePreviewDialog from '@/components/RAG/FilePreviewDialog.vue';
 import CollectionShareDialog from '@/components/RAG/CollectionShareDialog.vue';
 import {
   useRAGStats,
@@ -832,6 +867,10 @@ const {
 // Document Preview Dialog
 const documentPreviewDialog = ref(false);
 const previewDocument = ref(null);
+
+// File Preview Dialog (direct PDF/image viewing)
+const filePreviewDialog = ref(false);
+const filePreviewDocument = ref(null);
 
 // Computed property to transform previewDocument for DocumentViewer format
 const previewDocumentForViewer = computed(() => {
@@ -942,6 +981,24 @@ const openDocumentPreview = (doc) => {
   documentPreviewDialog.value = true;
 };
 
+// Open file preview (direct PDF/image viewing)
+const openFilePreview = (doc) => {
+  filePreviewDocument.value = doc;
+  filePreviewDialog.value = true;
+};
+
+// Open document viewer (shows file in popup) - called from table click
+const openDocumentViewer = (doc) => {
+  openFilePreview(doc);
+};
+
+// Show details from file preview (switch to detail viewer)
+const showDocumentDetails = (doc) => {
+  filePreviewDialog.value = false;
+  previewDocument.value = doc;
+  documentPreviewDialog.value = true;
+};
+
 const openCollectionShareDialog = (collection) => {
   shareCollection.value = collection;
   collectionShareDialog.value = true;
@@ -1031,9 +1088,13 @@ const handleCollectionAction = (actionKey, item) => {
 };
 
 // Handle document detail action group clicks
-const handleDocumentDetailAction = (actionKey, item) => {
+const handleDocumentDetailAction = (actionKey, item, event) => {
+  if (event) event.stopPropagation();
   switch (actionKey) {
     case 'view':
+      openFilePreview(item);
+      break;
+    case 'details':
       openDocumentPreview(item);
       break;
     case 'download':

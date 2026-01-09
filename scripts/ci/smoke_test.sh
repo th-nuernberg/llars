@@ -19,7 +19,8 @@ assert_status() {
   shift
   local expected=("$@");
   local code
-  code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+  # Follow redirects (-L) to get final status code
+  code=$(curl -sL -o /dev/null -w "%{http_code}" "$url" || true)
 
   for exp in "${expected[@]}"; do
     if [ "$code" = "$exp" ]; then
@@ -37,7 +38,8 @@ assert_status_with_api_key() {
   shift
   local expected=("$@");
   local code
-  code=$(curl -s -o /dev/null -w "%{http_code}" -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$url" || true)
+  # Follow redirects (-L) to get final status code
+  code=$(curl -sL -o /dev/null -w "%{http_code}" -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$url" || true)
 
   for exp in "${expected[@]}"; do
     if [ "$code" = "$exp" ]; then

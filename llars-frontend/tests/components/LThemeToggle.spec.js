@@ -242,11 +242,12 @@ describe('LThemeToggle', () => {
   // ==================== Theme Selection Tests ====================
 
   describe('Theme Selection', () => {
+    // Note: themeOptions order is: system (0), light (1), dark (2)
     it('COMP_THM_021: clicking light option calls setThemePreference', async () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      await options[0].trigger('click')
+      await options[1].trigger('click')
 
       expect(mockSetThemePreference).toHaveBeenCalledWith('light')
     })
@@ -255,7 +256,7 @@ describe('LThemeToggle', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      await options[1].trigger('click')
+      await options[2].trigger('click')
 
       expect(mockSetThemePreference).toHaveBeenCalledWith('dark')
     })
@@ -265,7 +266,7 @@ describe('LThemeToggle', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      await options[2].trigger('click')
+      await options[0].trigger('click')
 
       expect(mockSetThemePreference).toHaveBeenCalledWith('system')
     })
@@ -275,7 +276,7 @@ describe('LThemeToggle', () => {
       const wrapper = mountLThemeToggle()
       const options = wrapper.findAll('.theme-option')
 
-      await options[1].trigger('click')
+      await options[2].trigger('click')
 
       expect(mockSetThemePreference).toHaveBeenCalledWith('dark')
     })

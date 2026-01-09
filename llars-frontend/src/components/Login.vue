@@ -1,7 +1,7 @@
 <template>
   <div class="login-page" :class="{ 'dark-mode': isDarkMode, 'is-mobile': isMobile, 'is-ios': isIOS }">
     <div class="paint-strokes">
-      <div v-for="n in 8" :key="n"></div>
+      <div v-for="n in 10" :key="n"></div>
     </div>
 
     <div class="login-container">
@@ -41,14 +41,51 @@
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-lock"
-              :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
               :type="showPassword ? 'text' : 'password'"
-              @click:append-inner="showPassword = !showPassword"
               :disabled="isLogging"
               @keyup.enter="handleLogin"
               class="login-field"
               hide-details="auto"
-            />
+            >
+              <template #append-inner>
+                <div
+                  class="password-eye-toggle"
+                  :class="{ 'is-open': showPassword }"
+                  @click="showPassword = !showPassword"
+                >
+                  <svg
+                    class="password-eye-svg"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <!-- Eye shape that morphs -->
+                    <path
+                      class="password-eye-shape"
+                      :d="showPassword
+                        ? 'M21 12c-2.4 4-5.4 6-9 6c-3.6 0-6.6-2-9-6c2.4-4 5.4-6 9-6c3.6 0 6.6 2 9 6'
+                        : 'M21 12c0 0-4 0-9 0c-5 0-9 0-9 0c0 0 4 0 9 0c5 0 9 0 9 0'"
+                    />
+                    <!-- Pupil that appears -->
+                    <circle
+                      class="password-eye-pupil"
+                      cx="12"
+                      cy="12"
+                      r="2"
+                    />
+                    <!-- Strike line for closed eye -->
+                    <path
+                      class="password-eye-strike"
+                      d="M3 3l18 18"
+                    />
+                  </svg>
+                </div>
+              </template>
+            </v-text-field>
 
             <LBtn
               variant="primary"
@@ -136,7 +173,7 @@ const devPassword = import.meta.env.VITE_DEV_PASSWORD || 'admin123';
 const devUsers = [
   { username: 'admin', password: devPassword, label: 'Admin', icon: 'mdi-shield-crown', color: 'error' },
   { username: 'researcher', password: devPassword, label: 'Researcher', icon: 'mdi-flask', color: 'primary' },
-  { username: 'evaluator', password: devPassword, label: 'Evaluator', icon: 'mdi-eye', color: 'secondary' },
+  { username: 'evaluator', password: devPassword, label: 'Evaluator', icon: 'mdi-clipboard-check-outline', color: 'secondary' },
   { username: 'chatbot_manager', password: devPassword, label: 'Chatbot Manager', icon: 'mdi-robot', color: 'info' }
 ];
 
@@ -287,6 +324,53 @@ async function quickLogin(user) {
   border-radius: var(--llars-radius-sm);
 }
 
+/* Animated Password Eye Toggle */
+.password-eye-toggle {
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.password-eye-toggle:hover {
+  opacity: 1;
+}
+
+.password-eye-svg {
+  width: 20px;
+  height: 20px;
+}
+
+.password-eye-shape {
+  transition: d 0.3s ease;
+}
+
+.password-eye-pupil {
+  opacity: 0;
+  transform: scale(0);
+  transform-origin: center;
+  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+}
+
+.password-eye-strike {
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+/* Open state */
+.password-eye-toggle.is-open .password-eye-pupil {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.password-eye-toggle.is-open .password-eye-strike {
+  opacity: 0;
+}
+
 .login-button {
   margin-top: 4px;
 }
@@ -345,96 +429,118 @@ async function quickLogin(user) {
 
 .paint-strokes div {
   position: absolute;
-  filter: blur(60px);
-  opacity: 0.4;
+  filter: blur(55px);
+  opacity: 0.55;
 }
 
 /* Top Left - Sage Green */
 .paint-strokes div:nth-child(1) {
-  background: rgba(176, 202, 151, 0.6);
-  top: -20%;
-  left: -15%;
-  width: 50%;
-  height: 45%;
+  background: rgba(176, 202, 151, 0.7);
+  top: -24%;
+  left: -22%;
+  width: 62%;
+  height: 56%;
   border-radius: 65% 35% 70% 30% / 55% 45% 60% 40%;
-  animation: floatStroke1 35s ease-in-out infinite;
+  animation: floatStroke1 26s ease-in-out infinite;
 }
 
 /* Top Right - Golden Beige */
 .paint-strokes div:nth-child(2) {
-  background: rgba(209, 188, 138, 0.5);
-  top: -15%;
-  right: -20%;
-  width: 55%;
-  height: 50%;
+  background: rgba(209, 188, 138, 0.6);
+  top: -22%;
+  right: -24%;
+  width: 66%;
+  height: 60%;
   border-radius: 40% 60% 55% 45% / 60% 40% 50% 50%;
-  animation: floatStroke2 40s ease-in-out infinite;
+  animation: floatStroke2 30s ease-in-out infinite;
 }
 
 /* Middle Left - Soft Teal */
 .paint-strokes div:nth-child(3) {
-  background: rgba(136, 196, 200, 0.45);
-  top: 25%;
-  left: -25%;
-  width: 45%;
-  height: 40%;
+  background: rgba(136, 196, 200, 0.55);
+  top: 12%;
+  left: -26%;
+  width: 56%;
+  height: 50%;
   border-radius: 55% 45% 60% 40% / 45% 55% 65% 35%;
-  animation: floatStroke3 38s ease-in-out infinite;
+  animation: floatStroke3 28s ease-in-out infinite;
 }
 
 /* Middle Right - Soft Gold */
 .paint-strokes div:nth-child(4) {
-  background: rgba(232, 200, 122, 0.4);
-  top: 20%;
-  right: -22%;
-  width: 42%;
-  height: 45%;
+  background: rgba(232, 200, 122, 0.5);
+  top: 12%;
+  right: -26%;
+  width: 54%;
+  height: 56%;
   border-radius: 60% 40% 65% 35% / 35% 65% 45% 55%;
-  animation: floatStroke4 42s ease-in-out infinite;
+  animation: floatStroke4 32s ease-in-out infinite;
 }
 
 /* Bottom Left - Soft Mint */
 .paint-strokes div:nth-child(5) {
-  background: rgba(152, 212, 187, 0.5);
-  bottom: -18%;
-  left: -18%;
-  width: 50%;
-  height: 45%;
+  background: rgba(152, 212, 187, 0.6);
+  bottom: -24%;
+  left: -22%;
+  width: 62%;
+  height: 56%;
   border-radius: 70% 30% 50% 50% / 50% 50% 70% 30%;
-  animation: floatStroke5 36s ease-in-out infinite;
+  animation: floatStroke5 27s ease-in-out infinite;
 }
 
 /* Bottom Right - Soft Blue */
 .paint-strokes div:nth-child(6) {
-  background: rgba(168, 197, 226, 0.45);
-  bottom: -15%;
-  right: -20%;
-  width: 48%;
-  height: 50%;
+  background: rgba(168, 197, 226, 0.55);
+  bottom: -22%;
+  right: -24%;
+  width: 60%;
+  height: 62%;
   border-radius: 45% 55% 40% 60% / 40% 60% 70% 30%;
-  animation: floatStroke6 44s ease-in-out infinite;
+  animation: floatStroke6 34s ease-in-out infinite;
 }
 
 /* Top Center - Soft Coral accent */
 .paint-strokes div:nth-child(7) {
-  background: rgba(232, 160, 135, 0.25);
-  top: -12%;
-  left: 40%;
-  width: 35%;
-  height: 30%;
+  background: rgba(232, 160, 135, 0.45);
+  top: -22%;
+  left: 4%;
+  width: 45%;
+  height: 42%;
   border-radius: 35% 65% 45% 55% / 55% 45% 60% 40%;
-  animation: floatStroke7 32s ease-in-out infinite;
+  animation: floatStroke7 24s ease-in-out infinite;
 }
 
 /* Bottom Center - Purple accent */
 .paint-strokes div:nth-child(8) {
-  background: rgba(201, 168, 226, 0.2);
-  bottom: -10%;
-  left: 35%;
-  width: 40%;
-  height: 35%;
+  background: rgba(201, 168, 226, 0.4);
+  bottom: -22%;
+  left: 52%;
+  width: 50%;
+  height: 45%;
   border-radius: 45% 55% 35% 65% / 65% 35% 55% 45%;
-  animation: floatStroke8 46s ease-in-out infinite;
+  animation: floatStroke8 36s ease-in-out infinite;
+}
+
+/* Top Middle - Wide warm wash */
+.paint-strokes div:nth-child(9) {
+  background: rgba(235, 206, 148, 0.45);
+  top: -30%;
+  left: 14%;
+  width: 72%;
+  height: 52%;
+  border-radius: 50% 50% 60% 40% / 55% 45% 50% 50%;
+  animation: floatStroke9 33s ease-in-out infinite;
+}
+
+/* Bottom Middle - Wide cool wash */
+.paint-strokes div:nth-child(10) {
+  background: rgba(180, 210, 240, 0.45);
+  bottom: -32%;
+  left: 10%;
+  width: 78%;
+  height: 58%;
+  border-radius: 55% 45% 50% 50% / 60% 40% 55% 45%;
+  animation: floatStroke10 38s ease-in-out infinite;
 }
 
 /* ========================================
@@ -476,6 +582,14 @@ async function quickLogin(user) {
 
 .login-page.dark-mode .paint-strokes div:nth-child(8) {
   background: rgba(140, 120, 170, 0.65);
+}
+
+.login-page.dark-mode .paint-strokes div:nth-child(9) {
+  background: rgba(150, 120, 70, 0.7);
+}
+
+.login-page.dark-mode .paint-strokes div:nth-child(10) {
+  background: rgba(95, 125, 165, 0.65);
 }
 
 /* Animationen - sanfte Bewegungen */
@@ -525,6 +639,18 @@ async function quickLogin(user) {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33% { transform: translate(-5%, -4%) scale(1.02); }
   66% { transform: translate(4%, 5%) scale(1.04); }
+}
+
+@keyframes floatStroke9 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, 3%) scale(1.03); }
+  66% { transform: translate(-3%, 2%) scale(0.99); }
+}
+
+@keyframes floatStroke10 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-3%, -4%) scale(1.02); }
+  66% { transform: translate(4%, 3%) scale(1.03); }
 }
 
 /* ========================================
@@ -637,7 +763,7 @@ async function quickLogin(user) {
   /* Reduce paint strokes on mobile for performance */
   .paint-strokes div {
     filter: blur(40px);
-    opacity: 0.3;
+    opacity: 0.35;
   }
 }
 

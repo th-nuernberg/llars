@@ -208,7 +208,7 @@ describe('useAppTheme Composable', () => {
 
       const systemOption = wrapper.vm.themeOptions.find(o => o.value === 'system')
 
-      expect(systemOption.icon).toBe('mdi-brightness-auto')
+      expect(systemOption.icon).toBe('llars:system-theme')
     })
 
     it('THEME_010: light option has correct icon', () => {
@@ -219,7 +219,7 @@ describe('useAppTheme Composable', () => {
 
       const lightOption = wrapper.vm.themeOptions.find(o => o.value === 'light')
 
-      expect(lightOption.icon).toBe('mdi-white-balance-sunny')
+      expect(lightOption.icon).toBe('llars:sun')
     })
 
     it('THEME_011: dark option has correct icon', () => {
@@ -230,7 +230,7 @@ describe('useAppTheme Composable', () => {
 
       const darkOption = wrapper.vm.themeOptions.find(o => o.value === 'dark')
 
-      expect(darkOption.icon).toBe('mdi-moon-waning-crescent')
+      expect(darkOption.icon).toBe('llars:moon')
     })
   })
 
@@ -391,7 +391,7 @@ describe('useAppTheme Composable', () => {
       wrapper.vm.setThemePreference('system')
 
       expect(wrapper.vm.currentThemeOption.value).toBe('system')
-      expect(wrapper.vm.currentThemeOption.icon).toBe('mdi-brightness-auto')
+      expect(wrapper.vm.currentThemeOption.icon).toBe('llars:system-theme')
     })
 
     it('THEME_024: currentThemeOption returns correct option for light', () => {
@@ -403,7 +403,7 @@ describe('useAppTheme Composable', () => {
       wrapper.vm.setThemePreference('light')
 
       expect(wrapper.vm.currentThemeOption.value).toBe('light')
-      expect(wrapper.vm.currentThemeOption.icon).toBe('mdi-white-balance-sunny')
+      expect(wrapper.vm.currentThemeOption.icon).toBe('llars:sun')
     })
 
     it('THEME_025: currentThemeOption returns correct option for dark', () => {
@@ -415,7 +415,7 @@ describe('useAppTheme Composable', () => {
       wrapper.vm.setThemePreference('dark')
 
       expect(wrapper.vm.currentThemeOption.value).toBe('dark')
-      expect(wrapper.vm.currentThemeOption.icon).toBe('mdi-moon-waning-crescent')
+      expect(wrapper.vm.currentThemeOption.icon).toBe('llars:moon')
     })
 
     it('THEME_026: currentThemeOption updates reactively', async () => {

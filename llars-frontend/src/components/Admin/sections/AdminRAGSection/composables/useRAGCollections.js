@@ -37,7 +37,7 @@ export function useRAGCollections() {
 
   const collectionDocHeaders = [
     { title: 'Dateiname', key: 'filename', sortable: true },
-    { title: 'Größe', key: 'file_size', sortable: true },
+    { title: 'Größe', key: 'file_size_bytes', sortable: true },
     { title: 'Status', key: 'status', sortable: true },
     { title: 'Chunks', key: 'chunk_count', sortable: true },
     { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }

@@ -216,7 +216,7 @@ const taskTypes = {
   mail_rating: { name: 'Mail Rating', icon: 'mdi-email-check', color: 'green' },
   comparison: { name: 'Comparison', icon: 'mdi-compare', color: 'purple' },
   authenticity: { name: 'Authenticity', icon: 'mdi-shield-check', color: 'orange' },
-  judge: { name: 'LLM-as-Judge', icon: 'mdi-gavel', color: 'teal' },
+  judge: { name: 'Chatbot Arena', icon: 'mdi-sword-cross', color: 'teal' },
   text_classification: { name: 'Text Classification', icon: 'mdi-label-multiple', color: 'indigo' },
   text_rating: { name: 'Text Rating', icon: 'mdi-text-box-check', color: 'cyan' }
 }

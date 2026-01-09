@@ -152,6 +152,12 @@ class LLMAITaskRunner:
                 LLMAITaskRunner._run_rating(model_id, scenario_thread_ids, scenario.id)
             elif function_name == "authenticity":
                 LLMAITaskRunner._run_authenticity(model_id, scenario_thread_ids, scenario.id)
+            elif function_name == "mail_rating":
+                LLMAITaskRunner._run_mail_rating(model_id, scenario_thread_ids, scenario.id)
+            elif function_name == "text_classification":
+                LLMAITaskRunner._run_text_classification(model_id, scenario_thread_ids, scenario.id, scenario)
+            elif function_name == "comparison":
+                LLMAITaskRunner._run_comparison(model_id, scenario_thread_ids, scenario.id)
             else:
                 logger.info(
                     "[LLM AI Runner] Task type '%s' not supported for model %s",
@@ -512,6 +518,298 @@ class LLMAITaskRunner:
                 logger.warning("[LLM AI Runner] Authenticity failed for thread %s: %s", thread_id, exc)
 
     @staticmethod
+    def _run_mail_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
+        """Rate entire email conversations on a scale of 1-5."""
+        client = LLMClientFactory.get_client_for_model(model_id)
+
+        for thread_id in thread_ids:
+            try:
+                existing = LLMTaskResult.query.filter_by(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="mail_rating",
+                ).first()
+                if existing and existing.payload_json:
+                    continue
+
+                thread = EmailThread.query.filter_by(thread_id=thread_id).first()
+                if not thread:
+                    continue
+
+                messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
+                if not messages:
+                    continue
+
+                message_lines = [f"{msg.sender}: {msg.content}" for msg in messages]
+
+                system_prompt = (
+                    "Du bist ein Experte für die Bewertung von E-Mail-Konversationen. "
+                    "Bewerte die Gesamtqualität der Beratungskonversation auf einer Skala von 1 bis 5. "
+                    "Berücksichtige dabei: Empathie, Fachlichkeit, Verständlichkeit, Hilfsbereitschaft und Lösungsorientierung. "
+                    "Antworte ausschließlich im JSON-Format."
+                )
+                user_prompt = (
+                    "Bewerte die folgende E-Mail-Konversation.\n"
+                    "Gib JSON im Format:\n"
+                    "{\n"
+                    '  "rating": 1-5,\n'
+                    '  "reasoning": "Kurze Begründung für die Bewertung"\n'
+                    "}\n\n"
+                    f"Betreff: {thread.subject or 'Kein Betreff'}\n\n"
+                    "Konversation:\n"
+                    + "\n".join(message_lines)
+                )
+
+                raw_response = None
+                payload, raw_response = LLMAITaskRunner._request_json(
+                    client,
+                    model_id,
+                    system_prompt,
+                    user_prompt,
+                    max_tokens=500,
+                    trace={
+                        "task": "mail_rating",
+                        "scenario_id": scenario_id,
+                        "thread_id": thread_id,
+                        "model_id": model_id,
+                    },
+                )
+                rating_data = LLMAITaskRunner._validate_mail_rating_payload(payload)
+                if rating_data is None:
+                    raise ValueError("Invalid mail_rating payload")
+
+                if existing:
+                    existing.payload_json = rating_data
+                    existing.raw_response = raw_response
+                    existing.error = None
+                    db.session.add(existing)
+                else:
+                    db.session.add(LLMTaskResult(
+                        scenario_id=scenario_id,
+                        thread_id=thread_id,
+                        model_id=model_id,
+                        task_type="mail_rating",
+                        payload_json=rating_data,
+                        raw_response=raw_response,
+                        error=None,
+                    ))
+                db.session.commit()
+            except LLMResponseError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="mail_rating",
+                    error=str(exc),
+                    raw_response=exc.raw_response,
+                )
+            except Exception as exc:
+                db.session.rollback()
+                logger.warning("[LLM AI Runner] Mail rating failed for thread %s: %s", thread_id, exc)
+
+    @staticmethod
+    def _run_text_classification(
+        model_id: str,
+        thread_ids: Iterable[int],
+        scenario_id: int,
+        scenario: RatingScenarios
+    ) -> None:
+        """Classify texts into custom labels defined in scenario config."""
+        client = LLMClientFactory.get_client_for_model(model_id)
+
+        # Get custom labels from scenario config
+        config = scenario.config_json if isinstance(scenario.config_json, dict) else {}
+        custom_labels = config.get("classification_labels", ["positive", "negative", "neutral"])
+        label_descriptions = config.get("label_descriptions", {})
+
+        labels_text = ", ".join(f'"{label}"' for label in custom_labels)
+        descriptions_text = ""
+        if label_descriptions:
+            descriptions_text = "\n".join(
+                f"- {label}: {desc}" for label, desc in label_descriptions.items()
+            )
+            descriptions_text = f"\n\nLabel-Beschreibungen:\n{descriptions_text}"
+
+        for thread_id in thread_ids:
+            try:
+                existing = LLMTaskResult.query.filter_by(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="text_classification",
+                ).first()
+                if existing and existing.payload_json:
+                    continue
+
+                messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
+                if not messages:
+                    continue
+
+                # Combine all messages as text to classify
+                text_content = "\n".join(f"{msg.sender}: {msg.content}" for msg in messages)
+
+                system_prompt = (
+                    "Du bist ein Experte für Textklassifikation. "
+                    "Klassifiziere den folgenden Text in eine der vorgegebenen Kategorien. "
+                    "Antworte ausschließlich im JSON-Format."
+                )
+                user_prompt = (
+                    f"Klassifiziere den folgenden Text.\n"
+                    f"Erlaubte Labels: {labels_text}{descriptions_text}\n\n"
+                    "Gib JSON im Format:\n"
+                    "{\n"
+                    f'  "label": "<eines der Labels: {labels_text}>",\n'
+                    '  "confidence": 1-5,\n'
+                    '  "reasoning": "Kurze Begründung"\n'
+                    "}\n\n"
+                    f"Text:\n{text_content}"
+                )
+
+                raw_response = None
+                payload, raw_response = LLMAITaskRunner._request_json(
+                    client,
+                    model_id,
+                    system_prompt,
+                    user_prompt,
+                    max_tokens=500,
+                    trace={
+                        "task": "text_classification",
+                        "scenario_id": scenario_id,
+                        "thread_id": thread_id,
+                        "model_id": model_id,
+                    },
+                )
+                classification_data = LLMAITaskRunner._validate_classification_payload(payload, custom_labels)
+                if classification_data is None:
+                    raise ValueError("Invalid text_classification payload")
+
+                if existing:
+                    existing.payload_json = classification_data
+                    existing.raw_response = raw_response
+                    existing.error = None
+                    db.session.add(existing)
+                else:
+                    db.session.add(LLMTaskResult(
+                        scenario_id=scenario_id,
+                        thread_id=thread_id,
+                        model_id=model_id,
+                        task_type="text_classification",
+                        payload_json=classification_data,
+                        raw_response=raw_response,
+                        error=None,
+                    ))
+                db.session.commit()
+            except LLMResponseError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="text_classification",
+                    error=str(exc),
+                    raw_response=exc.raw_response,
+                )
+            except Exception as exc:
+                db.session.rollback()
+                logger.warning("[LLM AI Runner] Text classification failed for thread %s: %s", thread_id, exc)
+
+    @staticmethod
+    def _run_comparison(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
+        """Compare two responses/texts and choose the better one."""
+        client = LLMClientFactory.get_client_for_model(model_id)
+
+        for thread_id in thread_ids:
+            try:
+                existing = LLMTaskResult.query.filter_by(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="comparison",
+                ).first()
+                if existing and existing.payload_json:
+                    continue
+
+                thread = EmailThread.query.filter_by(thread_id=thread_id).first()
+                if not thread:
+                    continue
+
+                messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
+                if len(messages) < 2:
+                    continue
+
+                # Assume first two messages are the two texts to compare
+                # Or use specific message structure for A/B comparison
+                text_a = messages[0].content if messages else ""
+                text_b = messages[1].content if len(messages) > 1 else ""
+
+                system_prompt = (
+                    "Du bist ein Experte für den Vergleich von Texten/Antworten. "
+                    "Vergleiche die beiden Texte und entscheide, welcher besser ist. "
+                    "Antworte ausschließlich im JSON-Format."
+                )
+                user_prompt = (
+                    "Vergleiche die folgenden zwei Texte/Antworten.\n\n"
+                    f"Text A:\n{text_a}\n\n"
+                    f"Text B:\n{text_b}\n\n"
+                    "Gib JSON im Format:\n"
+                    "{\n"
+                    '  "winner": "A" | "B" | "tie",\n'
+                    '  "confidence": 1-5,\n'
+                    '  "reasoning": "Begründung für die Entscheidung"\n'
+                    "}"
+                )
+
+                raw_response = None
+                payload, raw_response = LLMAITaskRunner._request_json(
+                    client,
+                    model_id,
+                    system_prompt,
+                    user_prompt,
+                    max_tokens=500,
+                    trace={
+                        "task": "comparison",
+                        "scenario_id": scenario_id,
+                        "thread_id": thread_id,
+                        "model_id": model_id,
+                    },
+                )
+                comparison_data = LLMAITaskRunner._validate_comparison_payload(payload)
+                if comparison_data is None:
+                    raise ValueError("Invalid comparison payload")
+
+                if existing:
+                    existing.payload_json = comparison_data
+                    existing.raw_response = raw_response
+                    existing.error = None
+                    db.session.add(existing)
+                else:
+                    db.session.add(LLMTaskResult(
+                        scenario_id=scenario_id,
+                        thread_id=thread_id,
+                        model_id=model_id,
+                        task_type="comparison",
+                        payload_json=comparison_data,
+                        raw_response=raw_response,
+                        error=None,
+                    ))
+                db.session.commit()
+            except LLMResponseError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="comparison",
+                    error=str(exc),
+                    raw_response=exc.raw_response,
+                )
+            except Exception as exc:
+                db.session.rollback()
+                logger.warning("[LLM AI Runner] Comparison failed for thread %s: %s", thread_id, exc)
+
+    @staticmethod
     def _request_json(
         client,
         model_id: str,
@@ -668,3 +966,85 @@ class LLMAITaskRunner:
         if not isinstance(confidence, int) or confidence < 1 or confidence > 5:
             return None
         return {"vote": vote, "confidence": confidence}
+
+    @staticmethod
+    def _validate_mail_rating_payload(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Validate mail_rating response: rating (1-5) and optional reasoning."""
+        if not isinstance(payload, dict):
+            return None
+        rating = payload.get("rating")
+        reasoning = payload.get("reasoning", "")
+
+        # Handle string ratings
+        if isinstance(rating, str) and rating.strip().isdigit():
+            rating = int(rating.strip())
+
+        # Validate rating is 1-5
+        if not isinstance(rating, int) or rating < 1 or rating > 5:
+            return None
+
+        # Reasoning is optional but should be a string if present
+        if reasoning and not isinstance(reasoning, str):
+            reasoning = str(reasoning)
+
+        return {"rating": rating, "reasoning": reasoning or ""}
+
+    @staticmethod
+    def _validate_classification_payload(
+        payload: Dict[str, Any],
+        allowed_labels: List[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Validate text_classification response with custom labels."""
+        if not isinstance(payload, dict):
+            return None
+        label = payload.get("label")
+        confidence = payload.get("confidence", 3)
+        reasoning = payload.get("reasoning", "")
+
+        # Normalize label
+        if isinstance(label, str):
+            label = label.strip().lower()
+            # Try to match against allowed labels (case-insensitive)
+            for allowed in allowed_labels:
+                if allowed.lower() == label:
+                    label = allowed
+                    break
+
+        # Validate label is in allowed list
+        if label not in allowed_labels and label.lower() not in [l.lower() for l in allowed_labels]:
+            return None
+
+        # Validate confidence
+        if isinstance(confidence, str) and confidence.strip().isdigit():
+            confidence = int(confidence.strip())
+        if not isinstance(confidence, int) or confidence < 1 or confidence > 5:
+            confidence = 3  # Default if invalid
+
+        return {"label": label, "confidence": confidence, "reasoning": reasoning or ""}
+
+    @staticmethod
+    def _validate_comparison_payload(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Validate comparison response: winner (A/B/tie) and confidence."""
+        if not isinstance(payload, dict):
+            return None
+        winner = payload.get("winner")
+        confidence = payload.get("confidence", 3)
+        reasoning = payload.get("reasoning", "")
+
+        # Normalize winner
+        if isinstance(winner, str):
+            winner = winner.strip().upper()
+        if winner not in {"A", "B", "TIE"}:
+            # Try lowercase
+            if winner and winner.lower() in {"a", "b", "tie"}:
+                winner = winner.upper() if winner.lower() != "tie" else "tie"
+            else:
+                return None
+
+        # Validate confidence
+        if isinstance(confidence, str) and confidence.strip().isdigit():
+            confidence = int(confidence.strip())
+        if not isinstance(confidence, int) or confidence < 1 or confidence > 5:
+            confidence = 3
+
+        return {"winner": winner, "confidence": confidence, "reasoning": reasoning or ""}

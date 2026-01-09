@@ -102,7 +102,7 @@
             size="large"
             :loading="analyzing"
             :disabled="!canAnalyze"
-            prepend-icon="mdi-auto-fix"
+            prepend-icon="wand"
             block
             @click="runAnalysis"
           >

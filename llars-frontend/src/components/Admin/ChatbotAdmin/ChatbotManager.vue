@@ -17,11 +17,11 @@
           <div class="d-flex" :class="isMobile ? 'justify-space-between w-100' : 'flex-wrap ga-2'">
             <LBtn
               variant="secondary"
-              :prepend-icon="isMobile ? undefined : 'mdi-wizard-hat'"
+              :prepend-icon="isMobile ? undefined : 'wand'"
               :size="isMobile ? 'small' : 'default'"
               @click="openWizard()"
             >
-              <LIcon v-if="isMobile" size="18" class="mr-1">mdi-wizard-hat</LIcon>
+              <LIcon v-if="isMobile" size="18" class="mr-1">wand</LIcon>
               {{ isMobile ? 'Wizard' : 'Builder Wizard' }}
             </LBtn>
             <LBtn

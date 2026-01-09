@@ -49,7 +49,7 @@
         <v-row class="mt-8" justify="center">
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
-              <LIcon size="32" color="primary" class="mb-2">mdi-auto-fix</LIcon>
+              <LIcon size="32" color="primary" class="mb-2">wand</LIcon>
               <div class="text-body-1 font-weight-medium">Auto-Detection</div>
               <div class="text-caption text-medium-emphasis">
                 Erkennt OpenAI, LMSYS, CSV und mehr
@@ -67,7 +67,7 @@
           </v-col>
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
-              <LIcon size="32" color="success" class="mb-2">mdi-wizard-hat</LIcon>
+              <LIcon size="32" color="success" class="mb-2">wand</LIcon>
               <div class="text-body-1 font-weight-medium">Wizard-Flow</div>
               <div class="text-caption text-medium-emphasis">
                 Von Upload bis Evaluation in einem Flow

@@ -64,7 +64,7 @@
           size="small"
           :loading="loading"
           :disabled="loading"
-          prepend-icon="mdi-magic-staff"
+          prepend-icon="wand"
           @click="$emit('ai-analyze')"
         >
           KI analysieren lassen

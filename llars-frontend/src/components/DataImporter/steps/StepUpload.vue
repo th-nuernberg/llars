@@ -266,7 +266,7 @@ const groupedUploads = computed(() => {
 
 // Helpers
 const getFormatIcon = (format) => {
-  const icons = { openai: 'mdi-chat', lmsys: 'mdi-compare', jsonl: 'mdi-code-braces', csv: 'mdi-table', generic: 'mdi-auto-fix' }
+  const icons = { openai: 'mdi-chat', lmsys: 'mdi-compare', jsonl: 'mdi-code-braces', csv: 'mdi-table', generic: 'wand' }
   return icons[format] || 'mdi-file-document-outline'
 }
 

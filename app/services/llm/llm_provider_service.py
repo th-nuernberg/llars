@@ -208,6 +208,73 @@ class LLMProviderService:
         return decrypt_api_key(provider.api_key_encrypted)
 
     @staticmethod
+    def test_connection(
+        provider_type: str,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Test a provider connection without saving.
+
+        Args:
+            provider_type: Type of provider (openai, anthropic, ollama, etc.)
+            base_url: Base URL for the provider API
+            api_key: API key (optional for some providers like Ollama)
+            config: Additional configuration options
+
+        Returns:
+            Dict with 'success' bool and 'error' or 'message'
+        """
+        provider_type = (provider_type or "").lower().strip()
+        if not provider_type:
+            return {"success": False, "error": "provider_type is required"}
+
+        base_url = (base_url or "").rstrip("/")
+        config = config or {}
+        is_openai_compatible = provider_type in OPENAI_COMPATIBLE_TYPES
+
+        try:
+            if is_openai_compatible:
+                if not base_url:
+                    return {"success": False, "error": "base_url is required for OpenAI-compatible providers"}
+                headers = {}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                resp = requests.get(f"{base_url}/models", headers=headers, timeout=10)
+                if resp.status_code >= 400:
+                    return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                return {"success": True, "message": "Connection OK"}
+
+            if provider_type == "anthropic":
+                url = f"{base_url or 'https://api.anthropic.com'}/v1/models"
+                headers = {
+                    "x-api-key": api_key or "",
+                    "anthropic-version": config.get("api_version", "2023-06-01"),
+                }
+                resp = requests.get(url, headers=headers, timeout=10)
+                if resp.status_code >= 400:
+                    return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                return {"success": True, "message": "Connection OK"}
+
+            if provider_type == "gemini":
+                version = config.get("api_version", "v1beta")
+                url = f"{base_url or 'https://generativelanguage.googleapis.com'}/{version}/models"
+                resp = requests.get(url, params={"key": api_key or ""}, timeout=10)
+                if resp.status_code >= 400:
+                    return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                return {"success": True, "message": "Connection OK"}
+
+            return {"success": False, "error": "Provider type not supported for connection tests"}
+        except requests.exceptions.ConnectionError:
+            return {"success": False, "error": "Connection refused - is the server running?"}
+        except requests.exceptions.Timeout:
+            return {"success": False, "error": "Connection timed out"}
+        except Exception as exc:
+            logger.warning(f"[LLMProviderService] Connection test failed: {exc}")
+            return {"success": False, "error": str(exc)}
+
+    @staticmethod
     def test_provider(provider: LLMProvider) -> Dict[str, Any]:
         if not provider:
             raise ValueError("Provider not found")

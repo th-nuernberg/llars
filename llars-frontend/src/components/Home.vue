@@ -129,7 +129,7 @@
               @click="navigateTo(item.route)"
             >
               <div class="feature-icon">
-                <LIcon size="32" color="primary">{{ item.icon }}</LIcon>
+                <LIcon size="36" color="primary">{{ item.icon }}</LIcon>
               </div>
               <div class="feature-title">
                 <span v-if="item.emoji" class="feature-emoji">{{ item.emoji }}</span>
@@ -220,7 +220,6 @@ const allItems = ref([
     description: 'Ranking, Rating, Fake/Echt, Verlaufsbewertung & Gegenüberstellung',
     route: '/evaluation',
     icon: 'llars:evaluation',
-    emoji: '🧪',
     permissionsAny: [
       'feature:ranking:view',
       'feature:rating:view',
@@ -235,7 +234,6 @@ const allItems = ref([
     description: 'Daten importieren und KI-gestützt Evaluations-Szenarien erstellen',
     route: '/import',
     icon: 'llars:evaluation-assistant',
-    emoji: '📊',
     permission: 'data:import',
     category: 'rating',
     badge: 'Neu',
@@ -245,7 +243,7 @@ const allItems = ref([
     title: 'Chatbot',
     description: 'Interaktiver Chat mit LLars KI-Assistent',
     route: '/chat',
-    icon: 'mdi-chat-outline',
+    icon: 'llars:chatbot',
     permission: null,
     category: 'ai',
     badge: 'Alpha',
@@ -255,7 +253,7 @@ const allItems = ref([
     title: 'Prompt Engineering',
     description: 'Kollaboratives Entwerfen und Testen von Prompts',
     route: '/PromptEngineering',
-    icon: 'mdi-text-search',
+    icon: 'llars:prompt-engineering',
     permission: 'feature:prompt_engineering:view',
     category: 'research',
     badge: 'Beta',
@@ -275,7 +273,7 @@ const allItems = ref([
     title: 'LaTeX Collab',
     description: 'Overleaf-ähnlicher LaTeX-Editor mit PDF-Preview',
     route: '/LatexCollab',
-    icon: 'mdi-file-code-outline',
+    icon: 'llars:latex-doc',
     permission: 'feature:latex_collab:view',
     category: 'research',
     badge: 'Beta',
@@ -292,10 +290,10 @@ const allItems = ref([
     badgeColor: 'warning'
   },
   {
-    title: 'LLM-as-Judge',
-    description: 'Automatisierte Bewertung und Vergleich von Prompt-Säulen',
+    title: 'Chatbot Arena',
+    description: 'Paarweise Vergleiche von Chatbot-Antworten im Arena-Modus',
     route: '/judge',
-    icon: 'mdi-gavel',
+    icon: 'mdi-sword-cross',
     permission: 'feature:judge:view',
     category: 'ai'
   },
@@ -327,8 +325,8 @@ const allItems = ref([
   },
   {
     title: 'Admin Dashboard',
-    description: 'Benutzer, Rollen und Berechtigungen verwalten',
-    route: '/admin?tab=permissions',
+    description: 'System-Übersicht und Administration',
+    route: '/admin?tab=overview',
     icon: 'llars:admin-dashboard',
     permission: 'admin:permissions:manage',
     category: 'admin'
@@ -345,7 +343,7 @@ const allItems = ref([
     title: 'RAG Verwaltung',
     description: 'Dokumente für die RAG-Pipeline verwalten und hochladen',
     route: '/admin?tab=rag',
-    icon: 'mdi-database-search',
+    icon: 'llars:rag',
     permission: 'feature:rag:edit',
     category: 'admin'
   }
@@ -643,8 +641,8 @@ onMounted(async () => {
 /* Features Grid */
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
   pointer-events: auto;
 }
 
@@ -652,7 +650,7 @@ onMounted(async () => {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 16px;
   background-color: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 12px;
@@ -676,7 +674,7 @@ onMounted(async () => {
   height: 56px;
   border-radius: 12px;
   background-color: rgba(var(--v-theme-primary), 0.1);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .feature-title {

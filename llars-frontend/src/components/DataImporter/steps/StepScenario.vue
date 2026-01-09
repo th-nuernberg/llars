@@ -147,13 +147,15 @@
                     <template #activator="{ props }">
                       <v-btn
                         v-bind="props"
-                        icon="mdi-auto-fix"
+                        icon
                         size="x-small"
                         variant="text"
                         color="purple"
                         :loading="aiGeneratingName"
                         @click="generateAiName"
-                      />
+                      >
+                        <LIcon>wand</LIcon>
+                      </v-btn>
                     </template>
                   </v-tooltip>
                 </template>
@@ -498,7 +500,7 @@ const taskTypes = [
   { value: 'mail_rating', name: 'Mail Rating', icon: 'mdi-email-check', color: 'green', description: 'Bewertung ganzer Konversationen' },
   { value: 'comparison', name: 'Comparison', icon: 'mdi-compare', color: 'purple', description: 'Paarweiser Vergleich (A vs B)' },
   { value: 'authenticity', name: 'Authenticity', icon: 'mdi-shield-check', color: 'orange', description: 'Fake/Real Unterscheidung' },
-  { value: 'judge', name: 'LLM-as-Judge', icon: 'mdi-gavel', color: 'teal', description: 'Automatische LLM-basierte Bewertung' },
+  { value: 'judge', name: 'Chatbot Arena', icon: 'mdi-sword-cross', color: 'teal', description: 'Paarweise Vergleiche im Arena-Modus' },
   { value: 'text_classification', name: 'Text Classification', icon: 'mdi-label-multiple', color: 'indigo', description: 'Texte in Kategorien einordnen' },
   { value: 'text_rating', name: 'Text Rating', icon: 'mdi-text-box-check', color: 'cyan', description: 'Einzelne Texte bewerten (Reviews, etc.)' }
 ]

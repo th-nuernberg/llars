@@ -63,11 +63,8 @@ const {
 const menuOpen = ref(false)
 
 const currentIcon = computed(() => {
-  // Show the effective theme icon when on 'system'
-  if (themePreference.value === 'system') {
-    return 'mdi-brightness-auto'
-  }
-  return currentThemeOption.value?.icon || 'mdi-brightness-auto'
+  // Show the current theme option icon
+  return currentThemeOption.value?.icon || 'llars:system-theme'
 })
 
 const setTheme = (value) => {

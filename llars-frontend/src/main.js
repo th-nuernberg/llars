@@ -26,6 +26,8 @@ import LSlider from '@/components/common/LSlider.vue'
 import LTag from '@/components/common/LTag.vue'
 import LCard from '@/components/common/LCard.vue'
 import LCardSkeleton from '@/components/common/LCardSkeleton.vue'
+import LSkeleton from '@/components/common/LSkeleton.vue'
+import LStatCard from '@/components/common/LStatCard.vue'
 import LTabs from '@/components/common/LTabs.vue'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LChart from '@/components/common/LChart.vue'
@@ -64,6 +66,8 @@ app.component('LSlider', LSlider)
 app.component('LTag', LTag)
 app.component('LCard', LCard)
 app.component('LCardSkeleton', LCardSkeleton)
+app.component('LSkeleton', LSkeleton)
+app.component('LStatCard', LStatCard)
 app.component('LTabs', LTabs)
 app.component('LAvatar', LAvatar)
 app.component('LChart', LChart)

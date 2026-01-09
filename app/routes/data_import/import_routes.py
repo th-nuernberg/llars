@@ -194,7 +194,9 @@ def execute_import():
         {
             "session_id": "...",
             "task_type": "rating",
-            "source_name": "My Dataset"
+            "source_name": "My Dataset",
+            "create_scenario": true,
+            "ai_analysis": {...}  (optional, from ai/analyze-intent)
         }
     """
     data = request.get_json()
@@ -214,11 +216,21 @@ def execute_import():
             raise ValidationError(f"Invalid task_type: {data['task_type']}")
 
     source_name = data.get('source_name')
+    create_scenario = data.get('create_scenario', True)  # Default to True
+    ai_analysis = data.get('ai_analysis')
+
+    # Get username from authenticated user
+    created_by = None
+    if hasattr(g, 'authentik_user') and g.authentik_user:
+        created_by = g.authentik_user.username if hasattr(g.authentik_user, 'username') else str(g.authentik_user)
 
     session = import_service.execute_import(
         session_id=session_id,
         task_type=task_type,
-        source_name=source_name
+        source_name=source_name,
+        create_scenario=create_scenario,
+        created_by=created_by,
+        ai_analysis=ai_analysis
     )
 
     return jsonify(session.to_dict())

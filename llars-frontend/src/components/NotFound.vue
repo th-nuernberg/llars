@@ -162,7 +162,7 @@ const quickLinks = computed(() => {
   }
 
   if (hasPermission('feature:judge:view')) {
-    links.push({ path: '/judge', label: 'Judge', icon: 'mdi-scale-balance', variant: 'info' })
+    links.push({ path: '/judge', label: 'Chatbot Arena', icon: 'mdi-sword-cross', variant: 'info' })
   }
 
   if (hasPermission('feature:ranking:view')) {

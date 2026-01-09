@@ -1,119 +1,172 @@
 <template>
   <div class="llm-providers-section">
-    <v-card class="mb-4 transparent-card" variant="outlined">
-      <v-card-title class="d-flex align-center">
-        <LIcon class="mr-2">mdi-connection</LIcon>
-        Quick Connect
-      </v-card-title>
-      <v-card-text>
-        <v-row>
-          <v-col
-            v-for="provider in quickProviders"
-            :key="provider.type"
-            cols="12"
-            md="4"
-          >
-            <v-card variant="outlined" class="quick-card">
-              <v-card-title class="text-subtitle-1">
-                <LIcon class="mr-2" size="18">{{ provider.icon }}</LIcon>
-                {{ provider.title }}
-              </v-card-title>
-              <v-card-subtitle>{{ provider.subtitle }}</v-card-subtitle>
-              <v-card-text class="text-caption text-medium-emphasis">
-                <div>Endpoint: {{ provider.base_url }}</div>
-                <div v-if="provider.requires_key">API Key erforderlich</div>
-                <div v-else>API Key optional</div>
-              </v-card-text>
-              <v-card-actions>
-                <LBtn variant="primary" size="small" @click="openQuickDialog(provider)">
-                  Quick Connect
-                </LBtn>
-              </v-card-actions>
-            </v-card>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+    <!-- Quick Connect Section (Fixed at top) -->
+    <div class="quick-connect-section">
+      <div class="quick-connect-header mb-3">
+        <h3 class="text-h6 d-flex align-center">
+          <LIcon class="mr-2" size="24">mdi-lightning-bolt</LIcon>
+          Quick Connect
+        </h3>
+        <p class="text-body-2 text-medium-emphasis mt-1">
+          Verbinde schnell mit populären LLM-Anbietern
+        </p>
+      </div>
 
-    <v-card>
+      <div class="llars-quick-grid">
+      <div
+        v-for="provider in quickProviders"
+        :key="provider.type"
+        class="llars-quick-card"
+        :class="{ 'llars-quick-card--connected': isProviderConnected(provider.type) }"
+        :style="{ '--quick-card-color': `var(--llars-provider-${provider.colorVar})`, '--quick-card-bg': `var(--llars-provider-${provider.colorVar}-light)` }"
+        @click="openQuickDialog(provider)"
+      >
+        <div class="llars-quick-card__icon-wrapper">
+          <LIcon :name="provider.icon" size="26" class="llars-quick-card__icon" />
+        </div>
+        <div class="llars-quick-card__content">
+          <h4 class="llars-quick-card__title">{{ provider.title }}</h4>
+          <p class="llars-quick-card__subtitle">{{ provider.subtitle }}</p>
+        </div>
+        <div class="llars-quick-card__meta">
+          <!-- Connected status -->
+          <span v-if="isProviderConnected(provider.type)" class="llars-quick-card__badge llars-quick-card__badge--connected">
+            <LIcon size="12">mdi-check-circle</LIcon>
+            Verbunden
+          </span>
+          <!-- Not connected - show lock for all -->
+          <span v-else class="llars-quick-card__badge llars-quick-card__badge--locked">
+            <LIcon size="12">mdi-lock</LIcon>
+            {{ provider.requires_key ? 'API Key' : 'Nicht verbunden' }}
+          </span>
+        </div>
+        <div class="llars-quick-card__arrow">
+          <LIcon size="18">mdi-chevron-right</LIcon>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- Scrollable Content Area -->
+    <div class="providers-content">
+      <!-- Provider Registry -->
+    <v-card class="llars-card mb-4">
       <v-card-title class="d-flex align-center">
         <LIcon class="mr-2">mdi-database-cog</LIcon>
         Provider Registry
         <v-spacer />
         <LBtn variant="primary" size="small" @click="openCreateDialog">
+          <LIcon start size="16">mdi-plus</LIcon>
           Provider hinzufügen
         </LBtn>
       </v-card-title>
       <v-card-text>
-        <v-skeleton-loader v-if="loading" type="table"></v-skeleton-loader>
+        <v-skeleton-loader v-if="loading" type="table" />
 
         <v-data-table
           v-else
           :headers="headers"
           :items="providers"
           :items-per-page="10"
+          class="llars-table"
         >
           <template v-slot:item.name="{ item }">
-            <div class="d-flex flex-column">
-              <span class="font-weight-medium">{{ item.name }}</span>
-              <span class="text-caption text-medium-emphasis">{{ item.provider_type }}</span>
+            <div class="d-flex align-center">
+              <div
+                class="provider-icon-badge mr-3"
+                :style="{ backgroundColor: getProviderColorLight(item.provider_type) }"
+              >
+                <LIcon
+                  :name="getProviderIcon(item.provider_type)"
+                  size="20"
+                  :style="{ color: getProviderColor(item.provider_type) }"
+                />
+              </div>
+              <div class="d-flex flex-column">
+                <span class="font-weight-medium">{{ item.name }}</span>
+                <span class="text-caption text-medium-emphasis">{{ item.provider_type }}</span>
+              </div>
             </div>
           </template>
 
           <template v-slot:item.base_url="{ item }">
-            <span class="text-caption">{{ item.base_url || '-' }}</span>
+            <code class="text-caption pa-1 rounded" style="background: rgba(0,0,0,0.05)">
+              {{ item.base_url || '-' }}
+            </code>
           </template>
 
           <template v-slot:item.is_default="{ item }">
-            <v-chip v-if="item.is_default" color="primary" size="small" variant="tonal">
+            <v-chip v-if="item.is_default" color="primary" size="small" variant="tonal" class="llars-chip">
+              <LIcon start size="14">mdi-star</LIcon>
               Default
             </v-chip>
           </template>
 
           <template v-slot:item.is_active="{ item }">
-            <v-chip :color="item.is_active ? 'success' : 'warning'" size="small" variant="tonal">
+            <v-chip
+              :color="item.is_active ? 'success' : 'warning'"
+              size="small"
+              variant="tonal"
+              class="llars-chip"
+            >
+              <LIcon start size="14">{{ item.is_active ? 'mdi-check-circle' : 'mdi-pause-circle' }}</LIcon>
               {{ item.is_active ? 'Aktiv' : 'Inaktiv' }}
             </v-chip>
           </template>
 
           <template v-slot:item.actions="{ item }">
             <div class="d-flex ga-1 justify-end">
-              <LBtn size="small" variant="text" @click="testProvider(item)">Test</LBtn>
+              <LBtn size="small" variant="text" @click="testProvider(item)">
+                <LIcon start size="14">mdi-connection</LIcon>
+                Test
+              </LBtn>
               <LBtn
                 size="small"
                 variant="text"
                 :disabled="!item.is_openai_compatible"
                 @click="syncProvider(item)"
               >
+                <LIcon start size="14">mdi-sync</LIcon>
                 Sync
               </LBtn>
-              <LBtn size="small" variant="text" @click="openEditDialog(item)">Bearbeiten</LBtn>
+              <LBtn size="small" variant="text" @click="openEditDialog(item)">
+                <LIcon start size="14">mdi-pencil</LIcon>
+                Bearbeiten
+              </LBtn>
             </div>
           </template>
 
           <template v-slot:no-data>
             <div class="text-center py-8 text-medium-emphasis">
-              <LIcon size="48" class="mb-2">mdi-database-off</LIcon>
+              <LIcon size="48" class="mb-2" style="opacity: 0.5">mdi-database-off</LIcon>
               <div>Keine Provider verbunden</div>
+              <LBtn variant="primary" size="small" class="mt-3" @click="openCreateDialog">
+                Ersten Provider hinzufügen
+              </LBtn>
             </div>
           </template>
         </v-data-table>
       </v-card-text>
     </v-card>
 
-    <v-card class="mt-4">
+    <!-- LLM Models -->
+    <v-card class="llars-card">
       <v-card-title class="d-flex align-center">
         <LIcon class="mr-2">mdi-brain</LIcon>
         LLM Modelle
+        <v-chip size="small" variant="tonal" class="ml-2">
+          {{ llmModelsFiltered.length }}
+        </v-chip>
       </v-card-title>
       <v-card-text>
-        <v-skeleton-loader v-if="llmLoading" type="table"></v-skeleton-loader>
+        <v-skeleton-loader v-if="llmLoading" type="table" />
 
         <v-data-table
           v-else
           :headers="llmHeaders"
           :items="llmModelsFiltered"
           :items-per-page="10"
+          class="llars-table"
         >
           <template v-slot:item.display_name="{ item }">
             <div class="d-flex flex-column">
@@ -124,6 +177,7 @@
                   color="primary"
                   size="x-small"
                   variant="tonal"
+                  class="llars-chip"
                 >
                   Default
                 </v-chip>
@@ -133,15 +187,25 @@
           </template>
 
           <template v-slot:item.provider_label="{ item }">
-            <div class="d-flex flex-column">
-              <span class="font-weight-medium">
-                {{ item.provider_label || item.provider || 'Unbekannt' }}
-              </span>
-              <span class="text-caption text-medium-emphasis">
-                <span v-if="item.provider_type">{{ item.provider_type }}</span>
-                <span v-else>manuell</span>
-                <span v-if="item.provider_base_url"> · {{ item.provider_base_url }}</span>
-              </span>
+            <div class="d-flex align-center">
+              <div
+                class="provider-icon-badge provider-icon-badge--small mr-2"
+                :style="{ backgroundColor: getProviderColorLight(item.provider_type) }"
+              >
+                <LIcon
+                  :name="getProviderIcon(item.provider_type)"
+                  size="14"
+                  :style="{ color: getProviderColor(item.provider_type) }"
+                />
+              </div>
+              <div class="d-flex flex-column">
+                <span class="font-weight-medium text-body-2">
+                  {{ item.provider_label || item.provider || 'Unbekannt' }}
+                </span>
+                <span class="text-caption text-medium-emphasis">
+                  {{ item.provider_type || 'manuell' }}
+                </span>
+              </div>
             </div>
           </template>
 
@@ -152,13 +216,23 @@
           </template>
 
           <template v-slot:item.is_active="{ item }">
-            <v-chip :color="item.is_active ? 'success' : 'warning'" size="small" variant="tonal">
+            <v-chip
+              :color="item.is_active ? 'success' : 'warning'"
+              size="small"
+              variant="tonal"
+              class="llars-chip"
+            >
               {{ item.is_active ? 'Aktiv' : 'Inaktiv' }}
             </v-chip>
           </template>
 
           <template v-slot:item.is_restricted="{ item }">
-            <v-chip :color="item.is_restricted ? 'warning' : 'success'" size="small" variant="tonal">
+            <v-chip
+              :color="item.is_restricted ? 'warning' : 'success'"
+              size="small"
+              variant="tonal"
+              class="llars-chip"
+            >
               <LIcon start size="small">
                 {{ item.is_restricted ? 'mdi-lock' : 'mdi-earth' }}
               </LIcon>
@@ -174,6 +248,7 @@
                 size="x-small"
                 variant="tonal"
                 color="secondary"
+                class="llars-chip"
               >
                 <LIcon start size="x-small">mdi-account-group</LIcon>
                 {{ r }}
@@ -192,6 +267,7 @@
                 size="x-small"
                 variant="tonal"
                 color="primary"
+                class="llars-chip"
               >
                 {{ u }}
               </v-chip>
@@ -206,55 +282,60 @@
                 v-if="!item.is_restricted"
                 class="text-caption text-medium-emphasis"
               >
-                Öffentlich
+                Alle Nutzer
               </span>
             </div>
           </template>
 
           <template v-slot:item.actions="{ item }">
             <LBtn size="small" variant="text" @click="openLlmAccessDialog(item)">
-              Bearbeiten
+              <LIcon start size="14">mdi-shield-account</LIcon>
+              Zugriff
             </LBtn>
           </template>
 
           <template v-slot:no-data>
             <div class="text-center py-8 text-medium-emphasis">
-              <LIcon size="48" class="mb-2">mdi-robot-off</LIcon>
+              <LIcon size="48" class="mb-2" style="opacity: 0.5">mdi-robot-off</LIcon>
               <div>Keine LLM Modelle gefunden</div>
+              <p class="text-caption mt-1">Verbinde einen Provider und synchronisiere Modelle</p>
             </div>
           </template>
         </v-data-table>
       </v-card-text>
     </v-card>
+    </div>
 
     <!-- Quick Connect Dialog -->
-    <v-dialog v-model="quickDialog" max-width="640">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <LIcon class="mr-2">mdi-connection</LIcon>
-          Quick Connect: {{ activeQuick?.title }}
+    <v-dialog v-model="quickDialog" max-width="560">
+      <v-card class="llars-dialog">
+        <v-card-title class="d-flex align-center pa-4">
+          <div
+            class="provider-icon-badge mr-3"
+            :style="{ backgroundColor: activeQuick?.colorVar ? `var(--llars-provider-${activeQuick.colorVar}-light)` : 'var(--llars-provider-custom-light)' }"
+          >
+            <LIcon
+              :name="activeQuick?.icon"
+              size="24"
+              :style="{ color: activeQuick?.colorVar ? `var(--llars-provider-${activeQuick.colorVar})` : 'var(--llars-provider-custom)' }"
+            />
+          </div>
+          <div>
+            <div class="text-h6">{{ activeQuick?.title }}</div>
+            <div class="text-caption text-medium-emphasis">{{ activeQuick?.subtitle }}</div>
+          </div>
           <v-spacer />
           <LIconBtn icon="mdi-close" @click="quickDialog = false" />
         </v-card-title>
         <v-divider />
-        <v-card-text>
-          <v-select
-            v-model="providerForm.provider_type"
-            :items="providerTypeOptions"
-            item-title="title"
-            item-value="value"
-            label="Provider Typ"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-          />
+        <v-card-text class="pa-4">
           <v-text-field
             v-model="providerForm.name"
             label="Name"
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
           <v-text-field
             v-model="providerForm.base_url"
@@ -262,16 +343,17 @@
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
           <v-text-field
             v-if="activeQuick?.requires_key"
             v-model="providerForm.api_key"
             label="API Key"
+            type="password"
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
           <v-text-field
             v-if="activeQuick?.supports_version"
@@ -280,7 +362,7 @@
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
           <v-textarea
             v-if="activeQuick?.requires_models"
@@ -291,26 +373,38 @@
             rows="2"
             auto-grow
             hide-details
-            class="mt-3"
+            class="mb-3"
+            placeholder="z.B. claude-3-opus-20240229, claude-3-sonnet-20240229"
           />
-          <v-switch
-            v-model="providerForm.is_default"
-            label="Als Default Provider setzen"
-            color="primary"
-            hide-details
-            class="mt-2"
-          />
-          <v-switch
-            v-if="activeQuick?.supports_sync"
-            v-model="providerForm.sync_models"
-            label="Modelle automatisch synchronisieren"
-            color="primary"
-            hide-details
-          />
+          <div class="d-flex flex-column ga-1">
+            <v-switch
+              v-model="providerForm.is_default"
+              label="Als Default Provider setzen"
+              color="primary"
+              hide-details
+              density="compact"
+            />
+            <v-switch
+              v-if="activeQuick?.supports_sync"
+              v-model="providerForm.sync_models"
+              label="Modelle automatisch synchronisieren"
+              color="primary"
+              hide-details
+              density="compact"
+            />
+          </div>
         </v-card-text>
-        <v-card-actions class="justify-end">
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
           <LBtn variant="text" @click="quickDialog = false">Abbrechen</LBtn>
-          <LBtn variant="primary" :loading="saving" @click="submitQuickConnect">
+          <LBtn
+            variant="primary"
+            :loading="saving"
+            @click="submitQuickConnect"
+            :style="{ backgroundColor: activeQuick?.colorVar ? `var(--llars-provider-${activeQuick.colorVar})` : undefined }"
+          >
+            <LIcon start size="16">mdi-connection</LIcon>
             Verbinden
           </LBtn>
         </v-card-actions>
@@ -318,22 +412,34 @@
     </v-dialog>
 
     <!-- Edit Provider Dialog -->
-    <v-dialog v-model="editDialog" max-width="640">
-      <v-card>
-        <v-card-title class="d-flex align-center">
+    <v-dialog v-model="editDialog" max-width="560">
+      <v-card class="llars-dialog">
+        <v-card-title class="d-flex align-center pa-4">
           <LIcon class="mr-2">mdi-pencil</LIcon>
           Provider bearbeiten
           <v-spacer />
           <LIconBtn icon="mdi-close" @click="editDialog = false" />
         </v-card-title>
         <v-divider />
-        <v-card-text>
+        <v-card-text class="pa-4">
+          <v-select
+            v-model="providerForm.provider_type"
+            :items="providerTypeOptions"
+            item-title="title"
+            item-value="value"
+            label="Provider Typ"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            class="mb-3"
+          />
           <v-text-field
             v-model="providerForm.name"
             label="Name"
             variant="outlined"
             density="comfortable"
             hide-details
+            class="mb-3"
           />
           <v-text-field
             v-model="providerForm.base_url"
@@ -341,15 +447,16 @@
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
           <v-text-field
             v-model="providerForm.api_key"
             label="API Key (leer lassen = unverändert)"
+            type="password"
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
           <v-text-field
             v-model="providerForm.api_version"
@@ -357,7 +464,7 @@
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
           <v-textarea
             v-model="providerForm.model_ids"
@@ -367,30 +474,36 @@
             rows="2"
             auto-grow
             hide-details
-            class="mt-3"
+            class="mb-3"
           />
-          <v-switch
-            v-model="providerForm.is_default"
-            label="Als Default Provider setzen"
-            color="primary"
-            hide-details
-            class="mt-2"
-          />
-          <v-switch
-            v-model="providerForm.is_active"
-            label="Provider aktiv"
-            color="primary"
-            hide-details
-          />
-          <v-switch
-            v-model="providerForm.is_openai_compatible"
-            label="OpenAI-kompatibel"
-            color="primary"
-            hide-details
-          />
+          <div class="d-flex flex-column ga-1">
+            <v-switch
+              v-model="providerForm.is_default"
+              label="Als Default Provider setzen"
+              color="primary"
+              hide-details
+              density="compact"
+            />
+            <v-switch
+              v-model="providerForm.is_active"
+              label="Provider aktiv"
+              color="primary"
+              hide-details
+              density="compact"
+            />
+            <v-switch
+              v-model="providerForm.is_openai_compatible"
+              label="OpenAI-kompatibel (Sync möglich)"
+              color="primary"
+              hide-details
+              density="compact"
+            />
+          </div>
         </v-card-text>
-        <v-card-actions class="justify-end">
-          <LBtn variant="text" @click="editDialog = false">Schließen</LBtn>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <LBtn variant="text" @click="editDialog = false">Abbrechen</LBtn>
           <LBtn variant="primary" :loading="saving" @click="saveProvider">
             Speichern
           </LBtn>
@@ -398,15 +511,17 @@
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
-      {{ snackbar.text }}
-    </v-snackbar>
-
-    <v-dialog v-model="llmAccessDialog" max-width="700">
-      <v-card v-if="selectedLlmModel">
-        <v-card-title class="d-flex align-center">
-          <LIcon class="mr-2">mdi-brain</LIcon>
-          Zugriff: {{ selectedLlmModel.display_name }}
+    <!-- LLM Access Dialog -->
+    <v-dialog v-model="llmAccessDialog" max-width="640">
+      <v-card v-if="selectedLlmModel" class="llars-dialog">
+        <v-card-title class="d-flex align-center pa-4">
+          <LIcon class="mr-2">mdi-shield-account</LIcon>
+          <div>
+            <div>Zugriff: {{ selectedLlmModel.display_name }}</div>
+            <div class="text-caption text-medium-emphasis font-weight-regular">
+              {{ selectedLlmModel.model_id }}
+            </div>
+          </div>
           <v-spacer />
           <v-chip
             v-if="selectedLlmModel.is_default"
@@ -420,18 +535,23 @@
           <LIconBtn icon="mdi-close" @click="llmAccessDialog = false" />
         </v-card-title>
         <v-divider />
-        <v-card-text>
-          <div class="text-caption text-medium-emphasis mb-3">
-            <div>
-              Quelle:
+        <v-card-text class="pa-4">
+          <div class="d-flex align-center mb-4 pa-3 rounded" style="background: rgba(0,0,0,0.03)">
+            <div
+              class="provider-icon-badge mr-3"
+              :style="{ backgroundColor: getProviderColorLight(selectedLlmModel.provider_type) }"
+            >
+              <LIcon
+                :name="getProviderIcon(selectedLlmModel.provider_type)"
+                size="20"
+                :style="{ color: getProviderColor(selectedLlmModel.provider_type) }"
+              />
+            </div>
+            <div class="text-body-2">
               <strong>{{ selectedLlmModel.provider_label || selectedLlmModel.provider || 'Unbekannt' }}</strong>
-              <span v-if="selectedLlmModel.provider_type">({{ selectedLlmModel.provider_type }})</span>
-            </div>
-            <div v-if="selectedLlmModel.provider_base_url">
-              Endpoint: {{ selectedLlmModel.provider_base_url }}
-            </div>
-            <div>
-              Erstellt von: {{ selectedLlmModel.created_by || 'System' }}
+              <span v-if="selectedLlmModel.provider_type" class="text-medium-emphasis">
+                ({{ selectedLlmModel.provider_type }})
+              </span>
             </div>
           </div>
 
@@ -440,17 +560,17 @@
             label="Public (für alle sichtbar)"
             color="primary"
             hide-details
-            class="mb-3"
+            class="mb-4"
           />
 
           <v-alert
             v-if="llmIsPublic"
             type="info"
             variant="tonal"
+            density="compact"
             class="mb-4"
           >
-            Dieses Modell ist öffentlich sichtbar. Sobald Benutzer/Rollen gesetzt werden,
-            ist es eingeschränkt.
+            Dieses Modell ist für alle Nutzer sichtbar.
           </v-alert>
 
           <v-autocomplete
@@ -465,13 +585,14 @@
             density="comfortable"
             hide-details
             :disabled="llmIsPublic"
+            class="mb-3"
           />
           <v-autocomplete
             v-model="llmAccessRoleNames"
             :items="roles"
             item-title="display_name"
             item-value="role_name"
-            label="Erlaubte Rollen (Nutzergruppen)"
+            label="Erlaubte Rollen"
             multiple
             chips
             closable-chips
@@ -479,23 +600,21 @@
             variant="outlined"
             density="comfortable"
             hide-details
-            class="mt-3"
             :disabled="llmIsPublic"
           />
-          <div class="text-caption text-medium-emphasis mt-2">
-            Tipp: Rollen sind Nutzergruppen im LLARS Permission-System.
-          </div>
+
           <v-alert
             v-if="!llmIsPublic && !llmAccessUsernames.length && !llmAccessRoleNames.length"
             type="warning"
             variant="tonal"
             density="compact"
-            class="mt-2"
+            class="mt-3"
           >
             Ohne Auswahl bleibt das Modell faktisch öffentlich sichtbar.
           </v-alert>
         </v-card-text>
-        <v-card-actions>
+        <v-divider />
+        <v-card-actions class="pa-4">
           <v-spacer />
           <LBtn variant="text" @click="llmAccessDialog = false">Abbrechen</LBtn>
           <LBtn variant="primary" :loading="savingLlmAccess" @click="saveLlmAccess">
@@ -504,6 +623,10 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -556,7 +679,7 @@ const headers = [
 
 const llmHeaders = [
   { title: 'Modell', key: 'display_name', sortable: true },
-  { title: 'Quelle', key: 'provider_label', sortable: true },
+  { title: 'Provider', key: 'provider_label', sortable: true },
   { title: 'Erstellt von', key: 'created_by', sortable: true },
   { title: 'Status', key: 'is_active', sortable: true },
   { title: 'Sichtbarkeit', key: 'is_restricted', sortable: true },
@@ -564,40 +687,25 @@ const llmHeaders = [
   { title: '', key: 'actions', sortable: false, align: 'end' }
 ]
 
+// Provider configurations - colors reference global CSS variables
 const quickProviders = [
   {
     type: 'openai',
     title: 'OpenAI',
-    subtitle: 'ChatGPT, GPT-4o, o3',
+    subtitle: 'GPT-4o, o1, o3',
     base_url: 'https://api.openai.com/v1',
-    icon: 'mdi-openai',
+    icon: 'openai',
+    colorVar: 'openai',
     requires_key: true,
     supports_sync: true
   },
   {
-    type: 'ollama',
-    title: 'Ollama',
-    subtitle: 'Lokale Modelle (OpenAI kompatibel)',
-    base_url: 'http://localhost:11434/v1',
-    icon: 'mdi-server',
-    requires_key: false,
-    supports_sync: true
-  },
-  {
-    type: 'vllm',
-    title: 'vLLM',
-    subtitle: 'Self-hosted OpenAI Endpoint',
-    base_url: 'http://localhost:8000/v1',
-    icon: 'mdi-server-network',
-    requires_key: false,
-    supports_sync: true
-  },
-  {
     type: 'anthropic',
-    title: 'Claude (Anthropic)',
-    subtitle: 'Claude 3.x API',
+    title: 'Anthropic',
+    subtitle: 'Claude 3.5, Claude 4',
     base_url: 'https://api.anthropic.com',
-    icon: 'mdi-lightning-bolt',
+    icon: 'claude',
+    colorVar: 'anthropic',
     requires_key: true,
     requires_models: true,
     supports_version: true,
@@ -606,24 +714,80 @@ const quickProviders = [
   {
     type: 'gemini',
     title: 'Google Gemini',
-    subtitle: 'Gemini 1.5 / 2.0 API',
+    subtitle: 'Gemini 2.0, 1.5 Pro',
     base_url: 'https://generativelanguage.googleapis.com',
-    icon: 'mdi-google',
+    icon: 'gemini',
+    colorVar: 'gemini',
     requires_key: true,
     requires_models: true,
     supports_version: true,
     supports_sync: false
   },
   {
+    type: 'ollama',
+    title: 'Ollama',
+    subtitle: 'Lokale Modelle',
+    base_url: 'http://host.docker.internal:11434/v1',
+    icon: 'ollama',
+    colorVar: 'ollama',
+    requires_key: false,
+    supports_sync: true
+  },
+  {
+    type: 'vllm',
+    title: 'vLLM',
+    subtitle: 'Self-hosted Inference',
+    base_url: 'http://host.docker.internal:8000/v1',
+    icon: 'vllm',
+    colorVar: 'vllm',
+    requires_key: false,
+    supports_sync: true
+  },
+  {
     type: 'litellm',
-    title: 'LiteLLM Proxy',
-    subtitle: 'OpenAI-kompatibler Gateway',
+    title: 'LiteLLM',
+    subtitle: 'Universal Proxy',
     base_url: 'https://kiz1.in.ohmportal.de/llmproxy/v1',
-    icon: 'mdi-gate',
+    icon: 'litellm',
+    colorVar: 'litellm',
     requires_key: false,
     supports_sync: true
   }
 ]
+
+// Provider icon mapping - colors use global CSS variables
+const providerMeta = {
+  openai: { icon: 'openai', colorVar: 'openai' },
+  anthropic: { icon: 'claude', colorVar: 'anthropic' },
+  gemini: { icon: 'gemini', colorVar: 'gemini' },
+  ollama: { icon: 'ollama', colorVar: 'ollama' },
+  vllm: { icon: 'vllm', colorVar: 'vllm' },
+  litellm: { icon: 'litellm', colorVar: 'litellm' },
+  openai_compatible: { icon: 'openai', colorVar: 'openai' },
+  custom: { icon: 'database', colorVar: 'custom' },
+}
+
+// Helper to get provider color as CSS variable reference
+function getProviderColor(providerType) {
+  const colorVar = providerMeta[providerType]?.colorVar || 'custom'
+  return `var(--llars-provider-${colorVar})`
+}
+
+// Helper to get provider light color as CSS variable reference
+function getProviderColorLight(providerType) {
+  const colorVar = providerMeta[providerType]?.colorVar || 'custom'
+  return `var(--llars-provider-${colorVar}-light)`
+}
+
+// Helper to get provider icon
+function getProviderIcon(providerType) {
+  return providerMeta[providerType]?.icon || 'database'
+}
+
+// Check if a provider type is already connected
+function isProviderConnected(providerType) {
+  return providers.value.some(p => p.provider_type === providerType && p.is_active)
+}
 
 function resetProviderForm() {
   providerForm.value = {
@@ -734,13 +898,31 @@ async function submitQuickConnect() {
     if (providerForm.value.api_key) {
       payload.api_key = providerForm.value.api_key
     }
+
+    // Test connection first before saving
+    showMessage('Teste Verbindung...', 'info')
+    const testResponse = await axios.post('/api/llm/providers/test-connection', {
+      base_url: payload.base_url,
+      api_key: payload.api_key,
+      provider_type: payload.provider_type,
+      config: payload.config
+    })
+
+    if (!testResponse.data.success) {
+      showMessage(testResponse.data.error || 'Verbindung fehlgeschlagen', 'error')
+      return
+    }
+
+    // Connection successful, now save
     await axios.post('/api/llm/providers', payload)
     showMessage('Provider verbunden', 'success')
     quickDialog.value = false
     await fetchProviders()
+    await fetchLlmAccessOverview()
   } catch (error) {
     console.error('Quick connect failed:', error)
-    showMessage('Quick Connect fehlgeschlagen', 'error')
+    const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Verbindung fehlgeschlagen'
+    showMessage(errorMsg, 'error')
   } finally {
     saving.value = false
   }
@@ -799,7 +981,8 @@ async function testProvider(provider) {
 async function syncProvider(provider) {
   try {
     const response = await axios.post(`/api/llm/providers/${provider.id}/sync-models`)
-    showMessage(`Sync: ${response.data.inserted || 0} neu`, 'success')
+    showMessage(`Sync: ${response.data.inserted || 0} neu, ${response.data.updated || 0} aktualisiert`, 'success')
+    await fetchLlmAccessOverview()
   } catch (error) {
     console.error('Model sync failed:', error)
     showMessage(error.response?.data?.error || 'Sync fehlgeschlagen', 'error')
@@ -878,6 +1061,7 @@ async function saveLlmAccess() {
     llmIsPublic.value = !selectedLlmModel.value.is_restricted
     await fetchLlmAccessOverview()
     llmAccessDialog.value = false
+    showMessage('Zugriff gespeichert', 'success')
   } catch (error) {
     console.error('Error saving LLM access:', error)
     showMessage('Zugriff speichern fehlgeschlagen', 'error')
@@ -893,15 +1077,69 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.quick-card {
-  height: 100%;
+/* Full viewport layout */
+.llm-providers-section {
   display: flex;
   flex-direction: column;
-  background-color: transparent;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.transparent-card {
-  background-color: transparent;
-  box-shadow: none;
+/* Fixed top section for Quick Connect */
+.quick-connect-section {
+  flex-shrink: 0;
+  padding-bottom: 16px;
+}
+
+.quick-connect-header {
+  padding: 0 4px;
+}
+
+/* Scrollable content area */
+.providers-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px; /* Space for scrollbar */
+}
+
+/* Provider icon badge */
+.provider-icon-badge {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--llars-radius-sm);
+  flex-shrink: 0;
+}
+
+.provider-icon-badge--small {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--llars-radius-xs);
+}
+
+/* LLARS Card styling */
+.llars-card {
+  border-radius: var(--llars-radius) !important;
+  overflow: hidden;
+}
+
+.llars-dialog {
+  border-radius: var(--llars-radius) !important;
+}
+
+.llars-chip {
+  border-radius: var(--llars-radius-xs) !important;
+}
+
+.llars-table :deep(th) {
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  font-size: 11px !important;
+  letter-spacing: 0.5px;
+  color: rgba(var(--v-theme-on-surface), 0.6) !important;
 }
 </style>

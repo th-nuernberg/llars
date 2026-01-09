@@ -6,15 +6,20 @@
       type="error"
       variant="tonal"
       density="compact"
-      class="mb-4"
+      class="mb-3"
       closable
       @click:close="error = null"
     >
       {{ error }}
     </v-alert>
 
+    <!-- Gauges Row Skeleton -->
+    <template v-if="loading">
+      <LSkeleton type="health-bar" :count="4" />
+    </template>
+
     <!-- Gauges Row -->
-    <div class="gauges-row">
+    <div v-else class="gauges-row">
       <LGauge
         icon="mdi-lightning-bolt"
         label="Requests/s"
@@ -24,7 +29,6 @@
         :subtitle="`${requestCount} requests (5min)`"
         color="primary"
         color-mode="fixed"
-        :loading="loading"
       />
       <LGauge
         icon="mdi-timer-outline"
@@ -34,7 +38,6 @@
         :percent="latencyPercent"
         :subtitle="`P95: ${p95Latency}ms`"
         color-mode="threshold"
-        :loading="loading"
       />
       <LGauge
         icon="mdi-check-circle"
@@ -43,7 +46,6 @@
         suffix="%"
         :percent="successRate"
         color-mode="inverse"
-        :loading="loading"
       />
       <LGauge
         icon="mdi-alert-circle"
@@ -54,12 +56,19 @@
         :subtitle="`${errorRate}% error rate`"
         :color="errorCount > 0 ? 'danger' : 'success'"
         color-mode="fixed"
-        :loading="loading"
       />
     </div>
 
+    <!-- Charts Row Skeleton -->
+    <template v-if="loading">
+      <div class="charts-row">
+        <div class="chart-card"><LSkeleton type="chart" /></div>
+        <div class="chart-card"><LSkeleton type="chart" /></div>
+      </div>
+    </template>
+
     <!-- Charts Row -->
-    <div class="charts-row">
+    <div v-else class="charts-row">
       <div class="chart-card">
         <LChart
           title="Request Rate (5min)"
@@ -82,8 +91,25 @@
       </div>
     </div>
 
+    <!-- Latency Distribution Skeleton -->
+    <div v-if="loading" class="section-card">
+      <h3 class="section-card__title">
+        <LIcon icon="mdi-chart-bar" size="18" class="mr-2" />
+        Latency Distribution
+      </h3>
+      <div class="latency-bars">
+        <div v-for="n in 3" :key="n" class="latency-bar">
+          <span class="skeleton-bar-label skeleton-pulse" />
+          <div class="latency-bar__track">
+            <div class="skeleton-bar-fill skeleton-pulse" :style="{ width: `${30 + n * 20}%` }" />
+          </div>
+          <span class="skeleton-bar-value skeleton-pulse" />
+        </div>
+      </div>
+    </div>
+
     <!-- Latency Distribution -->
-    <div class="section-card">
+    <div v-else class="section-card">
       <h3 class="section-card__title">
         <LIcon icon="mdi-chart-bar" size="18" class="mr-2" />
         Latency Distribution
@@ -122,8 +148,17 @@
       </div>
     </div>
 
+    <!-- Top Endpoints Skeleton -->
+    <div v-if="loading" class="section-card">
+      <h3 class="section-card__title">
+        <LIcon icon="mdi-api" size="18" class="mr-2" />
+        Top Endpoints (by latency)
+      </h3>
+      <LSkeleton type="table" :count="5" :columns="6" />
+    </div>
+
     <!-- Top Endpoints -->
-    <div class="section-card">
+    <div v-else class="section-card">
       <h3 class="section-card__title">
         <LIcon icon="mdi-api" size="18" class="mr-2" />
         Top Endpoints (by latency)
@@ -164,7 +199,7 @@
             <span v-else class="text-success">-</span>
           </span>
         </div>
-        <div v-if="!topEndpoints.length && !loading" class="endpoints-empty">
+        <div v-if="!topEndpoints.length" class="endpoints-empty">
           Keine Endpoint-Daten verfügbar
         </div>
       </div>
@@ -292,7 +327,41 @@ onBeforeUnmount(() => {
 .api-metrics-tab {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+}
+
+/* Skeleton Styles */
+.skeleton-bar-label {
+  width: 40px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.skeleton-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+}
+
+.skeleton-bar-value {
+  width: 60px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-on-surface), 0.06) 25%,
+    rgba(var(--v-theme-on-surface), 0.12) 50%,
+    rgba(var(--v-theme-on-surface), 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .gauges-row {

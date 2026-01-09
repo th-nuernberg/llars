@@ -152,7 +152,7 @@
           variant="secondary"
           size="small"
           :loading="loading"
-          prepend-icon="mdi-magic-staff"
+          prepend-icon="wand"
           @click="generateScript"
         >
           Skript generieren

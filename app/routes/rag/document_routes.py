@@ -266,6 +266,12 @@ def upload_multiple_documents():
                 collection_name=collection_name,
                 file_size_bytes=total_size
             )
+            # Emit WebSocket event for real-time updates
+            if collection_id:
+                socketio = current_app.extensions.get('socketio')
+                if socketio:
+                    from socketio_handlers.events_rag import emit_document_uploaded
+                    emit_document_uploaded(socketio, document_ids[0], collection_id, username)
         elif len(document_ids) > 1:
             # Multiple documents - use batch log
             ChatbotActivityService.log_documents_uploaded(
@@ -276,6 +282,14 @@ def upload_multiple_documents():
                 collection_name=collection_name,
                 total_size_bytes=total_size
             )
+
+        # Emit WebSocket event for real-time updates to other users
+        if collection_id:
+            socketio = current_app.extensions.get('socketio')
+            if socketio:
+                from socketio_handlers.events_rag import emit_document_uploaded
+                for doc_id in document_ids:
+                    emit_document_uploaded(socketio, doc_id, collection_id, username)
 
     return jsonify(result), 201
 

@@ -530,3 +530,54 @@ def emit_collection_error(socketio, collection_id: int, error: str):
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting collection error: {e}")
+
+
+def emit_document_uploaded(socketio, document_id: int, collection_id: int, uploaded_by: str):
+    """
+    Emit when a new document is uploaded to a collection.
+    This notifies all users subscribed to the collection for real-time updates.
+
+    Args:
+        socketio: Flask-SocketIO instance
+        document_id: The ID of the uploaded document
+        collection_id: The collection ID the document was uploaded to
+        uploaded_by: Username who uploaded the document
+    """
+    try:
+        from db.tables import RAGDocument, RAGCollection
+        from services.rag.document_service import DocumentService
+
+        document = RAGDocument.query.get(document_id)
+        collection = RAGCollection.query.get(collection_id) if collection_id else None
+
+        if not document:
+            return
+
+        payload = {
+            'event': 'document_uploaded',
+            'document_id': document_id,
+            'collection_id': collection_id,
+            'uploaded_by': uploaded_by,
+            'document': DocumentService.serialize_document(document),
+            'collection': {
+                'id': collection.id,
+                'name': collection.name,
+                'display_name': collection.display_name,
+                'document_count': collection.document_count
+            } if collection else None
+        }
+
+        # Emit to collection room (for users viewing this collection)
+        if collection_id:
+            room = f"rag_collection_{collection_id}"
+            socketio.emit('rag:document_uploaded', payload, room=room)
+            logger.info(f"[RAG Socket] Emitted document_uploaded to room {room}")
+
+        # Also emit to queue subscribers who have access
+        if document:
+            for username in _get_queue_subscriber_usernames():
+                if RAGAccessService.can_view_document(username, document):
+                    socketio.emit('rag:document_uploaded', payload, room=_queue_room(username))
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting document uploaded: {e}")

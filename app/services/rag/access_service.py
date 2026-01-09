@@ -515,6 +515,116 @@ class RAGAccessService:
         return {'users': users, 'roles': roles}
 
     @staticmethod
+    def ensure_collection_view_access(
+        collection_id: int,
+        usernames=None,
+        role_names=None,
+        granted_by: Optional[str] = None
+    ) -> dict:
+        """
+        Ensure users/roles have at least view access to a collection.
+        This ADDS permissions without removing or downgrading existing ones.
+
+        Use this when chatbots are shared - it won't overwrite existing edit permissions.
+        """
+        usernames = RAGAccessService._normalize_strings(usernames)
+        role_names = RAGAccessService._normalize_strings(role_names)
+
+        existing = RAGCollectionPermission.query.filter_by(collection_id=collection_id).all()
+        existing_map = {(r.permission_type, r.target_identifier): r for r in existing}
+
+        added_users = []
+        added_roles = []
+
+        # Add permissions for users who don't have any
+        for username in usernames:
+            key = ('user', username)
+            if key not in existing_map:
+                db.session.add(RAGCollectionPermission(
+                    collection_id=collection_id,
+                    permission_type='user',
+                    target_identifier=username,
+                    can_view=True,
+                    can_edit=False,
+                    can_delete=False,
+                    can_share=False,
+                    granted_by=granted_by
+                ))
+                added_users.append(username)
+
+        # Add permissions for roles who don't have any
+        for role_name in role_names:
+            key = ('role', role_name)
+            if key not in existing_map:
+                db.session.add(RAGCollectionPermission(
+                    collection_id=collection_id,
+                    permission_type='role',
+                    target_identifier=role_name,
+                    can_view=True,
+                    can_edit=False,
+                    can_delete=False,
+                    can_share=False,
+                    granted_by=granted_by
+                ))
+                added_roles.append(role_name)
+
+        if added_users or added_roles:
+            db.session.commit()
+
+        return {
+            'added_users': added_users,
+            'added_roles': added_roles,
+            'already_had_access': {
+                'users': [u for u in usernames if u not in added_users],
+                'roles': [r for r in role_names if r not in added_roles]
+            }
+        }
+
+    @staticmethod
+    def remove_view_only_collection_access(
+        collection_id: int,
+        usernames=None,
+        role_names=None
+    ) -> dict:
+        """
+        Remove view-only access from a collection for specified users/roles.
+        ONLY removes permissions that are view-only (can_view=True but can_edit/can_delete/can_share=False).
+        Keeps any elevated permissions (edit, delete, share).
+
+        Use this when chatbot sharing is removed.
+        """
+        usernames = RAGAccessService._normalize_strings(usernames)
+        role_names = RAGAccessService._normalize_strings(role_names)
+
+        existing = RAGCollectionPermission.query.filter_by(collection_id=collection_id).all()
+        removed_users = []
+        removed_roles = []
+
+        for perm in existing:
+            should_check = False
+            if perm.permission_type == 'user' and perm.target_identifier in usernames:
+                should_check = True
+            elif perm.permission_type == 'role' and perm.target_identifier in role_names:
+                should_check = True
+
+            if should_check:
+                # Only remove if it's view-only (no elevated permissions)
+                if perm.can_view and not perm.can_edit and not perm.can_delete and not perm.can_share:
+                    if perm.permission_type == 'user':
+                        removed_users.append(perm.target_identifier)
+                    else:
+                        removed_roles.append(perm.target_identifier)
+                    db.session.delete(perm)
+
+        if removed_users or removed_roles:
+            db.session.commit()
+
+        return {
+            'removed_users': removed_users,
+            'removed_roles': removed_roles
+        }
+
+    @staticmethod
     def get_chatbot_required_access(collection_id: int) -> dict:
         """
         Get users/roles who need collection access because a chatbot using

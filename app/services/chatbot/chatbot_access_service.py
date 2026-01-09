@@ -217,7 +217,13 @@ class ChatbotAccessService:
         role_names: Optional[List[str]] = None,
         granted_by: Optional[str] = None,
     ) -> dict:
-        """Replace both user and role allowlists for a chatbot in one transaction."""
+        """
+        Replace both user and role allowlists for a chatbot in one transaction.
+
+        Also synchronizes collection access:
+        - Adds view-only access for new users/roles
+        - Removes view-only access for removed users/roles (keeps elevated permissions)
+        """
         chatbot = Chatbot.query.get(chatbot_id)
         if not chatbot:
             raise ValueError('Chatbot not found')
@@ -225,16 +231,23 @@ class ChatbotAccessService:
         normalized_users = ChatbotAccessService._normalize_strings(usernames)
         normalized_roles = ChatbotAccessService._normalize_strings(role_names)
 
+        # Get existing chatbot access
         existing_rows = ChatbotUserAccess.query.filter_by(chatbot_id=chatbot_id).all()
         existing_usernames = {r.username for r in existing_rows}
+        existing_roles = set(ChatbotAccessService._normalize_allowed_roles(chatbot.allowed_roles))
 
-        to_add = [u for u in normalized_users if u not in existing_usernames]
-        to_remove = [r for r in existing_rows if r.username not in normalized_users]
+        # Calculate what's being added and removed
+        users_to_add = [u for u in normalized_users if u not in existing_usernames]
+        users_to_remove = [r.username for r in existing_rows if r.username not in normalized_users]
+        roles_to_add = [r for r in normalized_roles if r not in existing_roles]
+        roles_to_remove = [r for r in existing_roles if r not in normalized_roles]
 
-        for row in to_remove:
-            db.session.delete(row)
+        # Update chatbot user access
+        for row in existing_rows:
+            if row.username not in normalized_users:
+                db.session.delete(row)
 
-        for username in to_add:
+        for username in users_to_add:
             db.session.add(ChatbotUserAccess(
                 chatbot_id=chatbot_id,
                 username=username,
@@ -243,26 +256,40 @@ class ChatbotAccessService:
 
         chatbot.allowed_roles = normalized_roles or None
 
-        # Also share associated collections with the same users/roles
+        # Synchronize collection access
         collection_links = ChatbotCollection.query.filter_by(chatbot_id=chatbot_id).all()
         shared_collections = []
+
         for link in collection_links:
             collection_id = link.collection_id
-            # Grant view access to collections when chatbot is shared
-            # Skip chatbot check since WE are the chatbot sharing operation
-            RAGAccessService.set_collection_permissions(
-                collection_id=collection_id,
-                usernames=normalized_users,
-                role_names=normalized_roles,
-                granted_by=granted_by,
-                access={'can_view': True, 'can_edit': False, 'can_delete': False, 'can_share': False},
-                skip_chatbot_check=True
-            )
             shared_collections.append(collection_id)
+
+            # Grant view access to new users/roles
+            # This won't downgrade existing edit permissions
+            if users_to_add or roles_to_add:
+                RAGAccessService.ensure_collection_view_access(
+                    collection_id=collection_id,
+                    usernames=users_to_add,
+                    role_names=roles_to_add,
+                    granted_by=granted_by
+                )
+
+            # Remove view-only access from removed users/roles
+            # This won't remove elevated permissions (edit, delete, share)
+            if users_to_remove or roles_to_remove:
+                RAGAccessService.remove_view_only_collection_access(
+                    collection_id=collection_id,
+                    usernames=users_to_remove,
+                    role_names=roles_to_remove
+                )
 
         db.session.commit()
         return {
             'allowed_usernames': normalized_users,
             'allowed_roles': normalized_roles,
             'shared_collections': shared_collections,
+            'users_added': users_to_add,
+            'users_removed': users_to_remove,
+            'roles_added': roles_to_add,
+            'roles_removed': roles_to_remove,
         }

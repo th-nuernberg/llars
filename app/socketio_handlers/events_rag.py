@@ -583,15 +583,17 @@ def emit_document_uploaded(socketio, document_id: int, collection_id: int, uploa
         logger.error(f"[RAG Socket] Error emitting document uploaded: {e}")
 
 
-def emit_collection_shared(collection, permissions_result: dict, shared_by: str):
+def emit_collection_shared(collection, permissions_result: dict, shared_by: str, previous_users: list = None):
     """
     Emit when a collection's permissions are changed.
     This notifies affected users so they can see the collection in real-time.
+    Also notifies users who lost access so the collection disappears from their view.
 
     Args:
         collection: The RAGCollection object
         permissions_result: Result from set_collection_permissions or set_collection_permissions_batch
         shared_by: Username who changed the permissions
+        previous_users: Optional list of usernames who had access before the change
     """
     try:
         from main import socketio
@@ -599,20 +601,25 @@ def emit_collection_shared(collection, permissions_result: dict, shared_by: str)
         if not collection:
             return
 
-        # Build list of affected users
-        affected_users = set()
+        # Build list of users who now have access
+        current_users = set()
 
         # From batch result format
         if 'users' in permissions_result:
             for user in permissions_result['users']:
                 if isinstance(user, dict):
-                    affected_users.add(user.get('target'))
+                    current_users.add(user.get('target'))
                 else:
-                    affected_users.add(user)
+                    current_users.add(user)
 
         # From legacy result format
         if 'usernames' in permissions_result:
-            affected_users.update(permissions_result['usernames'])
+            current_users.update(permissions_result['usernames'])
+
+        # Users who lost access (were in previous but not in current)
+        removed_users = set()
+        if previous_users:
+            removed_users = set(previous_users) - current_users
 
         payload = {
             'event': 'collection_shared',
@@ -626,17 +633,21 @@ def emit_collection_shared(collection, permissions_result: dict, shared_by: str)
                 'document_count': collection.document_count
             },
             'shared_by': shared_by,
-            'affected_users': list(affected_users)
+            'current_users': list(current_users),
+            'removed_users': list(removed_users)
         }
 
         # Emit to all subscribed users who might be affected
         for username in _get_queue_subscriber_usernames():
-            # Send to the user who shared (for confirmation)
-            # and to all affected users (so they see the collection)
-            if username == shared_by or username in affected_users:
+            # Send to:
+            # - The user who shared (for confirmation)
+            # - Users who now have access (so they see the collection)
+            # - Users who lost access (so the collection disappears)
+            if username == shared_by or username in current_users or username in removed_users:
                 socketio.emit('rag:collection_shared', payload, room=_queue_room(username))
 
-        logger.info(f"[RAG Socket] Emitted collection_shared for collection {collection.id} to {len(affected_users)} users")
+        logger.info(f"[RAG Socket] Emitted collection_shared for collection {collection.id} - "
+                    f"current: {len(current_users)}, removed: {len(removed_users)}")
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting collection shared: {e}")

@@ -52,18 +52,17 @@
 
         <!-- PDF Viewer -->
         <iframe
-          v-else-if="isPdf && viewUrl"
-          :src="viewUrl"
+          v-else-if="isPdf && blobUrl"
+          :src="blobUrl"
           class="pdf-frame"
         />
 
         <!-- Image Viewer -->
         <img
-          v-else-if="isImage && viewUrl"
-          :src="viewUrl"
+          v-else-if="isImage && blobUrl"
+          :src="blobUrl"
           :alt="document?.filename"
           class="image-preview"
-          @load="loading = false"
         />
 
         <!-- Text/Markdown Viewer -->
@@ -118,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -136,8 +135,9 @@ const emit = defineEmits(['update:modelValue', 'download', 'showDetails'])
 
 const loading = ref(false)
 const textContent = ref('')
+const blobUrl = ref(null)
 
-// Computed URLs
+// Computed URLs (for reference, actual loading uses blob)
 const viewUrl = computed(() => {
   if (!props.document?.id) return ''
   return `/api/rag/documents/${props.document.id}/view`
@@ -248,6 +248,28 @@ function handleDownload() {
   emit('download', props.document)
 }
 
+// Load file as blob (with auth headers)
+async function loadFileBlob() {
+  if (!props.document?.id) return
+
+  loading.value = true
+  try {
+    const response = await axios.get(`/api/rag/documents/${props.document.id}/view`, {
+      responseType: 'blob'
+    })
+    // Revoke previous blob URL if exists
+    if (blobUrl.value) {
+      URL.revokeObjectURL(blobUrl.value)
+    }
+    blobUrl.value = URL.createObjectURL(response.data)
+  } catch (error) {
+    console.error('Error loading file:', error)
+    blobUrl.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
 // Load text content for text files
 async function loadTextContent() {
   if (!props.document?.id || !isText.value) return
@@ -264,24 +286,37 @@ async function loadTextContent() {
   }
 }
 
+// Cleanup blob URL
+function cleanupBlobUrl() {
+  if (blobUrl.value) {
+    URL.revokeObjectURL(blobUrl.value)
+    blobUrl.value = null
+  }
+}
+
 // Watch for dialog open
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     loading.value = true
     textContent.value = ''
+    cleanupBlobUrl()
 
     if (isText.value) {
       loadTextContent()
-    } else if (isPdf.value) {
-      // PDF loads via iframe, show loading briefly
-      setTimeout(() => { loading.value = false }, 500)
-    } else if (isImage.value) {
-      // Image will trigger @load event
-      loading.value = true
+    } else if (isPdf.value || isImage.value) {
+      loadFileBlob()
     } else {
       loading.value = false
     }
+  } else {
+    // Cleanup when dialog closes
+    cleanupBlobUrl()
   }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  cleanupBlobUrl()
 })
 </script>
 

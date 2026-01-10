@@ -438,6 +438,7 @@ deploy:production:
   stage: deploy
   tags:
     - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
+  timeout: 30 minutes  # Prevent 1-hour default timeout
   environment:
     name: production
     url: http://141.75.150.128

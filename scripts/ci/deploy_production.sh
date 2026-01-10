@@ -67,6 +67,7 @@ echo "[1/6] Creating pre-deploy backup: $BACKUP_FILE"
 DB_USER="${MYSQL_USER:-dev_user}"
 DB_PASS="${MYSQL_PASSWORD:-dev_password_change_me}"
 DB_NAME="${MYSQL_DATABASE:-database_llars}"
+BACKUP_TIMEOUT="${BACKUP_TIMEOUT:-300}"  # 5 minutes default
 
 if ! docker inspect -f '{{.State.Running}}' llars_db_service >/dev/null 2>&1; then
   echo "ERROR: llars_db_service is not running. Aborting deploy."
@@ -74,11 +75,18 @@ if ! docker inspect -f '{{.State.Running}}' llars_db_service >/dev/null 2>&1; th
   exit 1
 fi
 
-if ! docker exec llars_db_service mariadb-dump -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" > "$BACKUP_FILE"; then
-  echo "ERROR: Backup failed. Aborting deploy."
-  docker logs --tail 200 llars_db_service || true
+# Run backup with timeout to prevent hanging
+if ! timeout "$BACKUP_TIMEOUT" docker exec llars_db_service mariadb-dump -u "$DB_USER" "-p$DB_PASS" --single-transaction --quick "$DB_NAME" > "$BACKUP_FILE"; then
+  BACKUP_EXIT=$?
+  if [ "$BACKUP_EXIT" -eq 124 ]; then
+    echo "ERROR: Backup timed out after ${BACKUP_TIMEOUT}s. Database may be too large or locked."
+  else
+    echo "ERROR: Backup failed with exit code $BACKUP_EXIT."
+  fi
+  docker logs --tail 50 llars_db_service || true
   exit 1
 fi
+echo "Backup completed successfully ($(du -h "$BACKUP_FILE" | cut -f1))"
 
 echo "[2/6] Updating code (branch: $BRANCH)"
 git fetch origin "$BRANCH"

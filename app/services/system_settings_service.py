@@ -50,6 +50,10 @@ def _load_settings_to_cache() -> dict:
         'llm_ai_log_response_max': settings.llm_ai_log_response_max,
         'llm_ai_log_prompts': settings.llm_ai_log_prompts,
         'llm_ai_log_prompt_max': settings.llm_ai_log_prompt_max,
+        # Referral System
+        'referral_system_enabled': settings.referral_system_enabled,
+        'self_registration_enabled': settings.self_registration_enabled,
+        'default_referral_role': settings.default_referral_role,
     }
 
     with _cache_lock:

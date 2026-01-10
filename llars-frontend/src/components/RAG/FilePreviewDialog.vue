@@ -6,7 +6,7 @@
     transition="dialog-bottom-transition"
     class="file-preview-dialog"
   >
-    <v-card class="d-flex flex-column bg-grey-darken-4">
+    <v-card class="d-flex flex-column bg-grey-darken-4 h-100">
       <!-- Toolbar -->
       <v-toolbar color="grey-darken-3" density="compact">
         <LIcon :icon="getFileIcon()" :color="getFileColor()" class="ml-4 mr-2" />
@@ -332,6 +332,8 @@ onUnmounted(() => {
 .file-preview-content {
   background: #1e1e1e;
   overflow: auto;
+  min-height: 0;
+  flex: 1 1 0;
 }
 
 .pdf-frame {

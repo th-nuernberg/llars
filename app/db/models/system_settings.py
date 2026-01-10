@@ -87,6 +87,20 @@ class SystemSettings(db.Model):
         comment="Zotero OAuth Client Secret (encrypted)"
     )
 
+    # Referral/Invitation System Settings
+    referral_system_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable referral/invitation link system"
+    )
+    self_registration_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable self-registration via referral links (shows Register button)"
+    )
+    default_referral_role: Mapped[str] = mapped_column(
+        db.String(100), default='evaluator', nullable=False,
+        comment="Default role for users registered via referral"
+    )
+
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
@@ -107,6 +121,10 @@ class SystemSettings(db.Model):
             'zotero_oauth_enabled': self.zotero_oauth_enabled,
             'zotero_client_key': self.zotero_client_key,
             'zotero_oauth_configured': bool(self.zotero_client_key and self.zotero_client_secret_encrypted),
+            # Referral System
+            'referral_system_enabled': self.referral_system_enabled,
+            'self_registration_enabled': self.self_registration_enabled,
+            'default_referral_role': self.default_referral_role,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
         # Never expose the actual secret, only indicate if it's set

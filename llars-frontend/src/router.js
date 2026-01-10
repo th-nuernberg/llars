@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Login from "@/components/Login.vue";
+import Register from "@/views/Register.vue";
 import Home from "@/components/Home.vue";
 import NotFound from "@/components/NotFound.vue";
 import Ranker from "@/components/Ranker/Ranker.vue";
@@ -138,6 +139,8 @@ const routes = [
     { path: '/AdminTester', component: AdminTester, meta: { requiresAuth: true, requiresAdmin: true } },
 
     { path: '/login', component: Login, meta: { requiresAuth: false } },
+    { path: '/register', name: 'Register', component: Register, meta: { requiresAuth: false } },
+    { path: '/join/:code', name: 'RegisterWithCode', component: Register, props: true, meta: { requiresAuth: false } },
     { path: '/', redirect: '/login' },
     { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }, // 404 Route
 

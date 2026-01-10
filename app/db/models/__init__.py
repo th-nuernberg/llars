@@ -164,6 +164,14 @@ from db.models.zotero import (
     ZoteroSyncLog,
 )
 
+# Referral/Invitation models
+from db.models.referral import (
+    ReferralCampaignStatus,
+    ReferralCampaign,
+    ReferralLink,
+    ReferralRegistration,
+)
+
 __all__ = [
     # User
     'User',
@@ -285,4 +293,9 @@ __all__ = [
     'ZoteroConnection',
     'WorkspaceZoteroLibrary',
     'ZoteroSyncLog',
+    # Referral
+    'ReferralCampaignStatus',
+    'ReferralCampaign',
+    'ReferralLink',
+    'ReferralRegistration',
 ]

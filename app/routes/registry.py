@@ -59,6 +59,10 @@ def register_all_blueprints(app: Flask) -> None:
     # Authentik OIDC authentication
     from routes.authentik_routes import authentik_auth_blueprint
 
+    # Referral/Invitation System (self-registration via invite links)
+    from routes.referral import referral_bp
+    app.register_blueprint(referral_bp)
+
     # ============================================================
     # LLM & AI Features
     # ============================================================
@@ -143,6 +147,7 @@ def get_blueprint_info() -> dict:
         'authentication': [
             {'name': 'auth', 'prefix': '/auth', 'description': 'Legacy authentication (backwards compatibility)'},
             {'name': 'authentik_auth', 'prefix': '/auth/authentik', 'description': 'Authentik OIDC authentication'},
+            {'name': 'referral', 'prefix': '/api/referral', 'description': 'Referral/Invitation system for self-registration'},
         ],
         'authorization': [
             {'name': 'permissions', 'prefix': '/api/permissions', 'description': 'Permissions and roles management'},

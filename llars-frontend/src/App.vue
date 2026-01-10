@@ -45,9 +45,19 @@
         </v-list>
       </v-menu>
 
-      <!-- Theme Toggle + Login Button (when NOT logged in) -->
+      <!-- Theme Toggle + Register/Login Buttons (when NOT logged in) -->
       <template v-else>
         <LThemeToggle on-primary class="mr-2" />
+        <LBtn
+          v-if="registrationEnabled"
+          variant="text"
+          size="small"
+          @click="goToRegister"
+          prepend-icon="mdi-account-plus"
+          class="mr-1"
+        >
+          {{ isMobile ? '' : 'Registrieren' }}
+        </LBtn>
         <LBtn variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
           Anmelden
         </LBtn>
@@ -119,6 +129,7 @@ import { useSnackbar } from '@/composables/useSnackbar';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
+import { useReferralSystem } from '@/composables/useReferralSystem';
 
 // Global Snackbar
 const { snackbarModel } = useSnackbar();
@@ -132,6 +143,7 @@ const auth = useAuth();
 const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
 const { isMobile } = useMobile();
+const { registrationEnabled, checkRegistrationStatus } = useReferralSystem();
 
 /**
  * Smart router-view key that prevents full remount on document switches.
@@ -202,6 +214,7 @@ const cleanupOldChatMessages = () => {
 onMounted(() => {
   cleanupOldChatMessages();
   applyTheme(); // Apply theme on app mount
+  checkRegistrationStatus(); // Check if self-registration is enabled
 });
 
 function logout() {
@@ -270,6 +283,10 @@ function goHome() {
 
 function goToLogin() {
   router.push('/login');
+}
+
+function goToRegister() {
+  router.push('/register');
 }
 
 function navigateTo(link) {

@@ -167,6 +167,12 @@ def initialize_permissions(db):
             'category': 'admin',
             'description': 'Erlaubt Systemkonfigurationen'
         },
+        {
+            'permission_key': 'admin:referral:manage',
+            'display_name': 'Referral-System verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Verwalten von Referral-Kampagnen und Einladungslinks'
+        },
         # Data Operations
         {
             'permission_key': 'data:export',

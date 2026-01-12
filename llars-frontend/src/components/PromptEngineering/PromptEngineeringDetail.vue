@@ -493,7 +493,9 @@ const debugExpanded = ref(false);
 const VARIABLE_REGEX = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
 
 const getVariablesInBlock = (block) => {
-  const content = block.content || '';
+  const raw = block.content || '';
+  // Ensure content is a string
+  const content = typeof raw === 'string' ? raw : String(raw);
   const found = new Set();
   let match;
   const regex = new RegExp(VARIABLE_REGEX.source, 'g');
@@ -505,7 +507,9 @@ const getVariablesInBlock = (block) => {
 
 const highlightVariablesInContent = (content) => {
   if (!content) return '';
-  const escaped = content
+  // Ensure content is a string
+  const str = typeof content === 'string' ? content : String(content);
+  const escaped = str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');

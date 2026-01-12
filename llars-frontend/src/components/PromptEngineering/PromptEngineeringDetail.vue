@@ -211,7 +211,14 @@
         <!-- Debug Info (Development only) -->
         <div v-if="isDevelopment" class="debug-info">
           <h4>{{ $t('promptEngineering.editor.debugTitle') }}</h4>
-          <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
+          <div class="debug-section">
+            <h5>Blocks</h5>
+            <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
+          </div>
+          <div class="debug-section">
+            <h5>Variables ({{ userVariables.length }})</h5>
+            <pre>{{ JSON.stringify(userVariables, null, 2) }}</pre>
+          </div>
         </div>
       </template>
     </div>
@@ -1192,6 +1199,21 @@ watch(users, (newUsers, oldUsers) => {
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
+}
+
+.debug-section {
+  margin-bottom: 16px;
+}
+
+.debug-section:last-child {
+  margin-bottom: 0;
+}
+
+.debug-section h5 {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-weight: 600;
 }
 
 .w-100 {

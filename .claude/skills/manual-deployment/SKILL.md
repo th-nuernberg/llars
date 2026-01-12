@@ -1,5 +1,34 @@
 # Manual Deployment for LLARS
 
+## WICHTIG: Docker Cleanup Regeln
+
+**Was IMMER geloescht werden darf:**
+- Images (`docker image prune -a`)
+- Container (`docker container prune`)
+- Build Cache (`docker builder prune`)
+- Networks (`docker network prune`)
+
+**Was NIEMALS ohne Backup geloescht werden darf:**
+- **VOLUMES** (`docker volume prune` oder `docker volume rm`)
+
+Volumes enthalten persistente Daten:
+- MariaDB Datenbank (alle Benutzer, Szenarien, Bewertungen, etc.)
+- Authentik PostgreSQL (User, OAuth-Config)
+- ChromaDB (RAG-Embeddings)
+- Redis (Sessions, Cache)
+
+```bash
+# SICHER: Images, Container, Build Cache loeschen
+docker system prune -af
+
+# GEFAEHRLICH: Loescht auch Volumes - NUR mit vorherigem Backup!
+docker system prune -af --volumes  # <-- VORSICHT!
+```
+
+Bei Speicherplatzproblemen immer zuerst `docker system prune -af` OHNE `--volumes` verwenden!
+
+---
+
 ## Quick Deploy (One-Liner from Local Machine)
 
 ```bash
@@ -106,6 +135,33 @@ docker logs llars_flask_service --tail 50
 # Check for errors
 docker logs llars_flask_service 2>&1 | grep -i error | tail -20
 ```
+
+### 6. Post-Deployment Test (PFLICHT!)
+
+Nach jedem Deployment MUSS getestet werden:
+
+**A) Erreichbarkeit pruefen:**
+```bash
+# Frontend erreichbar (sollte 200 zurueckgeben)
+curl -s -o /dev/null -w "%{http_code}" -L https://llars.e-beratungsinstitut.de/
+
+# API erreichbar (sollte 401 oder 200 zurueckgeben, nicht 502/503)
+curl -s -o /dev/null -w "%{http_code}" -L https://llars.e-beratungsinstitut.de/api/auth/me
+```
+
+**B) Login testen:**
+1. Oeffne https://llars.e-beratungsinstitut.de im Browser
+2. Klicke auf "Anmelden"
+3. Teste Login mit: `admin` / `admin123`
+4. Nach erfolgreichem Login sollte das Dashboard erscheinen
+
+**C) Authentik pruefen:**
+```bash
+# Authentik Health-Check (sollte 200 zurueckgeben)
+curl -s -o /dev/null -w "%{http_code}" -L https://llars.e-beratungsinstitut.de/authentik/-/health/ready/
+```
+
+Bei Fehlern: Logs pruefen mit `docker logs llars_authentik_server --tail 100`
 
 ## Production Environment
 

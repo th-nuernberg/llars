@@ -50,10 +50,10 @@
                 >
                   <div class="variable-header">
                     <span class="variable-tag">{{ formatTag(v.name) }}</span>
-                    <LTag v-if="v.hasValue" variant="success" size="x-small">
+                    <LTag v-if="v.hasValue" variant="success" size="sm">
                       <LIcon size="10">mdi-check</LIcon>
                     </LTag>
-                    <LTag v-else variant="warning" size="x-small">
+                    <LTag v-else variant="warning" size="sm">
                       {{ $t('promptEngineering.testing.empty') }}
                     </LTag>
                   </div>

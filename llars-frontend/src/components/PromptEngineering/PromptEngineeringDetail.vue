@@ -230,7 +230,7 @@
                   <pre class="debug-block-content" v-html="highlightVariablesInContent(block.content || '')"></pre>
                   <div v-if="getVariablesInBlock(block).length > 0" class="debug-block-vars">
                     <LTag v-for="v in getVariablesInBlock(block)" :key="v" variant="accent" size="sm" class="mr-1">
-                      {{ '{{' + v + '}}' }}
+                      {{ formatVarTag(v) }}
                     </LTag>
                   </div>
                 </div>
@@ -512,6 +512,8 @@ const highlightVariablesInContent = (content) => {
   return escaped.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g,
     '<span class="debug-var-highlight">{{$1}}</span>');
 };
+
+const formatVarTag = (name) => `{{${name}}}`;
 
 const route = useRoute();
 const router = useRouter();

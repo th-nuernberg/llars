@@ -152,7 +152,7 @@
       },
       "latexCollabAi": {
         "title": "LaTeX Collab AI",
-        "description": "LaTeX editor with AI writing assistant (ghost text, @@-commands, RAG citations)"
+        "description": "LaTeX editor with AI writing assistant (ghost text, AI commands, RAG citations)"
       },
       "chatbotArena": {
         "title": "Chatbot Arena",
@@ -1031,7 +1031,7 @@
       "clipboardCopyFailed": "Could not copy output to clipboard.",
       "uploadFailed": "Upload failed"
     },
-    "exampleText": "Hello Ms. Miller,\\n\\nmy name is Anna Miller (34) and I live in 8001 Zurich.\\nPlease contact me at 079 123 45 67 or via anna.mueller@example.ch.\\nMy AHV number is 756.1234.5678.97.\\nThe appointment is on 12.03.2024 at 14:30 at the University of Zurich.\\n\\nBest regards\\nAnna Miller"
+    "exampleText": "Hello Ms. Miller,\\n\\nmy name is Anna Miller (34) and I live in 8001 Zurich.\\nPlease contact me at 079 123 45 67 or via anna.mueller[at]example.ch.\\nMy AHV number is 756.1234.5678.97.\\nThe appointment is on 12.03.2024 at 14:30 at the University of Zurich.\\n\\nBest regards\\nAnna Miller"
   },
   "chat": {
     "newChat": "New Chat",
@@ -1522,7 +1522,7 @@
       "expand": "Expand selection",
       "summarize": "Summarize selection",
       "fix": "Fix LaTeX/grammar",
-      "translate": "Translate text (e.g. @@translate en)",
+      "translate": "Translate text (e.g. //translate en)",
       "cite": "Find citations",
       "abstract": "Generate abstract",
       "titles": "Suggest titles"
@@ -1635,7 +1635,7 @@
       },
       "banner": {
         "title": "AI features enabled",
-        "body": "Includes Ghost Text, @@-commands, the AI sidebar, and RAG citations."
+        "body": "Includes Ghost Text, AI commands, the AI sidebar, and RAG citations."
       },
       "workspaces": {
         "title": "Workspaces"
@@ -1745,7 +1745,7 @@
       "artifact": {
         "insert": "Insert into document"
       },
-      "footerTip": "Tip: Use @@-commands in the editor for quick actions.",
+      "footerTip": "Tip: Use AI commands in the editor for quick actions.",
       "toolResults": {
         "title": {
           "abstract": "Generated abstract",
@@ -1776,7 +1776,7 @@
       "expand": "Expand the selected text with more detail.",
       "summarize": "Summarize the selected text.",
       "fix": "Fix LaTeX and grammar issues.",
-      "translate": "Translate the text (e.g. @@translate en).",
+      "translate": "Translate the text to a target language.",
       "cite": "Find suitable sources for the statement.",
       "abstract": "Generate an abstract for the document.",
       "titles": "Suggest titles for the document."

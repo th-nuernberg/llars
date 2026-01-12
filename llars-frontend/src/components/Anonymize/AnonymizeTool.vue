@@ -338,6 +338,7 @@ import axios from 'axios'
 import { BASE_URL } from '@/config.js'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAuth } from '@/composables/useAuth'
 import { useMobile } from '@/composables/useMobile'
 import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 import AnonymizePreviewWorker from '@/workers/anonymizePreview.worker.js?worker'
@@ -395,6 +396,7 @@ function terminatePreviewWorker() {
 
 const { isLoading, withLoading } = useSkeletonLoading([])
 const { hasPermission, fetchPermissions, isLoading: permissionsLoading } = usePermissions()
+const auth = useAuth()
 
 const inputText = ref('')
 const outputText = ref('')
@@ -660,8 +662,18 @@ function labelColor(label) {
       return 'secondary'
     case 'AHV':
       return 'error'
+    case 'SVN':
+      return 'error'  // Same as AHV - both are sensitive ID numbers
     case 'PLZ':
-      return 'secondary'
+      return 'cyan'
+    case 'IBAN':
+      return 'pink'
+    case 'URL':
+      return 'indigo'
+    case 'TIME':
+      return 'blue-grey'
+    case 'STREET':
+      return 'lime'
     default:
       return 'grey'
   }
@@ -753,12 +765,19 @@ async function runPseudonymizeStreaming(payload, text, action) {
     progressMessage.value = t('anonymization.progress.init')
 
     // Use fetch for SSE (EventSource doesn't support POST body)
+    // Must include Authorization header manually since fetch doesn't use axios interceptors
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream'
+    }
+    const token = auth.getToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     fetch(`${BASE_URL}/api/anonymize/pseudonymize/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream'
-      },
+      headers,
       body: JSON.stringify(payload),
       credentials: 'include'
     }).then(async response => {

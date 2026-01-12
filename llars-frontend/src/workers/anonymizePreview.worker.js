@@ -26,7 +26,7 @@ const PATTERNS = {
   // German postal codes (5 digits)
   PLZ: {
     regex: /\b\d{5}\b/g,
-    label: 'LOC'
+    label: 'PLZ'
   },
   // Time (HH:MM or HH:MM:SS)
   TIME: {
@@ -52,6 +52,11 @@ const PATTERNS = {
   URL: {
     regex: /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi,
     label: 'URL'
+  },
+  // Street addresses (German/Swiss)
+  STREET: {
+    regex: /\b[A-ZÄÖÜ][a-zäöüß]+(?:straße|strasse|str\.|gasse|weg|platz|allee|ring)\s*\d+\s*[a-zA-Z]?\b/gi,
+    label: 'STREET'
   }
 }
 

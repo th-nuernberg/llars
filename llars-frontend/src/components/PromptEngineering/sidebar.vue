@@ -150,7 +150,7 @@
             density="compact"
             :show-add-button="true"
             :add-button-text="$t('promptEngineering.sidebar.shareAction')"
-            button-size="sm"
+            button-size="small"
             @add="shareWithSelectedUser"
           />
           <div v-if="shareError" class="error-message mt-2">

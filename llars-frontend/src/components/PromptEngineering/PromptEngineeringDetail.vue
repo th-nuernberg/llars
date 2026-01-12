@@ -210,15 +210,37 @@
 
         <!-- Debug Info (Development only) -->
         <div v-if="isDevelopment" class="debug-info">
-          <h4>{{ $t('promptEngineering.editor.debugTitle') }}</h4>
-          <div class="debug-section">
-            <h5>Blocks</h5>
-            <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
+          <div class="debug-header" @click="debugExpanded = !debugExpanded">
+            <LIcon size="18" class="debug-chevron" :class="{ 'rotated': debugExpanded }">mdi-chevron-right</LIcon>
+            <h4>{{ $t('promptEngineering.editor.debugTitle') }}</h4>
+            <LTag variant="gray" size="sm" class="ml-2">{{ blocks.length }} Blocks, {{ userVariables.length }} Variables</LTag>
           </div>
-          <div class="debug-section">
-            <h5>Variables ({{ userVariables.length }})</h5>
-            <pre>{{ JSON.stringify(userVariables, null, 2) }}</pre>
-          </div>
+          <v-expand-transition>
+            <div v-show="debugExpanded" class="debug-content">
+              <div class="debug-section">
+                <h5>Blocks & Variable Usage</h5>
+                <div v-for="(block, idx) in blocks" :key="block.id" class="debug-block">
+                  <div class="debug-block-header">
+                    <span class="debug-block-index">#{{ idx + 1 }}</span>
+                    <span class="debug-block-type">{{ block.type }}</span>
+                    <LTag v-if="getVariablesInBlock(block).length > 0" variant="info" size="sm">
+                      {{ getVariablesInBlock(block).length }} var(s)
+                    </LTag>
+                  </div>
+                  <pre class="debug-block-content" v-html="highlightVariablesInContent(block.content || '')"></pre>
+                  <div v-if="getVariablesInBlock(block).length > 0" class="debug-block-vars">
+                    <LTag v-for="v in getVariablesInBlock(block)" :key="v" variant="accent" size="sm" class="mr-1">
+                      {{ '{{' + v + '}}' }}
+                    </LTag>
+                  </div>
+                </div>
+              </div>
+              <div class="debug-section">
+                <h5>Variables ({{ userVariables.length }})</h5>
+                <pre>{{ JSON.stringify(userVariables, null, 2) }}</pre>
+              </div>
+            </div>
+          </v-expand-transition>
         </div>
       </template>
     </div>
@@ -465,6 +487,31 @@ import { useAuth } from '@/composables/useAuth';
 import { useActiveDuration, useScrollDepth, useTypingMetrics, useVisibilityTracker } from '@/composables/useAnalyticsMetrics';
 
 const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
+const debugExpanded = ref(false);
+
+// Debug helper functions
+const VARIABLE_REGEX = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
+
+const getVariablesInBlock = (block) => {
+  const content = block.content || '';
+  const found = new Set();
+  let match;
+  const regex = new RegExp(VARIABLE_REGEX.source, 'g');
+  while ((match = regex.exec(content)) !== null) {
+    found.add(match[1]);
+  }
+  return Array.from(found);
+};
+
+const highlightVariablesInContent = (content) => {
+  if (!content) return '';
+  const escaped = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g,
+    '<span class="debug-var-highlight">{{$1}}</span>');
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -1183,22 +1230,49 @@ watch(users, (newUsers, oldUsers) => {
 
 .debug-info {
   margin-top: 24px;
-  padding: 16px;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.debug-info h4 {
-  margin: 0 0 12px 0;
+.debug-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.debug-header:hover {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.debug-header h4 {
+  margin: 0;
   font-size: 0.9rem;
   color: rgb(var(--v-theme-on-surface));
 }
 
+.debug-chevron {
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+}
+
+.debug-chevron.rotated {
+  transform: rotate(90deg);
+}
+
+.debug-content {
+  padding: 0 16px 16px 16px;
+}
+
 .debug-info pre {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
+  font-family: 'Roboto Mono', monospace;
 }
 
 .debug-section {
@@ -1213,6 +1287,60 @@ watch(users, (newUsers, oldUsers) => {
   margin: 0 0 8px 0;
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
+  font-weight: 600;
+}
+
+.debug-block {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.debug-block:last-child {
+  margin-bottom: 0;
+}
+
+.debug-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.debug-block-index {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.debug-block-type {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+}
+
+.debug-block-content {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  padding: 8px;
+  border-radius: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.debug-block-vars {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+:deep(.debug-var-highlight) {
+  background: rgba(var(--v-theme-accent), 0.25);
+  color: rgb(var(--v-theme-accent));
+  padding: 1px 4px;
+  border-radius: 3px;
   font-weight: 600;
 }
 

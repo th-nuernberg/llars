@@ -380,7 +380,7 @@
       "promptPreview": "Prompt-Vorschau",
       "testDatasets": "Test-Datasets",
       "noVariables": "Keine Variablen im Prompt erkannt",
-      "noVariablesHint": "Verwenden Sie {'{{'}variable{'}}'}  um Platzhalter zu definieren.",
+      "noVariablesHint": "Definieren Sie Platzhalter mit doppelten geschweiften Klammern.",
       "steps": {
         "upload": "Hochladen",
         "configure": "Konfigurieren",

@@ -1031,6 +1031,20 @@
       "clipboardCopyFailed": "Output konnte nicht in die Zwischenablage kopiert werden.",
       "uploadFailed": "Upload fehlgeschlagen"
     },
+    "progress": {
+      "init": "Initialisiere...",
+      "cache_check": "Prüfe Cache...",
+      "cache_hit": "Verwende gecachte Ergebnisse",
+      "regex_detection": "Führe Regex-Erkennung aus...",
+      "date_detection": "Erkenne Datumsangaben...",
+      "llm_detection": "Führe LLM-Erkennung aus...",
+      "ner_detection": "Führe NER-Modell aus...",
+      "entity_selection": "Wähle Entitäten aus...",
+      "grouping": "Gruppiere Entitäten...",
+      "generating": "Generiere Ersetzungen...",
+      "building_output": "Erstelle Ausgabe...",
+      "complete": "Abgeschlossen"
+    },
     "exampleText": "Guten Tag Frau Mustermann,\\n\\nmein Name ist Anna Müller (34) und ich wohne in 80331 München.\\nBitte kontaktieren Sie mich unter 0176 12345678 oder via anna.mueller{'@'}example.de.\\nMeine Sozialversicherungsnummer lautet 12 150485 M 002.\\nDer Termin ist am 12.03.2024 um 14:30 Uhr an der Ludwig-Maximilians-Universität.\\n\\nMit freundlichen Grüßen\\nAnna Müller"
   },
   "chat": {

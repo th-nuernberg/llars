@@ -98,7 +98,17 @@
           </v-card-title>
           <v-divider />
           <v-card-text>
-            <v-progress-linear v-if="isLoading('process')" indeterminate height="2" class="mb-3" />
+            <div v-if="isLoading('process')" class="mb-3">
+              <v-progress-linear
+                :model-value="progressPercent"
+                :indeterminate="!progressStep"
+                height="4"
+                color="primary"
+              />
+              <div v-if="progressMessage" class="text-caption text-medium-emphasis mt-1">
+                {{ progressMessage }}
+              </div>
+            </div>
 
             <v-textarea
               v-model="inputText"
@@ -134,7 +144,17 @@
           </v-card-title>
           <v-divider />
           <v-card-text>
-            <v-progress-linear v-if="isLoading('process')" indeterminate height="2" class="mb-3" />
+            <div v-if="isLoading('process')" class="mb-3">
+              <v-progress-linear
+                :model-value="progressPercent"
+                :indeterminate="!progressStep"
+                height="4"
+                color="primary"
+              />
+              <div v-if="progressMessage" class="text-caption text-medium-emphasis mt-1">
+                {{ progressMessage }}
+              </div>
+            </div>
 
             <v-textarea
               v-model="outputText"
@@ -320,9 +340,58 @@ import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
 import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
+import AnonymizePreviewWorker from '@/workers/anonymizePreview.worker.js?worker'
 
 const { isMobile } = useMobile()
 const { t } = useI18n()
+
+// ============================================
+// OPTIMIZATION: Web Worker for instant preview
+// ============================================
+let previewWorker = null
+let previewRequestId = 0
+const isPreviewMode = ref(false)  // True when showing preview, false when showing real NER results
+
+function initPreviewWorker() {
+  if (previewWorker) return
+  try {
+    previewWorker = new AnonymizePreviewWorker()
+    previewWorker.onmessage = handlePreviewResult
+    previewWorker.onerror = (e) => console.warn('Preview worker error:', e)
+  } catch (e) {
+    console.warn('Could not initialize preview worker:', e)
+  }
+}
+
+function handlePreviewResult(e) {
+  const { type, requestId, entities: previewEntities, groups: previewGroups, outputText: previewOutput } = e.data
+
+  // Only apply if this is the most recent request and we're still waiting for real results
+  if (type === 'result' && requestId === previewRequestId && isLoading('process')) {
+    // Show preview results (will be replaced when real NER completes)
+    isPreviewMode.value = true
+    entities.value = previewEntities
+    groups.value = previewGroups
+    outputText.value = previewOutput
+  }
+}
+
+function requestPreview(text) {
+  if (!previewWorker || !text.trim()) return
+  previewRequestId++
+  previewWorker.postMessage({
+    type: 'analyze',
+    text,
+    requestId: previewRequestId
+  })
+}
+
+function terminatePreviewWorker() {
+  if (previewWorker) {
+    previewWorker.terminate()
+    previewWorker = null
+  }
+}
 
 const { isLoading, withLoading } = useSkeletonLoading([])
 const { hasPermission, fetchPermissions, isLoading: permissionsLoading } = usePermissions()
@@ -338,7 +407,63 @@ const liveMode = ref(true)
 const ignoreNextInputWatch = ref(0)
 const liveQueued = ref(false)
 let liveTimer = null
-const LIVE_DEBOUNCE_MS = 450
+
+// ============================================
+// OPTIMIZATION: Streaming Progress
+// ============================================
+const useStreaming = ref(true)  // Enable streaming by default
+const progressStep = ref(null)  // Current progress step
+const progressPercent = ref(0)  // Progress percentage (0-100)
+const progressMessage = ref('')  // Progress message for display
+
+// ============================================
+// OPTIMIZATION: Dynamic Debouncing
+// ============================================
+// Shorter delay for short texts, longer for large texts
+function getDynamicDebounceMs(textLength) {
+  if (textLength > 1000) return 800  // Large texts: more time to type
+  if (textLength > 500) return 600   // Medium-large texts
+  if (textLength > 100) return 450   // Medium texts
+  return 300                          // Short texts: faster response
+}
+
+// ============================================
+// OPTIMIZATION: NER Result Cache
+// ============================================
+// Cache NER results to avoid redundant backend calls
+const nerCache = new Map()
+const NER_CACHE_MAX_SIZE = 50  // Limit cache size to prevent memory issues
+
+function getCacheKey(text, engineVal, nameOriginVal) {
+  // Simple hash: combine text + settings
+  const str = `${text}|${engineVal}|${nameOriginVal}`
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return hash.toString(36)
+}
+
+function getCachedResult(text) {
+  const key = getCacheKey(text, engine.value, nameOrigin.value)
+  return nerCache.get(key)
+}
+
+function setCachedResult(text, result) {
+  const key = getCacheKey(text, engine.value, nameOrigin.value)
+  // Evict oldest entries if cache is full
+  if (nerCache.size >= NER_CACHE_MAX_SIZE) {
+    const firstKey = nerCache.keys().next().value
+    nerCache.delete(firstKey)
+  }
+  nerCache.set(key, {
+    entities: JSON.parse(JSON.stringify(result.entities)),
+    groups: JSON.parse(JSON.stringify(result.groups)),
+    dateShiftDays: result.dateShiftDays
+  })
+}
 
 const selectedFile = ref(null)
 const errorMessage = ref('')
@@ -385,8 +510,15 @@ function scheduleLivePseudonymize({ immediate = false } = {}) {
     entities.value = []
     groups.value = []
     dateShiftDays.value = null
+    isPreviewMode.value = false
     return
   }
+
+  // ============================================
+  // OPTIMIZATION: Request instant preview from Web Worker
+  // ============================================
+  // This shows approximate results immediately while real NER processes
+  requestPreview(text)
 
   if (isLoading('process')) {
     liveQueued.value = true
@@ -397,7 +529,7 @@ function scheduleLivePseudonymize({ immediate = false } = {}) {
   if (!engineReady.value) return
 
   clearLiveTimer()
-  const delay = immediate ? 0 : LIVE_DEBOUNCE_MS
+  const delay = immediate ? 0 : getDynamicDebounceMs(text.length)
   liveTimer = setTimeout(() => {
     liveTimer = null
     runPseudonymize()
@@ -609,6 +741,101 @@ async function loadHealth() {
   }
 }
 
+/**
+ * Run pseudonymization with streaming progress updates.
+ * Uses Server-Sent Events (SSE) for real-time progress feedback.
+ */
+async function runPseudonymizeStreaming(payload, text, action) {
+  return new Promise((resolve, reject) => {
+    // Reset progress
+    progressStep.value = 'init'
+    progressPercent.value = 0
+    progressMessage.value = t('anonymization.progress.init')
+
+    // Use fetch for SSE (EventSource doesn't support POST body)
+    fetch(`${BASE_URL}/api/anonymize/pseudonymize/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify(payload),
+      credentials: 'include'
+    }).then(async response => {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.slice(6))
+
+              if (event.type === 'progress') {
+                progressStep.value = event.step
+                progressPercent.value = event.percent || 0
+                progressMessage.value = event.message || ''
+              } else if (event.type === 'result') {
+                // Final result received
+                progressStep.value = null
+                progressPercent.value = 100
+                progressMessage.value = ''
+
+                const data = event.data
+                isPreviewMode.value = false
+                ignoreNextInputWatch.value += 1
+                inputText.value = data.input_text || ''
+                outputText.value = data.output_text || ''
+                entities.value = data.entities || []
+                groups.value = data.groups || []
+                dateShiftDays.value = Number.isFinite(data.date_shift_days) ? data.date_shift_days : dateShiftDays.value
+                anonymizeStatus.value = { ...(anonymizeStatus.value || {}), ready: true }
+
+                // Cache result
+                if (!action && text.trim()) {
+                  setCachedResult(text, {
+                    entities: data.entities || [],
+                    groups: data.groups || [],
+                    dateShiftDays: data.date_shift_days
+                  })
+                }
+
+                resolve(data)
+                return
+              } else if (event.type === 'error') {
+                throw new Error(event.error)
+              }
+            } catch (parseError) {
+              console.warn('[Anonymize] SSE parse error:', parseError)
+            }
+          }
+        }
+      }
+
+      // Stream ended without result
+      reject(new Error('Stream ended unexpectedly'))
+    }).catch(err => {
+      progressStep.value = null
+      progressPercent.value = 0
+      progressMessage.value = ''
+      reject(err)
+    })
+  })
+}
+
 async function runPseudonymize(action = null) {
   clearLiveTimer()
   errorMessage.value = ''
@@ -619,31 +846,70 @@ async function runPseudonymize(action = null) {
     return
   }
 
+  const text = inputText.value || ''
+
+  // ============================================
+  // OPTIMIZATION: Check cache first (no action = standard NER request)
+  // ============================================
+  if (!action && text.trim()) {
+    const cached = getCachedResult(text)
+    if (cached) {
+      // Cache hit! Apply cached entities and regenerate output locally
+      isPreviewMode.value = false  // Real results (from cache)
+      entities.value = JSON.parse(JSON.stringify(cached.entities))
+      groups.value = JSON.parse(JSON.stringify(cached.groups))
+      dateShiftDays.value = cached.dateShiftDays
+      applyReplacementsLocally()
+      return
+    }
+  }
+
+  const payload = {
+    text,
+    group_overrides: buildGroupOverrides(),
+    date_shift_days: dateShiftDays.value,
+    action,
+    name_origin: nameOrigin.value,
+    name_count: nameCount.value,
+    engine: engine.value,
+    llm_model: llmModel.value || null
+  }
+
   try {
     await withLoading('process', async () => {
-      const payload = {
-        text: inputText.value,
-        group_overrides: buildGroupOverrides(),
-        date_shift_days: dateShiftDays.value,
-        action,
-        name_origin: nameOrigin.value,
-        name_count: nameCount.value,
-        engine: engine.value,
-        llm_model: llmModel.value || null
-      }
+      // ============================================
+      // OPTIMIZATION: Use streaming for longer texts
+      // ============================================
+      if (useStreaming.value && text.length > 100 && !action) {
+        await runPseudonymizeStreaming(payload, text, action)
+      } else {
+        // Standard non-streaming request
+        const res = await axios.post(`${BASE_URL}/api/anonymize/pseudonymize`, payload)
+        if (!res.data?.success) {
+          throw new Error(res.data?.error || t('anonymization.messages.pseudonymizeFailed'))
+        }
 
-      const res = await axios.post(`${BASE_URL}/api/anonymize/pseudonymize`, payload)
-      if (!res.data?.success) {
-        throw new Error(res.data?.error || t('anonymization.messages.pseudonymizeFailed'))
-      }
+        // Real NER results received - replace any preview
+        isPreviewMode.value = false
+        ignoreNextInputWatch.value += 1
+        inputText.value = res.data.input_text || ''
+        outputText.value = res.data.output_text || ''
+        entities.value = res.data.entities || []
+        groups.value = res.data.groups || []
+        dateShiftDays.value = Number.isFinite(res.data.date_shift_days) ? res.data.date_shift_days : dateShiftDays.value
+        anonymizeStatus.value = { ...(anonymizeStatus.value || {}), ready: true }
 
-      ignoreNextInputWatch.value += 1
-      inputText.value = res.data.input_text || ''
-      outputText.value = res.data.output_text || ''
-      entities.value = res.data.entities || []
-      groups.value = res.data.groups || []
-      dateShiftDays.value = Number.isFinite(res.data.date_shift_days) ? res.data.date_shift_days : dateShiftDays.value
-      anonymizeStatus.value = { ...(anonymizeStatus.value || {}), ready: true }
+        // ============================================
+        // OPTIMIZATION: Store result in cache (only for standard NER, not actions)
+        // ============================================
+        if (!action && text.trim()) {
+          setCachedResult(text, {
+            entities: res.data.entities || [],
+            groups: res.data.groups || [],
+            dateShiftDays: res.data.date_shift_days
+          })
+        }
+      }
     })
   } catch (e) {
     const data = e?.response?.data
@@ -659,6 +925,9 @@ async function runPseudonymize(action = null) {
     }
     errorMessage.value = extractApiError(e, t('anonymization.messages.pseudonymizeFailed'))
   } finally {
+    progressStep.value = null
+    progressPercent.value = 0
+    progressMessage.value = ''
     if (liveQueued.value) {
       liveQueued.value = false
       triggerLivePseudonymizeNow()
@@ -847,9 +1116,11 @@ watch([engine, llmModel, nameOrigin, nameCount], () => {
 
 onBeforeUnmount(() => {
   clearLiveTimer()
+  terminatePreviewWorker()
 })
 
 onMounted(async () => {
+  initPreviewWorker()
   await fetchPermissions()
   loadHealth()
 })

@@ -1031,6 +1031,20 @@
       "clipboardCopyFailed": "Could not copy output to clipboard.",
       "uploadFailed": "Upload failed"
     },
+    "progress": {
+      "init": "Initializing...",
+      "cache_check": "Checking cache...",
+      "cache_hit": "Using cached results",
+      "regex_detection": "Running regex detection...",
+      "date_detection": "Detecting dates...",
+      "llm_detection": "Running LLM detection...",
+      "ner_detection": "Running NER model...",
+      "entity_selection": "Selecting entities...",
+      "grouping": "Grouping entities...",
+      "generating": "Generating replacements...",
+      "building_output": "Building output...",
+      "complete": "Complete"
+    },
     "exampleText": "Hello Ms. Mustermann,\\n\\nmy name is Anna Müller (34) and I live in 80331 Munich.\\nPlease contact me at 0176 12345678 or via anna.mueller{'@'}example.de.\\nMy social security number is 12 150485 M 002.\\nThe appointment is on 12.03.2024 at 14:30 at Ludwig Maximilian University.\\n\\nBest regards\\nAnna Müller"
   },
   "chat": {

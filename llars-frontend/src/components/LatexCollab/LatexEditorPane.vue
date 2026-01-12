@@ -1688,7 +1688,10 @@ watch(
     // Skip if same document
     if (newId === previousDocumentId) return
 
-    const oldRoom = props.document?.yjs_doc_id || `latex_${previousDocumentId}`
+    // Note: At this point, props.document already refers to the NEW document
+    // (because selectedNode computed updates synchronously when selectedNodeId changes).
+    // So we must use previousDocumentId for the old room name, not props.document.
+    const oldRoom = `latex_${previousDocumentId}`
     const newRoom = props.document?.yjs_doc_id || `latex_${newId}`
     previousDocumentId = newId
 

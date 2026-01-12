@@ -152,7 +152,7 @@
       },
       "latexCollabAi": {
         "title": "LaTeX Collab KI",
-        "description": "LaTeX-Editor mit KI-Schreibassistent (Ghost Text, @@-Commands, RAG Citations)"
+        "description": "LaTeX-Editor mit KI-Schreibassistent (Ghost Text, KI-Befehle, RAG Citations)"
       },
       "chatbotArena": {
         "title": "Chatbot Arena",
@@ -1031,7 +1031,7 @@
       "clipboardCopyFailed": "Output konnte nicht in die Zwischenablage kopiert werden.",
       "uploadFailed": "Upload fehlgeschlagen"
     },
-    "exampleText": "Guten Tag Frau Müller,\\n\\nmein Name ist Anna Müller (34) und ich wohne in 8001 Zürich.\\nBitte kontaktieren Sie mich unter 079 123 45 67 oder via anna.mueller@example.ch.\\nMeine AHV-Nummer lautet 756.1234.5678.97.\\nDer Termin ist am 12.03.2024 um 14:30 Uhr bei der Universität Zürich.\\n\\nFreundliche Grüsse\\nAnna Müller"
+    "exampleText": "Guten Tag Frau Müller,\\n\\nmein Name ist Anna Müller (34) und ich wohne in 8001 Zürich.\\nBitte kontaktieren Sie mich unter 079 123 45 67 oder via anna.mueller[at]example.ch.\\nMeine AHV-Nummer lautet 756.1234.5678.97.\\nDer Termin ist am 12.03.2024 um 14:30 Uhr bei der Universität Zürich.\\n\\nFreundliche Grüsse\\nAnna Müller"
   },
   "chat": {
     "newChat": "Neuer Chat",
@@ -1522,7 +1522,7 @@
       "expand": "Text erweitern",
       "summarize": "Text zusammenfassen",
       "fix": "LaTeX/Grammatik korrigieren",
-      "translate": "Übersetzen (z.B. @@translate en)",
+      "translate": "Übersetzen (z.B. //translate en)",
       "cite": "Zitat aus RAG finden",
       "abstract": "Abstract generieren",
       "titles": "Titel vorschlagen"
@@ -1635,7 +1635,7 @@
       },
       "banner": {
         "title": "KI-Funktionen aktiviert",
-        "body": "Enthält Ghost Text, @@-Commands, die KI-Seitenleiste und RAG-Zitate."
+        "body": "Enthält Ghost Text, KI-Befehle, die KI-Seitenleiste und RAG-Zitate."
       },
       "workspaces": {
         "title": "Workspaces"
@@ -1745,7 +1745,7 @@
       "artifact": {
         "insert": "In Dokument einfügen"
       },
-      "footerTip": "Tipp: Nutze @@-Commands im Editor für schnelle Aktionen.",
+      "footerTip": "Tipp: Nutze KI-Befehle im Editor für schnelle Aktionen.",
       "toolResults": {
         "title": {
           "abstract": "Generiertes Abstract",
@@ -1776,7 +1776,7 @@
       "expand": "Erweitert den markierten Text mit mehr Details.",
       "summarize": "Fasst den markierten Text zusammen.",
       "fix": "Korrigiert LaTeX- und Grammatikfehler.",
-      "translate": "Übersetzt den Text (z.B. @@translate en).",
+      "translate": "Übersetzt den Text in die Zielsprache.",
       "cite": "Sucht passende Quellen für die Aussage.",
       "abstract": "Generiert ein Abstract für das Dokument.",
       "titles": "Schlägt Titel für das Dokument vor."

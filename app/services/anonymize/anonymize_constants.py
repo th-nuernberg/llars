@@ -112,19 +112,35 @@ DATE_PATTERNS: list[str] = [
 
 MAIL_PATTERN = re.compile(r"[\w\.]+@[\w-]+\.+[\w-]{2,6}")
 AHV_PATTERN = re.compile(r"756\.\d{4}\.\d{4}\.\d{2}")
+# Swiss PLZ (4 digits) - used when "PLZ" keyword is nearby
 PLZ_PATTERN = re.compile(r"\d{4}")
+# German PLZ (5 digits) - standalone detection
+PLZ_PATTERN_DE = re.compile(r"(?<!\d)\d{5}(?!\d)")
+
+# German Social Security Number (Sozialversicherungsnummer)
+# Format: XX XXXXXX X XXX (e.g., "12 150485 M 002")
+SVN_PATTERN = re.compile(r"(?<!\d)\d{2}\s\d{6}\s[A-Z]\s\d{3}(?!\d)")
+
+# Age pattern - matches ages in parentheses like "(34)" or standalone like "34 Jahre"
+AGE_PATTERN = re.compile(r"\((\d{1,3})\)|\b(\d{1,3})\s*(?:Jahre?|J\.)\b", re.IGNORECASE)
 
 PHONE_PATTERNS = [
-    re.compile(r"(?<!\d)\d{3}\s\d{3}\s\d{2}\s\d{2}(?!\d)"),
-    re.compile(r"(?<!\d)\d{10}(?!\d)"),
-    re.compile(r"\+\d{2}\s\d{2}\s\d{3}\s\d{2}\s\d{2}"),
-    re.compile(r"\+\d{11}"),
+    # Swiss formats
+    re.compile(r"(?<!\d)\d{3}\s\d{3}\s\d{2}\s\d{2}(?!\d)"),  # 079 123 45 67
+    re.compile(r"(?<!\d)\d{10}(?!\d)"),  # 0791234567
+    re.compile(r"\+\d{2}\s\d{2}\s\d{3}\s\d{2}\s\d{2}"),  # +41 79 123 45 67
+    re.compile(r"\+\d{11}"),  # +41791234567
+    # German formats
+    re.compile(r"(?<!\d)0\d{2,4}[\s/-]?\d{6,8}(?!\d)"),  # 0176 12345678, 0176/12345678, 030 12345678
+    re.compile(r"\+49[\s/-]?\d{2,4}[\s/-]?\d{6,8}(?!\d)"),  # +49 176 12345678
+    re.compile(r"(?<!\d)0\d{3}[\s/-]\d{7,8}(?!\d)"),  # 0176 12345678 (with required space)
 ]
 
 
 ENTITY_PRIORITY = {
     "MAIL": 0,
     "AHV": 1,
+    "SVN": 1,  # German social security number, same priority as AHV
     "PHONE": 2,
     "PLZ": 3,
     "DATE": 4,

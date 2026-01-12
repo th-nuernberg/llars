@@ -27,6 +27,9 @@ from .anonymize_entity_detection import (
     find_ahv,
     find_phones,
     find_plz,
+    find_plz_de,
+    find_svn,
+    find_age,
     find_dates,
     find_flair_ner,
     find_plz_from_loc,
@@ -218,8 +221,11 @@ class AnonymizeService:
             candidates: list[EntityOccurrence] = []
             candidates.extend(find_mail(cleaned_text))
             candidates.extend(find_ahv(cleaned_text))
+            candidates.extend(find_svn(cleaned_text))  # German social security number
             candidates.extend(find_phones(cleaned_text))
-            candidates.extend(find_plz(cleaned_text))
+            candidates.extend(find_plz(cleaned_text))  # Swiss PLZ near keyword
+            candidates.extend(find_plz_de(cleaned_text))  # German PLZ (5 digits)
+            candidates.extend(find_age(cleaned_text))  # Age detection
 
             parsed_dates = find_dates(cleaned_text)
             candidates.extend([occ for _, occ in parsed_dates])
@@ -397,8 +403,12 @@ class AnonymizeService:
                 elif label == "AHV":
                     replacement = "▓▓▓.▓▓▓▓.▓▓▓▓.▓▓"
                     mode = "auto"
+                elif label == "SVN":
+                    replacement = "▓▓ ▓▓▓▓▓▓ ▓ ▓▓▓"
+                    mode = "auto"
                 elif label == "PLZ":
-                    replacement = "▓▓▓▓"
+                    # Use 5 blocks for German PLZ, 4 for Swiss
+                    replacement = "▓▓▓▓▓" if len(original) == 5 else "▓▓▓▓"
                     mode = "auto"
                 elif label == "MAIL":
                     replacement = "▓▓▓▓@▓▓▓.▓▓▓"
@@ -557,8 +567,11 @@ class AnonymizeService:
             candidates: list[EntityOccurrence] = []
             candidates.extend(find_mail(cleaned_text))
             candidates.extend(find_ahv(cleaned_text))
+            candidates.extend(find_svn(cleaned_text))  # German social security number
             candidates.extend(find_phones(cleaned_text))
-            candidates.extend(find_plz(cleaned_text))
+            candidates.extend(find_plz(cleaned_text))  # Swiss PLZ near keyword
+            candidates.extend(find_plz_de(cleaned_text))  # German PLZ (5 digits)
+            candidates.extend(find_age(cleaned_text))  # Age detection
 
             yield {"type": "progress", "step": "date_detection", "percent": 25, "message": "Detecting dates..."}
             parsed_dates = find_dates(cleaned_text)
@@ -741,8 +754,12 @@ class AnonymizeService:
                 elif label == "AHV":
                     replacement = "▓▓▓.▓▓▓▓.▓▓▓▓.▓▓"
                     mode = "auto"
+                elif label == "SVN":
+                    replacement = "▓▓ ▓▓▓▓▓▓ ▓ ▓▓▓"
+                    mode = "auto"
                 elif label == "PLZ":
-                    replacement = "▓▓▓▓"
+                    # Use 5 blocks for German PLZ, 4 for Swiss
+                    replacement = "▓▓▓▓▓" if len(original) == 5 else "▓▓▓▓"
                     mode = "auto"
                 elif label == "MAIL":
                     replacement = "▓▓▓▓@▓▓▓.▓▓▓"

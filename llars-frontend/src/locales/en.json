@@ -380,7 +380,7 @@
       "promptPreview": "Prompt preview",
       "testDatasets": "Test datasets",
       "noVariables": "No variables detected in prompt",
-      "noVariablesHint": "Use {{variable}} to define placeholders.",
+      "noVariablesHint": "Use {'{{'}variable{'}}'}  to define placeholders.",
       "steps": {
         "upload": "Upload",
         "configure": "Configure",

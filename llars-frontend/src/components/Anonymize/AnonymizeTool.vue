@@ -768,7 +768,8 @@ async function handleFileSelected(fileOrFiles) {
 }
 
 async function loadExample() {
-  const example = t('anonymization.exampleText')
+  // Replace literal \n with actual newlines (JSON escaping produces literal \n)
+  const example = t('anonymization.exampleText').replace(/\\n/g, '\n')
 
   errorMessage.value = ''
   infoMessage.value = ''

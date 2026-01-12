@@ -416,7 +416,11 @@
       "errorInvalidName": "Nur Buchstaben, Zahlen und Unterstriche erlaubt",
       "errorReservedName": "Dieser Name ist reserviert",
       "errorNameExists": "Variable existiert bereits",
-      "manageVariables": "Variablen verwalten"
+      "errorCreateFailed": "Variable konnte nicht erstellt werden",
+      "manageVariables": "Variablen verwalten",
+      "created": "Variable \"{name}\" erstellt",
+      "updated": "Variable \"{name}\" aktualisiert",
+      "deleted": "Variable \"{name}\" gelöscht"
     },
     "messages": {
       "blockOrderUpdated": "Block-Reihenfolge aktualisiert!",

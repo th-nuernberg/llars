@@ -297,13 +297,23 @@
     </v-dialog>
 
     <!-- Test Prompt Dialog -->
-    <TestPromptDialog v-model="showTestPromptDialog" :prompt="assemblePrompt()" :prompt-id="promptId" />
+    <TestPromptDialog
+      v-model="showTestPromptDialog"
+      :prompt="assemblePrompt()"
+      :prompt-id="promptId"
+      :variables="userVariables"
+    />
 
     <!-- Variable Manager Dialog -->
     <VariableManagerDialog
       v-model="showVariableManager"
       :prompt-id="promptId"
-      @variablesChanged="handleVariablesChanged"
+      :variables="userVariables"
+      :create-variable="createVariable"
+      :update-variable="updateVariable"
+      :delete-variable="deleteVariable"
+      :is-valid-name="isValidVariableName"
+      :variable-exists="variableExists"
     />
 
     <!-- Snackbar -->
@@ -443,6 +453,7 @@ import { usePromptBlocks } from './composables/usePromptBlocks';
 import { useQuillEditor } from './composables/useQuillEditor';
 import { usePromptGitDiff } from './composables/usePromptGitDiff';
 import { usePromptVariables } from './composables/usePromptVariables';
+import { useCollaborativeVariables } from './composables/useCollaborativeVariables';
 import { useAuth } from '@/composables/useAuth';
 import { useActiveDuration, useScrollDepth, useTypingMetrics, useVisibilityTracker } from '@/composables/useAnalyticsMetrics';
 
@@ -561,27 +572,16 @@ const assembledPromptText = computed(() => assemblePrompt())
 const promptVariablesExtractor = usePromptVariables(assembledPromptText, { promptId })
 const extractedVariables = computed(() => promptVariablesExtractor.validVariables.value || [])
 
-// User-created variables from VariableManagerDialog
-const userVariables = ref([])
-
-const handleVariablesChanged = (variables) => {
-  userVariables.value = variables
-}
-
-// Load user variables on mount
-const loadUserVariables = () => {
-  try {
-    const storageKey = promptId.value
-      ? `llars_prompt_variables_simple_${promptId.value}`
-      : 'llars_prompt_variables_simple'
-    const stored = localStorage.getItem(storageKey)
-    if (stored) {
-      userVariables.value = JSON.parse(stored)
-    }
-  } catch (e) {
-    console.warn('Failed to load user variables:', e)
-  }
-}
+// Collaborative variables management (synced via Yjs)
+const collaborativeVariables = useCollaborativeVariables(ydoc, showMessage, t)
+const {
+  variables: userVariables,
+  createVariable,
+  updateVariable,
+  deleteVariable,
+  isValidName: isValidVariableName,
+  variableExists
+} = collaborativeVariables
 
 // Git versioning - declare early so editors can reference showGitPanel
 const showGitPanel = ref(true); // Stored in localStorage
@@ -788,9 +788,6 @@ watch(
 onMounted(async () => {
   // Load git panel visibility preference
   loadGitPanelVisibility();
-
-  // Load user-created variables
-  loadUserVariables();
 
   await withLoading('prompt', async () => {
     await fetchPromptDetails();

@@ -2,14 +2,14 @@
   <div class="tree-panel">
     <div class="tree-header">
       <LIcon size="20" class="header-icon">mdi-file-tree</LIcon>
-      <span class="header-title">Workspace</span>
+      <span class="header-title">{{ $t('markdownCollab.tree.title') }}</span>
       <div class="header-actions">
         <v-btn
           icon
           variant="text"
           size="x-small"
           :disabled="!canEdit"
-          title="Neue Datei"
+          :title="$t('markdownCollab.tree.actions.newFile')"
           @click="openCreateDialog('file')"
         >
           <LIcon size="18">mdi-file-document-plus-outline</LIcon>
@@ -19,7 +19,7 @@
           variant="text"
           size="x-small"
           :disabled="!canEdit"
-          title="Neuer Ordner"
+          :title="$t('markdownCollab.tree.actions.newFolder')"
           @click="openCreateDialog('folder')"
         >
           <LIcon size="18">mdi-folder-plus-outline</LIcon>
@@ -34,7 +34,7 @@
         density="compact"
         variant="outlined"
         hide-details
-        placeholder="Suchen…"
+        :placeholder="$t('markdownCollab.tree.searchPlaceholder')"
         prepend-inner-icon="mdi-magnify"
         class="tree-search"
       />
@@ -55,7 +55,7 @@
         >
           <template #item="{ element }">
             <div class="drag-wrapper">
-              <span class="drag-handle" title="Ziehen">
+              <span class="drag-handle" :title="$t('markdownCollab.tree.actions.drag')">
                 <LIcon size="14" class="text-medium-emphasis">mdi-drag</LIcon>
               </span>
               <MarkdownTreeNode
@@ -110,9 +110,9 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2">{{ createType === 'folder' ? 'mdi-folder-plus-outline' : 'mdi-file-document-plus-outline' }}</LIcon>
-          {{ createType === 'folder' ? 'Neuer Ordner' : 'Neue Datei' }}
+          {{ createType === 'folder' ? $t('markdownCollab.tree.dialogs.createFolderTitle') : $t('markdownCollab.tree.dialogs.createFileTitle') }}
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="createDialog = false" />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="createDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text>
@@ -121,20 +121,20 @@
           </v-alert>
           <v-text-field
             v-model="createTitle"
-            label="Name"
-            :placeholder="createType === 'folder' ? 'z. B. Research' : filePlaceholder"
+            :label="$t('markdownCollab.tree.dialogs.nameLabel')"
+            :placeholder="createType === 'folder' ? folderPlaceholderText : filePlaceholderText"
             variant="outlined"
             density="comfortable"
             autofocus
           />
           <div class="text-caption text-medium-emphasis">
-            Ziel: {{ createParentLabel }}
+            {{ $t('markdownCollab.tree.dialogs.target', { label: createParentLabel }) }}
           </div>
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" title="Erstellen abbrechen" @click="createDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" title="Datei/Ordner erstellen" :disabled="!canSubmitCreate" @click="submitCreate">
-            Erstellen
+          <v-btn variant="text" :title="$t('markdownCollab.tree.actions.cancelCreate')" @click="createDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" :title="$t('markdownCollab.tree.actions.create')" :disabled="!canSubmitCreate" @click="submitCreate">
+            {{ $t('markdownCollab.tree.actions.createLabel') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -145,9 +145,9 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2">mdi-rename-box</LIcon>
-          Umbenennen
+          {{ $t('markdownCollab.tree.dialogs.renameTitle') }}
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="renameDialog = false" />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="renameDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text>
@@ -156,15 +156,17 @@
           </v-alert>
           <v-text-field
             v-model="renameTitle"
-            label="Name"
+            :label="$t('markdownCollab.tree.dialogs.nameLabel')"
             variant="outlined"
             density="comfortable"
             autofocus
           />
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" title="Umbenennen abbrechen" @click="renameDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" title="Namen speichern" :disabled="!canSubmitRename" @click="submitRename">Speichern</v-btn>
+          <v-btn variant="text" :title="$t('markdownCollab.tree.actions.cancelRename')" @click="renameDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" :title="$t('markdownCollab.tree.actions.save')" :disabled="!canSubmitRename" @click="submitRename">
+            {{ $t('common.save') }}
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -174,22 +176,24 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2" color="error">mdi-delete-outline</LIcon>
-          Löschen
+          {{ $t('markdownCollab.tree.dialogs.deleteTitle') }}
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="deleteDialog = false" />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="deleteDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text>
-          <div class="text-body-1">
-            Möchtest du <strong>{{ pendingDelete?.title }}</strong> wirklich löschen?
-          </div>
+          <i18n-t keypath="markdownCollab.tree.dialogs.deleteConfirm" tag="div" class="text-body-1">
+            <template #name>
+              <strong>{{ pendingDelete?.title }}</strong>
+            </template>
+          </i18n-t>
           <div class="text-caption text-medium-emphasis mt-2">
-            Ordner werden rekursiv gelöscht.
+            {{ $t('markdownCollab.tree.dialogs.deleteHint') }}
           </div>
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" title="Löschen abbrechen" @click="deleteDialog = false">Abbrechen</v-btn>
-          <v-btn color="error" title="Ausgewählten Eintrag löschen" @click="submitDelete">Löschen</v-btn>
+          <v-btn variant="text" :title="$t('markdownCollab.tree.actions.cancelDelete')" @click="deleteDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="error" :title="$t('markdownCollab.tree.actions.delete')" @click="submitDelete">{{ $t('common.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -199,6 +203,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import draggable from 'vuedraggable'
+import { useI18n } from 'vue-i18n'
 import MarkdownTreeNode from './MarkdownTreeNode.vue'
 
 const props = defineProps({
@@ -208,7 +213,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   canEdit: { type: Boolean, default: false },
   recentlyAddedIds: { type: Set, default: () => new Set() },
-  filePlaceholder: { type: String, default: 'z. B. intro.md' },
+  filePlaceholder: { type: String, default: '' },
   fileIcon: { type: String, default: 'mdi-language-markdown' },
   fileIconColor: { type: String, default: 'info' },
   folderIcon: { type: String, default: 'mdi-folder' },
@@ -216,6 +221,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select', 'create', 'rename', 'remove', 'move'])
+
+const { t } = useI18n()
 
 const localNodes = ref([])
 const filterText = ref('')
@@ -256,6 +263,8 @@ watch(
 )
 
 const dragEnabled = computed(() => props.canEdit && filterText.value.trim().length === 0)
+const filePlaceholderText = computed(() => props.filePlaceholder || t('markdownCollab.tree.placeholders.file'))
+const folderPlaceholderText = computed(() => t('markdownCollab.tree.placeholders.folder'))
 
 function toggleExpand(id) {
   const next = new Set(expandedIds.value)
@@ -307,9 +316,9 @@ const createTitle = ref('')
 const createError = ref('')
 
 const createParentLabel = computed(() => {
-  if (!createParentId.value) return 'Workspace Root'
+  if (!createParentId.value) return t('markdownCollab.tree.root')
   const node = findNodeById(localNodes.value, createParentId.value)
-  return node ? node.title : `#${createParentId.value}`
+  return node ? node.title : t('markdownCollab.tree.nodeFallback', { id: createParentId.value })
 })
 
 const canSubmitCreate = computed(() => createTitle.value.trim().length > 0 && props.canEdit)
@@ -327,7 +336,9 @@ function openCreateDialog(type, explicitParentId = null) {
   }
 
   createParentId.value = parentId ?? null
-  createTitle.value = type === 'folder' ? 'New Folder' : 'new.md'
+  createTitle.value = type === 'folder'
+    ? t('markdownCollab.tree.defaults.folder')
+    : t('markdownCollab.tree.defaults.file')
   createDialog.value = true
 }
 

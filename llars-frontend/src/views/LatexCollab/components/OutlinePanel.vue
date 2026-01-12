@@ -9,13 +9,13 @@
     <div class="tree-outline-header">
       <div class="tree-outline-title">
         <LIcon size="14">mdi-format-list-bulleted</LIcon>
-        Verzeichnis
+        {{ $t('latexCollab.outline.title') }}
       </div>
       <v-btn
         icon
         variant="text"
         size="x-small"
-        :title="collapsed ? 'Verzeichnis anzeigen' : 'Verzeichnis ausblenden'"
+        :title="collapsed ? $t('latexCollab.outline.show') : $t('latexCollab.outline.hide')"
         @click="$emit('toggle-collapsed')"
       >
         <LIcon size="16">{{ collapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
@@ -35,7 +35,7 @@
           v-if="item.hasChildren"
           class="tree-outline-toggle"
           type="button"
-          :title="isItemCollapsed(item.id) ? 'Aufklappen' : 'Einklappen'"
+          :title="isItemCollapsed(item.id) ? $t('latexCollab.outline.expand') : $t('latexCollab.outline.collapse')"
           @click.stop="$emit('toggle-item', item.id)"
         >
           <LIcon size="14">
@@ -68,7 +68,7 @@ defineProps({
   },
   emptyLabel: {
     type: String,
-    default: 'Kein Dokument'
+    default: ''
   },
   isItemCollapsed: {
     type: Function,

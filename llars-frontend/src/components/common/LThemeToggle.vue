@@ -11,14 +11,14 @@
           v-bind="props"
           class="theme-toggle-btn"
           :class="{ 'on-primary': onPrimary }"
-          :title="currentThemeOption?.title || 'Theme'"
+          :title="$t('theme.' + (currentThemeOption?.value || 'system'))"
         >
           <LIcon size="20">{{ currentIcon }}</LIcon>
         </button>
       </template>
 
       <div class="theme-menu">
-        <div class="theme-menu-header">Design</div>
+        <div class="theme-menu-header">{{ $t('theme.design') }}</div>
         <button
           v-for="option in themeOptions"
           :key="option.value"
@@ -27,7 +27,7 @@
           @click="setTheme(option.value)"
         >
           <LIcon size="18" class="option-icon">{{ option.icon }}</LIcon>
-          <span class="option-label">{{ option.title }}</span>
+          <span class="option-label">{{ $t('theme.' + option.value) }}</span>
           <LIcon
             v-if="themePreference === option.value"
             size="16"

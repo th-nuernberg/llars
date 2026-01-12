@@ -8,9 +8,9 @@
     <v-card class="compile-log-dialog">
       <v-card-title class="d-flex align-center">
         <LIcon class="mr-2">mdi-text-box-outline</LIcon>
-        Compile Log
+        {{ $t('latexCollab.compile.logTitle') }}
         <v-spacer />
-        <LIconBtn icon="mdi-close" tooltip="Schließen" @click="$emit('update:modelValue', false)" />
+        <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="$emit('update:modelValue', false)" />
       </v-card-title>
       <v-divider />
       <v-card-text>
@@ -18,7 +18,7 @@
           {{ error }}
         </v-alert>
         <div v-if="issues.length" class="compile-issues">
-          <div class="text-subtitle-2 mb-2">Fehler &amp; Warnungen</div>
+          <div class="text-subtitle-2 mb-2">{{ $t('latexCollab.compile.issuesTitle') }}</div>
           <div class="issue-list">
             <div
               v-for="issue in issues"
@@ -35,7 +35,7 @@
             </div>
           </div>
         </div>
-        <pre class="compile-log">{{ log || 'Noch kein Log vorhanden.' }}</pre>
+        <pre class="compile-log">{{ log || $t('latexCollab.compile.noLog') }}</pre>
       </v-card-text>
     </v-card>
   </v-dialog>

@@ -112,7 +112,7 @@
           </div>
 
           <!-- RAG Section -->
-          <div v-else-if="activeSection === 'rag'" key="rag" class="section-container">
+          <div v-else-if="activeSection === 'rag'" key="rag" class="section-container--full">
             <AdminRAGSection />
           </div>
 
@@ -124,6 +124,11 @@
           <!-- LLM Providers Section -->
           <div v-else-if="activeSection === 'llm-providers'" key="llm-providers" class="section-container--full">
             <AdminLlmProvidersSection />
+          </div>
+
+          <!-- Referrals Section -->
+          <div v-else-if="activeSection === 'referrals'" key="referrals" class="section-container">
+            <AdminReferralSection />
           </div>
 
           <!-- System Health Section -->
@@ -181,6 +186,7 @@ import AdminChatbotActivitySection from './sections/AdminChatbotActivitySection.
 import AdminDockerMonitorSection from './sections/AdminDockerMonitorSection.vue';
 import AdminDatabaseSection from './sections/AdminDatabaseSection.vue';
 import AdminSystemSettingsSection from './sections/AdminSystemSettingsSection.vue';
+import AdminReferralSection from './sections/AdminReferralSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -220,6 +226,7 @@ const navItems = [
   { title: 'DB', value: 'db', icon: 'mdi-database', adminOnly: true },
   { title: 'Einstellungen', value: 'settings', icon: 'mdi-cog', adminOnly: true },
   { title: 'Benutzer', value: 'users', icon: 'mdi-account-group', adminOnly: true },
+  { title: 'Referrals', value: 'referrals', icon: 'mdi-account-multiple-plus', adminOnly: true },
   { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
   { title: 'Chatbots', value: 'chatbots', icon: 'llars:chatbot-manage', permission: 'feature:chatbots:view' },
   { title: 'Web Crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },

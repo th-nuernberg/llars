@@ -2,13 +2,13 @@
   <div class="results-card verbosity-card" v-if="analysis">
     <div class="card-header">
       <LIcon class="header-icon">mdi-text-long</LIcon>
-      <span class="header-title">Verbosity Bias Analyse</span>
+      <span class="header-title">{{ $t('judge.results.verbosity.title') }}</span>
       <LTag
         :variant="biasVariant"
         size="small"
         class="ml-auto"
       >
-        {{ Math.round(analysis.verbosity_bias_rate * 100) }}% längerer gewinnt
+        {{ $t('judge.results.verbosity.longerWinsRate', { rate: Math.round(analysis.verbosity_bias_rate * 100) }) }}
       </LTag>
     </div>
 
@@ -19,13 +19,16 @@
         <div class="bias-alert" :class="'bias-alert--' + biasType">
           <LIcon class="alert-icon" size="20">{{ alertIcon }}</LIcon>
           <span v-if="analysis.verbosity_bias_rate > 0.6">
-            <strong>Warnung:</strong> Das LLM zeigt einen starken Verbosity Bias - längere Threads werden bevorzugt.
+            <strong>{{ $t('judge.results.verbosity.alert.warningLabel') }}</strong>
+            {{ $t('judge.results.verbosity.alert.warningText') }}
           </span>
           <span v-else-if="analysis.verbosity_bias_rate < 0.4">
-            <strong>Info:</strong> Das LLM bevorzugt kürzere Threads - möglicherweise negatives Verbosity Bias.
+            <strong>{{ $t('judge.results.verbosity.alert.infoLabel') }}</strong>
+            {{ $t('judge.results.verbosity.alert.infoText') }}
           </span>
           <span v-else>
-            <strong>Gut:</strong> Keine signifikante Präferenz für Thread-Länge erkannt.
+            <strong>{{ $t('judge.results.verbosity.alert.okLabel') }}</strong>
+            {{ $t('judge.results.verbosity.alert.okText') }}
           </span>
         </div>
 
@@ -33,15 +36,15 @@
         <div class="stats-row">
           <div class="mini-stat mini-stat--success">
             <div class="mini-stat-value">{{ analysis.longer_wins }}</div>
-            <div class="mini-stat-label">Längerer gewinnt</div>
+            <div class="mini-stat-label">{{ $t('judge.results.verbosity.stats.longerWins') }}</div>
           </div>
           <div class="mini-stat mini-stat--danger">
             <div class="mini-stat-value">{{ analysis.shorter_wins }}</div>
-            <div class="mini-stat-label">Kürzerer gewinnt</div>
+            <div class="mini-stat-label">{{ $t('judge.results.verbosity.stats.shorterWins') }}</div>
           </div>
           <div class="mini-stat mini-stat--gray">
             <div class="mini-stat-value">{{ analysis.ties }}</div>
-            <div class="mini-stat-label">Tie / Gleich</div>
+            <div class="mini-stat-label">{{ $t('judge.results.verbosity.stats.ties') }}</div>
           </div>
         </div>
 
@@ -49,19 +52,19 @@
         <div class="details-grid">
           <!-- Length Stats -->
           <div class="details-section">
-            <div class="section-title">Durchschnittliche Länge (Zeichen)</div>
+            <div class="section-title">{{ $t('judge.results.verbosity.lengthStats.title') }}</div>
             <table class="simple-table">
               <tbody>
                 <tr>
-                  <td>Gewinner</td>
-                  <td class="text-right">{{ Math.round(analysis.avg_length_winner).toLocaleString() }}</td>
+                  <td>{{ $t('judge.results.verbosity.lengthStats.winner') }}</td>
+                  <td class="text-right">{{ formatNumber(analysis.avg_length_winner) }}</td>
                 </tr>
                 <tr>
-                  <td>Verlierer</td>
-                  <td class="text-right">{{ Math.round(analysis.avg_length_loser).toLocaleString() }}</td>
+                  <td>{{ $t('judge.results.verbosity.lengthStats.loser') }}</td>
+                  <td class="text-right">{{ formatNumber(analysis.avg_length_loser) }}</td>
                 </tr>
                 <tr>
-                  <td>Differenz</td>
+                  <td>{{ $t('judge.results.verbosity.lengthStats.diff') }}</td>
                   <td class="text-right" :class="lengthDiffClass">{{ lengthDiffFormatted }}</td>
                 </tr>
               </tbody>
@@ -70,7 +73,7 @@
 
           <!-- Bias Meter -->
           <div class="details-section">
-            <div class="section-title">Bias-Interpretation</div>
+            <div class="section-title">{{ $t('judge.results.verbosity.biasInterpretation') }}</div>
             <div class="bias-meter">
               <div class="bias-bar">
                 <div
@@ -83,9 +86,9 @@
                 <span class="bias-value">{{ Math.round(analysis.verbosity_bias_rate * 100) }}%</span>
               </div>
               <div class="bias-labels">
-                <span>Kürzerer bevorzugt</span>
-                <span>Neutral</span>
-                <span>Längerer bevorzugt</span>
+                <span>{{ $t('judge.results.verbosity.biasLabels.shorterPreferred') }}</span>
+                <span>{{ $t('judge.results.verbosity.biasLabels.neutral') }}</span>
+                <span>{{ $t('judge.results.verbosity.biasLabels.longerPreferred') }}</span>
               </div>
             </div>
           </div>
@@ -97,11 +100,16 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
   analysis: { type: Object, default: null }
 });
+
+const { t, locale } = useI18n();
+
+const formatNumber = (value) => Math.round(value || 0).toLocaleString(locale.value || undefined);
 
 const biasVariant = computed(() => {
   if (!props.analysis) return 'gray';
@@ -136,10 +144,10 @@ const alertIcon = computed(() => {
 });
 
 const lengthDiffFormatted = computed(() => {
-  if (!props.analysis) return '-';
+  if (!props.analysis) return t('judge.results.common.placeholder');
   const diff = props.analysis.avg_length_winner - props.analysis.avg_length_loser;
   const sign = diff > 0 ? '+' : '';
-  return `${sign}${Math.round(diff).toLocaleString()}`;
+  return `${sign}${formatNumber(diff)}`;
 });
 
 const lengthDiffClass = computed(() => {

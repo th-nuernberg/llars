@@ -23,7 +23,7 @@
           :loading="loading"
           :can-edit="canEdit"
           :recently-added-ids="recentlyAddedIds"
-          file-placeholder="z. B. main.tex"
+          :file-placeholder="$t('latexCollab.tree.filePlaceholder')"
           file-icon="mdi-file-code-outline"
           file-icon-color="primary"
           @select="handleMobileSelect"
@@ -48,12 +48,12 @@
       <v-list density="compact" class="pa-2">
         <v-list-item
           prepend-icon="mdi-home"
-          title="Startseite"
+          :title="$t('latexCollab.workspace.nav.home')"
           @click="$emit('navigate-home')"
         />
         <v-list-item
           prepend-icon="mdi-folder-multiple"
-          title="Alle Workspaces"
+          :title="$t('latexCollab.workspace.nav.workspaces')"
           @click="$emit('navigate-workspaces')"
         />
       </v-list>
@@ -73,7 +73,7 @@
         <div class="collapsed-icon-box">
           <LIcon size="18">mdi-file-tree</LIcon>
         </div>
-        <span class="collapsed-label">Dateien</span>
+        <span class="collapsed-label">{{ $t('latexCollab.tree.files') }}</span>
         <v-spacer />
         <LIcon size="18" class="expand-icon">mdi-chevron-right</LIcon>
       </div>
@@ -90,7 +90,7 @@
             :loading="loading"
             :can-edit="canEdit"
             :recently-added-ids="recentlyAddedIds"
-            file-placeholder="z. B. main.tex"
+            :file-placeholder="$t('latexCollab.tree.filePlaceholder')"
             file-icon="mdi-file-code-outline"
             file-icon-color="primary"
             @select="$emit('select', $event)"
@@ -104,7 +104,7 @@
                 icon
                 variant="text"
                 size="small"
-                title="Asset hochladen"
+                :title="$t('latexCollab.tree.uploadAsset')"
                 @click.stop="$emit('open-asset-picker')"
               >
                 <LIcon size="18">mdi-paperclip</LIcon>
@@ -113,7 +113,7 @@
                 icon
                 variant="text"
                 size="small"
-                title="Einklappen"
+                :title="$t('latexCollab.tree.collapse')"
                 @click.stop="$emit('update:treeCollapsed', true)"
               >
                 <LIcon size="18">mdi-chevron-left</LIcon>
@@ -204,7 +204,7 @@ defineProps({
   },
   outlineEmptyLabel: {
     type: String,
-    default: 'Kein Dokument'
+    default: ''
   },
   isOutlineItemCollapsed: {
     type: Function,

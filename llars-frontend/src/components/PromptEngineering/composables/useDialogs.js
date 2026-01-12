@@ -59,6 +59,13 @@ export function useDialogs() {
     showTestPromptDialog.value = true
   }
 
+  // Variable Manager Dialog
+  const showVariableManager = ref(false)
+
+  const openVariableManager = () => {
+    showVariableManager.value = true
+  }
+
   return {
     // Add Block
     showAddBlockDialog,
@@ -85,6 +92,10 @@ export function useDialogs() {
 
     // Test Prompt
     showTestPromptDialog,
-    openTestPromptDialog
+    openTestPromptDialog,
+
+    // Variable Manager
+    showVariableManager,
+    openVariableManager
   }
 }

@@ -12,6 +12,8 @@
 
 import { WidgetType, GutterMarker } from '@codemirror/view'
 
+let deletionMarkerLabel = 'Deleted text'
+
 /**
  * Remote Caret Widget
  *
@@ -143,7 +145,7 @@ export class DeletionMarker extends GutterMarker {
   toDOM() {
     const el = document.createElement('div')
     el.className = 'cm-diff-delete-gutter'
-    el.title = 'Gelöschter Text'
+    el.title = deletionMarkerLabel
     return el
   }
 }
@@ -155,3 +157,7 @@ export class DeletionMarker extends GutterMarker {
  * @type {DeletionMarker}
  */
 export const deletionMarkerInstance = new DeletionMarker()
+
+export function setDeletionMarkerLabel(label) {
+  deletionMarkerLabel = label
+}

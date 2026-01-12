@@ -1,0 +1,1881 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "done": "Done",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "refresh": "Refresh",
+    "back": "Back",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No",
+    "more": "More",
+    "less": "Less"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "username": "Username",
+    "password": "Password",
+    "email": "Email",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+  "appbar": {
+    "platform": "LLars Platform",
+    "platformShort": "LLars"
+  },
+  "footer": {
+    "copyright": "LLars Platform",
+    "copyrightShort": "LLars",
+    "documentation": "Documentation",
+    "imprint": "Imprint",
+    "privacy": "Privacy",
+    "contact": "Contact"
+  },
+  "settings": {
+    "title": "Profile & Settings",
+    "profile": "My Profile",
+    "notLoggedIn": "Not logged in",
+    "noEmail": "No email provided",
+    "administrator": "Administrator",
+    "user": "User",
+    "uploadImage": "Upload Image",
+    "newDefaultImage": "New Default Image",
+    "restoreDefault": "Restore Default Image",
+    "avatarChangesPerDay": "Maximum 3 changes per day",
+    "avatarLimitReached": "Limit reached (3 changes/day)",
+    "avatarChangesLeft": "{count} changes left today",
+    "avatarTooLarge": "File is too large (max. 5MB)",
+    "avatarUploadFailed": "Profile image could not be uploaded",
+    "avatarRegenerateFailed": "Default image could not be updated",
+    "avatarResetFailed": "Profile image could not be reset",
+    "theme": "Design & Display",
+    "themeMode": "Color Mode",
+    "language": "Language",
+    "languageHint": "User interface language",
+    "notifications": "Notifications",
+    "notificationsHint": "Enable system notifications",
+    "additionalSettings": "Additional Settings",
+    "collabColor": "Collaboration Color",
+    "collabColorHint": "This color is used to highlight your edits in real-time collaborations.",
+    "noColorSelected": "No color selected",
+    "saveColor": "Save Color"
+  },
+  "theme": {
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "current": "Current",
+    "design": "Design"
+  },
+  "language": {
+    "de": "Deutsch",
+    "en": "English",
+    "select": "Select Language"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalidEmail": "Invalid email address",
+    "minLength": "At least {min} characters required",
+    "maxLength": "Maximum {max} characters allowed"
+  },
+  "errors": {
+    "generic": "An error occurred",
+    "network": "Network error",
+    "unauthorized": "Unauthorized",
+    "notFound": "Not found",
+    "serverError": "Server error"
+  },
+  "navigation": {
+    "home": "Home",
+    "back": "Back"
+  },
+  "home": {
+    "header": {
+      "title": "Welcome to LLARS",
+      "subtitle": "Your platform for ranking, labeling, rating, and AI analysis"
+    },
+    "categories": {
+      "title": "Categories",
+      "all": "All Features",
+      "research": "Research",
+      "rating": "Evaluation",
+      "ai": "AI Tools",
+      "admin": "Administration",
+      "fallback": "Features",
+      "featuresCount": "{count} features"
+    },
+    "available": "{count} available",
+    "empty": {
+      "noFeatures": "No features available in this category"
+    },
+    "user": {
+      "guest": "Guest"
+    },
+    "features": {
+      "evaluation": {
+        "title": "Evaluation",
+        "description": "Ranking, rating, fake/real, history rating & comparison"
+      },
+      "evaluationAssistant": {
+        "title": "Evaluation Assistant",
+        "description": "Import data and create evaluation scenarios with AI support"
+      },
+      "chatbot": {
+        "title": "Chatbot",
+        "description": "Interactive chat with the LLars AI assistant"
+      },
+      "promptEngineering": {
+        "title": "Prompt Engineering",
+        "description": "Collaborative design and testing of prompts"
+      },
+      "markdownCollab": {
+        "title": "Markdown Collab",
+        "description": "Collaborate on Markdown files with live preview"
+      },
+      "latexCollab": {
+        "title": "LaTeX Collab",
+        "description": "Overleaf-style LaTeX editor with PDF preview"
+      },
+      "latexCollabAi": {
+        "title": "LaTeX Collab AI",
+        "description": "LaTeX editor with AI writing assistant (ghost text, @@-commands, RAG citations)"
+      },
+      "chatbotArena": {
+        "title": "Chatbot Arena",
+        "description": "Pairwise comparisons of chatbot responses in arena mode"
+      },
+      "anonymization": {
+        "title": "Anonymization",
+        "description": "Offline pseudonymization for texts, DOCX, and PDFs"
+      },
+      "kaimo": {
+        "title": "KAIMO",
+        "description": "Work through case vignettes and create new cases"
+      },
+      "oncoco": {
+        "title": "OnCoCo Analysis",
+        "description": "Classify counseling sessions at sentence level (68 categories)"
+      },
+      "adminDashboard": {
+        "title": "Admin Dashboard",
+        "description": "System overview and administration"
+      },
+      "chatbotAdmin": {
+        "title": "Chatbot Management",
+        "description": "Create, configure, and share chatbots"
+      },
+      "ragAdmin": {
+        "title": "RAG Management",
+        "description": "Manage and upload documents for the RAG pipeline"
+      }
+    },
+    "badges": {
+      "new": "New",
+      "alpha": "Alpha",
+      "beta": "Beta",
+      "test": "Test"
+    }
+  },
+  "promptEngineering": {
+    "title": "Prompt Engineering",
+    "titleShort": "Prompts",
+    "subtitle": "Design, organize, and test prompts collaboratively.",
+    "sections": {
+      "myPrompts": "My prompts",
+      "sharedWithMe": "Shared with me"
+    },
+    "actions": {
+      "newPrompt": "New prompt",
+      "refresh": "Refresh",
+      "createPrompt": "Create prompt",
+      "create": "Create"
+    },
+    "shared": {
+      "users": "{count} users",
+      "label": "Shared"
+    },
+    "empty": {
+      "title": "No prompts yet",
+      "description": "Create your first prompt to get started.",
+      "shared": "No prompts shared with you yet."
+    },
+    "dialogs": {
+      "createTitle": "Create prompt",
+      "nameLabel": "Prompt name",
+      "namePlaceholder": "e.g. Support summary prompt",
+      "shareLabel": "Share with users",
+      "sharePlaceholder": "Search and add users...",
+      "renameTitle": "Rename prompt",
+      "renameLabel": "New name",
+      "deleteTitle": "Delete prompt",
+      "deleteConfirm": "Do you really want to delete {name}?",
+      "deleteHint": "This action cannot be undone.",
+      "blockCreateTitle": "Create new block",
+      "blockNameLabel": "Block name",
+      "blockNamePlaceholder": "e.g. System instruction, context, ...",
+      "blockDeleteTitle": "Delete block",
+      "blockDeleteConfirm": "Do you really want to delete the block \"{name}\"?",
+      "blockDeleteHint": "This action cannot be undone.",
+      "importTitle": "Import JSON",
+      "importQuestion": "How should the imported blocks be inserted?",
+      "importOverride": "Overwrite",
+      "importAppend": "Append"
+    },
+    "relative": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "daysAgo": "{count} days ago",
+      "weeksAgo": "{count} weeks ago"
+    },
+    "errors": {
+      "duplicateName": "A prompt named \"{name}\" already exists.",
+      "createFallback": "Failed to create prompt.",
+      "shareFailed": "Failed to share prompt.",
+      "unshareFailed": "Failed to remove share."
+    },
+    "editor": {
+      "backToOverview": "Back to overview",
+      "block": "Block",
+      "blocks": "Blocks",
+      "usersCount": "{count} users",
+      "dragToSort": "Drag to reorder",
+      "blockTitlePlaceholder": "Block title...",
+      "rename": "Rename",
+      "delete": "Delete",
+      "emptyTitle": "No blocks yet",
+      "emptyDescription": "Create your first prompt block.",
+      "newBlock": "New block",
+      "debugTitle": "Debug information:"
+    },
+    "sidebar": {
+      "onlineUsers": "Online ({count})",
+      "noUsers": "No users online",
+      "actions": "Actions",
+      "newBlock": "New block",
+      "preview": "Preview",
+      "test": "Test",
+      "importExport": "Import / Export",
+      "download": "Download",
+      "copy": "Copy",
+      "import": "Import",
+      "options": "Options",
+      "gitPanel": "Git panel",
+      "shares": "Sharing",
+      "owner": "Owner",
+      "notSharedYet": "Not shared with anyone yet",
+      "addUserPlaceholder": "Add user...",
+      "shareAction": "Share",
+      "previewTitle": "Preview: {name}",
+      "previewEmpty": "No blocks available",
+      "previewPlaceholder": "With Placeholders",
+      "previewResolved": "With Values",
+      "copied": "Prompt copied to clipboard!"
+    },
+    "gitPanel": {
+      "label": "Git",
+      "noChanges": "No changes",
+      "title": "Git panel",
+      "synced": "Synced",
+      "refresh": "Refresh",
+      "collapse": "Collapse",
+      "commitChanges": "Commit changes",
+      "lines": "{count} lines",
+      "commitPlaceholder": "Enter commit message...",
+      "commitAction": "Commit",
+      "historyTitle": "History ({count})",
+      "noCommits": "No commits yet",
+      "moreCommits": "+{count} more commits",
+      "loadError": "Failed to load history",
+      "commitFailed": "Commit failed",
+      "relative": {
+        "justNow": "Just now",
+        "minutesAgo": "{count} min ago",
+        "hoursAgo": "{count} hr ago",
+        "daysAgo": "{count} days ago"
+      }
+    },
+    "testPrompt": {
+      "title": "Test prompt",
+      "model": "Model",
+      "temperature": "Temperature",
+      "maxTokens": "Max tokens",
+      "jsonMode": "JSON mode",
+      "sngMode": "SNG visualization",
+      "examples": "Example data",
+      "previewTitle": "Preview: {name}",
+      "showExample": "Show example",
+      "jsonSchema": "JSON schema",
+      "sentPrompt": "Sent prompt",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "response": "Response",
+      "generating": "Generating...",
+      "done": "Done",
+      "sngGenerating": "Generating graph data...",
+      "sngError": "Error: invalid JSON for SocialNetworkGraph",
+      "sngEmpty": "No data available to plot",
+      "regenerate": "Regenerate",
+      "connectionError": "Connection error: {message}",
+      "generationCanceled": "[Generation canceled]",
+      "hiddenSummary": "... [{count} characters hidden] ...",
+      "historyLine": "{sender} wrote on {date} at {time}: {content}"
+    },
+    "testing": {
+      "title": "Test prompt",
+      "variables": "Variables",
+      "variablesCount": "{count} variables detected",
+      "filled": "Filled",
+      "empty": "Empty",
+      "text": "Text",
+      "file": "File",
+      "dataset": "Dataset",
+      "enterValue": "Enter value...",
+      "dropFile": "Drop file or click",
+      "selectPath": "Select path",
+      "entireFile": "Entire file",
+      "preview": "Preview",
+      "chars": "chars",
+      "selectDataset": "Select dataset...",
+      "selectItem": "Select item...",
+      "noDatasets": "No datasets available",
+      "createDataset": "Create dataset",
+      "uploadFile": "Upload file",
+      "uploadDescription": "Upload a JSON, CSV, TXT, or MD file.",
+      "dropHere": "Drop here",
+      "dragFile": "Drag file here",
+      "orClick": "or click to select",
+      "configureDataset": "Configure dataset",
+      "datasetName": "Dataset name",
+      "nameRequired": "Name is required",
+      "detectedStructure": "Detected structure",
+      "fields": "Fields",
+      "variableMapping": "Variable mapping",
+      "mappingDescription": "Map the fields from the file to prompt variables.",
+      "selectField": "Select field...",
+      "entireObject": "Entire object",
+      "itemNameField": "Item name field",
+      "selectNameField": "Select name field...",
+      "mappedVariables": "mapped variables",
+      "moreItems": "more items",
+      "saveDataset": "Save dataset",
+      "readError": "Could not read file",
+      "allVariablesFilled": "All variables filled",
+      "variablesRemaining": "{count} variables remaining",
+      "runTest": "Run test",
+      "configuration": "Configuration",
+      "promptPreview": "Prompt preview",
+      "testDatasets": "Test datasets",
+      "noVariables": "No variables detected in prompt",
+      "noVariablesHint": "Use {{variable}} to define placeholders.",
+      "steps": {
+        "upload": "Upload",
+        "configure": "Configure",
+        "preview": "Preview"
+      },
+      "placeholderPalette": "Variable Palette",
+      "newPlaceholderName": "New variable name...",
+      "noPlaceholdersHint": "Create variables and drag them into the editor.",
+      "dragHint": "Drag variables into the editor",
+      "description": "Description",
+      "descriptionPlaceholder": "Description for the variable...",
+      "defaultValue": "Default Value",
+      "defaultValuePlaceholder": "Default value for the variable...",
+      "errorNameRequired": "Name is required",
+      "errorInvalidName": "Only letters, numbers, and underscores allowed",
+      "errorNameExists": "Variable already exists",
+      "inPrompt": "In Prompt",
+      "applyDefault": "Apply default"
+    },
+    "variables": {
+      "title": "Manage Variables",
+      "createNew": "Create New Variable",
+      "name": "Variable Name",
+      "namePlaceholder": "e.g. email_content",
+      "content": "Content",
+      "contentPlaceholder": "The text to be inserted when testing...",
+      "create": "Create Variable",
+      "existing": "Existing Variables",
+      "noVariables": "No variables yet",
+      "noVariablesHint": "Create variables above and drag them into the editor.",
+      "usageHint": "Drag the created variables from the sidebar into the Quill editor. When testing, the placeholders will be replaced with the content defined here.",
+      "errorNameRequired": "Name is required",
+      "errorInvalidName": "Only letters, numbers, and underscores allowed",
+      "errorReservedName": "This name is reserved",
+      "errorNameExists": "Variable already exists",
+      "manageVariables": "Manage Variables"
+    },
+    "messages": {
+      "blockOrderUpdated": "Block order updated!",
+      "blockExists": "Block \"{name}\" already exists!",
+      "blockAdded": "Block \"{name}\" added.",
+      "blockDeleted": "Block \"{name}\" deleted.",
+      "blockTitleChanged": "Title changed to \"{title}\"!",
+      "blockExistsSkipped": "Block \"{name}\" already exists. Skipped.",
+      "jsonProcessed": "JSON file processed successfully!"
+    },
+    "user": {
+      "unknown": "Unknown user"
+    }
+  },
+  "evaluation": {
+    "title": "Evaluation",
+    "subtitle": "Select an evaluation tool and start the normal workflow.",
+    "available": "{count} available",
+    "noToolsAvailable": "No evaluation tools are currently available for your account.",
+    "noScenarios": "No scenarios",
+    "noScenariosAssigned": "No scenarios assigned",
+    "backToEvaluations": "Evaluations",
+    "progress": "{done} / {total} completed",
+    "emptyHint": "Make sure an active scenario exists and threads are assigned.",
+    "tools": {
+      "ranking": {
+        "title": "Ranking",
+        "description": "Sort and compare features by quality"
+      },
+      "historyRating": {
+        "title": "History Rating",
+        "description": "Rating of AI-generated email threads (Pillar 4)"
+      },
+      "authenticity": {
+        "title": "Fake/Real",
+        "description": "Vote: Is a thread real or fake?"
+      },
+      "rating": {
+        "title": "Rating",
+        "description": "Rate individual features with stars/scale"
+      },
+      "comparison": {
+        "title": "Comparison",
+        "description": "Directly compare and rate two AI models"
+      }
+    },
+    "badges": {
+      "new": "New"
+    },
+    "ranking": {
+      "pageTitle": "Ranking",
+      "pageSubtitle": "Open a case and sort the features by quality.",
+      "emptyTitle": "No ranking cases available"
+    },
+    "rating": {
+      "pageTitle": "Rating",
+      "pageSubtitle": "Open a case and rate the individual features.",
+      "emptyTitle": "No rating cases available"
+    },
+    "historyRating": {
+      "pageTitle": "History Rating",
+      "pageSubtitle": "Open a thread and rate coherence, quality and overall impact.",
+      "emptyTitle": "No threads available"
+    },
+    "authenticity": {
+      "pageTitle": "Fake/Real",
+      "pageSubtitle": "Open a thread and vote whether it is real or fake.",
+      "emptyTitle": "No threads available",
+      "real": "Real",
+      "fake": "Fake"
+    },
+    "comparison": {
+      "pageTitle": "Comparison",
+      "pageSubtitle": "Select a persona to enter the comparison chat.",
+      "emptyTitle": "No sessions available",
+      "emptyHint": "No comparison sessions have been created yet.",
+      "scenarioLabel": "Scenario {id}",
+      "ratedMessages": "{count} messages rated"
+    }
+  },
+  "judge": {
+    "overview": {
+      "title": "Chatbot Arena",
+      "subtitle": "Manage and monitor LLM judge sessions.",
+      "sessionsTitle": "My sessions",
+      "filters": {
+        "all": "All",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "actions": {
+        "newSession": "New session",
+        "refresh": "Refresh",
+        "viewSession": "View session",
+        "viewResults": "View results",
+        "deleteSession": "Delete session"
+      },
+      "empty": {
+        "title": "No sessions yet"
+      },
+      "dialogs": {
+        "delete": {
+          "title": "Delete session",
+          "description": "Delete session \"{name}\"?"
+        }
+      },
+      "datePlaceholder": "-"
+    },
+    "stats": {
+      "total": "Total sessions",
+      "completed": "Completed",
+      "running": "Running",
+      "queued": "Queued"
+    },
+    "status": {
+      "created": "Created",
+      "queued": "Queued",
+      "running": "Running",
+      "paused": "Paused",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "config": {
+      "title": "Create session",
+      "subtitle": "Configure a new arena session.",
+      "panelTitle": "Configuration",
+      "sessionNameLabel": "Session name",
+      "sessionNameHint": "Choose a descriptive name",
+      "sessionNameRequired": "Session name is required",
+      "pillars": {
+        "title": "Pillars",
+        "minRequired": "Select at least {count} pillars",
+        "selected": "{count} selected",
+        "threadsCount": "{count} threads"
+      },
+      "comparison": {
+        "title": "Comparison mode"
+      },
+      "samplesPerPillar": "Samples per pillar: {count}",
+      "maxThreads": {
+        "label": "Max threads per pillar",
+        "limited": "Limited to {count}",
+        "toggle": "Limit threads per pillar"
+      },
+      "positionSwap": {
+        "label": "Position swap",
+        "recommended": "Recommended",
+        "description": "Swap A/B positions to reduce order bias."
+      },
+      "workers": {
+        "label": "Workers: {count}",
+        "speedHint": "More workers = faster evaluation (up to {count} parallel)."
+      },
+      "repetitions": {
+        "label": "Repetitions per pair: {count}",
+        "hint": "Repeat comparisons to stabilize results."
+      },
+      "actions": {
+        "createAndStart": "Create & start"
+      },
+      "errors": {
+        "createFailed": "Failed to create session"
+      }
+    },
+    "modes": {
+      "pillarSample": {
+        "title": "Pillar sample",
+        "tag": "Balanced",
+        "description": "Sample a fixed number of comparisons per pillar pair."
+      },
+      "roundRobin": {
+        "title": "Round robin",
+        "tag": "Comprehensive",
+        "description": "Compare every thread against all others within selected pillars."
+      },
+      "freeForAll": {
+        "title": "Free for all",
+        "tag": "Max",
+        "description": "Compare all threads across selected pillars."
+      }
+    },
+    "summary": {
+      "title": "Summary",
+      "loadingEstimate": "Calculating estimate...",
+      "mode": {
+        "label": "Mode"
+      },
+      "threads": {
+        "label": "Threads"
+      },
+      "positionSwap": {
+        "label": "Position swap",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "totalComparisons": "Total comparisons",
+      "baseComparisons": "{count} base comparisons{swap}",
+      "swapSuffix": " + swap",
+      "estimatedDuration": "Estimated duration",
+      "durationWarningLabel": "Long run time:",
+      "selectedPillars": "Selected pillars",
+      "pillarShort": "P{id}",
+      "workersShort": "{count}W",
+      "calculation": {
+        "title": "Calculation",
+        "mode": "Mode",
+        "formulaLabel": "Formula",
+        "formula": {
+          "pillarSample": "{pairs} pairs × {samples} samples{swap}",
+          "roundRobin": "All-vs-all comparisons{swap}",
+          "freeForAll": "All threads across all pillars{swap}"
+        },
+        "swapMultiplier": " × 2 (position swap)",
+        "durationLabel": "Duration",
+        "durationHint": "Estimated per worker based on average comparison time."
+      },
+      "noThreads": {
+        "title": "No threads available",
+        "body": "Use <link>Chatbot Arena</link> to sync KIA data."
+      },
+      "autoStart": "Sessions start automatically after creation."
+    },
+    "duration": {
+      "lessThanMinute": "< 1 min",
+      "minutes": "{count} min",
+      "hours": "{count} hr",
+      "hoursMinutes": "{hours} hr {minutes} min"
+    },
+    "pillars": {
+      "defaultLabel": "Pillar {id}",
+      "items": {
+        "roleplay": "Roleplay",
+        "feature": "Feature",
+        "anonymized": "Anonymized",
+        "synthetic": "Synthetic",
+        "liveTests": "Live tests"
+      }
+    },
+    "kia": {
+      "panelTitle": "KIA Data Sync",
+      "sourcesTitle": "KIA data sources",
+      "connection": {
+        "connected": "Connected",
+        "tokenRequired": "Token required"
+      },
+      "threadsCount": "{count} threads",
+      "actions": {
+        "syncAll": "Sync all",
+        "configureToken": "Configure token",
+        "createToken": "Create token"
+      },
+      "tokenDialog": {
+        "title": "GitLab token",
+        "label": "Personal access token",
+        "hint": "Requires read_repository permission"
+      },
+      "status": {
+        "available": "Ready",
+        "notFound": "Not found",
+        "error": "Error",
+        "syncing": "Syncing..."
+      },
+      "messages": {
+        "statusFailed": "Status check failed",
+        "syncPillarSuccess": "Pillar {id}: {count} threads created",
+        "syncPillarError": "Pillar {id}: {error}",
+        "syncAllSuccess": "{count} threads created",
+        "syncFailed": "Sync failed",
+        "saveTokenFailed": "Token save failed"
+      }
+    },
+    "criteria": {
+      "counsellorCoherence": "Counsellor coherence",
+      "clientCoherence": "Client coherence",
+      "quality": "Quality",
+      "empathy": "Empathy",
+      "authenticity": "Authenticity",
+      "solutionOrientation": "Solution orientation"
+    },
+    "results": {
+      "title": "Results",
+      "pillarsCount": "{count} pillars",
+      "stats": {
+        "totalComparisons": "Total comparisons",
+        "topPillar": "Top pillar",
+        "avgConfidence": "Avg. confidence",
+        "duration": "Duration"
+      },
+      "ranking": {
+        "title": "Pillar ranking",
+        "winsCount": "{count} wins",
+        "lossesCount": "{count} losses",
+        "scoreLabel": "Score",
+        "empty": "No data available"
+      },
+      "matrix": {
+        "title": "Comparison matrix",
+        "legend": "Row = attacker, column = defender. Values = number of wins."
+      },
+      "metrics": {
+        "title": "Detailed metrics",
+        "columns": {
+          "pillar": "Pillar",
+          "wins": "Wins",
+          "losses": "Losses",
+          "winRate": "Win rate",
+          "avgConfidence": "Avg. confidence",
+          "score": "Score",
+          "comparisons": "Comparisons"
+        }
+      },
+      "export": {
+        "title": "Export",
+        "csv": {
+          "title": "Export as CSV",
+          "subtitle": "Spreadsheet format for Excel"
+        },
+        "json": {
+          "title": "Export as JSON",
+          "subtitle": "Structured data"
+        }
+      },
+      "comparisons": {
+        "title": "All comparisons ({count})",
+        "swapped": "Swapped",
+        "llmOutputTitle": "LLM raw output",
+        "reasoning": "Reasoning",
+        "scores": "Score breakdown",
+        "criterion": "Criterion",
+        "rawResponseTitle": "Raw LLM response ({count} characters)",
+        "columns": {
+          "index": "#",
+          "matchup": "Matchup",
+          "winner": "Winner",
+          "confidence": "Confidence",
+          "evaluatedAt": "Evaluated at"
+        }
+      },
+      "positionSwap": {
+        "title": "Position swap consistency (MT-Bench methodology)",
+        "consistentRate": "{rate}% consistent",
+        "summary": {
+          "swapPairs": "Swap pairs",
+          "consistentWin": "Consistent (win)",
+          "consistentTie": "Consistent (tie)",
+          "inconsistent": "Inconsistent",
+          "primacyBias": "Primacy bias",
+          "recencyBias": "Recency bias"
+        },
+        "likertStability": {
+          "title": "Likert score stability during position swap",
+          "tooltip": "Measures how much Likert scores change for the same thread when its position (A↔B) is swapped. Lower deltas = more stable. (Auto-J calibration)",
+          "stableRate": "{rate}% stable",
+          "deltaLabel": "Avg. Δ {mean} (max {max})"
+        },
+        "pairs": {
+          "title": "Detailed pair analysis",
+          "count": "{count} pairs",
+          "threadsMatchup": "T{a} vs T{b}"
+        },
+        "consistency": {
+          "win": "Win",
+          "tie": "Tie",
+          "inconsistent": "Inconsistent"
+        },
+        "bias": {
+          "primacy": "Primacy",
+          "recency": "Recency",
+          "mixed": "Mixed",
+          "none": "-",
+          "balanced": "Balanced",
+          "unknown": "Unknown"
+        },
+        "likertComparison": {
+          "title": "Likert score comparison (original vs swapped)",
+          "metric": "Metric",
+          "threadA": "Thread 1 (T{id})",
+          "threadB": "Thread 2 (T{id})",
+          "asA": "As A",
+          "asB": "As B"
+        },
+        "methodology": {
+          "title": "Methodology & references",
+          "references": "References"
+        },
+        "legacy": {
+          "title": "Position swap consistency",
+          "alert": "{consistent} of {total} swap pairs showed consistent results (same winner regardless of A/B position).",
+          "columns": {
+            "matchup": "Matchup",
+            "original": "Original (pos 1)",
+            "swapped": "Swapped (pos 2)",
+            "consistent": "Consistent"
+          }
+        },
+        "columns": {
+          "threads": "Threads",
+          "original": "Original",
+          "swapped": "Swapped",
+          "consistency": "Consistency",
+          "bias": "Bias",
+          "confidenceDelta": "Conf. Δ"
+        }
+      },
+      "threadPerformance": {
+        "title": "Thread performance analysis",
+        "threadsCount": "{count} threads",
+        "summary": {
+          "threadsUsed": "Threads used",
+          "avgUsage": "Avg. usages",
+          "consistentWinners": "Consistent winners",
+          "consistentLosers": "Consistent losers"
+        },
+        "coverage": {
+          "title": "Sampling coverage:",
+          "evenly": "{count} evenly",
+          "over": "{count} overused",
+          "under": "{count} underused"
+        },
+        "likertGlobal": {
+          "title": "Global Likert consistency",
+          "consistent": "Consistent",
+          "variable": "Variable"
+        },
+        "consistentWinners": {
+          "title": "Consistent winners (≥70% win rate)"
+        },
+        "consistentLosers": {
+          "title": "Consistent losers (≥70% loss rate)"
+        },
+        "threadLabel": "Thread #{id}",
+        "moreThreads": "... and {count} more",
+        "usageMultiplier": "{count}x",
+        "likertScoresTitle": "Likert scores for thread #{id}",
+        "ratedCount": "{count}x rated",
+        "noLikertData": "No Likert data available",
+        "columns": {
+          "thread": "Thread",
+          "pillar": "Pillar",
+          "usageCount": "Usages",
+          "wins": "Wins",
+          "losses": "Losses",
+          "winRate": "Win rate",
+          "likertConsistency": "Likert consistency",
+          "status": "Status"
+        }
+      },
+      "verbosity": {
+        "title": "Verbosity bias analysis",
+        "longerWinsRate": "{rate}% longer wins",
+        "alert": {
+          "warningLabel": "Warning:",
+          "warningText": "The LLM shows a strong verbosity bias; longer threads are preferred.",
+          "infoLabel": "Info:",
+          "infoText": "The LLM prefers shorter threads; possible negative verbosity bias.",
+          "okLabel": "Good:",
+          "okText": "No significant preference for thread length detected."
+        },
+        "stats": {
+          "longerWins": "Longer wins",
+          "shorterWins": "Shorter wins",
+          "ties": "Tie / equal"
+        },
+        "lengthStats": {
+          "title": "Average length (characters)",
+          "winner": "Winner",
+          "loser": "Loser",
+          "diff": "Difference"
+        },
+        "biasInterpretation": "Bias interpretation",
+        "biasLabels": {
+          "shorterPreferred": "Shorter preferred",
+          "neutral": "Neutral",
+          "longerPreferred": "Longer preferred"
+        }
+      },
+      "common": {
+        "placeholder": "-",
+        "averageShort": "Avg."
+      }
+    }
+  },
+  "anonymization": {
+    "title": "Anonymization",
+    "subtitle": "Offline pseudonymization for German texts (DOCX/PDF/Clipboard)",
+    "tooltip": {
+      "title": "Anonymization",
+      "line1": "First load can take a moment until local models and the database are ready.",
+      "line2": "Offline: rules + NER detect personal data, then hits are pseudonymized consistently.",
+      "line3": "LLM/Hybrid: additional LLM extraction, results are then pseudonymized as well."
+    },
+    "actions": {
+      "paste": "Paste from clipboard",
+      "loadExample": "Load example",
+      "copyOutput": "Copy output",
+      "pseudonymize": "Pseudonymize",
+      "recalculate": "Recalculate",
+      "randomize": "Randomize",
+      "settings": "Settings"
+    },
+    "fileInput": {
+      "label": "DOCX/PDF"
+    },
+    "sections": {
+      "input": "Input",
+      "output": "Output",
+      "entities": "Entities"
+    },
+    "input": {
+      "label": "Enter text",
+      "placeholder": "Paste or type text here..."
+    },
+    "output": {
+      "label": "Output",
+      "placeholder": "Output appears here..."
+    },
+    "preview": {
+      "title": "Highlight preview"
+    },
+    "entities": {
+      "empty": "No entities detected.",
+      "replacementLabel": "Replacement",
+      "modeLabel": "Mode: {mode}",
+      "dbLabel": "DB: {status}"
+    },
+    "settings": {
+      "title": "Settings",
+      "engine": {
+        "label": "Engine",
+        "warning": "Text is sent to the configured LLM (LiteLLM/OpenAI). No offline guarantee."
+      },
+      "llmModelLabel": "LLM model (optional)",
+      "llmStatus": "Leave empty = backend default. Status: {status}",
+      "llmReady": "ready",
+      "llmNotReady": "not ready",
+      "nameOriginLabel": "Name region",
+      "nameCountLabel": "Name count (frequency threshold)",
+      "nameCountHint": "Affects auto-replacements when recalculating or when new input arrives."
+    },
+    "engineOptions": {
+      "offline": "Offline (local, rules + NER)",
+      "llm": "LLM (rules + LLM extraction)",
+      "hybrid": "Hybrid (offline + LLM)"
+    },
+    "nameOrigins": {
+      "swissDe": "Switzerland (DE)",
+      "swissFr": "Switzerland (FR)",
+      "swissIt": "Switzerland (IT)",
+      "swissRm": "Switzerland (RM)",
+      "germany": "Germany"
+    },
+    "health": {
+      "checking": {
+        "text": "Checking…",
+        "title": "Checking local models/database…"
+      },
+      "permissions": {
+        "text": "Checking…",
+        "title": "Loading permissions…"
+      },
+      "noAccess": {
+        "text": "No access",
+        "title": "Missing permission: {permission}"
+      },
+      "unknown": {
+        "text": "Unknown",
+        "title": "Status not checked yet"
+      },
+      "llmReady": {
+        "text": "LLM ready{provider}",
+        "title": "LLM is available"
+      },
+      "llmMissing": {
+        "text": "LLM missing"
+      },
+      "hybridReady": {
+        "text": "Hybrid ready",
+        "title": "Offline + LLM are available"
+      },
+      "hybridMissing": {
+        "text": "Hybrid missing",
+        "title": "Not ready: {missing}"
+      },
+      "missing": {
+        "offline": "Offline resources",
+        "llm": "LLM"
+      },
+      "offlineReady": {
+        "text": "Ready",
+        "title": "All anonymization resources are available"
+      },
+      "offlineMissing": {
+        "text": "Not ready"
+      }
+    },
+    "messages": {
+      "noPermission": "Missing permission: feature:anonymize:view",
+      "resourcesNotReady": "Anonymization resources/models are not ready.",
+      "resourcesMissing": "Anonymization resources missing: {resources}",
+      "llmNotConfigured": "LLM is not configured.",
+      "llmMissingBaseUrl": "LiteLLM is not configured (LITELLM_BASE_URL missing).",
+      "llmMissingApiKey": "LLM is not configured (OPENAI_API_KEY or LITELLM_API_KEY missing).",
+      "healthCheckFailed": "Health check failed",
+      "pseudonymizeFailed": "Pseudonymization failed",
+      "clipboardReadFailed": "Could not read from clipboard.",
+      "clipboardCopySuccess": "Output copied to clipboard.",
+      "clipboardCopyFailed": "Could not copy output to clipboard.",
+      "uploadFailed": "Upload failed"
+    },
+    "exampleText": "Hello Ms. Miller,\\n\\nmy name is Anna Miller (34) and I live in 8001 Zurich.\\nPlease contact me at 079 123 45 67 or via anna.mueller@@example.ch.\\nMy AHV number is 756.1234.5678.97.\\nThe appointment is on 12.03.2024 at 14:30 at the University of Zurich.\\n\\nBest regards\\nAnna Miller"
+  },
+  "chat": {
+    "newChat": "New Chat",
+    "selectChatbot": "Select Chatbot",
+    "selectChatbotHint": "Select a chatbot from the list to start a conversation.",
+    "selectChatbotHintMobile": "Tap the menu above to start a conversation.",
+    "searchChats": "Search chats...",
+    "chats": "Chats",
+    "chatCount": "{count} chats",
+    "noChats": "No chats yet",
+    "noChatbotsAvailable": "No chatbots available",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "rename": "Rename",
+    "renamePrompt": "New chat title:",
+    "chatRenamed": "Chat renamed",
+    "renameFailed": "Failed to rename",
+    "deleteConfirm": "Really delete this chat?",
+    "chatDeleted": "Chat deleted",
+    "deleteFailed": "Failed to delete",
+    "homePage": "Home",
+    "showSources": "Show sources",
+    "hideSources": "Hide sources",
+    "source": "Source",
+    "relevant": "relevant",
+    "pinSource": "Pin",
+    "document": "Document",
+    "messagePlaceholder": "Write a message...",
+    "uploadFiles": "Upload files",
+    "uploadFilesWithImages": "Upload images and documents",
+    "uploadFilesTooltip": "Upload documents (PDF, Word, Excel, PowerPoint)",
+    "supportedTypesWithImages": "Images, PDFs, Word, Excel, PowerPoint",
+    "supportedTypesNoImages": "PDFs, Word, Excel, PowerPoint (no image support)",
+    "loadChatbotsFailed": "Failed to load chatbots",
+    "createChatFailed": "Failed to create chat",
+    "loadChatFailed": "Failed to load chat",
+    "sendFailed": "Failed to send",
+    "responseTimeout": "Response timeout",
+    "responseTimeoutMessage": "The response took too long. Please try again.",
+    "errorOccurred": "An error occurred.",
+    "chatbotNotAvailable": "Chatbot not available or no permission"
+  },
+  "scenario": {
+    "title": "Scenario",
+    "scenarios": "Scenarios",
+    "create": "Create Scenario",
+    "edit": "Edit Scenario",
+    "delete": "Delete Scenario",
+    "name": "Name",
+    "description": "Description",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "completed": "Completed",
+    "pending": "Pending",
+    "inProgress": "In Progress",
+    "participants": "Participants",
+    "threads": "Threads",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "progress": "Progress",
+    "noScenarios": "No scenarios available",
+    "selectScenario": "Select Scenario",
+    "details": "Details",
+    "statistics": "Statistics"
+  },
+  "markdownCollab": {
+    "permissions": {
+      "missing": "You need the permission {permission} to access this feature."
+    },
+    "visibility": {
+      "private": "Private",
+      "team": "Team",
+      "org": "Organization"
+    },
+    "errors": {
+      "createFailed": "Failed to create workspace",
+      "deleteFailed": "Failed to delete workspace",
+      "leaveFailed": "Failed to leave workspace",
+      "membersLoadFailed": "Failed to load members",
+      "inviteFailed": "Failed to invite members",
+      "removeFailed": "Failed to remove member"
+    },
+    "home": {
+      "title": "Markdown Collab",
+      "titleShort": "Markdown",
+      "subtitle": "Collaborate on Markdown files with live preview.",
+      "actions": {
+        "newShort": "New",
+        "create": "Create workspace",
+        "createConfirm": "Create workspace",
+        "open": "Open",
+        "leave": "Leave"
+      },
+      "workspaces": {
+        "title": "Workspaces"
+      },
+      "status": {
+        "owner": "Owner",
+        "guest": "Member"
+      },
+      "lastUpdated": "Last updated {date}",
+      "empty": {
+        "title": "No workspaces yet",
+        "subtitle": "Create a workspace to start collaborating."
+      },
+      "dialogs": {
+        "createTitle": "Create workspace",
+        "deleteTitle": "Delete workspace",
+        "deleteConfirm": "Delete workspace {name}?",
+        "deleteHint": "This action cannot be undone.",
+        "leaveTitle": "Leave workspace",
+        "leaveConfirm": "Leave workspace {name}?",
+        "leaveHint": "You can be invited again by the owner."
+      },
+      "form": {
+        "nameLabel": "Workspace name",
+        "namePlaceholder": "e.g. Research notes",
+        "visibilityLabel": "Visibility",
+        "inviteLabel": "Invite members",
+        "userPlaceholder": "Search and add users..."
+      }
+    },
+    "workspace": {
+      "nav": {
+        "home": "Home",
+        "workspaces": "Workspaces"
+      },
+      "actions": {
+        "backToWorkspaces": "Back to workspaces"
+      },
+      "tree": {
+        "files": "Files",
+        "collapse": "Collapse file tree"
+      },
+      "view": {
+        "editor": "Editor",
+        "split": "Split view",
+        "preview": "Preview"
+      },
+      "empty": {
+        "noDocument": "No document selected",
+        "selectFile": "Select a file to start editing."
+      },
+      "fallbackName": "Workspace #{id}"
+    },
+    "share": {
+      "title": "Share",
+      "ownerLabel": "Owner",
+      "ownerTag": "Owner",
+      "inviteLabel": "Invite users",
+      "addButton": "Add",
+      "members": "Members",
+      "emptyMembers": "No members yet",
+      "removeMember": "Remove member"
+    },
+    "tree": {
+      "title": "Files",
+      "searchPlaceholder": "Search...",
+      "zoteroReadonly": "Zotero files are read-only.",
+      "root": "Root",
+      "nodeFallback": "Item {id}",
+      "defaults": {
+        "folder": "New folder",
+        "file": "New file"
+      },
+      "placeholders": {
+        "file": "File name",
+        "folder": "Folder name"
+      },
+      "actions": {
+        "newFile": "New file",
+        "newFolder": "New folder",
+        "rename": "Rename",
+        "delete": "Delete",
+        "expand": "Expand",
+        "collapse": "Collapse",
+        "drag": "Drag to move",
+        "cancelCreate": "Cancel",
+        "create": "Create",
+        "createLabel": "Create",
+        "cancelRename": "Cancel",
+        "save": "Save",
+        "cancelDelete": "Cancel"
+      },
+      "dialogs": {
+        "createFolderTitle": "New folder",
+        "createFileTitle": "New file",
+        "nameLabel": "Name",
+        "target": "Target: {label}",
+        "renameTitle": "Rename",
+        "deleteTitle": "Delete",
+        "deleteConfirm": "Delete {name}?",
+        "deleteHint": "This action cannot be undone."
+      }
+    },
+    "diff": {
+      "base": "Base",
+      "compare": "Compare",
+      "empty": "—",
+      "noChanges": "No changes"
+    },
+    "editor": {
+      "readonly": "Read-only",
+      "liveSync": "Live sync",
+      "reconnecting": "Reconnecting...",
+      "userFallback": "Unknown user",
+      "deletedText": "Deleted text"
+    }
+  },
+  "latexCollab": {
+    "permissions": {
+      "missing": "You need the permission {permission} to access this feature."
+    },
+    "visibility": {
+      "private": "Private",
+      "team": "Team",
+      "org": "Organization"
+    },
+    "errors": {
+      "createFailed": "Failed to create workspace",
+      "deleteFailed": "Failed to delete workspace",
+      "leaveFailed": "Failed to leave workspace",
+      "membersLoadFailed": "Failed to load members",
+      "inviteFailed": "Failed to invite members",
+      "removeFailed": "Failed to remove member"
+    },
+    "home": {
+      "title": "LaTeX Collab",
+      "titleShort": "LaTeX",
+      "subtitle": "Collaborate on LaTeX documents with live PDF preview.",
+      "actions": {
+        "newShort": "New",
+        "create": "Create workspace",
+        "createConfirm": "Create workspace",
+        "open": "Open",
+        "leave": "Leave"
+      },
+      "workspaces": {
+        "title": "Workspaces"
+      },
+      "status": {
+        "owner": "Owner",
+        "guest": "Member"
+      },
+      "lastUpdated": "Last updated {date}",
+      "empty": {
+        "title": "No workspaces yet",
+        "subtitle": "Create a workspace to start collaborating."
+      },
+      "dialogs": {
+        "createTitle": "Create workspace",
+        "deleteTitle": "Delete workspace",
+        "deleteConfirm": "Delete workspace {name}?",
+        "deleteHint": "This action cannot be undone.",
+        "leaveTitle": "Leave workspace",
+        "leaveConfirm": "Leave workspace {name}?",
+        "leaveHint": "You can be invited again by the owner."
+      },
+      "form": {
+        "nameLabel": "Workspace name",
+        "namePlaceholder": "e.g. Thesis draft",
+        "visibilityLabel": "Visibility",
+        "inviteLabel": "Invite members",
+        "userPlaceholder": "Search and add users..."
+      }
+    },
+    "workspace": {
+      "nav": {
+        "home": "Home",
+        "workspaces": "Workspaces"
+      },
+      "actions": {
+        "backToWorkspaces": "Back to workspaces"
+      },
+      "view": {
+        "editor": "Editor",
+        "split": "Split view",
+        "preview": "Preview"
+      },
+      "empty": {
+        "noDocument": "No document selected",
+        "selectFile": "Select a file to start editing."
+      },
+      "fallbackName": "Workspace #{id}",
+      "assetWarning": "This asset is read-only.",
+      "zoteroReadonly": "{brand} files are read-only."
+    },
+    "share": {
+      "title": "Share",
+      "ownerLabel": "Owner",
+      "ownerTag": "Owner",
+      "inviteLabel": "Invite users",
+      "addButton": "Add",
+      "members": "Members",
+      "emptyMembers": "No members yet",
+      "removeMember": "Remove member"
+    },
+    "tree": {
+      "files": "Files",
+      "filePlaceholder": "File name",
+      "uploadAsset": "Upload asset",
+      "collapse": "Collapse file tree"
+    },
+    "header": {
+      "menuOpen": "Open menu",
+      "backToWorkspaces": "Back to workspaces",
+      "workspaces": "Workspaces",
+      "setMain": "Set as main.tex",
+      "reviewMode": "Review mode",
+      "liveSync": "Live sync",
+      "reconnecting": "Reconnecting...",
+      "ghostText": "Ghost text",
+      "ghostTextEnabled": "Enabled",
+      "ghostTextDisabled": "Disabled",
+      "view": {
+        "editor": "Editor",
+        "split": "Split view",
+        "preview": "Preview"
+      }
+    },
+    "compile": {
+      "actions": {
+        "compile": "Compile",
+        "showLogs": "Show logs"
+      },
+      "versionLabel": "Version",
+      "auto": {
+        "title": "Auto-compile",
+        "enable": "Enable auto-compile",
+        "delayLabel": "Delay (ms)",
+        "syncLabel": "Sync collaborators"
+      },
+      "logTitle": "Compile log",
+      "issuesTitle": "Issues",
+      "noLog": "No log available",
+      "current": "Current",
+      "status": {
+        "queued": "Queued",
+        "running": "Compiling",
+        "success": "Success",
+        "failed": "Failed",
+        "idle": "Idle"
+      },
+      "issue": {
+        "line": "Line {line}",
+        "unknownLocation": "Unknown location",
+        "errorLabel": "Error",
+        "warningLabel": "Warning",
+        "overfullLabel": "Overfull box"
+      },
+      "errors": {
+        "failed": "Compilation failed"
+      }
+    },
+    "comments": {
+      "title": "Comments",
+      "add": "Add comment",
+      "addLabel": "Comment",
+      "empty": "No comments yet",
+      "resolved": "Resolved",
+      "reopen": "Reopen",
+      "resolve": "Resolve",
+      "dialog": {
+        "title": "Add comment",
+        "label": "Comment",
+        "cancelTitle": "Cancel",
+        "saveTitle": "Save"
+      },
+      "errors": {
+        "selectText": "Select text to comment on",
+        "saveFailed": "Failed to save comment"
+      }
+    },
+    "pdf": {
+      "title": "PDF Preview",
+      "compiling": "Compiling...",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "fitWidth": "Fit width",
+      "pages": "{count} pages",
+      "empty": "No PDF generated yet",
+      "loading": "Loading...",
+      "compilingStatus": "Compiling...",
+      "preparing": "Preparing preview..."
+    },
+    "outline": {
+      "title": "Outline",
+      "show": "Show outline",
+      "hide": "Hide outline",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "emptySections": "No sections yet",
+      "emptyDocument": "No content yet",
+      "part": "Part",
+      "chapter": "Chapter",
+      "section": "Section",
+      "subsection": "Subsection",
+      "subsubsection": "Subsubsection",
+      "paragraph": "Paragraph"
+    },
+    "editor": {
+      "toolbar": {
+        "show": "Show toolbar",
+        "hide": "Hide toolbar",
+        "label": "Toolbar",
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Underline",
+        "emph": "Emphasis",
+        "typewriter": "Typewriter",
+        "section": "Section",
+        "subsection": "Subsection",
+        "subsubsection": "Subsubsection",
+        "paragraph": "Paragraph",
+        "itemize": "Bulleted list",
+        "enumerate": "Numbered list",
+        "description": "Description list",
+        "figure": "Figure",
+        "table": "Table",
+        "code": "Code block",
+        "quote": "Quote",
+        "inlineMath": "Inline math",
+        "displayMath": "Display math",
+        "equation": "Equation",
+        "align": "Align",
+        "frac": "Fraction",
+        "cite": "Cite",
+        "ref": "Reference",
+        "label": "Label",
+        "footnote": "Footnote",
+        "url": "URL"
+      },
+      "table": {
+        "size": "Table size",
+        "rows": "Rows",
+        "columns": "Columns",
+        "preview": "{rows}×{cols} table",
+        "insert": "Insert table"
+      },
+      "userFallback": "Unknown user",
+      "userUnknown": "Unknown user",
+      "deletedText": "Deleted text"
+    },
+    "completions": {
+      "documentclass": "Document class",
+      "usepackage": "Load package",
+      "begin": "Begin environment",
+      "end": "End environment",
+      "section": "Section",
+      "subsection": "Subsection",
+      "subsubsection": "Subsubsection",
+      "paragraph": "Paragraph",
+      "textbf": "Bold",
+      "textit": "Italic",
+      "emph": "Emphasis",
+      "underline": "Underline",
+      "item": "List item",
+      "label": "Label",
+      "ref": "Reference",
+      "pageref": "Page reference",
+      "cite": "Citation",
+      "citet": "Text citation",
+      "citep": "Parenthetical citation",
+      "includegraphics": "Include graphics",
+      "caption": "Caption",
+      "centering": "Center",
+      "footnote": "Footnote",
+      "url": "URL",
+      "href": "Link",
+      "title": "Title",
+      "author": "Author",
+      "date": "Date",
+      "maketitle": "Make title",
+      "tableofcontents": "Table of contents",
+      "newcommand": "New command",
+      "renewcommand": "Renew command",
+      "input": "Input file",
+      "include": "Include file",
+      "frac": "Fraction",
+      "sqrt": "Square root",
+      "sum": "Sum",
+      "int": "Integral"
+    },
+    "aiCommands": {
+      "ai": "Ask AI",
+      "rewrite": "Rewrite selection",
+      "expand": "Expand selection",
+      "summarize": "Summarize selection",
+      "fix": "Fix LaTeX/grammar",
+      "translate": "Translate text (e.g. @@translate en)",
+      "cite": "Find citations",
+      "abstract": "Generate abstract",
+      "titles": "Suggest titles"
+    },
+    "zotero": {
+      "title": "Zotero",
+      "connection": {
+        "title": "Zotero connection",
+        "connected": "Connected",
+        "accountLabel": "Account:",
+        "connectedSince": "Connected since {date}",
+        "prompt": "Connect your Zotero account to sync libraries and citations."
+      },
+      "connect": {
+        "oauthTitle": "Connect via OAuth",
+        "oauthHint": "Sign in with Zotero to connect securely.",
+        "apiKeyTitle": "Connect with API key",
+        "apiKeyHint": "Enter a Zotero API key to connect.",
+        "apiKeyHintAlt": "Use an API key instead of OAuth.",
+        "apiKeyLabel": "API key",
+        "apiKeyPlaceholder": "Paste API key",
+        "apiKeyLink": "Create API key in Zotero",
+        "or": "or"
+      },
+      "actions": {
+        "disconnect": "Disconnect",
+        "connectOAuth": "Connect with Zotero",
+        "connect": "Connect",
+        "add": "Add",
+        "addLibrary": "Add library",
+        "sync": "Sync",
+        "settings": "Settings",
+        "remove": "Remove"
+      },
+      "libraries": {
+        "title": "Libraries",
+        "empty": "No libraries linked yet.",
+        "entries": "{count} entries",
+        "autoSync": "Auto-sync every {minutes} min",
+        "lastSynced": "Last synced {date}",
+        "neverSynced": "Never synced"
+      },
+      "dialogs": {
+        "addTitle": "Add library",
+        "selectLibrary": "Select library",
+        "allCollections": "All collections",
+        "collectionLabel": "Collection",
+        "filenameLabel": "BibTeX filename",
+        "filenamePlaceholder": "e.g. references",
+        "autoSync": "Enable auto-sync",
+        "syncInterval": "Sync interval (minutes)",
+        "settingsTitle": "Library settings",
+        "removeTitle": "Remove library",
+        "removeConfirm": "Remove {name} from this workspace?",
+        "removeHint": "This will unlink the library but won't delete it from Zotero."
+      },
+      "errors": {
+        "filenameRequired": "Filename is required",
+        "connectFailed": "Failed to connect to Zotero",
+        "oauthUnavailable": "OAuth is not configured",
+        "oauthFailed": "OAuth login failed",
+        "oauthNotConfigured": "OAuth not configured",
+        "disconnectFailed": "Failed to disconnect",
+        "loadLibrariesFailed": "Failed to load libraries",
+        "addFailed": "Failed to add library",
+        "syncFailed": "Sync failed",
+        "saveFailed": "Failed to save settings",
+        "removeFailed": "Failed to remove library"
+      },
+      "messages": {
+        "connected": "Zotero connected",
+        "disconnected": "Zotero disconnected",
+        "added": "Library added",
+        "synced": "Library synced",
+        "settingsSaved": "Settings saved",
+        "removed": "Library removed"
+      },
+      "relative": {
+        "justNow": "Just now",
+        "minutesAgo": "{count} min ago",
+        "hoursAgo": "{count} h ago",
+        "daysAgo": "{count} days ago"
+      }
+    }
+  },
+  "latexCollabAi": {
+    "visibility": {
+      "private": "Private",
+      "team": "Team",
+      "org": "Organization"
+    },
+    "errors": {
+      "createFailed": "Failed to create workspace",
+      "deleteFailed": "Failed to delete workspace",
+      "leaveFailed": "Failed to leave workspace",
+      "processingFailed": "AI processing failed",
+      "chatFailed": "Chat failed",
+      "commandFailed": "Command failed"
+    },
+    "home": {
+      "title": "LaTeX Collab AI",
+      "titleShort": "LaTeX AI",
+      "subtitle": "Collaborative LaTeX workspace with AI writing assistance.",
+      "actions": {
+        "newShort": "New",
+        "create": "Create workspace",
+        "createConfirm": "Create workspace",
+        "open": "Open",
+        "leave": "Leave"
+      },
+      "banner": {
+        "title": "AI features enabled",
+        "body": "Includes Ghost Text, @@-commands, the AI sidebar, and RAG citations."
+      },
+      "workspaces": {
+        "title": "Workspaces"
+      },
+      "status": {
+        "owner": "Owner",
+        "guest": "Member"
+      },
+      "lastUpdated": "Last updated {date}",
+      "empty": {
+        "title": "No workspaces yet",
+        "subtitle": "Create a workspace to start collaborating."
+      },
+      "dialogs": {
+        "createTitle": "Create workspace",
+        "deleteTitle": "Delete workspace",
+        "deleteConfirm": "Delete workspace {name}?",
+        "deleteHint": "This action cannot be undone.",
+        "leaveTitle": "Leave workspace",
+        "leaveConfirm": "Leave workspace {name}?",
+        "leaveHint": "You can be invited again by the owner."
+      },
+      "form": {
+        "nameLabel": "Workspace name",
+        "namePlaceholder": "e.g. AI draft",
+        "visibilityLabel": "Visibility",
+        "inviteLabel": "Invite members",
+        "userPlaceholder": "Search and add users..."
+      }
+    },
+    "workspace": {
+      "actions": {
+        "openAssistant": "Open AI assistant"
+      }
+    },
+    "citations": {
+      "title": "Find citation",
+      "claimLabel": "Claim or text",
+      "collectionsLabel": "Collections",
+      "resultsTitle": "Results",
+      "insertBibtex": "Insert BibTeX",
+      "noResults": "No citations found",
+      "searchError": "Search failed: {message}",
+      "bibtexInserted": "BibTeX inserted"
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "toggleSidebar": "Toggle AI sidebar",
+      "toggleGhostText": "Toggle ghost text",
+      "requestCompletion": "Request completion",
+      "acceptSuggestion": "Accept suggestion",
+      "rejectSuggestion": "Reject suggestion",
+      "rewriteSelection": "Rewrite selection",
+      "expandSelection": "Expand selection",
+      "summarizeSelection": "Summarize selection",
+      "findCitation": "Find citation",
+      "showShortcuts": "Show shortcuts"
+    },
+    "notifications": {
+      "inserting": "Inserting...",
+      "clipboardCopied": "Copied to clipboard",
+      "rewritten": "Text rewritten",
+      "expanded": "Text expanded",
+      "summarized": "Summary created",
+      "chatQuestion": "Asked AI: {text}...",
+      "latexErrorsFound": "{count} LaTeX issues found",
+      "latexErrorsNone": "No LaTeX issues found",
+      "aiInserted": "AI content inserted",
+      "errorsFound": "{count} issues found",
+      "errorsNone": "No issues found",
+      "translated": "Translated to {lang}",
+      "abstractGenerated": "Abstract generated",
+      "titlesGenerated": "{count} titles generated",
+      "commandExecuted": "Command executed",
+      "error": "Error: {message}",
+      "ghostTextEnabled": "Ghost text enabled",
+      "ghostTextDisabled": "Ghost text disabled"
+    },
+    "prompts": {
+      "translate": "Translate the following text to {lang}: {text}"
+    },
+    "sidebar": {
+      "title": "AI Assistant",
+      "quickTools": "Quick tools",
+      "tools": {
+        "abstract": "Abstract",
+        "titles": "Titles",
+        "citations": "Citation check",
+        "fixLatex": "Fix LaTeX"
+      },
+      "chat": {
+        "title": "Chat",
+        "clear": "Clear chat",
+        "thinking": "Thinking...",
+        "placeholder": "Ask a question..."
+      },
+      "welcome": {
+        "greeting": "Hi! I'm your AI writing assistant.",
+        "intro": "I can help you with:",
+        "items": {
+          "phrasing": "Improve phrasing",
+          "latex": "Fix LaTeX and grammar",
+          "structure": "Strengthen structure",
+          "literature": "Find sources"
+        }
+      },
+      "artifact": {
+        "insert": "Insert into document"
+      },
+      "footerTip": "Tip: Use @@-commands in the editor for quick actions.",
+      "toolResults": {
+        "title": {
+          "abstract": "Generated abstract",
+          "titles": "Title suggestions",
+          "citations": "Citation review",
+          "fixLatex": "LaTeX check"
+        },
+        "wordCount": "{count} words",
+        "cited": "{count} cited",
+        "uncited": "{count} uncited",
+        "noUncited": "All citations look good.",
+        "errorsTitle": "Errors",
+        "suggestionsTitle": "Suggestions",
+        "noErrors": "No errors found."
+      }
+    },
+    "selection": {
+      "rewrite": "Rewrite",
+      "expand": "Expand",
+      "summarize": "Summarize",
+      "cite": "Find citation",
+      "chat": "Ask AI",
+      "fixLatex": "Fix LaTeX"
+    },
+    "commandDescriptions": {
+      "ai": "Ask anything or give an instruction.",
+      "rewrite": "Rewrite the selected text in a more academic style.",
+      "expand": "Expand the selected text with more detail.",
+      "summarize": "Summarize the selected text.",
+      "fix": "Fix LaTeX and grammar issues.",
+      "translate": "Translate the text (e.g. @@translate en).",
+      "cite": "Find suitable sources for the statement.",
+      "abstract": "Generate an abstract for the document.",
+      "titles": "Suggest titles for the document."
+    }
+  },
+  "workspaceGit": {
+    "title": "Git",
+    "fileSingular": "file",
+    "filePlural": "files",
+    "header": {
+      "title": "Git Panel"
+    },
+    "fullscreen": {
+      "title": "Git Panel",
+      "changedCount": "{count} changed"
+    },
+    "tags": {
+      "changed": "{count} changed",
+      "deleted": "{count} deleted",
+      "synced": "Synced",
+      "noChanges": "No changes"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "fullscreen": "Fullscreen",
+      "collapse": "Collapse",
+      "exitFullscreen": "Exit fullscreen",
+      "discard": "Discard",
+      "restore": "Restore"
+    },
+    "files": {
+      "title": "Files",
+      "empty": "No changes detected",
+      "selectAll": "Select all",
+      "selectNone": "Select none",
+      "deletedTitle": "Deleted files",
+      "emptyUncommitted": "No uncommitted changes"
+    },
+    "commit": {
+      "title": "Commit changes",
+      "placeholder": "Enter a commit message...",
+      "submitTitle": "Commit changes",
+      "submitLabel": "Commit ({count} files)",
+      "submitCount": "Commit {count} files",
+      "submit": "Commit changes",
+      "createTitle": "New commit",
+      "selectedFiles": "{count} files selected",
+      "linesAdded": "{count} added",
+      "linesRemoved": "{count} removed",
+      "noneSelected": "No files selected",
+      "fullscreenPlaceholder": "Describe your changes...",
+      "contributions": "Contributions",
+      "lines": "{count} lines"
+    },
+    "history": {
+      "title": "History",
+      "count": "{count} commits",
+      "empty": "No commits yet",
+      "more": "+{count} more...",
+      "files": "{count} files"
+    },
+    "diff": {
+      "title": "Diff view",
+      "workingTitle": "Show working tree",
+      "working": "Working",
+      "commitTitle": "Compare commits",
+      "commits": "Commits",
+      "selectFile": "Select a file to compare",
+      "baseLabel": "Base",
+      "compareLabel": "Compare",
+      "initial": "Initial (no commit)",
+      "workingTree": "Working tree",
+      "emptyLabel": "—",
+      "noDocument": "No document selected"
+    },
+    "relative": {
+      "justNow": "Just now",
+      "minutesAgo": "{count} min ago",
+      "hoursAgo": "{count} h ago",
+      "daysAgo": "{count} days ago"
+    },
+    "errors": {
+      "rollbackFailed": "Failed to rollback changes",
+      "loadChangesFailed": "Failed to load changes",
+      "restoreFailed": "Failed to restore file",
+      "diffFailed": "Failed to load diff",
+      "loadCommitsFailed": "Failed to load history",
+      "commitFailed": "Commit failed"
+    },
+    "status": {
+      "deleted": "Deleted",
+      "added": "Added",
+      "modified": "Modified"
+    },
+    "rollback": {
+      "title": "Discard changes?",
+      "forceConfirm": "This will discard local changes for {path}. Continue?",
+      "confirm": "Discard changes for {path}?",
+      "resetHint": "This action cannot be undone.",
+      "commitHint": "Last commit: #{id}.",
+      "confirmAction": "Discard",
+      "simpleConfirm": "All uncommitted changes will be discarded and the document will reset to the last commit.",
+      "simpleHint": "This action cannot be undone."
+    }
+  }
+}

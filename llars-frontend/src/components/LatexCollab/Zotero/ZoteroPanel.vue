@@ -4,7 +4,7 @@
     <div class="zotero-section">
       <div class="section-header">
         <LIcon class="mr-2" color="primary">mdi-book-open-page-variant</LIcon>
-        <span class="section-title">Zotero Verbindung</span>
+        <span class="section-title">{{ $t('latexCollab.zotero.connection.title') }}</span>
       </div>
 
       <div v-if="loading" class="d-flex justify-center pa-4">
@@ -16,13 +16,13 @@
         <div v-if="isConnected" class="connection-info">
           <v-chip color="success" variant="tonal" size="small" class="mb-2">
             <LIcon start size="small">mdi-check-circle</LIcon>
-            Verbunden
+            {{ $t('latexCollab.zotero.connection.connected') }}
           </v-chip>
           <div class="text-body-2 mb-2">
-            <strong>Account:</strong> {{ connection?.zotero_username }}
+            <strong>{{ $t('latexCollab.zotero.connection.accountLabel') }}</strong> {{ connection?.zotero_username }}
           </div>
           <div class="text-caption text-medium-emphasis" v-if="connection?.connected_at">
-            Verbunden seit {{ formatDate(connection.connected_at) }}
+            {{ $t('latexCollab.zotero.connection.connectedSince', { date: formatDate(connection.connected_at) }) }}
           </div>
           <LBtn
             variant="outlined"
@@ -30,14 +30,14 @@
             class="mt-3"
             @click="handleDisconnect"
           >
-            Verbindung trennen
+            {{ $t('latexCollab.zotero.actions.disconnect') }}
           </LBtn>
         </div>
 
         <!-- Not Connected State -->
         <div v-else class="connection-prompt">
           <p class="text-body-2 text-medium-emphasis mb-3">
-            Verbinde deinen Zotero Account um Literaturverzeichnisse zu synchronisieren.
+            {{ $t('latexCollab.zotero.connection.prompt') }}
           </p>
 
           <div class="connection-methods">
@@ -46,10 +46,10 @@
               <div class="method-card method-primary">
                 <div class="method-title">
                   <LIcon size="small" class="mr-1" color="primary">mdi-login</LIcon>
-                  Mit Zotero anmelden
+                  {{ $t('latexCollab.zotero.connect.oauthTitle') }}
                 </div>
                 <p class="text-caption text-medium-emphasis mb-3">
-                  Empfohlen: Melde dich direkt bei Zotero an und autorisiere LLARS.
+                  {{ $t('latexCollab.zotero.connect.oauthHint') }}
                 </p>
                 <LBtn
                   variant="primary"
@@ -57,12 +57,12 @@
                   @click="handleConnectWithOAuth"
                 >
                   <LIcon start>mdi-open-in-new</LIcon>
-                  Mit Zotero verbinden
+                  {{ $t('latexCollab.zotero.actions.connectOAuth') }}
                 </LBtn>
               </div>
 
               <div class="method-divider">
-                <span>oder</span>
+                <span>{{ $t('latexCollab.zotero.connect.or') }}</span>
               </div>
             </template>
 
@@ -70,15 +70,15 @@
             <div class="method-card" :class="{ 'method-primary': !oauthAvailable }">
               <div class="method-title">
                 <LIcon size="small" class="mr-1">mdi-key</LIcon>
-                API-Key eingeben
+                {{ $t('latexCollab.zotero.connect.apiKeyTitle') }}
               </div>
               <p class="text-caption text-medium-emphasis mb-2">
-                {{ oauthAvailable ? 'Alternativ: Erstelle einen API-Key auf zotero.org' : 'Erstelle einen API-Key auf zotero.org und gib ihn hier ein.' }}
+                {{ oauthAvailable ? $t('latexCollab.zotero.connect.apiKeyHintAlt') : $t('latexCollab.zotero.connect.apiKeyHint') }}
               </p>
               <v-text-field
                 v-model="apiKeyInput"
-                label="Zotero API Key"
-                placeholder="Enter your API key"
+                :label="$t('latexCollab.zotero.connect.apiKeyLabel')"
+                :placeholder="$t('latexCollab.zotero.connect.apiKeyPlaceholder')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -92,11 +92,11 @@
                 :disabled="!apiKeyInput.trim()"
                 @click="handleConnectWithApiKey"
               >
-                Verbinden
+                {{ $t('latexCollab.zotero.actions.connect') }}
               </LBtn>
               <div class="text-caption text-medium-emphasis mt-2">
                 <a href="https://www.zotero.org/settings/keys" target="_blank" rel="noopener">
-                  API-Key erstellen auf zotero.org
+                  {{ $t('latexCollab.zotero.connect.apiKeyLink') }}
                   <LIcon size="x-small">mdi-open-in-new</LIcon>
                 </a>
               </div>
@@ -110,7 +110,7 @@
     <div v-if="isConnected" class="zotero-section mt-4">
       <div class="section-header">
         <LIcon class="mr-2" color="secondary">mdi-library</LIcon>
-        <span class="section-title">Verknüpfte Bibliotheken</span>
+        <span class="section-title">{{ $t('latexCollab.zotero.libraries.title') }}</span>
         <v-spacer />
         <LBtn
           variant="text"
@@ -118,7 +118,7 @@
           prepend-icon="mdi-plus"
           @click="showAddLibraryDialog = true"
         >
-          Hinzufügen
+          {{ $t('latexCollab.zotero.actions.add') }}
         </LBtn>
       </div>
 
@@ -129,7 +129,7 @@
       <div v-else-if="workspaceLibraries.length === 0" class="empty-state">
         <LIcon size="48" color="grey-lighten-1">mdi-book-off-outline</LIcon>
         <p class="text-body-2 text-medium-emphasis mt-2">
-          Keine Bibliotheken verknüpft
+          {{ $t('latexCollab.zotero.libraries.empty') }}
         </p>
         <LBtn
           variant="primary"
@@ -138,7 +138,7 @@
           class="mt-2"
           @click="showAddLibraryDialog = true"
         >
-          Bibliothek hinzufügen
+          {{ $t('latexCollab.zotero.actions.addLibrary') }}
         </LBtn>
       </div>
 
@@ -165,19 +165,19 @@
               {{ lib.bib_filename }}
             </v-chip>
             <v-chip size="x-small" variant="tonal" color="info">
-              {{ lib.item_count }} Einträge
+              {{ $t('latexCollab.zotero.libraries.entries', { count: lib.item_count }) }}
             </v-chip>
             <v-chip v-if="lib.auto_sync_enabled" size="x-small" variant="tonal" color="success">
-              Auto-Sync: {{ lib.auto_sync_interval_minutes }}min
+              {{ $t('latexCollab.zotero.libraries.autoSync', { minutes: lib.auto_sync_interval_minutes }) }}
             </v-chip>
           </div>
 
           <div class="library-sync-info text-caption text-medium-emphasis">
             <template v-if="lib.last_synced_at">
-              Zuletzt synchronisiert: {{ formatRelativeTime(lib.last_synced_at) }}
+              {{ $t('latexCollab.zotero.libraries.lastSynced', { date: formatRelativeTime(lib.last_synced_at) }) }}
             </template>
             <template v-else>
-              Noch nicht synchronisiert
+              {{ $t('latexCollab.zotero.libraries.neverSynced') }}
             </template>
           </div>
 
@@ -194,7 +194,7 @@
               :loading="syncingLibraryId === lib.id"
               @click="handleSync(lib)"
             >
-              Sync
+              {{ $t('latexCollab.zotero.actions.sync') }}
             </LBtn>
             <LBtn
               variant="text"
@@ -202,7 +202,7 @@
               prepend-icon="mdi-cog"
               @click="openSettings(lib)"
             >
-              Einstellungen
+              {{ $t('latexCollab.zotero.actions.settings') }}
             </LBtn>
             <LBtn
               variant="text"
@@ -211,7 +211,7 @@
               color="error"
               @click="confirmRemove(lib)"
             >
-              Entfernen
+              {{ $t('latexCollab.zotero.actions.remove') }}
             </LBtn>
           </div>
         </div>
@@ -223,7 +223,7 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2" color="primary">mdi-plus-circle</LIcon>
-          Bibliothek hinzufügen
+          {{ $t('latexCollab.zotero.dialogs.addTitle') }}
         </v-card-title>
 
         <v-card-text>
@@ -238,7 +238,7 @@
               :items="zoteroLibraries"
               item-title="name"
               item-value="library_id"
-              label="Bibliothek auswählen"
+              :label="$t('latexCollab.zotero.dialogs.selectLibrary')"
               variant="outlined"
               density="compact"
               return-object
@@ -259,10 +259,10 @@
             <v-select
               v-if="selectedLibrary"
               v-model="selectedCollection"
-              :items="[{ key: null, name: 'Gesamte Bibliothek' }, ...collections]"
+              :items="[{ key: null, name: $t('latexCollab.zotero.dialogs.allCollections') }, ...collections]"
               item-title="name"
               item-value="key"
-              label="Collection (optional)"
+              :label="$t('latexCollab.zotero.dialogs.collectionLabel')"
               variant="outlined"
               density="compact"
               return-object
@@ -273,19 +273,19 @@
             <!-- Filename -->
             <v-text-field
               v-model="newBibFilename"
-              label="Dateiname"
-              placeholder="references.bib"
+              :label="$t('latexCollab.zotero.dialogs.filenameLabel')"
+              :placeholder="$t('latexCollab.zotero.dialogs.filenamePlaceholder')"
               variant="outlined"
               density="compact"
               suffix=".bib"
-              :rules="[v => !!v || 'Dateiname erforderlich']"
+              :rules="[v => !!v || $t('latexCollab.zotero.errors.filenameRequired')]"
               class="mb-3"
             />
 
             <!-- Auto-Sync Settings -->
             <v-switch
               v-model="newAutoSync"
-              label="Auto-Sync aktivieren"
+              :label="$t('latexCollab.zotero.dialogs.autoSync')"
               density="compact"
               hide-details
               color="primary"
@@ -296,7 +296,7 @@
               :min="5"
               :max="120"
               :step="5"
-              label="Sync-Intervall (Minuten)"
+              :label="$t('latexCollab.zotero.dialogs.syncInterval')"
               thumb-label
               class="mt-2"
             />
@@ -306,7 +306,7 @@
         <v-card-actions>
           <v-spacer />
           <LBtn variant="cancel" @click="showAddLibraryDialog = false">
-            Abbrechen
+            {{ $t('common.cancel') }}
           </LBtn>
           <LBtn
             variant="primary"
@@ -314,7 +314,7 @@
             :disabled="!canAddLibrary"
             @click="handleAddLibrary"
           >
-            Hinzufügen
+            {{ $t('latexCollab.zotero.actions.add') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -325,7 +325,7 @@
       <v-card v-if="editingLibrary">
         <v-card-title>
           <LIcon class="mr-2">mdi-cog</LIcon>
-          Sync-Einstellungen
+          {{ $t('latexCollab.zotero.dialogs.settingsTitle') }}
         </v-card-title>
 
         <v-card-text>
@@ -338,7 +338,7 @@
 
           <v-switch
             v-model="editAutoSync"
-            label="Auto-Sync aktivieren"
+            :label="$t('latexCollab.zotero.dialogs.autoSync')"
             density="compact"
             hide-details
             color="primary"
@@ -349,7 +349,7 @@
             :min="5"
             :max="120"
             :step="5"
-            label="Sync-Intervall (Minuten)"
+            :label="$t('latexCollab.zotero.dialogs.syncInterval')"
             thumb-label
             class="mt-3"
           />
@@ -358,14 +358,14 @@
         <v-card-actions>
           <v-spacer />
           <LBtn variant="cancel" @click="showSettingsDialog = false">
-            Abbrechen
+            {{ $t('common.cancel') }}
           </LBtn>
           <LBtn
             variant="primary"
             :loading="savingSettings"
             @click="handleSaveSettings"
           >
-            Speichern
+            {{ $t('common.save') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -376,29 +376,33 @@
       <v-card v-if="removingLibrary">
         <v-card-title class="text-error">
           <LIcon class="mr-2" color="error">mdi-alert</LIcon>
-          Bibliothek entfernen?
+          {{ $t('latexCollab.zotero.dialogs.removeTitle') }}
         </v-card-title>
 
         <v-card-text>
           <p>
-            Möchtest du <strong>{{ removingLibrary.library_name }}</strong> wirklich entfernen?
+            <i18n-t keypath="latexCollab.zotero.dialogs.removeConfirm" tag="span">
+              <template #name>
+                <strong>{{ removingLibrary.library_name }}</strong>
+              </template>
+            </i18n-t>
           </p>
           <p class="text-caption text-medium-emphasis">
-            Die .bib Datei bleibt erhalten, wird aber nicht mehr synchronisiert.
+            {{ $t('latexCollab.zotero.dialogs.removeHint') }}
           </p>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer />
           <LBtn variant="cancel" @click="showRemoveDialog = false">
-            Abbrechen
+            {{ $t('common.cancel') }}
           </LBtn>
           <LBtn
             variant="danger"
             :loading="removing"
             @click="handleRemove"
           >
-            Entfernen
+            {{ $t('latexCollab.zotero.actions.remove') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -413,6 +417,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import zoteroService from '@/services/zoteroService'
 
 const props = defineProps({
@@ -423,6 +428,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['library-added', 'library-removed', 'library-synced'])
+const { t, locale } = useI18n()
 
 // Connection state
 const loading = ref(true)
@@ -475,7 +481,7 @@ const canAddLibrary = computed(() => {
 // Format date
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('de-DE', {
+  return new Date(dateStr).toLocaleDateString(locale.value || undefined, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
@@ -490,14 +496,14 @@ function formatRelativeTime(dateStr) {
   const diffMs = now - date
   const diffMins = Math.floor(diffMs / 60000)
 
-  if (diffMins < 1) return 'gerade eben'
-  if (diffMins < 60) return `vor ${diffMins} Minuten`
+  if (diffMins < 1) return t('latexCollab.zotero.relative.justNow')
+  if (diffMins < 60) return t('latexCollab.zotero.relative.minutesAgo', { count: diffMins })
 
   const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `vor ${diffHours} Stunden`
+  if (diffHours < 24) return t('latexCollab.zotero.relative.hoursAgo', { count: diffHours })
 
   const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `vor ${diffDays} Tagen`
+  if (diffDays < 7) return t('latexCollab.zotero.relative.daysAgo', { count: diffDays })
 
   return formatDate(dateStr)
 }
@@ -551,9 +557,9 @@ async function handleConnectWithApiKey() {
     connection.value = result.connection
     isConnected.value = true
     apiKeyInput.value = ''
-    notify('Zotero Account verbunden!')
+    notify(t('latexCollab.zotero.messages.connected'))
   } catch (err) {
-    notify(err.response?.data?.error || 'Verbindung fehlgeschlagen', 'error')
+    notify(err.response?.data?.error || t('latexCollab.zotero.errors.connectFailed'), 'error')
   } finally {
     connecting.value = false
   }
@@ -569,13 +575,13 @@ async function handleConnectWithOAuth() {
       // Redirect to Zotero authorization page
       window.location.href = result.authorization_url
     } else {
-      notify('OAuth nicht verfügbar. Bitte API-Key verwenden.', 'warning')
+      notify(t('latexCollab.zotero.errors.oauthUnavailable'), 'warning')
     }
   } catch (err) {
-    const errorMsg = err.response?.data?.error || 'OAuth-Verbindung fehlgeschlagen'
+    const errorMsg = err.response?.data?.error || t('latexCollab.zotero.errors.oauthFailed')
     // If OAuth not configured, show info message instead of error
     if (errorMsg.includes('not configured')) {
-      notify('OAuth ist nicht konfiguriert. Bitte API-Key verwenden.', 'info')
+      notify(t('latexCollab.zotero.errors.oauthNotConfigured'), 'info')
     } else {
       notify(errorMsg, 'error')
     }
@@ -591,9 +597,9 @@ async function handleDisconnect() {
     isConnected.value = false
     connection.value = null
     workspaceLibraries.value = []
-    notify('Zotero Account getrennt')
+    notify(t('latexCollab.zotero.messages.disconnected'))
   } catch (err) {
-    notify(err.response?.data?.error || 'Trennung fehlgeschlagen', 'error')
+    notify(err.response?.data?.error || t('latexCollab.zotero.errors.disconnectFailed'), 'error')
   }
 }
 
@@ -605,7 +611,7 @@ async function loadZoteroLibraries() {
     zoteroLibraries.value = result.libraries || []
   } catch (err) {
     console.error('Failed to load Zotero libraries:', err)
-    notify('Fehler beim Laden der Bibliotheken', 'error')
+    notify(t('latexCollab.zotero.errors.loadLibrariesFailed'), 'error')
   } finally {
     loadingZoteroLibraries.value = false
   }
@@ -659,10 +665,10 @@ async function handleAddLibrary() {
     showAddLibraryDialog.value = false
     resetAddForm()
 
-    notify(result.message || 'Bibliothek hinzugefügt!')
+    notify(result.message || t('latexCollab.zotero.messages.added'))
     emit('library-added', result.library)
   } catch (err) {
-    notify(err.response?.data?.error || 'Fehler beim Hinzufügen', 'error')
+    notify(err.response?.data?.error || t('latexCollab.zotero.errors.addFailed'), 'error')
   } finally {
     addingLibrary.value = false
   }
@@ -689,10 +695,10 @@ async function handleSync(lib) {
       workspaceLibraries.value[index] = result.library
     }
 
-    notify(result.message || 'Synchronisiert!')
+    notify(result.message || t('latexCollab.zotero.messages.synced'))
     emit('library-synced', result.library)
   } catch (err) {
-    notify(err.response?.data?.error || 'Sync fehlgeschlagen', 'error')
+    notify(err.response?.data?.error || t('latexCollab.zotero.errors.syncFailed'), 'error')
   } finally {
     syncingLibraryId.value = null
   }
@@ -726,9 +732,9 @@ async function handleSaveSettings() {
     }
 
     showSettingsDialog.value = false
-    notify('Einstellungen gespeichert!')
+    notify(t('latexCollab.zotero.messages.settingsSaved'))
   } catch (err) {
-    notify(err.response?.data?.error || 'Speichern fehlgeschlagen', 'error')
+    notify(err.response?.data?.error || t('latexCollab.zotero.errors.saveFailed'), 'error')
   } finally {
     savingSettings.value = false
   }
@@ -749,10 +755,10 @@ async function handleRemove() {
     workspaceLibraries.value = workspaceLibraries.value.filter(l => l.id !== removingLibrary.value.id)
 
     showRemoveDialog.value = false
-    notify('Bibliothek entfernt')
+    notify(t('latexCollab.zotero.messages.removed'))
     emit('library-removed', removingLibrary.value)
   } catch (err) {
-    notify(err.response?.data?.error || 'Entfernen fehlgeschlagen', 'error')
+    notify(err.response?.data?.error || t('latexCollab.zotero.errors.removeFailed'), 'error')
   } finally {
     removing.value = false
     removingLibrary.value = null

@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
@@ -29,6 +30,7 @@ export function useLatexComments({
   editorRef,
   hasPermission
 }) {
+  const { t } = useI18n()
   // State
   const comments = ref([])
   const activeCommentId = ref(null)
@@ -74,7 +76,7 @@ export function useLatexComments({
     commentError.value = ''
     const range = editorRef.value?.getSelectionRange?.()
     if (!range || range.from === range.to) {
-      commentError.value = 'Bitte markiere zuerst den Text für den Kommentar.'
+      commentError.value = t('latexCollab.comments.errors.selectText')
       return
     }
     pendingCommentRange.value = range
@@ -99,8 +101,8 @@ export function useLatexComments({
       commentDraft.value = ''
       pendingCommentRange.value = null
       await loadComments()
-    } catch (e) {
-      commentError.value = e?.response?.data?.error || e?.message || 'Kommentar konnte nicht gespeichert werden'
+  } catch (e) {
+      commentError.value = e?.response?.data?.error || e?.message || t('latexCollab.comments.errors.saveFailed')
     }
   }
 

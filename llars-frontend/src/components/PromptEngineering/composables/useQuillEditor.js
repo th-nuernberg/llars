@@ -345,25 +345,54 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     }
   }
 
-  // Hebt alle Vorkommen von {{complete_email_history}} hervor
-  const createHighlightFunction = (editor) => {
-    let inPlaceholderHighlight = false
+  // Regex für alle {{variablen}} Platzhalter
+  const PLACEHOLDER_REGEX = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g
+  const INVALID_VAR_NAMES = new Set(['undefined', 'null', 'true', 'false', 'NaN', 'Infinity'])
 
-    return function highlightPlaceholders() {
-      if (inPlaceholderHighlight) return
-      inPlaceholderHighlight = true
+  // Konvertiert {{variablen}} Text zu Embed-Blots (atomare Elemente)
+  const createHighlightFunction = (editor) => {
+    let inPlaceholderConversion = false
+
+    return function convertPlaceholdersToEmbeds() {
+      if (inPlaceholderConversion) return
+      inPlaceholderConversion = true
+
       try {
-        const placeholder = '{{complete_email_history}}'
-        // Entferne alte Hervorhebungen
-        editor.formatText(0, editor.getLength(), highlightFormat, false, Quill.sources.API)
         const text = editor.getText()
-        let idx = text.indexOf(placeholder)
-        while (idx !== -1) {
-          editor.formatText(idx, placeholder.length, highlightFormat, true, Quill.sources.API)
-          idx = text.indexOf(placeholder, idx + placeholder.length)
+
+        // Finde alle {{variablen}} Platzhalter (von hinten nach vorne, um Indizes nicht zu verschieben)
+        const matches = []
+        let match
+        const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g')
+        while ((match = regex.exec(text)) !== null) {
+          const varName = match[1]
+          // Überspringe ungültige Variablennamen
+          if (INVALID_VAR_NAMES.has(varName)) {
+            continue
+          }
+          matches.push({
+            index: match.index,
+            length: match[0].length,
+            varName
+          })
+        }
+
+        // Konvertiere von hinten nach vorne (um Indizes konsistent zu halten)
+        for (let i = matches.length - 1; i >= 0; i--) {
+          const m = matches[i]
+
+          // Prüfe, ob an dieser Position bereits ein Embed ist
+          const [leaf] = editor.getLeaf(m.index)
+          if (leaf && leaf.statics && leaf.statics.blotName === 'variable') {
+            continue // Bereits ein Embed-Blot
+          }
+
+          // Lösche den Text und füge ein Embed ein
+          editor.deleteText(m.index, m.length, Quill.sources.SILENT)
+          editor.insertEmbed(m.index, 'variable', m.varName, Quill.sources.SILENT)
         }
       } finally {
-        inPlaceholderHighlight = false
+        inPlaceholderConversion = false
       }
     }
   }
@@ -528,6 +557,159 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
             }
           }
         })
+
+        // Create drop cursor indicator element
+        let dropCursor = null
+        const getDropCursor = () => {
+          if (!dropCursor) {
+            dropCursor = document.createElement('span')
+            dropCursor.className = 'ql-drop-cursor'
+            dropCursor.style.cssText = `
+              position: absolute;
+              width: 2px;
+              height: 1.2em;
+              background: rgb(var(--v-theme-primary, 136, 196, 200));
+              background: #88c4c8;
+              pointer-events: none;
+              z-index: 1000;
+              animation: dropCursorBlink 0.8s ease-in-out infinite;
+            `
+          }
+          return dropCursor
+        }
+
+        // Update drop cursor position based on mouse coordinates
+        const updateDropCursor = (e) => {
+          const cursor = getDropCursor()
+
+          if (document.caretRangeFromPoint) {
+            const range = document.caretRangeFromPoint(e.clientX, e.clientY)
+            if (range && editor.root.contains(range.startContainer)) {
+              // Get the bounding rect of the caret position
+              const rects = range.getClientRects()
+              if (rects.length > 0) {
+                const rect = rects[0]
+                const editorRect = editor.root.getBoundingClientRect()
+
+                // Position cursor relative to editor
+                cursor.style.left = `${rect.left - editorRect.left + editor.root.scrollLeft}px`
+                cursor.style.top = `${rect.top - editorRect.top + editor.root.scrollTop}px`
+                cursor.style.height = `${rect.height || 20}px`
+
+                // Add cursor to editor if not already there
+                if (!editor.root.contains(cursor)) {
+                  editor.root.style.position = 'relative'
+                  editor.root.appendChild(cursor)
+                }
+                cursor.style.display = 'block'
+                return
+              }
+            }
+          }
+
+          // Hide cursor if we can't determine position
+          if (cursor) {
+            cursor.style.display = 'none'
+          }
+        }
+
+        const hideDropCursor = () => {
+          if (dropCursor) {
+            dropCursor.style.display = 'none'
+          }
+        }
+
+        // Placeholder drop handler - allows dragging placeholders from palette or moving within editor
+        // Use capture: true to intercept events before Quill can handle them
+        editor.root.addEventListener('dragover', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          // Use 'move' if moving within editor, 'copy' if from palette
+          e.dataTransfer.dropEffect = window.__llarsVariableDrag ? 'move' : 'copy'
+          editor.root.classList.add('placeholder-drop-target')
+
+          // Update drop cursor position
+          updateDropCursor(e)
+        }, { capture: true })
+
+        editor.root.addEventListener('dragleave', (e) => {
+          // Only remove class if actually leaving the editor (not entering a child)
+          if (!editor.root.contains(e.relatedTarget)) {
+            editor.root.classList.remove('placeholder-drop-target')
+            hideDropCursor()
+          }
+        }, { capture: true })
+
+        editor.root.addEventListener('drop', (e) => {
+          editor.root.classList.remove('placeholder-drop-target')
+          hideDropCursor()
+
+          // Check if this is a variable being moved within the editor
+          const variableMove = e.dataTransfer.getData('text/variable-move')
+
+          // Check if this is a placeholder drop from the palette
+          const placeholderName = e.dataTransfer.getData('text/placeholder')
+
+          if (variableMove || placeholderName) {
+            e.preventDefault()
+            e.stopPropagation()
+
+            const varName = variableMove || placeholderName
+
+            // Get drop position by finding the character offset at mouse position
+            let insertIndex = editor.getLength() - 1
+
+            // Try to get position from mouse coordinates
+            if (document.caretRangeFromPoint) {
+              const range = document.caretRangeFromPoint(e.clientX, e.clientY)
+              if (range && editor.root.contains(range.startContainer)) {
+                const blot = Quill.find(range.startContainer, true)
+                if (blot) {
+                  const blotIndex = editor.getIndex(blot)
+                  insertIndex = blotIndex + range.startOffset
+                }
+              }
+            }
+
+            // If moving a variable within the editor, we need to delete the original
+            if (variableMove && window.__llarsVariableDrag) {
+              const draggedNode = window.__llarsVariableDrag.node
+              const quillBlot = Quill.find(draggedNode)
+
+              if (quillBlot && editor.root.contains(draggedNode)) {
+                const sourceIndex = editor.getIndex(quillBlot)
+
+                // Adjust insertIndex if removing before insert position
+                if (sourceIndex < insertIndex) {
+                  insertIndex -= 1
+                }
+
+                // Delete the original
+                editor.deleteText(sourceIndex, 1, 'silent')
+              }
+
+              // Clear the drag state
+              window.__llarsVariableDrag = null
+            }
+
+            // Insert the variable as an embed blot (atomic element)
+            editor.insertEmbed(insertIndex, 'variable', varName, 'user')
+
+            // Move cursor after the inserted embed (length is 1)
+            editor.setSelection(insertIndex + 1, 0)
+          }
+        }, { capture: true })
+
+        // Also add handlers to the container (prevents Quill's default drop behavior)
+        // Note: We only preventDefault here, NOT stopPropagation, so the root handler still fires
+        editor.container.addEventListener('dragover', (e) => {
+          if (window.__llarsVariableDrag || e.dataTransfer.types.includes('text/placeholder')) {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = window.__llarsVariableDrag ? 'move' : 'copy'
+          }
+        }, { capture: true })
+
+        // Variable embeds are already draggable by default (set in VariableBlot.create)
       }
 
       // NOTE: We no longer broadcast here - autoSync in useYjsCollaboration handles it!
@@ -615,11 +797,21 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
       editors.forEach(editor => {
         if (editor) {
           const text = editor.getText()
-          const placeholder = '{{complete_email_history}}'
-          let idx = text.indexOf(placeholder)
-          while (idx !== -1) {
-            editor.formatText(idx, placeholder.length, highlightFormat, true, Quill.sources.API)
-            idx = text.indexOf(placeholder, idx + placeholder.length)
+          const length = editor.getLength()
+
+          // Entferne alle alten Hervorhebungen
+          editor.formatText(0, length, highlightFormat, false, Quill.sources.API)
+
+          // Finde und highlighte ALLE {{variablen}} Platzhalter
+          let match
+          const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g')
+          while ((match = regex.exec(text)) !== null) {
+            const varName = match[1]
+            // Überspringe ungültige Variablennamen
+            if (['undefined', 'null', 'true', 'false', 'NaN', 'Infinity'].includes(varName)) {
+              continue
+            }
+            editor.formatText(match.index, match[0].length, highlightFormat, true, Quill.sources.API)
           }
         }
       })

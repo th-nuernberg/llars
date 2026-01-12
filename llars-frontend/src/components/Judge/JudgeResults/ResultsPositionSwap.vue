@@ -3,13 +3,13 @@
   <div class="results-card position-swap-card" v-if="detailedAnalysis && detailedAnalysis.summary">
     <div class="card-header">
       <LIcon class="header-icon">mdi-swap-horizontal</LIcon>
-      <span class="header-title">Position-Swap Konsistenz (MT-Bench Methodik)</span>
+      <span class="header-title">{{ $t('judge.results.positionSwap.title') }}</span>
       <div class="header-tags">
         <LTag
           :variant="getConsistencyVariant(detailedAnalysis.interpretation?.overall_quality)"
           size="small"
         >
-          {{ Math.round(detailedAnalysis.summary.consistency_rate * 100) }}% konsistent
+          {{ $t('judge.results.positionSwap.consistentRate', { rate: Math.round(detailedAnalysis.summary.consistency_rate * 100) }) }}
         </LTag>
         <LTag
           :variant="detailedAnalysis.position_bias?.dominant_bias === 'balanced' ? 'success' : 'warning'"
@@ -40,14 +40,14 @@
               <v-col cols="12" md="2">
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-primary">{{ detailedAnalysis.summary.total_swap_pairs }}</div>
-                  <div class="text-subtitle-2 text-medium-emphasis">Swap-Paare</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">{{ $t('judge.results.positionSwap.summary.swapPairs') }}</div>
                 </v-card>
               </v-col>
               <v-col cols="12" md="2">
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-success">{{ detailedAnalysis.summary.consistent_wins }}</div>
                   <div class="text-subtitle-2 text-medium-emphasis">
-                    Konsistent (Win)
+                    {{ $t('judge.results.positionSwap.summary.consistentWin') }}
                     <a href="https://arxiv.org/abs/2306.05685" target="_blank" class="source-link" title="Zheng et al. 2023">¹</a>
                   </div>
                 </v-card>
@@ -56,7 +56,7 @@
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-info">{{ detailedAnalysis.summary.consistent_ties }}</div>
                   <div class="text-subtitle-2 text-medium-emphasis">
-                    Konsistent (Tie)
+                    {{ $t('judge.results.positionSwap.summary.consistentTie') }}
                     <a href="https://arxiv.org/abs/2306.05685" target="_blank" class="source-link" title="Zheng et al. 2023">¹</a>
                   </div>
                 </v-card>
@@ -65,7 +65,7 @@
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-error">{{ detailedAnalysis.summary.inconsistent }}</div>
                   <div class="text-subtitle-2 text-medium-emphasis">
-                    Inkonsistent
+                    {{ $t('judge.results.positionSwap.summary.inconsistent') }}
                     <a href="https://arxiv.org/abs/2306.05685" target="_blank" class="source-link" title="Zheng et al. 2023">¹</a>
                   </div>
                 </v-card>
@@ -74,7 +74,7 @@
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-warning">{{ detailedAnalysis.position_bias?.primacy_count || 0 }}</div>
                   <div class="text-subtitle-2 text-medium-emphasis">
-                    Primacy Bias
+                    {{ $t('judge.results.positionSwap.summary.primacyBias') }}
                     <a href="https://arxiv.org/abs/2406.07791" target="_blank" class="source-link" title="Shi et al. 2024">²</a>
                   </div>
                 </v-card>
@@ -83,7 +83,7 @@
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-purple">{{ detailedAnalysis.position_bias?.recency_count || 0 }}</div>
                   <div class="text-subtitle-2 text-medium-emphasis">
-                    Recency Bias
+                    {{ $t('judge.results.positionSwap.summary.recencyBias') }}
                     <a href="https://arxiv.org/abs/2406.07791" target="_blank" class="source-link" title="Shi et al. 2024">²</a>
                   </div>
                 </v-card>
@@ -94,13 +94,13 @@
             <v-card variant="outlined" class="mb-4" v-if="detailedAnalysis.likert_stability && Object.keys(detailedAnalysis.likert_stability).length">
               <v-card-title class="text-subtitle-1">
                 <LIcon class="mr-2" size="small">mdi-chart-bell-curve</LIcon>
-                Likert-Score Stabilität bei Position-Swap
+                {{ $t('judge.results.positionSwap.likertStability.title') }}
                 <a href="https://arxiv.org/abs/2310.05470" target="_blank" class="source-link ml-1" title="Auto-J / Li et al. 2023">³</a>
                 <v-tooltip location="top">
                   <template v-slot:activator="{ props }">
                     <LIcon v-bind="props" size="small" class="ml-2">mdi-information-outline</LIcon>
                   </template>
-                  <span>Misst wie stark sich Likert-Scores für denselben Thread ändern, wenn seine Position (A↔B) getauscht wird. Niedrigere Deltas = stabiler. (Auto-J Calibration)</span>
+                  <span>{{ $t('judge.results.positionSwap.likertStability.tooltip') }}</span>
                 </v-tooltip>
               </v-card-title>
               <v-divider></v-divider>
@@ -113,7 +113,7 @@
                         size="x-small"
                         :color="data.stability_rate >= 0.8 ? 'success' : data.stability_rate >= 0.6 ? 'warning' : 'error'"
                       >
-                        {{ Math.round(data.stability_rate * 100) }}% stabil
+                        {{ $t('judge.results.positionSwap.likertStability.stableRate', { rate: Math.round(data.stability_rate * 100) }) }}
                       </v-chip>
                     </div>
                     <div class="d-flex align-center gap-2">
@@ -125,7 +125,7 @@
                         class="flex-grow-1"
                       ></v-progress-linear>
                       <span class="text-caption text-medium-emphasis" style="min-width: 100px">
-                        Ø Δ {{ data.mean_delta }} (max {{ data.max_delta }})
+                        {{ $t('judge.results.positionSwap.likertStability.deltaLabel', { mean: data.mean_delta, max: data.max_delta }) }}
                       </span>
                     </div>
                   </v-col>
@@ -137,9 +137,9 @@
             <v-card variant="outlined" v-if="detailedAnalysis.pairs?.length">
               <v-card-title class="text-subtitle-1 d-flex align-center">
                 <LIcon class="mr-2" size="small">mdi-table</LIcon>
-                Detaillierte Paar-Analyse
+                {{ $t('judge.results.positionSwap.pairs.title') }}
                 <v-chip size="x-small" class="ml-2" color="info">
-                  {{ detailedAnalysis.pairs.length }} Paare
+                  {{ $t('judge.results.positionSwap.pairs.count', { count: detailedAnalysis.pairs.length }) }}
                 </v-chip>
               </v-card-title>
               <v-divider></v-divider>
@@ -153,7 +153,9 @@
               >
                 <!-- Thread IDs -->
                 <template v-slot:item.threads="{ item }">
-                  <span class="text-caption">T{{ item.thread_1_id }} vs T{{ item.thread_2_id }}</span>
+                  <span class="text-caption">
+                    {{ $t('judge.results.positionSwap.pairs.threadsMatchup', { a: item.thread_1_id, b: item.thread_2_id }) }}
+                  </span>
                 </template>
 
                 <!-- Original Result -->
@@ -188,9 +190,9 @@
                     variant="flat"
                   >
                     <LIcon start size="x-small">{{ item.is_consistent ? 'mdi-check' : 'mdi-alert' }}</LIcon>
-                    {{ item.consistency_type === 'consistent_win' ? 'Win' :
-                       item.consistency_type === 'consistent_tie' ? 'Tie' :
-                       'Inkonsistent' }}
+                    {{ item.consistency_type === 'consistent_win' ? $t('judge.results.positionSwap.consistency.win') :
+                       item.consistency_type === 'consistent_tie' ? $t('judge.results.positionSwap.consistency.tie') :
+                       $t('judge.results.positionSwap.consistency.inconsistent') }}
                   </v-chip>
                 </template>
 
@@ -202,10 +204,10 @@
                     :color="item.bias_direction === 'primacy' ? 'warning' : 'purple'"
                     variant="outlined"
                   >
-                    {{ item.bias_direction === 'primacy' ? 'Primacy' : 'Recency' }}
+                    {{ item.bias_direction === 'primacy' ? $t('judge.results.positionSwap.bias.primacy') : $t('judge.results.positionSwap.bias.recency') }}
                   </v-chip>
-                  <span v-else-if="item.bias_direction === 'mixed'" class="text-caption text-medium-emphasis">Mixed</span>
-                  <span v-else class="text-caption text-medium-emphasis">-</span>
+                  <span v-else-if="item.bias_direction === 'mixed'" class="text-caption text-medium-emphasis">{{ $t('judge.results.positionSwap.bias.mixed') }}</span>
+                  <span v-else class="text-caption text-medium-emphasis">{{ $t('judge.results.positionSwap.bias.none') }}</span>
                 </template>
 
                 <!-- Confidence Delta -->
@@ -222,23 +224,23 @@
                       <v-card variant="outlined">
                         <v-card-title class="text-subtitle-2">
                           <LIcon class="mr-2" size="small">mdi-chart-bar</LIcon>
-                          Likert-Score Vergleich (Original vs Swapped)
+                          {{ $t('judge.results.positionSwap.likertComparison.title') }}
                         </v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
                           <v-table density="compact">
                             <thead>
                               <tr>
-                                <th>Metrik</th>
-                                <th class="text-center" colspan="2">Thread 1 (T{{ item.thread_1_id }})</th>
-                                <th class="text-center" colspan="2">Thread 2 (T{{ item.thread_2_id }})</th>
+                                <th>{{ $t('judge.results.positionSwap.likertComparison.metric') }}</th>
+                                <th class="text-center" colspan="2">{{ $t('judge.results.positionSwap.likertComparison.threadA', { id: item.thread_1_id }) }}</th>
+                                <th class="text-center" colspan="2">{{ $t('judge.results.positionSwap.likertComparison.threadB', { id: item.thread_2_id }) }}</th>
                               </tr>
                               <tr>
                                 <th></th>
-                                <th class="text-center text-caption">Als A</th>
-                                <th class="text-center text-caption">Als B</th>
-                                <th class="text-center text-caption">Als B</th>
-                                <th class="text-center text-caption">Als A</th>
+                                <th class="text-center text-caption">{{ $t('judge.results.positionSwap.likertComparison.asA') }}</th>
+                                <th class="text-center text-caption">{{ $t('judge.results.positionSwap.likertComparison.asB') }}</th>
+                                <th class="text-center text-caption">{{ $t('judge.results.positionSwap.likertComparison.asB') }}</th>
+                                <th class="text-center text-caption">{{ $t('judge.results.positionSwap.likertComparison.asA') }}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -286,7 +288,7 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <LIcon class="mr-2" size="small">mdi-book-open-variant</LIcon>
-                  Methodik & Referenzen
+                  {{ $t('judge.results.positionSwap.methodology.title') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <p class="mb-2"><strong>{{ detailedAnalysis.methodology.description }}</strong></p>
@@ -316,7 +318,7 @@
                   <v-divider class="my-3"></v-divider>
 
                   <!-- References with clickable links -->
-                  <div class="text-subtitle-2 font-weight-bold mb-2">Referenzen:</div>
+                  <div class="text-subtitle-2 font-weight-bold mb-2">{{ $t('judge.results.positionSwap.methodology.references') }}</div>
                   <v-list density="compact" class="reference-list">
                     <v-list-item
                       v-for="(ref, idx) in detailedAnalysis.methodology.references"
@@ -354,13 +356,13 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2">mdi-swap-horizontal</LIcon>
-          Position-Swap Konsistenz
+          {{ $t('judge.results.positionSwap.legacy.title') }}
           <v-chip
             class="ml-3"
             :color="legacyAnalysis.consistencyRate >= 0.8 ? 'success' : legacyAnalysis.consistencyRate >= 0.6 ? 'warning' : 'error'"
             size="small"
           >
-            {{ Math.round(legacyAnalysis.consistencyRate * 100) }}% konsistent
+            {{ $t('judge.results.positionSwap.consistentRate', { rate: Math.round(legacyAnalysis.consistencyRate * 100) }) }}
           </v-chip>
         </v-card-title>
         <v-divider></v-divider>
@@ -372,8 +374,7 @@
               variant="tonal"
               class="mb-4"
             >
-              <strong>{{ legacyAnalysis.consistent }}</strong> von <strong>{{ legacyAnalysis.total }}</strong> Swap-Paaren
-              zeigten konsistente Ergebnisse (gleicher Gewinner unabhängig von Position A/B).
+              {{ $t('judge.results.positionSwap.legacy.alert', { consistent: legacyAnalysis.consistent, total: legacyAnalysis.total }) }}
             </v-alert>
 
             <v-data-table
@@ -409,8 +410,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { SWAP_HEADERS, DETAILED_SWAP_HEADERS, LIKERT_METRICS } from './composables';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { buildSwapHeaders, buildDetailedSwapHeaders, LIKERT_METRICS } from './composables';
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
@@ -422,9 +424,10 @@ const props = defineProps({
   getScoreColor: { type: Function, required: true }
 });
 
+const { t } = useI18n();
 const expandedSwapPairs = ref([]);
-const swapHeaders = SWAP_HEADERS;
-const detailedSwapHeaders = DETAILED_SWAP_HEADERS;
+const swapHeaders = computed(() => buildSwapHeaders(t));
+const detailedSwapHeaders = computed(() => buildDetailedSwapHeaders(t));
 const likertMetrics = LIKERT_METRICS;
 
 // Map quality to LTag variant

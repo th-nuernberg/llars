@@ -60,10 +60,13 @@ def update_system_settings():
     bool_fields = {
         'llm_ai_log_responses',
         'llm_ai_log_prompts',
+        'referral_system_enabled',
+        'self_registration_enabled',
     }
 
     string_fields = {
         'llm_ai_log_tasks',
+        'default_referral_role',
     }
 
     errors = []

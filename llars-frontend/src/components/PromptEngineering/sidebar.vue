@@ -17,7 +17,7 @@
       <div class="sidebar-section">
         <div class="section-label">
           <LIcon size="14" class="mr-1">mdi-account-multiple</LIcon>
-          Online ({{ Object.keys(users).length }})
+          {{ $t('promptEngineering.sidebar.onlineUsers', { count: Object.keys(users).length }) }}
         </div>
         <div class="users-list">
           <div v-for="(user, id) in users" :key="id" class="user-item">
@@ -25,7 +25,7 @@
             <span class="user-name text-truncate">{{ user.username }}</span>
           </div>
           <div v-if="Object.keys(users).length === 0" class="empty-users">
-            <span class="text-caption text-medium-emphasis">Keine Nutzer online</span>
+            <span class="text-caption text-medium-emphasis">{{ $t('promptEngineering.sidebar.noUsers') }}</span>
           </div>
         </div>
       </div>
@@ -34,36 +34,48 @@
       <div class="sidebar-section">
         <div class="section-label">
           <LIcon size="14" class="mr-1">mdi-lightning-bolt</LIcon>
-          Aktionen
+          {{ $t('promptEngineering.sidebar.actions') }}
         </div>
         <div class="actions-grid">
           <LBtn variant="accent" block prepend-icon="mdi-plus" size="small" @click="$emit('showAddBlockDialog')">
-            Neuer Block
+            {{ $t('promptEngineering.sidebar.newBlock') }}
+          </LBtn>
+          <LBtn variant="secondary" block prepend-icon="mdi-variable" size="small" @click="$emit('openVariableManager')">
+            {{ $t('promptEngineering.variables.manageVariables') }}
           </LBtn>
           <LBtn variant="primary" block prepend-icon="mdi-eye" size="small" @click="showPreview = true">
-            Vorschau
+            {{ $t('promptEngineering.sidebar.preview') }}
           </LBtn>
           <LBtn variant="accent" block prepend-icon="mdi-rocket" size="small" @click="$emit('triggerTestPrompt')">
-            Testen
+            {{ $t('promptEngineering.sidebar.test') }}
           </LBtn>
         </div>
+      </div>
+
+      <!-- Placeholder Palette for Drag & Drop -->
+      <div class="sidebar-section">
+        <PlaceholderPalette
+          :prompt-id="promptId"
+          :extracted-variables="extractedVariables"
+          :user-variables="userVariables"
+        />
       </div>
 
       <!-- Import/Export -->
       <div class="sidebar-section">
         <div class="section-label">
           <LIcon size="14" class="mr-1">mdi-swap-horizontal</LIcon>
-          Import / Export
+          {{ $t('promptEngineering.sidebar.importExport') }}
         </div>
         <div class="actions-grid">
           <LBtn variant="secondary" block prepend-icon="mdi-download" size="small" @click="downloadPrompt">
-            Download
+            {{ $t('promptEngineering.sidebar.download') }}
           </LBtn>
           <LBtn variant="secondary" block prepend-icon="mdi-content-copy" size="small" @click="copyPrompt">
-            Kopieren
+            {{ $t('promptEngineering.sidebar.copy') }}
           </LBtn>
           <LBtn variant="secondary" block prepend-icon="mdi-upload" size="small" @click="triggerJsonUpload">
-            Importieren
+            {{ $t('promptEngineering.sidebar.import') }}
           </LBtn>
         </div>
         <input ref="jsonFileInput" type="file" accept=".json" style="display: none" @change="handleJsonFileUpload" />
@@ -73,13 +85,13 @@
       <div class="sidebar-section">
         <div class="section-label">
           <LIcon size="14" class="mr-1">mdi-cog</LIcon>
-          Optionen
+          {{ $t('promptEngineering.sidebar.options') }}
         </div>
         <div class="option-item" @click="$emit('toggleGitPanel')">
           <LIcon size="16" :color="showGitPanel ? 'primary' : 'grey'" class="mr-2">
             mdi-source-branch
           </LIcon>
-          <span class="option-label">Git-Panel</span>
+          <span class="option-label">{{ $t('promptEngineering.sidebar.gitPanel') }}</span>
           <v-spacer />
           <v-switch
             :model-value="showGitPanel"
@@ -95,14 +107,14 @@
       <div class="sidebar-section">
         <div class="section-label">
           <LIcon size="14" class="mr-1">mdi-share-variant</LIcon>
-          Freigaben
+          {{ $t('promptEngineering.sidebar.shares') }}
         </div>
 
         <!-- Owner Info (if not owner) -->
         <div v-if="!isOwner && owner" class="owner-card mb-3">
           <img :src="getDiceBearUrl(owner, 32)" class="owner-avatar" alt="" />
           <div class="owner-info">
-            <span class="owner-label">Besitzer</span>
+            <span class="owner-label">{{ $t('promptEngineering.sidebar.owner') }}</span>
             <span class="owner-name">{{ owner }}</span>
           </div>
         </div>
@@ -126,7 +138,7 @@
         </div>
 
         <div v-else-if="isOwner" class="empty-shared">
-          <span class="text-caption text-medium-emphasis">Noch mit niemandem geteilt</span>
+          <span class="text-caption text-medium-emphasis">{{ $t('promptEngineering.sidebar.notSharedYet') }}</span>
         </div>
 
         <!-- Share Input (Owner only) -->
@@ -134,10 +146,10 @@
           <LUserSearch
             ref="userSearchRef"
             :exclude-usernames="[...sharedWith, owner]"
-            placeholder="Nutzer hinzufügen..."
+            :placeholder="$t('promptEngineering.sidebar.addUserPlaceholder')"
             density="compact"
             :show-add-button="true"
-            add-button-text="Teilen"
+            :add-button-text="$t('promptEngineering.sidebar.shareAction')"
             button-size="x-small"
             @add="shareWithSelectedUser"
           />
@@ -155,20 +167,38 @@
           <template #header>
             <div class="d-flex align-center w-100">
               <LIcon class="mr-2" color="primary">mdi-eye</LIcon>
-              <span class="text-h6">Vorschau: {{ promptName }}</span>
+              <span class="text-h6">{{ $t('promptEngineering.sidebar.previewTitle', { name: promptName }) }}</span>
               <v-spacer />
-              <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="showPreview = false" />
+              <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="showPreview = false" />
             </div>
           </template>
+
+          <!-- Toggle between placeholder and resolved view -->
+          <div class="preview-toggle">
+            <v-btn-toggle v-model="previewMode" mandatory density="compact" color="primary">
+              <v-btn value="placeholder" size="small">
+                <LIcon start size="16">mdi-code-braces</LIcon>
+                {{ $t('promptEngineering.sidebar.previewPlaceholder') }}
+              </v-btn>
+              <v-btn value="resolved" size="small">
+                <LIcon start size="16">mdi-check-circle</LIcon>
+                {{ $t('promptEngineering.sidebar.previewResolved') }}
+              </v-btn>
+            </v-btn-toggle>
+          </div>
 
           <div class="preview-body">
             <div v-for="block in sortedBlocks" :key="block.id" class="preview-block">
               <div class="preview-block-title">{{ block.title }}</div>
-              <div class="preview-block-content">{{ getBlockContent(block) }}</div>
+              <div
+                class="preview-block-content"
+                :class="{ 'has-highlights': previewMode === 'resolved' }"
+                v-html="getPreviewContent(block)"
+              ></div>
             </div>
             <div v-if="sortedBlocks.length === 0" class="empty-preview">
               <LIcon size="32" color="grey-lighten-1">mdi-file-document-outline</LIcon>
-              <span class="text-body-2 text-medium-emphasis mt-2">Keine Blöcke vorhanden</span>
+              <span class="text-body-2 text-medium-emphasis mt-2">{{ $t('promptEngineering.sidebar.previewEmpty') }}</span>
             </div>
           </div>
         </LCard>
@@ -177,7 +207,7 @@
 
     <!-- Copy Snackbar -->
     <v-snackbar v-model="showCopySnackbar" :timeout="2000" color="success">
-      Prompt in Zwischenablage kopiert!
+      {{ $t('promptEngineering.sidebar.copied') }}
     </v-snackbar>
   </div>
 </template>
@@ -187,6 +217,8 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { getDiceBearUrl } from '@/utils/userUtils';
 import axios from 'axios';
+import { useI18n } from 'vue-i18n';
+import PlaceholderPalette from './testing/PlaceholderPalette.vue';
 
 const props = defineProps({
   users: { type: Object, required: true },
@@ -196,27 +228,98 @@ const props = defineProps({
   sharedWith: { type: Array, default: () => [] },
   owner: { type: String, required: true },
   promptName: { type: String, required: true },
-  showGitPanel: { type: Boolean, default: true }
+  showGitPanel: { type: Boolean, default: true },
+  extractedVariables: { type: Array, default: () => [] },
+  userVariables: { type: Array, default: () => [] }
 });
 
-const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel']);
+const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel', 'openVariableManager']);
 
 const router = useRouter();
+const { t } = useI18n();
 const jsonFileInput = ref(null);
 const userSearchRef = ref(null);
 const showPreview = ref(false);
 const showCopySnackbar = ref(false);
 const shareError = ref('');
+const previewMode = ref('placeholder'); // 'placeholder' or 'resolved'
 
 const sortedBlocks = computed(() => {
   return [...props.blocks].sort((a, b) => (a.position || 0) - (b.position || 0));
 });
 
+// Konvertiert Y.Text Delta zu Text, inklusive Variable-Embeds
 const getBlockContent = (block) => {
-  if (block.content && typeof block.content.toString === 'function') {
+  if (!block.content) return '';
+
+  // Versuche toDelta() für präzise Embed-Behandlung
+  try {
+    if (typeof block.content.toDelta === 'function') {
+      const delta = block.content.toDelta();
+      let text = '';
+
+      for (const op of delta) {
+        if (typeof op.insert === 'string') {
+          text += op.insert;
+        } else if (typeof op.insert === 'object' && op.insert !== null) {
+          // Handle variable embed
+          if (op.insert.variable) {
+            text += `{{${op.insert.variable}}}`;
+          }
+        }
+      }
+
+      return text;
+    }
+  } catch (e) {
+    // Fallback
+  }
+
+  // Fallback zu toString()
+  if (typeof block.content.toString === 'function') {
     return block.content.toString();
   }
+
   return '';
+};
+
+// Escape HTML to prevent XSS
+const escapeHtml = (text) => {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
+
+// Get preview content - either with placeholders or with resolved values
+const getPreviewContent = (block) => {
+  const content = getBlockContent(block);
+
+  if (previewMode.value === 'placeholder') {
+    // Show original content with placeholders highlighted
+    let html = escapeHtml(content);
+    // Highlight placeholders
+    html = html.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g, '<span class="placeholder-tag">{{$1}}</span>');
+    return html.replace(/\n/g, '<br/>');
+  } else {
+    // Show resolved content with replaced values highlighted
+    let html = escapeHtml(content);
+
+    // Replace variables with their values and highlight them
+    for (const userVar of props.userVariables) {
+      if (userVar.name && userVar.content) {
+        const placeholder = `{{${userVar.name}}}`;
+        const escapedPlaceholder = escapeHtml(placeholder);
+        const escapedContent = escapeHtml(userVar.content);
+        const highlightedValue = `<span class="resolved-value">${escapedContent}</span>`;
+        html = html.split(escapedPlaceholder).join(highlightedValue);
+      }
+    }
+
+    // Highlight remaining unresolved placeholders
+    html = html.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g, '<span class="unresolved-placeholder">{{$1}}</span>');
+
+    return html.replace(/\n/g, '<br/>');
+  }
 };
 
 const goToOverview = () => {
@@ -295,7 +398,7 @@ const shareWithSelectedUser = async (user) => {
     userSearchRef.value?.reset?.();
     emit('refreshPromptDetails');
   } catch (error) {
-    shareError.value = error.response?.data?.error || 'Fehler beim Teilen';
+    shareError.value = error.response?.data?.error || t('promptEngineering.errors.shareFailed');
     userSearchRef.value?.setAdding?.(false);
   }
 };
@@ -311,7 +414,7 @@ const unsharePromptWithUser = async (username) => {
     );
     emit('refreshPromptDetails');
   } catch (error) {
-    shareError.value = error.response?.data?.error || 'Fehler beim Entfernen';
+    shareError.value = error.response?.data?.error || t('promptEngineering.errors.unshareFailed');
     setTimeout(() => { shareError.value = ''; }, 5000);
   }
 };
@@ -531,11 +634,54 @@ const unsharePromptWithUser = async (username) => {
   margin-bottom: 8px;
 }
 
+.preview-toggle {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
 .preview-block-content {
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-surface), 0.8);
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+/* Placeholder tag in original view */
+:deep(.placeholder-tag) {
+  display: inline;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.3);
+}
+
+/* Resolved value in resolved view */
+:deep(.resolved-value) {
+  display: inline;
+  background: rgba(var(--v-theme-success), 0.2);
+  border-bottom: 2px solid rgba(var(--v-theme-success), 0.5);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Unresolved placeholder in resolved view */
+:deep(.unresolved-placeholder) {
+  display: inline;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-warning));
+  background: rgba(var(--v-theme-warning), 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--v-theme-warning), 0.3);
 }
 
 .empty-preview {

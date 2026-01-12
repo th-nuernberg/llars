@@ -4,15 +4,15 @@
       <div class="d-flex align-center">
         <v-chip v-if="readonly" size="small" color="warning" variant="tonal" class="mr-2">
           <LIcon start size="small">mdi-lock</LIcon>
-          Read-only
+          {{ $t('markdownCollab.editor.readonly') }}
         </v-chip>
         <v-chip v-else-if="isConnected" size="small" color="success" variant="tonal" class="mr-2">
           <LIcon start size="small">mdi-cloud-check-outline</LIcon>
-          Live Sync
+          {{ $t('markdownCollab.editor.liveSync') }}
         </v-chip>
         <v-chip v-else size="small" color="warning" variant="tonal" class="mr-2">
           <LIcon start size="small">mdi-cloud-alert-outline</LIcon>
-          Reconnecting…
+          {{ $t('markdownCollab.editor.reconnecting') }}
         </v-chip>
       </div>
       <v-spacer />
@@ -60,6 +60,7 @@ import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection,
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { useI18n } from 'vue-i18n'
 
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
@@ -72,6 +73,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['content-change', 'git-summary', 'document-saved'])
+
+const { t } = useI18n()
 
 const editorEl = ref(null)
 const error = ref('')
@@ -87,7 +90,7 @@ const remoteCursors = ref({})
 let cursorSendTimer = null
 
 const { tokenParsed, collabColor } = useAuth()
-const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
+const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || t('markdownCollab.editor.userFallback'))
 
 const roomId = computed(() => props.document?.yjs_doc_id || `markdown_${props.document?.id}`)
 
@@ -158,7 +161,7 @@ class DeletionMarker extends GutterMarker {
   toDOM() {
     const el = document.createElement('div')
     el.className = 'cm-diff-delete-gutter'
-    el.title = 'Gelöschter Text'
+    el.title = t('markdownCollab.editor.deletedText')
     return el
   }
 }

@@ -206,7 +206,53 @@
         <!-- LLM Models Tab -->
         <v-window-item value="llm">
           <v-card-text>
-            <v-skeleton-loader v-if="isLoading('llm')" type="table"></v-skeleton-loader>
+            <!-- Sync indicator and button -->
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div class="d-flex align-center">
+                <span class="text-subtitle-2 font-weight-medium">LLM Modelle</span>
+                <v-chip v-if="syncingLlmModels" size="small" color="info" variant="tonal" class="ml-2">
+                  <v-progress-circular indeterminate size="14" width="2" class="mr-2" />
+                  Synchronisiere...
+                </v-chip>
+              </div>
+              <LBtn
+                variant="text"
+                size="small"
+                :loading="syncingLlmModels"
+                @click="syncAllLlmModels"
+              >
+                <LIcon start size="16">mdi-sync</LIcon>
+                Modelle synchronisieren
+              </LBtn>
+            </div>
+
+            <!-- Color Legend -->
+            <div class="d-flex flex-wrap align-center ga-2 mb-4 pa-2 rounded" style="background: rgba(var(--v-theme-on-surface), 0.05);">
+              <span class="text-caption text-medium-emphasis mr-2">Kategorie:</span>
+              <v-chip
+                v-for="(config, key) in modelTypeConfig"
+                :key="key"
+                v-show="key !== 'default'"
+                size="x-small"
+                :color="config.color"
+                variant="tonal"
+              >
+                <LIcon start size="12">{{ config.icon }}</LIcon>
+                {{ config.label }}
+              </v-chip>
+              <v-divider vertical class="mx-2" />
+              <span class="text-caption text-medium-emphasis mr-2">Fähigkeiten:</span>
+              <v-chip size="x-small" color="orange" variant="tonal">
+                <LIcon start size="12">mdi-eye</LIcon>
+                Vision
+              </v-chip>
+              <v-chip size="x-small" color="teal" variant="tonal">
+                <LIcon start size="12">mdi-head-cog</LIcon>
+                Reasoning
+              </v-chip>
+            </div>
+
+            <v-skeleton-loader v-if="isLoading('llm') || syncingLlmModels" type="table"></v-skeleton-loader>
 
             <v-data-table
               v-else
@@ -218,6 +264,46 @@
                 <div class="d-flex flex-column">
                   <span class="font-weight-medium">{{ item.display_name }}</span>
                   <span class="text-caption text-medium-emphasis">{{ item.model_id }}</span>
+                </div>
+              </template>
+
+              <template v-slot:item.model_type="{ item }">
+                <v-chip
+                  :color="getModelTypeConfig(item.model_type).color"
+                  size="small"
+                  variant="tonal"
+                >
+                  <LIcon start size="14">{{ getModelTypeConfig(item.model_type).icon }}</LIcon>
+                  {{ getModelTypeConfig(item.model_type).label }}
+                </v-chip>
+              </template>
+
+              <template v-slot:item.capabilities="{ item }">
+                <div class="d-flex flex-wrap ga-1">
+                  <v-chip
+                    v-if="item.supports_vision"
+                    color="orange"
+                    size="small"
+                    variant="tonal"
+                  >
+                    <LIcon start size="14">mdi-eye</LIcon>
+                    Vision
+                  </v-chip>
+                  <v-chip
+                    v-if="item.supports_reasoning"
+                    color="teal"
+                    size="small"
+                    variant="tonal"
+                  >
+                    <LIcon start size="14">mdi-head-cog</LIcon>
+                    Reasoning
+                  </v-chip>
+                  <span
+                    v-if="!item.supports_vision && !item.supports_reasoning"
+                    class="text-caption text-medium-emphasis"
+                  >
+                    —
+                  </span>
                 </div>
               </template>
 
@@ -592,12 +678,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // State
 const activeTab = ref('roles');
+const syncingLlmModels = ref(false);
+const llmSyncedOnce = ref(false);
 const roles = ref([]);
 const permissions = ref([]);
 const auditLog = ref([]);
@@ -660,11 +748,25 @@ const chatbotHeaders = [
 
 const llmHeaders = [
   { title: 'Modell', key: 'display_name', sortable: true },
+  { title: 'Kategorie', key: 'model_type', sortable: true },
+  { title: 'Fähigkeiten', key: 'capabilities', sortable: false },
   { title: 'Provider', key: 'provider', sortable: true },
   { title: 'Sichtbarkeit', key: 'is_restricted', sortable: true },
   { title: 'Zuweisungen', key: 'allowed_usernames', sortable: false },
   { title: '', key: 'actions', sortable: false, align: 'end' }
 ];
+
+// Model type colors and labels (must match backend: llm, embedding, reranker)
+const modelTypeConfig = {
+  llm: { color: 'primary', icon: 'mdi-chat', label: 'LLM' },
+  embedding: { color: 'info', icon: 'mdi-vector-line', label: 'Embedding' },
+  reranker: { color: 'purple', icon: 'mdi-sort-variant', label: 'Reranker' },
+  default: { color: 'grey', icon: 'mdi-robot', label: 'Unbekannt' }
+};
+
+const getModelTypeConfig = (modelType) => {
+  return modelTypeConfig[modelType?.toLowerCase()] || modelTypeConfig.default;
+};
 
 // Computed
 const groupedPermissions = computed(() => {
@@ -958,6 +1060,47 @@ const saveLlmAccess = async () => {
     savingLlmAccess.value = false;
   }
 };
+
+/**
+ * Sync LLM models from all active providers
+ */
+const syncAllLlmModels = async () => {
+  if (syncingLlmModels.value) return;
+  syncingLlmModels.value = true;
+
+  try {
+    // Fetch all providers
+    const providersResponse = await axios.get('/api/llm/providers');
+    const providers = providersResponse.data.providers || [];
+
+    // Sync each active provider that supports sync (is_openai_compatible)
+    const syncPromises = providers
+      .filter(p => p.is_active && p.is_openai_compatible)
+      .map(provider =>
+        axios.post(`/api/llm/providers/${provider.id}/sync-models`, {}).catch(err => {
+          console.warn(`Failed to sync provider ${provider.name}:`, err);
+          return null;
+        })
+      );
+
+    await Promise.all(syncPromises);
+
+    // Refresh the LLM models list
+    await fetchLlmAccessOverview();
+  } catch (error) {
+    console.error('Error syncing LLM models:', error);
+  } finally {
+    syncingLlmModels.value = false;
+    llmSyncedOnce.value = true;
+  }
+};
+
+// Watch for tab changes - auto-sync LLM models when LLM tab is opened
+watch(activeTab, async (newTab) => {
+  if (newTab === 'llm' && !llmSyncedOnce.value) {
+    await syncAllLlmModels();
+  }
+});
 
 onMounted(() => {
   fetchRoles();

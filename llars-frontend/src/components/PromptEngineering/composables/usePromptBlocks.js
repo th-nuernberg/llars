@@ -1,7 +1,8 @@
 import { ref, computed } from 'vue'
 import * as Y from 'yjs'
 
-export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
+export function usePromptBlocks(ydoc, roomId, socket, showMessage, t) {
+  const translate = typeof t === 'function' ? t : (key) => key
   const blocks = ref([])
 
   // Sortierte Liste der Blocks
@@ -67,7 +68,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
 
       // Prüfen, ob der Blockname schon existiert
       if (blocksMap.has(trimmedName)) {
-        showMessage(`Block "${trimmedName}" existiert bereits!`)
+        showMessage(translate('promptEngineering.messages.blockExists', { name: trimmedName }))
         return
       }
 
@@ -95,7 +96,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
     })
 
     if (success) {
-      showMessage(`Block "${trimmedName}" wurde hinzugefügt!`)
+      showMessage(translate('promptEngineering.messages.blockAdded', { name: trimmedName }))
     }
 
     return success
@@ -115,7 +116,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
       }
     })
 
-    showMessage(`Block "${block.title}" wurde gelöscht!`)
+    showMessage(translate('promptEngineering.messages.blockDeleted', { name: block.title }))
     return true
   }
 
@@ -144,7 +145,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
       }
     })
 
-    showMessage(`Titel geändert zu "${trimmedTitle}"!`)
+    showMessage(translate('promptEngineering.messages.blockTitleChanged', { title: trimmedTitle }))
     return true
   }
 
@@ -175,7 +176,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
       Object.entries(jsonData).forEach(([blockName, blockContent], idx) => {
         // Existiert der Block schon?
         if (blocksMap.has(blockName)) {
-          showMessage(`Block "${blockName}" existiert bereits! Übersprungen.`)
+          showMessage(translate('promptEngineering.messages.blockExistsSkipped', { name: blockName }))
           return
         }
 
@@ -192,13 +193,41 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage) {
       })
     })
 
-    showMessage('JSON-Datei erfolgreich verarbeitet!')
+    showMessage(translate('promptEngineering.messages.jsonProcessed'))
     return true
+  }
+
+  // Konvertiert Y.Text Delta zu Text, inklusive Variable-Embeds
+  const deltaToText = (ytext) => {
+    if (!ytext) return ''
+
+    // Versuche zuerst toDelta() für präzise Embed-Behandlung
+    try {
+      const delta = ytext.toDelta()
+      let text = ''
+
+      for (const op of delta) {
+        if (typeof op.insert === 'string') {
+          text += op.insert
+        } else if (typeof op.insert === 'object' && op.insert !== null) {
+          // Handle variable embed
+          if (op.insert.variable) {
+            text += `{{${op.insert.variable}}}`
+          }
+          // Andere Embeds (z.B. Bilder) ignorieren oder anders behandeln
+        }
+      }
+
+      return text
+    } catch (e) {
+      // Fallback zu toString() wenn toDelta() fehlschlägt
+      return ytext.toString()
+    }
   }
 
   // Prompt zusammenstellen
   const assemblePrompt = () => {
-    return sortedBlocks.value.map(b => b.content.toString()).join('\n\n')
+    return sortedBlocks.value.map(b => deltaToText(b.content)).join('\n\n')
   }
 
   return {

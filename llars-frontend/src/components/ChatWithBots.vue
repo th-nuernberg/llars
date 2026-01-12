@@ -80,12 +80,12 @@
             </div>
           </div>
           <div class="header-actions">
-            <LTooltip :text="sourcePanelState.open ? 'Quellen ausblenden' : 'Quellen anzeigen'">
+            <LTooltip :text="sourcePanelState.open ? $t('chat.hideSources') : $t('chat.showSources')">
               <button class="header-action" @click="sourcePanelComposable.toggleSourcePanel">
                 <LIcon size="20">{{ sourcePanelState.open ? 'mdi-text-box-remove-outline' : 'mdi-text-box-search-outline' }}</LIcon>
               </button>
             </LTooltip>
-            <LTooltip text="Neuer Chat">
+            <LTooltip :text="$t('chat.newChat')">
               <button class="header-action" @click="startNewChat()">
                 <LIcon size="20">mdi-plus</LIcon>
               </button>
@@ -107,9 +107,9 @@
             <LIcon>mdi-menu</LIcon>
           </v-btn>
           <LIcon :size="isMobile ? 60 : 80" color="grey-lighten-1">mdi-robot-confused</LIcon>
-          <h3 :class="isMobile ? 'text-h6 mt-3' : 'text-h5 mt-4'">Chatbot auswählen</h3>
+          <h3 :class="isMobile ? 'text-h6 mt-3' : 'text-h5 mt-4'">{{ $t('chat.selectChatbot') }}</h3>
           <p class="text-medium-emphasis" :class="isMobile ? 'text-body-2 px-4' : ''">
-            {{ isMobile ? 'Tippen Sie auf das Menü oben' : 'Wählen Sie einen Chatbot aus der Liste' }}, um eine Unterhaltung zu beginnen.
+            {{ isMobile ? $t('chat.selectChatbotHintMobile') : $t('chat.selectChatbotHint') }}
           </p>
         </div>
 
@@ -179,7 +179,7 @@
         <div class="fullscreen-header">
           <div class="fullscreen-title">
             <LIcon size="20" class="mr-2">{{ fullscreenDialog.type === 'screenshot' ? 'mdi-image' : 'mdi-file-document' }}</LIcon>
-            <span>{{ sourcePanelState.source?.title || sourcePanelState.source?.filename || 'Quelle' }}</span>
+            <span>{{ sourcePanelState.source?.title || sourcePanelState.source?.filename || $t('chat.source') }}</span>
           </div>
           <button class="fullscreen-close" @click="fullscreenDialog.show = false">
             <LIcon size="20">mdi-close</LIcon>
@@ -219,13 +219,13 @@
           <v-chip size="small" color="primary" class="mr-2">
             [{{ sourceDialog.source?.footnote_id }}]
           </v-chip>
-          {{ sourceDialog.source?.title || sourceDialog.source?.filename || 'Quelle' }}
+          {{ sourceDialog.source?.title || sourceDialog.source?.filename || $t('chat.source') }}
         </v-card-title>
         <v-card-subtitle v-if="sourceDialog.source?.collection_name">
           <LIcon size="14" class="mr-1">mdi-folder</LIcon>
           {{ sourceDialog.source?.collection_name }}
           <LTag variant="success" size="sm" class="ml-2">
-            {{ ((sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% relevant
+            {{ ((sourceDialog.source?.relevance || 0) * 100).toFixed(0) }}% {{ $t('chat.relevant') }}
           </LTag>
         </v-card-subtitle>
         <v-divider />
@@ -235,7 +235,7 @@
         <v-card-actions>
           <v-btn variant="text" @click="sourcePanelComposable.pinSourceToPanel(sourceDialog.source)">
             <LIcon start>mdi-pin</LIcon>
-            Anheften
+            {{ $t('chat.pinSource') }}
           </v-btn>
           <v-btn
             v-if="sourceDialog.source?.download_url"
@@ -246,11 +246,11 @@
             variant="tonal"
           >
             <LIcon start>mdi-download</LIcon>
-            Dokument
+            {{ $t('chat.document') }}
           </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="sourceDialog.show = false">
-            Schließen
+            {{ $t('common.close') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -261,6 +261,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 
 // Composables
@@ -315,6 +316,7 @@ const {
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 // ==================== STATE ====================
 
@@ -395,7 +397,7 @@ async function loadChatbots() {
     }
   } catch (error) {
     console.error('Error loading chatbots:', error)
-    showSnackbar('Fehler beim Laden der Chatbots', 'error')
+    showSnackbar(t('chat.loadChatbotsFailed'), 'error')
   }
 }
 
@@ -501,7 +503,7 @@ async function createConversation(title = null) {
       sessionId.value = convo.session_id
     }
   } catch (error) {
-    showSnackbar('Fehler beim Anlegen des Chats', 'error')
+    showSnackbar(t('chat.createChatFailed'), 'error')
   }
 }
 
@@ -560,7 +562,7 @@ async function loadConversationMessages(conversationId) {
       }
     }
   } catch (error) {
-    showSnackbar('Fehler beim Laden des Chats', 'error')
+    showSnackbar(t('chat.loadChatFailed'), 'error')
     messages.value = []
   }
 }
@@ -580,20 +582,20 @@ function updateConversationTitle(conversationId, title) {
 }
 
 async function renameConversation(conv) {
-  const newTitle = prompt('Neuer Chat-Titel:', conv.title || 'Neuer Chat')
+  const newTitle = prompt(t('chat.renamePrompt'), conv.title || t('chat.newChat'))
   if (!newTitle || newTitle === conv.title) return
 
   try {
     await axios.patch(`/api/chatbots/${selectedChatbot.value?.id}/conversations/${conv.id}`, { title: newTitle })
     updateConversationTitle(conv.id, newTitle)
-    showSnackbar('Chat umbenannt', 'success')
+    showSnackbar(t('chat.chatRenamed'), 'success')
   } catch (error) {
-    showSnackbar('Fehler beim Umbenennen', 'error')
+    showSnackbar(t('chat.renameFailed'), 'error')
   }
 }
 
 async function deleteConversation(conv) {
-  if (!confirm('Diesen Chat wirklich löschen?')) return
+  if (!confirm(t('chat.deleteConfirm'))) return
 
   const botId = selectedChatbot.value?.id
   try {
@@ -611,9 +613,9 @@ async function deleteConversation(conv) {
         startNewChat()
       }
     }
-    showSnackbar('Chat gelöscht', 'success')
+    showSnackbar(t('chat.chatDeleted'), 'success')
   } catch (error) {
-    showSnackbar('Fehler beim Löschen', 'error')
+    showSnackbar(t('chat.deleteFailed'), 'error')
   }
 }
 
@@ -705,11 +707,11 @@ async function sendMessageViaREST(message, files = []) {
       }
     } else {
       chatMessages.setBotError(messages)
-      showSnackbar(result.error || 'Fehler beim Senden', 'error')
+      showSnackbar(result.error || t('chat.sendFailed'), 'error')
     }
   } catch (error) {
     chatMessages.setBotError(messages)
-    showSnackbar('Fehler beim Senden', 'error')
+    showSnackbar(t('chat.sendFailed'), 'error')
   } finally {
     clearProcessingTimeout()
     chatMessages.isProcessing.value = false
@@ -815,10 +817,10 @@ function startProcessingTimeout() {
       if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot' && messages.value[lastIdx].streaming) {
         messages.value[lastIdx].streaming = false
         if (!messages.value[lastIdx].content) {
-          messages.value[lastIdx].content = 'Die Antwort hat zu lange gedauert. Bitte versuchen Sie es erneut.'
+          messages.value[lastIdx].content = t('chat.responseTimeoutMessage')
         }
       }
-      showSnackbar('Zeitüberschreitung bei der Antwort', 'warning')
+      showSnackbar(t('chat.responseTimeout'), 'warning')
     }
   }, PROCESSING_TIMEOUT_MS)
 }
@@ -854,7 +856,7 @@ async function maybeAutoSelectFromRoute() {
 
   const bot = chatbots.value.find(b => b.id === id)
   if (!bot) {
-    showSnackbar('Chatbot nicht verfügbar oder keine Berechtigung', 'warning')
+    showSnackbar(t('chat.chatbotNotAvailable'), 'warning')
     return
   }
   await selectChatbot(bot)
@@ -931,12 +933,12 @@ function setupSocketHandlers() {
       const errMsg = String(data?.error || '')
       const lastIdx = messages.value.length - 1
       if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot') {
-        messages.value[lastIdx].content = errMsg || 'Ein Fehler ist aufgetreten.'
+        messages.value[lastIdx].content = errMsg || t('chat.errorOccurred')
         messages.value[lastIdx].streaming = false
         messages.value[lastIdx].timestamp = new Date().toLocaleTimeString()
       }
       chatMessages.isProcessing.value = false
-      showSnackbar(errMsg || 'Fehler beim Senden', 'error')
+      showSnackbar(errMsg || t('chat.sendFailed'), 'error')
     }
   })
 }

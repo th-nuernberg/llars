@@ -33,6 +33,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import aiWritingService from '@/services/aiWritingService'
 
 const props = defineProps({
@@ -64,46 +65,47 @@ const emit = defineEmits([
   'fix-latex'
 ])
 
+const { t } = useI18n()
 const loadingAction = ref(null)
 
-const actions = [
+const actions = computed(() => ([
   {
     key: 'rewrite',
     icon: 'mdi-refresh',
-    tooltip: 'Umformulieren (Ctrl+Shift+R)',
+    tooltip: t('latexCollabAi.selection.rewrite'),
     handler: 'rewrite'
   },
   {
     key: 'expand',
     icon: 'mdi-arrow-expand',
-    tooltip: 'Erweitern (Ctrl+Shift+E)',
+    tooltip: t('latexCollabAi.selection.expand'),
     handler: 'expand'
   },
   {
     key: 'summarize',
     icon: 'mdi-text-short',
-    tooltip: 'Kürzen (Ctrl+Shift+K)',
+    tooltip: t('latexCollabAi.selection.summarize'),
     handler: 'summarize'
   },
   {
     key: 'cite',
     icon: 'mdi-book-search',
-    tooltip: 'Zitat finden (Ctrl+Shift+C)',
+    tooltip: t('latexCollabAi.selection.cite'),
     handler: 'find-citation'
   },
   {
     key: 'chat',
     icon: 'mdi-chat-question',
-    tooltip: 'In Chat fragen (Ctrl+Shift+?)',
+    tooltip: t('latexCollabAi.selection.chat'),
     handler: 'ask-chat'
   },
   {
     key: 'fix',
     icon: 'mdi-wrench',
-    tooltip: 'LaTeX prüfen (Ctrl+Shift+L)',
+    tooltip: t('latexCollabAi.selection.fixLatex'),
     handler: 'fix-latex'
   }
-]
+]))
 
 const menuStyle = computed(() => {
   if (!props.position) return {}

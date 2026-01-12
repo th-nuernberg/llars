@@ -20,14 +20,6 @@ const statusLoaded = ref(false)
 const statusLoading = ref(false)
 
 /**
- * Get the API base URL.
- * @returns {string} API base URL
- */
-function getApiBaseUrl() {
-  return import.meta.env.VITE_API_BASE_URL || ''
-}
-
-/**
  * Composable for referral system functionality.
  * @returns {Object} Referral system methods and state
  */
@@ -65,7 +57,7 @@ export function useReferralSystem() {
 
     statusLoading.value = true
     try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/system/status`)
+      const response = await axios.get(`/api/referral/system/status`)
       registrationEnabled.value = response.data.registration_enabled
       statusLoaded.value = true
       return registrationEnabled.value
@@ -102,7 +94,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/validate/${encodeURIComponent(code)}`)
+      const response = await axios.get(`/api/referral/validate/${encodeURIComponent(code)}`)
       return response.data
     } catch (e) {
       const errorMsg = e.response?.data?.error || 'Fehler bei der Code-Validierung'
@@ -128,7 +120,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.post(`${getApiBaseUrl()}/api/referral/register`, data)
+      const response = await axios.post(`/api/referral/register`, data)
       return response.data
     } catch (e) {
       const errorMsg = e.response?.data?.error || 'Registrierung fehlgeschlagen'
@@ -154,7 +146,7 @@ export function useReferralSystem() {
 
     try {
       const params = includeArchived ? { include_archived: 'true' } : {}
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/admin/campaigns`, { params })
+      const response = await axios.get(`/api/referral/admin/campaigns`, { params })
       return response.data.campaigns
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Laden der Kampagnen'
@@ -174,7 +166,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/admin/campaigns/${campaignId}`)
+      const response = await axios.get(`/api/referral/admin/campaigns/${campaignId}`)
       return response.data.campaign
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Laden der Kampagne'
@@ -199,7 +191,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.post(`${getApiBaseUrl()}/api/referral/admin/campaigns`, data)
+      const response = await axios.post(`/api/referral/admin/campaigns`, data)
       return response.data.campaign
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Erstellen der Kampagne'
@@ -220,7 +212,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.put(`${getApiBaseUrl()}/api/referral/admin/campaigns/${campaignId}`, data)
+      const response = await axios.put(`/api/referral/admin/campaigns/${campaignId}`, data)
       return response.data.campaign
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Aktualisieren der Kampagne'
@@ -242,7 +234,7 @@ export function useReferralSystem() {
 
     try {
       const response = await axios.patch(
-        `${getApiBaseUrl()}/api/referral/admin/campaigns/${campaignId}/status`,
+        `/api/referral/admin/campaigns/${campaignId}/status`,
         { status }
       )
       return response.data
@@ -264,7 +256,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.delete(`${getApiBaseUrl()}/api/referral/admin/campaigns/${campaignId}`)
+      const response = await axios.delete(`/api/referral/admin/campaigns/${campaignId}`)
       return response.data
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Löschen der Kampagne'
@@ -288,7 +280,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/admin/campaigns/${campaignId}/links`)
+      const response = await axios.get(`/api/referral/admin/campaigns/${campaignId}/links`)
       return response.data.links
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Laden der Links'
@@ -315,7 +307,7 @@ export function useReferralSystem() {
 
     try {
       const response = await axios.post(
-        `${getApiBaseUrl()}/api/referral/admin/campaigns/${campaignId}/links`,
+        `/api/referral/admin/campaigns/${campaignId}/links`,
         data
       )
       return response.data.link
@@ -337,7 +329,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/admin/links/${linkId}`)
+      const response = await axios.get(`/api/referral/admin/links/${linkId}`)
       return response.data.link
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Laden des Links'
@@ -358,7 +350,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.put(`${getApiBaseUrl()}/api/referral/admin/links/${linkId}`, data)
+      const response = await axios.put(`/api/referral/admin/links/${linkId}`, data)
       return response.data.link
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Aktualisieren des Links'
@@ -378,7 +370,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.post(`${getApiBaseUrl()}/api/referral/admin/links/${linkId}/deactivate`)
+      const response = await axios.post(`/api/referral/admin/links/${linkId}/deactivate`)
       return response.data
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Deaktivieren des Links'
@@ -398,7 +390,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.delete(`${getApiBaseUrl()}/api/referral/admin/links/${linkId}`)
+      const response = await axios.delete(`/api/referral/admin/links/${linkId}`)
       return response.data
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Löschen des Links'
@@ -421,7 +413,7 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/admin/analytics/overview`)
+      const response = await axios.get(`/api/referral/admin/analytics/overview`)
       return response.data.data
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Laden der Analytics'
@@ -441,10 +433,34 @@ export function useReferralSystem() {
     error.value = null
 
     try {
-      const response = await axios.get(`${getApiBaseUrl()}/api/referral/admin/analytics/campaigns/${campaignId}`)
+      const response = await axios.get(`/api/referral/admin/analytics/campaigns/${campaignId}`)
       return response.data.data
     } catch (e) {
       error.value = e.response?.data?.error || 'Fehler beim Laden der Kampagnen-Analytics'
+      throw new Error(error.value)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * List referral registrations.
+   * @param {Object} params - Query parameters
+   * @param {number} [params.campaign_id] - Filter by campaign
+   * @param {number} [params.link_id] - Filter by link
+   * @param {number} [params.limit=50] - Max results
+   * @param {number} [params.offset=0] - Offset for pagination
+   * @returns {Promise<Object>} Registrations with pagination info
+   */
+  async function listRegistrations(params = {}) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await axios.get(`/api/referral/admin/registrations`, { params })
+      return response.data
+    } catch (e) {
+      error.value = e.response?.data?.error || 'Fehler beim Laden der Registrierungen'
       throw new Error(error.value)
     } finally {
       loading.value = false
@@ -546,6 +562,7 @@ export function useReferralSystem() {
     // Admin - Analytics
     getAnalyticsOverview,
     getCampaignAnalytics,
+    listRegistrations,
 
     // Utilities
     getLinkUrl,

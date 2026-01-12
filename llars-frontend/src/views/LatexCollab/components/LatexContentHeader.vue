@@ -14,7 +14,7 @@
         variant="text"
         size="small"
         class="mr-2"
-        title="Menü öffnen"
+        :title="$t('latexCollab.header.menuOpen')"
         @click="$emit('open-mobile-menu')"
       >
         <LIcon>mdi-menu</LIcon>
@@ -23,11 +23,11 @@
         variant="text"
         size="small"
         class="header-back-btn"
-        title="Zurück zu den Workspaces"
+        :title="$t('latexCollab.header.backToWorkspaces')"
         @click="$emit('navigate-back')"
       >
         <LIcon size="18">mdi-arrow-left</LIcon>
-        <span v-if="!isMobile" class="header-back-label">Workspaces</span>
+        <span v-if="!isMobile" class="header-back-label">{{ $t('latexCollab.header.workspaces') }}</span>
       </v-btn>
       <LIcon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-file-code-outline</LIcon>
       <div class="header-info">
@@ -42,7 +42,7 @@
         icon
         variant="text"
         size="small"
-        title="Workspace teilen"
+        :title="$t('latexCollab.share.title')"
         @click="$emit('open-share')"
       >
         <LIcon size="20">mdi-account-multiple-plus</LIcon>
@@ -52,7 +52,7 @@
         icon
         variant="text"
         size="small"
-        title="Zotero Bibliotheken"
+        :title="$t('latexCollab.zotero.title')"
         @click="$emit('open-zotero')"
       >
         <LIcon size="20">mdi-book-open-page-variant</LIcon>
@@ -63,7 +63,7 @@
         icon
         variant="text"
         size="small"
-        title="Als main.tex setzen"
+        :title="$t('latexCollab.header.setMain')"
         @click="$emit('set-main-document')"
       >
         <LIcon size="20">{{ isMainDocument ? 'mdi-star' : 'mdi-star-outline' }}</LIcon>
@@ -74,7 +74,7 @@
         variant="text"
         size="small"
         :color="reviewMode ? 'primary' : undefined"
-        title="Review Mode"
+        :title="$t('latexCollab.header.reviewMode')"
         @click="$emit('toggle-review-mode')"
       >
         <LIcon size="20">mdi-comment-text-outline</LIcon>
@@ -87,11 +87,11 @@
       <template v-if="showConnectionStatus">
         <v-chip v-if="isConnected" size="small" color="success" variant="tonal">
           <LIcon start size="small">mdi-cloud-check-outline</LIcon>
-          Live Sync
+          {{ $t('latexCollab.header.liveSync') }}
         </v-chip>
         <v-chip v-else size="small" color="warning" variant="tonal">
           <LIcon start size="small">mdi-cloud-alert-outline</LIcon>
-          Reconnecting…
+          {{ $t('latexCollab.header.reconnecting') }}
         </v-chip>
 
         <!-- Ghost Text Toggle (only in AI mode) -->
@@ -106,10 +106,12 @@
               @click="$emit('toggle-ghost-text')"
             >
               <LIcon start size="small">{{ ghostTextEnabled ? 'mdi-lightning-bolt' : 'mdi-lightning-bolt-outline' }}</LIcon>
-              Ghost Text
+              {{ $t('latexCollab.header.ghostText') }}
             </v-chip>
           </template>
-          <span>{{ ghostTextEnabled ? 'KI-Autovervollständigung aktiv (Tab = Annehmen, Esc = Ablehnen)' : 'KI-Autovervollständigung deaktiviert' }}</span>
+          <span>
+            {{ ghostTextEnabled ? $t('latexCollab.header.ghostTextEnabled') : $t('latexCollab.header.ghostTextDisabled') }}
+          </span>
         </v-tooltip>
 
         <!-- Active Users -->
@@ -132,7 +134,7 @@
         <button
           class="mode-btn"
           :class="{ active: viewMode === 'editor' }"
-          title="Editor"
+          :title="$t('latexCollab.header.view.editor')"
           @click="$emit('update:viewMode', 'editor')"
         >
           <LIcon size="18">mdi-pencil</LIcon>
@@ -140,7 +142,7 @@
         <button
           class="mode-btn"
           :class="{ active: viewMode === 'split' }"
-          title="Split"
+          :title="$t('latexCollab.header.view.split')"
           @click="$emit('update:viewMode', 'split')"
         >
           <LIcon size="18">mdi-view-split-vertical</LIcon>
@@ -148,7 +150,7 @@
         <button
           class="mode-btn"
           :class="{ active: viewMode === 'preview' }"
-          title="PDF"
+          :title="$t('latexCollab.header.view.preview')"
           @click="$emit('update:viewMode', 'preview')"
         >
           <LIcon size="18">mdi-file-pdf-box</LIcon>
@@ -166,7 +168,7 @@ defineProps({
   },
   documentTitle: {
     type: String,
-    default: 'Kein Dokument'
+    default: ''
   },
   workspaceName: {
     type: String,

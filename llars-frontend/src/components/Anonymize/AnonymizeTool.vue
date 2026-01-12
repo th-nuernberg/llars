@@ -3,12 +3,12 @@
     <v-row class="mb-4 align-center">
       <v-col cols="12" md="6">
         <div class="d-flex align-center flex-wrap gap-2">
-          <h1 class="page-title">Anonymisierung</h1>
-          <LInfoTooltip title="Anonymisierung" :max-width="420">
+          <h1 class="page-title">{{ $t('anonymization.title') }}</h1>
+          <LInfoTooltip :title="$t('anonymization.tooltip.title')" :max-width="420">
             <div class="anonymize-info">
-              <div>Beim ersten Laden kann es etwas dauern, bis lokale Modelle und die Datenbank bereit sind.</div>
-              <div>Offline: Regeln + NER erkennen personenbezogene Daten, danach werden Treffer konsistent pseudonymisiert.</div>
-              <div>LLM/Hybrid: zusätzliche LLM-Extraktion, Ergebnisse werden anschließend ebenfalls pseudonymisiert.</div>
+              <div>{{ $t('anonymization.tooltip.line1') }}</div>
+              <div>{{ $t('anonymization.tooltip.line2') }}</div>
+              <div>{{ $t('anonymization.tooltip.line3') }}</div>
             </div>
           </LInfoTooltip>
           <v-chip
@@ -20,7 +20,7 @@
             {{ healthChip.text }}
           </v-chip>
         </div>
-        <p class="page-subtitle">Offline-Pseudonymisierung für deutsche Texte (DOCX/PDF/Clipboard)</p>
+        <p class="page-subtitle">{{ $t('anonymization.subtitle') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="d-flex flex-wrap justify-end gap-2">
         <LBtn
@@ -29,7 +29,7 @@
           :disabled="!hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="pasteFromClipboard"
         >
-          Zwischenablage einfügen
+          {{ $t('anonymization.actions.paste') }}
         </LBtn>
         <LBtn
           variant="secondary"
@@ -37,7 +37,7 @@
           :disabled="!hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="loadExample"
         >
-          Beispiel laden
+          {{ $t('anonymization.actions.loadExample') }}
         </LBtn>
         <LBtn
           variant="secondary"
@@ -45,7 +45,7 @@
           :disabled="!outputText || !hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="copyToClipboard"
         >
-          Output kopieren
+          {{ $t('anonymization.actions.copyOutput') }}
         </LBtn>
         <LBtn
           variant="primary"
@@ -53,7 +53,7 @@
           :disabled="!inputText || !engineReady || !hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="runPseudonymize"
         >
-          Pseudonymisieren
+          {{ $t('anonymization.actions.pseudonymize') }}
         </LBtn>
         <LBtn
           variant="secondary"
@@ -61,13 +61,13 @@
           :disabled="!inputText || !engineReady || !hasPermission('feature:anonymize:view') || isLoading('process')"
           @click="resetAndRun"
         >
-          Neu berechnen
+          {{ $t('anonymization.actions.recalculate') }}
         </LBtn>
 
         <v-file-input
           v-model="selectedFile"
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          label="DOCX/PDF"
+          :label="$t('anonymization.fileInput.label')"
           density="compact"
           variant="outlined"
           hide-details
@@ -76,7 +76,7 @@
           @update:model-value="handleFileSelected"
         />
 
-        <v-btn variant="tonal" color="primary" icon @click="settingsDialogOpen = true" :title="'Einstellungen'">
+        <v-btn variant="tonal" color="primary" icon @click="settingsDialogOpen = true" :title="$t('anonymization.actions.settings')">
           <LIcon>mdi-tune</LIcon>
         </v-btn>
       </v-col>
@@ -94,7 +94,7 @@
         <v-card class="panel-card">
           <v-card-title class="panel-title">
             <LIcon class="mr-2">mdi-text</LIcon>
-            Input
+            {{ $t('anonymization.sections.input') }}
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -102,8 +102,8 @@
 
             <v-textarea
               v-model="inputText"
-              label="Text eingeben"
-              placeholder="Hier Text einfügen oder tippen…"
+              :label="$t('anonymization.input.label')"
+              :placeholder="$t('anonymization.input.placeholder')"
               rows="10"
               auto-grow
               density="compact"
@@ -112,7 +112,7 @@
               :disabled="!hasPermission('feature:anonymize:view')"
             />
 
-            <div class="preview-title mt-4">Highlight Preview</div>
+            <div class="preview-title mt-4">{{ $t('anonymization.preview.title') }}</div>
             <div class="text-renderer mt-2">
               <template v-for="(seg, idx) in inputSegments" :key="'in-' + idx">
                 <span v-if="!seg.label">{{ seg.text }}</span>
@@ -130,7 +130,7 @@
         <v-card class="panel-card">
           <v-card-title class="panel-title">
             <LIcon class="mr-2">mdi-text-box-check-outline</LIcon>
-            Output
+            {{ $t('anonymization.sections.output') }}
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -138,8 +138,8 @@
 
             <v-textarea
               v-model="outputText"
-              label="Output"
-              placeholder="Output erscheint hier…"
+              :label="$t('anonymization.output.label')"
+              :placeholder="$t('anonymization.output.placeholder')"
               rows="10"
               auto-grow
               density="compact"
@@ -148,7 +148,7 @@
               readonly
             />
 
-            <div class="preview-title mt-4">Highlight Preview</div>
+            <div class="preview-title mt-4">{{ $t('anonymization.preview.title') }}</div>
             <div class="text-renderer mt-2">
               <template v-for="(seg, idx) in outputSegments" :key="'out-' + idx">
                 <span v-if="!seg.label">{{ seg.text }}</span>
@@ -166,7 +166,7 @@
         <v-card class="panel-card">
           <v-card-title class="panel-title">
             <LIcon class="mr-2">mdi-format-list-bulleted</LIcon>
-            Entitäten
+            {{ $t('anonymization.sections.entities') }}
             <v-spacer />
             <v-chip size="small" variant="tonal">{{ groups.length }}</v-chip>
           </v-card-title>
@@ -176,7 +176,7 @@
 
             <div v-else>
               <div v-if="groups.length === 0" class="empty-state">
-                Keine Entitäten erkannt.
+                {{ $t('anonymization.entities.empty') }}
               </div>
 
               <v-expansion-panels v-else variant="accordion" multiple>
@@ -194,7 +194,7 @@
                       <v-col cols="12">
                         <v-text-field
                           v-model="g.replacement"
-                          label="Ersatz"
+                          :label="$t('anonymization.entities.replacementLabel')"
                           density="compact"
                           variant="outlined"
                           hide-details
@@ -204,14 +204,14 @@
                       </v-col>
                       <v-col cols="12" class="d-flex align-center justify-space-between">
                         <div class="d-flex flex-wrap gap-2">
-                          <v-chip size="small" variant="tonal">Modus: {{ g.mode }}</v-chip>
+                          <v-chip size="small" variant="tonal">{{ $t('anonymization.entities.modeLabel', { mode: g.mode }) }}</v-chip>
                           <v-chip
                             v-if="g.db_hit !== null && g.db_hit !== undefined"
                             size="small"
                             variant="tonal"
                             :color="g.db_hit ? 'success' : 'warning'"
                           >
-                            DB: {{ g.db_hit ? 'True' : 'False' }}
+                            {{ $t('anonymization.entities.dbLabel', { status: g.db_hit ? $t('common.yes') : $t('common.no') }) }}
                           </v-chip>
                         </div>
 
@@ -224,7 +224,7 @@
                           @click="randomizeGroup(g)"
                         >
                           <LIcon start size="small">mdi-shuffle</LIcon>
-                          Randomize
+                          {{ $t('anonymization.actions.randomize') }}
                         </v-btn>
                       </v-col>
                     </v-row>
@@ -239,7 +239,7 @@
 
     <v-dialog v-model="settingsDialogOpen" max-width="520">
       <v-card>
-        <v-card-title>Einstellungen</v-card-title>
+        <v-card-title>{{ $t('anonymization.settings.title') }}</v-card-title>
         <v-divider />
         <v-card-text>
           <v-row dense>
@@ -247,7 +247,7 @@
               <v-select
                 v-model="engine"
                 :items="engineOptions"
-                label="Engine"
+                :label="$t('anonymization.settings.engine.label')"
                 density="compact"
                 variant="outlined"
                 hide-details
@@ -259,27 +259,27 @@
                 class="mt-3"
                 density="compact"
               >
-                Der Text wird an das konfigurierte LLM gesendet (LiteLLM/OpenAI). Keine Offline-Garantie.
+                {{ $t('anonymization.settings.engine.warning') }}
               </v-alert>
             </v-col>
             <v-col cols="12" v-if="engine !== 'offline'">
               <LlmModelSelect
                 v-model="llmModel"
-                label="LLM Modell (optional)"
+                :label="$t('anonymization.settings.llmModelLabel')"
                 density="compact"
                 :clearable="true"
                 :auto-select-default="false"
                 :hide-details="true"
               />
               <div class="settings-hint mt-2">
-                Leer lassen = Backend-Default. Status: {{ llmReady ? 'bereit' : 'nicht bereit' }}
+                {{ $t('anonymization.settings.llmStatus', { status: llmReady ? $t('anonymization.settings.llmReady') : $t('anonymization.settings.llmNotReady') }) }}
               </div>
             </v-col>
             <v-col cols="12">
               <v-select
                 v-model="nameOrigin"
                 :items="nameOriginOptions"
-                label="Namensregion"
+                :label="$t('anonymization.settings.nameOriginLabel')"
                 density="compact"
                 variant="outlined"
                 hide-details
@@ -291,20 +291,20 @@
                 type="number"
                 min="0"
                 step="1"
-                label="Name Count (Häufigkeitsschwelle)"
+                :label="$t('anonymization.settings.nameCountLabel')"
                 density="compact"
                 variant="outlined"
                 hide-details
               />
               <div class="settings-hint mt-2">
-                Wirkt auf Auto-Ersetzungen bei „Neu berechnen“ oder bei neuem Input.
+                {{ $t('anonymization.settings.nameCountHint') }}
               </div>
             </v-col>
           </v-row>
         </v-card-text>
         <v-divider />
         <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="settingsDialogOpen = false">Schließen</v-btn>
+          <v-btn variant="text" @click="settingsDialogOpen = false">{{ $t('common.close') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -313,6 +313,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { BASE_URL } from '@/config.js'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
@@ -321,6 +322,7 @@ import { useMobile } from '@/composables/useMobile'
 import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 
 const { isMobile } = useMobile()
+const { t } = useI18n()
 
 const { isLoading, withLoading } = useSkeletonLoading([])
 const { hasPermission, fetchPermissions, isLoading: permissionsLoading } = usePermissions()
@@ -346,21 +348,21 @@ const settingsDialogOpen = ref(false)
 
 const engine = ref('offline')
 const llmModel = ref('')
-const engineOptions = [
-  { title: 'Offline (lokal, Regeln + NER)', value: 'offline' },
-  { title: 'LLM (Regeln + LLM-Extraktion)', value: 'llm' },
-  { title: 'Hybrid (Offline + LLM)', value: 'hybrid' }
-]
+const engineOptions = computed(() => ([
+  { title: t('anonymization.engineOptions.offline'), value: 'offline' },
+  { title: t('anonymization.engineOptions.llm'), value: 'llm' },
+  { title: t('anonymization.engineOptions.hybrid'), value: 'hybrid' }
+]))
 
 const nameOrigin = ref('Swiss_DE')
 const nameCount = ref(1000)
-const nameOriginOptions = [
-  { title: 'Schweiz (DE)', value: 'Swiss_DE' },
-  { title: 'Schweiz (FR)', value: 'Swiss_FR' },
-  { title: 'Schweiz (IT)', value: 'Swiss_IT' },
-  { title: 'Schweiz (RM)', value: 'Swiss_RM' },
-  { title: 'Deutschland', value: 'German' }
-]
+const nameOriginOptions = computed(() => ([
+  { title: t('anonymization.nameOrigins.swissDe'), value: 'Swiss_DE' },
+  { title: t('anonymization.nameOrigins.swissFr'), value: 'Swiss_FR' },
+  { title: t('anonymization.nameOrigins.swissIt'), value: 'Swiss_IT' },
+  { title: t('anonymization.nameOrigins.swissRm'), value: 'Swiss_RM' },
+  { title: t('anonymization.nameOrigins.germany'), value: 'German' }
+]))
 
 function clearLiveTimer() {
   if (liveTimer) {
@@ -421,16 +423,16 @@ function buildNotReadyMessage(status) {
     .filter(([, ok]) => ok === false)
     .map(([k]) => k)
 
-  if (missing.length === 0) return 'Anonymize Ressourcen/Modelle sind nicht bereit.'
-  return `Anonymize Ressourcen fehlen: ${missing.join(', ')}`
+  if (missing.length === 0) return t('anonymization.messages.resourcesNotReady')
+  return t('anonymization.messages.resourcesMissing', { resources: missing.join(', ') })
 }
 
 function buildLlmNotReadyMessage(llmStatus) {
-  if (!llmStatus) return 'LLM ist nicht konfiguriert.'
+  if (!llmStatus) return t('anonymization.messages.llmNotConfigured')
   if (llmStatus.provider === 'litellm' && !llmStatus.base_url) {
-    return 'LiteLLM ist nicht konfiguriert (LITELLM_BASE_URL fehlt).'
+    return t('anonymization.messages.llmMissingBaseUrl')
   }
-  return 'LLM ist nicht konfiguriert (OPENAI_API_KEY oder LITELLM_API_KEY fehlt).'
+  return t('anonymization.messages.llmMissingApiKey')
 }
 
 function extractApiError(e, fallback) {
@@ -443,41 +445,69 @@ function extractApiError(e, fallback) {
 
 const healthChip = computed(() => {
   if (isLoading('health')) {
-    return { text: 'Prüfe…', color: 'info', title: 'Prüft lokale Modelle/Datenbank…' }
+    return { text: t('anonymization.health.checking.text'), color: 'info', title: t('anonymization.health.checking.title') }
   }
   if (permissionsLoading.value) {
-    return { text: 'Prüfe…', color: 'info', title: 'Lade Berechtigungen…' }
+    return { text: t('anonymization.health.permissions.text'), color: 'info', title: t('anonymization.health.permissions.title') }
   }
   if (!hasPermission('feature:anonymize:view')) {
-    return { text: 'Kein Zugriff', color: 'warning', title: 'Keine Berechtigung: feature:anonymize:view' }
+    return {
+      text: t('anonymization.health.noAccess.text'),
+      color: 'warning',
+      title: t('anonymization.health.noAccess.title', { permission: 'feature:anonymize:view' })
+    }
   }
   if (!anonymizeStatus.value) {
-    return { text: 'Unbekannt', color: 'grey', title: 'Status noch nicht geprüft' }
+    return { text: t('anonymization.health.unknown.text'), color: 'grey', title: t('anonymization.health.unknown.title') }
   }
 
   if (engine.value === 'llm') {
     if (llmReady.value) {
       const provider = anonymizeStatus.value?.llm?.provider ? ` (${anonymizeStatus.value.llm.provider})` : ''
-      return { text: `LLM bereit${provider}`, color: 'success', title: 'LLM ist verfügbar' }
+      return {
+        text: t('anonymization.health.llmReady.text', { provider }),
+        color: 'success',
+        title: t('anonymization.health.llmReady.title')
+      }
     }
-    return { text: 'LLM fehlt', color: 'warning', title: buildLlmNotReadyMessage(anonymizeStatus.value?.llm) }
+    return {
+      text: t('anonymization.health.llmMissing.text'),
+      color: 'warning',
+      title: buildLlmNotReadyMessage(anonymizeStatus.value?.llm)
+    }
   }
 
   if (engine.value === 'hybrid') {
     if (engineReady.value) {
-      return { text: 'Hybrid bereit', color: 'success', title: 'Offline + LLM sind verfügbar' }
+      return {
+        text: t('anonymization.health.hybridReady.text'),
+        color: 'success',
+        title: t('anonymization.health.hybridReady.title')
+      }
     }
     const missing = [
-      offlineReady.value ? null : 'Offline Ressourcen',
-      llmReady.value ? null : 'LLM',
+      offlineReady.value ? null : t('anonymization.health.missing.offline'),
+      llmReady.value ? null : t('anonymization.health.missing.llm'),
     ].filter(Boolean)
-    return { text: 'Hybrid fehlt', color: 'warning', title: `Nicht bereit: ${missing.join(' + ')}` }
+    return {
+      text: t('anonymization.health.hybridMissing.text'),
+      color: 'warning',
+      title: t('anonymization.health.hybridMissing.title', { missing: missing.join(' + ') })
+    }
   }
 
   if (offlineReady.value) {
-    return { text: 'Bereit', color: 'success', title: 'Alle Anonymize Ressourcen sind verfügbar' }
+    return {
+      text: t('anonymization.health.offlineReady.text'),
+      color: 'success',
+      title: t('anonymization.health.offlineReady.title')
+    }
   }
-  return { text: 'Nicht bereit', color: 'warning', title: buildNotReadyMessage(anonymizeStatus.value) }
+  return {
+    text: t('anonymization.health.offlineMissing.text'),
+    color: 'warning',
+    title: buildNotReadyMessage(anonymizeStatus.value)
+  }
 })
 
 function labelColor(label) {
@@ -537,7 +567,7 @@ function buildGroupOverrides() {
 
 async function loadHealth() {
   if (!hasPermission('feature:anonymize:view')) {
-    infoMessage.value = 'Keine Berechtigung: feature:anonymize:view'
+    infoMessage.value = t('anonymization.messages.noPermission')
     return
   }
 
@@ -554,7 +584,7 @@ async function loadHealth() {
         try {
           const res = await axios.get(url, { timeout: timeoutMs })
           if (!res.data?.success) {
-            throw new Error('Health-Check fehlgeschlagen')
+            throw new Error(t('anonymization.messages.healthCheckFailed'))
           }
           anonymizeStatus.value = res.data?.status || null
           if (!anonymizeStatus.value?.ready) {
@@ -570,7 +600,7 @@ async function loadHealth() {
       }
     })
   } catch (e) {
-    errorMessage.value = extractApiError(e, 'Health-Check fehlgeschlagen')
+    errorMessage.value = extractApiError(e, t('anonymization.messages.healthCheckFailed'))
   } finally {
     if (liveQueued.value && anonymizeStatus.value) {
       liveQueued.value = false
@@ -585,7 +615,7 @@ async function runPseudonymize(action = null) {
   infoMessage.value = ''
 
   if (!hasPermission('feature:anonymize:view')) {
-    infoMessage.value = 'Keine Berechtigung: feature:anonymize:view'
+    infoMessage.value = t('anonymization.messages.noPermission')
     return
   }
 
@@ -604,7 +634,7 @@ async function runPseudonymize(action = null) {
 
       const res = await axios.post(`${BASE_URL}/api/anonymize/pseudonymize`, payload)
       if (!res.data?.success) {
-        throw new Error(res.data?.error || 'Pseudonymisierung fehlgeschlagen')
+        throw new Error(res.data?.error || t('anonymization.messages.pseudonymizeFailed'))
       }
 
       ignoreNextInputWatch.value += 1
@@ -627,7 +657,7 @@ async function runPseudonymize(action = null) {
       errorMessage.value = buildLlmNotReadyMessage(data.status)
       return
     }
-    errorMessage.value = extractApiError(e, 'Pseudonymisierung fehlgeschlagen')
+    errorMessage.value = extractApiError(e, t('anonymization.messages.pseudonymizeFailed'))
   } finally {
     if (liveQueued.value) {
       liveQueued.value = false
@@ -670,7 +700,7 @@ async function pasteFromClipboard() {
     dateShiftDays.value = null
     await runPseudonymize()
   } catch (e) {
-    errorMessage.value = 'Zwischenablage konnte nicht gelesen werden.'
+    errorMessage.value = t('anonymization.messages.clipboardReadFailed')
   }
 }
 
@@ -680,9 +710,9 @@ async function copyToClipboard() {
 
   try {
     await navigator.clipboard.writeText(outputText.value || '')
-    infoMessage.value = 'Output wurde in die Zwischenablage kopiert.'
+    infoMessage.value = t('anonymization.messages.clipboardCopySuccess')
   } catch (e) {
-    errorMessage.value = 'Output konnte nicht in die Zwischenablage kopiert werden.'
+    errorMessage.value = t('anonymization.messages.clipboardCopyFailed')
   }
 }
 
@@ -710,7 +740,7 @@ async function handleFileSelected(fileOrFiles) {
       })
 
       if (!res.data?.success) {
-        throw new Error(res.data?.error || 'Upload fehlgeschlagen')
+        throw new Error(res.data?.error || t('anonymization.messages.uploadFailed'))
       }
 
       ignoreNextInputWatch.value += 1
@@ -730,7 +760,7 @@ async function handleFileSelected(fileOrFiles) {
       anonymizeStatus.value = { ...(anonymizeStatus.value || {}), llm: data.status, ready: anonymizeStatus.value?.ready }
       errorMessage.value = buildLlmNotReadyMessage(data.status)
     } else {
-      errorMessage.value = extractApiError(e, 'Upload fehlgeschlagen')
+      errorMessage.value = extractApiError(e, t('anonymization.messages.uploadFailed'))
     }
   }
 
@@ -738,15 +768,7 @@ async function handleFileSelected(fileOrFiles) {
 }
 
 async function loadExample() {
-  const example = `Guten Tag Frau Müller,
-
-mein Name ist Anna Müller (34) und ich wohne in 8001 Zürich.
-Bitte kontaktieren Sie mich unter 079 123 45 67 oder via anna.mueller@example.ch.
-Meine AHV-Nummer lautet 756.1234.5678.97.
-Der Termin ist am 12.03.2024 um 14:30 Uhr bei der Universität Zürich.
-
-Freundliche Grüsse
-Anna Müller`
+  const example = t('anonymization.exampleText')
 
   errorMessage.value = ''
   infoMessage.value = ''

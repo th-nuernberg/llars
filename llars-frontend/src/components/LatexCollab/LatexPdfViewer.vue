@@ -3,29 +3,29 @@
     <div class="pdf-toolbar">
       <div class="d-flex align-center ga-2">
         <LIcon size="18">mdi-file-pdf-box</LIcon>
-        <span class="text-body-2">PDF Preview</span>
+        <span class="text-body-2">{{ $t('latexCollab.pdf.title') }}</span>
       </div>
       <div v-if="props.isCompiling" class="pdf-compile-indicator">
         <span class="pdf-compile-dot"></span>
-        Kompiliere...
+        {{ $t('latexCollab.pdf.compiling') }}
       </div>
       <v-spacer />
       <div class="pdf-zoom-controls">
-        <v-btn icon variant="text" size="x-small" title="Zoom out" @click="zoomOut">
+        <v-btn icon variant="text" size="x-small" :title="$t('latexCollab.pdf.zoomOut')" @click="zoomOut">
           <LIcon size="16">mdi-minus</LIcon>
         </v-btn>
         <v-chip size="x-small" variant="tonal" class="pdf-zoom-chip">
           {{ zoomLabel }}
         </v-chip>
-        <v-btn icon variant="text" size="x-small" title="Zoom in" @click="zoomIn">
+        <v-btn icon variant="text" size="x-small" :title="$t('latexCollab.pdf.zoomIn')" @click="zoomIn">
           <LIcon size="16">mdi-plus</LIcon>
         </v-btn>
-        <v-btn icon variant="text" size="x-small" title="Fit width" @click="resetZoom">
+        <v-btn icon variant="text" size="x-small" :title="$t('latexCollab.pdf.fitWidth')" @click="resetZoom">
           <LIcon size="16">mdi-arrow-expand-horizontal</LIcon>
         </v-btn>
       </div>
       <v-chip v-if="pageCount" size="x-small" variant="tonal">
-        {{ pageCount }} Seiten
+        {{ $t('latexCollab.pdf.pages', { count: pageCount }) }}
       </v-chip>
     </div>
 
@@ -38,7 +38,7 @@
     <div v-else class="pdf-body">
       <div v-if="!hasPdf && !showLoading" class="pdf-empty">
         <LIcon size="36" color="grey">mdi-file-pdf-box</LIcon>
-        <div class="text-body-2 text-medium-emphasis mt-2">Noch kein PDF gerendert</div>
+        <div class="text-body-2 text-medium-emphasis mt-2">{{ $t('latexCollab.pdf.empty') }}</div>
       </div>
 
       <div ref="pagesEl" class="pdf-pages" :class="{ 'pdf-pages--hidden': !hasPdf || showLoading }" />
@@ -54,6 +54,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf.mjs'
+import { useI18n } from 'vue-i18n'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 // Use worker from public folder - avoids Vite hashing issues that cause
@@ -69,6 +70,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['pdf-click', 'no-pdf'])
+const { t } = useI18n()
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 
@@ -97,9 +99,9 @@ const maxRetries = 10
 const retryDelays = [400, 600, 800, 1000, 1200, 1500, 1800, 2200, 2600, 3000]
 const showLoading = computed(() => loading.value || pendingPdf.value || props.isCompiling)
 const loadingLabel = computed(() => {
-  if (loading.value) return 'PDF wird geladen...'
-  if (props.isCompiling) return 'PDF wird kompiliert...'
-  if (pendingPdf.value) return 'PDF wird bereitgestellt...'
+  if (loading.value) return t('latexCollab.pdf.loading')
+  if (props.isCompiling) return t('latexCollab.pdf.compilingStatus')
+  if (pendingPdf.value) return t('latexCollab.pdf.preparing')
   return ''
 })
 

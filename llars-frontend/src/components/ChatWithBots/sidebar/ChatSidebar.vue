@@ -11,10 +11,10 @@
           :disabled="!selectedChatbot"
           @click="$emit('new-chat')"
         >
-          Neuer Chat
+          {{ $t('chat.newChat') }}
         </LBtn>
       </template>
-      <LTooltip v-else text="Neuer Chat" location="right">
+      <LTooltip v-else :text="$t('chat.newChat')" location="right">
         <button
           class="new-chat-btn-mini"
           :disabled="!selectedChatbot"
@@ -26,7 +26,7 @@
       <button
         class="collapse-btn"
         @click="$emit('toggle-collapse')"
-        :title="collapsed ? 'Erweitern' : 'Zuklappen'"
+        :title="collapsed ? $t('chat.expand') : $t('chat.collapse')"
       >
         <LIcon size="18">{{ collapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</LIcon>
       </button>
@@ -37,7 +37,7 @@
       <v-text-field
         :model-value="searchQuery"
         @update:model-value="$emit('update:searchQuery', $event)"
-        placeholder="Chats durchsuchen..."
+        :placeholder="$t('chat.searchChats')"
         density="compact"
         variant="outlined"
         hide-details
@@ -80,7 +80,7 @@
                     {{ getChatbotTypeTag(bot).label }}
                   </LTag>
                   <span v-if="getChatCount(bot.id)" class="chat-count">
-                    {{ getChatCount(bot.id) }} Chats
+                    {{ $t('chat.chatCount', { count: getChatCount(bot.id) }) }}
                   </span>
                 </div>
               </div>
@@ -117,12 +117,12 @@
                   <span v-if="getDisplayTitle(conv).isStreaming" class="typing-cursor"></span>
                 </span>
                 <div class="conv-actions">
-                  <LTooltip text="Umbenennen" location="top">
+                  <LTooltip :text="$t('chat.rename')" location="top">
                     <button class="conv-action" @click.stop="$emit('rename-conversation', conv)">
                       <LIcon size="14">mdi-pencil</LIcon>
                     </button>
                   </LTooltip>
-                  <LTooltip text="Löschen" location="top">
+                  <LTooltip :text="$t('common.delete')" location="top">
                     <button class="conv-action delete" @click.stop="$emit('delete-conversation', conv)">
                       <LIcon size="14">mdi-delete</LIcon>
                     </button>
@@ -131,14 +131,14 @@
               </div>
             </template>
             <div v-else class="no-chats">
-              <span>Noch keine Chats</span>
+              <span>{{ $t('chat.noChats') }}</span>
             </div>
           </div>
         </div>
 
         <div v-if="chatbots.length === 0 && !collapsed" class="empty-sidebar">
           <LIcon size="32" class="mb-2">mdi-robot-off</LIcon>
-          <div>Keine Chatbots verfügbar</div>
+          <div>{{ $t('chat.noChatbotsAvailable') }}</div>
         </div>
       </template>
     </nav>
@@ -149,10 +149,10 @@
       <button
         class="footer-item"
         @click="$emit('navigate-home')"
-        :title="collapsed ? 'Zur Startseite' : undefined"
+        :title="collapsed ? $t('chat.homePage') : undefined"
       >
         <LIcon size="20">mdi-home</LIcon>
-        <span v-if="!collapsed">Startseite</span>
+        <span v-if="!collapsed">{{ $t('chat.homePage') }}</span>
       </button>
     </div>
   </aside>

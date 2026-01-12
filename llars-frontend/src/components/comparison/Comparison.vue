@@ -3,15 +3,15 @@
     <!-- Header -->
     <div class="overview-header">
       <LBtn variant="tonal" prepend-icon="mdi-arrow-left" size="small" @click="goToHub">
-        Evaluierungen
+        {{ $t('evaluation.backToEvaluations') }}
       </LBtn>
       <div class="header-info">
-        <h1>Gegenüberstellung</h1>
-        <p class="text-medium-emphasis">Wähle eine Persona, um den Vergleichs-Chat zu betreten.</p>
+        <h1>{{ $t('evaluation.comparison.pageTitle') }}</h1>
+        <p class="text-medium-emphasis">{{ $t('evaluation.comparison.pageSubtitle') }}</p>
       </div>
       <div class="header-stats">
         <LTag variant="success" size="small">
-          {{ doneCount }} / {{ sessions.length }} abgeschlossen
+          {{ $t('evaluation.progress', { done: doneCount, total: sessions.length }) }}
         </LTag>
       </div>
     </div>
@@ -39,11 +39,11 @@
             />
             <div class="card-body">
               <h3 class="card-title">{{ session.persona_name }}</h3>
-              <p class="card-subtitle">Szenario {{ session.scenario_id }}</p>
+              <p class="card-subtitle">{{ $t('evaluation.comparison.scenarioLabel', { id: session.scenario_id }) }}</p>
             </div>
             <div class="card-footer">
               <LTag variant="info" size="small">
-                {{ session.rated_messages }} Nachrichten bewertet
+                {{ $t('evaluation.comparison.ratedMessages', { count: session.rated_messages }) }}
               </LTag>
               <span class="card-id">Session #{{ session.id }}</span>
             </div>
@@ -51,9 +51,9 @@
 
           <div v-if="sessions.length === 0" class="empty-state">
             <LIcon size="64" color="grey-lighten-1">mdi-compare-horizontal</LIcon>
-            <h3>Keine Sessions verfügbar</h3>
+            <h3>{{ $t('evaluation.comparison.emptyTitle') }}</h3>
             <p class="text-medium-emphasis">
-              Es wurden noch keine Gegenüberstellungs-Sessions erstellt.
+              {{ $t('evaluation.comparison.emptyHint') }}
             </p>
           </div>
         </template>

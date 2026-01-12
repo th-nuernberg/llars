@@ -10,58 +10,83 @@
       </v-toolbar-title>
       <v-spacer></v-spacer>
 
-      <!-- User Menu (only when logged in) -->
-      <v-menu v-if="isAuthenticated" offset-y :close-on-content-click="true">
-        <template v-slot:activator="{ props }">
-          <div v-bind="props" class="user-menu-trigger" :class="{ 'mobile-trigger': isMobile }">
-            <LAvatar
-              :seed="userAvatarSeed"
-              :src="userAvatarUrl"
-              :username="username"
-              :size="isMobile ? 'xs' : 'sm'"
-              :class="isMobile ? 'mr-1' : 'mr-2'"
-            />
-            <div v-if="!isMobile" class="user-info">
-              <LTag
-                :variant="isAdminUser ? 'danger' : 'secondary'"
-                size="sm"
-                :prepend-icon="isAdminUser ? 'mdi-shield-account' : ''"
-              >
-                {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
-              </LTag>
-            </div>
-            <LIcon :size="isMobile ? 16 : 20" :class="['menu-arrow', isMobile ? '' : 'ml-1']" color="white">mdi-menu-down</LIcon>
-          </div>
-        </template>
-
-        <v-list density="compact" class="user-menu-list">
-          <v-list-item @click="openSettings" prepend-icon="mdi-account-cog">
-            <v-list-item-title>Profil & Einstellungen</v-list-item-title>
-          </v-list-item>
-          <v-divider class="my-1" />
-          <v-list-item @click="logout" prepend-icon="mdi-logout" class="text-error">
-            <v-list-item-title>Abmelden</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-
-      <!-- Theme Toggle + Register/Login Buttons (when NOT logged in) -->
-      <template v-else>
-        <LThemeToggle on-primary class="mr-2" />
-        <LBtn
-          v-if="registrationEnabled"
-          variant="text"
-          size="small"
-          @click="goToRegister"
-          prepend-icon="mdi-account-plus"
-          class="mr-1"
+      <!-- Auth Section with Animation -->
+      <AnimatePresence mode="wait">
+        <!-- User Menu (only when logged in) -->
+        <Motion
+          v-if="isAuthenticated"
+          key="user-menu"
+          layout-id="auth-section"
+          :initial="{ opacity: 0, scale: 0.8 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          :exit="{ opacity: 0, scale: 0.8 }"
+          :transition="{ duration: 0.35, ease: 'easeOut' }"
+          as="div"
+          class="auth-section-wrapper"
         >
-          {{ isMobile ? '' : 'Registrieren' }}
-        </LBtn>
-        <LBtn variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
-          Anmelden
-        </LBtn>
-      </template>
+          <v-menu offset-y :close-on-content-click="true">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props" class="user-menu-trigger" :class="{ 'mobile-trigger': isMobile }">
+                <LAvatar
+                  :seed="userAvatarSeed"
+                  :src="userAvatarUrl"
+                  :username="username"
+                  :size="isMobile ? 'xs' : 'sm'"
+                  :class="isMobile ? 'mr-1' : 'mr-2'"
+                />
+                <div v-if="!isMobile" class="user-info">
+                  <LTag
+                    :variant="isAdminUser ? 'danger' : 'secondary'"
+                    size="sm"
+                    :prepend-icon="isAdminUser ? 'mdi-shield-account' : ''"
+                  >
+                    {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
+                  </LTag>
+                </div>
+                <LIcon :size="isMobile ? 16 : 20" :class="['menu-arrow', isMobile ? '' : 'ml-1']" color="white">mdi-menu-down</LIcon>
+              </div>
+            </template>
+
+            <v-list density="compact" class="user-menu-list">
+              <v-list-item @click="openSettings" prepend-icon="mdi-account-cog">
+                <v-list-item-title>Profil & Einstellungen</v-list-item-title>
+              </v-list-item>
+              <v-divider class="my-1" />
+              <v-list-item @click="logout" prepend-icon="mdi-logout" class="text-error">
+                <v-list-item-title>Abmelden</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </Motion>
+
+        <!-- Theme Toggle + Register/Login Buttons (when NOT logged in) -->
+        <Motion
+          v-else
+          key="login-buttons"
+          layout-id="auth-section"
+          :initial="{ opacity: 0, scale: 0.8 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          :exit="{ opacity: 0, scale: 0.8 }"
+          :transition="{ duration: 0.35, ease: 'easeOut' }"
+          as="div"
+          class="auth-section-wrapper"
+        >
+          <LThemeToggle on-primary class="mr-2" />
+          <LBtn
+            v-if="registrationEnabled"
+            variant="text"
+            size="small"
+            @click="goToRegister"
+            prepend-icon="mdi-account-plus"
+            class="mr-1"
+          >
+            {{ isMobile ? '' : 'Registrieren' }}
+          </LBtn>
+          <LBtn variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
+            Anmelden
+          </LBtn>
+        </Motion>
+      </AnimatePresence>
     </v-app-bar>
 
     <v-main>
@@ -121,6 +146,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { Motion, AnimatePresence } from 'motion-v';
 import { useAuth } from '@/composables/useAuth';
 import { useAppTheme } from '@/composables/useAppTheme';
 import { usePermissions } from '@/composables/usePermissions';
@@ -478,6 +504,12 @@ function openSettings() {
 }
 
 .user-info {
+  display: flex;
+  align-items: center;
+}
+
+/* Auth Section Animation Wrapper */
+.auth-section-wrapper {
   display: flex;
   align-items: center;
 }

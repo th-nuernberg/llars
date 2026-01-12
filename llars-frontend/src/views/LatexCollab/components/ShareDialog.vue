@@ -9,11 +9,11 @@
       <v-card-title class="share-header">
         <LIcon class="mr-2" color="primary">mdi-account-multiple-plus</LIcon>
         <div>
-          <div>Workspace teilen</div>
+          <div>{{ $t('latexCollab.share.title') }}</div>
           <div class="text-caption text-medium-emphasis">{{ workspaceName }}</div>
         </div>
         <v-spacer />
-        <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="$emit('update:modelValue', false)" />
+        <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="$emit('update:modelValue', false)" />
       </v-card-title>
 
       <v-divider />
@@ -24,30 +24,30 @@
         </v-alert>
 
         <!-- Owner Section -->
-        <div class="section-label">Owner</div>
+        <div class="section-label">{{ $t('latexCollab.share.ownerLabel') }}</div>
         <div class="user-card owner-card">
           <img class="user-avatar" :src="getAvatarUrl(ownerInfo)" alt="" />
           <div class="user-info">
             <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
             <div class="user-meta">@{{ ownerInfo.username }}</div>
           </div>
-          <LTag variant="primary" size="small">Owner</LTag>
+          <LTag variant="primary" size="small">{{ $t('latexCollab.share.ownerTag') }}</LTag>
         </div>
 
         <!-- Search Section -->
-        <div class="section-label mt-4">Nutzer einladen</div>
+        <div class="section-label mt-4">{{ $t('latexCollab.share.inviteLabel') }}</div>
         <LUserSearch
           ref="userSearchRef"
           v-model="selectedUser"
           :exclude-usernames="excludedUsernames"
           :show-add-button="true"
-          add-button-text="Hinzufügen"
+          :add-button-text="$t('latexCollab.share.addButton')"
           @add="handleInvite"
         />
 
         <!-- Members Section -->
         <div class="section-label mt-4">
-          Mitglieder
+          {{ $t('latexCollab.share.members') }}
           <span v-if="members.length" class="member-count">{{ members.length }}</span>
         </div>
 
@@ -55,7 +55,7 @@
 
         <div v-else-if="members.length === 0" class="empty-members">
           <LIcon size="28" color="grey-lighten-1">mdi-account-group-outline</LIcon>
-          <span>Noch keine Mitglieder</span>
+          <span>{{ $t('latexCollab.share.emptyMembers') }}</span>
         </div>
 
         <div v-else class="members-list">
@@ -72,7 +72,7 @@
               size="x-small"
               color="error"
               :loading="removingUsername === m.username"
-              title="Mitglied entfernen"
+              :title="$t('latexCollab.share.removeMember')"
               @click="$emit('remove', m.username)"
             >
               <LIcon size="18">mdi-close</LIcon>

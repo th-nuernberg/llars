@@ -6,9 +6,9 @@
     transition="dialog-bottom-transition"
     class="file-preview-dialog"
   >
-    <v-card class="d-flex flex-column bg-grey-darken-4 h-100">
+    <v-card class="d-flex flex-column bg-grey-darken-4 file-preview-card">
       <!-- Toolbar -->
-      <v-toolbar color="grey-darken-3" density="compact">
+      <v-toolbar color="grey-darken-3" density="compact" class="flex-grow-0 flex-shrink-0">
         <LIcon :icon="getFileIcon()" :color="getFileColor()" class="ml-4 mr-2" />
         <v-toolbar-title class="text-body-1">
           {{ document?.filename || document?.title || 'Dokument' }}
@@ -41,14 +41,15 @@
       </v-toolbar>
 
       <!-- Content -->
-      <div class="flex-grow-1 d-flex align-center justify-center file-preview-content">
+      <div class="flex-grow-1 file-preview-content">
         <!-- Loading State -->
-        <v-progress-circular
-          v-if="loading"
-          indeterminate
-          color="primary"
-          size="64"
-        />
+        <div v-if="loading" class="centered-content">
+          <v-progress-circular
+            indeterminate
+            color="primary"
+            size="64"
+          />
+        </div>
 
         <!-- PDF Viewer -->
         <iframe
@@ -58,39 +59,42 @@
         />
 
         <!-- Image Viewer -->
-        <img
-          v-else-if="isImage && blobUrl"
-          :src="blobUrl"
-          :alt="document?.filename"
-          class="image-preview"
-        />
+        <div v-else-if="isImage && blobUrl" class="centered-content">
+          <img
+            :src="blobUrl"
+            :alt="document?.filename"
+            class="image-preview"
+          />
+        </div>
 
         <!-- Text/Markdown Viewer -->
-        <div v-else-if="isText && textContent" class="text-preview pa-6">
+        <div v-else-if="isText && textContent" class="text-preview">
           <pre class="text-content">{{ textContent }}</pre>
         </div>
 
         <!-- Unsupported Format -->
-        <div v-else class="text-center pa-8">
-          <LIcon size="96" color="grey-lighten-1" class="mb-4">mdi-file-document-outline</LIcon>
-          <div class="text-h6 text-grey-lighten-1 mb-2">Vorschau nicht verfuegbar</div>
-          <div class="text-body-2 text-grey mb-6">
-            {{ getFileTypeLabel() }}
+        <div v-else class="centered-content">
+          <div class="text-center pa-8">
+            <LIcon size="96" color="grey-lighten-1" class="mb-4">mdi-file-document-outline</LIcon>
+            <div class="text-h6 text-grey-lighten-1 mb-2">Vorschau nicht verfuegbar</div>
+            <div class="text-body-2 text-grey mb-6">
+              {{ getFileTypeLabel() }}
+            </div>
+            <v-btn
+              variant="tonal"
+              color="primary"
+              size="large"
+              prepend-icon="mdi-download"
+              @click="handleDownload"
+            >
+              Datei herunterladen
+            </v-btn>
           </div>
-          <v-btn
-            variant="tonal"
-            color="primary"
-            size="large"
-            prepend-icon="mdi-download"
-            @click="handleDownload"
-          >
-            Datei herunterladen
-          </v-btn>
         </div>
       </div>
 
       <!-- Footer with file info -->
-      <v-footer class="bg-grey-darken-3 pa-2">
+      <v-footer class="bg-grey-darken-3 pa-2 flex-grow-0 flex-shrink-0">
         <div class="d-flex align-center justify-space-between w-100 text-caption text-grey-lighten-1">
           <div class="d-flex align-center ga-4">
             <span v-if="document?.file_size_bytes">
@@ -329,14 +333,34 @@ onUnmounted(() => {
   z-index: 2500;
 }
 
+.file-preview-card {
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
 .file-preview-content {
   background: #1e1e1e;
-  overflow: auto;
   min-height: 0;
   flex: 1 1 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.centered-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pdf-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   border: none;
@@ -351,10 +375,14 @@ onUnmounted(() => {
 }
 
 .text-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   overflow: auto;
   background: #2d2d2d;
+  padding: 24px;
 }
 
 .text-content {

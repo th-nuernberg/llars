@@ -5,17 +5,18 @@
  * Parses LaTeX sections, chapters, etc. and provides navigation.
  */
 
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const OUTLINE_COLLAPSED_KEY = 'latex-outline-collapsed'
 
 // LaTeX sectioning command levels
-const outlineCommandLevels = {
-  part: { level: 0, label: 'Teil' },
-  chapter: { level: 1, label: 'Kapitel' },
-  section: { level: 2, label: 'Abschnitt' },
-  subsection: { level: 3, label: 'Unterabschnitt' },
-  subsubsection: { level: 4, label: 'Unter-Unterabschnitt' },
+const defaultOutlineCommandLevels = {
+  part: { level: 0, label: 'Part' },
+  chapter: { level: 1, label: 'Chapter' },
+  section: { level: 2, label: 'Section' },
+  subsection: { level: 3, label: 'Subsection' },
+  subsubsection: { level: 4, label: 'Subsubsection' },
   paragraph: { level: 5, label: 'Paragraph' }
 }
 
@@ -27,7 +28,7 @@ const outlinePattern = /\\(part|chapter|section|subsection|subsubsection|paragra
  * @param {string} text - LaTeX document text
  * @returns {Array} Hierarchical outline items
  */
-export function buildOutline(text) {
+export function buildOutline(text, labelMap = defaultOutlineCommandLevels) {
   if (!text) return []
   const items = []
   const stack = []
@@ -54,7 +55,7 @@ export function buildOutline(text) {
       const leading = line.slice(0, Math.max(0, colIndex))
       if (!leading.includes('%')) {
         const cmd = match[1]
-        const meta = outlineCommandLevels[cmd] || { level: 9, label: cmd }
+        const meta = labelMap[cmd] || { level: 9, label: cmd }
         const title = (match[2] || '').trim() || meta.label
         const item = {
           id: `${cmd}:${lineIndex + 1}:${title}`,
@@ -92,6 +93,7 @@ export function useLatexOutline({
   selectedNode,
   editorRef
 }) {
+  const { t, locale } = useI18n()
   // State
   // Default to collapsed unless user explicitly expanded it before
   const outlineCollapsed = ref(localStorage.getItem(OUTLINE_COLLAPSED_KEY) !== 'false')
@@ -122,10 +124,19 @@ export function useLatexOutline({
   // Computed: Empty label based on document state
   const outlineEmptyLabel = computed(() => {
     if (selectedNode.value && selectedNode.value.type === 'file' && !selectedNode.value.asset_id) {
-      return 'Keine Kapitel gefunden'
+      return t('latexCollab.outline.emptySections')
     }
-    return 'Kein Dokument'
+    return t('latexCollab.outline.emptyDocument')
   })
+
+  const outlineLabelMap = computed(() => ({
+    part: { level: 0, label: t('latexCollab.outline.part') },
+    chapter: { level: 1, label: t('latexCollab.outline.chapter') },
+    section: { level: 2, label: t('latexCollab.outline.section') },
+    subsection: { level: 3, label: t('latexCollab.outline.subsection') },
+    subsubsection: { level: 4, label: t('latexCollab.outline.subsubsection') },
+    paragraph: { level: 5, label: t('latexCollab.outline.paragraph') }
+  }))
 
   // Methods
   function toggleOutlineCollapsed() {
@@ -150,7 +161,7 @@ export function useLatexOutline({
   function updateOutline(text) {
     if (text === lastOutlineText) return
     lastOutlineText = text
-    const nextItems = buildOutline(text)
+    const nextItems = buildOutline(text, outlineLabelMap.value)
     outlineItems.value = nextItems
 
     // Clean up collapsed IDs for items that no longer exist
@@ -193,6 +204,12 @@ export function useLatexOutline({
   // Cleanup
   onUnmounted(() => {
     if (outlineUpdateTimer) clearTimeout(outlineUpdateTimer)
+  })
+
+  watch(locale, () => {
+    if (lastOutlineText) {
+      updateOutline(lastOutlineText)
+    }
   })
 
   return {

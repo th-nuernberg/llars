@@ -34,7 +34,7 @@
         icon
         size="large"
         elevation="4"
-        title="KI-Assistent öffnen (Ctrl+Shift+A)"
+        :title="$t('latexCollabAi.workspace.actions.openAssistant')"
         @click="aiSidebarOpen = true"
       >
         <LIcon>llars:latex-collab-ai</LIcon>
@@ -61,12 +61,12 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2" color="primary">mdi-book-search</LIcon>
-          Zitat finden
+          {{ $t('latexCollabAi.citations.title') }}
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="citationSearchText"
-            label="Zu belegende Aussage"
+            :label="$t('latexCollabAi.citations.claimLabel')"
             variant="outlined"
             density="compact"
             autofocus
@@ -77,7 +77,7 @@
             :items="availableCollections"
             item-title="name"
             item-value="id"
-            label="Collections durchsuchen"
+            :label="$t('latexCollabAi.citations.collectionsLabel')"
             variant="outlined"
             density="compact"
             multiple
@@ -93,12 +93,12 @@
             @click="searchCitations"
           >
             <LIcon class="mr-1">mdi-magnify</LIcon>
-            Suchen
+            {{ $t('common.search') }}
           </LBtn>
 
           <!-- Results -->
           <div v-if="citationResults.length" class="mt-4">
-            <h4 class="text-subtitle-2 mb-2">Gefundene Quellen:</h4>
+            <h4 class="text-subtitle-2 mb-2">{{ $t('latexCollabAi.citations.resultsTitle') }}</h4>
             <v-list density="compact">
               <v-list-item
                 v-for="(citation, i) in citationResults"
@@ -120,7 +120,7 @@
                   <v-btn
                     size="small"
                     variant="text"
-                    title="BibTeX einfügen"
+                    :title="$t('latexCollabAi.citations.insertBibtex')"
                     @click="insertCitation(citation)"
                   >
                     <LIcon>mdi-plus</LIcon>
@@ -132,7 +132,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="citationDialog = false">Schließen</LBtn>
+          <LBtn variant="cancel" @click="citationDialog = false">{{ $t('common.close') }}</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -142,7 +142,7 @@
       <v-card>
         <v-card-title>
           <LIcon class="mr-2">mdi-keyboard</LIcon>
-          KI-Tastenkürzel
+          {{ $t('latexCollabAi.shortcuts.title') }}
         </v-card-title>
         <v-card-text>
           <v-table density="compact">
@@ -156,7 +156,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="shortcutsDialog = false">Schließen</LBtn>
+          <LBtn variant="cancel" @click="shortcutsDialog = false">{{ $t('common.close') }}</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -171,6 +171,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import LatexCollabWorkspaceOriginal from '@/views/LatexCollab/LatexCollabWorkspace.vue'
 import AISidebar from '@/components/LatexCollabAI/ai/AISidebar.vue'
 import AISelectionMenu from '@/components/LatexCollabAI/ai/AISelectionMenu.vue'
@@ -179,6 +180,7 @@ import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const route = useRoute()
 const workspaceId = computed(() => Number(route.params.workspaceId))
+const { t } = useI18n()
 
 // Refs
 const workspaceRef = ref(null)
@@ -217,18 +219,18 @@ const snackbar = ref({
 })
 
 // Keyboard shortcuts
-const shortcuts = [
-  { keys: 'Ctrl+Shift+A', description: 'KI-Sidebar ein/ausblenden' },
-  { keys: 'Ctrl+Shift+G', description: 'Ghost Text ein/ausschalten' },
-  { keys: 'Ctrl+Space', description: 'Textvervollständigung anfordern' },
-  { keys: 'Tab', description: 'Vorschlag akzeptieren' },
-  { keys: 'Esc', description: 'Vorschlag ablehnen' },
-  { keys: 'Ctrl+Shift+R', description: 'Markierung umformulieren' },
-  { keys: 'Ctrl+Shift+E', description: 'Markierung erweitern' },
-  { keys: 'Ctrl+Shift+K', description: 'Markierung kürzen' },
-  { keys: 'Ctrl+Shift+C', description: 'Zitat suchen' },
-  { keys: 'Ctrl+Shift+/', description: 'Tastenkürzel anzeigen' }
-]
+const shortcuts = computed(() => ([
+  { keys: 'Ctrl+Shift+A', description: t('latexCollabAi.shortcuts.toggleSidebar') },
+  { keys: 'Ctrl+Shift+G', description: t('latexCollabAi.shortcuts.toggleGhostText') },
+  { keys: 'Ctrl+Space', description: t('latexCollabAi.shortcuts.requestCompletion') },
+  { keys: 'Tab', description: t('latexCollabAi.shortcuts.acceptSuggestion') },
+  { keys: 'Esc', description: t('latexCollabAi.shortcuts.rejectSuggestion') },
+  { keys: 'Ctrl+Shift+R', description: t('latexCollabAi.shortcuts.rewriteSelection') },
+  { keys: 'Ctrl+Shift+E', description: t('latexCollabAi.shortcuts.expandSelection') },
+  { keys: 'Ctrl+Shift+K', description: t('latexCollabAi.shortcuts.summarizeSelection') },
+  { keys: 'Ctrl+Shift+C', description: t('latexCollabAi.shortcuts.findCitation') },
+  { keys: 'Ctrl+Shift+/', description: t('latexCollabAi.shortcuts.showShortcuts') }
+]))
 
 // Methods
 function handleDocumentChange(content) {
@@ -275,27 +277,27 @@ function showNotification(text, color = 'info') {
 function insertTextAtCursor(text) {
   // Try to access editor and insert text
   // This is a placeholder - actual implementation depends on editor API
-  showNotification('Text wird eingefügt...')
+  showNotification(t('latexCollabAi.notifications.inserting'))
   // Copy to clipboard as fallback
   navigator.clipboard.writeText(text).then(() => {
-    showNotification('Text in Zwischenablage kopiert (Ctrl+V zum Einfügen)', 'success')
+    showNotification(t('latexCollabAi.notifications.clipboardCopied'), 'success')
   })
 }
 
 // Selection Menu Handlers
 function handleRewrite(result) {
   insertTextAtCursor(result)
-  showNotification('Text umformuliert', 'success')
+  showNotification(t('latexCollabAi.notifications.rewritten'), 'success')
 }
 
 function handleExpand(result) {
   insertTextAtCursor(result)
-  showNotification('Text erweitert', 'success')
+  showNotification(t('latexCollabAi.notifications.expanded'), 'success')
 }
 
 function handleSummarize(result) {
   insertTextAtCursor(result)
-  showNotification('Text gekürzt', 'success')
+  showNotification(t('latexCollabAi.notifications.summarized'), 'success')
 }
 
 function handleFindCitation(text) {
@@ -307,14 +309,14 @@ function handleFindCitation(text) {
 function handleAskChat(text) {
   // Open sidebar and pre-fill chat
   aiSidebarOpen.value = true
-  showNotification('Frage im Chat: ' + text.substring(0, 50) + '...')
+  showNotification(t('latexCollabAi.notifications.chatQuestion', { text: text.substring(0, 50) }))
 }
 
 function handleFixLatex(result) {
   if (result.errors?.length) {
-    showNotification(`${result.errors.length} LaTeX-Fehler gefunden`, 'warning')
+    showNotification(t('latexCollabAi.notifications.latexErrorsFound', { count: result.errors.length }), 'warning')
   } else {
-    showNotification('Keine LaTeX-Fehler gefunden', 'success')
+    showNotification(t('latexCollabAi.notifications.latexErrorsNone'), 'success')
   }
 }
 
@@ -336,7 +338,7 @@ async function handleAICommand(cmdEvent) {
         })
         if (result.response) {
           insertTextAtCursor(result.response)
-          showNotification('KI-Antwort eingefügt', 'success')
+          showNotification(t('latexCollabAi.notifications.aiInserted'), 'success')
         }
         break
 
@@ -348,7 +350,7 @@ async function handleAICommand(cmdEvent) {
         })
         if (result.result) {
           insertTextAtCursor(result.result)
-          showNotification('Text umformuliert', 'success')
+          showNotification(t('latexCollabAi.notifications.rewritten'), 'success')
         }
         break
 
@@ -359,7 +361,7 @@ async function handleAICommand(cmdEvent) {
         })
         if (result.result) {
           insertTextAtCursor(result.result)
-          showNotification('Text erweitert', 'success')
+          showNotification(t('latexCollabAi.notifications.expanded'), 'success')
         }
         break
 
@@ -369,16 +371,16 @@ async function handleAICommand(cmdEvent) {
         })
         if (result.result) {
           insertTextAtCursor(result.result)
-          showNotification('Text zusammengefasst', 'success')
+          showNotification(t('latexCollabAi.notifications.summarized'), 'success')
         }
         break
 
       case 'fix':
         result = await aiWritingService.fixLatex(selectedText || currentDocumentContent.value)
         if (result.errors?.length) {
-          showNotification(`${result.errors.length} Fehler gefunden`, 'warning')
+          showNotification(t('latexCollabAi.notifications.errorsFound', { count: result.errors.length }), 'warning')
         } else {
-          showNotification('Keine Fehler gefunden', 'success')
+          showNotification(t('latexCollabAi.notifications.errorsNone'), 'success')
         }
         break
 
@@ -386,12 +388,12 @@ async function handleAICommand(cmdEvent) {
         // Use chat for translation with language arg
         const lang = args || 'en'
         result = await aiWritingService.chat({
-          message: `Übersetze den folgenden Text ins ${lang}: ${selectedText}`,
+          message: t('latexCollabAi.prompts.translate', { lang, text: selectedText }),
           document_content: ''
         })
         if (result.response) {
           insertTextAtCursor(result.response)
-          showNotification(`Übersetzt nach ${lang}`, 'success')
+          showNotification(t('latexCollabAi.notifications.translated', { lang }), 'success')
         }
         break
 
@@ -404,7 +406,7 @@ async function handleAICommand(cmdEvent) {
         result = await aiWritingService.generateAbstract(currentDocumentContent.value)
         if (result.abstract) {
           insertTextAtCursor(result.abstract)
-          showNotification('Abstract generiert', 'success')
+          showNotification(t('latexCollabAi.notifications.abstractGenerated'), 'success')
         }
         break
 
@@ -413,7 +415,7 @@ async function handleAICommand(cmdEvent) {
         if (result.titles?.length) {
           const titlesText = result.titles.map((t, i) => `${i + 1}. ${t}`).join('\n')
           insertTextAtCursor(titlesText)
-          showNotification(`${result.titles.length} Titelvorschläge generiert`, 'success')
+          showNotification(t('latexCollabAi.notifications.titlesGenerated', { count: result.titles.length }), 'success')
         }
         break
 
@@ -427,11 +429,11 @@ async function handleAICommand(cmdEvent) {
         })
         if (result.response) {
           insertTextAtCursor(result.response)
-          showNotification('Befehl ausgeführt', 'success')
+          showNotification(t('latexCollabAi.notifications.commandExecuted'), 'success')
         }
     }
   } catch (e) {
-    showNotification(`Fehler: ${e.message}`, 'error')
+    showNotification(t('latexCollabAi.notifications.error', { message: e.message }), 'error')
   } finally {
     aiProcessing.value = false
   }
@@ -452,10 +454,10 @@ async function searchCitations() {
     citationResults.value = result.citations || []
 
     if (!citationResults.value.length) {
-      showNotification('Keine passenden Quellen gefunden', 'warning')
+      showNotification(t('latexCollabAi.citations.noResults'), 'warning')
     }
   } catch (e) {
-    showNotification('Fehler bei der Suche: ' + e.message, 'error')
+    showNotification(t('latexCollabAi.citations.searchError', { message: e.message }), 'error')
   } finally {
     citationLoading.value = false
   }
@@ -464,7 +466,7 @@ async function searchCitations() {
 function insertCitation(citation) {
   if (citation.bibtex) {
     insertTextAtCursor(citation.bibtex)
-    showNotification('BibTeX-Eintrag eingefügt', 'success')
+    showNotification(t('latexCollabAi.citations.bibtexInserted'), 'success')
   }
   citationDialog.value = false
 }
@@ -482,7 +484,7 @@ function handleKeydown(e) {
     e.preventDefault()
     ghostTextEnabled.value = !ghostTextEnabled.value
     showNotification(
-      ghostTextEnabled.value ? 'Ghost Text aktiviert' : 'Ghost Text deaktiviert',
+      ghostTextEnabled.value ? t('latexCollabAi.notifications.ghostTextEnabled') : t('latexCollabAi.notifications.ghostTextDisabled'),
       ghostTextEnabled.value ? 'success' : 'info'
     )
   }

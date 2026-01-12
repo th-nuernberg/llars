@@ -6,8 +6,11 @@
  */
 
 import axios from 'axios';
+import { useI18n } from 'vue-i18n';
 
 export function useJudgeHelpers(sessionId) {
+  const { t, locale } = useI18n();
+
   // Rank and Win Rate colors
   const getRankColor = (index) => {
     const colors = ['warning', 'grey-lighten-1', 'orange-lighten-1', 'grey-lighten-2', 'grey-lighten-3'];
@@ -37,9 +40,9 @@ export function useJudgeHelpers(sessionId) {
 
   // Formatting
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
+    if (!dateString) return t('judge.results.common.placeholder');
     const date = new Date(dateString);
-    return date.toLocaleString('de-DE', {
+    return date.toLocaleString(locale.value || undefined, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -50,12 +53,12 @@ export function useJudgeHelpers(sessionId) {
 
   const formatCriterionName = (criterion) => {
     const names = {
-      'counsellor_coherence': 'Berater-Kohärenz',
-      'client_coherence': 'Klient-Kohärenz',
-      'quality': 'Qualität',
-      'empathy': 'Empathie',
-      'authenticity': 'Authentizität',
-      'solution_orientation': 'Lösungsorientierung'
+      'counsellor_coherence': t('judge.criteria.counsellorCoherence'),
+      'client_coherence': t('judge.criteria.clientCoherence'),
+      'quality': t('judge.criteria.quality'),
+      'empathy': t('judge.criteria.empathy'),
+      'authenticity': t('judge.criteria.authenticity'),
+      'solution_orientation': t('judge.criteria.solutionOrientation')
     };
     return names[criterion] || criterion;
   };
@@ -72,7 +75,7 @@ export function useJudgeHelpers(sessionId) {
   };
 
   const getPillarName = (pillarId) => {
-    return `Säule ${pillarId}`;
+    return t('judge.pillars.defaultLabel', { id: pillarId });
   };
 
   // Position Swap Analysis helpers
@@ -88,11 +91,11 @@ export function useJudgeHelpers(sessionId) {
 
   const getBiasLabel = (bias) => {
     const labels = {
-      'primacy': 'Primacy Bias',
-      'recency': 'Recency Bias',
-      'balanced': 'Ausbalanciert'
+      'primacy': t('judge.results.positionSwap.bias.primacy'),
+      'recency': t('judge.results.positionSwap.bias.recency'),
+      'balanced': t('judge.results.positionSwap.bias.balanced')
     };
-    return labels[bias] || 'Unbekannt';
+    return labels[bias] || t('judge.results.positionSwap.bias.unknown');
   };
 
   // Export functions

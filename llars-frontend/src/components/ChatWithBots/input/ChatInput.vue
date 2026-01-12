@@ -41,7 +41,7 @@
       <v-textarea
         v-model="message"
         @keydown="handleKeyDown"
-        placeholder="Schreibe eine Nachricht..."
+        :placeholder="$t('chat.messagePlaceholder')"
         variant="outlined"
         :loading="loading"
         :disabled="disabled"
@@ -68,10 +68,10 @@
     <!-- Supported file types info -->
     <div class="text-caption text-medium-emphasis mt-1">
       <template v-if="supportsVision">
-        Bilder, PDFs, Word, Excel, PowerPoint
+        {{ $t('chat.supportedTypesWithImages') }}
       </template>
       <template v-else>
-        PDFs, Word, Excel, PowerPoint (kein Bild-Support)
+        {{ $t('chat.supportedTypesNoImages') }}
       </template>
     </div>
   </div>
@@ -79,6 +79,9 @@
 
 <script setup>
 import { ref, computed, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -119,9 +122,9 @@ const acceptedFileTypes = computed(() => {
 
 const fileUploadTooltip = computed(() => {
   if (props.supportsVision) {
-    return 'Bilder und Dokumente hochladen'
+    return t('chat.uploadFilesWithImages')
   }
-  return 'Dokumente hochladen (PDF, Word, Excel, PowerPoint)'
+  return t('chat.uploadFilesTooltip')
 })
 
 /**

@@ -7,6 +7,7 @@
 
 import { ref, computed, watch, onUnmounted } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
@@ -113,6 +114,7 @@ export function useLatexCompile({
   reviewMode,
   hasPermission
 }) {
+  const { t, locale } = useI18n()
   // State
   const compileJobId = ref(null)
   const compileStatus = ref('idle')
@@ -124,7 +126,7 @@ export function useLatexCompile({
   const pdfRefreshKey = ref(0)
   const pdfRefreshJobId = ref(null)
   const compileCommitId = ref(null)
-  const compileCommitOptions = ref([{ title: 'Aktuell', value: null }])
+  const compileCommitOptions = ref([{ title: t('latexCollab.compile.current'), value: null }])
   const compileIssues = ref([])
 
   // Auto-compile settings
@@ -148,11 +150,11 @@ export function useLatexCompile({
   const isCompiling = computed(() => ['queued', 'running'].includes(compileStatus.value))
 
   const compileStatusLabel = computed(() => {
-    if (compileStatus.value === 'queued') return 'Queued'
-    if (compileStatus.value === 'running') return 'Kompiliert'
-    if (compileStatus.value === 'success') return 'Fertig'
-    if (compileStatus.value === 'failed') return 'Fehler'
-    return 'Idle'
+    if (compileStatus.value === 'queued') return t('latexCollab.compile.status.queued')
+    if (compileStatus.value === 'running') return t('latexCollab.compile.status.running')
+    if (compileStatus.value === 'success') return t('latexCollab.compile.status.success')
+    if (compileStatus.value === 'failed') return t('latexCollab.compile.status.failed')
+    return t('latexCollab.compile.status.idle')
   })
 
   const compileStatusColor = computed(() => {
@@ -195,10 +197,12 @@ export function useLatexCompile({
       const documentId = filePath ? resolveDocumentIdFromPath(filePath) : null
       const location = fileName
         ? `${fileName}${issue.line ? `:${issue.line}` : ''}`
-        : (issue.line ? `Zeile ${issue.line}` : '—')
+        : (issue.line ? t('latexCollab.compile.issue.line', { line: issue.line }) : t('latexCollab.compile.issue.unknownLocation'))
       const type = issue.type || 'warning'
       const color = type === 'error' ? 'error' : (type === 'overfull' ? 'info' : 'warning')
-      const label = type === 'error' ? 'Error' : (type === 'overfull' ? 'Overfull' : 'Warning')
+      const label = type === 'error'
+        ? t('latexCollab.compile.issue.errorLabel')
+        : (type === 'overfull' ? t('latexCollab.compile.issue.overfullLabel') : t('latexCollab.compile.issue.warningLabel'))
       return {
         ...issue,
         id: `${type}-${index}-${issue.line || 0}`,
@@ -249,7 +253,7 @@ export function useLatexCompile({
 
   async function loadCommitOptions(documentId) {
     if (!documentId) {
-      compileCommitOptions.value = [{ title: 'Aktuell', value: null }]
+      compileCommitOptions.value = [{ title: t('latexCollab.compile.current'), value: null }]
       compileCommitId.value = null
       return
     }
@@ -262,14 +266,14 @@ export function useLatexCompile({
         title: `#${c.id} · ${c.message}`,
         value: c.id
       }))
-      const options = [{ title: 'Aktuell', value: null }, ...items]
+      const options = [{ title: t('latexCollab.compile.current'), value: null }, ...items]
       compileCommitOptions.value = options
       const optionValues = new Set(options.map((opt) => opt.value))
       if (!optionValues.has(compileCommitId.value)) {
         compileCommitId.value = null
       }
     } catch (e) {
-      compileCommitOptions.value = [{ title: 'Aktuell', value: null }]
+      compileCommitOptions.value = [{ title: t('latexCollab.compile.current'), value: null }]
       compileCommitId.value = null
     }
   }
@@ -311,11 +315,18 @@ export function useLatexCompile({
       }
     } catch (e) {
       compileStatus.value = 'failed'
-      compileError.value = e?.response?.data?.error || e?.message || 'Kompilierung fehlgeschlagen'
+      compileError.value = e?.response?.data?.error || e?.message || t('latexCollab.compile.errors.failed')
       compileHasPdf.value = false
       compileHasSynctex.value = false
     }
   }
+
+  watch(locale, () => {
+    compileCommitOptions.value = [
+      { title: t('latexCollab.compile.current'), value: null },
+      ...compileCommitOptions.value.filter(opt => opt.value !== null)
+    ]
+  })
 
   async function pollCompileJob(jobId) {
     if (!jobId) return

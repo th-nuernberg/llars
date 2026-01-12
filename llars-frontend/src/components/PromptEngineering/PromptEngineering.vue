@@ -7,8 +7,8 @@
         <div class="header-left">
           <LIcon :size="isMobile ? 22 : 28" color="primary" :class="isMobile ? 'mr-2' : 'mr-3'">mdi-file-document-edit-outline</LIcon>
           <div>
-            <h1 class="page-title">{{ isMobile ? 'Prompts' : 'Prompt Engineering' }}</h1>
-            <p v-if="!isMobile" class="page-subtitle">Erstellen und verwalten Sie Ihre Prompts</p>
+            <h1 class="page-title">{{ isMobile ? $t('promptEngineering.titleShort') : $t('promptEngineering.title') }}</h1>
+            <p v-if="!isMobile" class="page-subtitle">{{ $t('promptEngineering.subtitle') }}</p>
           </div>
         </div>
         <LBtn
@@ -18,7 +18,7 @@
           @click="openCreateDialog"
         >
           <LIcon v-if="isMobile">mdi-plus</LIcon>
-          <span v-else>Neues Prompt</span>
+          <span v-else>{{ $t('promptEngineering.actions.newPrompt') }}</span>
         </LBtn>
       </div>
     </div>
@@ -29,10 +29,10 @@
       <div class="section">
         <div class="section-header">
           <LIcon size="20" class="mr-2" color="primary">mdi-folder-account</LIcon>
-          <span class="section-title">Meine Prompts</span>
+          <span class="section-title">{{ $t('promptEngineering.sections.myPrompts') }}</span>
           <span v-if="prompts.length" class="section-count">{{ prompts.length }}</span>
           <v-spacer />
-          <LIconBtn icon="mdi-refresh" tooltip="Aktualisieren" size="small" @click="fetchPrompts" />
+          <LIconBtn icon="mdi-refresh" :tooltip="$t('promptEngineering.actions.refresh')" size="small" @click="fetchPrompts" />
         </div>
 
         <v-skeleton-loader v-if="isLoading('prompts')" type="card@3" class="mt-4" />
@@ -63,11 +63,11 @@
             <div class="prompt-meta">
               <div class="d-flex align-center text-caption text-medium-emphasis">
                 <LIcon size="14" class="mr-1">mdi-clock-outline</LIcon>
-                {{ formatRelativeDate(prompt.created_at) }}
+                {{ formatRelativeDateLocalized(prompt.created_at) }}
               </div>
               <div v-if="prompt.shared_with?.length" class="shared-info mt-2">
                 <LIcon size="14" color="warning" class="mr-1">mdi-share-variant</LIcon>
-                <span class="text-caption">{{ prompt.shared_with.length }} Nutzer</span>
+                <span class="text-caption">{{ $t('promptEngineering.shared.users', { count: prompt.shared_with.length }) }}</span>
                 <div class="shared-avatars ml-2">
                   <img
                     v-for="username in prompt.shared_with.slice(0, 3)"
@@ -95,12 +95,12 @@
 
         <div v-else class="empty-state">
           <LIcon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</LIcon>
-          <div class="text-subtitle-1 mt-3">Noch keine Prompts</div>
+          <div class="text-subtitle-1 mt-3">{{ $t('promptEngineering.empty.title') }}</div>
           <div class="text-body-2 text-medium-emphasis mb-4">
-            Erstellen Sie Ihr erstes Prompt, um loszulegen.
+            {{ $t('promptEngineering.empty.description') }}
           </div>
           <LBtn variant="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
-            Prompt erstellen
+            {{ $t('promptEngineering.actions.createPrompt') }}
           </LBtn>
         </div>
       </div>
@@ -109,7 +109,7 @@
       <div class="section mt-8">
         <div class="section-header">
           <LIcon size="20" class="mr-2" color="warning">mdi-account-group</LIcon>
-          <span class="section-title">Mit mir geteilt</span>
+          <span class="section-title">{{ $t('promptEngineering.sections.sharedWithMe') }}</span>
           <span v-if="sharedPrompts.length" class="section-count">{{ sharedPrompts.length }}</span>
         </div>
 
@@ -133,7 +133,7 @@
             @click="navigateToPromptDetail(prompt.id)"
           >
             <template #status>
-              <LTag variant="warning" size="small">Geteilt</LTag>
+              <LTag variant="warning" size="small">{{ $t('promptEngineering.shared.label') }}</LTag>
             </template>
 
             <div class="prompt-meta">
@@ -143,7 +143,7 @@
               </div>
               <div class="d-flex align-center text-caption text-medium-emphasis mt-1">
                 <LIcon size="14" class="mr-1">mdi-clock-outline</LIcon>
-                {{ formatRelativeDate(prompt.shared_at) }}
+                {{ formatRelativeDateLocalized(prompt.shared_at) }}
               </div>
             </div>
           </LCard>
@@ -152,7 +152,7 @@
         <div v-else class="empty-state-small">
           <LIcon size="32" color="grey-lighten-1">mdi-account-group-outline</LIcon>
           <span class="text-body-2 text-medium-emphasis ml-3">
-            Keine geteilten Prompts vorhanden
+            {{ $t('promptEngineering.empty.shared') }}
           </span>
         </div>
       </div>
@@ -164,9 +164,9 @@
         <template #header>
           <div class="d-flex align-center w-100">
             <LIcon class="mr-2" color="primary">mdi-file-document-plus</LIcon>
-            <span class="text-h6">Neues Prompt erstellen</span>
+            <span class="text-h6">{{ $t('promptEngineering.dialogs.createTitle') }}</span>
             <v-spacer />
-            <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="closeCreateDialog" />
+            <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="closeCreateDialog" />
           </div>
         </template>
 
@@ -176,8 +176,8 @@
 
         <v-text-field
           v-model="newPrompt.name"
-          label="Name"
-          placeholder="z. B. Interview-Leitfaden"
+          :label="$t('promptEngineering.dialogs.nameLabel')"
+          :placeholder="$t('promptEngineering.dialogs.namePlaceholder')"
           prepend-inner-icon="mdi-file-document-outline"
           variant="outlined"
           density="comfortable"
@@ -188,7 +188,7 @@
         <!-- User invite section -->
         <div class="section-label mt-4">
           <LIcon size="16" class="mr-1">mdi-account-multiple-plus</LIcon>
-          Mit Nutzern teilen (optional)
+          {{ $t('promptEngineering.dialogs.shareLabel') }}
         </div>
         <div v-if="selectedUsers.length > 0" class="invited-users mb-2">
           <LTag
@@ -204,20 +204,20 @@
         <LUserSearch
           ref="userSearchRef"
           :exclude-usernames="selectedUsers"
-          placeholder="Nutzernamen eingeben..."
+          :placeholder="$t('promptEngineering.dialogs.sharePlaceholder')"
           @select="handleUserSelect"
         />
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="closeCreateDialog">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="closeCreateDialog">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             variant="primary"
             :loading="creating"
             :disabled="!newPrompt.name?.trim()"
             @click="savePrompt"
           >
-            Erstellen
+            {{ $t('promptEngineering.actions.create') }}
           </LBtn>
         </template>
       </LCard>
@@ -229,15 +229,15 @@
         <template #header>
           <div class="d-flex align-center w-100">
             <LIcon class="mr-2">mdi-rename-box</LIcon>
-            <span class="text-h6">Prompt umbenennen</span>
+            <span class="text-h6">{{ $t('promptEngineering.dialogs.renameTitle') }}</span>
             <v-spacer />
-            <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="closeRenameDialog" />
+            <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="closeRenameDialog" />
           </div>
         </template>
 
         <v-text-field
           v-model="renamePromptName"
-          label="Neuer Name"
+          :label="$t('promptEngineering.dialogs.renameLabel')"
           variant="outlined"
           density="comfortable"
           autofocus
@@ -246,9 +246,9 @@
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="closeRenameDialog">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="closeRenameDialog">{{ $t('common.cancel') }}</LBtn>
           <LBtn variant="primary" :disabled="!renamePromptName?.trim()" @click="renamePrompt">
-            Speichern
+            {{ $t('common.save') }}
           </LBtn>
         </template>
       </LCard>
@@ -260,21 +260,23 @@
         <template #header>
           <div class="d-flex align-center w-100">
             <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
-            <span class="text-h6">Prompt löschen</span>
+            <span class="text-h6">{{ $t('promptEngineering.dialogs.deleteTitle') }}</span>
           </div>
         </template>
 
-        <p class="text-body-1">
-          Möchten Sie <strong>{{ selectedPrompt?.name }}</strong> wirklich löschen?
-        </p>
+        <i18n-t keypath="promptEngineering.dialogs.deleteConfirm" tag="p" class="text-body-1">
+          <template #name>
+            <strong>{{ selectedPrompt?.name }}</strong>
+          </template>
+        </i18n-t>
         <p class="text-body-2 text-medium-emphasis">
-          Diese Aktion kann nicht rückgängig gemacht werden.
+          {{ $t('promptEngineering.dialogs.deleteHint') }}
         </p>
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="closeDeleteDialog">Abbrechen</LBtn>
-          <LBtn variant="danger" @click="confirmDeletePrompt">Löschen</LBtn>
+          <LBtn variant="cancel" @click="closeDeleteDialog">{{ $t('common.cancel') }}</LBtn>
+          <LBtn variant="danger" @click="confirmDeletePrompt">{{ $t('common.delete') }}</LBtn>
         </template>
       </LCard>
     </v-dialog>
@@ -284,13 +286,15 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { getSocket } from '@/services/socketService';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { useMobile } from '@/composables/useMobile';
-import { formatRelativeDate, getDiceBearUrl } from '@/utils/userUtils';
+import { getDiceBearUrl } from '@/utils/userUtils';
 
 const router = useRouter();
+const { t, locale } = useI18n();
 const { isLoading, withLoading } = useSkeletonLoading(['prompts', 'sharedPrompts']);
 const { isMobile, isTablet } = useMobile();
 
@@ -322,13 +326,30 @@ let currentUserId = null;
 
 function formatDate(dateString) {
   if (!dateString) return '—';
-  return new Date(dateString).toLocaleString('de-DE', {
+  return new Date(dateString).toLocaleString(locale.value, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
   });
+}
+
+function formatRelativeDateLocalized(isoDate) {
+  if (!isoDate) return '';
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short' }).format(date);
+  }
+  if (diffDays === 0) return t('promptEngineering.relative.today');
+  if (diffDays === 1) return t('promptEngineering.relative.yesterday');
+  if (diffDays < 7) return t('promptEngineering.relative.daysAgo', { count: diffDays });
+  if (diffDays < 30) return t('promptEngineering.relative.weeksAgo', { count: Math.floor(diffDays / 7) });
+  return new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short' }).format(date);
 }
 
 async function fetchPrompts() {
@@ -433,9 +454,9 @@ async function savePrompt() {
   } catch (error) {
     console.error('Fehler beim Speichern des Prompts:', error);
     if (error.response?.status === 409) {
-      createError.value = `Ein Prompt mit dem Namen "${newPrompt.value.name}" existiert bereits.`;
+      createError.value = t('promptEngineering.errors.duplicateName', { name: newPrompt.value.name });
     } else {
-      createError.value = error.response?.data?.error || error.message || 'Fehler beim Speichern';
+      createError.value = error.response?.data?.error || t('promptEngineering.errors.createFallback');
     }
   } finally {
     creating.value = false;

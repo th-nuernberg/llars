@@ -26,12 +26,12 @@
         <v-list density="compact" class="pa-2">
           <v-list-item
             prepend-icon="mdi-home"
-            title="Startseite"
+            :title="$t('markdownCollab.workspace.nav.home')"
             @click="router.push('/Home')"
           />
           <v-list-item
             prepend-icon="mdi-folder-multiple"
-            title="Alle Workspaces"
+            :title="$t('markdownCollab.workspace.nav.workspaces')"
             @click="router.push('/MarkdownCollab')"
           />
         </v-list>
@@ -47,14 +47,14 @@
     >
       <!-- Collapsed State -->
       <div v-if="treeCollapsed" class="tree-collapsed" @click="treeCollapsed = false">
-        <div class="collapsed-bar">
-          <div class="collapsed-icon-box">
-            <LIcon size="18">mdi-file-tree</LIcon>
+          <div class="collapsed-bar">
+            <div class="collapsed-icon-box">
+              <LIcon size="18">mdi-file-tree</LIcon>
+            </div>
+            <span class="collapsed-label">{{ $t('markdownCollab.workspace.tree.files') }}</span>
+            <v-spacer />
+            <LIcon size="18" class="expand-icon">mdi-chevron-right</LIcon>
           </div>
-          <span class="collapsed-label">Dateien</span>
-          <v-spacer />
-          <LIcon size="18" class="expand-icon">mdi-chevron-right</LIcon>
-        </div>
       </div>
 
       <!-- Expanded State -->
@@ -77,7 +77,7 @@
               icon
               variant="text"
               size="small"
-              title="Einklappen"
+              :title="$t('markdownCollab.workspace.tree.collapse')"
               @click.stop="treeCollapsed = true"
             >
               <LIcon size="18">mdi-chevron-left</LIcon>
@@ -117,16 +117,16 @@
             variant="text"
             size="small"
             class="header-back-btn"
-            title="Zurück zu den Workspaces"
+            :title="$t('markdownCollab.workspace.actions.backToWorkspaces')"
             @click="router.push('/MarkdownCollab')"
           >
             <LIcon size="18">mdi-arrow-left</LIcon>
-            <span v-if="!isMobile" class="header-back-label">Workspaces</span>
+            <span v-if="!isMobile" class="header-back-label">{{ $t('markdownCollab.workspace.nav.workspaces') }}</span>
           </v-btn>
           <LIcon v-if="!isMobile" size="20" color="primary" class="mr-2">llars:markdown-collab</LIcon>
           <div class="header-info">
-            <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
-            <div class="header-subtitle">{{ workspace?.name || `Workspace #${workspaceId}` }}</div>
+            <div class="header-title">{{ selectedNode?.title || $t('markdownCollab.workspace.empty.noDocument') }}</div>
+            <div class="header-subtitle">{{ workspace?.name || $t('markdownCollab.workspace.fallbackName', { id: workspaceId }) }}</div>
           </div>
         </div>
 
@@ -136,7 +136,7 @@
             icon
             variant="text"
             size="small"
-            title="Workspace teilen"
+            :title="$t('markdownCollab.share.title')"
             @click="openShareDialog"
           >
             <LIcon size="20">mdi-account-multiple-plus</LIcon>
@@ -146,7 +146,7 @@
             <button
               class="mode-btn"
               :class="{ active: viewMode === 'editor' }"
-              title="Editor"
+              :title="$t('markdownCollab.workspace.view.editor')"
               @click="viewMode = 'editor'"
             >
               <LIcon size="18">mdi-pencil</LIcon>
@@ -154,7 +154,7 @@
             <button
               class="mode-btn"
               :class="{ active: viewMode === 'split' }"
-              title="Split"
+              :title="$t('markdownCollab.workspace.view.split')"
               @click="viewMode = 'split'"
             >
               <LIcon size="18">mdi-view-split-vertical</LIcon>
@@ -162,7 +162,7 @@
             <button
               class="mode-btn"
               :class="{ active: viewMode === 'preview' }"
-              title="Preview"
+              :title="$t('markdownCollab.workspace.view.preview')"
               @click="viewMode = 'preview'"
             >
               <LIcon size="18">mdi-eye-outline</LIcon>
@@ -184,20 +184,24 @@
         <v-alert
           v-if="!hasPermission('feature:markdown_collab:view')"
           type="warning"
-          variant="tonal"
-          class="ma-4"
-        >
-          Dir fehlt die Berechtigung <code>feature:markdown_collab:view</code>.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        <i18n-t keypath="markdownCollab.permissions.missing" tag="span">
+          <template #permission>
+            <code>feature:markdown_collab:view</code>
+          </template>
+        </i18n-t>
+      </v-alert>
 
         <v-alert
           v-else-if="!selectedNode || selectedNode.type !== 'file'"
           type="info"
-          variant="tonal"
-          class="ma-4"
-        >
-          Wähle links eine Markdown-Datei aus, um sie zu bearbeiten.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        {{ $t('markdownCollab.workspace.empty.selectFile') }}
+      </v-alert>
 
         <template v-else>
           <div class="editor-layout">
@@ -258,11 +262,11 @@
         <v-card-title class="share-header">
           <LIcon class="mr-2" color="primary">mdi-account-multiple-plus</LIcon>
           <div>
-            <div>Workspace teilen</div>
+            <div>{{ $t('markdownCollab.share.title') }}</div>
             <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
           </div>
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="shareDialog = false" />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="shareDialog = false" />
         </v-card-title>
 
         <v-divider />
@@ -273,30 +277,30 @@
           </v-alert>
 
           <!-- Owner Section -->
-          <div class="section-label">Owner</div>
+          <div class="section-label">{{ $t('markdownCollab.share.ownerLabel') }}</div>
           <div class="user-card owner-card">
             <img class="user-avatar" :src="getAvatarUrl(ownerInfo)" alt="" />
             <div class="user-info">
               <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
               <div class="user-meta">@{{ ownerInfo.username }}</div>
             </div>
-            <LTag variant="primary" size="small">Owner</LTag>
+            <LTag variant="primary" size="small">{{ $t('markdownCollab.share.ownerTag') }}</LTag>
           </div>
 
           <!-- Search Section -->
-          <div class="section-label mt-4">Nutzer einladen</div>
+          <div class="section-label mt-4">{{ $t('markdownCollab.share.inviteLabel') }}</div>
           <LUserSearch
             ref="userSearchRef"
             v-model="selectedUser"
             :exclude-usernames="excludedUsernames"
             :show-add-button="true"
-            add-button-text="Hinzufügen"
+            :add-button-text="$t('markdownCollab.share.addButton')"
             @add="inviteMember"
           />
 
           <!-- Members Section -->
           <div class="section-label mt-4">
-            Mitglieder
+            {{ $t('markdownCollab.share.members') }}
             <span v-if="members.length" class="member-count">{{ members.length }}</span>
           </div>
 
@@ -304,7 +308,7 @@
 
           <div v-else-if="members.length === 0" class="empty-members">
             <LIcon size="28" color="grey-lighten-1">mdi-account-group-outline</LIcon>
-            <span>Noch keine Mitglieder</span>
+            <span>{{ $t('markdownCollab.share.emptyMembers') }}</span>
           </div>
 
           <div v-else class="members-list">
@@ -337,6 +341,7 @@
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
@@ -352,6 +357,7 @@ import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/use
 
 const route = useRoute()
 const router = useRouter()
+const { t, locale } = useI18n()
 
 const { hasPermission, fetchPermissions, username: currentUsername, isAdmin } = usePermissions()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'document'])
@@ -616,7 +622,7 @@ function authHeaders() {
 function formatDate(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(locale.value || undefined)
   } catch {
     return iso
   }
@@ -640,7 +646,7 @@ async function loadMembers() {
     }
   } catch (e) {
     members.value = []
-    shareError.value = e?.response?.data?.error || e?.message || 'Mitglieder konnten nicht geladen werden'
+    shareError.value = e?.response?.data?.error || e?.message || t('markdownCollab.errors.membersLoadFailed')
   } finally {
     membersLoading.value = false
   }
@@ -668,7 +674,7 @@ async function inviteMember(user) {
     userSearchRef.value?.reset?.()
     await loadMembers()
   } catch (e) {
-    shareError.value = e?.response?.data?.error || e?.message || 'Einladung fehlgeschlagen'
+    shareError.value = e?.response?.data?.error || e?.message || t('markdownCollab.errors.inviteFailed')
     userSearchRef.value?.setAdding?.(false)
   }
 }
@@ -683,7 +689,7 @@ async function removeMember(username) {
     })
     await loadMembers()
   } catch (e) {
-    shareError.value = e?.response?.data?.error || e?.message || 'Entfernen fehlgeschlagen'
+    shareError.value = e?.response?.data?.error || e?.message || t('markdownCollab.errors.removeFailed')
   } finally {
     removingUsername.value = ''
   }

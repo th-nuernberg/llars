@@ -487,3 +487,38 @@ def get_campaign_analytics(campaign_id: int):
         'success': True,
         'data': stats
     })
+
+
+@referral_bp.route('/admin/registrations', methods=['GET'])
+@authentik_required
+@require_permission('admin:referral:manage')
+@handle_api_errors(logger_name='referral')
+def list_registrations():
+    """
+    List all referral registrations.
+
+    Query params:
+        campaign_id: Filter by campaign (optional)
+        link_id: Filter by link (optional)
+        limit: Max results (default 50)
+        offset: Offset for pagination
+    """
+    campaign_id = request.args.get('campaign_id', type=int)
+    link_id = request.args.get('link_id', type=int)
+    limit = request.args.get('limit', 50, type=int)
+    offset = request.args.get('offset', 0, type=int)
+
+    registrations, total = ReferralService.list_registrations(
+        campaign_id=campaign_id,
+        link_id=link_id,
+        limit=min(limit, 100),  # Max 100 per request
+        offset=offset
+    )
+
+    return jsonify({
+        'success': True,
+        'registrations': registrations,
+        'total': total,
+        'limit': limit,
+        'offset': offset
+    })

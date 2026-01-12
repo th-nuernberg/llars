@@ -9,7 +9,8 @@
  * @module LatexCollabAI/composables/useAIEditor
  */
 
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import aiWritingService from '@/services/aiWritingService'
 
 // Import shared constants from LatexEditorPane module
@@ -23,40 +24,42 @@ import {
 // Re-export for consumers of this composable
 export { AI_COLLAB_COLOR, AI_COLLAB_USERNAME }
 
-/**
- * Extended AI commands with additional description field for UI display.
- * Based on AI_COMMAND_COMPLETIONS from LatexEditorPane/constants.js
- * with enhanced metadata for command palette and help dialogs.
- *
- * @constant {Array<Object>}
- */
-const AI_COMMANDS = AI_COMMAND_COMPLETIONS.map(cmd => ({
-  ...cmd,
-  type: 'ai',
-  description: getCommandDescription(cmd.label)
-}))
-
-/**
- * Get human-readable description for AI command
- * @param {string} label - Command label (e.g., '@ai', '@rewrite')
- * @returns {string} Description text
- */
-function getCommandDescription(label) {
-  const descriptions = {
-    '@ai': 'Stelle eine beliebige Frage oder gib eine Anweisung',
-    '@rewrite': 'Formuliert den markierten Text wissenschaftlicher',
-    '@expand': 'Erweitert den markierten Text mit mehr Details',
-    '@summarize': 'Fasst den markierten Text zusammen',
-    '@fix': 'Korrigiert LaTeX- und Grammatikfehler',
-    '@translate': 'Übersetzt den Text (z.B. @translate en)',
-    '@cite': 'Sucht passende Quellen für die Aussage',
-    '@abstract': 'Generiert ein Abstract für das Dokument',
-    '@titles': 'Schlägt Titel für das Dokument vor'
-  }
-  return descriptions[label] || ''
-}
-
 export function useAIEditor() {
+  const { t } = useI18n()
+
+  const aiCommandInfo = computed(() => ({
+    '@ai': t('latexCollab.aiCommands.ai'),
+    '@rewrite': t('latexCollab.aiCommands.rewrite'),
+    '@expand': t('latexCollab.aiCommands.expand'),
+    '@summarize': t('latexCollab.aiCommands.summarize'),
+    '@fix': t('latexCollab.aiCommands.fix'),
+    '@translate': t('latexCollab.aiCommands.translate'),
+    '@cite': t('latexCollab.aiCommands.cite'),
+    '@abstract': t('latexCollab.aiCommands.abstract'),
+    '@titles': t('latexCollab.aiCommands.titles')
+  }))
+
+  const aiCommandDescriptions = computed(() => ({
+    '@ai': t('latexCollabAi.commandDescriptions.ai'),
+    '@rewrite': t('latexCollabAi.commandDescriptions.rewrite'),
+    '@expand': t('latexCollabAi.commandDescriptions.expand'),
+    '@summarize': t('latexCollabAi.commandDescriptions.summarize'),
+    '@fix': t('latexCollabAi.commandDescriptions.fix'),
+    '@translate': t('latexCollabAi.commandDescriptions.translate'),
+    '@cite': t('latexCollabAi.commandDescriptions.cite'),
+    '@abstract': t('latexCollabAi.commandDescriptions.abstract'),
+    '@titles': t('latexCollabAi.commandDescriptions.titles')
+  }))
+
+  const aiCommands = computed(() => (
+    AI_COMMAND_COMPLETIONS.map(cmd => ({
+      ...cmd,
+      type: 'ai',
+      info: aiCommandInfo.value[cmd.label] || cmd.info,
+      description: aiCommandDescriptions.value[cmd.label] || ''
+    }))
+  ))
+
   // State
   const isProcessing = ref(false)
   const lastError = ref(null)
@@ -81,7 +84,7 @@ export function useAIEditor() {
 
     return {
       from: word.from,
-      options: AI_COMMANDS.map(cmd => ({
+      options: aiCommands.value.map(cmd => ({
         label: cmd.label,
         type: 'text',
         info: cmd.info,
@@ -136,7 +139,7 @@ export function useAIEditor() {
 
       return result
     } catch (e) {
-      lastError.value = e.message || 'Fehler bei der KI-Verarbeitung'
+      lastError.value = e.message || t('latexCollabAi.errors.processingFailed')
       throw e
     } finally {
       isProcessing.value = false
@@ -333,7 +336,7 @@ export function useAIEditor() {
     completionDelay,
 
     // Constants
-    AI_COMMANDS,
+    AI_COMMANDS: aiCommands.value,
     AI_COLLAB_COLOR,
     AI_COLLAB_USERNAME,
 

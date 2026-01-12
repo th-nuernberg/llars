@@ -33,6 +33,7 @@ import LAvatar from '@/components/common/LAvatar.vue'
 import LChart from '@/components/common/LChart.vue'
 import LGauge from '@/components/common/LGauge.vue'
 import LThemeToggle from '@/components/common/LThemeToggle.vue'
+import LLanguageToggle from '@/components/common/LLanguageToggle.vue'
 import LEvaluationLayout from '@/components/common/LEvaluationLayout.vue'
 import LEvaluationStatus from '@/components/common/LEvaluationStatus.vue'
 import LMessage from '@/components/common/LMessage.vue'
@@ -42,6 +43,8 @@ import LLoading from '@/components/common/LLoading.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
+import { initLanguage } from '@/composables/useLanguage'
+import i18n from '@/i18n'
 
 // Composables
 import { createApp } from 'vue'
@@ -54,6 +57,12 @@ registerPlugins(app)
 // Initialize theme early (before mount, after Vuetify is ready)
 // This ensures the correct theme is applied immediately
 initAppTheme(vuetify)
+
+// Initialize language (sets HTML lang attribute)
+initLanguage()
+
+// Register i18n for translations
+app.use(i18n)
 
 // Register global LLARS components
 app.component('LBtn', LBtn)
@@ -73,6 +82,7 @@ app.component('LAvatar', LAvatar)
 app.component('LChart', LChart)
 app.component('LGauge', LGauge)
 app.component('LThemeToggle', LThemeToggle)
+app.component('LLanguageToggle', LLanguageToggle)
 app.component('LEvaluationLayout', LEvaluationLayout)
 app.component('LEvaluationStatus', LEvaluationStatus)
 app.component('LMessage', LMessage)

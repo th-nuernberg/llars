@@ -11,7 +11,7 @@
         class="expand-btn"
         type="button"
         @click.stop="$emit('toggle', node.id)"
-        :title="isExpanded ? 'Einklappen' : 'Ausklappen'"
+        :title="isExpanded ? $t('markdownCollab.tree.actions.collapse') : $t('markdownCollab.tree.actions.expand')"
       >
         <LIcon size="18" class="text-medium-emphasis">
           {{ isExpanded ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
@@ -32,7 +32,7 @@
         variant="tonal"
         color="teal"
         class="ml-1 zotero-badge"
-        title="Diese Datei wird von Zotero verwaltet und ist schreibgeschützt"
+        :title="$t('markdownCollab.tree.zoteroReadonly')"
       >
         <LIcon size="12" start>mdi-book-open-variant</LIcon>
         Zotero
@@ -47,7 +47,7 @@
           size="x-small"
           variant="text"
           icon="mdi-file-document-plus-outline"
-          title="Neue Datei"
+          :title="$t('markdownCollab.tree.actions.newFile')"
           @click="$emit('create', { parentId: node.id, type: 'file' })"
         />
         <v-btn
@@ -55,21 +55,21 @@
           size="x-small"
           variant="text"
           icon="mdi-folder-plus-outline"
-          title="Neuer Ordner"
+          :title="$t('markdownCollab.tree.actions.newFolder')"
           @click="$emit('create', { parentId: node.id, type: 'folder' })"
         />
         <v-btn
           size="x-small"
           variant="text"
           icon="mdi-rename-box"
-          title="Umbenennen"
+          :title="$t('markdownCollab.tree.actions.rename')"
           @click="$emit('rename', node)"
         />
         <v-btn
           size="x-small"
           variant="text"
           icon="mdi-delete-outline"
-          title="Löschen"
+          :title="$t('markdownCollab.tree.actions.delete')"
           @click="$emit('remove', node)"
         />
       </div>
@@ -85,9 +85,9 @@
         :animation="150"
         @change="(evt) => emitMove(evt, node.id)"
       >
-        <template #item="{ element }">
+          <template #item="{ element }">
           <div class="drag-wrapper">
-            <span class="drag-handle" title="Ziehen">
+            <span class="drag-handle" :title="$t('markdownCollab.tree.actions.drag')">
               <LIcon size="14" class="text-medium-emphasis">mdi-drag</LIcon>
             </span>
             <MarkdownTreeNode

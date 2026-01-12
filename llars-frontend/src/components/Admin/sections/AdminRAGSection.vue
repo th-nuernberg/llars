@@ -1,7 +1,7 @@
 <template>
   <div class="admin-rag">
     <!-- Stats Cards -->
-    <v-row class="mb-4">
+    <v-row class="mb-4 flex-grow-0 flex-shrink-0">
       <v-col cols="6" md="3">
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="primary">
@@ -53,9 +53,9 @@
     </v-row>
 
     <!-- Embedding Model Info Card -->
-    <v-skeleton-loader v-if="isLoading('embedding')" type="card" height="250" class="mb-4" />
-    <v-card v-else class="mb-4" variant="outlined">
-      <v-card-title class="d-flex align-center">
+    <v-skeleton-loader v-if="isLoading('embedding')" type="card" height="120" class="mb-4 flex-grow-0 flex-shrink-0" />
+    <v-card v-else class="mb-4 flex-grow-0 flex-shrink-0" variant="outlined">
+      <v-card-title class="d-flex align-center py-2">
         <LIcon start color="primary">mdi-brain</LIcon>
         Embedding Model
         <v-spacer></v-spacer>
@@ -67,36 +67,29 @@
           {{ embeddingInfo.is_primary ? 'LiteLLM Proxy' : 'Fallback (Local)' }}
         </v-chip>
       </v-card-title>
-      <v-card-text>
-        <v-row>
+      <v-card-text class="py-2">
+        <v-row dense>
           <v-col cols="12" md="6">
-            <v-list density="compact" class="bg-transparent">
-              <v-list-item>
+            <v-list density="compact" class="bg-transparent py-0">
+              <v-list-item density="compact" class="px-0">
                 <template v-slot:prepend>
                   <LIcon color="primary" size="small">mdi-cube-outline</LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">Aktives Model</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.model_name }}</v-list-item-subtitle>
               </v-list-item>
-              <v-list-item>
+              <v-list-item density="compact" class="px-0">
                 <template v-slot:prepend>
                   <LIcon color="primary" size="small">mdi-vector-line</LIcon>
                 </template>
                 <v-list-item-title class="text-caption text-medium-emphasis">Dimensionen</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.dimensions }}</v-list-item-subtitle>
               </v-list-item>
-              <v-list-item>
-                <template v-slot:prepend>
-                  <LIcon color="primary" size="small">mdi-server</LIcon>
-                </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Model Typ</v-list-item-title>
-                <v-list-item-subtitle class="font-weight-bold text-uppercase">{{ embeddingInfo.model_type }}</v-list-item-subtitle>
-              </v-list-item>
             </v-list>
           </v-col>
           <v-col cols="12" md="6">
-            <v-list density="compact" class="bg-transparent">
-              <v-list-item>
+            <v-list density="compact" class="bg-transparent py-0">
+              <v-list-item density="compact" class="px-0">
                 <template v-slot:prepend>
                   <LIcon :color="embeddingInfo.litellm_configured ? 'success' : 'warning'" size="small">
                     {{ embeddingInfo.litellm_configured ? 'mdi-check-circle' : 'mdi-alert-circle' }}
@@ -107,7 +100,7 @@
                   {{ embeddingInfo.litellm_configured ? 'Konfiguriert' : 'Nicht konfiguriert' }}
                 </v-list-item-subtitle>
               </v-list-item>
-              <v-list-item v-if="embeddingInfo.litellm_configured">
+              <v-list-item v-if="embeddingInfo.litellm_configured" density="compact" class="px-0">
                 <template v-slot:prepend>
                   <LIcon color="primary" size="small">mdi-link</LIcon>
                 </template>
@@ -116,42 +109,14 @@
                   {{ embeddingInfo.litellm_base_url }}
                 </v-list-item-subtitle>
               </v-list-item>
-              <v-list-item>
-                <template v-slot:prepend>
-                  <LIcon color="primary" size="small">mdi-swap-horizontal</LIcon>
-                </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Fallback Model</v-list-item-title>
-                <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.fallback_model }}</v-list-item-subtitle>
-              </v-list-item>
             </v-list>
           </v-col>
         </v-row>
-        <v-divider class="my-2"></v-divider>
-        <v-row>
-          <v-col cols="12">
-            <div class="d-flex align-center">
-              <LIcon size="small" color="grey" class="mr-2">mdi-folder-open</LIcon>
-              <span class="text-caption text-medium-emphasis mr-2">Collection:</span>
-              <code class="text-caption">{{ embeddingInfo.collection_name }}</code>
-            </div>
-          </v-col>
-        </v-row>
       </v-card-text>
-      <v-card-actions>
-        <LBtn
-          variant="text"
-          size="small"
-          @click="fetchEmbeddingInfo"
-          :loading="loadingEmbeddingInfo"
-          prepend-icon="mdi-refresh"
-        >
-          Aktualisieren
-        </LBtn>
-      </v-card-actions>
     </v-card>
 
     <!-- Tabs for Documents and Upload -->
-    <v-card>
+    <v-card class="tabs-card">
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="documents">
           <LIcon start>mdi-file-document</LIcon>
@@ -239,21 +204,18 @@
               <template v-slot:item.actions="{ item }">
                 <LIconBtn
                   icon="mdi-eye"
-                  variant="text"
                   tooltip="Ansehen"
                   class="mr-1"
                   @click.stop="openDocumentViewer(item)"
                 />
                 <LIconBtn
                   icon="mdi-information-outline"
-                  variant="text"
                   tooltip="Details"
                   class="mr-1"
                   @click.stop="openDocumentPreview(item)"
                 />
                 <LIconBtn
                   icon="mdi-download"
-                  variant="text"
                   tooltip="Herunterladen"
                   class="mr-1"
                   @click.stop="downloadDocument(item)"
@@ -702,21 +664,18 @@
               <template v-slot:item.actions="{ item }">
                 <LIconBtn
                   icon="mdi-eye"
-                  variant="text"
                   tooltip="Ansehen"
                   class="mr-1"
                   @click.stop="openFilePreview(item)"
                 />
                 <LIconBtn
                   icon="mdi-information-outline"
-                  variant="text"
                   tooltip="Details"
                   class="mr-1"
                   @click.stop="openDocumentPreview(item)"
                 />
                 <LIconBtn
                   icon="mdi-download"
-                  variant="text"
                   tooltip="Herunterladen"
                   @click.stop="downloadDocument(item)"
                 />
@@ -1203,6 +1162,49 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Root container fills viewport */
+.admin-rag {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Tabs card fills remaining space */
+.tabs-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tabs stay fixed */
+.tabs-card :deep(.v-tabs) {
+  flex-shrink: 0;
+}
+
+/* Window fills remaining card space */
+.tabs-card :deep(.v-window) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tabs-card :deep(.v-window__container) {
+  height: 100%;
+}
+
+.tabs-card :deep(.v-window-item) {
+  height: 100%;
+}
+
+/* Card text scrolls */
+.tabs-card :deep(.v-window-item > .v-card-text) {
+  height: 100%;
+  overflow-y: auto;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }

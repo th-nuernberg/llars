@@ -173,25 +173,42 @@ const props = defineProps({
   promptId: {
     type: [String, Number],
     default: null
+  },
+  // Collaborative variables from parent (synced via Yjs)
+  variables: {
+    type: Array,
+    default: () => []
+  },
+  createVariable: {
+    type: Function,
+    default: null
+  },
+  updateVariable: {
+    type: Function,
+    default: null
+  },
+  deleteVariable: {
+    type: Function,
+    default: null
+  },
+  isValidName: {
+    type: Function,
+    default: null
+  },
+  variableExists: {
+    type: Function,
+    default: null
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'variablesChanged'])
+const emit = defineEmits(['update:modelValue'])
 const { t } = useI18n()
 
 // Template helpers to avoid Vue parsing issues with braces
 const openBraces = '{{'
 const closeBraces = '}}'
 
-// Storage key
-const STORAGE_KEY = 'llars_prompt_variables_simple'
-
-const getStorageKey = () => {
-  return props.promptId ? `${STORAGE_KEY}_${props.promptId}` : STORAGE_KEY
-}
-
 // State
-const variablesList = ref([])
 const newVarName = ref('')
 const newVarContent = ref('')
 const nameError = ref('')
@@ -199,18 +216,18 @@ const editingVar = ref(null)
 const editContent = ref('')
 const contentInput = ref(null)
 
-// Validation
-const VALID_NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/
-const INVALID_NAMES = new Set([
-  'undefined', 'null', 'true', 'false', 'NaN', 'Infinity'
-])
+// Use the collaborative variables from props
+const variablesList = computed(() => props.variables)
 
+// Validation using collaborative methods
 const canCreate = computed(() => {
   const name = newVarName.value.trim()
   if (!name) return false
-  if (!VALID_NAME_REGEX.test(name)) return false
-  if (INVALID_NAMES.has(name)) return false
-  if (variablesList.value.some(v => v.name === name)) return false
+
+  // Use collaborative validation if available
+  if (props.isValidName && !props.isValidName(name)) return false
+  if (props.variableExists && props.variableExists(name)) return false
+
   return true
 })
 
@@ -229,37 +246,7 @@ const focusContent = () => {
   })
 }
 
-// Storage
-const loadFromStorage = () => {
-  try {
-    const stored = localStorage.getItem(getStorageKey())
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed)) {
-        variablesList.value = parsed.filter(v =>
-          v && typeof v === 'object' &&
-          v.name && typeof v.name === 'string' &&
-          VALID_NAME_REGEX.test(v.name) &&
-          !INVALID_NAMES.has(v.name)
-        )
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to load variables:', e)
-    variablesList.value = []
-  }
-}
-
-const saveToStorage = () => {
-  try {
-    localStorage.setItem(getStorageKey(), JSON.stringify(variablesList.value))
-    emit('variablesChanged', variablesList.value)
-  } catch (e) {
-    console.warn('Failed to save variables:', e)
-  }
-}
-
-// Actions
+// Actions using collaborative methods
 const handleCreate = () => {
   const name = newVarName.value.trim()
   const content = newVarContent.value
@@ -269,28 +256,33 @@ const handleCreate = () => {
     return
   }
 
-  if (!VALID_NAME_REGEX.test(name)) {
+  // Use collaborative validation
+  if (props.isValidName && !props.isValidName(name)) {
     nameError.value = t('promptEngineering.variables.errorInvalidName')
     return
   }
 
-  if (INVALID_NAMES.has(name)) {
-    nameError.value = t('promptEngineering.variables.errorReservedName')
-    return
-  }
-
-  if (variablesList.value.some(v => v.name === name)) {
+  if (props.variableExists && props.variableExists(name)) {
     nameError.value = t('promptEngineering.variables.errorNameExists')
     return
   }
 
-  variablesList.value.push({
-    name,
-    content,
-    createdAt: new Date().toISOString()
-  })
-
-  saveToStorage()
+  // Use collaborative create
+  if (props.createVariable) {
+    const result = props.createVariable(name, content)
+    if (!result.success) {
+      if (result.error === 'nameExists') {
+        nameError.value = t('promptEngineering.variables.errorNameExists')
+      } else if (result.error === 'invalidName') {
+        nameError.value = t('promptEngineering.variables.errorInvalidName')
+      } else if (result.error === 'reservedName') {
+        nameError.value = t('promptEngineering.variables.errorReservedName')
+      } else {
+        nameError.value = t('promptEngineering.variables.errorCreateFailed')
+      }
+      return
+    }
+  }
 
   // Reset form
   newVarName.value = ''
@@ -299,8 +291,9 @@ const handleCreate = () => {
 }
 
 const handleDelete = (name) => {
-  variablesList.value = variablesList.value.filter(v => v.name !== name)
-  saveToStorage()
+  if (props.deleteVariable) {
+    props.deleteVariable(name)
+  }
 }
 
 const startEdit = (variable) => {
@@ -309,14 +302,8 @@ const startEdit = (variable) => {
 }
 
 const saveEdit = (name) => {
-  const index = variablesList.value.findIndex(v => v.name === name)
-  if (index !== -1) {
-    variablesList.value[index] = {
-      ...variablesList.value[index],
-      content: editContent.value,
-      updatedAt: new Date().toISOString()
-    }
-    saveToStorage()
+  if (props.updateVariable) {
+    props.updateVariable(name, editContent.value)
   }
   cancelEdit()
 }
@@ -327,25 +314,18 @@ const cancelEdit = () => {
 }
 
 const closeDialog = () => {
+  cancelEdit()
   emit('update:modelValue', false)
 }
 
-// Watch for dialog open
+// Reset form when dialog opens
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
-    loadFromStorage()
+    newVarName.value = ''
+    newVarContent.value = ''
+    nameError.value = ''
+    cancelEdit()
   }
-})
-
-// Watch for promptId changes
-watch(() => props.promptId, () => {
-  loadFromStorage()
-})
-
-// Expose for parent
-defineExpose({
-  variablesList,
-  loadFromStorage
 })
 </script>
 

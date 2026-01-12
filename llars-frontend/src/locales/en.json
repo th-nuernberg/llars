@@ -416,7 +416,11 @@
       "errorInvalidName": "Only letters, numbers, and underscores allowed",
       "errorReservedName": "This name is reserved",
       "errorNameExists": "Variable already exists",
-      "manageVariables": "Manage Variables"
+      "errorCreateFailed": "Failed to create variable",
+      "manageVariables": "Manage Variables",
+      "created": "Variable \"{name}\" created",
+      "updated": "Variable \"{name}\" updated",
+      "deleted": "Variable \"{name}\" deleted"
     },
     "messages": {
       "blockOrderUpdated": "Block order updated!",

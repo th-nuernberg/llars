@@ -276,6 +276,11 @@ const props = defineProps({
   promptId: {
     type: [String, Number],
     default: null
+  },
+  // Collaborative variables from parent (synced via Yjs)
+  variables: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -285,32 +290,13 @@ const { t } = useI18n()
 // Socket connection
 let socket = null
 
-// Storage keys
+// Storage keys for configuration (not variables)
 const STORAGE_KEY_MODEL = 'llars_test_prompt_model'
 const STORAGE_KEY_TEMP = 'llars_test_prompt_temperature'
 const STORAGE_KEY_TOKENS = 'llars_test_prompt_max_tokens'
-const VARIABLES_STORAGE_KEY = 'llars_prompt_variables_simple'
 
-// User variables loaded from VariableManagerDialog storage
-const userVariables = ref([])
-
-// Load user variables from localStorage
-const loadUserVariables = () => {
-  try {
-    const storageKey = props.promptId
-      ? `${VARIABLES_STORAGE_KEY}_${props.promptId}`
-      : VARIABLES_STORAGE_KEY
-    const stored = localStorage.getItem(storageKey)
-    if (stored) {
-      userVariables.value = JSON.parse(stored)
-    } else {
-      userVariables.value = []
-    }
-  } catch (e) {
-    console.warn('Failed to load user variables:', e)
-    userVariables.value = []
-  }
-}
+// Use collaborative variables from props
+const userVariables = computed(() => props.variables)
 
 // Extract variables from prompt text
 const VARIABLE_REGEX = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g
@@ -557,7 +543,6 @@ watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     promptCollapsed.value = true
     pendingRequest = false
-    loadUserVariables()
     initSocket()
     nextTick(() => {
       sendTestPrompt()
@@ -582,7 +567,6 @@ watch(maxTokens, (val) => {
 
 onMounted(() => {
   if (props.modelValue) {
-    loadUserVariables()
     initSocket()
   }
 })

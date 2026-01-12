@@ -1031,7 +1031,7 @@
       "clipboardCopyFailed": "Output konnte nicht in die Zwischenablage kopiert werden.",
       "uploadFailed": "Upload fehlgeschlagen"
     },
-    "exampleText": "Guten Tag Frau Müller,\\n\\nmein Name ist Anna Müller (34) und ich wohne in 8001 Zürich.\\nBitte kontaktieren Sie mich unter 079 123 45 67 oder via anna.mueller@example.ch.\\nMeine AHV-Nummer lautet 756.1234.5678.97.\\nDer Termin ist am 12.03.2024 um 14:30 Uhr bei der Universität Zürich.\\n\\nFreundliche Grüsse\\nAnna Müller"
+    "exampleText": "Guten Tag Frau Müller,\\n\\nmein Name ist Anna Müller (34) und ich wohne in 8001 Zürich.\\nBitte kontaktieren Sie mich unter 079 123 45 67 oder via anna.mueller{'@'}example.ch.\\nMeine AHV-Nummer lautet 756.1234.5678.97.\\nDer Termin ist am 12.03.2024 um 14:30 Uhr bei der Universität Zürich.\\n\\nFreundliche Grüsse\\nAnna Müller"
   },
   "chat": {
     "newChat": "Neuer Chat",

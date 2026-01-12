@@ -30,6 +30,10 @@ from .anonymize_entity_detection import (
     find_plz_de,
     find_svn,
     find_age,
+    find_iban,
+    find_url,
+    find_time,
+    find_street,
     find_dates,
     find_flair_ner,
     find_plz_from_loc,
@@ -226,6 +230,10 @@ class AnonymizeService:
             candidates.extend(find_plz(cleaned_text))  # Swiss PLZ near keyword
             candidates.extend(find_plz_de(cleaned_text))  # German PLZ (5 digits)
             candidates.extend(find_age(cleaned_text))  # Age detection
+            candidates.extend(find_iban(cleaned_text))  # IBAN detection
+            candidates.extend(find_url(cleaned_text))  # URL detection
+            candidates.extend(find_time(cleaned_text))  # Time detection
+            candidates.extend(find_street(cleaned_text))  # Street address detection
 
             parsed_dates = find_dates(cleaned_text)
             candidates.extend([occ for _, occ in parsed_dates])
@@ -413,6 +421,18 @@ class AnonymizeService:
                 elif label == "MAIL":
                     replacement = "▓▓▓▓@▓▓▓.▓▓▓"
                     mode = "auto"
+                elif label == "IBAN":
+                    replacement = "▓▓▓▓ ▓▓▓▓ ▓▓▓▓ ▓▓▓▓ ▓▓"
+                    mode = "auto"
+                elif label == "URL":
+                    replacement = "▓▓▓▓://▓▓▓.▓▓▓"
+                    mode = "auto"
+                elif label == "TIME":
+                    replacement = "▓▓:▓▓"
+                    mode = "auto"
+                elif label == "STREET":
+                    replacement = "▓▓▓straße ▓▓"
+                    mode = "auto"
                 else:
                     replacement = original
                     mode = "auto"
@@ -572,6 +592,10 @@ class AnonymizeService:
             candidates.extend(find_plz(cleaned_text))  # Swiss PLZ near keyword
             candidates.extend(find_plz_de(cleaned_text))  # German PLZ (5 digits)
             candidates.extend(find_age(cleaned_text))  # Age detection
+            candidates.extend(find_iban(cleaned_text))  # IBAN detection
+            candidates.extend(find_url(cleaned_text))  # URL detection
+            candidates.extend(find_time(cleaned_text))  # Time detection
+            candidates.extend(find_street(cleaned_text))  # Street address detection
 
             yield {"type": "progress", "step": "date_detection", "percent": 25, "message": "Detecting dates..."}
             parsed_dates = find_dates(cleaned_text)
@@ -763,6 +787,18 @@ class AnonymizeService:
                     mode = "auto"
                 elif label == "MAIL":
                     replacement = "▓▓▓▓@▓▓▓.▓▓▓"
+                    mode = "auto"
+                elif label == "IBAN":
+                    replacement = "▓▓▓▓ ▓▓▓▓ ▓▓▓▓ ▓▓▓▓ ▓▓"
+                    mode = "auto"
+                elif label == "URL":
+                    replacement = "▓▓▓▓://▓▓▓.▓▓▓"
+                    mode = "auto"
+                elif label == "TIME":
+                    replacement = "▓▓:▓▓"
+                    mode = "auto"
+                elif label == "STREET":
+                    replacement = "▓▓▓straße ▓▓"
                     mode = "auto"
                 else:
                     replacement = original

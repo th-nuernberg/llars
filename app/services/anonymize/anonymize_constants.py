@@ -124,6 +124,23 @@ SVN_PATTERN = re.compile(r"(?<!\d)\d{2}\s\d{6}\s[A-Z]\s\d{3}(?!\d)")
 # Age pattern - matches ages in parentheses like "(34)" or standalone like "34 Jahre"
 AGE_PATTERN = re.compile(r"\((\d{1,3})\)|\b(\d{1,3})\s*(?:Jahre?|J\.)\b", re.IGNORECASE)
 
+# IBAN - International Bank Account Number
+# Format: CC00 0000 0000 0000 0000 00 (varies by country, 15-34 chars)
+IBAN_PATTERN = re.compile(r"\b[A-Z]{2}\d{2}[\s]?(?:\d{4}[\s]?){2,7}\d{0,4}\b")
+
+# URL pattern - matches http/https URLs
+URL_PATTERN = re.compile(r"https?://[^\s<>\"'\)\]]+", re.IGNORECASE)
+
+# TIME pattern - matches times like "14:30", "14:30 Uhr", "14:30:00"
+TIME_PATTERN = re.compile(r"\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:Uhr)?\b", re.IGNORECASE)
+
+# STREET pattern - matches German/Swiss street addresses
+# e.g., "Musterstraße 123", "Hauptstr. 45a", "Am Markt 7"
+STREET_PATTERN = re.compile(
+    r"\b(?:[A-ZÄÖÜ][a-zäöüß]+(?:straße|strasse|str\.|gasse|weg|platz|allee|ring|damm|ufer|berg|tal|hof))\s*\d+\s*[a-zA-Z]?\b",
+    re.IGNORECASE
+)
+
 PHONE_PATTERNS = [
     # Swiss formats
     re.compile(r"(?<!\d)\d{3}\s\d{3}\s\d{2}\s\d{2}(?!\d)"),  # 079 123 45 67
@@ -141,10 +158,14 @@ ENTITY_PRIORITY = {
     "MAIL": 0,
     "AHV": 1,
     "SVN": 1,  # German social security number, same priority as AHV
+    "IBAN": 1,  # Bank account number - high priority
+    "URL": 2,
     "PHONE": 2,
     "PLZ": 3,
+    "TIME": 3,
     "DATE": 4,
     "AGE": 4,
+    "STREET": 5,
     "PER": 5,
     "LOC": 6,
     "ORG": 10,

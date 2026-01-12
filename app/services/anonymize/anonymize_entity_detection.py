@@ -22,6 +22,10 @@ from .anonymize_constants import (
     PLZ_PATTERN_DE,
     SVN_PATTERN,
     AGE_PATTERN,
+    IBAN_PATTERN,
+    URL_PATTERN,
+    TIME_PATTERN,
+    STREET_PATTERN,
     PHONE_PATTERNS,
     ENTITY_PRIORITY,
     _get_resource_base_dir,
@@ -119,6 +123,62 @@ def find_age(text: str) -> list[EntityOccurrence]:
                     text=m.group(0)
                 ))
     return found
+
+
+def find_iban(text: str) -> list[EntityOccurrence]:
+    """Find IBAN numbers in text."""
+    found: list[EntityOccurrence] = []
+    for m in IBAN_PATTERN.finditer(text):
+        iban = m.group(0).replace(" ", "")
+        # Validate IBAN length (15-34 characters)
+        if 15 <= len(iban) <= 34:
+            found.append(EntityOccurrence(
+                label="IBAN",
+                start=m.start(),
+                end=m.end(),
+                text=m.group(0)
+            ))
+    return found
+
+
+def find_url(text: str) -> list[EntityOccurrence]:
+    """Find URLs in text."""
+    return [
+        EntityOccurrence(label="URL", start=m.start(), end=m.end(), text=m.group(0))
+        for m in URL_PATTERN.finditer(text)
+    ]
+
+
+def find_time(text: str) -> list[EntityOccurrence]:
+    """Find time patterns in text like '14:30' or '14:30 Uhr'."""
+    found: list[EntityOccurrence] = []
+    for m in TIME_PATTERN.finditer(text):
+        time_str = m.group(0)
+        # Extract hour and minute
+        parts = time_str.split(":")
+        if len(parts) >= 2:
+            try:
+                hour = int(parts[0])
+                minute = int(parts[1][:2])  # Take first 2 chars in case of :00 Uhr
+                # Validate time range
+                if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    found.append(EntityOccurrence(
+                        label="TIME",
+                        start=m.start(),
+                        end=m.end(),
+                        text=time_str
+                    ))
+            except ValueError:
+                pass
+    return found
+
+
+def find_street(text: str) -> list[EntityOccurrence]:
+    """Find street addresses in text."""
+    return [
+        EntityOccurrence(label="STREET", start=m.start(), end=m.end(), text=m.group(0))
+        for m in STREET_PATTERN.finditer(text)
+    ]
 
 
 def find_dates(text: str) -> list[tuple[Optional[datetime], EntityOccurrence]]:

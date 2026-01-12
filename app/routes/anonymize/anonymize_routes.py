@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import io
+import json
 import re
 from typing import Any
 
-from flask import jsonify, request
+from flask import jsonify, request, Response, stream_with_context
 from pypdf import PdfReader
 from docx.api import Document
 
@@ -14,6 +15,9 @@ from routes.anonymize import anonymize_bp
 from services.anonymize import AnonymizeService
 from services.llm.llm_access_service import LLMAccessService
 from auth.auth_utils import AuthUtils
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_text_from_docx(file_bytes: bytes) -> str:
@@ -136,6 +140,83 @@ def anonymize_pseudonymize() -> Any:
         llm_model=llm_model,
     )
     return jsonify({"success": True, **result})
+
+
+@anonymize_bp.route("/pseudonymize/stream", methods=["POST"])
+@require_permission("feature:anonymize:view")
+def anonymize_pseudonymize_stream() -> Any:
+    """
+    Streaming endpoint for pseudonymization with progress updates.
+
+    Yields Server-Sent Events (SSE) with progress updates during processing.
+    Final event contains the complete result.
+    """
+    payload = request.get_json(silent=True) or {}
+    text = payload.get("text", "")
+    if not isinstance(text, str):
+        return jsonify({"success": False, "error": "Field 'text' must be a string"}), 400
+
+    engine = payload.get("engine") or "offline"
+    if not isinstance(engine, str):
+        return jsonify({"success": False, "error": "Field 'engine' must be a string"}), 400
+    engine = engine.strip().lower()
+    if engine not in {"offline", "llm", "hybrid"}:
+        return jsonify({"success": False, "error": "Invalid engine"}), 400
+
+    llm_model = payload.get("llm_model")
+    if llm_model is not None and not isinstance(llm_model, str):
+        return jsonify({"success": False, "error": "Field 'llm_model' must be a string"}), 400
+    if isinstance(llm_model, str) and llm_model.strip():
+        from db.models.llm_model import LLMModel
+        db_model = LLMModel.get_by_model_id(llm_model.strip())
+        if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
+            return jsonify({"success": False, "error": "Selected llm_model is not active"}), 400
+        username = AuthUtils.extract_username_without_validation()
+        if not LLMAccessService.user_can_access_model(username, llm_model.strip()):
+            return jsonify({"success": False, "error": "LLM model not available for user"}), 403
+
+    status_offline = AnonymizeService.quick_status()
+    status_llm = AnonymizeService.llm_quick_status()
+    if engine in {"offline", "hybrid"} and not status_offline.get("ready"):
+        return jsonify({
+            "success": False,
+            "error": "Anonymize resources not ready",
+            "code": "ANONYMIZE_NOT_READY",
+        }), 503
+    if engine in {"llm", "hybrid"} and not status_llm.get("ready"):
+        return jsonify({
+            "success": False,
+            "error": "LLM not ready",
+            "code": "ANONYMIZE_LLM_NOT_READY",
+        }), 503
+
+    group_overrides = payload.get("group_overrides") or {}
+    date_shift_days = payload.get("date_shift_days")
+    action = payload.get("action")
+    name_origin = payload.get("name_origin")
+    name_count = payload.get("name_count")
+
+    def event_stream():
+        try:
+            for event in AnonymizeService.pseudonymize_stream(
+                text=text,
+                group_overrides=group_overrides,
+                date_shift_days=date_shift_days,
+                action=action,
+                name_origin=name_origin,
+                name_count=name_count,
+                engine=engine,
+                llm_model=llm_model,
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"[Anonymize] Streaming failed: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    response = Response(stream_with_context(event_stream()), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
 
 
 @anonymize_bp.route("/pseudonymize-file", methods=["POST"])

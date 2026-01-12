@@ -670,10 +670,60 @@ async function randomizeGroup(group) {
   await runPseudonymize({ type: 'randomize', group_id: group.group_id })
 }
 
-async function applyManual(group) {
+/**
+ * Apply replacements locally without calling the backend.
+ * This is much faster when only aliases change (no NER re-detection needed).
+ */
+function applyReplacementsLocally() {
+  const text = inputText.value || ''
+  if (!text || entities.value.length === 0) return
+
+  // Build group_id → replacement map
+  const replacementMap = {}
+  for (const g of groups.value) {
+    replacementMap[g.group_id] = g.replacement || g.original
+  }
+
+  // Sort entities by start position (ascending)
+  const sortedEntities = [...entities.value].sort((a, b) => a.start - b.start)
+
+  // Build output text by replacing entity spans
+  let output = ''
+  let cursor = 0
+  let offset = 0 // Track position difference between input and output
+
+  for (const ent of sortedEntities) {
+    const start = ent.start
+    const end = ent.end
+    const replacement = replacementMap[ent.group_id] || text.slice(start, end)
+
+    // Add text before this entity
+    output += text.slice(cursor, start)
+
+    // Calculate new output positions
+    const outputStart = start + offset
+    ent.output_start = outputStart
+    ent.output_end = outputStart + replacement.length
+
+    // Add replacement
+    output += replacement
+
+    // Update offset (difference between original length and replacement length)
+    offset += replacement.length - (end - start)
+    cursor = end
+  }
+
+  // Add remaining text after last entity
+  output += text.slice(cursor)
+
+  outputText.value = output
+}
+
+function applyManual(group) {
   if (!group) return
   group.mode = 'manual'
-  await runPseudonymize()
+  // Use local replacement - no backend call needed!
+  applyReplacementsLocally()
 }
 
 async function resetAndRun() {

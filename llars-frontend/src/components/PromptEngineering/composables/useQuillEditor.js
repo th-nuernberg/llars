@@ -558,22 +558,41 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
           }
         })
 
-        // Create drop cursor indicator element
+        // Create drop cursor indicator element - positioned outside the contentEditable
         let dropCursor = null
+
+        // Inject animation style once
+        if (!document.getElementById('llars-drop-cursor-style')) {
+          const style = document.createElement('style')
+          style.id = 'llars-drop-cursor-style'
+          style.textContent = `
+            @keyframes llarsDropCursorBlink {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.3; }
+            }
+          `
+          document.head.appendChild(style)
+        }
+
         const getDropCursor = () => {
           if (!dropCursor) {
-            dropCursor = document.createElement('span')
+            dropCursor = document.createElement('div')
             dropCursor.className = 'ql-drop-cursor'
+            dropCursor.setAttribute('contenteditable', 'false')
             dropCursor.style.cssText = `
-              position: absolute;
+              position: fixed;
               width: 2px;
-              height: 1.2em;
-              background: rgb(var(--v-theme-primary, 136, 196, 200));
+              height: 20px;
               background: #88c4c8;
               pointer-events: none;
-              z-index: 1000;
-              animation: dropCursorBlink 0.8s ease-in-out infinite;
+              z-index: 10000;
+              animation: llarsDropCursorBlink 0.8s ease-in-out infinite;
+              box-shadow: 0 0 4px rgba(136, 196, 200, 0.8);
+              border-radius: 1px;
+              display: none;
             `
+            // Append to body to avoid contentEditable issues
+            document.body.appendChild(dropCursor)
           }
           return dropCursor
         }
@@ -589,18 +608,11 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
               const rects = range.getClientRects()
               if (rects.length > 0) {
                 const rect = rects[0]
-                const editorRect = editor.root.getBoundingClientRect()
 
-                // Position cursor relative to editor
-                cursor.style.left = `${rect.left - editorRect.left + editor.root.scrollLeft}px`
-                cursor.style.top = `${rect.top - editorRect.top + editor.root.scrollTop}px`
+                // Position cursor using fixed positioning (relative to viewport)
+                cursor.style.left = `${rect.left}px`
+                cursor.style.top = `${rect.top}px`
                 cursor.style.height = `${rect.height || 20}px`
-
-                // Add cursor to editor if not already there
-                if (!editor.root.contains(cursor)) {
-                  editor.root.style.position = 'relative'
-                  editor.root.appendChild(cursor)
-                }
                 cursor.style.display = 'block'
                 return
               }
@@ -619,9 +631,20 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
           }
         }
 
+        // Remove any old cursor elements that might have been left in the editor
+        const oldCursors = editor.root.querySelectorAll('.ql-drop-cursor')
+        oldCursors.forEach(el => el.remove())
+
         // Placeholder drop handler - allows dragging placeholders from palette or moving within editor
         // Use capture: true to intercept events before Quill can handle them
         editor.root.addEventListener('dragover', (e) => {
+          // Only handle variable drags
+          const isVariableDrag = window.__llarsVariableDrag || e.dataTransfer.types.includes('text/placeholder')
+          if (!isVariableDrag) {
+            hideDropCursor()
+            return
+          }
+
           e.preventDefault()
           e.stopPropagation()
           // Use 'move' if moving within editor, 'copy' if from palette

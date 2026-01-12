@@ -40,7 +40,7 @@
           <LBtn variant="accent" block prepend-icon="mdi-plus" size="small" @click="$emit('showAddBlockDialog')">
             {{ $t('promptEngineering.sidebar.newBlock') }}
           </LBtn>
-          <LBtn variant="secondary" block prepend-icon="mdi-variable" size="small" @click="$emit('openVariableManager')">
+          <LBtn variant="secondary" block prepend-icon="mdi-code-braces" size="small" @click="$emit('openVariableManager')">
             {{ $t('promptEngineering.variables.manageVariables') }}
           </LBtn>
           <LBtn variant="primary" block prepend-icon="mdi-eye" size="small" @click="showPreview = true">

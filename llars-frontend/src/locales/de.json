@@ -1045,7 +1045,7 @@
       "building_output": "Erstelle Ausgabe...",
       "complete": "Abgeschlossen"
     },
-    "exampleText": "Guten Tag Frau Mustermann,\\n\\nmein Name ist Anna Müller (34) und ich wohne in 80331 München.\\nBitte kontaktieren Sie mich unter 0176 12345678 oder via anna.mueller{'@'}example.de.\\nMeine Sozialversicherungsnummer lautet 12 150485 M 002.\\nDer Termin ist am 12.03.2024 um 14:30 Uhr an der Ludwig-Maximilians-Universität.\\n\\nMit freundlichen Grüßen\\nAnna Müller"
+    "exampleText": "Guten Tag Frau Mustermann,\\n\\nmein Name ist Anna Müller (34) und ich wohne in der Leopoldstraße 42, 80331 München.\\nBitte kontaktieren Sie mich unter 0176 12345678 oder via anna.mueller{'@'}example.de.\\nMeine Sozialversicherungsnummer lautet 12 150485 M 002.\\nMeine IBAN ist DE89 3704 0044 0532 0130 00.\\n\\nDer Termin ist am 12.03.2024 um 14:30 Uhr an der Ludwig-Maximilians-Universität.\\nWeitere Informationen finden Sie unter https://example.com/termin.\\n\\nMit freundlichen Grüßen\\nAnna Müller"
   },
   "chat": {
     "newChat": "Neuer Chat",

@@ -1045,7 +1045,7 @@
       "building_output": "Building output...",
       "complete": "Complete"
     },
-    "exampleText": "Hello Ms. Mustermann,\\n\\nmy name is Anna Müller (34) and I live in 80331 Munich.\\nPlease contact me at 0176 12345678 or via anna.mueller{'@'}example.de.\\nMy social security number is 12 150485 M 002.\\nThe appointment is on 12.03.2024 at 14:30 at Ludwig Maximilian University.\\n\\nBest regards\\nAnna Müller"
+    "exampleText": "Hello Ms. Mustermann,\\n\\nmy name is Anna Müller (34) and I live at Leopoldstraße 42, 80331 Munich.\\nPlease contact me at 0176 12345678 or via anna.mueller{'@'}example.de.\\nMy social security number is 12 150485 M 002.\\nMy IBAN is DE89 3704 0044 0532 0130 00.\\n\\nThe appointment is on 12.03.2024 at 14:30 at Ludwig Maximilian University.\\nMore information at https://example.com/appointment.\\n\\nBest regards\\nAnna Müller"
   },
   "chat": {
     "newChat": "New Chat",

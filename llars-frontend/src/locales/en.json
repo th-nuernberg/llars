@@ -1031,7 +1031,7 @@
       "clipboardCopyFailed": "Could not copy output to clipboard.",
       "uploadFailed": "Upload failed"
     },
-    "exampleText": "Hello Ms. Miller,\\n\\nmy name is Anna Miller (34) and I live in 8001 Zurich.\\nPlease contact me at 079 123 45 67 or via anna.mueller[at]example.ch.\\nMy AHV number is 756.1234.5678.97.\\nThe appointment is on 12.03.2024 at 14:30 at the University of Zurich.\\n\\nBest regards\\nAnna Miller"
+    "exampleText": "Hello Ms. Miller,\\n\\nmy name is Anna Miller (34) and I live in 8001 Zurich.\\nPlease contact me at 079 123 45 67 or via anna.mueller@example.ch.\\nMy AHV number is 756.1234.5678.97.\\nThe appointment is on 12.03.2024 at 14:30 at the University of Zurich.\\n\\nBest regards\\nAnna Miller"
   },
   "chat": {
     "newChat": "New Chat",

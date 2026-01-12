@@ -19,6 +19,9 @@ from .anonymize_constants import (
     MAIL_PATTERN,
     AHV_PATTERN,
     PLZ_PATTERN,
+    PLZ_PATTERN_DE,
+    SVN_PATTERN,
+    AGE_PATTERN,
     PHONE_PATTERNS,
     ENTITY_PRIORITY,
     _get_resource_base_dir,
@@ -69,7 +72,7 @@ def find_phones(text: str) -> list[EntityOccurrence]:
 
 
 def find_plz(text: str) -> list[EntityOccurrence]:
-    """Find postal codes near 'PLZ' keyword in text."""
+    """Find postal codes near 'PLZ' keyword in text (Swiss 4-digit)."""
     found: list[EntityOccurrence] = []
     for m_plz in re.finditer(r"\bPLZ\b", text, flags=re.IGNORECASE):
         idx = m_plz.start()
@@ -80,6 +83,41 @@ def find_plz(text: str) -> list[EntityOccurrence]:
             start = substring_start + m.start()
             end = substring_start + m.end()
             found.append(EntityOccurrence(label="PLZ", start=start, end=end, text=m.group(0)))
+    return found
+
+
+def find_plz_de(text: str) -> list[EntityOccurrence]:
+    """Find German postal codes (5-digit) in text."""
+    return [
+        EntityOccurrence(label="PLZ", start=m.start(), end=m.end(), text=m.group(0))
+        for m in PLZ_PATTERN_DE.finditer(text)
+    ]
+
+
+def find_svn(text: str) -> list[EntityOccurrence]:
+    """Find German social security numbers (Sozialversicherungsnummer) in text."""
+    return [
+        EntityOccurrence(label="SVN", start=m.start(), end=m.end(), text=m.group(0))
+        for m in SVN_PATTERN.finditer(text)
+    ]
+
+
+def find_age(text: str) -> list[EntityOccurrence]:
+    """Find age mentions in text like '(34)' or '34 Jahre'."""
+    found: list[EntityOccurrence] = []
+    for m in AGE_PATTERN.finditer(text):
+        # The pattern has two groups: (34) or 34 Jahre
+        age_value = m.group(1) or m.group(2)
+        if age_value:
+            age_int = int(age_value)
+            # Only consider reasonable ages (0-120)
+            if 0 <= age_int <= 120:
+                found.append(EntityOccurrence(
+                    label="AGE",
+                    start=m.start(),
+                    end=m.end(),
+                    text=m.group(0)
+                ))
     return found
 
 

@@ -21,11 +21,11 @@ export function useJudgeConfigState() {
 
   // Available Pillars
   const availablePillars = ref([
-    { id: 1, name: 'Säule 1 - Rollenspiele', icon: 'mdi-theater', enabled: true, threadCount: 0 },
-    { id: 2, name: 'Säule 2 - Feature', icon: 'mdi-star', enabled: false, threadCount: 0 },
-    { id: 3, name: 'Säule 3 - Anonymisiert', icon: 'llars:anonymize', enabled: true, threadCount: 0 },
-    { id: 4, name: 'Säule 4 - Synthetisch', icon: 'mdi-robot', enabled: false, threadCount: 0 },
-    { id: 5, name: 'Säule 5 - Live-Tests', icon: 'mdi-lightning-bolt', enabled: true, threadCount: 0 }
+    { id: 1, nameKey: 'judge.pillars.items.roleplay', icon: 'mdi-theater', enabled: true, threadCount: 0 },
+    { id: 2, nameKey: 'judge.pillars.items.feature', icon: 'mdi-star', enabled: false, threadCount: 0 },
+    { id: 3, nameKey: 'judge.pillars.items.anonymized', icon: 'llars:anonymize', enabled: true, threadCount: 0 },
+    { id: 4, nameKey: 'judge.pillars.items.synthetic', icon: 'mdi-robot', enabled: false, threadCount: 0 },
+    { id: 5, nameKey: 'judge.pillars.items.liveTests', icon: 'mdi-lightning-bolt', enabled: true, threadCount: 0 }
   ]);
 
   // Configuration

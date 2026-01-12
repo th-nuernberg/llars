@@ -5,8 +5,11 @@
  */
 
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 export function useJudgeConfigComputed(config, availablePillars, estimate, limitThreadsEnabled) {
+  const { t } = useI18n();
+
   /**
    * Minimum pillars required based on mode.
    */
@@ -29,9 +32,9 @@ export function useJudgeConfigComputed(config, availablePillars, estimate, limit
    */
   const modeDisplayName = computed(() => {
     const modes = {
-      'pillar_sample': 'Säulen-Stichprobe',
-      'round_robin': 'Round Robin',
-      'free_for_all': 'Jeder gegen Jeden'
+      'pillar_sample': t('judge.modes.pillarSample.title'),
+      'round_robin': t('judge.modes.roundRobin.title'),
+      'free_for_all': t('judge.modes.freeForAll.title')
     };
     return modes[config.value.comparisonMode] || config.value.comparisonMode;
   });
@@ -53,9 +56,9 @@ export function useJudgeConfigComputed(config, availablePillars, estimate, limit
    */
   const modeDescription = computed(() => {
     const descriptions = {
-      'pillar_sample': 'Zufällige Samples pro Säulen-Paar',
-      'round_robin': 'Jeder Thread gegen jeden (innerhalb Säulen-Paare)',
-      'free_for_all': 'Jeder Thread gegen jeden (alle)'
+      'pillar_sample': t('judge.modes.pillarSample.description'),
+      'round_robin': t('judge.modes.roundRobin.description'),
+      'free_for_all': t('judge.modes.freeForAll.description')
     };
     return descriptions[config.value.comparisonMode] || '';
   });

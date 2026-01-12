@@ -592,6 +592,61 @@ class ReferralService:
         }
 
     @staticmethod
+    def list_registrations(
+        campaign_id: Optional[int] = None,
+        link_id: Optional[int] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> Tuple[List[Dict], int]:
+        """
+        List registrations with optional filtering.
+
+        Args:
+            campaign_id: Filter by campaign (optional)
+            link_id: Filter by link (optional)
+            limit: Max results
+            offset: Offset for pagination
+
+        Returns:
+            Tuple of (list of registration dicts, total count)
+        """
+        query = ReferralRegistration.query
+
+        if link_id:
+            query = query.filter_by(link_id=link_id)
+        elif campaign_id:
+            # Get all links for campaign
+            link_ids = [l.id for l in ReferralLink.query.filter_by(campaign_id=campaign_id).all()]
+            query = query.filter(ReferralRegistration.link_id.in_(link_ids))
+
+        total = query.count()
+        registrations = query.order_by(
+            ReferralRegistration.registered_at.desc()
+        ).offset(offset).limit(limit).all()
+
+        # Build response with link/campaign info
+        result = []
+        for reg in registrations:
+            link = reg.link
+            campaign = link.campaign if link else None
+            result.append({
+                'id': reg.id,
+                'username': reg.username,
+                'registered_at': reg.registered_at.isoformat() if reg.registered_at else None,
+                'ip_address': reg.ip_address,
+                'user_agent': reg.user_agent,
+                'link_id': reg.link_id,
+                'link_code': link.code if link else None,
+                'link_slug': link.slug if link else None,
+                'link_label': link.label if link else None,
+                'role_assigned': link.role_name if link else None,
+                'campaign_id': campaign.id if campaign else None,
+                'campaign_name': campaign.name if campaign else None
+            })
+
+        return result, total
+
+    @staticmethod
     def get_system_overview() -> Dict[str, Any]:
         """
         Get overall referral system statistics.

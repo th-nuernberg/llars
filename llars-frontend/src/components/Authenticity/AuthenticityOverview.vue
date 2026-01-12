@@ -3,15 +3,15 @@
     <!-- Header -->
     <div class="overview-header">
       <LBtn variant="tonal" prepend-icon="mdi-arrow-left" size="small" @click="goToHub">
-        Evaluierungen
+        {{ $t('evaluation.backToEvaluations') }}
       </LBtn>
       <div class="header-info">
-        <h1>Fake/Echt</h1>
-        <p class="text-medium-emphasis">Öffne einen Verlauf und stimme ab, ob er echt oder fake ist.</p>
+        <h1>{{ $t('evaluation.authenticity.pageTitle') }}</h1>
+        <p class="text-medium-emphasis">{{ $t('evaluation.authenticity.pageSubtitle') }}</p>
       </div>
       <div class="header-stats">
         <LTag variant="success" size="small">
-          {{ doneCount }} / {{ threads.length }} abgeschlossen
+          {{ $t('evaluation.progress', { done: doneCount, total: threads.length }) }}
         </LTag>
       </div>
     </div>
@@ -43,7 +43,7 @@
             </div>
             <div class="card-footer">
               <LTag v-if="thread.vote" :variant="thread.vote === 'real' ? 'success' : 'danger'" size="small">
-                {{ thread.vote === 'real' ? 'Echt' : 'Fake' }}
+                {{ thread.vote === 'real' ? $t('evaluation.authenticity.real') : $t('evaluation.authenticity.fake') }}
               </LTag>
               <span class="card-id">Thread #{{ thread.thread_id }}</span>
             </div>
@@ -51,9 +51,9 @@
 
           <div v-if="threads.length === 0" class="empty-state">
             <LIcon size="64" color="grey-lighten-1">mdi-clipboard-text-off-outline</LIcon>
-            <h3>Keine Threads verfügbar</h3>
+            <h3>{{ $t('evaluation.authenticity.emptyTitle') }}</h3>
             <p class="text-medium-emphasis">
-              Stelle sicher, dass ein aktives Szenario existiert und Threads zugewiesen sind.
+              {{ $t('evaluation.emptyHint') }}
             </p>
           </div>
         </template>

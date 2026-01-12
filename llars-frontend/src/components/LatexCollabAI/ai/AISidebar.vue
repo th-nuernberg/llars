@@ -5,7 +5,7 @@
     <div class="ai-sidebar-header" @click="expanded = !expanded">
       <div class="ai-header-content">
         <LIcon class="mr-2" :color="expanded ? 'white' : 'primary'">mdi-robot-happy</LIcon>
-        <span v-if="expanded" class="ai-header-title">KI-Assistent</span>
+        <span v-if="expanded" class="ai-header-title">{{ $t('latexCollabAi.sidebar.title') }}</span>
       </div>
       <v-btn
         v-if="expanded"
@@ -26,7 +26,7 @@
         <div class="ai-section">
           <div class="ai-section-title">
             <LIcon size="16" class="mr-1">mdi-lightning-bolt</LIcon>
-            Quick Tools
+            {{ $t('latexCollabAi.sidebar.quickTools') }}
           </div>
           <div class="quick-tools-grid">
             <LBtn
@@ -37,7 +37,7 @@
               :loading="loadingTool === 'abstract'"
               @click="runQuickTool('abstract')"
             >
-              Abstract
+              {{ $t('latexCollabAi.sidebar.tools.abstract') }}
             </LBtn>
             <LBtn
               variant="outlined"
@@ -47,7 +47,7 @@
               :loading="loadingTool === 'titles'"
               @click="runQuickTool('titles')"
             >
-              Titel
+              {{ $t('latexCollabAi.sidebar.tools.titles') }}
             </LBtn>
             <LBtn
               variant="outlined"
@@ -57,7 +57,7 @@
               :loading="loadingTool === 'citations'"
               @click="runQuickTool('citations')"
             >
-              Zitate prüfen
+              {{ $t('latexCollabAi.sidebar.tools.citations') }}
             </LBtn>
             <LBtn
               variant="outlined"
@@ -67,7 +67,7 @@
               :loading="loadingTool === 'fixLatex'"
               @click="runQuickTool('fixLatex')"
             >
-              Fix LaTeX
+              {{ $t('latexCollabAi.sidebar.tools.fixLatex') }}
             </LBtn>
           </div>
         </div>
@@ -78,14 +78,14 @@
         <div class="ai-section ai-chat-section">
           <div class="ai-section-title">
             <LIcon size="16" class="mr-1">mdi-chat</LIcon>
-            Chat
+            {{ $t('latexCollabAi.sidebar.chat.title') }}
             <v-spacer />
             <v-btn
               v-if="aiChat.hasMessages.value"
               icon
               variant="text"
               size="x-small"
-              title="Chat leeren"
+              :title="$t('latexCollabAi.sidebar.chat.clear')"
               @click="aiChat.clearHistory()"
             >
               <LIcon size="14">mdi-delete-outline</LIcon>
@@ -99,15 +99,15 @@
                 <LIcon size="20" color="white">mdi-robot</LIcon>
               </div>
               <div class="message-content">
-                <p>Hallo! Ich bin dein KI-Schreibassistent.</p>
+                <p>{{ $t('latexCollabAi.sidebar.welcome.greeting') }}</p>
                 <p class="text-caption text-medium-emphasis mt-2">
-                  Ich kann dir helfen mit:
+                  {{ $t('latexCollabAi.sidebar.welcome.intro') }}
                 </p>
                 <ul class="feature-list">
-                  <li><LIcon size="14" color="success">mdi-check</LIcon> Textformulierungen</li>
-                  <li><LIcon size="14" color="success">mdi-check</LIcon> LaTeX-Fragen</li>
-                  <li><LIcon size="14" color="success">mdi-check</LIcon> Dokumentstruktur</li>
-                  <li><LIcon size="14" color="success">mdi-check</LIcon> Literatursuche</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> {{ $t('latexCollabAi.sidebar.welcome.items.phrasing') }}</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> {{ $t('latexCollabAi.sidebar.welcome.items.latex') }}</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> {{ $t('latexCollabAi.sidebar.welcome.items.structure') }}</li>
+                  <li><LIcon size="14" color="success">mdi-check</LIcon> {{ $t('latexCollabAi.sidebar.welcome.items.literature') }}</li>
                 </ul>
               </div>
             </div>
@@ -140,7 +140,7 @@
                       <v-btn
                         size="x-small"
                         variant="text"
-                        title="In Editor einfügen"
+                        :title="$t('latexCollabAi.sidebar.artifact.insert')"
                         @click="$emit('insert-artifact', artifact.content)"
                       >
                         <LIcon size="14">mdi-plus</LIcon>
@@ -164,7 +164,7 @@
                   width="2"
                   color="primary"
                 />
-                <span class="ml-2 text-medium-emphasis">Denke nach...</span>
+                <span class="ml-2 text-medium-emphasis">{{ $t('latexCollabAi.sidebar.chat.thinking') }}</span>
               </div>
             </div>
           </div>
@@ -173,7 +173,7 @@
           <div class="chat-input-container">
             <v-textarea
               v-model="chatInput"
-              placeholder="Frage stellen... (Ctrl+Enter zum Senden)"
+              :placeholder="$t('latexCollabAi.sidebar.chat.placeholder')"
               rows="2"
               auto-grow
               hide-details
@@ -200,7 +200,7 @@
       <div class="ai-sidebar-footer">
         <LIcon size="14" class="mr-1" color="primary">mdi-information</LIcon>
         <span class="text-caption">
-          Tip: Nutze @-Commands im Editor
+          {{ $t('latexCollabAi.sidebar.footerTip') }}
         </span>
       </div>
     </template>
@@ -219,7 +219,7 @@
           <template v-if="toolResultType === 'abstract'">
             <p class="text-body-1">{{ toolResult.abstract }}</p>
             <p class="text-caption text-medium-emphasis mt-2">
-              {{ toolResult.word_count }} Wörter
+              {{ $t('latexCollabAi.sidebar.toolResults.wordCount', { count: toolResult.word_count }) }}
             </p>
           </template>
 
@@ -246,10 +246,10 @@
           <template v-else-if="toolResultType === 'citations'">
             <div class="d-flex gap-4 mb-4">
               <v-chip color="success" size="small">
-                {{ toolResult.statistics?.cited || 0 }} belegt
+                {{ $t('latexCollabAi.sidebar.toolResults.cited', { count: toolResult.statistics?.cited || 0 }) }}
               </v-chip>
               <v-chip color="warning" size="small">
-                {{ toolResult.statistics?.uncited || 0 }} unbelegt
+                {{ $t('latexCollabAi.sidebar.toolResults.uncited', { count: toolResult.statistics?.uncited || 0 }) }}
               </v-chip>
             </div>
             <v-list v-if="toolResult.warnings?.length" density="compact">
@@ -268,13 +268,13 @@
                 </template>
               </v-list-item>
             </v-list>
-            <p v-else class="text-success">Keine unbelegten Aussagen gefunden!</p>
+            <p v-else class="text-success">{{ $t('latexCollabAi.sidebar.toolResults.noUncited') }}</p>
           </template>
 
           <!-- Fix LaTeX -->
           <template v-else-if="toolResultType === 'fixLatex'">
             <div v-if="toolResult.errors?.length">
-              <h4 class="text-subtitle-2 mb-2">Gefundene Fehler:</h4>
+              <h4 class="text-subtitle-2 mb-2">{{ $t('latexCollabAi.sidebar.toolResults.errorsTitle') }}</h4>
               <v-list density="compact">
                 <v-list-item
                   v-for="(err, i) in toolResult.errors"
@@ -291,20 +291,20 @@
               </v-list>
             </div>
             <div v-if="toolResult.suggestions?.length" class="mt-4">
-              <h4 class="text-subtitle-2 mb-2">Vorschläge:</h4>
+              <h4 class="text-subtitle-2 mb-2">{{ $t('latexCollabAi.sidebar.toolResults.suggestionsTitle') }}</h4>
               <ul>
                 <li v-for="(sug, i) in toolResult.suggestions" :key="i">{{ sug }}</li>
               </ul>
             </div>
             <p v-if="!toolResult.errors?.length && !toolResult.suggestions?.length" class="text-success">
-              Keine Fehler gefunden!
+              {{ $t('latexCollabAi.sidebar.toolResults.noErrors') }}
             </p>
           </template>
         </div>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <LBtn variant="cancel" @click="toolResultDialog = false">Schließen</LBtn>
+        <LBtn variant="cancel" @click="toolResultDialog = false">{{ $t('common.close') }}</LBtn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -312,7 +312,8 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAIChat } from '../composables/useAIChat'
 import aiWritingService from '@/services/aiWritingService'
 import { marked } from 'marked'
@@ -325,6 +326,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['insert-artifact'])
+const { t } = useI18n()
 
 // State
 const expanded = ref(true)
@@ -335,8 +337,16 @@ const loadingTool = ref(null)
 // Tool result dialog
 const toolResultDialog = ref(false)
 const toolResultType = ref('')
-const toolResultTitle = ref('')
-const toolResultIcon = ref('')
+const toolResultTitle = computed(() => {
+  if (!toolResultType.value) return ''
+  return t(`latexCollabAi.sidebar.toolResults.title.${toolResultType.value}`)
+})
+const toolResultIcon = computed(() => ({
+  abstract: 'mdi-text-box-outline',
+  titles: 'mdi-format-title',
+  citations: 'mdi-book-check',
+  fixLatex: 'mdi-wrench'
+}[toolResultType.value] || ''))
 const toolResult = ref(null)
 
 // AI Chat composable
@@ -380,29 +390,21 @@ async function runQuickTool(tool) {
     switch (tool) {
       case 'abstract':
         toolResultType.value = 'abstract'
-        toolResultTitle.value = 'Generiertes Abstract'
-        toolResultIcon.value = 'mdi-text-box-outline'
         toolResult.value = await aiWritingService.generateAbstract(props.documentContent)
         break
 
       case 'titles':
         toolResultType.value = 'titles'
-        toolResultTitle.value = 'Titel-Vorschläge'
-        toolResultIcon.value = 'mdi-format-title'
         toolResult.value = await aiWritingService.suggestTitles(props.documentContent)
         break
 
       case 'citations':
         toolResultType.value = 'citations'
-        toolResultTitle.value = 'Zitat-Analyse'
-        toolResultIcon.value = 'mdi-book-check'
         toolResult.value = await aiWritingService.reviewCitations(props.documentContent)
         break
 
       case 'fixLatex':
         toolResultType.value = 'fixLatex'
-        toolResultTitle.value = 'LaTeX-Fehlerprüfung'
-        toolResultIcon.value = 'mdi-wrench'
         toolResult.value = await aiWritingService.fixLatex(props.documentContent)
         break
     }

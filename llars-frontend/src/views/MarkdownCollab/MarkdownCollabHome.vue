@@ -4,10 +4,12 @@
       <div>
         <div class="d-flex align-center">
           <LIcon :class="isMobile ? 'mr-1' : 'mr-2'" :size="isMobile ? 20 : 24" color="primary">llars:markdown-collab</LIcon>
-          <h2 :class="isMobile ? 'text-h6' : 'text-h5'" class="mb-0">{{ isMobile ? 'Markdown' : 'Markdown Collab' }}</h2>
+          <h2 :class="isMobile ? 'text-h6' : 'text-h5'" class="mb-0">
+            {{ isMobile ? $t('markdownCollab.home.titleShort') : $t('markdownCollab.home.title') }}
+          </h2>
         </div>
         <div v-if="!isMobile" class="text-body-2 text-medium-emphasis mt-1">
-          Kollaborative Workspaces für Markdown-Dateien mit Live-Preview.
+          {{ $t('markdownCollab.home.subtitle') }}
         </div>
       </div>
       <v-spacer v-if="!isMobile" />
@@ -20,7 +22,7 @@
         @click="createDialog = true"
       >
         <LIcon v-if="isMobile" class="mr-1">mdi-plus</LIcon>
-        {{ isMobile ? 'Neu' : 'Workspace erstellen' }}
+        {{ isMobile ? $t('markdownCollab.home.actions.newShort') : $t('markdownCollab.home.actions.create') }}
       </LBtn>
     </div>
 
@@ -30,7 +32,11 @@
       variant="tonal"
       class="mb-6"
     >
-      Dir fehlt die Berechtigung <code>feature:markdown_collab:view</code>.
+      <i18n-t keypath="markdownCollab.permissions.missing" tag="span">
+        <template #permission>
+          <code>feature:markdown_collab:view</code>
+        </template>
+      </i18n-t>
     </v-alert>
 
     <v-row v-else>
@@ -41,9 +47,9 @@
           <template #header>
             <div class="d-flex align-center w-100">
               <LIcon class="mr-2">mdi-folder-multiple-outline</LIcon>
-              <span class="text-h6">Workspaces</span>
+              <span class="text-h6">{{ $t('markdownCollab.home.workspaces.title') }}</span>
               <v-spacer />
-              <LIconBtn icon="mdi-refresh" tooltip="Aktualisieren" @click="loadWorkspaces(true)" />
+              <LIconBtn icon="mdi-refresh" :tooltip="$t('common.refresh')" @click="loadWorkspaces(true)" />
             </div>
           </template>
 
@@ -76,7 +82,7 @@
                     size="small"
                     prepend-icon="mdi-crown"
                   >
-                    Eigentümer
+                    {{ $t('markdownCollab.home.status.owner') }}
                   </LTag>
                   <LTag
                     v-else
@@ -84,7 +90,7 @@
                     size="small"
                     prepend-icon="mdi-account-multiple"
                   >
-                    Gast
+                    {{ $t('markdownCollab.home.status.guest') }}
                   </LTag>
                 </template>
 
@@ -94,7 +100,7 @@
                 </div>
                 <div class="d-flex align-center text-caption">
                   <LIcon size="16" class="mr-1">mdi-clock-outline</LIcon>
-                  <span>Zuletzt geändert: {{ formatDate(ws.updated_at) }}</span>
+                  <span>{{ $t('markdownCollab.home.lastUpdated', { date: formatDate(ws.updated_at) }) }}</span>
                 </div>
 
                 <template #actions>
@@ -107,7 +113,7 @@
                     prepend-icon="mdi-exit-run"
                     @click.stop="confirmLeave(ws)"
                   >
-                    Verlassen
+                    {{ $t('markdownCollab.home.actions.leave') }}
                   </LBtn>
                   <!-- Delete button for owners -->
                   <LBtn
@@ -118,10 +124,10 @@
                     prepend-icon="mdi-delete"
                     @click.stop="confirmDelete(ws)"
                   >
-                    Löschen
+                    {{ $t('common.delete') }}
                   </LBtn>
                   <LBtn variant="text" size="small" @click.stop="openWorkspace(ws.id)">
-                    Öffnen
+                    {{ $t('markdownCollab.home.actions.open') }}
                   </LBtn>
                 </template>
               </LCard>
@@ -130,9 +136,9 @@
 
           <div v-else class="empty-state">
             <LIcon size="56" class="mb-3" color="grey">mdi-folder-open-outline</LIcon>
-            <div class="text-subtitle-1 mb-1">Noch keine Workspaces</div>
+            <div class="text-subtitle-1 mb-1">{{ $t('markdownCollab.home.empty.title') }}</div>
             <div class="text-body-2 text-medium-emphasis mb-4">
-              Erstelle deinen ersten Markdown Collab Workspace.
+              {{ $t('markdownCollab.home.empty.subtitle') }}
             </div>
             <LBtn
               variant="primary"
@@ -140,7 +146,7 @@
               :disabled="!hasPermission('feature:markdown_collab:edit')"
               @click="createDialog = true"
             >
-              Workspace erstellen
+              {{ $t('markdownCollab.home.actions.create') }}
             </LBtn>
           </div>
         </LCard>
@@ -150,11 +156,11 @@
     <v-dialog v-model="createDialog" max-width="520">
       <LCard>
         <template #header>
-          <div class="d-flex align-center w-100">
-            <LIcon class="mr-2">mdi-plus-circle</LIcon>
-            <span class="text-h6">Workspace erstellen</span>
+            <div class="d-flex align-center w-100">
+              <LIcon class="mr-2">mdi-plus-circle</LIcon>
+            <span class="text-h6">{{ $t('markdownCollab.home.dialogs.createTitle') }}</span>
             <v-spacer />
-            <LIconBtn icon="mdi-close" tooltip="Schließen" @click="createDialog = false; resetCreateDialog()" />
+            <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="createDialog = false; resetCreateDialog()" />
           </div>
         </template>
 
@@ -163,8 +169,8 @@
         </v-alert>
         <v-text-field
           v-model="newWorkspaceName"
-          label="Name"
-          placeholder="z. B. Dissertation Notes"
+          :label="$t('markdownCollab.home.form.nameLabel')"
+          :placeholder="$t('markdownCollab.home.form.namePlaceholder')"
           prepend-inner-icon="mdi-folder"
           variant="outlined"
           density="comfortable"
@@ -172,7 +178,7 @@
         <v-select
           v-model="newWorkspaceVisibility"
           :items="visibilityItems"
-          label="Sichtbarkeit"
+          :label="$t('markdownCollab.home.form.visibilityLabel')"
           prepend-inner-icon="mdi-eye-outline"
           variant="outlined"
           density="comfortable"
@@ -181,7 +187,7 @@
         <!-- User invite section -->
         <div class="section-label mt-4">
           <LIcon size="16" class="mr-1">mdi-account-multiple-plus</LIcon>
-          Mitglieder einladen (optional)
+          {{ $t('markdownCollab.home.form.inviteLabel') }}
         </div>
         <div v-if="invitedUsers.length > 0" class="invited-users mb-2">
           <LTag
@@ -197,20 +203,20 @@
         <LUserSearch
           ref="userSearchRef"
           :exclude-usernames="invitedUsers"
-          placeholder="Nutzernamen eingeben..."
+          :placeholder="$t('markdownCollab.home.form.userPlaceholder')"
           @select="handleInviteUserSelect"
         />
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="createDialog = false; resetCreateDialog()">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="createDialog = false; resetCreateDialog()">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             variant="primary"
             :loading="creating"
             :disabled="!canCreate"
             @click="createWorkspace"
           >
-            Erstellen
+            {{ $t('markdownCollab.home.actions.createConfirm') }}
           </LBtn>
         </template>
       </LCard>
@@ -220,31 +226,33 @@
     <v-dialog v-model="deleteDialog" max-width="420">
       <LCard>
         <template #header>
-          <div class="d-flex align-center w-100">
-            <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
-            <span class="text-h6">Workspace löschen</span>
+            <div class="d-flex align-center w-100">
+              <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
+            <span class="text-h6">{{ $t('markdownCollab.home.dialogs.deleteTitle') }}</span>
             <v-spacer />
-            <LIconBtn icon="mdi-close" tooltip="Schließen" @click="deleteDialog = false" />
+            <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="deleteDialog = false" />
           </div>
         </template>
 
-        <p class="mb-4">
-          Möchten Sie den Workspace <strong>{{ workspaceToDelete?.name }}</strong> wirklich löschen?
-        </p>
+        <i18n-t keypath="markdownCollab.home.dialogs.deleteConfirm" tag="p" class="mb-4">
+          <template #name>
+            <strong>{{ workspaceToDelete?.name }}</strong>
+          </template>
+        </i18n-t>
         <v-alert type="warning" variant="tonal" density="compact" class="mb-0">
-          Alle Dokumente und Ordner in diesem Workspace werden unwiderruflich gelöscht.
+          {{ $t('markdownCollab.home.dialogs.deleteHint') }}
         </v-alert>
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="deleteDialog = false">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="deleteDialog = false">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             variant="danger"
             :loading="deleting"
             prepend-icon="mdi-delete"
             @click="deleteWorkspace"
           >
-            Löschen
+            {{ $t('common.delete') }}
           </LBtn>
         </template>
       </LCard>
@@ -254,31 +262,33 @@
     <v-dialog v-model="leaveDialog" max-width="420">
       <LCard>
         <template #header>
-          <div class="d-flex align-center w-100">
-            <LIcon class="mr-2" color="warning">mdi-exit-run</LIcon>
-            <span class="text-h6">Workspace verlassen</span>
+            <div class="d-flex align-center w-100">
+              <LIcon class="mr-2" color="warning">mdi-exit-run</LIcon>
+            <span class="text-h6">{{ $t('markdownCollab.home.dialogs.leaveTitle') }}</span>
             <v-spacer />
-            <LIconBtn icon="mdi-close" tooltip="Schließen" @click="leaveDialog = false" />
+            <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="leaveDialog = false" />
           </div>
         </template>
 
-        <p class="mb-4">
-          Möchten Sie den Workspace <strong>{{ workspaceToLeave?.name }}</strong> wirklich verlassen?
-        </p>
+        <i18n-t keypath="markdownCollab.home.dialogs.leaveConfirm" tag="p" class="mb-4">
+          <template #name>
+            <strong>{{ workspaceToLeave?.name }}</strong>
+          </template>
+        </i18n-t>
         <v-alert type="info" variant="tonal" density="compact" class="mb-0">
-          Sie können jederzeit vom Besitzer erneut eingeladen werden.
+          {{ $t('markdownCollab.home.dialogs.leaveHint') }}
         </v-alert>
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="leaveDialog = false">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="leaveDialog = false">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             variant="secondary"
             :loading="leaving"
             prepend-icon="mdi-exit-run"
             @click="leaveWorkspace"
           >
-            Verlassen
+            {{ $t('markdownCollab.home.actions.leave') }}
           </LBtn>
         </template>
       </LCard>
@@ -290,6 +300,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { useMobile } from '@/composables/useMobile'
@@ -297,6 +308,7 @@ import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getSocket } from '@/services/socketService'
 
 const router = useRouter()
+const { t, locale } = useI18n()
 const { hasPermission, fetchPermissions } = usePermissions()
 const { isLoading, withLoading } = useSkeletonLoading(['workspaces'])
 const { isMobile, isTablet } = useMobile()
@@ -321,11 +333,11 @@ const newWorkspaceVisibility = ref('private')
 const invitedUsers = ref([])
 const userSearchRef = ref(null)
 
-const visibilityItems = [
-  { title: 'Privat', value: 'private' },
-  { title: 'Team', value: 'team' },
-  { title: 'Organisation', value: 'org' }
-]
+const visibilityItems = computed(() => ([
+  { title: t('markdownCollab.visibility.private'), value: 'private' },
+  { title: t('markdownCollab.visibility.team'), value: 'team' },
+  { title: t('markdownCollab.visibility.org'), value: 'org' }
+]))
 
 const canCreate = computed(() => {
   return hasPermission('feature:markdown_collab:edit') && newWorkspaceName.value.trim().length >= 2
@@ -339,7 +351,7 @@ function authHeaders() {
 function formatDate(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(locale.value || undefined)
   } catch {
     return iso
   }
@@ -404,7 +416,7 @@ async function deleteWorkspace() {
     workspaceToDelete.value = null
   } catch (e) {
     console.error('Failed to delete workspace:', e)
-    alert(e?.response?.data?.error || 'Workspace konnte nicht gelöscht werden')
+    alert(e?.response?.data?.error || t('markdownCollab.errors.deleteFailed'))
   } finally {
     deleting.value = false
   }
@@ -424,7 +436,7 @@ async function leaveWorkspace() {
     workspaceToLeave.value = null
   } catch (e) {
     console.error('Failed to leave workspace:', e)
-    alert(e?.response?.data?.error || 'Workspace konnte nicht verlassen werden')
+    alert(e?.response?.data?.error || t('markdownCollab.errors.leaveFailed'))
   } finally {
     leaving.value = false
   }
@@ -498,7 +510,7 @@ async function createWorkspace() {
     await loadWorkspaces(true)
     if (ws?.id) openWorkspace(ws.id)
   } catch (e) {
-    createError.value = e?.response?.data?.error || e?.message || 'Workspace konnte nicht erstellt werden'
+    createError.value = e?.response?.data?.error || e?.message || t('markdownCollab.errors.createFailed')
   } finally {
     creating.value = false
   }

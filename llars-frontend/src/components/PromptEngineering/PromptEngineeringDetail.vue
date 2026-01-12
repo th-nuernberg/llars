@@ -26,10 +26,13 @@
         :owner="promptOwner"
         :promptName="promptName"
         :show-git-panel="showGitPanel"
+        :extracted-variables="extractedVariables"
+        :user-variables="userVariables"
         @showAddBlockDialog="showAddBlockDialog = true; mobileSidebarOpen = false"
         @refreshPromptDetails="fetchPromptDetails()"
         @uploadJsonFileSelected="onJsonFileSelected"
         @triggerTestPrompt="openTestPromptDialog(); mobileSidebarOpen = false"
+        @openVariableManager="openVariableManager(); mobileSidebarOpen = false"
         @toggleGitPanel="toggleGitPanel"
       />
       <template #append>
@@ -37,7 +40,7 @@
         <v-list density="compact" class="pa-2">
           <v-list-item
             prepend-icon="mdi-arrow-left"
-            title="Zurück zur Übersicht"
+            :title="$t('promptEngineering.editor.backToOverview')"
             @click="router.push('/promptengineering'); mobileSidebarOpen = false"
           />
         </v-list>
@@ -55,10 +58,13 @@
         :owner="promptOwner"
         :promptName="promptName"
         :show-git-panel="showGitPanel"
+        :extracted-variables="extractedVariables"
+        :user-variables="userVariables"
         @showAddBlockDialog="showAddBlockDialog = true"
         @refreshPromptDetails="fetchPromptDetails()"
         @uploadJsonFileSelected="onJsonFileSelected"
         @triggerTestPrompt="openTestPromptDialog"
+        @openVariableManager="openVariableManager"
         @toggleGitPanel="toggleGitPanel"
       />
     </div>
@@ -102,11 +108,11 @@
           </div>
           <div class="prompt-meta">
             <LTag variant="primary" size="small">
-              {{ blocks.length }} {{ blocks.length === 1 ? 'Block' : 'Blöcke' }}
+              {{ blocks.length }} {{ blocks.length === 1 ? $t('promptEngineering.editor.block') : $t('promptEngineering.editor.blocks') }}
             </LTag>
             <span v-if="sharedWithUsers.length && !isMobile" class="text-caption text-medium-emphasis ml-2">
               <LIcon size="14" class="mr-1">mdi-share-variant</LIcon>
-              {{ sharedWithUsers.length }} Nutzer
+              {{ $t('promptEngineering.editor.usersCount', { count: sharedWithUsers.length }) }}
             </span>
           </div>
         </div>
@@ -124,7 +130,7 @@
             <template #item="{ element: block }">
               <div class="editor-block">
                 <div class="editor-header">
-                  <div class="drag-handle" title="Ziehen um zu sortieren">
+                  <div class="drag-handle" :title="$t('promptEngineering.editor.dragToSort')">
                     <LIcon size="18">mdi-drag</LIcon>
                   </div>
 
@@ -137,7 +143,7 @@
                       @keyup.enter="handleSaveBlockTitle(block)"
                       @blur="handleSaveBlockTitle(block)"
                       @keyup.escape="resetBlockTitleEdit"
-                      placeholder="Blocktitel..."
+                      :placeholder="$t('promptEngineering.editor.blockTitlePlaceholder')"
                       autofocus
                     />
                   </template>
@@ -155,7 +161,7 @@
                       variant="text"
                       size="x-small"
                       @click="startEditBlockTitle(block)"
-                      title="Umbenennen"
+                      :title="$t('promptEngineering.editor.rename')"
                     >
                       <LIcon size="16">mdi-pencil</LIcon>
                     </v-btn>
@@ -165,7 +171,7 @@
                       size="x-small"
                       color="error"
                       @click="openDeleteBlockDialog(block)"
-                      title="Löschen"
+                      :title="$t('promptEngineering.editor.delete')"
                     >
                       <LIcon size="16">mdi-delete</LIcon>
                     </v-btn>
@@ -181,12 +187,12 @@
           <!-- Empty State -->
           <div v-else class="empty-blocks">
             <LIcon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</LIcon>
-            <div class="text-subtitle-1 mt-3">Noch keine Blöcke</div>
+            <div class="text-subtitle-1 mt-3">{{ $t('promptEngineering.editor.emptyTitle') }}</div>
             <div class="text-body-2 text-medium-emphasis mb-4">
-              Erstellen Sie Ihren ersten Prompt-Block.
+              {{ $t('promptEngineering.editor.emptyDescription') }}
             </div>
             <LBtn variant="accent" prepend-icon="mdi-plus" @click="showAddBlockDialog = true">
-              Neuer Block
+              {{ $t('promptEngineering.editor.newBlock') }}
             </LBtn>
           </div>
         </div>
@@ -204,7 +210,7 @@
 
         <!-- Debug Info (Development only) -->
         <div v-if="isDevelopment" class="debug-info">
-          <h4>Debug Information:</h4>
+          <h4>{{ $t('promptEngineering.editor.debugTitle') }}</h4>
           <pre>{{ JSON.stringify(blocks, null, 2) }}</pre>
         </div>
       </template>
@@ -216,14 +222,14 @@
         <template #header>
           <div class="d-flex align-center w-100">
             <LIcon class="mr-2" color="accent">mdi-plus-circle</LIcon>
-            <span class="text-h6">Neuen Block erstellen</span>
+            <span class="text-h6">{{ $t('promptEngineering.dialogs.blockCreateTitle') }}</span>
           </div>
         </template>
 
         <v-text-field
           v-model="newBlockName"
-          label="Blockname"
-          placeholder="z. B. Systemanweisung, Kontext, ..."
+          :label="$t('promptEngineering.dialogs.blockNameLabel')"
+          :placeholder="$t('promptEngineering.dialogs.blockNamePlaceholder')"
           variant="outlined"
           density="comfortable"
           autofocus
@@ -232,9 +238,9 @@
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="closeAddBlockDialog">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="closeAddBlockDialog">{{ $t('common.cancel') }}</LBtn>
           <LBtn variant="accent" :disabled="!newBlockName?.trim()" @click="handleCreateBlock">
-            Erstellen
+            {{ $t('promptEngineering.actions.create') }}
           </LBtn>
         </template>
       </LCard>
@@ -246,21 +252,23 @@
         <template #header>
           <div class="d-flex align-center w-100">
             <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
-            <span class="text-h6">Block löschen</span>
+            <span class="text-h6">{{ $t('promptEngineering.dialogs.blockDeleteTitle') }}</span>
           </div>
         </template>
 
-        <p class="text-body-1">
-          Möchten Sie den Block <strong>"{{ blockToDelete?.title }}"</strong> wirklich löschen?
-        </p>
+        <i18n-t keypath="promptEngineering.dialogs.blockDeleteConfirm" tag="p" class="text-body-1">
+          <template #name>
+            <strong>{{ blockToDelete?.title }}</strong>
+          </template>
+        </i18n-t>
         <p class="text-body-2 text-medium-emphasis">
-          Diese Aktion kann nicht rückgängig gemacht werden.
+          {{ $t('promptEngineering.dialogs.blockDeleteHint') }}
         </p>
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="closeDeleteBlockDialog">Abbrechen</LBtn>
-          <LBtn variant="danger" @click="handleConfirmDeleteBlock">Löschen</LBtn>
+          <LBtn variant="cancel" @click="closeDeleteBlockDialog">{{ $t('common.cancel') }}</LBtn>
+          <LBtn variant="danger" @click="handleConfirmDeleteBlock">{{ $t('common.delete') }}</LBtn>
         </template>
       </LCard>
     </v-dialog>
@@ -271,25 +279,32 @@
         <template #header>
           <div class="d-flex align-center w-100">
             <LIcon class="mr-2" color="secondary">mdi-upload</LIcon>
-            <span class="text-h6">JSON importieren</span>
+            <span class="text-h6">{{ $t('promptEngineering.dialogs.importTitle') }}</span>
           </div>
         </template>
 
         <p class="text-body-1">
-          Wie sollen die importierten Blöcke eingefügt werden?
+          {{ $t('promptEngineering.dialogs.importQuestion') }}
         </p>
 
         <template #actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="closeUploadChoiceDialog">Abbrechen</LBtn>
-          <LBtn variant="danger" @click="handleOverrideJsonBlocks">Überschreiben</LBtn>
-          <LBtn variant="primary" @click="handleAppendJsonBlocks">Anhängen</LBtn>
+          <LBtn variant="cancel" @click="closeUploadChoiceDialog">{{ $t('common.cancel') }}</LBtn>
+          <LBtn variant="danger" @click="handleOverrideJsonBlocks">{{ $t('promptEngineering.dialogs.importOverride') }}</LBtn>
+          <LBtn variant="primary" @click="handleAppendJsonBlocks">{{ $t('promptEngineering.dialogs.importAppend') }}</LBtn>
         </template>
       </LCard>
     </v-dialog>
 
     <!-- Test Prompt Dialog -->
-    <TestPromptDialog v-model="showTestPromptDialog" :prompt="assemblePrompt()" />
+    <TestPromptDialog v-model="showTestPromptDialog" :prompt="assemblePrompt()" :prompt-id="promptId" />
+
+    <!-- Variable Manager Dialog -->
+    <VariableManagerDialog
+      v-model="showVariableManager"
+      :prompt-id="promptId"
+      @variablesChanged="handleVariablesChanged"
+    />
 
     <!-- Snackbar -->
     <v-snackbar v-model="showSnackbar" :timeout="3000" color="success">
@@ -303,15 +318,89 @@
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import Inline from 'quill/blots/inline';
+import Embed from 'quill/blots/embed';
 
 Quill.register('modules/cursors', QuillCursors);
 
+// Global state to track dragged variable for move operations
+window.__llarsVariableDrag = null;
+
+// Variable Embed Blot - atomic element for {{variables}}
+// This creates a single, draggable tag element instead of plain text
+class VariableBlot extends Embed {
+  static create(value) {
+    const node = super.create();
+    node.setAttribute('data-variable', value);
+    node.setAttribute('contenteditable', 'false');
+    node.setAttribute('draggable', 'true');
+
+    // Create inner structure for the tag
+    const tagContent = document.createElement('span');
+    tagContent.className = 'variable-tag-content';
+    tagContent.textContent = `{{${value}}}`;
+    node.appendChild(tagContent);
+
+    // Prevent Quill from handling mousedown on the variable tag
+    // This allows native drag to work
+    node.addEventListener('mousedown', (e) => {
+      // Allow drag to start but prevent Quill selection
+      e.stopPropagation();
+    });
+
+    // Add drag handlers
+    node.addEventListener('dragstart', (e) => {
+      e.stopPropagation(); // Prevent Quill from interfering
+      e.dataTransfer.setData('text/variable-move', value);
+      e.dataTransfer.setData('text/plain', `{{${value}}}`);
+      e.dataTransfer.effectAllowed = 'move';
+      node.classList.add('dragging');
+
+      // Store reference to the dragged node for later removal
+      window.__llarsVariableDrag = {
+        node: node,
+        value: value
+      };
+    });
+
+    node.addEventListener('dragend', (e) => {
+      e.stopPropagation();
+      node.classList.remove('dragging');
+      // Clear the drag reference after a short delay to allow drop to process
+      setTimeout(() => {
+        window.__llarsVariableDrag = null;
+      }, 100);
+    });
+
+    return node;
+  }
+
+  static value(node) {
+    return node.getAttribute('data-variable');
+  }
+
+  // Return the text representation for copy/paste and serialization
+  static formats(node) {
+    return node.getAttribute('data-variable');
+  }
+
+  // Length of 1 means it acts as a single character
+  length() {
+    return 1;
+  }
+}
+VariableBlot.blotName = 'variable';
+VariableBlot.tagName = 'span';
+VariableBlot.className = 'ql-variable';
+Quill.register(VariableBlot);
+
+// Placeholder highlight blot - styled as a tag/chip (legacy, for backwards compatibility)
 class HighlightBlot extends Inline {}
 HighlightBlot.blotName = 'highlight';
 HighlightBlot.tagName = 'span';
 HighlightBlot.className = 'placeholder-highlight';
 Quill.register(HighlightBlot);
 
+// User highlight blot for collaboration
 class UserHighlightBlot extends Inline {
   static create(value) {
     const node = super.create();
@@ -334,6 +423,7 @@ Quill.register(UserHighlightBlot);
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
+import VariableManagerDialog from './VariableManagerDialog.vue';
 import PromptGitPanel from './PromptGitPanel.vue';
 import { useRoute, useRouter } from 'vue-router';
 import 'quill/dist/quill.snow.css';
@@ -342,6 +432,7 @@ import sidebar from "@/components/PromptEngineering/sidebar.vue";
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { usePanelResize } from '@/composables/usePanelResize';
 import { useMobile } from '@/composables/useMobile';
+import { useI18n } from 'vue-i18n';
 
 // Composables
 import { useSnackbar } from './composables/useSnackbar';
@@ -351,6 +442,7 @@ import { useYjsCollaboration } from './composables/useYjsCollaboration';
 import { usePromptBlocks } from './composables/usePromptBlocks';
 import { useQuillEditor } from './composables/useQuillEditor';
 import { usePromptGitDiff } from './composables/usePromptGitDiff';
+import { usePromptVariables } from './composables/usePromptVariables';
 import { useAuth } from '@/composables/useAuth';
 import { useActiveDuration, useScrollDepth, useTypingMetrics, useVisibilityTracker } from '@/composables/useAnalyticsMetrics';
 
@@ -359,11 +451,12 @@ const isDevelopment = import.meta.env.VITE_PROJECT_STATE === 'development';
 const route = useRoute();
 const router = useRouter();
 const { isMobile, isTablet } = useMobile();
+const { t } = useI18n();
 const mobileSidebarOpen = ref(false);
 
 const promptId = computed(() => route.params.id || 1);
 const roomId = computed(() => `room_${promptId.value}`);
-const username = localStorage.getItem('username') || 'Unbekannter Benutzer';
+const username = localStorage.getItem('username') || t('promptEngineering.user.unknown');
 const blocksContainerRef = ref(null);
 const gitPanelRef = ref(null);
 const promptEntity = computed(() => `prompt:${promptId.value}`);
@@ -405,7 +498,9 @@ const {
   startEditBlockTitle,
   resetBlockTitleEdit,
   showTestPromptDialog,
-  openTestPromptDialog
+  openTestPromptDialog,
+  showVariableManager,
+  openVariableManager
 } = useDialogs();
 
 const { promptName, promptOwner, sharedWithUsers, fetchPromptDetails } = usePromptDetails(promptId);
@@ -458,8 +553,35 @@ const collaboration = useYjsCollaboration(
 const { ydoc, socket, users, updateColor } = collaboration;
 
 // Blocks management
-const blocksManager = usePromptBlocks(ydoc, roomId, socket, showMessage);
+const blocksManager = usePromptBlocks(ydoc, roomId, socket, showMessage, t);
 const { blocks, sortedBlocks, processYDoc, createBlock, deleteBlock, saveBlockTitle, handleJsonUpload, assemblePrompt } = blocksManager;
+
+// Extract variables from the assembled prompt for PlaceholderPalette
+const assembledPromptText = computed(() => assemblePrompt())
+const promptVariablesExtractor = usePromptVariables(assembledPromptText, { promptId })
+const extractedVariables = computed(() => promptVariablesExtractor.validVariables.value || [])
+
+// User-created variables from VariableManagerDialog
+const userVariables = ref([])
+
+const handleVariablesChanged = (variables) => {
+  userVariables.value = variables
+}
+
+// Load user variables on mount
+const loadUserVariables = () => {
+  try {
+    const storageKey = promptId.value
+      ? `llars_prompt_variables_simple_${promptId.value}`
+      : 'llars_prompt_variables_simple'
+    const stored = localStorage.getItem(storageKey)
+    if (stored) {
+      userVariables.value = JSON.parse(stored)
+    }
+  } catch (e) {
+    console.warn('Failed to load user variables:', e)
+  }
+}
 
 // Git versioning - declare early so editors can reference showGitPanel
 const showGitPanel = ref(true); // Stored in localStorage
@@ -609,7 +731,7 @@ const handleAppendJsonBlocks = () => {
 };
 
 const onDragEnd = () => {
-  showMessage('Block-Reihenfolge aktualisiert!');
+  showMessage(t('promptEngineering.messages.blockOrderUpdated'));
 };
 
 watch(blocksContainerRef, (el) => {
@@ -666,6 +788,9 @@ watch(
 onMounted(async () => {
   // Load git panel visibility preference
   loadGitPanelVisibility();
+
+  // Load user-created variables
+  loadUserVariables();
 
   await withLoading('prompt', async () => {
     await fetchPromptDetails();
@@ -894,23 +1019,127 @@ watch(users, (newUsers, oldUsers) => {
   line-height: 1.6;
 }
 
+/* Placeholder drop target visual feedback */
+:deep(.ql-editor.placeholder-drop-target) {
+  background: rgba(var(--v-theme-primary), 0.08) !important;
+  outline: 2px dashed rgb(var(--v-theme-primary));
+  outline-offset: -2px;
+}
+
 :deep(.ql-toolbar) {
   border: none !important;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
   background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
+/* Placeholder Tag Styling - looks like a draggable chip/tag */
 :deep(.placeholder-highlight) {
-  background-color: #fff176;
-  padding: 1px 4px;
-  border-radius: 3px;
-  border: 1px solid #ffd600;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.2), rgba(var(--v-theme-primary), 0.1));
+  padding: 2px 8px;
+  border-radius: 4px 2px 4px 2px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.4);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  cursor: grab;
+  user-select: none;
+  transition: all 0.15s ease;
+  vertical-align: baseline;
+  margin: 0 2px;
+}
+
+:deep(.placeholder-highlight:hover) {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.3), rgba(var(--v-theme-primary), 0.2));
+  border-color: rgba(var(--v-theme-primary), 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(var(--v-theme-primary), 0.25);
+}
+
+:deep(.placeholder-highlight:active),
+:deep(.placeholder-highlight.dragging) {
+  cursor: grabbing;
+  opacity: 0.7;
+  transform: scale(0.95);
 }
 
 :deep(.llars-user-highlight) {
   background-color: var(--llars-collab-bg);
   border-radius: 2px;
+}
+
+/* Variable Embed Blot - atomic draggable tag element */
+:deep(.ql-variable) {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: baseline;
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.2), rgba(var(--v-theme-primary), 0.1));
+  padding: 2px 8px;
+  margin: 0 2px;
+  border-radius: 6px 2px 6px 2px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.4);
+  cursor: grab;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+:deep(.ql-variable .variable-tag-content) {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  white-space: nowrap;
+}
+
+:deep(.ql-variable:hover) {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.3), rgba(var(--v-theme-primary), 0.2));
+  border-color: rgba(var(--v-theme-primary), 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.3);
+}
+
+:deep(.ql-variable:active),
+:deep(.ql-variable.dragging) {
+  cursor: grabbing;
+  opacity: 0.6;
+  transform: scale(0.95);
+  box-shadow: 0 1px 4px rgba(var(--v-theme-primary), 0.2);
+}
+
+/* Drop indicator when dragging over editor */
+:deep(.editor-content.drag-over),
+:deep(.ql-editor.placeholder-drop-target) {
+  background: rgba(var(--v-theme-primary), 0.05) !important;
+  outline: 2px dashed rgba(var(--v-theme-primary), 0.4);
+  outline-offset: -2px;
+}
+
+/* Show insertion cursor during drag */
+:deep(.ql-editor.placeholder-drop-target)::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 1.2em;
+  background: rgb(var(--v-theme-primary));
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Drop cursor animation for drag and drop */
+@keyframes dropCursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+:deep(.ql-drop-cursor) {
+  box-shadow: 0 0 4px rgba(136, 196, 200, 0.8);
+  border-radius: 1px;
 }
 
 .prompt-workspace--git-hidden :deep(.llars-user-highlight) {

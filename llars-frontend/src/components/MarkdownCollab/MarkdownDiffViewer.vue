@@ -2,18 +2,18 @@
   <div class="diff-root">
     <div class="diff-header">
       <div class="diff-header__side">
-        <span class="diff-header__label">Basis</span>
-        <span class="diff-header__value">{{ baseLabel || '—' }}</span>
+        <span class="diff-header__label">{{ $t('markdownCollab.diff.base') }}</span>
+        <span class="diff-header__value">{{ baseLabel || $t('markdownCollab.diff.empty') }}</span>
       </div>
       <div class="diff-header__side">
-        <span class="diff-header__label">Vergleich</span>
-        <span class="diff-header__value">{{ compareLabel || '—' }}</span>
+        <span class="diff-header__label">{{ $t('markdownCollab.diff.compare') }}</span>
+        <span class="diff-header__value">{{ compareLabel || $t('markdownCollab.diff.empty') }}</span>
       </div>
     </div>
 
     <div class="diff-body">
       <div v-if="rows.length === 0" class="diff-empty">
-        Keine Unterschiede.
+        {{ $t('markdownCollab.diff.noChanges') }}
       </div>
       <div v-else class="diff-rows">
         <div

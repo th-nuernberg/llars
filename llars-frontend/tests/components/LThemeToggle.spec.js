@@ -42,10 +42,24 @@ vi.mock('@/composables/useAppTheme', () => ({
   })
 }))
 
+// Mock $t function for i18n
+const mockT = (key) => {
+  const translations = {
+    'theme.system': 'System',
+    'theme.light': 'Hell',
+    'theme.dark': 'Dunkel',
+    'theme.design': 'Design'
+  }
+  return translations[key] || key
+}
+
 function mountLThemeToggle(props = {}, options = {}) {
   return mount(LThemeToggle, {
     props,
     global: {
+      mocks: {
+        $t: mockT
+      },
       stubs: {
         'v-menu': {
           template: `
@@ -412,6 +426,9 @@ describe('LThemeToggle', () => {
     it('COMP_THM_039: component works without props', () => {
       const wrapper = mount(LThemeToggle, {
         global: {
+          mocks: {
+            $t: mockT
+          },
           stubs: {
             'v-menu': {
               template: '<div class="v-menu"><slot name="activator" :props="{}"></slot><slot></slot></div>'

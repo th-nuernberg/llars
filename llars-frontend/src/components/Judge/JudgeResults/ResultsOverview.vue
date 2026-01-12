@@ -9,7 +9,7 @@
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ totalComparisons }}</div>
-          <div class="stat-label">Gesamt Vergleiche</div>
+          <div class="stat-label">{{ $t('judge.results.stats.totalComparisons') }}</div>
         </div>
       </template>
     </div>
@@ -23,7 +23,7 @@
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ topPillar?.name || '-' }}</div>
-          <div class="stat-label">Beste Säule</div>
+          <div class="stat-label">{{ $t('judge.results.stats.topPillar') }}</div>
         </div>
       </template>
     </div>
@@ -37,7 +37,7 @@
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ averageConfidence }}%</div>
-          <div class="stat-label">Ø Konfidenz</div>
+          <div class="stat-label">{{ $t('judge.results.stats.avgConfidence') }}</div>
         </div>
       </template>
     </div>
@@ -51,7 +51,7 @@
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ duration }}</div>
-          <div class="stat-label">Laufzeit</div>
+          <div class="stat-label">{{ $t('judge.results.stats.duration') }}</div>
         </div>
       </template>
     </div>

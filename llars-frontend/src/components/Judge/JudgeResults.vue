@@ -9,18 +9,20 @@
           prepend-icon="mdi-arrow-left"
           @click="$router.push({ name: 'JudgeSession', params: { id: sessionId } })"
         >
-          Zurück
+          {{ $t('common.back') }}
         </LBtn>
         <div class="header-title-section">
           <v-skeleton-loader v-if="isLoading('header')" type="heading" width="300" />
           <template v-else>
             <h1 class="page-title">
               <LIcon class="mr-2" color="primary">mdi-chart-box</LIcon>
-              Auswertung
+              {{ $t('judge.results.title') }}
             </h1>
             <div class="page-subtitle">
               <LTag variant="primary" size="small">{{ session?.session_name }}</LTag>
-              <LTag variant="gray" size="small">{{ session?.pillar_count }} Säulen</LTag>
+              <LTag variant="gray" size="small">
+                {{ $t('judge.results.pillarsCount', { count: session?.pillar_count || 0 }) }}
+              </LTag>
             </div>
           </template>
         </div>

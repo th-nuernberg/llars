@@ -43,8 +43,8 @@
       <!-- Content Header -->
       <LatexContentHeader
         :is-mobile="isMobile"
-        :document-title="selectedNode?.title || 'Kein Dokument'"
-        :workspace-name="workspace?.name || `Workspace #${workspaceId}`"
+        :document-title="selectedNode?.title || $t('latexCollab.workspace.empty.noDocument')"
+        :workspace-name="workspace?.name || $t('latexCollab.workspace.fallbackName', { id: workspaceId })"
         :can-share="canShareWorkspace"
         :can-set-main="canSetMainDocument"
         :is-main-document="selectedNode?.id === workspace?.main_document_id"
@@ -77,29 +77,33 @@
         <v-alert
           v-if="!hasPermission('feature:latex_collab:view')"
           type="warning"
-          variant="tonal"
-          class="ma-4"
-        >
-          Dir fehlt die Berechtigung <code>feature:latex_collab:view</code>.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        <i18n-t keypath="latexCollab.permissions.missing" tag="span">
+          <template #permission>
+            <code>feature:latex_collab:view</code>
+          </template>
+        </i18n-t>
+      </v-alert>
 
         <v-alert
           v-else-if="selectedNode && selectedNode.asset_id"
           type="info"
-          variant="tonal"
-          class="ma-4"
-        >
-          Dieses Asset ist eine Binärdatei und kann nicht direkt im Editor bearbeitet werden.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        {{ $t('latexCollab.workspace.assetWarning') }}
+      </v-alert>
 
         <v-alert
           v-else-if="!selectedNode || selectedNode.type !== 'file'"
           type="info"
-          variant="tonal"
-          class="ma-4"
-        >
-          Wähle links eine LaTeX-Datei aus, um sie zu bearbeiten.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        {{ $t('latexCollab.workspace.empty.selectFile') }}
+      </v-alert>
 
         <template v-else>
           <div class="editor-layout">
@@ -119,12 +123,15 @@
                   class="zotero-readonly-notice"
                 >
                   <template #prepend>
-                    <LIcon color="teal">mdi-bookshelf</LIcon>
-                  </template>
-                  <span class="text-body-2">
-                    Diese Datei wird von <strong>Zotero</strong> verwaltet und ist schreibgeschützt.
-                    Änderungen werden bei der nächsten Synchronisation überschrieben.
-                  </span>
+                  <LIcon color="teal">mdi-bookshelf</LIcon>
+                </template>
+                <span class="text-body-2">
+                  <i18n-t keypath="latexCollab.workspace.zoteroReadonly" tag="span">
+                    <template #brand>
+                      <strong>Zotero</strong>
+                    </template>
+                  </i18n-t>
+                </span>
                 </v-alert>
                 <LatexEditorPane
                   ref="editorRef"
@@ -165,15 +172,15 @@
                       :loading="isCompiling"
                       :disabled="!canCompile"
                       prepend-icon="mdi-rocket-launch-outline"
-                      title="LaTeX kompilieren"
+                      :title="$t('latexCollab.compile.actions.compile')"
                       @click="triggerCompile"
                     >
-                      Kompilieren
+                      {{ $t('latexCollab.compile.actions.compile') }}
                     </LBtn>
                     <v-select
                       v-model="compileCommitId"
                       :items="compileCommitOptions"
-                      label="Version"
+                      :label="$t('latexCollab.compile.versionLabel')"
                       density="compact"
                       variant="outlined"
                       hide-details
@@ -188,29 +195,29 @@
                       icon
                       variant="text"
                       size="x-small"
-                      title="Logs anzeigen"
+                      :title="$t('latexCollab.compile.actions.showLogs')"
                       @click="compileLogDialog = true"
                     >
                       <LIcon size="16">mdi-text-box-outline</LIcon>
                     </v-btn>
                     <v-menu>
                       <template #activator="{ props: menuProps }">
-                        <v-btn icon variant="text" size="x-small" v-bind="menuProps" title="Auto-Compile">
+                        <v-btn icon variant="text" size="x-small" v-bind="menuProps" :title="$t('latexCollab.compile.auto.title')">
                           <LIcon size="16">mdi-tune-variant</LIcon>
                         </v-btn>
                       </template>
                       <v-card class="compile-settings">
-                        <v-card-title class="text-subtitle-2">Auto-Compile</v-card-title>
+                        <v-card-title class="text-subtitle-2">{{ $t('latexCollab.compile.auto.title') }}</v-card-title>
                         <v-card-text>
                       <v-switch
                         v-model="autoCompileEnabled"
-                        label="Automatisch kompilieren"
+                        :label="$t('latexCollab.compile.auto.enable')"
                         density="compact"
                         hide-details
                       />
                       <v-text-field
                         v-model.number="autoCompileDelay"
-                        label="Latenz (ms)"
+                        :label="$t('latexCollab.compile.auto.delayLabel')"
                         type="number"
                         min="500"
                         step="250"
@@ -220,7 +227,7 @@
                       />
                       <v-switch
                         v-model="syncEnabled"
-                        label="PDF Sync (SyncTeX)"
+                        :label="$t('latexCollab.compile.auto.syncLabel')"
                         density="compact"
                         hide-details
                         :disabled="!canSync"
@@ -245,7 +252,7 @@
                   <div class="comments-header">
                     <div class="d-flex align-center ga-2">
                       <LIcon size="18">mdi-comment-multiple-outline</LIcon>
-                      <span class="text-body-2">Kommentare</span>
+                      <span class="text-body-2">{{ $t('latexCollab.comments.title') }}</span>
                     </div>
                     <v-spacer />
                     <LBtn
@@ -253,10 +260,10 @@
                       size="small"
                       prepend-icon="mdi-comment-plus-outline"
                       :disabled="!canComment"
-                      title="Kommentar hinzufügen"
+                      :title="$t('latexCollab.comments.add')"
                       @click="openCommentDialog"
                     >
-                      Kommentar
+                      {{ $t('latexCollab.comments.addLabel') }}
                     </LBtn>
                   </div>
 
@@ -265,7 +272,7 @@
                   </v-alert>
 
                   <div v-if="comments.length === 0" class="comments-empty">
-                    Keine Kommentare vorhanden.
+                    {{ $t('latexCollab.comments.empty') }}
                   </div>
 
                   <div v-else class="comment-list">
@@ -282,12 +289,12 @@
                       </div>
                       <div class="comment-body">{{ c.body }}</div>
                       <div class="comment-actions">
-                        <LTag v-if="c.resolved_at" variant="success" size="x-small">Resolved</LTag>
+                        <LTag v-if="c.resolved_at" variant="success" size="x-small">{{ $t('latexCollab.comments.resolved') }}</LTag>
                         <v-btn
                           icon
                           variant="text"
                           size="x-small"
-                          :title="c.resolved_at ? 'Reopen' : 'Resolve'"
+                          :title="c.resolved_at ? $t('latexCollab.comments.reopen') : $t('latexCollab.comments.resolve')"
                           @click.stop="toggleCommentResolved(c)"
                         >
                           <LIcon size="16">mdi-check</LIcon>
@@ -296,7 +303,7 @@
                           icon
                           variant="text"
                           size="x-small"
-                          title="Löschen"
+                          :title="$t('common.delete')"
                           @click.stop="deleteComment(c)"
                         >
                           <LIcon size="16">mdi-delete-outline</LIcon>
@@ -345,9 +352,9 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2">mdi-comment-plus-outline</LIcon>
-          Kommentar hinzufügen
+          {{ $t('latexCollab.comments.dialog.title') }}
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="commentDialog = false" />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="commentDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text>
@@ -356,7 +363,7 @@
           </v-alert>
           <v-textarea
             v-model="commentDraft"
-            label="Kommentar"
+            :label="$t('latexCollab.comments.dialog.label')"
             variant="outlined"
             density="comfortable"
             auto-grow
@@ -364,8 +371,10 @@
           />
         </v-card-text>
         <v-card-actions class="justify-end">
-          <v-btn variant="text" title="Kommentar abbrechen" @click="commentDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" title="Kommentar speichern" :disabled="!canSubmitComment" @click="submitComment">Speichern</v-btn>
+          <v-btn variant="text" :title="$t('latexCollab.comments.dialog.cancelTitle')" @click="commentDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" :title="$t('latexCollab.comments.dialog.saveTitle')" :disabled="!canSubmitComment" @click="submitComment">
+            {{ $t('common.save') }}
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -385,11 +394,11 @@
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2" color="primary">mdi-book-open-page-variant</LIcon>
           <div>
-            <div>Zotero Bibliotheken</div>
+            <div>{{ $t('latexCollab.zotero.title') }}</div>
             <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
           </div>
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="zoteroDialog = false" />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="zoteroDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-0">
@@ -410,6 +419,7 @@
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
@@ -466,6 +476,7 @@ const emit = defineEmits(['document-change', 'ai-command', 'request-completion',
 
 const route = useRoute()
 const router = useRouter()
+const { locale } = useI18n()
 
 // Computed route base for navigation
 const routeBase = computed(() => props.basePath)
@@ -947,7 +958,7 @@ function authHeaders() {
 function formatDate(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(locale.value || undefined)
   } catch {
     return iso
   }

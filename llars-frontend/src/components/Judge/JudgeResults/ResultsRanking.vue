@@ -4,7 +4,7 @@
     <div class="results-card">
       <div class="card-header">
         <LIcon class="header-icon">mdi-podium</LIcon>
-        <span class="header-title">Säulen-Ranking</span>
+        <span class="header-title">{{ $t('judge.results.ranking.title') }}</span>
       </div>
       <div class="card-content">
         <v-skeleton-loader v-if="loading" type="list-item-avatar@5" />
@@ -25,22 +25,22 @@
               <div class="pillar-info">
                 <div class="pillar-name">{{ pillar.name }}</div>
                 <div class="pillar-stats">
-                  <LTag variant="success" size="small">{{ pillar.wins }} Siege</LTag>
-                  <LTag variant="danger" size="small">{{ pillar.losses }} Niederlagen</LTag>
+                  <LTag variant="success" size="small">{{ $t('judge.results.ranking.winsCount', { count: pillar.wins }) }}</LTag>
+                  <LTag variant="danger" size="small">{{ $t('judge.results.ranking.lossesCount', { count: pillar.losses }) }}</LTag>
                   <LTag variant="gray" size="small">{{ Math.round(pillar.win_rate * 100) }}%</LTag>
                 </div>
               </div>
 
               <div class="pillar-score">
                 <div class="score-value">{{ pillar.score.toFixed(2) }}</div>
-                <div class="score-label">Score</div>
+                <div class="score-label">{{ $t('judge.results.ranking.scoreLabel') }}</div>
               </div>
             </div>
           </div>
 
           <div v-if="pillarRanking.length === 0" class="empty-state">
             <LIcon size="48" color="grey-lighten-1">mdi-chart-line</LIcon>
-            <div class="empty-text">Keine Daten verfügbar</div>
+            <div class="empty-text">{{ $t('judge.results.ranking.empty') }}</div>
           </div>
         </template>
       </div>
@@ -50,7 +50,7 @@
     <div class="results-card">
       <div class="card-header">
         <LIcon class="header-icon">mdi-grid</LIcon>
-        <span class="header-title">Vergleichs-Matrix</span>
+        <span class="header-title">{{ $t('judge.results.matrix.title') }}</span>
       </div>
       <div class="card-content">
         <v-skeleton-loader v-if="loading" type="table" />
@@ -86,7 +86,7 @@
             </table>
           </div>
           <div class="matrix-legend">
-            Zeile = Angreifer, Spalte = Verteidiger. Werte = Anzahl Siege.
+            {{ $t('judge.results.matrix.legend') }}
           </div>
         </template>
       </div>

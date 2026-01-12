@@ -2,7 +2,7 @@
   <div class="results-card metrics-card">
     <div class="card-header">
       <LIcon class="header-icon">mdi-chart-bar</LIcon>
-      <span class="header-title">Detaillierte Metriken</span>
+      <span class="header-title">{{ $t('judge.results.metrics.title') }}</span>
     </div>
 
     <div class="card-content">
@@ -11,13 +11,13 @@
         <table class="metrics-table">
           <thead>
             <tr>
-              <th class="col-name">Säule</th>
-              <th class="col-wins">Siege</th>
-              <th class="col-losses">Niederlagen</th>
-              <th class="col-winrate">Siegrate</th>
-              <th class="col-confidence">Ø Konfidenz</th>
-              <th class="col-score">Score</th>
-              <th class="col-total">Vergleiche</th>
+              <th class="col-name">{{ $t('judge.results.metrics.columns.pillar') }}</th>
+              <th class="col-wins">{{ $t('judge.results.metrics.columns.wins') }}</th>
+              <th class="col-losses">{{ $t('judge.results.metrics.columns.losses') }}</th>
+              <th class="col-winrate">{{ $t('judge.results.metrics.columns.winRate') }}</th>
+              <th class="col-confidence">{{ $t('judge.results.metrics.columns.avgConfidence') }}</th>
+              <th class="col-score">{{ $t('judge.results.metrics.columns.score') }}</th>
+              <th class="col-total">{{ $t('judge.results.metrics.columns.comparisons') }}</th>
             </tr>
           </thead>
           <tbody>

@@ -9,19 +9,19 @@
             <LIcon size="14">{{ toolbarCollapsed ? 'mdi-chevron-down' : 'mdi-chevron-up' }}</LIcon>
           </button>
         </template>
-        <span>{{ toolbarCollapsed ? 'Toolbar einblenden' : 'Toolbar ausblenden' }}</span>
+        <span>{{ toolbarCollapsed ? $t('latexCollab.editor.toolbar.show') : $t('latexCollab.editor.toolbar.hide') }}</span>
       </v-tooltip>
 
       <!-- Collapsed state: just show label -->
       <span v-if="toolbarCollapsed" class="toolbar-collapsed-label" @click="toggleToolbar">
-        Formatierung
+        {{ $t('latexCollab.editor.toolbar.label') }}
       </span>
 
       <!-- Expanded toolbar content -->
       <template v-if="!toolbarCollapsed">
         <!-- Text Formatting -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in TEXT_FORMAT_BUTTONS" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in textFormatButtons" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <LIcon size="16">{{ btn.icon }}</LIcon>
@@ -35,7 +35,7 @@
 
         <!-- Structure -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in STRUCTURE_BUTTONS" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in structureButtons" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <LIcon size="16">{{ btn.icon }}</LIcon>
@@ -49,7 +49,7 @@
 
         <!-- Lists -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in LIST_BUTTONS" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in listButtons" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <LIcon size="16">{{ btn.icon }}</LIcon>
@@ -63,7 +63,7 @@
 
         <!-- Content (Figure, Table) -->
         <div class="toolbar-group">
-          <template v-for="btn in CONTENT_BUTTONS" :key="btn.id">
+          <template v-for="btn in contentButtons" :key="btn.id">
             <!-- Special table button with size picker -->
             <v-menu v-if="btn.hasMenu" v-model="showTablePicker" :close-on-content-click="false" location="bottom">
               <template #activator="{ props: menuProps }">
@@ -78,11 +78,11 @@
               </template>
               <v-card class="table-picker-card" min-width="200">
                 <v-card-text class="pa-3">
-                  <div class="text-subtitle-2 mb-2">Tabellengröße</div>
+                  <div class="text-subtitle-2 mb-2">{{ $t('latexCollab.editor.table.size') }}</div>
                   <div class="d-flex align-center ga-3 mb-2">
                     <v-text-field
                       v-model.number="tableRows"
-                      label="Zeilen"
+                      :label="$t('latexCollab.editor.table.rows')"
                       type="number"
                       min="1"
                       max="20"
@@ -94,7 +94,7 @@
                     <span class="text-body-2">×</span>
                     <v-text-field
                       v-model.number="tableCols"
-                      label="Spalten"
+                      :label="$t('latexCollab.editor.table.columns')"
                       type="number"
                       min="1"
                       max="10"
@@ -105,11 +105,11 @@
                     />
                   </div>
                   <div class="text-caption text-medium-emphasis mb-2">
-                    Vorschau: {{ tableRows }} × {{ tableCols }}
+                    {{ $t('latexCollab.editor.table.preview', { rows: tableRows, cols: tableCols }) }}
                   </div>
                   <v-btn color="primary" size="small" block @click="insertTable">
                     <LIcon start size="small">mdi-table-plus</LIcon>
-                    Einfügen
+                    {{ $t('latexCollab.editor.table.insert') }}
                   </v-btn>
                 </v-card-text>
               </v-card>
@@ -130,7 +130,7 @@
 
         <!-- Math -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in MATH_BUTTONS" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in mathButtons" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <LIcon size="16">{{ btn.icon }}</LIcon>
@@ -144,7 +144,7 @@
 
         <!-- References -->
         <div class="toolbar-group">
-          <v-tooltip v-for="btn in REF_BUTTONS" :key="btn.id" location="bottom">
+          <v-tooltip v-for="btn in refButtons" :key="btn.id" location="bottom">
             <template #activator="{ props: tp }">
               <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
                 <LIcon size="16">{{ btn.icon }}</LIcon>
@@ -201,6 +201,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { autocompletion, completionKeymap } from '@codemirror/autocomplete'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
 import { StreamLanguage, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { useI18n } from 'vue-i18n'
 
 // External composables
 import { useAuth } from '@/composables/useAuth'
@@ -225,7 +226,7 @@ import {
 } from './LatexEditorPane/constants'
 
 // Local modules - CodeMirror widgets (shared with LatexAI editor)
-import { CaretWidget, GhostTextWidget, deletionMarkerInstance } from './LatexEditorPane/widgets'
+import { CaretWidget, GhostTextWidget, deletionMarkerInstance, setDeletionMarkerLabel } from './LatexEditorPane/widgets'
 
 const props = defineProps({
   document: { type: Object, required: true },
@@ -238,6 +239,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled', 'document-saved'])
+
+const { t, locale } = useI18n()
+
+setDeletionMarkerLabel(t('latexCollab.editor.deletedText'))
+watch(locale, () => {
+  setDeletionMarkerLabel(t('latexCollab.editor.deletedText'))
+})
 
 const editorEl = ref(null)
 const error = ref('')
@@ -259,8 +267,126 @@ const ghostTextPosition = ref(null)
 let ghostTextTimer = null
 let ghostTextDecorationRange = null
 
+function mapButtons(buttons, labels) {
+  return buttons.map(btn => ({
+    ...btn,
+    label: labels[btn.id] || btn.label
+  }))
+}
+
+const textFormatButtons = computed(() => mapButtons(TEXT_FORMAT_BUTTONS, {
+  bold: t('latexCollab.editor.toolbar.bold'),
+  italic: t('latexCollab.editor.toolbar.italic'),
+  underline: t('latexCollab.editor.toolbar.underline'),
+  emph: t('latexCollab.editor.toolbar.emph'),
+  typewriter: t('latexCollab.editor.toolbar.typewriter')
+}))
+
+const structureButtons = computed(() => mapButtons(STRUCTURE_BUTTONS, {
+  section: t('latexCollab.editor.toolbar.section'),
+  subsection: t('latexCollab.editor.toolbar.subsection'),
+  subsubsection: t('latexCollab.editor.toolbar.subsubsection'),
+  paragraph: t('latexCollab.editor.toolbar.paragraph')
+}))
+
+const listButtons = computed(() => mapButtons(LIST_BUTTONS, {
+  itemize: t('latexCollab.editor.toolbar.itemize'),
+  enumerate: t('latexCollab.editor.toolbar.enumerate'),
+  description: t('latexCollab.editor.toolbar.description')
+}))
+
+const contentButtons = computed(() => mapButtons(CONTENT_BUTTONS, {
+  figure: t('latexCollab.editor.toolbar.figure'),
+  table: t('latexCollab.editor.toolbar.table'),
+  code: t('latexCollab.editor.toolbar.code'),
+  quote: t('latexCollab.editor.toolbar.quote')
+}))
+
+const mathButtons = computed(() => mapButtons(MATH_BUTTONS, {
+  'inline-math': t('latexCollab.editor.toolbar.inlineMath'),
+  'display-math': t('latexCollab.editor.toolbar.displayMath'),
+  equation: t('latexCollab.editor.toolbar.equation'),
+  align: t('latexCollab.editor.toolbar.align'),
+  frac: t('latexCollab.editor.toolbar.frac')
+}))
+
+const refButtons = computed(() => mapButtons(REF_BUTTONS, {
+  cite: t('latexCollab.editor.toolbar.cite'),
+  ref: t('latexCollab.editor.toolbar.ref'),
+  label: t('latexCollab.editor.toolbar.label'),
+  footnote: t('latexCollab.editor.toolbar.footnote'),
+  url: t('latexCollab.editor.toolbar.url')
+}))
+
+const latexCommandInfo = computed(() => ({
+  '\\documentclass': t('latexCollab.completions.documentclass'),
+  '\\usepackage': t('latexCollab.completions.usepackage'),
+  '\\begin': t('latexCollab.completions.begin'),
+  '\\end': t('latexCollab.completions.end'),
+  '\\section': t('latexCollab.completions.section'),
+  '\\subsection': t('latexCollab.completions.subsection'),
+  '\\subsubsection': t('latexCollab.completions.subsubsection'),
+  '\\paragraph': t('latexCollab.completions.paragraph'),
+  '\\textbf': t('latexCollab.completions.textbf'),
+  '\\textit': t('latexCollab.completions.textit'),
+  '\\emph': t('latexCollab.completions.emph'),
+  '\\underline': t('latexCollab.completions.underline'),
+  '\\item': t('latexCollab.completions.item'),
+  '\\label': t('latexCollab.completions.label'),
+  '\\ref': t('latexCollab.completions.ref'),
+  '\\pageref': t('latexCollab.completions.pageref'),
+  '\\cite': t('latexCollab.completions.cite'),
+  '\\citet': t('latexCollab.completions.citet'),
+  '\\citep': t('latexCollab.completions.citep'),
+  '\\includegraphics': t('latexCollab.completions.includegraphics'),
+  '\\caption': t('latexCollab.completions.caption'),
+  '\\centering': t('latexCollab.completions.centering'),
+  '\\footnote': t('latexCollab.completions.footnote'),
+  '\\url': t('latexCollab.completions.url'),
+  '\\href': t('latexCollab.completions.href'),
+  '\\title': t('latexCollab.completions.title'),
+  '\\author': t('latexCollab.completions.author'),
+  '\\date': t('latexCollab.completions.date'),
+  '\\maketitle': t('latexCollab.completions.maketitle'),
+  '\\tableofcontents': t('latexCollab.completions.tableofcontents'),
+  '\\newcommand': t('latexCollab.completions.newcommand'),
+  '\\renewcommand': t('latexCollab.completions.renewcommand'),
+  '\\input': t('latexCollab.completions.input'),
+  '\\include': t('latexCollab.completions.include'),
+  '\\frac': t('latexCollab.completions.frac'),
+  '\\sqrt': t('latexCollab.completions.sqrt'),
+  '\\sum': t('latexCollab.completions.sum'),
+  '\\int': t('latexCollab.completions.int')
+}))
+
+const latexCommandCompletions = computed(() => (
+  LATEX_COMMAND_COMPLETIONS.map(cmd => ({
+    ...cmd,
+    info: latexCommandInfo.value[cmd.label] || cmd.info
+  }))
+))
+
+const aiCommandInfo = computed(() => ({
+  '@ai': t('latexCollab.aiCommands.ai'),
+  '@rewrite': t('latexCollab.aiCommands.rewrite'),
+  '@expand': t('latexCollab.aiCommands.expand'),
+  '@summarize': t('latexCollab.aiCommands.summarize'),
+  '@fix': t('latexCollab.aiCommands.fix'),
+  '@translate': t('latexCollab.aiCommands.translate'),
+  '@cite': t('latexCollab.aiCommands.cite'),
+  '@abstract': t('latexCollab.aiCommands.abstract'),
+  '@titles': t('latexCollab.aiCommands.titles')
+}))
+
+const aiCommandCompletions = computed(() => (
+  AI_COMMAND_COMPLETIONS.map(cmd => ({
+    ...cmd,
+    info: aiCommandInfo.value[cmd.label] || cmd.info
+  }))
+))
+
 const { tokenParsed, collabColor } = useAuth()
-const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
+const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || t('latexCollab.editor.userFallback'))
 
 const roomId = computed(() => props.document?.yjs_doc_id || `latex_${props.document?.id}`)
 
@@ -348,7 +474,7 @@ function latexCompletionSource(context) {
   if (!word || (word.from === word.to && !context.explicit)) return null
   return {
     from: word.from,
-    options: LATEX_COMMAND_COMPLETIONS,
+    options: latexCommandCompletions.value,
     validFor: /^\\[A-Za-z]*$/
   }
 }
@@ -370,7 +496,7 @@ function aiCompletionSource(context) {
 
   return {
     from: word.from,
-    options: AI_COMMAND_COMPLETIONS,
+    options: aiCommandCompletions.value,
     validFor: /^@[A-Za-z]*$/
   }
 }
@@ -760,7 +886,7 @@ function computeGitSummary() {
   const byUser = new Map()
   let total = 0
   for (const [, meta] of yhighlights.entries()) {
-    const u = meta?.username || 'unknown'
+    const u = meta?.username || t('latexCollab.editor.userUnknown')
     const color = meta?.color || '#4ECDC4'
     total += 1
     const cur = byUser.get(u) || { username: u, color, changedLines: 0 }

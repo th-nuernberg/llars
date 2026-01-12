@@ -3,15 +3,15 @@
     <!-- Header -->
     <div class="overview-header">
       <LBtn variant="tonal" prepend-icon="mdi-arrow-left" size="small" @click="goToHub">
-        Evaluierungen
+        {{ $t('evaluation.backToEvaluations') }}
       </LBtn>
       <div class="header-info">
-        <h1>Verlaufsbewertung</h1>
-        <p class="text-medium-emphasis">Öffne einen Verlauf und bewerte Kohärenz, Qualität und Gesamtwirkung.</p>
+        <h1>{{ $t('evaluation.historyRating.pageTitle') }}</h1>
+        <p class="text-medium-emphasis">{{ $t('evaluation.historyRating.pageSubtitle') }}</p>
       </div>
       <div class="header-stats">
         <LTag variant="success" size="small">
-          {{ doneCount }} / {{ emailThreads.length }} abgeschlossen
+          {{ $t('evaluation.progress', { done: doneCount, total: emailThreads.length }) }}
         </LTag>
       </div>
     </div>
@@ -49,9 +49,9 @@
 
           <div v-if="emailThreads.length === 0" class="empty-state">
             <LIcon size="64" color="grey-lighten-1">mdi-clipboard-text-off-outline</LIcon>
-            <h3>Keine Verläufe verfügbar</h3>
+            <h3>{{ $t('evaluation.historyRating.emptyTitle') }}</h3>
             <p class="text-medium-emphasis">
-              Stelle sicher, dass ein aktives Szenario existiert und Threads zugewiesen sind.
+              {{ $t('evaluation.emptyHint') }}
             </p>
           </div>
         </template>

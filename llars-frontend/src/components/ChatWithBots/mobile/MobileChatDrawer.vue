@@ -20,7 +20,7 @@
         :disabled="!selectedChatbot"
         @click="$emit('new-chat'); $emit('update:modelValue', false)"
       >
-        Neuer Chat
+        {{ $t('chat.newChat') }}
       </LBtn>
     </div>
 
@@ -28,7 +28,7 @@
       <v-text-field
         :model-value="searchQuery"
         @update:model-value="$emit('update:searchQuery', $event)"
-        placeholder="Chats durchsuchen..."
+        :placeholder="$t('chat.searchChats')"
         density="compact"
         variant="outlined"
         hide-details
@@ -60,7 +60,7 @@
             </template>
             <v-list-item-title>{{ bot.display_name }}</v-list-item-title>
             <v-list-item-subtitle v-if="getChatCount(bot.id)">
-              {{ getChatCount(bot.id) }} Chats
+              {{ $t('chat.chatCount', { count: getChatCount(bot.id) }) }}
             </v-list-item-subtitle>
             <template #append>
               <LIcon>{{ expandedBots[bot.id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
@@ -86,7 +86,7 @@
                 </v-list-item>
                 <v-list-item v-if="!getFilteredConversations(bot.id)?.length" disabled>
                   <v-list-item-title class="text-caption text-medium-emphasis">
-                    Noch keine Chats
+                    {{ $t('chat.noChats') }}
                   </v-list-item-title>
                 </v-list-item>
               </v-list>
@@ -99,7 +99,7 @@
     <template #append>
       <v-divider />
       <v-list density="compact">
-        <v-list-item prepend-icon="mdi-home" title="Startseite" @click="$emit('navigate-home')" />
+        <v-list-item prepend-icon="mdi-home" :title="$t('chat.homePage')" @click="$emit('navigate-home')" />
       </v-list>
     </template>
   </v-navigation-drawer>

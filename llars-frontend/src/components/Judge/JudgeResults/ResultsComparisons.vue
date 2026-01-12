@@ -4,7 +4,7 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2">mdi-format-list-bulleted-square</LIcon>
-          Alle Vergleiche ({{ comparisons.length }})
+          {{ $t('judge.results.comparisons.title', { count: comparisons.length }) }}
         </v-card-title>
         <v-divider></v-divider>
 
@@ -35,7 +35,7 @@
               </v-chip>
               <v-chip v-if="item.position_order === 2" size="x-small" color="warning" variant="tonal">
                 <LIcon start size="x-small">mdi-swap-horizontal</LIcon>
-                Swapped
+                {{ $t('judge.results.comparisons.swapped') }}
               </v-chip>
             </div>
           </template>
@@ -75,23 +75,23 @@
                 <v-card variant="outlined">
                   <v-card-title class="text-subtitle-1">
                     <LIcon class="mr-2" size="small">mdi-robot</LIcon>
-                    LLM Raw Output
+                    {{ $t('judge.results.comparisons.llmOutputTitle') }}
                   </v-card-title>
                   <v-divider></v-divider>
                   <v-card-text>
                     <!-- Reasoning -->
                     <div v-if="item.reasoning" class="mb-4">
-                      <div class="text-subtitle-2 font-weight-bold mb-2">Begründung:</div>
+                      <div class="text-subtitle-2 font-weight-bold mb-2">{{ $t('judge.results.comparisons.reasoning') }}</div>
                       <div class="reasoning-text">{{ item.reasoning }}</div>
                     </div>
 
                     <!-- Scores -->
                     <div v-if="item.scores" class="mb-4">
-                      <div class="text-subtitle-2 font-weight-bold mb-2">Einzelbewertungen:</div>
+                      <div class="text-subtitle-2 font-weight-bold mb-2">{{ $t('judge.results.comparisons.scores') }}</div>
                       <v-table density="compact">
                         <thead>
                           <tr>
-                            <th>Kriterium</th>
+                            <th>{{ $t('judge.results.comparisons.criterion') }}</th>
                             <th class="text-center">A</th>
                             <th class="text-center">B</th>
                           </tr>
@@ -115,7 +115,7 @@
                       <v-expansion-panel>
                         <v-expansion-panel-title>
                           <LIcon class="mr-2" size="small">mdi-code-json</LIcon>
-                          Raw LLM Response ({{ item.raw_response?.length || 0 }} Zeichen)
+                          {{ $t('judge.results.comparisons.rawResponseTitle', { count: item.raw_response?.length || 0 }) }}
                         </v-expansion-panel-title>
                         <v-expansion-panel-text>
                           <pre class="raw-output">{{ item.raw_response }}</pre>
@@ -134,8 +134,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { COMPARISON_HEADERS } from './composables';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { buildComparisonHeaders } from './composables';
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
@@ -146,8 +147,9 @@ const props = defineProps({
   formatCriterionName: { type: Function, required: true }
 });
 
+const { t } = useI18n();
 const expandedRows = ref([]);
-const headers = COMPARISON_HEADERS;
+const headers = computed(() => buildComparisonHeaders(t));
 </script>
 
 <style scoped>

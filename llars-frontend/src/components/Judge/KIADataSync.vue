@@ -7,20 +7,20 @@
           <LIcon size="20" color="white">mdi-gitlab</LIcon>
         </div>
         <div class="ml-3">
-          <div class="text-subtitle-2 font-weight-bold">KIA Datenquellen</div>
+          <div class="text-subtitle-2 font-weight-bold">{{ $t('judge.kia.sourcesTitle') }}</div>
           <div class="text-caption text-medium-emphasis">
             <span v-if="gitlabConnected" class="text-success">
-              <LIcon size="12" class="mr-1">mdi-check-circle</LIcon>Verbunden
+              <LIcon size="12" class="mr-1">mdi-check-circle</LIcon>{{ $t('judge.kia.connection.connected') }}
             </span>
             <span v-else class="text-warning">
-              <LIcon size="12" class="mr-1">mdi-alert</LIcon>Token erforderlich
+              <LIcon size="12" class="mr-1">mdi-alert</LIcon>{{ $t('judge.kia.connection.tokenRequired') }}
             </span>
           </div>
         </div>
       </div>
       <div class="d-flex align-center ga-1">
         <v-chip v-if="totalThreads > 0" size="small" color="primary" variant="flat">
-          {{ totalThreads }} Threads
+          {{ $t('judge.kia.threadsCount', { count: totalThreads }) }}
         </v-chip>
         <v-btn
           icon
@@ -90,7 +90,7 @@
         prepend-icon="mdi-cloud-sync"
         @click="syncAll"
       >
-        Alle synchronisieren
+        {{ $t('judge.kia.actions.syncAll') }}
       </v-btn>
     </div>
 
@@ -102,7 +102,7 @@
         prepend-icon="mdi-key"
         @click="showTokenDialog = true"
       >
-        Token konfigurieren
+        {{ $t('judge.kia.actions.configureToken') }}
       </v-btn>
     </div>
 
@@ -126,17 +126,17 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2" color="orange">mdi-gitlab</LIcon>
-          GitLab Token
+          {{ $t('judge.kia.tokenDialog.title') }}
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="gitlabToken"
-            label="Personal Access Token"
+            :label="$t('judge.kia.tokenDialog.label')"
             type="password"
             variant="outlined"
             density="compact"
             prepend-inner-icon="mdi-key"
-            hint="Mit read_repository Berechtigung"
+            :hint="$t('judge.kia.tokenDialog.hint')"
             persistent-hint
           />
         </v-card-text>
@@ -148,11 +148,11 @@
             target="_blank"
           >
             <LIcon start size="16">mdi-open-in-new</LIcon>
-            Token erstellen
+            {{ $t('judge.kia.actions.createToken') }}
           </v-btn>
           <v-spacer />
-          <v-btn variant="text" @click="showTokenDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" :loading="savingToken" @click="saveToken">Speichern</v-btn>
+          <v-btn variant="text" @click="showTokenDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingToken" @click="saveToken">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -162,10 +162,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useI18n } from 'vue-i18n';
 import { useKIAStatusCache } from '@/composables/useKIAStatusCache';
 
 const emit = defineEmits(['loaded']);
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+const { t } = useI18n();
 
 const { state: kiaState, fetchStatus, clearCache } = useKIAStatusCache();
 
@@ -194,10 +197,10 @@ const getPillarColor = (num) => pillarColors[num] || '#9e9e9e';
 
 const getStatusText = (status) => {
   const texts = {
-    'available': 'Bereit',
-    'not_found': 'Nicht vorhanden',
-    'error': 'Fehler',
-    'syncing': 'Lädt...'
+    'available': t('judge.kia.status.available'),
+    'not_found': t('judge.kia.status.notFound'),
+    'error': t('judge.kia.status.error'),
+    'syncing': t('judge.kia.status.syncing')
   };
   return texts[status] || status;
 };
@@ -210,7 +213,7 @@ const checkStatus = async (force = false) => {
     if (error.response?.status !== 401) {
       lastSyncResult.value = {
         success: false,
-        message: error.response?.data?.error || 'Status-Abfrage fehlgeschlagen'
+        message: error.response?.data?.error || t('judge.kia.messages.statusFailed')
       };
     }
   } finally {
@@ -227,15 +230,15 @@ const syncPillar = async (num) => {
     lastSyncResult.value = {
       success: response.data.success,
       message: response.data.success
-        ? `Säule ${num}: ${response.data.threads_created} Threads erstellt`
-        : `Säule ${num}: ${response.data.errors?.[0] || 'Fehler'}`
+        ? t('judge.kia.messages.syncPillarSuccess', { id: num, count: response.data.threads_created })
+        : t('judge.kia.messages.syncPillarError', { id: num, error: response.data.errors?.[0] || t('judge.kia.status.error') })
     };
     clearCache();
     await checkStatus(true);
   } catch (error) {
     lastSyncResult.value = {
       success: false,
-      message: `Säule ${num}: ${error.response?.data?.error || error.message}`
+      message: t('judge.kia.messages.syncPillarError', { id: num, error: error.response?.data?.error || error.message })
     };
   } finally {
     syncing.value[num] = false;
@@ -248,14 +251,14 @@ const syncAll = async () => {
     const response = await axios.post(`${API_BASE}/api/judge/kia/sync`, {});
     lastSyncResult.value = {
       success: response.data.total_success > 0,
-      message: `${response.data.total_threads_created} Threads erstellt`
+      message: t('judge.kia.messages.syncAllSuccess', { count: response.data.total_threads_created })
     };
     clearCache();
     await checkStatus(true);
   } catch (error) {
     lastSyncResult.value = {
       success: false,
-      message: error.response?.data?.error || 'Sync fehlgeschlagen'
+      message: error.response?.data?.error || t('judge.kia.messages.syncFailed')
     };
   } finally {
     syncingAll.value = false;
@@ -278,7 +281,7 @@ const saveToken = async () => {
   } catch (error) {
     lastSyncResult.value = {
       success: false,
-      message: error.response?.data?.error || 'Token-Speicherung fehlgeschlagen'
+      message: error.response?.data?.error || t('judge.kia.messages.saveTokenFailed')
     };
   } finally {
     savingToken.value = false;

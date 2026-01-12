@@ -1,0 +1,1881 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "done": "Fertig",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "confirm": "Bestätigen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "reset": "Zurücksetzen",
+    "refresh": "Aktualisieren",
+    "back": "Zurück",
+    "next": "Weiter",
+    "yes": "Ja",
+    "no": "Nein",
+    "more": "Mehr",
+    "less": "Weniger"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "register": "Registrieren",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "email": "E-Mail",
+    "forgotPassword": "Passwort vergessen?",
+    "noAccount": "Noch kein Konto?",
+    "hasAccount": "Bereits ein Konto?"
+  },
+  "appbar": {
+    "platform": "LLars Plattform",
+    "platformShort": "LLars"
+  },
+  "footer": {
+    "copyright": "LLars Plattform",
+    "copyrightShort": "LLars",
+    "documentation": "Dokumentation",
+    "imprint": "Impressum",
+    "privacy": "Datenschutz",
+    "contact": "Kontakt"
+  },
+  "settings": {
+    "title": "Profil & Einstellungen",
+    "profile": "Mein Profil",
+    "notLoggedIn": "Nicht angemeldet",
+    "noEmail": "Keine E-Mail hinterlegt",
+    "administrator": "Administrator",
+    "user": "Benutzer",
+    "uploadImage": "Bild hochladen",
+    "newDefaultImage": "Neues Standardbild",
+    "restoreDefault": "Standardbild wiederherstellen",
+    "avatarChangesPerDay": "Maximal 3 Änderungen pro Tag",
+    "avatarLimitReached": "Limit erreicht (3 Änderungen/Tag)",
+    "avatarChangesLeft": "Heute noch {count} Änderungen",
+    "avatarTooLarge": "Datei ist zu groß (max. 5MB)",
+    "avatarUploadFailed": "Profilbild konnte nicht hochgeladen werden",
+    "avatarRegenerateFailed": "Standardbild konnte nicht aktualisiert werden",
+    "avatarResetFailed": "Profilbild konnte nicht zurückgesetzt werden",
+    "theme": "Design & Darstellung",
+    "themeMode": "Farbmodus",
+    "language": "Sprache",
+    "languageHint": "Sprache der Benutzeroberfläche",
+    "notifications": "Benachrichtigungen",
+    "notificationsHint": "Systembenachrichtigungen aktivieren",
+    "additionalSettings": "Weitere Einstellungen",
+    "collabColor": "Kollaborationsfarbe",
+    "collabColorHint": "Diese Farbe wird verwendet, um deine Bearbeitungen in Echtzeit-Kollaborationen hervorzuheben.",
+    "noColorSelected": "Keine Farbe gewählt",
+    "saveColor": "Farbe speichern"
+  },
+  "theme": {
+    "system": "System",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "current": "Aktuell",
+    "design": "Design"
+  },
+  "language": {
+    "de": "Deutsch",
+    "en": "English",
+    "select": "Sprache wählen"
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich",
+    "invalidEmail": "Ungültige E-Mail-Adresse",
+    "minLength": "Mindestens {min} Zeichen erforderlich",
+    "maxLength": "Maximal {max} Zeichen erlaubt"
+  },
+  "errors": {
+    "generic": "Ein Fehler ist aufgetreten",
+    "network": "Netzwerkfehler",
+    "unauthorized": "Nicht autorisiert",
+    "notFound": "Nicht gefunden",
+    "serverError": "Serverfehler"
+  },
+  "navigation": {
+    "home": "Home",
+    "back": "Zurück"
+  },
+  "home": {
+    "header": {
+      "title": "Willkommen bei LLARS",
+      "subtitle": "Ihre Plattform für Ranking, Labeling, Rating und KI-Analyse"
+    },
+    "categories": {
+      "title": "Kategorien",
+      "all": "Alle Features",
+      "research": "Forschung",
+      "rating": "Bewertung",
+      "ai": "KI-Tools",
+      "admin": "Administration",
+      "fallback": "Features",
+      "featuresCount": "{count} Features"
+    },
+    "available": "{count} verfügbar",
+    "empty": {
+      "noFeatures": "Keine Features in dieser Kategorie verfügbar"
+    },
+    "user": {
+      "guest": "Gast"
+    },
+    "features": {
+      "evaluation": {
+        "title": "Evaluierung",
+        "description": "Ranking, Rating, Fake/Echt, Verlaufsbewertung & Gegenüberstellung"
+      },
+      "evaluationAssistant": {
+        "title": "Evaluations-Assistent",
+        "description": "Daten importieren und KI-gestützt Evaluations-Szenarien erstellen"
+      },
+      "chatbot": {
+        "title": "Chatbot",
+        "description": "Interaktiver Chat mit LLars KI-Assistent"
+      },
+      "promptEngineering": {
+        "title": "Prompt Engineering",
+        "description": "Kollaboratives Entwerfen und Testen von Prompts"
+      },
+      "markdownCollab": {
+        "title": "Markdown Collab",
+        "description": "Kollaboratives Arbeiten an Markdown-Dateien mit Live-Preview"
+      },
+      "latexCollab": {
+        "title": "LaTeX Collab",
+        "description": "Overleaf-ähnlicher LaTeX-Editor mit PDF-Preview"
+      },
+      "latexCollabAi": {
+        "title": "LaTeX Collab KI",
+        "description": "LaTeX-Editor mit KI-Schreibassistent (Ghost Text, @@-Commands, RAG Citations)"
+      },
+      "chatbotArena": {
+        "title": "Chatbot Arena",
+        "description": "Paarweise Vergleiche von Chatbot-Antworten im Arena-Modus"
+      },
+      "anonymization": {
+        "title": "Anonymisierung",
+        "description": "Texte, DOCX und PDFs offline pseudonymisieren"
+      },
+      "kaimo": {
+        "title": "KAIMO",
+        "description": "Fallvignetten durcharbeiten und neue Fälle anlegen"
+      },
+      "oncoco": {
+        "title": "OnCoCo Analyse",
+        "description": "Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)"
+      },
+      "adminDashboard": {
+        "title": "Admin Dashboard",
+        "description": "System-Übersicht und Administration"
+      },
+      "chatbotAdmin": {
+        "title": "Chatbot Verwaltung",
+        "description": "Chatbots erstellen, konfigurieren und teilen"
+      },
+      "ragAdmin": {
+        "title": "RAG Verwaltung",
+        "description": "Dokumente für die RAG-Pipeline verwalten und hochladen"
+      }
+    },
+    "badges": {
+      "new": "Neu",
+      "alpha": "Alpha",
+      "beta": "Beta",
+      "test": "Test"
+    }
+  },
+  "promptEngineering": {
+    "title": "Prompt Engineering",
+    "titleShort": "Prompts",
+    "subtitle": "Prompts kollaborativ entwerfen, organisieren und testen.",
+    "sections": {
+      "myPrompts": "Meine Prompts",
+      "sharedWithMe": "Mit mir geteilt"
+    },
+    "actions": {
+      "newPrompt": "Neuer Prompt",
+      "refresh": "Aktualisieren",
+      "createPrompt": "Prompt erstellen",
+      "create": "Erstellen"
+    },
+    "shared": {
+      "users": "{count} Nutzer",
+      "label": "Geteilt"
+    },
+    "empty": {
+      "title": "Keine Prompts vorhanden",
+      "description": "Erstellen Sie Ihren ersten Prompt.",
+      "shared": "Keine geteilten Prompts"
+    },
+    "dialogs": {
+      "createTitle": "Prompt erstellen",
+      "nameLabel": "Prompt-Name",
+      "namePlaceholder": "z. B. Support-Zusammenfassung",
+      "shareLabel": "Mit Nutzern teilen",
+      "sharePlaceholder": "Nutzer suchen und hinzufügen...",
+      "renameTitle": "Prompt umbenennen",
+      "renameLabel": "Neuer Name",
+      "deleteTitle": "Prompt löschen",
+      "deleteConfirm": "Möchten Sie {name} wirklich löschen?",
+      "deleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "blockCreateTitle": "Neuen Block erstellen",
+      "blockNameLabel": "Blockname",
+      "blockNamePlaceholder": "z. B. Systemanweisung, Kontext, ...",
+      "blockDeleteTitle": "Block löschen",
+      "blockDeleteConfirm": "Möchten Sie den Block \"{name}\" wirklich löschen?",
+      "blockDeleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "importTitle": "JSON importieren",
+      "importQuestion": "Wie sollen die importierten Blöcke eingefügt werden?",
+      "importOverride": "Überschreiben",
+      "importAppend": "Anhängen"
+    },
+    "relative": {
+      "today": "heute",
+      "yesterday": "gestern",
+      "daysAgo": "vor {count} Tagen",
+      "weeksAgo": "vor {count} Wochen"
+    },
+    "errors": {
+      "duplicateName": "Ein Prompt mit dem Namen \"{name}\" existiert bereits.",
+      "createFallback": "Prompt konnte nicht erstellt werden.",
+      "shareFailed": "Fehler beim Teilen.",
+      "unshareFailed": "Fehler beim Entfernen."
+    },
+    "editor": {
+      "backToOverview": "Zurück zur Übersicht",
+      "block": "Block",
+      "blocks": "Blöcke",
+      "usersCount": "{count} Nutzer",
+      "dragToSort": "Ziehen, um zu sortieren",
+      "blockTitlePlaceholder": "Blocktitel...",
+      "rename": "Umbenennen",
+      "delete": "Löschen",
+      "emptyTitle": "Noch keine Blöcke",
+      "emptyDescription": "Erstellen Sie Ihren ersten Prompt-Block.",
+      "newBlock": "Neuer Block",
+      "debugTitle": "Debug-Informationen:"
+    },
+    "sidebar": {
+      "onlineUsers": "Online ({count})",
+      "noUsers": "Keine Nutzer online",
+      "actions": "Aktionen",
+      "newBlock": "Neuer Block",
+      "preview": "Vorschau",
+      "test": "Testen",
+      "importExport": "Import / Export",
+      "download": "Download",
+      "copy": "Kopieren",
+      "import": "Importieren",
+      "options": "Optionen",
+      "gitPanel": "Git-Panel",
+      "shares": "Freigaben",
+      "owner": "Besitzer",
+      "notSharedYet": "Noch mit niemandem geteilt",
+      "addUserPlaceholder": "Nutzer hinzufügen...",
+      "shareAction": "Teilen",
+      "previewTitle": "Vorschau: {name}",
+      "previewEmpty": "Keine Blöcke vorhanden",
+      "previewPlaceholder": "Mit Platzhaltern",
+      "previewResolved": "Mit Werten",
+      "copied": "Prompt in Zwischenablage kopiert!"
+    },
+    "gitPanel": {
+      "label": "Git",
+      "noChanges": "Keine Änderungen",
+      "title": "Git-Panel",
+      "synced": "Synchron",
+      "refresh": "Aktualisieren",
+      "collapse": "Einklappen",
+      "commitChanges": "Änderungen committen",
+      "lines": "{count} Zeilen",
+      "commitPlaceholder": "Commit-Message eingeben...",
+      "commitAction": "Commit",
+      "historyTitle": "History ({count})",
+      "noCommits": "Noch keine Commits",
+      "moreCommits": "+{count} weitere Commits",
+      "loadError": "History konnte nicht geladen werden",
+      "commitFailed": "Commit fehlgeschlagen",
+      "relative": {
+        "justNow": "Gerade eben",
+        "minutesAgo": "vor {count} Min.",
+        "hoursAgo": "vor {count} Std.",
+        "daysAgo": "vor {count} Tagen"
+      }
+    },
+    "testPrompt": {
+      "title": "Prompt testen",
+      "model": "Modell",
+      "temperature": "Temperatur",
+      "maxTokens": "Max Tokens",
+      "jsonMode": "JSON Mode",
+      "sngMode": "SNG Visualisierung",
+      "examples": "Beispieldaten",
+      "previewTitle": "Vorschau: {name}",
+      "showExample": "Beispiel anzeigen",
+      "jsonSchema": "JSON Schema",
+      "sentPrompt": "Gesendetes Prompt",
+      "showMore": "Mehr anzeigen",
+      "showLess": "Weniger",
+      "response": "Antwort",
+      "generating": "Generiert...",
+      "done": "Fertig",
+      "sngGenerating": "Generiere Graph-Daten...",
+      "sngError": "Fehler: Ungültiges JSON für SocialNetworkGraph",
+      "sngEmpty": "Keine Daten zum Plotten verfügbar",
+      "regenerate": "Erneut generieren",
+      "connectionError": "Verbindungsfehler: {message}",
+      "generationCanceled": "[Generierung abgebrochen]",
+      "hiddenSummary": "... [{count} Zeichen ausgeblendet] ...",
+      "historyLine": "{sender} schrieb am {date} um {time}: {content}"
+    },
+    "testing": {
+      "title": "Prompt testen",
+      "variables": "Variablen",
+      "variablesCount": "{count} Variablen erkannt",
+      "filled": "Gefüllt",
+      "empty": "Leer",
+      "text": "Text",
+      "file": "Datei",
+      "dataset": "Dataset",
+      "enterValue": "Wert eingeben...",
+      "dropFile": "Datei ablegen oder klicken",
+      "selectPath": "Pfad auswählen",
+      "entireFile": "Gesamte Datei",
+      "preview": "Vorschau",
+      "chars": "Zeichen",
+      "selectDataset": "Dataset auswählen...",
+      "selectItem": "Item auswählen...",
+      "noDatasets": "Keine Datasets vorhanden",
+      "createDataset": "Dataset erstellen",
+      "uploadFile": "Datei hochladen",
+      "uploadDescription": "Laden Sie eine JSON-, CSV-, TXT- oder MD-Datei hoch.",
+      "dropHere": "Hier ablegen",
+      "dragFile": "Datei hierher ziehen",
+      "orClick": "oder klicken zum Auswählen",
+      "configureDataset": "Dataset konfigurieren",
+      "datasetName": "Dataset-Name",
+      "nameRequired": "Name ist erforderlich",
+      "detectedStructure": "Erkannte Struktur",
+      "fields": "Felder",
+      "variableMapping": "Variablen-Mapping",
+      "mappingDescription": "Ordnen Sie die Felder aus der Datei den Prompt-Variablen zu.",
+      "selectField": "Feld auswählen...",
+      "entireObject": "Gesamtes Objekt",
+      "itemNameField": "Feld für Item-Namen",
+      "selectNameField": "Feld für Namen wählen...",
+      "mappedVariables": "gemappte Variablen",
+      "moreItems": "weitere Items",
+      "saveDataset": "Dataset speichern",
+      "readError": "Datei konnte nicht gelesen werden",
+      "allVariablesFilled": "Alle Variablen gefüllt",
+      "variablesRemaining": "{count} Variablen noch offen",
+      "runTest": "Test ausführen",
+      "configuration": "Konfiguration",
+      "promptPreview": "Prompt-Vorschau",
+      "testDatasets": "Test-Datasets",
+      "noVariables": "Keine Variablen im Prompt erkannt",
+      "noVariablesHint": "Verwenden Sie {{variable}} um Platzhalter zu definieren.",
+      "steps": {
+        "upload": "Hochladen",
+        "configure": "Konfigurieren",
+        "preview": "Vorschau"
+      },
+      "placeholderPalette": "Variablen-Palette",
+      "newPlaceholderName": "Neuer Variablen-Name...",
+      "noPlaceholdersHint": "Erstellen Sie Variablen und ziehen Sie diese in den Editor.",
+      "dragHint": "Variablen in den Editor ziehen",
+      "description": "Beschreibung",
+      "descriptionPlaceholder": "Beschreibung für die Variable...",
+      "defaultValue": "Standard-Wert",
+      "defaultValuePlaceholder": "Standard-Wert für die Variable...",
+      "errorNameRequired": "Name ist erforderlich",
+      "errorInvalidName": "Nur Buchstaben, Zahlen und Unterstriche erlaubt",
+      "errorNameExists": "Variable existiert bereits",
+      "inPrompt": "Im Prompt",
+      "applyDefault": "Default anwenden"
+    },
+    "variables": {
+      "title": "Variablen verwalten",
+      "createNew": "Neue Variable erstellen",
+      "name": "Variablenname",
+      "namePlaceholder": "z.B. email_content",
+      "content": "Inhalt",
+      "contentPlaceholder": "Der Text, der beim Testen eingesetzt wird...",
+      "create": "Variable erstellen",
+      "existing": "Vorhandene Variablen",
+      "noVariables": "Keine Variablen vorhanden",
+      "noVariablesHint": "Erstellen Sie Variablen oben und ziehen Sie diese dann in den Editor.",
+      "usageHint": "Ziehen Sie die erstellten Variablen aus der Seitenleiste in den Quill-Editor. Beim Testen werden die Platzhalter durch den hier definierten Inhalt ersetzt.",
+      "errorNameRequired": "Name ist erforderlich",
+      "errorInvalidName": "Nur Buchstaben, Zahlen und Unterstriche erlaubt",
+      "errorReservedName": "Dieser Name ist reserviert",
+      "errorNameExists": "Variable existiert bereits",
+      "manageVariables": "Variablen verwalten"
+    },
+    "messages": {
+      "blockOrderUpdated": "Block-Reihenfolge aktualisiert!",
+      "blockExists": "Block \"{name}\" existiert bereits!",
+      "blockAdded": "Block \"{name}\" wurde hinzugefügt!",
+      "blockDeleted": "Block \"{name}\" wurde gelöscht!",
+      "blockTitleChanged": "Titel geändert zu \"{title}\"!",
+      "blockExistsSkipped": "Block \"{name}\" existiert bereits! Übersprungen.",
+      "jsonProcessed": "JSON-Datei erfolgreich verarbeitet!"
+    },
+    "user": {
+      "unknown": "Unbekannter Benutzer"
+    }
+  },
+  "evaluation": {
+    "title": "Evaluierung",
+    "subtitle": "Wähle ein Evaluierungstool aus und starte den normalen Workflow.",
+    "available": "{count} verfügbar",
+    "noToolsAvailable": "Für deinen Account sind aktuell keine Evaluierungstools freigeschaltet.",
+    "noScenarios": "Keine Szenarien",
+    "noScenariosAssigned": "Keine Szenarien zugewiesen",
+    "backToEvaluations": "Evaluierungen",
+    "progress": "{done} / {total} abgeschlossen",
+    "emptyHint": "Stelle sicher, dass ein aktives Szenario existiert und Threads zugewiesen sind.",
+    "tools": {
+      "ranking": {
+        "title": "Ranking",
+        "description": "Features nach Qualität sortieren und vergleichen"
+      },
+      "historyRating": {
+        "title": "Verlaufsbewertung",
+        "description": "Bewertung von KI generierten Mail-Verläufen (Säule 4)"
+      },
+      "authenticity": {
+        "title": "Fake/Echt",
+        "description": "Abstimmung: Ist ein Verlauf echt oder fake?"
+      },
+      "rating": {
+        "title": "Rating",
+        "description": "Features einzeln mit Sternen/Skala bewerten"
+      },
+      "comparison": {
+        "title": "Gegenüberstellung",
+        "description": "Zwei KI-Modelle direkt vergleichen und bewerten"
+      }
+    },
+    "badges": {
+      "new": "Neu"
+    },
+    "ranking": {
+      "pageTitle": "Ranking",
+      "pageSubtitle": "Öffne einen Fall und ordne die Features nach Qualität.",
+      "emptyTitle": "Keine Ranking-Fälle verfügbar"
+    },
+    "rating": {
+      "pageTitle": "Rating",
+      "pageSubtitle": "Öffne einen Fall und bewerte die einzelnen Features.",
+      "emptyTitle": "Keine Rating-Fälle verfügbar"
+    },
+    "historyRating": {
+      "pageTitle": "Verlaufsbewertung",
+      "pageSubtitle": "Öffne einen Verlauf und bewerte Kohärenz, Qualität und Gesamtwirkung.",
+      "emptyTitle": "Keine Verläufe verfügbar"
+    },
+    "authenticity": {
+      "pageTitle": "Fake/Echt",
+      "pageSubtitle": "Öffne einen Verlauf und stimme ab, ob er echt oder fake ist.",
+      "emptyTitle": "Keine Threads verfügbar",
+      "real": "Echt",
+      "fake": "Fake"
+    },
+    "comparison": {
+      "pageTitle": "Gegenüberstellung",
+      "pageSubtitle": "Wähle eine Persona, um den Vergleichs-Chat zu betreten.",
+      "emptyTitle": "Keine Sessions verfügbar",
+      "emptyHint": "Es wurden noch keine Gegenüberstellungs-Sessions erstellt.",
+      "scenarioLabel": "Szenario {id}",
+      "ratedMessages": "{count} Nachrichten bewertet"
+    }
+  },
+  "judge": {
+    "overview": {
+      "title": "Chatbot Arena",
+      "subtitle": "LLM-Judge-Sessions verwalten und überwachen.",
+      "sessionsTitle": "Meine Sessions",
+      "filters": {
+        "all": "Alle",
+        "running": "Laufend",
+        "completed": "Abgeschlossen",
+        "failed": "Fehlgeschlagen"
+      },
+      "actions": {
+        "newSession": "Neue Session",
+        "refresh": "Aktualisieren",
+        "viewSession": "Session ansehen",
+        "viewResults": "Ergebnisse ansehen",
+        "deleteSession": "Session löschen"
+      },
+      "empty": {
+        "title": "Noch keine Sessions"
+      },
+      "dialogs": {
+        "delete": {
+          "title": "Session löschen",
+          "description": "Session \"{name}\" wirklich löschen?"
+        }
+      },
+      "datePlaceholder": "-"
+    },
+    "stats": {
+      "total": "Sessions gesamt",
+      "completed": "Abgeschlossen",
+      "running": "Laufend",
+      "queued": "Wartend"
+    },
+    "status": {
+      "created": "Erstellt",
+      "queued": "Wartend",
+      "running": "Läuft",
+      "paused": "Pausiert",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen"
+    },
+    "config": {
+      "title": "Neue Session",
+      "subtitle": "Konfiguriere eine neue Arena-Session.",
+      "panelTitle": "Konfiguration",
+      "sessionNameLabel": "Session-Name",
+      "sessionNameHint": "Eindeutigen Namen vergeben",
+      "sessionNameRequired": "Session-Name ist erforderlich",
+      "pillars": {
+        "title": "Säulen",
+        "minRequired": "Bitte mindestens {count} Säulen wählen",
+        "selected": "{count} ausgewählt",
+        "threadsCount": "{count} Threads"
+      },
+      "comparison": {
+        "title": "Vergleichsmodus"
+      },
+      "samplesPerPillar": "Samples pro Säule: {count}",
+      "maxThreads": {
+        "label": "Max. Threads pro Säule",
+        "limited": "Begrenzt auf {count}",
+        "toggle": "Threads pro Säule begrenzen"
+      },
+      "positionSwap": {
+        "label": "Positions-Swap",
+        "recommended": "Empfohlen",
+        "description": "Position A/B tauschen, um Reihenfolge-Bias zu reduzieren."
+      },
+      "workers": {
+        "label": "Worker: {count}",
+        "speedHint": "Mehr Worker = schneller (bis zu {count} parallel)."
+      },
+      "repetitions": {
+        "label": "Wiederholungen pro Paar: {count}",
+        "hint": "Vergleiche wiederholen, um Ergebnisse zu stabilisieren."
+      },
+      "actions": {
+        "createAndStart": "Erstellen & starten"
+      },
+      "errors": {
+        "createFailed": "Session konnte nicht erstellt werden"
+      }
+    },
+    "modes": {
+      "pillarSample": {
+        "title": "Säulen-Sample",
+        "tag": "Ausgewogen",
+        "description": "Feste Anzahl Vergleiche pro Säulenpaar."
+      },
+      "roundRobin": {
+        "title": "Round Robin",
+        "tag": "Umfassend",
+        "description": "Jeder Thread gegen alle anderen innerhalb der Säulen."
+      },
+      "freeForAll": {
+        "title": "Free-for-all",
+        "tag": "Max",
+        "description": "Alle Threads über alle Säulen hinweg vergleichen."
+      }
+    },
+    "summary": {
+      "title": "Zusammenfassung",
+      "loadingEstimate": "Schätze...",
+      "mode": {
+        "label": "Modus"
+      },
+      "threads": {
+        "label": "Threads"
+      },
+      "positionSwap": {
+        "label": "Positions-Swap",
+        "enabled": "Aktiv",
+        "disabled": "Inaktiv"
+      },
+      "totalComparisons": "Vergleiche gesamt",
+      "baseComparisons": "{count} Basis-Vergleiche{swap}",
+      "swapSuffix": " + Swap",
+      "estimatedDuration": "Geschätzte Dauer",
+      "durationWarningLabel": "Lange Laufzeit:",
+      "selectedPillars": "Gewählte Säulen",
+      "pillarShort": "S{id}",
+      "workersShort": "{count}W",
+      "calculation": {
+        "title": "Berechnung",
+        "mode": "Modus",
+        "formulaLabel": "Formel",
+        "formula": {
+          "pillarSample": "{pairs} Paare × {samples} Samples{swap}",
+          "roundRobin": "Alle-gegen-alle Vergleiche{swap}",
+          "freeForAll": "Alle Threads über alle Säulen{swap}"
+        },
+        "swapMultiplier": " × 2 (Positions-Swap)",
+        "durationLabel": "Dauer",
+        "durationHint": "Schätzung pro Worker basierend auf durchschnittlicher Vergleichszeit."
+      },
+      "noThreads": {
+        "title": "Keine Threads verfügbar",
+        "body": "Nutze <link>Chatbot Arena</link>, um KIA-Daten zu synchronisieren."
+      },
+      "autoStart": "Sessions starten automatisch nach dem Erstellen."
+    },
+    "duration": {
+      "lessThanMinute": "< 1 Min.",
+      "minutes": "{count} Min.",
+      "hours": "{count} Std.",
+      "hoursMinutes": "{hours} Std. {minutes} Min."
+    },
+    "pillars": {
+      "defaultLabel": "Säule {id}",
+      "items": {
+        "roleplay": "Rollenspiel",
+        "feature": "Feature",
+        "anonymized": "Anonymisiert",
+        "synthetic": "Synthetisch",
+        "liveTests": "Live-Tests"
+      }
+    },
+    "kia": {
+      "panelTitle": "KIA Daten-Sync",
+      "sourcesTitle": "KIA Datenquellen",
+      "connection": {
+        "connected": "Verbunden",
+        "tokenRequired": "Token erforderlich"
+      },
+      "threadsCount": "{count} Threads",
+      "actions": {
+        "syncAll": "Alle synchronisieren",
+        "configureToken": "Token konfigurieren",
+        "createToken": "Token erstellen"
+      },
+      "tokenDialog": {
+        "title": "GitLab Token",
+        "label": "Personal Access Token",
+        "hint": "Benötigt read_repository Berechtigung"
+      },
+      "status": {
+        "available": "Bereit",
+        "notFound": "Nicht vorhanden",
+        "error": "Fehler",
+        "syncing": "Lädt..."
+      },
+      "messages": {
+        "statusFailed": "Status-Abfrage fehlgeschlagen",
+        "syncPillarSuccess": "Säule {id}: {count} Threads erstellt",
+        "syncPillarError": "Säule {id}: {error}",
+        "syncAllSuccess": "{count} Threads erstellt",
+        "syncFailed": "Sync fehlgeschlagen",
+        "saveTokenFailed": "Token-Speicherung fehlgeschlagen"
+      }
+    },
+    "criteria": {
+      "counsellorCoherence": "Berater-Kohärenz",
+      "clientCoherence": "Klient-Kohärenz",
+      "quality": "Qualität",
+      "empathy": "Empathie",
+      "authenticity": "Authentizität",
+      "solutionOrientation": "Lösungsorientierung"
+    },
+    "results": {
+      "title": "Auswertung",
+      "pillarsCount": "{count} Säulen",
+      "stats": {
+        "totalComparisons": "Vergleiche gesamt",
+        "topPillar": "Beste Säule",
+        "avgConfidence": "Ø Konfidenz",
+        "duration": "Laufzeit"
+      },
+      "ranking": {
+        "title": "Säulen-Ranking",
+        "winsCount": "{count} Siege",
+        "lossesCount": "{count} Niederlagen",
+        "scoreLabel": "Score",
+        "empty": "Keine Daten verfügbar"
+      },
+      "matrix": {
+        "title": "Vergleichs-Matrix",
+        "legend": "Zeile = Angreifer, Spalte = Verteidiger. Werte = Anzahl Siege."
+      },
+      "metrics": {
+        "title": "Detaillierte Metriken",
+        "columns": {
+          "pillar": "Säule",
+          "wins": "Siege",
+          "losses": "Niederlagen",
+          "winRate": "Siegrate",
+          "avgConfidence": "Ø Konfidenz",
+          "score": "Score",
+          "comparisons": "Vergleiche"
+        }
+      },
+      "export": {
+        "title": "Export",
+        "csv": {
+          "title": "Als CSV exportieren",
+          "subtitle": "Tabellenformat für Excel"
+        },
+        "json": {
+          "title": "Als JSON exportieren",
+          "subtitle": "Strukturierte Daten"
+        }
+      },
+      "comparisons": {
+        "title": "Alle Vergleiche ({count})",
+        "swapped": "Getauscht",
+        "llmOutputTitle": "LLM Roh-Output",
+        "reasoning": "Begründung",
+        "scores": "Einzelbewertungen",
+        "criterion": "Kriterium",
+        "rawResponseTitle": "LLM Rohantwort ({count} Zeichen)",
+        "columns": {
+          "index": "#",
+          "matchup": "Paarung",
+          "winner": "Gewinner",
+          "confidence": "Konfidenz",
+          "evaluatedAt": "Zeitpunkt"
+        }
+      },
+      "positionSwap": {
+        "title": "Position-Swap Konsistenz (MT-Bench Methodik)",
+        "consistentRate": "{rate}% konsistent",
+        "summary": {
+          "swapPairs": "Swap-Paare",
+          "consistentWin": "Konsistent (Win)",
+          "consistentTie": "Konsistent (Tie)",
+          "inconsistent": "Inkonsistent",
+          "primacyBias": "Primacy Bias",
+          "recencyBias": "Recency Bias"
+        },
+        "likertStability": {
+          "title": "Likert-Score Stabilität bei Position-Swap",
+          "tooltip": "Misst wie stark sich Likert-Scores für denselben Thread ändern, wenn seine Position (A↔B) getauscht wird. Niedrigere Deltas = stabiler. (Auto-J Calibration)",
+          "stableRate": "{rate}% stabil",
+          "deltaLabel": "Ø Δ {mean} (max {max})"
+        },
+        "pairs": {
+          "title": "Detaillierte Paar-Analyse",
+          "count": "{count} Paare",
+          "threadsMatchup": "T{a} vs T{b}"
+        },
+        "consistency": {
+          "win": "Win",
+          "tie": "Tie",
+          "inconsistent": "Inkonsistent"
+        },
+        "bias": {
+          "primacy": "Primacy",
+          "recency": "Recency",
+          "mixed": "Gemischt",
+          "none": "-",
+          "balanced": "Ausbalanciert",
+          "unknown": "Unbekannt"
+        },
+        "likertComparison": {
+          "title": "Likert-Score Vergleich (Original vs Getauscht)",
+          "metric": "Metrik",
+          "threadA": "Thread 1 (T{id})",
+          "threadB": "Thread 2 (T{id})",
+          "asA": "Als A",
+          "asB": "Als B"
+        },
+        "methodology": {
+          "title": "Methodik & Referenzen",
+          "references": "Referenzen"
+        },
+        "legacy": {
+          "title": "Position-Swap Konsistenz",
+          "alert": "{consistent} von {total} Swap-Paaren zeigten konsistente Ergebnisse (gleicher Gewinner unabhängig von Position A/B).",
+          "columns": {
+            "matchup": "Paarung",
+            "original": "Original (Pos 1)",
+            "swapped": "Getauscht (Pos 2)",
+            "consistent": "Konsistent"
+          }
+        },
+        "columns": {
+          "threads": "Threads",
+          "original": "Original",
+          "swapped": "Getauscht",
+          "consistency": "Konsistenz",
+          "bias": "Bias",
+          "confidenceDelta": "Konf. Δ"
+        }
+      },
+      "threadPerformance": {
+        "title": "Thread-Performance Analyse",
+        "threadsCount": "{count} Threads",
+        "summary": {
+          "threadsUsed": "Threads verwendet",
+          "avgUsage": "Ø Verwendungen",
+          "consistentWinners": "Konsistente Gewinner",
+          "consistentLosers": "Konsistente Verlierer"
+        },
+        "coverage": {
+          "title": "Sampling Coverage:",
+          "evenly": "{count} gleichmäßig",
+          "over": "{count} über-verwendet",
+          "under": "{count} unter-verwendet"
+        },
+        "likertGlobal": {
+          "title": "Globale Likert-Konsistenz",
+          "consistent": "Konsistent",
+          "variable": "Variabel"
+        },
+        "consistentWinners": {
+          "title": "Konsistente Gewinner (≥70% Win-Rate)"
+        },
+        "consistentLosers": {
+          "title": "Konsistente Verlierer (≥70% Loss-Rate)"
+        },
+        "threadLabel": "Thread #{id}",
+        "moreThreads": "... und {count} weitere",
+        "usageMultiplier": "{count}x",
+        "likertScoresTitle": "Likert-Scores für Thread #{id}",
+        "ratedCount": "{count}x bewertet",
+        "noLikertData": "Keine Likert-Daten verfügbar",
+        "columns": {
+          "thread": "Thread",
+          "pillar": "Säule",
+          "usageCount": "Verwendungen",
+          "wins": "Siege",
+          "losses": "Niederlagen",
+          "winRate": "Win-Rate",
+          "likertConsistency": "Likert-Konsistenz",
+          "status": "Status"
+        }
+      },
+      "verbosity": {
+        "title": "Verbosity Bias Analyse",
+        "longerWinsRate": "{rate}% längerer gewinnt",
+        "alert": {
+          "warningLabel": "Warnung:",
+          "warningText": "Das LLM zeigt einen starken Verbosity Bias - längere Threads werden bevorzugt.",
+          "infoLabel": "Info:",
+          "infoText": "Das LLM bevorzugt kürzere Threads - möglicherweise negatives Verbosity Bias.",
+          "okLabel": "Gut:",
+          "okText": "Keine signifikante Präferenz für Thread-Länge erkannt."
+        },
+        "stats": {
+          "longerWins": "Längerer gewinnt",
+          "shorterWins": "Kürzerer gewinnt",
+          "ties": "Tie / Gleich"
+        },
+        "lengthStats": {
+          "title": "Durchschnittliche Länge (Zeichen)",
+          "winner": "Gewinner",
+          "loser": "Verlierer",
+          "diff": "Differenz"
+        },
+        "biasInterpretation": "Bias-Interpretation",
+        "biasLabels": {
+          "shorterPreferred": "Kürzerer bevorzugt",
+          "neutral": "Neutral",
+          "longerPreferred": "Längerer bevorzugt"
+        }
+      },
+      "common": {
+        "placeholder": "-",
+        "averageShort": "Ø"
+      }
+    }
+  },
+  "anonymization": {
+    "title": "Anonymisierung",
+    "subtitle": "Offline-Pseudonymisierung für deutsche Texte (DOCX/PDF/Clipboard)",
+    "tooltip": {
+      "title": "Anonymisierung",
+      "line1": "Beim ersten Laden kann es etwas dauern, bis lokale Modelle und die Datenbank bereit sind.",
+      "line2": "Offline: Regeln + NER erkennen personenbezogene Daten, danach werden Treffer konsistent pseudonymisiert.",
+      "line3": "LLM/Hybrid: zusätzliche LLM-Extraktion, Ergebnisse werden anschließend ebenfalls pseudonymisiert."
+    },
+    "actions": {
+      "paste": "Zwischenablage einfügen",
+      "loadExample": "Beispiel laden",
+      "copyOutput": "Output kopieren",
+      "pseudonymize": "Pseudonymisieren",
+      "recalculate": "Neu berechnen",
+      "randomize": "Randomisieren",
+      "settings": "Einstellungen"
+    },
+    "fileInput": {
+      "label": "DOCX/PDF"
+    },
+    "sections": {
+      "input": "Input",
+      "output": "Output",
+      "entities": "Entitäten"
+    },
+    "input": {
+      "label": "Text eingeben",
+      "placeholder": "Hier Text einfügen oder tippen..."
+    },
+    "output": {
+      "label": "Output",
+      "placeholder": "Output erscheint hier..."
+    },
+    "preview": {
+      "title": "Highlight-Vorschau"
+    },
+    "entities": {
+      "empty": "Keine Entitäten erkannt.",
+      "replacementLabel": "Ersatz",
+      "modeLabel": "Modus: {mode}",
+      "dbLabel": "DB: {status}"
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "engine": {
+        "label": "Engine",
+        "warning": "Der Text wird an das konfigurierte LLM gesendet (LiteLLM/OpenAI). Keine Offline-Garantie."
+      },
+      "llmModelLabel": "LLM Modell (optional)",
+      "llmStatus": "Leer lassen = Backend-Default. Status: {status}",
+      "llmReady": "bereit",
+      "llmNotReady": "nicht bereit",
+      "nameOriginLabel": "Namensregion",
+      "nameCountLabel": "Name Count (Häufigkeitsschwelle)",
+      "nameCountHint": "Wirkt auf Auto-Ersetzungen bei „Neu berechnen“ oder bei neuem Input."
+    },
+    "engineOptions": {
+      "offline": "Offline (lokal, Regeln + NER)",
+      "llm": "LLM (Regeln + LLM-Extraktion)",
+      "hybrid": "Hybrid (Offline + LLM)"
+    },
+    "nameOrigins": {
+      "swissDe": "Schweiz (DE)",
+      "swissFr": "Schweiz (FR)",
+      "swissIt": "Schweiz (IT)",
+      "swissRm": "Schweiz (RM)",
+      "germany": "Deutschland"
+    },
+    "health": {
+      "checking": {
+        "text": "Prüfe…",
+        "title": "Prüft lokale Modelle/Datenbank…"
+      },
+      "permissions": {
+        "text": "Prüfe…",
+        "title": "Lade Berechtigungen…"
+      },
+      "noAccess": {
+        "text": "Kein Zugriff",
+        "title": "Keine Berechtigung: {permission}"
+      },
+      "unknown": {
+        "text": "Unbekannt",
+        "title": "Status noch nicht geprüft"
+      },
+      "llmReady": {
+        "text": "LLM bereit{provider}",
+        "title": "LLM ist verfügbar"
+      },
+      "llmMissing": {
+        "text": "LLM fehlt"
+      },
+      "hybridReady": {
+        "text": "Hybrid bereit",
+        "title": "Offline + LLM sind verfügbar"
+      },
+      "hybridMissing": {
+        "text": "Hybrid fehlt",
+        "title": "Nicht bereit: {missing}"
+      },
+      "missing": {
+        "offline": "Offline Ressourcen",
+        "llm": "LLM"
+      },
+      "offlineReady": {
+        "text": "Bereit",
+        "title": "Alle Anonymize Ressourcen sind verfügbar"
+      },
+      "offlineMissing": {
+        "text": "Nicht bereit"
+      }
+    },
+    "messages": {
+      "noPermission": "Keine Berechtigung: feature:anonymize:view",
+      "resourcesNotReady": "Anonymize Ressourcen/Modelle sind nicht bereit.",
+      "resourcesMissing": "Anonymize Ressourcen fehlen: {resources}",
+      "llmNotConfigured": "LLM ist nicht konfiguriert.",
+      "llmMissingBaseUrl": "LiteLLM ist nicht konfiguriert (LITELLM_BASE_URL fehlt).",
+      "llmMissingApiKey": "LLM ist nicht konfiguriert (OPENAI_API_KEY oder LITELLM_API_KEY fehlt).",
+      "healthCheckFailed": "Health-Check fehlgeschlagen",
+      "pseudonymizeFailed": "Pseudonymisierung fehlgeschlagen",
+      "clipboardReadFailed": "Zwischenablage konnte nicht gelesen werden.",
+      "clipboardCopySuccess": "Output wurde in die Zwischenablage kopiert.",
+      "clipboardCopyFailed": "Output konnte nicht in die Zwischenablage kopiert werden.",
+      "uploadFailed": "Upload fehlgeschlagen"
+    },
+    "exampleText": "Guten Tag Frau Müller,\\n\\nmein Name ist Anna Müller (34) und ich wohne in 8001 Zürich.\\nBitte kontaktieren Sie mich unter 079 123 45 67 oder via anna.mueller@@example.ch.\\nMeine AHV-Nummer lautet 756.1234.5678.97.\\nDer Termin ist am 12.03.2024 um 14:30 Uhr bei der Universität Zürich.\\n\\nFreundliche Grüsse\\nAnna Müller"
+  },
+  "chat": {
+    "newChat": "Neuer Chat",
+    "selectChatbot": "Chatbot auswählen",
+    "selectChatbotHint": "Wählen Sie einen Chatbot aus der Liste, um eine Unterhaltung zu beginnen.",
+    "selectChatbotHintMobile": "Tippen Sie auf das Menü oben, um eine Unterhaltung zu beginnen.",
+    "searchChats": "Chats durchsuchen...",
+    "chats": "Chats",
+    "chatCount": "{count} Chats",
+    "noChats": "Noch keine Chats",
+    "noChatbotsAvailable": "Keine Chatbots verfügbar",
+    "expand": "Erweitern",
+    "collapse": "Zuklappen",
+    "rename": "Umbenennen",
+    "renamePrompt": "Neuer Chat-Titel:",
+    "chatRenamed": "Chat umbenannt",
+    "renameFailed": "Fehler beim Umbenennen",
+    "deleteConfirm": "Diesen Chat wirklich löschen?",
+    "chatDeleted": "Chat gelöscht",
+    "deleteFailed": "Fehler beim Löschen",
+    "homePage": "Startseite",
+    "showSources": "Quellen anzeigen",
+    "hideSources": "Quellen ausblenden",
+    "source": "Quelle",
+    "relevant": "relevant",
+    "pinSource": "Anheften",
+    "document": "Dokument",
+    "messagePlaceholder": "Schreibe eine Nachricht...",
+    "uploadFiles": "Dateien hochladen",
+    "uploadFilesWithImages": "Bilder und Dokumente hochladen",
+    "uploadFilesTooltip": "Dokumente hochladen (PDF, Word, Excel, PowerPoint)",
+    "supportedTypesWithImages": "Bilder, PDFs, Word, Excel, PowerPoint",
+    "supportedTypesNoImages": "PDFs, Word, Excel, PowerPoint (kein Bild-Support)",
+    "loadChatbotsFailed": "Fehler beim Laden der Chatbots",
+    "createChatFailed": "Fehler beim Anlegen des Chats",
+    "loadChatFailed": "Fehler beim Laden des Chats",
+    "sendFailed": "Fehler beim Senden",
+    "responseTimeout": "Zeitüberschreitung bei der Antwort",
+    "responseTimeoutMessage": "Die Antwort hat zu lange gedauert. Bitte versuchen Sie es erneut.",
+    "errorOccurred": "Ein Fehler ist aufgetreten.",
+    "chatbotNotAvailable": "Chatbot nicht verfügbar oder keine Berechtigung"
+  },
+  "scenario": {
+    "title": "Szenario",
+    "scenarios": "Szenarien",
+    "create": "Szenario erstellen",
+    "edit": "Szenario bearbeiten",
+    "delete": "Szenario löschen",
+    "name": "Name",
+    "description": "Beschreibung",
+    "status": "Status",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "completed": "Abgeschlossen",
+    "pending": "Ausstehend",
+    "inProgress": "In Bearbeitung",
+    "participants": "Teilnehmer",
+    "threads": "Threads",
+    "startDate": "Startdatum",
+    "endDate": "Enddatum",
+    "progress": "Fortschritt",
+    "noScenarios": "Keine Szenarien vorhanden",
+    "selectScenario": "Szenario auswählen",
+    "details": "Details",
+    "statistics": "Statistiken"
+  },
+  "markdownCollab": {
+    "permissions": {
+      "missing": "Du benötigst die Berechtigung {permission}, um diese Funktion zu nutzen."
+    },
+    "visibility": {
+      "private": "Privat",
+      "team": "Team",
+      "org": "Organisation"
+    },
+    "errors": {
+      "createFailed": "Workspace konnte nicht erstellt werden",
+      "deleteFailed": "Workspace konnte nicht gelöscht werden",
+      "leaveFailed": "Workspace konnte nicht verlassen werden",
+      "membersLoadFailed": "Mitglieder konnten nicht geladen werden",
+      "inviteFailed": "Mitglieder konnten nicht eingeladen werden",
+      "removeFailed": "Mitglied konnte nicht entfernt werden"
+    },
+    "home": {
+      "title": "Markdown Collab",
+      "titleShort": "Markdown",
+      "subtitle": "Kollaboratives Arbeiten an Markdown-Dateien mit Live-Preview.",
+      "actions": {
+        "newShort": "Neu",
+        "create": "Workspace erstellen",
+        "createConfirm": "Workspace erstellen",
+        "open": "Öffnen",
+        "leave": "Verlassen"
+      },
+      "workspaces": {
+        "title": "Workspaces"
+      },
+      "status": {
+        "owner": "Besitzer",
+        "guest": "Mitglied"
+      },
+      "lastUpdated": "Zuletzt aktualisiert {date}",
+      "empty": {
+        "title": "Noch keine Workspaces",
+        "subtitle": "Erstelle einen Workspace, um loszulegen."
+      },
+      "dialogs": {
+        "createTitle": "Workspace erstellen",
+        "deleteTitle": "Workspace löschen",
+        "deleteConfirm": "Workspace {name} löschen?",
+        "deleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
+        "leaveTitle": "Workspace verlassen",
+        "leaveConfirm": "Workspace {name} verlassen?",
+        "leaveHint": "Du kannst vom Besitzer erneut eingeladen werden."
+      },
+      "form": {
+        "nameLabel": "Workspace-Name",
+        "namePlaceholder": "z.B. Notizen",
+        "visibilityLabel": "Sichtbarkeit",
+        "inviteLabel": "Mitglieder einladen",
+        "userPlaceholder": "Nutzer suchen und hinzufügen..."
+      }
+    },
+    "workspace": {
+      "nav": {
+        "home": "Home",
+        "workspaces": "Workspaces"
+      },
+      "actions": {
+        "backToWorkspaces": "Zurück zu Workspaces"
+      },
+      "tree": {
+        "files": "Dateien",
+        "collapse": "Dateibaum einklappen"
+      },
+      "view": {
+        "editor": "Editor",
+        "split": "Split-Ansicht",
+        "preview": "Vorschau"
+      },
+      "empty": {
+        "noDocument": "Kein Dokument ausgewählt",
+        "selectFile": "Wähle eine Datei, um zu starten."
+      },
+      "fallbackName": "Workspace #{id}"
+    },
+    "share": {
+      "title": "Teilen",
+      "ownerLabel": "Besitzer",
+      "ownerTag": "Besitzer",
+      "inviteLabel": "Nutzer einladen",
+      "addButton": "Hinzufügen",
+      "members": "Mitglieder",
+      "emptyMembers": "Noch keine Mitglieder",
+      "removeMember": "Mitglied entfernen"
+    },
+    "tree": {
+      "title": "Dateien",
+      "searchPlaceholder": "Suchen...",
+      "zoteroReadonly": "Zotero-Dateien sind schreibgeschützt.",
+      "root": "Wurzel",
+      "nodeFallback": "Element {id}",
+      "defaults": {
+        "folder": "Neuer Ordner",
+        "file": "Neue Datei"
+      },
+      "placeholders": {
+        "file": "Dateiname",
+        "folder": "Ordnername"
+      },
+      "actions": {
+        "newFile": "Neue Datei",
+        "newFolder": "Neuer Ordner",
+        "rename": "Umbenennen",
+        "delete": "Löschen",
+        "expand": "Aufklappen",
+        "collapse": "Zuklappen",
+        "drag": "Zum Verschieben ziehen",
+        "cancelCreate": "Abbrechen",
+        "create": "Erstellen",
+        "createLabel": "Erstellen",
+        "cancelRename": "Abbrechen",
+        "save": "Speichern",
+        "cancelDelete": "Abbrechen"
+      },
+      "dialogs": {
+        "createFolderTitle": "Neuer Ordner",
+        "createFileTitle": "Neue Datei",
+        "nameLabel": "Name",
+        "target": "Ziel: {label}",
+        "renameTitle": "Umbenennen",
+        "deleteTitle": "Löschen",
+        "deleteConfirm": "{name} löschen?",
+        "deleteHint": "Diese Aktion kann nicht rückgängig gemacht werden."
+      }
+    },
+    "diff": {
+      "base": "Basis",
+      "compare": "Vergleich",
+      "empty": "—",
+      "noChanges": "Keine Änderungen"
+    },
+    "editor": {
+      "readonly": "Nur lesen",
+      "liveSync": "Live-Sync",
+      "reconnecting": "Verbinde neu...",
+      "userFallback": "Unbekannter Benutzer",
+      "deletedText": "Gelöschter Text"
+    }
+  },
+  "latexCollab": {
+    "permissions": {
+      "missing": "Du benötigst die Berechtigung {permission}, um diese Funktion zu nutzen."
+    },
+    "visibility": {
+      "private": "Privat",
+      "team": "Team",
+      "org": "Organisation"
+    },
+    "errors": {
+      "createFailed": "Workspace konnte nicht erstellt werden",
+      "deleteFailed": "Workspace konnte nicht gelöscht werden",
+      "leaveFailed": "Workspace konnte nicht verlassen werden",
+      "membersLoadFailed": "Mitglieder konnten nicht geladen werden",
+      "inviteFailed": "Mitglieder konnten nicht eingeladen werden",
+      "removeFailed": "Mitglied konnte nicht entfernt werden"
+    },
+    "home": {
+      "title": "LaTeX Collab",
+      "titleShort": "LaTeX",
+      "subtitle": "Kollaboratives Arbeiten an LaTeX-Dokumenten mit Live-PDF-Preview.",
+      "actions": {
+        "newShort": "Neu",
+        "create": "Workspace erstellen",
+        "createConfirm": "Workspace erstellen",
+        "open": "Öffnen",
+        "leave": "Verlassen"
+      },
+      "workspaces": {
+        "title": "Workspaces"
+      },
+      "status": {
+        "owner": "Besitzer",
+        "guest": "Mitglied"
+      },
+      "lastUpdated": "Zuletzt aktualisiert {date}",
+      "empty": {
+        "title": "Noch keine Workspaces",
+        "subtitle": "Erstelle einen Workspace, um loszulegen."
+      },
+      "dialogs": {
+        "createTitle": "Workspace erstellen",
+        "deleteTitle": "Workspace löschen",
+        "deleteConfirm": "Workspace {name} löschen?",
+        "deleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
+        "leaveTitle": "Workspace verlassen",
+        "leaveConfirm": "Workspace {name} verlassen?",
+        "leaveHint": "Du kannst vom Besitzer erneut eingeladen werden."
+      },
+      "form": {
+        "nameLabel": "Workspace-Name",
+        "namePlaceholder": "z.B. Abschlussarbeit",
+        "visibilityLabel": "Sichtbarkeit",
+        "inviteLabel": "Mitglieder einladen",
+        "userPlaceholder": "Nutzer suchen und hinzufügen..."
+      }
+    },
+    "workspace": {
+      "nav": {
+        "home": "Home",
+        "workspaces": "Workspaces"
+      },
+      "actions": {
+        "backToWorkspaces": "Zurück zu Workspaces"
+      },
+      "view": {
+        "editor": "Editor",
+        "split": "Split-Ansicht",
+        "preview": "Vorschau"
+      },
+      "empty": {
+        "noDocument": "Kein Dokument ausgewählt",
+        "selectFile": "Wähle eine Datei, um zu starten."
+      },
+      "fallbackName": "Workspace #{id}",
+      "assetWarning": "Dieses Asset ist schreibgeschützt.",
+      "zoteroReadonly": "Dateien aus {brand} sind schreibgeschützt."
+    },
+    "share": {
+      "title": "Teilen",
+      "ownerLabel": "Besitzer",
+      "ownerTag": "Besitzer",
+      "inviteLabel": "Nutzer einladen",
+      "addButton": "Hinzufügen",
+      "members": "Mitglieder",
+      "emptyMembers": "Noch keine Mitglieder",
+      "removeMember": "Mitglied entfernen"
+    },
+    "tree": {
+      "files": "Dateien",
+      "filePlaceholder": "Dateiname",
+      "uploadAsset": "Asset hochladen",
+      "collapse": "Dateibaum einklappen"
+    },
+    "header": {
+      "menuOpen": "Menü öffnen",
+      "backToWorkspaces": "Zurück zu Workspaces",
+      "workspaces": "Workspaces",
+      "setMain": "Als main.tex setzen",
+      "reviewMode": "Review-Modus",
+      "liveSync": "Live-Sync",
+      "reconnecting": "Verbinde neu...",
+      "ghostText": "Ghost Text",
+      "ghostTextEnabled": "Aktiv",
+      "ghostTextDisabled": "Inaktiv",
+      "view": {
+        "editor": "Editor",
+        "split": "Split-Ansicht",
+        "preview": "Vorschau"
+      }
+    },
+    "compile": {
+      "actions": {
+        "compile": "Kompilieren",
+        "showLogs": "Logs anzeigen"
+      },
+      "versionLabel": "Version",
+      "auto": {
+        "title": "Auto-Kompilieren",
+        "enable": "Auto-Kompilieren aktivieren",
+        "delayLabel": "Verzögerung (ms)",
+        "syncLabel": "Synchronisation aktivieren"
+      },
+      "logTitle": "Kompilier-Log",
+      "issuesTitle": "Probleme",
+      "noLog": "Kein Log verfügbar",
+      "current": "Aktuell",
+      "status": {
+        "queued": "In Warteschlange",
+        "running": "Kompiliert...",
+        "success": "Erfolgreich",
+        "failed": "Fehlgeschlagen",
+        "idle": "Bereit"
+      },
+      "issue": {
+        "line": "Zeile {line}",
+        "unknownLocation": "Unbekannte Position",
+        "errorLabel": "Fehler",
+        "warningLabel": "Warnung",
+        "overfullLabel": "Overfull Box"
+      },
+      "errors": {
+        "failed": "Kompilierung fehlgeschlagen"
+      }
+    },
+    "comments": {
+      "title": "Kommentare",
+      "add": "Kommentar hinzufügen",
+      "addLabel": "Kommentar",
+      "empty": "Noch keine Kommentare",
+      "resolved": "Erledigt",
+      "reopen": "Wieder öffnen",
+      "resolve": "Erledigen",
+      "dialog": {
+        "title": "Kommentar hinzufügen",
+        "label": "Kommentar",
+        "cancelTitle": "Abbrechen",
+        "saveTitle": "Speichern"
+      },
+      "errors": {
+        "selectText": "Bitte Text markieren",
+        "saveFailed": "Kommentar konnte nicht gespeichert werden"
+      }
+    },
+    "pdf": {
+      "title": "PDF-Preview",
+      "compiling": "Kompiliere...",
+      "zoomOut": "Herauszoomen",
+      "zoomIn": "Hineinzoomen",
+      "fitWidth": "Auf Breite anpassen",
+      "pages": "{count} Seiten",
+      "empty": "Noch kein PDF erstellt",
+      "loading": "Laden...",
+      "compilingStatus": "Kompiliere...",
+      "preparing": "PDF wird vorbereitet..."
+    },
+    "outline": {
+      "title": "Gliederung",
+      "show": "Gliederung anzeigen",
+      "hide": "Gliederung ausblenden",
+      "expand": "Aufklappen",
+      "collapse": "Zuklappen",
+      "emptySections": "Noch keine Abschnitte",
+      "emptyDocument": "Dokument leer",
+      "part": "Teil",
+      "chapter": "Kapitel",
+      "section": "Abschnitt",
+      "subsection": "Unterabschnitt",
+      "subsubsection": "Unter-Unterabschnitt",
+      "paragraph": "Paragraph"
+    },
+    "editor": {
+      "toolbar": {
+        "show": "Toolbar anzeigen",
+        "hide": "Toolbar ausblenden",
+        "label": "Toolbar",
+        "bold": "Fett",
+        "italic": "Kursiv",
+        "underline": "Unterstreichen",
+        "emph": "Hervorheben",
+        "typewriter": "Typewriter",
+        "section": "Abschnitt",
+        "subsection": "Unterabschnitt",
+        "subsubsection": "Unter-Unterabschnitt",
+        "paragraph": "Paragraph",
+        "itemize": "Aufzählung",
+        "enumerate": "Nummerierte Liste",
+        "description": "Beschreibungsliste",
+        "figure": "Abbildung",
+        "table": "Tabelle",
+        "code": "Code-Block",
+        "quote": "Zitat",
+        "inlineMath": "Inline-Mathe",
+        "displayMath": "Display-Mathe",
+        "equation": "Gleichung",
+        "align": "Align",
+        "frac": "Bruch",
+        "cite": "Zitieren",
+        "ref": "Referenz",
+        "label": "Label",
+        "footnote": "Fußnote",
+        "url": "URL"
+      },
+      "table": {
+        "size": "Tabellengröße",
+        "rows": "Zeilen",
+        "columns": "Spalten",
+        "preview": "{rows}×{cols} Tabelle",
+        "insert": "Tabelle einfügen"
+      },
+      "userFallback": "Unbekannter Benutzer",
+      "userUnknown": "Unbekannter Benutzer",
+      "deletedText": "Gelöschter Text"
+    },
+    "completions": {
+      "documentclass": "Dokumentklasse",
+      "usepackage": "Paket laden",
+      "begin": "Umgebung starten",
+      "end": "Umgebung beenden",
+      "section": "Abschnitt",
+      "subsection": "Unterabschnitt",
+      "subsubsection": "Unter-Unterabschnitt",
+      "paragraph": "Paragraph",
+      "textbf": "Fett",
+      "textit": "Kursiv",
+      "emph": "Hervorheben",
+      "underline": "Unterstreichen",
+      "item": "Listenpunkt",
+      "label": "Label",
+      "ref": "Referenz",
+      "pageref": "Seitenreferenz",
+      "cite": "Zitat",
+      "citet": "Textzitat",
+      "citep": "Klammerzitat",
+      "includegraphics": "Grafik",
+      "caption": "Beschriftung",
+      "centering": "Zentrieren",
+      "footnote": "Fußnote",
+      "url": "URL",
+      "href": "Link",
+      "title": "Titel",
+      "author": "Autor",
+      "date": "Datum",
+      "maketitle": "Titelseite",
+      "tableofcontents": "Inhaltsverzeichnis",
+      "newcommand": "Neues Kommando",
+      "renewcommand": "Kommando ändern",
+      "input": "Datei einfügen",
+      "include": "Datei einbinden",
+      "frac": "Bruch",
+      "sqrt": "Wurzel",
+      "sum": "Summe",
+      "int": "Integral"
+    },
+    "aiCommands": {
+      "ai": "Freie KI-Anfrage",
+      "rewrite": "Text umformulieren",
+      "expand": "Text erweitern",
+      "summarize": "Text zusammenfassen",
+      "fix": "LaTeX/Grammatik korrigieren",
+      "translate": "Übersetzen (z.B. @@translate en)",
+      "cite": "Zitat aus RAG finden",
+      "abstract": "Abstract generieren",
+      "titles": "Titel vorschlagen"
+    },
+    "zotero": {
+      "title": "Zotero",
+      "connection": {
+        "title": "Zotero-Verbindung",
+        "connected": "Verbunden",
+        "accountLabel": "Konto:",
+        "connectedSince": "Verbunden seit {date}",
+        "prompt": "Verbinde dein Zotero-Konto, um Bibliotheken und Zitate zu synchronisieren."
+      },
+      "connect": {
+        "oauthTitle": "Mit OAuth verbinden",
+        "oauthHint": "Melde dich mit Zotero an, um sicher zu verbinden.",
+        "apiKeyTitle": "Mit API-Schlüssel verbinden",
+        "apiKeyHint": "Gib einen Zotero-API-Schlüssel ein, um dich zu verbinden.",
+        "apiKeyHintAlt": "Nutze einen API-Schlüssel statt OAuth.",
+        "apiKeyLabel": "API-Schlüssel",
+        "apiKeyPlaceholder": "API-Schlüssel einfügen",
+        "apiKeyLink": "API-Schlüssel in Zotero erstellen",
+        "or": "oder"
+      },
+      "actions": {
+        "disconnect": "Trennen",
+        "connectOAuth": "Mit Zotero verbinden",
+        "connect": "Verbinden",
+        "add": "Hinzufügen",
+        "addLibrary": "Bibliothek hinzufügen",
+        "sync": "Synchronisieren",
+        "settings": "Einstellungen",
+        "remove": "Entfernen"
+      },
+      "libraries": {
+        "title": "Bibliotheken",
+        "empty": "Noch keine Bibliotheken verknüpft.",
+        "entries": "{count} Einträge",
+        "autoSync": "Auto-Sync alle {minutes} Min.",
+        "lastSynced": "Zuletzt synchronisiert {date}",
+        "neverSynced": "Nie synchronisiert"
+      },
+      "dialogs": {
+        "addTitle": "Bibliothek hinzufügen",
+        "selectLibrary": "Bibliothek auswählen",
+        "allCollections": "Alle Sammlungen",
+        "collectionLabel": "Sammlung",
+        "filenameLabel": "BibTeX-Dateiname",
+        "filenamePlaceholder": "z.B. literatur",
+        "autoSync": "Auto-Sync aktivieren",
+        "syncInterval": "Sync-Intervall (Minuten)",
+        "settingsTitle": "Bibliothekseinstellungen",
+        "removeTitle": "Bibliothek entfernen",
+        "removeConfirm": "{name} aus diesem Workspace entfernen?",
+        "removeHint": "Die Bibliothek wird nur entkoppelt, nicht aus Zotero gelöscht."
+      },
+      "errors": {
+        "filenameRequired": "Dateiname ist erforderlich",
+        "connectFailed": "Zotero konnte nicht verbunden werden",
+        "oauthUnavailable": "OAuth ist nicht konfiguriert",
+        "oauthFailed": "OAuth-Anmeldung fehlgeschlagen",
+        "oauthNotConfigured": "OAuth nicht konfiguriert",
+        "disconnectFailed": "Trennen fehlgeschlagen",
+        "loadLibrariesFailed": "Bibliotheken konnten nicht geladen werden",
+        "addFailed": "Bibliothek konnte nicht hinzugefügt werden",
+        "syncFailed": "Synchronisierung fehlgeschlagen",
+        "saveFailed": "Einstellungen konnten nicht gespeichert werden",
+        "removeFailed": "Bibliothek konnte nicht entfernt werden"
+      },
+      "messages": {
+        "connected": "Zotero verbunden",
+        "disconnected": "Zotero getrennt",
+        "added": "Bibliothek hinzugefügt",
+        "synced": "Bibliothek synchronisiert",
+        "settingsSaved": "Einstellungen gespeichert",
+        "removed": "Bibliothek entfernt"
+      },
+      "relative": {
+        "justNow": "Gerade eben",
+        "minutesAgo": "vor {count} Min.",
+        "hoursAgo": "vor {count} Std.",
+        "daysAgo": "vor {count} Tagen"
+      }
+    }
+  },
+  "latexCollabAi": {
+    "visibility": {
+      "private": "Privat",
+      "team": "Team",
+      "org": "Organisation"
+    },
+    "errors": {
+      "createFailed": "Workspace konnte nicht erstellt werden",
+      "deleteFailed": "Workspace konnte nicht gelöscht werden",
+      "leaveFailed": "Workspace konnte nicht verlassen werden",
+      "processingFailed": "KI-Verarbeitung fehlgeschlagen",
+      "chatFailed": "Chat fehlgeschlagen",
+      "commandFailed": "Befehl fehlgeschlagen"
+    },
+    "home": {
+      "title": "LaTeX Collab KI",
+      "titleShort": "LaTeX KI",
+      "subtitle": "Kollaborativer LaTeX-Workspace mit KI-Schreibassistent.",
+      "actions": {
+        "newShort": "Neu",
+        "create": "Workspace erstellen",
+        "createConfirm": "Workspace erstellen",
+        "open": "Öffnen",
+        "leave": "Verlassen"
+      },
+      "banner": {
+        "title": "KI-Funktionen aktiviert",
+        "body": "Enthält Ghost Text, @@-Commands, die KI-Seitenleiste und RAG-Zitate."
+      },
+      "workspaces": {
+        "title": "Workspaces"
+      },
+      "status": {
+        "owner": "Besitzer",
+        "guest": "Mitglied"
+      },
+      "lastUpdated": "Zuletzt aktualisiert {date}",
+      "empty": {
+        "title": "Noch keine Workspaces",
+        "subtitle": "Erstelle einen Workspace, um loszulegen."
+      },
+      "dialogs": {
+        "createTitle": "Workspace erstellen",
+        "deleteTitle": "Workspace löschen",
+        "deleteConfirm": "Workspace {name} löschen?",
+        "deleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
+        "leaveTitle": "Workspace verlassen",
+        "leaveConfirm": "Workspace {name} verlassen?",
+        "leaveHint": "Du kannst vom Besitzer erneut eingeladen werden."
+      },
+      "form": {
+        "nameLabel": "Workspace-Name",
+        "namePlaceholder": "z.B. KI-Entwurf",
+        "visibilityLabel": "Sichtbarkeit",
+        "inviteLabel": "Mitglieder einladen",
+        "userPlaceholder": "Nutzer suchen und hinzufügen..."
+      }
+    },
+    "workspace": {
+      "actions": {
+        "openAssistant": "KI-Assistent öffnen"
+      }
+    },
+    "citations": {
+      "title": "Zitat finden",
+      "claimLabel": "Aussage oder Text",
+      "collectionsLabel": "Sammlungen",
+      "resultsTitle": "Ergebnisse",
+      "insertBibtex": "BibTeX einfügen",
+      "noResults": "Keine Zitate gefunden",
+      "searchError": "Suche fehlgeschlagen: {message}",
+      "bibtexInserted": "BibTeX eingefügt"
+    },
+    "shortcuts": {
+      "title": "Tastenkürzel",
+      "toggleSidebar": "KI-Seitenleiste umschalten",
+      "toggleGhostText": "Ghost Text umschalten",
+      "requestCompletion": "Vervollständigung anfordern",
+      "acceptSuggestion": "Vorschlag annehmen",
+      "rejectSuggestion": "Vorschlag verwerfen",
+      "rewriteSelection": "Auswahl umformulieren",
+      "expandSelection": "Auswahl erweitern",
+      "summarizeSelection": "Auswahl zusammenfassen",
+      "findCitation": "Zitat finden",
+      "showShortcuts": "Tastenkürzel anzeigen"
+    },
+    "notifications": {
+      "inserting": "Wird eingefügt...",
+      "clipboardCopied": "In Zwischenablage kopiert",
+      "rewritten": "Text umformuliert",
+      "expanded": "Text erweitert",
+      "summarized": "Zusammenfassung erstellt",
+      "chatQuestion": "KI gefragt: {text}...",
+      "latexErrorsFound": "{count} LaTeX-Probleme gefunden",
+      "latexErrorsNone": "Keine LaTeX-Probleme gefunden",
+      "aiInserted": "KI-Inhalt eingefügt",
+      "errorsFound": "{count} Probleme gefunden",
+      "errorsNone": "Keine Probleme gefunden",
+      "translated": "Übersetzt nach {lang}",
+      "abstractGenerated": "Abstract erstellt",
+      "titlesGenerated": "{count} Titel generiert",
+      "commandExecuted": "Befehl ausgeführt",
+      "error": "Fehler: {message}",
+      "ghostTextEnabled": "Ghost Text aktiviert",
+      "ghostTextDisabled": "Ghost Text deaktiviert"
+    },
+    "prompts": {
+      "translate": "Übersetze den folgenden Text nach {lang}: {text}"
+    },
+    "sidebar": {
+      "title": "KI-Assistent",
+      "quickTools": "Schnellwerkzeuge",
+      "tools": {
+        "abstract": "Abstract",
+        "titles": "Titel",
+        "citations": "Zitat-Check",
+        "fixLatex": "LaTeX korrigieren"
+      },
+      "chat": {
+        "title": "Chat",
+        "clear": "Chat löschen",
+        "thinking": "Denke...",
+        "placeholder": "Frage stellen..."
+      },
+      "welcome": {
+        "greeting": "Hi! Ich bin dein KI-Schreibassistent.",
+        "intro": "Ich kann dir helfen mit:",
+        "items": {
+          "phrasing": "Formulierungen verbessern",
+          "latex": "LaTeX und Grammatik korrigieren",
+          "structure": "Struktur stärken",
+          "literature": "Quellen finden"
+        }
+      },
+      "artifact": {
+        "insert": "In Dokument einfügen"
+      },
+      "footerTip": "Tipp: Nutze @@-Commands im Editor für schnelle Aktionen.",
+      "toolResults": {
+        "title": {
+          "abstract": "Generiertes Abstract",
+          "titles": "Titel-Vorschläge",
+          "citations": "Zitat-Analyse",
+          "fixLatex": "LaTeX-Check"
+        },
+        "wordCount": "{count} Wörter",
+        "cited": "{count} zitiert",
+        "uncited": "{count} unzitiert",
+        "noUncited": "Alle Zitate sehen gut aus.",
+        "errorsTitle": "Fehler",
+        "suggestionsTitle": "Vorschläge",
+        "noErrors": "Keine Fehler gefunden."
+      }
+    },
+    "selection": {
+      "rewrite": "Umformulieren",
+      "expand": "Erweitern",
+      "summarize": "Zusammenfassen",
+      "cite": "Zitat finden",
+      "chat": "KI fragen",
+      "fixLatex": "LaTeX korrigieren"
+    },
+    "commandDescriptions": {
+      "ai": "Stelle eine beliebige Frage oder gib eine Anweisung.",
+      "rewrite": "Formuliert den markierten Text wissenschaftlicher.",
+      "expand": "Erweitert den markierten Text mit mehr Details.",
+      "summarize": "Fasst den markierten Text zusammen.",
+      "fix": "Korrigiert LaTeX- und Grammatikfehler.",
+      "translate": "Übersetzt den Text (z.B. @@translate en).",
+      "cite": "Sucht passende Quellen für die Aussage.",
+      "abstract": "Generiert ein Abstract für das Dokument.",
+      "titles": "Schlägt Titel für das Dokument vor."
+    }
+  },
+  "workspaceGit": {
+    "title": "Git",
+    "fileSingular": "Datei",
+    "filePlural": "Dateien",
+    "header": {
+      "title": "Git Panel"
+    },
+    "fullscreen": {
+      "title": "Git Panel",
+      "changedCount": "{count} geändert"
+    },
+    "tags": {
+      "changed": "{count} geändert",
+      "deleted": "{count} gelöscht",
+      "synced": "Synchron",
+      "noChanges": "Keine Änderungen"
+    },
+    "actions": {
+      "refresh": "Aktualisieren",
+      "fullscreen": "Vollbild",
+      "collapse": "Einklappen",
+      "exitFullscreen": "Vollbild schließen",
+      "discard": "Verwerfen",
+      "restore": "Wiederherstellen"
+    },
+    "files": {
+      "title": "Dateien",
+      "empty": "Keine Änderungen",
+      "selectAll": "Alle auswählen",
+      "selectNone": "Keine auswählen",
+      "deletedTitle": "Gelöschte Dateien",
+      "emptyUncommitted": "Keine uncommitteten Änderungen"
+    },
+    "commit": {
+      "title": "Änderungen committen",
+      "placeholder": "Commit-Message eingeben...",
+      "submitTitle": "Änderungen committen",
+      "submitLabel": "Commit ({count} Dateien)",
+      "submitCount": "{count} Dateien committen",
+      "submit": "Änderungen committen",
+      "createTitle": "Neuer Commit",
+      "selectedFiles": "{count} Dateien ausgewählt",
+      "linesAdded": "{count} eingefügt",
+      "linesRemoved": "{count} gelöscht",
+      "noneSelected": "Keine Dateien ausgewählt",
+      "fullscreenPlaceholder": "Beschreibe deine Änderungen...",
+      "contributions": "Beiträge",
+      "lines": "{count} Zeilen"
+    },
+    "history": {
+      "title": "Verlauf",
+      "count": "{count} Commits",
+      "empty": "Noch keine Commits",
+      "more": "+{count} weitere...",
+      "files": "{count} Dateien"
+    },
+    "diff": {
+      "title": "Diff-Ansicht",
+      "workingTitle": "Working Tree anzeigen",
+      "working": "Working",
+      "commitTitle": "Commit-Bereich vergleichen",
+      "commits": "Commits",
+      "selectFile": "Datei zum Vergleichen auswählen",
+      "baseLabel": "Basis",
+      "compareLabel": "Vergleich",
+      "initial": "Initial (kein Commit)",
+      "workingTree": "Working tree",
+      "emptyLabel": "—",
+      "noDocument": "Kein Dokument ausgewählt"
+    },
+    "relative": {
+      "justNow": "Gerade eben",
+      "minutesAgo": "vor {count} Min.",
+      "hoursAgo": "vor {count} Std.",
+      "daysAgo": "vor {count} Tagen"
+    },
+    "errors": {
+      "rollbackFailed": "Rollback fehlgeschlagen",
+      "loadChangesFailed": "Änderungen konnten nicht geladen werden",
+      "restoreFailed": "Wiederherstellung fehlgeschlagen",
+      "diffFailed": "Diff konnte nicht geladen werden",
+      "loadCommitsFailed": "History konnte nicht geladen werden",
+      "commitFailed": "Commit fehlgeschlagen"
+    },
+    "status": {
+      "deleted": "Gelöscht",
+      "added": "Hinzugefügt",
+      "modified": "Geändert"
+    },
+    "rollback": {
+      "title": "Änderungen verwerfen?",
+      "forceConfirm": "Lokale Änderungen für {path} verwerfen?",
+      "confirm": "Änderungen für {path} verwerfen?",
+      "resetHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "commitHint": "Letzter Commit: #{id}.",
+      "confirmAction": "Verwerfen",
+      "simpleConfirm": "Alle nicht committeten Änderungen werden verworfen und das Dokument wird auf den letzten Commit zurückgesetzt.",
+      "simpleHint": "Diese Aktion kann nicht rückgängig gemacht werden."
+    }
+  }
+}

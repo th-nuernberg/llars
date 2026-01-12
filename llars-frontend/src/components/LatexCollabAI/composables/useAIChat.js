@@ -5,9 +5,12 @@
  */
 
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import aiWritingService from '@/services/aiWritingService'
 
 export function useAIChat() {
+  const { t } = useI18n()
+
   // State
   const messages = ref([])
   const isLoading = ref(false)
@@ -102,7 +105,7 @@ export function useAIChat() {
         return result
       }
     } catch (e) {
-      error.value = e.message || 'Chat-Fehler'
+      error.value = e.message || t('latexCollabAi.errors.chatFailed')
       // Remove failed user message
       messages.value = messages.value.filter(m => m.id !== userMessage.id)
       throw e
@@ -150,7 +153,7 @@ export function useAIChat() {
 
       return result
     } catch (e) {
-      error.value = e.message || 'Command-Fehler'
+      error.value = e.message || t('latexCollabAi.errors.commandFailed')
       throw e
     } finally {
       isLoading.value = false

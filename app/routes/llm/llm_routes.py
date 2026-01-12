@@ -528,6 +528,8 @@ def get_llm_access_overview():
             'provider_type': provider_type,
             'provider_base_url': provider_base_url,
             'model_type': model.model_type,
+            'supports_vision': model.supports_vision,
+            'supports_reasoning': model.supports_reasoning,
             'is_active': model.is_active,
             'is_default': model.is_default,
             'created_by': model.created_by,

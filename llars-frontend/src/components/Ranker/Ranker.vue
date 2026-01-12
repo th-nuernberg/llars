@@ -4,15 +4,15 @@
     <!-- Header -->
     <div class="overview-header">
       <LBtn variant="tonal" prepend-icon="mdi-arrow-left" size="small" @click="goToHub">
-        Evaluierungen
+        {{ $t('evaluation.backToEvaluations') }}
       </LBtn>
       <div class="header-info">
-        <h1>Ranking</h1>
-        <p class="text-medium-emphasis">Öffne einen Fall und ordne die Features nach Qualität.</p>
+        <h1>{{ $t('evaluation.ranking.pageTitle') }}</h1>
+        <p class="text-medium-emphasis">{{ $t('evaluation.ranking.pageSubtitle') }}</p>
       </div>
       <div class="header-stats">
         <LTag variant="success" size="small">
-          {{ doneCount }} / {{ emailThreads.length }} abgeschlossen
+          {{ $t('evaluation.progress', { done: doneCount, total: emailThreads.length }) }}
         </LTag>
       </div>
     </div>
@@ -50,9 +50,9 @@
 
           <div v-if="emailThreads.length === 0" class="empty-state">
             <LIcon size="64" color="grey-lighten-1">mdi-clipboard-text-off-outline</LIcon>
-            <h3>Keine Ranking-Fälle verfügbar</h3>
+            <h3>{{ $t('evaluation.ranking.emptyTitle') }}</h3>
             <p class="text-medium-emphasis">
-              Stelle sicher, dass ein aktives Szenario existiert und Threads zugewiesen sind.
+              {{ $t('evaluation.emptyHint') }}
             </p>
           </div>
         </template>

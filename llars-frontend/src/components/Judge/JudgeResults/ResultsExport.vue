@@ -6,7 +6,7 @@
         variant="secondary"
         prepend-icon="mdi-download"
       >
-        Export
+        {{ $t('judge.results.export.title') }}
       </LBtn>
     </template>
     <v-list class="export-menu">
@@ -14,15 +14,15 @@
         <template v-slot:prepend>
           <LIcon color="success">mdi-file-delimited</LIcon>
         </template>
-        <v-list-item-title>Als CSV exportieren</v-list-item-title>
-        <v-list-item-subtitle>Tabellenformat für Excel</v-list-item-subtitle>
+        <v-list-item-title>{{ $t('judge.results.export.csv.title') }}</v-list-item-title>
+        <v-list-item-subtitle>{{ $t('judge.results.export.csv.subtitle') }}</v-list-item-subtitle>
       </v-list-item>
       <v-list-item @click="$emit('export-json')" class="export-item">
         <template v-slot:prepend>
           <LIcon color="info">mdi-code-json</LIcon>
         </template>
-        <v-list-item-title>Als JSON exportieren</v-list-item-title>
-        <v-list-item-subtitle>Strukturierte Daten</v-list-item-subtitle>
+        <v-list-item-title>{{ $t('judge.results.export.json.title') }}</v-list-item-title>
+        <v-list-item-subtitle>{{ $t('judge.results.export.json.subtitle') }}</v-list-item-subtitle>
       </v-list-item>
     </v-list>
   </v-menu>

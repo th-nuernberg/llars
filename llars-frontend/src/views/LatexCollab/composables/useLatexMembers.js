@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
@@ -33,6 +34,7 @@ export function useLatexMembers({
   currentUsername,
   isAdmin
 }) {
+  const { t } = useI18n()
   // State
   const shareDialog = ref(false)
   const members = ref([])
@@ -80,9 +82,9 @@ export function useLatexMembers({
         avatar_seed: res.data.owner?.avatar_seed || null,
         collab_color: res.data.owner?.collab_color || null
       }
-    } catch (e) {
-      members.value = []
-      shareError.value = e?.response?.data?.error || e?.message || 'Mitglieder konnten nicht geladen werden'
+  } catch (e) {
+    members.value = []
+      shareError.value = e?.response?.data?.error || e?.message || t('latexCollab.errors.membersLoadFailed')
     } finally {
       membersLoading.value = false
     }
@@ -107,10 +109,10 @@ export function useLatexMembers({
       selectedUser.value = null
       userSearchRef.value?.reset?.()
       await loadMembers()
-    } catch (e) {
-      shareError.value = e?.response?.data?.error || e?.message || 'Einladung fehlgeschlagen'
-      userSearchRef.value?.setAdding?.(false)
-    }
+  } catch (e) {
+      shareError.value = e?.response?.data?.error || e?.message || t('latexCollab.errors.inviteFailed')
+    userSearchRef.value?.setAdding?.(false)
+  }
   }
 
   async function removeMember(username) {
@@ -123,9 +125,9 @@ export function useLatexMembers({
         { headers: authHeaders() }
       )
       await loadMembers()
-    } catch (e) {
-      shareError.value = e?.response?.data?.error || e?.message || 'Entfernen fehlgeschlagen'
-    } finally {
+  } catch (e) {
+      shareError.value = e?.response?.data?.error || e?.message || t('latexCollab.errors.removeFailed')
+  } finally {
       removingUsername.value = ''
     }
   }

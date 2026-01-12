@@ -6,7 +6,7 @@
         <div class="collapsed-icon-box">
           <LIcon size="18">mdi-source-branch</LIcon>
         </div>
-        <span class="collapsed-label">Git</span>
+        <span class="collapsed-label">{{ $t('promptEngineering.gitPanel.label') }}</span>
         <LTag
           v-if="summary?.hasChanges"
           variant="warning"
@@ -19,7 +19,7 @@
           </span>
         </LTag>
         <LTag v-else variant="gray" size="small">
-          Keine Änderungen
+          {{ $t('promptEngineering.gitPanel.noChanges') }}
         </LTag>
         <v-spacer />
         <LIcon size="18" class="expand-icon">mdi-chevron-up</LIcon>
@@ -33,7 +33,7 @@
         <div class="header-icon-box">
           <LIcon size="20" color="white">mdi-source-branch</LIcon>
         </div>
-        <span class="header-title">Git Panel</span>
+        <span class="header-title">{{ $t('promptEngineering.gitPanel.title') }}</span>
         <LTag
           v-if="summary?.hasChanges"
           variant="warning"
@@ -42,7 +42,7 @@
           +{{ summary?.insertions || 0 }} / -{{ summary?.deletions || 0 }}
         </LTag>
         <LTag v-else variant="success" size="small">
-          Synced
+          {{ $t('promptEngineering.gitPanel.synced') }}
         </LTag>
         <v-spacer />
         <div class="header-actions">
@@ -50,7 +50,7 @@
             icon
             variant="text"
             size="small"
-            title="Aktualisieren"
+            :title="$t('promptEngineering.gitPanel.refresh')"
             @click="loadCommits(true)"
           >
             <LIcon size="18">mdi-refresh</LIcon>
@@ -59,7 +59,7 @@
             icon
             variant="text"
             size="small"
-            title="Einklappen"
+            :title="$t('promptEngineering.gitPanel.collapse')"
             @click="expanded = false"
           >
             <LIcon size="18">mdi-chevron-down</LIcon>
@@ -79,7 +79,7 @@
           <div class="commit-section">
             <div class="section-title">
               <LIcon size="16" class="mr-1">mdi-pencil-plus</LIcon>
-              Änderungen committen
+              {{ $t('promptEngineering.gitPanel.commitChanges') }}
             </div>
 
             <!-- User changes summary -->
@@ -91,7 +91,7 @@
               >
                 <span class="user-dot" :style="{ backgroundColor: u.color }" />
                 <span class="user-name">{{ u.username }}</span>
-                <span class="user-lines">{{ u.changedLines }} Zeilen</span>
+                <span class="user-lines">{{ $t('promptEngineering.gitPanel.lines', { count: u.changedLines }) }}</span>
               </div>
             </div>
 
@@ -101,7 +101,7 @@
 
             <v-text-field
               v-model="commitMessage"
-              placeholder="Commit Message eingeben..."
+              :placeholder="$t('promptEngineering.gitPanel.commitPlaceholder')"
               variant="outlined"
               density="compact"
               :disabled="!canCommit"
@@ -118,7 +118,7 @@
                 prepend-icon="mdi-check"
                 @click="submitCommit"
               >
-                Commit
+                {{ $t('promptEngineering.gitPanel.commitAction') }}
               </LBtn>
             </div>
           </div>
@@ -127,12 +127,12 @@
           <div class="history-section">
             <div class="section-title">
               <LIcon size="16" class="mr-1">mdi-history</LIcon>
-              History ({{ commits.length }})
+              {{ $t('promptEngineering.gitPanel.historyTitle', { count: commits.length }) }}
             </div>
 
             <v-skeleton-loader v-if="isLoading('commits')" type="list-item@4" />
             <div v-else-if="commits.length === 0" class="empty-history">
-              Noch keine Commits
+              {{ $t('promptEngineering.gitPanel.noCommits') }}
             </div>
             <div v-else class="history-list">
               <div
@@ -148,7 +148,7 @@
                 <LTag variant="gray" size="small">#{{ c.id }}</LTag>
               </div>
               <div v-if="commits.length > 8" class="more-commits">
-                +{{ commits.length - 8 }} weitere Commits
+                {{ $t('promptEngineering.gitPanel.moreCommits', { count: commits.length - 8 }) }}
               </div>
             </div>
           </div>
@@ -164,6 +164,7 @@ import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getSocket } from '@/services/socketService'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   promptId: { type: Number, required: true },
@@ -176,6 +177,7 @@ const emit = defineEmits(['committed'])
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 const { isLoading, withLoading } = useSkeletonLoading(['commits'])
+const { t, locale } = useI18n()
 
 const expanded = ref(false)
 const commits = ref([])
@@ -199,11 +201,11 @@ function formatDate(iso) {
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
 
-    if (diffMins < 1) return 'Gerade eben'
-    if (diffMins < 60) return `vor ${diffMins} Min.`
-    if (diffHours < 24) return `vor ${diffHours} Std.`
-    if (diffDays < 7) return `vor ${diffDays} Tagen`
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    if (diffMins < 1) return t('promptEngineering.gitPanel.relative.justNow')
+    if (diffMins < 60) return t('promptEngineering.gitPanel.relative.minutesAgo', { count: diffMins })
+    if (diffHours < 24) return t('promptEngineering.gitPanel.relative.hoursAgo', { count: diffHours })
+    if (diffDays < 7) return t('promptEngineering.gitPanel.relative.daysAgo', { count: diffDays })
+    return new Intl.DateTimeFormat(locale.value || 'en', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(date)
   } catch {
     return iso
   }
@@ -220,7 +222,7 @@ async function loadCommits(force = false) {
       commits.value = res.data.commits || []
     } catch (e) {
       commits.value = []
-      loadError.value = e?.response?.data?.error || e?.message || 'History konnte nicht geladen werden'
+      loadError.value = e?.response?.data?.error || e?.message || t('promptEngineering.gitPanel.loadError')
     }
   })
 }
@@ -251,7 +253,7 @@ async function submitCommit() {
     await loadCommits(true)
     emit('committed')
   } catch (e) {
-    commitError.value = e?.response?.data?.error || e?.message || 'Commit fehlgeschlagen'
+    commitError.value = e?.response?.data?.error || e?.message || t('promptEngineering.gitPanel.commitFailed')
   } finally {
     committing.value = false
   }

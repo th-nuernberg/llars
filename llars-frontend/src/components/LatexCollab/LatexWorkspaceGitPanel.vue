@@ -6,23 +6,23 @@
         <div class="collapsed-icon-box">
           <LIcon size="18">mdi-source-branch</LIcon>
         </div>
-        <span class="collapsed-label">Git</span>
+        <span class="collapsed-label">{{ $t('workspaceGit.title') }}</span>
         <LTag
           v-if="changedFiles.length > 0"
           variant="warning"
           size="small"
         >
-          {{ changedFiles.length }} {{ changedFiles.length === 1 ? 'Datei' : 'Dateien' }}
+          {{ changedFiles.length }} {{ changedFiles.length === 1 ? $t('workspaceGit.fileSingular') : $t('workspaceGit.filePlural') }}
         </LTag>
         <LTag
           v-if="deletedFiles.length > 0"
           variant="danger"
           size="small"
         >
-          {{ deletedFiles.length }} gelöscht
+          {{ $t('workspaceGit.tags.deleted', { count: deletedFiles.length }) }}
         </LTag>
         <LTag v-if="changedFiles.length === 0 && deletedFiles.length === 0" variant="gray" size="small">
-          Keine Änderungen
+          {{ $t('workspaceGit.tags.noChanges') }}
         </LTag>
         <v-spacer />
         <LIcon size="18" class="expand-icon">mdi-chevron-up</LIcon>
@@ -36,23 +36,23 @@
         <div class="header-icon-box">
           <LIcon size="20" color="white">mdi-source-branch</LIcon>
         </div>
-        <span class="header-title">Git Panel</span>
+        <span class="header-title">{{ $t('workspaceGit.header.title') }}</span>
         <LTag
           v-if="changedFiles.length > 0"
           variant="warning"
           size="small"
         >
-          {{ changedFiles.length }} geändert
+          {{ $t('workspaceGit.tags.changed', { count: changedFiles.length }) }}
         </LTag>
         <LTag
           v-if="deletedFiles.length > 0"
           variant="danger"
           size="small"
         >
-          {{ deletedFiles.length }} gelöscht
+          {{ $t('workspaceGit.tags.deleted', { count: deletedFiles.length }) }}
         </LTag>
         <LTag v-if="changedFiles.length === 0 && deletedFiles.length === 0" variant="success" size="small">
-          Synced
+          {{ $t('workspaceGit.tags.synced') }}
         </LTag>
         <v-spacer />
         <div class="header-actions">
@@ -60,7 +60,7 @@
             icon
             variant="text"
             size="small"
-            title="Änderungen prüfen"
+            :title="$t('workspaceGit.actions.refresh')"
             :loading="checkingChanges"
             @click="checkForChanges"
           >
@@ -70,7 +70,7 @@
             icon
             variant="text"
             size="small"
-            title="Vollbild"
+            :title="$t('workspaceGit.actions.fullscreen')"
             @click="fullscreen = true"
           >
             <LIcon size="18">mdi-fullscreen</LIcon>
@@ -79,7 +79,7 @@
             icon
             variant="text"
             size="small"
-            title="Einklappen"
+            :title="$t('workspaceGit.actions.collapse')"
             @click="expanded = false"
           >
             <LIcon size="18">mdi-chevron-down</LIcon>
@@ -99,7 +99,7 @@
           <div class="files-section">
             <div class="section-title">
               <LIcon size="16" class="mr-1">mdi-file-document-multiple</LIcon>
-              Geänderte Dateien
+              {{ $t('workspaceGit.files.title') }}
               <v-spacer />
               <span v-if="changedFiles.length > 0" class="file-count">
                 {{ selectedFiles.length }}/{{ changedFiles.length }}
@@ -108,7 +108,7 @@
 
             <v-skeleton-loader v-if="checkingChanges" type="list-item@3" />
             <div v-else-if="changedFiles.length === 0 && deletedFiles.length === 0" class="empty-files">
-              Keine Änderungen
+              {{ $t('workspaceGit.files.empty') }}
             </div>
             <div v-else class="file-list">
               <!-- Select All (only if there are changed files) -->
@@ -121,7 +121,7 @@
                   @update:model-value="toggleSelectAll"
                 >
                   <template #label>
-                    <span class="select-all-label">Alle auswählen</span>
+                    <span class="select-all-label">{{ $t('workspaceGit.files.selectAll') }}</span>
                   </template>
                 </v-checkbox>
               </div>
@@ -172,7 +172,7 @@
                       <LIcon size="14">mdi-undo</LIcon>
                     </v-btn>
                   </template>
-                  <span>Änderungen verwerfen</span>
+                  <span>{{ $t('workspaceGit.actions.discard') }}</span>
                 </v-tooltip>
               </div>
 
@@ -181,7 +181,7 @@
                 <v-divider v-if="changedFiles.length > 0" class="my-2" />
                 <div class="deleted-section-title">
                   <LIcon size="14" color="error" class="mr-1">mdi-delete</LIcon>
-                  Gelöschte Dateien
+                  {{ $t('workspaceGit.files.deletedTitle') }}
                 </div>
                 <div
                   v-for="file in deletedFiles"
@@ -209,7 +209,7 @@
                         <LIcon size="14">mdi-restore</LIcon>
                       </v-btn>
                     </template>
-                    <span>Datei wiederherstellen</span>
+                    <span>{{ $t('workspaceGit.actions.restore') }}</span>
                   </v-tooltip>
                 </div>
               </template>
@@ -220,7 +220,7 @@
           <div class="commit-section">
             <div class="section-title">
               <LIcon size="16" class="mr-1">mdi-pencil-plus</LIcon>
-              Commit
+              {{ $t('workspaceGit.commit.title') }}
             </div>
 
             <v-alert v-if="commitError" type="error" variant="tonal" class="mb-2" density="compact">
@@ -229,7 +229,7 @@
 
             <v-text-field
               v-model="commitMessage"
-              placeholder="Commit Message eingeben..."
+              :placeholder="$t('workspaceGit.commit.placeholder')"
               variant="outlined"
               density="compact"
               :disabled="!canCommit"
@@ -244,10 +244,10 @@
                 :loading="committing"
                 :disabled="!canSubmitCommit"
                 prepend-icon="mdi-check"
-                title="Ausgewählte Dateien committen"
+                :title="$t('workspaceGit.commit.submitTitle')"
                 @click="submitCommit"
               >
-                Commit ({{ selectedFiles.length }})
+                {{ $t('workspaceGit.commit.submitLabel', { count: selectedFiles.length }) }}
               </LBtn>
             </div>
           </div>
@@ -263,20 +263,20 @@
           <div class="header-icon-box large">
             <LIcon size="24" color="white">mdi-source-branch</LIcon>
           </div>
-          <span class="header-title">Workspace Commit</span>
+          <span class="header-title">{{ $t('workspaceGit.fullscreen.title') }}</span>
           <LTag
             v-if="changedFiles.length > 0"
             variant="warning"
             size="small"
           >
-            {{ changedFiles.length }} geänderte Dateien
+            {{ $t('workspaceGit.fullscreen.changedCount', { count: changedFiles.length }) }}
           </LTag>
           <LTag
             v-if="deletedFiles.length > 0"
             variant="danger"
             size="small"
           >
-            {{ deletedFiles.length }} gelöscht
+            {{ $t('workspaceGit.tags.deleted', { count: deletedFiles.length }) }}
           </LTag>
           <v-spacer />
           <LBtn
@@ -284,20 +284,20 @@
             size="small"
             prepend-icon="mdi-refresh"
             :loading="checkingChanges"
-            title="Änderungen prüfen"
+            :title="$t('workspaceGit.actions.refresh')"
             @click="checkForChanges"
           >
-            Aktualisieren
+            {{ $t('common.refresh') }}
           </LBtn>
           <LBtn
             variant="cancel"
             size="small"
             prepend-icon="mdi-fullscreen-exit"
             class="ml-2"
-            title="Vollbild schließen"
+            :title="$t('workspaceGit.actions.exitFullscreen')"
             @click="fullscreen = false"
           >
-            Schließen
+            {{ $t('common.close') }}
           </LBtn>
         </div>
 
@@ -314,7 +314,7 @@
               <div class="git-card">
                 <div class="card-header">
                   <LIcon size="18" class="mr-2">mdi-file-document-multiple</LIcon>
-                  Geänderte Dateien
+                  {{ $t('workspaceGit.files.title') }}
                   <v-spacer />
                   <span class="file-count-header">{{ selectedFiles.length }}/{{ changedFiles.length }}</span>
                 </div>
@@ -322,16 +322,16 @@
                   <v-skeleton-loader v-if="checkingChanges" type="list-item@6" />
                   <div v-else-if="changedFiles.length === 0 && deletedFiles.length === 0" class="empty-state">
                     <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-check-circle</LIcon>
-                    <span>Keine uncommitted Änderungen</span>
+                    <span>{{ $t('workspaceGit.files.emptyUncommitted') }}</span>
                   </div>
                   <div v-else>
                     <!-- Select All / None buttons (only if there are changed files) -->
                     <div v-if="changedFiles.length > 0" class="bulk-actions">
                       <LBtn variant="text" size="small" @click="selectAll">
-                        Alle auswählen
+                        {{ $t('workspaceGit.files.selectAll') }}
                       </LBtn>
                       <LBtn variant="text" size="small" @click="deselectAll">
-                        Keine auswählen
+                        {{ $t('workspaceGit.files.selectNone') }}
                       </LBtn>
                     </div>
 
@@ -387,7 +387,7 @@
                               <LIcon size="18">mdi-undo</LIcon>
                             </v-btn>
                           </template>
-                          <span>Änderungen verwerfen</span>
+                          <span>{{ $t('workspaceGit.actions.discard') }}</span>
                         </v-tooltip>
                       </div>
 
@@ -400,7 +400,7 @@
               <div v-if="deletedFiles.length > 0" class="git-card mt-4">
                 <div class="card-header deleted-header">
                   <LIcon size="18" class="mr-2" color="error">mdi-delete</LIcon>
-                  Gelöschte Dateien
+                  {{ $t('workspaceGit.files.deletedTitle') }}
                   <v-spacer />
                   <span class="deleted-count">{{ deletedFiles.length }}</span>
                 </div>
@@ -431,7 +431,7 @@
                             <LIcon size="14">mdi-restore</LIcon>
                           </v-btn>
                         </template>
-                        <span>Datei wiederherstellen</span>
+                        <span>{{ $t('workspaceGit.actions.restore') }}</span>
                       </v-tooltip>
                     </div>
                   </div>
@@ -442,27 +442,29 @@
               <div class="git-card mt-4">
                 <div class="card-header">
                   <LIcon size="18" class="mr-2">mdi-pencil-plus</LIcon>
-                  Commit erstellen
+                  {{ $t('workspaceGit.commit.createTitle') }}
                 </div>
                 <div class="card-content">
                   <!-- Summary -->
                   <div v-if="selectedFiles.length > 0" class="commit-summary">
                     <div class="summary-item">
                       <LIcon size="16" color="primary">mdi-file-check</LIcon>
-                      <span>{{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'Datei' : 'Dateien' }} ausgewählt</span>
+                      <span>
+                        {{ $t('workspaceGit.commit.selectedFiles', { count: selectedFiles.length }) }}
+                      </span>
                     </div>
                     <div class="summary-item">
                       <LIcon size="16" color="success">mdi-plus</LIcon>
-                      <span>{{ totalInsertions }} Zeilen hinzugefügt</span>
+                      <span>{{ $t('workspaceGit.commit.linesAdded', { count: totalInsertions }) }}</span>
                     </div>
                     <div class="summary-item">
                       <LIcon size="16" color="error">mdi-minus</LIcon>
-                      <span>{{ totalDeletions }} Zeilen entfernt</span>
+                      <span>{{ $t('workspaceGit.commit.linesRemoved', { count: totalDeletions }) }}</span>
                     </div>
                   </div>
                   <div v-else class="no-selection">
                     <LIcon size="32" color="grey-lighten-1" class="mb-2">mdi-checkbox-blank-off-outline</LIcon>
-                    <span>Keine Dateien ausgewählt</span>
+                    <span>{{ $t('workspaceGit.commit.noneSelected') }}</span>
                   </div>
 
                   <v-divider class="my-4" />
@@ -473,7 +475,7 @@
 
                   <v-textarea
                     v-model="commitMessage"
-                    placeholder="Beschreibe deine Änderungen..."
+                    :placeholder="$t('workspaceGit.commit.fullscreenPlaceholder')"
                     variant="outlined"
                     density="comfortable"
                     :disabled="!canCommit"
@@ -489,10 +491,10 @@
                       :disabled="!canSubmitCommit"
                       prepend-icon="mdi-check"
                       block
-                      title="Ausgewählte Dateien committen"
+                      :title="$t('workspaceGit.commit.submitTitle')"
                       @click="submitCommit"
                     >
-                      {{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'Datei' : 'Dateien' }} committen
+                      {{ $t('workspaceGit.commit.submitCount', { count: selectedFiles.length }) }}
                     </LBtn>
                   </div>
                 </div>
@@ -504,15 +506,15 @@
               <div class="git-card">
                 <div class="card-header">
                   <LIcon size="18" class="mr-2">mdi-history</LIcon>
-                  Commit History
+                  {{ $t('workspaceGit.history.title') }}
                   <v-spacer />
-                  <span class="commit-count">{{ recentCommits.length }} Commits</span>
+                  <span class="commit-count">{{ $t('workspaceGit.history.count', { count: recentCommits.length }) }}</span>
                 </div>
                 <div class="card-content history-content">
                   <v-skeleton-loader v-if="loadingCommits" type="list-item@8" />
                   <div v-else-if="recentCommits.length === 0" class="empty-state">
                     <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</LIcon>
-                    <span>Noch keine Commits vorhanden</span>
+                    <span>{{ $t('workspaceGit.history.empty') }}</span>
                   </div>
                   <div v-else class="history-list-full">
                     <div
@@ -528,7 +530,7 @@
                         <div class="commit-meta-full">
                           <span class="author">{{ c.author_username }}</span>
                           <span class="date">{{ formatDate(c.created_at) }}</span>
-                          <span class="files-count">{{ c.file_count || 1 }} Datei(en)</span>
+                          <span class="files-count">{{ $t('workspaceGit.history.files', { count: c.file_count || 1 }) }}</span>
                         </div>
                       </div>
                       <LTag variant="gray" size="small">#{{ c.id }}</LTag>
@@ -543,7 +545,7 @@
               <div class="git-card">
                 <div class="card-header">
                   <LIcon size="18" class="mr-2">mdi-file-compare</LIcon>
-                  Diff Ansicht
+                  {{ $t('workspaceGit.diff.title') }}
                   <v-spacer />
                   <v-btn-toggle
                     v-model="compareMode"
@@ -553,15 +555,15 @@
                     mandatory
                     class="mode-toggle"
                   >
-                    <v-btn value="working" size="small" title="Working Tree anzeigen">Working</v-btn>
-                    <v-btn value="commit-range" size="small" title="Commit-Bereich vergleichen">Commits</v-btn>
+                    <v-btn value="working" size="small" :title="$t('workspaceGit.diff.workingTitle')">{{ $t('workspaceGit.diff.working') }}</v-btn>
+                    <v-btn value="commit-range" size="small" :title="$t('workspaceGit.diff.commitTitle')">{{ $t('workspaceGit.diff.commits') }}</v-btn>
                   </v-btn-toggle>
                 </div>
                 <div class="card-content diff-content">
                   <!-- No document selected message -->
                   <div v-if="!selectedDocumentId" class="no-document-selected">
                     <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-file-document-outline</LIcon>
-                    <span>Wähle eine Datei aus, um den Diff anzuzeigen</span>
+                    <span>{{ $t('workspaceGit.diff.selectFile') }}</span>
                   </div>
                   <template v-else>
                     <!-- Commit range selectors -->
@@ -569,7 +571,7 @@
                       <v-select
                         v-model="baseCommitId"
                         :items="baseCommitOptions"
-                        label="Basis"
+                        :label="$t('workspaceGit.diff.baseLabel')"
                         density="compact"
                         variant="outlined"
                         hide-details
@@ -578,7 +580,7 @@
                       <v-select
                         v-model="compareCommitId"
                         :items="commitOptions"
-                        label="Vergleich"
+                        :label="$t('workspaceGit.diff.compareLabel')"
                         density="compact"
                         variant="outlined"
                         hide-details
@@ -612,33 +614,37 @@
       <v-card class="rollback-confirm-card">
         <v-card-title class="d-flex align-center ga-2">
           <LIcon color="warning">mdi-alert-circle</LIcon>
-          Änderungen verwerfen?
+          {{ $t('workspaceGit.rollback.title') }}
         </v-card-title>
         <v-card-text>
           <p v-if="forceRollback">
-            Der letzte Commit ist leer. Dieser Rollback würde
-            <strong>{{ rollbackTarget?.path }}</strong>
-            vollständig leeren.
+            <i18n-t keypath="workspaceGit.rollback.forceConfirm" tag="span">
+              <template #path>
+                <strong>{{ rollbackTarget?.path }}</strong>
+              </template>
+            </i18n-t>
           </p>
           <p v-else>
-            Alle nicht committeten Änderungen in
-            <strong>{{ rollbackTarget?.path }}</strong>
-            werden unwiderruflich verworfen.
+            <i18n-t keypath="workspaceGit.rollback.confirm" tag="span">
+              <template #path>
+                <strong>{{ rollbackTarget?.path }}</strong>
+              </template>
+            </i18n-t>
           </p>
           <p class="text-medium-emphasis mt-2 mb-0">
-            Die Datei wird auf den letzten Commit zurückgesetzt.
+            {{ $t('workspaceGit.rollback.resetHint') }}
             <span v-if="forceRollbackDetails?.commit_id">
-              (Commit #{{ forceRollbackDetails.commit_id }})
+              {{ $t('workspaceGit.rollback.commitHint', { id: forceRollbackDetails.commit_id }) }}
             </span>
           </p>
         </v-card-text>
         <v-card-actions class="pa-4 pt-0">
           <v-spacer />
           <LBtn variant="cancel" @click="cancelRollback">
-            Abbrechen
+            {{ $t('common.cancel') }}
           </LBtn>
           <LBtn variant="danger" prepend-icon="mdi-undo" @click="executeRollback">
-            Verwerfen
+            {{ $t('workspaceGit.rollback.confirmAction') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -649,6 +655,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import MarkdownDiffViewer from '@/components/MarkdownCollab/MarkdownDiffViewer.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
@@ -666,6 +673,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['committed', 'rollback', 'restored'])
+const { t, locale } = useI18n()
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff'])
@@ -748,7 +756,7 @@ const commitOptions = computed(() => recentCommits.value.map((c) => ({
 })))
 
 const baseCommitOptions = computed(() => [
-  { title: 'Initial (kein Commit)', value: INITIAL_BASE },
+  { title: t('workspaceGit.diff.initial'), value: INITIAL_BASE },
   ...commitOptions.value
 ])
 
@@ -768,11 +776,11 @@ function formatDate(iso) {
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
 
-    if (diffMins < 1) return 'Gerade eben'
-    if (diffMins < 60) return `vor ${diffMins} Min.`
-    if (diffHours < 24) return `vor ${diffHours} Std.`
-    if (diffDays < 7) return `vor ${diffDays} Tagen`
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    if (diffMins < 1) return t('workspaceGit.relative.justNow')
+    if (diffMins < 60) return t('workspaceGit.relative.minutesAgo', { count: diffMins })
+    if (diffHours < 24) return t('workspaceGit.relative.hoursAgo', { count: diffHours })
+    if (diffDays < 7) return t('workspaceGit.relative.daysAgo', { count: diffDays })
+    return date.toLocaleDateString(locale.value || undefined, { day: '2-digit', month: '2-digit', year: '2-digit' })
   } catch {
     return iso
   }
@@ -872,7 +880,7 @@ async function executeRollback() {
       showRollbackConfirm.value = true
       return
     }
-    commitError.value = e?.response?.data?.error || e?.message || 'Rollback fehlgeschlagen'
+    commitError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.rollbackFailed')
   } finally {
     rollingBack.value = null
     if (!showRollbackConfirm.value) {
@@ -903,7 +911,7 @@ async function checkForChanges() {
     // Auto-select all changed files
     selectedFiles.value = changedFiles.value.map(f => f.id)
   } catch (e) {
-    loadError.value = e?.response?.data?.error || e?.message || 'Fehler beim Prüfen der Änderungen'
+    loadError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.loadChangesFailed')
     changedFiles.value = []
     deletedFiles.value = []
     selectedFiles.value = []
@@ -930,16 +938,16 @@ async function restoreFile(file) {
     // Emit event so parent can refresh the tree
     emit('restored', file.id)
   } catch (e) {
-    loadError.value = e?.response?.data?.error || e?.message || 'Wiederherstellung fehlgeschlagen'
+    loadError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.restoreFailed')
   } finally {
     restoringFile.value = null
   }
 }
 
 function getStatusBadge(file) {
-  if (file.status === 'D') return { text: 'D', color: 'error', tooltip: 'Gelöscht' }
-  if (file.status === 'A' || !file.has_baseline) return { text: 'A', color: 'info', tooltip: 'Neu' }
-  return { text: 'M', color: 'warning', tooltip: 'Geändert' }
+  if (file.status === 'D') return { text: 'D', color: 'error', tooltip: t('workspaceGit.status.deleted') }
+  if (file.status === 'A' || !file.has_baseline) return { text: 'A', color: 'info', tooltip: t('workspaceGit.status.added') }
+  return { text: 'M', color: 'warning', tooltip: t('workspaceGit.status.modified') }
 }
 
 function getCommitById(commitId) {
@@ -947,7 +955,7 @@ function getCommitById(commitId) {
 }
 
 function formatCommitLabel(commit) {
-  if (!commit) return '—'
+  if (!commit) return t('workspaceGit.diff.emptyLabel')
   const message = commit.message ? String(commit.message).trim() : ''
   return `#${commit.id}${message ? ` · ${message}` : ''}`
 }
@@ -993,8 +1001,8 @@ async function refreshDiff(force = false) {
   if (!props.selectedDocumentId) {
     diffBaseText.value = ''
     diffCompareText.value = ''
-    diffBaseLabel.value = 'Keine Datei ausgewählt'
-    diffCompareLabel.value = '—'
+    diffBaseLabel.value = t('workspaceGit.diff.noDocument')
+    diffCompareLabel.value = t('workspaceGit.diff.emptyLabel')
     return
   }
 
@@ -1007,8 +1015,8 @@ async function refreshDiff(force = false) {
         diffCompareText.value = props.getContent ? String(props.getContent() || '') : ''
         diffBaseLabel.value = baselineCommitId.value
           ? `#${baselineCommitId.value}${baselineCommitMessage.value ? ` · ${baselineCommitMessage.value}` : ''}`
-          : 'Initial (kein Commit)'
-        diffCompareLabel.value = 'Working tree'
+          : t('workspaceGit.diff.initial')
+        diffCompareLabel.value = t('workspaceGit.diff.workingTree')
         return
       }
 
@@ -1016,8 +1024,8 @@ async function refreshDiff(force = false) {
       if (!compareCommit) {
         diffBaseText.value = ''
         diffCompareText.value = ''
-        diffBaseLabel.value = '—'
-        diffCompareLabel.value = '—'
+        diffBaseLabel.value = t('workspaceGit.diff.emptyLabel')
+        diffCompareLabel.value = t('workspaceGit.diff.emptyLabel')
         return
       }
 
@@ -1031,14 +1039,14 @@ async function refreshDiff(force = false) {
       diffCompareText.value = compareSnapshot || ''
       diffBaseLabel.value = baseCommit
         ? formatCommitLabel(baseCommit)
-        : 'Initial (kein Commit)'
+        : t('workspaceGit.diff.initial')
       diffCompareLabel.value = formatCommitLabel(compareCommit)
     } catch (e) {
       diffBaseText.value = ''
       diffCompareText.value = ''
-      diffBaseLabel.value = '—'
-      diffCompareLabel.value = '—'
-      diffError.value = e?.response?.data?.error || e?.message || 'Diff konnte nicht geladen werden'
+      diffBaseLabel.value = t('workspaceGit.diff.emptyLabel')
+      diffCompareLabel.value = t('workspaceGit.diff.emptyLabel')
+      diffError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.diffFailed')
     }
   })
 }
@@ -1155,7 +1163,7 @@ async function submitCommit() {
     // Reload data
     await Promise.all([checkForChanges(), loadRecentCommits()])
   } catch (e) {
-    commitError.value = e?.response?.data?.error || e?.message || 'Commit fehlgeschlagen'
+    commitError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.commitFailed')
   } finally {
     committing.value = false
   }

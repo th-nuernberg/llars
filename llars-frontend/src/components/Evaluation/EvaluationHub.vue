@@ -2,19 +2,19 @@
   <v-container class="evaluation-hub">
     <v-row class="mb-4">
       <v-col cols="12" class="d-flex align-center">
-        <LBtn variant="tonal" prepend-icon="mdi-arrow-left" @click="goHome">Home</LBtn>
+        <LBtn variant="tonal" prepend-icon="mdi-arrow-left" @click="goHome">{{ $t('navigation.home') }}</LBtn>
         <div class="ml-4">
           <h1 class="text-h5 font-weight-bold mb-1">
             <span class="mr-2">🧪</span>
-            Evaluierung
+            {{ $t('evaluation.title') }}
           </h1>
           <div class="text-body-2 text-medium-emphasis">
-            Wähle ein Evaluierungstool aus und starte den normalen Workflow.
+            {{ $t('evaluation.subtitle') }}
           </div>
         </div>
         <v-spacer />
         <LTag v-if="availableTools.length > 0" variant="primary" size="sm">
-          {{ availableTools.length }} verfügbar
+          {{ $t('evaluation.available', { count: availableTools.length }) }}
         </LTag>
       </v-col>
     </v-row>
@@ -32,15 +32,15 @@
     <template v-else>
       <div v-if="availableTools.length === 0">
         <v-alert type="info" variant="tonal" class="mb-4">
-          Für deinen Account sind aktuell keine Evaluierungstools freigeschaltet.
+          {{ $t('evaluation.noToolsAvailable') }}
         </v-alert>
-        <LBtn variant="primary" prepend-icon="mdi-home" @click="goHome">Zurück</LBtn>
+        <LBtn variant="primary" prepend-icon="mdi-home" @click="goHome">{{ $t('navigation.back') }}</LBtn>
       </div>
 
       <div v-else class="features-grid">
         <v-tooltip
           v-for="tool in availableTools"
-          :key="tool.title"
+          :key="tool.i18nKey"
           :disabled="hasScenarios(tool)"
           location="top"
         >
@@ -56,22 +56,22 @@
               </div>
               <div class="feature-title">
                 <span v-if="tool.emoji" class="feature-emoji">{{ tool.emoji }}</span>
-                {{ tool.title }}
+                {{ $t('evaluation.tools.' + tool.i18nKey + '.title') }}
               </div>
-              <div class="feature-description">{{ tool.description }}</div>
+              <div class="feature-description">{{ $t('evaluation.tools.' + tool.i18nKey + '.description') }}</div>
               <div class="feature-badge" v-if="tool.badge && hasScenarios(tool)">
                 <LTag :variant="getBadgeVariant(tool.badgeColor)" size="sm">
-                  {{ tool.badge }}
+                  {{ $t('evaluation.badges.' + tool.badge) }}
                 </LTag>
               </div>
               <div class="feature-badge" v-if="!hasScenarios(tool)">
                 <LTag variant="gray" size="sm">
-                  Keine Szenarien
+                  {{ $t('evaluation.noScenarios') }}
                 </LTag>
               </div>
             </div>
           </template>
-          <span>Keine Szenarien zugewiesen</span>
+          <span>{{ $t('evaluation.noScenariosAssigned') }}</span>
         </v-tooltip>
       </div>
     </template>
@@ -95,8 +95,7 @@ const threadCounts = ref({})
 
 const allTools = ref([
   {
-    title: 'Ranking',
-    description: 'Features nach Qualität sortieren und vergleichen',
+    i18nKey: 'ranking',
     route: '/Ranker',
     icon: 'mdi-chart-bar-stacked',
     emoji: '🏆',
@@ -104,8 +103,7 @@ const allTools = ref([
     functionType: 'ranking'
   },
   {
-    title: 'Verlaufsbewertung',
-    description: 'Bewertung von KI generierten Mail-Verläufen (Säule 4)',
+    i18nKey: 'historyRating',
     route: '/HistoryGeneration',
     icon: 'mdi-timeline-text-outline',
     emoji: '✉️',
@@ -113,19 +111,17 @@ const allTools = ref([
     functionType: 'mail_rating'
   },
   {
-    title: 'Fake/Echt',
-    description: 'Abstimmung: Ist ein Verlauf echt oder fake?',
+    i18nKey: 'authenticity',
     route: '/authenticity',
     icon: 'mdi-shield-search',
     emoji: '🕵️',
     permission: 'feature:authenticity:view',
     functionType: 'authenticity',
-    badge: 'New',
+    badge: 'new',
     badgeColor: 'info'
   },
   {
-    title: 'Rating',
-    description: 'Features einzeln mit Sternen/Skala bewerten',
+    i18nKey: 'rating',
     route: '/Rater',
     icon: 'mdi-star-outline',
     emoji: '⭐️',
@@ -133,8 +129,7 @@ const allTools = ref([
     functionType: 'rating'
   },
   {
-    title: 'Gegenüberstellung',
-    description: 'Zwei KI-Modelle direkt vergleichen und bewerten',
+    i18nKey: 'comparison',
     route: '/comparison',
     icon: 'mdi-compare-horizontal',
     emoji: '⚖️',

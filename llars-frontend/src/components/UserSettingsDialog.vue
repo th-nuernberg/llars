@@ -4,7 +4,7 @@
       <v-card-title class="d-flex align-center justify-space-between">
         <span class="text-h5">
           <LIcon class="mr-2">mdi-account-cog</LIcon>
-          Profil & Einstellungen
+          {{ $t('settings.title') }}
         </span>
         <v-btn
           icon="mdi-close"
@@ -20,7 +20,7 @@
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
             <LIcon class="mr-2">mdi-account</LIcon>
-            Mein Profil
+            {{ $t('settings.profile') }}
           </h3>
 
           <v-card variant="outlined" class="pa-4">
@@ -33,9 +33,9 @@
                 class="mr-4"
               />
               <div class="profile-info">
-                <div class="text-h6">{{ username || 'Nicht angemeldet' }}</div>
+                <div class="text-h6">{{ username || $t('settings.notLoggedIn') }}</div>
                 <div class="text-body-2 text-medium-emphasis">
-                  {{ userEmail || 'Keine E-Mail hinterlegt' }}
+                  {{ userEmail || $t('settings.noEmail') }}
                 </div>
                 <LTag
                   v-if="isAdmin"
@@ -44,7 +44,7 @@
                   prepend-icon="mdi-shield-account"
                   class="mt-2"
                 >
-                  Administrator
+                  {{ $t('settings.administrator') }}
                 </LTag>
                 <LTag
                   v-else-if="username"
@@ -52,7 +52,7 @@
                   size="sm"
                   class="mt-2"
                 >
-                  Benutzer
+                  {{ $t('settings.user') }}
                 </LTag>
               </div>
             </div>
@@ -75,7 +75,7 @@
                   :disabled="!canChangeAvatar"
                   @click="triggerAvatarUpload"
                 >
-                  Bild hochladen
+                  {{ $t('settings.uploadImage') }}
                 </LBtn>
                 <LBtn
                   variant="text"
@@ -84,7 +84,7 @@
                   :disabled="!canChangeAvatar"
                   @click="regenerateAvatar"
                 >
-                  Neues Standardbild
+                  {{ $t('settings.newDefaultImage') }}
                 </LBtn>
                 <LBtn
                   v-if="avatarUrl"
@@ -94,7 +94,7 @@
                   :disabled="!canChangeAvatar"
                   @click="resetAvatar"
                 >
-                  Standardbild wiederherstellen
+                  {{ $t('settings.restoreDefault') }}
                 </LBtn>
               </div>
               <v-alert
@@ -114,12 +114,12 @@
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
             <LIcon class="mr-2">mdi-palette</LIcon>
-            Design & Darstellung
+            {{ $t('settings.theme') }}
           </h3>
 
           <v-card variant="outlined" class="pa-4">
             <div class="mb-3">
-              <div class="text-body-2 text-medium-emphasis mb-2">Farbmodus</div>
+              <div class="text-body-2 text-medium-emphasis mb-2">{{ $t('settings.themeMode') }}</div>
               <v-chip-group
                 v-model="selectedTheme"
                 column
@@ -135,7 +135,7 @@
                   @click="changeTheme(option.value)"
                 >
                   <LIcon :icon="option.icon" start></LIcon>
-                  {{ option.title }}
+                  {{ $t('theme.' + option.value) }}
                 </v-chip>
               </v-chip-group>
             </div>
@@ -149,9 +149,9 @@
               class="mt-3"
             >
               <div class="text-caption">
-                Aktuell: <strong>{{ currentThemeOption.title }}</strong>
+                {{ $t('theme.current') }}: <strong>{{ $t('theme.' + currentThemeOption.value) }}</strong>
                 <span v-if="themePreference === 'system'">
-                  ({{ systemPrefersDark ? 'Dunkel' : 'Hell' }})
+                  ({{ systemPrefersDark ? $t('theme.dark') : $t('theme.light') }})
                 </span>
               </div>
             </v-alert>
@@ -162,12 +162,12 @@
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
             <LIcon class="mr-2">mdi-palette-swatch</LIcon>
-            Kollaborationsfarbe
+            {{ $t('settings.collabColor') }}
           </h3>
 
           <v-card variant="outlined" class="pa-4">
             <div class="text-body-2 text-medium-emphasis mb-3">
-              Diese Farbe wird verwendet, um deine Bearbeitungen in Echtzeit-Kollaborationen hervorzuheben.
+              {{ $t('settings.collabColorHint') }}
             </div>
 
             <div class="d-flex align-center gap-3 mb-3">
@@ -175,7 +175,7 @@
                 class="color-preview"
                 :style="{ backgroundColor: selectedCollabColor || '#9e9e9e' }"
               ></div>
-              <span class="text-body-2">{{ selectedCollabColor || 'Keine Farbe gewählt' }}</span>
+              <span class="text-body-2">{{ selectedCollabColor || $t('settings.noColorSelected') }}</span>
             </div>
 
             <div class="color-presets mb-3">
@@ -197,7 +197,7 @@
                 :disabled="!collabColorChanged"
                 @click="saveCollabColor"
               >
-                Farbe speichern
+                {{ $t('settings.saveColor') }}
               </LBtn>
             </div>
           </v-card>
@@ -207,7 +207,7 @@
         <div class="mb-4">
           <h3 class="text-subtitle-1 font-weight-bold mb-3 d-flex align-center">
             <LIcon class="mr-2">mdi-account-cog</LIcon>
-            Weitere Einstellungen
+            {{ $t('settings.additionalSettings') }}
           </h3>
 
           <v-card variant="outlined" class="pa-4">
@@ -216,8 +216,8 @@
                 <template v-slot:prepend>
                   <LIcon>mdi-bell</LIcon>
                 </template>
-                <v-list-item-title>Benachrichtigungen</v-list-item-title>
-                <v-list-item-subtitle>Systembenachrichtigungen aktivieren</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('settings.notifications') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('settings.notificationsHint') }}</v-list-item-subtitle>
                 <template v-slot:append>
                   <v-switch
                     v-model="notificationsEnabled"
@@ -234,8 +234,25 @@
                 <template v-slot:prepend>
                   <LIcon>mdi-translate</LIcon>
                 </template>
-                <v-list-item-title>Sprache</v-list-item-title>
-                <v-list-item-subtitle>Deutsch (DE)</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('settings.language') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('settings.languageHint') }}</v-list-item-subtitle>
+                <template v-slot:append>
+                  <v-btn-toggle
+                    v-model="selectedLanguage"
+                    mandatory
+                    density="compact"
+                    color="primary"
+                  >
+                    <v-btn
+                      v-for="option in languageOptions"
+                      :key="option.value"
+                      :value="option.value"
+                      size="small"
+                    >
+                      {{ option.short }}
+                    </v-btn>
+                  </v-btn-toggle>
+                </template>
               </v-list-item>
             </v-list>
           </v-card>
@@ -251,7 +268,7 @@
           prepend-icon="mdi-check"
           @click="closeDialog"
         >
-          Fertig
+          {{ $t('common.done') }}
         </LBtn>
       </v-card-actions>
     </v-card>
@@ -260,8 +277,12 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useAuth } from '@/composables/useAuth'
+import { useLanguage } from '@/composables/useLanguage'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -284,6 +305,21 @@ const {
 } = useAppTheme()
 
 const auth = useAuth()
+
+// Language settings
+const {
+  currentLanguage,
+  languageOptions,
+  setLanguage
+} = useLanguage()
+
+const selectedLanguage = ref(currentLanguage.value)
+
+// Watch for language changes and apply them
+watch(selectedLanguage, (newLang) => {
+  setLanguage(newLang)
+})
+
 const avatarInput = ref(null)
 const avatarUploading = ref(false)
 const avatarError = ref('')
@@ -375,10 +411,11 @@ async function resetAvatar() {
   }
 }
 
-// Sync collab color when dialog opens
+// Sync settings when dialog opens
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     selectedCollabColor.value = auth.collabColor.value || null
+    selectedLanguage.value = currentLanguage.value
     avatarError.value = ''
     auth.fetchUserSettings()
   }
@@ -406,12 +443,12 @@ const canChangeAvatar = computed(() => {
 
 const avatarChangeHint = computed(() => {
   if (avatarChangesLeft.value === null || avatarChangesLeft.value === undefined) {
-    return 'Maximal 3 Änderungen pro Tag'
+    return t('settings.avatarChangesPerDay')
   }
   if (avatarChangesLeft.value <= 0) {
-    return 'Limit erreicht (3 Änderungen/Tag)'
+    return t('settings.avatarLimitReached')
   }
-  return `Heute noch ${avatarChangesLeft.value} Änderungen`
+  return t('settings.avatarChangesLeft', { count: avatarChangesLeft.value })
 })
 
 // Dialog state

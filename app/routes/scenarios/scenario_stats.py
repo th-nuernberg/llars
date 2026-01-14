@@ -8,6 +8,8 @@ from flask import jsonify, g
 from auth.decorators import admin_required, authentik_required
 from decorators.error_handler import handle_api_errors
 from decorators.permission_decorator import require_permission
+from db.database import db
+from db.tables import FeatureFunctionType
 from services.scenario_stats_service import get_progress_stats
 from ..HelperFunctions import get_user_threads
 from .. import data_blueprint

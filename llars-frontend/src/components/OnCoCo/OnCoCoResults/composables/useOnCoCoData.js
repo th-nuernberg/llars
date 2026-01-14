@@ -111,7 +111,7 @@ export function useOnCoCoData(analysisId, analysisRef) {
       );
       distributionData.value = response.data.distribution || [];
     } catch (error) {
-      console.error('Error loading distribution:', error);
+      console.error('Fehler beim Laden der Verteilung:', error);
     } finally {
       loadingDistribution.value = false;
     }
@@ -131,7 +131,7 @@ export function useOnCoCoData(analysisId, analysisRef) {
       );
       transitionsData.value = response.data;
     } catch (error) {
-      console.error('Error loading transitions:', error);
+      console.error('Fehler beim Laden der Uebergaenge:', error);
     } finally {
       loadingTransitions.value = false;
     }
@@ -176,7 +176,7 @@ export function useOnCoCoData(analysisId, analysisRef) {
       }
       heatmapData.value = newData;
     } catch (error) {
-      console.error('Error loading heatmaps:', error);
+      console.error('Fehler beim Laden der Heatmaps:', error);
     } finally {
       loadingHeatmaps.value = false;
     }
@@ -190,7 +190,7 @@ export function useOnCoCoData(analysisId, analysisRef) {
       );
       comparisonData.value = response.data.pillars || [];
     } catch (error) {
-      console.error('Error loading comparison:', error);
+      console.error('Fehler beim Laden des Vergleichs:', error);
     } finally {
       loadingComparison.value = false;
     }
@@ -208,7 +208,7 @@ export function useOnCoCoData(analysisId, analysisRef) {
       );
       matrixComparisonData.value = response.data;
     } catch (error) {
-      console.error('Error loading matrix comparison:', error);
+      console.error('Fehler beim Laden des Matrixvergleichs:', error);
       matrixComparisonData.value = null;
     } finally {
       loadingMatrixComparison.value = false;
@@ -242,7 +242,7 @@ export function useOnCoCoData(analysisId, analysisRef) {
       sentencesTotal.value = response.data.total || 0;
       sentencesOffset.value += response.data.sentences?.length || 0;
     } catch (error) {
-      console.error('Error loading sentences:', error);
+      console.error('Fehler beim Laden der Saetze:', error);
     } finally {
       loadingSentences.value = false;
     }

@@ -14,23 +14,23 @@
                 <LIcon color="white">mdi-human-child</LIcon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">KAIMO Panel</div>
+                <div class="text-h5 font-weight-bold">{{ $t('kaimo.panel.title') }}</div>
                 <div class="text-subtitle-2 text-medium-emphasis">
-                  Fälle durcharbeiten, Hinweise zuordnen, Bewertungen abschließen
+                  {{ $t('kaimo.panel.subtitle') }}
                 </div>
               </div>
             </div>
             <div class="text-body-2 text-medium-emphasis">
-              {{ canManageKaimo ? 'Researcher: Fälle verwalten und bearbeiten.' : 'Evaluator: Freigegebene Fälle bearbeiten.' }}
+              {{ canManageKaimo ? $t('kaimo.panel.roleHint.researcher') : $t('kaimo.panel.roleHint.evaluator') }}
             </div>
           </div>
           <v-spacer />
           <div class="d-flex align-center gap-2 flex-wrap">
             <v-chip v-if="canManageKaimo" color="secondary" variant="flat" prepend-icon="mdi-shield-account">
-              Researcher
+              {{ $t('kaimo.panel.roles.researcher') }}
             </v-chip>
             <v-chip v-else color="primary" variant="outlined" prepend-icon="mdi-account">
-              Evaluator
+              {{ $t('kaimo.panel.roles.evaluator') }}
             </v-chip>
             <v-btn
               v-if="canManageKaimo"
@@ -39,7 +39,7 @@
               prepend-icon="mdi-plus"
               @click="router.push({ name: 'KaimoNewCase' })"
             >
-              Neuer Fall
+              {{ $t('kaimo.panel.actions.newCase') }}
             </v-btn>
             <v-btn
               variant="text"
@@ -47,7 +47,7 @@
               prepend-icon="mdi-arrow-left"
               @click="router.push({ name: 'KaimoHub' })"
             >
-              Zurück
+              {{ $t('common.back') }}
             </v-btn>
           </div>
         </div>
@@ -67,7 +67,7 @@
           variant="tonal"
           icon="mdi-lock"
         >
-          Du benötigst <code>feature:kaimo:view</code>, um das KAIMO Panel zu öffnen.
+          {{ $t('kaimo.panel.alerts.noAccess', { permission: 'feature:kaimo:view' }) }}
         </v-alert>
         <v-alert
           v-else-if="loadError"
@@ -86,7 +86,7 @@
         <v-card class="pa-4" elevation="2">
           <v-card-title class="px-0 d-flex align-center">
             <LIcon class="mr-2" color="primary">mdi-format-list-bulleted</LIcon>
-            Fälle
+            {{ $t('kaimo.panel.table.title') }}
             <v-chip class="ml-2" size="small" color="primary" variant="outlined">
               {{ cases.length }}
             </v-chip>
@@ -102,12 +102,12 @@
             <v-table density="comfortable">
               <thead>
                 <tr>
-                  <th>Fall</th>
-                  <th>Status</th>
-                  <th class="text-right">Docs</th>
-                  <th class="text-right">Hinweise</th>
-                  <th v-if="canManageKaimo" class="text-right">Bewertungen</th>
-                  <th class="text-right">Aktionen</th>
+                  <th>{{ $t('kaimo.panel.table.headers.case') }}</th>
+                  <th>{{ $t('kaimo.panel.table.headers.status') }}</th>
+                  <th class="text-right">{{ $t('kaimo.panel.table.headers.docs') }}</th>
+                  <th class="text-right">{{ $t('kaimo.panel.table.headers.hints') }}</th>
+                  <th v-if="canManageKaimo" class="text-right">{{ $t('kaimo.panel.table.headers.assessments') }}</th>
+                  <th class="text-right">{{ $t('kaimo.panel.table.headers.actions') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,7 +118,7 @@
                       <div>
                         <div class="font-weight-medium">{{ c.display_name }}</div>
                         <div class="text-caption text-medium-emphasis text-truncate" style="max-width: 300px;">
-                          {{ c.description || 'Keine Beschreibung' }}
+                          {{ c.description || $t('kaimo.panel.table.noDescription') }}
                         </div>
                       </div>
                     </div>
@@ -137,7 +137,7 @@
                   <td v-if="canManageKaimo" class="text-right">{{ c.assessment_count || 0 }}</td>
                   <td class="text-right">
                     <div class="d-flex justify-end gap-1">
-                      <v-tooltip text="Fall öffnen (User-Ansicht)" location="top">
+                      <v-tooltip :text="$t('kaimo.panel.tooltips.openCase')" location="top">
                         <template v-slot:activator="{ props }">
                           <v-btn
                             v-bind="props"
@@ -150,7 +150,7 @@
                         </template>
                       </v-tooltip>
                       <template v-if="canManageKaimo">
-                        <v-tooltip text="Fall bearbeiten" location="top">
+                        <v-tooltip :text="$t('kaimo.panel.tooltips.editCase')" location="top">
                           <template v-slot:activator="{ props }">
                             <v-btn
                               v-bind="props"
@@ -162,7 +162,7 @@
                             />
                           </template>
                         </v-tooltip>
-                        <v-tooltip v-if="c.status === 'draft'" text="Veröffentlichen" location="top">
+                        <v-tooltip v-if="c.status === 'draft'" :text="$t('kaimo.panel.tooltips.publish')" location="top">
                           <template v-slot:activator="{ props }">
                             <v-btn
                               v-bind="props"
@@ -174,7 +174,7 @@
                             />
                           </template>
                         </v-tooltip>
-                        <v-tooltip text="Löschen" location="top">
+                        <v-tooltip :text="$t('common.delete')" location="top">
                           <template v-slot:activator="{ props }">
                             <v-btn
                               v-bind="props"
@@ -193,7 +193,7 @@
                 <tr v-if="cases.length === 0">
                   <td :colspan="canManageKaimo ? 6 : 5" class="text-center text-medium-emphasis py-4">
                     <LIcon class="mr-2">mdi-folder-open-outline</LIcon>
-                    Keine KAIMO Fälle verfügbar.
+                    {{ $t('kaimo.panel.table.empty') }}
                     <v-btn
                       v-if="canManageKaimo"
                       class="ml-2"
@@ -202,7 +202,7 @@
                       variant="text"
                       @click="router.push({ name: 'KaimoNewCase' })"
                     >
-                      Ersten Fall anlegen
+                      {{ $t('kaimo.panel.table.emptyCta') }}
                     </v-btn>
                   </td>
                 </tr>
@@ -219,18 +219,18 @@
               <LIcon color="white">mdi-information-outline</LIcon>
             </v-avatar>
             <div>
-              <div class="text-subtitle-1 font-weight-bold">Hinweise</div>
+              <div class="text-subtitle-1 font-weight-bold">{{ $t('kaimo.panel.sidebar.title') }}</div>
               <div class="text-body-2 text-medium-emphasis">
-                Öffne einen Fall um ihn zu bearbeiten.
+                {{ $t('kaimo.panel.sidebar.subtitle') }}
               </div>
             </div>
           </div>
           <v-chip-group column class="mb-4">
             <v-chip color="success" variant="flat" prepend-icon="mdi-check">
-              {{ cases.filter(c => c.status === 'published').length }} veröffentlicht
+              {{ $t('kaimo.panel.sidebar.publishedCount', { count: cases.filter(c => c.status === 'published').length }) }}
             </v-chip>
             <v-chip color="warning" variant="outlined" prepend-icon="mdi-pencil">
-              {{ cases.filter(c => c.status === 'draft').length }} Entwürfe
+              {{ $t('kaimo.panel.sidebar.draftCount', { count: cases.filter(c => c.status === 'draft').length }) }}
             </v-chip>
           </v-chip-group>
         </v-card>
@@ -242,20 +242,20 @@
       <v-card>
         <v-card-title class="text-h6">
           <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
-          Fall löschen?
+          {{ $t('kaimo.panel.deleteDialog.title') }}
         </v-card-title>
         <v-card-text>
-          <p>Möchtest du den Fall <strong>{{ caseToDelete?.display_name }}</strong> wirklich löschen?</p>
+          <p>{{ $t('kaimo.panel.deleteDialog.body', { name: caseToDelete?.display_name }) }}</p>
           <v-alert v-if="caseToDelete?.assessment_count > 0" type="warning" variant="tonal" class="mt-3">
-            <strong>Achtung:</strong> Dieser Fall hat {{ caseToDelete?.assessment_count }} Bewertung(en).
-            Beim Löschen gehen alle Daten verloren!
+            <strong>{{ $t('kaimo.panel.deleteDialog.warningTitle') }}</strong>
+            {{ $t('kaimo.panel.deleteDialog.warningBody', { count: caseToDelete?.assessment_count }) }}
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">Abbrechen</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">{{ $t('common.cancel') }}</v-btn>
           <v-btn color="error" variant="flat" :loading="deleting" @click="executeDelete">
-            Löschen
+            {{ $t('common.delete') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -266,17 +266,17 @@
       <v-card>
         <v-card-title class="text-h6">
           <LIcon class="mr-2" color="success">mdi-publish</LIcon>
-          Fall veröffentlichen?
+          {{ $t('kaimo.panel.publishDialog.title') }}
         </v-card-title>
         <v-card-text>
-          <p>Möchtest du den Fall <strong>{{ caseToPublish?.display_name }}</strong> veröffentlichen?</p>
-          <p class="text-medium-emphasis">Nach der Veröffentlichung können Evaluator den Fall bearbeiten.</p>
+          <p>{{ $t('kaimo.panel.publishDialog.body', { name: caseToPublish?.display_name }) }}</p>
+          <p class="text-medium-emphasis">{{ $t('kaimo.panel.publishDialog.note') }}</p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="publishDialog = false">Abbrechen</v-btn>
+          <v-btn variant="text" @click="publishDialog = false">{{ $t('common.cancel') }}</v-btn>
           <v-btn color="success" variant="flat" :loading="publishing" @click="executePublish">
-            Veröffentlichen
+            {{ $t('kaimo.panel.publishDialog.confirm') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -293,11 +293,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { usePermissions } from '@/composables/usePermissions';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { getKaimoCases, getKaimoAdminCases, deleteKaimoCase, publishKaimoCase } from '@/services/kaimoApi';
 
 const router = useRouter();
+const { t, locale } = useI18n();
 const { hasPermission, isResearcher, fetchPermissions } = usePermissions();
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['hero', 'content']);
 
@@ -339,10 +341,11 @@ const getStatusColor = (status) => {
 };
 
 const getStatusLabel = (status) => {
+  locale.value;
   switch (status) {
-    case 'published': return 'Veröffentlicht';
-    case 'draft': return 'Entwurf';
-    case 'archived': return 'Archiviert';
+    case 'published': return t('kaimo.status.published');
+    case 'draft': return t('kaimo.status.draft');
+    case 'archived': return t('kaimo.status.archived');
     default: return status;
   }
 };
@@ -386,12 +389,12 @@ const executeDelete = async () => {
     // Force delete wenn Assessments vorhanden
     const force = (caseToDelete.value.assessment_count || 0) > 0;
     await deleteKaimoCase(caseToDelete.value.id, force);
-    showSnackbar(`Fall "${caseToDelete.value.display_name}" wurde gelöscht.`, 'success');
+    showSnackbar(t('kaimo.panel.snackbar.deleteSuccess', { name: caseToDelete.value.display_name }), 'success');
     deleteDialog.value = false;
     await loadCases();
   } catch (err) {
-    console.error('Delete error:', err);
-    showSnackbar('Fehler beim Löschen des Falls.', 'error');
+    console.error('Fehler beim Loeschen:', err);
+    showSnackbar(t('kaimo.panel.snackbar.deleteError'), 'error');
   } finally {
     deleting.value = false;
   }
@@ -407,12 +410,12 @@ const executePublish = async () => {
   publishing.value = true;
   try {
     await publishKaimoCase(caseToPublish.value.id);
-    showSnackbar(`Fall "${caseToPublish.value.display_name}" wurde veröffentlicht.`, 'success');
+    showSnackbar(t('kaimo.panel.snackbar.publishSuccess', { name: caseToPublish.value.display_name }), 'success');
     publishDialog.value = false;
     await loadCases();
   } catch (err) {
-    console.error('Publish error:', err);
-    showSnackbar('Fehler beim Veröffentlichen des Falls.', 'error');
+    console.error('Fehler beim Veroeffentlichen:', err);
+    showSnackbar(t('kaimo.panel.snackbar.publishError'), 'error');
   } finally {
     publishing.value = false;
   }
@@ -422,8 +425,8 @@ onMounted(async () => {
   try {
     await refresh();
   } catch (err) {
-    loadError.value = 'KAIMO Fälle konnten nicht geladen werden.';
-    console.error('KAIMO load error', err);
+    loadError.value = t('kaimo.errors.loadCases');
+    console.error('KAIMO-Ladefehler', err);
     setLoading('hero', false);
   }
 });

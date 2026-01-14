@@ -4,7 +4,7 @@
     <div v-if="!hideHeader" class="d-flex align-center mb-3">
       <div class="text-h6 font-weight-bold">
         <LIcon start>mdi-chart-scatter-plot</LIcon>
-        Statistische Matrix-Vergleichsmetriken
+        {{ $t('oncoco.matrixComparison.title') }}
       </div>
       <v-spacer></v-spacer>
       <v-btn
@@ -13,7 +13,7 @@
         prepend-icon="mdi-help-circle"
         @click="showMethodologyDialog = true"
       >
-        Methodik & Quellen
+        {{ $t('oncoco.matrixComparison.actions.methodologySources') }}
       </v-btn>
     </div>
 
@@ -30,8 +30,8 @@
       <v-col cols="12" sm="4" md="3">
         <v-select
           v-model="level"
-          :items="[{title: 'Level 2 (aggregiert)', value: 'level2'}, {title: 'Vollständig', value: 'full'}]"
-          label="Detailstufe"
+          :items="levelOptions"
+          :label="$t('oncoco.matrixComparison.controls.detailLevel')"
           variant="outlined"
           density="compact"
           @update:model-value="loadMetrics"
@@ -43,7 +43,7 @@
           type="number"
           min="0"
           step="0.1"
-          label="Laplace Smoothing (alpha)"
+          :label="$t('oncoco.matrixComparison.controls.smoothingLabel')"
           variant="outlined"
           density="compact"
           @update:model-value="debouncedLoadMetrics"
@@ -53,7 +53,7 @@
               <template v-slot:activator="{ props }">
                 <LIcon v-bind="props" size="small">mdi-information</LIcon>
               </template>
-              <span>Additive Glättung für Nullzählungen. 0 = keine, 1 = Standard</span>
+              <span>{{ $t('oncoco.matrixComparison.controls.smoothingHint') }}</span>
             </v-tooltip>
           </template>
         </v-text-field>
@@ -65,7 +65,7 @@
           min="100"
           max="10000"
           step="100"
-          label="Permutationen"
+          :label="$t('oncoco.matrixComparison.controls.permutationsLabel')"
           variant="outlined"
           density="compact"
           @update:model-value="debouncedLoadMetrics"
@@ -75,7 +75,7 @@
               <template v-slot:activator="{ props }">
                 <LIcon v-bind="props" size="small">mdi-information</LIcon>
               </template>
-              <span>Anzahl der Permutationen für Signifikanztest (mehr = genauer, aber langsamer)</span>
+              <span>{{ $t('oncoco.matrixComparison.controls.permutationsHint') }}</span>
             </v-tooltip>
           </template>
         </v-text-field>
@@ -89,7 +89,7 @@
           block
         >
           <LIcon start>mdi-refresh</LIcon>
-          Berechnen
+          {{ $t('oncoco.matrixComparison.actions.calculate') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -106,9 +106,9 @@
         >
           <v-card variant="outlined" class="h-100">
             <v-card-title class="text-subtitle-1 py-2 d-flex align-center">
-              <v-chip size="small" color="primary" class="mr-2">{{ comparison.pillar_a?.name || 'Säule A' }}</v-chip>
+              <v-chip size="small" color="primary" class="mr-2">{{ comparison.pillar_a?.name || $t('oncoco.matrixComparison.fallbacks.pillarA') }}</v-chip>
               <LIcon size="small">mdi-swap-horizontal</LIcon>
-              <v-chip size="small" color="secondary" class="ml-2">{{ comparison.pillar_b?.name || 'Säule B' }}</v-chip>
+              <v-chip size="small" color="secondary" class="ml-2">{{ comparison.pillar_b?.name || $t('oncoco.matrixComparison.fallbacks.pillarB') }}</v-chip>
             </v-card-title>
 
             <v-card-text>
@@ -116,7 +116,7 @@
               <div class="metric-row mb-3">
                 <div class="d-flex align-center justify-space-between">
                   <span class="text-body-2">
-                    Frobenius-Distanz
+                    {{ $t('oncoco.matrixComparison.metrics.frobenius.label') }}
                     <sup class="footnote-ref" @click="showFootnote('frobenius')">[1]</sup>
                   </span>
                   <span class="font-weight-bold text-h6">{{ formatNum(comparison.metrics?.frobenius_distance) }}</span>
@@ -127,16 +127,16 @@
                   rounded
                   :color="getFrobeniusColor(comparison.metrics?.frobenius_distance || 0)"
                 ></v-progress-linear>
-                <div class="text-caption text-medium-emphasis mt-1">
-                  {{ getFrobeniusInterpretation(comparison.metrics?.frobenius_distance || 0) }}
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    {{ getFrobeniusInterpretation(comparison.metrics?.frobenius_distance || 0) }}
+                  </div>
                 </div>
-              </div>
 
               <!-- Jensen-Shannon Divergence -->
               <div class="metric-row mb-3" v-if="comparison.metrics">
                 <div class="d-flex align-center justify-space-between">
                   <span class="text-body-2">
-                    Jensen-Shannon Divergenz (Mittel)
+                    {{ $t('oncoco.matrixComparison.metrics.jsd.label') }}
                     <sup class="footnote-ref" @click="showFootnote('jsd')">[2]</sup>
                   </span>
                   <span class="font-weight-bold text-h6">{{ formatNum(comparison.metrics?.mean_jsd) }}</span>
@@ -148,7 +148,7 @@
                   :color="getJSDColor(comparison.metrics?.mean_jsd || 0)"
                 ></v-progress-linear>
                 <div class="text-caption text-medium-emphasis mt-1">
-                  Max: {{ formatNum(comparison.metrics?.max_jsd) }} |
+                  {{ $t('oncoco.matrixComparison.metrics.jsd.max', { value: formatNum(comparison.metrics?.max_jsd) }) }} |
                   {{ getJSDInterpretation(comparison.metrics?.mean_jsd || 0) }}
                 </div>
               </div>
@@ -157,7 +157,7 @@
               <div class="metric-row mb-3" v-if="comparison.statistical_tests?.permutation_test">
                 <div class="d-flex align-center justify-space-between">
                   <span class="text-body-2">
-                    Permutationstest p-Wert
+                    {{ $t('oncoco.matrixComparison.metrics.permutation.label') }}
                     <sup class="footnote-ref" @click="showFootnote('permutation')">[3]</sup>
                   </span>
                   <v-chip
@@ -176,8 +176,8 @@
                     {{ (comparison.statistical_tests?.permutation_test?.p_value || 1) < 0.05 ? 'mdi-check-circle' : 'mdi-alert-circle' }}
                   </LIcon>
                   {{ (comparison.statistical_tests?.permutation_test?.p_value || 1) < 0.05
-                    ? 'Statistisch signifikanter Unterschied (p < 0.05)'
-                    : 'Kein signifikanter Unterschied nachgewiesen' }}
+                    ? $t('oncoco.matrixComparison.metrics.permutation.significant')
+                    : $t('oncoco.matrixComparison.metrics.permutation.notSignificant') }}
                 </div>
               </div>
 
@@ -185,12 +185,12 @@
               <div class="metric-row mb-3" v-if="comparison.effect_size">
                 <div class="d-flex align-center justify-space-between">
                   <span class="text-body-2">
-                    Effektstärke
+                    {{ $t('oncoco.matrixComparison.metrics.effect.label') }}
                     <sup class="footnote-ref" @click="showFootnote('effect_size')">[4]</sup>
                   </span>
                   <div class="text-right">
                     <div class="font-weight-bold">{{ formatNum(comparison.effect_size?.normalized_frobenius) }}</div>
-                    <div class="text-caption text-medium-emphasis">Norm. Frobenius</div>
+                    <div class="text-caption text-medium-emphasis">{{ $t('oncoco.matrixComparison.metrics.effect.normalized') }}</div>
                   </div>
                 </div>
                 <v-progress-linear
@@ -208,18 +208,21 @@
               <div class="metric-row mb-3" v-if="comparison.statistical_tests?.chi_square">
                 <div class="d-flex align-center justify-space-between">
                   <span class="text-body-2">
-                    Chi-Quadrat Test
+                    {{ $t('oncoco.matrixComparison.metrics.chiSquare.label') }}
                     <sup class="footnote-ref" @click="showFootnote('chi_square')">[5]</sup>
                   </span>
                   <v-chip
                     :color="getChiSquareSummaryColorFromStats(comparison.statistical_tests?.chi_square)"
                     size="small"
                   >
-                    {{ comparison.statistical_tests?.chi_square?.significant_rows || 0 }} / {{ comparison.statistical_tests?.chi_square?.total_rows || 0 }} signifikant
+                    {{ $t('oncoco.matrixComparison.metrics.chiSquare.summary', {
+                      significant: comparison.statistical_tests?.chi_square?.significant_rows || 0,
+                      total: comparison.statistical_tests?.chi_square?.total_rows || 0
+                    }) }}
                   </v-chip>
                 </div>
                 <div class="text-caption text-medium-emphasis mt-1">
-                  Zustände mit signifikant unterschiedlichen Übergangsverteilungen
+                  {{ $t('oncoco.matrixComparison.metrics.chiSquare.subtitle') }}
                 </div>
               </div>
 
@@ -230,7 +233,7 @@
                 <div class="d-flex align-center justify-space-between mb-2">
                   <span class="text-body-2 font-weight-bold">
                     <LIcon start size="small">mdi-alert-outline</LIcon>
-                    Ausreißer-Transitionen
+                    {{ $t('oncoco.matrixComparison.outliers.title') }}
                   </span>
                   <v-chip size="x-small" color="warning" variant="tonal">
                     {{ comparison.outlier_transitions?.length || 0 }}
@@ -238,9 +241,9 @@
                 </div>
                 <v-expansion-panels v-if="comparison.outlier_transitions?.length > 0" variant="accordion" density="compact">
                   <v-expansion-panel>
-                    <v-expansion-panel-title class="text-caption py-1">
-                      Transitionen mit Z-Score > 2 anzeigen
-                    </v-expansion-panel-title>
+                  <v-expansion-panel-title class="text-caption py-1">
+                      {{ $t('oncoco.matrixComparison.outliers.show') }}
+                  </v-expansion-panel-title>
                     <v-expansion-panel-text>
                       <v-list density="compact" class="py-0">
                         <v-list-item
@@ -270,7 +273,7 @@
                   </v-expansion-panel>
                 </v-expansion-panels>
                 <div v-else class="text-caption text-medium-emphasis">
-                  Keine Ausreißer gefunden
+                  {{ $t('oncoco.matrixComparison.outliers.empty') }}
                 </div>
               </div>
 
@@ -279,25 +282,25 @@
                 <div class="d-flex align-center justify-space-between mb-2">
                   <span class="text-body-2 font-weight-bold">
                     <LIcon start size="small">mdi-help-circle-outline</LIcon>
-                    Fehlende Transitionen
+                    {{ $t('oncoco.matrixComparison.missing.title') }}
                   </span>
                   <div>
                     <v-chip size="x-small" color="primary" variant="tonal" class="mr-1">
-                      {{ comparison.missing_transitions?.missing_in_A?.length || 0 }} nur in A
+                      {{ $t('oncoco.matrixComparison.missing.onlyInA', { count: comparison.missing_transitions?.missing_in_A?.length || 0 }) }}
                     </v-chip>
                     <v-chip size="x-small" color="secondary" variant="tonal">
-                      {{ comparison.missing_transitions?.missing_in_B?.length || 0 }} nur in B
+                      {{ $t('oncoco.matrixComparison.missing.onlyInB', { count: comparison.missing_transitions?.missing_in_B?.length || 0 }) }}
                     </v-chip>
                   </div>
                 </div>
                 <v-expansion-panels v-if="(comparison.missing_transitions?.missing_in_A?.length || 0) > 0 || (comparison.missing_transitions?.missing_in_B?.length || 0) > 0" variant="accordion" density="compact">
                   <v-expansion-panel>
                     <v-expansion-panel-title class="text-caption py-1">
-                      Fehlende Transitionen anzeigen
+                      {{ $t('oncoco.matrixComparison.missing.show') }}
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
                       <div v-if="comparison.missing_transitions?.missing_in_A?.length > 0" class="mb-2">
-                        <div class="text-caption font-weight-bold text-primary">Nur in {{ comparison.pillar_b?.name || 'B' }}:</div>
+                        <div class="text-caption font-weight-bold text-primary">{{ $t('oncoco.matrixComparison.missing.onlyIn', { name: comparison.pillar_b?.name || 'B' }) }}</div>
                         <v-chip
                           v-for="(trans, tIdx) in comparison.missing_transitions.missing_in_A.slice(0, 5)"
                           :key="'a-' + tIdx"
@@ -308,11 +311,11 @@
                           {{ trans.from_label }} -> {{ trans.to_label }}
                         </v-chip>
                         <span v-if="comparison.missing_transitions.missing_in_A.length > 5" class="text-caption">
-                          +{{ comparison.missing_transitions.missing_in_A.length - 5 }} weitere
+                          {{ $t('oncoco.matrixComparison.missing.more', { count: comparison.missing_transitions.missing_in_A.length - 5 }) }}
                         </span>
                       </div>
                       <div v-if="comparison.missing_transitions?.missing_in_B?.length > 0">
-                        <div class="text-caption font-weight-bold text-secondary">Nur in {{ comparison.pillar_a?.name || 'A' }}:</div>
+                        <div class="text-caption font-weight-bold text-secondary">{{ $t('oncoco.matrixComparison.missing.onlyIn', { name: comparison.pillar_a?.name || 'A' }) }}</div>
                         <v-chip
                           v-for="(trans, tIdx) in comparison.missing_transitions.missing_in_B.slice(0, 5)"
                           :key="'b-' + tIdx"
@@ -323,14 +326,14 @@
                           {{ trans.from_label }} -> {{ trans.to_label }}
                         </v-chip>
                         <span v-if="comparison.missing_transitions.missing_in_B.length > 5" class="text-caption">
-                          +{{ comparison.missing_transitions.missing_in_B.length - 5 }} weitere
+                          {{ $t('oncoco.matrixComparison.missing.more', { count: comparison.missing_transitions.missing_in_B.length - 5 }) }}
                         </span>
                       </div>
                     </v-expansion-panel-text>
                   </v-expansion-panel>
                 </v-expansion-panels>
                 <div v-else class="text-caption text-medium-emphasis">
-                  Alle Transitionen in beiden Matrizen vorhanden
+                  {{ $t('oncoco.matrixComparison.missing.none') }}
                 </div>
               </div>
             </v-card-text>
@@ -341,19 +344,19 @@
       <!-- Footnotes -->
       <v-card variant="tonal" class="mt-4" color="surface-variant">
         <v-card-text class="text-caption">
-          <div class="font-weight-bold mb-2">Quellen:</div>
-          <div>[1] Frobenius-Norm: Golub & Van Loan (2013). Matrix Computations. Johns Hopkins University Press.</div>
-          <div>[2] Jensen-Shannon Divergenz: Lin, J. (1991). Divergence measures based on the Shannon entropy. IEEE Transactions on Information Theory.</div>
-          <div>[3] Permutationstest: Vautard, R. et al. (1990). Monte Carlo and parametric tests. Journal of Statistical Planning and Inference.</div>
-          <div>[4] Effektstärke: Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences. Routledge.</div>
-          <div>[5] Chi-Quadrat für Markov-Ketten: Anderson, T.W. & Goodman, L.A. (1957). Statistical inference about Markov chains. The Annals of Mathematical Statistics.</div>
+          <div class="font-weight-bold mb-2">{{ $t('oncoco.matrixComparison.footnotes.title') }}</div>
+          <div>{{ $t('oncoco.matrixComparison.footnotes.items.frobenius') }}</div>
+          <div>{{ $t('oncoco.matrixComparison.footnotes.items.jsd') }}</div>
+          <div>{{ $t('oncoco.matrixComparison.footnotes.items.permutation') }}</div>
+          <div>{{ $t('oncoco.matrixComparison.footnotes.items.effectSize') }}</div>
+          <div>{{ $t('oncoco.matrixComparison.footnotes.items.chiSquare') }}</div>
         </v-card-text>
       </v-card>
     </template>
 
     <!-- Empty State -->
     <v-alert v-if="!metricsData && !loading && !error" type="info" variant="tonal">
-      Klicken Sie auf "Berechnen", um statistische Metriken zu generieren.
+      {{ $t('oncoco.matrixComparison.empty') }}
     </v-alert>
 
     <!-- Methodology Dialog -->
@@ -361,7 +364,7 @@
       <v-card class="methodology-dialog-card">
         <v-card-title class="d-flex align-center">
           <LIcon start>mdi-book-open-variant</LIcon>
-          Methodik & Erklärungen
+          {{ $t('oncoco.matrixComparison.methodology.title') }}
           <v-spacer></v-spacer>
           <v-btn icon variant="text" @click="showMethodologyDialog = false">
             <LIcon>mdi-close</LIcon>
@@ -374,34 +377,34 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <LIcon start color="primary">mdi-matrix</LIcon>
-                Frobenius-Distanz
+                {{ $t('oncoco.matrixComparison.methodology.frobenius.title') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="methodology-content">
-                  <h4>Was ist das?</h4>
-                  <p>Die Frobenius-Norm misst den Gesamtunterschied zwischen zwei Matrizen als euklidische Distanz aller Matrixelemente.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.whatIs') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.frobenius.whatIs') }}</p>
 
-                  <h4>Formel</h4>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.formula') }}</h4>
                   <div class="formula-box">
                     <KatexFormula formula="\|A - B\|_F = \sqrt{\sum_{i,j} (A_{ij} - B_{ij})^2}" :display-mode="true" />
                   </div>
 
-                  <h4>OnCoCo-Beispiel</h4>
-                  <p>Wenn wir die Übergangsmatrizen von <strong>Säule 1 (Rollenspiele)</strong> und <strong>Säule 3 (Anonymisierte Daten)</strong> vergleichen:</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.example') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.frobenius.exampleIntro') }}</p>
                   <ul>
-                    <li>Eine <strong>Frobenius-Distanz von 0.1</strong> bedeutet, dass die Beratungsmuster sehr ähnlich sind</li>
-                    <li>Eine <strong>Distanz von 0.5</strong> zeigt deutliche Unterschiede in den Kommunikationsübergängen</li>
-                    <li>Je größer der Wert, desto unterschiedlicher verhalten sich Berater in den verschiedenen Datenquellen</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.frobenius.examples.item1') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.frobenius.examples.item2') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.frobenius.examples.item3') }}</li>
                   </ul>
 
-                  <h4>Interpretation</h4>
-                  <v-chip color="success" size="small" class="mr-2">0 - 0.2: Sehr ähnlich</v-chip>
-                  <v-chip color="info" size="small" class="mr-2">0.2 - 0.4: Moderat unterschiedlich</v-chip>
-                  <v-chip color="warning" size="small" class="mr-2">0.4 - 0.6: Deutlich unterschiedlich</v-chip>
-                  <v-chip color="error" size="small">> 0.6: Stark unterschiedlich</v-chip>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.interpretation') }}</h4>
+                  <v-chip color="success" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.frobenius.interpretation.verySimilar') }}</v-chip>
+                  <v-chip color="info" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.frobenius.interpretation.moderate') }}</v-chip>
+                  <v-chip color="warning" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.frobenius.interpretation.distinct') }}</v-chip>
+                  <v-chip color="error" size="small">{{ $t('oncoco.matrixComparison.methodology.frobenius.interpretation.strong') }}</v-chip>
 
-                  <h4>Quelle</h4>
-                  <p class="text-caption">Golub, G.H. & Van Loan, C.F. (2013). Matrix Computations (4th ed.). Johns Hopkins University Press.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.source') }}</h4>
+                  <p class="text-caption">{{ $t('oncoco.matrixComparison.methodology.frobenius.source') }}</p>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -410,36 +413,36 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <LIcon start color="secondary">mdi-chart-bell-curve</LIcon>
-                Jensen-Shannon Divergenz (JSD)
+                {{ $t('oncoco.matrixComparison.methodology.jsd.title') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="methodology-content">
-                  <h4>Was ist das?</h4>
-                  <p>Die JSD ist ein symmetrisches Maß für den Unterschied zwischen zwei Wahrscheinlichkeitsverteilungen. Sie basiert auf der Kullback-Leibler-Divergenz, ist aber symmetrisch und immer definiert.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.whatIs') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.jsd.whatIs') }}</p>
 
-                  <h4>Formel</h4>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.formula') }}</h4>
                   <div class="formula-box">
                     <KatexFormula formula="\text{JSD}(P \| Q) = \frac{1}{2} \text{KL}(P \| M) + \frac{1}{2} \text{KL}(Q \| M)" :display-mode="true" />
-                    <div class="formula-note">wobei <KatexFormula formula="M = \frac{1}{2}(P + Q)" /></div>
+                    <div class="formula-note">{{ $t('oncoco.matrixComparison.methodology.jsd.formulaNote') }} <KatexFormula formula="M = \frac{1}{2}(P + Q)" /></div>
                     <KatexFormula formula="\text{KL}(P \| Q) = \sum_i P_i \cdot \log_2 \left( \frac{P_i}{Q_i} \right)" :display-mode="true" />
                   </div>
 
-                  <h4>OnCoCo-Beispiel</h4>
-                  <p>Für jede Zeile der Übergangsmatrix (jeden Ausgangszustand) berechnen wir die JSD:</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.example') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.jsd.exampleIntro') }}</p>
                   <ul>
-                    <li>Wenn ein Berater nach einer <strong>"Aktiven Zuhören"-Intervention (CO-IF-AC)</strong> in Säule 1 meist zu "Fragen" übergeht, aber in Säule 3 zu "Informieren", zeigt die JSD für diese Zeile einen hohen Wert</li>
-                    <li><strong>Mittlere JSD nahe 0</strong>: Die Übergangsmuster sind nahezu identisch</li>
-                    <li><strong>Mittlere JSD nahe 1</strong>: Die Übergangsmuster sind völlig unterschiedlich</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.jsd.examples.item1') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.jsd.examples.item2') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.jsd.examples.item3') }}</li>
                   </ul>
 
-                  <h4>Interpretation</h4>
-                  <v-chip color="success" size="small" class="mr-2">0 - 0.1: Sehr ähnlich</v-chip>
-                  <v-chip color="info" size="small" class="mr-2">0.1 - 0.3: Moderate Unterschiede</v-chip>
-                  <v-chip color="warning" size="small" class="mr-2">0.3 - 0.5: Deutliche Unterschiede</v-chip>
-                  <v-chip color="error" size="small">> 0.5: Starke Unterschiede</v-chip>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.interpretation') }}</h4>
+                  <v-chip color="success" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.jsd.interpretation.verySimilar') }}</v-chip>
+                  <v-chip color="info" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.jsd.interpretation.moderate') }}</v-chip>
+                  <v-chip color="warning" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.jsd.interpretation.distinct') }}</v-chip>
+                  <v-chip color="error" size="small">{{ $t('oncoco.matrixComparison.methodology.jsd.interpretation.strong') }}</v-chip>
 
-                  <h4>Quelle</h4>
-                  <p class="text-caption">Lin, J. (1991). Divergence measures based on the Shannon entropy. IEEE Transactions on Information Theory, 37(1), 145-151.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.source') }}</h4>
+                  <p class="text-caption">{{ $t('oncoco.matrixComparison.methodology.jsd.source') }}</p>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -448,36 +451,36 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <LIcon start color="info">mdi-shuffle-variant</LIcon>
-                Permutationstest
+                {{ $t('oncoco.matrixComparison.methodology.permutation.title') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="methodology-content">
-                  <h4>Was ist das?</h4>
-                  <p>Ein nicht-parametrischer Signifikanztest, der die Nullhypothese prüft, dass zwei Matrizen aus derselben Verteilung stammen.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.whatIs') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.permutation.whatIs') }}</p>
 
-                  <h4>Verfahren</h4>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.permutation.method') }}</h4>
                   <ol>
-                    <li>Berechne die beobachtete Frobenius-Distanz zwischen den Originalmatrizen</li>
-                    <li>Mische die Zähldaten beider Matrizen zufällig</li>
-                    <li>Berechne die Frobenius-Distanz der gemischten Matrizen</li>
-                    <li>Wiederhole Schritte 2-3 n-mal (z.B. 1000 mal)</li>
-                    <li>p-Wert = Anteil der Permutationen mit Distanz >= beobachtete Distanz</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.permutation.steps.step1') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.permutation.steps.step2') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.permutation.steps.step3') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.permutation.steps.step4') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.permutation.steps.step5') }}</li>
                   </ol>
 
-                  <h4>OnCoCo-Beispiel</h4>
-                  <p>Wir testen, ob die Unterschiede zwischen Rollenspielen (Säule 1) und echten Beratungsgesprächen (Säule 3) statistisch signifikant sind:</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.example') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.permutation.exampleIntro') }}</p>
                   <ul>
-                    <li><strong>p < 0.05</strong>: Die Unterschiede sind signifikant - Rollenspiele spiegeln nicht perfekt echte Beratungen wider</li>
-                    <li><strong>p >= 0.05</strong>: Kein signifikanter Unterschied nachweisbar - die Datenquellen könnten dieselben Muster zeigen</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.permutation.examples.item1') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.permutation.examples.item2') }}</li>
                   </ul>
 
-                  <h4>Interpretation</h4>
-                  <v-chip color="success" size="small" class="mr-2">p < 0.01: Hoch signifikant</v-chip>
-                  <v-chip color="info" size="small" class="mr-2">p < 0.05: Signifikant</v-chip>
-                  <v-chip color="warning" size="small">p >= 0.05: Nicht signifikant</v-chip>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.interpretation') }}</h4>
+                  <v-chip color="success" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.permutation.interpretation.high') }}</v-chip>
+                  <v-chip color="info" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.permutation.interpretation.significant') }}</v-chip>
+                  <v-chip color="warning" size="small">{{ $t('oncoco.matrixComparison.methodology.permutation.interpretation.notSignificant') }}</v-chip>
 
-                  <h4>Quelle</h4>
-                  <p class="text-caption">Good, P. (2005). Permutation, Parametric and Bootstrap Tests of Hypotheses (3rd ed.). Springer.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.source') }}</h4>
+                  <p class="text-caption">{{ $t('oncoco.matrixComparison.methodology.permutation.source') }}</p>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -486,35 +489,35 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <LIcon start color="warning">mdi-arrow-expand-horizontal</LIcon>
-                Effektstärke
+                {{ $t('oncoco.matrixComparison.methodology.effect.title') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="methodology-content">
-                  <h4>Was ist das?</h4>
-                  <p>Die Effektstärke gibt an, wie groß ein Unterschied praktisch ist - unabhängig von der Stichprobengröße. Ein signifikanter Unterschied kann klein sein, wenn die Stichprobe sehr groß ist.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.whatIs') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.effect.whatIs') }}</p>
 
-                  <h4>Normalisierte Frobenius-Distanz</h4>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.effect.normalizedTitle') }}</h4>
                   <div class="formula-box">
                     <KatexFormula formula="d_{\text{norm}} = \frac{\|A - B\|_F}{\sqrt{n \cdot m}}" :display-mode="true" />
-                    <div class="formula-note">wobei <KatexFormula formula="n, m" /> die Matrixdimensionen sind</div>
+                    <div class="formula-note">{{ $t('oncoco.matrixComparison.methodology.effect.normalizedNote') }}</div>
                   </div>
 
-                  <h4>OnCoCo-Beispiel</h4>
-                  <p>Selbst wenn der Permutationstest signifikant ist (p < 0.05), zeigt die Effektstärke, ob der Unterschied praktisch relevant ist:</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.example') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.effect.exampleIntro') }}</p>
                   <ul>
-                    <li><strong>Kleine Effektstärke (< 0.2)</strong>: Die Unterschiede sind statistisch, aber praktisch kaum relevant - Berater verhalten sich ähnlich</li>
-                    <li><strong>Mittlere Effektstärke (0.2 - 0.5)</strong>: Erkennbare Unterschiede in den Beratungsmustern</li>
-                    <li><strong>Große Effektstärke (> 0.5)</strong>: Deutlich unterschiedliche Beratungsstile zwischen den Datenquellen</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.effect.examples.item1') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.effect.examples.item2') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.effect.examples.item3') }}</li>
                   </ul>
 
-                  <h4>Interpretation (nach Cohen)</h4>
-                  <v-chip color="success" size="small" class="mr-2">< 0.2: Klein</v-chip>
-                  <v-chip color="info" size="small" class="mr-2">0.2 - 0.5: Mittel</v-chip>
-                  <v-chip color="warning" size="small" class="mr-2">0.5 - 0.8: Groß</v-chip>
-                  <v-chip color="error" size="small">> 0.8: Sehr groß</v-chip>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.effect.interpretationTitle') }}</h4>
+                  <v-chip color="success" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.effect.interpretation.small') }}</v-chip>
+                  <v-chip color="info" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.effect.interpretation.medium') }}</v-chip>
+                  <v-chip color="warning" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.effect.interpretation.large') }}</v-chip>
+                  <v-chip color="error" size="small">{{ $t('oncoco.matrixComparison.methodology.effect.interpretation.veryLarge') }}</v-chip>
 
-                  <h4>Quelle</h4>
-                  <p class="text-caption">Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Routledge.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.source') }}</h4>
+                  <p class="text-caption">{{ $t('oncoco.matrixComparison.methodology.effect.source') }}</p>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -523,35 +526,35 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <LIcon start color="error">mdi-chart-bar</LIcon>
-                Chi-Quadrat-Test für Markov-Ketten
+                {{ $t('oncoco.matrixComparison.methodology.chiSquare.title') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="methodology-content">
-                  <h4>Was ist das?</h4>
-                  <p>Der Chi-Quadrat-Test prüft für jeden Ausgangszustand, ob die Übergangswahrscheinlichkeiten signifikant unterschiedlich sind.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.whatIs') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.chiSquare.whatIs') }}</p>
 
-                  <h4>Formel</h4>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.formula') }}</h4>
                   <div class="formula-box">
                     <KatexFormula formula="\chi^2 = \sum_j \frac{(O_j - E_j)^2}{E_j}" :display-mode="true" />
-                    <div class="formula-note">wobei <KatexFormula formula="O" /> = beobachtete, <KatexFormula formula="E" /> = erwartete Häufigkeiten</div>
+                    <div class="formula-note">{{ $t('oncoco.matrixComparison.methodology.chiSquare.formulaNote') }}</div>
                   </div>
 
-                  <h4>OnCoCo-Beispiel</h4>
-                  <p>Für jeden Beratungscode (z.B. CO-IF-AC "Aktives Zuhören") testen wir separat:</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.example') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.chiSquare.exampleIntro') }}</p>
                   <ul>
-                    <li>Wenn nach "Aktives Zuhören" in Säule 1 <strong>60% zu "Fragen"</strong> übergehen, aber in Säule 3 nur <strong>40%</strong>, zeigt der Chi-Quadrat-Test, ob dieser Unterschied signifikant ist</li>
-                    <li>So finden wir <strong>genau welche Beratungstechniken</strong> sich zwischen den Datenquellen unterscheiden</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.chiSquare.examples.item1') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.chiSquare.examples.item2') }}</li>
                   </ul>
 
-                  <h4>Interpretation</h4>
-                  <p>Der Anteil signifikanter Zustände (p < 0.05) zeigt, wie viele Beratungstechniken sich unterscheiden:</p>
-                  <v-chip color="success" size="small" class="mr-2">< 20%: Wenige Unterschiede</v-chip>
-                  <v-chip color="info" size="small" class="mr-2">20 - 40%: Moderate Unterschiede</v-chip>
-                  <v-chip color="warning" size="small" class="mr-2">40 - 60%: Viele Unterschiede</v-chip>
-                  <v-chip color="error" size="small">> 60%: Sehr viele Unterschiede</v-chip>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.interpretation') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.chiSquare.interpretationIntro') }}</p>
+                  <v-chip color="success" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.chiSquare.interpretation.few') }}</v-chip>
+                  <v-chip color="info" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.chiSquare.interpretation.moderate') }}</v-chip>
+                  <v-chip color="warning" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.chiSquare.interpretation.many') }}</v-chip>
+                  <v-chip color="error" size="small">{{ $t('oncoco.matrixComparison.methodology.chiSquare.interpretation.veryMany') }}</v-chip>
 
-                  <h4>Quelle</h4>
-                  <p class="text-caption">Anderson, T.W. & Goodman, L.A. (1957). Statistical inference about Markov chains. The Annals of Mathematical Statistics, 28(1), 89-110.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.source') }}</h4>
+                  <p class="text-caption">{{ $t('oncoco.matrixComparison.methodology.chiSquare.source') }}</p>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -560,34 +563,34 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <LIcon start color="purple">mdi-tune</LIcon>
-                Laplace-Glättung (Additive Smoothing)
+                {{ $t('oncoco.matrixComparison.methodology.laplace.title') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="methodology-content">
-                  <h4>Was ist das?</h4>
-                  <p>Laplace-Glättung verhindert Probleme mit Nullzählungen in der Matrix, indem ein kleiner Wert zu allen Zellen addiert wird.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.whatIs') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.laplace.whatIs') }}</p>
 
-                  <h4>Formel</h4>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.formula') }}</h4>
                   <div class="formula-box">
                     <KatexFormula formula="P(y|x) = \frac{\text{count}(x,y) + \alpha}{\sum_z \text{count}(x,z) + \alpha \cdot |Z|}" :display-mode="true" />
-                    <div class="formula-note">wobei <KatexFormula formula="\alpha" /> der Glättungsparameter ist</div>
+                    <div class="formula-note">{{ $t('oncoco.matrixComparison.methodology.laplace.formulaNote') }} <KatexFormula formula="\alpha" /></div>
                   </div>
 
-                  <h4>OnCoCo-Beispiel</h4>
-                  <p>Wenn eine bestimmte Transition (z.B. "Fragen" -> "Konfrontation") in Säule 1 <strong>nie vorkommt</strong>, aber in Säule 3 <strong>5 mal</strong>:</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.example') }}</h4>
+                  <p>{{ $t('oncoco.matrixComparison.methodology.laplace.exampleIntro') }}</p>
                   <ul>
-                    <li>Ohne Glättung: Division durch Null möglich, JSD = unendlich</li>
-                    <li><strong>Mit alpha = 1</strong>: Jede Zelle erhält mindestens 1 Pseudozählung</li>
-                    <li>Höheres alpha: Konservativere Schätzung, aber glättet echte Unterschiede</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.laplace.examples.item1') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.laplace.examples.item2') }}</li>
+                    <li>{{ $t('oncoco.matrixComparison.methodology.laplace.examples.item3') }}</li>
                   </ul>
 
-                  <h4>Empfohlene Werte</h4>
-                  <v-chip color="info" size="small" class="mr-2">alpha = 0: Keine Glättung (nur bei vollständigen Daten)</v-chip>
-                  <v-chip color="success" size="small" class="mr-2">alpha = 1: Standard (Laplace)</v-chip>
-                  <v-chip color="warning" size="small">alpha > 1: Starke Glättung</v-chip>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.laplace.recommended.title') }}</h4>
+                  <v-chip color="info" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.laplace.recommended.alphaZero') }}</v-chip>
+                  <v-chip color="success" size="small" class="mr-2">{{ $t('oncoco.matrixComparison.methodology.laplace.recommended.alphaOne') }}</v-chip>
+                  <v-chip color="warning" size="small">{{ $t('oncoco.matrixComparison.methodology.laplace.recommended.alphaHigh') }}</v-chip>
 
-                  <h4>Quelle</h4>
-                  <p class="text-caption">Manning, C.D., Raghavan, P. & Schuetze, H. (2008). Introduction to Information Retrieval. Cambridge University Press.</p>
+                  <h4>{{ $t('oncoco.matrixComparison.methodology.common.source') }}</h4>
+                  <p class="text-caption">{{ $t('oncoco.matrixComparison.methodology.laplace.source') }}</p>
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -596,7 +599,7 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="showMethodologyDialog = false">Schließen</v-btn>
+          <v-btn variant="text" @click="showMethodologyDialog = false">{{ $t('common.close') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -605,14 +608,15 @@
     <v-snackbar v-model="showFootnoteSnackbar" :timeout="5000" location="bottom">
       {{ footnoteText }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="showFootnoteSnackbar = false">Schließen</v-btn>
+        <v-btn variant="text" @click="showFootnoteSnackbar = false">{{ $t('common.close') }}</v-btn>
       </template>
     </v-snackbar>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import KatexFormula from '@/components/common/KatexFormula.vue';
 
@@ -627,6 +631,8 @@ const props = defineProps({
   }
 });
 
+const { t } = useI18n();
+
 // State
 const loading = ref(false);
 const error = ref(null);
@@ -634,6 +640,10 @@ const metricsData = ref(null);
 const level = ref('level2');
 const smoothing = ref(1.0);
 const permutations = ref(1000);
+const levelOptions = computed(() => [
+  { title: t('oncoco.results.levelOptions.level2'), value: 'level2' },
+  { title: t('oncoco.results.levelOptions.full'), value: 'full' }
+]);
 
 // Dialog States
 const showMethodologyDialog = ref(false);
@@ -644,13 +654,13 @@ const footnoteText = ref('');
 let debounceTimer = null;
 
 // Footnote references
-const footnotes = {
-  frobenius: '[1] Frobenius-Norm: Golub & Van Loan (2013). Matrix Computations. Johns Hopkins University Press.',
-  jsd: '[2] Jensen-Shannon Divergenz: Lin, J. (1991). Divergence measures based on the Shannon entropy. IEEE Transactions on Information Theory.',
-  permutation: '[3] Permutationstest: Good, P. (2005). Permutation, Parametric and Bootstrap Tests of Hypotheses. Springer.',
-  effect_size: '[4] Effektstärke: Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences. Routledge.',
-  chi_square: '[5] Chi-Quadrat für Markov-Ketten: Anderson & Goodman (1957). Statistical inference about Markov chains.'
-};
+const footnotes = computed(() => ({
+  frobenius: t('oncoco.matrixComparison.footnotes.items.frobenius'),
+  jsd: t('oncoco.matrixComparison.footnotes.items.jsd'),
+  permutation: t('oncoco.matrixComparison.footnotes.items.permutation'),
+  effect_size: t('oncoco.matrixComparison.footnotes.items.effectSize'),
+  chi_square: t('oncoco.matrixComparison.footnotes.items.chiSquare')
+}));
 
 // Safe number formatting helper
 const formatNum = (value, decimals = 4) => {
@@ -674,8 +684,8 @@ const loadMetrics = async () => {
     );
     metricsData.value = response.data;
   } catch (err) {
-    console.error('Error loading metrics:', err);
-    error.value = err.response?.data?.error || 'Fehler beim Laden der Metriken';
+    console.error('Fehler beim Laden der Metriken:', err);
+    error.value = err.response?.data?.error || t('oncoco.matrixComparison.errors.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -691,7 +701,7 @@ const debouncedLoadMetrics = () => {
 
 // Show footnote
 const showFootnote = (key) => {
-  footnoteText.value = footnotes[key] || '';
+  footnoteText.value = footnotes.value[key] || '';
   showFootnoteSnackbar.value = true;
 };
 
@@ -704,10 +714,10 @@ const getFrobeniusColor = (value) => {
 };
 
 const getFrobeniusInterpretation = (value) => {
-  if (value < 0.2) return 'Sehr ähnliche Matrizen';
-  if (value < 0.4) return 'Moderat unterschiedlich';
-  if (value < 0.6) return 'Deutlich unterschiedlich';
-  return 'Stark unterschiedlich';
+  if (value < 0.2) return t('oncoco.matrixComparison.interpretation.frobenius.verySimilar');
+  if (value < 0.4) return t('oncoco.matrixComparison.interpretation.frobenius.moderate');
+  if (value < 0.6) return t('oncoco.matrixComparison.interpretation.frobenius.distinct');
+  return t('oncoco.matrixComparison.interpretation.frobenius.strong');
 };
 
 const getJSDColor = (value) => {
@@ -718,10 +728,10 @@ const getJSDColor = (value) => {
 };
 
 const getJSDInterpretation = (value) => {
-  if (value < 0.1) return 'Sehr ähnliche Verteilungen';
-  if (value < 0.3) return 'Moderate Unterschiede';
-  if (value < 0.5) return 'Deutliche Unterschiede';
-  return 'Stark unterschiedliche Verteilungen';
+  if (value < 0.1) return t('oncoco.matrixComparison.interpretation.jsd.verySimilar');
+  if (value < 0.3) return t('oncoco.matrixComparison.interpretation.jsd.moderate');
+  if (value < 0.5) return t('oncoco.matrixComparison.interpretation.jsd.distinct');
+  return t('oncoco.matrixComparison.interpretation.jsd.strong');
 };
 
 const getSignificanceColor = (pValue) => {
@@ -738,10 +748,10 @@ const getEffectSizeColor = (value) => {
 };
 
 const getEffectSizeInterpretation = (value) => {
-  if (value < 0.2) return 'Kleine Effektstärke';
-  if (value < 0.5) return 'Mittlere Effektstärke';
-  if (value < 0.8) return 'Große Effektstärke';
-  return 'Sehr große Effektstärke';
+  if (value < 0.2) return t('oncoco.matrixComparison.interpretation.effect.small');
+  if (value < 0.5) return t('oncoco.matrixComparison.interpretation.effect.medium');
+  if (value < 0.8) return t('oncoco.matrixComparison.interpretation.effect.large');
+  return t('oncoco.matrixComparison.interpretation.effect.veryLarge');
 };
 
 const getChiSquareSignificantCount = (chiSquare) => {

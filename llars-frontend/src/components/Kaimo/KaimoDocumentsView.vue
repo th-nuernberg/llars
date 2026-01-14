@@ -7,18 +7,18 @@
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Textsuche"
+          :placeholder="$t('kaimo.documents.searchPlaceholder')"
           class="search-input"
         />
       </div>
 
       <div class="filter-buttons">
         <button class="filter-btn" @click="toggleMerkmale">
-          <span>Merkmale</span>
+          <span>{{ $t('kaimo.documents.filters.attributes') }}</span>
           <LIcon size="16">mdi-chevron-down</LIcon>
         </button>
         <button class="filter-btn" @click="toggleAkteure">
-          <span>Akteure</span>
+          <span>{{ $t('kaimo.documents.filters.actors') }}</span>
           <LIcon size="16">mdi-chevron-down</LIcon>
         </button>
       </div>
@@ -58,7 +58,7 @@
           </div>
 
           <div v-if="filteredDocuments.length === 0" class="no-documents">
-            <span>Keine Ergebnisse gefunden</span>
+            <span>{{ $t('kaimo.documents.emptySearch') }}</span>
           </div>
         </template>
       </div>
@@ -120,7 +120,7 @@
               </div>
             </template>
             <div v-else class="no-document-selected">
-              <span>Keine Dokumente vorhanden</span>
+              <span>{{ $t('kaimo.documents.empty') }}</span>
             </div>
           </div>
         </div>
@@ -131,6 +131,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   caseData: {
@@ -142,6 +143,8 @@ const props = defineProps({
     default: false
   }
 })
+
+const { t, locale } = useI18n()
 
 const searchQuery = ref('')
 const selectedDocument = ref(null)
@@ -180,14 +183,15 @@ const isMainDocument = (doc) => {
 }
 
 // Get document type label
+const documentTypeLabels = computed(() => ({
+  'aktenvermerk': t('kaimo.documents.types.aktenvermerk'),
+  'bericht': t('kaimo.documents.types.bericht'),
+  'protokoll': t('kaimo.documents.types.protokoll'),
+  'sonstiges': t('kaimo.documents.types.sonstiges')
+}))
+
 const getDocumentTypeLabel = (type) => {
-  const labels = {
-    'aktenvermerk': 'Aktenvermerk',
-    'bericht': 'Bericht',
-    'protokoll': 'Protokoll',
-    'sonstiges': 'Dokument'
-  }
-  return labels[type] || 'Aktenvermerk'
+  return documentTypeLabels.value[type] || t('kaimo.documents.types.default')
 }
 
 // Parse content into sections (for main document with headers)
@@ -243,10 +247,10 @@ const selectDocument = (doc) => {
 }
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
+  if (!dateStr) return t('kaimo.documents.placeholders.date')
   try {
     const date = new Date(dateStr)
-    return date.toLocaleDateString('de-DE', {
+    return date.toLocaleDateString(locale.value || undefined, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -260,8 +264,8 @@ const formatDateLong = (dateStr) => {
   if (!dateStr) return ''
   try {
     const date = new Date(dateStr)
-    const weekday = date.toLocaleDateString('de-DE', { weekday: 'long' })
-    const day = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const weekday = date.toLocaleDateString(locale.value || undefined, { weekday: 'long' })
+    const day = date.toLocaleDateString(locale.value || undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
     return `${weekday}, ${day}`
   } catch (e) {
     return dateStr

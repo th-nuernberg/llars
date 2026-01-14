@@ -6,7 +6,7 @@
     <template v-else>
     <!-- Header -->
     <div class="assessment-header">
-      <h1 class="assessment-title">Abschließende Fallbeurteilung</h1>
+      <h1 class="assessment-title">{{ $t('kaimo.assessment.title') }}</h1>
       <button class="overview-btn" @click="showSidebar = !showSidebar">
         <LIcon size="20">mdi-folder-open-outline</LIcon>
       </button>
@@ -20,9 +20,9 @@
           <!-- Matrix Header -->
           <div class="matrix-header">
             <div class="matrix-header-cell label-cell"></div>
-            <div class="matrix-header-cell risk-cell">Risiko</div>
-            <div class="matrix-header-cell resource-cell">Ressource</div>
-            <div class="matrix-header-cell unclear-cell">Unklar</div>
+            <div class="matrix-header-cell risk-cell">{{ $t('kaimo.ratings.risk') }}</div>
+            <div class="matrix-header-cell resource-cell">{{ $t('kaimo.ratings.resource') }}</div>
+            <div class="matrix-header-cell unclear-cell">{{ $t('kaimo.ratings.unclear') }}</div>
           </div>
 
           <!-- Matrix Body - Categories and Subcategories -->
@@ -74,7 +74,7 @@
         <div class="verdict-container">
           <div class="verdict-card">
             <p class="verdict-instruction">
-              Wählen Sie hier Ihr Urteil zum Fall <strong>{{ childName }}</strong>
+              {{ $t('kaimo.assessment.verdictInstruction') }} <strong>{{ childName }}</strong>
             </p>
 
             <!-- Verdict Options -->
@@ -87,7 +87,7 @@
                 <span class="radio-circle" :class="{ 'radio-selected': selectedVerdict === 'inconclusive' }">
                   <span class="radio-dot"></span>
                 </span>
-                <span class="verdict-label">Eine abschließende Bewertung ist nicht möglich</span>
+                <span class="verdict-label">{{ $t('kaimo.assessment.verdicts.inconclusive') }}</span>
               </div>
 
               <div
@@ -98,7 +98,7 @@
                 <span class="radio-circle" :class="{ 'radio-selected': selectedVerdict === 'not_endangered' }">
                   <span class="radio-dot"></span>
                 </span>
-                <span class="verdict-label">Das Wohl von {{ childName }} ist nicht gefährdet</span>
+                <span class="verdict-label">{{ $t('kaimo.assessment.verdicts.notEndangered', { name: childName }) }}</span>
               </div>
 
               <div
@@ -109,7 +109,7 @@
                 <span class="radio-circle" :class="{ 'radio-selected': selectedVerdict === 'endangered' }">
                   <span class="radio-dot"></span>
                 </span>
-                <span class="verdict-label">Das Wohl von {{ childName }} ist gefährdet</span>
+                <span class="verdict-label">{{ $t('kaimo.assessment.verdicts.endangered', { name: childName }) }}</span>
               </div>
             </div>
 
@@ -117,7 +117,7 @@
             <div v-if="selectedVerdict" class="verdict-notes">
               <textarea
                 v-model="additionalNotes"
-                placeholder="Zusätzliche Anmerkungen (optional)"
+                :placeholder="$t('kaimo.assessment.notesPlaceholder')"
                 class="notes-input"
                 rows="4"
               ></textarea>
@@ -129,7 +129,7 @@
               >
                 <LIcon v-if="submitting" size="20" class="mr-2">mdi-loading mdi-spin</LIcon>
                 <LIcon v-else size="20" class="mr-2">mdi-check</LIcon>
-                Bewertung abschließen
+                {{ $t('kaimo.assessment.submit') }}
               </button>
             </div>
           </div>
@@ -140,23 +140,23 @@
     <!-- Overview Sidebar -->
     <div class="overview-sidebar" :class="{ 'sidebar-open': showSidebar }">
       <div class="sidebar-header">
-        <span class="sidebar-title">Fallübersicht</span>
+        <span class="sidebar-title">{{ $t('kaimo.assessment.sidebar.title') }}</span>
         <button class="sidebar-close" @click="showSidebar = false">
           <LIcon size="20">mdi-close</LIcon>
         </button>
       </div>
       <div class="sidebar-content">
         <div class="sidebar-item">
-          <span class="sidebar-label">Fall</span>
+          <span class="sidebar-label">{{ $t('kaimo.assessment.sidebar.caseLabel') }}</span>
           <span class="sidebar-value">{{ caseData?.display_name }}</span>
         </div>
         <div class="sidebar-item">
-          <span class="sidebar-label">Status</span>
-          <span class="sidebar-value">{{ assessment?.status === 'completed' ? 'Abgeschlossen' : 'In Bearbeitung' }}</span>
+          <span class="sidebar-label">{{ $t('kaimo.assessment.sidebar.statusLabel') }}</span>
+          <span class="sidebar-value">{{ assessment?.status === 'completed' ? $t('kaimo.assessment.sidebar.statusCompleted') : $t('kaimo.assessment.sidebar.statusInProgress') }}</span>
         </div>
         <div class="sidebar-item">
-          <span class="sidebar-label">Hinweise zugeordnet</span>
-          <span class="sidebar-value">{{ assignedHintCount }} von {{ totalHintCount }}</span>
+          <span class="sidebar-label">{{ $t('kaimo.assessment.sidebar.hintsAssigned') }}</span>
+          <span class="sidebar-value">{{ $t('kaimo.assessment.sidebar.hintsAssignedValue', { assigned: assignedHintCount, total: totalHintCount }) }}</span>
         </div>
       </div>
     </div>
@@ -166,6 +166,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { completeAssessment } from '@/services/kaimoApi'
 
 const props = defineProps({
@@ -195,13 +196,15 @@ const props = defineProps({
 
 const emit = defineEmits(['complete'])
 
+const { t } = useI18n()
+
 const selectedVerdict = ref(null)
 const additionalNotes = ref('')
 const showSidebar = ref(false)
 const showMatrix = ref(false)  // Hidden by default like prototype
 const submitting = ref(false)
 
-const childName = computed(() => props.caseData?.display_name || 'Kind')
+const childName = computed(() => props.caseData?.display_name || t('kaimo.common.childFallback'))
 
 // Get all hints
 const hints = computed(() => props.caseData?.hints || [])
@@ -262,8 +265,8 @@ const submitAssessment = async () => {
 
     emit('complete')
   } catch (err) {
-    console.error('Failed to complete assessment:', err)
-    alert('Fehler beim Abschließen der Bewertung')
+    console.error('Konnte Bewertung nicht abschliessen:', err)
+    alert(t('kaimo.assessment.errors.completeFailed'))
   } finally {
     submitting.value = false
   }

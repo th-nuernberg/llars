@@ -12,12 +12,12 @@
           class="category-card category-top-left"
           @click="openCategory(categoryMapping.grundversorgung)"
         >
-          <span class="category-title">{{ categoryMapping.grundversorgung?.display_name || 'Grundversorgung des jungen Menschen' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.grundversorgung?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.grundversorgung?.display_name || $t('kaimo.diagram.categories.basicCare') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.grundversorgung?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.grundversorgung?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.grundversorgung?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
 
@@ -26,12 +26,12 @@
           class="category-card category-top-right"
           @click="openCategory(categoryMapping.familiensituation)"
         >
-          <span class="category-title">{{ categoryMapping.familiensituation?.display_name || 'Familiensituation' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.familiensituation?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.familiensituation?.display_name || $t('kaimo.diagram.categories.family') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.familiensituation?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.familiensituation?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.familiensituation?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
 
@@ -43,12 +43,12 @@
           class="category-card category-bottom-left"
           @click="openCategory(categoryMapping.entwicklung)"
         >
-          <span class="category-title">{{ categoryMapping.entwicklung?.display_name || 'Entwicklungssituation des jungen Menschen' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.entwicklung?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.entwicklung?.display_name || $t('kaimo.diagram.categories.development') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.entwicklung?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.entwicklung?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.entwicklung?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
 
@@ -57,12 +57,12 @@
           class="category-card category-bottom-right"
           @click="openCategory(categoryMapping.eltern)"
         >
-          <span class="category-title">{{ categoryMapping.eltern?.display_name || 'Eltern / Erziehungsberechtigte' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.eltern?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.eltern?.display_name || $t('kaimo.diagram.categories.parents') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.eltern?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.eltern?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.eltern?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
       </div>
@@ -72,6 +72,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   caseData: {
@@ -97,10 +98,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['open-category'])
+const { t } = useI18n()
 
 // Get child name from case data
 const childName = computed(() => {
-  return props.caseData?.display_name || 'Kind'
+  return props.caseData?.display_name || t('kaimo.common.childFallback')
 })
 
 // Get all hints

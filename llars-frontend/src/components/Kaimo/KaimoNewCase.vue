@@ -14,20 +14,20 @@
                 <LIcon color="white">mdi-clipboard-plus-outline</LIcon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">KAIMO Fall anlegen</div>
+                <div class="text-h5 font-weight-bold">{{ $t('kaimo.newCase.title') }}</div>
                 <div class="text-subtitle-2 text-medium-emphasis">
-                  Researcher Panel für neue Fallvignetten
+                  {{ $t('kaimo.newCase.subtitle') }}
                 </div>
               </div>
             </div>
             <div class="text-body-2 text-medium-emphasis">
-              Bereit zum Aufsetzen neuer Fälle nach dem Konzept unter docs/docs/projekte/kaimo.
+              {{ $t('kaimo.newCase.description') }}
             </div>
           </div>
           <v-spacer />
           <div class="d-flex align-center gap-2 flex-wrap">
             <v-chip color="secondary" variant="flat" prepend-icon="mdi-account-cowboy-hat">
-              Nur Researcher
+              {{ $t('kaimo.newCase.researcherOnly') }}
             </v-chip>
             <v-btn
               variant="text"
@@ -35,7 +35,7 @@
               prepend-icon="mdi-arrow-left"
               @click="router.push({ name: 'KaimoHub' })"
             >
-              Zurück zum KAIMO Hub
+              {{ $t('kaimo.newCase.backToHub') }}
             </v-btn>
           </div>
         </div>
@@ -55,7 +55,7 @@
           variant="tonal"
           icon="mdi-lock"
         >
-          Diese Seite ist nur für Researcher mit <code>admin:kaimo:manage</code> zugänglich.
+          {{ $t('kaimo.newCase.alerts.noAccess', { permission: 'admin:kaimo:manage' }) }}
         </v-alert>
         <v-alert
           v-else-if="loadError"
@@ -74,30 +74,30 @@
         <v-card class="pa-4" elevation="2">
           <v-card-title class="px-0">
             <LIcon class="mr-2" color="secondary">mdi-clipboard-text-outline</LIcon>
-            Neuen Fall anlegen
+            {{ $t('kaimo.newCase.form.title') }}
           </v-card-title>
           <v-card-text class="px-0">
             <v-form @submit.prevent="submit" ref="formRef">
               <v-text-field
                 v-model="form.name"
-                label="Name (intern, unique)"
-                hint="z.B. fall-malaika"
+                :label="$t('kaimo.newCase.form.nameLabel')"
+                :hint="$t('kaimo.newCase.form.nameHint')"
                 prepend-inner-icon="mdi-identifier"
-                :rules="[v => !!v || 'Pflichtfeld']"
+                :rules="[v => !!v || $t('validation.required')]"
                 class="mb-3"
                 required
               />
               <v-text-field
                 v-model="form.display_name"
-                label="Anzeigename"
+                :label="$t('kaimo.newCase.form.displayNameLabel')"
                 prepend-inner-icon="mdi-format-title"
-                :rules="[v => !!v || 'Pflichtfeld']"
+                :rules="[v => !!v || $t('validation.required')]"
                 class="mb-3"
                 required
               />
               <v-textarea
                 v-model="form.description"
-                label="Beschreibung"
+                :label="$t('kaimo.newCase.form.descriptionLabel')"
                 rows="3"
                 prepend-inner-icon="mdi-text-long"
                 class="mb-3"
@@ -106,24 +106,24 @@
                 <v-col cols="6">
                   <v-text-field
                     v-model="form.icon"
-                    label="Icon (optional)"
+                    :label="$t('kaimo.newCase.form.iconLabel')"
                     prepend-inner-icon="mdi-emoticon-outline"
                   />
                 </v-col>
                 <v-col cols="6">
                   <v-text-field
                     v-model="form.color"
-                    label="Farbe (Hex)"
+                    :label="$t('kaimo.newCase.form.colorLabel')"
                     prepend-inner-icon="mdi-palette"
                   />
                 </v-col>
               </v-row>
               <v-alert type="info" variant="tonal" class="mt-2">
-                Kategorien: Wenn leer, werden Standard-Kategorien automatisch verknüpft.
+                {{ $t('kaimo.newCase.form.categoriesHint') }}
               </v-alert>
               <div class="d-flex justify-end mt-4">
                 <v-btn variant="text" class="mr-2" @click="router.push({ name: 'KaimoHub' })">
-                  Abbrechen
+                  {{ $t('common.cancel') }}
                 </v-btn>
                 <v-btn
                   color="secondary"
@@ -132,7 +132,7 @@
                   :disabled="!canSubmit"
                   prepend-icon="mdi-content-save"
                 >
-                  Fall anlegen
+                  {{ $t('kaimo.newCase.form.submit') }}
                 </v-btn>
               </div>
             </v-form>
@@ -147,22 +147,22 @@
               <LIcon color="white">mdi-shield-key-outline</LIcon>
             </v-avatar>
             <div>
-              <div class="text-subtitle-1 font-weight-bold">Berechtigungen</div>
+              <div class="text-subtitle-1 font-weight-bold">{{ $t('kaimo.newCase.permissions.title') }}</div>
               <div class="text-body-2 text-medium-emphasis">
-                Researcher + admin:kaimo:manage erhalten die Kachel „Fall anlegen“.
+                {{ $t('kaimo.newCase.permissions.subtitle') }}
               </div>
             </div>
           </div>
           <v-chip-group column class="mb-4">
             <v-chip color="secondary" variant="flat" prepend-icon="mdi-check-decagram">
-              Zugriff bestätigt
+              {{ $t('kaimo.newCase.permissions.accessConfirmed') }}
             </v-chip>
             <v-chip color="secondary" variant="outlined" prepend-icon="mdi-book-open-variant">
-              Konzept: docs/docs/projekte/kaimo
+              {{ $t('kaimo.newCase.permissions.concept') }}
             </v-chip>
           </v-chip-group>
           <LBtn variant="secondary" block prepend-icon="mdi-refresh" @click="refresh">
-            Berechtigungen neu laden
+            {{ $t('kaimo.newCase.permissions.reload') }}
           </LBtn>
           <v-alert
             v-if="successMessage"
@@ -182,11 +182,13 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { usePermissions } from '@/composables/usePermissions';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { createKaimoCase } from '@/services/kaimoApi';
 
 const router = useRouter();
+const { t } = useI18n();
 const { hasPermission, isResearcher, fetchPermissions } = usePermissions();
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['hero', 'content']);
 
@@ -221,12 +223,12 @@ const submit = async () => {
       icon: form.icon,
       color: form.color
     });
-    successMessage.value = 'Fall wurde angelegt (Draft).';
+    successMessage.value = t('kaimo.newCase.messages.created');
     // optional redirect to panel
     router.push({ name: 'KaimoPanel' });
   } catch (err) {
-    console.error('KAIMO create error', err);
-    loadError.value = 'Fall konnte nicht angelegt werden.';
+    console.error('KAIMO-Erstellfehler', err);
+    loadError.value = t('kaimo.newCase.errors.createFailed');
   } finally {
     submitting.value = false;
   }

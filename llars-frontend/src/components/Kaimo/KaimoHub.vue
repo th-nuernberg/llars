@@ -16,24 +16,24 @@
               <div>
                 <div class="text-h5 font-weight-bold">KAIMO</div>
                 <div class="text-subtitle-1 text-medium-emphasis">
-                  KI-gestützte Analyse und Modellierung für Fallarbeit
+                  {{ $t('kaimo.hub.subtitle') }}
                 </div>
               </div>
             </div>
             <div class="text-body-2 text-medium-emphasis">
-              Schnellzugriff auf das KAIMO Panel und die Fallverwaltung. Siehe docs/docs/projekte/kaimo.
+              {{ $t('kaimo.hub.description') }}
             </div>
           </div>
           <v-spacer />
           <div class="d-flex align-center flex-wrap gap-2">
             <v-chip color="primary" variant="flat" prepend-icon="mdi-flask-outline">
-              Konzept Phase
+              {{ $t('kaimo.hub.chips.phase') }}
             </v-chip>
             <v-chip color="secondary" variant="outlined" prepend-icon="mdi-account-badge-outline">
-              Rollen: Evaluator &amp; Researcher
+              {{ $t('kaimo.hub.chips.roles') }}
             </v-chip>
             <v-chip v-if="canViewKaimo" color="primary" variant="outlined" prepend-icon="mdi-folder">
-              {{ caseStats.total }} Fälle ({{ caseStats.published }} live / {{ caseStats.draft }} Entwürfe)
+              {{ $t('kaimo.hub.chips.cases', { total: caseStats.total, published: caseStats.published, draft: caseStats.draft }) }}
             </v-chip>
           </div>
         </div>
@@ -53,8 +53,7 @@
           variant="tonal"
           icon="mdi-lock-alert"
         >
-          KAIMO ist für dein Konto nicht freigeschaltet. Wende dich an eine:n Researcher für Zugriff
-          (feature:kaimo:view).
+          {{ $t('kaimo.hub.alerts.noAccess') }}
         </v-alert>
         <v-alert
           v-else-if="loadingError"
@@ -127,11 +126,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { usePermissions } from '@/composables/usePermissions';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { getKaimoCases } from '@/services/kaimoApi';
 
 const router = useRouter();
+const { t, locale } = useI18n();
 const { hasPermission, isResearcher, fetchPermissions } = usePermissions();
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['hero', 'cards']);
 
@@ -150,33 +151,34 @@ const caseStats = ref({
 const loadingError = ref(null);
 
 const visibleCards = computed(() => {
+  locale.value;
   const cards = [
     {
-      title: 'KAIMO Panel',
-      subtitle: 'Fälle durcharbeiten und bewerten',
-      description: 'Starte in das KAIMO User Panel, ordne Hinweise zu Kategorien zu und schließe Bewertungen ab.',
+      title: t('kaimo.hub.cards.panel.title'),
+      subtitle: t('kaimo.hub.cards.panel.subtitle'),
+      description: t('kaimo.hub.cards.panel.description'),
       icon: 'mdi-human-child',
       color: 'primary',
       avatarColor: 'primary',
-      cta: 'KAIMO öffnen',
+      cta: t('kaimo.hub.cards.panel.cta'),
       action: () => router.push({ name: 'KaimoPanel' }),
-      permissionHint: 'feature:kaimo:view'
+      permissionHint: t('kaimo.hub.cards.panel.permission')
     }
   ];
 
   if (showCreateCard.value) {
     cards.push({
-      title: 'KAIMO Fall anlegen',
-      subtitle: 'Researcher Bereich',
-      description: 'Neue Fallvignetten erstellen, Dokumente und Hinweise vorbereiten und für Teams freigeben.',
+      title: t('kaimo.hub.cards.newCase.title'),
+      subtitle: t('kaimo.hub.cards.newCase.subtitle'),
+      description: t('kaimo.hub.cards.newCase.description'),
       icon: 'mdi-clipboard-plus-outline',
       color: 'secondary',
       avatarColor: 'secondary',
-      cta: 'Neuen Fall starten',
+      cta: t('kaimo.hub.cards.newCase.cta'),
       buttonIcon: 'mdi-pencil-outline',
       action: () => router.push({ name: 'KaimoNewCase' }),
-      badge: 'Researcher',
-      permissionHint: 'admin:kaimo:manage'
+      badge: t('kaimo.hub.cards.newCase.badge'),
+      permissionHint: t('kaimo.hub.cards.newCase.permission')
     });
   }
 
@@ -192,8 +194,8 @@ async function loadStats() {
     caseStats.value.published = cases.filter(c => c.status === 'published').length;
     caseStats.value.draft = cases.filter(c => c.status === 'draft').length;
   } catch (err) {
-    loadingError.value = 'KAIMO Fälle konnten nicht geladen werden.';
-    console.error('KAIMO stats error', err);
+    loadingError.value = t('kaimo.hub.errors.load');
+    console.error('KAIMO-Statistikfehler', err);
   }
 }
 

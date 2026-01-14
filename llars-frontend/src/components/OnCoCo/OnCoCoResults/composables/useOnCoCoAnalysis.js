@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 
 /**
@@ -8,6 +9,7 @@ import axios from 'axios';
  * @returns {Object} Analysis state and functions
  */
 export function useOnCoCoAnalysis(analysisId) {
+  const { t } = useI18n();
   // ========================================
   // State
   // ========================================
@@ -73,9 +75,9 @@ export function useOnCoCoAnalysis(analysisId) {
   const pillarOptions = computed(() => {
     if (!analysis.value?.pillar_statistics) return [];
     return [
-      { title: 'Alle Säulen', value: null },
+      { title: t('oncoco.results.filters.allPillars'), value: null },
       ...Object.keys(analysis.value.pillar_statistics).map(p => ({
-        title: `Säule ${p}`,
+        title: t('oncoco.results.pillarLabel', { id: p }),
         value: parseInt(p)
       }))
     ];
@@ -87,9 +89,9 @@ export function useOnCoCoAnalysis(analysisId) {
   });
 
   const roleFilterOptions = computed(() => [
-    { title: 'Alle (Berater & Ratsuchend)', value: '' },
-    { title: 'Nur Berater', value: 'counselor' },
-    { title: 'Nur Ratsuchend', value: 'client' }
+    { title: t('oncoco.results.roles.allLong'), value: '' },
+    { title: t('oncoco.results.roles.counselorOnly'), value: 'counselor' },
+    { title: t('oncoco.results.roles.clientOnly'), value: 'client' }
   ]);
 
   const topTransitions = computed(() => {

@@ -8,7 +8,7 @@
           prepend-icon="mdi-arrow-left"
           @click="router.push({ name: 'OnCoCoOverview' })"
         >
-          Zurück zur Übersicht
+          {{ $t('oncoco.results.back') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -35,7 +35,7 @@
             <v-card-text>
               <v-row>
                 <v-col cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Fortschritt</div>
+                  <div class="text-caption text-medium-emphasis">{{ $t('oncoco.results.metrics.progress') }}</div>
                   <v-progress-linear
                     :model-value="analysis.progress || 0"
                     height="24"
@@ -49,15 +49,15 @@
                   </v-progress-linear>
                 </v-col>
                 <v-col cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Threads</div>
+                  <div class="text-caption text-medium-emphasis">{{ $t('oncoco.results.metrics.threads') }}</div>
                   <div class="text-h6">{{ analysis.processed_threads }} / {{ analysis.total_threads }}</div>
                 </v-col>
                 <v-col cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Sätze analysiert</div>
+                  <div class="text-caption text-medium-emphasis">{{ $t('oncoco.results.metrics.sentencesAnalyzed') }}</div>
                   <div class="text-h6">{{ analysis.total_sentences?.toLocaleString() || 0 }}</div>
                 </v-col>
                 <v-col cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Erstellt</div>
+                  <div class="text-caption text-medium-emphasis">{{ $t('oncoco.results.metrics.createdAt') }}</div>
                   <div class="text-body-1">{{ formatDate(analysis.created_at) }}</div>
                 </v-col>
               </v-row>
@@ -72,14 +72,13 @@
                 :loading="starting"
                 class="mt-4"
               >
-                Analyse starten
+                {{ $t('oncoco.results.actions.start') }}
               </v-btn>
 
               <!-- Resume Button if stuck in running status (no Socket.IO updates) -->
               <div v-if="analysis.status === 'running' && isStuck" class="mt-4">
                 <v-alert type="warning" density="compact" class="mb-3">
-                  Die Analyse scheint festgefahren zu sein (keine Updates seit {{ stuckDuration }}s).
-                  Dies kann nach einem Server-Neustart passieren.
+                  {{ $t('oncoco.results.stuckWarning', { seconds: stuckDuration }) }}
                 </v-alert>
                 <v-btn
                   color="warning"
@@ -88,14 +87,14 @@
                   @click="resumeAnalysis"
                   :loading="resuming"
                 >
-                  Analyse fortsetzen
+                  {{ $t('oncoco.results.actions.resume') }}
                 </v-btn>
               </div>
 
               <!-- Retry Button if failed -->
               <div v-if="analysis.status === 'failed'" class="mt-4">
                 <v-alert type="error" density="compact" class="mb-3">
-                  {{ analysis.error_message || 'Analyse fehlgeschlagen' }}
+                  {{ analysis.error_message || $t('oncoco.results.failedFallback') }}
                 </v-alert>
                 <v-btn
                   color="warning"
@@ -104,7 +103,7 @@
                   @click="startAnalysis"
                   :loading="starting"
                 >
-                  Erneut versuchen
+                  {{ $t('oncoco.results.actions.retry') }}
                 </v-btn>
               </div>
 
@@ -119,10 +118,10 @@
           <v-card color="primary" variant="tonal">
             <v-card-title class="d-flex align-center">
               <v-progress-circular indeterminate size="24" class="mr-3"></v-progress-circular>
-              <span>Analyse läuft...</span>
+              <span>{{ $t('oncoco.results.running.title') }}</span>
               <v-spacer></v-spacer>
               <v-chip color="success" size="small" v-if="liveData.timing">
-                {{ formatDuration(liveData.timing.elapsed_seconds) }} vergangen
+                {{ $t('oncoco.results.running.elapsed', { duration: formatDuration(liveData.timing.elapsed_seconds) }) }}
               </v-chip>
             </v-card-title>
 
@@ -133,23 +132,23 @@
                   <v-card variant="outlined" class="h-100">
                     <v-card-title class="text-subtitle-1">
                       <LIcon class="mr-2">mdi-chip</LIcon>
-                      Hardware
+                      {{ $t('oncoco.results.live.hardware') }}
                     </v-card-title>
                     <v-card-text v-if="liveData.hardware">
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Device:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.deviceType') }}</span>
                         <span class="font-weight-bold">{{ liveData.hardware.device_type }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Device Name:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.deviceName') }}</span>
                         <span class="font-weight-bold text-truncate" style="max-width: 150px;">{{ liveData.hardware.device_name }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">CPU Cores:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.cpuCores') }}</span>
                         <span class="font-weight-bold">{{ liveData.hardware.cpu_count }} / {{ liveData.hardware.cpu_count_logical }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">CPU Usage:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.cpuUsage') }}</span>
                         <v-progress-linear
                           :model-value="liveData.hardware.cpu_percent"
                           height="16"
@@ -161,16 +160,16 @@
                         </v-progress-linear>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Memory:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.memory') }}</span>
                         <span class="font-weight-bold">{{ liveData.hardware.memory_used_gb }} / {{ liveData.hardware.memory_total_gb }} GB</span>
                       </div>
                       <div class="d-flex justify-space-between" v-if="liveData.hardware.model_size_mb">
-                        <span class="text-caption">Model Size:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.modelSize') }}</span>
                         <span class="font-weight-bold">{{ liveData.hardware.model_size_mb }} MB</span>
                       </div>
                     </v-card-text>
                     <v-card-text v-else class="text-center text-medium-emphasis">
-                      Warte auf Daten...
+                      {{ $t('oncoco.results.live.waiting') }}
                     </v-card-text>
                   </v-card>
                 </v-col>
@@ -180,35 +179,35 @@
                   <v-card variant="outlined" class="h-100">
                     <v-card-title class="text-subtitle-1">
                       <LIcon class="mr-2">mdi-file-document-outline</LIcon>
-                      Aktueller Thread
+                      {{ $t('oncoco.results.live.currentThread') }}
                     </v-card-title>
                     <v-card-text v-if="liveData.current_thread">
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Säule:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.pillar') }}</span>
                         <v-chip size="x-small" color="primary">{{ liveData.current_thread.pillar_name }}</v-chip>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Thread ID:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.threadId') }}</span>
                         <span class="font-weight-bold">{{ liveData.current_thread.thread_id }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Nachrichten:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.messages') }}</span>
                         <span class="font-weight-bold">{{ liveData.current_thread.message_count }}</span>
                       </div>
                       <v-divider class="my-2"></v-divider>
                       <div v-if="liveData.current_message">
                         <div class="d-flex justify-space-between mb-2">
-                          <span class="text-caption">Nachricht:</span>
+                          <span class="text-caption">{{ $t('oncoco.results.live.message') }}</span>
                           <span class="font-weight-bold">{{ liveData.current_message.message_index }} / {{ liveData.current_message.total_messages }}</span>
                         </div>
                         <div class="d-flex justify-space-between mb-2">
-                          <span class="text-caption">Sender:</span>
+                          <span class="text-caption">{{ $t('oncoco.results.live.sender') }}</span>
                           <span class="font-weight-bold text-truncate" style="max-width: 120px;">{{ liveData.current_message.sender }}</span>
                         </div>
                       </div>
                     </v-card-text>
                     <v-card-text v-else class="text-center text-medium-emphasis">
-                      Warte auf Daten...
+                      {{ $t('oncoco.results.live.waiting') }}
                     </v-card-text>
                   </v-card>
                 </v-col>
@@ -218,32 +217,32 @@
                   <v-card variant="outlined" class="h-100">
                     <v-card-title class="text-subtitle-1">
                       <LIcon class="mr-2">mdi-speedometer</LIcon>
-                      Performance
+                      {{ $t('oncoco.results.live.performance') }}
                     </v-card-title>
                     <v-card-text v-if="liveData.timing">
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Threads/Sek:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.threadsPerSecond') }}</span>
                         <span class="font-weight-bold">{{ liveData.timing.threads_per_second?.toFixed(3) }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Sätze/Sek:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.sentencesPerSecond') }}</span>
                         <span class="font-weight-bold">{{ liveData.timing.sentences_per_second?.toFixed(1) }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Vergangen:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.elapsed') }}</span>
                         <span class="font-weight-bold">{{ formatDuration(liveData.timing.elapsed_seconds) }}</span>
                       </div>
                       <div class="d-flex justify-space-between mb-2">
-                        <span class="text-caption">Geschätzt:</span>
+                        <span class="text-caption">{{ $t('oncoco.results.live.eta') }}</span>
                         <span class="font-weight-bold text-warning">{{ formatDuration(liveData.timing.eta_seconds) }}</span>
                       </div>
                       <v-divider class="my-2"></v-divider>
                       <div class="text-caption text-medium-emphasis">
-                        Worker: 1 (Single-Threaded)
+                        {{ $t('oncoco.results.live.workerSingle') }}
                       </div>
                     </v-card-text>
                     <v-card-text v-else class="text-center text-medium-emphasis">
-                      Warte auf Daten...
+                      {{ $t('oncoco.results.live.waiting') }}
                     </v-card-text>
                   </v-card>
                 </v-col>
@@ -255,7 +254,7 @@
                   <v-card variant="outlined">
                     <v-card-title class="text-subtitle-1 py-2">
                       <LIcon class="mr-2">mdi-message-text</LIcon>
-                      Zuletzt klassifiziert
+                      {{ $t('oncoco.results.live.lastClassified') }}
                     </v-card-title>
                     <v-card-text class="py-2">
                       <div class="d-flex align-center">
@@ -264,7 +263,7 @@
                           size="small"
                           class="mr-3"
                         >
-                          {{ liveData.timing.last_sentence.role === 'counselor' ? 'Berater' : 'Klient' }}
+                          {{ liveData.timing.last_sentence.role === 'counselor' ? $t('oncoco.results.roles.counselor') : $t('oncoco.results.roles.client') }}
                         </v-chip>
                         <span class="text-body-2 mr-3" style="flex: 1;">
                           "{{ liveData.timing.last_sentence.text }}"
@@ -292,8 +291,8 @@
       <v-row v-if="analysis.status === 'pending'">
         <v-col cols="12">
           <v-alert type="info" prominent>
-            <v-alert-title>Analyse noch nicht gestartet</v-alert-title>
-            Starten Sie die Analyse mit dem Button oben, um Ergebnisse zu generieren.
+            <v-alert-title>{{ $t('oncoco.results.pending.title') }}</v-alert-title>
+            {{ $t('oncoco.results.pending.subtitle') }}
           </v-alert>
         </v-col>
       </v-row>
@@ -301,8 +300,8 @@
       <v-row v-if="analysis.status === 'failed'">
         <v-col cols="12">
           <v-alert type="error" prominent>
-            <v-alert-title>Analyse fehlgeschlagen</v-alert-title>
-            {{ analysis.error_message || 'Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.' }}
+            <v-alert-title>{{ $t('oncoco.results.failed.title') }}</v-alert-title>
+            {{ analysis.error_message || $t('oncoco.results.failed.subtitle') }}
           </v-alert>
         </v-col>
       </v-row>
@@ -314,10 +313,10 @@
             <v-skeleton-loader v-if="isLoading('tabs')" type="card" height="400" />
             <v-card v-else>
               <v-tabs v-model="activeTab" color="primary">
-                <v-tab value="overview">Übersicht</v-tab>
-                <v-tab value="distribution">Verteilung</v-tab>
-                <v-tab value="transitions">Transitionen & Vergleich</v-tab>
-                <v-tab value="sentences">Sätze</v-tab>
+                <v-tab value="overview">{{ $t('oncoco.results.tabs.overview') }}</v-tab>
+                <v-tab value="distribution">{{ $t('oncoco.results.tabs.distribution') }}</v-tab>
+                <v-tab value="transitions">{{ $t('oncoco.results.tabs.transitions') }}</v-tab>
+                <v-tab value="sentences">{{ $t('oncoco.results.tabs.sentences') }}</v-tab>
               </v-tabs>
 
               <v-card-text>
@@ -333,32 +332,32 @@
                       >
                         <v-card variant="outlined">
                           <v-card-title class="text-subtitle-1">
-                            Säule {{ pillarNum }}
+                            {{ $t('oncoco.results.pillarLabel', { id: pillarNum }) }}
                           </v-card-title>
                           <v-card-text>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Sätze:</span>
+                              <span class="text-caption">{{ $t('oncoco.results.overview.sentences') }}</span>
                               <span class="font-weight-bold">{{ stats.total_sentences?.toLocaleString() }}</span>
                             </div>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Berater-Sätze:</span>
+                              <span class="text-caption">{{ $t('oncoco.results.overview.counselorSentences') }}</span>
                               <span class="font-weight-bold text-primary">{{ stats.counselor_sentences?.toLocaleString() }}</span>
                             </div>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Klient-Sätze:</span>
+                              <span class="text-caption">{{ $t('oncoco.results.overview.clientSentences') }}</span>
                               <span class="font-weight-bold text-secondary">{{ stats.client_sentences?.toLocaleString() }}</span>
                             </div>
                             <v-divider class="my-2"></v-divider>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Impact Factor Ratio:</span>
+                              <span class="text-caption">{{ $t('oncoco.results.overview.impactFactorRatio') }}</span>
                               <span class="font-weight-bold">{{ (stats.impact_factor_ratio * 100).toFixed(1) }}%</span>
                             </div>
                             <div class="d-flex justify-space-between mb-2">
-                              <span class="text-caption">Ressourcen-Aktivierung:</span>
+                              <span class="text-caption">{{ $t('oncoco.results.overview.resourceActivation') }}</span>
                               <span class="font-weight-bold">{{ (stats.resource_activation_score * 100).toFixed(1) }}%</span>
                             </div>
                             <div class="d-flex justify-space-between">
-                              <span class="text-caption">Mutual Information:</span>
+                              <span class="text-caption">{{ $t('oncoco.results.overview.mutualInformation') }}</span>
                               <span class="font-weight-bold">{{ stats.mi_score?.toFixed(3) }}</span>
                             </div>
                           </v-card-text>
@@ -374,7 +373,7 @@
                         <v-select
                           v-model="distributionPillar"
                           :items="pillarOptions"
-                          label="Säule"
+                          :label="$t('oncoco.results.filters.pillar')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -382,8 +381,8 @@
                       <v-col cols="12" sm="6" md="3">
                         <v-select
                           v-model="distributionLevel"
-                          :items="[{title: 'Level 2 (aggregiert)', value: 'level2'}, {title: 'Vollständig', value: 'full'}]"
-                          label="Detailstufe"
+                          :items="levelOptions"
+                          :label="$t('oncoco.results.filters.detailLevel')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -392,7 +391,7 @@
                         <v-select
                           v-model="distributionRole"
                           :items="roleFilterOptions"
-                          label="Rolle"
+                          :label="$t('oncoco.results.filters.role')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -420,7 +419,7 @@
                           :color="item.role === 'counselor' ? 'primary' : 'secondary'"
                           size="x-small"
                         >
-                          {{ item.role === 'counselor' ? 'Berater' : 'Klient' }}
+                          {{ item.role === 'counselor' ? $t('oncoco.results.roles.counselor') : $t('oncoco.results.roles.client') }}
                         </v-chip>
                       </template>
                       <template v-slot:item.count="{ item }">
@@ -446,7 +445,7 @@
                         <v-select
                           v-model="transitionPillar"
                           :items="pillarOptions"
-                          label="Säule"
+                          :label="$t('oncoco.results.filters.pillar')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -454,8 +453,8 @@
                       <v-col cols="12" sm="6" md="2">
                         <v-select
                           v-model="transitionLevel"
-                          :items="[{title: 'Level 2 (aggregiert)', value: 'level2'}, {title: 'Vollständig', value: 'full'}]"
-                          label="Detailstufe"
+                          :items="levelOptions"
+                          :label="$t('oncoco.results.filters.detailLevel')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -464,7 +463,7 @@
                         <v-select
                           v-model="transitionRole"
                           :items="roleFilterOptions"
-                          label="Rolle"
+                          :label="$t('oncoco.results.filters.role')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -472,8 +471,8 @@
                       <v-col cols="12" sm="6" md="2">
                         <v-select
                           v-model="heatmapColorMode"
-                          :items="[{title: 'Anzahl', value: 'count'}, {title: 'Wahrscheinlichkeit', value: 'probability'}]"
-                          label="Heatmap Farbmodus"
+                          :items="heatmapModeOptions"
+                          :label="$t('oncoco.results.filters.heatmapMode')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -481,7 +480,7 @@
                       <v-col cols="12" sm="6" md="2" class="d-flex align-center">
                         <v-switch
                           v-model="showHeatmapValues"
-                          label="Werte anzeigen"
+                          :label="$t('oncoco.results.filters.showValues')"
                           density="compact"
                           hide-details
                           color="primary"
@@ -506,7 +505,7 @@
                     <!-- Transition Heatmaps per Pillar -->
                     <div class="text-h6 font-weight-bold mb-3">
                       <LIcon start>mdi-grid</LIcon>
-                      Transitions-Heatmaps pro Säule
+                      {{ $t('oncoco.results.transitions.heatmapsTitle') }}
                     </div>
 
                     <v-row v-if="Object.keys(heatmapData).length > 0" class="heatmap-row">
@@ -523,7 +522,7 @@
                             <LIcon start size="small" color="primary">mdi-chart-box</LIcon>
                             {{ getPillarName(pillarNum) }}
                             <v-chip size="x-small" class="ml-2" variant="tonal">
-                              {{ data.totalTransitions }} Transitionen
+                              {{ $t('oncoco.results.transitions.totalTransitions', { count: data.totalTransitions }) }}
                             </v-chip>
                           </v-card-title>
                           <v-card-text class="pt-0 heatmap-content">
@@ -550,7 +549,7 @@
                       <v-card v-if="hoveredTransition" variant="tonal" color="primary" class="mt-3">
                         <v-card-title class="text-subtitle-1 py-2">
                           <LIcon start size="small">mdi-compare</LIcon>
-                          Vergleich: {{ hoveredTransition.fromDisplay }}
+                          {{ $t('oncoco.results.transitions.comparisonTitle', { from: hoveredTransition.fromDisplay }) }}
                           <LIcon size="x-small" class="mx-1">mdi-arrow-right</LIcon>
                           {{ hoveredTransition.toDisplay }}
                         </v-card-title>
@@ -578,7 +577,7 @@
                     </v-expand-transition>
 
                     <v-alert v-if="!loadingHeatmaps && Object.keys(heatmapData).length === 0" type="info" variant="tonal" class="mb-4">
-                      Keine Heatmap-Daten verfügbar. Bitte warten Sie bis die Analyse abgeschlossen ist.
+                      {{ $t('oncoco.results.transitions.noHeatmapData') }}
                     </v-alert>
 
                     <v-divider class="my-4"></v-divider>
@@ -598,9 +597,9 @@
                       <v-expansion-panel>
                         <v-expansion-panel-title>
                           <LIcon start>mdi-format-list-numbered</LIcon>
-                          Top 20 Transitionen
-                          <span v-if="transitionPillar" class="text-caption ml-2">(Säule {{ transitionPillar }})</span>
-                          <span v-else class="text-caption ml-2">(Alle Säulen)</span>
+                          {{ $t('oncoco.results.transitions.topTitle') }}
+                          <span v-if="transitionPillar" class="text-caption ml-2">({{ $t('oncoco.results.transitions.topPillar', { id: transitionPillar }) }})</span>
+                          <span v-else class="text-caption ml-2">({{ $t('oncoco.results.transitions.topAll') }})</span>
                         </v-expansion-panel-title>
                         <v-expansion-panel-text>
                           <v-list density="compact" v-if="topTransitions.length > 0">
@@ -636,7 +635,7 @@
                             </v-list-item>
                           </v-list>
                           <v-alert v-else-if="!loadingTransitions" type="info" variant="tonal">
-                            Keine Transitions-Daten verfügbar.
+                            {{ $t('oncoco.results.transitions.noTransitionData') }}
                           </v-alert>
                         </v-expansion-panel-text>
                       </v-expansion-panel>
@@ -650,7 +649,7 @@
                       <v-toolbar color="primary" density="compact">
                         <LIcon class="ml-2">mdi-chart-scatter-plot</LIcon>
                         <v-toolbar-title class="text-body-1 font-weight-medium">
-                          Statistische Matrix-Vergleichsmetriken
+                          {{ $t('oncoco.results.methodology.title') }}
                         </v-toolbar-title>
                         <v-spacer></v-spacer>
                         <v-btn
@@ -674,7 +673,7 @@
                         <v-select
                           v-model="sentencePillar"
                           :items="pillarOptions"
-                          label="Säule"
+                          :label="$t('oncoco.results.filters.pillar')"
                           variant="outlined"
                           density="compact"
                           clearable
@@ -683,8 +682,8 @@
                       <v-col cols="12" sm="6" md="3">
                         <v-select
                           v-model="sentenceRole"
-                          :items="[{title: 'Alle', value: ''}, {title: 'Berater', value: 'counselor'}, {title: 'Klient', value: 'client'}]"
-                          label="Rolle"
+                          :items="sentenceRoleOptions"
+                          :label="$t('oncoco.results.filters.role')"
                           variant="outlined"
                           density="compact"
                         ></v-select>
@@ -692,8 +691,8 @@
                       <v-col cols="12" sm="6" md="3">
                         <v-text-field
                           v-model="sentenceLabel"
-                          label="Label Filter"
-                          placeholder="z.B. CO-IF-AC"
+                          :label="$t('oncoco.results.filters.label')"
+                          :placeholder="$t('oncoco.results.filters.labelPlaceholder')"
                           variant="outlined"
                           density="compact"
                           clearable
@@ -707,7 +706,7 @@
                           :loading="loadingSentences"
                           block
                         >
-                          Laden
+                          {{ $t('oncoco.results.actions.load') }}
                         </v-btn>
                       </v-col>
                     </v-row>
@@ -727,7 +726,7 @@
                           :color="item.role === 'counselor' ? 'primary' : 'secondary'"
                           size="x-small"
                         >
-                          {{ item.role === 'counselor' ? 'Berater' : 'Klient' }}
+                          {{ item.role === 'counselor' ? $t('oncoco.results.roles.counselor') : $t('oncoco.results.roles.client') }}
                         </v-chip>
                       </template>
                       <template v-slot:item.label="{ item }">
@@ -756,7 +755,7 @@
                         @click="loadMoreSentences"
                         :loading="loadingSentences"
                       >
-                        Mehr laden ({{ sentences.length }} / {{ sentencesTotal }})
+                        {{ $t('oncoco.results.actions.loadMore', { loaded: sentences.length, total: sentencesTotal }) }}
                       </v-btn>
                     </div>
                   </v-window-item>
@@ -771,8 +770,9 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import TransitionHeatmap from './TransitionHeatmap.vue';
 import MatrixComparisonMetrics from './MatrixComparisonMetrics.vue';
@@ -786,6 +786,7 @@ import {
 
 const router = useRouter();
 const route = useRoute();
+const { t } = useI18n();
 
 // Skeleton Loading
 const { isLoading, withLoading } = useSkeletonLoading(['data', 'tabs']);
@@ -793,6 +794,19 @@ const { isLoading, withLoading } = useSkeletonLoading(['data', 'tabs']);
 // Local UI State
 const activeTab = ref('overview');
 const showMethodologyDialog = ref(false);
+const levelOptions = computed(() => [
+  { title: t('oncoco.results.levelOptions.level2'), value: 'level2' },
+  { title: t('oncoco.results.levelOptions.full'), value: 'full' }
+]);
+const heatmapModeOptions = computed(() => [
+  { title: t('oncoco.results.heatmapModes.count'), value: 'count' },
+  { title: t('oncoco.results.heatmapModes.probability'), value: 'probability' }
+]);
+const sentenceRoleOptions = computed(() => [
+  { title: t('oncoco.results.roles.all'), value: '' },
+  { title: t('oncoco.results.roles.counselor'), value: 'counselor' },
+  { title: t('oncoco.results.roles.client'), value: 'client' }
+]);
 
 // Initialize composables
 const analysisId = route.params.id;
@@ -883,7 +897,7 @@ const { setupSocket, cleanupSocket } = useOnCoCoSocket(analysisIdRef, {
     await loadAnalysis();
   },
   onError: (data) => {
-    console.error('[OnCoCo] Socket error:', data);
+    console.error('[OnCoCo] Socket-Fehler:', data);
   }
 });
 

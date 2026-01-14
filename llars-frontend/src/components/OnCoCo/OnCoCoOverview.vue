@@ -5,9 +5,9 @@
       <v-col cols="12">
         <div class="d-flex align-center">
           <div>
-            <h1 class="text-h4 font-weight-bold">OnCoCo Analyse</h1>
+            <h1 class="text-h4 font-weight-bold">{{ $t('oncoco.overview.title') }}</h1>
             <p class="text-subtitle-1 text-medium-emphasis">
-              Klassifikation von Beratungsgesprächen mit dem OnCoCo Modell
+              {{ $t('oncoco.overview.subtitle') }}
             </p>
           </div>
           <v-spacer></v-spacer>
@@ -17,7 +17,7 @@
             class="mr-2"
             @click="navigateToInfo"
           >
-            Was ist OnCoCo?
+            {{ $t('oncoco.overview.actions.info') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -25,7 +25,7 @@
             size="large"
             @click="navigateToConfig"
           >
-            Neue Analyse erstellen
+            {{ $t('oncoco.overview.actions.newAnalysis') }}
           </v-btn>
         </div>
       </v-col>
@@ -41,13 +41,13 @@
         <v-card v-else>
           <v-card-title class="d-flex align-center">
             <LIcon class="mr-2">mdi-format-list-bulleted</LIcon>
-            Meine OnCoCo Analysen
+            {{ $t('oncoco.overview.table.title') }}
             <v-spacer></v-spacer>
             <v-chip-group v-model="statusFilter" mandatory class="mr-2">
-              <v-chip value="all" size="small">Alle</v-chip>
-              <v-chip value="running" size="small" color="info">Laufend</v-chip>
-              <v-chip value="completed" size="small" color="success">Abgeschlossen</v-chip>
-              <v-chip value="failed" size="small" color="error">Fehlgeschlagen</v-chip>
+              <v-chip value="all" size="small">{{ $t('oncoco.overview.filters.all') }}</v-chip>
+              <v-chip value="running" size="small" color="info">{{ $t('oncoco.overview.filters.running') }}</v-chip>
+              <v-chip value="completed" size="small" color="success">{{ $t('oncoco.overview.filters.completed') }}</v-chip>
+              <v-chip value="failed" size="small" color="error">{{ $t('oncoco.overview.filters.failed') }}</v-chip>
             </v-chip-group>
             <v-btn
               icon="mdi-refresh"
@@ -104,7 +104,7 @@
             <!-- Pillars -->
             <template v-slot:item.pillar_count="{ item }">
               <v-chip size="small" variant="outlined">
-                {{ item.pillar_count }} Säulen
+                {{ $t('oncoco.overview.table.pillars', { count: item.pillar_count }) }}
               </v-chip>
             </template>
 
@@ -114,7 +114,7 @@
                 <div class="text-subtitle-2 font-weight-bold">
                   {{ item.total_sentences || 0 }}
                 </div>
-                <div class="text-caption text-medium-emphasis">Sätze</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('oncoco.overview.table.sentences') }}</div>
               </div>
             </template>
 
@@ -128,7 +128,7 @@
               <div class="d-flex gap-1">
                 <!-- Primary action: View Results (for completed) or View Details (for others) -->
                 <v-tooltip
-                  :text="item.status === 'completed' ? 'Ergebnisse anzeigen' : 'Details anzeigen'"
+                  :text="item.status === 'completed' ? $t('oncoco.overview.actions.viewResults') : $t('oncoco.overview.actions.viewDetails')"
                   location="top"
                 >
                   <template v-slot:activator="{ props }">
@@ -142,7 +142,7 @@
                     ></v-btn>
                   </template>
                 </v-tooltip>
-                <v-tooltip v-if="item.status === 'pending'" text="Starten" location="top">
+                <v-tooltip v-if="item.status === 'pending'" :text="$t('oncoco.overview.actions.start')" location="top">
                   <template v-slot:activator="{ props }">
                     <v-btn
                       v-bind="props"
@@ -155,7 +155,7 @@
                     ></v-btn>
                   </template>
                 </v-tooltip>
-                <v-tooltip text="Löschen" location="top">
+                <v-tooltip :text="$t('common.delete')" location="top">
                   <template v-slot:activator="{ props }">
                     <v-btn
                       v-bind="props"
@@ -174,12 +174,12 @@
             <template v-slot:no-data>
               <div class="text-center py-8">
                 <LIcon size="64" color="grey-lighten-1">mdi-chart-bar</LIcon>
-                <div class="text-h6 mt-4 text-medium-emphasis">Keine Analysen gefunden</div>
+                <div class="text-h6 mt-4 text-medium-emphasis">{{ $t('oncoco.overview.empty.title') }}</div>
                 <div class="text-body-2 text-medium-emphasis mb-4">
-                  Erstellen Sie Ihre erste OnCoCo Analyse, um zu beginnen
+                  {{ $t('oncoco.overview.empty.subtitle') }}
                 </div>
                 <LBtn variant="primary" prepend-icon="mdi-plus" @click="navigateToConfig">
-                  Neue Analyse erstellen
+                  {{ $t('oncoco.overview.actions.newAnalysis') }}
                 </LBtn>
               </div>
             </template>
@@ -204,7 +204,7 @@
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ totalAnalyses }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Gesamt Analysen</div>
+              <div class="text-subtitle-2 text-medium-emphasis">{{ $t('oncoco.overview.stats.total') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -223,7 +223,7 @@
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ completedAnalyses }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Abgeschlossen</div>
+              <div class="text-subtitle-2 text-medium-emphasis">{{ $t('oncoco.overview.stats.completed') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -242,7 +242,7 @@
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ runningAnalyses }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">Laufend</div>
+              <div class="text-subtitle-2 text-medium-emphasis">{{ $t('oncoco.overview.stats.running') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -261,7 +261,7 @@
             </v-avatar>
             <div>
               <div class="text-h4 font-weight-bold">{{ labelCount }}</div>
-              <div class="text-subtitle-2 text-medium-emphasis">OnCoCo Kategorien</div>
+              <div class="text-subtitle-2 text-medium-emphasis">{{ $t('oncoco.overview.stats.categories') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -279,31 +279,33 @@
         <v-card v-else>
           <v-card-title class="d-flex align-center">
             <LIcon class="mr-2" color="primary">mdi-brain</LIcon>
-            OnCoCo Modell Status
+            {{ $t('oncoco.overview.model.title') }}
             <v-spacer></v-spacer>
             <v-chip
               :color="modelInfo.model?.model_available ? 'success' : 'error'"
               size="small"
             >
-              {{ modelInfo.model?.model_available ? 'Verfügbar' : 'Nicht verfügbar' }}
+              {{ modelInfo.model?.model_available ? $t('oncoco.overview.model.available') : $t('oncoco.overview.model.unavailable') }}
             </v-chip>
           </v-card-title>
           <v-card-text>
             <v-row>
               <v-col cols="12" md="4">
-                <div class="text-caption text-medium-emphasis">Modell</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('oncoco.overview.model.modelLabel') }}</div>
                 <div class="font-weight-medium">XLM-RoBERTa-Large OnCoCo</div>
               </v-col>
               <v-col cols="12" md="4">
-                <div class="text-caption text-medium-emphasis">Kategorien</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('oncoco.overview.model.categoriesLabel') }}</div>
                 <div class="font-weight-medium">
-                  {{ modelInfo.labels?.counselor || 0 }} Berater +
-                  {{ modelInfo.labels?.client || 0 }} Klient =
-                  {{ modelInfo.labels?.total || 68 }} Total
+                  {{ $t('oncoco.overview.model.categoriesValue', {
+                    counselor: modelInfo.labels?.counselor || 0,
+                    client: modelInfo.labels?.client || 0,
+                    total: modelInfo.labels?.total || 68
+                  }) }}
                 </div>
               </v-col>
               <v-col cols="12" md="4">
-                <div class="text-caption text-medium-emphasis">Gerät</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('oncoco.overview.model.deviceLabel') }}</div>
                 <div class="font-weight-medium">{{ modelInfo.model?.device || 'CPU' }}</div>
               </v-col>
             </v-row>
@@ -329,17 +331,16 @@
       <v-card>
         <v-card-title class="text-h5">
           <LIcon class="mr-2" color="error">mdi-alert-circle</LIcon>
-          Analyse löschen?
+          {{ $t('oncoco.overview.deleteDialog.title') }}
         </v-card-title>
         <v-card-text>
-          Möchten Sie die Analyse <strong>{{ deleteItem?.name }}</strong> wirklich löschen?
-          Diese Aktion kann nicht rückgängig gemacht werden.
+          {{ $t('oncoco.overview.deleteDialog.body', { name: deleteItem?.name }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="deleteDialog = false">Abbrechen</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">{{ $t('common.cancel') }}</v-btn>
           <v-btn color="error" variant="flat" @click="deleteAnalysis" :loading="deleting">
-            Löschen
+            {{ $t('common.delete') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -350,11 +351,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { getSocket, useSocketState } from '@/services/socketService';
 import KIADataSyncOnCoCo from './KIADataSyncOnCoCo.vue';
 
 const router = useRouter();
+const { t, locale } = useI18n();
 
 // Socket.IO connection (using centralized service)
 let socket = null;
@@ -382,15 +385,15 @@ const modelInfo = ref({
 const labelCount = ref(68);
 
 // Table Headers
-const headers = [
-  { title: 'Analyse Name', key: 'name', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Fortschritt', key: 'progress', sortable: true },
-  { title: 'Säulen', key: 'pillar_count', sortable: true },
-  { title: 'Sätze', key: 'total_sentences', sortable: true },
-  { title: 'Erstellt am', key: 'created_at', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'center' }
-];
+const headers = computed(() => [
+  { title: t('oncoco.overview.table.headers.name'), key: 'name', sortable: true },
+  { title: t('oncoco.overview.table.headers.status'), key: 'status', sortable: true },
+  { title: t('oncoco.overview.table.headers.progress'), key: 'progress', sortable: true },
+  { title: t('oncoco.overview.table.headers.pillars'), key: 'pillar_count', sortable: true },
+  { title: t('oncoco.overview.table.headers.sentences'), key: 'total_sentences', sortable: true },
+  { title: t('oncoco.overview.table.headers.createdAt'), key: 'created_at', sortable: true },
+  { title: t('oncoco.overview.table.headers.actions'), key: 'actions', sortable: false, align: 'center' }
+]);
 
 // Computed Stats
 const totalAnalyses = computed(() => analyses.value.length);
@@ -528,18 +531,18 @@ const getStatusIcon = (status) => {
 
 const getStatusText = (status) => {
   const texts = {
-    pending: 'Ausstehend',
-    running: 'Läuft',
-    completed: 'Abgeschlossen',
-    failed: 'Fehlgeschlagen'
+    pending: t('oncoco.status.pending'),
+    running: t('oncoco.status.running'),
+    completed: t('oncoco.status.completed'),
+    failed: t('oncoco.status.failed')
   };
   return texts[status] || status;
 };
 
 const formatDate = (dateString) => {
-  if (!dateString) return '-';
+  if (!dateString) return t('oncoco.overview.placeholders.date');
   const date = new Date(dateString);
-  return date.toLocaleString('de-DE', {
+  return date.toLocaleString(locale.value || undefined, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

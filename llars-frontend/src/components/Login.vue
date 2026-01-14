@@ -9,8 +9,8 @@
         <!-- Header with Logo -->
         <div class="login-header">
           <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="login-logo" />
-          <h1 class="login-title">LLars Plattform</h1>
-          <p class="login-subtitle">Willkommen zurück</p>
+          <h1 class="login-title">{{ $t('appbar.platform') }}</h1>
+          <p class="login-subtitle">{{ $t('auth.welcomeBack') }}</p>
         </div>
 
         <!-- Login Form -->
@@ -18,7 +18,7 @@
           <v-form @submit.prevent="handleLogin" action="/login" method="post">
             <v-text-field
               v-model="username"
-              label="Username"
+              :label="$t('auth.username')"
               name="username"
               id="username"
               data-testid="username-input"
@@ -33,7 +33,7 @@
 
             <v-text-field
               v-model="password"
-              label="Passwort"
+              :label="$t('auth.password')"
               name="password"
               id="password"
               data-testid="password-input"
@@ -98,7 +98,7 @@
               class="login-button"
               data-testid="login-btn"
             >
-              Anmelden
+              {{ $t('auth.login') }}
             </LBtn>
           </v-form>
 
@@ -119,7 +119,7 @@
         <!-- Dev Mode Quick Login -->
         <div v-if="isDevelopment" class="dev-login">
           <div class="dev-login-divider">
-            <span>Development</span>
+            <span>{{ $t('auth.devLabel') }}</span>
           </div>
           <div class="dev-login-buttons">
             <LBtn
@@ -132,7 +132,7 @@
               @click="quickLogin(user)"
               :loading="loadingUser === user.username"
             >
-              {{ user.label }}
+              {{ $t(user.labelKey) }}
             </LBtn>
           </div>
         </div>
@@ -142,15 +142,17 @@
 </template>
 
 <script setup>
-import {ref, computed, onMounted} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
-import {useTheme} from 'vuetify';
-import {useAuth} from '@/composables/useAuth';
-import {useMobile} from '@/composables/useMobile';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useTheme } from 'vuetify';
+import { useI18n } from 'vue-i18n';
+import { useAuth } from '@/composables/useAuth';
+import { useMobile } from '@/composables/useMobile';
 
 const theme = useTheme();
 const isDarkMode = computed(() => theme.global.current.value.dark);
 const { isMobile, isIOS, safeAreaInsets } = useMobile();
+const { t } = useI18n();
 
 const username = ref('');
 const password = ref('');
@@ -171,10 +173,10 @@ const isDevelopment = import.meta.env.DEV || import.meta.env.VITE_DEV_LOGIN === 
 // Credentials can be overridden via VITE_DEV_PASSWORD env variable
 const devPassword = import.meta.env.VITE_DEV_PASSWORD || 'admin123';
 const devUsers = [
-  { username: 'admin', password: devPassword, label: 'Admin', icon: 'mdi-shield-crown', color: 'error' },
-  { username: 'researcher', password: devPassword, label: 'Researcher', icon: 'mdi-flask', color: 'primary' },
-  { username: 'evaluator', password: devPassword, label: 'Evaluator', icon: 'mdi-clipboard-check-outline', color: 'secondary' },
-  { username: 'chatbot_manager', password: devPassword, label: 'Chatbot Manager', icon: 'mdi-robot', color: 'info' }
+  { username: 'admin', password: devPassword, labelKey: 'auth.devUsers.admin', icon: 'mdi-shield-crown', color: 'error' },
+  { username: 'researcher', password: devPassword, labelKey: 'auth.devUsers.researcher', icon: 'mdi-flask', color: 'primary' },
+  { username: 'evaluator', password: devPassword, labelKey: 'auth.devUsers.evaluator', icon: 'mdi-clipboard-check-outline', color: 'secondary' },
+  { username: 'chatbot_manager', password: devPassword, labelKey: 'auth.devUsers.chatbotManager', icon: 'mdi-robot', color: 'info' }
 ];
 
 // Check if already authenticated on mount
@@ -195,7 +197,7 @@ async function handleLogin() {
 
   // Validate input
   if (!username.value || !password.value) {
-    errorMessage.value = 'Bitte geben Sie Benutzername und Passwort ein.';
+    errorMessage.value = t('auth.errors.missingCredentials');
     return;
   }
 

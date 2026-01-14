@@ -2,61 +2,63 @@
   <v-container class="mt-5">
     <v-row justify="center">
       <v-col cols="12" md="8">
-        <h1>Impressum</h1>
+        <h1>{{ $t('imprintPage.title') }}</h1>
         <v-divider class="my-4"></v-divider>
 
         <p>
-          Die Technische Hochschule Nürnberg Georg Simon Ohm, ist eine Körperschaft des Öffentlichen Rechts. Sie wird durch den Präsidenten Prof. Dr. Niels Oberbeck gesetzlich vertreten.
+          {{ $t('imprintPage.intro') }}
         </p>
 
-        <h3>Anschrift</h3>
+        <h3>{{ $t('imprintPage.sections.address.title') }}</h3>
         <p>
-          LLARS Projekt<br>
-          Technische Hochschule Nürnberg<br>
-          Keßlerplatz 12<br>
-          90489 Nürnberg<br>
-          Tel. 0911-5880-2580<br>
-          Fax 0911-5880-602580<br>
-          E-Mail: info [at] e-beratungsinstitut . de<br>
-          Internet: <a href="https://www.e-beratungsinstitut.de" target="_blank">www.e-beratungsinstitut.de</a>
+          {{ $t('imprintPage.sections.address.project') }}<br>
+          {{ $t('imprintPage.sections.address.university') }}<br>
+          {{ $t('imprintPage.sections.address.street') }}<br>
+          {{ $t('imprintPage.sections.address.city') }}<br>
+          {{ $t('imprintPage.sections.address.phone') }}<br>
+          {{ $t('imprintPage.sections.address.fax') }}<br>
+          {{ $t('imprintPage.sections.address.email') }}<br>
+          {{ $t('imprintPage.sections.address.websiteLabel') }}
+          <a href="https://www.e-beratungsinstitut.de" target="_blank">{{ $t('imprintPage.links.eConsulting') }}</a>
         </p>
 
-        <h3>Kontaktperson für den Inhalt</h3>
-        <p>Sigrid Zauter, Geschäftsführung des Instituts für E-Beratung</p>
+        <h3>{{ $t('imprintPage.sections.contactPerson.title') }}</h3>
+        <p>{{ $t('imprintPage.sections.contactPerson.text') }}</p>
 
-        <h3>Zuständige Aufsichtsbehörde</h3>
+        <h3>{{ $t('imprintPage.sections.supervisoryAuthority.title') }}</h3>
         <p>
-          Bayerisches Staatsministerium für Wissenschaft und Kunst<br>
-          Salvatorstraße 2<br>
-          80333 München<br>
-          Internet: <a href="https://www.stmwk.bayern.de" target="_blank">www.stmwk.bayern.de</a>
+          {{ $t('imprintPage.sections.supervisoryAuthority.name') }}<br>
+          {{ $t('imprintPage.sections.supervisoryAuthority.street') }}<br>
+          {{ $t('imprintPage.sections.supervisoryAuthority.city') }}<br>
+          {{ $t('imprintPage.sections.supervisoryAuthority.websiteLabel') }}
+          <a href="https://www.stmwk.bayern.de" target="_blank">{{ $t('imprintPage.links.stmwk') }}</a>
         </p>
 
-        <h3>Umsatzsteueridentifikationsnummer</h3>
-        <p>DE 222 858 358 (gemäß § 27a Umsatzsteuergesetz)</p>
+        <h3>{{ $t('imprintPage.sections.vatId.title') }}</h3>
+        <p>{{ $t('imprintPage.sections.vatId.text') }}</p>
 
-        <h3>Nutzungsbedingungen</h3>
+        <h3>{{ $t('imprintPage.sections.terms.title') }}</h3>
         <p>
-          Texte, Bilder, Grafiken sowie die Gestaltung dieser Internetseiten können dem Urheberrecht unterliegen. Nicht urheberrechtlich geschützt sind nach § 5 des Urheberrechtsgesetzes (UrhG) Gesetze, Verordnungen, amtliche Erlasse und Bekanntmachungen sowie Entscheidungen und amtlich verfasste Leitsätze zu Entscheidungen und andere amtliche Werke, die im amtlichen Interesse zur allgemeinen Kenntnisnahme veröffentlicht worden sind, mit der Einschränkung, dass die Bestimmungen über Änderungsverbot und Quellenangabe in § 62 Abs. 1 bis 3 und § 63 Abs. 1 und 2 UrhG entsprechend anzuwenden sind.
+          {{ $t('imprintPage.sections.terms.text') }}
         </p>
 
-        <h3>Haftungsausschluss</h3>
+        <h3>{{ $t('imprintPage.sections.disclaimer.title') }}</h3>
         <p>
-          Die Inhalte dieses Internetangebotes und die bereitgestellten Informationen sind sorgfältig recherchiert und nach bestem Wissen und Gewissen erarbeitet und geprüft. Dennoch kann die Technische Hochschule Nürnberg keine Gewähr für die Aktualität, Richtigkeit, Vollständigkeit, rechtliche Unbedenklichkeit, Qualität und jederzeitige Verfügbarkeit der bereitgestellten Informationen übernehmen.
+          {{ $t('imprintPage.sections.disclaimer.text') }}
         </p>
 
-        <h3>Links</h3>
+        <h3>{{ $t('imprintPage.sections.links.title') }}</h3>
         <p>
-          Von unseren eigenen Inhalten sind Querverweise („Links“) auf die Webseiten anderer Anbieter zu unterscheiden. Wir können diese fremden Inhalte nicht ständig auf Veränderungen überprüfen und daher auch keine Verantwortung dafür übernehmen. Für illegale, fehlerhafte oder unvollständige Inhalte und insbesondere für Schäden, die aus der Nutzung oder Nichtnutzung von Informationen Dritter entstehen, haftet allein der jeweilige Anbieter der Seite.
+          {{ $t('imprintPage.sections.links.text') }}
         </p>
 
-        <h3>Urheberrecht / Copyright</h3>
+        <h3>{{ $t('imprintPage.sections.copyright.title') }}</h3>
         <p>
-          Die Kopie und die Weiterverwendung von Text und Graphik erfordert die Zustimmung der Technischen Hochschule Nürnberg Georg Simon Ohm. Zudem gilt zu beachten, dass Bilder, Grafiken, Text- oder sonstige Dateien ganz oder teilweise dem Urheberrecht Dritter unterliegen.
+          {{ $t('imprintPage.sections.copyright.text') }}
         </p>
 
-        <h3>Gerichtsstand</h3>
-        <p>Alle aus dieser Website entstehenden Rechtsstreitigkeiten unterliegen ausschließlich deutschem Recht.</p>
+        <h3>{{ $t('imprintPage.sections.jurisdiction.title') }}</h3>
+        <p>{{ $t('imprintPage.sections.jurisdiction.text') }}</p>
       </v-col>
     </v-row>
   </v-container>

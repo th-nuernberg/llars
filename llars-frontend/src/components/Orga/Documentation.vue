@@ -3,12 +3,12 @@
     <!-- Hero Section -->
     <div class="docs-hero">
       <div class="hero-content">
-        <h1 class="hero-title">LLARS</h1>
-        <p class="hero-subtitle">LLM Assisted Research System</p>
+        <h1 class="hero-title">{{ $t('docs.hero.title') }}</h1>
+        <p class="hero-subtitle">{{ $t('docs.hero.subtitle') }}</p>
         <div class="hero-badges">
-          <LTag variant="primary" prepend-icon="mdi-tag">v3.0</LTag>
-          <LTag variant="accent" prepend-icon="mdi-open-source-initiative">Open Source</LTag>
-          <LTag variant="success" prepend-icon="mdi-school">TH Nürnberg</LTag>
+          <LTag variant="primary" prepend-icon="mdi-tag">{{ $t('docs.hero.version') }}</LTag>
+          <LTag variant="accent" prepend-icon="mdi-open-source-initiative">{{ $t('docs.hero.openSource') }}</LTag>
+          <LTag variant="success" prepend-icon="mdi-school">{{ $t('docs.hero.organization') }}</LTag>
         </div>
       </div>
     </div>
@@ -20,14 +20,12 @@
         <section class="docs-section">
           <div class="section-header">
             <LIcon size="24">mdi-information-outline</LIcon>
-            <h2>Was ist LLARS?</h2>
+            <h2>{{ $t('docs.overview.title') }}</h2>
           </div>
           <div class="section-body">
-            <p>
-              <strong>LLARS</strong> ist eine Plattform zur kollaborativen Bewertung von KI-generierten
-              Inhalten. Das System ermöglicht systematische Evaluation, Vergleich und Optimierung
-              von LLM-Antworten im Kontext der E-Beratung.
-            </p>
+            <i18n-t keypath="docs.overview.body" tag="p">
+              <strong>{{ $t('docs.hero.title') }}</strong>
+            </i18n-t>
           </div>
         </section>
 
@@ -35,33 +33,33 @@
         <section class="docs-section">
           <div class="section-header">
             <LIcon size="24">mdi-apps</LIcon>
-            <h2>Hauptfunktionen</h2>
+            <h2>{{ $t('docs.features.title') }}</h2>
           </div>
           <div class="section-body">
             <div class="feature-grid">
               <div class="feature-item">
                 <LIcon color="primary">mdi-chart-bar-stacked</LIcon>
-                <span>Ranking & Rating</span>
+                <span>{{ $t('docs.features.items.rankingRating') }}</span>
               </div>
               <div class="feature-item">
                 <LIcon color="primary">mdi-sword-cross</LIcon>
-                <span>Chatbot Arena</span>
+                <span>{{ $t('docs.features.items.chatbotArena') }}</span>
               </div>
               <div class="feature-item">
                 <LIcon color="primary">mdi-robot</LIcon>
-                <span>RAG-Chatbots</span>
+                <span>{{ $t('docs.features.items.ragChatbots') }}</span>
               </div>
               <div class="feature-item">
                 <LIcon color="primary">mdi-text-search</LIcon>
-                <span>Prompt Engineering</span>
+                <span>{{ $t('docs.features.items.promptEngineering') }}</span>
               </div>
               <div class="feature-item">
                 <LIcon color="primary">mdi-account-multiple</LIcon>
-                <span>Echtzeit-Kollaboration</span>
+                <span>{{ $t('docs.features.items.realtimeCollaboration') }}</span>
               </div>
               <div class="feature-item">
                 <LIcon color="primary">mdi-shield-account</LIcon>
-                <span>Anonymisierung</span>
+                <span>{{ $t('docs.features.items.anonymization') }}</span>
               </div>
             </div>
           </div>
@@ -71,31 +69,29 @@
         <section class="docs-section highlight">
           <div class="section-header">
             <LIcon size="24">mdi-book-open-variant</LIcon>
-            <h2>Technische Dokumentation</h2>
+            <h2>{{ $t('docs.technical.title') }}</h2>
           </div>
           <div class="section-body">
             <p>
-              Die vollständige technische Dokumentation mit Architektur, API-Referenz,
-              Agentic AI (RAG, ACT, ReACT, ReflAct), Installationsanleitungen und mehr
-              finden Sie in unserer MkDocs-Dokumentation:
+              {{ $t('docs.technical.body') }}
             </p>
             <div class="mkdocs-link-container">
               <a href="/mkdocs/" class="mkdocs-link" @click="openMkDocs">
                 <LIcon size="32">mdi-book-open-page-variant</LIcon>
                 <div class="mkdocs-link-text">
-                  <span class="mkdocs-link-title">MkDocs Dokumentation öffnen</span>
+                  <span class="mkdocs-link-title">{{ $t('docs.technical.linkTitle') }}</span>
                   <span class="mkdocs-link-url">/mkdocs/</span>
                 </div>
                 <LIcon>mdi-open-in-new</LIcon>
               </a>
             </div>
             <div class="doc-topics">
-              <LTag variant="info" size="small">Agentic AI</LTag>
-              <LTag variant="info" size="small">RAG Pipeline</LTag>
-              <LTag variant="info" size="small">Hybrid Search</LTag>
-              <LTag variant="info" size="small">Chatbot Arena</LTag>
-              <LTag variant="info" size="small">API Reference</LTag>
-              <LTag variant="info" size="small">Installation</LTag>
+              <LTag variant="info" size="small">{{ $t('docs.technical.tags.agenticAI') }}</LTag>
+              <LTag variant="info" size="small">{{ $t('docs.technical.tags.ragPipeline') }}</LTag>
+              <LTag variant="info" size="small">{{ $t('docs.technical.tags.hybridSearch') }}</LTag>
+              <LTag variant="info" size="small">{{ $t('docs.technical.tags.chatbotArena') }}</LTag>
+              <LTag variant="info" size="small">{{ $t('docs.technical.tags.apiReference') }}</LTag>
+              <LTag variant="info" size="small">{{ $t('docs.technical.tags.installation') }}</LTag>
             </div>
           </div>
         </section>
@@ -104,19 +100,15 @@
         <section class="docs-section">
           <div class="section-header">
             <LIcon size="24">mdi-rocket-launch</LIcon>
-            <h2>Schnellstart</h2>
+            <h2>{{ $t('docs.quickStart.title') }}</h2>
           </div>
           <div class="section-body">
             <div class="code-block">
-              <pre><code># Repository klonen und starten
-git clone &lt;repository-url&gt;
-cd llars
-cp .env.template.development .env
-./start_llars.sh</code></pre>
+              <pre><code>{{ $t('docs.quickStart.code') }}</code></pre>
             </div>
-            <p class="hint-text">
-              Nach dem Start ist LLARS unter <code>http://localhost:55080</code> erreichbar.
-            </p>
+            <i18n-t keypath="docs.quickStart.hint" tag="p" class="hint-text">
+              <code>http://localhost:55080</code>
+            </i18n-t>
           </div>
         </section>
 
@@ -124,17 +116,17 @@ cp .env.template.development .env
         <section class="docs-section">
           <div class="section-header">
             <LIcon size="24">mdi-email-outline</LIcon>
-            <h2>Kontakt</h2>
+            <h2>{{ $t('docs.contact.title') }}</h2>
           </div>
           <div class="section-body">
             <div class="contact-row">
               <a href="mailto:info@e-beratungsinstitut.de" class="contact-link">
                 <LIcon>mdi-email</LIcon>
-                <span>info@e-beratungsinstitut.de</span>
+                <span>{{ $t('docs.contact.email') }}</span>
               </a>
               <a href="https://www.e-beratungsinstitut.de" target="_blank" class="contact-link">
                 <LIcon>mdi-web</LIcon>
-                <span>e-beratungsinstitut.de</span>
+                <span>{{ $t('docs.contact.website') }}</span>
               </a>
             </div>
           </div>
@@ -142,7 +134,7 @@ cp .env.template.development .env
 
         <!-- Footer -->
         <div class="docs-footer">
-          <p>Stand: {{ currentDate }} | Version 3.0 | TH Nürnberg</p>
+          <p>{{ $t('docs.footer', { date: currentDate }) }}</p>
         </div>
       </main>
     </div>
@@ -151,6 +143,7 @@ cp .env.template.development .env
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 // Explizit window.open verwenden um Vue Router zu umgehen
 const openMkDocs = (event) => {
@@ -158,8 +151,9 @@ const openMkDocs = (event) => {
   window.open('/mkdocs/', '_blank');
 };
 
+const { locale } = useI18n();
 const currentDate = computed(() => {
-  return new Date().toLocaleDateString('de-DE', {
+  return new Date().toLocaleDateString(locale.value || undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric'

@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { io } from 'socket.io-client'
+import { useI18n } from 'vue-i18n'
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
+const { t, locale } = useI18n()
 
 const messages = ref([])
 const newMessage = ref('')
@@ -26,9 +28,9 @@ const scrollToBottom = () => {
 messages.value = [
   {
     id: 1,
-    content: 'Hallo! Wie kann ich dir helfen?',
+    content: t('tempTest.initialBotMessage'),
     sender: 'bot',
-    timestamp: new Date().toLocaleTimeString(),
+    timestamp: new Date().toLocaleTimeString(locale.value || undefined),
     streaming: false
   }
 ];
@@ -48,7 +50,7 @@ const sendMessage = () => {
     id: messages.value.length + 1,
     content: newMessage.value,
     sender: 'user',
-    timestamp: new Date().toLocaleTimeString(),
+    timestamp: new Date().toLocaleTimeString(locale.value || undefined),
     streaming: false
   });
   scrollToBottom();
@@ -66,7 +68,7 @@ const addMessage = (content, sender, streaming = false) => {
     id: messages.value.length + 1,
     content,
     sender,
-    timestamp: new Date().toLocaleTimeString(),
+    timestamp: new Date().toLocaleTimeString(locale.value || undefined),
     streaming
   });
   scrollToBottom();

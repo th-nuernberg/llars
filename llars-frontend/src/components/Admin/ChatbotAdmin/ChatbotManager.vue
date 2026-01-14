@@ -308,6 +308,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 import { useAuth } from '@/composables/useAuth'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
@@ -417,7 +418,7 @@ async function loadChatbots() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Chatbots', 'error')
-    console.error('Error loading chatbots:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadChatbotsFailed', error)
   } finally {
     loading.value.chatbots = false
   }
@@ -432,7 +433,7 @@ async function loadCollections() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Collections', 'error')
-    console.error('Error loading collections:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadCollectionsFailed', error)
   } finally {
     loading.value.collections = false
   }
@@ -447,7 +448,7 @@ async function loadDocuments() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Dokumente', 'error')
-    console.error('Error loading documents:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadDocumentsFailed', error)
   } finally {
     loading.value.documents = false
   }
@@ -461,7 +462,7 @@ async function loadStats() {
       stats.value = response.data.stats
     }
   } catch (error) {
-    console.error('Error loading stats:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadStatsFailed', error)
   } finally {
     loading.value.stats = false
   }
@@ -525,7 +526,7 @@ async function openShareDialog(chatbot) {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Zugriffsrechte', 'error')
-    console.error('Error loading chatbot access:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadChatbotAccessFailed', error)
   } finally {
     shareLoading.value = false
   }
@@ -559,7 +560,7 @@ async function saveChatbotAccess() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Speichern der Zugriffsrechte', 'error')
-    console.error('Error saving chatbot access:', error)
+    logI18n('error', 'logs.admin.chatbotManager.saveChatbotAccessFailed', error)
   } finally {
     shareSaving.value = false
   }
@@ -598,7 +599,7 @@ async function saveChatbot(chatbotData) {
     }
   } catch (error) {
     showSnackbar(error.response?.data?.error || 'Fehler beim Speichern', 'error')
-    console.error('Error saving chatbot:', error)
+    logI18n('error', 'logs.admin.chatbotManager.saveChatbotFailed', error)
   }
 }
 
@@ -611,7 +612,7 @@ async function duplicateChatbot(chatbot) {
     }
   } catch (error) {
     showSnackbar('Fehler beim Duplizieren', 'error')
-    console.error('Error duplicating chatbot:', error)
+    logI18n('error', 'logs.admin.chatbotManager.duplicateChatbotFailed', error)
   }
 }
 
@@ -667,7 +668,7 @@ async function executeDelete() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Löschen', 'error')
-    console.error('Error deleting:', error)
+    logI18n('error', 'logs.admin.chatbotManager.deleteFailed', error)
   } finally {
     dialogs.value.deleteConfirm = false
     deleteTarget.value = null
@@ -704,7 +705,7 @@ async function saveCollection(collectionData) {
     }
   } catch (error) {
     showSnackbar(error.response?.data?.error || 'Fehler beim Speichern', 'error')
-    console.error('Error saving collection:', error)
+    logI18n('error', 'logs.admin.chatbotManager.saveCollectionFailed', error)
   }
 }
 
@@ -738,7 +739,7 @@ async function downloadDocument(document) {
     link.remove()
   } catch (error) {
     showSnackbar('Fehler beim Download', 'error')
-    console.error('Error downloading document:', error)
+    logI18n('error', 'logs.admin.chatbotManager.downloadDocumentFailed', error)
   }
 }
 
@@ -767,7 +768,7 @@ async function saveCollectionAssignment(data) {
     await loadChatbots()
   } catch (error) {
     showSnackbar('Fehler beim Zuweisen', 'error')
-    console.error('Error assigning collections:', error)
+    logI18n('error', 'logs.admin.chatbotManager.assignCollectionsFailed', error)
   }
 }
 
@@ -791,7 +792,7 @@ async function openTestDialogById(chatbotId) {
       dialogs.value.test = true
     }
   } catch (error) {
-    console.error('Error loading chatbot for test:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadChatbotForTestFailed', error)
     showSnackbar('Fehler beim Laden des Chatbots', 'error')
   }
 }

@@ -215,6 +215,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { useAuth } from '@/composables/useAuth'
+import { logI18n } from '@/utils/logI18n'
 
 const auth = useAuth()
 
@@ -521,7 +522,7 @@ const loadInitial = async () => {
 
     stats.value = statsRes.data?.stats || {}
   } catch (e) {
-    console.error('Failed to load chatbot activities:', e)
+    logI18n('error', 'logs.admin.chatbotActivity.loadActivitiesFailed', e)
   } finally {
     loading.value = false
   }

@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 export function useCrawlerForm() {
   // Form data
@@ -68,10 +69,12 @@ export function useCrawlerForm() {
       const response = await axios.get('/api/rag/collections');
       if (response.data.success) {
         collections.value = response.data.collections;
-        console.log('[Crawler] Loaded', collections.value.length, 'collections');
+        logI18nParams('log', 'logs.admin.crawlerForm.loadedCollections', {
+          count: collections.value.length
+        });
       }
     } catch (error) {
-      console.error('[Crawler] Error loading collections:', error);
+      logI18n('error', 'logs.admin.crawlerForm.loadCollectionsFailed', error);
       throw error;
     } finally {
       loadingCollections.value = false;

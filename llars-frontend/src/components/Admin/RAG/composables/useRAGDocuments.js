@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 /**
  * Composable for RAG Documents management
@@ -60,7 +61,7 @@ export function useRAGDocuments() {
       documents.value = response.data.documents || [];
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      logI18n('error', 'logs.admin.ragDocuments.fetchDocumentsFailed', error);
       return { success: false, error };
     } finally {
       loadingDocuments.value = false;
@@ -101,7 +102,7 @@ export function useRAGDocuments() {
       await fetchDocuments();
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error uploading files:', error);
+      logI18n('error', 'logs.admin.ragDocuments.uploadFilesFailed', error);
       return { success: false, error };
     } finally {
       uploading.value = false;
@@ -126,7 +127,7 @@ export function useRAGDocuments() {
       await fetchDocuments();
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error deleting document:', error);
+      logI18n('error', 'logs.admin.ragDocuments.deleteDocumentFailed', error);
       return { success: false, error };
     } finally {
       deletingDocument.value = false;
@@ -140,7 +141,7 @@ export function useRAGDocuments() {
       previewContent.value = response.data.content || 'Inhalt konnte nicht geladen werden.';
       return { success: true, content: previewContent.value };
     } catch (error) {
-      console.error('Error loading document content:', error);
+      logI18n('error', 'logs.admin.ragDocuments.loadDocumentContentFailed', error);
       previewContent.value = 'Fehler beim Laden des Inhalts.';
       return { success: false, error };
     } finally {
@@ -166,7 +167,7 @@ export function useRAGDocuments() {
 
       return { success: true };
     } catch (error) {
-      console.error('Error downloading document:', error);
+      logI18n('error', 'logs.admin.ragDocuments.downloadDocumentFailed', error);
       return { success: false, error };
     }
   };

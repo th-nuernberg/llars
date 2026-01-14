@@ -633,6 +633,7 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 
 const providers = ref([])
 const loading = ref(false)
@@ -830,7 +831,7 @@ async function fetchProviders() {
     const response = await axios.get('/api/llm/providers')
     providers.value = response.data.providers || []
   } catch (error) {
-    console.error('Error loading providers:', error)
+    logI18n('error', 'logs.admin.llmProviders.loadProvidersFailed', error)
     providers.value = []
   } finally {
     loading.value = false
@@ -920,7 +921,7 @@ async function submitQuickConnect() {
     await fetchProviders()
     await fetchLlmAccessOverview()
   } catch (error) {
-    console.error('Quick connect failed:', error)
+    logI18n('error', 'logs.admin.llmProviders.quickConnectFailed', error)
     const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Verbindung fehlgeschlagen'
     showMessage(errorMsg, 'error')
   } finally {
@@ -961,7 +962,7 @@ async function saveProvider() {
     editDialog.value = false
     await fetchProviders()
   } catch (error) {
-    console.error('Save provider failed:', error)
+    logI18n('error', 'logs.admin.llmProviders.saveProviderFailed', error)
     showMessage('Speichern fehlgeschlagen', 'error')
   } finally {
     saving.value = false
@@ -973,7 +974,7 @@ async function testProvider(provider) {
     const response = await axios.post(`/api/llm/providers/${provider.id}/test`)
     showMessage(response.data.message || 'Verbindung OK', 'success')
   } catch (error) {
-    console.error('Provider test failed:', error)
+    logI18n('error', 'logs.admin.llmProviders.providerTestFailed', error)
     showMessage(error.response?.data?.error || 'Verbindung fehlgeschlagen', 'error')
   }
 }
@@ -984,7 +985,7 @@ async function syncProvider(provider) {
     showMessage(`Sync: ${response.data.inserted || 0} neu, ${response.data.updated || 0} aktualisiert`, 'success')
     await fetchLlmAccessOverview()
   } catch (error) {
-    console.error('Model sync failed:', error)
+    logI18n('error', 'logs.admin.llmProviders.modelSyncFailed', error)
     showMessage(error.response?.data?.error || 'Sync fehlgeschlagen', 'error')
   }
 }
@@ -995,7 +996,7 @@ async function fetchLlmAccessOverview() {
     const response = await axios.get('/api/llm/models/access/overview?include_inactive=true')
     llmModels.value = response.data.models || []
   } catch (error) {
-    console.error('Error loading LLM models:', error)
+    logI18n('error', 'logs.admin.llmProviders.loadModelsFailed', error)
     llmModels.value = []
   } finally {
     llmLoading.value = false
@@ -1007,7 +1008,7 @@ async function fetchRoles() {
     const response = await axios.get('/api/permissions/roles')
     roles.value = response.data.roles || []
   } catch (error) {
-    console.error('Error loading roles:', error)
+    logI18n('error', 'logs.admin.llmProviders.loadRolesFailed', error)
     roles.value = []
   }
 }
@@ -1018,7 +1019,7 @@ async function fetchUsersForAccess() {
     const users = response.data.users || response.data.data || []
     allUsernames.value = users.map(u => u.username).filter(Boolean).sort()
   } catch (error) {
-    console.error('Error loading users:', error)
+    logI18n('error', 'logs.admin.llmProviders.loadUsersFailed', error)
     allUsernames.value = []
   }
 }
@@ -1063,7 +1064,7 @@ async function saveLlmAccess() {
     llmAccessDialog.value = false
     showMessage('Zugriff gespeichert', 'success')
   } catch (error) {
-    console.error('Error saving LLM access:', error)
+    logI18n('error', 'logs.admin.llmProviders.saveAccessFailed', error)
     showMessage('Zugriff speichern fehlgeschlagen', 'error')
   } finally {
     savingLlmAccess.value = false

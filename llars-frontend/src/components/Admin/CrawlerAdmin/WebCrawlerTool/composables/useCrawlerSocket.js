@@ -7,6 +7,7 @@
 
 import { ref } from 'vue';
 import { io } from 'socket.io-client';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
@@ -43,7 +44,7 @@ export function useCrawlerSocket(callbacks = {}) {
     });
 
     socket.on('connect', () => {
-      console.log('[Crawler Socket] Connected:', socket.id);
+      logI18n('log', 'logs.admin.crawlerSocket.connected', socket.id);
       socketConnected.value = true;
       isReconnecting.value = false;
       reconnectionFailed.value = false;
@@ -55,7 +56,7 @@ export function useCrawlerSocket(callbacks = {}) {
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('[Crawler Socket] Disconnected:', reason);
+      logI18n('log', 'logs.admin.crawlerSocket.disconnected', reason);
       socketConnected.value = false;
       if (reason !== 'io client disconnect') {
         isReconnecting.value = true;
@@ -63,11 +64,11 @@ export function useCrawlerSocket(callbacks = {}) {
     });
 
     socket.on('connect_error', (error) => {
-      console.warn('[Crawler Socket] Connection error:', error.message);
+      logI18n('warn', 'logs.admin.crawlerSocket.connectionError', error.message);
       reconnectAttempts++;
       isReconnecting.value = true;
       if (reconnectAttempts >= maxReconnectAttempts) {
-        console.error('[Crawler Socket] Max reconnection attempts reached');
+        logI18n('error', 'logs.admin.crawlerSocket.maxReconnectionAttempts');
         isReconnecting.value = false;
         reconnectionFailed.value = true;
       }
@@ -75,53 +76,57 @@ export function useCrawlerSocket(callbacks = {}) {
 
     // Crawler-specific events
     socket.on('crawler:joined', (data) => {
-      console.log('[Crawler Socket] Joined session:', data);
+      logI18n('log', 'logs.admin.crawlerSocket.joinedSession', data);
     });
 
     socket.on('crawler:progress', (data) => {
-      console.log('[Crawler Socket] Progress:', data);
+      logI18n('log', 'logs.admin.crawlerSocket.progress', data);
       if (callbacks.onProgress) {
         callbacks.onProgress(data);
       }
     });
 
     socket.on('crawler:page_crawled', (data) => {
-      console.log('[Crawler Socket] Page crawled:', data);
+      logI18n('log', 'logs.admin.crawlerSocket.pageCrawled', data);
       if (callbacks.onPageCrawled) {
         callbacks.onPageCrawled(data);
       }
     });
 
     socket.on('crawler:complete', (data) => {
-      console.log('[Crawler Socket] Complete:', data);
+      logI18n('log', 'logs.admin.crawlerSocket.complete', data);
       if (callbacks.onComplete) {
         callbacks.onComplete(data);
       }
     });
 
     socket.on('crawler:error', (data) => {
-      console.error('[Crawler Socket] Error:', data);
+      logI18n('error', 'logs.admin.crawlerSocket.error', data);
       if (callbacks.onError) {
         callbacks.onError(data);
       }
     });
 
     socket.on('crawler:status', (data) => {
-      console.log('[Crawler Socket] Status response:', data);
+      logI18n('log', 'logs.admin.crawlerSocket.statusResponse', data);
       if (callbacks.onStatus) {
         callbacks.onStatus(data);
       }
     });
 
     socket.on('crawler:jobs_list', (data) => {
-      console.log('[Crawler Socket] Initial jobs list received:', data.jobs?.length || 0, 'jobs');
+      logI18nParams('log', 'logs.admin.crawlerSocket.initialJobsListReceived', {
+        count: data.jobs?.length || 0
+      });
       if (callbacks.onJobsList) {
         callbacks.onJobsList(data.jobs);
       }
     });
 
     socket.on('crawler:jobs_updated', (data) => {
-      console.log('[Crawler Socket] Jobs updated:', data.jobs?.length || 0, 'jobs');
+      logI18nParams('log', 'logs.admin.crawlerSocket.jobsUpdated', {
+        count: data.jobs?.length || 0
+      });
       if (callbacks.onJobsUpdated) {
         callbacks.onJobsUpdated(data.jobs);
       }

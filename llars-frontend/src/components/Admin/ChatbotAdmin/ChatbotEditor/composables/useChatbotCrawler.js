@@ -8,6 +8,7 @@
 import { ref, computed, onUnmounted } from 'vue';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { logI18n } from '@/utils/logI18n';
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
@@ -53,15 +54,15 @@ export function useChatbotCrawler() {
     });
 
     crawlerSocket.on('connect', () => {
-      console.log('[Crawler Socket] Connected');
+      logI18n('log', 'logs.admin.chatbotCrawler.socketConnected');
     });
 
     crawlerSocket.on('crawler:joined', (data) => {
-      console.log('[Crawler Socket] Joined session:', data);
+      logI18n('log', 'logs.admin.chatbotCrawler.joinedSession', data);
     });
 
     crawlerSocket.on('crawler:progress', (data) => {
-      console.log('[Crawler Socket] Progress:', data);
+      logI18n('log', 'logs.admin.chatbotCrawler.progress', data);
       crawlProgress.value = data;
       crawlStatus.value = {
         message: `Crawle ${data.current_url_index}/${data.total_urls} URLs - ${data.pages_crawled} Seiten...`,
@@ -72,7 +73,7 @@ export function useChatbotCrawler() {
     });
 
     crawlerSocket.on('crawler:page_crawled', (data) => {
-      console.log('[Crawler Socket] Page crawled:', data);
+      logI18n('log', 'logs.admin.chatbotCrawler.pageCrawled', data);
       crawledPages.value.push(data.url);
       // Keep only last 10 pages for display
       if (crawledPages.value.length > 10) {
@@ -81,7 +82,7 @@ export function useChatbotCrawler() {
     });
 
     crawlerSocket.on('crawler:complete', (data) => {
-      console.log('[Crawler Socket] Complete:', data);
+      logI18n('log', 'logs.admin.chatbotCrawler.complete', data);
       crawling.value = false;
       crawlStatus.value = {
         success: true,
@@ -105,7 +106,7 @@ export function useChatbotCrawler() {
     });
 
     crawlerSocket.on('crawler:error', (data) => {
-      console.error('[Crawler Socket] Error:', data);
+      logI18n('error', 'logs.admin.chatbotCrawler.error', data);
       crawling.value = false;
       crawlStatus.value = {
         error: true,
@@ -167,7 +168,7 @@ export function useChatbotCrawler() {
         return { success: false, error: crawlStatus.value.message };
       }
     } catch (error) {
-      console.error('Crawl error:', error);
+      logI18n('error', 'logs.admin.chatbotCrawler.crawlError', error);
       crawling.value = false;
       crawlStatus.value = {
         error: true,

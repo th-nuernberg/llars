@@ -256,6 +256,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
+import { logI18n, logI18nParams } from '@/utils/logI18n'
 import { getSocket, useSocketState } from '@/services/socketService'
 import { useBuilderState, BUILD_STATUS, WIZARD_STEPS } from '@/composables/useBuilderState'
 import { fieldGenerationService } from '@/composables/useFieldGenerationService'
@@ -520,7 +521,7 @@ async function handleStartWizard() {
       setError('general', response.data.error || 'Fehler beim Starten des Wizards')
     }
   } catch (error) {
-    console.error('Error starting wizard:', error)
+    logI18n('error', 'logs.admin.chatbotWizard.startWizardFailed', error)
     setError('general', error.response?.data?.error || 'Fehler beim Starten des Wizards')
   } finally {
     setLoading(false)
@@ -562,7 +563,7 @@ async function startCrawl() {
       return null
     }
   } catch (error) {
-    console.error('Error starting crawl:', error)
+    logI18n('error', 'logs.admin.chatbotWizard.startCrawlFailed', error)
     setError('crawl', error.response?.data?.error || 'Fehler beim Crawlen')
     setStatus(BUILD_STATUS.ERROR)
     return null
@@ -577,7 +578,7 @@ async function handlePauseBuild() {
     setStatus(BUILD_STATUS.PAUSED)
     stopElapsedTimeUpdates()
   } catch (error) {
-    console.error('Error pausing build:', error)
+    logI18n('error', 'logs.admin.chatbotWizard.pauseBuildFailed', error)
     setError('general', 'Fehler beim Pausieren')
   }
 }
@@ -586,7 +587,7 @@ async function handlePauseBuild() {
 function subscribeToProgress(jobId = null) {
   socket.value = getSocket()
   if (!socket.value) {
-    console.warn('[Wizard] Socket not available, cannot subscribe to live updates')
+    logI18n('warn', 'logs.admin.chatbotWizard.socketUnavailableSubscribe')
     setError('general', 'Live-Updates nicht verfügbar (Socket.IO)')
     return
   }
@@ -596,14 +597,14 @@ function subscribeToProgress(jobId = null) {
 
   // Subscribe to wizard session room (server-authoritative updates)
   if (chatbotId.value) {
-    console.log('[Wizard] Joining wizard session room:', chatbotId.value)
+    logI18nParams('log', 'logs.admin.chatbotWizard.joinWizardSession', { chatbotId: chatbotId.value })
     socket.value.emit('wizard:join_session', { chatbot_id: chatbotId.value })
   }
 
   // Subscribe to crawler job - use passed jobId or stored one
   const effectiveJobId = jobId || crawlerJobId.value
   if (effectiveJobId) {
-    console.log('[Wizard] Joining crawler session:', effectiveJobId)
+    logI18nParams('log', 'logs.admin.chatbotWizard.joinCrawlerSession', { jobId: effectiveJobId })
     socket.value.emit('crawler:join_session', { session_id: effectiveJobId })
     socket.value.emit('crawler:get_status', { session_id: effectiveJobId })
   }
@@ -637,7 +638,7 @@ function subscribeToProgress(jobId = null) {
   socket.value.on('rag:document_processed', handleDocumentProcessed)
   socket.value.on('rag:error', handleRagError)
 
-  console.log('[Wizard] Subscribed to socket events')
+  logI18n('log', 'logs.admin.chatbotWizard.socketSubscribed')
 }
 
 function unsubscribeFromProgress() {
@@ -679,7 +680,7 @@ function unsubscribeFromProgress() {
 
   socketSubscribed.value = false
   documentsLoading.value = false
-  console.log('[Wizard] Unsubscribed from socket events')
+  logI18n('log', 'logs.admin.chatbotWizard.socketUnsubscribed')
 }
 
 // ===== Wizard Socket Event Handlers (Server-Authoritative) =====
@@ -689,7 +690,7 @@ function handleWizardState(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:state from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.stateReceived', data)
 
   // Update session state from server
   if (data.session) {
@@ -731,7 +732,7 @@ function handleWizardProgress(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:progress from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.progressReceived', data)
 
   if (!data.progress) return
 
@@ -763,7 +764,7 @@ function handleWizardStatusChanged(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:status_changed from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.statusChangedReceived', data)
 
   if (data.status) {
     setStatus(data.status)
@@ -779,7 +780,7 @@ function handleWizardElapsedTime(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:elapsed_time from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.elapsedTimeReceived', data)
   // Server-side elapsed time - could be used for more accurate time display
   // For now, we continue using local timer but this could sync it
 }
@@ -790,7 +791,7 @@ function handleWizardError(data) {
     return // Event is for a different chatbot
   }
 
-  console.error('[Wizard] Received wizard:error from server:', data)
+  logI18n('error', 'logs.admin.chatbotWizard.errorReceived', data)
   if (data.message) {
     setError(data.source || 'general', data.message)
   }
@@ -807,7 +808,7 @@ function handleCrawlerProgress(data) {
     return // Event is for a different crawler job
   }
 
-  console.log('[Wizard] Crawler progress:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.crawlerProgress', data)
 
   // Map backend data to frontend format
   const status = (data.status || '').toLowerCase()
@@ -842,7 +843,7 @@ function handlePageCrawled(data) {
     return // Event is for a different crawler job
   }
 
-  console.log('[Wizard] Page crawled:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.pageCrawled', data)
   if (data.url) {
     addRecentPage(data.url)
   }
@@ -864,7 +865,7 @@ function handleCrawlerComplete(data) {
     return // Event is for a different crawler job
   }
 
-  console.log('[Wizard] Crawler complete:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.crawlerComplete', data)
   updateCrawlProgress({
     pages_crawled: data.pages_crawled,
     documents_created: data.documents_created,
@@ -884,7 +885,7 @@ function handleCrawlerError(data) {
   }
 
   const message = data?.error || 'Crawling fehlgeschlagen'
-  console.error('[Wizard] Crawler error:', data)
+  logI18n('error', 'logs.admin.chatbotWizard.crawlerError', data)
 
   if (typeof message === 'string' && message.toLowerCase().includes('session not found')) {
     if (chatbotId.value) {
@@ -938,11 +939,11 @@ function handleDocumentProcessed(data) {
 
 function handleRagError(data) {
   documentsLoading.value = false
-  console.warn('[Wizard] RAG socket error:', data)
+  logI18n('warn', 'logs.admin.chatbotWizard.ragSocketError', data)
 }
 
 function handleEmbeddingProgress(data) {
-  console.log('[Wizard] Embedding progress:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.embeddingProgress', data)
   if (collectionId.value && data?.collection_id && data.collection_id !== collectionId.value) return
 
   updateEmbeddingProgress(data)
@@ -993,12 +994,12 @@ async function syncChatbotIconAndColor() {
       }
     }
   } catch (error) {
-    console.warn('[Wizard] Failed to sync icon/color:', error)
+    logI18n('warn', 'logs.admin.chatbotWizard.iconColorSyncFailed', error)
   }
 }
 
 async function handleEmbeddingComplete(data) {
-  console.log('[Wizard] Embedding complete:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.embeddingComplete', data)
   if (collectionId.value && data?.collection_id && data.collection_id !== collectionId.value) return
 
   updateEmbeddingProgress(100)
@@ -1021,7 +1022,7 @@ async function handleEmbeddingComplete(data) {
 }
 
 function handleEmbeddingError(data) {
-  console.error('[Wizard] Embedding error:', data)
+  logI18n('error', 'logs.admin.chatbotWizard.embeddingError', data)
   if (collectionId.value && data?.collection_id && data.collection_id !== collectionId.value) return
 
   setError('embedding', data.error || 'Embedding fehlgeschlagen')
@@ -1065,7 +1066,7 @@ function requestCollectionDocuments({ force = false } = {}) {
   if (!collectionId.value) return
 
   if (!socket.value) {
-    console.warn('[Wizard] Socket not available, cannot fetch collection documents')
+    logI18n('warn', 'logs.admin.chatbotWizard.socketUnavailableDocuments')
     documentsLoading.value = false
     return
   }
@@ -1145,7 +1146,7 @@ async function autoGenerateFields() {
   for (const field of fields) {
     // Skip color generation if the user or backend already set a non-default value
     if (field === 'color' && wizardData.value.color && wizardData.value.color !== '#5d7a4a') {
-      console.log('[Wizard] Skipping color generation - color already set:', wizardData.value.color)
+      logI18nParams('log', 'logs.admin.chatbotWizard.colorGenerationSkipped', { color: wizardData.value.color })
       continue
     }
     await handleGenerateField(field)
@@ -1157,7 +1158,7 @@ async function handleGenerateField(field, options = {}) {
 
   // Check if already generating via the service
   if (fieldGenerationService.isGenerating(chatbotId.value, field)) {
-    console.log(`[Wizard] Field ${field} already generating`)
+    logI18nParams('log', 'logs.admin.chatbotWizard.fieldAlreadyGenerating', { field })
     return
   }
 
@@ -1185,7 +1186,7 @@ async function handleGenerateField(field, options = {}) {
       applyFieldValue(field, result)
     }
   } catch (error) {
-    console.error(`[Wizard] Error generating ${field}:`, error)
+    logI18nParams('error', 'logs.admin.chatbotWizard.fieldGenerateError', { field }, error)
   } finally {
     // For non-streaming fields, this is needed
     // For streaming, the onUpdate callback handles it
@@ -1269,13 +1270,15 @@ async function handleFinalizeChatbot() {
 
       // Log if embedding is still in progress
       if (response.data.embedding_in_progress) {
-        console.log(`[Wizard] Chatbot finalized, embedding still in progress: ${response.data.embedding_progress}%`)
+        logI18nParams('log', 'logs.admin.chatbotWizard.finalizedEmbeddingInProgress', {
+          progress: response.data.embedding_progress
+        })
       }
     } else {
       setError('general', response.data.error || 'Fehler beim Erstellen')
     }
   } catch (error) {
-    console.error('[Wizard] Finalize error:', error)
+    logI18n('error', 'logs.admin.chatbotWizard.finalizeError', error)
     setError('general', error.response?.data?.error || 'Fehler beim Erstellen')
   } finally {
     setLoading(false)
@@ -1343,7 +1346,7 @@ async function syncWizardFromBackend(id, { overwriteWizardData = false } = {}) {
   } catch (error) {
     const status = error?.response?.status
     if (status !== 404 && status !== 403) {
-      console.warn('[Wizard] Failed to sync wizard from backend:', error)
+      logI18n('warn', 'logs.admin.chatbotWizard.syncFailed', error)
     }
     // 404/403 means chatbot doesn't exist or no access - just skip silently
   }

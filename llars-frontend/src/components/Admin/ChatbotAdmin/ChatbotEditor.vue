@@ -173,6 +173,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import {
@@ -287,7 +288,7 @@ async function loadRerankerModels() {
       rerankerModels.value = [];
     }
   } catch (error) {
-    console.warn('[ChatbotEditor] Error loading reranker models:', error);
+    logI18n('warn', 'logs.admin.chatbotEditor.loadRerankerModelsFailed', error);
     rerankerModels.value = [];
   } finally {
     rerankerModelsLoading.value = false;
@@ -353,7 +354,7 @@ async function generateIcon() {
       formData.value.icon = response.data.value;
     }
   } catch (error) {
-    console.error('Icon generation failed:', error);
+    logI18n('error', 'logs.admin.chatbotEditor.iconGenerationFailed', error);
     const randomIndex = Math.floor(Math.random() * iconOptions.value.length);
     formData.value.icon = iconOptions.value[randomIndex].value;
   } finally {
@@ -376,7 +377,7 @@ async function generateColor() {
       formData.value.color = response.data.value;
     }
   } catch (error) {
-    console.error('Color generation failed:', error);
+    logI18n('error', 'logs.admin.chatbotEditor.colorGenerationFailed', error);
     formData.value.color = generateRandomColor();
   } finally {
     generatingColor.value = false;

@@ -2,7 +2,7 @@
   <div class="buckets-container">
     <!-- Gut Bucket -->
     <div class="bucket good-bucket">
-      <h3>Gut</h3>
+      <h3>{{ $t('adminTester.buckets.good') }}</h3>
       <draggable
         v-model="goodList"
         class="list-group bucket-content"
@@ -18,7 +18,7 @@
 
     <!-- Mittel Bucket -->
     <div class="bucket average-bucket">
-      <h3>Mittel</h3>
+      <h3>{{ $t('adminTester.buckets.average') }}</h3>
       <draggable
         v-model="averageList"
         class="list-group bucket-content"
@@ -34,7 +34,7 @@
 
     <!-- Schlecht Bucket -->
     <div class="bucket bad-bucket">
-      <h3>Schlecht</h3>
+      <h3>{{ $t('adminTester.buckets.bad') }}</h3>
       <draggable
         v-model="badList"
         class="list-group bucket-content"
@@ -51,7 +51,7 @@
 
   <!-- Neutraler Bucket -->
   <div class="neutral-bucket-container">
-    <h3>Neutral</h3>
+    <h3>{{ $t('adminTester.buckets.neutral') }}</h3>
     <draggable
       v-model="neutralList"
       class="neutral-list-group"

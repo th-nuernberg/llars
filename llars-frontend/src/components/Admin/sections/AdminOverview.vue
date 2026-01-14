@@ -146,6 +146,9 @@
       </div>
     </div>
 
+    <!-- Animation Showcase Dialog (Admin Debug) -->
+    <AdminAnimationShowcase v-model="showAnimationShowcase" />
+
     <!-- Row 4: Scenarios -->
     <div class="scenarios-panel">
       <div class="panel-header">
@@ -216,13 +219,18 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { getAnalyticsConfig } from '@/plugins/llars-metrics';
 import SystemHealthBar from './SystemHealth/SystemHealthBar.vue';
+import AdminAnimationShowcase from './AdminAnimationShowcase.vue';
 
 const router = useRouter();
 
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['stats', 'activities', 'scenarios']);
+
+// Animation showcase dialog
+const showAnimationShowcase = ref(false);
 
 // Stats data
 const stats = ref([
@@ -285,7 +293,7 @@ const quickActions = [
   { title: 'Matomo Analytics öffnen', shortTitle: 'Analytics', icon: 'mdi-chart-bar', action: openMatomoSso },
   { title: 'Neues Szenario erstellen', shortTitle: 'Szenario', icon: 'mdi-plus-circle', action: () => navigateToSection('scenarios') },
   { title: 'Benutzer verwalten', shortTitle: 'Benutzer', icon: 'mdi-account-cog', action: () => navigateToSection('users') },
-  { title: 'Dokument hochladen', shortTitle: 'RAG Docs', icon: 'mdi-upload', action: () => navigateToSection('rag') },
+  { title: 'Animationen (Debug)', shortTitle: 'Animationen', icon: 'mdi-animation-play', action: () => { showAnimationShowcase.value = true } },
 ];
 
 // Navigate to a specific admin section via router query param
@@ -464,14 +472,14 @@ const fetchDashboardData = async () => {
       || 0;
     stats.value[2].value = totalDocs.toString();
   } else {
-    console.error('Error fetching RAG stats:', ragResult.reason);
+    logI18n('error', 'logs.admin.overview.ragStatsFetchFailed', ragResult.reason);
   }
 
   // Process permissions/users
   if (permResult.status === 'fulfilled') {
     stats.value[0].value = '-';
   } else {
-    console.error('Error fetching user stats:', permResult.reason);
+    logI18n('error', 'logs.admin.overview.userStatsFetchFailed', permResult.reason);
   }
 
   setLoading('stats', false);
@@ -508,7 +516,7 @@ const fetchDashboardData = async () => {
       };
     });
   } else {
-    console.error('Error fetching system events:', eventsResult.reason);
+    logI18n('error', 'logs.admin.overview.systemEventsFetchFailed', eventsResult.reason);
   }
 
   setLoading('activities', false);
@@ -536,7 +544,7 @@ const fetchDashboardData = async () => {
       });
     }
   } else {
-    console.error('Error fetching scenarios:', scenariosResult.reason);
+    logI18n('error', 'logs.admin.overview.scenariosFetchFailed', scenariosResult.reason);
   }
 
   setLoading('scenarios', false);

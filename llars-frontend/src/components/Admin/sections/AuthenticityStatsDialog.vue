@@ -557,6 +557,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import axios from 'axios'
 import { getSocket } from '@/services/socketService'
+import { logI18n } from '@/utils/logI18n'
 
 const props = defineProps({
   modelValue: {
@@ -644,7 +645,7 @@ async function fetchStats() {
     const response = await axios.get(`/api/admin/scenario/${props.scenario.scenario_id}/user_stats`)
     stats.value = response.data
   } catch (err) {
-    console.error('Error fetching stats:', err)
+    logI18n('error', 'logs.admin.stats.fetchStatsFailed', err)
     error.value = err.response?.data?.message || 'Fehler beim Laden der Statistiken'
   } finally {
     loading.value = false

@@ -213,6 +213,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 import CreateScenarioDialog from '@/components/parts/CreateScenarioDialog.vue';
 import ScenarioDetailDialog from '@/components/parts/ScenarioDetailsDialog.vue';
 import AuthenticityStatsDialog from '@/components/Admin/sections/AuthenticityStatsDialog.vue';
@@ -381,7 +382,7 @@ const fetchScenarios = async () => {
         const response = await axios.get('/api/admin/scenarios');
         scenarios.value = response.data.scenarios || [];
       } catch (error) {
-        console.error('Error fetching scenarios:', error);
+        logI18n('error', 'logs.admin.scenariosFetchFailed', error);
         scenarios.value = [];
       }
     });
@@ -417,7 +418,7 @@ const deleteScenario = async () => {
     scenarioToDelete.value = null;
     await fetchScenarios();
   } catch (error) {
-    console.error('Error deleting scenario:', error);
+    logI18n('error', 'logs.admin.scenarioDeleteFailed', error);
   }
   deleting.value = false;
 };

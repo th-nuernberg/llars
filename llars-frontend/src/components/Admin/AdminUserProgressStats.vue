@@ -1,8 +1,8 @@
 <template>
   <v-container class="email-progress-dashboard" fluid>
     <v-card class="mb-4 title-card">
-      <v-card-title class="text-h5">{{scenarioName}}</v-card-title>
-      <v-card-subtitle>{{functionTypeTexts.subheader}}</v-card-subtitle>
+      <v-card-title class="text-h5">{{ scenarioName }}</v-card-title>
+      <v-card-subtitle>{{ functionTypeTexts.subheader }}</v-card-subtitle>
     </v-card>
 
     <!-- Rater und Evaluator Panels -->
@@ -10,7 +10,7 @@
       <!-- Rater Panel -->
       <v-expansion-panel>
         <v-expansion-panel-title>
-          <h3>Rater</h3>
+          <h3>{{ $t('adminProgress.raterTitle') }}</h3>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <!-- Legende -->
@@ -18,22 +18,22 @@
             <v-card-text class="py-2">
               <v-row align="center" no-gutters class="legend-row">
                 <v-col cols="2" sm="1" class="username-col">
-                  <strong>Benutzer</strong>
+                  <strong>{{ $t('adminProgress.legend.user') }}</strong>
                 </v-col>
                 <v-col cols="3" sm="2" class="threads-col">
-                  <strong>Done</strong>
+                  <strong>{{ $t('adminProgress.legend.done') }}</strong>
                 </v-col>
                 <v-col cols="3" sm="2" class="threads-col">
-                  <strong>In Progress</strong>
+                  <strong>{{ $t('adminProgress.legend.inProgress') }}</strong>
                 </v-col>
                 <v-col cols="3" sm="2" class="threads-col">
-                  <strong>Not Started</strong>
+                  <strong>{{ $t('adminProgress.legend.notStarted') }}</strong>
                 </v-col>
                 <v-col class="progress-col">
-                  <strong>Gesamtfortschritt</strong>
+                  <strong>{{ $t('adminProgress.legend.overallProgress') }}</strong>
                 </v-col>
                 <v-col cols="auto" class="actions-col">
-                  <strong>Aktionen</strong>
+                  <strong>{{ $t('adminProgress.legend.actions') }}</strong>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -93,7 +93,7 @@
                 </v-col>
                 <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
                   <v-btn x-small color="primary" @click="showThreadDetails(user)">
-                    Details
+                    {{ $t('adminProgress.details') }}
                   </v-btn>
                 </v-col>
               </v-row>
@@ -105,7 +105,7 @@
       <!-- Evaluator Panel -->
       <v-expansion-panel>
         <v-expansion-panel-title>
-          <h3>Evaluator</h3>
+          <h3>{{ $t('adminProgress.evaluatorTitle') }}</h3>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <!-- Legende für Evaluator -->
@@ -113,22 +113,22 @@
             <v-card-text class="py-2">
               <v-row align="center" no-gutters class="legend-row">
                 <v-col cols="2" sm="1" class="username-col">
-                  <strong>Benutzer</strong>
+                  <strong>{{ $t('adminProgress.legend.user') }}</strong>
                 </v-col>
                 <v-col cols="3" sm="2" class="threads-col">
-                  <strong>Done</strong>
+                  <strong>{{ $t('adminProgress.legend.done') }}</strong>
                 </v-col>
                 <v-col cols="3" sm="2" class="threads-col">
-                  <strong>In Progress</strong>
+                  <strong>{{ $t('adminProgress.legend.inProgress') }}</strong>
                 </v-col>
                 <v-col cols="3" sm="2" class="threads-col">
-                  <strong>Not Started</strong>
+                  <strong>{{ $t('adminProgress.legend.notStarted') }}</strong>
                 </v-col>
                 <v-col class="progress-col">
-                  <strong>Gesamtfortschritt</strong>
+                  <strong>{{ $t('adminProgress.legend.overallProgress') }}</strong>
                 </v-col>
                 <v-col cols="auto" class="actions-col">
-                  <strong>Aktionen</strong>
+                  <strong>{{ $t('adminProgress.legend.actions') }}</strong>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -188,7 +188,7 @@
                 </v-col>
                 <v-col cols="auto" class="actions-col" style="padding-left: 16px;">
                   <v-btn x-small color="primary" @click="showThreadDetails(user)">
-                    Details
+                    {{ $t('adminProgress.details') }}
                   </v-btn>
                 </v-col>
               </v-row>
@@ -201,41 +201,47 @@
     <!-- Thread Details Dialog (unverändert) -->
     <v-dialog v-model="dialogVisible" max-width="700px">
       <v-card>
-        <v-card-title>Thread Details für {{ selectedUser.username }}</v-card-title>
+        <v-card-title>{{ $t('adminProgress.threadDetailsTitle', { username: selectedUser.username || '' }) }}</v-card-title>
         <v-card-text>
-          <v-subheader>{{functionTypeTexts.done}}</v-subheader>
+          <v-subheader>{{ functionTypeTexts.done }}</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.done_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
-                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }} | Chat ID: {{ thread.chat_id }} | Institut ID: {{ thread.institut_id }}</v-list-item-subtitle>
+                <v-list-item-subtitle>
+                  {{ $t('adminProgress.threadDetailsMeta', { threadId: thread.thread_id, chatId: thread.chat_id, instituteId: thread.institut_id }) }}
+                </v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
           </v-list>
 
-          <v-subheader>{{functionTypeTexts.progressing}}</v-subheader>
+          <v-subheader>{{ functionTypeTexts.inProgress }}</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.progressing_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
-                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }}  |  Chat ID: {{ thread.chat_id }} | Institut ID: {{ thread.institut_id }}</v-list-item-subtitle>
+                <v-list-item-subtitle>
+                  {{ $t('adminProgress.threadDetailsMeta', { threadId: thread.thread_id, chatId: thread.chat_id, instituteId: thread.institut_id }) }}
+                </v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
           </v-list>
 
-          <v-subheader>{{functionTypeTexts.not_started}}</v-subheader>
+          <v-subheader>{{ functionTypeTexts.notStarted }}</v-subheader>
           <v-list dense>
             <v-list-item v-for="thread in selectedUser.not_started_threads_list" :key="thread.thread_id">
               <v-list-item-content>
                 <v-list-item-title class="text-subtitle-1">{{ thread.subject }}</v-list-item-title>
-                <v-list-item-subtitle>Thread ID: {{ thread.thread_id }} | Chat ID: {{ thread.chat_id }} | Institut ID: {{ thread.institut_id }}</v-list-item-subtitle>
+                <v-list-item-subtitle>
+                  {{ $t('adminProgress.threadDetailsMeta', { threadId: thread.thread_id, chatId: thread.chat_id, instituteId: thread.institut_id }) }}
+                </v-list-item-subtitle>
               </v-list-item-content>
             </v-list-item>
           </v-list>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="primary" text @click="dialogVisible = false">Schließen</v-btn>
+          <v-btn color="primary" text @click="dialogVisible = false">{{ $t('common.close') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -245,10 +251,13 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 
 const scenario_id = route.params.id;
 
@@ -261,29 +270,36 @@ const scenarioDetails = ref({
 // Texte für die UI, abhängig vom Funktionstyp
 const functionTypeTexts = computed(() => {
   if (!scenarioDetails.value.func_type_id) return {};
-  return functionTypeMappings[scenarioDetails.value.func_type_id] || {};
+  const mapping = functionTypeMappings[scenarioDetails.value.func_type_id];
+  if (!mapping) return {};
+  return {
+    subheader: t(mapping.subheader),
+    done: t(mapping.done),
+    inProgress: t(mapping.inProgress),
+    notStarted: t(mapping.notStarted),
+  };
 });
 
-const scenarioName = computed(() => scenarioDetails.value.name || "Unbekanntes Szenario");
+const scenarioName = computed(() => scenarioDetails.value.name || t('adminProgress.unknownScenario'));
 
 const functionTypeMappings = {
   1: {
-    subheader: "Fortschritt Ranking",
-    done: "Bereits geranked",
-    progressing: "Teilweise geranked",
-    not_started: "Noch nicht geranked",
+    subheader: 'adminProgress.functionTypes.ranking.subheader',
+    done: 'adminProgress.functionTypes.ranking.done',
+    inProgress: 'adminProgress.functionTypes.ranking.inProgress',
+    notStarted: 'adminProgress.functionTypes.ranking.notStarted',
   },
   2: {
-    subheader: "Fortschritt Rating",
-    done: "Bereits bewertet",
-    progressing: "Teilweise bewertet",
-    not_started: "Noch nicht bewertet",
+    subheader: 'adminProgress.functionTypes.rating.subheader',
+    done: 'adminProgress.functionTypes.rating.done',
+    inProgress: 'adminProgress.functionTypes.rating.inProgress',
+    notStarted: 'adminProgress.functionTypes.rating.notStarted',
   },
   3: {
-    subheader: "Fortschritt Verlaufsgenerierung",
-    done: "Bereits bewertet",
-    progressing: "Teilweise bewertet",
-    not_started: "Noch nicht bewertet",
+    subheader: 'adminProgress.functionTypes.history.subheader',
+    done: 'adminProgress.functionTypes.history.done',
+    inProgress: 'adminProgress.functionTypes.history.inProgress',
+    notStarted: 'adminProgress.functionTypes.history.notStarted',
   },
 };
 
@@ -317,7 +333,7 @@ const fetchScenarioDetails = async () => {
     const response = await axios.get(`/api/admin/scenarios/${scenario_id}`);
 
     scenarioDetails.value = {
-      name: response.data.scenario_name || "Unbekanntes Szenario",
+      name: response.data.scenario_name || '',
       func_type_id: response.data.function_type_id || null,
     };
 
@@ -325,11 +341,11 @@ const fetchScenarioDetails = async () => {
       //statsRoute.value = functionTypeMappings[scenarioDetails.value.func_type_id].route;
       await fetchUserStats();
     } else {
-      console.error("Kein passendes Mapping für func_type_id:", scenarioDetails.value.func_type_id);
+      logI18n('error', 'logs.admin.stats.noMappingForFuncTypeId', scenarioDetails.value.func_type_id);
     }
 
   } catch (error) {
-    console.error("Fehler beim Laden der Szenario-Details:", error);
+    logI18n('error', 'logs.admin.stats.scenarioDetailsLoadFailed', error);
   }
 };
 
@@ -352,7 +368,7 @@ const fetchUserStats = async () => {
       }));
     }
   } catch (error) {
-    console.error('Fehler beim Laden der Benutzerstatistiken:', error);
+    logI18n('error', 'logs.admin.stats.userStatsLoadFailed', error);
   }
 };
 
